@@ -9,14 +9,6 @@ else
   DIRSEP=/
 endif
 
-CC=gcc
-GNATMAKE=gnatmake
-CFLAGS=-g -O2
-ADAFLAGS=-gnatpg -gnata -gnatyI
-LIBFLAGS=-gnatpg -gnatyI
-MARGS=-m -j0
-LARGS=-largs gcc_missing.o targext.o
-
 MKDIR=mkdir -p
 RMDIR=rm -rf
 CP=cp -p
@@ -32,6 +24,20 @@ gnatlib_common := $(src)/llvm-backend/gnatlib
 obj            := $(target)/obj
 bin            := $(target)/bin
 lib            := $(target)/lib/$(LIBDIR)
+llvm_ada       := $(src)/llvm-ada
+llvm_build     := $(src)/llvm-ada/llvm-*.src/Release+Asserts
+llvm_bindings  := $(llvm_ada)/out
+
+CC=gcc
+GNATMAKE=gnatmake
+CFLAGS=-g -O2
+ADAFLAGS=-gnatpg -gnata -gnatyI
+LIBFLAGS=-gnatpg -gnatyI
+MARGS=-m -j0
+LARGS=-largs \
+    gcc_missing.o targext.o \
+    $(shell $(llvm_build)/bin/llvm-config --libs Core --ldflags) \
+    -lstdc++
 
 ###################
 # general targets #
@@ -75,7 +81,8 @@ vpath %.o $(obj)
 
 GNAT_SRC=$(src)/gnat_src
 
-INCLUDES  =-I$(target) -I$(stubs) -I$(adainclude) -I$(GNAT_SRC)
+INCLUDES  =-I$(target) -I$(stubs) -I$(adainclude) -I$(GNAT_SRC) \
+    -I$(llvm_bindings)
 HOST_FLAGS=$(INCLUDES) $(CFLAGS) $(ADAFLAGS)
 HOST_MAKE =$(GNATMAKE) $(MARGS) $(HOST_FLAGS) $(LARGS) -margs
 

@@ -1,0 +1,5 @@
+llvm-ada
+gnat_src
+*-backend/bin
+*-backend/lib
+*-backend/obj

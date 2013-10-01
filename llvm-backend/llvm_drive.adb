@@ -1,18 +1,27 @@
 with LLVM.Core; use LLVM.Core;
+with GNATLLVM.Compile; use GNATLLVM.Compile;
+with Utils;
+with Sinfo; use Sinfo;
+with Atree; use Atree;
+with Namet; use Namet;
+with Sem_Util; use Sem_Util;
 
 package body LLVM_Drive is
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
-      pragma Unreferenced (GNAT_Root);
-
-      Ctx     : constant Context_T := Get_Global_Context;
-      Builder : constant Builder_T := Create_Builder_In_Context (Ctx);
-      Module  : constant Module_T  :=
-         Module_Create_With_Name_In_Context ("My module", Ctx);
+      Context : Utils.Context :=
+        (Ctx => Get_Global_Context, others => <>);
    begin
-      Dump_Module (Module);
-      Dispose_Builder (Builder);
-      Dispose_Module (Module);
+      pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
+      Context.Bld := Create_Builder_In_Context (Context.Ctx);
+      Context.Mdl := Module_Create_With_Name_In_Context
+        (Get_Name_String (Chars (Defining_Entity (Unit (GNAT_Root)))),
+         Context.Ctx);
+      Compile (Context, GNAT_Root);
+
+      Dispose_Builder (Context.Bld);
+      Dump_Module (Context.Mdl);
+      Dispose_Module (Context.Mdl);
    end GNAT_To_LLVM;
 
    function Is_Back_End_Switch (Switch : String) return Boolean is

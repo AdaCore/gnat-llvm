@@ -1,10 +1,10 @@
 with Types; use Types;
-with Utils;
+
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Compile is
-   procedure Compile
-     (C : Utils.Context; Node : Node_Id);
 
-   procedure Compile_Declarations
-     (C : Utils.Context; Declarations : List_Id);
+   procedure Compile
+     (Env : Environ; Node : Node_Id);
+
 end GNATLLVM.Compile;

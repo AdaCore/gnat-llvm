@@ -1,12 +1,13 @@
 with LLVM.Core; use LLVM.Core;
 
-with Sinfo;    use Sinfo;
 with Atree;    use Atree;
 with Namet;    use Namet;
 with Sem_Util; use Sem_Util;
+with Sinfo;    use Sinfo;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package body LLVM_Drive is
 
@@ -23,9 +24,12 @@ package body LLVM_Drive is
         (Get_Name_String (Chars (Defining_Entity (Unit (GNAT_Root)))),
          Env.Ctx);
 
+      Env.Push_Scope;
+      Register_Builtin_Types (Env);
+
       --  Actually translate
 
-      Compile (Env, GNAT_Root);
+      Compile (Env, Unit (GNAT_Root));
 
       --  Release the environment
 

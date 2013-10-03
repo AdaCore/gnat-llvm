@@ -21,7 +21,7 @@ setup-llvm-ada:
 
 build: build-llvm-backend
 build-llvm-backend: build-llvm-ada setup
-	make -j$(PARALLEL) -C $(DIR_LLVM_BACKEND)
+	make -j$(PARALLEL) -C $(DIR_LLVM_BACKEND) bin
 build-llvm-ada: setup-llvm-ada
 	make -C $(DIR_LLVM_ADA)
 	make -j$(PARALLEL) -C $(DIR_LLVM_ADA)/llvm-3.3.src/

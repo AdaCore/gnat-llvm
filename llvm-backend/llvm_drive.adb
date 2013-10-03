@@ -11,9 +11,13 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package body LLVM_Drive is
 
+   ------------------
+   -- GNAT_To_LLVM --
+   ------------------
+
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
-      Env : Environ :=
-        (Ctx => Get_Global_Context, others => <>);
+      Env : constant Environ :=
+        new Environ_Record'(Ctx => Get_Global_Context, others => <>);
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
 
@@ -37,6 +41,10 @@ package body LLVM_Drive is
       Dump_Module (Env.Mdl);
       Dispose_Module (Env.Mdl);
    end GNAT_To_LLVM;
+
+   ------------------------
+   -- Is_Back_End_Switch --
+   ------------------------
 
    function Is_Back_End_Switch (Switch : String) return Boolean is
       pragma Unreferenced (Switch);

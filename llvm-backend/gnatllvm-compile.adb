@@ -39,10 +39,11 @@ package body GNATLLVM.Compile is
                  Create_Subprogram_Type (Env, Subp_Node);
                Subp_Name : constant String :=
                  Get_Name_String (Chars (Defining_Unit_Name (Subp_Node)));
-               Subp      : constant Value_T :=
-                 Add_Function (Env.Mdl, Subp_Name, Subp_Type);
+               Subp      : constant Subp_Env
+                 := Env.Create_Subp (Subp_Name, Subp_Type);
+               pragma Unreferenced (Subp);
             begin
-               Dump_Value (Subp);
+               null;
             end;
 
          when others => null;

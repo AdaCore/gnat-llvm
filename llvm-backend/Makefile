@@ -1,4 +1,4 @@
-# Makefile for JGNAT
+# Makefile for GNATLLVM
 # Copyright (C) 2006, AdaCore
 
 TARGET=llvm

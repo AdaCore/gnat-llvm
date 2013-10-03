@@ -5,7 +5,7 @@ DIR_GNAT_SRC = "gnat_src"
 DIR_LLVM_ADA = "llvm-ada"
 DIR_LLVM_BACKEND = "llvm-backend"
 
-PARALLEL =
+PARALLEL =8
 
 all: build
 

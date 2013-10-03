@@ -216,6 +216,15 @@ package body Get_Targ is
       return 0;
    end Get_Double_Scalar_Alignment;
 
+   ---------------------
+   -- Get_Short_Enums --
+   ---------------------
+
+   function Get_Short_Enums return Int is
+   begin
+      return 1;
+   end Get_Short_Enums;
+
    -----------------------------
    -- Get_Max_Unaligned_Field --
    -----------------------------

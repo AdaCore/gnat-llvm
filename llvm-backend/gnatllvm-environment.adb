@@ -94,7 +94,8 @@ package body GNATLLVM.Environment is
       Subp : constant Subp_Env := new Subp_Env_Record'
           (Func => Func,
            Current_Block =>
-             Append_Basic_Block (Func, Generate_Id ("block")),
+             Append_Basic_Block_In_Context
+               (Env.Ctx, Func, Generate_Id ("entry")),
            Env => Environ (Env));
    begin
       Env.Subprograms.Append (Subp);

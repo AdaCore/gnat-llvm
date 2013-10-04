@@ -1,4 +1,6 @@
 
+with Ada.Text_IO; use Ada.Text_IO;
+
 with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Namet;    use Namet;
@@ -10,10 +12,12 @@ with Interfaces.C; use Interfaces.C;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 with System; use System;
 
+with LLVM.Analysis; use LLVM.Analysis;
+
 package body GNATLLVM.Compile is
 
-   procedure Compile_Declarations
-     (Env : Environ; Declarations : List_Id);
+   procedure Compile_List
+     (Env : Environ; List : List_Id);
 
    -------------
    -- Compile --
@@ -28,7 +32,7 @@ package body GNATLLVM.Compile is
                Def_Id : constant Entity_Id := Unique_Defining_Entity (Node);
             begin
                if Ekind (Def_Id) not in Generic_Unit_Kind then
-                  Compile_Declarations (Env, Declarations (Node));
+                  Compile_List (Env, Declarations (Node));
                   --  TODO : Handle statements
                end if;
             end;
@@ -65,8 +69,25 @@ package body GNATLLVM.Compile is
                   I := I + 1;
                end loop;
 
+               Compile_List (Env, Declarations (Node));
+               Compile_List
+                 (Env, Statements (Handled_Statement_Sequence (Node)));
+
                Env.Pop_Scope;
+
+               if Verify_Function (Subp.Func, Print_Message_Action) = 0 then
+                  Put_Line ("HAHA");
+               end if;
             end;
+
+         when N_Simple_Return_Statement =>
+            if Present (Expression (Node)) then
+               Discard (Build_Ret
+                        (Env.Bld,
+                           Compile_Expression (Env, Expression (Node))));
+            else
+               Discard (Build_Ret_Void (Env.Bld));
+            end if;
 
          when others => null;
       end case;
@@ -89,12 +110,12 @@ package body GNATLLVM.Compile is
    -- Compile_Declarations --
    --------------------------
 
-   procedure Compile_Declarations
-     (Env : Environ; Declarations : List_Id) is
+   procedure Compile_List
+     (Env : Environ; List : List_Id) is
    begin
-      for N of Iterate (Declarations) loop
+      for N of Iterate (List) loop
          Compile (Env, N);
       end loop;
-   end Compile_Declarations;
+   end Compile_List;
 
 end GNATLLVM.Compile;

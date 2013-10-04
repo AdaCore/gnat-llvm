@@ -5,6 +5,16 @@ with Atree;    use Atree;
 
 package body GNATLLVM.Utils is
 
+   -------------
+   -- Discard --
+   -------------
+
+   procedure Discard (V : Value_T) is
+      pragma Unreferenced (V);
+   begin
+      null;
+   end Discard;
+
    --------------
    -- Get_Name --
    --------------

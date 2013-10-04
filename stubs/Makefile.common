@@ -36,7 +36,7 @@ LIBFLAGS=-gnatpg -gnatyI
 MARGS=-m -j0
 LARGS=-largs \
     gcc_missing.o targext.o \
-    $(shell $(llvm_build)/bin/llvm-config --libs Core --ldflags) \
+    $(shell $(llvm_build)/bin/llvm-config --libs Core Analysis --ldflags) \
     -lstdc++
 
 ###################

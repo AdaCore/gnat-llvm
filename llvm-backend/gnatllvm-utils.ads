@@ -1,4 +1,5 @@
 with Types; use Types;
+with LLVM.Core; use LLVM.Core;
 
 package GNATLLVM.Utils is
 
@@ -9,5 +10,7 @@ package GNATLLVM.Utils is
 
    function Get_Name (E : Entity_Id) return String;
    --  Return the name of an entity: Get_Name_String (Chars (E))
+
+   procedure Discard (V : Value_T);
 
 end GNATLLVM.Utils;

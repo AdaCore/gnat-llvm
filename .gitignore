@@ -4,3 +4,4 @@ gnat_src
 *-backend/lib
 *-backend/obj
 obj/
+.#*

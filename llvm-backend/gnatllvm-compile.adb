@@ -1,13 +1,14 @@
-with LLVM.Core; use LLVM.Core;
 
 with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Namet;    use Namet;
-with Nlists;   use Nlists;
 with Sinfo;    use Sinfo;
 with Sem_Util; use Sem_Util;
 
 with GNATLLVM.Types; use GNATLLVM.Types;
+with Interfaces.C; use Interfaces.C;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
+with System; use System;
 
 package body GNATLLVM.Compile is
 
@@ -41,14 +42,48 @@ package body GNATLLVM.Compile is
                  Get_Name_String (Chars (Defining_Unit_Name (Subp_Node)));
                Subp      : constant Subp_Env
                  := Env.Create_Subp (Subp_Name, Subp_Type);
-               pragma Unreferenced (Subp);
+               LLVM_Param : Value_T;
+               Param : Entity_Id;
+               I : Natural := 0;
             begin
-               null;
+               --  Register each parameter into a new scope
+               Env.Push_Scope;
+
+               for P of Iterate (Parameter_Specifications (Subp_Node)) loop
+                  LLVM_Param := Get_Param (Subp.Func, unsigned (I));
+                  Param := Defining_Identifier (P);
+                  --  Define a name for the parameter P (which is the I'th
+                  --  parameter), and associate the corresponding LLVM value to
+                  --  its entity.
+
+                  --  Set the name of the llvm value
+                  Set_Value_Name (LLVM_Param, Get_Name (Param));
+
+                  --  Add the parameter to the environnment
+                  Env.Set (Param, LLVM_Param);
+
+                  I := I + 1;
+               end loop;
+
+               Env.Pop_Scope;
             end;
 
          when others => null;
       end case;
    end Compile;
+
+   -------------
+   -- Compile --
+   -------------
+
+   function Compile_Expression
+     (Env : Environ; Node : Node_Id) return Value_T is
+      pragma Unreferenced (Env);
+   begin
+      case Nkind (Node) is
+         when others => return Value_T (Null_Address);
+      end case;
+   end Compile_Expression;
 
    --------------------------
    -- Compile_Declarations --
@@ -56,11 +91,9 @@ package body GNATLLVM.Compile is
 
    procedure Compile_Declarations
      (Env : Environ; Declarations : List_Id) is
-      Node : Node_Id := First (Declarations);
    begin
-      while Present (Node) loop
-         Compile (Env, Node);
-         Node := Next (Node);
+      for N of Iterate (Declarations) loop
+         Compile (Env, N);
       end loop;
    end Compile_Declarations;
 

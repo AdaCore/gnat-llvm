@@ -1,13 +1,13 @@
 with LLVM.Core; use LLVM.Core;
 
 with Atree;    use Atree;
-with Namet;    use Namet;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body LLVM_Drive is
 
@@ -25,7 +25,7 @@ package body LLVM_Drive is
 
       Env.Bld := Create_Builder_In_Context (Env.Ctx);
       Env.Mdl := Module_Create_With_Name_In_Context
-        (Get_Name_String (Chars (Defining_Entity (Unit (GNAT_Root)))),
+        (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
 
       Env.Push_Scope;

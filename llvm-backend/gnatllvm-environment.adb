@@ -90,11 +90,11 @@ package body GNATLLVM.Environment is
      (Env : access Environ_Record;
       Name : String; Typ : Type_T) return Subp_Env
    is
-      LLVM_Func : constant Value_T := Add_Function (Env.Mdl, Name, Typ);
+      Func : constant Value_T := Add_Function (Env.Mdl, Name, Typ);
       Subp : constant Subp_Env := new Subp_Env_Record'
-          (LLVM_Func => LLVM_Func,
+          (Func => Func,
            Current_Block =>
-             Append_Basic_Block (LLVM_Func, Generate_Id ("block")),
+             Append_Basic_Block (Func, Generate_Id ("block")),
            Env => Environ (Env));
    begin
       Env.Subprograms.Append (Subp);

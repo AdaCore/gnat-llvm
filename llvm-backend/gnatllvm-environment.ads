@@ -32,7 +32,7 @@ package GNATLLVM.Environment is
 
    type Subp_Env_Record is tagged record
       Env           : Environ;
-      LLVM_Func     : Value_T;
+      Func     : Value_T;
       Current_Block : Basic_Block_T;
    end record;
    type Subp_Env is access all Subp_Env_Record;

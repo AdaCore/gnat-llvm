@@ -5,3 +5,5 @@ gnat_src
 *-backend/obj
 obj/
 .#*
+*.o
+*.ali

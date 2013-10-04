@@ -1,5 +1,7 @@
 #! /bin/sh
 
+set -e
+
 cd llvm-backend 
 make bin
 cd ..

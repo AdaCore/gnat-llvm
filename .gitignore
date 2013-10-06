@@ -7,3 +7,6 @@ obj/
 .#*
 *.o
 *.ali
+*.pyc
+__pycache__
+testsuite/out

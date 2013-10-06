@@ -1,8 +1,6 @@
-
-with Ada.Text_IO; use Ada.Text_IO;
-
 with Atree;    use Atree;
 with Einfo;    use Einfo;
+with Errout;   use Errout;
 with Namet;    use Namet;
 with Sinfo;    use Sinfo;
 with Sem_Util; use Sem_Util;
@@ -76,8 +74,11 @@ package body GNATLLVM.Compile is
 
                Env.Pop_Scope;
 
-               if Verify_Function (Subp.Func, Print_Message_Action) = 0 then
-                  Put_Line ("HAHA");
+               if Verify_Function (Subp.Func, Print_Message_Action) /= 0 then
+                  --  TODO??? Display the crash message, or something like this
+                  Error_Msg_N
+                    ("The backend generated bad LLVM for this subprogram.",
+                     Node);
                end if;
             end;
 

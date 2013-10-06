@@ -28,6 +28,8 @@ llvm_ada       := $(src)/llvm-ada
 llvm_build     := $(src)/llvm-ada/llvm-*.src/Release+Asserts
 llvm_bindings  := $(llvm_ada)/out
 
+LLVM_MODULES = Core Analysis BitWriter
+
 CC=gcc
 GNATMAKE=gnatmake
 CFLAGS=-g -O2
@@ -36,7 +38,7 @@ LIBFLAGS=-gnatpg -gnatyI
 MARGS=-m -j0
 LARGS=-largs \
     gcc_missing.o targext.o \
-    $(shell $(llvm_build)/bin/llvm-config --libs Core Analysis --ldflags) \
+    $(shell $(llvm_build)/bin/llvm-config --libs $(LLVM_MODULES) --ldflags) \
     -lstdc++
 
 ###################

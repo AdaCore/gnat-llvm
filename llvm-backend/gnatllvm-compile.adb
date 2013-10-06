@@ -6,11 +6,12 @@ with Einfo;    use Einfo;
 with Namet;    use Namet;
 with Sinfo;    use Sinfo;
 with Sem_Util; use Sem_Util;
+with Uintp;    use Uintp;
 
 with GNATLLVM.Types; use GNATLLVM.Types;
 with Interfaces.C; use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
-with System; use System;
 
 with LLVM.Analysis; use LLVM.Analysis;
 
@@ -99,10 +100,16 @@ package body GNATLLVM.Compile is
 
    function Compile_Expression
      (Env : Environ; Node : Node_Id) return Value_T is
-      pragma Unreferenced (Env);
    begin
       case Nkind (Node) is
-         when others => return Value_T (Null_Address);
+         when N_Integer_Literal =>
+            return Const_Int
+              (Create_Type (Env, Etype (Node)),
+               unsigned_long_long (UI_To_Int (Intval (Node))),
+               Sign_Extend => Boolean'Pos (True));
+         when others =>
+            raise Program_Error
+              with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
       end case;
    end Compile_Expression;
 

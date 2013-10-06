@@ -65,6 +65,8 @@ package body GNATLLVM.Types is
    function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T is
    begin
       case Nkind (Type_Node) is
+         when N_Defining_Identifier =>
+            return Env.Get (Type_Node);
          when N_Identifier =>
             return Env.Get (Entity (Type_Node));
          when others =>

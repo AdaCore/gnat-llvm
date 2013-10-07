@@ -83,6 +83,9 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+         when N_Null_Statement =>
+            null;
+
          when N_Simple_Return_Statement =>
             if Present (Expression (Node)) then
                Discard (Build_Ret

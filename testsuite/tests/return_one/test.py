@@ -1,13 +1,9 @@
 from ctypes import *
+from gnatllvm import build_and_load, Func
 
-from gnatllvm import (
-    gnat_to_shared,
-    get_shared_func
+(return_one, ) = build_and_load(
+    ['return_one.adb'], 'return_one',
+    Func('return_one', argtypes=[], restype=c_int),
 )
-
-shared = gnat_to_shared(['return_one.adb'], 'return_one')
-lib = cdll.LoadLibrary(shared)
-
-return_one = get_shared_func(lib, 'return_one', restype=c_int)
 
 assert return_one() == 1

@@ -8,6 +8,6 @@ package GNATLLVM.Compile is
      (Env : Environ; Node : Node_Id);
 
    function Compile_Expression
-     (Env : Environ; Node : Node_Id) return Value_T;
+     (Env : Environ; Node : Node_Id; Is_LValue : Boolean) return Value_T;
 
 end GNATLLVM.Compile;

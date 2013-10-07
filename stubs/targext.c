@@ -31,7 +31,7 @@
 /*  extension for object and executable files. It is used by the compiler,  */
 /*  binder and tools.                                                       */
 
-#define TARGET_OBJECT_SUFFIX ".js"
+#define TARGET_OBJECT_SUFFIX ".bc"
 #define TARGET_EXECUTABLE_SUFFIX ""
 unsigned char __gnat_objlist_file_supported = 0; /* TODO??? */
 

@@ -6,7 +6,7 @@ TARGETLANG=LLVM
 DEF_TARGET=No_VM
 LIBDIR=gnat2llvm
 NON_ADA_RT_FILES=*.c
-objext=.o
+objext=.bc
 
 TOOLS_PREFIX=llvm-
 GNATCOMPILE=llvm-gnatcompile

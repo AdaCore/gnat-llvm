@@ -92,7 +92,10 @@ package body GNATLLVM.Compile is
                Discard (Build_Ret_Void (Env.Bld));
             end if;
 
-         when others => null;
+         when others =>
+            raise Program_Error
+              with "Unhandled statement node kind : "
+              & Node_Kind'Image (Nkind (Node));
       end case;
    end Compile;
 

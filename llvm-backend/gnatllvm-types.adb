@@ -13,13 +13,23 @@ package body GNATLLVM.Types is
    ----------------------------
 
    procedure Register_Builtin_Types (Env : Environ) is
+
+      procedure Set_Rec (E : Entity_Id; T : Type_T);
+      procedure Set_Rec (E : Entity_Id; T : Type_T) is
+      begin
+         Env.Set (E, T);
+         if Etype (E) /= E then
+            Set_Rec (Etype (E), T);
+         end if;
+      end Set_Rec;
+
       use Interfaces.C;
       Int_Size : constant unsigned := unsigned (Get_Int_Size);
    begin
-      Env.Set (Universal_Integer, Int_Type_In_Context (Env.Ctx, Int_Size));
-      Env.Set (Standard_Integer, Int_Type_In_Context (Env.Ctx, Int_Size));
-
-      Env.Set (Standard_Natural, Int_Type_In_Context (Env.Ctx, Int_Size));
+      Set_Rec (Universal_Integer, Int_Type_In_Context (Env.Ctx, Int_Size));
+      Set_Rec (Standard_Integer, Int_Type_In_Context (Env.Ctx, Int_Size));
+      Set_Rec (Standard_Boolean, Int_Type_In_Context (Env.Ctx, 1));
+      Set_Rec (Standard_Natural, Int_Type_In_Context (Env.Ctx, Int_Size));
 
       --  TODO??? add other builtin types!
    end Register_Builtin_Types;

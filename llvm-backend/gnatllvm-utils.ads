@@ -13,4 +13,6 @@ package GNATLLVM.Utils is
 
    procedure Discard (V : Value_T);
 
+   function Is_Binary_Operator (Node : Node_Id) return Boolean;
+
 end GNATLLVM.Utils;

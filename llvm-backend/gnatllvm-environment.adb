@@ -70,7 +70,7 @@ package body GNATLLVM.Environment is
 
    procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T) is
    begin
-      Env.Scopes.Last_Element.Types.Insert (TE, TL);
+      Env.Scopes.Last_Element.Types.Include (TE, TL);
    end Set;
 
    ---------
@@ -95,7 +95,7 @@ package body GNATLLVM.Environment is
           (Func => Func,
            Current_Block =>
              Append_Basic_Block_In_Context
-               (Env.Ctx, Func, Generate_Id ("entry")),
+               (Env.Ctx, Func, Id ("entry")),
            Env => Environ (Env));
    begin
       Env.Subprograms.Append (Subp);

@@ -57,10 +57,12 @@ package body LLVM_Drive is
          --  TODO??? Display the crash message, or something like this
          Error_Msg ("The backend generated bad LLVM code.", No_Location);
 
-      elsif LLVM.Bit_Writer.Write_Bitcode_To_File
-        (Env.Mdl, Output_File_Name) /= 0
-      then
-         Error_Msg ("Could not write " & Output_File_Name, No_Location);
+      else
+         if LLVM.Bit_Writer.Write_Bitcode_To_File
+           (Env.Mdl, Output_File_Name) /= 0
+         then
+            Error_Msg ("Could not write " & Output_File_Name, No_Location);
+         end if;
       end if;
 
       --  Release the environment

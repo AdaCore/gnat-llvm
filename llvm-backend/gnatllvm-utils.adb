@@ -5,6 +5,16 @@ with Atree;    use Atree;
 
 package body GNATLLVM.Utils is
 
+   ------------------------
+   -- Is_Binary_Operator --
+   ------------------------
+
+   function Is_Binary_Operator (Node : Node_Id) return Boolean is
+     (case Nkind (Node) is
+         when N_Op_Add | N_Op_Eq | N_Op_Subtract |
+              N_Op_Divide | N_Op_Multiply => True,
+         when others => False);
+
    -------------
    -- Discard --
    -------------

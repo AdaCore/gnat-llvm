@@ -12,6 +12,7 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 with LLVM.Analysis; use LLVM.Analysis;
+with GNATLLVM.Id_Generator; use GNATLLVM.Id_Generator;
 
 package body GNATLLVM.Compile is
 
@@ -102,16 +103,72 @@ package body GNATLLVM.Compile is
    function Compile_Expression
      (Env : Environ; Node : Node_Id) return Value_T is
    begin
-      case Nkind (Node) is
+      if Is_Binary_Operator (Node) then
+         declare
+            LVal : constant Value_T :=
+              Compile_Expression (Env, Left_Opnd (Node));
+            RVal : constant Value_T :=
+              Compile_Expression (Env, Right_Opnd (Node));
+         begin
+            case Nkind (Node) is
+            when N_Op_Add =>
+               return Build_Add
+                 (Env.Bld, LVal, RVal, Id ("add"));
+            when N_Op_Subtract =>
+               return Build_Sub
+                 (Env.Bld, LVal, RVal, Id ("sub"));
+            when N_Op_Multiply =>
+               return Build_Mul
+                 (Env.Bld, LVal, RVal, Id ("mul"));
+            when N_Op_Divide =>
+               declare
+                  T : constant Entity_Id := Etype (Left_Opnd (Node));
+               begin
+                  if Is_Signed_Integer_Type (T) then
+                     return Build_S_Div (Env.Bld, LVal, RVal, Id ("sdiv"));
+                  elsif Is_Floating_Point_Type (T) then
+                     return Build_F_Div (Env.Bld, LVal, RVal, Id ("fdiv"));
+                  elsif Is_Unsigned_Type (T) then
+                     return Build_U_Div (Env.Bld, LVal, RVal, Id ("sdiv"));
+                  else
+                     raise Program_Error
+                       with "Not handled : Division with type " & T'Img;
+                  end if;
+               end;
+            when N_Op_Eq =>
+               if Is_Integer_Type (Etype (Left_Opnd (Node))) then
+                  return Build_I_Cmp
+                    (Env.Bld, Int_EQ, LVal, RVal, Id ("eq"));
+               elsif Is_Floating_Point_Type (Etype (Left_Opnd (Node))) then
+                  return Build_F_Cmp
+                    (Env.Bld, Real_OEQ, LVal, RVal, Id ("eq"));
+               else
+                  raise Program_Error
+                    with "EQ only for int and real types";
+                  --  TODO : Equality for aggregate types
+               end if;
+            when others =>
+               raise Program_Error
+                 with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+            end case;
+         end;
+      else
+         case Nkind (Node) is
          when N_Integer_Literal =>
             return Const_Int
               (Create_Type (Env, Etype (Node)),
                unsigned_long_long (UI_To_Int (Intval (Node))),
                Sign_Extend => Boolean'Pos (True));
+         when N_Type_Conversion =>
+            --  TODO : Implement N_Type_Conversion
+            return Compile_Expression (Env, Expression (Node));
+         when N_Identifier =>
+            return Env.Get (Entity (Node));
          when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
-      end case;
+         end case;
+      end if;
    end Compile_Expression;
 
    --------------------------

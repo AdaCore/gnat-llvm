@@ -42,11 +42,6 @@ def main():
         test_list = sorted(iter_tests('.'))
 
     env = Env()
-
-    # Make support Python packages available to tests.
-    env.add_search_path("PYTHONPATH", os.getcwd())
-    env.add_path(os.path.join(
-        os.getcwd(), '..', 'llvm-backend', 'bin'))
     discs = [env.target.platform]
 
     if m.options.discs:

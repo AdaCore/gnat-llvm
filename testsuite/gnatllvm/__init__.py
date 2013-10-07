@@ -6,14 +6,6 @@ import sys
 from gnatpython.fileutils import mkdir, rm
 
 
-# Change to a "tmp_" directory right below the directory that contains the test
-# file.
-TEST = sys.modules['__main__']
-TESTDIR = os.path.dirname(os.path.abspath(TEST.__file__))
-TEST_NAME = os.path.basename(TESTDIR)
-os.chdir(TESTDIR)
-
-
 def change_ext(filename, new_ext):
     """Replace "filename" extension with "new_ext"."""
     return '{}{}{}'.format(

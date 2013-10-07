@@ -47,6 +47,7 @@ package body GNATLLVM.Compile is
                Subp      : constant Subp_Env
                  := Env.Create_Subp (Subp_Name, Subp_Type);
                LLVM_Param : Value_T;
+               LLVM_Var   : Value_T;
                Param : Entity_Id;
                I : Natural := 0;
             begin
@@ -63,8 +64,13 @@ package body GNATLLVM.Compile is
                   --  Set the name of the llvm value
                   Set_Value_Name (LLVM_Param, Get_Name (Param));
 
+                  --  Allocate some memory for the corresponding variable, and
+                  --  initialize it.
+                  LLVM_Var := Build_Alloca (Env.Bld, Type_Of (LLVM_Param), "");
+                  Discard (Build_Store (Env.Bld, LLVM_Param, LLVM_Var));
+
                   --  Add the parameter to the environnment
-                  Env.Set (Param, LLVM_Param);
+                  Env.Set (Param, LLVM_Var);
 
                   I := I + 1;
                end loop;
@@ -169,7 +175,7 @@ package body GNATLLVM.Compile is
             --  TODO : Implement N_Type_Conversion
             return Compile_Expression (Env, Expression (Node));
          when N_Identifier =>
-            return Env.Get (Entity (Node));
+            return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");
          when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));

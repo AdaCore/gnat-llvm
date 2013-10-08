@@ -205,13 +205,43 @@ package body GNATLLVM.Compile is
                        with "Not handled : Division with type " & T'Img;
                   end if;
                end;
-            when N_Op_Eq =>
+            when N_Op_Eq | N_Op_Ne | N_Op_Lt | N_Op_Le | N_Op_Gt | N_Op_Ge =>
                if Is_Integer_Type (Etype (Left_Opnd (Node))) then
-                  return Build_I_Cmp
-                    (Env.Bld, Int_EQ, LVal, RVal, Id ("eq"));
+                  declare
+                     Unsigned_Opnds : constant Boolean :=
+                       Is_Unsigned_Type (Etype (Left_Opnd (Node)));
+                     Pred : constant Int_Predicate_T :=
+                       (case Nkind (Node) is
+                           when N_Op_Eq => Int_EQ,
+                           when N_Op_Ne => Int_NE,
+                           when N_Op_Gt =>
+                          (if Unsigned_Opnds then Int_UGT else Int_SGT),
+                           when N_Op_Ge =>
+                          (if Unsigned_Opnds then Int_UGE else Int_SGE),
+                           when N_Op_Lt =>
+                          (if Unsigned_Opnds then Int_ULT else Int_SLT),
+                           when N_Op_Le =>
+                          (if Unsigned_Opnds then Int_ULE else Int_SLE),
+                           when others  => raise Program_Error);
+                  begin
+                     return Build_I_Cmp
+                       (Env.Bld, Pred, LVal, RVal, Id ("icmp"));
+                  end;
                elsif Is_Floating_Point_Type (Etype (Left_Opnd (Node))) then
-                  return Build_F_Cmp
-                    (Env.Bld, Real_OEQ, LVal, RVal, Id ("eq"));
+                  declare
+                     Pred : constant Real_Predicate_T :=
+                       (case Nkind (Node) is
+                           when N_Op_Eq => Real_OEQ,
+                           when N_Op_Ne => Real_ONE,
+                           when N_Op_Gt => Real_OGT,
+                           when N_Op_Ge => Real_OGE,
+                           when N_Op_Lt => Real_OLT,
+                           when N_Op_Le => Real_OLE,
+                           when others  => raise Program_Error);
+                  begin
+                     return Build_F_Cmp
+                       (Env.Bld, Pred, LVal, RVal, Id ("fcmp"));
+                  end;
                else
                   raise Program_Error
                     with "EQ only for int and real types";

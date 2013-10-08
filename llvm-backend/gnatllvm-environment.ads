@@ -32,7 +32,7 @@ package GNATLLVM.Environment is
 
    type Subp_Env_Record is tagged record
       Env           : Environ;
-      Func     : Value_T;
+      Func          : Value_T;
       Current_Block : Basic_Block_T;
    end record;
    type Subp_Env is access all Subp_Env_Record;
@@ -51,7 +51,8 @@ package GNATLLVM.Environment is
       --  Stack of scopes, to associate LLVM types/values to expansed tree's
       --  entities.
 
-      Subprograms : Subp_Lists.List;
+      Subprograms   : Subp_Lists.List;
+      Current_Subps : Subp_Lists.List;
    end record;
 
    procedure Push_Scope (Env : access Environ_Record);
@@ -59,12 +60,22 @@ package GNATLLVM.Environment is
 
    function Get (Env : access Environ_Record; TE : Entity_Id) return Type_T;
    function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T;
+   function Get
+     (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T;
 
    procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T);
    procedure Set (Env : access Environ_Record; VE : Entity_Id; VL : Value_T);
+   procedure Set
+     (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T);
 
    function Create_Subp
-     (Env : access Environ_Record;
+     (Env  : access Environ_Record;
       Name : String; Typ : Type_T) return Subp_Env;
+   procedure Leave_Subp (Env  : access Environ_Record);
+   function Current_Subp (Env : access Environ_Record) return Subp_Env;
+   function Create_Basic_Block
+     (Env : access Environ_Record; Name : String) return Basic_Block_T;
+   procedure Set_Current_Basic_Block
+     (Env : access Environ_Record; BB : Basic_Block_T);
 
 end GNATLLVM.Environment;

@@ -88,6 +88,7 @@ package body GNATLLVM.Compile is
                Discard (Build_Unreachable (Env.Bld));
 
                Env.Pop_Scope;
+               Env.Leave_Subp;
 
                if Verify_Function (Subp.Func, Print_Message_Action) /= 0 then
                   --  TODO??? Display the crash message, or something like this
@@ -124,6 +125,12 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+         when N_Implicit_Label_Declaration =>
+            Env.Set
+              (Defining_Identifier (Node),
+               Create_Basic_Block
+                 (Env, Get_Name (Defining_Identifier (Node))));
+
          when N_Assignment_Statement =>
             Discard (Build_Store
                      (Env.Bld,
@@ -144,6 +151,55 @@ package body GNATLLVM.Compile is
             end if;
             Env.Set_Current_Basic_Block
               (Env.Create_Basic_Block ("unreachable"));
+
+         when N_Loop_Statement =>
+            declare
+               BB_Cond, BB_Body, BB_Next : Basic_Block_T;
+               Iter_Scheme               : constant Node_Id :=
+                 Iteration_Scheme (Node);
+               Cond                      : Value_T;
+            begin
+               --  Create a basic block if none is already created for this
+               --  identifier.
+               BB_Cond :=
+                 (if Present (Identifier (Node)) then
+                     Env.Get (Entity (Identifier (Node)))
+                  else
+                     Create_Basic_Block (Env, Id ("loop")));
+               Discard (Build_Br (Env.Bld, BB_Cond));
+
+               --  If this is a mere loop, there is no need for a separate
+               --  basic block.
+               BB_Body :=
+                 (if Present (Iter_Scheme) then
+                     Create_Basic_Block (Env, Id ("loop-body"))
+                  else
+                     BB_Cond);
+
+               --  Create a basic block to jump to when leaving the loop
+               BB_Next := Create_Basic_Block (Env, Id ("loop-exit"));
+
+               if Present (Iter_Scheme) then
+                  Env.Set_Current_Basic_Block (BB_Cond);
+                  if Present (Condition (Iter_Scheme)) then
+                     --  This is a WHILE loop: jump to the loop-body if the
+                     --  condition evaluates to True, jump to the loop-exit
+                     --  otherwise.
+                     Cond := Compile_Expression (Env, Condition (Iter_Scheme));
+                     Discard (Build_Cond_Br (Env.Bld, Cond, BB_Body, BB_Next));
+
+                  else
+                     --  This is a FOR loop: TODO???
+                     raise Program_Error with "FOR loops are not handled";
+                  end if;
+               end if;
+
+               Env.Set_Current_Basic_Block (BB_Body);
+               Compile_List (Env, Statements (Node));
+               Discard (Build_Br (Env.Bld, BB_Cond));
+
+               Env.Set_Current_Basic_Block (BB_Next);
+            end;
 
          when others =>
             raise Program_Error

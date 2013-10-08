@@ -65,6 +65,16 @@ package body GNATLLVM.Environment is
    end Get;
 
    ---------
+   -- Get --
+   ---------
+
+   function Get
+     (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T is
+   begin
+      return Value_As_Basic_Block (Env.Get (BE));
+   end Get;
+
+   ---------
    -- Set --
    ---------
 
@@ -82,6 +92,16 @@ package body GNATLLVM.Environment is
       Env.Scopes.Last_Element.Values.Insert (VE, VL);
    end Set;
 
+   ---------
+   -- Set --
+   ---------
+
+   procedure Set
+     (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T) is
+   begin
+      Env.Set (BE, Basic_Block_As_Value (BL));
+   end Set;
+
    ---------------------
    -- Create_Function --
    ---------------------
@@ -92,15 +112,56 @@ package body GNATLLVM.Environment is
    is
       Func : constant Value_T := Add_Function (Env.Mdl, Name, Typ);
       Subp : constant Subp_Env := new Subp_Env_Record'
-          (Func => Func,
-           Current_Block =>
-             Append_Basic_Block_In_Context
-               (Env.Ctx, Func, Id ("entry")),
-           Env => Environ (Env));
+        (Env           => Environ (Env),
+         Func          => Func,
+         Current_Block =>
+           Append_Basic_Block_In_Context
+             (Env.Ctx, Func, Id ("entry")));
    begin
       Env.Subprograms.Append (Subp);
+      Env.Current_Subps.Append (Subp);
       Position_Builder_At_End (Env.Bld, Subp.Current_Block);
       return Subp;
    end Create_Subp;
+
+   ----------------
+   -- Leave_Subp --
+   ----------------
+
+   procedure Leave_Subp (Env  : access Environ_Record) is
+   begin
+      Env.Current_Subps.Delete_Last;
+   end Leave_Subp;
+
+   ------------------
+   -- Current_Subp --
+   ------------------
+
+   function Current_Subp (Env : access Environ_Record) return Subp_Env is
+   begin
+      return Env.Current_Subps.Last_Element;
+   end Current_Subp;
+
+   ------------------------
+   -- Create_Basic_Block --
+   ------------------------
+
+   function Create_Basic_Block
+     (Env : access Environ_Record; Name : String) return Basic_Block_T is
+   begin
+      return Append_Basic_Block_In_Context
+        (Env.Ctx, Current_Subp (Env).Func, Name);
+   end Create_Basic_Block;
+
+   -----------------------------
+   -- Set_Current_Basic_Block --
+   -----------------------------
+
+   procedure Set_Current_Basic_Block
+     (Env : access Environ_Record; BB : Basic_Block_T) is
+   begin
+      Position_Builder_At_End (Env.Bld, BB);
+      Env.Current_Subp.Current_Block := BB;
+   end Set_Current_Basic_Block;
 
 end GNATLLVM.Environment;

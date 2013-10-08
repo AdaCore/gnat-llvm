@@ -19,9 +19,6 @@ package body GNATLLVM.Compile is
    procedure Compile_List
      (Env : Environ; List : List_Id);
 
-   procedure Assert_RValue (Is_LValue : Boolean; Node : Node_Id);
-   --  Raise a Program_Error if Is_LValue.  Node is the corresponding node.
-
    -------------
    -- Compile --
    -------------
@@ -117,7 +114,7 @@ package body GNATLLVM.Compile is
                   Discard (Build_Store
                            (Env.Bld,
                               Compile_Expression
-                                (Env, Expression (Node), False),
+                                (Env, Expression (Node)),
                               LLVM_Var));
                end if;
             end;
@@ -125,8 +122,8 @@ package body GNATLLVM.Compile is
          when N_Assignment_Statement =>
             Discard (Build_Store
                      (Env.Bld,
-                        Compile_Expression (Env, Expression (Node), False),
-                        Compile_Expression (Env, Name (Node), True)));
+                        Compile_Expression (Env, Expression (Node)),
+                        Compile_LValue (Env, Name (Node))));
 
          when N_Null_Statement =>
             null;
@@ -136,7 +133,7 @@ package body GNATLLVM.Compile is
                Discard (Build_Ret
                         (Env.Bld,
                            Compile_Expression
-                             (Env, Expression (Node), False)));
+                             (Env, Expression (Node))));
             else
                Discard (Build_Ret_Void (Env.Bld));
             end if;
@@ -148,20 +145,40 @@ package body GNATLLVM.Compile is
       end case;
    end Compile;
 
-   -------------
-   -- Compile --
-   -------------
+   --------------------
+   -- Compile_LValue --
+   --------------------
+
+   --------------------
+   -- Compile_LValue --
+   --------------------
+
+   function Compile_LValue (Env : Environ; Node : Node_Id) return Value_T is
+   begin
+      case Nkind (Node) is
+         when N_Identifier =>
+            return Env.Get (Entity (Node));
+         when others =>
+            raise Program_Error
+              with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+      end case;
+   end Compile_LValue;
+
+   ------------------------
+   -- Compile_Expression --
+   ------------------------
 
    function Compile_Expression
-     (Env : Environ; Node : Node_Id; Is_LValue : Boolean) return Value_T is
+     (Env : Environ; Node : Node_Id) return Value_T is
+      function Compile_Expr (Node : Node_Id) return Value_T is
+        (Compile_Expression (Env, Node));
    begin
       if Is_Binary_Operator (Node) then
-         Assert_RValue (Is_LValue, Node);
          declare
             LVal : constant Value_T :=
-              Compile_Expression (Env, Left_Opnd (Node), False);
+              Compile_Expr (Left_Opnd (Node));
             RVal : constant Value_T :=
-              Compile_Expression (Env, Right_Opnd (Node), False);
+              Compile_Expr (Right_Opnd (Node));
          begin
             case Nkind (Node) is
             when N_Op_Add =>
@@ -208,25 +225,15 @@ package body GNATLLVM.Compile is
       else
          case Nkind (Node) is
          when N_Integer_Literal =>
-            Assert_RValue (Is_LValue, Node);
             return Const_Int
               (Create_Type (Env, Etype (Node)),
                unsigned_long_long (UI_To_Int (Intval (Node))),
                Sign_Extend => Boolean'Pos (True));
          when N_Type_Conversion =>
             --  TODO : Implement N_Type_Conversion
-            Assert_RValue (Is_LValue, Node);
-            return Compile_Expression (Env, Expression (Node), False);
+            return Compile_Expr (Expression (Node));
          when N_Identifier =>
-            declare
-               LLVM_Var : constant Value_T := Env.Get (Entity (Node));
-            begin
-               if Is_LValue then
-                  return LLVM_Var;
-               else
-                  return Build_Load (Env.Bld, LLVM_Var, "");
-               end if;
-            end;
+            return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");
          when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
@@ -245,18 +252,5 @@ package body GNATLLVM.Compile is
          Compile (Env, N);
       end loop;
    end Compile_List;
-
-   -------------------
-   -- Assert_RValue --
-   -------------------
-
-   procedure Assert_RValue (Is_LValue : Boolean; Node : Node_Id) is
-   begin
-      if Is_LValue then
-         raise Program_Error
-           with "Invalid node kind for l-value: "
-           & Node_Kind'Image (Nkind (Node));
-      end if;
-   end Assert_RValue;
 
 end GNATLLVM.Compile;

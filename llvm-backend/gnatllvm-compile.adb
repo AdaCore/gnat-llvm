@@ -122,6 +122,12 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+         when N_Assignment_Statement =>
+            Discard (Build_Store
+                     (Env.Bld,
+                        Compile_Expression (Env, Expression (Node), False),
+                        Compile_Expression (Env, Name (Node), True)));
+
          when N_Null_Statement =>
             null;
 

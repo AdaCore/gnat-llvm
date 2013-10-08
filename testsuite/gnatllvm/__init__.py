@@ -32,36 +32,37 @@ def get_shared_func(shared, name, argtypes=[], restype=None):
     return func
 
 
-def gnat_to_bc(adb):
+def gnat_to_bc(adb, gargs=None):
     """Compile the "adb" unit and return the result bitcode filename."""
-    subprocess.check_call(['llvm-gnatcompile', '-c', adb])
+    gargs = list(gargs) if gargs else []
+    subprocess.check_call(['llvm-gnatcompile', '-c', adb] + gargs)
     return change_ext(adb, 'bc')
 
-def gnat_to_obj(adb):
+def gnat_to_obj(adb, gargs=None):
     """Compile the "adb" unit and return the result object file filename."""
-    subprocess.check_call(['llc', gnat_to_bc(adb)])
+    subprocess.check_call(['llc', gnat_to_bc(adb, gargs)])
     subprocess.check_call(['gcc', '-c', change_ext(adb, 's')])
     return change_ext(adb, 'o')
 
-def gnat_to_shared(adb_list, name):
+def gnat_to_shared(adb_list, name, gargs=None):
     """Compile sources to a shared object.
 
     Compile the set of unit "adb_list" and link them to a dynamic library
     "name". Return the shared object filename.
     """
-    obj_list = [gnat_to_obj(adb) for adb in adb_list]
+    obj_list = [gnat_to_obj(adb, gargs) for adb in adb_list]
     result = change_ext(name, 'so')
     subprocess.check_call(['gcc', '-shared', '-o', result] + obj_list)
     return result
 
-def build_and_load(adb_list, name, *objects):
+def build_and_load(adb_list, name, *objects, **kwargs):
     """Build a shared object from sources and load objects from it.
 
     Compile the set of unit "adb_list" and link them to a dynamic library
     "name". Then, load it using ctypes and return the sequence of loaded
     "objects".
     """
-    shared = gnat_to_shared(adb_list, name)
+    shared = gnat_to_shared(adb_list, name, **kwargs)
     lib = cdll.LoadLibrary(shared)
     result = []
 

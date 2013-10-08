@@ -2,6 +2,7 @@ with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Errout;   use Errout;
 with Namet;    use Namet;
+with Nlists;   use Nlists;
 with Sinfo;    use Sinfo;
 with Sem_Util; use Sem_Util;
 with Uintp;    use Uintp;
@@ -82,6 +83,10 @@ package body GNATLLVM.Compile is
                Compile_List
                  (Env, Statements (Handled_Statement_Sequence (Node)));
 
+               --  This point should not be reached: a return must have
+               --  already... returned!
+               Discard (Build_Unreachable (Env.Bld));
+
                Env.Pop_Scope;
 
                if Verify_Function (Subp.Func, Print_Message_Action) /= 0 then
@@ -137,6 +142,8 @@ package body GNATLLVM.Compile is
             else
                Discard (Build_Ret_Void (Env.Bld));
             end if;
+            Env.Set_Current_Basic_Block
+              (Env.Create_Basic_Block ("unreachable"));
 
          when others =>
             raise Program_Error

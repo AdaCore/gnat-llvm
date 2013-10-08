@@ -152,6 +152,34 @@ package body GNATLLVM.Compile is
             Env.Set_Current_Basic_Block
               (Env.Create_Basic_Block ("unreachable"));
 
+         when N_If_Statement =>
+            declare
+               BB_Then, BB_Else, BB_Next : Basic_Block_T;
+               Cond                      : constant Value_T :=
+                 Compile_Expression (Env, Condition (Node));
+            begin
+               BB_Next := Create_Basic_Block (Env, Id ("if-next"));
+               BB_Then := Create_Basic_Block (Env, Id ("if-then"));
+               BB_Else :=
+                 (if not Is_Empty_List (Else_Statements (Node)) then
+                     Create_Basic_Block (Env, Id ("if-else"))
+                  else
+                     BB_Next);
+               Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
+
+               Env.Set_Current_Basic_Block (BB_Then);
+               Compile_List (Env, Then_Statements (Node));
+               Discard (Build_Br (Env.Bld, BB_Next));
+
+               if not Is_Empty_List (Else_Statements (Node)) then
+                  Env.Set_Current_Basic_Block (BB_Else);
+                  Compile_List (Env, Else_Statements (Node));
+                  Discard (Build_Br (Env.Bld, BB_Next));
+               end if;
+
+               Env.Set_Current_Basic_Block (BB_Next);
+            end;
+
          when N_Loop_Statement =>
             declare
                BB_Cond, BB_Body, BB_Next : Basic_Block_T;

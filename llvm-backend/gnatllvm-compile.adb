@@ -324,12 +324,11 @@ package body GNATLLVM.Compile is
                PM : constant Pred_Mapping := Get_Preds (N);
                T : constant Entity_Id := Etype (Left_Opnd (Node));
             begin
-               if Is_Unsigned_Type (T) then
+               if Is_Integer_Type (T) then
                   return Build_I_Cmp
-                    (Env.Bld, PM.Unsigned, LVal, RVal, "icmp");
-               elsif Is_Signed_Integer_Type (T) then
-                     return Build_I_Cmp
-                       (Env.Bld, PM.Signed, LVal, RVal, "icmp");
+                    (Env.Bld,
+                     (if Is_Unsigned_Type (T) then PM.Unsigned else PM.Signed),
+                     LVal, RVal, "icmp");
                elsif Is_Floating_Point_Type (Etype (Left_Opnd (Node))) then
                   return Build_F_Cmp
                     (Env.Bld, PM.Real, LVal, RVal, "fcmp");

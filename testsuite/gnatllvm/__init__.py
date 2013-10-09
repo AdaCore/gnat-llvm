@@ -40,7 +40,7 @@ def gnat_to_bc(adb, gargs=None):
 
 def gnat_to_obj(adb, gargs=None):
     """Compile the "adb" unit and return the result object file filename."""
-    subprocess.check_call(['llc', gnat_to_bc(adb, gargs)])
+    subprocess.check_call(['llc', '-relocation-model=pic', gnat_to_bc(adb, gargs)])
     subprocess.check_call(['gcc', '-c', change_ext(adb, 's')])
     return change_ext(adb, 'o')
 

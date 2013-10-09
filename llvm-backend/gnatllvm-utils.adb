@@ -1,7 +1,5 @@
-with Sinfo; use Sinfo;
 with Namet; use Namet;
 with Nlists;   use Nlists;
-with Atree;    use Atree;
 
 package body GNATLLVM.Utils is
 
@@ -11,8 +9,9 @@ package body GNATLLVM.Utils is
 
    function Is_Binary_Operator (Node : Node_Id) return Boolean is
      (case Nkind (Node) is
-         when N_Op_Add | N_Op_Subtract | N_Op_Multiply | N_Op_Divide
-           | N_Op_Eq | N_Op_Ne | N_Op_Ge | N_Op_Gt | N_Op_Le | N_Op_Lt => True,
+         when N_Op_Add | N_Op_Eq | N_Op_Subtract |
+              N_Op_Divide | N_Op_Multiply | N_Op_Gt | N_Op_Lt |
+              N_Op_Le | N_Op_Ge | N_Op_Ne => True,
          when others => False);
 
    -------------

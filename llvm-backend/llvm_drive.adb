@@ -63,6 +63,7 @@ package body LLVM_Drive is
          then
             Error_Msg ("Could not write " & Output_File_Name, No_Location);
          end if;
+         --  Dump_Module (Env.Mdl);
       end if;
 
       --  Release the environment

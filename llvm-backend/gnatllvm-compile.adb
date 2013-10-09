@@ -240,10 +240,6 @@ package body GNATLLVM.Compile is
    -- Compile_LValue --
    --------------------
 
-   --------------------
-   -- Compile_LValue --
-   --------------------
-
    function Compile_LValue (Env : Environ; Node : Node_Id) return Value_T is
    begin
       case Nkind (Node) is
@@ -261,8 +257,60 @@ package body GNATLLVM.Compile is
 
    function Compile_Expression
      (Env : Environ; Node : Node_Id) return Value_T is
+
       function Compile_Expr (Node : Node_Id) return Value_T is
         (Compile_Expression (Env, Node));
+
+      type Scl_Op is (Op_Or, Op_And);
+
+      function Build_Scl_Op (Op : Scl_Op) return Value_T;
+      function Build_Scl_Op (Op : Scl_Op) return Value_T is
+      begin
+         declare
+            Left : constant Value_T := Compile_Expr (Left_Opnd (Node));
+            Result : constant Value_T :=
+              Build_Alloca
+                (Env.Bld,
+                 Type_Of (Left),
+                 "scl-res-1");
+            Block_Left_True : constant Basic_Block_T :=
+              Append_Basic_Block (Env.Current_Subp.Func, "scl-pass");
+            Block_Left_Exit : constant Basic_Block_T :=
+              Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");
+         begin
+            Discard (Build_Store (Env.Bld, Left, Result));
+
+            if Op = Op_And then
+               Discard
+                 (Build_Cond_Br
+                    (Env.Bld, Left, Block_Left_True, Block_Left_Exit));
+            else
+               Discard
+                 (Build_Cond_Br
+                    (Env.Bld, Left, Block_Left_Exit, Block_Left_True));
+            end if;
+
+            Position_Builder_At_End (Env.Bld, Block_Left_True);
+            declare
+               Right : constant Value_T := Compile_Expr (Right_Opnd (Node));
+               Left : constant Value_T := Build_Load
+                 (Env.Bld, Result, "load-left");
+               Res : Value_T;
+            begin
+               if Op = Op_And then
+                  Res := Build_And (Env.Bld, Left, Right, "scl-and");
+               else
+                  Res := Build_Or (Env.Bld, Left, Right, "scl-or");
+               end if;
+               Discard (Build_Store (Env.Bld, Res, Result));
+               Discard (Build_Br (Env.Bld, Block_Left_Exit));
+            end;
+            Position_Builder_At_End (Env.Bld, Block_Left_Exit);
+            Env.Current_Subp.Current_Block := Block_Left_Exit;
+            return Build_Load (Env.Bld, Result, "scl-final-res");
+         end;
+      end Build_Scl_Op;
+
    begin
       if Is_Binary_Operator (Node) then
          declare
@@ -270,17 +318,43 @@ package body GNATLLVM.Compile is
               Compile_Expr (Left_Opnd (Node));
             RVal : constant Value_T :=
               Compile_Expr (Right_Opnd (Node));
+
+            function Compile_Cmp (N : Node_Id) return Value_T;
+            function Compile_Cmp (N : Node_Id) return Value_T is
+               PM : constant Pred_Mapping := Get_Preds (N);
+               T : constant Entity_Id := Etype (Left_Opnd (Node));
+            begin
+               if Is_Unsigned_Type (T) then
+                  return Build_I_Cmp
+                    (Env.Bld, PM.Unsigned, LVal, RVal, "icmp");
+               elsif Is_Signed_Integer_Type (T) then
+                     return Build_I_Cmp
+                       (Env.Bld, PM.Signed, LVal, RVal, "icmp");
+               elsif Is_Floating_Point_Type (Etype (Left_Opnd (Node))) then
+                  return Build_F_Cmp
+                    (Env.Bld, PM.Real, LVal, RVal, "fcmp");
+               else
+                  raise Program_Error
+                    with "EQ only for int and real types";
+                  --  TODO : Equality for aggregate types
+               end if;
+            end Compile_Cmp;
+
          begin
             case Nkind (Node) is
+
             when N_Op_Add =>
                return Build_Add
                  (Env.Bld, LVal, RVal, Id ("add"));
+
             when N_Op_Subtract =>
                return Build_Sub
                  (Env.Bld, LVal, RVal, Id ("sub"));
+
             when N_Op_Multiply =>
                return Build_Mul
                  (Env.Bld, LVal, RVal, Id ("mul"));
+
             when N_Op_Divide =>
                declare
                   T : constant Entity_Id := Etype (Left_Opnd (Node));
@@ -296,65 +370,41 @@ package body GNATLLVM.Compile is
                        with "Not handled : Division with type " & T'Img;
                   end if;
                end;
-            when N_Op_Eq | N_Op_Ne | N_Op_Lt | N_Op_Le | N_Op_Gt | N_Op_Ge =>
-               if Is_Integer_Type (Etype (Left_Opnd (Node))) then
-                  declare
-                     Unsigned_Opnds : constant Boolean :=
-                       Is_Unsigned_Type (Etype (Left_Opnd (Node)));
-                     Pred : constant Int_Predicate_T :=
-                       (case Nkind (Node) is
-                           when N_Op_Eq => Int_EQ,
-                           when N_Op_Ne => Int_NE,
-                           when N_Op_Gt =>
-                          (if Unsigned_Opnds then Int_UGT else Int_SGT),
-                           when N_Op_Ge =>
-                          (if Unsigned_Opnds then Int_UGE else Int_SGE),
-                           when N_Op_Lt =>
-                          (if Unsigned_Opnds then Int_ULT else Int_SLT),
-                           when N_Op_Le =>
-                          (if Unsigned_Opnds then Int_ULE else Int_SLE),
-                           when others  => raise Program_Error);
-                  begin
-                     return Build_I_Cmp
-                       (Env.Bld, Pred, LVal, RVal, Id ("icmp"));
-                  end;
-               elsif Is_Floating_Point_Type (Etype (Left_Opnd (Node))) then
-                  declare
-                     Pred : constant Real_Predicate_T :=
-                       (case Nkind (Node) is
-                           when N_Op_Eq => Real_OEQ,
-                           when N_Op_Ne => Real_ONE,
-                           when N_Op_Gt => Real_OGT,
-                           when N_Op_Ge => Real_OGE,
-                           when N_Op_Lt => Real_OLT,
-                           when N_Op_Le => Real_OLE,
-                           when others  => raise Program_Error);
-                  begin
-                     return Build_F_Cmp
-                       (Env.Bld, Pred, LVal, RVal, Id ("fcmp"));
-                  end;
-               else
-                  raise Program_Error
-                    with "EQ only for int and real types";
-                  --  TODO : Equality for aggregate types
-               end if;
+
+            when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
+               return Compile_Cmp (Node);
+
             when others =>
                raise Program_Error
                  with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+
             end case;
          end;
       else
+
          case Nkind (Node) is
+
+         when N_Expression_With_Actions =>
+            --  TODO??? Compile the list of actions
+            pragma Assert (Is_Empty_List (Actions (Node)));
+            return Compile_Expr (Expression (Node));
+
          when N_Integer_Literal =>
             return Const_Int
               (Create_Type (Env, Etype (Node)),
                unsigned_long_long (UI_To_Int (Intval (Node))),
                Sign_Extend => Boolean'Pos (True));
+
+         when N_And_Then => return Build_Scl_Op (Op_And);
+         when N_Or_Else => return Build_Scl_Op (Op_Or);
+
          when N_Type_Conversion =>
             --  TODO : Implement N_Type_Conversion
             return Compile_Expr (Expression (Node));
+
          when N_Identifier =>
             return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");
+
          when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));

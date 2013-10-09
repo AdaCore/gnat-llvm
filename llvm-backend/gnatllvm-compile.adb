@@ -52,6 +52,13 @@ package body GNATLLVM.Compile is
                Param : Entity_Id;
                I : Natural := 0;
             begin
+               if Acts_As_Spec (Node) then
+                  Env.Set
+                    (Defining_Unit_Name (Specification (Node)), Subp.Func);
+               else
+                  Env.Set (Corresponding_Spec (Node), Subp.Func);
+               end if;
+
                --  Register each parameter into a new scope
                Env.Push_Scope;
 
@@ -379,7 +386,8 @@ package body GNATLLVM.Compile is
 
             when others =>
                raise Program_Error
-                 with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+                 with "Unhandled node kind in expression: "
+                 & Node_Kind'Image (Nkind (Node));
 
             end case;
          end;
@@ -407,6 +415,24 @@ package body GNATLLVM.Compile is
 
          when N_Identifier =>
             return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");
+
+         when N_Function_Call =>
+            declare
+               Params : constant List_Id := Parameter_Associations (Node);
+               LLVM_Func : constant Value_T :=
+                 Env.Get (Entity (Name (Node)));
+               Args : array (1 .. List_Length (Params)) of Value_T;
+               I : Nat := 1;
+            begin
+               for Param of Iterate (Params) loop
+                  Args (I) := Compile_Expr (Param);
+                  I := I + 1;
+               end loop;
+               return
+                 Build_Call
+                   (Env.Bld, LLVM_Func,
+                    Args'Address, Args'Length, "funcall");
+            end;
 
          when others =>
             raise Program_Error

@@ -32,7 +32,7 @@ LLVM_MODULES = Core Analysis BitWriter
 
 CC=gcc
 GNATMAKE=gnatmake
-CFLAGS=-g -O2
+CFLAGS=-g -O0
 ADAFLAGS=-gnatpg -gnata -gnatyI
 LIBFLAGS=-gnatpg -gnatyI
 MARGS=-m -j0

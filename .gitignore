@@ -2,11 +2,13 @@ llvm-ada
 gnat_src
 *-backend/bin
 *-backend/lib
-*-backend/obj
-obj/
+testsuite/out
+obj
 .#*
 *.o
 *.ali
+*.bc
+*.s
+*.so
 *.pyc
 __pycache__
-testsuite/out

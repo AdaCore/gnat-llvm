@@ -1,14 +1,30 @@
+# External projects
 llvm-ada
 gnat_src
+
+# Build/test results directories
 *-backend/bin
 *-backend/lib
 testsuite/out
 obj
+
+# Code editors artifacts
 .#*
+gnatinspect.db
+
+# Compilation artifacts
 *.o
 *.ali
 *.bc
 *.s
+*.ll
 *.so
+a.out
+
+# Python testsuite artifacts
 *.pyc
 __pycache__
+
+# Script generally used to define some environment variable to ease using
+# programs/libraries from the project.
+env

@@ -75,13 +75,18 @@ package body GNATLLVM.Compile is
                   --  Set the name of the llvm value
                   Set_Value_Name (LLVM_Param, Get_Name (Param));
 
-                  --  Allocate some memory for the corresponding variable, and
-                  --  initialize it.
-                  LLVM_Var := Build_Alloca
-                    (Env.Bld,
-                     Type_Of (LLVM_Param),
-                     Id (Get_Name (Param)));
-                  Discard (Build_Store (Env.Bld, LLVM_Param, LLVM_Var));
+                  --  If this is an out parameter, the parameter is already an
+                  --  l-value: keep it. Otherwise, allocate some memory for the
+                  --  corresponding variable, and initialize it.
+                  if Out_Present (P) then
+                     LLVM_Var := LLVM_Param;
+                  else
+                     LLVM_Var := Build_Alloca
+                       (Env.Bld,
+                        Type_Of (LLVM_Param),
+                        Id (Get_Name (Param)));
+                     Discard (Build_Store (Env.Bld, LLVM_Param, LLVM_Var));
+                  end if;
 
                   --  Add the parameter to the environnment
                   Env.Set (Param, LLVM_Var);
@@ -450,20 +455,33 @@ package body GNATLLVM.Compile is
 
    function Compile_Call
      (Env : Environ; Call : Node_Id) return Value_T is
-      Params    : constant List_Id := Parameter_Associations (Call);
-      LLVM_Func : constant Value_T :=
+      Func_Ident  : constant Node_Id := Entity (Name (Call));
+      Func_Params : constant List_Id :=
+        Parameter_Specifications (Parent (Func_Ident));
+      Param_Spec  : Node_Id;
+
+      Params      : constant List_Id := Parameter_Associations (Call);
+      LLVM_Func   : constant Value_T :=
         Env.Get (Entity (Name (Call)));
-      Args      : array (1 .. List_Length (Params)) of Value_T;
-      I         : Nat := 1;
+      Args        : array (1 .. List_Length (Params)) of Value_T;
+      I           : Nat := 1;
    begin
+      Param_Spec := First (Func_Params);
       for Param of Iterate (Params) loop
-         Args (I) := Compile_Expression (Env, Param);
+         Args (I) :=
+           (if Out_Present (Param_Spec) then
+                 Compile_LValue (Env, Param)
+            else
+               Compile_Expression (Env, Param));
          I := I + 1;
+         Param_Spec := Next (Param_Spec);
       end loop;
       return
         Build_Call
           (Env.Bld, LLVM_Func,
-           Args'Address, Args'Length, "subpcall");
+           Args'Address, Args'Length,
+           --  Assigning a name to a void value is not possible with LLVM
+           (if Nkind (Call) = N_Function_Call then "subpcall" else ""));
    end Compile_Call;
 
 end GNATLLVM.Compile;

@@ -46,10 +46,15 @@ package body GNATLLVM.Types is
       Return_Type : Type_T;
       Arg         : Node_Id := First (Param_Specs);
    begin
-      --  Set the
+      --  Associate an LLVM type for each argument
 
       for I in Param_Types'Range loop
          Param_Types (I) := Create_Type (Env, Parameter_Type (Arg));
+         --  If this is an OUT parameter, take a pointer to the actual
+         --  parameter.
+         if Out_Present (Arg) then
+            Param_Types (I) := Pointer_Type (Param_Types (I), 0);
+         end if;
          Arg := Next (Arg);
       end loop;
 

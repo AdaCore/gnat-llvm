@@ -22,6 +22,8 @@ with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body LLVM_Drive is
 
+   Dump_IR : Boolean := False;
+
    function Output_File_Name return String;
    --  Return the name of the output LLVM bitcode file
 
@@ -58,12 +60,15 @@ package body LLVM_Drive is
          Error_Msg ("The backend generated bad LLVM code.", No_Location);
 
       else
-         if LLVM.Bit_Writer.Write_Bitcode_To_File
-           (Env.Mdl, Output_File_Name) /= 0
-         then
-            Error_Msg ("Could not write " & Output_File_Name, No_Location);
+         if Dump_IR then
+            Dump_Module (Env.Mdl);
+         else
+            if LLVM.Bit_Writer.Write_Bitcode_To_File
+              (Env.Mdl, Output_File_Name) /= 0
+            then
+               Error_Msg ("Could not write " & Output_File_Name, No_Location);
+            end if;
          end if;
-         --  Dump_Module (Env.Mdl);
       end if;
 
       --  Release the environment
@@ -77,8 +82,11 @@ package body LLVM_Drive is
    ------------------------
 
    function Is_Back_End_Switch (Switch : String) return Boolean is
-      pragma Unreferenced (Switch);
    begin
+      if Switch = "--dump-ir" then
+         Dump_IR := True;
+         return True;
+      end if;
       return False;
    end Is_Back_End_Switch;
 

@@ -52,4 +52,13 @@ package body GNATLLVM.Utils is
       return A;
    end Iterate;
 
+   ---------------------
+   -- Dump_LLVM_Value --
+   ---------------------
+
+   procedure Dump_LLVM_Value (V : Value_T) is
+   begin
+      Dump_Value (V);
+   end Dump_LLVM_Value;
+
 end GNATLLVM.Utils;

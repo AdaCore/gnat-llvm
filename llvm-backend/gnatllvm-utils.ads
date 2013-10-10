@@ -36,4 +36,8 @@ package GNATLLVM.Utils is
 
    function Is_Binary_Operator (Node : Node_Id) return Boolean;
 
+   procedure Dump_LLVM_Value (V : Value_T);
+   --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
+   --  function that is usable in debugging sessions.
+
 end GNATLLVM.Utils;

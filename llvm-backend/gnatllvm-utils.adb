@@ -61,4 +61,13 @@ package body GNATLLVM.Utils is
       Dump_Value (V);
    end Dump_LLVM_Value;
 
+   ----------------------
+   -- Dump_LLVM_Module --
+   ----------------------
+
+   procedure Dump_LLVM_Module (M : Module_T) is
+   begin
+      Dump_Module (M);
+   end Dump_LLVM_Module;
+
 end GNATLLVM.Utils;

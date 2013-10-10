@@ -40,4 +40,7 @@ package GNATLLVM.Utils is
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
    --  function that is usable in debugging sessions.
 
+   procedure Dump_LLVM_Module (M : Module_T);
+   --  Likewise, for LLVM.Core.Dump_Module
+
 end GNATLLVM.Utils;

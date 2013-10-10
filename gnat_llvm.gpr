@@ -2,7 +2,7 @@ project Gnat_LLVM is
    for Source_Dirs use
      ("gnat_src", "llvm-ada/out", "llvm-backend", "llvm-backend/obj", "stubs");
    for Object_Dir use "llvm-backend/obj";
-   for Languages use ("Ada");
+   for Languages use ("Ada", "C");
 
    package Compiler is
       for Default_Switches ("Ada") use

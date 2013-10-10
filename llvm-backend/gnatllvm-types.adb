@@ -77,13 +77,23 @@ package body GNATLLVM.Types is
          Is_Var_Arg => Boolean'Pos (False));
    end Create_Subprogram_Type;
 
+   -----------------
+   -- Create_Type --
+   -----------------
+
    function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T is
    begin
       case Nkind (Type_Node) is
          when N_Defining_Identifier =>
             return Env.Get (Type_Node);
+
          when N_Identifier =>
             return Env.Get (Entity (Type_Node));
+
+         when N_Access_Definition =>
+            return Pointer_Type
+              (Create_Type (Env, Subtype_Mark (Type_Node)), 0);
+
          when others =>
             raise Program_Error
               with "Unhandled node: " & Node_Kind'Image (Nkind (Type_Node));

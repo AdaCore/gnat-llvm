@@ -267,6 +267,10 @@ package body GNATLLVM.Compile is
       case Nkind (Node) is
          when N_Identifier =>
             return Env.Get (Entity (Node));
+
+         when N_Explicit_Dereference =>
+            return Build_Load (Env.Bld, Env.Get (Entity (Prefix (Node))), "");
+
          when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
@@ -429,6 +433,9 @@ package body GNATLLVM.Compile is
 
          when N_Function_Call =>
             return Compile_Call (Env, Node);
+
+         when N_Explicit_Dereference =>
+            return Build_Load (Env.Bld, Compile_Expr (Prefix (Node)), "");
 
          when others =>
             raise Program_Error

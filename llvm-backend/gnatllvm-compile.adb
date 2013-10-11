@@ -251,6 +251,25 @@ package body GNATLLVM.Compile is
                Env.Set_Current_Basic_Block (BB_Next);
             end;
 
+         when N_Block_Statement =>
+            declare
+               BB : Basic_Block_T;
+            begin
+                  BB :=
+                    (if Present (Identifier (Node)) then
+                        Env.Get (Entity (Identifier (Node)))
+                     else
+                        Create_Basic_Block (Env, "block"));
+                  Discard (Build_Br (Env.Bld, BB));
+                  Set_Current_Basic_Block (Env, BB);
+
+                  Env.Push_Scope;
+                  Compile_List (Env, Declarations (Node));
+                  Compile_List
+                    (Env, Statements (Handled_Statement_Sequence (Node)));
+                  Env.Pop_Scope;
+            end;
+
          when others =>
             raise Program_Error
               with "Unhandled statement node kind : "

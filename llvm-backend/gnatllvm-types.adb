@@ -5,6 +5,7 @@ with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Types is
 
@@ -93,6 +94,33 @@ package body GNATLLVM.Types is
          when N_Access_Definition =>
             return Pointer_Type
               (Create_Type (Env, Subtype_Mark (Type_Node)), 0);
+
+         when N_Access_To_Object_Definition =>
+            return Pointer_Type
+              (Create_Type (Env, Subtype_Indication (Type_Node)), 0);
+
+         when N_Record_Definition =>
+            declare
+               Struct_Type : constant Type_T := Struct_Create_Named
+                 (Env.Ctx,
+                  Get_Name (Defining_Identifier (Parent (Type_Node))));
+               Comp_List : constant List_Id :=
+                 Component_Items (Component_List (Type_Node));
+               LLVM_Comps : array (1 .. List_Length (Comp_List)) of Type_T;
+               I : Int := 1;
+            begin
+               for El of
+                 Iterate (Component_Items (Component_List (Type_Node)))
+               loop
+                  LLVM_Comps (I) :=
+                    Create_Type
+                      (Env, Subtype_Indication (Component_Definition (El)));
+                  I := I + 1;
+               end loop;
+               Struct_Set_Body
+                 (Struct_Type, LLVM_Comps'Address, LLVM_Comps'Length, 0);
+               return Struct_Type;
+            end;
 
          when others =>
             raise Program_Error

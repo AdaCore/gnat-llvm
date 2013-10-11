@@ -270,6 +270,15 @@ package body GNATLLVM.Compile is
                   Env.Pop_Scope;
             end;
 
+         when N_Full_Type_Declaration =>
+            Env.Set (Defining_Identifier (Node),
+                     Create_Type (Env, Type_Definition (Node)));
+
+         when N_Freeze_Entity =>
+            --  TODO ??? Implement N_Freeze_Entity. We just need a stub
+            --  implementation for basic types atm
+            null;
+
          when others =>
             raise Program_Error
               with "Unhandled statement node kind : "
@@ -289,6 +298,19 @@ package body GNATLLVM.Compile is
 
          when N_Explicit_Dereference =>
             return Build_Load (Env.Bld, Env.Get (Entity (Prefix (Node))), "");
+
+         when N_Selected_Component =>
+            declare
+               Pfx_Ptr : constant Value_T :=
+                 Compile_LValue (Env, Prefix (Node));
+               Record_Component : constant Entity_Id :=
+                 Parent (Entity (Selector_Name (Node)));
+               Idx : constant unsigned :=
+                 unsigned (Index_In_List (Record_Component)) - 1;
+            begin
+               return Build_Struct_GEP
+                 (Env.Bld, Pfx_Ptr, Idx, "pfx_load");
+            end;
 
          when others =>
             raise Program_Error
@@ -456,7 +478,43 @@ package body GNATLLVM.Compile is
          when N_Explicit_Dereference =>
             return Build_Load (Env.Bld, Compile_Expr (Prefix (Node)), "");
 
-         when others =>
+         when N_Attribute_Reference =>
+
+            --  We store values as pointers, so, getting an access to an
+            --  expression is the same thing as getting an LValue, and has
+            --  the same constraints
+
+            if Get_Name_String (Attribute_Name (Node)) = "access" then
+               return Compile_LValue (Env, Prefix (Node));
+            end if;
+
+            raise Program_Error
+              with "Unhandled Attribute : "
+              & Get_Name_String (Attribute_Name (Node));
+
+            when N_Selected_Component =>
+               declare
+                  Pfx_Val : constant Value_T :=
+                    Compile_Expression (Env, Prefix (Node));
+                  Pfx_Ptr : constant Value_T :=
+                    Build_Alloca
+                      (Env.Bld,
+                       Type_Of (Pfx_Val),
+                       "pfx_ptr");
+                  Record_Component : constant Entity_Id :=
+                    Parent (Entity (Selector_Name (Node)));
+                  Idx : constant unsigned :=
+                    unsigned (Index_In_List (Record_Component)) - 1;
+               begin
+                  Discard (Build_Store (Env.Bld, Pfx_Val, Pfx_Ptr));
+                  return Build_Load
+                    (Env.Bld,
+                     Build_Struct_GEP
+                       (Env.Bld, Pfx_Ptr, Idx, "pfx_load"),
+                     "");
+               end;
+
+            when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
          end case;

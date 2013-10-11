@@ -43,4 +43,6 @@ package GNATLLVM.Utils is
    procedure Dump_LLVM_Module (M : Module_T);
    --  Likewise, for LLVM.Core.Dump_Module
 
+   function Index_In_List (N : Node_Id) return Natural;
+
 end GNATLLVM.Utils;

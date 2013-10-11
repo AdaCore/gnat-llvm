@@ -5,6 +5,7 @@ Run a test located in test_dir
 """
 
 from gnatpython.env import Env
+from gnatpython.fileutils import mkdir
 from gnatpython.main import Main
 from gnatpython.testdriver import TestRunner, add_run_test_options
 
@@ -43,9 +44,16 @@ def main():
 
     if m.options.restricted_discs is not None:
         m.options.restricted_discs = m.options.restricted_discs.split(',')
-    t = TestRunner(m.args[0],
+
+    # Make sure the result directory exists.
+    test_name = m.args[0]
+    result_dir = os.path.dirname(os.path.join(
+        m.options.output_dir, test_name.strip('/')))
+    mkdir(result_dir)
+
+    t = TestRunner(test_name,
                    m.options.discs,
-                   m.options.output_dir,
+                   result_dir,
                    m.options.tmp,
                    m.options.enable_cleanup,
                    m.options.restricted_discs,

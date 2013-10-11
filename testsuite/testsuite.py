@@ -51,9 +51,11 @@ def main():
         discs += m.options.discs.split(',')
 
     collect_result = generate_collect_result(
-        m.options.output_dir, m.options.results_file, m.options.view_diffs)
+        m.options.output_dir, m.options.results_file, m.options.view_diffs,
+        use_basename=False)
 
-    run_testcase = generate_run_testcase('run_test.py', discs, m.options)
+    run_testcase = generate_run_testcase('run_test.py', discs, m.options,
+        use_basename=False)
 
     MainLoop(test_list, run_testcase, collect_result, m.options.mainloop_jobs)
     # Generate the report file

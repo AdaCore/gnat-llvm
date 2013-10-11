@@ -4,6 +4,11 @@
 
 Run the GNAT-LLVM testsuite. See ./testsuite.py -h for help"""
 
+from glob import glob
+import itertools
+import os
+import sys
+
 from gnatpython.env import Env
 from gnatpython.ex import Run
 from gnatpython.main import Main
@@ -13,9 +18,6 @@ from gnatpython.mainloop import (MainLoop, add_mainloop_options,
                                  setup_result_dir)
 from gnatpython.testdriver import add_run_test_options
 from gnatpython.reports import ReportDiff
-from glob import glob
-import os
-import sys
 
 
 def main():
@@ -37,7 +39,8 @@ def main():
     setup_result_dir(m.options)
 
     if m.args:
-        test_list = [t.strip('/') for t in m.args]
+        test_list = sorted(itertools.chain(
+            *[iter_tests(t) for t in m.args]))
     else:
         test_list = sorted(iter_tests('.'))
 

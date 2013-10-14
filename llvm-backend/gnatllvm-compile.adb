@@ -484,9 +484,16 @@ package body GNATLLVM.Compile is
             --  expression is the same thing as getting an LValue, and has
             --  the same constraints
 
-            if Get_Name_String (Attribute_Name (Node)) = "access" then
-               return Compile_LValue (Env, Prefix (Node));
-            end if;
+            declare
+               Attr_Name : constant String :=
+                 Get_Name_String (Attribute_Name (Node));
+            begin
+               if Attr_Name = "access"
+                 or else Attr_Name = "unchecked_access"
+               then
+                  return Compile_LValue (Env, Prefix (Node));
+               end if;
+            end;
 
             raise Program_Error
               with "Unhandled Attribute : "

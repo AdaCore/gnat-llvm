@@ -24,6 +24,40 @@ package body GNATLLVM.Environment is
       Env.Scopes.Delete_Last;
    end Pop_Scope;
 
+   --------------
+   -- Has_Type --
+   --------------
+
+   function Has_Type
+     (Env : access Environ_Record; TE : Entity_Id) return Boolean
+   is
+      T : Type_T;
+      pragma Unreferenced (T);
+   begin
+      T := Env.Get (TE);
+      return True;
+   exception
+      when Program_Error =>
+         return False;
+   end Has_Type;
+
+   ---------------
+   -- Has_Value --
+   ---------------
+
+   function Has_Value
+     (Env : access Environ_Record; VE : Entity_Id) return Boolean
+   is
+      V : Value_T;
+      pragma Unreferenced (V);
+   begin
+      V := Env.Get (VE);
+      return True;
+   exception
+      when Program_Error =>
+         return False;
+   end Has_Value;
+
    ---------
    -- Get --
    ---------
@@ -108,7 +142,7 @@ package body GNATLLVM.Environment is
 
    function Create_Subp
      (Env : access Environ_Record;
-      Name : String; Typ : Type_T) return Subp_Env
+      Name : String; Typ : Type_T; ) return Subp_Env
    is
       Func : constant Value_T := Add_Function (Env.Mdl, Name, Typ);
       Subp : constant Subp_Env := new Subp_Env_Record'

@@ -6,6 +6,7 @@ with Nlists;   use Nlists;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
+with GNATLLVM.Compile;
 
 package body GNATLLVM.Types is
 
@@ -89,6 +90,12 @@ package body GNATLLVM.Types is
             return Env.Get (Type_Node);
 
          when N_Identifier =>
+            --  If the type does not yet exist in the environnment, it may have
+            --  been drawn from another file (adb's own spec file or another),
+            --  so we lazily compile the full type declaration.
+            if not Env.Has_Type (Entity (Type_Node)) then
+               GNATLLVM.Compile.Compile (Env, Parent (Entity (Type_Node)));
+            end if;
             return Env.Get (Entity (Type_Node));
 
          when N_Access_Definition =>

@@ -41,6 +41,20 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+         when N_Subprogram_Declaration =>
+            declare
+               Subp_Node : constant Node_Id := Specification (Node);
+               Subp_Type : constant Type_T :=
+                 Create_Subprogram_Type (Env, Subp_Node);
+               Subp_Name : constant String :=
+                 Get_Name_String (Chars (Defining_Unit_Name (Subp_Node)));
+               LLVM_Func : constant Value_T :=
+                 Add_Function (Env.Mdl, Subp_Name, Subp_Type);
+            begin
+               Env.Set
+                 (Defining_Unit_Name (Specification (Node)), LLVM_Func);
+            end;
+
          when N_Subprogram_Body =>
             declare
                Subp_Node : constant Node_Id := Specification (Node);
@@ -110,7 +124,6 @@ package body GNATLLVM.Compile is
                Env.Leave_Subp;
 
                if Verify_Function (Subp.Func, Print_Message_Action) /= 0 then
-                  --  TODO??? Display the crash message, or something like this
                   Error_Msg_N
                     ("The backend generated bad LLVM for this subprogram.",
                      Node);
@@ -552,12 +565,19 @@ package body GNATLLVM.Compile is
       Param_Spec  : Node_Id;
 
       Params      : constant List_Id := Parameter_Associations (Call);
-      LLVM_Func   : constant Value_T :=
-        Env.Get (Entity (Name (Call)));
+      LLVM_Func   : Value_T;
       Args        : array (1 .. List_Length (Params)) of Value_T;
       I           : Nat := 1;
    begin
+      --  Lazy compilation of function specs
+      if not Env.Has_Value (Entity (Name (Call))) then
+         Compile (Env, Parent (Parent (Entity (Name (Call)))));
+      end if;
+
+      LLVM_Func := Env.Get (Entity (Name (Call)));
+
       Param_Spec := First (Func_Params);
+
       for Param of Iterate (Params) loop
          Args (I) :=
            (if Out_Present (Param_Spec) then
@@ -567,10 +587,12 @@ package body GNATLLVM.Compile is
          I := I + 1;
          Param_Spec := Next (Param_Spec);
       end loop;
+
       return
         Build_Call
           (Env.Bld, LLVM_Func,
            Args'Address, Args'Length,
+
            --  Assigning a name to a void value is not possible with LLVM
            (if Nkind (Call) = N_Function_Call then "subpcall" else ""));
    end Compile_Call;

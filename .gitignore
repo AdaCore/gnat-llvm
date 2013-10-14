@@ -28,3 +28,7 @@ __pycache__
 # Script generally used to define some environment variable to ease using
 # programs/libraries from the project.
 env
+
+# Vim
+*.swp
+*.swo

@@ -217,18 +217,18 @@ package body GNATLLVM.Compile is
 
          when N_Loop_Statement =>
             declare
+               Loop_Identifier           : Entity_Id;
                BB_Cond, BB_Body, BB_Next : Basic_Block_T;
                Iter_Scheme               : constant Node_Id :=
                  Iteration_Scheme (Node);
                Cond                      : Value_T;
             begin
+               pragma Assert (Present (Identifier (Node)));
+               Loop_Identifier := Entity (Identifier (Node));
+
                --  Create a basic block if none is already created for this
                --  identifier.
-               BB_Cond :=
-                 (if Present (Identifier (Node)) then
-                     Env.Get (Entity (Identifier (Node)))
-                  else
-                     Create_Basic_Block (Env, Id ("loop")));
+               BB_Cond := Env.Get (Loop_Identifier);
                Discard (Build_Br (Env.Bld, BB_Cond));
 
                --  If this is a mere loop, there is no need for a separate

@@ -5,7 +5,7 @@ begin
    loop
       declare
          Next_Digits : constant Natural := T / 10;
-         Digit       : constant Natural := T - Next_Digits * T;
+         Digit       : constant Natural := T - Next_Digits * 10;
       begin
          if Digit = 1 then
             Result := Result + 1;

@@ -1,5 +1,4 @@
 with Ada.Unchecked_Deallocation;
-with GNATLLVM.Id_Generator; use GNATLLVM.Id_Generator;
 
 package body GNATLLVM.Environment is
 
@@ -199,7 +198,7 @@ package body GNATLLVM.Environment is
          Func          => Func,
          Current_Block =>
            Append_Basic_Block_In_Context
-             (Env.Ctx, Func, Id ("entry")));
+             (Env.Ctx, Func, "entry"));
    begin
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);

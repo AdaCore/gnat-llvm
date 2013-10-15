@@ -13,7 +13,6 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 with LLVM.Analysis; use LLVM.Analysis;
-with GNATLLVM.Id_Generator; use GNATLLVM.Id_Generator;
 
 package body GNATLLVM.Compile is
 
@@ -98,7 +97,7 @@ package body GNATLLVM.Compile is
                      LLVM_Var := Build_Alloca
                        (Env.Bld,
                         Type_Of (LLVM_Param),
-                        Id (Get_Name (Param)));
+                        Get_Name (Param));
                      Discard (Build_Store (Env.Bld, LLVM_Param, LLVM_Var));
                   end if;
 
@@ -215,11 +214,11 @@ package body GNATLLVM.Compile is
                Cond                      : constant Value_T :=
                  Compile_Expression (Env, Condition (Node));
             begin
-               BB_Next := Create_Basic_Block (Env, Id ("if-next"));
-               BB_Then := Create_Basic_Block (Env, Id ("if-then"));
+               BB_Next := Create_Basic_Block (Env, "if-next");
+               BB_Then := Create_Basic_Block (Env, "if-then");
                BB_Else :=
                  (if not Is_Empty_List (Else_Statements (Node)) then
-                     Create_Basic_Block (Env, Id ("if-else"))
+                     Create_Basic_Block (Env, "if-else")
                   else
                      BB_Next);
                Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
@@ -257,12 +256,12 @@ package body GNATLLVM.Compile is
                --  basic block.
                BB_Body :=
                  (if Present (Iter_Scheme) then
-                     Create_Basic_Block (Env, Id ("loop-body"))
+                     Create_Basic_Block (Env, "loop-body")
                   else
                      BB_Cond);
 
                --  Create a basic block to jump to when leaving the loop
-               BB_Next := Create_Basic_Block (Env, Id ("loop-exit"));
+               BB_Next := Create_Basic_Block (Env, "loop-exit");
 
                Env.Push_Loop (Loop_Identifier, BB_Next);
 
@@ -450,26 +449,26 @@ package body GNATLLVM.Compile is
 
             when N_Op_Add =>
                return Build_Add
-                 (Env.Bld, LVal, RVal, Id ("add"));
+                 (Env.Bld, LVal, RVal, "add");
 
             when N_Op_Subtract =>
                return Build_Sub
-                 (Env.Bld, LVal, RVal, Id ("sub"));
+                 (Env.Bld, LVal, RVal, "sub");
 
             when N_Op_Multiply =>
                return Build_Mul
-                 (Env.Bld, LVal, RVal, Id ("mul"));
+                 (Env.Bld, LVal, RVal, "mul");
 
             when N_Op_Divide =>
                declare
                   T : constant Entity_Id := Etype (Left_Opnd (Node));
                begin
                   if Is_Signed_Integer_Type (T) then
-                     return Build_S_Div (Env.Bld, LVal, RVal, Id ("sdiv"));
+                     return Build_S_Div (Env.Bld, LVal, RVal, "sdiv");
                   elsif Is_Floating_Point_Type (T) then
-                     return Build_F_Div (Env.Bld, LVal, RVal, Id ("fdiv"));
+                     return Build_F_Div (Env.Bld, LVal, RVal, "fdiv");
                   elsif Is_Unsigned_Type (T) then
-                     return Build_U_Div (Env.Bld, LVal, RVal, Id ("udiv"));
+                     return Build_U_Div (Env.Bld, LVal, RVal, "udiv");
                   else
                      raise Program_Error
                        with "Not handled : Division with type " & T'Img;

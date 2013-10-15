@@ -175,6 +175,28 @@ package body GNATLLVM.Compile is
          when N_Null_Statement =>
             null;
 
+         when N_Exit_Statement =>
+            declare
+               Exit_Point : constant Basic_Block_T :=
+                 (if Present (Name (Node)) then
+                     Env.Get_Exit_Point (Entity (Name (Node)))
+                  else
+                     Env.Get_Exit_Point);
+               Next_BB    : constant Basic_Block_T :=
+                 Env.Create_Basic_Block ("loop-after-exit");
+            begin
+               if Present (Condition (Node)) then
+                  Discard (Build_Cond_Br
+                           (Env.Bld,
+                              Compile_Expression (Env, Condition (Node)),
+                              Exit_Point,
+                              Next_BB));
+               else
+                  Discard (Build_Br (Env.Bld, Exit_Point));
+               end if;
+               Env.Set_Current_Basic_Block (Next_BB);
+            end;
+
          when N_Simple_Return_Statement =>
             if Present (Expression (Node)) then
                Discard (Build_Ret
@@ -242,6 +264,8 @@ package body GNATLLVM.Compile is
                --  Create a basic block to jump to when leaving the loop
                BB_Next := Create_Basic_Block (Env, Id ("loop-exit"));
 
+               Env.Push_Loop (Loop_Identifier, BB_Next);
+
                if Present (Iter_Scheme) then
                   Env.Set_Current_Basic_Block (BB_Cond);
                   if Present (Condition (Iter_Scheme)) then
@@ -260,6 +284,8 @@ package body GNATLLVM.Compile is
                Env.Set_Current_Basic_Block (BB_Body);
                Compile_List (Env, Statements (Node));
                Discard (Build_Br (Env.Bld, BB_Cond));
+
+               Env.Pop_Loop;
 
                Env.Set_Current_Basic_Block (BB_Next);
             end;

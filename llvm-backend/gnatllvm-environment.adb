@@ -136,6 +136,55 @@ package body GNATLLVM.Environment is
       Env.Set (BE, Basic_Block_As_Value (BL));
    end Set;
 
+   ---------------
+   -- Push_Loop --
+   ---------------
+
+   procedure Push_Loop
+     (Env : access Environ_Record;
+      LE : Entity_Id;
+      Exit_Point : Basic_Block_T) is
+   begin
+      Env.Exit_Points.Append ((LE, Exit_Point));
+   end Push_Loop;
+
+   --------------
+   -- Pop_Loop --
+   --------------
+
+   procedure Pop_Loop (Env : access Environ_Record) is
+   begin
+      Env.Exit_Points.Delete_Last;
+   end Pop_Loop;
+
+   --------------------
+   -- Get_Exit_Point --
+   --------------------
+
+   function Get_Exit_Point
+     (Env : access Environ_Record; LE : Entity_Id) return Basic_Block_T is
+   begin
+      for Exit_Point of Env.Exit_Points loop
+         if Exit_Point.Label_Entity = LE then
+            return Exit_Point.Exit_BB;
+         end if;
+      end loop;
+
+      --  If the loop label isn't registered, then we just met an exit
+      --  statement with no corresponding loop: should not happen.
+      raise Program_Error with "Unknown loop identifier";
+   end Get_Exit_Point;
+
+   --------------------
+   -- Get_Exit_Point --
+   --------------------
+
+   function Get_Exit_Point
+     (Env : access Environ_Record) return Basic_Block_T is
+   begin
+      return Env.Exit_Points.Last_Element.Exit_BB;
+   end Get_Exit_Point;
+
    ---------------------
    -- Create_Function --
    ---------------------

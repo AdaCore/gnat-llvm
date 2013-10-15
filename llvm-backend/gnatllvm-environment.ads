@@ -26,6 +26,15 @@ package GNATLLVM.Environment is
      (Index_Type   => Positive,
       Element_Type => Scope_Acc);
 
+   type Exit_Point is record
+      Label_Entity : Entity_Id;
+      Exit_BB      : Basic_Block_T;
+   end record;
+
+   package Exit_Point_Vectors is new Ada.Containers.Vectors
+     (Index_Type   => Positive,
+      Element_Type => Exit_Point);
+
    --  Expansed Ada-to-LLVM translation context: gathers global information
    type Environ_Record is tagged;
    type Environ is access all Environ_Record;
@@ -51,6 +60,10 @@ package GNATLLVM.Environment is
       --  Stack of scopes, to associate LLVM types/values to expansed tree's
       --  entities.
 
+      Exit_Points   : Exit_Point_Vectors.Vector;
+      --  Stack of scoped loop exit points. Last inserted exit point correspond
+      --  to the innermost loop.
+
       Subprograms   : Subp_Lists.List;
       Current_Subps : Subp_Lists.List;
    end record;
@@ -71,6 +84,14 @@ package GNATLLVM.Environment is
    procedure Set (Env : access Environ_Record; VE : Entity_Id; VL : Value_T);
    procedure Set
      (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T);
+
+   procedure Push_Loop
+     (Env : access Environ_Record; LE : Entity_Id; Exit_Point : Basic_Block_T);
+   procedure Pop_Loop (Env : access Environ_Record);
+   function Get_Exit_Point
+     (Env : access Environ_Record; LE : Entity_Id) return Basic_Block_T;
+   function Get_Exit_Point
+     (Env : access Environ_Record) return Basic_Block_T;
 
    function Create_Subp
      (Env  : access Environ_Record;

@@ -191,7 +191,7 @@ package body GNATLLVM.Environment is
 
    function Create_Subp
      (Env : access Environ_Record;
-      Name : String; Typ : Type_T; ) return Subp_Env
+      Name : String; Typ : Type_T) return Subp_Env
    is
       Func : constant Value_T := Add_Function (Env.Mdl, Name, Typ);
       Subp : constant Subp_Env := new Subp_Env_Record'

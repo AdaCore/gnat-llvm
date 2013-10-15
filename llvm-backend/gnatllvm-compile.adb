@@ -469,7 +469,7 @@ package body GNATLLVM.Compile is
                   elsif Is_Floating_Point_Type (T) then
                      return Build_F_Div (Env.Bld, LVal, RVal, Id ("fdiv"));
                   elsif Is_Unsigned_Type (T) then
-                     return Build_U_Div (Env.Bld, LVal, RVal, Id ("sdiv"));
+                     return Build_U_Div (Env.Bld, LVal, RVal, Id ("udiv"));
                   else
                      raise Program_Error
                        with "Not handled : Division with type " & T'Img;

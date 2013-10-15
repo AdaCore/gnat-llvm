@@ -49,7 +49,11 @@ def main():
     test_name = m.args[0]
     result_dir = os.path.dirname(os.path.join(
         m.options.output_dir, test_name.strip('/')))
-    mkdir(result_dir)
+    try:
+        mkdir(result_dir)
+    except:
+        # The result directory probably already exists.
+        pass
 
     t = TestRunner(test_name,
                    m.options.discs,

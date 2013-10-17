@@ -71,6 +71,10 @@ package GNATLLVM.Environment is
    procedure Push_Scope (Env : access Environ_Record);
    procedure Pop_Scope (Env : access Environ_Record);
 
+   No_Such_Type        : exception;
+   No_Such_Value       : exception;
+   No_Such_Basic_Block : exception;
+
    function Has_Type
      (Env : access Environ_Record; TE : Entity_Id) return Boolean;
    function Has_Value

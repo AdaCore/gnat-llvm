@@ -36,7 +36,7 @@ package body GNATLLVM.Environment is
       T := Env.Get (TE);
       return True;
    exception
-      when Program_Error =>
+      when No_Such_Type =>
          return False;
    end Has_Type;
 
@@ -53,7 +53,7 @@ package body GNATLLVM.Environment is
       V := Env.Get (VE);
       return True;
    exception
-      when Program_Error =>
+      when No_Such_Value =>
          return False;
    end Has_Value;
 
@@ -73,7 +73,7 @@ package body GNATLLVM.Environment is
             end if;
          end;
       end loop;
-      raise Program_Error
+      raise No_Such_Type
         with "Cannot find a LLVM type for Entity #" & Entity_Id'Image (TE);
    end Get;
 
@@ -93,7 +93,7 @@ package body GNATLLVM.Environment is
             end if;
          end;
       end loop;
-      raise Program_Error
+      raise No_Such_Value
         with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (VE);
    end Get;
 
@@ -105,6 +105,9 @@ package body GNATLLVM.Environment is
      (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T is
    begin
       return Value_As_Basic_Block (Env.Get (BE));
+   exception
+      when No_Such_Value =>
+         raise No_Such_Basic_Block;
    end Get;
 
    ---------

@@ -1,0 +1,7 @@
+absolute(-100) = 100
+absolute(-2) = 2
+absolute(-1) = 1
+absolute(0) = 0
+absolute(1) = 1
+absolute(2) = 2
+absolute(100) = 100

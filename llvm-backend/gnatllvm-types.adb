@@ -117,6 +117,10 @@ package body GNATLLVM.Types is
             return Pointer_Type
               (Create_Type (Env, Subtype_Indication (Type_Node)), 0);
 
+         when N_Derived_Type_Definition =>
+            return Create_Type
+              (Env, Subtype_Mark (Subtype_Indication (Type_Node)));
+
          when N_Record_Definition =>
             declare
                Struct_Type : constant Type_T := Struct_Create_Named

@@ -451,6 +451,11 @@ package body GNATLLVM.Compile is
             Env.Set (Defining_Identifier (Node),
                      Create_Type (Env, Type_Definition (Node)));
 
+         when N_Subtype_Declaration =>
+            Env.Set
+              (Defining_Identifier (Node),
+               Create_Type (Env, Subtype_Mark (Subtype_Indication (Node))));
+
          when N_Freeze_Entity =>
             --  TODO ??? Implement N_Freeze_Entity. We just need a stub
             --  implementation for basic types atm

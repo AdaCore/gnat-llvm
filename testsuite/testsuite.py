@@ -6,11 +6,14 @@ Run the GNAT-LLVM testsuite. See ./testsuite.py -h for help"""
 
 from glob import glob
 import itertools
+import logging
 import os
 import sys
 
 from gnatpython.env import Env
 from gnatpython.ex import Run
+from gnatpython.fileutils import (
+    echo_to_file, split_file)
 from gnatpython.main import Main
 from gnatpython.mainloop import (MainLoop, add_mainloop_options,
                                  generate_collect_result,
@@ -62,7 +65,7 @@ class Testsuite:
             use_basename=False)
 
         MainLoop(
-            test_list, run_testcase, collect_result,
+            test_list, run_testcase, self.collect_result,
             self.main.options.mainloop_jobs)
         # Generate the report file
         diff = ReportDiff(
@@ -81,7 +84,41 @@ class Testsuite:
 
 
     def collect_result(self, name, process, job_info):
-        pass
+
+        def get_filename(ext):
+            return os.path.join(
+                self.main.options.output_dir,
+                '{}{}{}'.format(os.path.normpath(name), os.path.extsep, ext))
+
+        test_name = os.path.relpath(name, os.getcwd())
+
+        test_result = split_file(
+            get_filename('result'), ignore_errors=True)
+        test_result = (
+            test_result[0]
+            if test_result else
+            'CRASH:cannot read result file')
+
+        test_status, test_msg = test_result.split(':', 1)
+
+        echo_to_file(
+            self.main.options.results_file,
+            '{}:{}: {}\n'.format(test_name, test_status, test_msg),
+            append=True)
+
+        logging_func = (
+            logging.error
+            if test_status in ('DIFF', 'CRASH') else
+            logging.info)
+
+        logging_func('{:>5}  {}: {}'.format(
+            test_status, test_name, test_msg))
+        if self.main.options.view_diffs:
+            try:
+                with open(get_filename('diff'), 'r') as diff_file:
+                    logging_func(diff_file.read().strip())
+            except (OSError, IOError):
+                pass
 
 
     def iter_tests(self, rootdir):

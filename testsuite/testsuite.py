@@ -20,63 +20,78 @@ from gnatpython.testdriver import add_run_test_options
 from gnatpython.reports import ReportDiff
 
 
-def main():
-    """Run the testsuite"""
+class Testsuite:
 
-    m = Main()
-    add_mainloop_options(m, extended_options=True)
-    add_run_test_options(m)
-    m.add_option("--diffs", dest="view_diffs", action="store_true",
-                 default=False, help="show diffs on stdout")
-    m.parse_args()
+    def __init__(self):
+        self.main =  Main()
+        add_mainloop_options(self.main, extended_options=True)
+        add_run_test_options(self.main)
+        self.main.add_option(
+            "--diffs", dest="view_diffs", action="store_true",
+            default=False, help="show diffs on stdout")
 
-    # Various files needed or created by the testsuite
-    # creates :
-    #   the ouput directory (out by default)
-    #   the report file
-    #   the results file
+    def run(self):
+        """Run the testsuite"""
 
-    setup_result_dir(m.options)
+        self.main.parse_args()
 
-    if m.args:
-        test_list = sorted(itertools.chain(
-            *[iter_tests(t) for t in m.args]))
-    else:
-        test_list = sorted(iter_tests('.'))
+        # Various files needed or created by the testsuite
+        # creates :
+        #   the ouput directory (out by default)
+        #   the report file
+        #   the results file
 
-    env = Env()
-    discs = [env.target.platform]
+        setup_result_dir(self.main.options)
 
-    if m.options.discs:
-        discs += m.options.discs.split(',')
+        test_list = self.get_test_list()
 
-    collect_result = generate_collect_result(
-        m.options.output_dir, m.options.results_file, m.options.view_diffs,
-        use_basename=False)
+        env = Env()
+        discs = [env.target.platform]
 
-    run_testcase = generate_run_testcase('run_test.py', discs, m.options,
-        use_basename=False)
+        if self.main.options.discs:
+            discs += self.main.options.discs.split(',')
 
-    MainLoop(test_list, run_testcase, collect_result, m.options.mainloop_jobs)
-    # Generate the report file
-    ReportDiff(m.options.output_dir,
-               m.options.old_output_dir).txt_image(m.options.report_file)
+        collect_result = generate_collect_result(
+            self.main.options.output_dir,
+            self.main.options.results_file,
+            self.main.options.view_diffs,
+            use_basename=False)
+
+        run_testcase = generate_run_testcase(
+            'run_test.py', discs, self.main.options,
+            use_basename=False)
+
+        MainLoop(
+            test_list, run_testcase, collect_result,
+            self.main.options.mainloop_jobs)
+        # Generate the report file
+        diff = ReportDiff(
+            self.main.options.output_dir,
+            self.main.options.old_output_dir
+        )
+        diff.txt_image(self.main.options.report_file)
 
 
-def run_testcase(test, job_info):
-    return Run(
-        [sys.executable, os.path.join(test, 'test.py')],
-        bg=True, output=None)
+    def get_test_list(self):
+        if self.main.args:
+            return sorted(itertools.chain(
+                *[self.iter_tests(t) for t in self.main.args]))
+        else:
+            return sorted(self.iter_tests('.'))
 
 
-def iter_tests(rootdir):
-    """Generate directory names for all tests under "rootdir"."""
-    for dirpath, dirs, files in os.walk(rootdir):
-        if 'test.py' in files:
-            yield dirpath
+    def collect_result(self, name, process, job_info):
+        pass
+
+
+    def iter_tests(self, rootdir):
+        """Generate directory names for all tests under "rootdir"."""
+        for dirpath, dirs, files in os.walk(rootdir):
+            if 'test.py' in files:
+                yield dirpath
 
 
 if __name__ == "__main__":
     if os.path.dirname(__file__):
         os.chdir(os.path.dirname(__file__))
-    main()
+    Testsuite().run()

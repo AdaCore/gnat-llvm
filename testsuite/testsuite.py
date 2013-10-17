@@ -10,6 +10,13 @@ import logging
 import os
 import sys
 
+import pygments
+from pygments.formatters import get_all_formatters, get_formatter_by_name
+from pygments.lexers import get_lexer_by_name
+from pygments.style import Style
+from pygments.styles import get_style_by_name
+from pygments.token import Token
+
 from gnatpython.env import Env
 from gnatpython.ex import Run
 from gnatpython.fileutils import (
@@ -30,8 +37,13 @@ class Testsuite:
         add_mainloop_options(self.main, extended_options=True)
         add_run_test_options(self.main)
         self.main.add_option(
-            "--diffs", dest="view_diffs", action="store_true",
-            default=False, help="show diffs on stdout")
+            '--diffs', dest='view_diffs', action='store_true',
+            default=False, help='show diffs on stdout')
+        self.main.add_option(
+            '--formatter', dest='formatter',
+            choices=sum([f.aliases for f in get_all_formatters()], []),
+            default='terminal256',
+            help='format for the output')
 
     def run(self):
         """Run the testsuite"""
@@ -45,6 +57,10 @@ class Testsuite:
         #   the results file
 
         setup_result_dir(self.main.options)
+        self.formatter = get_formatter_by_name(
+            self.main.options.formatter,
+            style=OutputStyle)
+        self.diff_lexer = get_lexer_by_name('diff')
 
         test_list = self.get_test_list()
 
@@ -83,6 +99,51 @@ class Testsuite:
             return sorted(self.iter_tests('.'))
 
 
+    def format_line(self, status, name, message):
+        status_padding = max(0, 5 - len(status))
+        status_token = getattr(TestStatus, status, Token.Error)
+        result = []
+
+        if status_padding:
+            result.append((Token.Text, ' ' * status_padding))
+        result.extend([
+            (status_token, status),
+            (Token.Text, '  '),
+            (Token.Text, name),
+        ])
+        if message:
+            result.extend([
+                (Token.Punctuation, ':'),
+                (Token.Text, ' '),
+                (Token.Comment, message)
+            ])
+        return result
+
+
+    def format_diff(self, content):
+        indent_token = (Token.Text, ' ' * 4)
+
+        # Because of logging prefixes, skip the first line to avoid
+        # misalignment.
+        yield (Token.Text, '\n')
+        is_empty_line = True
+
+        tokens = pygments.lex(content, self.diff_lexer)
+        # Prepend each line with an indentation, just to make the output
+        # clearer.
+        for ttype, value in tokens:
+            for subval in value.split('\n'):
+                if is_empty_line:
+                    yield indent_token
+                if subval:
+                    yield (ttype, subval)
+                    is_empty_line = False
+                else:
+                    yield (ttype, '\n')
+                    is_empty_line = True
+                    continue
+
+
     def collect_result(self, name, process, job_info):
 
         def get_filename(ext):
@@ -111,14 +172,21 @@ class Testsuite:
             if test_status in ('DIFF', 'CRASH') else
             logging.info)
 
-        logging_func('{:>5}  {}: {}'.format(
-            test_status, test_name, test_msg))
+        self.log(logging_func,
+            self.format_line (test_status, test_name, test_msg))
+
         if self.main.options.view_diffs:
             try:
                 with open(get_filename('diff'), 'r') as diff_file:
-                    logging_func(diff_file.read().strip())
+                    self.log(
+                        logging_func,
+                        self.format_diff(diff_file.read().strip()))
             except (OSError, IOError):
                 pass
+
+
+    def log(self, logging_func, tokens):
+        logging_func(pygments.format(tokens, self.formatter))
 
 
     def iter_tests(self, rootdir):
@@ -126,6 +194,29 @@ class Testsuite:
         for dirpath, dirs, files in os.walk(rootdir):
             if 'test.py' in files:
                 yield dirpath
+
+
+def updated(dict1, dict2):
+    """Return a copy of dict1 updated using dict2."""
+    result = dict1.copy()
+    result.update(dict2)
+    return result
+
+TestStatus = Token.TestStatus
+
+class OutputStyle(Style):
+    _native = get_style_by_name('native').styles
+
+    default_style = ''
+    styles = updated(_native, {
+        TestStatus.DIFF: '#ed9d13',
+        TestStatus.CRASH: 'bold #f00',
+        TestStatus.XFAIL: '#3677a9',
+        TestStatus.UOK: 'bold #447fcf',
+        TestStatus.OK: '#6ab825',
+
+        Token.Generic.Subheading: '#40ffff',
+    })
 
 
 if __name__ == "__main__":

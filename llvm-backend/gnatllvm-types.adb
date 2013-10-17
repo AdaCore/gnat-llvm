@@ -2,11 +2,13 @@ with Interfaces.C;
 
 with Atree;    use Atree;
 with Get_Targ; use Get_Targ;
+with Einfo;    use Einfo;
 with Nlists;   use Nlists;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
+
 with GNATLLVM.Compile;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Types is
 
@@ -87,7 +89,16 @@ package body GNATLLVM.Types is
    begin
       case Nkind (Type_Node) is
          when N_Defining_Identifier =>
-            return Env.Get (Type_Node);
+            begin
+               return Env.Get (Type_Node);
+            exception
+               when No_Such_Type =>
+                  if Is_Itype (Type_Node) then
+                     return Create_Type (Env, Etype (Type_Node));
+                  else
+                     raise;
+                  end if;
+            end;
 
          when N_Identifier =>
             --  If the type does not yet exist in the environnment, it may have
@@ -134,5 +145,39 @@ package body GNATLLVM.Types is
               with "Unhandled node: " & Node_Kind'Image (Nkind (Type_Node));
       end case;
    end Create_Type;
+
+   procedure Create_Discrete_Type
+     (Env       : Environ;
+      TE        : Entity_Id;
+      TL        : out Type_T;
+      Low, High : out Value_T) is
+      SRange : Node_Id;
+   begin
+      --  Delegate LLVM Type creation to Create_Type
+      TL := Create_Type (Env, TE);
+
+      --  Compute ourselves the bounds
+      case Ekind (TE) is
+         when E_Enumeration_Type | E_Enumeration_Subtype
+            | E_Signed_Integer_Type | E_Signed_Integer_Subtype
+            | E_Modular_Integer_Type | E_Modular_Integer_Subtype =>
+
+            SRange := Scalar_Range (TE);
+            case Nkind (SRange) is
+               when N_Range =>
+                  Low := GNATLLVM.Compile.Compile_Expression
+                    (Env, Low_Bound (SRange));
+                  High := GNATLLVM.Compile.Compile_Expression
+                    (Env, High_Bound (SRange));
+               when others => raise Program_Error
+                    with "Invalid scalar range: "
+                    & Node_Kind'Image (Nkind (SRange));
+            end case;
+
+         when others =>
+            raise Program_Error
+              with "Invalid discrete type: " & Entity_Kind'Image (Ekind (TE));
+      end case;
+   end Create_Discrete_Type;
 
 end GNATLLVM.Types;

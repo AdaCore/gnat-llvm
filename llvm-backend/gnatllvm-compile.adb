@@ -238,52 +238,176 @@ package body GNATLLVM.Compile is
 
          when N_Loop_Statement =>
             declare
-               Loop_Identifier           : Entity_Id;
-               BB_Cond, BB_Body, BB_Next : Basic_Block_T;
-               Iter_Scheme               : constant Node_Id :=
+               Loop_Identifier   : Entity_Id;
+               Iter_Scheme       : constant Node_Id :=
                  Iteration_Scheme (Node);
-               Cond                      : Value_T;
+               Is_Mere_Loop      : constant Boolean :=
+                 not Present (Iter_Scheme);
+               Is_For_Loop       : constant Boolean :=
+                 not Is_Mere_Loop
+                 and then
+                   Present (Loop_Parameter_Specification (Iter_Scheme));
+
+               BB_Init, BB_Cond  : Basic_Block_T;
+               BB_Stmts, BB_Iter : Basic_Block_T;
+               BB_Next           : Basic_Block_T;
+               Cond              : Value_T;
             begin
                pragma Assert (Present (Identifier (Node)));
                Loop_Identifier := Entity (Identifier (Node));
 
-               --  Create a basic block if none is already created for this
-               --  identifier.
-               BB_Cond := Env.Get (Loop_Identifier);
-               Discard (Build_Br (Env.Bld, BB_Cond));
+               --  The general format for a loop is:
+               --    INIT;
+               --    while COND loop
+               --       STMTS;
+               --       ITER;
+               --    end loop;
+               --    NEXT:
+               --  Each step has its own basic block. When a loop does not need
+               --  one of these steps, just alias it with another one.
 
-               --  If this is a mere loop, there is no need for a separate
-               --  basic block.
-               BB_Body :=
-                 (if Present (Iter_Scheme) then
-                     Create_Basic_Block (Env, "loop-body")
+               --  Every loop has an identifier, and thus this loop has already
+               --  its own entry (INIT) basic block.
+               BB_Init := Env.Get (Loop_Identifier);
+               Discard (Build_Br (Env.Bld, BB_Init));
+               Env.Set_Current_Basic_Block (BB_Init);
+
+               --  If this is not a FOR loop, there is no initialization: alias
+               --  it with the COND block.
+               BB_Cond :=
+                 (if not Is_For_Loop then
+                     BB_Init
+                  else
+                     Env.Create_Basic_Block ("loop-cond"));
+
+               --  If this is a mere loop, there is even no condition block:
+               --  alias it with the STMTS block.
+               BB_Stmts :=
+                 (if Is_Mere_Loop then
+                     BB_Cond
+                  else
+                     Env.Create_Basic_Block ("loop-stmts"));
+
+               --  If this is not a FOR loop, there is no iteration: alias it
+               --  with the COND block, so that at the end of every STMTS, jump
+               --  on ITER or COND.
+               BB_Iter :=
+                 (if Is_For_Loop then
+                     Env.Create_Basic_Block ("loop-iter")
                   else
                      BB_Cond);
 
-               --  Create a basic block to jump to when leaving the loop
+               --  The NEXT step contains no statement that comes from the
+               --  loop: it is the exit point.
                BB_Next := Create_Basic_Block (Env, "loop-exit");
 
                Env.Push_Loop (Loop_Identifier, BB_Next);
+               Env.Push_Scope;
 
-               if Present (Iter_Scheme) then
-                  Env.Set_Current_Basic_Block (BB_Cond);
-                  if Present (Condition (Iter_Scheme)) then
+               --  First compile the iterative part of the loop: evaluation of
+               --  the exit condition, etc.
+               if not Is_Mere_Loop then
+                  if not Is_For_Loop then
                      --  This is a WHILE loop: jump to the loop-body if the
                      --  condition evaluates to True, jump to the loop-exit
                      --  otherwise.
+                     Env.Set_Current_Basic_Block (BB_Cond);
                      Cond := Compile_Expression (Env, Condition (Iter_Scheme));
-                     Discard (Build_Cond_Br (Env.Bld, Cond, BB_Body, BB_Next));
+                     Discard (Build_Cond_Br
+                              (Env.Bld, Cond, BB_Stmts, BB_Next));
 
                   else
-                     --  This is a FOR loop: TODO???
-                     raise Program_Error with "FOR loops are not handled";
+                     --  This is a FOR loop
+                     declare
+                        Loop_Param_Spec : constant Node_Id :=
+                          Loop_Parameter_Specification (Iter_Scheme);
+                        Def_Ident       : constant Node_Id :=
+                          Defining_Identifier (Loop_Param_Spec);
+                        Reversed        : constant Boolean :=
+                          Reverse_Present (Loop_Param_Spec);
+                        Unsigned_Type   : constant Boolean :=
+                          Is_Unsigned_Type (Etype (Def_Ident));
+                        LLVM_Type       : Type_T;
+                        LLVM_Var        : Value_T;
+                        Low, High       : Value_T;
+                     begin
+                        --  Initialization block: create the loop variable and
+                        --  initialize it.
+                        Create_Discrete_Type
+                          (Env, Etype (Def_Ident), LLVM_Type, Low, High);
+                        LLVM_Var := Build_Alloca
+                          (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
+                        Env.Set (Def_Ident, LLVM_Var);
+                        Discard (Build_Store
+                                 (Env.Bld,
+                                    (if Reversed then High else Low),
+                                    LLVM_Var));
+
+                        --  Then go to the condition block if the range isn't
+                        --  empty.
+                        Cond := Build_I_Cmp
+                          (Env.Bld,
+                           (if Unsigned_Type then Int_ULE else Int_SLE),
+                           Low, High,
+                           "loop-entry-cond");
+                        Discard (Build_Cond_Br
+                                 (Env.Bld, Cond, BB_Cond, BB_Next));
+
+                        --  The FOR loop is special: the condition is evaluated
+                        --  during the INIT step and right before the ITER
+                        --  step, so there is nothing to check during the
+                        --  COND step.
+                        Env.Set_Current_Basic_Block (BB_Cond);
+                        Discard (Build_Br (Env.Bld, BB_Stmts));
+
+                        BB_Cond := Env.Create_Basic_Block ("loop-cond-iter");
+                        Env.Set_Current_Basic_Block (BB_Cond);
+                        Cond := Build_I_Cmp
+                          (Env.Bld,
+                           Int_EQ,
+                           Build_Load (Env.Bld, LLVM_Var, "loop-var"), High,
+                           "loop-iter-cond");
+                        Discard (Build_Cond_Br
+                                 (Env.Bld, Cond, BB_Next, BB_Iter));
+
+                        --  After STMTS, stop if the loop variable was equal to
+                        --  the "exit" bound. Increment/decrement it otherwise.
+                        Env.Set_Current_Basic_Block (BB_Iter);
+                        declare
+                           Iter_Prev_Value : constant Value_T :=
+                             Build_Load (Env.Bld, LLVM_Var, "loop-var");
+                           One             : constant Value_T :=
+                             Const_Int
+                               (LLVM_Type, 1,
+                                Sign_Extend => Boolean'Pos (False));
+                           Iter_Next_Value : constant Value_T :=
+                             (if Reversed then
+                                 Build_Sub
+                                (Env.Bld,
+                                 Iter_Prev_Value, One,
+                                 "next-loop-var")
+                              else
+                                 Build_Add
+                                (Env.Bld,
+                                 Iter_Prev_Value, One,
+                                 "next-loop-var"));
+                        begin
+                           Discard (Build_Store
+                                    (Env.Bld, Iter_Next_Value, LLVM_Var));
+                        end;
+                        Discard (Build_Br (Env.Bld, BB_Stmts));
+
+                        --  The ITER step starts at this special COND step
+                        BB_Iter := BB_Cond;
+                     end;
                   end if;
                end if;
 
-               Env.Set_Current_Basic_Block (BB_Body);
+               Env.Set_Current_Basic_Block (BB_Stmts);
                Compile_List (Env, Statements (Node));
-               Discard (Build_Br (Env.Bld, BB_Cond));
+               Discard (Build_Br (Env.Bld, BB_Iter));
 
+               Env.Pop_Scope;
                Env.Pop_Loop;
 
                Env.Set_Current_Basic_Block (BB_Next);

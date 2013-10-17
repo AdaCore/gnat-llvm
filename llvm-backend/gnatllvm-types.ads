@@ -13,4 +13,9 @@ package GNATLLVM.Types is
 
    function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T;
 
+   procedure Create_Discrete_Type
+     (Env       : Environ;
+      TE        : Entity_Id;
+      TL        : out Type_T;
+      Low, High : out Value_T);
 end GNATLLVM.Types;

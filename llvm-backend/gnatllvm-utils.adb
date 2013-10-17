@@ -1,5 +1,6 @@
 with Namet; use Namet;
 with Nlists;   use Nlists;
+with System; use System;
 
 package body GNATLLVM.Utils is
 
@@ -66,6 +67,40 @@ package body GNATLLVM.Utils is
       end loop;
       return A;
    end Iterate;
+
+   --------------------
+   -- Get_Stack_Save --
+   --------------------
+
+   function Get_Stack_Save (Env : Environ) return Value_T is
+      Result_Type : constant Type_T :=
+        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+   begin
+      return Add_Function
+        (Env.Mdl,
+         "llvm.stacksave",
+         Function_Type
+           (Result_Type,
+            Null_Address, 0,
+            Boolean'Pos (False)));
+   end Get_Stack_Save;
+
+   -----------------------
+   -- Get_Stack_Restore --
+   -----------------------
+
+   function Get_Stack_Restore (Env : Environ) return Value_T is
+      Param_Type : constant Type_T :=
+        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+   begin
+      return Add_Function
+        (Env.Mdl,
+         "llvm.stackrestore",
+         Function_Type
+           (Void_Type_In_Context (Env.Ctx),
+            Param_Type'Address, 1,
+            Boolean'Pos (False)));
+   end Get_Stack_Restore;
 
    ---------------------
    -- Dump_LLVM_Value --

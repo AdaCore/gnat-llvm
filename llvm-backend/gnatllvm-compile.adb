@@ -1,3 +1,5 @@
+with System;
+
 with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Errout;   use Errout;
@@ -415,21 +417,34 @@ package body GNATLLVM.Compile is
 
          when N_Block_Statement =>
             declare
-               BB : Basic_Block_T;
+               BB          : Basic_Block_T;
+               Stack_State : Value_T;
             begin
-                  BB :=
-                    (if Present (Identifier (Node)) then
-                        Env.Get (Entity (Identifier (Node)))
-                     else
-                        Create_Basic_Block (Env, "block"));
-                  Discard (Build_Br (Env.Bld, BB));
-                  Set_Current_Basic_Block (Env, BB);
+               BB :=
+                 (if Present (Identifier (Node)) then
+                     Env.Get (Entity (Identifier (Node)))
+                  else
+                     Create_Basic_Block (Env, "block"));
+               Discard (Build_Br (Env.Bld, BB));
+               Set_Current_Basic_Block (Env, BB);
 
-                  Env.Push_Scope;
-                  Compile_List (Env, Declarations (Node));
-                  Compile_List
-                    (Env, Statements (Handled_Statement_Sequence (Node)));
-                  Env.Pop_Scope;
+               Env.Push_Scope;
+               Stack_State := Build_Call
+                 (Env.Bld,
+                  Get_Stack_Save (Env),
+                  System.Null_Address, 0,
+                  "");
+
+               Compile_List (Env, Declarations (Node));
+               Compile_List
+                 (Env, Statements (Handled_Statement_Sequence (Node)));
+
+               Discard (Build_Call
+                        (Env.Bld,
+                           Get_Stack_Restore (Env),
+                           Stack_State'Address, 1,
+                           ""));
+               Env.Pop_Scope;
             end;
 
          when N_Full_Type_Declaration =>

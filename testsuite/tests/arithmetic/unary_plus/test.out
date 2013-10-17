@@ -1,0 +1,3 @@
+identity(-1) = -1
+identity(0) = 0
+identity(1) = 1

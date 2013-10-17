@@ -176,6 +176,20 @@ package body GNATLLVM.Compile is
          when N_Null_Statement =>
             null;
 
+         when N_Label =>
+            declare
+               BB : constant Basic_Block_T :=
+                 Env.Get (Entity (Identifier (Node)));
+            begin
+               Discard (Build_Br (Env.Bld, BB));
+               Env.Set_Current_Basic_Block (BB);
+            end;
+
+         when N_Goto_Statement =>
+            Discard (Build_Br (Env.Bld, Env.Get (Entity (Name (Node)))));
+            Env.Set_Current_Basic_Block
+              (Env.Create_Basic_Block ("after-goto"));
+
          when N_Exit_Statement =>
             declare
                Exit_Point : constant Basic_Block_T :=

@@ -1,4 +1,5 @@
 with Interfaces.C;
+with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 
 with Atree;    use Atree;
 with Get_Targ; use Get_Targ;
@@ -9,6 +10,7 @@ with Stand;    use Stand;
 
 with GNATLLVM.Compile;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
+with Uintp; use Uintp;
 
 package body GNATLLVM.Types is
 
@@ -142,6 +144,20 @@ package body GNATLLVM.Types is
                Struct_Set_Body
                  (Struct_Type, LLVM_Comps'Address, LLVM_Comps'Length, 0);
                return Struct_Type;
+            end;
+
+         when N_Modular_Type_Definition =>
+            declare
+               E : constant Entity_Id :=
+                 Defining_Identifier (Parent (Type_Node));
+               use Interfaces.C;
+            begin
+               if Non_Binary_Modulus (E) then
+                  return Int64_Type;
+               else
+                  return Int_Type
+                    (unsigned (Log (Float (UI_To_Int (Modulus (E))), 2.0)));
+               end if;
             end;
 
          when others =>

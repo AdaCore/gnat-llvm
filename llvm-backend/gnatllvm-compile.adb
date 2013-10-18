@@ -581,6 +581,7 @@ package body GNATLLVM.Compile is
               Compile_Expr (Left_Opnd (Node));
             RVal : constant Value_T :=
               Compile_Expr (Right_Opnd (Node));
+            Op : Value_T;
 
             function Compile_Cmp (N : Node_Id) return Value_T;
             function Compile_Cmp (N : Node_Id) return Value_T is
@@ -606,25 +607,22 @@ package body GNATLLVM.Compile is
             case Nkind (Node) is
 
             when N_Op_Add =>
-               return Build_Add
-                 (Env.Bld, LVal, RVal, "add");
+               Op := Build_Add (Env.Bld, LVal, RVal, "add");
 
             when N_Op_Subtract =>
-               return Build_Sub
-                 (Env.Bld, LVal, RVal, "sub");
+               Op := Build_Sub (Env.Bld, LVal, RVal, "sub");
 
             when N_Op_Multiply =>
-               return Build_Mul
-                 (Env.Bld, LVal, RVal, "mul");
+               Op := Build_Mul (Env.Bld, LVal, RVal, "mul");
 
             when N_Op_Divide =>
                declare
                   T : constant Entity_Id := Etype (Left_Opnd (Node));
                begin
                   if Is_Signed_Integer_Type (T) then
-                     return Build_S_Div (Env.Bld, LVal, RVal, "sdiv");
+                     Op := Build_S_Div (Env.Bld, LVal, RVal, "sdiv");
                   elsif Is_Floating_Point_Type (T) then
-                     return Build_F_Div (Env.Bld, LVal, RVal, "fdiv");
+                     Op := Build_F_Div (Env.Bld, LVal, RVal, "fdiv");
                   elsif Is_Unsigned_Type (T) then
                      return Build_U_Div (Env.Bld, LVal, RVal, "udiv");
                   else
@@ -642,7 +640,20 @@ package body GNATLLVM.Compile is
                  & Node_Kind'Image (Nkind (Node));
 
             end case;
+
+            if Non_Binary_Modulus (Etype (Node)) then
+               Op := Build_U_Rem
+                 (Env.Bld, Op,
+                  Const_Int
+                    (Create_Type (Env, Etype (Node)),
+                     unsigned_long_long (UI_To_Int (Modulus (Etype (Node)))),
+                     Sign_Extend => Boolean'Pos (True)),
+                 "mod");
+            end if;
+
+            return Op;
          end;
+
       else
 
          case Nkind (Node) is
@@ -662,8 +673,28 @@ package body GNATLLVM.Compile is
          when N_Or_Else => return Build_Scl_Op (Op_Or);
 
          when N_Type_Conversion =>
-            --  TODO : Implement N_Type_Conversion
-            return Compile_Expr (Expression (Node));
+            declare
+               Src_T : constant Entity_Id := Etype (Node);
+               Dest_T : constant Entity_Id := Etype (Expression (Node));
+            begin
+               if Is_Integer_Type (Src_T) then
+                  if Is_Integer_Type (Dest_T) then
+
+                     if Src_T = Dest_T then
+                        return Compile_Expr (Expression (Node));
+                     end if;
+
+                     return Build_S_Ext
+                       (Env.Bld, Compile_Expr (Expression (Node)),
+                        Create_Type (Env, Etype (Node)),
+                        "int_conv");
+                  else
+                     raise Program_Error with "Unhandled type conv";
+                  end if;
+               else
+                  raise Program_Error with "Unhandled type conv";
+               end if;
+            end;
 
          when N_Identifier =>
             return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");

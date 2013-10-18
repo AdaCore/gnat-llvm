@@ -4,6 +4,7 @@
 
 Run the GNAT-LLVM testsuite. See ./testsuite.py -h for help"""
 
+from collections import defaultdict
 from glob import glob
 import itertools
 import logging
@@ -44,6 +45,9 @@ class Testsuite:
             choices=sum([f.aliases for f in get_all_formatters()], []),
             default='terminal256',
             help='format for the output')
+
+        # Mapping: test status -> count of tests that have this status
+        self.summary = defaultdict(lambda: 0)
 
     def run(self):
         """Run the testsuite"""
@@ -89,6 +93,7 @@ class Testsuite:
             self.main.options.old_output_dir
         )
         diff.txt_image(self.main.options.report_file)
+        self.log(logging.info, self.format_summary())
 
 
     def get_test_list(self):
@@ -98,16 +103,42 @@ class Testsuite:
         else:
             return sorted(self.iter_tests('.'))
 
+    def format_status(self, status):
+        status_token = getattr(TestStatus, status, Token.Error)
+        return (status_token, status)
+
+    def format_summary(self):
+        frame_start = [(Token.Punctuation, '=='), (Token.Text, ' ')]
+        frame_stop = [(Token.Text, ' '), (Token.Punctuation, '==')]
+        if self.summary:
+            test_count = sum(n for n in self.summary.values())
+            result = frame_start + [
+                (Token.Number, str(test_count)),
+                (Token.Text, ' tests executed:'),
+            ] + frame_stop + [(Token.Text, '\n')]
+            for status in sorted(self.summary.keys()):
+                result.extend([
+                    (Token.Text, ' ' * 4),
+                    (Token.Number, str(self.summary[status]).ljust(5)),
+                    (Token.Text, ' '),
+                    self.format_status(status),
+                    (Token.Text, '\n'),
+                ])
+        else:
+            result = (
+                frame_start +
+                [(Token.Text, 'No test executed')] +
+                frame_stop)
+        return result
 
     def format_line(self, status, name, message):
         status_padding = max(0, 5 - len(status))
-        status_token = getattr(TestStatus, status, Token.Error)
         result = []
 
         if status_padding:
             result.append((Token.Text, ' ' * status_padding))
         result.extend([
-            (status_token, status),
+            self.format_status(status),
             (Token.Text, '  '),
             (Token.Text, name),
         ])
@@ -161,6 +192,8 @@ class Testsuite:
             'CRASH:cannot read result file')
 
         test_status, test_msg = test_result.split(':', 1)
+
+        self.summary[test_status] += 1
 
         echo_to_file(
             self.main.options.results_file,

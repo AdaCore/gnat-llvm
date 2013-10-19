@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (nested_record, ) = build_and_load(
     ['nested_record.adb'], 'nested_record',
-    Func('nested_record', argtypes=[], restype=c_int),
+    Func('_ada_nested_record', argtypes=[], restype=c_int),
 )
 
 assert nested_record() == 12

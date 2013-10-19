@@ -5,7 +5,7 @@ c_uint_p = POINTER(c_uint)
 
 (silly, ) = build_and_load(
     ['silly.adb'], 'silly',
-    Func('silly', argtypes=[c_uint_p], restype=None),
+    Func('_ada_silly', argtypes=[c_uint_p], restype=None),
     gargs=['-gnatws']
 )
 

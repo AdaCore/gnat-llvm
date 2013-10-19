@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (pgcd, ) = build_and_load(
     ['pgcd.adb'], 'pgcd',
-    Func('pgcd', argtypes=[c_uint, c_uint], restype=c_uint),
+    Func('_ada_pgcd', argtypes=[c_uint, c_uint], restype=c_uint),
 )
 
 def py_pgcd(a, b):

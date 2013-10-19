@@ -5,7 +5,7 @@ c_int_p = POINTER(c_int)
 
 (set_one, ) = build_and_load(
     ['set_one.adb'], 'set_one',
-    Func('set_one', argtypes=[c_int_p], restype=None),
+    Func('_ada_set_one', argtypes=[c_int_p], restype=None),
 )
 
 i = c_int(0)

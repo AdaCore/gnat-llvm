@@ -58,17 +58,24 @@ package body GNATLLVM.Compile is
 
          when N_Subprogram_Body =>
             declare
-               Subp_Node : constant Node_Id := Specification (Node);
-               Subp_Type : constant Type_T :=
+               Subp_Node      : constant Node_Id := Specification (Node);
+               Subp_Type      : constant Type_T :=
                  Create_Subprogram_Type (Env, Subp_Node);
-               Subp_Name : constant String :=
-                 Get_Name_String (Chars (Defining_Unit_Name (Subp_Node)));
-               Subp      : constant Subp_Env
+               Subp_Def_Ident : constant Node_Id :=
+                 Defining_Unit_Name (Subp_Node);
+               Subp_Base_Name : constant String :=
+                 Get_Name_String (Chars (Subp_Def_Ident));
+               Subp_Name      : constant String :=
+                 (if Scope_Depth_Value (Subp_Def_Ident) > 1 then
+                     Subp_Base_Name
+                  else
+                     "_ada_" & Subp_Base_Name);
+               Subp           : constant Subp_Env
                  := Env.Create_Subp (Subp_Name, Subp_Type);
-               LLVM_Param : Value_T;
-               LLVM_Var   : Value_T;
-               Param : Entity_Id;
-               I : Natural := 0;
+               LLVM_Param     : Value_T;
+               LLVM_Var       : Value_T;
+               Param          : Entity_Id;
+               I              : Natural := 0;
             begin
                if Acts_As_Spec (Node) then
                   Env.Set

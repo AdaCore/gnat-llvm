@@ -5,7 +5,7 @@ c_uint_p = POINTER(c_uint)
 
 (fact, ) = build_and_load(
     ['fact.adb'], 'fact',
-    Func('fact', argtypes=[c_uint, c_uint_p], restype=None),
+    Func('_ada_fact', argtypes=[c_uint, c_uint_p], restype=None),
 )
 
 def compute_fact(n):

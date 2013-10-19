@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (fact, ) = build_and_load(
     ['fact.adb'], 'fact',
-    Func('fact', argtypes=[c_uint], restype=c_uint),
+    Func('_ada_fact', argtypes=[c_uint], restype=c_uint),
 )
 
 assert fact(0) == 1

@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (absolute, ) = build_and_load(
     ['absolute.adb'], 'absolute',
-    Func('absolute', argtypes=[c_int], restype=c_int),
+    Func('_ada_absolute', argtypes=[c_int], restype=c_int),
 )
 
 assert absolute(0) == 0

@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (alu, ) = build_and_load(
     ['alu.adb'], 'alu',
-    Func('alu', argtypes=[c_bool, c_uint, c_uint], restype=c_uint),
+    Func('_ada_alu', argtypes=[c_bool, c_uint, c_uint], restype=c_uint),
 )
 
 assert alu(True, 2, 3) == 5

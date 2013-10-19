@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (count_ones, ) = build_and_load(
     ['count_ones.adb'], 'count_ones',
-    Func('count_ones', argtypes=[c_uint], restype=c_uint),
+    Func('_ada_count_ones', argtypes=[c_uint], restype=c_uint),
 )
 
 def check(n):

@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (compare, ) = build_and_load(
     ['compare.adb'], 'compare',
-    Func('compare', argtypes=[c_int, c_int], restype=c_bool),
+    Func('_ada_compare', argtypes=[c_int, c_int], restype=c_bool),
 )
 
 assert compare(1,   2) == False

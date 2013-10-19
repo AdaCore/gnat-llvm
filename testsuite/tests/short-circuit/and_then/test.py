@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (and_then, ) = build_and_load(
     ['and_then.adb'], 'and_then',
-    Func('and_then', argtypes=[c_uint], restype=c_uint),
+    Func('_ada_and_then', argtypes=[c_uint], restype=c_uint),
 )
 
 assert and_then(0, 0) == 1

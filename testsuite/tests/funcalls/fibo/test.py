@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (fibo, ) = build_and_load(
     ['fibo.adb'], 'fibo',
-    Func('fibo', argtypes=[c_int], restype=c_int),
+    Func('_ada_fibo', argtypes=[c_int], restype=c_int),
 )
 
 

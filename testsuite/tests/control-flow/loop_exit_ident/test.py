@@ -5,7 +5,10 @@ c_uint_p = POINTER(c_uint)
 
 (find_factors, ) = build_and_load(
     ['find_factors.adb'], 'find_factors',
-    Func('find_factors', argtypes=[c_uint, c_uint_p, c_uint_p], restype=None),
+    Func(
+        '_ada_find_factors',
+        argtypes=[c_uint, c_uint_p, c_uint_p],
+        restype=None),
 )
 
 def compute(n):

@@ -5,7 +5,7 @@ c_int_p = POINTER(c_int)
 
 (absolute, ) = build_and_load(
     ['absolute.adb'], 'absolute',
-    Func('absolute', argtypes=[c_int_p], restype=None),
+    Func('_ada_absolute', argtypes=[c_int_p], restype=None),
 )
 
 def compute_abs(i):

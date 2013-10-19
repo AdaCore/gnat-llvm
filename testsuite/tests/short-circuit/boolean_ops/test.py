@@ -3,7 +3,7 @@ from gnatllvm import build_and_load, Func
 
 (boolean_ops, ) = build_and_load(
     ['boolean_ops.adb'], 'boolean_ops',
-    Func('boolean_ops', argtypes=[c_int, c_int], restype=c_bool),
+    Func('_ada_boolean_ops', argtypes=[c_int, c_int], restype=c_bool),
 )
 
 assert boolean_ops(1, 2) == True

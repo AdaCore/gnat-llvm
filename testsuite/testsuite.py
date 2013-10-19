@@ -9,6 +9,7 @@ from glob import glob
 import itertools
 import logging
 import os
+import subprocess
 import sys
 
 import pygments
@@ -31,12 +32,54 @@ from gnatpython.testdriver import add_run_test_options
 from gnatpython.reports import ReportDiff
 
 
+def add_path(env_var, path):
+    """Add the given PATH to the ENV_VAR environment variable."""
+    previous = os.environ.get(env_var, None)
+    os.environ[env_var] = (
+        '{}:{}'.format(path, previous)
+        if previous else
+        path
+    )
+
+def get_gnatls_paths(cmd='gnatls -v'):
+    """Get source, object and project search paths from "gnatls -v" output."""
+    source_spath = []
+    object_spath = []
+    project_spath = []
+
+    gnatls_output, _ = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE).communicate()
+
+    current_spath = None
+    for line in gnatls_output.split('\n'):
+        try:
+            current_spath = {
+                'Source Search Path:': source_spath,
+                'Object Search Path:': object_spath,
+                'Project Search Path:': project_spath,
+            }[line]
+        except KeyError:
+            pass
+        else:
+            continue
+
+        if line.startswith('   '):
+            line = line.lstrip()
+            current_spath.append(
+                os.getcwd() if line.startswith('<') else line
+            )
+
+    return (source_spath, object_spath, project_spath)
+
+
 class Testsuite:
 
     def __init__(self):
         self.main =  Main()
         add_mainloop_options(self.main, extended_options=True)
         add_run_test_options(self.main)
+
+        # Output formatting options
         self.main.add_option(
             '--diffs', dest='view_diffs', action='store_true',
             default=False, help='show diffs on stdout')
@@ -46,6 +89,13 @@ class Testsuite:
             default='terminal256',
             help='format for the output')
 
+        # Tests running options
+        self.main.add_option(
+            '--native-gnat', dest='native_gnat',
+            action='store_true', default=False,
+            help='Run the tests with the native GNAT compiler instead of'
+                 ' GNAT-LLVM')
+
         # Mapping: test status -> count of tests that have this status
         self.summary = defaultdict(lambda: 0)
 
@@ -53,6 +103,16 @@ class Testsuite:
         """Run the testsuite"""
 
         self.main.parse_args()
+
+        if self.main.options.native_gnat:
+            os.environ['USE_NATIVE_GNAT'] = 'TRUE'
+
+            # This is needed by the linker/ctypes in order to find the GNAT
+            # runtime.
+            _, object_spath, _ = get_gnatls_paths()
+            for env_var in ('LIBRARY_PATH', 'LD_LIBRARY_PATH'):
+                for path in object_spath:
+                    add_path(env_var, path)
 
         # Various files needed or created by the testsuite
         # creates :

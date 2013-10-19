@@ -1,4 +1,5 @@
 from collections import namedtuple
+import ctypes
 from ctypes import cdll
 import os
 import os.path
@@ -8,8 +9,13 @@ import sys
 from gnatpython.fileutils import mkdir, rm
 
 
+USE_NATIVE_GNAT = bool(os.environ.get('USE_NATIVE_GNAT', False))
 Func = namedtuple('Func', 'name argtypes restype')
 
+
+def get_library_name(filename):
+    """Return the library file name for the given Ada source file name."""
+    return os.path.splitext(filename)[0]
 
 def change_ext(filename, new_ext):
     """Replace "filename" extension with "new_ext"."""
@@ -34,14 +40,25 @@ def get_shared_func(shared, name, argtypes=[], restype=None):
 
 def gnat_to_bc(adb, gargs=None):
     """Compile the "adb" unit and return the result bitcode filename."""
+
+    if USE_NATIVE_GNAT:
+        raise RuntimeError(
+            'Cannot produce LLVM bitcode with the native GNAT compiler')
+
     gargs = list(gargs) if gargs else []
     subprocess.check_call(['llvm-gnatcompile', '-c', adb] + gargs)
     return change_ext(adb, 'bc')
 
 def gnat_to_obj(adb, gargs=None):
     """Compile the "adb" unit and return the result object file filename."""
-    subprocess.check_call(['llc', '-relocation-model=pic', gnat_to_bc(adb, gargs)])
-    subprocess.check_call(['gcc', '-c', change_ext(adb, 's')])
+
+    if USE_NATIVE_GNAT:
+        gargs = list(gargs) if gargs else []
+        subprocess.check_call(['gcc', '-c', '-fPIC'] + gargs + [adb])
+    else:
+        subprocess.check_call(
+            ['llc', '-relocation-model=pic', gnat_to_bc(adb, gargs)])
+        subprocess.check_call(['gcc', '-c', change_ext(adb, 's')])
     return change_ext(adb, 'o')
 
 def gnat_to_shared(adb_list, name, gargs=None):
@@ -52,7 +69,19 @@ def gnat_to_shared(adb_list, name, gargs=None):
     """
     obj_list = [gnat_to_obj(adb, gargs) for adb in adb_list]
     result = change_ext(name, 'so')
-    subprocess.check_call(['gcc', '-shared', '-o', result] + obj_list)
+
+    if USE_NATIVE_GNAT:
+        library_list = [get_library_name(adb) for adb in adb_list]
+        binder_output = 'b~{}.adb'.format(library_list[-1])
+        subprocess.check_call(
+            ['gnatbind', '-L{}'.format(name), '-shared'] + library_list)
+        obj_list.append(gnat_to_obj(binder_output, gargs))
+        extra_options = ['-lgnat']
+    else:
+        extra_options = []
+
+    subprocess.check_call(
+        ['gcc', '-shared', '-o', result] + extra_options + obj_list)
     return result
 
 def build_and_load(adb_list, name, *objects, **kwargs):

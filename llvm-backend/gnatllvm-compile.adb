@@ -679,6 +679,16 @@ package body GNATLLVM.Compile is
          when N_And_Then => return Build_Scl_Op (Op_And);
          when N_Or_Else => return Build_Scl_Op (Op_Or);
 
+         when N_Op_Plus => return Compile_Expr (Right_Opnd (Node));
+         when N_Op_Minus => return Build_Sub
+              (Env.Bld,
+               Const_Int
+                 (Create_Type (Env, Etype (Node)),
+                  0,
+                  Sign_Extend => Boolean'Pos (False)),
+               Compile_Expr (Right_Opnd (Node)),
+               "minus");
+
          when N_Type_Conversion =>
             declare
                Src_T : constant Entity_Id := Etype (Node);

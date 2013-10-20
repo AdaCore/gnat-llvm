@@ -19,13 +19,24 @@ ada_list_record._fields_ = [
 def list_to_ada(l):
     result = None
     for v in reversed(l):
-        result = ada_list_record(v, result)
+        result = pointer(ada_list_record(v, result))
     return result
 
-def check(l):
-    assert length(list_to_ada(l)) == len(l)
+def format_list(l):
+    if len (l) > 10:
+        return '[{}, ..., {}]'.format(
+            ', '.join(str(item) for item in l[:5]),
+            ', '.join(str(item) for item in l[-5:])
+        )
+    else:
+        return str(l)
 
-check([])
-check([1])
-check([1, 2])
-check([1] * 10000)
+for l in (
+    [],
+    [1],
+    [1, 2],
+    range(10000),
+):
+    print 'length({}) = {}'.format(
+        format_list(l),
+        length(list_to_ada(l)))

@@ -83,6 +83,15 @@ package body GNATLLVM.Compile is
                   Env.Set (Corresponding_Spec (Node), Subp.Func);
                end if;
 
+               if not Is_Public (Subp_Def_Ident)
+                 and then
+                   (not Acts_As_Spec (Node)
+                    and then
+                    not Is_Public (Corresponding_Spec (Node)))
+               then
+                  Set_Linkage (Subp.Func, Internal_Linkage);
+               end if;
+
                --  Register each parameter into a new scope
                Env.Push_Scope;
 

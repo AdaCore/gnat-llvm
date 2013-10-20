@@ -104,3 +104,12 @@ def build_and_load(adb_list, name, *objects, **kwargs):
         result.append(loaded_obj)
 
     return result
+
+
+class Structure(ctypes.Structure):
+
+    def __str__(self):
+        return '{} ({})'.format(type(self).__name__, ', '.join(
+            '{}={}'.format(field_name, getattr(self, field_name))
+            for field_name, field_type in self._fields_
+        ))

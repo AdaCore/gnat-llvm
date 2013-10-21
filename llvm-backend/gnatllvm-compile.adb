@@ -90,6 +90,7 @@ package body GNATLLVM.Compile is
                for P of Iterate (Parameter_Specifications (Subp_Node)) loop
                   LLVM_Param := Get_Param (Subp.Func, unsigned (I));
                   Param := Defining_Identifier (P);
+
                   --  Define a name for the parameter P (which is the I'th
                   --  parameter), and associate the corresponding LLVM value to
                   --  its entity.
@@ -100,6 +101,7 @@ package body GNATLLVM.Compile is
                   --  If this is an out parameter, the parameter is already an
                   --  l-value: keep it. Otherwise, allocate some memory for the
                   --  corresponding variable, and initialize it.
+
                   if Out_Present (P) then
                      LLVM_Var := LLVM_Param;
                   else
@@ -477,6 +479,21 @@ package body GNATLLVM.Compile is
               (Defining_Identifier (Node),
                Create_Type (Env, Subtype_Mark (Subtype_Indication (Node))));
 
+         when N_Incomplete_Type_Declaration =>
+            declare
+               DI : constant Node_Id := Defining_Identifier (Node);
+               FV : constant Node_Id := Get_Full_View (DI);
+               T : Type_T := Struct_Create_Named (Env.Ctx, Get_Name (DI));
+            begin
+               Env.Set (DI, T);
+               Env.Set (FV, T);
+               if FV /= DI then
+                  Compile (Env, Parent (FV));
+                  T := Env.Get (FV);
+                  Env.Set (DI, T);
+               end if;
+            end;
+
          when N_Freeze_Entity =>
             --  TODO ??? Implement N_Freeze_Entity. We just need a stub
             --  implementation for basic types atm
@@ -534,33 +551,53 @@ package body GNATLLVM.Compile is
       type Scl_Op is (Op_Or, Op_And);
 
       function Build_Scl_Op (Op : Scl_Op) return Value_T;
+      --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
+
       function Build_Scl_Op (Op : Scl_Op) return Value_T is
       begin
          declare
+
+            --  The left expression of a SCL op is always evaluated.
+
             Left : constant Value_T := Compile_Expr (Left_Opnd (Node));
             Result : constant Value_T :=
               Build_Alloca
                 (Env.Bld,
                  Type_Of (Left),
                  "scl-res-1");
-            Block_Left_True : constant Basic_Block_T :=
-              Append_Basic_Block (Env.Current_Subp.Func, "scl-pass");
-            Block_Left_Exit : constant Basic_Block_T :=
+
+            --  Block which contains the evaluation of the right part
+            --  expression of the operator.
+
+            Block_Right_Expr : constant Basic_Block_T :=
+              Append_Basic_Block (Env.Current_Subp.Func, "scl-right-expr");
+
+            --  Block containing the exit code (load the final cond value into
+            --  Result
+
+            Block_Exit : constant Basic_Block_T :=
               Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");
+
          begin
             Discard (Build_Store (Env.Bld, Left, Result));
+
+            --  In the case of And, evaluate the right expression when Left is
+            --  true. In the case of Or, evaluate it when Left is false.
 
             if Op = Op_And then
                Discard
                  (Build_Cond_Br
-                    (Env.Bld, Left, Block_Left_True, Block_Left_Exit));
+                    (Env.Bld, Left, Block_Right_Expr, Block_Exit));
             else
                Discard
                  (Build_Cond_Br
-                    (Env.Bld, Left, Block_Left_Exit, Block_Left_True));
+                    (Env.Bld, Left, Block_Exit, Block_Right_Expr));
             end if;
 
-            Position_Builder_At_End (Env.Bld, Block_Left_True);
+            --  Emit code for the evaluation of the right part expression
+
+            Position_Builder_At_End (Env.Bld, Block_Right_Expr);
+
             declare
                Right : constant Value_T := Compile_Expr (Right_Opnd (Node));
                Left : constant Value_T := Build_Load
@@ -573,10 +610,12 @@ package body GNATLLVM.Compile is
                   Res := Build_Or (Env.Bld, Left, Right, "scl-or");
                end if;
                Discard (Build_Store (Env.Bld, Res, Result));
-               Discard (Build_Br (Env.Bld, Block_Left_Exit));
+               Discard (Build_Br (Env.Bld, Block_Exit));
             end;
-            Position_Builder_At_End (Env.Bld, Block_Left_Exit);
-            Env.Current_Subp.Current_Block := Block_Left_Exit;
+
+            Position_Builder_At_End (Env.Bld, Block_Exit);
+            Env.Current_Subp.Current_Block := Block_Exit;
+
             return Build_Load (Env.Bld, Result, "scl-final-res");
          end;
       end Build_Scl_Op;
@@ -591,11 +630,18 @@ package body GNATLLVM.Compile is
             Op : Value_T;
 
             function Compile_Cmp (N : Node_Id) return Value_T;
+            --  Compilation of binary comparison operators
+
             function Compile_Cmp (N : Node_Id) return Value_T is
                PM : constant Pred_Mapping := Get_Preds (N);
                T : constant Entity_Id := Etype (Left_Opnd (Node));
             begin
-               if Is_Integer_Type (T) then
+
+               --  LLVM treats pointers as integers regarding comparison
+
+               if Is_Integer_Type (T)
+                 or else Is_Access_Type (T)
+               then
                   return Build_I_Cmp
                     (Env.Bld,
                      (if Is_Unsigned_Type (T) then PM.Unsigned else PM.Signed),
@@ -648,6 +694,8 @@ package body GNATLLVM.Compile is
 
             end case;
 
+            --  We need to handle modulo manually for non binary modulus types.
+
             if Non_Binary_Modulus (Etype (Node)) then
                Op := Build_U_Rem
                  (Env.Bld, Op,
@@ -694,6 +742,10 @@ package body GNATLLVM.Compile is
                Src_T : constant Entity_Id := Etype (Node);
                Dest_T : constant Entity_Id := Etype (Expression (Node));
             begin
+
+               --  For the moment, we handle only the simple case of Integer to
+               --  Integer conversions.
+
                if Is_Integer_Type (Src_T) then
                   if Is_Integer_Type (Dest_T) then
 
@@ -748,10 +800,7 @@ package body GNATLLVM.Compile is
                   Pfx_Val : constant Value_T :=
                     Compile_Expression (Env, Prefix (Node));
                   Pfx_Ptr : constant Value_T :=
-                    Build_Alloca
-                      (Env.Bld,
-                       Type_Of (Pfx_Val),
-                       "pfx_ptr");
+                    Build_Alloca (Env.Bld, Type_Of (Pfx_Val), "pfx_ptr");
                   Record_Component : constant Entity_Id :=
                     Parent (Entity (Selector_Name (Node)));
                   Idx : constant unsigned :=
@@ -760,14 +809,15 @@ package body GNATLLVM.Compile is
                   Discard (Build_Store (Env.Bld, Pfx_Val, Pfx_Ptr));
                   return Build_Load
                     (Env.Bld,
-                     Build_Struct_GEP
-                       (Env.Bld, Pfx_Ptr, Idx, "pfx_load"),
-                     "");
+                     Build_Struct_GEP (Env.Bld, Pfx_Ptr, Idx, "pfx_load"), "");
                end;
 
+            when N_Null =>
+               return Const_Null (Create_Type (Env, Etype (Node)));
+
             when others =>
-            raise Program_Error
-              with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+               raise Program_Error
+                 with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
          end case;
       end if;
    end Compile_Expression;

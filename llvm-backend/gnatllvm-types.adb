@@ -56,8 +56,10 @@ package body GNATLLVM.Types is
 
       for I in Param_Types'Range loop
          Param_Types (I) := Create_Type (Env, Parameter_Type (Arg));
+
          --  If this is an OUT parameter, take a pointer to the actual
          --  parameter.
+
          if Out_Present (Arg) then
             Param_Types (I) := Pointer_Type (Param_Types (I), 0);
          end if;
@@ -103,12 +105,15 @@ package body GNATLLVM.Types is
             end;
 
          when N_Identifier =>
+
             --  If the type does not yet exist in the environnment, it may have
             --  been drawn from another file (adb's own spec file or another),
-            --  so we lazily compile the full type declaration.
+            --  so we compile the full type declaration.
+
             if not Env.Has_Type (Entity (Type_Node)) then
                GNATLLVM.Compile.Compile (Env, Parent (Entity (Type_Node)));
             end if;
+
             return Env.Get (Entity (Type_Node));
 
          when N_Access_Definition =>
@@ -120,19 +125,40 @@ package body GNATLLVM.Types is
               (Create_Type (Env, Subtype_Indication (Type_Node)), 0);
 
          when N_Derived_Type_Definition =>
+
+            --  Machine representation of a derived type is the same as its
+            --  parent type
+
             return Create_Type
               (Env, Subtype_Mark (Subtype_Indication (Type_Node)));
 
          when N_Record_Definition =>
             declare
-               Struct_Type : constant Type_T := Struct_Create_Named
-                 (Env.Ctx,
-                  Get_Name (Defining_Identifier (Parent (Type_Node))));
+               DI : constant Node_Id :=
+                 Defining_Identifier (Parent (Type_Node));
+
+               --  When declaring a record, we want to check if the environment
+               --  already contains a type for the given entity. If it does,
+               --  rather than creating a new type, we'll want to alter the
+               --  existing LLVM struct
+
+               Full : constant Boolean := Env.Has_Type (DI);
+               Struct_Type : constant Type_T :=
+                 (if Full then Env.Get (DI)
+                  else Struct_Create_Named
+                    (Env.Ctx,
+                     Get_Name (Defining_Identifier (Parent (Type_Node)))));
+
                Comp_List : constant List_Id :=
                  Component_Items (Component_List (Type_Node));
                LLVM_Comps : array (1 .. List_Length (Comp_List)) of Type_T;
                I : Int := 1;
             begin
+
+               --  Create a LLVM type recursively for every component of the
+               --  record, and set the resulting array of types as the struct's
+               --  body
+
                for El of
                  Iterate (Component_Items (Component_List (Type_Node)))
                loop
@@ -141,8 +167,10 @@ package body GNATLLVM.Types is
                       (Env, Subtype_Indication (Component_Definition (El)));
                   I := I + 1;
                end loop;
+
                Struct_Set_Body
                  (Struct_Type, LLVM_Comps'Address, LLVM_Comps'Length, 0);
+
                return Struct_Type;
             end;
 
@@ -153,12 +181,43 @@ package body GNATLLVM.Types is
                use Interfaces.C;
             begin
                if Non_Binary_Modulus (E) then
+
+                  --  Use the biggest integer type for non binary mod types
+                  --  TODO : Use a smaller type when possible. Check what
+                  --  GNATGCC does on 32 bits platforms
+
                   return Int64_Type;
                else
+
+                  --  Since LLVM behavior regarding unsigned int types is what
+                  --  we expect for mod types, just use a rightly sized integer
+                  --  for binary mod types
+
                   return Int_Type
                     (unsigned (Log (Float (UI_To_Int (Modulus (E))), 2.0)));
                end if;
             end;
+
+--           when N_Constrained_Array_Definition =>
+--              declare
+--                 function Array_From_Type
+--                   (T : Type_T, DSD : Node_Id) return Type_T
+--                 is
+--
+--                 begin
+--
+--                 end Array_From_Type;
+--                 DSD : constant List_Id :=
+--                   Discrete_Subtype_Definitions (Type_Node);
+--                 El_Type : Type_T;
+--              begin
+--                 if List_Length (DSD) > 1 then
+--                    raise Program_Error
+--                      with "Multidimensional arrays not implemented yet";
+--                 end if;
+--                 El_Type := Create_Type
+--               (Env, Subtype_Indication (Component_Definition (Type_Node)));
+--              end;
 
          when others =>
             raise Program_Error
@@ -174,9 +233,11 @@ package body GNATLLVM.Types is
       SRange : Node_Id;
    begin
       --  Delegate LLVM Type creation to Create_Type
+
       TL := Create_Type (Env, TE);
 
       --  Compute ourselves the bounds
+
       case Ekind (TE) is
          when E_Enumeration_Type | E_Enumeration_Subtype
             | E_Signed_Integer_Type | E_Signed_Integer_Subtype

@@ -107,16 +107,16 @@ package body GNATLLVM.Types is
    begin
       case Nkind (Type_Node) is
          when N_Defining_Identifier =>
-            begin
-               return Env.Get (Type_Node);
-            exception
-               when No_Such_Type =>
-                  if Is_Itype (Type_Node) then
-                     return Create_Type (Env, Etype (Type_Node));
-                  else
-                     raise;
-                  end if;
-            end;
+
+            if not Env.Has_Type (Type_Node) then
+               if Nkind (Parent (Type_Node)) /= N_Empty then
+                  GNATLLVM.Compile.Compile (Env, Parent (Type_Node));
+               else
+                  return Create_Type (Env, Etype (Type_Node));
+               end if;
+            end if;
+
+            return Env.Get (Type_Node);
 
          when N_Identifier =>
 

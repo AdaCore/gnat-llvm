@@ -477,10 +477,10 @@ package body GNATLLVM.Compile is
               (Defining_Identifier (Node),
                Create_Type (Env, Subtype_Mark (Subtype_Indication (Node))));
 
-         when N_Incomplete_Type_Declaration =>
+         when N_Incomplete_Type_Declaration | N_Private_Type_Declaration =>
             declare
                DI : constant Node_Id := Defining_Identifier (Node);
-               FV : constant Node_Id := Get_Full_View (DI);
+               FV : constant Node_Id := Full_View (DI);
                T : Type_T := Struct_Create_Named (Env.Ctx, Get_Name (DI));
             begin
                Env.Set (DI, T);
@@ -495,6 +495,9 @@ package body GNATLLVM.Compile is
          when N_Freeze_Entity =>
             --  TODO ??? Implement N_Freeze_Entity. We just need a stub
             --  implementation for basic types atm
+            null;
+
+         when N_Empty =>
             null;
 
          when others =>
@@ -515,7 +518,8 @@ package body GNATLLVM.Compile is
             return Env.Get (Entity (Node));
 
          when N_Explicit_Dereference =>
-            return Build_Load (Env.Bld, Env.Get (Entity (Prefix (Node))), "");
+            return Build_Load
+              (Env.Bld, Compile_LValue (Env, Prefix (Node)), "");
 
          when N_Selected_Component =>
             declare
@@ -869,7 +873,12 @@ package body GNATLLVM.Compile is
    begin
       --  Lazy compilation of function specs
       if not Env.Has_Value (Entity (Name (Call))) then
-         Compile (Env, Parent (Parent (Entity (Name (Call)))));
+         declare
+            BB : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
+         begin
+            Compile (Env, Parent (Parent (Entity (Name (Call)))));
+            Set_Current_Basic_Block (Env, BB);
+         end;
       end if;
 
       LLVM_Func := Env.Get (Entity (Name (Call)));

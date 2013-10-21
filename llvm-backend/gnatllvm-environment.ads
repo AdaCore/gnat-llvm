@@ -42,7 +42,6 @@ package GNATLLVM.Environment is
    type Subp_Env_Record is tagged record
       Env           : Environ;
       Func          : Value_T;
-      Current_Block : Basic_Block_T;
    end record;
    type Subp_Env is access all Subp_Env_Record;
 
@@ -106,8 +105,6 @@ package GNATLLVM.Environment is
 
    function Create_Basic_Block
      (Env : access Environ_Record; Name : String) return Basic_Block_T;
-   procedure Set_Current_Basic_Block
-     (Env : access Environ_Record; BB : Basic_Block_T);
 
    function Current_Subp (Env : access Environ_Record) return Subp_Env;
 

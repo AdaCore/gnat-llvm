@@ -198,14 +198,12 @@ package body GNATLLVM.Environment is
       Func : constant Value_T := Add_Function (Env.Mdl, Name, Typ);
       Subp : constant Subp_Env := new Subp_Env_Record'
         (Env           => Environ (Env),
-         Func          => Func,
-         Current_Block =>
-           Append_Basic_Block_In_Context
-             (Env.Ctx, Func, "entry"));
+         Func          => Func);
    begin
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
-      Position_Builder_At_End (Env.Bld, Subp.Current_Block);
+      Position_Builder_At_End
+        (Env.Bld, Env.Create_Basic_Block ("entry"));
       return Subp;
    end Create_Subp;
 
@@ -237,16 +235,5 @@ package body GNATLLVM.Environment is
       return Append_Basic_Block_In_Context
         (Env.Ctx, Current_Subp (Env).Func, Name);
    end Create_Basic_Block;
-
-   -----------------------------
-   -- Set_Current_Basic_Block --
-   -----------------------------
-
-   procedure Set_Current_Basic_Block
-     (Env : access Environ_Record; BB : Basic_Block_T) is
-   begin
-      Position_Builder_At_End (Env.Bld, BB);
-      Env.Current_Subp.Current_Block := BB;
-   end Set_Current_Basic_Block;
 
 end GNATLLVM.Environment;

@@ -199,13 +199,13 @@ package body GNATLLVM.Compile is
                  Env.Get (Entity (Identifier (Node)));
             begin
                Discard (Build_Br (Env.Bld, BB));
-               Env.Set_Current_Basic_Block (BB);
+               Position_Builder_At_End (Env.Bld, BB);
             end;
 
          when N_Goto_Statement =>
             Discard (Build_Br (Env.Bld, Env.Get (Entity (Name (Node)))));
-            Env.Set_Current_Basic_Block
-              (Env.Create_Basic_Block ("after-goto"));
+            Position_Builder_At_End
+              (Env.Bld, Env.Create_Basic_Block ("after-goto"));
 
          when N_Exit_Statement =>
             declare
@@ -225,7 +225,7 @@ package body GNATLLVM.Compile is
                else
                   Discard (Build_Br (Env.Bld, Exit_Point));
                end if;
-               Env.Set_Current_Basic_Block (Next_BB);
+               Position_Builder_At_End (Env.Bld, Next_BB);
             end;
 
          when N_Simple_Return_Statement =>
@@ -237,8 +237,8 @@ package body GNATLLVM.Compile is
             else
                Discard (Build_Ret_Void (Env.Bld));
             end if;
-            Env.Set_Current_Basic_Block
-              (Env.Create_Basic_Block ("unreachable"));
+            Position_Builder_At_End
+              (Env.Bld, Env.Create_Basic_Block ("unreachable"));
 
          when N_If_Statement =>
             declare
@@ -254,17 +254,17 @@ package body GNATLLVM.Compile is
                   else BB_Next);
                Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
 
-               Env.Set_Current_Basic_Block (BB_Then);
+               Position_Builder_At_End (Env.Bld, BB_Then);
                Compile_List (Env, Then_Statements (Node));
                Discard (Build_Br (Env.Bld, BB_Next));
 
                if not Is_Empty_List (Else_Statements (Node)) then
-                  Env.Set_Current_Basic_Block (BB_Else);
+                  Position_Builder_At_End (Env.Bld, BB_Else);
                   Compile_List (Env, Else_Statements (Node));
                   Discard (Build_Br (Env.Bld, BB_Next));
                end if;
 
-               Env.Set_Current_Basic_Block (BB_Next);
+               Position_Builder_At_End (Env.Bld, BB_Next);
             end;
 
          when N_Loop_Statement =>
@@ -301,7 +301,7 @@ package body GNATLLVM.Compile is
                --  its own entry (INIT) basic block.
                BB_Init := Env.Get (Loop_Identifier);
                Discard (Build_Br (Env.Bld, BB_Init));
-               Env.Set_Current_Basic_Block (BB_Init);
+               Position_Builder_At_End (Env.Bld, BB_Init);
 
                --  If this is not a FOR loop, there is no initialization: alias
                --  it with the COND block.
@@ -338,7 +338,7 @@ package body GNATLLVM.Compile is
                      --  This is a WHILE loop: jump to the loop-body if the
                      --  condition evaluates to True, jump to the loop-exit
                      --  otherwise.
-                     Env.Set_Current_Basic_Block (BB_Cond);
+                     Position_Builder_At_End (Env.Bld, BB_Cond);
                      Cond := Compile_Expression (Env, Condition (Iter_Scheme));
                      Discard (Build_Cond_Br
                               (Env.Bld, Cond, BB_Stmts, BB_Next));
@@ -384,11 +384,11 @@ package body GNATLLVM.Compile is
                         --  during the INIT step and right before the ITER
                         --  step, so there is nothing to check during the
                         --  COND step.
-                        Env.Set_Current_Basic_Block (BB_Cond);
+                        Position_Builder_At_End (Env.Bld, BB_Cond);
                         Discard (Build_Br (Env.Bld, BB_Stmts));
 
                         BB_Cond := Env.Create_Basic_Block ("loop-cond-iter");
-                        Env.Set_Current_Basic_Block (BB_Cond);
+                        Position_Builder_At_End (Env.Bld, BB_Cond);
                         Cond := Build_I_Cmp
                           (Env.Bld,
                            Int_EQ,
@@ -399,7 +399,7 @@ package body GNATLLVM.Compile is
 
                         --  After STMTS, stop if the loop variable was equal to
                         --  the "exit" bound. Increment/decrement it otherwise.
-                        Env.Set_Current_Basic_Block (BB_Iter);
+                        Position_Builder_At_End (Env.Bld, BB_Iter);
                         declare
                            Iter_Prev_Value : constant Value_T :=
                              Build_Load (Env.Bld, LLVM_Var, "loop-var");
@@ -427,14 +427,14 @@ package body GNATLLVM.Compile is
                   end if;
                end if;
 
-               Env.Set_Current_Basic_Block (BB_Stmts);
+               Position_Builder_At_End (Env.Bld, BB_Stmts);
                Compile_List (Env, Statements (Node));
                Discard (Build_Br (Env.Bld, BB_Iter));
 
                Env.Pop_Scope;
                Env.Pop_Loop;
 
-               Env.Set_Current_Basic_Block (BB_Next);
+               Position_Builder_At_End (Env.Bld, BB_Next);
             end;
 
          when N_Block_Statement =>
@@ -447,7 +447,7 @@ package body GNATLLVM.Compile is
                   then Env.Get (Entity (Identifier (Node)))
                   else Create_Basic_Block (Env, "block"));
                Discard (Build_Br (Env.Bld, BB));
-               Set_Current_Basic_Block (Env, BB);
+               Position_Builder_At_End (Env.Bld, BB);
 
                Env.Push_Scope;
                Stack_State := Build_Call
@@ -616,7 +616,6 @@ package body GNATLLVM.Compile is
             end;
 
             Position_Builder_At_End (Env.Bld, Block_Exit);
-            Env.Current_Subp.Current_Block := Block_Exit;
 
             return Build_Load (Env.Bld, Result, "scl-final-res");
          end;
@@ -877,7 +876,7 @@ package body GNATLLVM.Compile is
             BB : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
          begin
             Compile (Env, Parent (Parent (Entity (Name (Call)))));
-            Set_Current_Basic_Block (Env, BB);
+            Position_Builder_At_End (Env.Bld, BB);
          end;
       end if;
 

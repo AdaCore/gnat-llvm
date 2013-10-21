@@ -14,6 +14,14 @@ with Uintp; use Uintp;
 
 package body GNATLLVM.Types is
 
+   ------------
+   -- Int_Ty --
+   ------------
+
+   function Int_Ty (Num_Bits : Natural) return Type_T
+   is
+      (Int_Type (Interfaces.C.unsigned (Num_Bits)));
+
    ----------------------------
    -- Register_Builtin_Types --
    ----------------------------
@@ -40,6 +48,15 @@ package body GNATLLVM.Types is
       --  TODO??? add other builtin types!
    end Register_Builtin_Types;
 
+   -----------
+   -- Fn_Ty --
+   -----------
+
+   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T
+   is
+     (Function_Type
+        (Ret_Ty, Param_Ty'Address, Param_Ty'Length, Boolean'Pos (False)));
+
    ----------------------------
    -- Create_Subprogram_Type --
    ----------------------------
@@ -48,7 +65,7 @@ package body GNATLLVM.Types is
      (Env : Environ; Subp_Spec : Node_Id) return Type_T
    is
       Param_Specs : constant List_Id := Parameter_Specifications (Subp_Spec);
-      Param_Types : array (1 .. List_Length (Param_Specs)) of Type_T;
+      Param_Types : Type_Array (1 .. List_Length (Param_Specs));
       Return_Type : Type_T;
       Arg         : Node_Id := First (Param_Specs);
    begin
@@ -78,11 +95,8 @@ package body GNATLLVM.Types is
               with "Invalid node: " & Node_Kind'Image (Nkind (Subp_Spec));
       end case;
 
-      return Function_Type
-        (Return_Type,
-         Param_Types'Address,
-         Param_Types'Length,
-         Is_Var_Arg => Boolean'Pos (False));
+      return Fn_Ty (Param_Types, Return_Type);
+
    end Create_Subprogram_Type;
 
    -----------------

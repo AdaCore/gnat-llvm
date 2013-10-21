@@ -763,6 +763,25 @@ package body GNATLLVM.Compile is
          when N_Explicit_Dereference =>
             return Build_Load (Env.Bld, Compile_Expr (Prefix (Node)), "");
 
+         when N_Allocator =>
+            declare
+               Arg : array (1 .. 1) of Value_T :=
+                 (1 => Size_Of (Create_Type (Env, Etype (Expression (Node)))));
+            begin
+               if Nkind (Expression (Node)) = N_Identifier then
+                  return Build_Bit_Cast
+                    (Env.Bld,
+                     Build_Call
+                       (Env.Bld, Env.Default_Alloc_Fn, Arg'Address,
+                        1, "alloc"),
+                     Create_Type (Env, Etype (Node)),
+                     "alloc_bc");
+               else
+                  raise Program_Error
+                    with "Non handled form in N_Allocator";
+               end if;
+            end;
+
          when N_Attribute_Reference =>
 
             --  We store values as pointers, so, getting an access to an

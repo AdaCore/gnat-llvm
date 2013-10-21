@@ -6,6 +6,8 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Types is
 
+   type Type_Array is array (Nat range <>) of Type_T;
+
    procedure Register_Builtin_Types (Env : Environ);
 
    function Create_Subprogram_Type
@@ -18,4 +20,8 @@ package GNATLLVM.Types is
       TE        : Entity_Id;
       TL        : out Type_T;
       Low, High : out Value_T);
+
+   function Int_Ty (Num_Bits : Natural) return Type_T;
+   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T;
+
 end GNATLLVM.Types;

@@ -44,6 +44,12 @@ package body LLVM_Drive is
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
 
+      --  Add malloc function to the env
+
+      Env.Default_Alloc_Fn := Add_Function
+        (Env.Mdl, "malloc",
+         Fn_Ty ((1 => Int_Ty (64)), Pointer_Type (Int_Ty (8), 0)));
+
       Env.Push_Scope;
       Register_Builtin_Types (Env);
 

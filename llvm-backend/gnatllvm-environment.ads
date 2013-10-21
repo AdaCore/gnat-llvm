@@ -66,6 +66,8 @@ package GNATLLVM.Environment is
 
       Subprograms   : Subp_Lists.List;
       Current_Subps : Subp_Lists.List;
+
+      Default_Alloc_Fn : Value_T;
    end record;
 
    procedure Push_Scope (Env : access Environ_Record);

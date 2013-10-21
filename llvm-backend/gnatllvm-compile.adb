@@ -66,10 +66,9 @@ package body GNATLLVM.Compile is
                Subp_Base_Name : constant String :=
                  Get_Name_String (Chars (Subp_Def_Ident));
                Subp_Name      : constant String :=
-                 (if Scope_Depth_Value (Subp_Def_Ident) > 1 then
-                     Subp_Base_Name
-                  else
-                     "_ada_" & Subp_Base_Name);
+                 (if Scope_Depth_Value (Subp_Def_Ident) > 1
+                  then Subp_Base_Name
+                  else "_ada_" & Subp_Base_Name);
                Subp           : constant Subp_Env
                  := Env.Create_Subp (Subp_Name, Subp_Type);
                LLVM_Param     : Value_T;
@@ -202,10 +201,9 @@ package body GNATLLVM.Compile is
          when N_Exit_Statement =>
             declare
                Exit_Point : constant Basic_Block_T :=
-                 (if Present (Name (Node)) then
-                     Env.Get_Exit_Point (Entity (Name (Node)))
-                  else
-                     Env.Get_Exit_Point);
+                 (if Present (Name (Node))
+                  then Env.Get_Exit_Point (Entity (Name (Node)))
+                  else Env.Get_Exit_Point);
                Next_BB    : constant Basic_Block_T :=
                  Env.Create_Basic_Block ("loop-after-exit");
             begin
@@ -242,10 +240,9 @@ package body GNATLLVM.Compile is
                BB_Next := Create_Basic_Block (Env, "if-next");
                BB_Then := Create_Basic_Block (Env, "if-then");
                BB_Else :=
-                 (if not Is_Empty_List (Else_Statements (Node)) then
-                     Create_Basic_Block (Env, "if-else")
-                  else
-                     BB_Next);
+                 (if not Is_Empty_List (Else_Statements (Node))
+                  then Create_Basic_Block (Env, "if-else")
+                  else BB_Next);
                Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
 
                Env.Set_Current_Basic_Block (BB_Then);
@@ -300,27 +297,23 @@ package body GNATLLVM.Compile is
                --  If this is not a FOR loop, there is no initialization: alias
                --  it with the COND block.
                BB_Cond :=
-                 (if not Is_For_Loop then
-                     BB_Init
-                  else
-                     Env.Create_Basic_Block ("loop-cond"));
+                 (if not Is_For_Loop
+                  then BB_Init
+                  else Env.Create_Basic_Block ("loop-cond"));
 
                --  If this is a mere loop, there is even no condition block:
                --  alias it with the STMTS block.
                BB_Stmts :=
-                 (if Is_Mere_Loop then
-                     BB_Cond
-                  else
-                     Env.Create_Basic_Block ("loop-stmts"));
+                 (if Is_Mere_Loop
+                  then BB_Cond
+                  else Env.Create_Basic_Block ("loop-stmts"));
 
                --  If this is not a FOR loop, there is no iteration: alias it
                --  with the COND block, so that at the end of every STMTS, jump
                --  on ITER or COND.
                BB_Iter :=
-                 (if Is_For_Loop then
-                     Env.Create_Basic_Block ("loop-iter")
-                  else
-                     BB_Cond);
+                 (if Is_For_Loop then Env.Create_Basic_Block ("loop-iter")
+                  else BB_Cond);
 
                --  The NEXT step contains no statement that comes from the
                --  loop: it is the exit point.
@@ -406,15 +399,12 @@ package body GNATLLVM.Compile is
                                (LLVM_Type, 1,
                                 Sign_Extend => Boolean'Pos (False));
                            Iter_Next_Value : constant Value_T :=
-                             (if Reversed then
-                                 Build_Sub
-                                (Env.Bld,
-                                 Iter_Prev_Value, One,
+                             (if Reversed
+                              then Build_Sub
+                                (Env.Bld, Iter_Prev_Value, One,
                                  "next-loop-var")
-                              else
-                                 Build_Add
-                                (Env.Bld,
-                                 Iter_Prev_Value, One,
+                              else Build_Add
+                                (Env.Bld, Iter_Prev_Value, One,
                                  "next-loop-var"));
                         begin
                            Discard (Build_Store
@@ -444,10 +434,9 @@ package body GNATLLVM.Compile is
                Stack_State : Value_T;
             begin
                BB :=
-                 (if Present (Identifier (Node)) then
-                     Env.Get (Entity (Identifier (Node)))
-                  else
-                     Create_Basic_Block (Env, "block"));
+                 (if Present (Identifier (Node))
+                  then Env.Get (Entity (Identifier (Node)))
+                  else Create_Basic_Block (Env, "block"));
                Discard (Build_Br (Env.Bld, BB));
                Set_Current_Basic_Block (Env, BB);
 
@@ -861,10 +850,9 @@ package body GNATLLVM.Compile is
 
       for Param of Iterate (Params) loop
          Args (I) :=
-           (if Out_Present (Param_Spec) then
-                 Compile_LValue (Env, Param)
-            else
-               Compile_Expression (Env, Param));
+           (if Out_Present (Param_Spec)
+            then Compile_LValue (Env, Param)
+            else Compile_Expression (Env, Param));
          I := I + 1;
          Param_Spec := Next (Param_Spec);
       end loop;
@@ -873,7 +861,6 @@ package body GNATLLVM.Compile is
         Build_Call
           (Env.Bld, LLVM_Func,
            Args'Address, Args'Length,
-
            --  Assigning a name to a void value is not possible with LLVM
            (if Nkind (Call) = N_Function_Call then "subpcall" else ""));
    end Compile_Call;

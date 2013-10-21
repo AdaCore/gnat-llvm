@@ -144,7 +144,8 @@ package body GNATLLVM.Types is
 
                Full : constant Boolean := Env.Has_Type (DI);
                Struct_Type : constant Type_T :=
-                 (if Full then Env.Get (DI)
+                 (if Full
+                  then Env.Get (DI)
                   else Struct_Create_Named
                     (Env.Ctx,
                      Get_Name (Defining_Identifier (Parent (Type_Node)))));

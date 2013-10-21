@@ -1,6 +1,7 @@
 package Stack is
    type Stack is private;
    function New_Stack return Stack;
+   procedure Init_Stack (S : out Stack);
    procedure Append (S : in out Stack; A : Natural);
    function Pop (S : in out Stack) return Natural;
 private

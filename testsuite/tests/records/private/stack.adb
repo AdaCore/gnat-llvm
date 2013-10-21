@@ -7,6 +7,11 @@ package body Stack is
       return S;
    end New_Stack;
 
+   procedure Init_Stack (S : out Stack) is
+   begin
+      S := New_Stack;
+   end Init_Stack;
+
    procedure Append (S: in out Stack; A : Natural) is
       SE : Stack_Element := S.First_Stack_El;
    begin

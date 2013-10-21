@@ -1,0 +1,8 @@
+Append (1)
+Append (2)
+Append (3)
+Append (4)
+Pop () = 4
+Pop () = 3
+Pop () = 2
+Pop () = 1

@@ -2,6 +2,14 @@ with Ada.Unchecked_Deallocation;
 
 package body GNATLLVM.Environment is
 
+   function Get
+     (Env : access Environ_Record; TE : Entity_Id)
+      return Type_Maps.Cursor;
+
+   function Get
+     (Env : access Environ_Record; VE : Entity_Id)
+      return Value_Maps.Cursor;
+
    ----------------
    -- Push_Scope --
    ----------------
@@ -30,14 +38,9 @@ package body GNATLLVM.Environment is
    function Has_Type
      (Env : access Environ_Record; TE : Entity_Id) return Boolean
    is
-      T : Type_T;
-      pragma Unreferenced (T);
+      use Type_Maps;
    begin
-      T := Env.Get (TE);
-      return True;
-   exception
-      when No_Such_Type =>
-         return False;
+      return Get (Env, TE) /= No_Element;
    end Has_Type;
 
    ---------------
@@ -47,21 +50,18 @@ package body GNATLLVM.Environment is
    function Has_Value
      (Env : access Environ_Record; VE : Entity_Id) return Boolean
    is
-      V : Value_T;
-      pragma Unreferenced (V);
+      use Value_Maps;
    begin
-      V := Env.Get (VE);
-      return True;
-   exception
-      when No_Such_Value =>
-         return False;
+      return Get (Env, VE) /= No_Element;
    end Has_Value;
 
    ---------
    -- Get --
    ---------
 
-   function Get (Env : access Environ_Record; TE : Entity_Id) return Type_T is
+   function Get
+     (Env : access Environ_Record; TE : Entity_Id)
+      return Type_Maps.Cursor is
       use Type_Maps;
    begin
       for S of reverse Env.Scopes loop
@@ -69,12 +69,48 @@ package body GNATLLVM.Environment is
             C : constant Cursor := S.Types.Find (TE);
          begin
             if C /= No_Element then
-               return Element (C);
+               return C;
             end if;
          end;
       end loop;
-      raise No_Such_Type
-        with "Cannot find a LLVM type for Entity #" & Entity_Id'Image (TE);
+      return No_Element;
+   end Get;
+
+   ---------
+   -- Get --
+   ---------
+
+   function Get
+     (Env : access Environ_Record; VE : Entity_Id)
+      return Value_Maps.Cursor is
+      use Value_Maps;
+   begin
+      for S of reverse Env.Scopes loop
+         declare
+            C : constant Cursor := S.Values.Find (VE);
+         begin
+            if C /= No_Element then
+               return C;
+            end if;
+         end;
+      end loop;
+      return No_Element;
+   end Get;
+
+   ---------
+   -- Get --
+   ---------
+
+   function Get (Env : access Environ_Record; TE : Entity_Id) return Type_T is
+      use Type_Maps;
+      Cur : constant Cursor := Get (Env, TE);
+   begin
+      if Cur /= No_Element then
+         return Element (Cur);
+      else
+         raise No_Such_Type
+           with "Cannot find a LLVM type for Entity #" & Entity_Id'Image (TE);
+      end if;
    end Get;
 
    ---------
@@ -83,18 +119,14 @@ package body GNATLLVM.Environment is
 
    function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T is
       use Value_Maps;
+      Cur : constant Cursor := Get (Env, VE);
    begin
-      for S of reverse Env.Scopes loop
-         declare
-            C : constant Cursor := S.Values.Find (VE);
-         begin
-            if C /= No_Element then
-               return Element (C);
-            end if;
-         end;
-      end loop;
-      raise No_Such_Value
-        with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (VE);
+      if Cur /= No_Element then
+         return Element (Cur);
+      else
+         raise No_Such_Value
+           with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (VE);
+      end if;
    end Get;
 
    ---------
@@ -103,11 +135,16 @@ package body GNATLLVM.Environment is
 
    function Get
      (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T is
+      use Value_Maps;
+      Cur : constant Cursor := Get (Env, BE);
    begin
-      return Value_As_Basic_Block (Env.Get (BE));
-   exception
-      when No_Such_Value =>
-         raise No_Such_Basic_Block;
+      if Cur /= No_Element then
+         return Value_As_Basic_Block (Env.Get (BE));
+      else
+         raise No_Such_Basic_Block
+           with "Cannot find a LLVM basic block for Entity #"
+           & Entity_Id'Image (BE);
+      end if;
    end Get;
 
    ---------

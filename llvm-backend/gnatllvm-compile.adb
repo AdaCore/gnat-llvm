@@ -37,6 +37,11 @@ package body GNATLLVM.Compile is
      (Env : Environ; Node : Node_Id) is
    begin
       case Nkind (Node) is
+         when N_Package_Declaration =>
+            Compile (Env, Specification (Node));
+         when N_Package_Specification =>
+            Compile_List (Env, Visible_Declarations (Node));
+
          when N_Package_Body =>
             declare
                Def_Id : constant Entity_Id := Unique_Defining_Entity (Node);

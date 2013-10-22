@@ -1,0 +1,9 @@
+Abs_Sum (-1, -1) = 2
+Abs_Sum (-1, 0) = 1
+Abs_Sum (-1, 1) = 2
+Abs_Sum (0, -1) = 1
+Abs_Sum (0, 0) = 0
+Abs_Sum (0, 1) = 1
+Abs_Sum (1, -1) = 2
+Abs_Sum (1, 0) = 1
+Abs_Sum (1, 1) = 2

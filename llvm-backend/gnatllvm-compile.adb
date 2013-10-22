@@ -24,6 +24,11 @@ package body GNATLLVM.Compile is
    function Compile_Call
      (Env : Environ; Call : Node_Id) return Value_T;
 
+   function Compile_Subprogram
+     (Env : Environ; Subp_Spec : Node_Id) return Value_T;
+   --  Compile a subprogram declaration, save the corresponding LLVM value to
+   --  the environment and return it.
+
    -------------
    -- Compile --
    -------------
@@ -43,59 +48,26 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Subprogram_Declaration =>
-            declare
-               Subp_Node : constant Node_Id := Specification (Node);
-               Subp_Type : constant Type_T :=
-                 Create_Subprogram_Type (Env, Subp_Node);
-               Subp_Name : constant String :=
-                 Get_Name_String (Chars (Defining_Unit_Name (Subp_Node)));
-               LLVM_Func : constant Value_T :=
-                 Add_Function (Env.Mdl, Subp_Name, Subp_Type);
-            begin
-               Env.Set
-                 (Defining_Unit_Name (Specification (Node)), LLVM_Func);
-            end;
+            Discard (Compile_Subprogram (Env, Specification (Node)));
 
          when N_Subprogram_Body =>
             declare
-               Subp_Node      : constant Node_Id := Specification (Node);
-               Subp_Type      : constant Type_T :=
-                 Create_Subprogram_Type (Env, Subp_Node);
-               Subp_Def_Ident : constant Node_Id :=
-                 Defining_Unit_Name (Subp_Node);
-               Subp_Base_Name : constant String :=
-                 Get_Name_String (Chars (Subp_Def_Ident));
-               Subp_Name      : constant String :=
-                 (if Scope_Depth_Value (Subp_Def_Ident) > 1
-                  then Subp_Base_Name
-                  else "_ada_" & Subp_Base_Name);
-               Subp           : constant Subp_Env
-                 := Env.Create_Subp (Subp_Name, Subp_Type);
-               LLVM_Param     : Value_T;
-               LLVM_Var       : Value_T;
-               Param          : Entity_Id;
-               I              : Natural := 0;
+               Spec       : constant Node_Id :=
+                 (if Acts_As_Spec (Node)
+                  then Specification (Node)
+                  else Parent (Corresponding_Spec (Node)));
+               Func       : constant Value_T := Compile_Subprogram (Env, Spec);
+               Subp       : constant Subp_Env := Env.Enter_Subp (Func);
+
+               LLVM_Param : Value_T;
+               LLVM_Var   : Value_T;
+               Param      : Entity_Id;
+               I          : Natural := 0;
             begin
-               if Acts_As_Spec (Node) then
-                  Env.Set
-                    (Defining_Unit_Name (Specification (Node)), Subp.Func);
-               else
-                  Env.Set (Corresponding_Spec (Node), Subp.Func);
-               end if;
-
-               if not Is_Public (Subp_Def_Ident)
-                 and then
-                   (not Acts_As_Spec (Node)
-                    and then
-                    not Is_Public (Corresponding_Spec (Node)))
-               then
-                  Set_Linkage (Subp.Func, Internal_Linkage);
-               end if;
-
                --  Register each parameter into a new scope
                Env.Push_Scope;
 
-               for P of Iterate (Parameter_Specifications (Subp_Node)) loop
+               for P of Iterate (Parameter_Specifications (Spec)) loop
                   LLVM_Param := Get_Param (Subp.Func, unsigned (I));
                   Param := Defining_Identifier (P);
 
@@ -900,5 +872,47 @@ package body GNATLLVM.Compile is
            --  Assigning a name to a void value is not possible with LLVM
            (if Nkind (Call) = N_Function_Call then "subpcall" else ""));
    end Compile_Call;
+
+   ------------------------
+   -- Compile_Subprogram --
+   ------------------------
+
+   function Compile_Subprogram
+     (Env : Environ; Subp_Spec : Node_Id) return Value_T
+   is
+      Def_Ident : constant Node_Id := Defining_Unit_Name (Subp_Spec);
+   begin
+      --  If this subprogram specification has already been compiled, do
+      --  nothing.
+
+      if Env.Has_Value (Def_Ident) then
+         return Env.Get (Def_Ident);
+
+      else
+         declare
+            Subp_Type : constant Type_T :=
+              Create_Subprogram_Type (Env, Subp_Spec);
+
+            Subp_Base_Name : constant String :=
+                Get_Name_String (Chars (Def_Ident));
+            Subp_Name : constant String :=
+              (if Scope_Depth_Value (Def_Ident) > 1
+               then Subp_Base_Name
+               else "_ada_" & Subp_Base_Name);
+
+            LLVM_Func : constant Value_T :=
+              Add_Function (Env.Mdl, Subp_Name, Subp_Type);
+         begin
+            --  Define the appropriate linkage
+
+            if not Is_Public (Def_Ident) then
+               Set_Linkage (LLVM_Func, Internal_Linkage);
+            end if;
+
+            Env.Set (Def_Ident, LLVM_Func);
+            return LLVM_Func;
+         end;
+      end if;
+   end Compile_Subprogram;
 
 end GNATLLVM.Compile;

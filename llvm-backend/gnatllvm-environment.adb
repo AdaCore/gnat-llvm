@@ -187,25 +187,25 @@ package body GNATLLVM.Environment is
       return Env.Exit_Points.Last_Element.Exit_BB;
    end Get_Exit_Point;
 
-   ---------------------
-   -- Create_Function --
-   ---------------------
+   --------------------
+   -- Enter_Function --
+   --------------------
 
-   function Create_Subp
-     (Env : access Environ_Record;
-      Name : String; Typ : Type_T) return Subp_Env
+   function Enter_Subp
+     (Env  : access Environ_Record;
+      Func : Value_T) return Subp_Env
    is
-      Func : constant Value_T := Add_Function (Env.Mdl, Name, Typ);
       Subp : constant Subp_Env := new Subp_Env_Record'
-        (Env           => Environ (Env),
-         Func          => Func);
+        (Env                    => Environ (Env),
+         Func                   => Func,
+         Saved_Builder_Position => Get_Insert_Block (Env.Bld));
    begin
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
       Position_Builder_At_End
         (Env.Bld, Env.Create_Basic_Block ("entry"));
       return Subp;
-   end Create_Subp;
+   end Enter_Subp;
 
    ----------------
    -- Leave_Subp --
@@ -213,6 +213,9 @@ package body GNATLLVM.Environment is
 
    procedure Leave_Subp (Env  : access Environ_Record) is
    begin
+      Position_Builder_At_End
+        (Env.Bld,
+         Env.Current_Subps.Last_Element.Saved_Builder_Position);
       Env.Current_Subps.Delete_Last;
    end Leave_Subp;
 

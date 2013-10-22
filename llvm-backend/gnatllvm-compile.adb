@@ -474,6 +474,14 @@ package body GNATLLVM.Compile is
             --  implementation for basic types atm
             null;
 
+         when N_Pragma =>
+            case Get_Pragma_Id (Node) is
+               --  TODO??? While we aren't interested in most of the pragmas,
+               --  there are some we should look at. But still, the "others"
+               --  case is necessary.
+               when others => null;
+            end case;
+
          when N_Empty =>
             null;
 

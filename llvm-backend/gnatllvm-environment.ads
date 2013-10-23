@@ -7,6 +7,8 @@ with LLVM.Core; use LLVM.Core;
 with Ada.Containers.Doubly_Linked_Lists;
 with GNATLLVM.Builder;
 
+with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
+
 package GNATLLVM.Environment is
 
    package Type_Vectors is new Ada.Containers.Vectors (Nat, Type_T);
@@ -92,6 +94,8 @@ package GNATLLVM.Environment is
 
       Subprograms               : Subp_Lists.List;
       Current_Subps             : Subp_Lists.List;
+
+      S_Links                   : Static_Link_Descriptor_Maps.Map;
 
       Default_Alloc_Fn          : Value_T;
    end record;

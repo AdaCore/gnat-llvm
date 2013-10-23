@@ -15,11 +15,12 @@ with Osint.C;  use Osint.C;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 
-with GNATLLVM.Builder;     use GNATLLVM.Builder;
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Builder;      use GNATLLVM.Builder;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body LLVM_Drive is
 
@@ -46,6 +47,8 @@ package body LLVM_Drive is
       Env.Mdl := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
+
+      Compute_Static_Link_Descriptors (GNAT_Root, Env.S_Links);
 
       --  Add malloc function to the env
 

@@ -50,24 +50,24 @@ package GNATLLVM.Environment is
      (Subp_Env);
 
    type Environ_Record is tagged record
-      Ctx    : LLVM.Core.Context_T;
-      Bld    : LLVM.Core.Builder_T;
-      Mdl    : LLVM.Core.Module_T;
-      --  Pure-LLVM environment: LLVM context, instruction builder and current
+      Ctx                       : LLVM.Core.Context_T;
+      Bld                       : LLVM.Core.Builder_T;
+      Mdl                       : LLVM.Core.Module_T;
+      --  Pure-LLVM environment : LLVM context, instruction builder and current
       --  module.
 
-      Scopes : Scope_Vectors.Vector;
+      Scopes                    : Scope_Vectors.Vector;
       --  Stack of scopes, to associate LLVM types/values to expansed tree's
       --  entities.
 
-      Exit_Points   : Exit_Point_Vectors.Vector;
+      Exit_Points               : Exit_Point_Vectors.Vector;
       --  Stack of scoped loop exit points. Last inserted exit point correspond
       --  to the innermost loop.
 
-      Subprograms   : Subp_Lists.List;
-      Current_Subps : Subp_Lists.List;
+      Subprograms               : Subp_Lists.List;
+      Current_Subps             : Subp_Lists.List;
 
-      Default_Alloc_Fn : Value_T;
+      Default_Alloc_Fn          : Value_T;
    end record;
 
    procedure Push_Scope (Env : access Environ_Record);

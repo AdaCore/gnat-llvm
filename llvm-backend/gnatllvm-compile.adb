@@ -29,6 +29,8 @@ package body GNATLLVM.Compile is
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
+   function Is_LValue (Env : Environ; Node : Node_Id) return Boolean;
+
    -------------
    -- Compile --
    -------------
@@ -150,6 +152,29 @@ package body GNATLLVM.Compile is
                                 (Env, Expression (Node)),
                               LLVM_Var));
                end if;
+            end;
+
+         when N_Renaming_Declaration =>
+            declare
+               Def_Ident : constant Node_Id := Defining_Identifier (Node);
+               LLVM_Var  : Value_T;
+            begin
+               --  If the renamed object is already an l-value, keep it as-is.
+               --  Otherwise, create one for it.
+
+               if Is_LValue (Env, Name (Node)) then
+                  LLVM_Var := Compile_LValue (Env, Name (Node));
+               else
+                  LLVM_Var := Build_Alloca
+                    (Env.Bld,
+                     Create_Type (Env, Etype (Def_Ident)),
+                     Get_Name (Def_Ident));
+                  Discard (Build_Store
+                           (Env.Bld,
+                              Compile_Expression (Env, Name (Node)),
+                              LLVM_Var));
+               end if;
+               Env.Set (Def_Ident, LLVM_Var);
             end;
 
          when N_Implicit_Label_Declaration =>
@@ -524,6 +549,36 @@ package body GNATLLVM.Compile is
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
       end case;
    end Compile_LValue;
+
+   ---------------
+   -- Is_LValue --
+   ---------------
+
+   function Is_LValue (Env : Environ; Node : Node_Id) return Boolean
+   is
+      pragma Unreferenced (Env);
+
+      N : Node_Id := Node;
+   begin
+      loop
+         case Nkind (N) is
+         when N_Explicit_Dereference =>
+            return True;
+         when N_Selected_Component =>
+            N := Prefix (N);
+            when N_Identifier =>
+               N := Entity (Node);
+            when N_Defining_Identifier =>
+               if Present (Renamed_Object (N)) then
+                  N := Renamed_Object (N);
+               else
+                  return True;
+               end if;
+            when others =>
+               return False;
+         end case;
+      end loop;
+   end Is_LValue;
 
    ------------------------
    -- Compile_Expression --

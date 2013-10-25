@@ -31,6 +31,51 @@ package body GNATLLVM.Compile is
 
    function Is_LValue (Env : Environ; Node : Node_Id) return Boolean;
 
+   function Compile_Array_Size
+     (Env : Environ; Array_Type : Entity_Id) return Value_T;
+
+   ------------------------
+   -- Compile_Array_Size --
+   ------------------------
+
+   function Compile_Array_Size
+     (Env : Environ; Array_Type : Entity_Id) return Value_T
+   is
+      CT : constant Entity_Id := Component_Type (Array_Type);
+      Size : Value_T := No_Value_T;
+      Cur_Size : Value_T;
+      DDS : Node_Id := First_Index (Array_Type);
+   begin
+      while Present (DDS) loop
+         case Nkind (DDS) is
+            when N_Range =>
+               Cur_Size := Build_Add
+                 (Env.Bld,
+                  Build_Sub
+                    (Env.Bld, Compile_Expression (Env, High_Bound (DDS)),
+                     Compile_Expression (Env, Low_Bound (DDS)), ""),
+                  Const_Int
+                    (Create_Type (Env, Etype (High_Bound (DDS))), 1,
+                     Sign_Extend => Boolean'Pos (True)), "");
+
+               if Size = No_Value_T then
+                  Size := Cur_Size;
+               else
+                  Size := Build_Mul
+                    (Env.Bld, Size, Cur_Size, "");
+               end if;
+            when others =>
+               raise Program_Error with "Not supported : " & Nkind (DDS)'Img;
+         end case;
+         DDS := Next (DDS);
+      end loop;
+      if Is_Array_Type (CT) then
+         return Build_Mul (Env.Bld, Size, Compile_Array_Size (Env, CT), "");
+      else
+         return Size;
+      end if;
+   end Compile_Array_Size;
+
    -------------
    -- Compile --
    -------------
@@ -132,14 +177,33 @@ package body GNATLLVM.Compile is
             --  this.
             null;
 
+         when N_Raise_Storage_Error =>
+            --  TODO??? When exceptions handling will be implemented, implement
+            --  this.
+            null;
+
          when N_Object_Declaration =>
             declare
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
-               LLVM_Type : constant Type_T :=
-                 Create_Type (Env, Etype (Def_Ident));
-               LLVM_Var  : constant Value_T :=
-                 Build_Alloca (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
+               T : constant Entity_Id := Etype (Def_Ident);
+               LLVM_Type : Type_T;
+               LLVM_Var  : Value_T;
             begin
+               if Is_Array_Type (T) then
+                  LLVM_Var := Build_Bit_Cast
+                    (Env.Bld,
+                     Build_Array_Alloca
+                       (Env.Bld,
+                        Get_Innermost_Component_Type (Env, T),
+                        Compile_Array_Size (Env, T), "array-alloca"),
+                     Pointer_Type (Create_Type (Env, T), 0), "array");
+--                    raise Program_Error;
+               else
+                  LLVM_Type := Create_Type (Env, T);
+                  LLVM_Var := Build_Alloca
+                    (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
+               end if;
+
                Env.Set (Def_Ident, LLVM_Var);
                if Present (Expression (Node))
                  and then
@@ -554,13 +618,27 @@ package body GNATLLVM.Compile is
                Idxs : array (1 .. List_Length (Expressions (Node)) + 1)
                  of Value_T;
                I : Nat := 2;
+               DDS : Node_Id := First_Index (Etype (Prefix (Node)));
             begin
                Idxs (1) := Const_Int
                  (Create_Type (Env, Etype (Node)), 0,
                   Sign_Extend => Boolean'Pos (True));
+
                for N of Iterate (Expressions (Node)) loop
                   Idxs (I) := Compile_Expression (Env, N);
+
+                  if Nkind (DDS) /=  N_Range then
+                     raise Program_Error
+                       with "Arrays indexed with" & Nkind (DDS)'Img
+                        & " not supported";
+                  end if;
+
+                  Idxs (I) := Build_Sub
+                    (Env.Bld,
+                     Idxs (I), Compile_Expression (Env, Low_Bound (DDS)), "");
+
                   I := I + 1;
+                  DDS := Next (DDS);
                end loop;
 
                return Build_GEP
@@ -939,16 +1017,16 @@ package body GNATLLVM.Compile is
       I           : Nat := 1;
    begin
       --  Lazy compilation of function specs
-      if not Env.Has_Value (Entity (Name (Call))) then
+      if not Env.Has_Value (Func_Ident) then
          declare
             BB : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
          begin
-            Compile (Env, Parent (Parent (Entity (Name (Call)))));
+            Compile (Env, Parent (Parent (Func_Ident)));
             Position_Builder_At_End (Env.Bld, BB);
          end;
       end if;
 
-      LLVM_Func := Env.Get (Entity (Name (Call)));
+      LLVM_Func := Env.Get (Func_Ident);
 
       Param_Spec := First (Func_Params);
 

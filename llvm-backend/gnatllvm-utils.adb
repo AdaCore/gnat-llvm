@@ -1,6 +1,5 @@
 with Namet; use Namet;
 with Nlists;   use Nlists;
-with System; use System;
 
 package body GNATLLVM.Utils is
 

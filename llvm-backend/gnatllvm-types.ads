@@ -24,4 +24,7 @@ package GNATLLVM.Types is
    function Int_Ty (Num_Bits : Natural) return Type_T;
    function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T;
 
+   function Get_Innermost_Component_Type
+     (Env : Environ; N : Entity_Id) return Type_T;
+
 end GNATLLVM.Types;

@@ -5,8 +5,11 @@ with Sinfo; use Sinfo;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with System; use System;
 
 package GNATLLVM.Utils is
+
+   No_Value_T : Value_T := Value_T (Null_Address);
 
    type Comp_Pred is
      (EQ, NE, LT, LE, GT, GE);

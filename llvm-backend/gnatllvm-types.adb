@@ -14,6 +14,17 @@ with Uintp; use Uintp;
 
 package body GNATLLVM.Types is
 
+   ----------------------------------
+   -- Get_Innermost_Component_Type --
+   ----------------------------------
+
+   function Get_Innermost_Component_Type
+     (Env : Environ; N : Entity_Id) return Type_T
+   is
+     (if Is_Array_Type (N)
+      then Get_Innermost_Component_Type (Env, Component_Type (N))
+      else Create_Type (Env, N));
+
    ------------
    -- Int_Ty --
    ------------

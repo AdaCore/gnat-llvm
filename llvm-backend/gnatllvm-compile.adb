@@ -846,6 +846,7 @@ package body GNATLLVM.Compile is
             begin
                if Attr_Name = "access"
                  or else Attr_Name = "unchecked_access"
+                 or else Attr_Name = "unrestricted_access"
                then
                   return Compile_LValue (Env, Prefix (Node));
                end if;

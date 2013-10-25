@@ -184,10 +184,13 @@ package body GNATLLVM.Compile is
                  (Env, Get_Name (Defining_Identifier (Node))));
 
          when N_Assignment_Statement =>
-            Discard (Build_Store
-                     (Env.Bld,
-                        Compile_Expression (Env, Expression (Node)),
-                        Compile_LValue (Env, Name (Node))));
+            declare
+               Val : constant Value_T :=
+                 Compile_Expression (Env, Expression (Node));
+               Dest : constant Value_T := Compile_LValue (Env, Name (Node));
+            begin
+               Discard (Build_Store (Env.Bld, Val, Dest));
+            end;
 
          when N_Procedure_Call_Statement =>
             Discard (Compile_Call (Env, Node));
@@ -544,6 +547,27 @@ package body GNATLLVM.Compile is
                  (Env.Bld, Pfx_Ptr, Idx, "pfx_load");
             end;
 
+         when N_Indexed_Component =>
+            declare
+               Pfx_Ptr : constant Value_T :=
+                 Compile_LValue (Env, Prefix (Node));
+               Idxs : array (1 .. List_Length (Expressions (Node)) + 1)
+                 of Value_T;
+               I : Nat := 2;
+            begin
+               Idxs (1) := Const_Int
+                 (Create_Type (Env, Etype (Node)), 0,
+                  Sign_Extend => Boolean'Pos (True));
+               for N of Iterate (Expressions (Node)) loop
+                  Idxs (I) := Compile_Expression (Env, N);
+                  I := I + 1;
+               end loop;
+
+               return Build_GEP
+                 (Env.Bld, Pfx_Ptr,
+                  Idxs'Address, Idxs'Length, "array-access");
+            end;
+
          when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
@@ -872,6 +896,9 @@ package body GNATLLVM.Compile is
                     (Env.Bld,
                      Build_Struct_GEP (Env.Bld, Pfx_Ptr, Idx, "pfx_load"), "");
                end;
+
+            when N_Indexed_Component =>
+               return Build_Load (Env.Bld, Compile_LValue (Env, Node), "");
 
             when N_Null =>
                return Const_Null (Create_Type (Env, Etype (Node)));

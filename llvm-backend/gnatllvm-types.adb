@@ -105,6 +105,7 @@ package body GNATLLVM.Types is
 
    function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T is
    begin
+
       case Nkind (Type_Node) is
          when N_Defining_Identifier =>
 
@@ -213,26 +214,58 @@ package body GNATLLVM.Types is
                end if;
             end;
 
---           when N_Constrained_Array_Definition =>
---              declare
---                 function Array_From_Type
---                   (T : Type_T, DSD : Node_Id) return Type_T
---                 is
---
---                 begin
---
---                 end Array_From_Type;
---                 DSD : constant List_Id :=
---                   Discrete_Subtype_Definitions (Type_Node);
---                 El_Type : Type_T;
---              begin
---                 if List_Length (DSD) > 1 then
---                    raise Program_Error
---                      with "Multidimensional arrays not implemented yet";
---                 end if;
---                 El_Type := Create_Type
---               (Env, Subtype_Indication (Component_Definition (Type_Node)));
---              end;
+            pragma Warnings (Off);
+
+         when N_Constrained_Array_Definition =>
+            declare
+               function Array_From_Type
+                 (T : Type_T; DSD : Node_Id) return Type_T;
+
+               function Array_From_Type
+                 (T : Type_T; DSD : Node_Id) return Type_T
+               is
+               begin
+                  case Nkind (DSD) is
+                     when N_Range =>
+                        declare
+                           LB : Node_Id := Low_Bound (DSD);
+                           HB : Node_Id := High_Bound (DSD);
+                           Array_Size : Natural := 0;
+                        begin
+
+                           if
+                             Is_Static_Expression (LB)
+                             and then Is_Static_Expression (HB)
+                           then
+                              Array_Size := Natural
+                                (UI_To_Int (Intval (HB)) -
+                                  UI_To_Int (Intval (LB)) + 1);
+                           end if;
+
+                           return Array_Type
+                             (T, Interfaces.C.unsigned (Array_Size));
+                        end;
+
+                     when others =>
+                        raise Program_Error
+                          with "Node not handled as DSD : " & Nkind (DSD)'Img;
+                  end case;
+               end Array_From_Type;
+
+               DSD : constant List_Id :=
+                 Discrete_Subtype_Definitions (Type_Node);
+               El_Type : Type_T;
+            begin
+               El_Type := Create_Type
+                 (Env, Subtype_Indication (Component_Definition (Type_Node)));
+
+               for DSD of Iterate (Discrete_Subtype_Definitions (Type_Node))
+               loop
+                  El_Type := Array_From_Type (El_Type, DSD);
+               end loop;
+
+               return El_Type;
+            end;
 
          when others =>
             raise Program_Error

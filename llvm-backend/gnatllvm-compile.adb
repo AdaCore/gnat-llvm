@@ -713,7 +713,7 @@ package body GNATLLVM.Compile is
          when N_Selected_Component =>
             N := Prefix (N);
             when N_Identifier =>
-               N := Entity (Node);
+               N := Entity (N);
             when N_Defining_Identifier =>
                if Present (Renamed_Object (N)) then
                   N := Renamed_Object (N);
@@ -1032,6 +1032,30 @@ package body GNATLLVM.Compile is
 
             when N_Indexed_Component =>
                return Build_Load (Env.Bld, Compile_LValue (Env, Node), "");
+
+            when N_Aggregate =>
+               declare
+                  Agg_Type   : constant Entity_Id := Etype (Node);
+                  LLVM_Type  : constant Type_T :=
+                    Create_Type (Env, Agg_Type);
+                  Result     : Value_T := Get_Undef (LLVM_Type);
+                  Cur_Expr   : Value_T;
+                  Cur_Index  : Integer;
+               begin
+                  for Assoc of Iterate (Component_Associations (Node)) loop
+                     Cur_Expr := Compile_Expr (Expression (Assoc));
+                     for Choice of Iterate (Choices (Assoc)) loop
+                        Cur_Index := Index_In_List (Parent (Entity (Choice)));
+                        Result := Build_Insert_Value
+                          (Env.Bld,
+                           Result,
+                           Cur_Expr,
+                           unsigned (Cur_Index - 1),
+                           "");
+                     end loop;
+                  end loop;
+                  return Result;
+               end;
 
             when N_Null =>
                return Const_Null (Create_Type (Env, Etype (Node)));

@@ -295,7 +295,7 @@ package body GNATLLVM.Compile is
                Spec       : constant Node_Id := Get_Acting_Spec (Node);
                Func       : constant Value_T :=
                  Emit_Subprogram_Decl (Env, Spec);
-               Subp       : constant Subp_Env := Env.Enter_Subp (Func);
+               Subp       : constant Subp_Env := Env.Enter_Subp (Node, Func);
 
                LLVM_Param : Value_T;
                LLVM_Var   : Value_T;

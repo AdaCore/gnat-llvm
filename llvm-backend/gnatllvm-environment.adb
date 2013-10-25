@@ -1,5 +1,7 @@
 with Ada.Unchecked_Deallocation;
 
+with Sinfo; use Sinfo;
+
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
@@ -314,14 +316,19 @@ package body GNATLLVM.Environment is
    --------------------
 
    function Enter_Subp
-     (Env  : access Environ_Record;
-      Func : Value_T) return Subp_Env
+     (Env       : access Environ_Record;
+      Subp_Body : Node_Id;
+      Func      : Value_T) return Subp_Env
    is
-      Subp : constant Subp_Env := new Subp_Env_Record'
+      Subp_Ent : constant Entity_Id :=
+        Defining_Unit_Name (Get_Acting_Spec (Subp_Body));
+      Subp     : constant Subp_Env := new Subp_Env_Record'
         (Env                    => Environ (Env),
          Func                   => Func,
-         Saved_Builder_Position => Env.Bld.Get_Insert_Block);
+         Saved_Builder_Position => Env.Bld.Get_Insert_Block,
+         S_Link_Descr           => null);
    begin
+      Subp.S_Link_Descr := Env.S_Links.Element (Subp_Ent);
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
       Env.Bld.Position_At_End (Env.Create_Basic_Block ("entry"));

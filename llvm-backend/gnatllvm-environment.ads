@@ -69,6 +69,7 @@ package GNATLLVM.Environment is
       Env                    : Environ;
       Func                   : Value_T;
       Saved_Builder_Position : Basic_Block_T;
+      S_Link_Descr           : Static_Link_Descriptor;
    end record;
    type Subp_Env is access all Subp_Env_Record;
 
@@ -139,8 +140,9 @@ package GNATLLVM.Environment is
      (Env : access Environ_Record) return Basic_Block_T;
 
    function Enter_Subp
-     (Env  : access Environ_Record;
-      Func : Value_T) return Subp_Env;
+     (Env       : access Environ_Record;
+      Subp_Body : Node_Id;
+      Func      : Value_T) return Subp_Env;
    --  Create, push and return a subprogram environment. Also create an entry
    --  basic block for this subprogram and position the builder at its end. To
    --  be used when starting the compilation of a subprogram body.

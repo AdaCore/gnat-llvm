@@ -7,7 +7,8 @@ Run a test located in test_dir
 from gnatpython.env import Env
 from gnatpython.fileutils import mkdir
 from gnatpython.main import Main
-from gnatpython.testdriver import TestRunner, add_run_test_options
+import gnatpython.testdriver
+from gnatpython.testdriver import add_run_test_options
 
 from glob import glob
 import os.path
@@ -18,6 +19,12 @@ TEST = sys.modules['__main__']
 TESTDIR = os.path.dirname(os.path.abspath(TEST.__file__))
 TEST_NAME = os.path.basename(TESTDIR)
 os.chdir(TESTDIR)
+
+
+class TestRunner(gnatpython.testdriver.TestRunner):
+    def analyze(self, ignore_white_chars=False):
+        """Hacky override to change the default parameter value."""
+        return super(TestRunner, self).analyze(ignore_white_chars)
 
 
 def main():

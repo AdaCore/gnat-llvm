@@ -228,8 +228,8 @@ package body GNATLLVM.Compile is
                   --  * The type of the innermost component is computed with
                   --    Get_Innermost_Component type.
                   --  * The result of the alloca is bitcasted to the proper
-                  --    array type, so that multidimensional LLVM GEP operations
-                  --    work properly.
+                  --    array type, so that multidimensional LLVM GEP
+                  --    operations work properly.
 
                   LLVM_Var := Build_Bit_Cast
                     (Env.Bld,

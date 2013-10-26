@@ -953,7 +953,18 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Identifier =>
-            return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");
+            --  N_Defining_Identifier nodes for enumeration literals are not
+            --  store in the environment. Handle them here.
+
+            if Ekind (Entity (Node)) = E_Enumeration_Literal then
+               return Const_Int
+                 (Create_Type (Env, Etype (Node)),
+                  unsigned_long_long
+                    (UI_To_Int (Enumeration_Rep (Entity (Node)))),
+                  Sign_Extend => Boolean'Pos (False));
+            else
+               return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");
+            end if;
 
          when N_Function_Call =>
             return Compile_Call (Env, Node);

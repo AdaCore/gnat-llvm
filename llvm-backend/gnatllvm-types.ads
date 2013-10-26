@@ -27,4 +27,7 @@ package GNATLLVM.Types is
    function Get_Innermost_Component_Type
      (Env : Environ; N : Entity_Id) return Type_T;
 
+   function Get_Binary_Size (N : Natural) return Natural;
+   --  Return the number of bits required to store N
+
 end GNATLLVM.Types;

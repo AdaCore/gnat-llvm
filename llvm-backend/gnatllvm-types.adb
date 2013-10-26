@@ -158,6 +158,28 @@ package body GNATLLVM.Types is
             return Create_Type
               (Env, Subtype_Mark (Subtype_Indication (Type_Node)));
 
+         when N_Enumeration_Type_Definition =>
+            declare
+               Rep, Rep_Max : Natural := 0;
+            begin
+               --  An enumeration type is represented by an integer. Just get
+               --  here the size needed to represent all possible values.
+
+               --  Note that we do not store literals in the environment,
+               --  since the environment requires l-values. Enumeration
+               --  literals are a special cases for N_Identifier nodes
+               --  in Compile_Expression.
+
+               for Lit of Iterate (Literals (Type_Node)) loop
+                  Rep := Natural (UI_To_Int (Enumeration_Rep (Lit)));
+                  if Rep > Rep_Max then
+                     Rep_Max := Rep;
+                  end if;
+               end loop;
+               return Int_Type_In_Context
+                 (Env.Ctx, Interfaces.C.unsigned (Get_Binary_Size (Rep_Max)));
+            end;
+
          when N_Record_Definition =>
             declare
                DI : constant Node_Id :=
@@ -319,5 +341,17 @@ package body GNATLLVM.Types is
               with "Invalid discrete type: " & Entity_Kind'Image (Ekind (TE));
       end case;
    end Create_Discrete_Type;
+
+   function Get_Binary_Size (N : Natural) return Natural
+   is
+      Greater : Natural := 1;
+      Result  : Natural := 1;
+   begin
+      while Greater < N loop
+         Greater := 2 * Greater;
+         Result := Result + 1;
+      end loop;
+      return Result;
+   end Get_Binary_Size;
 
 end GNATLLVM.Types;

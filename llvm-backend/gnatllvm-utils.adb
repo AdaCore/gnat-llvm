@@ -1,5 +1,8 @@
-with Namet; use Namet;
-with Nlists;   use Nlists;
+with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Unchecked_Conversion;
+
+with Namet;  use Namet;
+with Nlists; use Nlists;
 
 package body GNATLLVM.Utils is
 
@@ -118,5 +121,29 @@ package body GNATLLVM.Utils is
    begin
       Dump_Module (M);
    end Dump_LLVM_Module;
+
+   --------------------
+   -- Dump_LLVM_Type --
+   --------------------
+
+   procedure Dump_LLVM_Type (T : Type_T) is
+
+      --  LLVM::Type::dump is not bound in the C API and thus is not available
+      --  in the Ada bindings. Hack instead.
+
+      type Type_Class is limited null record;
+      pragma Import (CPP, Type_Class);
+      type Type_Class_Ptr is access Type_Class;
+
+      procedure Dump (This : Type_Class_Ptr);
+      pragma Import (CPP, Dump, "_ZNK4llvm4Type4dumpEv");
+
+      function Unwrap is new Ada.Unchecked_Conversion
+        (Type_T, Type_Class_Ptr);
+
+   begin
+      Dump (Unwrap (T));
+      New_Line (Current_Error);
+   end Dump_LLVM_Type;
 
 end GNATLLVM.Utils;

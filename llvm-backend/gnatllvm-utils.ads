@@ -31,9 +31,16 @@ package GNATLLVM.Utils is
          when others => (others => <>));
 
    type List_Iterator is array (Nat range <>) of Node_Id;
+   type Entity_Iterator is array (Nat range <>) of Entity_Id;
 
    function Iterate (L : List_Id) return List_Iterator;
    --  Return an iterator on list L
+
+   generic
+      with function Get_First (Root : Entity_Id) return Entity_Id is <>;
+      with function Get_Next (Elt : Entity_Id) return Entity_Id is <>;
+   function Iterate_Entities (Root : Entity_Id) return Entity_Iterator;
+   --  Likewise for the linked list of entities starting at Get_First (Root)
 
    function Get_Name (E : Entity_Id) return String;
    --  Return the name of an entity: Get_Name_String (Chars (E))

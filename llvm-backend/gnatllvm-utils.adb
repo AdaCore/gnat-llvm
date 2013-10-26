@@ -70,6 +70,34 @@ package body GNATLLVM.Utils is
       return A;
    end Iterate;
 
+   ----------------------
+   -- Iterate_Entities --
+   ----------------------
+
+   function Iterate_Entities (Root : Entity_Id) return Entity_Iterator
+   is
+      Len : Nat := 0;
+      Cur : Entity_Id := Get_First (Root);
+   begin
+      while Cur /= Empty loop
+         Cur := Get_Next (Cur);
+         Len := Len + 1;
+      end loop;
+
+      declare
+         A : Entity_Iterator (1 .. Len);
+         I : Nat := 1;
+      begin
+         Cur := Get_First (Root);
+         while Cur /= Empty loop
+            A (I) := Cur;
+            Cur := Get_Next (Cur);
+            I := I + 1;
+         end loop;
+         return A;
+      end;
+   end Iterate_Entities;
+
    --------------------
    -- Get_Stack_Save --
    --------------------

@@ -1,3 +1,5 @@
+with Interfaces.C;            use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
 with Atree;    use Atree;
@@ -9,12 +11,11 @@ with Sinfo;    use Sinfo;
 with Sem_Util; use Sem_Util;
 with Uintp;    use Uintp;
 
-with GNATLLVM.Types; use GNATLLVM.Types;
-with Interfaces.C; use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
-
 with LLVM.Analysis; use LLVM.Analysis;
+
+with Get_Targ;       use Get_Targ;
+with GNATLLVM.Types; use GNATLLVM.Types;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
@@ -42,6 +43,11 @@ package body GNATLLVM.Compile is
      (Env : Environ; Array_Type : Entity_Id) return Value_T
    is
       CT       : constant Entity_Id := Component_Type (Array_Type);
+      T        : constant Type_T :=
+        Int_Type_In_Context (Env.Ctx, unsigned (Get_Pointer_Size));
+      --  An array can be as big as the memory space, so use the appropriate
+      --  type.
+
       Size     : Value_T := No_Value_T;
       Cur_Size : Value_T;
       DSD      : Node_Id := First_Index (Array_Type);
@@ -64,6 +70,7 @@ package body GNATLLVM.Compile is
                   Const_Int
                     (Create_Type (Env, Etype (High_Bound (DSD))), 1,
                      Sign_Extend => Boolean'Pos (True)), "");
+               Cur_Size := Build_Z_Ext (Env.Bld, Cur_Size, T, "");
 
                --  Accumulate the product of the sizes
                --  If it's the first dimension, initialize our result with it
@@ -216,10 +223,20 @@ package body GNATLLVM.Compile is
 
             declare
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
+               Obj_Def   : constant Node_Id := Object_Definition (Node);
                T         : constant Entity_Id := Etype (Def_Ident);
                LLVM_Type : Type_T;
                LLVM_Var  : Value_T;
             begin
+
+               --  Strip useless entities such as the ones generated for
+               --  renaming encodings.
+
+               if Nkind (Obj_Def) = N_Identifier
+                 and then Ekind (Entity (Obj_Def)) in Discrete_Kind
+                 and then Esize (Entity (Obj_Def)) = 0 then
+                  return;
+               end if;
 
                if Is_Array_Type (T) then
 
@@ -581,29 +598,10 @@ package body GNATLLVM.Compile is
                Env.Pop_Scope;
             end;
 
-         when N_Full_Type_Declaration =>
+         when N_Full_Type_Declaration | N_Subtype_Declaration
+            | N_Incomplete_Type_Declaration | N_Private_Type_Declaration =>
             Env.Set (Defining_Identifier (Node),
-                     Create_Type (Env, Type_Definition (Node)));
-
-         when N_Subtype_Declaration =>
-            Env.Set
-              (Defining_Identifier (Node),
-               Create_Type (Env, Subtype_Mark (Subtype_Indication (Node))));
-
-         when N_Incomplete_Type_Declaration | N_Private_Type_Declaration =>
-            declare
-               DI : constant Node_Id := Defining_Identifier (Node);
-               FV : constant Node_Id := Full_View (DI);
-               T : Type_T := Struct_Create_Named (Env.Ctx, Get_Name (DI));
-            begin
-               Env.Set (DI, T);
-               Env.Set (FV, T);
-               if FV /= DI then
-                  Compile (Env, Parent (FV));
-                  T := Env.Get (FV);
-                  Env.Set (DI, T);
-               end if;
-            end;
+                     Create_Type (Env, Defining_Identifier (Node)));
 
          when N_Freeze_Entity =>
             --  TODO ??? Implement N_Freeze_Entity. We just need a stub
@@ -659,10 +657,15 @@ package body GNATLLVM.Compile is
             declare
                Pfx_Ptr : constant Value_T :=
                  Compile_LValue (Env, Prefix (Node));
-               Idxs : array (1 .. List_Length (Expressions (Node)) + 1)
+
+               Idxs    : array (1 .. List_Length (Expressions (Node)) + 1)
                  of Value_T;
-               I : Nat := 2;
-               DSD : Node_Id := First_Index (Etype (Prefix (Node)));
+               --  Operands for the GetElementPtr instruction: one for the
+               --  pointer deference, and then one per array index.
+
+               I       : Nat := 2;
+               DSD     : Node_Id := First_Index (Etype (Prefix (Node)));
+               LB      : Value_T;
             begin
                Idxs (1) := Const_Int
                  (Create_Type (Env, Etype (Node)), 0,
@@ -671,15 +674,16 @@ package body GNATLLVM.Compile is
                for N of Iterate (Expressions (Node)) loop
                   Idxs (I) := Compile_Expression (Env, N);
 
-                  if Nkind (DSD) /=  N_Range then
+                  if Nkind (DSD) /= N_Range then
                      raise Program_Error
                        with "Arrays indexed with" & Nkind (DSD)'Img
                         & " not supported";
                   end if;
 
-                  Idxs (I) := Build_Sub
-                    (Env.Bld,
-                     Idxs (I), Compile_Expression (Env, Low_Bound (DSD)), "");
+                  --  Adjust the index according to the range lower bound
+
+                  LB := Compile_Expression (Env, Low_Bound (DSD));
+                  Idxs (I) := Build_Sub (Env.Bld, Idxs (I), LB, "index");
 
                   I := I + 1;
                   DSD := Next (DSD);

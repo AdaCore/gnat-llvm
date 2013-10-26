@@ -1,16 +1,15 @@
 with Interfaces.C;
-with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
-
 with Atree;    use Atree;
 with Get_Targ; use Get_Targ;
 with Einfo;    use Einfo;
 with Nlists;   use Nlists;
+with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
+with Uintp; use Uintp;
 
 with GNATLLVM.Compile;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
-with Uintp; use Uintp;
 
 package body GNATLLVM.Types is
 
@@ -115,32 +114,22 @@ package body GNATLLVM.Types is
    -----------------
 
    function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T is
+      Def_Ident : Entity_Id;
    begin
+      --  First, look for this type in the environment, and return it if it's
+      --  there.
 
       case Nkind (Type_Node) is
          when N_Defining_Identifier =>
-
-            if not Env.Has_Type (Type_Node) then
-               if Nkind (Parent (Type_Node)) /= N_Empty then
-                  GNATLLVM.Compile.Compile (Env, Parent (Type_Node));
-               else
-                  return Create_Type (Env, Etype (Type_Node));
-               end if;
+            if Env.Has_Type (Type_Node) then
+               return Env.Get (Type_Node);
             end if;
-
-            return Env.Get (Type_Node);
 
          when N_Identifier =>
+            return Create_Type (Env, Entity (Type_Node));
 
-            --  If the type does not yet exist in the environnment, it may have
-            --  been drawn from another file (adb's own spec file or another),
-            --  so we compile the full type declaration.
-
-            if not Env.Has_Type (Entity (Type_Node)) then
-               GNATLLVM.Compile.Compile (Env, Parent (Entity (Type_Node)));
-            end if;
-
-            return Env.Get (Entity (Type_Node));
+         --  Some types can be anonymous (so they don't have any defining
+         --  identifier).
 
          when N_Access_Definition =>
             return Pointer_Type
@@ -150,159 +139,108 @@ package body GNATLLVM.Types is
             return Pointer_Type
               (Create_Type (Env, Subtype_Indication (Type_Node)), 0);
 
-         when N_Derived_Type_Definition =>
+         when others =>
+            raise Program_Error with "Unhandled type node kind: "
+              & Node_Kind'Image (Nkind (Type_Node));
+      end case;
 
-            --  Machine representation of a derived type is the same as its
-            --  parent type
+      --  If this type is unknown, build it from its entity information
 
-            return Create_Type
-              (Env, Subtype_Mark (Subtype_Indication (Type_Node)));
+      --  Always get the fullest view
 
-         when N_Enumeration_Type_Definition =>
+      Def_Ident := Type_Node;
+      while Present (Full_View (Def_Ident)) loop
+         Def_Ident := Full_View (Def_Ident);
+      end loop;
+
+      --  The full view may already be in the environment
+
+      if Env.Has_Type (Def_Ident) then
+         return Env.Get (Def_Ident);
+      end if;
+
+      case Ekind (Def_Ident) is
+
+         when Discrete_Kind =>
+            return Int_Type_In_Context
+              (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
+
+         when E_Access_Type .. E_General_Access_Type =>
+            return Pointer_Type
+              (Create_Type (Env, Designated_Type (Def_Ident)), 0);
+
+         when Record_Kind =>
             declare
-               Rep, Rep_Max : Natural := 0;
-            begin
-               --  An enumeration type is represented by an integer. Just get
-               --  here the size needed to represent all possible values.
+               function Iterate is new Iterate_Entities
+                 (Get_First => First_Entity,
+                  Get_Next  => Next_Entity);
 
-               --  Note that we do not store literals in the environment,
-               --  since the environment requires l-values. Enumeration
-               --  literals are a special cases for N_Identifier nodes
-               --  in Compile_Expression.
-
-               for Lit of Iterate (Literals (Type_Node)) loop
-                  Rep := Natural (UI_To_Int (Enumeration_Rep (Lit)));
-                  if Rep > Rep_Max then
-                     Rep_Max := Rep;
-                  end if;
-               end loop;
-               return Int_Type_In_Context
-                 (Env.Ctx, Interfaces.C.unsigned (Get_Binary_Size (Rep_Max)));
-            end;
-
-         when N_Record_Definition =>
-            declare
-               DI : constant Node_Id :=
-                 Defining_Identifier (Parent (Type_Node));
-
-               --  When declaring a record, we want to check if the environment
-               --  already contains a type for the given entity. If it does,
-               --  rather than creating a new type, we'll want to alter the
-               --  existing LLVM struct
-
-               Full : constant Boolean := Env.Has_Type (DI);
                Struct_Type : constant Type_T :=
-                 (if Full
-                  then Env.Get (DI)
-                  else Struct_Create_Named
-                    (Env.Ctx,
-                     Get_Name (Defining_Identifier (Parent (Type_Node)))));
-
-               Comp_List : constant List_Id :=
-                 Component_Items (Component_List (Type_Node));
-               LLVM_Comps : array (1 .. List_Length (Comp_List)) of Type_T;
-               I : Int := 1;
+                 Struct_Create_Named
+                   (Env.Ctx, Get_Name (Def_Ident));
+               Comps       : constant Entity_Iterator := Iterate (Def_Ident);
+               LLVM_Comps  : array (1 .. Comps'Length) of Type_T;
+               I           : Integer := 1;
             begin
+               --  Records enable some "type recursivity", so store this one in
+               --  the environment so that there is no infinite recursion when
+               --  nested components reference it.
 
-               --  Create a LLVM type recursively for every component of the
-               --  record, and set the resulting array of types as the struct's
-               --  body
-
-               for El of
-                 Iterate (Component_Items (Component_List (Type_Node)))
-               loop
-                  LLVM_Comps (I) :=
-                    Create_Type
-                      (Env, Subtype_Indication (Component_Definition (El)));
+               Env.Push_Scope;
+               Env.Set (Def_Ident, Struct_Type);
+               for Comp of Comps loop
+                  LLVM_Comps (I) := Create_Type (Env, Etype (Comp));
                   I := I + 1;
                end loop;
+               Env.Push_Scope;
 
                Struct_Set_Body
                  (Struct_Type, LLVM_Comps'Address, LLVM_Comps'Length, 0);
-
                return Struct_Type;
             end;
 
-         when N_Modular_Type_Definition =>
+         when Array_Kind =>
             declare
-               E : constant Entity_Id :=
-                 Defining_Identifier (Parent (Type_Node));
-               use Interfaces.C;
+               Result     : Type_T :=
+                 Create_Type (Env, Component_Type (Def_Ident));
+               LB, HB     : Node_Id;
+               Range_Size : Natural;
+
+               function Iterate is new Iterate_Entities
+                 (Get_First => First_Index,
+                  Get_Next  => Next_Index);
             begin
-               if Non_Binary_Modulus (E) then
+               --  Wrap each "nested type" into an array using the previous
+               --  index.
 
-                  --  Use the biggest integer type for non binary mod types
-                  --  TODO : Use a smaller type when possible. Check what
-                  --  GNATGCC does on 32 bits platforms
+               for Index of reverse Iterate (Def_Ident) loop
+                  pragma Assert (Nkind (Index) = N_Range);
 
-                  return Int64_Type;
-               else
+                  LB := Low_Bound (Index);
+                  HB := High_Bound (Index);
+                  Range_Size := 0;
 
-                  --  Since LLVM behavior regarding unsigned int types is what
-                  --  we expect for mod types, just use a rightly sized integer
-                  --  for binary mod types
+                  --  Compute the size of this range if possible, otherwise
+                  --  keep 0 for "unknown".
 
-                  return Int_Type
-                    (unsigned (Log (Float (UI_To_Int (Modulus (E))), 2.0)));
-               end if;
-            end;
+                  if Is_Static_Expression (LB)
+                    and then Is_Static_Expression (HB)
+                  then
+                     Range_Size := Natural
+                       (UI_To_Int (Expr_Value (HB))
+                        - UI_To_Int (Expr_Value (LB)) + 1);
+                  end if;
 
-            pragma Warnings (Off);
-
-         when N_Constrained_Array_Definition =>
-            declare
-               function Array_From_Type
-                 (T : Type_T; DSD : Node_Id) return Type_T;
-
-               function Array_From_Type
-                 (T : Type_T; DSD : Node_Id) return Type_T
-               is
-               begin
-                  case Nkind (DSD) is
-                     when N_Range =>
-                        declare
-                           LB : Node_Id := Low_Bound (DSD);
-                           HB : Node_Id := High_Bound (DSD);
-                           Array_Size : Natural := 0;
-                        begin
-
-                           if
-                             Is_Static_Expression (LB)
-                             and then Is_Static_Expression (HB)
-                           then
-                              Array_Size := Natural
-                                (UI_To_Int (Intval (HB)) -
-                                  UI_To_Int (Intval (LB)) + 1);
-                           end if;
-
-                           return Array_Type
-                             (T, Interfaces.C.unsigned (Array_Size));
-                        end;
-
-                     when others =>
-                        raise Program_Error
-                          with "Node not handled as DSD : " & Nkind (DSD)'Img;
-                  end case;
-               end Array_From_Type;
-
-               DSD : constant List_Id :=
-                 Discrete_Subtype_Definitions (Type_Node);
-               El_Type : Type_T;
-            begin
-               El_Type := Create_Type
-                 (Env, Subtype_Indication (Component_Definition (Type_Node)));
-
-               for DSD of Iterate (Discrete_Subtype_Definitions (Type_Node))
-               loop
-                  El_Type := Array_From_Type (El_Type, DSD);
+                  Result := Array_Type
+                    (Result, Interfaces.C.unsigned (Range_Size));
                end loop;
-
-               return El_Type;
+               return Result;
             end;
 
          when others =>
             raise Program_Error
-              with "Unhandled node: " & Node_Kind'Image (Nkind (Type_Node));
+              with "Unhandled type kind: "
+              & Entity_Kind'Image (Ekind (Def_Ident));
       end case;
    end Create_Type;
 
@@ -341,17 +279,5 @@ package body GNATLLVM.Types is
               with "Invalid discrete type: " & Entity_Kind'Image (Ekind (TE));
       end case;
    end Create_Discrete_Type;
-
-   function Get_Binary_Size (N : Natural) return Natural
-   is
-      Greater : Natural := 1;
-      Result  : Natural := 1;
-   begin
-      while Greater < N loop
-         Greater := 2 * Greater;
-         Result := Result + 1;
-      end loop;
-      return Result;
-   end Get_Binary_Size;
 
 end GNATLLVM.Types;

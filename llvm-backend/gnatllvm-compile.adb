@@ -41,39 +41,58 @@ package body GNATLLVM.Compile is
    function Compile_Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T
    is
-      CT : constant Entity_Id := Component_Type (Array_Type);
-      Size : Value_T := No_Value_T;
+      CT       : constant Entity_Id := Component_Type (Array_Type);
+      Size     : Value_T := No_Value_T;
       Cur_Size : Value_T;
-      DDS : Node_Id := First_Index (Array_Type);
+      DSD      : Node_Id := First_Index (Array_Type);
    begin
-      while Present (DDS) loop
-         case Nkind (DDS) is
+
+      --  Go through every array dimension
+
+      while Present (DSD) loop
+
+         case Nkind (DSD) is
             when N_Range =>
+
+               --  Compute the size of the dimension from the range bounds
+
                Cur_Size := Build_Add
                  (Env.Bld,
                   Build_Sub
-                    (Env.Bld, Compile_Expression (Env, High_Bound (DDS)),
-                     Compile_Expression (Env, Low_Bound (DDS)), ""),
+                    (Env.Bld, Compile_Expression (Env, High_Bound (DSD)),
+                     Compile_Expression (Env, Low_Bound (DSD)), ""),
                   Const_Int
-                    (Create_Type (Env, Etype (High_Bound (DDS))), 1,
+                    (Create_Type (Env, Etype (High_Bound (DSD))), 1,
                      Sign_Extend => Boolean'Pos (True)), "");
+
+               --  Accumulate the product of the sizes
+               --  If it's the first dimension, initialize our result with it
+               --  Else, multiply our result by it
 
                if Size = No_Value_T then
                   Size := Cur_Size;
                else
-                  Size := Build_Mul
-                    (Env.Bld, Size, Cur_Size, "");
+                  Size := Build_Mul (Env.Bld, Size, Cur_Size, "");
                end if;
+
             when others =>
-               raise Program_Error with "Not supported : " & Nkind (DDS)'Img;
+               raise Program_Error with "Not supported : " & Nkind (DSD)'Img;
+
          end case;
-         DDS := Next (DDS);
+
+         DSD := Next (DSD);
+
       end loop;
+
+      --  If the component of the array is itself an array, then recursively
+      --  compute the size of the component and return the product
+
       if Is_Array_Type (CT) then
          return Build_Mul (Env.Bld, Size, Compile_Array_Size (Env, CT), "");
       else
          return Size;
       end if;
+
    end Compile_Array_Size;
 
    -------------
@@ -84,8 +103,10 @@ package body GNATLLVM.Compile is
      (Env : Environ; Node : Node_Id) is
    begin
       case Nkind (Node) is
+
          when N_Package_Declaration =>
             Compile (Env, Specification (Node));
+
          when N_Package_Specification =>
             Compile_List (Env, Visible_Declarations (Node));
 
@@ -128,6 +149,7 @@ package body GNATLLVM.Compile is
                   --  its entity.
 
                   --  Set the name of the llvm value
+
                   Set_Value_Name (LLVM_Param, Get_Name (Param));
 
                   --  If this is an out parameter, the parameter is already an
@@ -145,6 +167,7 @@ package body GNATLLVM.Compile is
                   end if;
 
                   --  Add the parameter to the environnment
+
                   Env.Set (Param, LLVM_Var);
                   if Spec_Entity (Param) /= 0
                     and then Spec_Entity (Param) /= Param then
@@ -160,6 +183,7 @@ package body GNATLLVM.Compile is
 
                --  This point should not be reached: a return must have
                --  already... returned!
+
                Discard (Build_Unreachable (Env.Bld));
 
                Env.Pop_Scope;
@@ -173,23 +197,40 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_Constraint_Error =>
+
             --  TODO??? When exceptions handling will be implemented, implement
             --  this.
+
             null;
 
          when N_Raise_Storage_Error =>
+
             --  TODO??? When exceptions handling will be implemented, implement
             --  this.
+
             null;
 
          when N_Object_Declaration =>
+
+            --  Object declarations are local variables allocated on the stack
+
             declare
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
-               T : constant Entity_Id := Etype (Def_Ident);
+               T         : constant Entity_Id := Etype (Def_Ident);
                LLVM_Type : Type_T;
                LLVM_Var  : Value_T;
             begin
+
                if Is_Array_Type (T) then
+
+                  --  Alloca arrays are handled as follows:
+                  --  * The total size is computed with Compile_Array_Size.
+                  --  * The type of the innermost component is computed with
+                  --    Get_Innermost_Component type.
+                  --  * The result of the alloca is bitcasted to the proper
+                  --    array type, so that multidimensional LLVM GEP operations
+                  --    work properly.
+
                   LLVM_Var := Build_Bit_Cast
                     (Env.Bld,
                      Build_Array_Alloca
@@ -197,7 +238,6 @@ package body GNATLLVM.Compile is
                         Get_Innermost_Component_Type (Env, T),
                         Compile_Array_Size (Env, T), "array-alloca"),
                      Pointer_Type (Create_Type (Env, T), 0), "array");
---                    raise Program_Error;
                else
                   LLVM_Type := Create_Type (Env, T);
                   LLVM_Var := Build_Alloca
@@ -209,7 +249,9 @@ package body GNATLLVM.Compile is
                  and then
                    not No_Initialization (Node)
                then
+
                   --  TODO??? Handle the Do_Range_Check_Flag
+
                   Discard (Build_Store
                            (Env.Bld,
                               Compile_Expression
@@ -223,6 +265,7 @@ package body GNATLLVM.Compile is
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                LLVM_Var  : Value_T;
             begin
+
                --  If the renamed object is already an l-value, keep it as-is.
                --  Otherwise, create one for it.
 
@@ -321,6 +364,7 @@ package body GNATLLVM.Compile is
                  (if not Is_Empty_List (Else_Statements (Node))
                   then Create_Basic_Block (Env, "if-else")
                   else BB_Next);
+
                Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
 
                Position_Builder_At_End (Env.Bld, BB_Then);
@@ -618,7 +662,7 @@ package body GNATLLVM.Compile is
                Idxs : array (1 .. List_Length (Expressions (Node)) + 1)
                  of Value_T;
                I : Nat := 2;
-               DDS : Node_Id := First_Index (Etype (Prefix (Node)));
+               DSD : Node_Id := First_Index (Etype (Prefix (Node)));
             begin
                Idxs (1) := Const_Int
                  (Create_Type (Env, Etype (Node)), 0,
@@ -627,18 +671,18 @@ package body GNATLLVM.Compile is
                for N of Iterate (Expressions (Node)) loop
                   Idxs (I) := Compile_Expression (Env, N);
 
-                  if Nkind (DDS) /=  N_Range then
+                  if Nkind (DSD) /=  N_Range then
                      raise Program_Error
-                       with "Arrays indexed with" & Nkind (DDS)'Img
+                       with "Arrays indexed with" & Nkind (DSD)'Img
                         & " not supported";
                   end if;
 
                   Idxs (I) := Build_Sub
                     (Env.Bld,
-                     Idxs (I), Compile_Expression (Env, Low_Bound (DDS)), "");
+                     Idxs (I), Compile_Expression (Env, Low_Bound (DSD)), "");
 
                   I := I + 1;
-                  DDS := Next (DDS);
+                  DSD := Next (DSD);
                end loop;
 
                return Build_GEP

@@ -1,5 +1,4 @@
 with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
 with Atree;    use Atree;
@@ -67,9 +66,8 @@ package body GNATLLVM.Compile is
                   Build_Sub
                     (Env.Bld, Compile_Expression (Env, High_Bound (DSD)),
                      Compile_Expression (Env, Low_Bound (DSD)), ""),
-                  Const_Int
-                    (Create_Type (Env, Etype (High_Bound (DSD))), 1,
-                     Sign_Extend => Boolean'Pos (True)), "");
+                  Get_Const_Int
+                    (Create_Type (Env, Etype (High_Bound (DSD))), 1), "");
                Cur_Size := Build_Z_Ext (Env.Bld, Cur_Size, T, "");
 
                --  Accumulate the product of the sizes
@@ -535,9 +533,8 @@ package body GNATLLVM.Compile is
                            Iter_Prev_Value : constant Value_T :=
                              Build_Load (Env.Bld, LLVM_Var, "loop-var");
                            One             : constant Value_T :=
-                             Const_Int
-                               (LLVM_Type, 1,
-                                Sign_Extend => Boolean'Pos (False));
+                             Get_Const_Int
+                               (LLVM_Type, 1, False);
                            Iter_Next_Value : constant Value_T :=
                              (if Reversed
                               then Build_Sub
@@ -668,9 +665,8 @@ package body GNATLLVM.Compile is
                DSD     : Node_Id := First_Index (Etype (Prefix (Node)));
                LB      : Value_T;
             begin
-               Idxs (1) := Const_Int
-                 (Create_Type (Env, Etype (Node)), 0,
-                  Sign_Extend => Boolean'Pos (True));
+               Idxs (1) := Get_Const_Int
+                 (Create_Type (Env, Etype (Node)), 0);
 
                for N of Iterate (Expressions (Node)) loop
                   Idxs (I) := Compile_Expression (Env, N);
@@ -891,10 +887,9 @@ package body GNATLLVM.Compile is
             if Non_Binary_Modulus (Etype (Node)) then
                Op := Build_U_Rem
                  (Env.Bld, Op,
-                  Const_Int
+                  Get_Const_Int
                     (Create_Type (Env, Etype (Node)),
-                     unsigned_long_long (UI_To_Int (Modulus (Etype (Node)))),
-                     Sign_Extend => Boolean'Pos (True)),
+                     Modulus (Etype (Node))),
                  "mod");
             end if;
 
@@ -910,11 +905,15 @@ package body GNATLLVM.Compile is
             pragma Assert (Is_Empty_List (Actions (Node)));
             return Compile_Expr (Expression (Node));
 
+         when N_Character_Literal =>
+            return Get_Const_Int
+              (Int8_Type,
+               Char_Literal_Value (Node));
+
          when N_Integer_Literal =>
-            return Const_Int
+            return Get_Const_Int
               (Create_Type (Env, Etype (Node)),
-               unsigned_long_long (UI_To_Int (Intval (Node))),
-               Sign_Extend => Boolean'Pos (True));
+               Intval (Node));
 
          when N_And_Then => return Build_Scl_Op (Op_And);
          when N_Or_Else => return Build_Scl_Op (Op_Or);
@@ -922,10 +921,8 @@ package body GNATLLVM.Compile is
          when N_Op_Plus => return Compile_Expr (Right_Opnd (Node));
          when N_Op_Minus => return Build_Sub
               (Env.Bld,
-               Const_Int
-                 (Create_Type (Env, Etype (Node)),
-                  0,
-                  Sign_Extend => Boolean'Pos (False)),
+               Get_Const_Int
+                 (Create_Type (Env, Etype (Node)), 0, False),
                Compile_Expr (Right_Opnd (Node)),
                "minus");
 
@@ -962,11 +959,9 @@ package body GNATLLVM.Compile is
             --  store in the environment. Handle them here.
 
             if Ekind (Entity (Node)) = E_Enumeration_Literal then
-               return Const_Int
+               return Get_Const_Int
                  (Create_Type (Env, Etype (Node)),
-                  unsigned_long_long
-                    (UI_To_Int (Enumeration_Rep (Entity (Node)))),
-                  Sign_Extend => Boolean'Pos (False));
+                  Enumeration_Rep (Entity (Node)), False);
             else
                return Build_Load (Env.Bld, Env.Get (Entity (Node)), "");
             end if;

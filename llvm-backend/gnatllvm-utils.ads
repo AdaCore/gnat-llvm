@@ -6,8 +6,22 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with System; use System;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
+with Uintp; use Uintp;
 
 package GNATLLVM.Utils is
+
+   function Get_Const_Int
+     (T : Type_T; Value : unsigned_long_long; Sign_Extend : Boolean := True)
+      return Value_T
+   is
+      (Const_Int (T, Value, Sign_Extend => Boolean'Pos (Sign_Extend)));
+
+   function Get_Const_Int
+     (T : Type_T; Value : Uintp.Uint; Sign_Extend : Boolean := True)
+      return Value_T
+   is
+     (Get_Const_Int (T, unsigned_long_long (UI_To_Int (Value)), Sign_Extend));
 
    No_Value_T : Value_T := Value_T (Null_Address);
 

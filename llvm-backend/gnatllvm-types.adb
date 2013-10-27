@@ -162,6 +162,13 @@ package body GNATLLVM.Types is
       case Ekind (Def_Ident) is
 
          when Discrete_Kind =>
+
+            if Is_Modular_Integer_Type (Def_Ident) then
+               return Int_Type_In_Context
+                 (Env.Ctx,
+                  Interfaces.C.unsigned (UI_To_Int (RM_Size (Def_Ident))));
+            end if;
+
             return Int_Type_In_Context
               (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
 

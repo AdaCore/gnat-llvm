@@ -1047,18 +1047,35 @@ package body GNATLLVM.Compile is
                   Cur_Expr   : Value_T;
                   Cur_Index  : Integer;
                begin
-                  for Assoc of Iterate (Component_Associations (Node)) loop
-                     Cur_Expr := Compile_Expr (Expression (Assoc));
-                     for Choice of Iterate (Choices (Assoc)) loop
-                        Cur_Index := Index_In_List (Parent (Entity (Choice)));
+                  if Ekind (Agg_Type) in Record_Kind then
+                     for Assoc of Iterate (Component_Associations (Node)) loop
+                        Cur_Expr := Compile_Expr (Expression (Assoc));
+                        for Choice of Iterate (Choices (Assoc)) loop
+                           Cur_Index := Index_In_List
+                             (Parent (Entity (Choice)));
+                           Result := Build_Insert_Value
+                             (Env.Bld,
+                              Result,
+                              Cur_Expr,
+                              unsigned (Cur_Index - 1),
+                              "");
+                        end loop;
+                     end loop;
+
+                  --  Must be an array
+
+                  else
+                     Cur_Index := 0;
+                     for Expr of Iterate (Expressions (Node)) loop
+                        Cur_Expr := Compile_Expr (Expr);
                         Result := Build_Insert_Value
                           (Env.Bld,
-                           Result,
-                           Cur_Expr,
-                           unsigned (Cur_Index - 1),
-                           "");
+                           Result, Cur_Expr, unsigned (Cur_Index), "");
+                        Cur_Index := Cur_Index + 1;
                      end loop;
-                  end loop;
+
+                  end if;
+
                   return Result;
                end;
 

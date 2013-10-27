@@ -254,7 +254,8 @@ package body GNATLLVM.Compile is
                        (Env.Bld,
                         Get_Innermost_Component_Type (Env, T),
                         Compile_Array_Size (Env, T), "array-alloca"),
-                     Pointer_Type (Create_Type (Env, T), 0), "array");
+                     Pointer_Type (Create_Type (Env, T), 0),
+                     Get_Name (Def_Ident));
                else
                   LLVM_Type := Create_Type (Env, T);
                   LLVM_Var := Build_Alloca

@@ -715,7 +715,7 @@ package body GNATLLVM.Compile is
          case Nkind (N) is
          when N_Explicit_Dereference =>
             return True;
-         when N_Selected_Component =>
+         when N_Selected_Component | N_Indexed_Component =>
             N := Prefix (N);
             when N_Identifier =>
                N := Entity (N);

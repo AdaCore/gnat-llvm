@@ -220,11 +220,11 @@ package body GNATLLVM.Compile is
             --  Object declarations are local variables allocated on the stack
 
             declare
-               Def_Ident : constant Node_Id := Defining_Identifier (Node);
-               Obj_Def   : constant Node_Id := Object_Definition (Node);
-               T         : constant Entity_Id := Etype (Def_Ident);
-               LLVM_Type : Type_T;
-               LLVM_Var  : Value_T;
+               Def_Ident      : constant Node_Id := Defining_Identifier (Node);
+               Obj_Def        : constant Node_Id := Object_Definition (Node);
+               T              : constant Entity_Id := Etype (Def_Ident);
+               LLVM_Type      : Type_T;
+               LLVM_Var, Expr : Value_T;
             begin
 
                --  Strip useless entities such as the ones generated for
@@ -261,18 +261,13 @@ package body GNATLLVM.Compile is
                end if;
 
                Env.Set (Def_Ident, LLVM_Var);
+
                if Present (Expression (Node))
-                 and then
-                   not No_Initialization (Node)
+                 and then not No_Initialization (Node)
                then
-
                   --  TODO??? Handle the Do_Range_Check_Flag
-
-                  Discard (Build_Store
-                           (Env.Bld,
-                              Compile_Expression
-                                (Env, Expression (Node)),
-                              LLVM_Var));
+                  Expr := Compile_Expression (Env, Expression (Node));
+                  Discard (Build_Store (Env.Bld, Expr, LLVM_Var));
                end if;
             end;
 
@@ -709,10 +704,10 @@ package body GNATLLVM.Compile is
    begin
       loop
          case Nkind (N) is
-         when N_Explicit_Dereference =>
-            return True;
-         when N_Selected_Component | N_Indexed_Component =>
-            N := Prefix (N);
+            when N_Explicit_Dereference =>
+               return True;
+            when N_Selected_Component | N_Indexed_Component =>
+               N := Prefix (N);
             when N_Identifier =>
                N := Entity (N);
             when N_Defining_Identifier =>
@@ -907,7 +902,7 @@ package body GNATLLVM.Compile is
 
          when N_Character_Literal =>
             return Get_Const_Int
-              (Int8_Type,
+              (Create_Type (Env, Etype (Node)),
                Char_Literal_Value (Node));
 
          when N_Integer_Literal =>

@@ -217,7 +217,11 @@ EXCLUDE_GNATRTL_OBJS = \
 
 # Take advantage of GNATRTL_*_OBJS defined in Makefile.rtl and remove unwanted
 # units (defined in EXCLUDE_GNATRTL_OBJS)
-GNATRTL_OBJS=$(filter-out $(EXCLUDE_GNATRTL_OBJS),$(GNATRTL_NONTASKING_OBJS)) $(EXTRA_GNATRTL_OBJS)
+ifdef GNATRTL_WHITELIST
+	GNATRTL_OBJS=$(GNATRTL_WHITELIST)
+else
+	GNATRTL_OBJS=$(filter-out $(EXCLUDE_GNATRTL_OBJS),$(GNATRTL_NONTASKING_OBJS)) $(EXTRA_GNATRTL_OBJS)
+endif
 GNATRTL_SRCS=$(subst $(objext),.ad?,$(GNATRTL_OBJS)) \
   unchconv.ads unchdeal.ads directio.ads sequenio.ads
 
@@ -259,15 +263,18 @@ gnatlib:
 	$(MAKE) quicklib
 	$(MAKE) readonly-lib
 
+###
+
+setuplib: adainclude
+ifneq ($(GNATLIB_PATCH),)
+	cd $(lib)/adainclude; $(PATCH) < $(gnatlib)/$(GNATLIB_PATCH)
+endif
+	@if [ -f $(gnatlib)/$(GNATKEY) ]; then \
+	  $(CP) $(gnatlib)/$(GNATKEY) $(lib)/adalib; \
+	fi
+
 quicklib: write-lib
 	$(MAKE) libgnat
-
-write-lib:
-ifeq ($(OS),Windows_NT)
-	-cd $(lib)/adalib; attrib -R "*.ali"
-else
-	-cd $(lib)/adalib; chmod +w *.ali
-endif
 
 readonly-lib:
 	cd $(lib)/adalib; $(RM) *.class
@@ -277,25 +284,26 @@ else
 	cd $(lib)/adalib; chmod -w *.ali
 endif
 
-gnatsources:
-	-$(RM) $(lib)/adainclude/* $(lib)/adalib/*
-	$(MKDIR) $(lib)/adainclude $(lib)/adalib
-	-cd $(GNAT_SRC); $(CP) $(GNATRTL_SRCS) $(lib)/adainclude 2> /dev/null
-ifneq ($(GNATRTL_COMMON_SRCS),)
-	-cd $(gnatlib_common); $(CP) $(GNATRTL_COMMON_SRCS) $(lib)/adainclude 2> /dev/null
-endif
+###
 
 adainclude: gnatsources $(lib)/adainclude/a-except.adb
 	@cd $(gnatlib); $(CP) $(NON_ADA_RT_FILES) $(lib)/adainclude
 	$(CP) $(gnatlib)/*.ad? $(lib)/adainclude
 
-setuplib: adainclude
-ifneq ($(GNATLIB_PATCH),)
-	cd $(lib)/adainclude; $(PATCH) < $(gnatlib)/$(GNATLIB_PATCH)
+write-lib:
+ifeq ($(OS),Windows_NT)
+	-cd $(lib)/adalib; attrib -R "*.ali"
+else
+	-cd $(lib)/adalib; chmod +w *.ali
 endif
-	@if [ -f $(gnatlib)/$(GNATKEY) ]; then \
-	  $(CP) $(gnatlib)/$(GNATKEY) $(lib)/adalib; \
-	fi
+
+gnatsources:
+	-$(RM) $(lib)/adainclude/* $(lib)/adalib/*
+	$(MKDIR) $(lib)/adainclude $(lib)/adalib
+	cd $(GNAT_SRC); $(CP) $(GNATRTL_SRCS) $(lib)/adainclude
+ifneq ($(GNATRTL_COMMON_SRCS),)
+	cd $(gnatlib_common); $(CP) $(GNATRTL_COMMON_SRCS) $(lib)/adainclude
+endif
 
 ################
 # target tools #

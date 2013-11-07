@@ -3,8 +3,27 @@ with Ada.Unchecked_Conversion;
 
 with Namet;  use Namet;
 with Nlists; use Nlists;
+with Einfo; use Einfo;
 
 package body GNATLLVM.Utils is
+
+   ---------------------
+   -- Param_Needs_Ptr --
+   ---------------------
+
+   function Param_Needs_Ptr (Arg : Node_Id) return Boolean is
+      PT : constant Node_Id := Parameter_Type (Arg);
+   begin
+      return (Nkind (PT) /= N_Access_Definition
+              and then not Is_Access_Type (Etype (PT))
+              and then
+                (Out_Present (Arg)
+                 or else not Is_Constrained (Etype (PT))));
+   end Param_Needs_Ptr;
+
+   -------------------
+   -- Index_In_List --
+   -------------------
 
    function Index_In_List (N : Node_Id) return Natural is
       L : constant List_Id := List_Containing (N);

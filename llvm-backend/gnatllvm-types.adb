@@ -1,7 +1,5 @@
 with Interfaces.C;
-with Atree;    use Atree;
 with Get_Targ; use Get_Targ;
-with Einfo;    use Einfo;
 with Nlists;   use Nlists;
 with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
@@ -67,6 +65,58 @@ package body GNATLLVM.Types is
      (Function_Type
         (Ret_Ty, Param_Ty'Address, Param_Ty'Length, Boolean'Pos (False)));
 
+   -----------------------
+   -- Array_Bounds_Type --
+   -----------------------
+
+   function Array_Bounds_Type return Type_T
+   is
+      (Int_Type (Interfaces.C.unsigned (Get_Pointer_Size)));
+
+   -----------------------------
+   -- Array_Bounds_Array_Type --
+   -----------------------------
+
+   function Array_Bounds_Array_Type (Nb_Dims : Nat) return Type_T is
+      Bounds_Type : constant Type_T := Array_Bounds_Type;
+      use Interfaces.C;
+      Ret : constant Type_T :=
+        Array_Type (Bounds_Type, unsigned (Nb_Dims * 2));
+   begin
+      return Ret;
+   end Array_Bounds_Array_Type;
+
+   -----------------
+   -- Access_Type --
+   -----------------
+
+   function Create_Access_Type
+     (Env : Environ; Type_Node : Node_Id) return Type_T
+   is
+      T : constant Type_T := Create_Type (Env, Type_Node);
+      TT : constant Entity_Id :=
+        (if Nkind (Type_Node) in N_Entity and then Is_Type (Type_Node)
+         then Entity_Id (Type_Node)
+         else Etype (Type_Node));
+   begin
+      if Get_Type_Kind (T) = Array_Type_Kind
+        and then not Is_Constrained (TT)
+      then
+         declare
+            Nb_Dimensions : constant Nat :=
+              List_Length (List_Containing (First_Index (TT)));
+            St_Els : Type_Array (1 .. 2) :=
+              (Pointer_Type (T, 0),
+               Array_Bounds_Array_Type (Nb_Dimensions));
+         begin
+            return Struct_Type
+              (St_Els'Address, St_Els'Length, Boolean'Pos (False));
+         end;
+      else
+         return Pointer_Type (T, 0);
+      end if;
+   end Create_Access_Type;
+
    ----------------------------
    -- Create_Subprogram_Type --
    ----------------------------
@@ -79,17 +129,18 @@ package body GNATLLVM.Types is
       Return_Type : Type_T;
       Arg         : Node_Id := First (Param_Specs);
    begin
+
       --  Associate an LLVM type for each argument
+      for Param of Param_Types loop
 
-      for I in Param_Types'Range loop
-         Param_Types (I) := Create_Type (Env, Parameter_Type (Arg));
+         --  If this is an out parameter, or a parameter whose type is
+         --  unconstrained, take a pointer to the actual parameter.
 
-         --  If this is an OUT parameter, take a pointer to the actual
-         --  parameter.
+         Param :=
+           (if Param_Needs_Ptr (Arg)
+            then Create_Access_Type (Env, Parameter_Type (Arg))
+            else Create_Type (Env, Parameter_Type (Arg)));
 
-         if Out_Present (Arg) then
-            Param_Types (I) := Pointer_Type (Param_Types (I), 0);
-         end if;
          Arg := Next (Arg);
       end loop;
 
@@ -132,12 +183,12 @@ package body GNATLLVM.Types is
          --  identifier).
 
          when N_Access_Definition =>
-            return Pointer_Type
-              (Create_Type (Env, Subtype_Mark (Type_Node)), 0);
+            return Create_Access_Type
+              (Env, Subtype_Mark (Type_Node));
 
          when N_Access_To_Object_Definition =>
-            return Pointer_Type
-              (Create_Type (Env, Subtype_Indication (Type_Node)), 0);
+            return Create_Access_Type
+              (Env, Subtype_Indication (Type_Node));
 
          when others =>
             raise Program_Error with "Unhandled type node kind: "
@@ -173,8 +224,8 @@ package body GNATLLVM.Types is
               (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
 
          when E_Access_Type .. E_General_Access_Type =>
-            return Pointer_Type
-              (Create_Type (Env, Designated_Type (Def_Ident)), 0);
+            return Create_Access_Type
+              (Env, Designated_Type (Def_Ident));
 
          when Record_Kind =>
             declare

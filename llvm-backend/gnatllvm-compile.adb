@@ -18,21 +18,64 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
+   type Value_Array is array (Nat range <>) of Value_T;
+
+   procedure Store (Env : Environ; Expr : Value_T; Ptr : Value_T);
+   --  Helper for LLVM's Build_Store
+
+   function GEP
+     (Env : Environ; Ptr : Value_T; Indices : Value_Array; Name : String)
+      return Value_T;
+   --  Helper for LLVM's Build_GEP
+
+   function Is_LValue (Node : Node_Id) return Boolean;
+   --  Returns true if Node is an L value
+
+   function Const_Bound (B : Integer) return Value_T;
+   --  Return an LLVM value of the type of array bounds which value is B
+
    procedure Compile_List
      (Env : Environ; List : List_Id);
+   --  Call Compile on every element of List
 
    function Compile_Call
      (Env : Environ; Call : Node_Id) return Value_T;
 
-   function Compile_Subprogram
+   function Compile_Subprogram_Decl
      (Env : Environ; Subp_Spec : Node_Id) return Value_T;
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
-   function Is_LValue (Env : Environ; Node : Node_Id) return Boolean;
-
    function Compile_Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T;
+
+   -----------------
+   -- Const_Bound --
+   -----------------
+
+   function Const_Bound (B : Integer) return Value_T
+   is
+      (Const_Int (Array_Bounds_Type, B));
+
+   ---------
+   -- GEP --
+   ---------
+
+   function GEP
+     (Env : Environ; Ptr : Value_T; Indices : Value_Array; Name : String)
+      return Value_T
+   is
+     (Build_GEP (Env.Bld, Ptr, Indices'Address, Indices'Length, Name));
+
+   -----------
+   -- Store --
+   -----------
+
+   procedure Store (Env : Environ; Expr : Value_T; Ptr : Value_T)
+   is
+   begin
+      Discard (Build_Store (Env.Bld, Expr, Ptr));
+   end Store;
 
    ------------------------
    -- Compile_Array_Size --
@@ -66,7 +109,7 @@ package body GNATLLVM.Compile is
                   Build_Sub
                     (Env.Bld, Compile_Expression (Env, High_Bound (DSD)),
                      Compile_Expression (Env, Low_Bound (DSD)), ""),
-                  Get_Const_Int
+                  Const_Int
                     (Create_Type (Env, Etype (High_Bound (DSD))), 1), "");
                Cur_Size := Build_Z_Ext (Env.Bld, Cur_Size, T, "");
 
@@ -126,7 +169,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Subprogram_Declaration =>
-            Discard (Compile_Subprogram (Env, Specification (Node)));
+            Discard (Compile_Subprogram_Decl (Env, Specification (Node)));
 
          when N_Subprogram_Body =>
             declare
@@ -134,7 +177,8 @@ package body GNATLLVM.Compile is
                  (if Acts_As_Spec (Node)
                   then Specification (Node)
                   else Parent (Corresponding_Spec (Node)));
-               Func       : constant Value_T := Compile_Subprogram (Env, Spec);
+               Func       : constant Value_T :=
+                 Compile_Subprogram_Decl (Env, Spec);
                Subp       : constant Subp_Env := Env.Enter_Subp (Func);
 
                LLVM_Param : Value_T;
@@ -157,18 +201,21 @@ package body GNATLLVM.Compile is
 
                   Set_Value_Name (LLVM_Param, Get_Name (Param));
 
-                  --  If this is an out parameter, the parameter is already an
-                  --  l-value: keep it. Otherwise, allocate some memory for the
-                  --  corresponding variable, and initialize it.
+                  --  Special case for structures passed by value, we want to
+                  --  store a pointer to them on the stack, so do an alloca,
+                  --  to be able to do GEP on them.
 
-                  if Out_Present (P) then
+                  if Param_Needs_Ptr (P)
+                    and then not
+                      (Get_Type_Kind (Type_Of (LLVM_Param)) = Struct_Type_Kind)
+                  then
                      LLVM_Var := LLVM_Param;
                   else
                      LLVM_Var := Build_Alloca
                        (Env.Bld,
                         Type_Of (LLVM_Param),
                         Get_Name (Param));
-                     Discard (Build_Store (Env.Bld, LLVM_Param, LLVM_Var));
+                     Store (Env, LLVM_Param, LLVM_Var);
                   end if;
 
                   --  Add the parameter to the environnment
@@ -246,13 +293,15 @@ package body GNATLLVM.Compile is
                   --    array type, so that multidimensional LLVM GEP
                   --    operations work properly.
 
+                  LLVM_Type := Create_Access_Type (Env, T);
+
                   LLVM_Var := Build_Bit_Cast
                     (Env.Bld,
                      Build_Array_Alloca
                        (Env.Bld,
                         Get_Innermost_Component_Type (Env, T),
                         Compile_Array_Size (Env, T), "array-alloca"),
-                     Pointer_Type (Create_Type (Env, T), 0),
+                     LLVM_Type,
                      Get_Name (Def_Ident));
                else
                   LLVM_Type := Create_Type (Env, T);
@@ -267,7 +316,7 @@ package body GNATLLVM.Compile is
                then
                   --  TODO??? Handle the Do_Range_Check_Flag
                   Expr := Compile_Expression (Env, Expression (Node));
-                  Discard (Build_Store (Env.Bld, Expr, LLVM_Var));
+                  Store (Env, Expr, LLVM_Var);
                end if;
             end;
 
@@ -280,17 +329,14 @@ package body GNATLLVM.Compile is
                --  If the renamed object is already an l-value, keep it as-is.
                --  Otherwise, create one for it.
 
-               if Is_LValue (Env, Name (Node)) then
+               if Is_LValue (Name (Node)) then
                   LLVM_Var := Compile_LValue (Env, Name (Node));
                else
                   LLVM_Var := Build_Alloca
                     (Env.Bld,
                      Create_Type (Env, Etype (Def_Ident)),
                      Get_Name (Def_Ident));
-                  Discard (Build_Store
-                           (Env.Bld,
-                              Compile_Expression (Env, Name (Node)),
-                              LLVM_Var));
+                  Store (Env, Compile_Expression (Env, Name (Node)), LLVM_Var);
                end if;
                Env.Set (Def_Ident, LLVM_Var);
             end;
@@ -307,7 +353,7 @@ package body GNATLLVM.Compile is
                  Compile_Expression (Env, Expression (Node));
                Dest : constant Value_T := Compile_LValue (Env, Name (Node));
             begin
-               Discard (Build_Store (Env.Bld, Val, Dest));
+               Store (Env, Val, Dest);
             end;
 
          when N_Procedure_Call_Statement =>
@@ -489,10 +535,8 @@ package body GNATLLVM.Compile is
                         LLVM_Var := Build_Alloca
                           (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
                         Env.Set (Def_Ident, LLVM_Var);
-                        Discard (Build_Store
-                                 (Env.Bld,
-                                    (if Reversed then High else Low),
-                                    LLVM_Var));
+                        Store
+                          (Env, (if Reversed then High else Low), LLVM_Var);
 
                         --  Then go to the condition block if the range isn't
                         --  empty.
@@ -528,7 +572,7 @@ package body GNATLLVM.Compile is
                            Iter_Prev_Value : constant Value_T :=
                              Build_Load (Env.Bld, LLVM_Var, "loop-var");
                            One             : constant Value_T :=
-                             Get_Const_Int
+                             Const_Int
                                (LLVM_Type, 1, False);
                            Iter_Next_Value : constant Value_T :=
                              (if Reversed
@@ -539,8 +583,7 @@ package body GNATLLVM.Compile is
                                 (Env.Bld, Iter_Prev_Value, One,
                                  "next-loop-var"));
                         begin
-                           Discard (Build_Store
-                                    (Env.Bld, Iter_Next_Value, LLVM_Var));
+                           Store (Env, Iter_Next_Value, LLVM_Var);
                         end;
                         Discard (Build_Br (Env.Bld, BB_Stmts));
 
@@ -623,7 +666,8 @@ package body GNATLLVM.Compile is
    -- Compile_LValue --
    --------------------
 
-   function Compile_LValue (Env : Environ; Node : Node_Id) return Value_T is
+   function Compile_LValue (Env : Environ; Node : Node_Id) return Value_T
+   is
    begin
       case Nkind (Node) is
          when N_Identifier =>
@@ -648,20 +692,27 @@ package body GNATLLVM.Compile is
 
          when N_Indexed_Component =>
             declare
-               Pfx_Ptr : constant Value_T :=
+               Array_Ptr : Value_T :=
                  Compile_LValue (Env, Prefix (Node));
 
-               Idxs    : array (1 .. List_Length (Expressions (Node)) + 1)
-                 of Value_T;
+               Idxs    :
+               Value_Array (1 .. List_Length (Expressions (Node)) + 1)
+                 :=
+                   (1 => Const_Int (Create_Type (Env, Etype (Node)), 0),
+                    others => <>);
                --  Operands for the GetElementPtr instruction: one for the
                --  pointer deference, and then one per array index.
 
                I       : Nat := 2;
                DSD     : Node_Id := First_Index (Etype (Prefix (Node)));
                LB      : Value_T;
+               Constrained : constant Boolean :=
+                 Is_Constrained (Etype (Prefix (Node)));
+
+               Bounds_Idxs : Value_Array :=
+                 (1 => Const_Bound (0), 2 => <>);
+
             begin
-               Idxs (1) := Get_Const_Int
-                 (Create_Type (Env, Etype (Node)), 0);
 
                for N of Iterate (Expressions (Node)) loop
                   Idxs (I) := Compile_Expression (Env, N);
@@ -673,17 +724,32 @@ package body GNATLLVM.Compile is
                   end if;
 
                   --  Adjust the index according to the range lower bound
+                  if Constrained then
+                     LB := Compile_Expression (Env, Low_Bound (DSD));
+                  else
+                     Bounds_Idxs (2) :=
+                       Const_Bound (Integer ((I - 2) * 2));
+                     LB := Build_Struct_GEP (Env.Bld, Array_Ptr, 1,
+                                             "gep-bounds-array");
+                     LB := GEP
+                       (Env, LB, Bounds_Idxs, "gep-low-bound");
+                     LB := Build_Load (Env.Bld, LB, "load-low-bound");
+                  end if;
 
-                  LB := Compile_Expression (Env, Low_Bound (DSD));
                   Idxs (I) := Build_Sub (Env.Bld, Idxs (I), LB, "index");
 
                   I := I + 1;
                   DSD := Next (DSD);
                end loop;
 
-               return Build_GEP
-                 (Env.Bld, Pfx_Ptr,
-                  Idxs'Address, Idxs'Length, "array-access");
+               if not Constrained then
+                  Array_Ptr := Build_Load
+                    (Env.Bld,
+                     Build_Struct_GEP (Env.Bld, Array_Ptr, 0, ""), "");
+               end if;
+
+               return
+                 GEP (Env, Array_Ptr, Idxs, "array-access");
             end;
 
          when others =>
@@ -696,10 +762,8 @@ package body GNATLLVM.Compile is
    -- Is_LValue --
    ---------------
 
-   function Is_LValue (Env : Environ; Node : Node_Id) return Boolean
+   function Is_LValue (Node : Node_Id) return Boolean
    is
-      pragma Unreferenced (Env);
-
       N : Node_Id := Node;
    begin
       loop
@@ -763,7 +827,7 @@ package body GNATLLVM.Compile is
               Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");
 
          begin
-            Discard (Build_Store (Env.Bld, Left, Result));
+            Store (Env, Left, Result);
 
             --  In the case of And, evaluate the right expression when Left is
             --  true. In the case of Or, evaluate it when Left is false.
@@ -793,7 +857,7 @@ package body GNATLLVM.Compile is
                else
                   Res := Build_Or (Env.Bld, Left, Right, "scl-or");
                end if;
-               Discard (Build_Store (Env.Bld, Res, Result));
+               Store (Env, Res, Result);
                Discard (Build_Br (Env.Bld, Block_Exit));
             end;
 
@@ -882,7 +946,7 @@ package body GNATLLVM.Compile is
             if Non_Binary_Modulus (Etype (Node)) then
                Op := Build_U_Rem
                  (Env.Bld, Op,
-                  Get_Const_Int
+                  Const_Int
                     (Create_Type (Env, Etype (Node)),
                      Modulus (Etype (Node))),
                  "mod");
@@ -901,12 +965,12 @@ package body GNATLLVM.Compile is
             return Compile_Expr (Expression (Node));
 
          when N_Character_Literal =>
-            return Get_Const_Int
+            return Const_Int
               (Create_Type (Env, Etype (Node)),
                Char_Literal_Value (Node));
 
          when N_Integer_Literal =>
-            return Get_Const_Int
+            return Const_Int
               (Create_Type (Env, Etype (Node)),
                Intval (Node));
 
@@ -916,7 +980,7 @@ package body GNATLLVM.Compile is
          when N_Op_Plus => return Compile_Expr (Right_Opnd (Node));
          when N_Op_Minus => return Build_Sub
               (Env.Bld,
-               Get_Const_Int
+               Const_Int
                  (Create_Type (Env, Etype (Node)), 0, False),
                Compile_Expr (Right_Opnd (Node)),
                "minus");
@@ -954,7 +1018,7 @@ package body GNATLLVM.Compile is
             --  store in the environment. Handle them here.
 
             if Ekind (Entity (Node)) = E_Enumeration_Literal then
-               return Get_Const_Int
+               return Const_Int
                  (Create_Type (Env, Etype (Node)),
                   Enumeration_Rep (Entity (Node)), False);
             else
@@ -1019,7 +1083,7 @@ package body GNATLLVM.Compile is
                   Idx : constant unsigned :=
                     unsigned (Index_In_List (Record_Component)) - 1;
                begin
-                  Discard (Build_Store (Env.Bld, Pfx_Val, Pfx_Ptr));
+                  Store (Env, Pfx_Val, Pfx_Ptr);
                   return Build_Load
                     (Env.Bld,
                      Build_Struct_GEP (Env.Bld, Pfx_Ptr, Idx, "pfx_load"), "");
@@ -1106,6 +1170,7 @@ package body GNATLLVM.Compile is
       LLVM_Func   : Value_T;
       Args        : array (1 .. List_Length (Params)) of Value_T;
       I           : Nat := 1;
+      P_Type      : Entity_Id;
    begin
       --  Lazy compilation of function specs
       if not Env.Has_Value (Func_Ident) then
@@ -1123,9 +1188,53 @@ package body GNATLLVM.Compile is
 
       for Param of Iterate (Params) loop
          Args (I) :=
-           (if Out_Present (Param_Spec)
+           (if Param_Needs_Ptr (Param_Spec)
             then Compile_LValue (Env, Param)
             else Compile_Expression (Env, Param));
+
+         --  At this point we need to handle the conversion from constrained
+         --  arrays to unconstrained arrays
+
+         P_Type := Etype (Parameter_Type (Param_Spec));
+         if Is_Constrained (Etype (Param))
+           and then not Is_Constrained (P_Type)
+         then
+            declare
+               Access_To_Array_Type : constant Type_T :=
+                 Create_Access_Type (Env, P_Type);
+               Access_Struct, Bounds_Array, V : Value_T;
+               J : Integer := 0;
+            begin
+               Access_Struct :=
+                 Build_Alloca (Env.Bld, Access_To_Array_Type, "");
+
+               --  Store the ptr into the access struct
+               V := Build_Struct_GEP (Env.Bld, Access_Struct, 0, "");
+               Store (Env, Args (I), V);
+
+               --  Store the bounds into the access struct
+               Bounds_Array :=
+                 Build_Struct_GEP (Env.Bld, Access_Struct, 1, "");
+
+               for Dim of
+                 Iterate (List_Containing (First_Index (Etype (Param))))
+               loop
+                  V := GEP (Env, Bounds_Array,
+                            (Const_Bound (0), Const_Bound (J)), "");
+                  Store (Env, Compile_Expression (Env, Low_Bound (Dim)), V);
+
+                  V := GEP (Env, Bounds_Array,
+                            (Const_Bound (0), Const_Bound (J + 1)), "");
+                  Store (Env, Compile_Expression (Env, High_Bound (Dim)), V);
+
+                  J := J + 2;
+               end loop;
+
+               --  Replace the simple pointer by the access struct
+               Args (I) := Build_Load (Env.Bld, Access_Struct, "");
+            end;
+         end if;
+
          I := I + 1;
          Param_Spec := Next (Param_Spec);
       end loop;
@@ -1142,7 +1251,7 @@ package body GNATLLVM.Compile is
    -- Compile_Subprogram --
    ------------------------
 
-   function Compile_Subprogram
+   function Compile_Subprogram_Decl
      (Env : Environ; Subp_Spec : Node_Id) return Value_T
    is
       Def_Ident : constant Node_Id := Defining_Unit_Name (Subp_Spec);
@@ -1178,6 +1287,6 @@ package body GNATLLVM.Compile is
             return LLVM_Func;
          end;
       end if;
-   end Compile_Subprogram;
+   end Compile_Subprogram_Decl;
 
 end GNATLLVM.Compile;

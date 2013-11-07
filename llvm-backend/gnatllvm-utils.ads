@@ -11,22 +11,28 @@ with Uintp; use Uintp;
 
 package GNATLLVM.Utils is
 
-   function Get_Const_Int
-     (T : Type_T; Value : unsigned_long_long; Sign_Extend : Boolean := True)
+   function Param_Needs_Ptr
+     (Arg : Node_Id) return Boolean;
+   --  Returns true if Param needs to be passed by reference (pointer) rather
+   --  than by value
+
+   function Const_Int
+     (T : Type_T; Value : Integer; Sign_Extend : Boolean := True)
       return Value_T
    is
-      (Const_Int (T, Value, Sign_Extend => Boolean'Pos (Sign_Extend)));
+     (Const_Int (T, unsigned_long_long (Value),
+                 Sign_Extend => Boolean'Pos (Sign_Extend)));
+   --  Return an LLVM value corresponding to Value
 
-   function Get_Const_Int
+   function Const_Int
      (T : Type_T; Value : Uintp.Uint; Sign_Extend : Boolean := True)
       return Value_T
    is
-     (Get_Const_Int (T, unsigned_long_long (UI_To_Int (Value)), Sign_Extend));
+     (Const_Int (T, Integer (UI_To_Int (Value)), Sign_Extend));
+   --  Return an LLVM value corresponding to the universal int Value
 
-   No_Value_T : Value_T := Value_T (Null_Address);
-
-   type Comp_Pred is
-     (EQ, NE, LT, LE, GT, GE);
+   No_Value_T : constant Value_T := Value_T (Null_Address);
+   --  Constant for the null llvm value
 
    type Pred_Mapping is record
       Signed : Int_Predicate_T;
@@ -77,5 +83,8 @@ package GNATLLVM.Utils is
    --  Likewise, for LLVM.Core.Dump_Type
 
    function Index_In_List (N : Node_Id) return Natural;
+
+   function LLVM_Type_Of (V : Value_T) return Type_T
+   is (Type_Of (V));
 
 end GNATLLVM.Utils;

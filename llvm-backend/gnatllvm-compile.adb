@@ -49,6 +49,57 @@ package body GNATLLVM.Compile is
    function Compile_Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T;
 
+   function Compile_Get_Array_Bound
+     (Env : Environ; Array_Node : Node_Id;
+      Is_Low_Bound : Boolean; Dim : Natural := 1) return Value_T;
+
+   function Compile_Get_Array_Bound
+     (Env : Environ; Array_Ptr : Value_T;
+      Is_Low_Bound : Boolean; Dim : Natural) return Value_T;
+
+   -----------------------------
+   -- Compile_Get_Array_Bound --
+   -----------------------------
+
+   function Compile_Get_Array_Bound
+     (Env : Environ; Array_Ptr : Value_T;
+      Is_Low_Bound : Boolean; Dim : Natural) return Value_T
+   is
+      Idx : Value_T;
+      Bound_Idx : constant Integer :=
+        (Dim - (if Is_Low_Bound then 1 else 0)) * 2;
+   begin
+      Idx := Build_Struct_GEP (Env.Bld, Array_Ptr, 1,
+                               "gep-bounds-array");
+      Idx := GEP
+        (Env, Idx,
+         (Const_Bound (0), Const_Bound (Bound_Idx)),
+         "gep-low-bound");
+      return Build_Load (Env.Bld, Idx, "load-low-bound");
+   end Compile_Get_Array_Bound;
+
+   -----------------------------
+   -- Compile_Get_Array_Bound --
+   -----------------------------
+
+   function Compile_Get_Array_Bound
+     (Env : Environ; Array_Node : Node_Id;
+      Is_Low_Bound : Boolean; Dim : Natural := 1) return Value_T
+   is
+      T : constant Entity_Id := Etype (Array_Node);
+      R : Node_Id;
+   begin
+      if Is_Constrained (T) then
+         R := Pick (List_Containing (First_Index (T)), Nat (Dim));
+         return Compile_Expression
+           (Env,
+            (if Is_Low_Bound then Low_Bound (R) else High_Bound (R)));
+      else
+         return Compile_Get_Array_Bound
+           (Env, Compile_LValue (Env, Array_Node), Is_Low_Bound, Dim);
+      end if;
+   end Compile_Get_Array_Bound;
+
    -----------------
    -- Const_Bound --
    -----------------
@@ -666,7 +717,9 @@ package body GNATLLVM.Compile is
 
          --  Nodes we actually want to ignore
          when N_Empty | N_Procedure_Instantiation
-            | N_Function_Instantiation | N_Validate_Unchecked_Conversion =>
+            | N_Function_Instantiation
+            | N_Validate_Unchecked_Conversion
+            | N_Itype_Reference =>
             null;
 
          when N_Attribute_Definition_Clause =>
@@ -731,10 +784,6 @@ package body GNATLLVM.Compile is
                LB      : Value_T;
                Constrained : constant Boolean :=
                  Is_Constrained (Etype (Prefix (Node)));
-
-               Bounds_Idxs : Value_Array :=
-                 (1 => Const_Bound (0), 2 => <>);
-
             begin
 
                for N of Iterate (Expressions (Node)) loop
@@ -750,13 +799,8 @@ package body GNATLLVM.Compile is
                   if Constrained then
                      LB := Compile_Expression (Env, Low_Bound (DSD));
                   else
-                     Bounds_Idxs (2) :=
-                       Const_Bound (Integer ((I - 2) * 2));
-                     LB := Build_Struct_GEP (Env.Bld, Array_Ptr, 1,
-                                             "gep-bounds-array");
-                     LB := GEP
-                       (Env, LB, Bounds_Idxs, "gep-low-bound");
-                     LB := Build_Load (Env.Bld, LB, "load-low-bound");
+                     LB := Compile_Get_Array_Bound
+                       (Env, Array_Ptr, True, Integer (I - 1));
                   end if;
 
                   Idxs (I) := Build_Sub (Env.Bld, Idxs (I), LB, "index");
@@ -984,7 +1028,7 @@ package body GNATLLVM.Compile is
 
          when N_Expression_With_Actions =>
             --  TODO??? Compile the list of actions
-            pragma Assert (Is_Empty_List (Actions (Node)));
+--              pragma Assert (Is_Empty_List (Actions (Node)));
             return Compile_Expr (Expression (Node));
 
          when N_Character_Literal =>
@@ -1099,6 +1143,11 @@ package body GNATLLVM.Compile is
                  or else Attr_Name = "unrestricted_access"
                then
                   return Compile_LValue (Env, Prefix (Node));
+               elsif Attr_Name = "first" then
+                  return Compile_Get_Array_Bound (Env, Prefix (Node), True, 1);
+               elsif Attr_Name = "last" then
+                  return Compile_Get_Array_Bound
+                    (Env, Prefix (Node), False, 1);
                end if;
             end;
 

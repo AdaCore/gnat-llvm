@@ -320,7 +320,19 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+         when N_Use_Type_Clause =>
+            null;
+
          when N_Renaming_Declaration =>
+
+            if Nkind (Node) = N_Package_Renaming_Declaration then
+
+               --  ??? Probably safe to ignore those, remove interrogation
+               --  marks when confirmed
+
+               return;
+            end if;
+
             declare
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                LLVM_Var  : Value_T;
@@ -652,13 +664,24 @@ package body GNATLLVM.Compile is
                when others => null;
             end case;
 
-         when N_Empty =>
+         --  Nodes we actually want to ignore
+         when N_Empty | N_Procedure_Instantiation
+            | N_Function_Instantiation | N_Validate_Unchecked_Conversion =>
             null;
+
+         when N_Attribute_Definition_Clause =>
+            if Get_Name (Node) = "alignment" then
+               --  TODO ??? Handle the alignment clause.
+               null;
+            else
+               raise Program_Error with "clause not handled";
+            end if;
 
          when others =>
             raise Program_Error
               with "Unhandled statement node kind : "
               & Node_Kind'Image (Nkind (Node));
+
       end case;
    end Compile;
 
@@ -985,6 +1008,13 @@ package body GNATLLVM.Compile is
                Compile_Expr (Right_Opnd (Node)),
                "minus");
 
+         when N_Unchecked_Type_Conversion =>
+            return Build_Bit_Cast
+              (Env.Bld,
+               Compile_Expr (Expression (Node)),
+               Create_Type (Env, Etype (Node)),
+               "unchecked-conv");
+
          when N_Type_Conversion =>
             declare
                Src_T : constant Entity_Id := Etype (Node);
@@ -994,20 +1024,24 @@ package body GNATLLVM.Compile is
                --  For the moment, we handle only the simple case of Integer to
                --  Integer conversions.
 
-               if Is_Integer_Type (Src_T) then
-                  if Is_Integer_Type (Dest_T) then
-
-                     if Src_T = Dest_T then
-                        return Compile_Expr (Expression (Node));
-                     end if;
-
-                     return Build_S_Ext
-                       (Env.Bld, Compile_Expr (Expression (Node)),
-                        Create_Type (Env, Etype (Node)),
-                        "int_conv");
-                  else
-                     raise Program_Error with "Unhandled type conv";
+               if Is_Integer_Type (Src_T)
+                 and then Is_Integer_Type (Dest_T)
+               then
+                  if Src_T = Dest_T then
+                     return Compile_Expr (Expression (Node));
                   end if;
+
+                  return Build_S_Ext
+                    (Env.Bld, Compile_Expr (Expression (Node)),
+                     Create_Type (Env, Etype (Node)),
+                     "int_conv");
+               elsif Is_Descendent_Of_Address (Src_T)
+                 and then Is_Descendent_Of_Address (Dest_T)
+               then
+                  return Build_Bit_Cast
+                    (Env.Bld,
+                     Compile_Expr (Expression (Node)),
+                     Create_Type (Env, Etype (Node)), "address-conv");
                else
                   raise Program_Error with "Unhandled type conv";
                end if;

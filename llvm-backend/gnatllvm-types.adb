@@ -190,6 +190,9 @@ package body GNATLLVM.Types is
             return Create_Access_Type
               (Env, Subtype_Indication (Type_Node));
 
+         when N_Expanded_Name =>
+            return Create_Type (Env, Associated_Node (Type_Node));
+
          when others =>
             raise Program_Error with "Unhandled type node kind: "
               & Node_Kind'Image (Nkind (Type_Node));
@@ -281,7 +284,8 @@ package body GNATLLVM.Types is
                   --  Compute the size of this range if possible, otherwise
                   --  keep 0 for "unknown".
 
-                  if Is_Static_Expression (LB)
+                  if Is_Constrained (Type_Node)
+                    and then Is_Static_Expression (LB)
                     and then Is_Static_Expression (HB)
                   then
                      Range_Size := Natural

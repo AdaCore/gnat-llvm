@@ -49,42 +49,62 @@ package body GNATLLVM.Compile is
    function Compile_Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T;
 
-   function Compile_Get_Array_Bound
-     (Env : Environ; Array_Node : Node_Id;
-      Is_Low_Bound : Boolean; Dim : Natural := 1) return Value_T;
+   type Bound_T is (Low, High);
 
-   function Compile_Get_Array_Bound
+   function Compile_Array_Bound
+     (Env : Environ; Array_Node : Node_Id;
+      Bound : Bound_T; Dim : Natural := 1) return Value_T;
+
+   function Compile_Array_Bound_Addr
      (Env : Environ; Array_Ptr : Value_T;
-      Is_Low_Bound : Boolean; Dim : Natural) return Value_T;
+      Bound : Bound_T; Dim : Natural) return Value_T;
+
+   function Compile_Array_Bound
+     (Env : Environ; Array_Ptr : Value_T;
+      Bound : Bound_T; Dim : Natural) return Value_T;
 
    -----------------------------
    -- Compile_Get_Array_Bound --
    -----------------------------
 
-   function Compile_Get_Array_Bound
+   function Compile_Array_Bound
      (Env : Environ; Array_Ptr : Value_T;
-      Is_Low_Bound : Boolean; Dim : Natural) return Value_T
+      Bound : Bound_T; Dim : Natural) return Value_T
+   is
+   begin
+      return  Build_Load
+        (Env.Bld,
+         Compile_Array_Bound_Addr (Env, Array_Ptr, Bound, Dim),
+         "load-low-bound");
+   end Compile_Array_Bound;
+
+   -------------------------------------
+   -- Compile_Get_Array_Bound_Address --
+   -------------------------------------
+
+   function Compile_Array_Bound_Addr
+     (Env : Environ; Array_Ptr : Value_T;
+      Bound : Bound_T; Dim : Natural) return Value_T
    is
       Idx : Value_T;
       Bound_Idx : constant Integer :=
-        (Dim - (if Is_Low_Bound then 1 else 0)) * 2;
+        (Dim - (if Bound = Low then 1 else 0)) * 2;
    begin
       Idx := Build_Struct_GEP (Env.Bld, Array_Ptr, 1,
                                "gep-bounds-array");
-      Idx := GEP
+      return GEP
         (Env, Idx,
          (Const_Bound (0), Const_Bound (Bound_Idx)),
          "gep-low-bound");
-      return Build_Load (Env.Bld, Idx, "load-low-bound");
-   end Compile_Get_Array_Bound;
+   end Compile_Array_Bound_Addr;
 
    -----------------------------
    -- Compile_Get_Array_Bound --
    -----------------------------
 
-   function Compile_Get_Array_Bound
+   function Compile_Array_Bound
      (Env : Environ; Array_Node : Node_Id;
-      Is_Low_Bound : Boolean; Dim : Natural := 1) return Value_T
+      Bound : Bound_T; Dim : Natural := 1) return Value_T
    is
       T : constant Entity_Id := Etype (Array_Node);
       R : Node_Id;
@@ -93,12 +113,12 @@ package body GNATLLVM.Compile is
          R := Pick (List_Containing (First_Index (T)), Nat (Dim));
          return Compile_Expression
            (Env,
-            (if Is_Low_Bound then Low_Bound (R) else High_Bound (R)));
+            (if Bound = Low then Low_Bound (R) else High_Bound (R)));
       else
-         return Compile_Get_Array_Bound
-           (Env, Compile_LValue (Env, Array_Node), Is_Low_Bound, Dim);
+         return Compile_Array_Bound
+           (Env, Compile_LValue (Env, Array_Node), Bound, Dim);
       end if;
-   end Compile_Get_Array_Bound;
+   end Compile_Array_Bound;
 
    -----------------
    -- Const_Bound --
@@ -799,8 +819,8 @@ package body GNATLLVM.Compile is
                   if Constrained then
                      LB := Compile_Expression (Env, Low_Bound (DSD));
                   else
-                     LB := Compile_Get_Array_Bound
-                       (Env, Array_Ptr, True, Integer (I - 1));
+                     LB := Compile_Array_Bound
+                       (Env, Array_Ptr, Low, Integer (I - 1));
                   end if;
 
                   Idxs (I) := Build_Sub (Env.Bld, Idxs (I), LB, "index");
@@ -1144,10 +1164,10 @@ package body GNATLLVM.Compile is
                then
                   return Compile_LValue (Env, Prefix (Node));
                elsif Attr_Name = "first" then
-                  return Compile_Get_Array_Bound (Env, Prefix (Node), True, 1);
+                  return Compile_Array_Bound (Env, Prefix (Node), Low, 1);
                elsif Attr_Name = "last" then
-                  return Compile_Get_Array_Bound
-                    (Env, Prefix (Node), False, 1);
+                  return Compile_Array_Bound
+                    (Env, Prefix (Node), High, 1);
                end if;
             end;
 
@@ -1285,36 +1305,33 @@ package body GNATLLVM.Compile is
             declare
                Access_To_Array_Type : constant Type_T :=
                  Create_Access_Type (Env, P_Type);
-               Access_Struct, Bounds_Array, V : Value_T;
-               J : Integer := 0;
+               Array_Access, V : Value_T;
+               J : Integer := 1;
             begin
-               Access_Struct :=
+               Array_Access :=
                  Build_Alloca (Env.Bld, Access_To_Array_Type, "");
 
                --  Store the ptr into the access struct
-               V := Build_Struct_GEP (Env.Bld, Access_Struct, 0, "");
+               V := Build_Struct_GEP (Env.Bld, Array_Access, 0, "");
                Store (Env, Args (I), V);
 
                --  Store the bounds into the access struct
-               Bounds_Array :=
-                 Build_Struct_GEP (Env.Bld, Access_Struct, 1, "");
-
                for Dim of
                  Iterate (List_Containing (First_Index (Etype (Param))))
                loop
-                  V := GEP (Env, Bounds_Array,
-                            (Const_Bound (0), Const_Bound (J)), "");
+                  V := Compile_Array_Bound_Addr (Env, Array_Access, Low, J);
+
                   Store (Env, Compile_Expression (Env, Low_Bound (Dim)), V);
 
-                  V := GEP (Env, Bounds_Array,
-                            (Const_Bound (0), Const_Bound (J + 1)), "");
+                  V := Compile_Array_Bound_Addr (Env, Array_Access, High, J);
+
                   Store (Env, Compile_Expression (Env, High_Bound (Dim)), V);
 
-                  J := J + 2;
+                  J := J + 1;
                end loop;
 
                --  Replace the simple pointer by the access struct
-               Args (I) := Build_Load (Env.Bld, Access_Struct, "");
+               Args (I) := Build_Load (Env.Bld, Array_Access, "");
             end;
          end if;
 

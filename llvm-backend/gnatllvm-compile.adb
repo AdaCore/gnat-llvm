@@ -478,7 +478,10 @@ package body GNATLLVM.Compile is
 
          when N_Loop_Statement =>
             declare
-               Loop_Identifier   : Entity_Id;
+               Loop_Identifier   : constant Entity_Id :=
+                 (if Present (Identifier (Node))
+                  then Entity (Identifier (Node))
+                  else Empty);
                Iter_Scheme       : constant Node_Id :=
                  Iteration_Scheme (Node);
                Is_Mere_Loop      : constant Boolean :=
@@ -493,9 +496,6 @@ package body GNATLLVM.Compile is
                BB_Next           : Basic_Block_T;
                Cond              : Value_T;
             begin
-               pragma Assert (Present (Identifier (Node)));
-               Loop_Identifier := Entity (Identifier (Node));
-
                --  The general format for a loop is:
                --    INIT;
                --    while COND loop
@@ -506,9 +506,12 @@ package body GNATLLVM.Compile is
                --  Each step has its own basic block. When a loop does not need
                --  one of these steps, just alias it with another one.
 
-               --  Every loop has an identifier, and thus this loop has already
-               --  its own entry (INIT) basic block.
-               BB_Init := Env.Get (Loop_Identifier);
+               --  If this loop has an identifier, and it has already its own
+               --  entry (INIT) basic block. Create one otherwise.
+               BB_Init :=
+                 (if Present (Identifier (Node))
+                  then Env.Get (Entity (Identifier (Node)))
+                  else Create_Basic_Block (Env, ""));
                Discard (Env.Bld.Br (BB_Init));
                Env.Bld.Position_Builder_At_End (BB_Init);
 
@@ -537,7 +540,9 @@ package body GNATLLVM.Compile is
                --  loop: it is the exit point.
                BB_Next := Create_Basic_Block (Env, "loop-exit");
 
-               Env.Push_Loop (Loop_Identifier, BB_Next);
+               if Present (Loop_Identifier) then
+                  Env.Push_Loop (Loop_Identifier, BB_Next);
+               end if;
                Env.Push_Scope;
 
                --  First compile the iterative part of the loop: evaluation of

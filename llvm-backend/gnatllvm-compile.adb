@@ -1,4 +1,5 @@
 with Interfaces.C;            use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
 with Atree;    use Atree;
@@ -31,7 +32,7 @@ package body GNATLLVM.Compile is
    function Is_LValue (Node : Node_Id) return Boolean;
    --  Returns true if Node is an L value
 
-   function Const_Bound (B : Integer) return Value_T;
+   function Const_Bound (B : unsigned_long_long) return Value_T;
    --  Return an LLVM value of the type of array bounds which value is B
 
    procedure Compile_List
@@ -87,8 +88,8 @@ package body GNATLLVM.Compile is
       Bound : Bound_T; Dim : Natural) return Value_T
    is
       Idx : Value_T;
-      Bound_Idx : constant Integer :=
-        (Dim - (if Bound = Low then 1 else 0)) * 2;
+      Bound_Idx : constant unsigned_long_long :=
+        (unsigned_long_long (Dim) - (if Bound = Low then 1 else 0)) * 2;
    begin
       Idx := Build_Struct_GEP (Env.Bld, Array_Ptr, 1,
                                "gep-bounds-array");
@@ -124,9 +125,9 @@ package body GNATLLVM.Compile is
    -- Const_Bound --
    -----------------
 
-   function Const_Bound (B : Integer) return Value_T
+   function Const_Bound (B : unsigned_long_long) return Value_T
    is
-      (Const_Int (Array_Bounds_Type, B));
+      (Const_Int (Array_Bounds_Type, B, True));
 
    ---------
    -- GEP --
@@ -181,7 +182,8 @@ package body GNATLLVM.Compile is
                     (Env.Bld, Compile_Expression (Env, High_Bound (DSD)),
                      Compile_Expression (Env, Low_Bound (DSD)), ""),
                   Const_Int
-                    (Create_Type (Env, Etype (High_Bound (DSD))), 1), "");
+                    (Create_Type (Env, Etype (High_Bound (DSD))), 1, True),
+                  "");
                Cur_Size := Build_Z_Ext (Env.Bld, Cur_Size, T, "");
 
                --  Accumulate the product of the sizes
@@ -312,7 +314,7 @@ package body GNATLLVM.Compile is
                Env.Pop_Scope;
                Env.Leave_Subp;
 
-               if Verify_Function (Subp.Func, Print_Message_Action) /= 0 then
+               if Verify_Function (Subp.Func, Print_Message_Action) then
                   Error_Msg_N
                     ("The backend generated bad LLVM for this subprogram.",
                      Node);
@@ -794,7 +796,7 @@ package body GNATLLVM.Compile is
                Idxs    :
                Value_Array (1 .. List_Length (Expressions (Node)) + 1)
                  :=
-                   (1 => Const_Int (Create_Type (Env, Etype (Node)), 0),
+                   (1 => Const_Int (Create_Type (Env, Etype (Node)), 0, True),
                     others => <>);
                --  Operands for the GetElementPtr instruction: one for the
                --  pointer deference, and then one per array index.

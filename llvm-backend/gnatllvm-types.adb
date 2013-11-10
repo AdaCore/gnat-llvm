@@ -62,8 +62,7 @@ package body GNATLLVM.Types is
 
    function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T
    is
-     (Function_Type
-        (Ret_Ty, Param_Ty'Address, Param_Ty'Length, Boolean'Pos (False)));
+     (Function_Type (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False));
 
    -----------------------
    -- Array_Bounds_Type --
@@ -109,8 +108,7 @@ package body GNATLLVM.Types is
               (Pointer_Type (T, 0),
                Array_Bounds_Array_Type (Nb_Dimensions));
          begin
-            return Struct_Type
-              (St_Els'Address, St_Els'Length, Boolean'Pos (False));
+            return Struct_Type (St_Els'Address, St_Els'Length, False);
          end;
       else
          return Pointer_Type (T, 0);
@@ -256,7 +254,7 @@ package body GNATLLVM.Types is
                Env.Push_Scope;
 
                Struct_Set_Body
-                 (Struct_Type, LLVM_Comps'Address, LLVM_Comps'Length, 0);
+                 (Struct_Type, LLVM_Comps'Address, LLVM_Comps'Length, False);
                return Struct_Type;
             end;
 

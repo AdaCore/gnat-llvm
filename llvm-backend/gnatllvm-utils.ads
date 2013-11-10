@@ -17,18 +17,10 @@ package GNATLLVM.Utils is
    --  than by value
 
    function Const_Int
-     (T : Type_T; Value : Integer; Sign_Extend : Boolean := True)
-      return Value_T
-   is
-     (Const_Int (T, unsigned_long_long (Value),
-                 Sign_Extend => Boolean'Pos (Sign_Extend)));
-   --  Return an LLVM value corresponding to Value
-
-   function Const_Int
      (T : Type_T; Value : Uintp.Uint; Sign_Extend : Boolean := True)
       return Value_T
    is
-     (Const_Int (T, Integer (UI_To_Int (Value)), Sign_Extend));
+     (Const_Int (T, unsigned_long_long (UI_To_Int (Value)), Sign_Extend));
    --  Return an LLVM value corresponding to the universal int Value
 
    No_Value_T : constant Value_T := Value_T (Null_Address);

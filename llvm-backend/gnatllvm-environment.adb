@@ -235,12 +235,11 @@ package body GNATLLVM.Environment is
       Subp : constant Subp_Env := new Subp_Env_Record'
         (Env                    => Environ (Env),
          Func                   => Func,
-         Saved_Builder_Position => Get_Insert_Block (Env.Bld));
+         Saved_Builder_Position => Env.Bld.Get_Insert_Block);
    begin
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
-      Position_Builder_At_End
-        (Env.Bld, Env.Create_Basic_Block ("entry"));
+      Env.Bld.Position_Builder_At_End (Env.Create_Basic_Block ("entry"));
       return Subp;
    end Enter_Subp;
 
@@ -250,9 +249,8 @@ package body GNATLLVM.Environment is
 
    procedure Leave_Subp (Env  : access Environ_Record) is
    begin
-      Position_Builder_At_End
-        (Env.Bld,
-         Env.Current_Subps.Last_Element.Saved_Builder_Position);
+      Env.Bld.Position_Builder_At_End
+        (Env.Current_Subps.Last_Element.Saved_Builder_Position);
       Env.Current_Subps.Delete_Last;
    end Leave_Subp;
 

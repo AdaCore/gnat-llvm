@@ -39,7 +39,7 @@ package body LLVM_Drive is
 
       --  Initialize the translation environment
 
-      Env.Bld := Create_Builder_In_Context (Env.Ctx);
+      Env.Bld := (Bld => Create_Builder_In_Context (Env.Ctx));
       Env.Mdl := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
@@ -55,7 +55,7 @@ package body LLVM_Drive is
 
       --  Actually translate
 
-      Compile (Env, Unit (GNAT_Root));
+      Emit (Env, Unit (GNAT_Root));
 
       --  Output the translation
 
@@ -77,7 +77,7 @@ package body LLVM_Drive is
 
       --  Release the environment
 
-      Dispose_Builder (Env.Bld);
+      Env.Bld.Dispose_Builder;
       Dispose_Module (Env.Mdl);
    end GNAT_To_LLVM;
 

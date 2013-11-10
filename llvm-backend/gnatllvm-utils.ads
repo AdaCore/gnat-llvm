@@ -79,4 +79,7 @@ package GNATLLVM.Utils is
    function LLVM_Type_Of (V : Value_T) return Type_T
    is (Type_Of (V));
 
+   function Is_LValue (Node : Node_Id) return Boolean;
+   --  Returns true if Node is an L value
+
 end GNATLLVM.Utils;

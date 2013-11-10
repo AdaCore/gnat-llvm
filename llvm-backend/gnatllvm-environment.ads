@@ -5,6 +5,7 @@ with Types; use Types;
 
 with LLVM.Core; use LLVM.Core;
 with Ada.Containers.Doubly_Linked_Lists;
+with GNATLLVM.Builder;
 
 package GNATLLVM.Environment is
 
@@ -51,7 +52,7 @@ package GNATLLVM.Environment is
 
    type Environ_Record is tagged record
       Ctx                       : LLVM.Core.Context_T;
-      Bld                       : LLVM.Core.Builder_T;
+      Bld                       : GNATLLVM.Builder.Builder;
       Mdl                       : LLVM.Core.Module_T;
       --  Pure-LLVM environment : LLVM context, instruction builder and current
       --  module.

@@ -325,9 +325,9 @@ package body GNATLLVM.Types is
             SRange := Scalar_Range (TE);
             case Nkind (SRange) is
                when N_Range =>
-                  Low := GNATLLVM.Compile.Compile_Expression
+                  Low := GNATLLVM.Compile.Emit_Expression
                     (Env, Low_Bound (SRange));
-                  High := GNATLLVM.Compile.Compile_Expression
+                  High := GNATLLVM.Compile.Emit_Expression
                     (Env, High_Bound (SRange));
                when others => raise Program_Error
                     with "Invalid scalar range: "

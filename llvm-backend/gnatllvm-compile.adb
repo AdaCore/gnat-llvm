@@ -795,7 +795,7 @@ package body GNATLLVM.Compile is
          when N_Slice =>
             declare
                Array_Node  : constant Node_Id := Prefix (Node);
-               Array_Ptr   : constant Value_T :=
+               Array_Ptr   : Value_T :=
                  Emit_LValue (Env, Array_Node);
 
                --  Compute how much we need to offset the array pointer. Slices
@@ -807,6 +807,12 @@ package body GNATLLVM.Compile is
                     Array_Bound (Env, Array_Node, Low),
                     "offset");
             begin
+               if not Is_Constrained (Etype (Prefix (Node))) then
+                  Array_Ptr :=
+                    Env.Bld.Load
+                      (Env.Bld.Struct_GEP (Array_Ptr, 0, "fat-to-thin"), "");
+               end if;
+
                return Env.Bld.Bit_Cast
                  (Env.Bld.GEP
                     (Array_Ptr,

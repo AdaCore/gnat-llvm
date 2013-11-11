@@ -69,7 +69,10 @@ package body GNATLLVM.Compile is
    is
    begin
       return Env.Bld.Load
-        (Array_Bound_Addr (Env, Array_Ptr, Bound, Dim), "load-low-bound");
+        (Array_Bound_Addr (Env, Array_Ptr, Bound, Dim),
+         (if Bound = Low
+          then "load-low-bound"
+          else "load-high-bound"));
    end Array_Bound;
 
    ----------------------
@@ -82,11 +85,14 @@ package body GNATLLVM.Compile is
    is
       Idx : Value_T;
       Bound_Idx : constant Natural :=
-        (Dim - (if Bound = Low then 1 else 0)) * 2;
+        ((Dim - 1) * 2 + (if Bound = Low then 0 else 1));
    begin
       Idx := Env.Bld.Struct_GEP (Array_Ptr, 1, "gep-bounds-array");
       return Env.Bld.GEP
-        (Idx, (Const_Bound (0), Const_Bound (Bound_Idx)), "gep-low-bound");
+        (Idx, (Const_Bound (0), Const_Bound (Bound_Idx)),
+         (if Bound = Low
+          then "gep-low-bound"
+          else "gep-high-bound"));
    end Array_Bound_Addr;
 
    -----------------

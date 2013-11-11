@@ -273,18 +273,25 @@ package body GNATLLVM.Types is
                --  index.
 
                for Index of reverse Iterate (Def_Ident) loop
-                  pragma Assert (Nkind (Index) = N_Range);
+                  declare
+                     --  Sometimes, the frontends leaves an identifier that
+                     --  references an integer subtype instead of a range.
 
-                  LB := Low_Bound (Index);
-                  HB := High_Bound (Index);
+                     Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+
+                  begin
+                     LB := Low_Bound (Idx_Range);
+                     HB := High_Bound (Idx_Range);
+                  end;
+
                   Range_Size := 0;
 
                   --  Compute the size of this range if possible, otherwise
                   --  keep 0 for "unknown".
 
                   if Is_Constrained (Type_Node)
-                    and then Is_Static_Expression (LB)
-                    and then Is_Static_Expression (HB)
+                    and then Compile_Time_Known_Value (LB)
+                    and then Compile_Time_Known_Value (HB)
                   then
                      Range_Size := Natural
                        (UI_To_Int (Expr_Value (HB))

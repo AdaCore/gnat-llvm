@@ -11,6 +11,9 @@ with Uintp; use Uintp;
 
 package GNATLLVM.Utils is
 
+   function Get_Dim_Range (N : Node_Id) return Node_Id;
+   --  Return the N_Range of your Type
+
    function Param_Needs_Ptr
      (Arg : Node_Id) return Boolean;
    --  Returns true if Param needs to be passed by reference (pointer) rather

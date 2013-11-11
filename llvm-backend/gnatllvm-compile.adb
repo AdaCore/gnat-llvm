@@ -43,14 +43,21 @@ package body GNATLLVM.Compile is
    function Array_Bound
      (Env : Environ; Array_Node : Node_Id;
       Bound : Bound_T; Dim : Natural := 1) return Value_T;
+   --  Compute the bound for the array corresponding to Array_Node. Depending
+   --  on whether the array is constrained or not, this will compute the bound
+   --  statically or at runtime.
 
    function Array_Bound_Addr
      (Env : Environ; Array_Ptr : Value_T;
       Bound : Bound_T; Dim : Natural) return Value_T;
+   --  Compute the bound for the array corresponding to Array_Ptr. The pointer
+   --  must be a fat pointer (i.e. containing the bounds of the array).
 
    function Array_Bound
      (Env : Environ; Array_Ptr : Value_T;
       Bound : Bound_T; Dim : Natural) return Value_T;
+   --  Wrapper around Array_Bound_Addr that returns the value of the bound,
+   --  instead of the address of element at the bound.
 
    -----------------
    -- Array_Bound --
@@ -785,6 +792,30 @@ package body GNATLLVM.Compile is
                  Env.Bld.GEP (Array_Ptr, Idxs, "array-access");
             end;
 
+         when N_Slice =>
+            declare
+               Array_Node  : constant Node_Id := Prefix (Node);
+               Array_Ptr   : constant Value_T :=
+                 Emit_LValue (Env, Array_Node);
+
+               --  Compute how much we need to offset the array pointer. Slices
+               --  can be built only on single-dimension arrays
+
+               Index_Shift : constant Value_T :=
+                 Env.Bld.Sub
+                   (Emit_Expression (Env, Low_Bound (Discrete_Range (Node))),
+                    Array_Bound (Env, Array_Node, Low),
+                    "offset");
+            begin
+               return Env.Bld.Bit_Cast
+                 (Env.Bld.GEP
+                    (Array_Ptr,
+                     (Const_Bound (0), Index_Shift),
+                     "array-shifted"),
+                  Create_Access_Type (Env, Etype (Node)),
+                  "slice");
+            end;
+
          when others =>
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
@@ -1095,7 +1126,7 @@ package body GNATLLVM.Compile is
                     (Env.Bld.Struct_GEP (Pfx_Ptr, Idx, "pfx_load"), "");
                end;
 
-            when N_Indexed_Component =>
+            when N_Indexed_Component | N_Slice =>
                return Env.Bld.Load (Emit_LValue (Env, Node), "");
 
             when N_Aggregate =>
@@ -1211,21 +1242,28 @@ package body GNATLLVM.Compile is
 
                --  Store the ptr into the access struct
                V := Env.Bld.Struct_GEP (Array_Access, 0, "");
-               Env.Bld.Store (Args (I), V);
+               Env.Bld.Store
+                 (Env.Bld.Bit_Cast
+                    (Args (I),
+                     Pointer_Type
+                       (Create_Type
+                            (Env, Parameter_Type (Param_Spec)), 0), ""), V);
 
                --  Store the bounds into the access struct
                for Dim of
                  Iterate (List_Containing (First_Index (Etype (Param))))
                loop
-                  V := Array_Bound_Addr (Env, Array_Access, Low, Dim_Idx);
+                  declare
+                     R : constant Node_Id := Get_Dim_Range (Dim);
+                  begin
+                     V := Array_Bound_Addr (Env, Array_Access, Low, Dim_Idx);
+                     Env.Bld.Store (Emit_Expression (Env, Low_Bound (R)), V);
 
-                  Env.Bld.Store (Emit_Expression (Env, Low_Bound (Dim)), V);
+                     V := Array_Bound_Addr (Env, Array_Access, High, Dim_Idx);
+                     Env.Bld.Store (Emit_Expression (Env, High_Bound (R)), V);
 
-                  V := Array_Bound_Addr (Env, Array_Access, High, Dim_Idx);
-
-                  Env.Bld.Store (Emit_Expression (Env, High_Bound (Dim)), V);
-
-                  Dim_Idx := Dim_Idx + 1;
+                     Dim_Idx := Dim_Idx + 1;
+                  end;
                end loop;
 
                --  Replace the simple pointer by the access struct

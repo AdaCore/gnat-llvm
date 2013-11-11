@@ -7,6 +7,19 @@ with Einfo; use Einfo;
 
 package body GNATLLVM.Utils is
 
+   --------------------
+   -- Get_Type_Range --
+   --------------------
+
+   function Get_Dim_Range (N : Node_Id) return Node_Id
+   is
+     (case Nkind (N) is
+         when N_Range      => N,
+         when N_Identifier => Scalar_Range (Entity (N)),
+         when others       => raise Program_Error
+           with "Invalid node kind in context: "
+      & Node_Kind'Image (Nkind (N)));
+
    ---------------
    -- Is_LValue --
    ---------------
@@ -19,7 +32,7 @@ package body GNATLLVM.Utils is
          case Nkind (N) is
             when N_Explicit_Dereference =>
                return True;
-            when N_Selected_Component | N_Indexed_Component =>
+            when N_Selected_Component | N_Indexed_Component | N_Slice =>
                N := Prefix (N);
             when N_Identifier =>
                N := Entity (N);

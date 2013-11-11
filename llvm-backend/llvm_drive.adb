@@ -15,6 +15,7 @@ with Osint.C;  use Osint.C;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 
+with GNATLLVM.Builder;     use GNATLLVM.Builder;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -39,7 +40,9 @@ package body LLVM_Drive is
 
       --  Initialize the translation environment
 
-      Env.Bld := (Bld => Create_Builder_In_Context (Env.Ctx));
+      Env.Bld :=
+        (Base_Builder_T'(Create_Builder_In_Context (Env.Ctx))
+         with null record);
       Env.Mdl := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);

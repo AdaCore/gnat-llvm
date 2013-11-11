@@ -7,6 +7,6 @@ begin
    for I in A1'Range loop
       A1 (I) := I - A1'First + 1;
    end loop;
-   A2 := A1 (A1'First .. A2'Last);
+   A2 := A1 (A1'First .. A1'Last);
    return A2 (A2'First + 2);
 end Foo;

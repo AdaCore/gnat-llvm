@@ -122,7 +122,9 @@ gcc: force
 gnatcmd: force
 	cd $(obj); $(HOST_MAKE) $@ -o $(bin)/$(TOOLS_PREFIX)$(GNATCMD)
 
-setup: dirs bldtools
+setup:
+	$(MAKE) dirs
+	$(MAKE) bldtools
 
 dirs: sanity-check
 	$(MKDIR) $(obj) $(bin) $(lib)

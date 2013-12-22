@@ -268,7 +268,8 @@ package body GNATLLVM.Compile is
 
                   Env.Set (Param, LLVM_Var);
                   if Spec_Entity (Param) /= 0
-                    and then Spec_Entity (Param) /= Param then
+                    and then Spec_Entity (Param) /= Param
+                  then
                      Env.Set (Spec_Entity (Param), LLVM_Var);
                   end if;
 
@@ -325,7 +326,8 @@ package body GNATLLVM.Compile is
 
                if Nkind (Obj_Def) = N_Identifier
                  and then Ekind (Entity (Obj_Def)) in Discrete_Kind
-                 and then Esize (Entity (Obj_Def)) = 0 then
+                 and then Esize (Entity (Obj_Def)) = 0
+               then
                   return;
                end if;
 

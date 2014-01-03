@@ -8,16 +8,29 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 with System; use System;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Uintp; use Uintp;
+with Einfo; use Einfo;
 
 package GNATLLVM.Utils is
 
+   function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer;
+
    function Get_Dim_Range (N : Node_Id) return Node_Id;
    --  Return the N_Range of your Type
+
+   function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean;
+   --  Returns true if given function needs to return its arg via the secondary
+   --  stack
 
    function Param_Needs_Ptr
      (Arg : Node_Id) return Boolean;
    --  Returns true if Param needs to be passed by reference (pointer) rather
    --  than by value
+
+   function Get_Fullest_View (E : Entity_Id) return Entity_Id
+   is
+     (if Present (Full_View (E))
+      then Get_Fullest_View (Full_View (E))
+      else E);
 
    function Const_Int
      (T : Type_T; Value : Uintp.Uint; Sign_Extend : Boolean := True)
@@ -51,9 +64,12 @@ package GNATLLVM.Utils is
    function Iterate (L : List_Id) return List_Iterator;
    --  Return an iterator on list L
 
+   function Filter (Elt : Entity_Id) return Boolean is (True);
+
    generic
       with function Get_First (Root : Entity_Id) return Entity_Id is <>;
       with function Get_Next (Elt : Entity_Id) return Entity_Id is <>;
+      with function Filter (Elt : Entity_Id) return Boolean is <>;
    function Iterate_Entities (Root : Entity_Id) return Entity_Iterator;
    --  Likewise for the linked list of entities starting at Get_First (Root)
 

@@ -1,4 +1,5 @@
 with Ada.Unchecked_Deallocation;
+with GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 
@@ -9,6 +10,10 @@ package body GNATLLVM.Environment is
    function Get
      (Env : access Environ_Record; VE : Entity_Id)
       return Value_Maps.Cursor;
+
+   function Get
+     (Env : access Environ_Record; RI : Entity_Id)
+      return Record_Info_Maps.Cursor;
 
    ----------------
    -- Push_Scope --
@@ -101,6 +106,28 @@ package body GNATLLVM.Environment is
    -- Get --
    ---------
 
+   function Get
+     (Env : access Environ_Record; RI : Entity_Id)
+      return Record_Info_Maps.Cursor is
+      use Record_Info_Maps;
+      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (RI);
+   begin
+      for S of reverse Env.Scopes loop
+         declare
+            C : constant Cursor := S.Records_Infos.Find (E);
+         begin
+            if C /= No_Element then
+               return C;
+            end if;
+         end;
+      end loop;
+      return No_Element;
+   end Get;
+
+   ---------
+   -- Get --
+   ---------
+
    function Get (Env : access Environ_Record; TE : Entity_Id) return Type_T is
       use Type_Maps;
       Cur : constant Cursor := Get (Env, TE);
@@ -134,6 +161,24 @@ package body GNATLLVM.Environment is
    ---------
 
    function Get
+     (Env : access Environ_Record; RI : Entity_Id) return Record_Info
+   is
+      use Record_Info_Maps;
+      Cur : constant Cursor := Get (Env, RI);
+   begin
+      if Cur /= No_Element then
+         return Element (Cur);
+      else
+         raise No_Such_Value
+           with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (RI);
+      end if;
+   end Get;
+
+   ---------
+   -- Get --
+   ---------
+
+   function Get
      (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T is
       use Value_Maps;
       Cur : constant Cursor := Get (Env, BE);
@@ -154,6 +199,16 @@ package body GNATLLVM.Environment is
    procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T) is
    begin
       Env.Scopes.Last_Element.Types.Include (TE, TL);
+   end Set;
+
+   ---------
+   -- Set --
+   ---------
+
+   procedure Set
+     (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info) is
+   begin
+      Env.Scopes.Last_Element.Records_Infos.Include (TE, RI);
    end Set;
 
    ---------

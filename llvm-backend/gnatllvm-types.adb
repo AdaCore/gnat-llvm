@@ -5,11 +5,20 @@ with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
 with Uintp; use Uintp;
+with Ttypes;
 
 with GNATLLVM.Compile;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Types is
+
+   ----------------------
+   -- Get_Address_Type --
+   ----------------------
+
+   function Get_Address_Type return Type_T
+   is
+     (Int_Ty (Natural (Ttypes.System_Address_Size)));
 
    ----------------------------------
    -- Get_Innermost_Component_Type --
@@ -148,7 +157,13 @@ package body GNATLLVM.Types is
          when N_Procedure_Specification =>
             Return_Type := Void_Type_In_Context (Env.Ctx);
          when N_Function_Specification =>
-            Return_Type := Create_Type (Env, Result_Definition (Subp_Spec));
+            if Return_Needs_Sec_Stack (Subp_Spec) then
+               Return_Type := Create_Access_Type
+                 (Env, Result_Definition (Subp_Spec));
+            else
+               Return_Type := Create_Type
+                 (Env, Result_Definition (Subp_Spec));
+            end if;
          when others =>
             raise Program_Error
               with "Invalid node: " & Node_Kind'Image (Nkind (Subp_Spec));
@@ -200,10 +215,7 @@ package body GNATLLVM.Types is
 
       --  Always get the fullest view
 
-      Def_Ident := Type_Node;
-      while Present (Full_View (Def_Ident)) loop
-         Def_Ident := Full_View (Def_Ident);
-      end loop;
+      Def_Ident := Get_Fullest_View (Type_Node);
 
       --  The full view may already be in the environment
 
@@ -230,32 +242,71 @@ package body GNATLLVM.Types is
 
          when Record_Kind =>
             declare
+               function Rec_Comp_Filter (E : Entity_Id) return Boolean
+               is (Ekind (E) in E_Component | E_Discriminant);
+
                function Iterate is new Iterate_Entities
                  (Get_First => First_Entity,
-                  Get_Next  => Next_Entity);
+                  Get_Next  => Next_Entity,
+                  Filter    => Rec_Comp_Filter);
 
-               Struct_Type : constant Type_T :=
-                 Struct_Create_Named
-                   (Env.Ctx, Get_Name (Def_Ident));
-               Comps       : constant Entity_Iterator := Iterate (Def_Ident);
-               LLVM_Comps  : array (1 .. Comps'Length) of Type_T;
-               I           : Integer := 1;
+               Struct_Type   : Type_T;
+               Comps         : constant Entity_Iterator := Iterate (Def_Ident);
+               LLVM_Comps    : array (1 .. Comps'Length) of Type_T;
+               I             : Natural := 1;
+               Struct_Num    : Nat := 1;
+               Num_Fields    : Natural := 1;
+               Info          : Record_Info;
+               use Interfaces.C;
             begin
+               Struct_Type := Struct_Create_Named
+                 (Env.Ctx, Get_Name (Def_Ident));
+               Info.Structs.Append (Struct_Type);
+
                --  Records enable some "type recursivity", so store this one in
                --  the environment so that there is no infinite recursion when
                --  nested components reference it.
 
-               Env.Push_Scope;
                Env.Set (Def_Ident, Struct_Type);
+
                for Comp of Comps loop
                   LLVM_Comps (I) := Create_Type (Env, Etype (Comp));
+                  Info.Fields.Include (Comp, (Struct_Num, Nat (I - 1)));
                   I := I + 1;
-               end loop;
-               Env.Push_Scope;
+                  Num_Fields := Num_Fields + 1;
 
-               Struct_Set_Body
-                 (Struct_Type, LLVM_Comps'Address, LLVM_Comps'Length, False);
-               return Struct_Type;
+                  --  If we are on a component which sizes depends on a
+                  --  discriminant, we create a new struct type for the
+                  --  following components.
+
+                  if Size_Depends_On_Discriminant (Etype (Comp)) then
+                     Struct_Set_Body
+                       (Struct_Type, LLVM_Comps'Address,
+                        unsigned (I - 1), False);
+                     I := 1;
+                     Struct_Num := Struct_Num + 1;
+
+                     --  Only create a new struct if we have remaining fields
+                     --  after this one
+
+                     if Num_Fields < Comps'Length then
+                        Struct_Type := Struct_Create_Named
+                          (Env.Ctx, Get_Name (Def_Ident) & Struct_Num'Img);
+                        Info.Structs.Append (Struct_Type);
+                     end if;
+                  end if;
+               end loop;
+
+               --  If there are components remaining, set them to be the
+               --  current struct body
+
+               if I > 1 then
+                  Struct_Set_Body
+                    (Struct_Type, LLVM_Comps'Address, unsigned (I - 1), False);
+               end if;
+
+               Env.Set (Def_Ident, Info);
+               return Env.Get (Def_Ident);
             end;
 
          when Array_Kind =>
@@ -263,7 +314,7 @@ package body GNATLLVM.Types is
                Result     : Type_T :=
                  Create_Type (Env, Component_Type (Def_Ident));
                LB, HB     : Node_Id;
-               Range_Size : Natural;
+               Range_Size : Long_Long_Integer := 0;
 
                function Iterate is new Iterate_Entities
                  (Get_First => First_Index,
@@ -284,8 +335,6 @@ package body GNATLLVM.Types is
                      HB := High_Bound (Idx_Range);
                   end;
 
-                  Range_Size := 0;
-
                   --  Compute the size of this range if possible, otherwise
                   --  keep 0 for "unknown".
 
@@ -293,9 +342,9 @@ package body GNATLLVM.Types is
                     and then Compile_Time_Known_Value (LB)
                     and then Compile_Time_Known_Value (HB)
                   then
-                     Range_Size := Natural
-                       (UI_To_Int (Expr_Value (HB))
-                        - UI_To_Int (Expr_Value (LB)) + 1);
+                     Range_Size := Long_Long_Integer
+                       (UI_To_Long_Long_Integer (Expr_Value (HB))
+                        - UI_To_Long_Long_Integer (Expr_Value (LB)) + 1);
                   end if;
 
                   Result := Array_Type

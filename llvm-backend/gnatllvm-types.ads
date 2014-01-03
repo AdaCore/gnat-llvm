@@ -44,4 +44,6 @@ package GNATLLVM.Types is
    function Get_Innermost_Component_Type
      (Env : Environ; N : Entity_Id) return Type_T;
 
+   function Get_Address_Type return Type_T;
+
 end GNATLLVM.Types;

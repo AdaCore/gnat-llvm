@@ -38,6 +38,11 @@ package body GNATLLVM.Compile is
    function Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T;
 
+   function Record_Field_Offset
+     (Env : Environ;
+      Record_Ptr : Value_T;
+      Record_Field : Node_Id) return Value_T;
+
    type Bound_T is (Low, High);
 
    function Array_Bound
@@ -191,6 +196,27 @@ package body GNATLLVM.Compile is
 
    end Array_Size;
 
+   -------------------------
+   -- Record_Field_Offset --
+   -------------------------
+
+   function Record_Field_Offset
+     (Env : Environ;
+      Record_Ptr : Value_T;
+      Record_Field : Node_Id) return Value_T
+   is
+      Field_Id : constant Entity_Id := Defining_Identifier (Record_Field);
+      Type_Id  : constant Entity_Id := Scope (Field_Id);
+      R_Info   : constant Record_Info := Env.Get (Type_Id);
+      F_Info   : constant Field_Info := R_Info.Fields.Element (Field_Id);
+   begin
+      if F_Info.Containing_Struct_Index > 1 then
+         null;
+      end if;
+      return Env.Bld.Struct_GEP
+        (Record_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
+   end Record_Field_Offset;
+
    ----------
    -- Emit --
    ----------
@@ -292,6 +318,7 @@ package body GNATLLVM.Compile is
                   Error_Msg_N
                     ("The backend generated bad LLVM for this subprogram.",
                      Node);
+                  Dump_LLVM_Module (Env.Mdl);
                end if;
             end;
 
@@ -734,7 +761,7 @@ package body GNATLLVM.Compile is
             return Env.Get (Entity (Node));
 
          when N_Explicit_Dereference =>
-            return Env.Bld.Load (Emit_LValue (Env, Prefix (Node)), "");
+            return Emit_Expression (Env, Prefix (Node));
 
          when N_Selected_Component =>
             declare
@@ -742,10 +769,8 @@ package body GNATLLVM.Compile is
                  Emit_LValue (Env, Prefix (Node));
                Record_Component : constant Entity_Id :=
                  Parent (Entity (Selector_Name (Node)));
-               Idx : constant unsigned :=
-                 unsigned (Index_In_List (Record_Component)) - 1;
             begin
-               return Env.Bld.Struct_GEP (Pfx_Ptr, Idx, "pfx_load");
+               return Record_Field_Offset (Env, Pfx_Ptr, Record_Component);
             end;
 
          when N_Indexed_Component =>
@@ -1026,10 +1051,31 @@ package body GNATLLVM.Compile is
                "minus");
 
          when N_Unchecked_Type_Conversion =>
-            return Env.Bld.Bit_Cast
-               (Compile_Expr (Expression (Node)),
-                Create_Type (Env, Etype (Node)),
-                "unchecked-conv");
+            declare
+               Val     : constant Value_T := Compile_Expr (Expression (Node));
+               Val_Ty  : constant Type_T := LLVM_Type_Of (Val);
+               Dest_Ty : constant Type_T := Create_Type (Env, Etype (Node));
+               Val_Tk  : constant Type_Kind_T := Get_Type_Kind (Val_Ty);
+               Dest_Tk : constant Type_Kind_T := Get_Type_Kind (Dest_Ty);
+            begin
+               if Val_Tk = Pointer_Type_Kind then
+                  return Env.Bld.Pointer_Cast
+                    (Val, Dest_Ty, "unchecked-conv");
+               elsif
+                 Val_Tk = Integer_Type_Kind
+                 and then Dest_Tk = Integer_Type_Kind
+               then
+                  return Env.Bld.Int_Cast
+                    (Val, Dest_Ty, "unchecked-conv");
+               elsif Val_Tk = Integer_Type_Kind
+                 and then Dest_Tk = Pointer_Type_Kind
+               then
+                  return Env.Bld.Int_To_Ptr (Val, Dest_Ty, "unchecked-conv");
+               else
+                  raise Program_Error
+                    with "Invalid conversion, should never happen";
+               end if;
+            end;
 
          when N_Type_Conversion =>
             declare
@@ -1040,8 +1086,8 @@ package body GNATLLVM.Compile is
                --  For the moment, we handle only the simple case of Integer to
                --  Integer conversions.
 
-               if Is_Integer_Type (Src_T)
-                 and then Is_Integer_Type (Dest_T)
+               if Is_Integer_Type (Get_Fullest_View (Src_T))
+                 and then Is_Integer_Type (Get_Fullest_View (Dest_T))
                then
                   if Src_T = Dest_T then
                      return Compile_Expr (Expression (Node));
@@ -1112,6 +1158,10 @@ package body GNATLLVM.Compile is
                  or else Attr_Name = "unrestricted_access"
                then
                   return Emit_LValue (Env, Prefix (Node));
+               elsif Attr_Name = "address" then
+                  return Env.Bld.Ptr_To_Int
+                    (Emit_LValue
+                       (Env, Prefix (Node)), Get_Address_Type, "to-address");
                elsif Attr_Name = "first" then
                   return Array_Bound (Env, Prefix (Node), Low, 1);
                elsif Attr_Name = "last" then
@@ -1132,12 +1182,10 @@ package body GNATLLVM.Compile is
                     Env.Bld.Alloca (Type_Of (Pfx_Val), "pfx_ptr");
                   Record_Component : constant Entity_Id :=
                     Parent (Entity (Selector_Name (Node)));
-                  Idx : constant unsigned :=
-                    unsigned (Index_In_List (Record_Component)) - 1;
                begin
                   Env.Bld.Store (Pfx_Val, Pfx_Ptr);
                   return Env.Bld.Load
-                    (Env.Bld.Struct_GEP (Pfx_Ptr, Idx, "pfx_load"), "");
+                    (Record_Field_Offset (Env, Pfx_Ptr, Record_Component), "");
                end;
 
             when N_Indexed_Component | N_Slice =>

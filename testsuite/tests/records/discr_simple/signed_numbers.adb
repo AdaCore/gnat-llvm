@@ -1,12 +1,19 @@
 package body Signed_Numbers is
 
+   procedure Init (S : in out Signed_Number) is
+   begin
+      null;
+   end Init;
+
    ------------
    -- Create --
    ------------
 
    function Create (N : Natural; Positive : Boolean) return Signed_Number is
+      A : Signed_Number := (Positive, N);
    begin
-      return (Positive, N);
+      Init (A);
+      return A;
    end Create;
 
    ---------
@@ -33,5 +40,13 @@ package body Signed_Numbers is
 
       return (Positive, N);
    end Add;
+
+   procedure Test is
+      A : Signed_Number := Create (124, True);
+      B : Signed_Number := Create (124, True);
+      C : Signed_Number := Add (A, B);
+   begin
+      null;
+   end Test;
 
 end Signed_Numbers;

@@ -3,9 +3,19 @@ with Ada.Unchecked_Conversion;
 
 with Namet;  use Namet;
 with Nlists; use Nlists;
-with Einfo; use Einfo;
 
 package body GNATLLVM.Utils is
+
+   function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer is
+   begin
+      UI_Image (U, Decimal);
+      declare
+         Img   : constant String := UI_Image_Buffer (1 .. UI_Image_Length);
+         Img_W : constant String := (if Img (1) = '-' then "" else " ") & Img;
+      begin
+         return Long_Long_Integer'Value (Img_W);
+      end;
+   end UI_To_Long_Long_Integer;
 
    --------------------
    -- Get_Type_Range --
@@ -62,6 +72,16 @@ package body GNATLLVM.Utils is
               or else not
                 (Is_Access or else Is_Constrained (Etype (PT))));
    end Param_Needs_Ptr;
+
+   ----------------------------
+   -- Return_Needs_Sec_Stack --
+   ----------------------------
+
+   function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean is
+      pragma Unreferenced (Arg);
+   begin
+      return False;
+   end Return_Needs_Sec_Stack;
 
    -------------------
    -- Index_In_List --
@@ -151,11 +171,13 @@ package body GNATLLVM.Utils is
       begin
          Cur := Get_First (Root);
          while Cur /= Empty loop
-            A (I) := Cur;
+            if Filter (Cur) then
+               A (I) := Cur;
+               I := I + 1;
+            end if;
             Cur := Get_Next (Cur);
-            I := I + 1;
          end loop;
-         return A;
+         return A (1 .. I - 1);
       end;
    end Iterate_Entities;
 

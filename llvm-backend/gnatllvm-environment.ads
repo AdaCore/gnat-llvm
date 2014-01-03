@@ -9,6 +9,26 @@ with GNATLLVM.Builder;
 
 package GNATLLVM.Environment is
 
+   package Type_Vectors is new Ada.Containers.Vectors (Nat, Type_T);
+
+   type Field_Info is record
+      Containing_Struct_Index : Nat;
+      Index_In_Struct : Nat;
+   end record;
+
+   package Field_Maps is new Ada.Containers.Ordered_Maps
+     (Key_Type     => Entity_Id,
+      Element_Type => Field_Info);
+
+   type Record_Info is record
+      Fields : Field_Maps.Map;
+      Structs : Type_Vectors.Vector;
+   end record;
+
+   package Record_Info_Maps is new Ada.Containers.Ordered_Maps
+     (Key_Type     => Entity_Id,
+      Element_Type => Record_Info);
+
    package Type_Maps is new Ada.Containers.Ordered_Maps
      (Key_Type     => Entity_Id,
       Element_Type => Type_T);
@@ -19,6 +39,7 @@ package GNATLLVM.Environment is
 
    type Scope_Type is record
       Types  : Type_Maps.Map;
+      Records_Infos : Record_Info_Maps.Map;
       Values : Value_Maps.Map;
    end record;
    type Scope_Acc is access Scope_Type;
@@ -47,8 +68,7 @@ package GNATLLVM.Environment is
    end record;
    type Subp_Env is access all Subp_Env_Record;
 
-   package Subp_Lists is new Ada.Containers.Doubly_Linked_Lists
-     (Subp_Env);
+   package Subp_Lists is new Ada.Containers.Doubly_Linked_Lists (Subp_Env);
 
    type Environ_Record is tagged record
       Ctx                       : LLVM.Core.Context_T;
@@ -86,7 +106,11 @@ package GNATLLVM.Environment is
    function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T;
    function Get
      (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T;
+   function Get
+     (Env : access Environ_Record; RI : Entity_Id) return Record_Info;
 
+   procedure Set
+     (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info);
    procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T);
    procedure Set (Env : access Environ_Record; VE : Entity_Id; VL : Value_T);
    procedure Set

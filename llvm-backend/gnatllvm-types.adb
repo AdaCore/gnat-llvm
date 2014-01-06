@@ -22,7 +22,8 @@ package body GNATLLVM.Types is
    function Create_Subprogram_Type
      (Env           : Environ;
       Params        : Entity_Iterator;
-      Return_Type   : Entity_Id) return Type_T;
+      Return_Type   : Entity_Id;
+      Takes_S_Link  : Boolean) return Type_T;
    --  Helper for public Create_Subprogram_Type functions: the public ones
    --  harmonize input and this one actually creates the LLVM type for
    --  subprograms.
@@ -306,7 +307,11 @@ package body GNATLLVM.Types is
             end;
 
          when E_Subprogram_Type =>
-            return Create_Subprogram_Type_From_Entity (Env, Def_Ident);
+            --  An access to a subprogram can point any subprogram (nested or
+            --  not), so it must accept a static link.
+
+            return Create_Subprogram_Type_From_Entity
+              (Env, Def_Ident, Takes_S_Link => True);
 
          when others =>
             pragma Annotate (Xcov, Exempt_On, "Defensive programming");
@@ -373,10 +378,10 @@ package body GNATLLVM.Types is
         (Get_First => First_Entity,
          Get_Next  => Next_Entity);
 
-      Def_Ident : constant Entity_Id := Defining_Unit_Name (Subp_Spec);
-      Entities  : constant Entity_Iterator := Iterate (Def_Ident);
-      Params    : Entity_Iterator (1 .. Entities'Length);
-      I         : Nat := 1;
+      Def_Ident    : constant Entity_Id := Defining_Unit_Name (Subp_Spec);
+      Entities     : constant Entity_Iterator := Iterate (Def_Ident);
+      Params       : Entity_Iterator (1 .. Entities'Length);
+      I            : Nat := 1;
    begin
       --  Get the list of parameters in Entities
 
@@ -398,7 +403,8 @@ package body GNATLLVM.Types is
              when others =>
                 raise Program_Error
                   with "Invalid node: "
-          & Node_Kind'Image (Nkind (Subp_Spec))));
+          & Node_Kind'Image (Nkind (Subp_Spec))),
+        Env.Takes_S_Link (Defining_Unit_Name (Subp_Spec)));
    end Create_Subprogram_Type_From_Spec;
 
    ----------------------------------------
@@ -407,7 +413,8 @@ package body GNATLLVM.Types is
 
    function Create_Subprogram_Type_From_Entity
      (Env           : Environ;
-      Subp_Type_Ent : Entity_Id) return Type_T
+      Subp_Type_Ent : Entity_Id;
+      Takes_S_Link  : Boolean) return Type_T
    is
       function Iterate is new Iterate_Entities
         (Get_First => First_Entity,
@@ -418,7 +425,8 @@ package body GNATLLVM.Types is
          Iterate (Subp_Type_Ent),
          (if Etype (Subp_Type_Ent) = Standard_Void_Type
           then Empty
-          else Etype (Subp_Type_Ent)));
+          else Etype (Subp_Type_Ent)),
+         Takes_S_Link);
    end Create_Subprogram_Type_From_Entity;
 
    ----------------------------
@@ -428,9 +436,12 @@ package body GNATLLVM.Types is
    function Create_Subprogram_Type
      (Env           : Environ;
       Params        : Entity_Iterator;
-      Return_Type   : Entity_Id) return Type_T
+      Return_Type   : Entity_Id;
+      Takes_S_Link  : Boolean) return Type_T
    is
-      Arg_Types   : Type_Array (1 .. Params'Length);
+      Args_Count   : constant Int :=
+        Params'Length + (if Takes_S_Link then 1 else 0);
+      Arg_Types    : Type_Array (1 .. Args_Count);
    begin
       --  First, Associate an LLVM type for each Ada subprogram parameter
 
@@ -448,6 +459,13 @@ package body GNATLLVM.Types is
                else Create_Type (Env, Param_Type));
          end;
       end loop;
+
+      --  Set the argument for the static link, if any
+
+      if Takes_S_Link then
+         Arg_Types (Arg_Types'Last) :=
+           Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+      end if;
 
       return Fn_Ty
         (Arg_Types,

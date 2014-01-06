@@ -311,6 +311,33 @@ package body GNATLLVM.Environment is
       return Env.Exit_Points.Last_Element.Exit_BB;
    end Get_Exit_Point;
 
+   ------------------
+   -- Takes_S_Link --
+   ------------------
+
+   function Takes_S_Link
+     (Env  : access Environ_Record;
+      Subp : Entity_Id) return Boolean
+   is
+      use Static_Link_Descriptor_Maps;
+
+      S_Link_Cur : constant Cursor := Env.S_Links.Find (Subp);
+   begin
+      return S_Link_Cur /= No_Element
+        and then Element (S_Link_Cur).Parent /= null;
+   end Takes_S_Link;
+
+   ----------------
+   -- Get_S_Link --
+   ----------------
+
+   function Get_S_Link
+     (Env       : access Environ_Record;
+      Subp_Spec : Node_Id) return Static_Link_Descriptor is
+   begin
+      return Env.S_Links.Element (Defining_Unit_Name (Subp_Spec));
+   end Get_S_Link;
+
    --------------------
    -- Enter_Function --
    --------------------

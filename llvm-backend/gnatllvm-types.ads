@@ -34,7 +34,8 @@ package GNATLLVM.Types is
 
    function Create_Subprogram_Type_From_Entity
      (Env           : Environ;
-      Subp_Type_Ent : Entity_Id) return Type_T;
+      Subp_Type_Ent : Entity_Id;
+      Takes_S_Link  : Boolean) return Type_T;
 
    function Create_Type (Env : Environ; TE : Entity_Id) return Type_T
      with Pre => Is_Type (TE);

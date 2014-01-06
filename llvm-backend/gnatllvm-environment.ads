@@ -97,6 +97,9 @@ package GNATLLVM.Environment is
       Current_Subps             : Subp_Lists.List;
 
       S_Links                   : Static_Link_Descriptor_Maps.Map;
+      Subp_Wrappers             : Value_Maps.Map;
+      --  Associate a static-link-taking subprogram wrapper to each global
+      --  subprogram. Provide actual subprograms for other ones.
 
       Default_Alloc_Fn          : Value_T;
    end record;
@@ -138,6 +141,13 @@ package GNATLLVM.Environment is
      (Env : access Environ_Record; LE : Entity_Id) return Basic_Block_T;
    function Get_Exit_Point
      (Env : access Environ_Record) return Basic_Block_T;
+
+   function Takes_S_Link
+     (Env  : access Environ_Record;
+      Subp : Entity_Id) return Boolean;
+   function Get_S_Link
+     (Env       : access Environ_Record;
+      Subp_Spec : Node_Id) return Static_Link_Descriptor;
 
    function Enter_Subp
      (Env       : access Environ_Record;

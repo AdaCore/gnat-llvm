@@ -31,6 +31,12 @@ package body GNATLLVM.Compile is
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
+   function Create_Callback_Wrapper
+     (Env : Environ; Subp : Entity_Id) return Value_T;
+
+   procedure Attach_Callback_Wrapper_Body
+     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T);
+
    function Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T;
 
@@ -293,15 +299,20 @@ package body GNATLLVM.Compile is
 
             declare
                Spec       : constant Node_Id := Get_Acting_Spec (Node);
+               Def_Ident  : constant Entity_Id := Defining_Unit_Name (Spec);
                Func       : constant Value_T :=
                  Emit_Subprogram_Decl (Env, Spec);
                Subp       : constant Subp_Env := Env.Enter_Subp (Node, Func);
+               Wrapper    : Value_T;
 
                LLVM_Param : Value_T;
                LLVM_Var   : Value_T;
                Param      : Entity_Id;
                I          : Natural := 0;
             begin
+               Wrapper := Create_Callback_Wrapper (Env, Def_Ident);
+               Attach_Callback_Wrapper_Body (Env, Def_Ident, Wrapper);
+
                --  Register each parameter into a new scope
                Env.Push_Scope;
 
@@ -343,6 +354,11 @@ package body GNATLLVM.Compile is
 
                   I := I + 1;
                end loop;
+
+               if Env.Takes_S_Link (Def_Ident) then
+                  Set_Value_Name (Get_Param (Subp.Func, unsigned (I)),
+                                  "static_link");
+               end if;
 
                Emit_List (Env, Declarations (Node));
                Emit_List
@@ -809,7 +825,17 @@ package body GNATLLVM.Compile is
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>
-            return Env.Get (Entity (Node));
+            declare
+               Def_Ident : constant Entity_Id := Entity (Node);
+            begin
+               if Ekind (Def_Ident) = E_Function
+                 or else Ekind (Def_Ident) = E_Procedure
+               then
+                  return Create_Callback_Wrapper (Env, Def_Ident);
+               else
+                  return Env.Get (Def_Ident);
+               end if;
+            end;
 
          when N_Explicit_Dereference =>
             return Emit_Expression (Env, Prefix (Node));
@@ -1388,8 +1414,18 @@ package body GNATLLVM.Compile is
          else Iterate (Etype (Subp)));
       Actual      : Node_Id;
 
+      --  If it's not an identifier, it must be an access to a subprogram and
+      --  in such a case, it must accept a static link.
+
+      Takes_S_Link : constant Boolean :=
+        (Nkind (Subp) /= N_Identifier
+         and then Nkind (Subp) /= N_Expanded_Name)
+        or else Env.Takes_S_Link (Entity (Subp));
+
       LLVM_Func   : Value_T;
-      Args        : array (1 .. Params'Length) of Value_T;
+      Args_Count  : constant Integer :=
+        Params'Length + (if Takes_S_Link then 1 else 0);
+      Args        : array (1 .. Args_Count) of Value_T;
       I           : Standard.Types.Int := 1;
       P_Type      : Entity_Id;
 
@@ -1454,6 +1490,13 @@ package body GNATLLVM.Compile is
          Actual := Next (Actual);
       end loop;
 
+      --  Set the argument for the static link, if any
+
+      if Takes_S_Link then
+         Args (Args'Last) := Const_Pointer_Null
+           (Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
+      end if;
+
       return
         Env.Bld.Call
           (LLVM_Func, Args'Address, Args'Length,
@@ -1502,5 +1545,90 @@ package body GNATLLVM.Compile is
          end;
       end if;
    end Emit_Subprogram_Decl;
+
+   -----------------------------
+   -- Create_Callback_Wrapper --
+   -----------------------------
+
+   function Create_Callback_Wrapper
+     (Env : Environ; Subp : Entity_Id) return Value_T
+   is
+      use Value_Maps;
+      Wrapper : constant Cursor := Env.Subp_Wrappers.Find (Subp);
+
+      Result : Value_T;
+   begin
+      if Wrapper /= No_Element then
+         return Element (Wrapper);
+      end if;
+
+      --  This subprogram is referenced, and thus should at least already be
+      --  declared. Thus, it must be registered in the environment.
+
+      Result := Env.Get (Subp);
+
+      if not Env.Takes_S_Link (Subp) then
+         --  This is a top-level subprogram: wrap it so it can take a static
+         --  link as its last argument.
+
+         declare
+            Func_Type   : constant Type_T :=
+              Get_Element_Type (Type_Of (Result));
+            Name        : constant String := Get_Value_Name (Result) & "__CB";
+            Return_Type : constant Type_T := Get_Return_Type (Func_Type);
+            Args_Count  : constant unsigned :=
+              Count_Param_Types (Func_Type) + 1;
+            Args        : array (1 .. Args_Count) of Type_T;
+         begin
+            Get_Param_Types (Func_Type, Args'Address);
+            Args (Args'Last) :=
+              Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+            Result := Add_Function
+              (Env.Mdl,
+               Name,
+               Function_Type
+                 (Return_Type,
+                  Args'Address, Args'Length,
+                  Is_Var_Arg => False));
+         end;
+      end if;
+
+      Env.Subp_Wrappers.Insert (Subp, Result);
+      return Result;
+   end Create_Callback_Wrapper;
+
+   ----------------------------------
+   -- Attach_Callback_Wrapper_Body --
+   ----------------------------------
+
+   procedure Attach_Callback_Wrapper_Body
+     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T)
+   is
+      BB        : constant Basic_Block_T := Env.Bld.Get_Insert_Block;
+      --  Back up the current insert block not to break the caller's workflow
+
+      Subp_Spec : constant Node_Id := Parent (Subp);
+      Func      : constant Value_T := Emit_Subprogram_Decl (Env, Subp_Spec);
+      Func_Type : constant Type_T := Get_Element_Type (Type_Of (Func));
+
+      Call      : Value_T;
+      Args      : array (1 .. Count_Param_Types (Func_Type) + 1) of Value_T;
+   begin
+      Env.Bld.Position_At_End (Append_Basic_Block_In_Context
+                               (Env.Ctx, Wrapper, ""));
+
+      --  The wrapper must call the wrapped function with the same argument and
+      --  return its result, if any.
+
+      Get_Params (Wrapper, Args'Address);
+      Call := Env.Bld.Call (Func, Args'Address, Args'Length - 1, "");
+      if Get_Return_Type (Func_Type) = Void_Type then
+         Discard (Env.Bld.Ret_Void);
+      else
+         Discard (Env.Bld.Ret (Call));
+      end if;
+
+      Env.Bld.Position_At_End (BB);
+   end Attach_Callback_Wrapper_Body;
 
 end GNATLLVM.Compile;

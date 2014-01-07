@@ -247,10 +247,7 @@ package body GNATLLVM.Compile is
 
          when N_Subprogram_Body =>
             declare
-               Spec       : constant Node_Id :=
-                 (if Acts_As_Spec (Node)
-                  then Specification (Node)
-                  else Parent (Corresponding_Spec (Node)));
+               Spec       : constant Node_Id := Get_Acting_Spec (Node);
                Func       : constant Value_T :=
                  Emit_Subprogram_Decl (Env, Spec);
                Subp       : constant Subp_Env := Env.Enter_Subp (Func);

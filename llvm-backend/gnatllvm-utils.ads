@@ -76,6 +76,10 @@ package GNATLLVM.Utils is
    function Get_Name (E : Entity_Id) return String;
    --  Return the name of an entity: Get_Name_String (Chars (E))
 
+   function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id;
+   --  If Subp_Body acts as a spec, return it. Return the corresponding
+   --  subprogram declaration otherwise.
+
    procedure Discard (V : Value_T);
 
    function Is_Binary_Operator (Node : Node_Id) return Boolean;

@@ -132,6 +132,19 @@ package body GNATLLVM.Utils is
       return Get_Name_String (Chars (E));
    end Get_Name;
 
+   ---------------------
+   -- Get_Acting_Spec --
+   ---------------------
+
+   function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id is
+   begin
+      if Acts_As_Spec (Subp_Body) then
+         return Specification (Subp_Body);
+      else
+         return Parent (Corresponding_Spec (Subp_Body));
+      end if;
+   end Get_Acting_Spec;
+
    -------------
    -- Iterate --
    -------------

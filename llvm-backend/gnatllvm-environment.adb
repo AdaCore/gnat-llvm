@@ -1,5 +1,6 @@
 with Ada.Unchecked_Deallocation;
-with GNATLLVM.Utils;
+
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 

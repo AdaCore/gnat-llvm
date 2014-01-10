@@ -26,8 +26,13 @@ package GNATLLVM.Types is
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
-   function Create_Subprogram_Type
-     (Env : Environ; Subp_Spec : Node_Id) return Type_T;
+   function Create_Subprogram_Type_From_Spec
+     (Env       : Environ;
+      Subp_Spec : Node_Id) return Type_T;
+
+   function Create_Subprogram_Type_From_Entity
+     (Env           : Environ;
+      Subp_Type_Ent : Entity_Id) return Type_T;
 
    function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T;
 

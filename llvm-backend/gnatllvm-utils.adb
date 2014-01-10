@@ -62,15 +62,16 @@ package body GNATLLVM.Utils is
    -- Param_Needs_Ptr --
    ---------------------
 
-   function Param_Needs_Ptr (Arg : Node_Id) return Boolean is
-      PT : constant Node_Id := Parameter_Type (Arg);
+   function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
+      PT : constant Entity_Id := Etype (Param);
       Is_Access : constant Boolean :=
-        (Nkind (PT) = N_Access_Definition
-         or else Is_Access_Type (Etype (PT)));
+        (Ekind (PT) in E_Access_Type .. E_General_Access_Type
+         or else Ekind (PT) = E_Anonymous_Access_Type);
    begin
-      return (Out_Present (Arg)
+      return (Ekind (Param) = E_In_Out_Parameter
+              or else Ekind (Param) = E_Out_Parameter
               or else not
-                (Is_Access or else Is_Constrained (Etype (PT))));
+                (Is_Access or else Is_Constrained (PT)));
    end Param_Needs_Ptr;
 
    ----------------------------

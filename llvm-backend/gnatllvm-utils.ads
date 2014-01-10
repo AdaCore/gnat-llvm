@@ -23,7 +23,7 @@ package GNATLLVM.Utils is
    --  stack
 
    function Param_Needs_Ptr
-     (Arg : Node_Id) return Boolean;
+     (Param : Entity_Id) return Boolean;
    --  Returns true if Param needs to be passed by reference (pointer) rather
    --  than by value
 

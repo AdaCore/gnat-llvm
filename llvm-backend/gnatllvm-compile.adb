@@ -317,7 +317,7 @@ package body GNATLLVM.Compile is
                   --  store a pointer to them on the stack, so do an alloca,
                   --  to be able to do GEP on them.
 
-                  if Param_Needs_Ptr (P)
+                  if Param_Needs_Ptr (Param)
                     and then not
                       (Get_Type_Kind (Type_Of (LLVM_Param)) = Struct_Type_Kind)
                   then
@@ -798,7 +798,7 @@ package body GNATLLVM.Compile is
    is
    begin
       case Nkind (Node) is
-         when N_Identifier =>
+         when N_Identifier | N_Expanded_Name =>
             return Env.Get (Entity (Node));
 
          when N_Explicit_Dereference =>
@@ -1169,7 +1169,7 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_Identifier =>
+         when N_Identifier | N_Expanded_Name =>
             --  N_Defining_Identifier nodes for enumeration literals are not
             --  store in the environment. Handle them here.
 
@@ -1178,14 +1178,39 @@ package body GNATLLVM.Compile is
                  (Create_Type (Env, Etype (Node)),
                   Enumeration_Rep (Entity (Node)), False);
             else
-               return Env.Bld.Load (Env.Get (Entity (Node)), "");
+               --  LLVM functions are pointers that cannot be dereferenced. If
+               --  Entity (Node) is a subprogram, return it as-is, the caller
+               --  expects a pointer to a function anyway.
+
+               declare
+                  LValue : constant Value_T := Env.Get (Entity (Node));
+                  Is_Subprogram : constant Boolean :=
+                    (Ekind (Entity (Node)) = E_Function
+                     or else Ekind (Entity (Node)) = E_Procedure);
+               begin
+                  return
+                    (if Is_Subprogram then
+                        LValue
+                     else
+                        Env.Bld.Load (Env.Get (Entity (Node)), ""));
+               end;
             end if;
 
          when N_Function_Call =>
             return Call (Env, Node);
 
          when N_Explicit_Dereference =>
-            return Env.Bld.Load (Compile_Expr (Prefix (Node)), "");
+            --  Special handling for accesses to subprograms, see N_Identifier
+
+            declare
+               Access_Value : constant Value_T :=
+                 Compile_Expr (Prefix (Node));
+            begin
+               return
+                 (if Ekind (Etype (Node)) = E_Subprogram_Type
+                  then Access_Value
+                  else Env.Bld.Load (Access_Value, ""));
+            end;
 
          when N_Allocator =>
             declare
@@ -1315,33 +1340,44 @@ package body GNATLLVM.Compile is
    ----------
 
    function Call
-     (Env : Environ; Call_Node : Node_Id) return Value_T is
-      Func_Ident  : constant Node_Id := Entity (Name (Call_Node));
-      Func_Params : constant List_Id :=
-        Parameter_Specifications (Parent (Func_Ident));
-      Param_Spec  : Node_Id;
+     (Env : Environ; Call_Node : Node_Id) return Value_T
+   is
+      function Is_Formal (E : Entity_Id) return Boolean is
+        (Ekind (E) in Formal_Kind);
 
-      Params      : constant List_Id := Parameter_Associations (Call_Node);
+      function Iterate is new Iterate_Entities
+        (Get_First => First_Entity,
+         Get_Next  => Next_Entity,
+         Filter    => Is_Formal);
+
+      Subp        : constant Node_Id := Name (Call_Node);
+      Params      : constant Entity_Iterator :=
+        (if Nkind (Subp) = N_Identifier
+         or else Nkind (Subp) = N_Expanded_Name
+         then Iterate (Entity (Subp))
+         else Iterate (Etype (Subp)));
+      Actual      : Node_Id;
+
       LLVM_Func   : Value_T;
-      Args        : array (1 .. List_Length (Params)) of Value_T;
-      I           : Nat := 1;
+      Args        : array (1 .. Params'Length) of Value_T;
+      I           : Standard.Types.Int := 1;
       P_Type      : Entity_Id;
+
    begin
-      LLVM_Func := Env.Get (Func_Ident);
+      LLVM_Func := Emit_Expression (Env, Name (Call_Node));
 
-      Param_Spec := First (Func_Params);
-
-      for Param of Iterate (Params) loop
-         Args (I) :=
-           (if Param_Needs_Ptr (Param_Spec)
-            then Emit_LValue (Env, Param)
-            else Emit_Expression (Env, Param));
+      Actual := First (Parameter_Associations (Call_Node));
+      while Present (Actual) loop
+         Args (Natural (I)) :=
+           (if Param_Needs_Ptr (Params (I))
+            then Emit_LValue (Env, Actual)
+            else Emit_Expression (Env, Actual));
 
          --  At this point we need to handle the conversion from constrained
          --  arrays to unconstrained arrays
 
-         P_Type := Etype (Parameter_Type (Param_Spec));
-         if Is_Constrained (Etype (Param))
+         P_Type := Etype (Params (I));
+         if Is_Constrained (Etype (Actual))
            and then not Is_Constrained (P_Type)
          then
             declare
@@ -1357,14 +1393,14 @@ package body GNATLLVM.Compile is
                V := Env.Bld.Struct_GEP (Array_Access, 0, "");
                Env.Bld.Store
                  (Env.Bld.Bit_Cast
-                    (Args (I),
+                    (Args (Natural (I)),
                      Pointer_Type
                        (Create_Type
-                            (Env, Parameter_Type (Param_Spec)), 0), ""), V);
+                            (Env, Etype (Params (I))), 0), ""), V);
 
                --  Store the bounds into the access struct
                for Dim of
-                 Iterate (List_Containing (First_Index (Etype (Param))))
+                 Iterate (List_Containing (First_Index (Etype (Actual))))
                loop
                   declare
                      R : constant Node_Id := Get_Dim_Range (Dim);
@@ -1380,12 +1416,12 @@ package body GNATLLVM.Compile is
                end loop;
 
                --  Replace the simple pointer by the access struct
-               Args (I) := Env.Bld.Load (Array_Access, "");
+               Args (Natural (I)) := Env.Bld.Load (Array_Access, "");
             end;
          end if;
 
          I := I + 1;
-         Param_Spec := Next (Param_Spec);
+         Actual := Next (Actual);
       end loop;
 
       return
@@ -1413,7 +1449,7 @@ package body GNATLLVM.Compile is
       else
          declare
             Subp_Type : constant Type_T :=
-              Create_Subprogram_Type (Env, Subp_Spec);
+              Create_Subprogram_Type_From_Spec (Env, Subp_Spec);
 
             Subp_Base_Name : constant String :=
                 Get_Name_String (Chars (Def_Ident));

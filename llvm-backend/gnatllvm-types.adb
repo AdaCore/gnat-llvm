@@ -1,6 +1,5 @@
 with Interfaces.C;
 with Get_Targ; use Get_Targ;
-with Nlists;   use Nlists;
 with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
@@ -19,6 +18,14 @@ package body GNATLLVM.Types is
    function Get_Address_Type return Type_T
    is
      (Int_Ty (Natural (Ttypes.System_Address_Size)));
+
+   function Create_Subprogram_Type
+     (Env           : Environ;
+      Params        : Entity_Iterator;
+      Return_Type   : Entity_Id) return Type_T;
+   --  Helper for public Create_Subprogram_Type functions: the public ones
+   --  harmonize input and this one actually creates the LLVM type for
+   --  subprograms.
 
    ----------------------------------
    -- Get_Innermost_Component_Type --
@@ -126,55 +133,6 @@ package body GNATLLVM.Types is
       end if;
    end Create_Access_Type;
 
-   ----------------------------
-   -- Create_Subprogram_Type --
-   ----------------------------
-
-   function Create_Subprogram_Type
-     (Env : Environ; Subp_Spec : Node_Id) return Type_T
-   is
-      Param_Specs : constant List_Id := Parameter_Specifications (Subp_Spec);
-      Param_Types : Type_Array (1 .. List_Length (Param_Specs));
-      Return_Type : Type_T;
-      Arg         : Node_Id := First (Param_Specs);
-   begin
-
-      --  Associate an LLVM type for each argument
-      for Param of Param_Types loop
-
-         --  If this is an out parameter, or a parameter whose type is
-         --  unconstrained, take a pointer to the actual parameter.
-
-         Param :=
-           (if Param_Needs_Ptr (Arg)
-            then Create_Access_Type (Env, Parameter_Type (Arg))
-            else Create_Type (Env, Parameter_Type (Arg)));
-
-         Arg := Next (Arg);
-      end loop;
-
-      --  Set the LLVM function return type
-
-      case Nkind (Subp_Spec) is
-         when N_Procedure_Specification =>
-            Return_Type := Void_Type_In_Context (Env.Ctx);
-         when N_Function_Specification =>
-            if Return_Needs_Sec_Stack (Subp_Spec) then
-               Return_Type := Create_Access_Type
-                 (Env, Result_Definition (Subp_Spec));
-            else
-               Return_Type := Create_Type
-                 (Env, Result_Definition (Subp_Spec));
-            end if;
-         when others =>
-            raise Program_Error
-              with "Invalid node: " & Node_Kind'Image (Nkind (Subp_Spec));
-      end case;
-
-      return Fn_Ty (Param_Types, Return_Type);
-
-   end Create_Subprogram_Type;
-
    -----------------
    -- Create_Type --
    -----------------
@@ -242,7 +200,9 @@ package body GNATLLVM.Types is
             --  TODO??? Replace this dummy handler
             return Void_Type_In_Context (Env.Ctx);
 
-         when E_Access_Type .. E_General_Access_Type =>
+         when E_Access_Type .. E_General_Access_Type
+            | E_Anonymous_Access_Type
+            | E_Access_Subprogram_Type =>
             return Create_Access_Type
               (Env, Designated_Type (Def_Ident));
 
@@ -369,6 +329,9 @@ package body GNATLLVM.Types is
                return Result;
             end;
 
+         when E_Subprogram_Type =>
+            return Create_Subprogram_Type_From_Entity (Env, Def_Ident);
+
          when others =>
             raise Program_Error
               with "Unhandled type kind: "
@@ -415,5 +378,97 @@ package body GNATLLVM.Types is
               with "Invalid discrete type: " & Entity_Kind'Image (Ekind (TE));
       end case;
    end Create_Discrete_Type;
+
+   --------------------------------------
+   -- Create_Subprogram_Type_From_Spec --
+   --------------------------------------
+
+   function Create_Subprogram_Type_From_Spec
+     (Env : Environ; Subp_Spec : Node_Id) return Type_T
+   is
+      function Iterate is new Iterate_Entities
+        (Get_First => First_Entity,
+         Get_Next  => Next_Entity);
+
+      Def_Ident : constant Entity_Id := Defining_Unit_Name (Subp_Spec);
+      Entities  : constant Entity_Iterator := Iterate (Def_Ident);
+      Params    : Entity_Iterator (1 .. Entities'Length);
+      I         : Nat := 1;
+   begin
+      --  Get the list of parameters in Entities
+
+      for Entity of Entities loop
+         if Ekind (Entity) in Formal_Kind then
+            Params (I) := Entity;
+            I := I + 1;
+         end if;
+      end loop;
+
+      return Create_Subprogram_Type
+        (Env,
+         Params (1 .. I - 1),
+         (case Nkind (Subp_Spec) is
+             when N_Procedure_Specification => Empty,
+             when N_Function_Specification => Result_Definition (Subp_Spec),
+             when others =>
+                raise Program_Error
+                  with "Invalid node: "
+          & Node_Kind'Image (Nkind (Subp_Spec))));
+   end Create_Subprogram_Type_From_Spec;
+
+   ----------------------------------------
+   -- Create_Subprogram_Type_From_Entity --
+   ----------------------------------------
+
+   function Create_Subprogram_Type_From_Entity
+     (Env           : Environ;
+      Subp_Type_Ent : Entity_Id) return Type_T
+   is
+      function Iterate is new Iterate_Entities
+        (Get_First => First_Entity,
+         Get_Next  => Next_Entity);
+   begin
+      return Create_Subprogram_Type
+        (Env,
+         Iterate (Subp_Type_Ent),
+         (if Etype (Subp_Type_Ent) = Standard_Void_Type
+          then Empty
+          else Etype (Subp_Type_Ent)));
+   end Create_Subprogram_Type_From_Entity;
+
+   ----------------------------
+   -- Create_Subprogram_Type --
+   ----------------------------
+
+   function Create_Subprogram_Type
+     (Env           : Environ;
+      Params        : Entity_Iterator;
+      Return_Type   : Entity_Id) return Type_T
+   is
+      Arg_Types   : Type_Array (1 .. Params'Length);
+   begin
+      --  First, Associate an LLVM type for each Ada subprogram parameter
+
+      for I in Params'Range loop
+         declare
+            Param_Ent  : constant Entity_Id := Params (I);
+            Param_Type : constant Node_Id := Etype (Param_Ent);
+         begin
+            --  If this is an out parameter, or a parameter whose type is
+            --  unconstrained, take a pointer to the actual parameter.
+
+            Arg_Types (I) :=
+              (if Param_Needs_Ptr (Param_Ent)
+               then Create_Access_Type (Env, Param_Type)
+               else Create_Type (Env, Param_Type));
+         end;
+      end loop;
+
+      return Fn_Ty
+        (Arg_Types,
+         (if Present (Return_Type)
+          then Create_Type (Env, Return_Type)
+          else Void_Type_In_Context (Env.Ctx)));
+   end Create_Subprogram_Type;
 
 end GNATLLVM.Types;

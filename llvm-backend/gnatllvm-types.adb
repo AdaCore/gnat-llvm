@@ -360,6 +360,10 @@ package body GNATLLVM.Types is
       end case;
    end Create_Type;
 
+   --------------------------
+   -- Create_Discrete_Type --
+   --------------------------
+
    procedure Create_Discrete_Type
      (Env       : Environ;
       TE        : Entity_Id;

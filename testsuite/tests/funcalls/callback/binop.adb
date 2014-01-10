@@ -8,13 +8,12 @@ package body BinOp is
    function Eval_Mul (L, R : Integer) return Integer;
    function Eval_Div (L, R : Integer) return Integer;
 
-   Callbacks : constant Callback_Array :=
-      (Eval_Sum'Access,
-       Eval_Sub'Access,
-       Eval_Mul'Access,
-       Eval_Div'Access);
-
    function Eval (O : Op; L, R : Integer) return Integer is
+      Callbacks : constant Callback_Array :=
+         (Eval_Sum'Access,
+          Eval_Sub'Access,
+          Eval_Mul'Access,
+          Eval_Div'Access);
    begin
       return Callbacks (O).all (L, R);
    end Eval;

@@ -81,6 +81,9 @@ package GNATLLVM.Environment is
       --  Stack of scopes, to associate LLVM types/values to expansed tree's
       --  entities.
 
+      Declarations_Level        : Natural;
+      --  Keep track of the current nesting level for declarations
+
       Exit_Points               : Exit_Point_Vectors.Vector;
       --  Stack of scoped loop exit points. Last inserted exit point correspond
       --  to the innermost loop.
@@ -93,6 +96,11 @@ package GNATLLVM.Environment is
 
    procedure Push_Scope (Env : access Environ_Record);
    procedure Pop_Scope (Env : access Environ_Record);
+
+   procedure Begin_Declarations (Env : access Environ_Record);
+   procedure End_Declarations (Env : access Environ_Record);
+   function In_Declarations (Env : access Environ_Record) return Boolean is
+     (Env.Declarations_Level > 0);
 
    No_Such_Type        : exception;
    No_Such_Value       : exception;

@@ -37,6 +37,24 @@ package body GNATLLVM.Environment is
       Env.Scopes.Delete_Last;
    end Pop_Scope;
 
+   ------------------------
+   -- Begin_Declarations --
+   ------------------------
+
+   procedure Begin_Declarations (Env : access Environ_Record) is
+   begin
+      Env.Declarations_Level := Env.Declarations_Level + 1;
+   end Begin_Declarations;
+
+   ----------------------
+   -- End_Declarations --
+   ----------------------
+
+   procedure End_Declarations (Env : access Environ_Record) is
+   begin
+      Env.Declarations_Level := Env.Declarations_Level - 1;
+   end End_Declarations;
+
    --------------
    -- Has_Type --
    --------------

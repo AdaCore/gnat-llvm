@@ -58,7 +58,7 @@ package body LLVM_Drive is
 
       --  Actually translate
 
-      Emit (Env, Unit (GNAT_Root));
+      Emit_Compilation_Unit (Env, GNAT_Root, True);
 
       --  Output the translation
 

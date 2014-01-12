@@ -2,12 +2,10 @@ with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
-with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Errout;   use Errout;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
-with Sinfo;    use Sinfo;
 with Sem_Util; use Sem_Util;
 with Stringt;  use Stringt;
 with Uintp;    use Uintp;
@@ -214,6 +212,31 @@ package body GNATLLVM.Compile is
         (Record_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
    end Record_Field_Offset;
 
+   ---------------------------
+   -- Emit_Compilation_Unit --
+   ---------------------------
+
+   procedure Emit_Compilation_Unit
+     (Env : Environ; Node : Node_Id; Emit_Library_Unit : Boolean) is
+   begin
+      Env.Begin_Declarations;
+      for With_Clause of Iterate (Context_Items (Node)) loop
+         Emit (Env, With_Clause);
+      end loop;
+      Env.End_Declarations;
+
+      if Emit_Library_Unit
+        and then Present (Library_Unit (Node))
+        and then Library_Unit (Node) /= Node
+      then
+         --  Library unit spec and body point to each other. Avoid infinite
+         --  recursion.
+
+         Emit_Compilation_Unit (Env, Library_Unit (Node), False);
+      end if;
+      Emit (Env, Unit (Node));
+   end Emit_Compilation_Unit;
+
    ----------
    -- Emit --
    ----------
@@ -223,11 +246,23 @@ package body GNATLLVM.Compile is
    begin
       case Nkind (Node) is
 
+         when N_Compilation_Unit =>
+            raise Program_Error with
+              "N_Compilation_Unit node must be processed in"
+              & " Emit_Compilation_Unit";
+
+         when N_With_Clause =>
+            Emit_Compilation_Unit (Env, Library_Unit (Node), True);
+
+         when N_Use_Package_Clause =>
+            null;
+
          when N_Package_Declaration =>
             Emit (Env, Specification (Node));
 
          when N_Package_Specification =>
             Emit_List (Env, Visible_Declarations (Node));
+            Emit_List (Env, Private_Declarations (Node));
 
          when N_Package_Body =>
             declare
@@ -243,6 +278,15 @@ package body GNATLLVM.Compile is
             Discard (Emit_Subprogram_Decl (Env, Specification (Node)));
 
          when N_Subprogram_Body =>
+            --  If we are processing only declarations, do not emit a
+            --  subprogram body: just declare this subprogram and add it to
+            --  the environment.
+
+            if Env.In_Declarations then
+               Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
+               return;
+            end if;
+
             declare
                Spec       : constant Node_Id := Get_Acting_Spec (Node);
                Func       : constant Value_T :=
@@ -708,9 +752,7 @@ package body GNATLLVM.Compile is
                      Create_Type (Env, Defining_Identifier (Node)));
 
          when N_Freeze_Entity =>
-            --  TODO ??? Implement N_Freeze_Entity. We just need a stub
-            --  implementation for basic types atm
-            null;
+            Emit_List (Env, Actions (Node));
 
          when N_Pragma =>
             case Get_Pragma_Id (Node) is
@@ -729,15 +771,20 @@ package body GNATLLVM.Compile is
 
          when N_Attribute_Definition_Clause =>
             if Get_Name (Node) = "alignment" then
-               --  TODO ??? Handle the alignment clause.
+               --  TODO??? Handle the alignment clause
+               null;
+            elsif Get_Name (Node) = "size" then
+               --  TODO??? Handle size clauses
                null;
             else
-               raise Program_Error with "clause not handled";
+               raise Program_Error
+                 with "Unhandled attribute definition clause: "
+                 & Get_Name (Node);
             end if;
 
          when others =>
             raise Program_Error
-              with "Unhandled statement node kind : "
+              with "Unhandled statement node kind: "
               & Node_Kind'Image (Nkind (Node));
 
       end case;
@@ -1280,16 +1327,6 @@ package body GNATLLVM.Compile is
       I           : Nat := 1;
       P_Type      : Entity_Id;
    begin
-      --  Lazy compilation of function specs
-      if not Env.Has_Value (Func_Ident) then
-         declare
-            BB : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
-         begin
-            Emit (Env, Parent (Parent (Func_Ident)));
-            Position_At_End (Env.Bld, BB);
-         end;
-      end if;
-
       LLVM_Func := Env.Get (Func_Ident);
 
       Param_Spec := First (Func_Params);

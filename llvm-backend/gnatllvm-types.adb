@@ -238,6 +238,10 @@ package body GNATLLVM.Types is
             return Int_Type_In_Context
               (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
 
+         when E_Floating_Point_Type | E_Floating_Point_Subtype =>
+            --  TODO??? Replace this dummy handler
+            return Void_Type_In_Context (Env.Ctx);
+
          when E_Access_Type .. E_General_Access_Type =>
             return Create_Access_Type
               (Env, Designated_Type (Def_Ident));

@@ -1,8 +1,17 @@
+with Atree; use Atree;
+with Sinfo; use Sinfo;
 with Types; use Types;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
+
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+
 package GNATLLVM.Compile is
+
+   procedure Emit_Compilation_Unit
+     (Env : Environ; Node : Node_Id; Emit_Library_Unit : Boolean)
+     with Pre => Env /= null
+       and then Nkind (Node) = N_Compilation_Unit;
 
    procedure Emit
      (Env : Environ; Node : Node_Id)

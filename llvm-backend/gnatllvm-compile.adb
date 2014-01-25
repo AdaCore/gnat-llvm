@@ -1,4 +1,5 @@
-with Interfaces.C; use Interfaces.C;
+with Interfaces.C;            use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
 with Atree;    use Atree;
@@ -8,6 +9,7 @@ with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sinfo;    use Sinfo;
 with Sem_Util; use Sem_Util;
+with Stringt;  use Stringt;
 with Uintp;    use Uintp;
 
 with LLVM.Analysis; use LLVM.Analysis;
@@ -1032,6 +1034,26 @@ package body GNATLLVM.Compile is
             return Const_Int
               (Create_Type (Env, Etype (Node)),
                Intval (Node));
+
+         when N_String_Literal =>
+            declare
+               String       : constant String_Id := Strval (Node);
+               Array_Type   : constant Type_T :=
+                 Create_Type (Env, Etype (Node));
+               Element_Type : constant Type_T := Get_Element_Type (Array_Type);
+               Length       : constant Interfaces.C.unsigned :=
+                 Get_Array_Length (Array_Type);
+               Elements     : array (1 .. Length) of Value_T;
+            begin
+               for I in Elements'Range loop
+                  Elements (I) := Const_Int
+                    (Element_Type,
+                     unsigned_long_long
+                       (Get_String_Char (String, Standard.Types.Int (I))),
+                     Sign_Extend => True);
+               end loop;
+               return Const_Array (Element_Type, Elements'Address, Length);
+            end;
 
          when N_And_Then => return Build_Scl_Op (Op_And);
          when N_Or_Else => return Build_Scl_Op (Op_Or);

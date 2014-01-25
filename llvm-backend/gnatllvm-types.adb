@@ -322,6 +322,16 @@ package body GNATLLVM.Types is
                  (Get_First => First_Index,
                   Get_Next  => Next_Index);
             begin
+               --  Special case for string literals: they do not include
+               --  regular index information.
+
+               if Ekind (Type_Node) = E_String_Literal_Subtype then
+                  Range_Size := UI_To_Long_Long_Integer
+                    (String_Literal_Length (Def_Ident));
+                  return Array_Type
+                    (Result, Interfaces.C.unsigned (Range_Size));
+               end if;
+
                --  Wrap each "nested type" into an array using the previous
                --  index.
 

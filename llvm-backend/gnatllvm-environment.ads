@@ -38,9 +38,11 @@ package GNATLLVM.Environment is
       Element_Type => Value_T);
 
    type Scope_Type is record
-      Types  : Type_Maps.Map;
+      Types         : Type_Maps.Map;
+      Values        : Value_Maps.Map;
+      --  Types and values registered so far for this scope
+
       Records_Infos : Record_Info_Maps.Map;
-      Values : Value_Maps.Map;
    end record;
    type Scope_Acc is access Scope_Type;
 

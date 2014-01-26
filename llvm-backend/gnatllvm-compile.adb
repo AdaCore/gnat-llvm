@@ -773,10 +773,9 @@ package body GNATLLVM.Compile is
                  Emit_LValue (Env, Prefix (Node));
 
                Idxs    :
-               Value_Array (1 .. List_Length (Expressions (Node)) + 1)
-                 :=
-                   (1 => Const_Int (Create_Type (Env, Etype (Node)), 0, True),
-                    others => <>);
+               Value_Array (1 .. List_Length (Expressions (Node)) + 1) :=
+                 (1      => Const_Int (Intptr_T, 0, Sign_Extend => False),
+                  others => <>);
                --  Operands for the GetElementPtr instruction: one for the
                --  pointer deference, and then one per array index.
 

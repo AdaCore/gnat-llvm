@@ -9,6 +9,7 @@ with System; use System;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Uintp; use Uintp;
 with Einfo; use Einfo;
+with Get_Targ;
 
 package GNATLLVM.Utils is
 
@@ -38,6 +39,10 @@ package GNATLLVM.Utils is
    is
      (Const_Int (T, unsigned_long_long (UI_To_Int (Value)), Sign_Extend));
    --  Return an LLVM value corresponding to the universal int Value
+
+   Intptr_T : constant Type_T :=
+     Int_Type (Interfaces.C.unsigned (Get_Targ.Get_Pointer_Size));
+   --  Return a LLVM integer type that is as big as pointers
 
    No_Value_T : constant Value_T := Value_T (Null_Address);
    --  Constant for the null llvm value

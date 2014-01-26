@@ -1,5 +1,4 @@
-with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
+with Interfaces.C; use Interfaces.C;
 with System;
 
 with Atree;    use Atree;
@@ -19,9 +18,6 @@ with GNATLLVM.Builder; use GNATLLVM.Builder;
 with Get_Targ; use Get_Targ;
 
 package body GNATLLVM.Compile is
-
-   function Const_Bound (B : Integer) return Value_T;
-   --  Return an LLVM value of the type of array bounds which value is B
 
    procedure Emit_List
      (Env : Environ; List : List_Id);
@@ -88,13 +84,20 @@ package body GNATLLVM.Compile is
      (Env : Environ; Array_Ptr : Value_T;
       Bound : Bound_T; Dim : Natural) return Value_T
    is
-      Idx : Value_T;
-      Bound_Idx : constant Natural :=
-        ((Dim - 1) * 2 + (if Bound = Low then 0 else 1));
+      Bounds_Ptr             : constant Value_T :=
+        Env.Bld.Struct_GEP (Array_Ptr, 1, "gep-bounds-array");
+      --  Get a pointer to the structure that contains array bounds
+
+      Bounds_Pair_Idx        : constant Natural := (Dim - 1) * 2;
+      --  In such a structure, bounds are stored as a sequence of (lower bound,
+      --  upper bound) pairs : get the offset of such a pair.
+
+      Bound_Idx              : constant unsigned :=
+        unsigned (Bounds_Pair_Idx) + (if Bound = Low then 0 else 1);
    begin
-      Idx := Env.Bld.Struct_GEP (Array_Ptr, 1, "gep-bounds-array");
-      return Env.Bld.GEP
-        (Idx, (Const_Bound (0), Const_Bound (Bound_Idx)),
+      return Env.Bld.Struct_GEP
+        (Bounds_Ptr,
+         Bound_Idx,
          (if Bound = Low
           then "gep-low-bound"
           else "gep-high-bound"));
@@ -121,14 +124,6 @@ package body GNATLLVM.Compile is
            (Env, Emit_LValue (Env, Array_Node), Bound, Dim);
       end if;
    end Array_Bound;
-
-   -----------------
-   -- Const_Bound --
-   -----------------
-
-   function Const_Bound (B : Integer) return Value_T
-   is
-      (Const_Int (Array_Bounds_Type, unsigned_long_long (B), True));
 
    ----------------
    -- Array_Size --
@@ -846,7 +841,8 @@ package body GNATLLVM.Compile is
                return Env.Bld.Bit_Cast
                  (Env.Bld.GEP
                     (Array_Ptr,
-                     (Const_Bound (0), Index_Shift),
+                     (Const_Int (Intptr_T, 0, Sign_Extend => False),
+                      Index_Shift),
                      "array-shifted"),
                   Create_Access_Type (Env, Etype (Node)),
                   "slice");

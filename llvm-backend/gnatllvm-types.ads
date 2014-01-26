@@ -19,12 +19,12 @@ package GNATLLVM.Types is
    --  between the two. For the moment, it handles array accesses and thin
    --  (normal) accesses.
 
-   function Array_Bounds_Type return Type_T;
-   --  Helper that returns the type of array bounds (always the int type big
-   --  enough to address the whole address space atm)
-
-   function Array_Bounds_Array_Type (Nb_Dims : Nat) return Type_T;
-   --  Return an array type big enough to contain the bounds for Nb_Dims dims
+   function Create_Array_Bounds_Type
+     (Env             : Environ;
+      Array_Type_Node : Entity_Id) return Type_T;
+   --  Helper that returns the type used to store array bounds. This is a
+   --  structure that that follows the following pattern: { LB0, UB0, LB1,
+   --  UB1, ... }
 
    function Create_Subprogram_Type
      (Env : Environ; Subp_Spec : Node_Id) return Type_T;

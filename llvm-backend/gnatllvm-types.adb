@@ -73,30 +73,34 @@ package body GNATLLVM.Types is
    is
      (Function_Type (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False));
 
-   -----------------------
-   -- Array_Bounds_Type --
-   -----------------------
+   ------------------------------
+   -- Create_Array_Bounds_Type --
+   ------------------------------
 
-   function Array_Bounds_Type return Type_T
+   function Create_Array_Bounds_Type
+     (Env             : Environ;
+      Array_Type_Node : Entity_Id) return Type_T
    is
-      (Int_Type (Interfaces.C.unsigned (Get_Pointer_Size)));
+      function Iterate is new Iterate_Entities
+        (Get_First => First_Index,
+         Get_Next  => Next_Index);
 
-   -----------------------------
-   -- Array_Bounds_Array_Type --
-   -----------------------------
-
-   function Array_Bounds_Array_Type (Nb_Dims : Nat) return Type_T is
-      Bounds_Type : constant Type_T := Array_Bounds_Type;
-      use Interfaces.C;
-      Ret : constant Type_T :=
-        Array_Type (Bounds_Type, unsigned (Nb_Dims * 2));
+      Indices : constant Entity_Iterator := Iterate (Array_Type_Node);
+      Fields  : array (1 .. 2 * Indices'Length) of Type_T;
+      I       : Natural := 1;
    begin
-      return Ret;
-   end Array_Bounds_Array_Type;
+      for Index of Indices loop
+         Fields (I) := Create_Type (Env, Etype (Index));
+         Fields (I + 1) := Fields (I);
+         I := I + 2;
+      end loop;
+      return Struct_Type_In_Context
+        (Env.Ctx, Fields'Address, Fields'Length, Packed => False);
+   end Create_Array_Bounds_Type;
 
-   -----------------
-   -- Access_Type --
-   -----------------
+   ------------------------
+   -- Create_Access_Type --
+   ------------------------
 
    function Create_Access_Type
      (Env : Environ; Type_Node : Node_Id) return Type_T
@@ -111,11 +115,9 @@ package body GNATLLVM.Types is
         and then not Is_Constrained (TT)
       then
          declare
-            Nb_Dimensions : constant Nat :=
-              List_Length (List_Containing (First_Index (TT)));
             St_Els : Type_Array (1 .. 2) :=
               (Pointer_Type (T, 0),
-               Array_Bounds_Array_Type (Nb_Dimensions));
+               Create_Array_Bounds_Type (Env, TT));
          begin
             return Struct_Type (St_Els'Address, St_Els'Length, False);
          end;

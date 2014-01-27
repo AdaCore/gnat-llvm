@@ -11,6 +11,7 @@ import gnatpython.testdriver
 from gnatpython.testdriver import add_run_test_options
 
 from glob import glob
+import os
 import os.path
 import sys
 
@@ -51,6 +52,8 @@ def main():
 
     if m.options.restricted_discs is not None:
         m.options.restricted_discs = m.options.restricted_discs.split(',')
+
+    os.environ['TESTCASE_NAME'] = m.args[0]
 
     # Make sure the result directory exists.
     test_name = m.args[0]

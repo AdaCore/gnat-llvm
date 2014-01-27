@@ -22,7 +22,8 @@ from pygments.token import Token
 from gnatpython.env import Env
 from gnatpython.ex import Run
 from gnatpython.fileutils import (
-    echo_to_file, split_file)
+    echo_to_file, split_file,
+    mkdir, rm)
 from gnatpython.main import Main
 from gnatpython.mainloop import (MainLoop, add_mainloop_options,
                                  generate_collect_result,
@@ -95,6 +96,12 @@ class Testsuite:
             action='store_true', default=False,
             help='Run the tests with the native GNAT compiler instead of'
                  ' GNAT-LLVM')
+        self.main.add_option(
+            '--srccov-level', dest='source_coverage_level',
+            default=None,
+            choices=('stmt', 'stmt+decision', 'stmt+mcdc', 'stmt+uc_mcdc'),
+            help='Procude execution traces from tests and compute the source'
+                 ' coverage with GNATcoverage at the requested level')
 
         # Mapping: test status -> count of tests that have this status
         self.summary = defaultdict(lambda: 0)
@@ -103,6 +110,8 @@ class Testsuite:
         """Run the testsuite"""
 
         self.main.parse_args()
+
+        os.environ['TESTSUITE_ROOT'] = os.getcwd()
 
         if self.main.options.native_gnat:
             os.environ['USE_NATIVE_GNAT'] = 'TRUE'
@@ -114,13 +123,40 @@ class Testsuite:
                 for path in object_spath:
                     add_path(env_var, path)
 
+        if self.main.options.source_coverage_level:
+            os.environ['SOURCE_COVERAGE_LEVEL'] = (
+                self.main.options.source_coverage_level)
+
         # Various files needed or created by the testsuite
-        # creates :
+        # creates:
         #   the ouput directory (out by default)
         #   the report file
         #   the results file
+        # For source coverage assessment:
+        #   the trace directory
+        #   the source coverage report directory
 
         setup_result_dir(self.main.options)
+        if self.main.options.source_coverage_level:
+            src_dir = os.path.join(os.getcwd(), '..', 'llvm-backend')
+            srccov_dir = 'srccov'
+            traces_dir = os.path.join(srccov_dir, 'traces')
+            units_list = os.path.join(srccov_dir, 'units.list')
+            for output_dir in (srccov_dir, traces_dir):
+                rm(output_dir, recursive=True)
+                mkdir(output_dir)
+
+            # Prepare the list of units of interest
+            units = set()
+            for filename in os.listdir(src_dir):
+                if filename.endswith('.adb') or filename.endswith('.ads'):
+                    basename, ext = os.path.splitext(filename)
+                    units.add(basename.replace('-', '.'))
+            echo_to_file(
+                units_list,
+                '\n'.join(units)
+            )
+
         self.formatter = get_formatter_by_name(
             self.main.options.formatter,
             style=OutputStyle)
@@ -154,6 +190,25 @@ class Testsuite:
         )
         diff.txt_image(self.main.options.report_file)
         self.log(logging.info, self.format_summary())
+
+        # Generate the source coverage report
+        if self.main.options.source_coverage_level:
+            gnatllvm_gpr = os.path.join(os.getcwd(), '..', 'gnat_llvm.gpr')
+
+            traces_list = os.path.join(srccov_dir, 'traces.list')
+            with open(traces_list, 'w') as f:
+                for filename in os.listdir(traces_dir):
+                    f.write('{}\n'.format(os.path.join(traces_dir, filename)))
+
+            subprocess.check_call([
+                'gnatcov', 'coverage',
+                '--output-dir={}'.format(os.path.join(srccov_dir)),
+                '-c', self.main.options.source_coverage_level,
+                '-a', 'dhtml',
+                '-P{}'.format(gnatllvm_gpr),
+                '--units=@{}'.format(units_list),
+                '@{}'.format(traces_list)
+            ])
 
 
     def get_test_list(self):

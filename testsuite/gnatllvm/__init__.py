@@ -6,12 +6,32 @@ import os.path
 import subprocess
 import sys
 
-from gnatpython.fileutils import mkdir, rm
+from gnatpython.fileutils import mkdir, rm, which
 
+
+TESTSUITE_ROOT = os.environ['TESTSUITE_ROOT']
+
+GNATLLVM_GPR = os.path.join(TESTSUITE_ROOT, '..', 'gnat_llvm.gpr')
+SRCCOV_DIR = os.path.join(TESTSUITE_ROOT, 'srccov')
+UNITS_LIST = os.path.join(SRCCOV_DIR, 'units.list')
+TRACES_DIR = os.path.join(SRCCOV_DIR, 'traces')
 
 USE_NATIVE_GNAT = bool(os.environ.get('USE_NATIVE_GNAT', False))
+SOURCE_COVERAGE_LEVEL = os.environ.get('SOURCE_COVERAGE_LEVEL', None)
+
+LLVM_GNATCOMPILE = which('llvm-gnatcompile')
+TESTCASE_NAME = os.environ['TESTCASE_NAME']
+
 Func = namedtuple('Func', 'name argtypes restype')
 
+
+trace_count = 0
+
+def get_trace_filename():
+    global trace_count
+    trace_count += 1
+    test_basename = TESTCASE_NAME.lstrip('./').replace('/', '-')
+    return '{}-{}.trace'.format(test_basename, trace_count)
 
 def get_library_name(filename):
     """Return the library file name for the given Ada source file name."""
@@ -45,8 +65,19 @@ def gnat_to_bc(adb, gargs=None):
         raise RuntimeError(
             'Cannot produce LLVM bitcode with the native GNAT compiler')
 
+    prefix = (
+        [] if not SOURCE_COVERAGE_LEVEL else
+        [
+            'gnatcov', 'run',
+            '-o', os.path.join(TRACES_DIR, get_trace_filename()),
+            '-c', SOURCE_COVERAGE_LEVEL,
+            '-P{}'.format(GNATLLVM_GPR),
+            '--units=@{}'.format(UNITS_LIST),
+            '-eargs',
+        ]
+    )
     gargs = list(gargs) if gargs else []
-    subprocess.check_call(['llvm-gnatcompile', '-c', adb] + gargs)
+    subprocess.check_call(prefix + [LLVM_GNATCOMPILE, '-c', adb] + gargs)
     return change_ext(adb, 'bc')
 
 def gnat_to_obj(adb, gargs=None):

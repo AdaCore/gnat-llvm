@@ -30,9 +30,15 @@ llvm_bindings  := $(llvm_ada)/out
 
 LLVM_MODULES = Core Analysis BitWriter
 
+ifdef USE_GNATCOV
+GNATCOV_FLAGS=-O0 -g -fdump-scos -fpreserve-control-flow
+else
+GNATCOV_FLAGS=
+endif
+
 CC=gcc
 GNATMAKE=gnatmake
-CFLAGS=-g -O0
+CFLAGS=-g -O0 $(GNATCOV_FLAGS)
 ADAFLAGS=-gnatpg -gnata -gnatyI
 LIBFLAGS=-gnatpg -gnatyI
 MARGS=-m -j0

@@ -154,8 +154,10 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Element (Cur);
       else
+         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Type
            with "Cannot find a LLVM type for Entity #" & Entity_Id'Image (TE);
+         pragma Annotate (Xcov, Exempt_Off);
       end if;
    end Get;
 
@@ -170,8 +172,10 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Element (Cur);
       else
+         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Value
            with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (VE);
+         pragma Annotate (Xcov, Exempt_Off);
       end if;
    end Get;
 
@@ -188,8 +192,10 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Element (Cur);
       else
+         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Value
            with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (RI);
+         pragma Annotate (Xcov, Exempt_Off);
       end if;
    end Get;
 
@@ -205,9 +211,11 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Value_As_Basic_Block (Env.Get (BE));
       else
+         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Basic_Block
            with "Cannot find a LLVM basic block for Entity #"
            & Entity_Id'Image (BE);
+         pragma Annotate (Xcov, Exempt_Off);
       end if;
    end Get;
 
@@ -285,7 +293,10 @@ package body GNATLLVM.Environment is
 
       --  If the loop label isn't registered, then we just met an exit
       --  statement with no corresponding loop: should not happen.
+
+      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       raise Program_Error with "Unknown loop identifier";
+      pragma Annotate (Xcov, Exempt_Off);
    end Get_Exit_Point;
 
    --------------------

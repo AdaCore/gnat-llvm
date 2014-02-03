@@ -301,9 +301,11 @@ package body GNATLLVM.Types is
             return Create_Subprogram_Type_From_Entity (Env, Def_Ident);
 
          when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error
               with "Unhandled type kind: "
               & Entity_Kind'Image (Ekind (Def_Ident));
+            pragma Annotate (Xcov, Exempt_Off);
       end case;
    end Create_Type;
 
@@ -336,14 +338,19 @@ package body GNATLLVM.Types is
                     (Env, Low_Bound (SRange));
                   High := GNATLLVM.Compile.Emit_Expression
                     (Env, High_Bound (SRange));
-               when others => raise Program_Error
+               when others =>
+                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+                  raise Program_Error
                     with "Invalid scalar range: "
                     & Node_Kind'Image (Nkind (SRange));
+                  pragma Annotate (Xcov, Exempt_Off);
             end case;
 
          when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error
               with "Invalid discrete type: " & Entity_Kind'Image (Ekind (TE));
+            pragma Annotate (Xcov, Exempt_Off);
       end case;
    end Create_Discrete_Type;
 

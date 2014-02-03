@@ -171,8 +171,10 @@ package body GNATLLVM.Compile is
                   Size := Env.Bld.Mul (Size, Cur_Size, "");
                end if;
 
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             when others =>
                raise Program_Error with "Not supported : " & Nkind (DSD)'Img;
+            pragma Annotate (Xcov, Exempt_Off);
 
          end case;
 
@@ -247,9 +249,11 @@ package body GNATLLVM.Compile is
       case Nkind (Node) is
 
          when N_Compilation_Unit =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error with
               "N_Compilation_Unit node must be processed in"
               & " Emit_Compilation_Unit";
+            pragma Annotate (Xcov, Exempt_Off);
 
          when N_With_Clause =>
             Emit_Compilation_Unit (Env, Library_Unit (Node), True);
@@ -353,10 +357,12 @@ package body GNATLLVM.Compile is
                Env.Leave_Subp;
 
                if Verify_Function (Subp.Func, Print_Message_Action) then
+                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                   Error_Msg_N
                     ("The backend generated bad LLVM for this subprogram.",
                      Node);
                   Dump_LLVM_Module (Env.Mdl);
+                  pragma Annotate (Xcov, Exempt_Off);
                end if;
             end;
 
@@ -777,15 +783,19 @@ package body GNATLLVM.Compile is
                --  TODO??? Handle size clauses
                null;
             else
+               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                raise Program_Error
                  with "Unhandled attribute definition clause: "
                  & Get_Name (Node);
+               pragma Annotate (Xcov, Exempt_Off);
             end if;
 
          when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error
               with "Unhandled statement node kind: "
               & Node_Kind'Image (Nkind (Node));
+            pragma Annotate (Xcov, Exempt_Off);
 
       end case;
    end Emit;
@@ -837,9 +847,12 @@ package body GNATLLVM.Compile is
                   Idxs (I) := Emit_Expression (Env, N);
 
                   if Nkind (DSD) /= N_Range then
+                     pragma Annotate
+                       (Xcov, Exempt_On, "Defensive programming");
                      raise Program_Error
                        with "Arrays indexed with" & Nkind (DSD)'Img
-                        & " not supported";
+                       & " not supported";
+                     pragma Annotate (Xcov, Exempt_Off);
                   end if;
 
                   --  Adjust the index according to the range lower bound
@@ -897,8 +910,10 @@ package body GNATLLVM.Compile is
             end;
 
          when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error
               with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+            pragma Annotate (Xcov, Exempt_Off);
       end case;
    end Emit_LValue;
 
@@ -1034,8 +1049,11 @@ package body GNATLLVM.Compile is
                   elsif Is_Unsigned_Type (T) then
                      return Env.Bld.U_Div (LVal, RVal, "udiv");
                   else
+                     pragma Annotate
+                       (Xcov, Exempt_On, "Defensive programming");
                      raise Program_Error
                        with "Not handled : Division with type " & T'Img;
+                     pragma Annotate (Xcov, Exempt_Off);
                   end if;
                end;
 
@@ -1043,9 +1061,11 @@ package body GNATLLVM.Compile is
                return Emit_Cmp (Node);
 
             when others =>
+               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                raise Program_Error
                  with "Unhandled node kind in expression: "
                  & Node_Kind'Image (Nkind (Node));
+               pragma Annotate (Xcov, Exempt_Off);
 
             end case;
 
@@ -1133,8 +1153,10 @@ package body GNATLLVM.Compile is
                then
                   return Env.Bld.Int_To_Ptr (Val, Dest_Ty, "unchecked-conv");
                else
+                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                   raise Program_Error
                     with "Invalid conversion, should never happen";
+                  pragma Annotate (Xcov, Exempt_Off);
                end if;
             end;
 
@@ -1165,7 +1187,9 @@ package body GNATLLVM.Compile is
                     (Compile_Expr (Expression (Node)),
                      Create_Type (Env, Etype (Node)), "address-conv");
                else
+                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                   raise Program_Error with "Unhandled type conv";
+                  pragma Annotate (Xcov, Exempt_Off);
                end if;
             end;
 
@@ -1224,8 +1248,10 @@ package body GNATLLVM.Compile is
                      Create_Type (Env, Etype (Node)),
                      "alloc_bc");
                else
+                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                   raise Program_Error
                     with "Non handled form in N_Allocator";
+                  pragma Annotate (Xcov, Exempt_Off);
                end if;
             end;
 
@@ -1256,9 +1282,11 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error
               with "Unhandled Attribute : "
               & Get_Name_String (Attribute_Name (Node));
+            pragma Annotate (Xcov, Exempt_Off);
 
             when N_Selected_Component =>
                declare
@@ -1317,8 +1345,10 @@ package body GNATLLVM.Compile is
                return Const_Null (Create_Type (Env, Etype (Node)));
 
             when others =>
+               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                raise Program_Error
                  with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+               pragma Annotate (Xcov, Exempt_Off);
          end case;
       end if;
    end Emit_Expression;

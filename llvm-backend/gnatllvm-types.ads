@@ -8,6 +8,7 @@ with Einfo; use Einfo;
 
 package GNATLLVM.Types is
 
+   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
    type Type_Array is array (Nat range <>) of Type_T;
 
    procedure Register_Builtin_Types (Env : Environ);
@@ -52,5 +53,6 @@ package GNATLLVM.Types is
      (Env : Environ; N : Entity_Id) return Type_T;
 
    function Get_Address_Type return Type_T;
+   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
 end GNATLLVM.Types;

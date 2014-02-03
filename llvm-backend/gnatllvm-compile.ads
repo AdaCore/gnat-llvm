@@ -8,6 +8,7 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Compile is
 
+   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
    procedure Emit_Compilation_Unit
      (Env : Environ; Node : Node_Id; Emit_Library_Unit : Boolean)
      with Pre => Env /= null
@@ -28,5 +29,6 @@ package GNATLLVM.Compile is
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc.)
+   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
 end GNATLLVM.Compile;

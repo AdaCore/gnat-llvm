@@ -224,6 +224,8 @@ package body GNATLLVM.Utils is
            (Void_Type_In_Context (Env.Ctx), Param_Type'Address, 1, False));
    end Get_Stack_Restore;
 
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
    ---------------------
    -- Dump_LLVM_Value --
    ---------------------
@@ -265,5 +267,7 @@ package body GNATLLVM.Utils is
       Dump (Unwrap (T));
       New_Line (Current_Error);
    end Dump_LLVM_Type;
+
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

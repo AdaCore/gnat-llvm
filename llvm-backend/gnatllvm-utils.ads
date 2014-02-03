@@ -96,18 +96,20 @@ package GNATLLVM.Utils is
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
    --  function that is usable in debugging sessions.
 
+   function Index_In_List (N : Node_Id) return Natural;
+
+   function Is_LValue (Node : Node_Id) return Boolean;
+   --  Returns true if Node is an L value
+
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_LLVM_Module (M : Module_T);
    --  Likewise, for LLVM.Core.Dump_Module
 
    procedure Dump_LLVM_Type (T : Type_T);
    --  Likewise, for LLVM.Core.Dump_Type
 
-   function Index_In_List (N : Node_Id) return Natural;
-
    function LLVM_Type_Of (V : Value_T) return Type_T
    is (Type_Of (V));
-
-   function Is_LValue (Node : Node_Id) return Boolean;
-   --  Returns true if Node is an L value
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

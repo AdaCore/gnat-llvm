@@ -13,7 +13,8 @@ package GNATLLVM.Types is
    procedure Register_Builtin_Types (Env : Environ);
 
    function Create_Access_Type
-     (Env : Environ; Type_Node : Node_Id) return Type_T;
+     (Env : Environ; TE : Entity_Id) return Type_T
+     with Pre => Is_Type (TE);
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
    --  between the two. For the moment, it handles array accesses and thin
@@ -34,7 +35,8 @@ package GNATLLVM.Types is
      (Env           : Environ;
       Subp_Type_Ent : Entity_Id) return Type_T;
 
-   function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T;
+   function Create_Type (Env : Environ; TE : Entity_Id) return Type_T
+     with Pre => Is_Type (TE);
 
    procedure Create_Discrete_Type
      (Env       : Environ;

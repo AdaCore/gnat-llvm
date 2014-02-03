@@ -110,21 +110,17 @@ package body GNATLLVM.Types is
    ------------------------
 
    function Create_Access_Type
-     (Env : Environ; Type_Node : Node_Id) return Type_T
+     (Env : Environ; TE : Entity_Id) return Type_T
    is
-      T : constant Type_T := Create_Type (Env, Type_Node);
-      TT : constant Entity_Id :=
-        (if Nkind (Type_Node) in N_Entity and then Is_Type (Type_Node)
-         then Entity_Id (Type_Node)
-         else Etype (Type_Node));
+      T : constant Type_T := Create_Type (Env, TE);
    begin
       if Get_Type_Kind (T) = Array_Type_Kind
-        and then not Is_Constrained (TT)
+        and then not Is_Constrained (TE)
       then
          declare
             St_Els : Type_Array (1 .. 2) :=
               (Pointer_Type (T, 0),
-               Create_Array_Bounds_Type (Env, TT));
+               Create_Array_Bounds_Type (Env, TE));
          begin
             return Struct_Type (St_Els'Address, St_Els'Length, False);
          end;
@@ -137,45 +133,17 @@ package body GNATLLVM.Types is
    -- Create_Type --
    -----------------
 
-   function Create_Type (Env : Environ; Type_Node : Node_Id) return Type_T is
+   function Create_Type (Env : Environ; TE : Entity_Id) return Type_T is
       Def_Ident : Entity_Id;
    begin
-      --  First, look for this type in the environment, and return it if it's
-      --  there.
+      --  First, return any already translated type from the environment, if
+      --  any. Allow definition only for N_Defining_Identifier.
 
-      case Nkind (Type_Node) is
-         when N_Defining_Identifier =>
-            if Env.Has_Type (Type_Node) then
-               return Env.Get (Type_Node);
-            end if;
+      if Env.Has_Type (TE) then
+         return Env.Get (TE);
+      end if;
 
-         when N_Identifier =>
-            return Create_Type (Env, Entity (Type_Node));
-
-         --  Some types can be anonymous (so they don't have any defining
-         --  identifier).
-
-         when N_Access_Definition =>
-            return Create_Access_Type
-              (Env, Subtype_Mark (Type_Node));
-
-         when N_Access_To_Object_Definition =>
-            return Create_Access_Type
-              (Env, Subtype_Indication (Type_Node));
-
-         when N_Expanded_Name =>
-            return Create_Type (Env, Associated_Node (Type_Node));
-
-         when others =>
-            raise Program_Error with "Unhandled type node kind: "
-              & Node_Kind'Image (Nkind (Type_Node));
-      end case;
-
-      --  If this type is unknown, build it from its entity information
-
-      --  Always get the fullest view
-
-      Def_Ident := Get_Fullest_View (Type_Node);
+      Def_Ident := Get_Fullest_View (TE);
 
       --  The full view may already be in the environment
 
@@ -289,7 +257,7 @@ package body GNATLLVM.Types is
                --  Special case for string literals: they do not include
                --  regular index information.
 
-               if Ekind (Type_Node) = E_String_Literal_Subtype then
+               if Ekind (TE) = E_String_Literal_Subtype then
                   Range_Size := UI_To_Long_Long_Integer
                     (String_Literal_Length (Def_Ident));
                   return Array_Type
@@ -314,7 +282,7 @@ package body GNATLLVM.Types is
                   --  Compute the size of this range if possible, otherwise
                   --  keep 0 for "unknown".
 
-                  if Is_Constrained (Type_Node)
+                  if Is_Constrained (TE)
                     and then Compile_Time_Known_Value (LB)
                     and then Compile_Time_Known_Value (HB)
                   then
@@ -408,8 +376,10 @@ package body GNATLLVM.Types is
         (Env,
          Params (1 .. I - 1),
          (case Nkind (Subp_Spec) is
-             when N_Procedure_Specification => Empty,
-             when N_Function_Specification => Result_Definition (Subp_Spec),
+             when N_Procedure_Specification =>
+                Empty,
+             when N_Function_Specification =>
+                Entity (Result_Definition (Subp_Spec)),
              when others =>
                 raise Program_Error
                   with "Invalid node: "

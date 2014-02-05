@@ -83,7 +83,7 @@ clean:
 ##############
 
 # get adainclude path, protecting potential trailing backslashes
-adainclude := $(strip $(shell gnatls -v | grep adainclude | sed -e 's/\\/\//g'))
+adainclude := $(strip $(shell gnatls -v | grep adainclude |sort -u | sed -e 's/\\/\//g'))
 
 vpath %.o $(obj)
 

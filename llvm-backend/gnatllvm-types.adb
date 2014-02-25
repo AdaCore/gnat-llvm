@@ -124,6 +124,14 @@ package body GNATLLVM.Types is
          begin
             return Struct_Type (St_Els'Address, St_Els'Length, False);
          end;
+
+      --  LLVM subprograms values already are pointers
+
+      elsif Ekind (TE) = E_Function
+        or else Ekind (TE) = E_Procedure
+      then
+         return T;
+
       else
          return Pointer_Type (T, 0);
       end if;

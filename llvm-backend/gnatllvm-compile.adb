@@ -875,7 +875,7 @@ package body GNATLLVM.Compile is
                end if;
 
                return
-                 Env.Bld.GEP (Array_Ptr, Idxs, "array-access");
+                 Env.Bld.GEP (Array_Ptr, Idxs, "array-element-access");
             end;
 
          when N_Slice =>

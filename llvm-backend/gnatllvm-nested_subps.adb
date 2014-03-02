@@ -89,9 +89,11 @@ package body GNATLLVM.Nested_Subps is
                   Through_S_Link : Boolean;
                   Acc            : Access_Record;
                begin
-                  Get_Access (Def_Ident, Current_Subp, Acc, Through_S_Link);
-                  if Through_S_Link and then Acc.Depth > 0 then
-                     Current_Subp.Accesses.Include (Def_Ident, Acc);
+                  if Present (Def_Ident) and then Current_Subp /= null then
+                     Get_Access (Def_Ident, Current_Subp, Acc, Through_S_Link);
+                     if Through_S_Link and then Acc.Depth > 0 then
+                        Current_Subp.Accesses.Include (Def_Ident, Acc);
+                     end if;
                   end if;
                end;
 
@@ -131,7 +133,7 @@ package body GNATLLVM.Nested_Subps is
       Acc            : out Access_Record;
       Through_S_Link : out Boolean)
    is
-      Current_Subp : Static_Link_Descriptor := From_Subp;
+      Current_Subp : Static_Link_Descriptor := From_Subp.Parent;
       --  Subprogram context that is currently analyzed. If it does not contain
       --  the information we are looking for, we get its parent.
 

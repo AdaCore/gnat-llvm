@@ -35,9 +35,14 @@ package body GNATLLVM.Compile is
 
    function Create_Callback_Wrapper
      (Env : Environ; Subp : Entity_Id) return Value_T;
+   --  If Subp takes a static link, return its LLVM declaration. Otherwise,
+   --  create a wrapper declaration to it that accepts a static link and
+   --  return it.
 
    procedure Attach_Callback_Wrapper_Body
      (Env : Environ; Subp : Entity_Id; Wrapper : Value_T);
+   --  If Subp takes a static link, do nothing. Otherwise, add the
+   --  implementation of its wrapper.
 
    procedure Match_Static_Link_Variable
      (Env       : Environ;
@@ -327,6 +332,9 @@ package body GNATLLVM.Compile is
                  (Create_Static_Link_Type (Env, Subp.S_Link_Descr),
                   "static-link");
 
+               --  Create a wrapper for this function, if needed, and add its
+               --  implementation, still if needed.
+
                Wrapper := Create_Callback_Wrapper (Env, Def_Ident);
                Attach_Callback_Wrapper_Body (Env, Def_Ident, Wrapper);
 
@@ -376,6 +384,7 @@ package body GNATLLVM.Compile is
                end loop;
 
                if Env.Takes_S_Link (Def_Ident) then
+
                   --  Rename the static link argument and link the static link
                   --  value to it.
 
@@ -1647,31 +1656,39 @@ package body GNATLLVM.Compile is
    procedure Attach_Callback_Wrapper_Body
      (Env : Environ; Subp : Entity_Id; Wrapper : Value_T)
    is
-      BB        : constant Basic_Block_T := Env.Bld.Get_Insert_Block;
-      --  Back up the current insert block not to break the caller's workflow
-
-      Subp_Spec : constant Node_Id := Parent (Subp);
-      Func      : constant Value_T := Emit_Subprogram_Decl (Env, Subp_Spec);
-      Func_Type : constant Type_T := Get_Element_Type (Type_Of (Func));
-
-      Call      : Value_T;
-      Args      : array (1 .. Count_Param_Types (Func_Type) + 1) of Value_T;
    begin
-      Env.Bld.Position_At_End (Append_Basic_Block_In_Context
-                               (Env.Ctx, Wrapper, ""));
-
-      --  The wrapper must call the wrapped function with the same argument and
-      --  return its result, if any.
-
-      Get_Params (Wrapper, Args'Address);
-      Call := Env.Bld.Call (Func, Args'Address, Args'Length - 1, "");
-      if Get_Return_Type (Func_Type) = Void_Type then
-         Discard (Env.Bld.Ret_Void);
-      else
-         Discard (Env.Bld.Ret (Call));
+      if Env.Takes_S_Link (Subp) then
+         return;
       end if;
 
-      Env.Bld.Position_At_End (BB);
+      declare
+         BB        : constant Basic_Block_T := Env.Bld.Get_Insert_Block;
+         --  Back up the current insert block not to break the caller's
+         --  workflow.
+
+         Subp_Spec : constant Node_Id := Parent (Subp);
+         Func      : constant Value_T := Emit_Subprogram_Decl (Env, Subp_Spec);
+         Func_Type : constant Type_T := Get_Element_Type (Type_Of (Func));
+
+         Call      : Value_T;
+         Args      : array (1 .. Count_Param_Types (Func_Type) + 1) of Value_T;
+      begin
+         Env.Bld.Position_At_End (Append_Basic_Block_In_Context
+                                  (Env.Ctx, Wrapper, ""));
+
+         --  The wrapper must call the wrapped function with the same argument
+         --  and return its result, if any.
+
+         Get_Params (Wrapper, Args'Address);
+         Call := Env.Bld.Call (Func, Args'Address, Args'Length - 1, "");
+         if Get_Return_Type (Func_Type) = Void_Type then
+            Discard (Env.Bld.Ret_Void);
+         else
+            Discard (Env.Bld.Ret (Call));
+         end if;
+
+         Env.Bld.Position_At_End (BB);
+      end;
    end Attach_Callback_Wrapper_Body;
 
    --------------------------------

@@ -339,9 +339,9 @@ package body GNATLLVM.Environment is
       return Env.S_Links.Element (Defining_Unit_Name (Subp_Spec));
    end Get_S_Link;
 
-   --------------------
-   -- Enter_Function --
-   --------------------
+   ----------------
+   -- Enter_Subp --
+   ----------------
 
    function Enter_Subp
      (Env       : access Environ_Record;

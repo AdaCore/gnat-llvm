@@ -28,6 +28,11 @@ package body GNATLLVM.Types is
    --  harmonize input and this one actually creates the LLVM type for
    --  subprograms.
 
+   function Create_Subprogram_Access_Type
+     (Env       : Environ;
+      Subp_Type : Type_T) return Type_T;
+   --  Return a structure type that embeds Subp_Type and a static link pointer
+
    ----------------------------------
    -- Get_Innermost_Component_Type --
    ----------------------------------
@@ -126,12 +131,17 @@ package body GNATLLVM.Types is
             return Struct_Type (St_Els'Address, St_Els'Length, False);
          end;
 
-      --  LLVM subprograms values already are pointers
+      --  LLVM subprograms values already are already pointers. We want to
+      --  embed a static-link with them, though.
 
       elsif Ekind (TE) = E_Function
         or else Ekind (TE) = E_Procedure
       then
-         return T;
+         return Create_Subprogram_Access_Type (Env, T);
+
+      elsif Ekind (TE) = E_Subprogram_Type then
+         return Create_Subprogram_Access_Type
+           (Env, Pointer_Type (T, 0));
 
       else
          return Pointer_Type (T, 0);
@@ -504,5 +514,23 @@ package body GNATLLVM.Types is
           then Create_Type (Env, Return_Type)
           else Void_Type_In_Context (Env.Ctx)));
    end Create_Subprogram_Type;
+
+   -----------------------------------
+   -- Create_Subprogram_Access_Type --
+   -----------------------------------
+
+   function Create_Subprogram_Access_Type
+     (Env : Environ;
+      Subp_Type : Type_T) return Type_T
+   is
+      Couple : constant Type_Array (1 .. 2) :=
+        (Subp_Type,
+         Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
+   begin
+      return Struct_Type_In_Context
+        (Env.Ctx,
+         Couple'Address, Couple'Length,
+         Packed => False);
+   end Create_Subprogram_Access_Type;
 
 end GNATLLVM.Types;

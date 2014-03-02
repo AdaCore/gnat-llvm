@@ -333,10 +333,10 @@ package body GNATLLVM.Environment is
    ----------------
 
    function Get_S_Link
-     (Env       : access Environ_Record;
-      Subp_Spec : Node_Id) return Static_Link_Descriptor is
+     (Env  : access Environ_Record;
+      Subp : Entity_Id) return Static_Link_Descriptor is
    begin
-      return Env.S_Links.Element (Defining_Unit_Name (Subp_Spec));
+      return Env.S_Links.Element (Subp);
    end Get_S_Link;
 
    ----------------

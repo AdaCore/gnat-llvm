@@ -148,7 +148,7 @@ package GNATLLVM.Environment is
       Subp : Entity_Id) return Boolean;
    function Get_S_Link
      (Env       : access Environ_Record;
-      Subp_Spec : Node_Id) return Static_Link_Descriptor;
+      Subp : Entity_Id) return Static_Link_Descriptor;
 
    function Enter_Subp
      (Env       : access Environ_Record;

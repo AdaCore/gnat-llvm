@@ -52,6 +52,11 @@ package body GNATLLVM.Compile is
    --  descriptor, reference it to the static link structure. Do nothing
    --  if there is no current subprogram.
 
+   function Get_Static_Link
+     (Env  : Environ;
+      Subp : Entity_Id) return Value_T;
+   --  Build and return the appropriate static link to pass to a call to Subp
+
    function Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T;
 
@@ -883,7 +888,17 @@ package body GNATLLVM.Compile is
                if Ekind (Def_Ident) = E_Function
                  or else Ekind (Def_Ident) = E_Procedure
                then
-                  return Create_Callback_Wrapper (Env, Def_Ident);
+                  declare
+                     Couple      : constant array (1 .. 2) of Value_T :=
+                       (Create_Callback_Wrapper (Env, Def_Ident),
+                        Get_Static_Link (Env, Def_Ident));
+                  begin
+                     return Const_Struct_In_Context
+                       (Env.Ctx,
+                        Couple'Address, Couple'Length,
+                        Packed => False);
+                  end;
+
                else
                   return Env.Get (Def_Ident);
                end if;
@@ -1473,6 +1488,7 @@ package body GNATLLVM.Compile is
         (Nkind (Subp) /= N_Identifier
          and then Nkind (Subp) /= N_Expanded_Name)
         or else Env.Takes_S_Link (Entity (Subp));
+      S_Link       : Value_T;
 
       LLVM_Func   : Value_T;
       Args_Count  : constant Integer :=
@@ -1483,6 +1499,18 @@ package body GNATLLVM.Compile is
 
    begin
       LLVM_Func := Emit_Expression (Env, Name (Call_Node));
+      if Nkind (Name (Call_Node)) /= N_Identifier
+        and then Nkind (Name (Call_Node)) /= N_Expanded_Name
+      then
+         S_Link := Env.Bld.Extract_Value
+           (LLVM_Func, 1, "static-link-ptr");
+         LLVM_Func := Env.Bld.Extract_Value
+           (LLVM_Func, 0, "callback");
+
+      else
+         S_Link := Get_Static_Link
+           (Env, Entity (Name (Call_Node)));
+      end if;
 
       Actual := First (Parameter_Associations (Call_Node));
       while Present (Actual) loop
@@ -1545,8 +1573,7 @@ package body GNATLLVM.Compile is
       --  Set the argument for the static link, if any
 
       if Takes_S_Link then
-         Args (Args'Last) := Const_Pointer_Null
-           (Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
+         Args (Args'Last) := S_Link;
       end if;
 
       return
@@ -1727,5 +1754,52 @@ package body GNATLLVM.Compile is
          end if;
       end loop;
    end Match_Static_Link_Variable;
+
+   ---------------------
+   -- Get_Static_Link --
+   ---------------------
+
+   function Get_Static_Link
+     (Env  : Environ;
+      Subp : Entity_Id) return Value_T
+   is
+      Result_Type : constant Type_T :=
+        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+      Result      : Value_T;
+
+      --  In this context, the "caller" is the subprogram that creates an
+      --  access to subprogram or that calls directly a subprogram, and the
+      --  "caller" is the target subprogram.
+
+      Caller_SLD, Callee_SLD : Static_Link_Descriptor;
+
+      Idx_Type : constant Type_T := Int32_Type_In_Context (Env.Ctx);
+      Zero     : constant Value_T := Const_Null (Idx_Type);
+      Idx      : constant Value_Array (1 .. 2) := (Zero, Zero);
+
+   begin
+      if Env.Takes_S_Link (Subp) then
+         Caller_SLD := Env.Current_Subp.S_Link_Descr;
+         Callee_SLD := Env.Get_S_Link (Subp);
+         Result     := Env.Current_Subp.S_Link;
+
+         --  The language rules force the parent subprogram of the callee to be
+         --  the caller or one of its parent.
+
+         while Callee_SLD.Parent /= Caller_SLD loop
+            Caller_SLD := Caller_SLD.Parent;
+            Result := Env.Bld.Load
+              (Env.Bld.GEP (Result, Idx'Address, Idx'Length, ""), "");
+         end loop;
+
+         return Env.Bld.Bit_Cast (Result, Result_Type, "");
+
+      else
+         --  We end up here for external (and thus top-level) subprograms, so
+         --  they take no static link.
+
+         return Const_Null (Result_Type);
+      end if;
+   end Get_Static_Link;
 
 end GNATLLVM.Compile;

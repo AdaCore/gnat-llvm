@@ -2,9 +2,11 @@ with Types; use Types;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with Atree; use Atree;
 with Einfo; use Einfo;
+
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
 
 package GNATLLVM.Types is
 
@@ -46,6 +48,12 @@ package GNATLLVM.Types is
       TL        : out Type_T;
       Low, High : out Value_T)
      with Pre => Ekind (TE) in Discrete_Kind;
+
+   function Create_Static_Link_Type
+     (Env         : Environ;
+      S_Link_Desc : Static_Link_Descriptor) return Type_T;
+   --  Return an LLVM type for the structure used to implement the statick
+   --  link.
 
    function Int_Ty (Num_Bits : Natural) return Type_T;
    function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T;

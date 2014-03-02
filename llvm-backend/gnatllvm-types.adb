@@ -367,6 +367,37 @@ package body GNATLLVM.Types is
       end case;
    end Create_Discrete_Type;
 
+   -----------------------------
+   -- Create_Static_Link_Type --
+   -----------------------------
+
+   function Create_Static_Link_Type
+     (Env         : Environ;
+      S_Link_Desc : Static_Link_Descriptor) return Type_T
+   is
+      Types : array (1 .. Natural (S_Link_Desc.Closure.Length) + 1) of Type_T;
+      I     : Natural := 2;
+   begin
+      --  The first element points to the parent static link
+
+      Types (1) :=
+        (if S_Link_Desc.Parent /= null
+         then Pointer_Type
+           (Create_Static_Link_Type (Env, S_Link_Desc.Parent),
+            0)
+         else Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
+
+      --  The following elements point to the variables this closure give
+      --  access to.
+
+      for Def_Ident of S_Link_Desc.Closure loop
+         Types (I) := Create_Access_Type (Env, Etype (Def_Ident));
+         I := I + 1;
+      end loop;
+      return Struct_Type_In_Context
+        (Env.Ctx, Types'Address, Types'Length, Packed => False);
+   end Create_Static_Link_Type;
+
    --------------------------------------
    -- Create_Subprogram_Type_From_Spec --
    --------------------------------------

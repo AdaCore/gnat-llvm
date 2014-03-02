@@ -1,3 +1,4 @@
+with Ada.Containers;          use Ada.Containers;
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
@@ -12,9 +13,10 @@ with Uintp;    use Uintp;
 
 with LLVM.Analysis; use LLVM.Analysis;
 
-with GNATLLVM.Types; use GNATLLVM.Types;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
-with GNATLLVM.Builder; use GNATLLVM.Builder;
+with GNATLLVM.Builder;      use GNATLLVM.Builder;
+with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with Get_Targ; use Get_Targ;
 
 package body GNATLLVM.Compile is
@@ -36,6 +38,14 @@ package body GNATLLVM.Compile is
 
    procedure Attach_Callback_Wrapper_Body
      (Env : Environ; Subp : Entity_Id; Wrapper : Value_T);
+
+   procedure Match_Static_Link_Variable
+     (Env       : Environ;
+      Def_Ident : Entity_Id;
+      LValue    : Value_T);
+   --  If Def_Ident belongs to the closure of the current static link
+   --  descriptor, reference it to the static link structure. Do nothing
+   --  if there is no current subprogram.
 
    function Array_Size
      (Env : Environ; Array_Type : Entity_Id) return Value_T;
@@ -309,7 +319,14 @@ package body GNATLLVM.Compile is
                LLVM_Var   : Value_T;
                Param      : Entity_Id;
                I          : Natural := 0;
+
             begin
+               --  Create a value for the static-link structure
+
+               Subp.S_Link := Env.Bld.Alloca
+                 (Create_Static_Link_Type (Env, Subp.S_Link_Descr),
+                  "static-link");
+
                Wrapper := Create_Callback_Wrapper (Env, Def_Ident);
                Attach_Callback_Wrapper_Body (Env, Def_Ident, Wrapper);
 
@@ -352,12 +369,36 @@ package body GNATLLVM.Compile is
                      Env.Set (Spec_Entity (Param), LLVM_Var);
                   end if;
 
+                  Match_Static_Link_Variable
+                    (Env, Param, LLVM_Var);
+
                   I := I + 1;
                end loop;
 
                if Env.Takes_S_Link (Def_Ident) then
-                  Set_Value_Name (Get_Param (Subp.Func, unsigned (I)),
-                                  "static_link");
+                  --  Rename the static link argument and link the static link
+                  --  value to it.
+
+                  declare
+                     Parent_S_Link : constant Value_T :=
+                       Get_Param (Subp.Func, unsigned (I));
+                     Parent_S_Link_Type : constant Type_T :=
+                       Pointer_Type
+                         (Create_Static_Link_Type
+                            (Env, Subp.S_Link_Descr.Parent),
+                          0);
+                     S_Link        : Value_T;
+                  begin
+                     Set_Value_Name (Parent_S_Link, "parent-static-link");
+                     S_Link := Env.Bld.Load (Subp.S_Link, "static-link");
+                     S_Link := Env.Bld.Insert_Value
+                       (S_Link,
+                        Env.Bld.Bit_Cast
+                          (Parent_S_Link, Parent_S_Link_Type, ""),
+                        0,
+                        "updated-static-link");
+                     Env.Bld.Store (S_Link, Subp.S_Link);
+                  end;
                end if;
 
                Emit_List (Env, Declarations (Node));
@@ -442,6 +483,7 @@ package body GNATLLVM.Compile is
                end if;
 
                Env.Set (Def_Ident, LLVM_Var);
+               Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
                if Present (Expression (Node))
                  and then not No_Initialization (Node)
@@ -482,6 +524,7 @@ package body GNATLLVM.Compile is
                   Env.Bld.Store (Emit_Expression (Env, Name (Node)), LLVM_Var);
                end if;
                Env.Set (Def_Ident, LLVM_Var);
+               Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
             end;
 
          when N_Implicit_Label_Declaration =>
@@ -1630,5 +1673,42 @@ package body GNATLLVM.Compile is
 
       Env.Bld.Position_At_End (BB);
    end Attach_Callback_Wrapper_Body;
+
+   --------------------------------
+   -- Match_Static_Link_Variable --
+   --------------------------------
+
+   procedure Match_Static_Link_Variable
+     (Env       : Environ;
+      Def_Ident : Entity_Id;
+      LValue    : Value_T)
+   is
+      use Defining_Identifier_Vectors;
+
+      Subp   : Subp_Env;
+      S_Link : Value_T;
+   begin
+      --  There is no static link variable to look for if we are at compilation
+      --  unit top-level.
+
+      if Env.Current_Subps.Length < 1 then
+         return;
+      end if;
+
+      Subp := Env.Current_Subp;
+
+      for Cur in Subp.S_Link_Descr.Closure.Iterate loop
+         if Element (Cur) = Def_Ident then
+            S_Link := Env.Bld.Load (Subp.S_Link, "static-link");
+            S_Link := Env.Bld.Insert_Value
+              (S_Link,
+               LValue,
+               unsigned (To_Index (Cur)),
+               "updated-static-link");
+            Env.Bld.Store (S_Link, Subp.S_Link);
+            return;
+         end if;
+      end loop;
+   end Match_Static_Link_Variable;
 
 end GNATLLVM.Compile;

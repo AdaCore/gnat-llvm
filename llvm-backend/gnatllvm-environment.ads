@@ -70,6 +70,7 @@ package GNATLLVM.Environment is
       Func                   : Value_T;
       Saved_Builder_Position : Basic_Block_T;
       S_Link_Descr           : Static_Link_Descriptor;
+      S_Link                 : Value_T;
    end record;
    type Subp_Env is access all Subp_Env_Record;
 

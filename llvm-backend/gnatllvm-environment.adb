@@ -1,4 +1,5 @@
 with Ada.Unchecked_Deallocation;
+with System;
 
 with Sinfo; use Sinfo;
 
@@ -353,7 +354,8 @@ package body GNATLLVM.Environment is
         (Env                    => Environ (Env),
          Func                   => Func,
          Saved_Builder_Position => Env.Bld.Get_Insert_Block,
-         S_Link_Descr           => null);
+         S_Link_Descr           => null,
+         S_Link                 => Value_T (System.Null_Address));
    begin
       Subp.S_Link_Descr := Env.S_Links.Element (Subp_Ent);
       Env.Subprograms.Append (Subp);

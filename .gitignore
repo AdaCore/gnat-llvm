@@ -6,6 +6,8 @@ gnat_src
 *-backend/bin
 *-backend/lib
 testsuite/out
+testsuite/srccov
+alis.list
 obj
 
 # Code editors artifacts

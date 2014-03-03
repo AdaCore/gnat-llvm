@@ -86,6 +86,12 @@ package body GNATLLVM.Compile is
    --  Wrapper around Array_Bound_Addr that returns the value of the bound,
    --  instead of the address of element at the bound.
 
+   function Build_Type_Conversion
+     (Env                 : Environ;
+      Src_Type, Dest_Type : Entity_Id;
+      Value               : Value_T) return Value_T;
+   --  Emit code to convert Src_Value to Dest_Type
+
    -----------------
    -- Array_Bound --
    -----------------
@@ -1253,38 +1259,12 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_Type_Conversion =>
-            declare
-               Src_T : constant Entity_Id := Etype (Node);
-               Dest_T : constant Entity_Id := Etype (Expression (Node));
-            begin
-
-               --  For the moment, we handle only the simple case of Integer to
-               --  Integer conversions.
-
-               if Is_Integer_Type (Get_Fullest_View (Src_T))
-                 and then Is_Integer_Type (Get_Fullest_View (Dest_T))
-               then
-                  if Src_T = Dest_T then
-                     return Compile_Expr (Expression (Node));
-                  end if;
-
-                  return Env.Bld.S_Ext
-                    (Compile_Expr (Expression (Node)),
-                     Create_Type (Env, Etype (Node)),
-                     "int_conv");
-               elsif Is_Descendent_Of_Address (Src_T)
-                 and then Is_Descendent_Of_Address (Dest_T)
-               then
-                  return Env.Bld.Bit_Cast
-                    (Compile_Expr (Expression (Node)),
-                     Create_Type (Env, Etype (Node)), "address-conv");
-               else
-                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-                  raise Program_Error with "Unhandled type conv";
-                  pragma Annotate (Xcov, Exempt_Off);
-               end if;
-            end;
+         when N_Type_Conversion | N_Qualified_Expression =>
+            return Build_Type_Conversion
+              (Env       => Env,
+               Src_Type  => Etype (Expression (Node)),
+               Dest_Type => Etype (Node),
+               Value     => Compile_Expr (Expression (Node)));
 
          when N_Identifier | N_Expanded_Name =>
             --  N_Defining_Identifier nodes for enumeration literals are not
@@ -1801,5 +1781,45 @@ package body GNATLLVM.Compile is
          return Const_Null (Result_Type);
       end if;
    end Get_Static_Link;
+
+   ---------------------------
+   -- Build_Type_Conversion --
+   ---------------------------
+
+   function Build_Type_Conversion
+     (Env                 : Environ;
+      Src_Type, Dest_Type : Entity_Id;
+      Value               : Value_T) return Value_T
+   is
+   begin
+      --  For the moment, we handle only the simple case of Integer to
+      --  Integer conversions.
+
+      if Is_Integer_Type (Get_Fullest_View (Src_Type))
+        and then Is_Integer_Type (Get_Fullest_View (Dest_Type))
+      then
+         if Src_Type = Dest_Type then
+            return Value;
+         end if;
+
+         return Env.Bld.S_Ext
+           (Value,
+            Create_Type (Env, Dest_Type),
+            "int_conv");
+
+      elsif Is_Descendent_Of_Address (Src_Type)
+        and then Is_Descendent_Of_Address (Dest_Type)
+      then
+         return Env.Bld.Bit_Cast
+           (Value,
+            Create_Type (Env, Dest_Type),
+            "address-conv");
+
+      else
+         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+         raise Program_Error with "Unhandled type conv";
+         pragma Annotate (Xcov, Exempt_Off);
+      end if;
+   end Build_Type_Conversion;
 
 end GNATLLVM.Compile;

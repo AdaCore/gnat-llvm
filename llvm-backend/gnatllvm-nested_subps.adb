@@ -86,7 +86,7 @@ package body GNATLLVM.Nested_Subps is
                   end;
                end if;
 
-            when N_Identifier =>
+            when N_Identifier | N_Expanded_Name =>
                --  Register some access to this identifier if and only if it is
                --  defined by a parent function.
 

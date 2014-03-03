@@ -139,23 +139,23 @@ package body GNATLLVM.Nested_Subps is
       Acc            : out Access_Record;
       Through_S_Link : out Boolean)
    is
-      Current_Subp : Static_Link_Descriptor := From_Subp.Parent;
-      --  Subprogram context that is currently analyzed. If it does not contain
-      --  the information we are looking for, we get its parent.
+      Parent_Subp : Static_Link_Descriptor := From_Subp.Parent;
+      --  Currently analyzed subprogram context. If it does not contain the
+      --  information we are looking for, we look for it in its parent.
 
-      Depth_Delta  : Natural := 0;
-      --  Distance between From_Subp and Current_Subp
+      Depth_Delta  : Natural := 1;
+      --  Distance between From_Subp and Parent_Subp
    begin
-      while Current_Subp /= null loop
+      while Parent_Subp /= null loop
          declare
             use Local_Access_Maps;
 
             Acc_Cur : constant Cursor :=
-              Current_Subp.Accesses.Find (Def_Ident);
+              Parent_Subp.Accesses.Find (Def_Ident);
             I       : Positive;
          begin
             if Acc_Cur /= Local_Access_Maps.No_Element then
-               --  Current_Subp already references this identifier: compute the
+               --  Parent_Subp already references this identifier: compute the
                --  result from this access.
 
                Through_S_Link := True;
@@ -164,15 +164,15 @@ package body GNATLLVM.Nested_Subps is
                return;
             end if;
 
-            if Current_Subp.Def_Idents.Contains (Def_Ident) then
-               --  Current_Subp defines this identifier: if we are in a parent
+            if Parent_Subp.Def_Idents.Contains (Def_Ident) then
+               --  Parent_Subp defines this identifier: if we are in a parent
                --  subprogram, register this identifier to the closure.
 
                Through_S_Link := True;
                Acc.Depth := Depth_Delta;
 
                I := 1;
-               for N of Current_Subp.Closure loop
+               for N of Parent_Subp.Closure loop
                   if N = Def_Ident then
                      Acc.Field := I;
                      return;
@@ -183,14 +183,14 @@ package body GNATLLVM.Nested_Subps is
                --  Alright, this is the first time Def_Ident is referenced in a
                --  nested function: add it to the closure.
 
-               Current_Subp.Closure.Append (Def_Ident);
-               Acc.Field := Current_Subp.Closure.Last_Index;
+               Parent_Subp.Closure.Append (Def_Ident);
+               Acc.Field := Parent_Subp.Closure.Last_Index;
 
                return;
             end if;
          end;
 
-         Current_Subp := Current_Subp.Parent;
+         Parent_Subp := Parent_Subp.Parent;
          Depth_Delta := Depth_Delta + 1;
       end loop;
 

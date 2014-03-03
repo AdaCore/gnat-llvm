@@ -1,3 +1,5 @@
+with Ada.Containers.Doubly_Linked_Lists;
+
 with Atree; use Atree;
 with Sinfo; use Sinfo;
 with Einfo; use Einfo;
@@ -26,11 +28,30 @@ package body GNATLLVM.Nested_Subps is
       procedure Traverse is new Traverse_Proc (Process);
       --  Tree traversal helpers
 
+      type Deferred_Subprogram_Info is record
+         Subp              : Node_Id;
+         S_Link_Descriptor : Static_Link_Descriptor;
+      end record;
+
+      package Deferred_Subprogram_Queues is
+        new Ada.Containers.Doubly_Linked_Lists
+          (Element_Type => Deferred_Subprogram_Info);
+
       package Visited_Subprogram_Sets is new Ada.Containers.Ordered_Sets
         (Element_Type => Node_Id);
+
       Visited : Visited_Subprogram_Sets.Set;
-      --  Traversal is stopped and restarted for each subprogram body node, so
-      --  we need to remember the ones we have already processed.
+      --  We want to process only once each subprogram. Rembember those we
+      --  already met.
+
+      Deferred_Subprograms : Deferred_Subprogram_Queues.List;
+      --  Subprograms can refer to non-local variables that are declared after
+      --  them, so we have to defer the processing of nested subprogram. Each
+      --  subprogram is then analyzed only after its parent has been processed.
+      --  This queue is used to defer subprograms.
+
+      Current_Root : Node_Id := Empty;
+      --  Root node of the current traversal.
 
       Current_Subp : Static_Link_Descriptor := null;
       --  Current previous static link descriptor. Root subprogram bodies have
@@ -50,27 +71,31 @@ package body GNATLLVM.Nested_Subps is
                return Skip;
 
             when N_Subprogram_Body =>
-               --  If already processed as part of the "parent" traversal, just
-               --  skip this node, but continue with its children.
+               --  If we just started the traversal with this node, then
+               --  this is a deferred subprogram, so we must no re-defer
+               --  it. Likewise for already processed ones.
 
-               if Visited.Contains (N) then
+               if Current_Root = N then
                   return OK;
-               else
-                  Visited.Insert (N);
+
+               elsif Visited.Contains (N) then
+                  return Skip;
                end if;
 
-               Current_Subp := new Static_Link_Descriptor_Record'
-                 (Parent => Current_Subp,
-                  others => <>);
-               S_Links.Insert
-                 (Defining_Unit_Name (Get_Acting_Spec (N)), Current_Subp);
+               declare
+                  Nested_Subp : constant Static_Link_Descriptor :=
+                    new Static_Link_Descriptor_Record'
+                      (Parent => Current_Subp,
+                       others => <>);
+               begin
+                  S_Links.Insert
+                    (Defining_Unit_Name (Get_Acting_Spec (N)), Nested_Subp);
+                  Deferred_Subprograms.Append
+                    ((Subp              => N,
+                      S_Link_Descriptor => Nested_Subp));
+                  Visited.Insert (N);
+               end;
 
-               Traverse (N);
-
-               --  Restore the current subprogram context and then continue
-               --  with the siblings.
-
-               Current_Subp := Current_Subp.Parent;
                return Skip;
 
             when N_Parameter_Specification | N_Object_Declaration =>
@@ -121,12 +146,28 @@ package body GNATLLVM.Nested_Subps is
       end Process;
 
    begin
+      --  Perform a first partial traversal to get top-level subprograms
+
       Traverse (GNAT_Root);
       if Present (Library_Unit (GNAT_Root))
         and then Library_Unit (GNAT_Root) /= GNAT_Root
       then
          Traverse (Library_Unit (GNAT_Root));
       end if;
+
+      --  Then traverse as many subprograms as possible
+
+      while not Deferred_Subprograms.Is_Empty loop
+         declare
+            Deferred_Subp : constant Deferred_Subprogram_Info :=
+              Deferred_Subprograms.First_Element;
+         begin
+            Deferred_Subprograms.Delete_First;
+            Current_Subp := Deferred_Subp.S_Link_Descriptor;
+            Current_Root := Deferred_Subp.Subp;
+            Traverse (Deferred_Subp.Subp);
+         end;
+      end loop;
    end Compute_Static_Link_Descriptors;
 
    ----------------

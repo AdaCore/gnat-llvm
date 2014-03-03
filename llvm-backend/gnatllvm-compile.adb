@@ -419,6 +419,55 @@ package body GNATLLVM.Compile is
                         "updated-static-link");
                      Env.Bld.Store (S_Link, Subp.S_Link);
                   end;
+
+                  --  Then "import" from the static link all the non-local
+                  --  variables.
+
+                  for Cur in Subp.S_Link_Descr.Accesses.Iterate loop
+                     declare
+                        use Local_Access_Maps;
+
+                        Access_Info : Access_Record renames Element (Cur);
+                        Depth       : Natural := Access_Info.Depth;
+                        LValue      : Value_T := Subp.S_Link;
+
+                        Idx_Type    : constant Type_T :=
+                          Int32_Type_In_Context (Env.Ctx);
+                        Zero        : constant Value_T :=
+                          Const_Null (Idx_Type);
+                        Idx         : Value_Array (1 .. 2) :=
+                          (Zero, Zero);
+
+                     begin
+                        --  Get a pointer to the target parent static link
+                        --  structure.
+
+                        while Depth > 0 loop
+                           LValue := Env.Bld.Load
+                             (Env.Bld.GEP
+                                (LValue,
+                                 Idx'Address, Idx'Length,
+                                 ""),
+                              "");
+                           Depth := Depth - 1;
+                        end loop;
+
+                        --  And then get the non-local variable as an lvalue
+
+                        Idx (2) := Const_Int
+                          (Idx_Type,
+                           unsigned_long_long (Access_Info.Field),
+                           Sign_Extend => False);
+                        LValue := Env.Bld.Load
+                          (Env.Bld.GEP
+                             (LValue, Idx'Address, Idx'Length, ""),
+                           "");
+
+                        Set_Value_Name (LValue, Get_Name (Key (Cur)));
+                        Env.Set (Key (Cur), LValue);
+                     end;
+                  end loop;
+
                end if;
 
                Emit_List (Env, Declarations (Node));

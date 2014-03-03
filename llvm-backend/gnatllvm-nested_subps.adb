@@ -43,6 +43,12 @@ package body GNATLLVM.Nested_Subps is
       function Process (N : Node_Id) return Traverse_Result is
       begin
          case Nkind (N) is
+            when N_Subprogram_Declaration =>
+               --  Skip the defining identifiers in a subprogram declarations:
+               --  they are not part of the current subprogram body.
+
+               return Skip;
+
             when N_Subprogram_Body =>
                --  If already processed as part of the "parent" traversal, just
                --  skip this node, but continue with its children.

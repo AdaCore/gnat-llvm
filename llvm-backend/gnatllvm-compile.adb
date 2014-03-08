@@ -899,6 +899,8 @@ package body GNATLLVM.Compile is
          --  Nodes we actually want to ignore
          when N_Empty
             | N_Function_Instantiation
+            | N_Generic_Package_Declaration
+            | N_Generic_Subprogram_Declaration
             | N_Itype_Reference
             | N_Number_Declaration
             | N_Procedure_Instantiation

@@ -811,7 +811,9 @@ package body GNATLLVM.Compile is
                         BB_Cond := Env.Create_Basic_Block ("loop-cond-iter");
                         Env.Bld.Position_At_End (BB_Cond);
                         Cond := Env.Bld.I_Cmp
-                           (Int_EQ, Env.Bld.Load (LLVM_Var, "loop-var"), High,
+                          (Int_EQ,
+                           Env.Bld.Load (LLVM_Var, "loop-var"),
+                           (if Reversed then Low else High),
                             "loop-iter-cond");
                         Discard (Env.Bld.Cond_Br (Cond, BB_Next, BB_Iter));
 

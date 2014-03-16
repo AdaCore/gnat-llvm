@@ -369,9 +369,17 @@ package body GNATLLVM.Environment is
    ----------------
 
    procedure Leave_Subp (Env  : access Environ_Record) is
+      use type Ada.Containers.Count_Type;
+
    begin
-      Env.Bld.Position_At_End
-        (Env.Current_Subps.Last_Element.Saved_Builder_Position);
+      --  There is no builder position to restore if no subprogram translation
+      --  was interrupted in order to translate the current subprogram.
+
+      if Env.Current_Subps.Length > 1 then
+         Env.Bld.Position_At_End
+           (Env.Current_Subps.Last_Element.Saved_Builder_Position);
+      end if;
+
       Env.Current_Subps.Delete_Last;
    end Leave_Subp;
 

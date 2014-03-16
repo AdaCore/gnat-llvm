@@ -324,6 +324,14 @@ package body GNATLLVM.Compile is
             if Env.In_Declarations then
                Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
                return;
+
+            --  There is nothing to emit for the template of a generic
+            --  subprogram body: ignore them.
+
+            elsif Ekind (Defining_Unit_Name (Get_Acting_Spec (Node)))
+               in Generic_Subprogram_Kind
+            then
+                  return;
             end if;
 
             declare
@@ -564,16 +572,7 @@ package body GNATLLVM.Compile is
          when N_Use_Type_Clause =>
             null;
 
-         when N_Renaming_Declaration =>
-
-            if Nkind (Node) = N_Package_Renaming_Declaration then
-
-               --  ??? Probably safe to ignore those, remove interrogation
-               --  marks when confirmed
-
-               return;
-            end if;
-
+         when N_Object_Renaming_Declaration =>
             declare
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                LLVM_Var  : Value_T;
@@ -593,6 +592,22 @@ package body GNATLLVM.Compile is
                Env.Set (Def_Ident, LLVM_Var);
                Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
             end;
+
+         when N_Subprogram_Renaming_Declaration =>
+            declare
+               Def_Ident : constant Entity_Id :=
+                 Defining_Unit_Name (Specification (Node));
+               Renamed_Subp : constant Value_T :=
+                 Env.Get (Entity (Name (Node)));
+            begin
+               Env.Set (Def_Ident, Renamed_Subp);
+            end;
+
+         when N_Package_Renaming_Declaration =>
+            --  At the moment, packages aren't materialized in LLVM IR, so
+            --  there is nothing to do here.
+
+            null;
 
          when N_Implicit_Label_Declaration =>
             Env.Set

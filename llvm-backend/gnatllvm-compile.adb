@@ -482,14 +482,14 @@ package body GNATLLVM.Compile is
                Env.Pop_Scope;
                Env.Leave_Subp;
 
+               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                if Verify_Function (Subp.Func, Print_Message_Action) then
-                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                   Error_Msg_N
                     ("The backend generated bad LLVM for this subprogram.",
                      Node);
                   Dump_LLVM_Module (Env.Mdl);
-                  pragma Annotate (Xcov, Exempt_Off);
                end if;
+               pragma Annotate (Xcov, Exempt_Off);
             end;
 
          when N_Raise_Constraint_Error =>

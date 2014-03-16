@@ -154,14 +154,14 @@ package body GNATLLVM.Environment is
       use Type_Maps;
       Cur : constant Cursor := Get (Env, TE);
    begin
+      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Element (Cur);
       else
-         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Type
            with "Cannot find a LLVM type for Entity #" & Entity_Id'Image (TE);
-         pragma Annotate (Xcov, Exempt_Off);
       end if;
+      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------
@@ -172,14 +172,14 @@ package body GNATLLVM.Environment is
       use Value_Maps;
       Cur : constant Cursor := Get (Env, VE);
    begin
+      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Element (Cur);
       else
-         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Value
            with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (VE);
-         pragma Annotate (Xcov, Exempt_Off);
       end if;
+      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------
@@ -192,14 +192,14 @@ package body GNATLLVM.Environment is
       use Record_Info_Maps;
       Cur : constant Cursor := Get (Env, RI);
    begin
+      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Element (Cur);
       else
-         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Value
            with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (RI);
-         pragma Annotate (Xcov, Exempt_Off);
       end if;
+      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------

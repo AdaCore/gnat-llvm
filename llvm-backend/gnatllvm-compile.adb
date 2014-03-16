@@ -1319,7 +1319,7 @@ package body GNATLLVM.Compile is
 
          when N_Identifier | N_Expanded_Name =>
             --  N_Defining_Identifier nodes for enumeration literals are not
-            --  store in the environment. Handle them here.
+            --  stored in the environment. Handle them here.
 
             if Ekind (Entity (Node)) = E_Enumeration_Literal then
                return Const_Int

@@ -92,6 +92,18 @@ package body GNATLLVM.Compile is
       Value               : Value_T) return Value_T;
    --  Emit code to convert Src_Value to Dest_Type
 
+   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+   function Emit_Min_Max
+     (Env         : Environ;
+      Exprs       : List_Id;
+      Compute_Max : Boolean) return Value_T
+     with Pre => List_Length (Exprs) = 2
+     and then Is_Scalar_Type (Etype (First (Exprs)));
+   --  Exprs must be a list of two scalar expressions with compatible types.
+   --  Emit code to evaluate both expressions. If Compute_Max, return the
+   --  maximum value and return the minimum otherwise.
+   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
+
    -----------------
    -- Array_Bound --
    -----------------
@@ -1417,11 +1429,17 @@ package body GNATLLVM.Compile is
                   return Env.Bld.Ptr_To_Int
                     (Emit_LValue
                        (Env, Prefix (Node)), Get_Address_Type, "to-address");
+
                elsif Attr_Name = "first" then
                   return Array_Bound (Env, Prefix (Node), Low, 1);
                elsif Attr_Name = "last" then
                   return Array_Bound
                     (Env, Prefix (Node), High, 1);
+
+               elsif Attr_Name = "max" then
+                  return Emit_Min_Max (Env, Expressions (Node), True);
+               elsif Attr_Name = "min" then
+                  return Emit_Min_Max (Env, Expressions (Node), False);
                end if;
             end;
 
@@ -1891,5 +1909,37 @@ package body GNATLLVM.Compile is
          pragma Annotate (Xcov, Exempt_Off);
       end if;
    end Build_Type_Conversion;
+
+   ------------------
+   -- Emit_Min_Max --
+   ------------------
+
+   function Emit_Min_Max
+     (Env         : Environ;
+      Exprs       : List_Id;
+      Compute_Max : Boolean) return Value_T
+   is
+      Name      : constant String :=
+        (if Compute_Max then "max" else "min");
+
+      Expr_Type : constant Entity_Id := Etype (First (Exprs));
+      Left      : constant Value_T := Emit_Expression (Env, First (Exprs));
+      Right     : constant Value_T := Emit_Expression (Env, Last (Exprs));
+
+      Comparison_Operators : constant
+        array (Boolean, Boolean) of Int_Predicate_T :=
+        (True  => (True => Int_UGT, False => Int_ULT),
+         False => (True => Int_SGT, False => Int_SLT));
+      --  Provide the appropriate scalar comparison operator in order to select
+      --  the min/max. First index = is unsigned? Second one = computing max?
+
+      Choose_Left : constant Value_T := Env.Bld.I_Cmp
+        (Comparison_Operators (Is_Unsigned_Type (Expr_Type), Compute_Max),
+         Left, Right,
+         "choose-left-as-" & Name);
+
+   begin
+      return Env.Bld.Build_Select (Choose_Left, Left, Right, Name);
+   end Emit_Min_Max;
 
 end GNATLLVM.Compile;

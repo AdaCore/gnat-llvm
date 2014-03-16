@@ -382,11 +382,6 @@ package body GNATLLVM.Compile is
                   --  Add the parameter to the environnment
 
                   Env.Set (Param, LLVM_Var);
-                  if Spec_Entity (Param) /= 0
-                    and then Spec_Entity (Param) /= Param
-                  then
-                     Env.Set (Spec_Entity (Param), LLVM_Var);
-                  end if;
 
                   Match_Static_Link_Variable
                     (Env, Param, LLVM_Var);

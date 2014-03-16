@@ -181,6 +181,7 @@ package body GNATLLVM.Compile is
       Size     : Value_T := No_Value_T;
       Cur_Size : Value_T;
       DSD      : Node_Id := First_Index (Array_Type);
+      Dim      : Node_Id;
       T        : constant Type_T :=
         Int_Type_In_Context (Env.Ctx, unsigned (Get_Pointer_Size));
       --  An array can be as big as the memory space, so use the appropriate
@@ -191,39 +192,29 @@ package body GNATLLVM.Compile is
 
       while Present (DSD) loop
 
-         case Nkind (DSD) is
-            when N_Range =>
+         --  Compute the size of the dimension from the range bounds
+         Dim := Get_Dim_Range (DSD);
 
-               --  Compute the size of the dimension from the range bounds
+         Cur_Size := Env.Bld.Add
+           (Env.Bld.Sub
+              (Emit_Expression (Env, High_Bound (Dim)),
+               Emit_Expression (Env, Low_Bound (Dim)), ""),
+            Const_Int
+              (Create_Type (Env, Etype (High_Bound (Dim))), 1, True),
+            "");
+         Cur_Size := Env.Bld.Z_Ext (Cur_Size, T, "");
 
-               Cur_Size := Env.Bld.Add
-                 (Env.Bld.Sub
-                    (Emit_Expression (Env, High_Bound (DSD)),
-                     Emit_Expression (Env, Low_Bound (DSD)), ""),
-                  Const_Int
-                    (Create_Type (Env, Etype (High_Bound (DSD))), 1, True),
-                  "");
-               Cur_Size := Env.Bld.Z_Ext (Cur_Size, T, "");
+         --  Accumulate the product of the sizes
+         --  If it's the first dimension, initialize our result with it
+         --  Else, multiply our result by it
 
-               --  Accumulate the product of the sizes
-               --  If it's the first dimension, initialize our result with it
-               --  Else, multiply our result by it
-
-               if Size = No_Value_T then
-                  Size := Cur_Size;
-               else
-                  Size := Env.Bld.Mul (Size, Cur_Size, "");
-               end if;
-
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            when others =>
-               raise Program_Error with "Not supported : " & Nkind (DSD)'Img;
-            pragma Annotate (Xcov, Exempt_Off);
-
-         end case;
+         if Size = No_Value_T then
+            Size := Cur_Size;
+         else
+            Size := Env.Bld.Mul (Size, Cur_Size, "");
+         end if;
 
          DSD := Next (DSD);
-
       end loop;
 
       --  If the component of the array is itself an array, then recursively
@@ -1013,6 +1004,7 @@ package body GNATLLVM.Compile is
 
                I       : Nat := 2;
                DSD     : Node_Id := First_Index (Etype (Prefix (Node)));
+               Dim     : Node_Id;
                LB      : Value_T;
                Constrained : constant Boolean :=
                  Is_Constrained (Etype (Prefix (Node)));
@@ -1020,19 +1012,11 @@ package body GNATLLVM.Compile is
 
                for N of Iterate (Expressions (Node)) loop
                   Idxs (I) := Emit_Expression (Env, N);
-
-                  if Nkind (DSD) /= N_Range then
-                     pragma Annotate
-                       (Xcov, Exempt_On, "Defensive programming");
-                     raise Program_Error
-                       with "Arrays indexed with" & Nkind (DSD)'Img
-                       & " not supported";
-                     pragma Annotate (Xcov, Exempt_Off);
-                  end if;
+                  Dim := Get_Dim_Range (DSD);
 
                   --  Adjust the index according to the range lower bound
                   if Constrained then
-                     LB := Emit_Expression (Env, Low_Bound (DSD));
+                     LB := Emit_Expression (Env, Low_Bound (Dim));
                   else
                      LB := Array_Bound
                        (Env, Array_Ptr, Low, Integer (I - 1));

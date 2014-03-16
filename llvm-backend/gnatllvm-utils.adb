@@ -21,14 +21,58 @@ package body GNATLLVM.Utils is
    -- Get_Type_Range --
    --------------------
 
-   function Get_Dim_Range (N : Node_Id) return Node_Id
-   is
-     (case Nkind (N) is
-         when N_Range      => N,
-         when N_Identifier => Scalar_Range (Entity (N)),
-         when others       => raise Program_Error
-           with "Invalid node kind in context: "
-      & Node_Kind'Image (Nkind (N)));
+   function Get_Dim_Range (N : Node_Id) return Node_Id is
+   begin
+      case Nkind (N) is
+         when N_Range =>
+            return N;
+         when N_Identifier =>
+            return Scalar_Range (Entity (N));
+
+         when N_Subtype_Indication =>
+            declare
+               Constr : constant Node_Id := Constraint (N);
+            begin
+               if Present (Constr) then
+                  case Nkind (Constr) is
+                     when N_Range_Constraint =>
+                        return Range_Expression (Constr);
+
+                     when N_Index_Or_Discriminant_Constraint =>
+                        --  TODO
+                        raise Program_Error
+                          with "Composite constraints are unhandled,"
+                          & " right now";
+
+                     when N_Digits_Constraint | N_Delta_Constraint =>
+                        raise Program_Error
+                          with "Unhandled subtype indication constraint"
+                          & " (no fixed point arithmetics): "
+                          & Node_Kind'Image (Nkind (N));
+
+                     when others =>
+                        pragma Annotate
+                          (Xcov, Exempt_On, "Defensive programming");
+                        raise Program_Error
+                          with "Invalid subtype indication constraint: "
+                          & Node_Kind'Image (Nkind (N));
+                        pragma Annotate
+                          (Xcov, Exempt_Off, "Defensive programming");
+                  end case;
+
+               else
+                  return Scalar_Range (Entity (Subtype_Mark (N)));
+               end if;
+            end;
+
+         when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+            raise Program_Error
+              with "Invalid node kind in context: "
+              & Node_Kind'Image (Nkind (N));
+            pragma Annotate (Xcov, Exempt_Off);
+      end case;
+   end Get_Dim_Range;
 
    ---------------
    -- Is_LValue --

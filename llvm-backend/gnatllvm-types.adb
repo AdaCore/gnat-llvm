@@ -136,12 +136,9 @@ package body GNATLLVM.Types is
 
       elsif Ekind (TE) = E_Function
         or else Ekind (TE) = E_Procedure
+        or else Ekind (TE) = E_Subprogram_Type
       then
          return Create_Subprogram_Access_Type (Env, T);
-
-      elsif Ekind (TE) = E_Subprogram_Type then
-         return Create_Subprogram_Access_Type
-           (Env, Pointer_Type (T, 0));
 
       else
          return Pointer_Type (T, 0);
@@ -322,6 +319,10 @@ package body GNATLLVM.Types is
 
             return Create_Subprogram_Type_From_Entity
               (Env, Def_Ident, Takes_S_Link => True);
+
+         when E_Anonymous_Access_Subprogram_Type =>
+            return Create_Access_Type
+              (Env, Designated_Type (Def_Ident));
 
          when others =>
             pragma Annotate (Xcov, Exempt_On, "Defensive programming");
@@ -524,7 +525,7 @@ package body GNATLLVM.Types is
       Subp_Type : Type_T) return Type_T
    is
       Couple : constant Type_Array (1 .. 2) :=
-        (Subp_Type,
+        (Pointer_Type (Subp_Type, 0),
          Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
    begin
       return Struct_Type_In_Context

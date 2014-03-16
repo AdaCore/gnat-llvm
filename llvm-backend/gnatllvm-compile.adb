@@ -945,15 +945,31 @@ package body GNATLLVM.Compile is
                if Ekind (Def_Ident) = E_Function
                  or else Ekind (Def_Ident) = E_Procedure
                then
+                  --  Return a callback, which is a couple: subprogram code
+                  --  pointer, static link argument.
+
                   declare
-                     Couple      : constant array (1 .. 2) of Value_T :=
-                       (Create_Callback_Wrapper (Env, Def_Ident),
-                        Get_Static_Link (Env, Def_Ident));
+                     Func   : constant Value_T :=
+                       Create_Callback_Wrapper (Env, Def_Ident);
+                     S_Link : constant Value_T :=
+                       Get_Static_Link (Env, Def_Ident);
+
+                     Fields_Types : constant array (1 .. 2) of Type_T :=
+                       (Type_Of (Func),
+                        Type_Of (S_Link));
+                     Callback_Type : constant Type_T :=
+                       Struct_Type_In_Context
+                         (Env.Ctx,
+                          Fields_Types'Address, Fields_Types'Length,
+                          Packed => False);
+
+                     Result : Value_T := Get_Undef (Callback_Type);
+
                   begin
-                     return Const_Struct_In_Context
-                       (Env.Ctx,
-                        Couple'Address, Couple'Length,
-                        Packed => False);
+                     Result := Env.Bld.Insert_Value (Result, Func, 0, "");
+                     Result := Env.Bld.Insert_Value
+                       (Result, S_Link, 1, "callback");
+                     return Result;
                   end;
 
                else
@@ -1331,16 +1347,22 @@ package body GNATLLVM.Compile is
                --  expects a pointer to a function anyway.
 
                declare
-                  LValue : constant Value_T := Env.Get (Entity (Node));
+                  Def_Ident     : constant Entity_Id := Entity (Node);
+                  Kind          : constant Entity_Kind := Ekind (Def_Ident);
+                  Type_Kind     : constant Entity_Kind :=
+                    Ekind (Etype (Def_Ident));
                   Is_Subprogram : constant Boolean :=
-                    (Ekind (Entity (Node)) = E_Function
-                     or else Ekind (Entity (Node)) = E_Procedure);
+                    (Kind = E_Function
+                     or else Kind = E_Procedure
+                     or else Type_Kind = E_Subprogram_Type);
+
+                  LValue : constant Value_T := Env.Get (Def_Ident);
+
                begin
                   return
-                    (if Is_Subprogram then
-                        LValue
-                     else
-                        Env.Bld.Load (Env.Get (Entity (Node)), ""));
+                    (if Is_Subprogram
+                     then LValue
+                     else Env.Bld.Load (LValue, ""));
                end;
             end if;
 
@@ -1348,11 +1370,11 @@ package body GNATLLVM.Compile is
             return Call (Env, Node);
 
          when N_Explicit_Dereference =>
-            --  Special handling for accesses to subprograms, see N_Identifier
+            --  Access to subprograms require special handling, see
+            --  N_Identifier.
 
             declare
-               Access_Value : constant Value_T :=
-                 Compile_Expr (Prefix (Node));
+               Access_Value : constant Value_T := Compile_Expr (Prefix (Node));
             begin
                return
                  (if Ekind (Etype (Node)) = E_Subprogram_Type

@@ -1170,7 +1170,7 @@ package body GNATLLVM.Compile is
 
                --  LLVM treats pointers as integers regarding comparison
 
-               if Is_Integer_Type (T)
+               if Is_Scalar_Type (T)
                  or else Is_Access_Type (T)
                then
                   return Env.Bld.I_Cmp

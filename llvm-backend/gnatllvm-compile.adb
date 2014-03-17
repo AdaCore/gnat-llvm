@@ -1423,67 +1423,67 @@ package body GNATLLVM.Compile is
 
             return Emit_Attribute_Expression (Env, Node);
 
-            when N_Selected_Component =>
-               declare
-                  Pfx_Val : constant Value_T :=
-                    Emit_Expression (Env, Prefix (Node));
-                  Pfx_Ptr : constant Value_T :=
-                    Env.Bld.Alloca (Type_Of (Pfx_Val), "pfx_ptr");
-                  Record_Component : constant Entity_Id :=
-                    Parent (Entity (Selector_Name (Node)));
-               begin
-                  Env.Bld.Store (Pfx_Val, Pfx_Ptr);
-                  return Env.Bld.Load
-                    (Record_Field_Offset (Env, Pfx_Ptr, Record_Component), "");
-               end;
+         when N_Selected_Component =>
+            declare
+               Pfx_Val : constant Value_T :=
+                 Emit_Expression (Env, Prefix (Node));
+               Pfx_Ptr : constant Value_T :=
+                 Env.Bld.Alloca (Type_Of (Pfx_Val), "pfx_ptr");
+               Record_Component : constant Entity_Id :=
+                 Parent (Entity (Selector_Name (Node)));
+            begin
+               Env.Bld.Store (Pfx_Val, Pfx_Ptr);
+               return Env.Bld.Load
+                 (Record_Field_Offset (Env, Pfx_Ptr, Record_Component), "");
+            end;
 
-            when N_Indexed_Component | N_Slice =>
-               return Env.Bld.Load (Emit_LValue (Env, Node), "");
+         when N_Indexed_Component | N_Slice =>
+            return Env.Bld.Load (Emit_LValue (Env, Node), "");
 
-            when N_Aggregate =>
-               declare
-                  Agg_Type   : constant Entity_Id := Etype (Node);
-                  LLVM_Type  : constant Type_T :=
-                    Create_Type (Env, Agg_Type);
-                  Result     : Value_T := Get_Undef (LLVM_Type);
-                  Cur_Expr   : Value_T;
-                  Cur_Index  : Integer;
-               begin
-                  if Ekind (Agg_Type) in Record_Kind then
-                     for Assoc of Iterate (Component_Associations (Node)) loop
-                        Cur_Expr := Compile_Expr (Expression (Assoc));
-                        for Choice of Iterate (Choices (Assoc)) loop
-                           Cur_Index := Index_In_List
-                             (Parent (Entity (Choice)));
-                           Result := Env.Bld.Insert_Value
-                             (Result, Cur_Expr, unsigned (Cur_Index - 1), "");
-                        end loop;
+         when N_Aggregate =>
+            declare
+               Agg_Type   : constant Entity_Id := Etype (Node);
+               LLVM_Type  : constant Type_T :=
+                 Create_Type (Env, Agg_Type);
+               Result     : Value_T := Get_Undef (LLVM_Type);
+               Cur_Expr   : Value_T;
+               Cur_Index  : Integer;
+            begin
+               if Ekind (Agg_Type) in Record_Kind then
+                  for Assoc of Iterate (Component_Associations (Node)) loop
+                     Cur_Expr := Compile_Expr (Expression (Assoc));
+                     for Choice of Iterate (Choices (Assoc)) loop
+                        Cur_Index := Index_In_List
+                          (Parent (Entity (Choice)));
+                        Result := Env.Bld.Insert_Value
+                          (Result, Cur_Expr, unsigned (Cur_Index - 1), "");
                      end loop;
+                  end loop;
 
                   --  Must be an array
 
-                  else
-                     Cur_Index := 0;
-                     for Expr of Iterate (Expressions (Node)) loop
-                        Cur_Expr := Compile_Expr (Expr);
-                        Result := Env.Bld.Insert_Value
-                          (Result, Cur_Expr, unsigned (Cur_Index), "");
-                        Cur_Index := Cur_Index + 1;
-                     end loop;
+               else
+                  Cur_Index := 0;
+                  for Expr of Iterate (Expressions (Node)) loop
+                     Cur_Expr := Compile_Expr (Expr);
+                     Result := Env.Bld.Insert_Value
+                       (Result, Cur_Expr, unsigned (Cur_Index), "");
+                     Cur_Index := Cur_Index + 1;
+                  end loop;
 
-                  end if;
+               end if;
 
-                  return Result;
-               end;
+               return Result;
+            end;
 
-            when N_Null =>
-               return Const_Null (Create_Type (Env, Etype (Node)));
+         when N_Null =>
+            return Const_Null (Create_Type (Env, Etype (Node)));
 
-            when others =>
-               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-               raise Program_Error
-                 with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
-               pragma Annotate (Xcov, Exempt_Off);
+         when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+            raise Program_Error
+              with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
+            pragma Annotate (Xcov, Exempt_Off);
          end case;
       end if;
    end Emit_Expression;

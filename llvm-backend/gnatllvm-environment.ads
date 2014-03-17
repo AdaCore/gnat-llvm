@@ -22,6 +22,9 @@ package GNATLLVM.Environment is
      (Key_Type     => Entity_Id,
       Element_Type => Field_Info);
 
+   --  Keep information about record types, to link their front-end
+   --  representation to their LLVM representations
+   --  TODO: Document the LLVM representation of records here
    type Record_Info is record
       Fields : Field_Maps.Map;
       Structs : Type_Vectors.Vector;

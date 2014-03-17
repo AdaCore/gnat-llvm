@@ -561,7 +561,8 @@ package body GNATLLVM.Compile is
                      Get_Name (Def_Ident));
                else
                   LLVM_Type := Create_Type (Env, T);
-                  LLVM_Var := Env.Bld.Alloca (LLVM_Type, Get_Name (Def_Ident));
+                  LLVM_Var := Env.Bld.Alloca (LLVM_Type,
+                                              "local-" & Get_Name (Def_Ident));
                end if;
 
                Env.Set (Def_Ident, LLVM_Var);
@@ -1556,56 +1557,68 @@ package body GNATLLVM.Compile is
 
       Actual := First (Parameter_Associations (Call_Node));
       while Present (Actual) loop
+
          Args (Natural (I)) :=
            (if Param_Needs_Ptr (Params (I))
             then Emit_LValue (Env, Actual)
             else Emit_Expression (Env, Actual));
 
-         --  At this point we need to handle the conversion from constrained
-         --  arrays to unconstrained arrays
-
          P_Type := Etype (Params (I));
+
          if Is_Constrained (Etype (Actual))
            and then not Is_Constrained (P_Type)
          then
-            declare
-               Array_Access_Type : constant Type_T :=
-                 Create_Access_Type (Env, P_Type);
-               Array_Access, V : Value_T;
-               Dim_Idx : Integer := 1;
-            begin
-               Array_Access :=
-                 Env.Bld.Alloca (Array_Access_Type, "");
 
-               --  Store the ptr into the access struct
-               V := Env.Bld.Struct_GEP (Array_Access, 0, "");
-               Env.Bld.Store
-                 (Env.Bld.Bit_Cast
-                    (Args (Natural (I)),
-                     Pointer_Type
-                       (Create_Type
-                            (Env, Etype (Params (I))), 0), ""), V);
+            --  At this point we need to handle the conversion from constrained
+            --  arrays to unconstrained arrays, which means passing a fat array
+            --  pointer containing the bounds of the array in it.
 
-               --  Store the bounds into the access struct
-               for Dim of
-                 Iterate (List_Containing (First_Index (Etype (Actual))))
-               loop
-                  declare
-                     R : constant Node_Id := Get_Dim_Range (Dim);
-                  begin
-                     V := Array_Bound_Addr (Env, Array_Access, Low, Dim_Idx);
-                     Env.Bld.Store (Emit_Expression (Env, Low_Bound (R)), V);
+            if Is_Array_Type (Etype (Actual)) then
+               declare
+                  Array_Access_Type : constant Type_T :=
+                    Create_Access_Type (Env, P_Type);
+                  Array_Access, V : Value_T;
+                  Dim_I : Integer := 1;
+               begin
+                  Array_Access :=
+                    Env.Bld.Alloca (Array_Access_Type, "");
 
-                     V := Array_Bound_Addr (Env, Array_Access, High, Dim_Idx);
-                     Env.Bld.Store (Emit_Expression (Env, High_Bound (R)), V);
+                  --  Store the ptr into the access struct
+                  V := Env.Bld.Struct_GEP (Array_Access, 0, "");
+                  Env.Bld.Store
+                    (Env.Bld.Bit_Cast
+                       (Args (Natural (I)),
+                        Pointer_Type
+                          (Create_Type
+                               (Env, Etype (Params (I))), 0), ""), V);
 
-                     Dim_Idx := Dim_Idx + 1;
-                  end;
-               end loop;
+                  --  Store the bounds into the access struct
+                  for Dim of
+                    Iterate (List_Containing (First_Index (Etype (Actual))))
+                  loop
+                     declare
+                        R : constant Node_Id := Get_Dim_Range (Dim);
+                     begin
+                        V := Array_Bound_Addr (Env, Array_Access, Low, Dim_I);
+                        Env.Bld.Store
+                          (Emit_Expression (Env, Low_Bound (R)), V);
 
-               --  Replace the simple pointer by the access struct
-               Args (Natural (I)) := Env.Bld.Load (Array_Access, "");
-            end;
+                        V := Array_Bound_Addr (Env, Array_Access, High, Dim_I);
+                        Env.Bld.Store
+                          (Emit_Expression (Env, High_Bound (R)), V);
+
+                        Dim_I := Dim_I + 1;
+                     end;
+                  end loop;
+
+                  --  Replace the simple pointer by the access struct
+                  Args (Natural (I)) := Env.Bld.Load (Array_Access, "");
+               end;
+            else
+               Args (Natural (I)) := Env.Bld.Bit_Cast
+                 (Args (Natural (I)), Create_Access_Type (Env, P_Type),
+                  "param-bitcast");
+            end if;
          end if;
 
          I := I + 1;

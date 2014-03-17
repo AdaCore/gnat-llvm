@@ -207,6 +207,14 @@ package body GNATLLVM.Types is
                Struct_Num    : Nat := 1;
                Num_Fields    : Natural := 1;
                Info          : Record_Info;
+
+               function Img (I : Nat) return String;
+               function Img (I : Nat) return String is
+                  Str : constant String := I'Img;
+               begin
+                  return Str (Str'First + 1 .. Str'Last);
+               end Img;
+
                use Interfaces.C;
             begin
                Struct_Type := Struct_Create_Named
@@ -241,7 +249,7 @@ package body GNATLLVM.Types is
 
                      if Num_Fields < Comps'Length then
                         Struct_Type := Struct_Create_Named
-                          (Env.Ctx, Get_Name (Def_Ident) & Struct_Num'Img);
+                          (Env.Ctx, Get_Name (Def_Ident) & Img (Struct_Num));
                         Info.Structs.Append (Struct_Type);
                      end if;
                   end if;

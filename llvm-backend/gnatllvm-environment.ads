@@ -2,6 +2,7 @@ with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Vectors;
 
 with Types; use Types;
+with Namet; use Namet;
 
 with LLVM.Core; use LLVM.Core;
 with Ada.Containers.Doubly_Linked_Lists;
@@ -41,6 +42,14 @@ package GNATLLVM.Environment is
    package Value_Maps is new Ada.Containers.Ordered_Maps
      (Key_Type     => Entity_Id,
       Element_Type => Value_T);
+
+   package Entity_Maps is new Ada.Containers.Ordered_Maps
+     (Key_Type     => Entity_Id,
+      Element_Type => Nat);
+
+   package Name_Maps is new Ada.Containers.Ordered_Maps
+     (Key_Type     => Name_Id,
+      Element_Type => Nat);
 
    type Scope_Type is record
       Types         : Type_Maps.Map;

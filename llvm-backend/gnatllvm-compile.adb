@@ -1508,62 +1508,67 @@ package body GNATLLVM.Compile is
    function Call
      (Env : Environ; Call_Node : Node_Id) return Value_T
    is
-      function Is_Formal (E : Entity_Id) return Boolean is
-        (Ekind (E) in Formal_Kind);
-
-      function Iterate is new Iterate_Entities
-        (Get_First => First_Entity,
-         Get_Next  => Next_Entity,
-         Filter    => Is_Formal);
-
       Subp        : constant Node_Id := Name (Call_Node);
       Params      : constant Entity_Iterator :=
-        (if Nkind (Subp) = N_Identifier
-         or else Nkind (Subp) = N_Expanded_Name
-         then Iterate (Entity (Subp))
-         else Iterate (Etype (Subp)));
-      Actual      : Node_Id;
+        Get_Params (if Nkind (Subp) = N_Identifier
+                    or else Nkind (Subp) = N_Expanded_Name
+                    then Entity (Subp)
+                    else Etype (Subp));
+      Param_Assoc, Actual : Node_Id;
 
       --  If it's not an identifier, it must be an access to a subprogram and
       --  in such a case, it must accept a static link.
 
-      Takes_S_Link : constant Boolean :=
+      Takes_S_Link   : constant Boolean :=
         (Nkind (Subp) /= N_Identifier
          and then Nkind (Subp) /= N_Expanded_Name)
         or else Env.Takes_S_Link (Entity (Subp));
-      S_Link       : Value_T;
 
-      LLVM_Func   : Value_T;
-      Args_Count  : constant Integer :=
+      S_Link         : Value_T;
+      LLVM_Func      : Value_T;
+      Args_Count     : constant Integer :=
         Params'Length + (if Takes_S_Link then 1 else 0);
-      Args        : array (1 .. Args_Count) of Value_T;
-      I           : Standard.Types.Int := 1;
-      P_Type      : Entity_Id;
 
+      Args           : array (1 .. Args_Count) of Value_T;
+      I, Idx         : Standard.Types.Int := 1;
+      P_Type         : Entity_Id;
+      Params_Offsets : Name_Maps.Map;
    begin
+      for Param of Params loop
+         Params_Offsets.Include (Chars (Param), I);
+         I := I + 1;
+      end loop;
+      I := 1;
+
       LLVM_Func := Emit_Expression (Env, Name (Call_Node));
+
       if Nkind (Name (Call_Node)) /= N_Identifier
         and then Nkind (Name (Call_Node)) /= N_Expanded_Name
       then
-         S_Link := Env.Bld.Extract_Value
-           (LLVM_Func, 1, "static-link-ptr");
-         LLVM_Func := Env.Bld.Extract_Value
-           (LLVM_Func, 0, "callback");
-
+         S_Link := Env.Bld.Extract_Value (LLVM_Func, 1, "static-link-ptr");
+         LLVM_Func := Env.Bld.Extract_Value (LLVM_Func, 0, "callback");
       else
-         S_Link := Get_Static_Link
-           (Env, Entity (Name (Call_Node)));
+         S_Link := Get_Static_Link (Env, Entity (Name (Call_Node)));
       end if;
 
-      Actual := First (Parameter_Associations (Call_Node));
-      while Present (Actual) loop
+      Param_Assoc := First (Parameter_Associations (Call_Node));
 
-         Args (Natural (I)) :=
-           (if Param_Needs_Ptr (Params (I))
+      while Present (Param_Assoc) loop
+
+         if Nkind (Param_Assoc) = N_Parameter_Association then
+            Actual := Explicit_Actual_Parameter (Param_Assoc);
+            Idx := Params_Offsets (Chars (Selector_Name (Param_Assoc)));
+         else
+            Actual := Param_Assoc;
+            Idx := I;
+         end if;
+
+         Args (Natural (Idx)) :=
+           (if Param_Needs_Ptr (Params (Idx))
             then Emit_LValue (Env, Actual)
             else Emit_Expression (Env, Actual));
 
-         P_Type := Etype (Params (I));
+         P_Type := Etype (Params (Idx));
 
          if Is_Constrained (Etype (Actual))
            and then not Is_Constrained (P_Type)
@@ -1590,7 +1595,7 @@ package body GNATLLVM.Compile is
                        (Args (Natural (I)),
                         Pointer_Type
                           (Create_Type
-                               (Env, Etype (Params (I))), 0), ""), V);
+                               (Env, Etype (Params (Idx))), 0), ""), V);
 
                   --  Store the bounds into the access struct
                   for Dim of
@@ -1612,17 +1617,17 @@ package body GNATLLVM.Compile is
                   end loop;
 
                   --  Replace the simple pointer by the access struct
-                  Args (Natural (I)) := Env.Bld.Load (Array_Access, "");
+                  Args (Natural (Idx)) := Env.Bld.Load (Array_Access, "");
                end;
             else
-               Args (Natural (I)) := Env.Bld.Bit_Cast
-                 (Args (Natural (I)), Create_Access_Type (Env, P_Type),
+               Args (Natural (Idx)) := Env.Bld.Bit_Cast
+                 (Args (Natural (Idx)), Create_Access_Type (Env, P_Type),
                   "param-bitcast");
             end if;
          end if;
 
          I := I + 1;
-         Actual := Next (Actual);
+         Param_Assoc := Next (Param_Assoc);
       end loop;
 
       --  Set the argument for the static link, if any

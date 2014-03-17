@@ -464,15 +464,11 @@ package body GNATLLVM.Types is
    function Create_Subprogram_Type_From_Entity
      (Env           : Environ;
       Subp_Type_Ent : Entity_Id;
-      Takes_S_Link  : Boolean) return Type_T
-   is
-      function Iterate is new Iterate_Entities
-        (Get_First => First_Entity,
-         Get_Next  => Next_Entity);
+      Takes_S_Link  : Boolean) return Type_T is
    begin
       return Create_Subprogram_Type
         (Env,
-         Iterate (Subp_Type_Ent),
+         Get_Params (Subp_Type_Ent),
          (if Etype (Subp_Type_Ent) = Standard_Void_Type
           then Empty
           else Etype (Subp_Type_Ent)),

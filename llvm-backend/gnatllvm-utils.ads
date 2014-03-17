@@ -78,6 +78,8 @@ package GNATLLVM.Utils is
    function Iterate_Entities (Root : Entity_Id) return Entity_Iterator;
    --  Likewise for the linked list of entities starting at Get_First (Root)
 
+   function Get_Params (Subp : Entity_Id) return Entity_Iterator;
+
    function Get_Name (E : Entity_Id) return String;
    --  Return the name of an entity: Get_Name_String (Chars (E))
 

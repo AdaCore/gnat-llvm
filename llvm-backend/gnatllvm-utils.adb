@@ -236,6 +236,27 @@ package body GNATLLVM.Utils is
       end;
    end Iterate_Entities;
 
+   ----------------
+   -- Get_Params --
+   ----------------
+
+   function Get_Params (Subp : Entity_Id) return Entity_Iterator is
+      function Is_Formal (E : Entity_Id) return Boolean is
+        (Ekind (E) in Formal_Kind);
+
+      function Iterate is new Iterate_Entities
+        (Get_First => First_Entity,
+         Get_Next  => Next_Entity,
+         Filter    => Is_Formal);
+
+      function Iterate_Extra_Formals is new Iterate_Entities
+        (Get_First => Extra_Formals,
+         Get_Next  => Next_Entity,
+         Filter    => Is_Formal);
+   begin
+      return Iterate (Subp) & Iterate_Extra_Formals (Subp);
+   end Get_Params;
+
    --------------------
    -- Get_Stack_Save --
    --------------------

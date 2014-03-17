@@ -8,6 +8,7 @@ with Errout;   use Errout;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Util; use Sem_Util;
+with Snames;   use Snames;
 with Stringt;  use Stringt;
 with Uintp;    use Uintp;
 
@@ -103,6 +104,12 @@ package body GNATLLVM.Compile is
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
    pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
+
+   function Emit_Attribute_Expression
+     (Env  : Environ;
+      Node : Node_Id) return Value_T
+     with Pre => Nkind (Node) = N_Attribute_Reference;
+   --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
    -----------------
    -- Array_Bound --
@@ -1414,42 +1421,7 @@ package body GNATLLVM.Compile is
 
          when N_Attribute_Reference =>
 
-            --  We store values as pointers, so, getting an access to an
-            --  expression is the same thing as getting an LValue, and has
-            --  the same constraints
-
-            declare
-               Attr_Name : constant String :=
-                 Get_Name_String (Attribute_Name (Node));
-            begin
-               if Attr_Name = "access"
-                 or else Attr_Name = "unchecked_access"
-                 or else Attr_Name = "unrestricted_access"
-               then
-                  return Emit_LValue (Env, Prefix (Node));
-               elsif Attr_Name = "address" then
-                  return Env.Bld.Ptr_To_Int
-                    (Emit_LValue
-                       (Env, Prefix (Node)), Get_Address_Type, "to-address");
-
-               elsif Attr_Name = "first" then
-                  return Array_Bound (Env, Prefix (Node), Low, 1);
-               elsif Attr_Name = "last" then
-                  return Array_Bound
-                    (Env, Prefix (Node), High, 1);
-
-               elsif Attr_Name = "max" then
-                  return Emit_Min_Max (Env, Expressions (Node), True);
-               elsif Attr_Name = "min" then
-                  return Emit_Min_Max (Env, Expressions (Node), False);
-               end if;
-            end;
-
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Unhandled Attribute : "
-              & Get_Name_String (Attribute_Name (Node));
-            pragma Annotate (Xcov, Exempt_Off);
+            return Emit_Attribute_Expression (Env, Node);
 
             when N_Selected_Component =>
                declare
@@ -1943,5 +1915,62 @@ package body GNATLLVM.Compile is
    begin
       return Env.Bld.Build_Select (Choose_Left, Left, Right, Name);
    end Emit_Min_Max;
+
+   -------------------------------
+   -- Emit_Attribute_Expression --
+   -------------------------------
+
+   function Emit_Attribute_Expression
+     (Env  : Environ;
+      Node : Node_Id) return Value_T
+   is
+      Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (Node));
+
+   begin
+      case Attr is
+
+         when Attribute_Access
+            | Attribute_Unchecked_Access
+            | Attribute_Unrestricted_Access =>
+
+            --  We store values as pointers, so, getting an access to an
+            --  expression is the same thing as getting an LValue, and has
+            --  the same constraints.
+
+            return Emit_LValue (Env, Prefix (Node));
+
+         when Attribute_Address =>
+
+            --  Likewise for addresses
+
+            return Env.Bld.Ptr_To_Int
+              (Emit_LValue
+                 (Env, Prefix (Node)), Get_Address_Type, "to-address");
+
+         when Attribute_First
+            | Attribute_Last =>
+
+            --  ??? Handle these attributes on scalar subtypes
+
+            return Array_Bound
+              (Env,
+               Prefix (Node),
+               (if Attr = Attribute_First then Low else High),
+               1);
+
+         when Attribute_Max
+            | Attribute_Min =>
+            return Emit_Min_Max
+              (Env,
+               Expressions (Node),
+               Attr = Attribute_Max);
+
+         when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+            raise Program_Error
+              with "Unhandled Attribute : " & Attribute_Id'Image (Attr);
+            pragma Annotate (Xcov, Exempt_Off);
+      end case;
+   end Emit_Attribute_Expression;
 
 end GNATLLVM.Compile;

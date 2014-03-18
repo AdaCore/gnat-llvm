@@ -1191,7 +1191,8 @@ package body GNATLLVM.Compile is
 
             function Emit_Cmp (N : Node_Id) return Value_T is
                PM : constant Pred_Mapping := Get_Preds (N);
-               T : constant Entity_Id := Etype (Left_Opnd (Node));
+               T  : constant Entity_Id :=
+                 Get_Fullest_View (Etype (Left_Opnd (Node)));
             begin
 
                --  LLVM treats pointers as integers regarding comparison

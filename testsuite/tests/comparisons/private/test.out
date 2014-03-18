@@ -1,0 +1,5 @@
+Foo (-10) = False
+Foo (-1) = False
+Foo (0) = True
+Foo (1) = False
+Foo (10) = False

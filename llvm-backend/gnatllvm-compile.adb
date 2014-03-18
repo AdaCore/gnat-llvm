@@ -523,6 +523,17 @@ package body GNATLLVM.Compile is
 
             --  Object declarations are local variables allocated on the stack
 
+            --  If we are processing only declarations, only declare the
+            --  corresponding symbol at the LLVM level and add it to the
+            --  environment.
+
+            if Env.In_Declarations then
+
+               --  TODO??? Handle top-level declarations
+
+               return;
+            end if;
+
             declare
                Def_Ident      : constant Node_Id := Defining_Identifier (Node);
                Obj_Def        : constant Node_Id := Object_Definition (Node);

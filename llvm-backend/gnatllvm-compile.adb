@@ -1309,6 +1309,22 @@ package body GNATLLVM.Compile is
 
          when N_And_Then => return Build_Scl_Op (Op_And);
          when N_Or_Else => return Build_Scl_Op (Op_Or);
+         when N_Op_Not =>
+            declare
+               Expr      : constant Value_T :=
+                 Compile_Expr (Right_Opnd (Node));
+               False_Val : constant Value_T :=
+                 Const_Null (Type_Of (Expr));
+               Is_True   : constant Value_T :=
+                 Env.Bld.I_Cmp (Int_NE, Expr, False_Val, "is-true");
+            begin
+               return Env.Bld.Build_Select
+                 (C_If   => Is_True,
+                  C_Then => False_Val,
+                  C_Else => Const_Int
+                    (Type_Of (Expr), 1, Sign_Extend => False),
+                  Name   => "not");
+            end;
 
          when N_Op_Plus => return Compile_Expr (Right_Opnd (Node));
          when N_Op_Minus => return Env.Bld.Sub

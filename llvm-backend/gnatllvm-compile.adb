@@ -1120,8 +1120,10 @@ package body GNATLLVM.Compile is
    function Emit_Expression
      (Env : Environ; Node : Node_Id) return Value_T is
 
-      function Compile_Expr (Node : Node_Id) return Value_T is
+      function Emit_Expr (Node : Node_Id) return Value_T is
         (Emit_Expression (Env, Node));
+      --  Shortcut to Emit_Expression. Used to implicitely pass the
+      --  environment during recursion.
 
       type Scl_Op is (Op_Or, Op_And);
 
@@ -1134,7 +1136,7 @@ package body GNATLLVM.Compile is
 
             --  The left expression of a SCL op is always evaluated.
 
-            Left : constant Value_T := Compile_Expr (Left_Opnd (Node));
+            Left : constant Value_T := Emit_Expr (Left_Opnd (Node));
             Result : constant Value_T :=
               Env.Bld.Alloca (Type_Of (Left), "scl-res-1");
 
@@ -1169,7 +1171,7 @@ package body GNATLLVM.Compile is
             Position_At_End (Env.Bld, Block_Right_Expr);
 
             declare
-               Right : constant Value_T := Compile_Expr (Right_Opnd (Node));
+               Right : constant Value_T := Emit_Expr (Right_Opnd (Node));
                Left : constant Value_T := Env.Bld.Load (Result, "load-left");
                Res : Value_T;
             begin
@@ -1192,9 +1194,9 @@ package body GNATLLVM.Compile is
       if Is_Binary_Operator (Node) then
          declare
             LVal : constant Value_T :=
-              Compile_Expr (Left_Opnd (Node));
+              Emit_Expr (Left_Opnd (Node));
             RVal : constant Value_T :=
-              Compile_Expr (Right_Opnd (Node));
+              Emit_Expr (Right_Opnd (Node));
             Op : Value_T;
 
             function Emit_Cmp (N : Node_Id) return Value_T;
@@ -1286,7 +1288,7 @@ package body GNATLLVM.Compile is
          when N_Expression_With_Actions =>
             --  TODO??? Compile the list of actions
 --              pragma Assert (Is_Empty_List (Actions (Node)));
-            return Compile_Expr (Expression (Node));
+            return Emit_Expr (Expression (Node));
 
          when N_Character_Literal =>
             return Const_Int
@@ -1323,7 +1325,7 @@ package body GNATLLVM.Compile is
          when N_Op_Not =>
             declare
                Expr      : constant Value_T :=
-                 Compile_Expr (Right_Opnd (Node));
+                 Emit_Expr (Right_Opnd (Node));
                False_Val : constant Value_T :=
                  Const_Null (Type_Of (Expr));
                Is_True   : constant Value_T :=
@@ -1337,16 +1339,16 @@ package body GNATLLVM.Compile is
                   Name   => "not");
             end;
 
-         when N_Op_Plus => return Compile_Expr (Right_Opnd (Node));
+         when N_Op_Plus => return Emit_Expr (Right_Opnd (Node));
          when N_Op_Minus => return Env.Bld.Sub
               (Const_Int
                  (Create_Type (Env, Etype (Node)), 0, False),
-               Compile_Expr (Right_Opnd (Node)),
+               Emit_Expr (Right_Opnd (Node)),
                "minus");
 
          when N_Unchecked_Type_Conversion =>
             declare
-               Val     : constant Value_T := Compile_Expr (Expression (Node));
+               Val     : constant Value_T := Emit_Expr (Expression (Node));
                Val_Ty  : constant Type_T := LLVM_Type_Of (Val);
                Dest_Ty : constant Type_T := Create_Type (Env, Etype (Node));
                Val_Tk  : constant Type_Kind_T := Get_Type_Kind (Val_Ty);
@@ -1378,7 +1380,7 @@ package body GNATLLVM.Compile is
               (Env       => Env,
                Src_Type  => Etype (Expression (Node)),
                Dest_Type => Etype (Node),
-               Value     => Compile_Expr (Expression (Node)));
+               Value     => Emit_Expr (Expression (Node)));
 
          when N_Identifier | N_Expanded_Name =>
             --  N_Defining_Identifier nodes for enumeration literals are not
@@ -1421,7 +1423,7 @@ package body GNATLLVM.Compile is
             --  N_Identifier.
 
             declare
-               Access_Value : constant Value_T := Compile_Expr (Prefix (Node));
+               Access_Value : constant Value_T := Emit_Expr (Prefix (Node));
             begin
                return
                  (if Ekind (Etype (Node)) = E_Subprogram_Type
@@ -1480,7 +1482,7 @@ package body GNATLLVM.Compile is
             begin
                if Ekind (Agg_Type) in Record_Kind then
                   for Assoc of Iterate (Component_Associations (Node)) loop
-                     Cur_Expr := Compile_Expr (Expression (Assoc));
+                     Cur_Expr := Emit_Expr (Expression (Assoc));
                      for Choice of Iterate (Choices (Assoc)) loop
                         Cur_Index := Index_In_List
                           (Parent (Entity (Choice)));
@@ -1494,7 +1496,7 @@ package body GNATLLVM.Compile is
                else
                   Cur_Index := 0;
                   for Expr of Iterate (Expressions (Node)) loop
-                     Cur_Expr := Compile_Expr (Expr);
+                     Cur_Expr := Emit_Expr (Expr);
                      Result := Env.Bld.Insert_Value
                        (Result, Cur_Expr, unsigned (Cur_Index), "");
                      Cur_Index := Cur_Index + 1;

@@ -1556,7 +1556,7 @@ package body GNATLLVM.Compile is
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
-      Args_Count     : constant Integer :=
+      Args_Count     : constant Nat :=
         Params'Length + (if Takes_S_Link then 1 else 0);
 
       Args           : array (1 .. Args_Count) of Value_T;
@@ -1593,7 +1593,7 @@ package body GNATLLVM.Compile is
             Idx := I;
          end if;
 
-         Args (Natural (Idx)) :=
+         Args (Idx) :=
            (if Param_Needs_Ptr (Params (Idx))
             then Emit_LValue (Env, Actual)
             else Emit_Expression (Env, Actual));
@@ -1622,7 +1622,7 @@ package body GNATLLVM.Compile is
                   V := Env.Bld.Struct_GEP (Array_Access, 0, "");
                   Env.Bld.Store
                     (Env.Bld.Bit_Cast
-                       (Args (Natural (I)),
+                       (Args (I),
                         Pointer_Type
                           (Create_Type
                                (Env, Etype (Params (Idx))), 0), ""), V);
@@ -1647,11 +1647,11 @@ package body GNATLLVM.Compile is
                   end loop;
 
                   --  Replace the simple pointer by the access struct
-                  Args (Natural (Idx)) := Env.Bld.Load (Array_Access, "");
+                  Args (Idx) := Env.Bld.Load (Array_Access, "");
                end;
             else
-               Args (Natural (Idx)) := Env.Bld.Bit_Cast
-                 (Args (Natural (Idx)), Create_Access_Type (Env, P_Type),
+               Args (Idx) := Env.Bld.Bit_Cast
+                 (Args (Idx), Create_Access_Type (Env, P_Type),
                   "param-bitcast");
             end if;
          end if;
@@ -1665,6 +1665,23 @@ package body GNATLLVM.Compile is
       if Takes_S_Link then
          Args (Args'Last) := S_Link;
       end if;
+
+      --  If there are any types mismatches for arguments passed by reference,
+      --  bitcast the pointer type.
+
+      declare
+         Args_Types : constant Type_Array :=
+           Get_Param_Types (Type_Of (LLVM_Func));
+      begin
+         for J in Args'Range loop
+            if Type_Of (Args (J)) /= Args_Types (J)
+              and then Get_Type_Kind (Type_Of (Args (J))) = Pointer_Type_Kind
+            then
+               Args (J) := Env.Bld.Bit_Cast (Args (J), Args_Types (J),
+                                             "param-bitcast");
+            end if;
+         end loop;
+      end;
 
       return
         Env.Bld.Call

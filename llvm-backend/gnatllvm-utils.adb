@@ -6,6 +6,25 @@ with Nlists; use Nlists;
 
 package body GNATLLVM.Utils is
 
+   ---------------------
+   -- Get_Param_Types --
+   ---------------------
+
+   function Get_Param_Types (Fn_Ty : Type_T) return Type_Array is
+      Fn_Ty_Real : constant Type_T :=
+        (if Get_Type_Kind (Fn_Ty) = Pointer_Type_Kind
+         then Get_Element_Type (Fn_Ty)
+         else Fn_Ty);
+      Params_Types : Type_Array (1 .. Nat (Count_Param_Types (Fn_Ty_Real)));
+   begin
+      Get_Param_Types (Fn_Ty_Real, Params_Types'Address);
+      return Params_Types;
+   end Get_Param_Types;
+
+   -----------------------------
+   -- UI_To_Long_Long_Integer --
+   -----------------------------
+
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer is
    begin
       UI_Image (U, Decimal);

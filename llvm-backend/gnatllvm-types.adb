@@ -7,7 +7,6 @@ with Uintp; use Uintp;
 with Ttypes;
 
 with GNATLLVM.Compile;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Types is
 
@@ -424,27 +423,13 @@ package body GNATLLVM.Types is
    function Create_Subprogram_Type_From_Spec
      (Env : Environ; Subp_Spec : Node_Id) return Type_T
    is
-      function Iterate is new Iterate_Entities
-        (Get_First => First_Entity,
-         Get_Next  => Next_Entity);
-
       Def_Ident    : constant Entity_Id := Defining_Unit_Name (Subp_Spec);
-      Entities     : constant Entity_Iterator := Iterate (Def_Ident);
-      Params       : Entity_Iterator (1 .. Entities'Length);
-      I            : Nat := 1;
+      Params       : constant Entity_Iterator  := Get_Params (Def_Ident);
    begin
-      --  Get the list of parameters in Entities
-
-      for Entity of Entities loop
-         if Ekind (Entity) in Formal_Kind then
-            Params (I) := Entity;
-            I := I + 1;
-         end if;
-      end loop;
 
       return Create_Subprogram_Type
         (Env,
-         Params (1 .. I - 1),
+         Params,
          (case Nkind (Subp_Spec) is
              when N_Procedure_Specification =>
                 Empty,

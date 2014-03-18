@@ -13,6 +13,8 @@ with Get_Targ;
 
 package GNATLLVM.Utils is
 
+   type Type_Array is array (Nat range <>) of Type_T;
+
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer;
 
    function Get_Dim_Range (N : Node_Id) return Node_Id;
@@ -103,6 +105,11 @@ package GNATLLVM.Utils is
    function Is_LValue (Node : Node_Id) return Boolean;
    --  Returns true if Node is an L value
 
+   function Get_Param_Types (Fn_Ty : Type_T) return Type_Array;
+   --  Wrapper for equivalent LLVM function, returning a proper type array.
+   --  Given a function type or a pointer to function type, returns the types
+   --  of the arguments.
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_LLVM_Module (M : Module_T);
    --  Likewise, for LLVM.Core.Dump_Module
@@ -112,6 +119,14 @@ package GNATLLVM.Utils is
 
    function LLVM_Type_Of (V : Value_T) return Type_T
    is (Type_Of (V));
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
+
+   function LLVM_Count_Param_Types (T : Type_T) return Nat
+   is (Nat (Count_Param_Types (T)));
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
+
+   function LLVM_Get_El_Type (T : Type_T) return Type_T
+   is (Get_Element_Type (T));
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

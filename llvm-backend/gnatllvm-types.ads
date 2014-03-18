@@ -7,12 +7,11 @@ with Einfo; use Einfo;
 
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package GNATLLVM.Types is
 
    pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-   type Type_Array is array (Nat range <>) of Type_T;
-
    procedure Register_Builtin_Types (Env : Environ);
 
    function Create_Access_Type

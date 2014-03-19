@@ -12,23 +12,32 @@ with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
 
 package GNATLLVM.Environment is
 
-   package Type_Vectors is new Ada.Containers.Vectors (Nat, Type_T);
-
    type Field_Info is record
       Containing_Struct_Index : Nat;
       Index_In_Struct : Nat;
+      Entity : Entity_Id;
+      LLVM_Type : Type_T;
    end record;
 
+   package Field_Info_Vectors is new Ada.Containers.Vectors (Pos, Field_Info);
+
+   type Struct_Info is record
+      LLVM_Type : Type_T;
+      Preceding_Fields : Field_Info_Vectors.Vector;
+   end record;
+
+   package Struct_Info_Vectors is
+     new Ada.Containers.Vectors (Pos, Struct_Info);
+
    package Field_Maps is new Ada.Containers.Ordered_Maps
-     (Key_Type     => Entity_Id,
-      Element_Type => Field_Info);
+     (Key_Type => Entity_Id, Element_Type => Field_Info);
 
    --  Keep information about record types, to link their front-end
    --  representation to their LLVM representations
    --  TODO: Document the LLVM representation of records here
    type Record_Info is record
       Fields : Field_Maps.Map;
-      Structs : Type_Vectors.Vector;
+      Structs : Struct_Info_Vectors.Vector;
    end record;
 
    package Record_Info_Maps is new Ada.Containers.Ordered_Maps

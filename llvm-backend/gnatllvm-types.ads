@@ -8,6 +8,8 @@ with Einfo; use Einfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
+with Interfaces.C;
+with Get_Targ; use Get_Targ;
 
 package GNATLLVM.Types is
 
@@ -62,5 +64,8 @@ package GNATLLVM.Types is
 
    function Get_Address_Type return Type_T;
    pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
+
+   function Int_Ptr_Type return Type_T is
+      (Int_Type (Interfaces.C.unsigned (Get_Pointer_Size)));
 
 end GNATLLVM.Types;

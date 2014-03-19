@@ -10,6 +10,7 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Uintp; use Uintp;
 with Einfo; use Einfo;
 with Get_Targ;
+with LLVM.Target; use LLVM.Target;
 
 package GNATLLVM.Utils is
 
@@ -110,6 +111,10 @@ package GNATLLVM.Utils is
    --  Given a function type or a pointer to function type, returns the types
    --  of the arguments.
 
+   function Img (I : Nat) return String;
+   --  Img function for Nat type that doesn't append a space in front of it
+   --  (since a Nat is always positive)
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_LLVM_Module (M : Module_T);
    --  Likewise, for LLVM.Core.Dump_Module
@@ -127,6 +132,10 @@ package GNATLLVM.Utils is
 
    function LLVM_Get_El_Type (T : Type_T) return Type_T
    is (Get_Element_Type (T));
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
+
+   function LLVM_Size_Of (T_Data : Target_Data_T; Ty : Type_T) return Nat
+   is (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

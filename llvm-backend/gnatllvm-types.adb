@@ -1,5 +1,3 @@
-with Interfaces.C;
-with Get_Targ; use Get_Targ;
 with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
@@ -206,19 +204,17 @@ package body GNATLLVM.Types is
                Struct_Num    : Nat := 1;
                Num_Fields    : Natural := 1;
                Info          : Record_Info;
-
-               function Img (I : Nat) return String;
-               function Img (I : Nat) return String is
-                  Str : constant String := I'Img;
-               begin
-                  return Str (Str'First + 1 .. Str'Last);
-               end Img;
-
+               Fields        : Field_Info_Vectors.Vector;
+               Current_Field : Field_Info;
                use Interfaces.C;
+
+               function New_Struct_Info return Struct_Info is
+                 ((LLVM_Type => Struct_Type, Preceding_Fields => Fields));
+
             begin
                Struct_Type := Struct_Create_Named
                  (Env.Ctx, Get_Name (Def_Ident));
-               Info.Structs.Append (Struct_Type);
+               Info.Structs.Append (New_Struct_Info);
 
                --  Records enable some "type recursivity", so store this one in
                --  the environment so that there is no infinite recursion when
@@ -228,7 +224,10 @@ package body GNATLLVM.Types is
 
                for Comp of Comps loop
                   LLVM_Comps (I) := Create_Type (Env, Etype (Comp));
-                  Info.Fields.Include (Comp, (Struct_Num, Nat (I - 1)));
+                  Current_Field :=
+                    (Struct_Num, Nat (I - 1), Comp, LLVM_Comps (I));
+                  Fields.Append (Current_Field);
+                  Info.Fields.Include (Comp, Current_Field);
                   I := I + 1;
                   Num_Fields := Num_Fields + 1;
 
@@ -249,7 +248,7 @@ package body GNATLLVM.Types is
                      if Num_Fields < Comps'Length then
                         Struct_Type := Struct_Create_Named
                           (Env.Ctx, Get_Name (Def_Ident) & Img (Struct_Num));
-                        Info.Structs.Append (Struct_Type);
+                        Info.Structs.Append (New_Struct_Info);
                      end if;
                   end if;
                end loop;

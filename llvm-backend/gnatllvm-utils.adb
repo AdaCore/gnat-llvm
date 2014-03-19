@@ -6,6 +6,16 @@ with Nlists; use Nlists;
 
 package body GNATLLVM.Utils is
 
+   ---------
+   -- Img --
+   ---------
+
+   function Img (I : Nat) return String is
+      Str : constant String := I'Img;
+   begin
+      return Str (Str'First + 1 .. Str'Last);
+   end Img;
+
    ---------------------
    -- Get_Param_Types --
    ---------------------

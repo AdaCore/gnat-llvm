@@ -223,8 +223,8 @@ package body GNATLLVM.Compile is
          Dim := Get_Dim_Range (DSD);
             Cur_Size := Env.Bld.Add
               (Env.Bld.Sub
-                 (Emit_Bound (Low_Bound (Dim)),
-                  Emit_Bound (High_Bound (Dim)), ""),
+                 (Emit_Bound (High_Bound (Dim)),
+                  Emit_Bound (Low_Bound (Dim)), ""),
                Const_Int
                  (Create_Type (Env, Etype (High_Bound (Dim))), 1, True),
                "array-size-tmp");

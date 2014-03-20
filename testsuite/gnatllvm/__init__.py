@@ -85,7 +85,7 @@ def gnat_to_obj(adb, gargs=None):
 
     if USE_NATIVE_GNAT:
         gargs = list(gargs) if gargs else []
-        subprocess.check_call(['gcc', '-c', '-fPIC'] + gargs + [adb])
+        subprocess.check_call(['gcc', '-c', '-fPIC', '-g'] + gargs + [adb])
     else:
         subprocess.check_call(
             ['llc', '-relocation-model=pic', gnat_to_bc(adb, gargs)])

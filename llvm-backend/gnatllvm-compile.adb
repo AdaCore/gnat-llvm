@@ -112,6 +112,13 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (Node) = N_Attribute_Reference;
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
+   function Emit_Comparison
+     (Env          : Environ;
+      Operation    : Pred_Mapping;
+      Operand_Type : Entity_Id;
+      LHS, RHS     : Value_T) return Value_T;
+   --  Helper for Emit_Expression: handle comparison operations
+
    -----------------
    -- Array_Bound --
    -----------------
@@ -1088,6 +1095,23 @@ package body GNATLLVM.Compile is
          when N_Explicit_Dereference =>
             return Emit_Expression (Env, Prefix (Node));
 
+         when N_Aggregate =>
+            declare
+               --  The frontend can sometimes take a reference to an aggregate.
+               --  In such cases, we have to create an anonymous object and use
+               --  its value as the aggregate value.
+
+               --  ??? This alloca will not necessarily be free'd before
+               --  returning from the current subprogram: it's a leak.
+
+               T : constant Type_T := Create_Type (Env, Etype (Node));
+               V : constant Value_T := Env.Bld.Alloca (T, "anonymous-obj");
+
+            begin
+               Env.Bld.Store (Emit_Expression (Env, Node), V);
+               return V;
+            end;
+
          when N_Selected_Component =>
             declare
                Pfx_Ptr : constant Value_T :=
@@ -1270,32 +1294,6 @@ package body GNATLLVM.Compile is
               Emit_Expr (Right_Opnd (Node));
             Op : Value_T;
 
-            function Emit_Cmp (N : Node_Id) return Value_T;
-            --  Compilation of binary comparison operators
-
-            function Emit_Cmp (N : Node_Id) return Value_T is
-               PM : constant Pred_Mapping := Get_Preds (N);
-               T  : constant Entity_Id :=
-                 Get_Fullest_View (Etype (Left_Opnd (Node)));
-            begin
-
-               --  LLVM treats pointers as integers regarding comparison
-
-               if Is_Scalar_Type (T)
-                 or else Is_Access_Type (T)
-               then
-                  return Env.Bld.I_Cmp
-                    ((if Is_Unsigned_Type (T) then PM.Unsigned else PM.Signed),
-                     LVal, RVal, "icmp");
-               elsif Is_Floating_Point_Type (Etype (Left_Opnd (Node))) then
-                  return Env.Bld.F_Cmp (PM.Real, LVal, RVal, "fcmp");
-               else
-                  raise Program_Error
-                    with "EQ only for int and real types";
-                  --  TODO : Equality for aggregate types
-               end if;
-            end Emit_Cmp;
-
          begin
             case Nkind (Node) is
 
@@ -1328,7 +1326,11 @@ package body GNATLLVM.Compile is
                end;
 
             when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
-               return Emit_Cmp (Node);
+               return Emit_Comparison
+                 (Env,
+                  Get_Preds (Node),
+                  Get_Fullest_View (Etype (Left_Opnd (Node))),
+                  LVal, RVal);
 
             when others =>
                pragma Annotate (Xcov, Exempt_On, "Defensive programming");
@@ -1514,6 +1516,9 @@ package body GNATLLVM.Compile is
                   pragma Annotate (Xcov, Exempt_Off);
                end if;
             end;
+
+         when N_Reference =>
+            return Emit_LValue (Env, Prefix (Node));
 
          when N_Attribute_Reference =>
 
@@ -2102,5 +2107,50 @@ package body GNATLLVM.Compile is
             pragma Annotate (Xcov, Exempt_Off);
       end case;
    end Emit_Attribute_Expression;
+
+   ---------------------
+   -- Emit_Comparison --
+   ---------------------
+
+   function Emit_Comparison
+     (Env          : Environ;
+      Operation    : Pred_Mapping;
+      Operand_Type : Entity_Id;
+      LHS, RHS     : Value_T) return Value_T
+   is
+   begin
+      --  LLVM treats pointers as integers regarding comparison
+
+      if Is_Scalar_Type (Operand_Type)
+        or else Is_Access_Type (Operand_Type)
+      then
+         return Env.Bld.I_Cmp
+           ((if Is_Unsigned_Type (Operand_Type)
+            then Operation.Unsigned
+            else Operation.Signed),
+            LHS, RHS,
+            "icmp");
+
+      elsif Is_Floating_Point_Type (Operand_Type) then
+         return Env.Bld.F_Cmp (Operation.Real, LHS, RHS, "fcmp");
+
+      elsif Is_Record_Type (Operand_Type) then
+         raise Program_Error
+           with "The frontend is supposed to already handle record"
+           & " comparisons.";
+
+      elsif Is_Array_Type (Operand_Type) then
+         pragma Assert (Operation.Signed in Int_EQ | Int_NE);
+
+         --  ??? Handle array comparison
+
+         raise Program_Error;
+
+      else
+         raise Program_Error
+           with "Invalid operand type for comparison:"
+           & Entity_Kind'Image (Ekind (Operand_Type));
+      end if;
+   end Emit_Comparison;
 
 end GNATLLVM.Compile;

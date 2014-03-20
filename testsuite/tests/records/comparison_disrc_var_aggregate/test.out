@@ -1,0 +1,60 @@
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 1, E => 2, C => 3,
+  --> 123
+    Equality => False)
+  = False
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 1, E => 2, C => 3,
+  --> 123
+    Equality => True)
+  = True
+
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 4, E => 2, C => 3,
+  --> 423
+    Equality => False)
+  = True
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 4, E => 2, C => 3,
+  --> 423
+    Equality => True)
+  = False
+
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 1, E => 4, C => 3,
+  --> 143
+    Equality => False)
+  = True
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 1, E => 4, C => 3,
+  --> 143
+    Equality => True)
+  = False
+
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 1, E => 2, C => 4,
+  --> 124
+    Equality => False)
+  = True
+Foo(
+    A => 1, B => 2, C => 3,
+  --> 123
+    D => 1, E => 2, C => 4,
+  --> 124
+    Equality => True)
+  = False
+

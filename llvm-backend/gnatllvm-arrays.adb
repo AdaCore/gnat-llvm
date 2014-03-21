@@ -122,26 +122,24 @@ package body GNATLLVM.Arrays is
    ----------------
 
    function Array_Size
-     (Env : Environ; Array_Type : Entity_Id;
+     (Env                        : Environ;
+      Array_Descr                : Value_T;
+      Array_Type                 : Entity_Id;
       Containing_Record_Instance : Value_T := No_Value_T) return Value_T
    is
-      CT       : constant Entity_Id := Component_Type (Array_Type);
-
-      Size     : Value_T := No_Value_T;
-      Cur_Size : Value_T;
-      DSD      : Node_Id := First_Index (Array_Type);
-      Dim      : Node_Id;
-      T        : constant Type_T := Int_Ptr_Type;
-      --  An array can be as big as the memory space, so use the appropriate
-      --  type.
-
       function Emit_Bound (N : Node_Id) return Value_T;
-      function Emit_Bound (N : Node_Id) return Value_T is
+      --  Emit code to compute N as an array bound of a constrained arary,
+      --  handling bounds that come from record discriminants.
 
+      ----------------
+      -- Emit_Bound --
+      ----------------
+
+      function Emit_Bound (N : Node_Id) return Value_T is
       begin
          if Size_Depends_On_Discriminant (Array_Type)
            and then Nkind (N) = N_Identifier
-           --  The component is indeed a discriminant
+         --  The component is indeed a discriminant
            and then Nkind (Parent (Entity (N))) = N_Discriminant_Specification
          then
             return Env.Bld.Load
@@ -153,43 +151,57 @@ package body GNATLLVM.Arrays is
             return Emit_Expression (Env, N);
          end if;
       end Emit_Bound;
+
+      Constrained : constant Boolean := Is_Constrained (Array_Type);
+
+      Size        : Value_T := No_Value_T;
+      Size_Type   : constant Type_T := Int_Ptr_Type;
+      --  Type for the result. An array can be as big as the memory space, so
+      --  use a type as large as pointers.
+
+      DSD         : Node_Id := First_Index (Array_Type);
+      Dim         : Node_Id;
+      Dim_Index   : Natural;
+      Dim_Length  : Value_T;
+
+      --  Start of processing for Array_Size
+
    begin
+      Size := Const_Int (Size_Type, 1, Sign_Extend => False);
 
       --  Go through every array dimension
 
+      Dim_Index := 1;
       while Present (DSD) loop
 
-         --  Compute the size of the dimension from the range bounds
+         --  Compute the length of the dimension from the range bounds
+
          Dim := Get_Dim_Range (DSD);
-         Cur_Size := Bounds_To_Length
+         Dim_Length := Bounds_To_Length
            (Env         => Env,
-            Low_Bound   => Emit_Bound (Low_Bound (Dim)),
-            High_Bound  => Emit_Bound (High_Bound (Dim)),
+            Low_Bound   =>
+              (if Constrained
+               then Emit_Bound (Low_Bound (Dim))
+               else Array_Bound
+                 (Env, Array_Descr, Array_Type, Low, Dim_Index)),
+            High_Bound  =>
+              (if Constrained
+               then Emit_Bound (High_Bound (Dim))
+               else Array_Bound
+                 (Env, Array_Descr, Array_Type, High, Dim_Index)),
             Bounds_Type => Etype (Low_Bound (Dim)));
-         Cur_Size := Env.Bld.Z_Ext (Cur_Size, T, "array-size");
+         Dim_Length :=
+           Env.Bld.Z_Ext (Dim_Length, Size_Type, "array-dim-length");
 
          --  Accumulate the product of the sizes
-         --  If it's the first dimension, initialize our result with it
-         --  Else, multiply our result by it
 
-         if Size = No_Value_T then
-            Size := Cur_Size;
-         else
-            Size := Env.Bld.Mul (Size, Cur_Size, "");
-         end if;
+         Size := Env.Bld.Mul (Size, Dim_Length, "");
 
          DSD := Next (DSD);
+         Dim_Index := Dim_Index + 1;
       end loop;
 
-      --  If the component of the array is itself an array, then recursively
-      --  compute the size of the component and return the product
-
-      if Is_Array_Type (CT) then
-         return Env.Bld.Mul (Size, Array_Size (Env, CT), "");
-      else
-         return Size;
-      end if;
-
+      return Size;
    end Array_Size;
 
    ----------------

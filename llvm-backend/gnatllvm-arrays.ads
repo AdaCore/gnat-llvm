@@ -19,8 +19,15 @@ package GNATLLVM.Arrays is
    --  Array_Node if it is unconstrained.
 
    function Array_Size
-     (Env : Environ; Array_Type : Entity_Id;
+     (Env                        : Environ;
+      Array_Descr                : Value_T;
+      Array_Type                 : Entity_Id;
       Containing_Record_Instance : Value_T := No_Value_T) return Value_T;
+   --  Return the number of elements contained in an Array_Type object as an
+   --  integer as large as a pointer for the target architecture. If it is an
+   --  unconstrained array, Array_Node must be an expression that evaluates
+   --  to the array. If Array_Node is constrained by record discriminants,
+   --  use Containing_Record_Instance to get its bounds.
 
    function Array_Bound
      (Env         : Environ;

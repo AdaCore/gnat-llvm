@@ -26,6 +26,10 @@ package body GNATLLVM.Compile is
 
    pragma Annotate (Xcov, Exempt_On, "Defensive programming");
 
+   function Get_Type_Size
+     (Env : Environ;
+      T   : Type_T) return Value_T;
+   --  Return the size of an LLVM type, in bytes
    function Record_Field_Offset
      (Env : Environ;
       Record_Ptr : Value_T;
@@ -52,7 +56,7 @@ package body GNATLLVM.Compile is
      (Env          : Environ;
       Operation    : Pred_Mapping;
       Operand_Type : Entity_Id;
-      LHS, RHS     : Value_T) return Value_T;
+      LHS, RHS     : Node_Id) return Value_T;
    --  Helper for Emit_Expression: handle comparison operations
 
    function Emit_If
@@ -88,13 +92,16 @@ package body GNATLLVM.Compile is
    --  the environment and return it.
 
    function Emit_Type_Size
-     (Env : Environ; T : Entity_Id;
+     (Env                   : Environ;
+      T                     : Entity_Id;
+      Array_Descr           : Value_T;
       Containing_Record_Ptr : Value_T) return Value_T;
    --  Helper for Emit/Emit_Expression: emit code to compute the size of type
    --  T, getting information from Containing_Record_Ptr for types that are
    --  constrained by a discriminant record (in such case, this parameter
-   --  should be a pointer to the corresponding record). Return the computed
-   --  size as value.
+   --  should be a pointer to the corresponding record). If T is an
+   --  unconstrained array, Array_Descr must be the corresponding fat
+   --  pointer. Return the computed size as value.
 
    function Create_Callback_Wrapper
      (Env : Environ; Subp : Entity_Id) return Value_T;
@@ -122,30 +129,46 @@ package body GNATLLVM.Compile is
 
    pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
+   -------------------
+   -- Get_Type_Size --
+   -------------------
+
+   function Get_Type_Size
+     (Env : Environ;
+      T   : Type_T) return Value_T
+   is
+      T_Data : constant Target_Data_T :=
+        Create_Target_Data (Get_Target (Env.Mdl));
+   begin
+      return Const_Int
+        (Int_Ptr_Type,
+         Size_Of_Type_In_Bits (T_Data, T) / 8,
+         Sign_Extend => False);
+   end Get_Type_Size;
+
    --------------------
    -- Emit_Type_Size --
    --------------------
 
    function Emit_Type_Size
-     (Env : Environ; T : Entity_Id;
+     (Env                   : Environ;
+      T                     : Entity_Id;
+      Array_Descr           : Value_T;
       Containing_Record_Ptr : Value_T) return Value_T
    is
       LLVM_Type : constant Type_T := Create_Type (Env, T);
-      T_Data : constant Target_Data_T :=
-        Create_Target_Data (Get_Target (Env.Mdl));
-
-      function Size_Of (T : Type_T) return Value_T is
-        (Const_Int (Int_Ptr_Type, Size_Of_Type_In_Bits (T_Data, T) / 8, True));
-
    begin
       if Is_Scalar_Type (T)
         or else Is_Access_Type (T)
       then
-         return Size_Of (LLVM_Type);
+         return Get_Type_Size (Env, LLVM_Type);
       elsif Is_Array_Type (T) then
          return Env.Bld.Mul
-           (Emit_Type_Size (Env, Component_Type (T), Containing_Record_Ptr),
-            Array_Size (Env, T, Containing_Record_Ptr), "offset-calc");
+           (Emit_Type_Size
+              (Env, Component_Type (T), No_Value_T, Containing_Record_Ptr),
+            Array_Size
+              (Env, Array_Descr, T, Containing_Record_Ptr),
+            "array-size");
       else
          raise Constraint_Error with "Unimplemented case for emit type size";
       end if;
@@ -178,7 +201,10 @@ package body GNATLLVM.Compile is
                Int_Struct_Address := Env.Bld.Add
                  (Int_Struct_Address,
                   Emit_Type_Size
-                    (Env, Etype (Preceding_Field.Entity), Record_Ptr),
+                    (Env,
+                     Etype (Preceding_Field.Entity),
+                     No_Value_T,
+                     Record_Ptr),
                   "offset-calc");
             end loop;
 
@@ -504,7 +530,8 @@ package body GNATLLVM.Compile is
                   LLVM_Var := Env.Bld.Bit_Cast
                      (Env.Bld.Array_Alloca
                         (Get_Innermost_Component_Type (Env, T),
-                         Array_Size (Env, T), "array-alloca"),
+                         Array_Size (Env, No_Value_T, T),
+                         "array-alloca"),
                      LLVM_Type,
                      Get_Name (Def_Ident));
                else
@@ -1128,6 +1155,18 @@ package body GNATLLVM.Compile is
 
    begin
       if Is_Binary_Operator (Node) then
+         case Nkind (Node) is
+            when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
+               return Emit_Comparison
+                 (Env,
+                  Get_Preds (Node),
+                  Get_Fullest_View (Etype (Left_Opnd (Node))),
+                  Left_Opnd (Node), Right_Opnd (Node));
+
+            when others =>
+               null;
+         end case;
+
          declare
             LVal : constant Value_T :=
               Emit_Expr (Left_Opnd (Node));
@@ -1171,13 +1210,6 @@ package body GNATLLVM.Compile is
                  (if Is_Unsigned_Type (Etype (Left_Opnd (Node)))
                   then Env.Bld.U_Rem (LVal, RVal, "urem")
                   else Env.Bld.S_Rem (LVal, RVal, "srem"));
-
-            when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
-               return Emit_Comparison
-                 (Env,
-                  Get_Preds (Node),
-                  Get_Fullest_View (Etype (Left_Opnd (Node))),
-                  LVal, RVal);
 
             when N_Op_And =>
                Op := Env.Bld.Build_And (LVal, RVal, "and");
@@ -1986,7 +2018,7 @@ package body GNATLLVM.Compile is
      (Env          : Environ;
       Operation    : Pred_Mapping;
       Operand_Type : Entity_Id;
-      LHS, RHS     : Value_T) return Value_T
+      LHS, RHS     : Node_Id) return Value_T
    is
    begin
       --  LLVM treats pointers as integers regarding comparison
@@ -1998,11 +2030,16 @@ package body GNATLLVM.Compile is
            ((if Is_Unsigned_Type (Operand_Type)
             then Operation.Unsigned
             else Operation.Signed),
-            LHS, RHS,
+            Emit_Expression (Env, LHS),
+            Emit_Expression (Env, RHS),
             "icmp");
 
       elsif Is_Floating_Point_Type (Operand_Type) then
-         return Env.Bld.F_Cmp (Operation.Real, LHS, RHS, "fcmp");
+         return Env.Bld.F_Cmp
+           (Operation.Real,
+            Emit_Expression (Env, LHS),
+            Emit_Expression (Env, RHS),
+            "fcmp");
 
       elsif Is_Record_Type (Operand_Type) then
          pragma Annotate (Xcov, Exempt_On, "Defensive programming");
@@ -2014,9 +2051,112 @@ package body GNATLLVM.Compile is
       elsif Is_Array_Type (Operand_Type) then
          pragma Assert (Operation.Signed in Int_EQ | Int_NE);
 
-         --  ??? Handle array comparison
+         --  ??? Handle multi-dimensional arrays
 
-         raise Program_Error;
+         declare
+            --  Because of runtime length checks, the comparison is made as
+            --  follows:
+            --     L_Length <- LHS'Length
+            --     R_Length <- RHS'Length
+            --     if L_Length /= R_Length then
+            --        return False;
+            --     elsif L_Length = 0 then
+            --        return True;
+            --     else
+            --        return memory comparison;
+            --     end if;
+            --  We are generating LLVM IR (SSA form), so the return mechanism
+            --  is implemented with control-flow and PHI nodes.
+
+            Bool_Type    : constant Type_T := Int_Ty (1);
+            False_Val    : constant Value_T := Const_Int (Bool_Type, 0, False);
+            True_Val     : constant Value_T := Const_Int (Bool_Type, 1, False);
+
+            LHS_Descr    : constant Value_T := Emit_LValue (Env, LHS);
+            LHS_Type     : constant Entity_Id := Etype (LHS);
+            RHS_Descr    : constant Value_T := Emit_LValue (Env, RHS);
+            RHS_Type     : constant Entity_Id := Etype (RHS);
+
+            Left_Length  : constant Value_T :=
+              Array_Length (Env, LHS_Descr, LHS_Type);
+            Right_Length : constant Value_T :=
+              Array_Length (Env, RHS_Descr, RHS_Type);
+            Null_Length  : constant Value_T :=
+              Const_Null (Type_Of (Left_Length));
+            Same_Length  : constant Value_T := Env.Bld.I_Cmp
+              (Int_NE, Left_Length, Right_Length, "test-same-length");
+
+            Basic_Blocks : constant Basic_Block_Array (1 .. 3) :=
+              (Env.Bld.Get_Insert_Block,
+               Create_Basic_Block (Env, "when-null-length"),
+               Create_Basic_Block (Env, "when-same-length"));
+            Results      : Value_Array (1 .. 3);
+            BB_Merge     : constant Basic_Block_T :=
+              Create_Basic_Block (Env, "array-cmp-merge");
+            Phi          : Value_T;
+
+         begin
+            Discard (Env.Bld.Cond_Br
+                     (C_If   => Same_Length,
+                      C_Then => BB_Merge,
+                      C_Else => Basic_Blocks (2)));
+            Results (1) := False_Val;
+
+            --  If we jump from here to BB_Merge, we are returning False
+
+            Env.Bld.Position_At_End (Basic_Blocks (2));
+            Discard (Env.Bld.Cond_Br
+                     (C_If   => Env.Bld.I_Cmp
+                      (Int_EQ, Left_Length, Null_Length, "test-null-length"),
+                      C_Then => BB_Merge,
+                      C_Else => Basic_Blocks (3)));
+            Results (2) := True_Val;
+
+            --  If we jump from here to BB_Merge, we are returning True
+
+            Env.Bld.Position_At_End (Basic_Blocks (3));
+            declare
+               Left        : constant Value_T :=
+                 Array_Data (Env, LHS_Descr, LHS_Type);
+               Right       : constant Value_T :=
+                 Array_Data (Env, RHS_Descr, RHS_Type);
+
+               Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+               Size_Type     : constant Type_T := Int_Ty (64);
+               Size          : constant Value_T :=
+                 Env.Bld.Mul
+                   (Env.Bld.Z_Ext (Left_Length, Size_Type, ""),
+                    Get_Type_Size
+                      (Env, Create_Type (Env, Component_Type (Etype (LHS)))),
+                    "byte-size");
+
+               Memcmp_Args : constant Value_Array (1 .. 3) :=
+                 (Env.Bld.Bit_Cast (Left, Void_Ptr_Type, ""),
+                  Env.Bld.Bit_Cast (Right, Void_Ptr_Type, ""),
+                  Size);
+               Memcmp      : constant Value_T := Env.Bld.Call
+                 (Env.Memory_Cmp_Fn,
+                  Memcmp_Args'Address, Memcmp_Args'Length,
+                  "");
+            begin
+               --  The two arrays are equal iff. the call to memcmp returned 0
+
+               Results (3) := Env.Bld.I_Cmp
+                 (Operation.Signed,
+                  Memcmp,
+                  Const_Null (Type_Of (Memcmp)),
+                  "array-comparison");
+            end;
+            Discard (Env.Bld.Br (BB_Merge));
+
+            --  If we jump from here to BB_Merge, we are returning the result
+            --  of the memory comparison.
+
+            Env.Bld.Position_At_End (BB_Merge);
+            Phi := Env.Bld.Phi (Bool_Type, "");
+            Add_Incoming (Phi, Results'Address, Basic_Blocks'Address, 3);
+            return Phi;
+         end;
 
       else
          pragma Annotate (Xcov, Exempt_On, "Defensive programming");

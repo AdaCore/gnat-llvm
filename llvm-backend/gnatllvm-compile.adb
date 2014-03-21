@@ -104,7 +104,6 @@ package body GNATLLVM.Compile is
    --  Exprs must be a list of two scalar expressions with compatible types.
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
-   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
    function Emit_Attribute_Expression
      (Env  : Environ;
@@ -125,6 +124,7 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (Node) in N_If_Statement | N_If_Expression;
    --  Helper for Emit and Emit_Expression: handle if statements and if
    --  expressions.
+   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
    function Emit_Shift
      (Env       : Environ;
@@ -2146,9 +2146,11 @@ package body GNATLLVM.Compile is
          return Env.Bld.F_Cmp (Operation.Real, LHS, RHS, "fcmp");
 
       elsif Is_Record_Type (Operand_Type) then
+         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise Program_Error
-           with "The frontend is supposed to already handle record"
+           with "The front-end is supposed to already handle record"
            & " comparisons.";
+         pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
       elsif Is_Array_Type (Operand_Type) then
          pragma Assert (Operation.Signed in Int_EQ | Int_NE);
@@ -2158,9 +2160,11 @@ package body GNATLLVM.Compile is
          raise Program_Error;
 
       else
+         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise Program_Error
            with "Invalid operand type for comparison:"
            & Entity_Kind'Image (Ekind (Operand_Type));
+         pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
       end if;
    end Emit_Comparison;
 

@@ -1,0 +1,6 @@
+Foo (-1, False) = 1
+Foo (0, False) = 0
+Foo (1, False) = -1
+Foo (-1, True) = -1
+Foo (0, True) = 0
+Foo (1, True) = 1

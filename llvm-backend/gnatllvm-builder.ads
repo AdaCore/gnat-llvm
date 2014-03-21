@@ -4,6 +4,7 @@ with Types; use Types;
 package GNATLLVM.Builder is
 
    type Value_Array is array (Nat range <>) of Value_T;
+   type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
 
    type Builder is new LLVM.Core.Base_Builder_T with null record;
 

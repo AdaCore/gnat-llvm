@@ -119,6 +119,13 @@ package body GNATLLVM.Compile is
       LHS, RHS     : Value_T) return Value_T;
    --  Helper for Emit_Expression: handle comparison operations
 
+   function Emit_If
+     (Env  : Environ;
+      Node : Node_Id) return Value_T
+     with Pre => Nkind (Node) in N_If_Statement | N_If_Expression;
+   --  Helper for Emit and Emit_Expression: handle if statements and if
+   --  expressions.
+
    -----------------
    -- Array_Bound --
    -----------------
@@ -773,32 +780,7 @@ package body GNATLLVM.Compile is
               (Env.Create_Basic_Block ("unreachable"));
 
          when N_If_Statement =>
-            declare
-               BB_Then, BB_Else, BB_Next : Basic_Block_T;
-               Cond                      : constant Value_T :=
-                 Emit_Expression (Env, Condition (Node));
-            begin
-               BB_Next := Create_Basic_Block (Env, "if-next");
-               BB_Then := Create_Basic_Block (Env, "if-then");
-               BB_Else :=
-                 (if not Is_Empty_List (Else_Statements (Node))
-                  then Create_Basic_Block (Env, "if-else")
-                  else BB_Next);
-
-               Discard (Env.Bld.Cond_Br (Cond, BB_Then, BB_Else));
-
-               Env.Bld.Position_At_End (BB_Then);
-               Emit_List (Env, Then_Statements (Node));
-               Discard (Env.Bld.Br (BB_Next));
-
-               if not Is_Empty_List (Else_Statements (Node)) then
-                  Env.Bld.Position_At_End (BB_Else);
-                  Emit_List (Env, Else_Statements (Node));
-                  Discard (Env.Bld.Br (BB_Next));
-               end if;
-
-               Env.Bld.Position_At_End (BB_Next);
-            end;
+            Discard (Emit_If (Env, Node));
 
          when N_Loop_Statement =>
             declare
@@ -1577,6 +1559,9 @@ package body GNATLLVM.Compile is
                return Result;
             end;
 
+         when N_If_Expression =>
+            return Emit_If (Env, Node);
+
          when N_Null =>
             return Const_Null (Create_Type (Env, Etype (Node)));
 
@@ -2152,5 +2137,100 @@ package body GNATLLVM.Compile is
            & Entity_Kind'Image (Ekind (Operand_Type));
       end if;
    end Emit_Comparison;
+
+   -------------
+   -- Emit_If --
+   -------------
+
+   function Emit_If
+     (Env  : Environ;
+      Node : Node_Id) return Value_T
+   is
+      Is_Stmt : constant Boolean := Nkind (Node) = N_If_Statement;
+      --  Depending on the node to translate, we will have to compute and
+      --  return an expression.
+
+      GNAT_Cond : constant Node_Id :=
+        (if Is_Stmt
+         then Condition (Node)
+         else Pick (Expressions (Node), 1));
+      Cond      : constant Value_T := Emit_Expression (Env, GNAT_Cond);
+
+      BB_Then, BB_Else, BB_Next : Basic_Block_T;
+      --  BB_Then is the basic block we jump to if the condition is true.
+      --  BB_Else is the basic block we jump to if the condition is false.
+      --  BB_Next is the BB we jump to after the IF is executed.
+
+      Then_Value, Else_Value : Value_T;
+
+   begin
+      BB_Next := Create_Basic_Block (Env, "if-next");
+      BB_Then := Create_Basic_Block (Env, "if-then");
+
+      --  If this is an IF statement without ELSE part, then we jump to the
+      --  BB_Next when the condition is false. Thus, BB_Else and BB_Next
+      --  should be the same in this case.
+
+      BB_Else :=
+        (if not Is_Stmt or else not Is_Empty_List (Else_Statements (Node))
+         then Create_Basic_Block (Env, "if-else")
+         else BB_Next);
+
+      Discard (Env.Bld.Cond_Br (Cond, BB_Then, BB_Else));
+
+      --  Emit code for the THEN part
+
+      Env.Bld.Position_At_End (BB_Then);
+      if Is_Stmt then
+         Emit_List (Env, Then_Statements (Node));
+      else
+         Then_Value := Emit_Expression (Env, Pick (Expressions (Node), 2));
+
+         --  The THEN part may be composed of multiple basic blocks. We want
+         --  to get the one that jumps to the merge point to get the PHI node
+         --  predecessor.
+
+         BB_Then := Env.Bld.Get_Insert_Block;
+      end if;
+      Discard (Env.Bld.Br (BB_Next));
+
+      --  Emit code for the ELSE part
+
+      Env.Bld.Position_At_End (BB_Else);
+      if not Is_Stmt then
+         Else_Value := Emit_Expression (Env, Pick (Expressions (Node), 3));
+         Discard (Env.Bld.Br (BB_Next));
+
+         --  We want to get the basic blocks that jumps to the merge point: see
+         --  above.
+
+         BB_Else := Env.Bld.Get_Insert_Block;
+
+      elsif not Is_Empty_List (Else_Statements (Node)) then
+         Emit_List (Env, Else_Statements (Node));
+         Discard (Env.Bld.Br (BB_Next));
+      end if;
+
+      --  Then prepare the instruction builder for the next
+      --  statements/expressions and return an merged expression if needed.
+
+      Env.Bld.Position_At_End (BB_Next);
+      if Is_Stmt then
+         return No_Value_T;
+
+      else
+         declare
+            Values : constant Value_Array (1 .. 2) :=
+              (Then_Value, Else_Value);
+            BBs    : constant Basic_Block_Array (1 .. 2) :=
+              (BB_Then, BB_Else);
+            Phi    : constant Value_T :=
+              Env.Bld.Phi (Type_Of (Then_Value), "");
+         begin
+            Add_Incoming (Phi, Values'Address, BBs'Address, 2);
+            return Phi;
+         end;
+      end if;
+   end Emit_If;
 
 end GNATLLVM.Compile;

@@ -129,15 +129,12 @@ package GNATLLVM.Utils is
 
    function LLVM_Type_Of (V : Value_T) return Type_T
    is (Type_Of (V));
-   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
    function LLVM_Count_Param_Types (T : Type_T) return Nat
    is (Nat (Count_Param_Types (T)));
-   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
    function LLVM_Get_El_Type (T : Type_T) return Type_T
    is (Get_Element_Type (T));
-   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
    function LLVM_Size_Of (T_Data : Target_Data_T; Ty : Type_T) return Nat
    is (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));

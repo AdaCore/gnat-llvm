@@ -1307,6 +1307,12 @@ package body GNATLLVM.Compile is
                   end if;
                end;
 
+            when N_Op_Rem =>
+               Op :=
+                 (if Is_Unsigned_Type (Etype (Left_Opnd (Node)))
+                  then Env.Bld.U_Rem (LVal, RVal, "urem")
+                  else Env.Bld.S_Rem (LVal, RVal, "srem"));
+
             when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
                return Emit_Comparison
                  (Env,

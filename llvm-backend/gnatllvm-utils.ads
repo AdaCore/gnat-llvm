@@ -43,6 +43,11 @@ package GNATLLVM.Utils is
      (Const_Int (T, unsigned_long_long (UI_To_Int (Value)), Sign_Extend));
    --  Return an LLVM value corresponding to the universal int Value
 
+   function Const_Ones (T : Type_T) return Value_T
+   is
+     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True));
+   --  Return an LLVM value for the given type where all bits are set
+
    Intptr_T : constant Type_T :=
      Int_Type (Interfaces.C.unsigned (Get_Targ.Get_Pointer_Size));
    --  Return a LLVM integer type that is as big as pointers

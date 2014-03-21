@@ -15,6 +15,7 @@ with Osint.C;  use Osint.C;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 
+with Get_Targ;
 with GNATLLVM.Builder;      use GNATLLVM.Builder;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
@@ -50,11 +51,25 @@ package body LLVM_Drive is
 
       Compute_Static_Link_Descriptors (GNAT_Root, Env.S_Links);
 
-      --  Add malloc function to the env
+      declare
+         Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+         Size_Type     : constant Type_T := Int_Ty (64);
+         C_Int_Type    : constant Type_T :=
+           Int_Ty (Integer (Get_Targ.Get_Int_Size));
 
-      Env.Default_Alloc_Fn := Add_Function
-        (Env.Mdl, "malloc",
-         Fn_Ty ((1 => Int_Ty (64)), Pointer_Type (Int_Ty (8), 0)));
+      begin
+         --  Add malloc function to the env
+
+         Env.Default_Alloc_Fn := Add_Function
+           (Env.Mdl, "malloc",
+            Fn_Ty ((1 => Size_Type), Void_Ptr_Type));
+
+         --  Likewise for memcmp
+
+         Env.Memory_Cmp_Fn := Add_Function
+           (Env.Mdl, "memcmp",
+            Fn_Ty ((Void_Ptr_Type, Void_Ptr_Type, Size_Type), C_Int_Type));
+      end;
 
       Env.Push_Scope;
       Register_Builtin_Types (Env);

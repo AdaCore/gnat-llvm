@@ -127,7 +127,7 @@ package body GNATLLVM.Compile is
      (Env          : Environ;
       Operation    : Pred_Mapping;
       Operand_Type : Entity_Id;
-      LHS, RHS     : Value_T) return Value_T;
+      LHS, RHS     : Node_Id) return Value_T;
    --  Helper for Emit_Expression: handle comparison operations
 
    function Emit_If
@@ -1335,6 +1335,18 @@ package body GNATLLVM.Compile is
 
    begin
       if Is_Binary_Operator (Node) then
+         case Nkind (Node) is
+            when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
+               return Emit_Comparison
+                 (Env,
+                  Get_Preds (Node),
+                  Get_Fullest_View (Etype (Left_Opnd (Node))),
+                  Left_Opnd (Node), Right_Opnd (Node));
+
+            when others =>
+               null;
+         end case;
+
          declare
             LVal : constant Value_T :=
               Emit_Expr (Left_Opnd (Node));
@@ -1378,13 +1390,6 @@ package body GNATLLVM.Compile is
                  (if Is_Unsigned_Type (Etype (Left_Opnd (Node)))
                   then Env.Bld.U_Rem (LVal, RVal, "urem")
                   else Env.Bld.S_Rem (LVal, RVal, "srem"));
-
-            when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
-               return Emit_Comparison
-                 (Env,
-                  Get_Preds (Node),
-                  Get_Fullest_View (Etype (Left_Opnd (Node))),
-                  LVal, RVal);
 
             when N_Op_And =>
                Op := Env.Bld.Build_And (LVal, RVal, "and");
@@ -2193,7 +2198,7 @@ package body GNATLLVM.Compile is
      (Env          : Environ;
       Operation    : Pred_Mapping;
       Operand_Type : Entity_Id;
-      LHS, RHS     : Value_T) return Value_T
+      LHS, RHS     : Node_Id) return Value_T
    is
    begin
       --  LLVM treats pointers as integers regarding comparison
@@ -2205,11 +2210,16 @@ package body GNATLLVM.Compile is
            ((if Is_Unsigned_Type (Operand_Type)
             then Operation.Unsigned
             else Operation.Signed),
-            LHS, RHS,
+            Emit_Expression (Env, LHS),
+            Emit_Expression (Env, RHS),
             "icmp");
 
       elsif Is_Floating_Point_Type (Operand_Type) then
-         return Env.Bld.F_Cmp (Operation.Real, LHS, RHS, "fcmp");
+         return Env.Bld.F_Cmp
+           (Operation.Real,
+            Emit_Expression (Env, LHS),
+            Emit_Expression (Env, RHS),
+            "fcmp");
 
       elsif Is_Record_Type (Operand_Type) then
          pragma Annotate (Xcov, Exempt_On, "Defensive programming");
@@ -2221,9 +2231,95 @@ package body GNATLLVM.Compile is
       elsif Is_Array_Type (Operand_Type) then
          pragma Assert (Operation.Signed in Int_EQ | Int_NE);
 
-         --  ??? Handle array comparison
+         declare
+            --  Because of runtime length checks, the comparison is made as
+            --  follows:
+            --     L_Length <- LHS'Length
+            --     R_Length <- RHS'Length
+            --     if L_Length /= R_Length then
+            --        return False;
+            --     elsif L_Length = 0 then
+            --        return True;
+            --     else
+            --        return memory comparison;
+            --     end if;
+            --  We are generating LLVM IR (SSA form), so the return mechanism
+            --  is implemented with control-flow and PHI nodes.
 
-         raise Program_Error;
+            Bool_Type    : constant Type_T := Int_Ty (1);
+            False_Val    : constant Value_T := Const_Int (Bool_Type, 0, False);
+            True_Val     : constant Value_T := Const_Int (Bool_Type, 1, False);
+
+            Left_Length  : constant Value_T := Array_Length (Env, LHS);
+            Right_Length : constant Value_T := Array_Length (Env, RHS);
+            Null_Length  : constant Value_T :=
+              Const_Null (Type_Of (Left_Length));
+            Same_Length  : constant Value_T := Env.Bld.I_Cmp
+              (Int_NE, Left_Length, Right_Length, "test-same-length");
+
+            Basic_Blocks : constant Basic_Block_Array (1 .. 3) :=
+              (Env.Bld.Get_Insert_Block,
+               Create_Basic_Block (Env, "when-null-length"),
+               Create_Basic_Block (Env, "when-same-length"));
+            Results      : Value_Array (1 .. 3);
+            BB_Merge     : constant Basic_Block_T :=
+              Create_Basic_Block (Env, "array-cmp-merge");
+            Phi          : Value_T;
+
+         begin
+            Discard (Env.Bld.Cond_Br
+                     (C_If   => Same_Length,
+                      C_Then => BB_Merge,
+                      C_Else => Basic_Blocks (2)));
+            Results (1) := False_Val;
+
+            --  If we jump from here to BB_Merge, we are returning False
+
+            Env.Bld.Position_At_End (Basic_Blocks (2));
+            Discard (Env.Bld.Cond_Br
+                     (C_If   => Env.Bld.I_Cmp
+                      (Int_EQ, Left_Length, Null_Length, "test-null-length"),
+                      C_Then => BB_Merge,
+                      C_Else => Basic_Blocks (3)));
+            Results (2) := True_Val;
+
+            --  If we jump from here to BB_Merge, we are returning True
+
+            Env.Bld.Position_At_End (Basic_Blocks (3));
+            declare
+               Left        : constant Value_T := Emit_LValue (Env, LHS);
+               Right       : constant Value_T := Emit_LValue (Env, RHS);
+
+               Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+               Size_Type     : constant Type_T := Int_Ty (64);
+               Memcmp_Args : constant Value_Array (1 .. 3) :=
+                 (Env.Bld.Bit_Cast (Left, Void_Ptr_Type, ""),
+                  Env.Bld.Bit_Cast (Right, Void_Ptr_Type, ""),
+                  Env.Bld.Z_Ext
+                    (Array_Size (Env, Etype (LHS)), Size_Type, ""));
+               Memcmp      : constant Value_T := Env.Bld.Call
+                 (Env.Memory_Cmp_Fn,
+                  Memcmp_Args'Address, Memcmp_Args'Length,
+                  "");
+            begin
+               --  The two arrays are equal iff. the call to memcmp returned 0
+
+               Results (3) := Env.Bld.I_Cmp
+                 (Operation.Signed,
+                  Memcmp,
+                  Const_Null (Type_Of (Memcmp)),
+                  "array-comparison");
+            end;
+            Discard (Env.Bld.Br (BB_Merge));
+
+            --  If we jump from here to BB_Merge, we are returning the result
+            --  of the memory comparison.
+
+            Env.Bld.Position_At_End (BB_Merge);
+            Phi := Env.Bld.Phi (Bool_Type, "");
+            Add_Incoming (Phi, Results'Address, Basic_Blocks'Address, 3);
+            return Phi;
+         end;
 
       else
          pragma Annotate (Xcov, Exempt_On, "Defensive programming");

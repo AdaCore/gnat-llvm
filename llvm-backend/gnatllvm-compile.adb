@@ -126,6 +126,12 @@ package body GNATLLVM.Compile is
    --  Helper for Emit and Emit_Expression: handle if statements and if
    --  expressions.
 
+   function Emit_Shift
+     (Env       : Environ;
+      Operation : Node_Kind;
+      LHS, RHS  : Value_T) return Value_T;
+   --  Helper for Emit_Expression: handle shift and rotate operations
+
    -----------------
    -- Array_Bound --
    -----------------
@@ -1320,6 +1326,20 @@ package body GNATLLVM.Compile is
                   Get_Fullest_View (Etype (Left_Opnd (Node))),
                   LVal, RVal);
 
+            when N_Op_And =>
+               Op := Env.Bld.Build_And (LVal, RVal, "and");
+
+            when N_Op_Or =>
+                  Op := Env.Bld.Build_Or (LVal, RVal, "or");
+
+            when N_Op_Xor =>
+               Op := Env.Bld.Build_Xor (LVal, RVal, "xor");
+
+            when N_Op_Shift_Left | N_Op_Shift_Right
+               | N_Op_Shift_Right_Arithmetic
+               | N_Op_Rotate_Left | N_Op_Rotate_Right =>
+               return Emit_Shift (Env, Nkind (Node), LVal, RVal);
+
             when others =>
                pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                raise Program_Error
@@ -2238,5 +2258,132 @@ package body GNATLLVM.Compile is
          end;
       end if;
    end Emit_If;
+
+   ----------------
+   -- Emit_Shift --
+   ----------------
+
+   function Emit_Shift
+     (Env       : Environ;
+      Operation : Node_Kind;
+      LHS, RHS  : Value_T) return Value_T
+   is
+      To_Left, Rotate, Arithmetic : Boolean := False;
+
+      Result   : Value_T := LHS;
+      LHS_Type : constant Type_T := Type_Of (LHS);
+      N        : Value_T := Env.Bld.S_Ext (RHS, LHS_Type, "bits");
+      LHS_Bits : constant Value_T := Const_Int
+        (LHS_Type,
+         unsigned_long_long (Get_Int_Type_Width (LHS_Type)),
+         Sign_Extend => False);
+
+      Saturated  : Value_T;
+
+   begin
+      --  Extract properties for the operation we are asked to generate code
+      --  for.
+
+      case Operation is
+         when N_Op_Shift_Left =>
+            To_Left := True;
+         when N_Op_Shift_Right =>
+            null;
+         when N_Op_Shift_Right_Arithmetic =>
+            Arithmetic := True;
+         when N_Op_Rotate_Left =>
+            To_Left := True;
+            Rotate := True;
+         when N_Op_Rotate_Right =>
+            Rotate := True;
+         when others =>
+            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+            raise Program_Error
+              with "Invalid shift/rotate operation: "
+              & Node_Kind'Image (Operation);
+            pragma Annotate (Xcov, Exempt_Off);
+      end case;
+
+      if Rotate then
+
+         --  While LLVM instructions will return an undefined value for
+         --  rotations with too many bits, we must handle "multiple turns",
+         --  so first get the number of bit to rotate modulo the size of the
+         --  operand.
+
+         --  Note that the front-end seems to already compute the modulo, but
+         --  just in case...
+
+         N := Env.Bld.U_Rem (N, LHS_Bits, "effective-rotating-bits");
+
+         declare
+            --  There is no "rotate" instruction in LLVM, so we have to stick
+            --  to shift instructions, just like in C. If we consider that we
+            --  are rotating to the left:
+
+            --     Result := (Operand << Bits) | (Operand >> (Size - Bits));
+            --               -----------------   --------------------------
+            --                    Upper                   Lower
+
+            --  If we are rotating to the right, we switch the direction of the
+            --  two shifts.
+
+            Lower_Shift : constant Value_T :=
+              Env.Bld.Sub (LHS_Bits, N, "lower-shift");
+            Upper       : constant Value_T :=
+              (if To_Left
+               then Env.Bld.Shl (LHS, N, "rotate-upper")
+               else Env.Bld.L_Shr (LHS, N, "rotate-upper"));
+            Lower       : constant Value_T :=
+              (if To_Left
+               then Env.Bld.L_Shr (LHS, Lower_Shift, "rotate-lower")
+               else Env.Bld.Shl (LHS, Lower_Shift, "rotate-lower"));
+
+         begin
+            return Env.Bld.Build_Or (Upper, Lower, "rotate-result");
+         end;
+
+      else
+         --  If the number of bits shifted is bigger or equal than the number
+         --  of bits in LHS, the underlying LLVM instruction returns an
+         --  undefined value, so build what we want ourselves (we call this
+         --  a "saturated value").
+
+         Saturated :=
+           (if Arithmetic
+
+            --  If we are performing an arithmetic shift, the saturated value
+            --  is 0 if LHS is positive, -1 otherwise (in this context, LHS is
+            --  always interpreted as a signed integer).
+
+            then Env.Bld.Build_Select
+              (C_If   => Env.Bld.I_Cmp
+                   (Int_SLT, LHS, Const_Null (LHS_Type), "is-lhs-negative"),
+               C_Then => Const_Ones (LHS_Type),
+               C_Else => Const_Null (LHS_Type),
+               Name   => "saturated")
+
+            else Const_Null (LHS_Type));
+
+         --  Now, compute the value using the underlying LLVM instruction
+         Result :=
+           (if To_Left
+            then Env.Bld.Shl (LHS, N, "shift-left-raw")
+            else
+              (if Arithmetic
+               then Env.Bld.A_Shr (LHS, N, "lshift-right-raw")
+               else Env.Bld.L_Shr (LHS, N, "ashift-right-raw")));
+
+         --  Now, we must decide at runtime if it is safe to rely on the
+         --  underlying LLVM instruction. If so, use it, otherwise return
+         --  the saturated value.
+
+         return Env.Bld.Build_Select
+           (C_If   => Env.Bld.I_Cmp (Int_UGE, N, LHS_Bits, "is-saturated"),
+            C_Then => Saturated,
+            C_Else => Result,
+            Name   => "shift-rotate-result");
+      end if;
+   end Emit_Shift;
 
 end GNATLLVM.Compile;

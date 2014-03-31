@@ -124,7 +124,6 @@ package GNATLLVM.Environment is
       --  subprogram. Provide actual subprograms for other ones.
 
       Default_Alloc_Fn          : Value_T;
-      Memory_Cmp_Fn             : Value_T;
    end record;
 
    procedure Push_Scope (Env : access Environ_Record);

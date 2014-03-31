@@ -58,9 +58,21 @@ package body GNATLLVM.Compile is
       Subp : Entity_Id) return Value_T;
    --  Build and return the appropriate static link to pass to a call to Subp
 
+   function Bounds_To_Length
+     (Env                   : Environ;
+      Low_Bound, High_Bound : Value_T;
+      Bounds_Type           : Entity_Id) return Value_T;
+   --  Return the length of the Low_Bound .. High_Bound range, handling the
+   --  empty case. Bounds_Type indicates how to interpret the provided bounds
+   --  with respect to signedness.
+
    function Array_Size
      (Env : Environ; Array_Type : Entity_Id;
       Containing_Record_Instance : Value_T := No_Value_T) return Value_T;
+
+   function Array_Length (Env : Environ; Array_Node : Node_Id) return Value_T;
+   --  Emit code to compute the length for the array corresponding to
+   --  Array_Node and return the corresponding value.
 
    function Record_Field_Offset
      (Env : Environ;
@@ -132,6 +144,36 @@ package body GNATLLVM.Compile is
       LHS, RHS  : Value_T) return Value_T;
    --  Helper for Emit_Expression: handle shift and rotate operations
 
+   ----------------------
+   -- Bounds_To_Length --
+   ----------------------
+
+   function Bounds_To_Length
+     (Env                   : Environ;
+      Low_Bound, High_Bound : Value_T;
+      Bounds_Type           : Entity_Id) return Value_T
+   is
+      Result_Type : constant Type_T := Type_Of (Low_Bound);
+
+      Is_Bound_Unsigned  : constant Boolean :=
+        Is_Unsigned_Type (Bounds_Type);
+      Is_Empty         : constant Value_T :=
+        Env.Bld.I_Cmp
+          ((if Is_Bound_Unsigned then Int_UGT else Int_SGT),
+           Low_Bound, High_Bound, "is-array-empty");
+
+   begin
+      return Env.Bld.Build_Select
+        (C_If   => Is_Empty,
+         C_Then => Const_Null (Result_Type),
+         C_Else =>
+           Env.Bld.Add
+             (Env.Bld.Sub (High_Bound, Low_Bound, ""),
+              Const_Int (Result_Type, 1, Sign_Extend => False),
+              ""),
+         Name   => "");
+   end Bounds_To_Length;
+
    -----------------
    -- Array_Bound --
    -----------------
@@ -197,6 +239,26 @@ package body GNATLLVM.Compile is
       end if;
    end Array_Bound;
 
+   ------------------
+   -- Array_Length --
+   ------------------
+
+   function Array_Length (Env : Environ; Array_Node : Node_Id) return Value_T
+   is
+      Array_Type        : constant Entity_Id := Etype (Array_Node);
+      First_Bound_Range : constant Entity_Id := First_Index (Array_Type);
+      Result            : constant Value_T :=
+        Bounds_To_Length
+          (Env => Env,
+           Low_Bound => Array_Bound (Env, Array_Node, Low),
+           High_Bound => Array_Bound (Env, Array_Node, High),
+           Bounds_Type => Etype (First_Bound_Range));
+
+   begin
+      Set_Value_Name (Result, "array-length");
+      return Result;
+   end Array_Length;
+
    ----------------
    -- Array_Size --
    ----------------
@@ -241,13 +303,11 @@ package body GNATLLVM.Compile is
 
          --  Compute the size of the dimension from the range bounds
          Dim := Get_Dim_Range (DSD);
-            Cur_Size := Env.Bld.Add
-              (Env.Bld.Sub
-                 (Emit_Bound (High_Bound (Dim)),
-                  Emit_Bound (Low_Bound (Dim)), ""),
-               Const_Int
-                 (Create_Type (Env, Etype (High_Bound (Dim))), 1, True),
-               "array-size-tmp");
+         Cur_Size := Bounds_To_Length
+           (Env         => Env,
+            Low_Bound   => Emit_Bound (Low_Bound (Dim)),
+            High_Bound  => Emit_Bound (High_Bound (Dim)),
+            Bounds_Type => Etype (Low_Bound (Dim)));
          Cur_Size := Env.Bld.Z_Ext (Cur_Size, T, "array-size");
 
          --  Accumulate the product of the sizes
@@ -2103,6 +2163,12 @@ package body GNATLLVM.Compile is
                Prefix (Node),
                (if Attr = Attribute_First then Low else High),
                1);
+
+         when Attribute_Length =>
+
+            --  ??? Handle this attribute on scalar subtypes
+
+            return Array_Length (Env, Prefix (Node));
 
          when Attribute_Max
             | Attribute_Min =>

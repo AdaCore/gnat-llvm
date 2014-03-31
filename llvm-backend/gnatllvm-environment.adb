@@ -211,15 +211,15 @@ package body GNATLLVM.Environment is
       use Value_Maps;
       Cur : constant Cursor := Get (Env, BE);
    begin
+      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Value_As_Basic_Block (Env.Get (BE));
       else
-         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
          raise No_Such_Basic_Block
            with "Cannot find a LLVM basic block for Entity #"
            & Entity_Id'Image (BE);
-         pragma Annotate (Xcov, Exempt_Off);
       end if;
+      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------

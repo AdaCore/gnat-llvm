@@ -2,6 +2,11 @@ function Foo (Should_Be_Equal : Boolean) return Boolean
 is
    type Int_Array is array (Natural range <>) of Integer;
 
+   function Is_Equal (A, B : Int_Array) return Boolean is
+   begin
+      return A = B;
+   end Is_Equal;
+
    A1 : Int_Array := (1, 2, 3, 4, 5);
    A2 : Int_Array (A1'First .. A1'Last);
 begin
@@ -15,5 +20,5 @@ begin
       A2 (A2'Last) := 0;
    end if;
 
-   return A1 = A2;
+   return Is_Equal (A1, A2);
 end Foo;

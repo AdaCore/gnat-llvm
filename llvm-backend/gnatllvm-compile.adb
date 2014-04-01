@@ -2177,6 +2177,26 @@ package body GNATLLVM.Compile is
                Expressions (Node),
                Attr = Attribute_Max);
 
+         when Attribute_Succ
+            | Attribute_Pred =>
+            declare
+               Exprs : constant List_Id := Expressions (Node);
+               pragma Assert (List_Length (Exprs) = 1);
+
+               Base : constant Value_T := Emit_Expression (Env, First (Exprs));
+               T    : constant Type_T := Type_Of (Base);
+               pragma Assert (Get_Type_Kind (T) = Integer_Type_Kind);
+
+               One  : constant Value_T :=
+                 Const_Int (T, 1, Sign_Extend => False);
+
+            begin
+               return
+                 (if Attr = Attribute_Succ
+                  then Env.Bld.Add (Base, One, "attr-succ")
+                  else Env.Bld.Sub (Base, One, "attr-pred"));
+            end;
+
          when others =>
             pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error

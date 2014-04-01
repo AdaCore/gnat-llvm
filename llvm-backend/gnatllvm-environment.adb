@@ -82,6 +82,18 @@ package body GNATLLVM.Environment is
       return Get (Env, VE) /= No_Element;
    end Has_Value;
 
+   ------------
+   -- Has_BB --
+   ------------
+
+   function Has_BB
+     (Env : access Environ_Record; BE : Entity_Id) return Boolean
+   is
+      use Value_Maps;
+   begin
+      return Get (Env, BE) /= No_Element;
+   end Has_BB;
+
    ---------
    -- Get --
    ---------

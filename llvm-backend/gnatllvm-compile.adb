@@ -1017,13 +1017,26 @@ package body GNATLLVM.Compile is
 
          when N_Block_Statement =>
             declare
+               BE          : constant Entity_Id :=
+                 (if Present (Identifier (Node))
+                  then Entity (Identifier (Node))
+                  else Empty);
                BB          : Basic_Block_T;
                Stack_State : Value_T;
+
             begin
-               BB :=
-                 (if Present (Identifier (Node))
-                  then Env.Get (Entity (Identifier (Node)))
-                  else Create_Basic_Block (Env, "block"));
+               --  The frontend can generate basic blocks with identifiers
+               --  that are not declared: try to get any existing basic block,
+               --  create and register a new one if it does not exist yet.
+
+               if Env.Has_BB (BE) then
+                  BB := Env.Get (BE);
+               else
+                  BB := Create_Basic_Block (Env, "");
+                  if Present (BE) then
+                     Env.Set (BE, BB);
+                  end if;
+               end if;
                Discard (Env.Bld.Br (BB));
                Env.Bld.Position_At_End (BB);
 

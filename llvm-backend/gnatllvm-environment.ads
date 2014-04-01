@@ -142,6 +142,8 @@ package GNATLLVM.Environment is
      (Env : access Environ_Record; TE : Entity_Id) return Boolean;
    function Has_Value
      (Env : access Environ_Record; VE : Entity_Id) return Boolean;
+   function Has_BB
+     (Env : access Environ_Record; BE : Entity_Id) return Boolean;
    function Get (Env : access Environ_Record; TE : Entity_Id) return Type_T;
    function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T;
    function Get

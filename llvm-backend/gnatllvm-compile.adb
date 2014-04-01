@@ -912,9 +912,11 @@ package body GNATLLVM.Compile is
                --  loop: it is the exit point.
                BB_Next := Create_Basic_Block (Env, "loop-exit");
 
-               if Present (Loop_Identifier) then
-                  Env.Push_Loop (Loop_Identifier, BB_Next);
-               end if;
+               --  The front-end expansion can produce identifier-less loops,
+               --  but exit statements can target them anyway, so register such
+               --  loops.
+
+               Env.Push_Loop (Loop_Identifier, BB_Next);
                Env.Push_Scope;
 
                --  First compile the iterative part of the loop: evaluation of

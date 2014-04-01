@@ -22,41 +22,7 @@ with LLVM.Target; use LLVM.Target;
 
 package body GNATLLVM.Compile is
 
-   procedure Emit_List
-     (Env : Environ; List : List_Id);
-   --  Call Compile on every element of List
-
-   function Call
-     (Env : Environ; Call_Node : Node_Id) return Value_T;
-
-   function Emit_Subprogram_Decl
-     (Env : Environ; Subp_Spec : Node_Id) return Value_T;
-   --  Compile a subprogram declaration, save the corresponding LLVM value to
-   --  the environment and return it.
-
-   function Create_Callback_Wrapper
-     (Env : Environ; Subp : Entity_Id) return Value_T;
-   --  If Subp takes a static link, return its LLVM declaration. Otherwise,
-   --  create a wrapper declaration to it that accepts a static link and
-   --  return it.
-
-   procedure Attach_Callback_Wrapper_Body
-     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T);
-   --  If Subp takes a static link, do nothing. Otherwise, add the
-   --  implementation of its wrapper.
-
-   procedure Match_Static_Link_Variable
-     (Env       : Environ;
-      Def_Ident : Entity_Id;
-      LValue    : Value_T);
-   --  If Def_Ident belongs to the closure of the current static link
-   --  descriptor, reference it to the static link structure. Do nothing
-   --  if there is no current subprogram.
-
-   function Get_Static_Link
-     (Env  : Environ;
-      Subp : Entity_Id) return Value_T;
-   --  Build and return the appropriate static link to pass to a call to Subp
+   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
 
    function Bounds_To_Length
      (Env                   : Environ;
@@ -106,22 +72,16 @@ package body GNATLLVM.Compile is
       Value               : Value_T) return Value_T;
    --  Emit code to convert Src_Value to Dest_Type
 
-   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-   function Emit_Min_Max
-     (Env         : Environ;
-      Exprs       : List_Id;
-      Compute_Max : Boolean) return Value_T
-     with Pre => List_Length (Exprs) = 2
-     and then Is_Scalar_Type (Etype (First (Exprs)));
-   --  Exprs must be a list of two scalar expressions with compatible types.
-   --  Emit code to evaluate both expressions. If Compute_Max, return the
-   --  maximum value and return the minimum otherwise.
-
-   function Emit_Attribute_Expression
+   function Emit_Attribute_Reference
      (Env  : Environ;
       Node : Node_Id) return Value_T
      with Pre => Nkind (Node) = N_Attribute_Reference;
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
+
+   function Emit_Call
+     (Env : Environ; Call_Node : Node_Id) return Value_T;
+   --  Helper for Emit/Emit_Expression: compile a call statement/expression and
+   --  return its result value.
 
    function Emit_Comparison
      (Env          : Environ;
@@ -136,13 +96,66 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (Node) in N_If_Statement | N_If_Expression;
    --  Helper for Emit and Emit_Expression: handle if statements and if
    --  expressions.
-   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
+
+   procedure Emit_List
+     (Env : Environ; List : List_Id);
+   --  Helper for Emit/Emit_Expression: call Emit on every element of List
+
+   function Emit_Min_Max
+     (Env         : Environ;
+      Exprs       : List_Id;
+      Compute_Max : Boolean) return Value_T
+     with Pre => List_Length (Exprs) = 2
+     and then Is_Scalar_Type (Etype (First (Exprs)));
+   --  Exprs must be a list of two scalar expressions with compatible types.
+   --  Emit code to evaluate both expressions. If Compute_Max, return the
+   --  maximum value and return the minimum otherwise.
 
    function Emit_Shift
      (Env       : Environ;
       Operation : Node_Kind;
       LHS, RHS  : Value_T) return Value_T;
    --  Helper for Emit_Expression: handle shift and rotate operations
+
+   function Emit_Subprogram_Decl
+     (Env : Environ; Subp_Spec : Node_Id) return Value_T;
+   --  Compile a subprogram declaration, save the corresponding LLVM value to
+   --  the environment and return it.
+
+   function Emit_Type_Size
+     (Env : Environ; T : Entity_Id;
+      Containing_Record_Ptr : Value_T) return Value_T;
+   --  Helper for Emit/Emit_Expression: emit code to compute the size of type
+   --  T, getting information from Containing_Record_Ptr for types that are
+   --  constrained by a discriminant record (in such case, this parameter
+   --  should be a pointer to the corresponding record). Return the computed
+   --  size as value.
+
+   function Create_Callback_Wrapper
+     (Env : Environ; Subp : Entity_Id) return Value_T;
+   --  If Subp takes a static link, return its LLVM declaration. Otherwise,
+   --  create a wrapper declaration to it that accepts a static link and
+   --  return it.
+
+   procedure Attach_Callback_Wrapper_Body
+     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T);
+   --  If Subp takes a static link, do nothing. Otherwise, add the
+   --  implementation of its wrapper.
+
+   procedure Match_Static_Link_Variable
+     (Env       : Environ;
+      Def_Ident : Entity_Id;
+      LValue    : Value_T);
+   --  If Def_Ident belongs to the closure of the current static link
+   --  descriptor, reference it to the static link structure. Do nothing
+   --  if there is no current subprogram.
+
+   function Get_Static_Link
+     (Env  : Environ;
+      Subp : Entity_Id) return Value_T;
+   --  Build and return the appropriate static link to pass to a call to Subp
+
+   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
    ----------------------
    -- Bounds_To_Length --
@@ -334,13 +347,9 @@ package body GNATLLVM.Compile is
 
    end Array_Size;
 
-   function Emit_Type_Size
-     (Env : Environ; T : Entity_Id;
-      Containing_Record_Ptr : Value_T) return Value_T;
-
-   ---------------------
-   -- Emit_Field_Size --
-   ---------------------
+   --------------------
+   -- Emit_Type_Size --
+   --------------------
 
    function Emit_Type_Size
      (Env : Environ; T : Entity_Id;
@@ -795,7 +804,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Procedure_Call_Statement =>
-            Discard (Call (Env, Node));
+            Discard (Emit_Call (Env, Node));
 
          when N_Null_Statement =>
             null;
@@ -1566,7 +1575,7 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Function_Call =>
-            return Call (Env, Node);
+            return Emit_Call (Env, Node);
 
          when N_Explicit_Dereference =>
             --  Access to subprograms require special handling, see
@@ -1605,7 +1614,7 @@ package body GNATLLVM.Compile is
 
          when N_Attribute_Reference =>
 
-            return Emit_Attribute_Expression (Env, Node);
+            return Emit_Attribute_Reference (Env, Node);
 
          when N_Selected_Component =>
             declare
@@ -1687,11 +1696,7 @@ package body GNATLLVM.Compile is
       end loop;
    end Emit_List;
 
-   ----------
-   -- Call --
-   ----------
-
-   function Call
+   function Emit_Call
      (Env : Environ; Call_Node : Node_Id) return Value_T
    is
       Subp        : constant Node_Id := Name (Call_Node);
@@ -1844,7 +1849,7 @@ package body GNATLLVM.Compile is
           (LLVM_Func, Args'Address, Args'Length,
            --  Assigning a name to a void value is not possible with LLVM
            (if Nkind (Call_Node) = N_Function_Call then "subpcall" else ""));
-   end Call;
+   end Emit_Call;
 
    --------------------------
    -- Emit_Subprogram_Decl --
@@ -2137,11 +2142,11 @@ package body GNATLLVM.Compile is
       return Env.Bld.Build_Select (Choose_Left, Left, Right, Name);
    end Emit_Min_Max;
 
-   -------------------------------
-   -- Emit_Attribute_Expression --
-   -------------------------------
+   ------------------------------
+   -- Emit_Attribute_Reference --
+   ------------------------------
 
-   function Emit_Attribute_Expression
+   function Emit_Attribute_Reference
      (Env  : Environ;
       Node : Node_Id) return Value_T
    is
@@ -2218,7 +2223,7 @@ package body GNATLLVM.Compile is
               with "Unhandled Attribute : " & Attribute_Id'Image (Attr);
             pragma Annotate (Xcov, Exempt_Off);
       end case;
-   end Emit_Attribute_Expression;
+   end Emit_Attribute_Reference;
 
    ---------------------
    -- Emit_Comparison --

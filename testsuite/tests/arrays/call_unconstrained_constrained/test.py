@@ -1,3 +1,8 @@
+"""
+Test code generation for unconstrained arrays actuals passed to constrained
+arrays parameters.
+"""
+
 from ctypes import *
 from gnatllvm import build_and_load, Func
 
@@ -7,3 +12,4 @@ from gnatllvm import build_and_load, Func
 )
 
 print t(10)
+print t(2)

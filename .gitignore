@@ -22,6 +22,8 @@ gnatinspect.db
 *.ll
 *.so
 a.out
+b~*.adb
+b~*.ads
 
 # Python testsuite artifacts
 *.pyc

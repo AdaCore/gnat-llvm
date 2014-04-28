@@ -296,4 +296,13 @@ package body Get_Targ is
       end if;
    end Width_From_Size;
 
+   ------------------------------
+   -- Get_Back_End_Config_File --
+   ------------------------------
+
+   function Get_Back_End_Config_File return String_Ptr is
+   begin
+      return null;
+   end Get_Back_End_Config_File;
+
 end Get_Targ;

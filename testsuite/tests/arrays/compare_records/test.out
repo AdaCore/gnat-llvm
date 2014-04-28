@@ -1,0 +1,2 @@
+Foo (False) = False
+Foo (True) = True

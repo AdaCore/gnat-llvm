@@ -138,10 +138,19 @@ package body GNATLLVM.Utils is
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
       PT : constant Entity_Id := Etype (Param);
    begin
-      return (Ekind (Param) = E_In_Out_Parameter
-              or else Ekind (Param) = E_Out_Parameter
-              or else (Ekind (PT) in Array_Kind
-                and then not Is_Constrained (PT)));
+      return
+
+        --  Out/InOut parameters are passed by reference and thus need a
+        --  pointer.
+
+        (Ekind (Param) = E_In_Out_Parameter
+         or else Ekind (Param) = E_Out_Parameter
+
+         --  At the moment, let's consider that all arrays need to be
+         --  passed as pointers: constrained arrays can have dynamic
+         --  bounds.
+
+         or else Ekind (PT) in Array_Kind);
    end Param_Needs_Ptr;
 
    ----------------------------

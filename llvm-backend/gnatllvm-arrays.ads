@@ -1,3 +1,4 @@
+with Einfo; use Einfo;
 with Types; use Types;
 
 with LLVM.Core; use LLVM.Core;
@@ -8,31 +9,55 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package GNATLLVM.Arrays is
 
+   procedure Extract_Array_Info
+     (Env         : Environ;
+      Array_Node  : Node_Id;
+      Array_Descr : out Value_T;
+      Array_Type  : out Entity_Id);
+   --  Set Array_Type to the type of Array_Node. If it is a constrained array,
+   --  set Array_Descr to No_Value_T, or emit the value corresponding to
+   --  Array_Node if it is unconstrained.
+
    function Array_Size
      (Env : Environ; Array_Type : Entity_Id;
       Containing_Record_Instance : Value_T := No_Value_T) return Value_T;
 
-   function Array_Length (Env : Environ; Array_Node : Node_Id) return Value_T;
+   function Array_Bound
+     (Env         : Environ;
+      Array_Descr : Value_T;
+      Array_Type  : Entity_Id;
+      Bound       : Bound_T;
+      Dim         : Natural := 1) return Value_T;
+   --  Compute the bound for the array corresponding to Array_Descr, whose type
+   --  is Array_Type. If Array_Type is a constrained array, Array_Descr will
+   --  not be used, and can thus then be No_Value_T. Otherwise, it will be
+   --  used to compute the bound at runtime.
+
+   function Array_Length
+     (Env         : Environ;
+      Array_Descr : Value_T;
+      Array_Type  : Entity_Id) return Value_T;
    --  Emit code to compute the length for the array corresponding to
-   --  Array_Node and return the corresponding value.
+   --  Array_Descr, whose type is Array_Type. If Array_Type is a constrained
+   --  array, Array_Descr will not be used, and can thus then be No_Value_T.
+   --  Otherwise, it will be used to compute the length at runtime.
 
-   function Array_Bound
-     (Env : Environ; Array_Node : Node_Id;
-      Bound : Bound_T; Dim : Natural := 1) return Value_T;
-   --  Compute the bound for the array corresponding to Array_Node. Depending
-   --  on whether the array is constrained or not, this will compute the bound
-   --  statically or at runtime.
+   function Array_Data
+     (Env         : Environ;
+      Array_Descr : Value_T;
+      Array_Type  : Entity_Id) return Value_T;
+   --  Emit code to compute the address of the array data and return the
+   --  corresponding value. Handle both constrained and unconstrained arrays,
+   --  depending on Array_Type. If this is a constrained array, Array_Descr
+   --  must already be a pointer to the array data, otherwise, it must be a
+   --  fat pointer.
 
-   function Array_Bound_Addr
-     (Env : Environ; Array_Ptr : Value_T;
-      Bound : Bound_T; Dim : Natural) return Value_T;
-   --  Compute the bound for the array corresponding to Array_Ptr. The pointer
-   --  must be a fat pointer (i.e. containing the bounds of the array).
-
-   function Array_Bound
-     (Env : Environ; Array_Ptr : Value_T;
-      Bound : Bound_T; Dim : Natural) return Value_T;
-   --  Wrapper around Array_Bound_Addr that returns the value of the bound,
-   --  instead of the address of element at the bound.
+   function Array_Fat_Pointer
+     (Env        : Environ;
+      Array_Data : Value_T;
+      Array_Type : Entity_Id) return Value_T
+     with Pre => Is_Constrained (Array_Type);
+   --  Wrap a fat pointer around Array_Data according to its type Array_Type
+   --  and return the created fat pointer.
 
 end GNATLLVM.Arrays;

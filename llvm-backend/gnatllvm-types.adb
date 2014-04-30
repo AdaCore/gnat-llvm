@@ -108,6 +108,37 @@ package body GNATLLVM.Types is
         (Env.Ctx, Fields'Address, Fields'Length, Packed => False);
    end Create_Array_Bounds_Type;
 
+   ------------------------------------
+   -- Create_Array_Thin_Pointer_Type --
+   ------------------------------------
+
+   function Create_Array_Thin_Pointer_Type
+     (Env        : Environ;
+      Array_Type : Entity_Id) return Type_T
+   is
+      Elt_Type : constant Type_T :=
+        Create_Type (Env, Component_Type (Array_Type));
+      Arr_Type : constant Type_T :=
+        LLVM.Core.Array_Type (Elt_Type, 0);
+   begin
+      return Pointer_Type (Arr_Type, 0);
+   end Create_Array_Thin_Pointer_Type;
+
+   -----------------------------------
+   -- Create_Array_Fat_Pointer_Type --
+   -----------------------------------
+
+   function Create_Array_Fat_Pointer_Type
+     (Env        : Environ;
+      Array_Type : Entity_Id) return Type_T
+   is
+      St_Els : Type_Array (1 .. 2) :=
+        (Create_Array_Thin_Pointer_Type (Env, Array_Type),
+         Create_Array_Bounds_Type (Env, Array_Type));
+   begin
+      return Struct_Type (St_Els'Address, St_Els'Length, False);
+   end Create_Array_Fat_Pointer_Type;
+
    ------------------------
    -- Create_Access_Type --
    ------------------------
@@ -120,13 +151,7 @@ package body GNATLLVM.Types is
       if Get_Type_Kind (T) = Array_Type_Kind
         and then not Is_Constrained (TE)
       then
-         declare
-            St_Els : Type_Array (1 .. 2) :=
-              (Pointer_Type (T, 0),
-               Create_Array_Bounds_Type (Env, TE));
-         begin
-            return Struct_Type (St_Els'Address, St_Els'Length, False);
-         end;
+         return Create_Array_Fat_Pointer_Type (Env, TE);
 
       --  LLVM subprograms values already are already pointers. We want to
       --  embed a static-link with them, though.

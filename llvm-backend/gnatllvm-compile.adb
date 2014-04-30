@@ -323,7 +323,9 @@ package body GNATLLVM.Compile is
 
                   if Param_Needs_Ptr (Param)
                     and then not
-                      (Get_Type_Kind (Type_Of (LLVM_Param)) = Struct_Type_Kind)
+                      (Ekind (Etype (Param)) in Record_Kind
+                       and (Get_Type_Kind (Type_Of (LLVM_Param))
+                            = Struct_Type_Kind))
                   then
                      LLVM_Var := LLVM_Param;
                   else
@@ -971,8 +973,13 @@ package body GNATLLVM.Compile is
 
          when N_Indexed_Component =>
             declare
-               Array_Ptr : Value_T :=
+               Array_Node  : constant Node_Id := Prefix (Node);
+               Array_Type  : constant Entity_Id := Etype (Array_Node);
+
+               Array_Descr    : constant Value_T :=
                  Emit_LValue (Env, Prefix (Node));
+               Array_Data_Ptr : constant Value_T :=
+                 Array_Data (Env, Array_Descr, Array_Type);
 
                Idxs    :
                Value_Array (1 .. List_Length (Expressions (Node)) + 1) :=
@@ -982,45 +989,38 @@ package body GNATLLVM.Compile is
                --  pointer deference, and then one per array index.
 
                I       : Nat := 2;
-               DSD     : Node_Id := First_Index (Etype (Prefix (Node)));
-               Dim     : Node_Id;
-               LB      : Value_T;
-               Constrained : constant Boolean :=
-                 Is_Constrained (Etype (Prefix (Node)));
             begin
 
                for N of Iterate (Expressions (Node)) loop
-                  Idxs (I) := Emit_Expression (Env, N);
-                  Dim := Get_Dim_Range (DSD);
-
                   --  Adjust the index according to the range lower bound
-                  if Constrained then
-                     LB := Emit_Expression (Env, Low_Bound (Dim));
-                  else
-                     LB := Array_Bound
-                       (Env, Array_Ptr, Low, Integer (I - 1));
-                  end if;
 
-                  Idxs (I) := Env.Bld.Sub (Idxs (I), LB, "index");
+                  declare
+                     User_Index    : constant Value_T :=
+                       Emit_Expression (Env, N);
+                     Dim_Low_Bound : constant Value_T :=
+                       Array_Bound
+                         (Env, Array_Descr, Array_Type, Low, Integer (I - 1));
+                  begin
+                     Idxs (I) :=
+                       Env.Bld.Sub (User_Index, Dim_Low_Bound, "index");
+                  end;
 
                   I := I + 1;
-                  DSD := Next (DSD);
                end loop;
 
-               if not Constrained then
-                  Array_Ptr := Env.Bld.Load
-                    (Env.Bld.Struct_GEP (Array_Ptr, 0, ""), "");
-               end if;
-
-               return
-                 Env.Bld.GEP (Array_Ptr, Idxs, "array-element-access");
+               return Env.Bld.GEP
+                 (Array_Data_Ptr, Idxs, "array-element-access");
             end;
 
          when N_Slice =>
             declare
-               Array_Node  : constant Node_Id := Prefix (Node);
-               Array_Ptr   : Value_T :=
+               Array_Node     : constant Node_Id := Prefix (Node);
+               Array_Type     : constant Entity_Id := Etype (Array_Node);
+
+               Array_Descr    : constant Value_T :=
                  Emit_LValue (Env, Array_Node);
+               Array_Data_Ptr : constant Value_T :=
+                 Array_Data (Env, Array_Descr, Array_Type);
 
                --  Compute how much we need to offset the array pointer. Slices
                --  can be built only on single-dimension arrays
@@ -1028,18 +1028,12 @@ package body GNATLLVM.Compile is
                Index_Shift : constant Value_T :=
                  Env.Bld.Sub
                    (Emit_Expression (Env, Low_Bound (Discrete_Range (Node))),
-                    Array_Bound (Env, Array_Node, Low),
+                    Array_Bound (Env, Array_Descr, Array_Type, Low),
                     "offset");
             begin
-               if not Is_Constrained (Etype (Prefix (Node))) then
-                  Array_Ptr :=
-                    Env.Bld.Load
-                      (Env.Bld.Struct_GEP (Array_Ptr, 0, "fat-to-thin"), "");
-               end if;
-
                return Env.Bld.Bit_Cast
                  (Env.Bld.GEP
-                    (Array_Ptr,
+                    (Array_Data_Ptr,
                      (Const_Int (Intptr_T, 0, Sign_Extend => False),
                       Index_Shift),
                      "array-shifted"),
@@ -1481,6 +1475,8 @@ package body GNATLLVM.Compile is
                     then Entity (Subp)
                     else Etype (Subp));
       Param_Assoc, Actual : Node_Id;
+      Actual_Type         : Entity_Id;
+      Current_Needs_Ptr   : Boolean;
 
       --  If it's not an identifier, it must be an access to a subprogram and
       --  in such a case, it must accept a static link.
@@ -1528,68 +1524,44 @@ package body GNATLLVM.Compile is
             Actual := Param_Assoc;
             Idx := I;
          end if;
+         Actual_Type := Etype (Actual);
 
+         Current_Needs_Ptr := Param_Needs_Ptr (Params (Idx));
          Args (Idx) :=
-           (if Param_Needs_Ptr (Params (Idx))
+           (if Current_Needs_Ptr
             then Emit_LValue (Env, Actual)
             else Emit_Expression (Env, Actual));
 
          P_Type := Etype (Params (Idx));
 
-         if Is_Constrained (Etype (Actual))
-           and then not Is_Constrained (P_Type)
-         then
+         --  At this point we need to handle view conversions: from array thin
+         --  pointer to array fat pointer, unconstrained array pointer type
+         --  conversion, ... For other parameters that needs to be passed
+         --  as pointers, we should also make sure the pointed type fits
+         --  the LLVM formal.
 
-            --  At this point we need to handle the conversion from constrained
-            --  arrays to unconstrained arrays, which means passing a fat array
-            --  pointer containing the bounds of the array in it.
+         if Is_Array_Type (Actual_Type) then
 
-            if Is_Array_Type (Etype (Actual)) then
-               declare
-                  Array_Access_Type : constant Type_T :=
-                    Create_Access_Type (Env, P_Type);
-                  Array_Access, V : Value_T;
-                  Dim_I : Integer := 1;
-               begin
-                  Array_Access :=
-                    Env.Bld.Alloca (Array_Access_Type, "");
+            if Is_Constrained (Actual_Type)
+              and then not Is_Constrained (P_Type)
+            then
+               --  Convert from thin to fat pointer
 
-                  --  Store the ptr into the access struct
-                  V := Env.Bld.Struct_GEP (Array_Access, 0, "");
-                  Env.Bld.Store
-                    (Env.Bld.Bit_Cast
-                       (Args (I),
-                        Pointer_Type
-                          (Create_Type
-                               (Env, Etype (Params (Idx))), 0), ""), V);
+               Args (Idx) :=
+                 Array_Fat_Pointer (Env, Args (Idx), Etype (Actual));
 
-                  --  Store the bounds into the access struct
-                  for Dim of
-                    Iterate (List_Containing (First_Index (Etype (Actual))))
-                  loop
-                     declare
-                        R : constant Node_Id := Get_Dim_Range (Dim);
-                     begin
-                        V := Array_Bound_Addr (Env, Array_Access, Low, Dim_I);
-                        Env.Bld.Store
-                          (Emit_Expression (Env, Low_Bound (R)), V);
+            elsif not Is_Constrained (Actual_Type)
+              and then Is_Constrained (P_Type)
+            then
+               --  Convert from fat to thin pointer
 
-                        V := Array_Bound_Addr (Env, Array_Access, High, Dim_I);
-                        Env.Bld.Store
-                          (Emit_Expression (Env, High_Bound (R)), V);
-
-                        Dim_I := Dim_I + 1;
-                     end;
-                  end loop;
-
-                  --  Replace the simple pointer by the access struct
-                  Args (Idx) := Env.Bld.Load (Array_Access, "");
-               end;
-            else
-               Args (Idx) := Env.Bld.Bit_Cast
-                 (Args (Idx), Create_Access_Type (Env, P_Type),
-                  "param-bitcast");
+               Args (Idx) := Array_Data (Env, Args (Idx), Actual_Type);
             end if;
+
+         elsif Current_Needs_Ptr then
+            Args (Idx) := Env.Bld.Bit_Cast
+              (Args (Idx), Create_Access_Type (Env, P_Type),
+               "param-bitcast");
          end if;
 
          I := I + 1;
@@ -1949,21 +1921,27 @@ package body GNATLLVM.Compile is
                  (Env, Prefix (Node)), Get_Address_Type, "to-address");
 
          when Attribute_First
-            | Attribute_Last =>
+            | Attribute_Last
+            | Attribute_Length =>
 
-            --  ??? Handle these attributes on scalar subtypes
+            --  Note that there is no need to handle these attributes for
+            --  scalar subtypes since the front-end expands them into
+            --  constant references.
 
-            return Array_Bound
-              (Env,
-               Prefix (Node),
-               (if Attr = Attribute_First then Low else High),
-               1);
-
-         when Attribute_Length =>
-
-            --  ??? Handle this attribute on scalar subtypes
-
-            return Array_Length (Env, Prefix (Node));
+            declare
+               Array_Descr : Value_T;
+               Array_Type  : Entity_Id;
+            begin
+               Extract_Array_Info
+                 (Env, Prefix (Node), Array_Descr, Array_Type);
+               if Attr = Attribute_Length then
+                  return Array_Length (Env, Array_Descr, Array_Type);
+               else
+                  return Array_Bound
+                    (Env, Array_Descr, Array_Type,
+                     (if Attr = Attribute_First then Low else High));
+               end if;
+            end;
 
          when Attribute_Max
             | Attribute_Min =>

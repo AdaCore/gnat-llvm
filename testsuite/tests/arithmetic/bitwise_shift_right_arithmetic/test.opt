@@ -1,0 +1,1 @@
+ALL XFAIL Integer literal larger than Int'Max are not handled yet

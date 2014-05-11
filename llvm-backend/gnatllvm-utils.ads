@@ -1,6 +1,7 @@
-with Types; use Types;
-with Atree; use Atree;
-with Sinfo; use Sinfo;
+with Types;      use Types;
+with Atree;      use Atree;
+with Sinfo;      use Sinfo;
+with Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -36,11 +37,8 @@ package GNATLLVM.Utils is
       then Get_Fullest_View (Full_View (E))
       else E);
 
-   function Const_Int
-     (T : Type_T; Value : Uintp.Uint; Sign_Extend : Boolean := True)
-      return Value_T
-   is
-     (Const_Int (T, unsigned_long_long (UI_To_Int (Value)), Sign_Extend));
+   function Const_Int (T : Type_T; Value : Uintp.Uint) return Value_T
+                       renames Uintp.LLVM.UI_To_LLVM;
    --  Return an LLVM value corresponding to the universal int Value
 
    function Const_Ones (T : Type_T) return Value_T

@@ -1349,7 +1349,7 @@ package body GNATLLVM.Compile is
             if Ekind (Entity (Node)) = E_Enumeration_Literal then
                return Const_Int
                  (Create_Type (Env, Etype (Node)),
-                  Enumeration_Rep (Entity (Node)), False);
+                  Enumeration_Rep (Entity (Node)));
             else
                --  LLVM functions are pointers that cannot be dereferenced. If
                --  Entity (Node) is a subprogram, return it as-is, the caller

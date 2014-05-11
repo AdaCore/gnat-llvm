@@ -1859,20 +1859,39 @@ package body GNATLLVM.Compile is
       Value               : Value_T) return Value_T
    is
    begin
-      --  For the moment, we handle only the simple case of Integer to
-      --  Integer conversions.
+      --  For the moment, we handle only the simple cases of scalar conversions
 
-      if Is_Integer_Type (Get_Fullest_View (Src_Type))
-        and then Is_Integer_Type (Get_Fullest_View (Dest_Type))
+      if Is_Scalar_Type (Get_Fullest_View (Src_Type))
+        and then Is_Scalar_Type (Get_Fullest_View (Dest_Type))
       then
-         if Src_Type = Dest_Type then
-            return Value;
-         end if;
+         declare
+            Src_LLVM_Type  : constant Type_T := Create_Type (Env, Src_Type);
+            Dest_LLVM_Type : constant Type_T := Create_Type (Env, Dest_Type);
+            Src_Width      : constant unsigned :=
+              Get_Int_Type_Width (Src_LLVM_Type);
+            Dest_Width      : constant unsigned :=
+              Get_Int_Type_Width (Dest_LLVM_Type);
 
-         return Env.Bld.S_Ext
-           (Value,
-            Create_Type (Env, Dest_Type),
-            "int_conv");
+         begin
+            if Src_Width < Dest_Width then
+               if Is_Unsigned_Type (Dest_Type) then
+
+                  --  ??? raise an exception if the value is negative (hence
+                  --  the source type has to be checked).
+
+                  return Env.Bld.Z_Ext (Value, Dest_LLVM_Type, "int_conv");
+
+               else
+                  return Env.Bld.S_Ext (Value, Dest_LLVM_Type, "int_conv");
+               end if;
+
+            elsif Src_Width = Dest_Width then
+               return Value;
+
+            else
+               return Env.Bld.Trunc (Value, Dest_LLVM_Type, "int_conv");
+            end if;
+         end;
 
       elsif Is_Descendent_Of_Address (Src_Type)
         and then Is_Descendent_Of_Address (Dest_Type)

@@ -1893,8 +1893,8 @@ package body GNATLLVM.Compile is
             end if;
          end;
 
-      elsif Is_Descendent_Of_Address (Src_Type)
-        and then Is_Descendent_Of_Address (Dest_Type)
+      elsif Is_Descendant_Of_Address (Src_Type)
+        and then Is_Descendant_Of_Address (Dest_Type)
       then
          return Env.Bld.Bit_Cast
            (Value,

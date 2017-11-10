@@ -19,7 +19,7 @@ TRACES_DIR = os.path.join(SRCCOV_DIR, 'traces')
 USE_NATIVE_GNAT = bool(os.environ.get('USE_NATIVE_GNAT', False))
 SOURCE_COVERAGE_LEVEL = os.environ.get('SOURCE_COVERAGE_LEVEL', None)
 
-LLVM_GNATCOMPILE = which('llvm-gnatcompile')
+LLVM_GNATCOMPILE = which('llvm-gcc')
 TESTCASE_NAME = os.environ['TESTCASE_NAME']
 
 Func = namedtuple('Func', 'name argtypes restype')

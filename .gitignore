@@ -4,6 +4,10 @@ gnat_src
 # Build/test results directories
 *-backend/bin
 *-backend/lib
+llvm-ada/gen
+llvm-ada/llvm-3.3.src
+llvm-ada/out
+
 testsuite/out
 testsuite/srccov
 alis.list

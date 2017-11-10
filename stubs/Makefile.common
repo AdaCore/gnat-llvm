@@ -122,7 +122,7 @@ setup:
 dirs: sanity-check
 	$(MKDIR) $(obj) $(bin) $(lib)
 
-bldtools: $(obj)/sinfo.ads $(obj)/treeprs.adt $(obj)/nmake.adt $(obj)/gnatvsn.ads $(obj)/snames.ads
+bldtools: $(obj)/sinfo.ads $(obj)/treeprs.adt $(obj)/nmake.adt $(obj)/gnatvsn.ads $(obj)/snames.ads $(obj)/get_targ.adb
 	cd $(obj); $(GNATMAKE) -q $(INCLUDES) xtreeprs xnmake; ./xtreeprs; ./xnmake
 
 $(obj)/snames.ads: $(GNAT_SRC)/snames.ads-tmpl $(GNAT_SRC)/snames.adb-tmpl $(GNAT_SRC)/snames.h-tmpl
@@ -137,6 +137,9 @@ $(obj)/treeprs.adt: $(GNAT_SRC)/treeprs.adt
 	@$(LN) $< $@
 
 $(obj)/nmake.adt: $(GNAT_SRC)/nmake.adt
+	@$(LN) $< $@
+
+$(obj)/get_targ.adb: $(GNAT_SRC)/ada_get_targ.adb
 	@$(LN) $< $@
 
 $(obj)/gnatvsn.ads: $(GNAT_SRC)/gnatvsn.ads

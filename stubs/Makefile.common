@@ -1,5 +1,5 @@
-# Common Makefile for GNAT for .NET/JVM
-# Copyright (C) 2006-2011, AdaCore
+# Common Makefile for GNAT for LLVM
+# Copyright (C) 2006-2017, AdaCore
 
 ifeq ($(OS),Windows_NT)
   LN=cp -p
@@ -53,10 +53,7 @@ LARGS=-largs \
 
 .PHONY: force bin gnatlib tools
 
-all:
-	$(MAKE) bin
-	$(MAKE) gnatlib
-	$(MAKE) targettools
+all: bin
 
 bin:
 	$(MAKE) setup
@@ -69,12 +66,8 @@ clean:
 	$(RM) $(obj)/b~*.*
 	$(RM) $(obj)/*.ad?
 	$(RM) $(obj)/xnmake* $(obj)/xtreeprs*
-	$(RM) $(bin)/dotnet-* $(bin)/j*
-	$(RM) $(lib)/adainclude/*.ad? $(lib)/adainclude/*.cs
-	$(RM) $(lib)/adalib/*.il* $(lib)/adalib/*.assembly
-	$(RM) $(lib)/adalib/*.snk $(lib)/adalib/*.mod $(lib)/adalib/*.pdb
-	$(RM) $(lib)/adalib/*.tmp $(lib)/adalib/*.dll
-	$(RM) $(lib)/adalib/*.class
+	$(RM) $(bin)/llvm-*
+	$(RM) $(lib)/adainclude/*.ad?
 	$(RM) $(lib)/adalib/*.ali
 	$(RMDIR) $(lib)/rts-*
 
@@ -105,17 +98,11 @@ gnatcompile: bldtools cfiles
 
 cfiles: $(C_OBJS)
 
-.PHONY: $(lib)/adainclude/a-except.adb
-
-#$(lib)/adainclude/a-except.adb: $(GNAT_SRC)/a-except.adb $(gnatlib)/a-except.adb.in
-#	cat $(gnatlib)/a-except.adb.in > $@
-#	awk -f $(src)/exceptmsg.awk < $(GNAT_SRC)/a-except.adb | sed -e 's/@TARGETLANG@/$(TARGETLANG)/' >> $@
-
 gcc_missing.o: $(stubs)/gcc_missing.c
 	$(CC) -c $(CFLAGS) $< -o $(obj)/$@
 
 targext.o: $(stubs)/targext.c
-	$(CC) -c -D$(DEF_TARGET) $(CFLAGS) $< -o $(obj)/$@
+	$(CC) -c $(CFLAGS) $< -o $(obj)/$@
 
 tools: cfiles $(TOOLS)
 
@@ -135,7 +122,7 @@ setup:
 dirs: sanity-check
 	$(MKDIR) $(obj) $(bin) $(lib)
 
-bldtools: $(obj)/sinfo.ads $(obj)/treeprs.adt $(obj)/nmake.adt $(obj)/gnatvsn.ads $(obj)/gnatchop.adb $(obj)/ali.adb $(obj)/comperr.adb $(obj)/makeusg.adb $(obj)/par-ch10.adb $(obj)/gnatlink.adb $(obj)/snames.ads
+bldtools: $(obj)/sinfo.ads $(obj)/treeprs.adt $(obj)/nmake.adt $(obj)/gnatvsn.ads $(obj)/snames.ads
 	cd $(obj); $(GNATMAKE) -q $(INCLUDES) xtreeprs xnmake; ./xtreeprs; ./xnmake
 
 $(obj)/snames.ads: $(GNAT_SRC)/snames.ads-tmpl $(GNAT_SRC)/snames.adb-tmpl $(GNAT_SRC)/snames.h-tmpl
@@ -155,160 +142,3 @@ $(obj)/nmake.adt: $(GNAT_SRC)/nmake.adt
 $(obj)/gnatvsn.ads: $(GNAT_SRC)/gnatvsn.ads
 	sed -e 's/(\([0-9][0-9]*\)-[1-9][0-9])/(\1)/' $< > $@
 
-$(obj)/gnatchop.adb: $(GNAT_SRC)/gnatchop.adb
-	sed -e 's/gcc/$(SHORT_GNATCOMPILE)/' $< > $@
-
-$(obj)/ali.adb: $(GNAT_SRC)/ali.adb
-	sed -e 's/gcc/compiler/' $< > $@
-
-$(obj)/comperr.adb: $(GNAT_SRC)/comperr.adb
-	sed -e 's/gcc/compiler/' $< > $@
-
-$(obj)/makeusg.adb: $(GNAT_SRC)/makeusg.adb
-	sed -e 's/gcc/compiler/' $< > $@
-
-$(obj)/par-ch10.adb: $(GNAT_SRC)/par-ch10.adb
-	sed -e 's/gcc/compiler/' $< > $@
-
-$(obj)/gnatlink.adb: $(GNAT_SRC)/gnatlink.adb
-	sed -e "s/^   Process_Args;/   Targparm.VM_Target := $(DEF_TARGET); Process_Args;/" $< > $@
-
-###################
-# target run-time #
-###################
-
-vpath %.ads $(lib)/adainclude
-vpath %.adb $(lib)/adainclude
-vpath %$(objext) $(lib)/adalib
-
-# Ignore errors to generate a clean message in "sanity-check" instead
--include $(GNAT_SRC)/Makefile.rtl
-
-# List of not yet supported units, which require special handling for
-# .NET (e.g. changes to implement only a subset of these files)
-ifeq ($(TARGET),cil)
-  UNSUPPORTED_GNATRTL_OBJS = \
-   a-direct% a-dirval% g-diopit%
-else
-  UNSUPPORTED_GNATRTL_OBJS = \
-   a-direct% a-dirval% g-dirope% g-diopit% g-os_lib% s-os_lib%
-endif
-
-# List of inapplicable, unsupported, or unimplemented library units
-EXCLUDE_GNATRTL_OBJS = \
- a-astaco% a-clrefi% a-colien% a-diocst% a-elchha% a-exctra% a-interr% \
- a-intnam% a-intsig% a-rttiev% \
- a-siocst% a-storio% a-stunau% a-suecin% a-suhcin% a-sulcin% \
- a-swunau% a-szunau% \
- a-tasatt% a-taster% a-tiocst% a-undesu% a-wtcstr% \
- \
- g-al% g-arrspl% g-awk% g-bytswa% g-calend% g-catiio% g-cgi% g-comlin% \
- g-comver% g-crc32% g-curexc% g-debpoo% g-debuti% g-dyntab% g-excact% \
- g-exctra% g-exp% g-flocon% g-locfil% g-md5% g-memdum% g-pehage% g-sestin% \
- g-sha1% g-signal% g-soc% g-sothco% g-soliop% g-stheme% g-stsifd% g-sttsne% \
- g-spi% g-spt% g-strspl% g-table% g-thread% g-timsta% g-except% g-sh% g-seh% \
- g-sechas% g-tastus% g-traceb% g-trasym% g-tty% g-wistsp% g-zstspl% \
- \
- i-cexten% i-cobol% i-cpoint% i-cpp% i-cstrin% i-fortra% i-pacdec% i-vxwork% \
- \
- machcode% \
- \
- s-addope% s-asthan% s-auxdec% s-atopri% s-bignum% s-boarop% s-bytswa% s-car% \
- s-casi% \
- s-caun% s-chepoo% s-crtrun% s-debpoo% s-dsaser% s-dwa% s-errrep% s-excdeb% \
- s-except% s-exctab% s-filofl% s-fishfl% s-fva% s-geveop% s-interr% s-maccod% \
- s-mastop% s-objrea% s-pack% s-parint% s-pooglo% s-pooloc% s-poosiz% \
- s-scaval% s-spsufi% s-stposu% s-stusta% s-stchop% s-tpinop% s-traceb% s-vaflop% \
- s-vmexta% \
- thread% unchconv% unchdeal% \
- $(UNSUPPORTED_GNATRTL_OBJS) $(EXTRA_EXCLUDE_GNATRTL_OBJS)
-
-# Take advantage of GNATRTL_*_OBJS defined in Makefile.rtl and remove unwanted
-# units (defined in EXCLUDE_GNATRTL_OBJS)
-GNATRTL_OBJS=$(filter-out $(EXCLUDE_GNATRTL_OBJS),$(GNATRTL_NONTASKING_OBJS)) $(EXTRA_GNATRTL_OBJS)
-GNATRTL_SRCS=$(subst $(objext),.ad?,$(GNATRTL_OBJS)) \
-  unchconv.ads unchdeal.ads directio.ads sequenio.ads
-
-ZFP_OBJS =          \
- system$(objext)    \
- ada$(objext)       \
- a-except$(objext)  \
- a-tags$(objext)    \
- a-unccon$(objext)  \
- a-uncdea$(objext)  \
- gnat$(objext)      \
- g-io$(objext)      \
- g-souinf$(objext)  \
- interfac$(objext)  \
- i-c$(objext)       \
- s-assert$(objext)  \
- s-atacco$(objext)  \
- s-fatgen$(objext)  \
- s-stoele$(objext)  \
- s-unstyp$(objext)  \
- s-fatflt$(objext)  \
- s-fatlfl$(objext)  \
- s-fatllf$(objext)  \
- s-fatsfl$(objext)  \
- s-secsta$(objext)
-
-ZFP_SRCS=$(subst $(objext),.ad?,$(ZFP_OBJS)) \
- g-io-put.adb unchconv.ads unchdeal.ads
-
-.SUFFIXES: .adb .ads $(objext)
-
-.adb$(objext):
-	cd $(lib)/adalib; $(bin)/$(GNATCOMPILE) -c -I$(lib)/adainclude $(LIBFLAGS) $<
-.ads$(objext):
-	cd $(lib)/adalib; $(bin)/$(GNATCOMPILE) -c -I$(lib)/adainclude $(LIBFLAGS) $<
-
-gnatlib:
-	$(MAKE) setuplib
-	$(MAKE) quicklib
-	$(MAKE) readonly-lib
-
-quicklib: write-lib
-	$(MAKE) libgnat
-
-write-lib:
-ifeq ($(OS),Windows_NT)
-	-cd $(lib)/adalib; attrib -R "*.ali"
-else
-	-cd $(lib)/adalib; chmod +w *.ali
-endif
-
-readonly-lib:
-	cd $(lib)/adalib; $(RM) *.class
-ifeq ($(OS),Windows_NT)
-	cd $(lib)/adalib; attrib +R "*.ali"
-else
-	cd $(lib)/adalib; chmod -w *.ali
-endif
-
-gnatsources:
-	-$(RM) $(lib)/adainclude/* $(lib)/adalib/*
-	$(MKDIR) $(lib)/adainclude $(lib)/adalib
-	-cd $(GNAT_SRC); $(CP) $(GNATRTL_SRCS) $(lib)/adainclude 2> /dev/null
-ifneq ($(GNATRTL_COMMON_SRCS),)
-	-cd $(gnatlib_common); $(CP) $(GNATRTL_COMMON_SRCS) $(lib)/adainclude 2> /dev/null
-endif
-
-adainclude: gnatsources $(lib)/adainclude/a-except.adb
-	@cd $(gnatlib); $(CP) $(NON_ADA_RT_FILES) $(lib)/adainclude
-	$(CP) $(gnatlib)/*.ad? $(lib)/adainclude
-
-setuplib: adainclude
-ifneq ($(GNATLIB_PATCH),)
-	cd $(lib)/adainclude; $(PATCH) < $(gnatlib)/$(GNATLIB_PATCH)
-endif
-	@if [ -f $(gnatlib)/$(GNATKEY) ]; then \
-	  $(CP) $(gnatlib)/$(GNATKEY) $(lib)/adalib; \
-	fi
-
-################
-# target tools #
-################
-
-TARGET_MAKE=$(bin)/$(TOOLS_PREFIX)gnatmake
-
-targettools: $(TARGET_TOOLS)

@@ -4,7 +4,7 @@ DIR_GNAT_SRC = "gnat_src"
 DIR_LLVM_ADA = "llvm-ada"
 DIR_LLVM_BACKEND = "llvm-backend"
 
-PARALLEL =8
+PARALLEL =24
 
 all: build
 
@@ -13,12 +13,14 @@ setup:
 		svn co $(SVN_ARGS) $(SVN_GNAT) $(DIR_GNAT_SRC); \
 	fi
 
-build: build-llvm-backend
-build-llvm-backend: build-llvm-ada setup
+build: setup build-llvm-ada build-be
+
+build-be:
 	make -j$(PARALLEL) -C $(DIR_LLVM_BACKEND) bin
+
 build-llvm-ada:
 	make -C $(DIR_LLVM_ADA)
-	make -j$(PARALLEL) -C $(DIR_LLVM_ADA)/llvm-3.3.src/
+	make -s -j$(PARALLEL) -C $(DIR_LLVM_ADA)/llvm-3.3.src/
 
 clean:
 	make -C $(DIR_LLVM_BACKEND) clean

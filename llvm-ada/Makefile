@@ -8,9 +8,13 @@ LLVM_SRC_LINK=http://llvm.org/releases/3.3/$(LLVM_SRC_FNAME)
 
 all: setup $(OUT_DIR)/llvm-core.adb
 
+CONFIGURE=cd llvm-3.3.src && ./configure
 setup:
 	mkdir -p $(TMP_GEN_DIR) $(OUT_DIR)
-	if [ ! -d llvm-3.3.src ]; then $(DL) $(LLVM_SRC_LINK) && tar xvf $(LLVM_SRC_FNAME) && rm $(LLVM_SRC_FNAME) && cd llvm-3.3.src && ./configure ; fi
+	if [ ! -d llvm-3.3.src ]; then $(DL) $(LLVM_SRC_LINK) && tar xvf $(LLVM_SRC_FNAME) && rm $(LLVM_SRC_FNAME) && $(CONFIGURE) ; fi
+
+configure:
+	$(CONFIGURE)
 
 $(OUT_DIR)/llvm-core.adb: $(LLVM_INCLUDE_DIR_C)/Core.h
 	cd $(TMP_GEN_DIR) && g++ -I/usr/include/x86_64-linux-gnu -I$(LLVM_INCLUDE_DIR) -DNDEBUG -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -U__cplusplus -c -D_Bool=bool -fdump-ada-spec $(LLVM_INCLUDE_DIR_C)/*.h

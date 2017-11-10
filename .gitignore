@@ -1,5 +1,4 @@
 # External projects
-llvm-ada
 gnat_src
 
 # Build/test results directories

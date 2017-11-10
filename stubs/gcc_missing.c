@@ -20,6 +20,8 @@
  *                                                                          *
  ****************************************************************************/
 
+#include <stdlib.h>
+
 /* This file contains the C routines or variables which are defined in
    some GCC source (and hence not available when compiling here). */
 
@@ -61,3 +63,10 @@ update_path (char *path, char *key)
 unsigned char __gnat_separate_run_path_options = 0;
 const char *__gnat_default_libgcc_subdir = "lib";
 
+/* Provide dummy symbol to resolve link. */
+extern int
+LLVMInitializeNativeTarget (void)
+{
+  abort();
+  return 0;
+}

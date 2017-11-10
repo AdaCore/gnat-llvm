@@ -885,7 +885,8 @@ package body GNATLLVM.Compile is
             end case;
 
          --  Nodes we actually want to ignore
-         when N_Empty
+         when N_Call_Marker
+            | N_Empty
             | N_Function_Instantiation
             | N_Package_Instantiation
             | N_Generic_Package_Declaration
@@ -893,7 +894,12 @@ package body GNATLLVM.Compile is
             | N_Itype_Reference
             | N_Number_Declaration
             | N_Procedure_Instantiation
-            | N_Validate_Unchecked_Conversion =>
+            | N_Validate_Unchecked_Conversion
+            | N_Variable_Reference_Marker =>
+            null;
+
+         --  ??? Ignore for now
+         when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
             null;
 
          when N_Attribute_Definition_Clause =>

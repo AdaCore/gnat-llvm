@@ -11,12 +11,6 @@ from lxml_subp import *
 from wrapper import *
 import wrapper
 
-BUILDER_BASE_T_DECL = '''
-   type Base_Builder_T is tagged record
-       Bld : Builder_T;
-   end record;
-'''
-
 
 def sed(filename, script):
     """Execute a sed script on a file, in place."""
@@ -310,15 +304,6 @@ def generate_wrappers_for_file(file_name):
     # if fmt_name(package.name) == 'LLVM.Core':
     #     result += [
     #     ]
-
-    if package_name[-1] == "Core":
-        sloc = tree.find(
-            "//defining_identifier[@def_name='Builder_T']"
-        ).getparent().getprevious()
-        l, c = int(sloc.attrib["endline"]), int(sloc.attrib["endcol"]) + 1
-        alterations.append(
-            FileAlteration(l, c, l, c, BUILDER_BASE_T_DECL)
-        )
 
     for subp_def, subp_tpl, ((sl, sc), (el, ec)) in subp_defs:
         if is_wrapper_needed(subp_tpl):

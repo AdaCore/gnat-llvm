@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---                     Copyright (C) 1998-2013, AdaCore                     --
+--                     Copyright (C) 1998-2017, AdaCore                     --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -17,9 +17,6 @@
 -- for  more details.  You should have  received  a copy of the GNU General --
 -- Public License  distributed with GNAT; see file COPYING3.  If not, go to --
 -- http://www.gnu.org/licenses for a complete copy of the license.          --
---                                                                          --
--- The GNAT Ada tool chain for the JVM and .NET platforms is  maintained by --
--- AdaCore - http://www.adacore.com                                         --
 --                                                                          --
 ------------------------------------------------------------------------------
 
@@ -114,17 +111,10 @@ begin
 
    if Compile then
       declare
-         Compiler : constant String := GCC (GCC'First .. Last) & "gnatcompile";
+         Compiler : constant String := GCC (GCC'First .. Last) & "gnat1";
          S        : String_Access;
       begin
          S := Locate_Exec_On_Path (Compiler);
-
-         if S = null
-           and then (GCC (GCC'Last - 7 .. GCC'Last) = "jgcc.exe"
-                       or else GCC (GCC'Last - 3 .. GCC'Last) = "jgcc")
-         then
-            S := Locate_Exec_On_Path ("gnat-llvm");
-         end if;
 
          if S = null then
             Put_Line (Compiler & " not found");

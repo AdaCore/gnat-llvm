@@ -8,7 +8,7 @@ NON_ADA_RT_FILES=*.c
 objext=.bc
 
 TOOLS_PREFIX=llvm-
-GNATCOMPILE=llvm-gcc
+GNATCOMPILE=llvm-gnat1
 GNATCMD=gnat
 EXTRA_TOOLS=
 

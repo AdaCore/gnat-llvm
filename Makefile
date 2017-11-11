@@ -13,14 +13,13 @@ setup:
 		svn co $(SVN_ARGS) $(SVN_GNAT) $(DIR_GNAT_SRC); \
 	fi
 
-build: setup build-llvm-ada build-be
+build: setup build-be
 
 build-be:
 	make -j$(PARALLEL) -C $(DIR_LLVM_BACKEND) bin
 
-build-llvm-ada:
-	make -C $(DIR_LLVM_ADA)
-	make -s -j$(PARALLEL) -C $(DIR_LLVM_ADA)/llvm-3.3.src/
+llvm-ada:
+	make -C $(DIR_LLVM_ADA) PARALLEL=$(PARALLEL)
 
 clean:
 	make -C $(DIR_LLVM_BACKEND) clean

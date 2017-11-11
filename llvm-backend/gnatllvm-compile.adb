@@ -981,8 +981,7 @@ package body GNATLLVM.Compile is
    -- Emit_LValue --
    -----------------
 
-   function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T
-   is
+   function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T is
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>

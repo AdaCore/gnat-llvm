@@ -3,6 +3,8 @@ with System;
 
 with Sinfo; use Sinfo;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
@@ -365,14 +367,14 @@ package body GNATLLVM.Environment is
       Subp     : constant Subp_Env := new Subp_Env_Record'
         (Env                    => Environ (Env),
          Func                   => Func,
-         Saved_Builder_Position => Env.Bld.Get_Insert_Block,
+         Saved_Builder_Position => Get_Insert_Block (Env.Bld),
          S_Link_Descr           => null,
          S_Link                 => Value_T (System.Null_Address));
    begin
       Subp.S_Link_Descr := Env.S_Links.Element (Subp_Ent);
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
-      Env.Bld.Position_At_End (Env.Create_Basic_Block ("entry"));
+      Position_Builder_At_End (Env.Bld, Env.Create_Basic_Block ("entry"));
       return Subp;
    end Enter_Subp;
 
@@ -388,8 +390,8 @@ package body GNATLLVM.Environment is
       --  was interrupted in order to translate the current subprogram.
 
       if Env.Current_Subps.Length > 1 then
-         Env.Bld.Position_At_End
-           (Env.Current_Subps.Last_Element.Saved_Builder_Position);
+         Position_Builder_At_End
+           (Env.Bld, Env.Current_Subps.Last_Element.Saved_Builder_Position);
       end if;
 
       Env.Current_Subps.Delete_Last;

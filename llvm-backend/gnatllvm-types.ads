@@ -1,6 +1,7 @@
 with Types; use Types;
 
 with LLVM.Core; use LLVM.Core;
+with LLVM.Types; use LLVM.Types;
 
 with Atree; use Atree;
 with Einfo; use Einfo;

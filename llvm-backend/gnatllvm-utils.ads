@@ -4,6 +4,7 @@ with Sinfo;      use Sinfo;
 with Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
+with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with System; use System;
@@ -43,7 +44,7 @@ package GNATLLVM.Utils is
 
    function Const_Ones (T : Type_T) return Value_T
    is
-     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True));
+     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => LLVM.Types.True));
    --  Return an LLVM value for the given type where all bits are set
 
    Intptr_T : constant Type_T :=

@@ -5,7 +5,7 @@ with Nlists; use Nlists;
 with Sinfo;  use Sinfo;
 with Uintp;  use Uintp;
 
-with GNATLLVM.Builder; use GNATLLVM.Builder;
+with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 
@@ -24,8 +24,7 @@ package body GNATLLVM.Arrays is
    -- Get_Bound_Index --
    ---------------------
 
-   function Get_Bound_Index (Dim : Natural; Bound : Bound_T) return unsigned
-   is
+   function Get_Bound_Index (Dim : Natural; Bound : Bound_T) return unsigned is
       Bounds_Pair_Idx        : constant Natural := (Dim - 1) * 2;
       --  In the arary fat pointer bounds structure, bounds are stored as a
       --  sequence of (lower bound, upper bound) pairs : get the offset of
@@ -82,11 +81,12 @@ package body GNATLLVM.Arrays is
 
          declare
             Array_Bounds : constant Value_T :=
-              Env.Bld.Extract_Value (Array_Descr, 1, "array-bounds");
+              Extract_Value (Env.Bld, Array_Descr, 1, "array-bounds");
             --  Get the structure that contains array bounds
          begin
-            return Env.Bld.Extract_Value
-              (Array_Bounds,
+            return Extract_Value
+              (Env.Bld,
+               Array_Bounds,
                Get_Bound_Index (Dim, Bound),
                (if Bound = Low
                 then "low-bound"
@@ -142,9 +142,11 @@ package body GNATLLVM.Arrays is
          --  The component is indeed a discriminant
            and then Nkind (Parent (Entity (N))) = N_Discriminant_Specification
          then
-            return Env.Bld.Load
-              (Env.Bld.Struct_GEP
-                 (Containing_Record_Instance,
+            return Load
+              (Env.Bld,
+               Struct_GEP
+                 (Env.Bld,
+                  Containing_Record_Instance,
                   unsigned (UI_To_Int (Discriminant_Number (Entity (N))) - 1),
                   "field_access"), "field_load");
          else
@@ -167,7 +169,7 @@ package body GNATLLVM.Arrays is
       --  Start of processing for Array_Size
 
    begin
-      Size := Const_Int (Size_Type, 1, Sign_Extend => False);
+      Size := Const_Int (Size_Type, 1, Sign_Extend => LLVM.Types.False);
 
       --  Go through every array dimension
 
@@ -191,11 +193,11 @@ package body GNATLLVM.Arrays is
                  (Env, Array_Descr, Array_Type, High, Dim_Index)),
             Bounds_Type => Etype (Low_Bound (Dim)));
          Dim_Length :=
-           Env.Bld.Z_Ext (Dim_Length, Size_Type, "array-dim-length");
+           Z_Ext (Env.Bld, Dim_Length, Size_Type, "array-dim-length");
 
          --  Accumulate the product of the sizes
 
-         Size := Env.Bld.Mul (Size, Dim_Length, "");
+         Size := Mul (Env.Bld, Size, Dim_Length, "");
 
          DSD := Next (DSD);
          Dim_Index := Dim_Index + 1;
@@ -211,14 +213,12 @@ package body GNATLLVM.Arrays is
    function Array_Data
      (Env         : Environ;
       Array_Descr : Value_T;
-      Array_Type  : Entity_Id) return Value_T
-   is
+      Array_Type  : Entity_Id) return Value_T is
    begin
       if Is_Constrained (Array_Type) then
          return Array_Descr;
-
       else
-         return Env.Bld.Extract_Value (Array_Descr, 0, "array-data");
+         return Extract_Value (Env.Bld, Array_Descr, 0, "array-data");
       end if;
    end Array_Data;
 
@@ -243,11 +243,12 @@ package body GNATLLVM.Arrays is
       Bounds              : Value_T;
 
       Dim_I : Integer := 1;
+
    begin
       pragma Assert (Count_Struct_Element_Types (Fat_Ptr_Type) = 2);
       Get_Struct_Element_Types (Fat_Ptr_Type, Fat_Ptr_Elt_Types'Address);
 
-      Array_Data_Casted := Env.Bld.Bit_Cast (Array_Data, Array_Data_Type, "");
+      Array_Data_Casted := Bit_Cast (Env.Bld, Array_Data, Array_Data_Type, "");
       Bounds := Get_Undef (Array_Bounds_Type);
 
       --  Fill Bounds with actual array bounds
@@ -257,14 +258,16 @@ package body GNATLLVM.Arrays is
          declare
             R : constant Node_Id := Get_Dim_Range (Dim);
          begin
-            Bounds := Env.Bld.Insert_Value
-              (Bounds,
+            Bounds := Insert_Value
+              (Env.Bld,
+               Bounds,
                Emit_Expression (Env, Low_Bound (R)),
                Get_Bound_Index (Dim_I, Low),
                "");
 
-            Bounds := Env.Bld.Insert_Value
-              (Bounds,
+            Bounds := Insert_Value
+              (Env.Bld,
+               Bounds,
                Emit_Expression (Env, High_Bound (R)),
                Get_Bound_Index (Dim_I, High),
                "");
@@ -274,8 +277,8 @@ package body GNATLLVM.Arrays is
       end loop;
 
       --  Then fill the fat pointer itself
-      Fat_Ptr := Env.Bld.Insert_Value (Fat_Ptr, Array_Data_Casted, 0, "");
-      Fat_Ptr := Env.Bld.Insert_Value (Fat_Ptr, Bounds, 1, "");
+      Fat_Ptr := Insert_Value (Env.Bld, Fat_Ptr, Array_Data_Casted, 0, "");
+      Fat_Ptr := Insert_Value (Env.Bld, Fat_Ptr, Bounds, 1, "");
 
       return Fat_Ptr;
    end Array_Fat_Pointer;

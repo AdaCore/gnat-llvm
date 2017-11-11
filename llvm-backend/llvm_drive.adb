@@ -3,6 +3,7 @@ with Interfaces.C; use Interfaces.C;
 with System;       use System;
 
 with LLVM.Analysis; use LLVM.Analysis;
+with LLVM.Types; use LLVM.Types;
 with LLVM.Bit_Writer;
 with LLVM.Core;     use LLVM.Core;
 
@@ -16,7 +17,6 @@ with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 
 with Get_Targ;
-with GNATLLVM.Builder;      use GNATLLVM.Builder;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
@@ -42,9 +42,7 @@ package body LLVM_Drive is
 
       --  Initialize the translation environment
 
-      Env.Bld :=
-        (Base_Builder_T'(Create_In_Context (Env.Ctx))
-         with null record);
+      Env.Bld := Create_Builder_In_Context (Env.Ctx);
       Env.Mdl := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
@@ -80,7 +78,8 @@ package body LLVM_Drive is
 
       --  Output the translation
 
-      if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
+      if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) /= 0
+      then
          --  TODO??? Display the crash message, or something like this
          Error_Msg ("The backend generated bad LLVM code.", No_Location);
 
@@ -98,7 +97,7 @@ package body LLVM_Drive is
 
       --  Release the environment
 
-      Env.Bld.Dispose;
+      Dispose_Builder (Env.Bld);
       Dispose_Module (Env.Mdl);
    end GNAT_To_LLVM;
 

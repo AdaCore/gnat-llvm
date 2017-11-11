@@ -4,7 +4,7 @@ with Ada.Containers.Vectors;
 with Types; use Types;
 with Namet; use Namet;
 
-with LLVM.Core; use LLVM.Core;
+with LLVM.Types; use LLVM.Types;
 with Ada.Containers.Doubly_Linked_Lists;
 with GNATLLVM.Builder;
 
@@ -98,9 +98,9 @@ package GNATLLVM.Environment is
    package Subp_Lists is new Ada.Containers.Doubly_Linked_Lists (Subp_Env);
 
    type Environ_Record is tagged record
-      Ctx                       : LLVM.Core.Context_T;
+      Ctx                       : LLVM.Types.Context_T;
       Bld                       : GNATLLVM.Builder.Builder;
-      Mdl                       : LLVM.Core.Module_T;
+      Mdl                       : LLVM.Types.Module_T;
       --  Pure-LLVM environment : LLVM context, instruction builder and current
       --  module.
 

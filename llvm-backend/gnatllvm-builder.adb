@@ -1,3 +1,5 @@
+with LLVM.Core; use LLVM.Core;
+
 package body GNATLLVM.Builder is
 
    ---------
@@ -8,7 +10,7 @@ package body GNATLLVM.Builder is
      (Bld : Builder; Ptr : Value_T; Indices : Value_Array; Name : String)
       return Value_T
    is
-     (Bld.GEP (Ptr, Indices'Address, Indices'Length, Name));
+     (GEP (Bld, Ptr, Indices'Address, Indices'Length, Name));
 
    -----------
    -- Store --
@@ -19,7 +21,7 @@ package body GNATLLVM.Builder is
       Dummy : Value_T;
       pragma Unreferenced (Dummy);
    begin
-      Dummy := Bld.Store (Expr, Ptr);
+      Dummy := Build_Store (Bld, Expr, Ptr);
    end Store;
 
 end GNATLLVM.Builder;

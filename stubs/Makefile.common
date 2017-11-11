@@ -25,10 +25,10 @@ obj            := $(target)/obj
 bin            := $(target)/bin
 lib            := $(target)/lib/$(LIBDIR)
 llvm_ada       := $(src)/llvm-ada
-llvm_build     := $(src)/llvm-ada/llvm-*.src/Release+Asserts
-llvm_bindings  := $(llvm_ada)/out
+llvm_build     := $(src)/llvm-ada/llvm-obj
+llvm_bindings  := $(llvm_ada)/include
 
-LLVM_MODULES = Core Analysis BitWriter
+LLVM_MODULES = Core Analysis BitWriter Target
 
 ifdef USE_GNATCOV
 GNATCOV_FLAGS=-O0 -g -fdump-scos -fpreserve-control-flow
@@ -43,9 +43,9 @@ ADAFLAGS=-gnatpg -gnata -gnatyI
 LIBFLAGS=-gnatpg -gnatyI
 MARGS=-m -j0
 LARGS=-largs \
-    gcc_missing.o targext.o \
-    $(shell $(llvm_build)/bin/llvm-config --libs $(LLVM_MODULES) --ldflags) \
-    -lstdc++
+  gcc_missing.o targext.o \
+  $(shell $(llvm_build)/bin/llvm-config --libs $(LLVM_MODULES) \
+    --ldflags --system-libs) -lstdc++
 
 ###################
 # general targets #

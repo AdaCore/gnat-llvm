@@ -75,15 +75,11 @@ clean:
 # host tools #
 ##############
 
-# get adainclude path, protecting potential trailing backslashes
-adainclude := $(strip $(shell gnatls -v | grep adainclude |sort -u | sed -e 's/\\/\//g'))
-
 vpath %.o $(obj)
 
 GNAT_SRC=$(src)/gnat_src
 
-INCLUDES  =-I$(target) -I$(stubs) -I$(adainclude) -I$(GNAT_SRC) \
-    -I$(llvm_bindings)
+INCLUDES  =-I$(target) -I$(stubs) -I$(GNAT_SRC) -I$(llvm_bindings)
 HOST_FLAGS=$(INCLUDES) $(CFLAGS) $(ADAFLAGS)
 HOST_MAKE =$(GNATMAKE) $(MARGS) $(HOST_FLAGS) $(LARGS) -margs
 

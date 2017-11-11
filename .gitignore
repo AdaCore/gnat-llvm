@@ -5,8 +5,9 @@ gnat_src
 *-backend/bin
 *-backend/lib
 llvm-ada/gen
-llvm-ada/llvm-3.3.src
 llvm-ada/out
+llvm-ada/llvm-5.0.0.src
+llvm-ada/llvm-obj
 
 testsuite/out
 testsuite/srccov

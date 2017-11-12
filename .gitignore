@@ -9,6 +9,7 @@ llvm-ada/out
 llvm-ada/llvm-5.0.0.src
 llvm-ada/llvm-obj
 
+testsuite/old
 testsuite/out
 testsuite/srccov
 alis.list

@@ -1,3 +1,20 @@
+------------------------------------------------------------------------------
+--                             G N A T - L L V M                            --
+--                                                                          --
+--                     Copyright (C) 2013-2017, AdaCore                     --
+--                                                                          --
+-- This is free software;  you can redistribute it  and/or modify it  under --
+-- terms of the  GNU General Public License as published  by the Free Soft- --
+-- ware  Foundation;  either version 3,  or (at your option) any later ver- --
+-- sion.  This software is distributed in the hope  that it will be useful, --
+-- but WITHOUT ANY WARRANTY;  without even the implied warranty of MERCHAN- --
+-- TABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public --
+-- License for  more details.  You should have  received  a copy of the GNU --
+-- General  Public  License  distributed  with  this  software;   see  file --
+-- COPYING3.  If not, go to http://www.gnu.org/licenses for a complete copy --
+-- of the license.                                                          --
+------------------------------------------------------------------------------
+
 with Interfaces; use Interfaces;
 with Interfaces.C.Extensions;
 with LLVM.Core; use LLVM.Core;
@@ -12,8 +29,7 @@ package body Uintp.LLVM is
    -- Big_UI_To_LLVM --
    --------------------
 
-   function Big_UI_To_LLVM (T : Type_T; U : Uint) return Value_T
-   is
+   function Big_UI_To_LLVM (T : Type_T; U : Uint) return Value_T is
       Loc     : constant Int := Uints.Table (U).Loc;
       Length  : constant Int := Uints.Table (U).Length;
       D_Table : Udigits.Table_Ptr renames Udigits.Table;
@@ -43,8 +59,7 @@ package body Uintp.LLVM is
       -- Push_Bits --
       ---------------
 
-      procedure Push_Bits (Bits : uint64_t; Length : Nat)
-      is
+      procedure Push_Bits (Bits : uint64_t; Length : Nat) is
          Buffer        : Unsigned_64 := Unsigned_64 (Bits);
          Buffer_Length : Nat := Length;
 

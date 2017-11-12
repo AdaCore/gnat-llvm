@@ -10,7 +10,6 @@ from gnatpython.main import Main
 import gnatpython.testdriver
 from gnatpython.testdriver import add_run_test_options
 
-from glob import glob
 import os
 import os.path
 import sys
@@ -32,8 +31,6 @@ def main():
     """Run a single test"""
 
     GNATLLVM_ROOT = os.path.dirname(os.getcwd())
-    LLVM_PATHS = glob(os.path.join(
-        GNATLLVM_ROOT, 'llvm-ada', 'llvm-*src', '*', 'bin'))
 
     env = Env()
     # Make support Python packages available to tests.
@@ -41,8 +38,7 @@ def main():
     # Make the GNAT-LLVM compiler available to tests.
     env.add_path(os.path.join(GNATLLVM_ROOT, 'llvm-backend', 'bin'))
     # Make available the correct version of LLVM to tests.
-    for path in LLVM_PATHS:
-        env.add_path(path)
+    env.add_path(os.path.join(GNATLLVM_ROOT, 'llvm-ada', 'llvm-obj', 'bin'))
 
     m = Main()
     add_run_test_options(m)

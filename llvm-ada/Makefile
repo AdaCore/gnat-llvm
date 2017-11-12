@@ -9,7 +9,9 @@ DL=wget
 LLVM_SRC_FNAME=llvm-5.0.0.src.tar.xz
 LLVM_SRC_LINK=http://releases.llvm.org/5.0.0/$(LLVM_SRC_FNAME)
 
-all: setup llvm $(OUT_DIR)/llvm-core.adb
+all: setup llvm
+
+binding: $(OUT_DIR)/llvm-core.adb
 
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(PWD)/install \

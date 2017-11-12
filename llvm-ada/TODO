@@ -1,4 +1,0 @@
-- Wrap C arrays into Ada arrays
-  * Verify if all System.Address parameters correspond to arrays or not
-  * Ask arno about pointer -> system.address conversion
-- Wrap C integers : unsigned, int, etc

@@ -18,6 +18,7 @@
 with Ada.Unchecked_Deallocation;
 with System;
 
+with Errout; use Errout;
 with Sinfo; use Sinfo;
 
 with LLVM.Core; use LLVM.Core;
@@ -187,14 +188,12 @@ package body GNATLLVM.Environment is
       use Type_Maps;
       Cur : constant Cursor := Get (Env, TE);
    begin
-      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Element (Cur);
       else
-         raise No_Such_Type
-           with "Cannot find a LLVM type for Entity #" & Entity_Id'Image (TE);
+         Error_Msg_N ("cannot find matching LLVM type", TE);
+         raise No_Such_Type;
       end if;
-      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------
@@ -205,14 +204,12 @@ package body GNATLLVM.Environment is
       use Value_Maps;
       Cur : constant Cursor := Get (Env, VE);
    begin
-      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Element (Cur);
       else
-         raise No_Such_Value
-           with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (VE);
+         Error_Msg_N ("cannot find matching LLVM value", VE);
+         raise No_Such_Value;
       end if;
-      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------
@@ -225,14 +222,12 @@ package body GNATLLVM.Environment is
       use Record_Info_Maps;
       Cur : constant Cursor := Get (Env, RI);
    begin
-      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Element (Cur);
       else
-         raise No_Such_Value
-           with "Cannot find a LLVM value for Entity #" & Entity_Id'Image (RI);
+         Error_Msg_N ("cannot find matching LLVM value", RI);
+         raise No_Such_Value;
       end if;
-      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------
@@ -244,15 +239,12 @@ package body GNATLLVM.Environment is
       use Value_Maps;
       Cur : constant Cursor := Get (Env, BE);
    begin
-      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
       if Cur /= No_Element then
          return Value_As_Basic_Block (Env.Get (BE));
       else
-         raise No_Such_Basic_Block
-           with "Cannot find a LLVM basic block for Entity #"
-           & Entity_Id'Image (BE);
+         Error_Msg_N ("cannot find matching LLVM basic block", BE);
+         raise No_Such_Basic_Block;
       end if;
-      pragma Annotate (Xcov, Exempt_Off);
    end Get;
 
    ---------
@@ -330,9 +322,8 @@ package body GNATLLVM.Environment is
       --  If the loop label isn't registered, then we just met an exit
       --  statement with no corresponding loop: should not happen.
 
-      pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-      raise Program_Error with "Unknown loop identifier";
-      pragma Annotate (Xcov, Exempt_Off);
+      Error_Msg_N ("unknown loop identifier", LE);
+      raise Program_Error;
    end Get_Exit_Point;
 
    --------------------

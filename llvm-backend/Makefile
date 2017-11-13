@@ -56,6 +56,7 @@ setup:
 	    -e "s^@PREFIX@^$(prefix)^" \
 	    -e "s^@GNAT1DIR@^$(gnat1dir)^" \
 	    sdefault.adb.in > obj/sdefault.adb
+	sed -e "s^\(Expand_Nonbinary_Modular_Ops : Boolean :=\) False^\1 True^" $(GNAT_SRC)/opt.ads > obj/opt.ads
 	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
@@ -122,9 +123,7 @@ unchdeal.ads
 
 COMPILABLE_SPECS= \
 ada.ads      \
-a-nuelfu.ads \
 a-numeri.ads \
-a-nlelfu.ads \
 a-unccon.ads \
 a-uncdea.ads \
 gnat.ads     \
@@ -153,12 +152,6 @@ zfp:
 	done
 	cp -p $(GNAT_SRC)/hie/a-except__c.adb $(ADAINCLUDE)/a-except.adb
 	cp -p $(GNAT_SRC)/hie/a-except__zfp.ads $(ADAINCLUDE)/a-except.ads
-	cp -p $(GNAT_SRC)/hie/a-nuelfu__c.ads $(ADAINCLUDE)/a-nuelfu.ads
-	cp -p $(GNAT_SRC)/hie/a-nlelfu__c.ads $(ADAINCLUDE)/a-nlelfu.ads
-	cp -p $(GNAT_SRC)/hie/a-reatim__c.ads $(ADAINCLUDE)/a-reatim.ads
-	cp -p $(GNAT_SRC)/hie/a-reatim__c.adb $(ADAINCLUDE)/a-reatim.adb
-	cp -p $(GNAT_SRC)/hie/a-retide__c.ads $(ADAINCLUDE)/a-retide.ads
-	cp -p $(GNAT_SRC)/hie/a-retide__c.adb $(ADAINCLUDE)/a-retide.adb
 	cp -p $(GNAT_SRC)/hie/a-textio__c.adb $(ADAINCLUDE)/a-textio.adb
 	cp -p $(GNAT_SRC)/hie/a-textio__c.ads $(ADAINCLUDE)/a-textio.ads
 	cp -p $(GNAT_SRC)/hie/i-c__hie.ads $(ADAINCLUDE)/i-c.ads

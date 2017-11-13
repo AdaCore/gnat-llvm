@@ -128,6 +128,7 @@ package body LLVM_Drive is
          Dump_IR := True;
          return True;
       end if;
+
       return False;
    end Is_Back_End_Switch;
 

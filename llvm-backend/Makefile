@@ -42,9 +42,6 @@ endif
 
 all: setup build
 
-fast:
-        $(MAKE) DEBUG=0
-
 setup:
 	mkdir -p obj obj-tools bin
 	sed -e "s^@ADAINCLUDE@^$(adainclude)^" \
@@ -65,6 +62,9 @@ setup:
 build: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) -largs $(LDFLAGS)
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
+
+fast:
+        $(MAKE) DEBUG=0
 
 force:
 

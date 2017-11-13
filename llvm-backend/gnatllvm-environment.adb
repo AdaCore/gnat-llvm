@@ -26,6 +26,8 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 
+   use Ada.Containers;
+
    function Get
      (Env : access Environ_Record; TE : Entity_Id)
       return Type_Maps.Cursor;
@@ -400,8 +402,6 @@ package body GNATLLVM.Environment is
    ----------------
 
    procedure Leave_Subp (Env  : access Environ_Record) is
-      use type Ada.Containers.Count_Type;
-
    begin
       --  There is no builder position to restore if no subprogram translation
       --  was interrupted in order to translate the current subprogram.
@@ -413,6 +413,13 @@ package body GNATLLVM.Environment is
 
       Env.Current_Subps.Delete_Last;
    end Leave_Subp;
+
+   -------------------
+   -- Library_Level --
+   -------------------
+
+   function Library_Level (Env : access Environ_Record) return Boolean is
+     (Env.Current_Subps.Length = 0);
 
    ------------------
    -- Current_Subp --

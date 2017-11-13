@@ -152,6 +152,8 @@ package GNATLLVM.Environment is
    function In_Declarations (Env : access Environ_Record) return Boolean is
      (Env.Declarations_Level > 0);
 
+   function Library_Level (Env : access Environ_Record) return Boolean;
+
    No_Such_Type        : exception;
    No_Such_Value       : exception;
    No_Such_Basic_Block : exception;

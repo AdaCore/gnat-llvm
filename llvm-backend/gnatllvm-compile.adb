@@ -2060,10 +2060,8 @@ package body GNATLLVM.Compile is
       Node : Node_Id) return Value_T
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (Node));
-
    begin
       case Attr is
-
          when Attribute_Access
             | Attribute_Unchecked_Access
             | Attribute_Unrestricted_Access =>
@@ -2149,8 +2147,7 @@ package body GNATLLVM.Compile is
      (Env          : Environ;
       Operation    : Pred_Mapping;
       Operand_Type : Entity_Id;
-      LHS, RHS     : Node_Id) return Value_T
-   is
+      LHS, RHS     : Node_Id) return Value_T is
    begin
       --  LLVM treats pointers as integers regarding comparison
 

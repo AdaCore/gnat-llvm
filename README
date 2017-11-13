@@ -1,14 +1,13 @@
-This is an experimental LLVM backend to the GNAT translator: do not expect it
-to work for a few months...
+This is an experimental LLVM backend to the GNAT front-end.
 
 In order to build GNAT-LLVM from sources, you need fo follow the following
 steps:
 
--   Copy/move/link the src/ada directory from GNAT sources under this
-    directory:
+-   Copy/move/link the src/ada directory from GNAT sources under the
+    llvm-backend directory:
 
         $ tar xzf [...]/gnat-xxx-src.tgz
-        $ mv gnat-*src/src/ada gnat_src
+        $ mv gnat-*src/src/ada llvm-backend/gnat_src
         $ rm -rf gnat-*src
 
 -   Make sure you have a native version of GNAT which matches this package in

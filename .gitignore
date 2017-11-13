@@ -1,5 +1,5 @@
 # External projects
-gnat_src
+llvm-backend/gnat_src
 
 # Build/test results directories
 llvm-backend/bin

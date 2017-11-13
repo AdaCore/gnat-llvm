@@ -3,8 +3,8 @@ PARALLEL=24
 all: build
 
 sanity-check:
-	@if ! [ -d gnat_src ]; then \
-          echo "error: directory gnat_src not found"; exit 1; \
+	@if ! [ -d llvm-backend/gnat_src ]; then \
+          echo "error: directory llvm-backend/gnat_src not found"; exit 1; \
 	fi
 
 build: sanity-check build-be

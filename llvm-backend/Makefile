@@ -30,7 +30,7 @@ ifeq ($(DEBUG),0)
   GPRARGS=-XBuild=Production
 endif
 
-GNAT_SRC=../gnat_src
+GNAT_SRC=gnat_src
 ADAINCLUDE=lib/rts-llvm/adainclude
 ADALIB=lib/rts-llvm/adalib
 

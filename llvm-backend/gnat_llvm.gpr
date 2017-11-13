@@ -2,7 +2,7 @@ with "gnat_llvm_c";
 
 project Gnat_LLVM is
    for Source_Dirs use
-     (".", "obj", "../gnat_src", "../llvm-ada/include");
+     (".", "obj", "gnat_src", "../llvm-ada/include");
    for Object_Dir use "obj";
    for Exec_Dir use "bin";
    for Languages use ("Ada");

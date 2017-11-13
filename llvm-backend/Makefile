@@ -9,8 +9,11 @@ DEBUG=1
 # Set to 1 to enable automated (as opposed to manual) builds
 AUTOMATED=0
 
-RM=rm -rf
+RM=rm -f
+RMDIR=rm -rf
 MV=mv -f
+MKDIR=mkdir -p
+CHMOD=chmod
 
 adainclude:=$(subst \,/,$(strip $(shell gnatls -v | grep adainclude)))/
 adalib:=$(subst \,/,$(strip $(shell gnatls -v | grep adalib)))/
@@ -26,6 +29,10 @@ endif
 ifeq ($(DEBUG),0)
   GPRARGS=-XBuild=Production
 endif
+
+GNAT_SRC=../gnat_src
+ADAINCLUDE=lib/rts-llvm/adainclude
+ADALIB=lib/rts-llvm/adalib
 
 uname:=$(shell uname)
 pwd:=$(shell pwd)
@@ -49,15 +56,15 @@ setup:
 	    -e "s^@PREFIX@^$(prefix)^" \
 	    -e "s^@GNAT1DIR@^$(gnat1dir)^" \
 	    sdefault.adb.in > obj/sdefault.adb
-	for f in `cd ../gnat_src; ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt`; \
+	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt`; \
 	do \
-	  cp -p ../gnat_src/$$f obj-tools; \
+	  cp -p $(GNAT_SRC)/$$f obj-tools; \
 	done
 	cd obj-tools && gnatmake -q xtreeprs xnmake xsnamest && \
 	./xtreeprs && ./xnmake && ./xsnamest && \
 	mv nmake.ads nmake.adb treeprs.ads ../obj && \
 	mv snames.ns ../obj/snames.ads && mv snames.nb ../obj/snames.adb
-	cp -p ../gnat_src/ada_get_targ.adb obj/get_targ.adb
+	cp -p $(GNAT_SRC)/ada_get_targ.adb obj/get_targ.adb
 
 build: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) -largs $(LDFLAGS)
@@ -69,5 +76,100 @@ fast:
 force:
 
 clean:
-	$(RM) obj obj-tools
+	$(RMDIR) obj obj-tools
+
+COMMON_SRCS= \
+a-assert.adb \
+a-assert.ads \
+ada.ads      \
+a-unccon.ads \
+a-uncdea.ads \
+a-numeri.ads \
+gnat.ads     \
+g-souinf.ads \
+i-cexten.ads \
+interfac.ads \
+s-atacco.adb \
+s-atacco.ads \
+s-exnint.ads \
+s-exnint.adb \
+s-expint.ads \
+s-expint.adb \
+s-fatflt.ads \
+s-fatgen.adb \
+s-fatgen.ads \
+s-fatlfl.ads \
+s-fatllf.ads \
+s-fatsfl.ads \
+s-imgboo.adb \
+s-imgboo.ads \
+s-imenne.ads \
+s-imenne.adb \
+s-imgint.adb \
+s-imgint.ads \
+s-imglli.adb \
+s-imglli.ads \
+s-imgllu.adb \
+s-imgllu.ads \
+s-imguns.adb \
+s-imguns.ads \
+s-stoele.adb \
+s-stoele.ads \
+s-unstyp.ads \
+text_io.ads  \
+unchconv.ads \
+unchdeal.ads
+
+COMPILABLE_SPECS= \
+ada.ads      \
+a-nuelfu.ads \
+a-numeri.ads \
+a-nlelfu.ads \
+a-unccon.ads \
+a-uncdea.ads \
+gnat.ads     \
+i-c.ads      \
+i-cexten.ads \
+interfac.ads \
+s-atacco.ads \
+s-fatflt.ads \
+s-fatsfl.ads \
+s-fatllf.ads \
+s-fatlfl.ads \
+g-souinf.ads \
+s-unstyp.ads \
+system.ads   \
+text_io.ads  \
+unchconv.ads \
+unchdeal.ads
+
+COMPILE=$(pwd)/bin/llvm-gcc -c -gnatpg -nostdinc -I../adainclude
+
+zfp:
+	$(RMDIR) $(ADAINCLUDE) $(ADALIB)
+	$(MKDIR) $(ADAINCLUDE) $(ADALIB)
+	for f in $(COMMON_SRCS); do \
+	  cp -p $(GNAT_SRC)/libgnat/$$f $(ADAINCLUDE); \
+	done
+	cp -p $(GNAT_SRC)/hie/a-except__c.adb $(ADAINCLUDE)/a-except.adb
+	cp -p $(GNAT_SRC)/hie/a-except__zfp.ads $(ADAINCLUDE)/a-except.ads
+	cp -p $(GNAT_SRC)/hie/a-nuelfu__c.ads $(ADAINCLUDE)/a-nuelfu.ads
+	cp -p $(GNAT_SRC)/hie/a-nlelfu__c.ads $(ADAINCLUDE)/a-nlelfu.ads
+	cp -p $(GNAT_SRC)/hie/a-reatim__c.ads $(ADAINCLUDE)/a-reatim.ads
+	cp -p $(GNAT_SRC)/hie/a-reatim__c.adb $(ADAINCLUDE)/a-reatim.adb
+	cp -p $(GNAT_SRC)/hie/a-retide__c.ads $(ADAINCLUDE)/a-retide.ads
+	cp -p $(GNAT_SRC)/hie/a-retide__c.adb $(ADAINCLUDE)/a-retide.adb
+	cp -p $(GNAT_SRC)/hie/a-textio__c.adb $(ADAINCLUDE)/a-textio.adb
+	cp -p $(GNAT_SRC)/hie/a-textio__c.ads $(ADAINCLUDE)/a-textio.ads
+	cp -p $(GNAT_SRC)/hie/i-c__hie.ads $(ADAINCLUDE)/i-c.ads
+	cp -p $(GNAT_SRC)/hie/s-assert__c.ads $(ADAINCLUDE)/s-assert.ads
+	cp -p $(GNAT_SRC)/hie/s-assert__xi.adb $(ADAINCLUDE)/s-assert.adb
+	cp -p $(GNAT_SRC)/hie/system-c.ads $(ADAINCLUDE)/system.ads
+	cd $(ADALIB) && for f in $(COMPILABLE_SPECS); do \
+	  $(COMPILE) ../adainclude/$$f || exit 1; \
+	done
+	cd $(ADALIB) && for f in ../adainclude/*.adb; do \
+	  $(COMPILE) -I../adainclude $$f || exit 1; \
+	done
+	cd $(ADALIB) && $(CHMOD) a-wx *.ali
 

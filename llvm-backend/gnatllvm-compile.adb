@@ -303,7 +303,7 @@ package body GNATLLVM.Compile is
             begin
                if Ekind (Def_Id) not in Generic_Unit_Kind then
                   Emit_List (Env, Declarations (Node));
-                  --  TODO : Handle statements
+                  --  ??? Handle statements
                end if;
             end;
 
@@ -507,14 +507,14 @@ package body GNATLLVM.Compile is
 
          when N_Raise_Constraint_Error =>
 
-            --  TODO??? When exceptions handling will be implemented, implement
+            --  ??? When exceptions handling will be implemented, implement
             --  this.
 
             null;
 
          when N_Raise_Storage_Error =>
 
-            --  TODO??? When exceptions handling will be implemented, implement
+            --  ??? When exceptions handling will be implemented, implement
             --  this.
 
             null;
@@ -534,6 +534,7 @@ package body GNATLLVM.Compile is
                  Get_Full_View (Etype (Def_Ident));
                LLVM_Type      : Type_T;
                LLVM_Var, Expr : Value_T;
+
             begin
                --  Nothing to do if this is a debug renaming type or if there
                --  is an address clause on the object (will be handled as part
@@ -543,17 +544,6 @@ package body GNATLLVM.Compile is
                  or else Present (Address_Clause (Def_Ident))
                then
                   return;
-               end if;
-
-               if Env.Library_Level then
-                  --  TODO??? Handle top-level declarations
-
-                  Error_Msg_N ("library level objects not supported", Node);
-                  return;
-
-                  --  take Is_Statically_Allocated (Def_Ident) into account
-                  --  take Expression (Node) into account
-
                end if;
 
                --  Strip useless entities such as the ones generated for
@@ -566,42 +556,68 @@ package body GNATLLVM.Compile is
                   return;
                end if;
 
-               if Is_Array_Type (T) then
+               --  Handle top-level declarations
 
-                  --  Alloca arrays are handled as follows:
-                  --  * The total size is computed with Compile_Array_Size.
-                  --  * The type of the innermost component is computed with
-                  --    Get_Innermost_Component type.
-                  --  * The result of the alloca is bitcasted to the proper
-                  --    array type, so that multidimensional LLVM GEP
-                  --    operations work properly.
-
-                  LLVM_Type := Create_Access_Type (Env, T);
-                  LLVM_Var := Bit_Cast
-                     (Env.Bld,
-                      Array_Alloca
-                        (Env.Bld,
-                         Get_Innermost_Component_Type (Env, T),
-                         Array_Size (Env, No_Value_T, T),
-                         "array-alloca"),
-                     LLVM_Type,
-                     Get_Name (Def_Ident));
-               else
+               if Env.Library_Level then
+                  --  ??? Will only work for objects of static sizes
                   LLVM_Type := Create_Type (Env, T);
-                  LLVM_Var := Alloca
-                    (Env.Bld, LLVM_Type,
-                     "local-" & Get_Name (Def_Ident));
-               end if;
+                  LLVM_Var :=
+                    Add_Global (Env.Mdl, LLVM_Type, Get_Name (Def_Ident));
+                  Env.Set (Def_Ident, LLVM_Var);
 
-               Env.Set (Def_Ident, LLVM_Var);
-               Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
+                  --  Take Is_Statically_Allocated (Def_Ident) into account
+                  --  ???
 
-               if Present (Expression (Node))
-                 and then not No_Initialization (Node)
-               then
-                  --  TODO??? Handle the Do_Range_Check_Flag
-                  Expr := Emit_Expression (Env, Expression (Node));
-                  Store (Env.Bld, Expr, LLVM_Var);
+                  --  Take Expression (Node) into account
+                  --  ??? Will only work if Expression is static
+
+                  if Present (Expression (Node))
+                    and then not No_Initialization (Node)
+                  then
+                     Expr := Emit_Expression (Env, Expression (Node));
+                     Set_Initializer (LLVM_Var, Expr);
+                  end if;
+
+               else
+                  if Is_Array_Type (T) then
+
+                     --  Alloca arrays are handled as follows:
+                     --  * The total size is computed with Compile_Array_Size.
+                     --  * The type of the innermost component is computed with
+                     --    Get_Innermost_Component type.
+                     --  * The result of the alloca is bitcasted to the proper
+                     --    array type, so that multidimensional LLVM GEP
+                     --    operations work properly.
+
+                     --    ??? Should only use Alloca for non static sizes
+
+                     LLVM_Type := Create_Access_Type (Env, T);
+                     LLVM_Var := Bit_Cast
+                        (Env.Bld,
+                         Array_Alloca
+                           (Env.Bld,
+                            Get_Innermost_Component_Type (Env, T),
+                            Array_Size (Env, No_Value_T, T),
+                            "array-alloca"),
+                        LLVM_Type,
+                        Get_Name (Def_Ident));
+
+                  else
+                     LLVM_Type := Create_Type (Env, T);
+                     LLVM_Var := Alloca
+                       (Env.Bld, LLVM_Type,
+                        "local-" & Get_Name (Def_Ident));
+                  end if;
+
+                  Env.Set (Def_Ident, LLVM_Var);
+                  Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
+
+                  if Present (Expression (Node))
+                    and then not No_Initialization (Node)
+                  then
+                     Expr := Emit_Expression (Env, Expression (Node));
+                     Store (Env.Bld, Expr, LLVM_Var);
+                  end if;
                end if;
             end;
 
@@ -965,9 +981,10 @@ package body GNATLLVM.Compile is
 
          when N_Pragma =>
             case Get_Pragma_Id (Node) is
-               --  TODO??? While we aren't interested in most of the pragmas,
-               --  there are some we should look at. But still, the "others"
-               --  case is necessary.
+               --  ??? While we aren't interested in most of the pragmas,
+               --  there are some we should look at (see
+               --  trans.c:Pragma_to_gnu). But still, the "others" case is
+               --  necessary.
                when others => null;
             end case;
 
@@ -1350,7 +1367,7 @@ package body GNATLLVM.Compile is
          case Nkind (Node) is
 
          when N_Expression_With_Actions =>
-            --  TODO??? Compile the list of actions
+            --  ??? Compile the list of actions
 --              pragma Assert (Is_Empty_List (Actions (Node)));
             return Emit_Expr (Expression (Node));
 

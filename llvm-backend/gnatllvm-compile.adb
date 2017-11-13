@@ -26,6 +26,7 @@ with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
+with Stand;    use Stand;
 with Stringt;  use Stringt;
 with Uintp;    use Uintp;
 
@@ -100,7 +101,7 @@ package body GNATLLVM.Compile is
 
    function Emit_Shift
      (Env       : Environ;
-      Operation : Node_Kind;
+      Node      : Node_Id;
       LHS, RHS  : Value_T) return Value_T;
    --  Helper for Emit_Expression: handle shift and rotate operations
 
@@ -190,7 +191,8 @@ package body GNATLLVM.Compile is
             "array-size");
 
       else
-         raise Constraint_Error with "Unimplemented case for emit type size";
+         Error_Msg_N ("unimplemented case for emit type size", T);
+         raise Program_Error;
       end if;
    end Emit_Type_Size;
 
@@ -265,6 +267,7 @@ package body GNATLLVM.Compile is
 
          Emit_Compilation_Unit (Env, Library_Unit (Node), False);
       end if;
+
       Emit (Env, Unit (Node));
    end Emit_Compilation_Unit;
 
@@ -276,13 +279,10 @@ package body GNATLLVM.Compile is
      (Env : Environ; Node : Node_Id) is
    begin
       case Nkind (Node) is
-
          when N_Compilation_Unit =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error with
-              "N_Compilation_Unit node must be processed in"
-              & " Emit_Compilation_Unit";
-            pragma Annotate (Xcov, Exempt_Off);
+            Error_Msg_N
+              ("`N_Compilation_Unit` node must be processed in"
+              & " `Emit_Compilation_Unit`", Node);
 
          when N_With_Clause =>
             Emit_Compilation_Unit (Env, Library_Unit (Node), True);
@@ -527,20 +527,34 @@ package body GNATLLVM.Compile is
             --  corresponding symbol at the LLVM level and add it to the
             --  environment.
 
-            if Env.In_Declarations then
-
-               --  TODO??? Handle top-level declarations
-
-               return;
-            end if;
-
             declare
                Def_Ident      : constant Node_Id := Defining_Identifier (Node);
                Obj_Def        : constant Node_Id := Object_Definition (Node);
-               T              : constant Entity_Id := Etype (Def_Ident);
+               T              : constant Entity_Id :=
+                 Get_Full_View (Etype (Def_Ident));
                LLVM_Type      : Type_T;
                LLVM_Var, Expr : Value_T;
             begin
+               --  Nothing to do if this is a debug renaming type or if there
+               --  is an address clause on the object (will be handled as part
+               --  of N_Attribute_Definition_Clause)
+
+               if T = Standard_Debug_Renaming_Type
+                 or else Present (Address_Clause (Def_Ident))
+               then
+                  return;
+               end if;
+
+               if Env.Library_Level then
+                  --  TODO??? Handle top-level declarations
+
+                  Error_Msg_N ("library level objects not supported", Node);
+                  return;
+
+                  --  take Is_Statically_Allocated (Def_Ident) into account
+                  --  take Expression (Node) into account
+
+               end if;
 
                --  Strip useless entities such as the ones generated for
                --  renaming encodings.
@@ -563,7 +577,6 @@ package body GNATLLVM.Compile is
                   --    operations work properly.
 
                   LLVM_Type := Create_Access_Type (Env, T);
-
                   LLVM_Var := Bit_Cast
                      (Env.Bld,
                       Array_Alloca
@@ -600,6 +613,13 @@ package body GNATLLVM.Compile is
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                LLVM_Var  : Value_T;
             begin
+               if Env.Library_Level then
+                  --  ??? Handle top-level declarations
+
+                  Error_Msg_N
+                    ("library level object renaming not supported", Node);
+                  return;
+               end if;
 
                --  If the renamed object is already an l-value, keep it as-is.
                --  Otherwise, create one for it.
@@ -969,28 +989,31 @@ package body GNATLLVM.Compile is
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
             null;
 
+         --  ??? Ignore for now
+         when N_Exception_Handler =>
+            Error_Msg_N ("exception handler ignored??", Node);
+
+         when N_Exception_Declaration
+            | N_Exception_Renaming_Declaration
+         =>
+            Error_Msg_N ("exception declaration ignored??", Node);
+
          when N_Attribute_Definition_Clause =>
-            if Get_Name (Node) = "alignment" then
-               --  TODO??? Handle the alignment clause
-               null;
-            elsif Get_Name (Node) = "size" then
-               --  TODO??? Handle size clauses
-               null;
-            else
-               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-               raise Program_Error
-                 with "Unhandled attribute definition clause: "
-                 & Get_Name (Node);
-               pragma Annotate (Xcov, Exempt_Off);
+
+            --  The only interesting case left after expansion is for Address
+            --  clauses. We only deal with 'Address if the object has a Freeze
+            --  node.
+
+            if Get_Attribute_Id (Chars (Node)) = Attribute_Address
+              and then Present (Freeze_Node (Entity (Name (Node))))
+            then
+               Error_Msg_N ("unsupported address clause", Node);
             end if;
 
          when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Unhandled statement node kind: "
-              & Node_Kind'Image (Nkind (Node));
-            pragma Annotate (Xcov, Exempt_Off);
-
+            Error_Msg_N
+              ("unhandled statement kind: `" &
+               Node_Kind'Image (Nkind (Node)) & "`", Node);
       end case;
    end Emit;
 
@@ -1146,10 +1169,10 @@ package body GNATLLVM.Compile is
             end;
 
          when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
-            pragma Annotate (Xcov, Exempt_Off);
+            Error_Msg_N
+              ("unhandled node kind: `" &
+               Node_Kind'Image (Nkind (Node)) & "`", Node);
+            raise Program_Error;
       end case;
    end Emit_LValue;
 
@@ -1275,11 +1298,9 @@ package body GNATLLVM.Compile is
                   elsif Is_Unsigned_Type (T) then
                      return U_Div (Env.Bld, LVal, RVal, "udiv");
                   else
-                     pragma Annotate
-                       (Xcov, Exempt_On, "Defensive programming");
-                     raise Program_Error
-                       with "Not handled : Division with type " & T'Img;
-                     pragma Annotate (Xcov, Exempt_Off);
+                     Error_Msg_N
+                       ("not handled: Division with type `" & T'Img & "`",
+                        Node);
                   end if;
                end;
 
@@ -1300,15 +1321,14 @@ package body GNATLLVM.Compile is
 
             when N_Op_Shift_Left | N_Op_Shift_Right
                | N_Op_Shift_Right_Arithmetic
-               | N_Op_Rotate_Left | N_Op_Rotate_Right =>
-               return Emit_Shift (Env, Nkind (Node), LVal, RVal);
+               | N_Op_Rotate_Left | N_Op_Rotate_Right
+            =>
+               return Emit_Shift (Env, Node, LVal, RVal);
 
             when others =>
-               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-               raise Program_Error
-                 with "Unhandled node kind in expression: "
-                 & Node_Kind'Image (Nkind (Node));
-               pragma Annotate (Xcov, Exempt_Off);
+               Error_Msg_N
+                 ("unhandled node kind in expression: `" &
+                  Node_Kind'Image (Nkind (Node)) & "`", Node);
             end case;
 
             --  We need to handle modulo manually for non binary modulus types.
@@ -1407,10 +1427,8 @@ package body GNATLLVM.Compile is
                then
                   return Int_To_Ptr (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                else
-                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-                  raise Program_Error
-                    with "Invalid conversion, should never happen";
-                  pragma Annotate (Xcov, Exempt_Off);
+                  Error_Msg_N ("unsupported unchecked conversion", Node);
+                  raise Program_Error;
                end if;
             end;
 
@@ -1485,10 +1503,8 @@ package body GNATLLVM.Compile is
                      "alloc_bc");
 
                else
-                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-                  raise Program_Error
-                    with "Non handled form in N_Allocator";
-                  pragma Annotate (Xcov, Exempt_Off);
+                  Error_Msg_N ("unsupported form wof N_Allocator", Node);
+                  raise Program_Error;
                end if;
             end;
 
@@ -1562,10 +1578,10 @@ package body GNATLLVM.Compile is
             return Const_Null (Create_Type (Env, Etype (Node)));
 
          when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Unhandled node kind: " & Node_Kind'Image (Nkind (Node));
-            pragma Annotate (Xcov, Exempt_Off);
+            Error_Msg_N
+              ("unsupported node kind: `" &
+               Node_Kind'Image (Nkind (Node)) & "`", Node);
+            raise Program_Error;
          end case;
       end if;
    end Emit_Expression;
@@ -1997,9 +2013,8 @@ package body GNATLLVM.Compile is
             "address-conv");
 
       else
-         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-         raise Program_Error with "Unhandled type conv";
-         pragma Annotate (Xcov, Exempt_Off);
+         Error_Msg_N ("unsupported type conversion", Src_Type);
+         raise Program_Error;
       end if;
    end Build_Type_Conversion;
 
@@ -2119,10 +2134,10 @@ package body GNATLLVM.Compile is
             end;
 
          when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Unhandled Attribute : " & Attribute_Id'Image (Attr);
-            pragma Annotate (Xcov, Exempt_Off);
+            Error_Msg_N
+              ("unsupported attribute: `" &
+               Attribute_Id'Image (Attr) & "`", Node);
+            raise Program_Error;
       end case;
    end Emit_Attribute_Reference;
 
@@ -2160,11 +2175,8 @@ package body GNATLLVM.Compile is
             "fcmp");
 
       elsif Is_Record_Type (Operand_Type) then
-         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-         raise Program_Error
-           with "The front-end is supposed to already handle record"
-           & " comparisons.";
-         pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
+         Error_Msg_N ("unsupported record comparison", LHS);
+         raise Program_Error;
 
       elsif Is_Array_Type (Operand_Type) then
          pragma Assert (Operation.Signed in Int_EQ | Int_NE);
@@ -2288,11 +2300,10 @@ package body GNATLLVM.Compile is
          end;
 
       else
-         pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-         raise Program_Error
-           with "Invalid operand type for comparison:"
-           & Entity_Kind'Image (Ekind (Operand_Type));
-         pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
+         Error_Msg_N
+           ("unsupported operand type for comparison: `"
+            & Entity_Kind'Image (Ekind (Operand_Type)) & "`", LHS);
+         raise Program_Error;
       end if;
    end Emit_Comparison;
 
@@ -2400,15 +2411,16 @@ package body GNATLLVM.Compile is
 
    function Emit_Shift
      (Env       : Environ;
-      Operation : Node_Kind;
+      Node      : Node_Id;
       LHS, RHS  : Value_T) return Value_T
    is
       To_Left, Rotate, Arithmetic : Boolean := False;
 
-      Result   : Value_T := LHS;
-      LHS_Type : constant Type_T := Type_Of (LHS);
-      N        : Value_T := S_Ext (Env.Bld, RHS, LHS_Type, "bits");
-      LHS_Bits : constant Value_T := Const_Int
+      Operation : constant Node_Kind := Nkind (Node);
+      Result    : Value_T := LHS;
+      LHS_Type  : constant Type_T := Type_Of (LHS);
+      N         : Value_T := S_Ext (Env.Bld, RHS, LHS_Type, "bits");
+      LHS_Bits  : constant Value_T := Const_Int
         (LHS_Type,
          unsigned_long_long (Get_Int_Type_Width (LHS_Type)),
          Sign_Extend => LLVM.Types.False);
@@ -2432,11 +2444,10 @@ package body GNATLLVM.Compile is
          when N_Op_Rotate_Right =>
             Rotate := True;
          when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Invalid shift/rotate operation: "
-              & Node_Kind'Image (Operation);
-            pragma Annotate (Xcov, Exempt_Off);
+            Error_Msg_N
+              ("unsupported shift/rotate operation: `"
+               & Node_Kind'Image (Operation) & "`", Node);
+            raise Program_Error;
       end case;
 
       if Rotate then

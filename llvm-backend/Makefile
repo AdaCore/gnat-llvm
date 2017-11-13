@@ -85,7 +85,6 @@ a-assert.ads \
 ada.ads      \
 a-unccon.ads \
 a-uncdea.ads \
-a-numeri.ads \
 gnat.ads     \
 g-souinf.ads \
 i-cexten.ads \
@@ -123,7 +122,6 @@ unchdeal.ads
 
 COMPILABLE_SPECS= \
 ada.ads      \
-a-numeri.ads \
 a-unccon.ads \
 a-uncdea.ads \
 gnat.ads     \

@@ -10,10 +10,10 @@ sanity-check:
 build: sanity-check build-be
 
 build-be:
-	make -j$(PARALLEL) -C llvm-backend bin
+	make -C llvm-backend
 
 llvm:
-	make -C llvm-ada
+	make -C llvm-ada PARALLEL=$(PARALLEL)
 
 clean:
 	make -C llvm-backend clean

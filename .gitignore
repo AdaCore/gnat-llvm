@@ -2,8 +2,9 @@
 gnat_src
 
 # Build/test results directories
-*-backend/bin
-*-backend/lib
+llvm-backend/bin
+llvm-backend/lib
+llvm-backend/obj-tools
 llvm-ada/gen
 llvm-ada/out
 llvm-ada/llvm-5.0.0.src

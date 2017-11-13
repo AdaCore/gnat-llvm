@@ -1,0 +1,35 @@
+with "gnat_llvm_c";
+
+project Tools is
+   for Source_Dirs use (".", "../gnat_src", "obj");
+   for Object_Dir use "obj";
+   for Exec_Dir use "bin";
+   for Languages use ("Ada");
+
+   for Main use
+     ("gnatmake.adb", "gnatbind.adb", "gnatlink.adb", "gnatchop.adb",
+      "gnatkr.adb", "gnatls.adb", "gnatprep.adb", "gnatname.adb",
+      "gnatclean.adb", "gnatcmd.adb", "gcc_wrapper.adb");
+
+   package Builder is
+      for Executable ("gcc_wrapper.adb") use "llvm-gcc";
+      for Executable ("gnatmake.adb") use "llvm-gnatmake";
+      for Executable ("gnatbind.adb") use "llvm-gnatbind";
+      for Executable ("gnatlink.adb") use "llvm-gnatlink";
+      for Executable ("gnatchop.adb") use "llvm-gnatchop";
+      for Executable ("gnatkr.adb") use "llvm-gnatkr";
+      for Executable ("gnatls.adb") use "llvm-gnatls";
+      for Executable ("gnatprep.adb") use "llvm-gnatprep";
+      for Executable ("gnatname.adb") use "llvm-gnatname";
+      for Executable ("gnatclean.adb") use "llvm-gnatclean";
+      for Executable ("gnatcmd.adb") use "llvm-gnat";
+
+      for Switches ("Ada") use ("-m");
+   end Builder;
+
+   package Compiler is
+      for Switches ("Ada") use
+        ("-g", "-O0", "-gnatg", "-gnata", "-gnatVa", "-gnatQ", "-gnateE");
+   end Compiler;
+
+end Tools;

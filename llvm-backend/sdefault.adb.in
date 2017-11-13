@@ -1,0 +1,76 @@
+------------------------------------------------------------------------------
+--                                                                          --
+--                         GNAT COMPILER COMPONENTS                         --
+--                                                                          --
+--                             S D E F A U L T                              --
+--                                                                          --
+--                                 B o d y                                  --
+--                                                                          --
+--                     Copyright (C) 1998-2014, AdaCore                     --
+--                                                                          --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
+-- terms of the  GNU General Public License as published  by the Free Soft- --
+-- ware  Foundation;  either version 3,  or (at your option) any later ver- --
+-- sion.  GNAT is distributed in the hope that it will be useful, but WITH- --
+-- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
+-- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License --
+-- for  more details.  You should have  received  a copy of the GNU General --
+-- Public License  distributed with GNAT; see file COPYING3.  If not, go to --
+-- http://www.gnu.org/licenses for a complete copy of the license.          --
+--                                                                          --
+------------------------------------------------------------------------------
+
+--  This is the gnat2scil version of package body Sdefault.
+
+--  This package body provides the gnat2scil implementation of the routines
+--  that locate the Ada library source and object directories.
+
+with Osint; use Osint;
+
+package body Sdefault is
+   pragma Style_Checks (Off);
+
+   ----------------
+   -- Local Data --
+   ----------------
+
+   Prefix : constant String := "@PREFIX@";
+   Target : constant String := "codepeer/";
+
+   ------------------------------
+   -- Include_Dir_Default_Name --
+   ------------------------------
+
+   function Include_Dir_Default_Name return String_Ptr is
+   begin
+      return Relocate_Path (Prefix, "@ADAINCLUDE@");
+   end Include_Dir_Default_Name;
+
+   -----------------------------
+   -- Object_Dir_Default_Name --
+   -----------------------------
+
+   function Object_Dir_Default_Name return String_Ptr is
+   begin
+      return Relocate_Path (Prefix, "@ADALIB@");
+   end Object_Dir_Default_Name;
+
+   -----------------------
+   -- Search_Dir_Prefix --
+   -----------------------
+
+   function Search_Dir_Prefix return String_Ptr is
+   begin
+      return Relocate_Path (Prefix, "@GNAT1DIR@");
+   end Search_Dir_Prefix;
+
+   -----------------
+   -- Target_Name --
+   -----------------
+
+   function Target_Name return String_Ptr is
+   begin
+      return new String'(Target);
+   end Target_Name;
+
+end Sdefault;

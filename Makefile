@@ -13,7 +13,7 @@ build-be:
 	make -j$(PARALLEL) -C llvm-backend bin
 
 llvm:
-	make -C llvm-ada PARALLEL=$(PARALLEL)
+	make -C llvm-ada
 
 clean:
 	make -C llvm-backend clean

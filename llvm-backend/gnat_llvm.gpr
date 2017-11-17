@@ -15,7 +15,7 @@ project Gnat_LLVM is
 
    package Compiler is
       for Switches ("Ada") use
-        ("-g", "-O0", "-gnatg", "-gnata", "-gnatVa", "-gnatQ", "-gnateE");
+        ("-g", "-O0", "-gnatg", "-gnata", "-gnateE");
    end Compiler;
 
 end Gnat_LLVM;

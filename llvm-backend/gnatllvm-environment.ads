@@ -142,6 +142,8 @@ package GNATLLVM.Environment is
 
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
+
+      In_Main_Unit              : Boolean := False;
    end record;
 
    procedure Push_Scope (Env : access Environ_Record);
@@ -151,6 +153,12 @@ package GNATLLVM.Environment is
    procedure End_Declarations (Env : access Environ_Record);
    function In_Declarations (Env : access Environ_Record) return Boolean is
      (Env.Declarations_Level > 0);
+   --  Redundant with In_Main_Unit???
+
+   procedure Set_In_Main_Unit
+     (Env : access Environ_Record; In_Main_Unit : Boolean := True);
+   function In_Main_Unit (Env : access Environ_Record) return Boolean is
+     (Env.In_Main_Unit);
 
    function Library_Level (Env : access Environ_Record) return Boolean;
 

@@ -80,6 +80,16 @@ package body GNATLLVM.Environment is
       Env.Declarations_Level := Env.Declarations_Level - 1;
    end End_Declarations;
 
+   ----------------------
+   -- Set_In_Main_Unit --
+   ----------------------
+
+   procedure Set_In_Main_Unit
+     (Env : access Environ_Record; In_Main_Unit : Boolean := True) is
+   begin
+      Env.In_Main_Unit := In_Main_Unit;
+   end Set_In_Main_Unit;
+
    --------------
    -- Has_Type --
    --------------

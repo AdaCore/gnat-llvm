@@ -20,15 +20,19 @@ with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
+with Atree; use Atree;
 with Einfo;    use Einfo;
 with Errout;   use Errout;
+with Eval_Fat; use Eval_Fat;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Util; use Sem_Util;
+with Sinfo; use Sinfo;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 with Uintp;    use Uintp;
+with Urealp;   use Urealp;
 
 with LLVM.Analysis; use LLVM.Analysis;
 with LLVM.Core; use LLVM.Core;
@@ -43,7 +47,9 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
-   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+   --  Note: in order to find the right LLVM instruction to generate,
+   --  you can compare with what Clang generates on corresponding C or C++
+   --  code. This can be done online via http://ellcc.org/demo/index.cgi
 
    function Get_Type_Size
      (Env : Environ;
@@ -59,6 +65,12 @@ package body GNATLLVM.Compile is
       Src_Type, Dest_Type : Entity_Id;
       Value               : Value_T) return Value_T;
    --  Emit code to convert Src_Value to Dest_Type
+
+   type Scl_Op is (Op_Or, Op_And);
+
+   function Build_Short_Circuit_Op
+     (Env : Environ; Left, Right : Value_T; Op : Scl_Op) return Value_T;
+   --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 
    function Emit_Attribute_Reference
      (Env  : Environ;
@@ -145,8 +157,6 @@ package body GNATLLVM.Compile is
      (Env  : Environ;
       Subp : Entity_Id) return Value_T;
    --  Build and return the appropriate static link to pass to a call to Subp
-
-   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
    -------------------
    -- Get_Type_Size --
@@ -245,47 +255,22 @@ package body GNATLLVM.Compile is
          Struct_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
    end Record_Field_Offset;
 
-   ---------------------------
-   -- Emit_Compilation_Unit --
-   ---------------------------
-
-   procedure Emit_Compilation_Unit
-     (Env : Environ; Node : Node_Id; Emit_Library_Unit : Boolean) is
-   begin
-      Env.Begin_Declarations;
-      for With_Clause of Iterate (Context_Items (Node)) loop
-         Emit (Env, With_Clause);
-      end loop;
-      Env.End_Declarations;
-
-      if Emit_Library_Unit
-        and then Present (Library_Unit (Node))
-        and then Library_Unit (Node) /= Node
-      then
-         --  Library unit spec and body point to each other. Avoid infinite
-         --  recursion.
-
-         Emit_Compilation_Unit (Env, Library_Unit (Node), False);
-      end if;
-
-      Emit (Env, Unit (Node));
-   end Emit_Compilation_Unit;
-
    ----------
    -- Emit --
    ----------
 
-   procedure Emit
-     (Env : Environ; Node : Node_Id) is
+   procedure Emit (Env : Environ; Node : Node_Id) is
    begin
       case Nkind (Node) is
          when N_Compilation_Unit =>
-            Error_Msg_N
-              ("`N_Compilation_Unit` node must be processed in"
-              & " `Emit_Compilation_Unit`", Node);
+            Emit_List (Env, Context_Items (Node));
+            Emit_List (Env, Declarations (Aux_Decls_Node (Node)));
+            Emit (Env, Unit (Node));
+            Emit_List (Env, Actions (Aux_Decls_Node (Node)));
+            Emit_List (Env, Pragmas_After (Aux_Decls_Node (Node)));
 
          when N_With_Clause =>
-            Emit_Compilation_Unit (Env, Library_Unit (Node), True);
+            null;
 
          when N_Use_Package_Clause =>
             null;
@@ -307,8 +292,8 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_Subprogram_Declaration =>
-            Discard (Emit_Subprogram_Decl (Env, Specification (Node)));
+         when N_String_Literal =>
+            Discard (Emit_Expression (Env, Node));
 
          when N_Subprogram_Body =>
             --  If we are processing only declarations, do not emit a
@@ -505,7 +490,10 @@ package body GNATLLVM.Compile is
                pragma Annotate (Xcov, Exempt_Off);
             end;
 
-         when N_Raise_Constraint_Error =>
+         when N_Subprogram_Declaration =>
+            Discard (Emit_Subprogram_Decl (Env, Specification (Node)));
+
+         when N_Raise_Constraint_Error | N_Raise_Program_Error =>
 
             --  ??? When exceptions handling will be implemented, implement
             --  this.
@@ -519,9 +507,9 @@ package body GNATLLVM.Compile is
 
             null;
 
-         when N_Object_Declaration =>
-
-            --  Object declarations are local variables allocated on the stack
+         when N_Object_Declaration | N_Exception_Declaration =>
+            --  Object declarations are variables either allocated on the stack
+            --  (local) or global.
 
             --  If we are processing only declarations, only declare the
             --  corresponding symbol at the LLVM level and add it to the
@@ -529,7 +517,6 @@ package body GNATLLVM.Compile is
 
             declare
                Def_Ident      : constant Node_Id := Defining_Identifier (Node);
-               Obj_Def        : constant Node_Id := Object_Definition (Node);
                T              : constant Entity_Id :=
                  Get_Full_View (Etype (Def_Ident));
                LLVM_Type      : Type_T;
@@ -541,17 +528,7 @@ package body GNATLLVM.Compile is
                --  of N_Attribute_Definition_Clause)
 
                if T = Standard_Debug_Renaming_Type
-                 or else Present (Address_Clause (Def_Ident))
-               then
-                  return;
-               end if;
-
-               --  Strip useless entities such as the ones generated for
-               --  renaming encodings.
-
-               if Nkind (Obj_Def) = N_Identifier
-                 and then Ekind (Entity (Obj_Def)) in Discrete_Kind
-                 and then Esize (Entity (Obj_Def)) = 0
+               --  ???  or else Present (Address_Clause (Def_Ident))
                then
                   return;
                end if;
@@ -565,17 +542,35 @@ package body GNATLLVM.Compile is
                     Add_Global (Env.Mdl, LLVM_Type, Get_Name (Def_Ident));
                   Env.Set (Def_Ident, LLVM_Var);
 
-                  --  Take Is_Statically_Allocated (Def_Ident) into account
-                  --  ???
+                  if Env.In_Main_Unit then
+                     --  if Is_Statically_Allocated (Def_Ident) then
+                     --     Set_Linkage (LLVM_Var, Internal_Linkage);
+                     --  end if;
 
-                  --  Take Expression (Node) into account
-                  --  ??? Will only work if Expression is static
+                     --  Do we need to take Is_True_Constant (Def_Ident) into
+                     --  account???
 
-                  if Present (Expression (Node))
-                    and then not No_Initialization (Node)
-                  then
-                     Expr := Emit_Expression (Env, Expression (Node));
-                     Set_Initializer (LLVM_Var, Expr);
+                     --  Take Expression (Node) into account
+                     --  ??? Will only work if Expression is static
+
+                     if Present (Expression (Node))
+                       and then not
+                         (Nkind (Node) = N_Object_Declaration
+                          and then No_Initialization (Node))
+                     then
+                        if False then --  Static_Expression (Expression (Node))
+                           Expr := Emit_Expression (Env, Expression (Node));
+                           Set_Initializer (LLVM_Var, Expr);
+                        else
+                           --  ??? Should append to the elab procedure
+                           --  Expr :=
+                           --    Emit_Expression (Env, Expression (Node));
+                           --  Store (Env.Bld, Expr, LLVM_Var);
+                           null;
+                        end if;
+                     end if;
+                  else
+                     Set_Linkage (LLVM_Var, External_Linkage);
                   end if;
 
                else
@@ -588,8 +583,6 @@ package body GNATLLVM.Compile is
                      --  * The result of the alloca is bitcasted to the proper
                      --    array type, so that multidimensional LLVM GEP
                      --    operations work properly.
-
-                     --    ??? Should only use Alloca for non static sizes
 
                      LLVM_Type := Create_Access_Type (Env, T);
                      LLVM_Var := Bit_Cast
@@ -613,10 +606,17 @@ package body GNATLLVM.Compile is
                   Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
                   if Present (Expression (Node))
-                    and then not No_Initialization (Node)
+                    and then not
+                      (Nkind (Node) = N_Object_Declaration
+                       and then No_Initialization (Node))
                   then
                      Expr := Emit_Expression (Env, Expression (Node));
                      Store (Env.Bld, Expr, LLVM_Var);
+
+                     --  Would be nice to be able to use Set_Initializer, but
+                     --  this seems to generate cast errors in the llvm code
+                     --  generator right now???
+                     --  Set_Initializer (LLVM_Var, Expr);
                   end if;
                end if;
             end;
@@ -781,6 +781,7 @@ package body GNATLLVM.Compile is
                --  entry (INIT) basic block. Create one otherwise.
                BB_Init :=
                  (if Present (Identifier (Node))
+                    and then Env.Has_BB (Entity (Identifier (Node)))
                   then Env.Get (Entity (Identifier (Node)))
                   else Create_Basic_Block (Env, ""));
                Discard (Build_Br (Env.Bld, BB_Init));
@@ -977,6 +978,8 @@ package body GNATLLVM.Compile is
                      Create_Type (Env, Defining_Identifier (Node)));
 
          when N_Freeze_Entity =>
+            --  ??? Need to process Node itself
+
             Emit_List (Env, Actions (Node));
 
          when N_Pragma =>
@@ -1010,10 +1013,8 @@ package body GNATLLVM.Compile is
          when N_Exception_Handler =>
             Error_Msg_N ("exception handler ignored??", Node);
 
-         when N_Exception_Declaration
-            | N_Exception_Renaming_Declaration
-         =>
-            Error_Msg_N ("exception declaration ignored??", Node);
+         when N_Exception_Renaming_Declaration =>
+            Error_Msg_N ("exception renaming ignored??", Node);
 
          when N_Attribute_Definition_Clause =>
 
@@ -1025,6 +1026,7 @@ package body GNATLLVM.Compile is
               and then Present (Freeze_Node (Entity (Name (Node))))
             then
                Error_Msg_N ("unsupported address clause", Node);
+               --  ??? Save/Compile Expression (Node) for use in
             end if;
 
          when others =>
@@ -1084,7 +1086,7 @@ package body GNATLLVM.Compile is
          when N_Explicit_Dereference =>
             return Emit_Expression (Env, Prefix (Node));
 
-         when N_Aggregate =>
+         when N_Aggregate | N_String_Literal =>
             declare
                --  The frontend can sometimes take a reference to an aggregate.
                --  In such cases, we have to create an anonymous object and use
@@ -1111,6 +1113,58 @@ package body GNATLLVM.Compile is
                return Record_Field_Offset (Env, Pfx_Ptr, Record_Component);
             end;
 
+         when N_In | N_Not_In =>
+            declare
+               Is_In : constant Boolean := Nkind (Node) = N_In;
+               Rng   : Node_Id := Right_Opnd (Node);
+               First : Boolean := True;
+               Comp1 : Value_T;
+               Comp2 : Value_T;
+
+            begin
+               if Present (Rng) then
+                  if Nkind (Rng) = N_Identifier then
+                     Rng := Scalar_Range (Etype (Rng));
+                  end if;
+
+                  Comp1 := Emit_Comparison
+                    (Env,
+                     Get_Preds (if Is_In then N_Op_Ge else N_Op_Lt),
+                     Get_Fullest_View (Etype (Left_Opnd (Node))),
+                     Left_Opnd (Node), Low_Bound (Rng));
+                  Comp2 := Emit_Comparison
+                    (Env,
+                     Get_Preds (if Is_In then N_Op_Le else N_Op_Gt),
+                     Get_Fullest_View (Etype (Left_Opnd (Node))),
+                     Left_Opnd (Node), High_Bound (Rng));
+                  return Build_Short_Circuit_Op (Env, Comp1, Comp2, Op_And);
+
+               else
+                  for N of Iterate (Alternatives (Node)) loop
+                     if First then
+                        Comp1 := Emit_Expression (Env, N);
+                        First := False;
+                     else
+                        Comp2 := Emit_Expression (Env, N);
+                        Comp1 := Build_Or (Env.Bld, Comp1, Comp2, "or");
+                     end if;
+                  end loop;
+
+                  if Is_In then
+                     return Comp1;
+                  else
+                     return I_Cmp
+                       (Env.Bld,
+                        Int_NE,
+                        Comp1,
+                        Const_Int
+                          (Create_Type (Env, Etype (Node)),
+                           0, Sign_Extend => LLVM.Types.False),
+                        "not");
+                  end if;
+               end if;
+            end;
+
          when N_Indexed_Component =>
             declare
                Array_Node  : constant Node_Id := Prefix (Node);
@@ -1121,11 +1175,10 @@ package body GNATLLVM.Compile is
                Array_Data_Ptr : constant Value_T :=
                  Array_Data (Env, Array_Descr, Array_Type);
 
-               Idxs    :
-               Value_Array (1 .. List_Length (Expressions (Node)) + 1) :=
-                 (1      =>
-                    Const_Int (Intptr_T, 0, Sign_Extend => LLVM.Types.False),
-                  others => <>);
+               Idxs : Value_Array (1 .. List_Length (Expressions (Node)) + 1)
+                 := (1 => Const_Int
+                            (Intptr_T, 0, Sign_Extend => LLVM.Types.False),
+                     others => <>);
                --  Operands for the GetElementPtr instruction: one for the
                --  pointer deference, and then one per array index.
 
@@ -1193,6 +1246,62 @@ package body GNATLLVM.Compile is
       end case;
    end Emit_LValue;
 
+   ----------------------------
+   -- Build_Short_Circuit_Op --
+   ----------------------------
+
+   function Build_Short_Circuit_Op
+     (Env : Environ; Left, Right : Value_T; Op : Scl_Op) return Value_T
+   is
+      Result : constant Value_T :=
+        Alloca (Env.Bld, Type_Of (Left), "scl-res-1");
+
+      --  Block which contains the evaluation of the right part
+      --  expression of the operator.
+
+      Block_Right_Expr : constant Basic_Block_T :=
+        Append_Basic_Block (Env.Current_Subp.Func, "scl-right-expr");
+
+      --  Block containing the exit code (load the final cond value into
+      --  Result
+
+      Block_Exit : constant Basic_Block_T :=
+        Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");
+
+   begin
+      Store (Env.Bld, Left, Result);
+
+      --  In the case of And, evaluate the right expression when Left is
+      --  true. In the case of Or, evaluate it when Left is false.
+
+      if Op = Op_And then
+         Discard (Build_Cond_Br (Env.Bld, Left, Block_Right_Expr, Block_Exit));
+      else
+         Discard (Build_Cond_Br (Env.Bld, Left, Block_Exit, Block_Right_Expr));
+      end if;
+
+      --  Emit code for the evaluation of the right part expression
+
+      Position_Builder_At_End (Env.Bld, Block_Right_Expr);
+
+      declare
+         Left_Result : constant Value_T := Load (Env.Bld, Result, "load-left");
+         Res : Value_T;
+      begin
+         if Op = Op_And then
+            Res := Build_And (Env.Bld, Left_Result, Right, "scl-and");
+         else
+            Res := Build_Or (Env.Bld, Left_Result, Right, "scl-or");
+         end if;
+
+         Store (Env.Bld, Res, Result);
+         Discard (Build_Br (Env.Bld, Block_Exit));
+      end;
+
+      Position_Builder_At_End (Env.Bld, Block_Exit);
+      return Load (Env.Bld, Result, "scl-final-res");
+   end Build_Short_Circuit_Op;
+
    ---------------------
    -- Emit_Expression --
    ---------------------
@@ -1205,80 +1314,13 @@ package body GNATLLVM.Compile is
       --  Shortcut to Emit_Expression. Used to implicitely pass the
       --  environment during recursion.
 
-      type Scl_Op is (Op_Or, Op_And);
-
-      function Build_Scl_Op (Op : Scl_Op) return Value_T;
-      --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
-
-      function Build_Scl_Op (Op : Scl_Op) return Value_T is
-      begin
-         declare
-
-            --  The left expression of a SCL op is always evaluated.
-
-            Left : constant Value_T := Emit_Expr (Left_Opnd (Node));
-            Result : constant Value_T :=
-              Alloca (Env.Bld, Type_Of (Left), "scl-res-1");
-
-            --  Block which contains the evaluation of the right part
-            --  expression of the operator.
-
-            Block_Right_Expr : constant Basic_Block_T :=
-              Append_Basic_Block (Env.Current_Subp.Func, "scl-right-expr");
-
-            --  Block containing the exit code (load the final cond value into
-            --  Result
-
-            Block_Exit : constant Basic_Block_T :=
-              Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");
-
-         begin
-            Store (Env.Bld, Left, Result);
-
-            --  In the case of And, evaluate the right expression when Left is
-            --  true. In the case of Or, evaluate it when Left is false.
-
-            if Op = Op_And then
-               Discard
-                 (Build_Cond_Br (Env.Bld, Left, Block_Right_Expr, Block_Exit));
-            else
-               Discard
-                 (Build_Cond_Br (Env.Bld, Left, Block_Exit, Block_Right_Expr));
-            end if;
-
-            --  Emit code for the evaluation of the right part expression
-
-            Position_Builder_At_End (Env.Bld, Block_Right_Expr);
-
-            declare
-               Right : constant Value_T := Emit_Expr (Right_Opnd (Node));
-               Left : constant Value_T := Load (Env.Bld, Result, "load-left");
-               Res : Value_T;
-
-            begin
-               if Op = Op_And then
-                  Res := Build_And (Env.Bld, Left, Right, "scl-and");
-               else
-                  Res := Build_Or (Env.Bld, Left, Right, "scl-or");
-               end if;
-
-               Store (Env.Bld, Res, Result);
-               Discard (Build_Br (Env.Bld, Block_Exit));
-            end;
-
-            Position_Builder_At_End (Env.Bld, Block_Exit);
-
-            return Load (Env.Bld, Result, "scl-final-res");
-         end;
-      end Build_Scl_Op;
-
    begin
       if Is_Binary_Operator (Node) then
          case Nkind (Node) is
             when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
                return Emit_Comparison
                  (Env,
-                  Get_Preds (Node),
+                  Get_Preds (Nkind (Node)),
                   Get_Fullest_View (Etype (Left_Opnd (Node))),
                   Left_Opnd (Node), Right_Opnd (Node));
 
@@ -1287,6 +1329,7 @@ package body GNATLLVM.Compile is
          end case;
 
          declare
+            T    : constant Entity_Id := Etype (Left_Opnd (Node));
             LVal : constant Value_T :=
               Emit_Expr (Left_Opnd (Node));
             RVal : constant Value_T :=
@@ -1296,30 +1339,38 @@ package body GNATLLVM.Compile is
          begin
             case Nkind (Node) is
             when N_Op_Add =>
-               Op := Add (Env.Bld, LVal, RVal, "add");
+               if Is_Floating_Point_Type (T) then
+                  Op := F_Add (Env.Bld, LVal, RVal, "add");
+               else
+                  Op := Add (Env.Bld, LVal, RVal, "add");
+               end if;
 
             when N_Op_Subtract =>
-               Op := Sub (Env.Bld, LVal, RVal, "sub");
+               if Is_Floating_Point_Type (T) then
+                  Op := F_Sub (Env.Bld, LVal, RVal, "sub");
+               else
+                  Op := Sub (Env.Bld, LVal, RVal, "sub");
+               end if;
 
             when N_Op_Multiply =>
-               Op := Mul (Env.Bld, LVal, RVal, "mul");
+               if Is_Floating_Point_Type (T) then
+                  Op := F_Mul (Env.Bld, LVal, RVal, "mul");
+               else
+                  Op := Mul (Env.Bld, LVal, RVal, "mul");
+               end if;
 
             when N_Op_Divide =>
-               declare
-                  T : constant Entity_Id := Etype (Left_Opnd (Node));
-               begin
-                  if Is_Signed_Integer_Type (T) then
-                     Op := S_Div (Env.Bld, LVal, RVal, "sdiv");
-                  elsif Is_Floating_Point_Type (T) then
-                     Op := F_Div (Env.Bld, LVal, RVal, "fdiv");
-                  elsif Is_Unsigned_Type (T) then
-                     return U_Div (Env.Bld, LVal, RVal, "udiv");
-                  else
-                     Error_Msg_N
-                       ("not handled: Division with type `" & T'Img & "`",
-                        Node);
-                  end if;
-               end;
+               if Is_Signed_Integer_Type (T) then
+                  Op := S_Div (Env.Bld, LVal, RVal, "sdiv");
+               elsif Is_Floating_Point_Type (T) then
+                  Op := F_Div (Env.Bld, LVal, RVal, "fdiv");
+               elsif Is_Unsigned_Type (T) then
+                  return U_Div (Env.Bld, LVal, RVal, "udiv");
+               else
+                  Error_Msg_N
+                    ("not handled: Division with type `" & T'Img & "`",
+                     Node);
+               end if;
 
             when N_Op_Rem =>
                Op :=
@@ -1331,10 +1382,13 @@ package body GNATLLVM.Compile is
                Op := Build_And (Env.Bld, LVal, RVal, "and");
 
             when N_Op_Or =>
-                  Op := Build_Or (Env.Bld, LVal, RVal, "or");
+               Op := Build_Or (Env.Bld, LVal, RVal, "or");
 
             when N_Op_Xor =>
                Op := Build_Xor (Env.Bld, LVal, RVal, "xor");
+
+            when N_Op_Mod =>
+               Op := U_Rem (Env.Bld, LVal, RVal, "mod");
 
             when N_Op_Shift_Left | N_Op_Shift_Right
                | N_Op_Shift_Right_Arithmetic
@@ -1348,27 +1402,20 @@ package body GNATLLVM.Compile is
                   Node_Kind'Image (Nkind (Node)) & "`", Node);
             end case;
 
-            --  We need to handle modulo manually for non binary modulus types.
-
-            if Non_Binary_Modulus (Etype (Node)) then
-               Op := U_Rem
-                 (Env.Bld,
-                  Op,
-                  Const_Int
-                    (Create_Type (Env, Etype (Node)), Modulus (Etype (Node))),
-                 "mod");
-            end if;
+            --  No need to handle modulo manually for non binary modulus types,
+            --  this is taken care of by the front-end.
 
             return Op;
          end;
-
       else
-
          case Nkind (Node) is
-
          when N_Expression_With_Actions =>
-            --  ??? Compile the list of actions
---              pragma Assert (Is_Empty_List (Actions (Node)));
+            if not Is_Empty_List (Actions (Node)) then
+               --  ??? Should probably wrap this into a separate compound
+               --  statement
+               Emit_List (Env, Actions (Node));
+            end if;
+
             return Emit_Expr (Expression (Node));
 
          when N_Character_Literal =>
@@ -1380,6 +1427,57 @@ package body GNATLLVM.Compile is
             return Const_Int
               (Create_Type (Env, Etype (Node)),
                Intval (Node));
+
+         when N_Real_Literal =>
+            if Is_Fixed_Point_Type (Underlying_Type (Etype (Node))) then
+               return Const_Int
+                 (Create_Type (Env, Etype (Node)),
+                  Corresponding_Integer_Value (Node));
+            else
+               declare
+                  Real_Type : constant Type_T :=
+                    Create_Type (Env, Etype (Node));
+                  Val       : Ureal := Realval (Node);
+
+               begin
+                  if UR_Is_Zero (Val) then
+                     return Const_Real (Real_Type, 0.0);
+                  end if;
+
+                  --  First convert the value to a machine number if it isn't
+                  --  already. That will force the base to 2 for non-zero
+                  --  values and simplify the rest of the logic.
+
+                  if not Is_Machine_Number (Node) then
+                     Val := Machine
+                       (Base_Type (Underlying_Type (Etype (Node))),
+                        Val, Round_Even, Node);
+                  end if;
+
+                  --  ??? See trans.c (case N_Real_Literal) for handling of
+                  --  N_Real_Literal in gigi.
+
+                  if UI_Is_In_Int_Range (Numerator (Val))
+                    and then UI_Is_In_Int_Range (Denominator (Val))
+                  then
+                     if UR_Is_Negative (Val) then
+                        return Const_Real
+                          (Real_Type,
+                           -double (UI_To_Int (Numerator (Val))) /
+                            double (UI_To_Int (Denominator (Val))));
+                     else
+                        return Const_Real
+                          (Real_Type,
+                           double (UI_To_Int (Numerator (Val))) /
+                           double (UI_To_Int (Denominator (Val))));
+                     end if;
+                  else
+                     --  ???
+                     Error_Msg_N ("float point value too big", Node);
+                     return Const_Real (Real_Type, 0.0);
+                  end if;
+               end;
+            end if;
 
          when N_String_Literal =>
             declare
@@ -1397,14 +1495,26 @@ package body GNATLLVM.Compile is
                     (Element_Type,
                      unsigned_long_long
                        (Get_String_Char (String, Standard.Types.Int (J))),
-                     Sign_Extend => LLVM.Types.True);
+                     Sign_Extend => LLVM.Types.False);
                end loop;
 
                return Const_Array (Element_Type, Elements'Address, Length);
             end;
 
-         when N_And_Then => return Build_Scl_Op (Op_And);
-         when N_Or_Else => return Build_Scl_Op (Op_Or);
+         when N_And_Then =>
+            return Build_Short_Circuit_Op
+              (Env,
+               Emit_Expr (Left_Opnd (Node)),
+               Emit_Expr (Right_Opnd (Node)),
+               Op_And);
+
+         when N_Or_Else =>
+            return Build_Short_Circuit_Op
+              (Env,
+               Emit_Expr (Left_Opnd (Node)),
+               Emit_Expr (Right_Opnd (Node)),
+               Op_Or);
+
          when N_Op_Not =>
             declare
                Expr : constant Value_T := Emit_Expr (Right_Opnd (Node));
@@ -1413,39 +1523,58 @@ package body GNATLLVM.Compile is
                  (Env.Bld, Expr, Const_Ones (Type_Of (Expr)), "not");
             end;
 
-         when N_Op_Plus => return Emit_Expr (Right_Opnd (Node));
-         when N_Op_Minus => return Sub
-              (Env.Bld,
-               Const_Int
-                 (Create_Type (Env, Etype (Node)), 0, LLVM.Types.False),
-               Emit_Expr (Right_Opnd (Node)),
-               "minus");
+         when N_Op_Abs =>
+            --  ??? Emit something like: X >= 0 ? X : -X;
+
+            Error_Msg_N ("??unsupported operator abs", Node);
+            return Emit_Expr (Right_Opnd (Node));
+
+         when N_Op_Plus =>
+            return Emit_Expr (Right_Opnd (Node));
+
+         when N_Op_Minus =>
+            if Is_Floating_Point_Type (Etype (Node)) then
+               return F_Sub
+                  (Env.Bld,
+                   Const_Real
+                     (Create_Type (Env, Etype (Node)), 0.0),
+                   Emit_Expr (Right_Opnd (Node)),
+                   "minus");
+
+            else
+               return Sub
+                  (Env.Bld,
+                   Const_Int
+                     (Create_Type (Env, Etype (Node)), 0, LLVM.Types.False),
+                   Emit_Expr (Right_Opnd (Node)),
+                   "minus");
+            end if;
 
          when N_Unchecked_Type_Conversion =>
             declare
                Val     : constant Value_T := Emit_Expr (Expression (Node));
-               Val_Ty  : constant Type_T := LLVM_Type_Of (Val);
                Dest_Ty : constant Type_T := Create_Type (Env, Etype (Node));
-               Val_Tk  : constant Type_Kind_T := Get_Type_Kind (Val_Ty);
-               Dest_Tk : constant Type_Kind_T := Get_Type_Kind (Dest_Ty);
-
             begin
-               if Val_Tk = Pointer_Type_Kind then
-                  return Pointer_Cast
-                    (Env.Bld,
-                     Val, Dest_Ty, "unchecked-conv");
-               elsif Val_Tk = Integer_Type_Kind
-                 and then Dest_Tk = Integer_Type_Kind
-               then
-                  return Int_Cast
-                    (Env.Bld, Val, Dest_Ty, "unchecked-conv");
-               elsif Val_Tk = Integer_Type_Kind
-                 and then Dest_Tk = Pointer_Type_Kind
+               if Is_Access_Type (Etype (Node))
+                 and then (Is_Scalar_Type (Etype (Expression (Node)))
+                           or else Is_Descendant_Of_Address
+                             (Etype (Expression (Node))))
                then
                   return Int_To_Ptr (Env.Bld, Val, Dest_Ty, "unchecked-conv");
+               elsif (Is_Scalar_Type (Etype (Node))
+                      or else Is_Descendant_Of_Address (Etype (Node)))
+                 and then (Is_Access_Type (Etype (Expression (Node))))
+               then
+                  return Ptr_To_Int (Env.Bld, Val, Dest_Ty, "unchecked-conv");
+               elsif Is_Access_Type (Etype (Expression (Node))) then
+                  return Pointer_Cast
+                    (Env.Bld, Val, Dest_Ty, "unchecked-conv");
+               elsif Is_Integer_Type (Etype (Node))
+                 and then (Is_Integer_Type (Etype (Expression (Node))))
+               then
+                  return Int_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                else
-                  Error_Msg_N ("unsupported unchecked conversion", Node);
-                  raise Program_Error;
+                  return Bit_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                end if;
             end;
 
@@ -1520,7 +1649,7 @@ package body GNATLLVM.Compile is
                      "alloc_bc");
 
                else
-                  Error_Msg_N ("unsupported form wof N_Allocator", Node);
+                  Error_Msg_N ("unsupported form of N_Allocator", Node);
                   raise Program_Error;
                end if;
             end;
@@ -1563,6 +1692,7 @@ package body GNATLLVM.Compile is
                if Ekind (Agg_Type) in Record_Kind then
                   for Assoc of Iterate (Component_Associations (Node)) loop
                      Cur_Expr := Emit_Expr (Expression (Assoc));
+
                      for Choice of Iterate (Choices (Assoc)) loop
                         Cur_Index := Index_In_List
                           (Parent (Entity (Choice)));
@@ -1582,7 +1712,6 @@ package body GNATLLVM.Compile is
                        (Env.Bld, Result, Cur_Expr, unsigned (Cur_Index), "");
                      Cur_Index := Cur_Index + 1;
                   end loop;
-
                end if;
 
                return Result;
@@ -1607,17 +1736,20 @@ package body GNATLLVM.Compile is
    -- Emit_List --
    ---------------
 
-   procedure Emit_List
-     (Env : Environ; List : List_Id) is
+   procedure Emit_List (Env : Environ; List : List_Id) is
    begin
-      for N of Iterate (List) loop
-         Emit (Env, N);
-      end loop;
+      if Present (List) then
+         for N of Iterate (List) loop
+            Emit (Env, N);
+         end loop;
+      end if;
    end Emit_List;
 
-   function Emit_Call
-     (Env : Environ; Call_Node : Node_Id) return Value_T
-   is
+   ---------------
+   -- Emit_Call --
+   ---------------
+
+   function Emit_Call (Env : Environ; Call_Node : Node_Id) return Value_T is
       Subp        : constant Node_Id := Name (Call_Node);
       Params      : constant Entity_Iterator :=
         Get_Params (if Nkind (Subp) = N_Identifier
@@ -1699,7 +1831,7 @@ package body GNATLLVM.Compile is
                --  Convert from thin to fat pointer
 
                Args (Idx) :=
-                 Array_Fat_Pointer (Env, Args (Idx), Etype (Actual));
+                 Array_Fat_Pointer (Env, Args (Idx), Actual_Type);
 
             elsif not Is_Constrained (Actual_Type)
               and then Is_Constrained (P_Type)
@@ -1985,22 +2117,41 @@ package body GNATLLVM.Compile is
       Src_Type, Dest_Type : Entity_Id;
       Value               : Value_T) return Value_T
    is
+      S_Type  : constant Entity_Id := Get_Fullest_View (Src_Type);
+      D_Type  : constant Entity_Id := Get_Fullest_View (Dest_Type);
    begin
-      --  For the moment, we handle only the simple cases of scalar conversions
+      --  For the moment, we handle only the simple cases of scalar and
+      --  float conversions.
 
-      if Is_Scalar_Type (Get_Fullest_View (Src_Type))
-        and then Is_Scalar_Type (Get_Fullest_View (Dest_Type))
+      if Is_Access_Type (D_Type) then
+         return Pointer_Cast
+           (Env.Bld,
+            Value, Create_Type (Env, D_Type), "ptr-conv");
+
+      elsif Is_Floating_Point_Type (S_Type)
+        and then Is_Floating_Point_Type (D_Type)
       then
-         declare
-            Src_LLVM_Type  : constant Type_T := Create_Type (Env, Src_Type);
-            Dest_LLVM_Type : constant Type_T := Create_Type (Env, Dest_Type);
-            Src_Width      : constant unsigned :=
-              Get_Int_Type_Width (Src_LLVM_Type);
-            Dest_Width      : constant unsigned :=
-              Get_Int_Type_Width (Dest_LLVM_Type);
+         if RM_Size (S_Type) = RM_Size (D_Type) then
+            return Value;
+         else
+            Error_Msg_N ("unsupported floating point conversion", Src_Type);
+            return Value;
+         end if;
 
+      elsif Is_Discrete_Or_Fixed_Point_Type (S_Type)
+        and then Is_Discrete_Or_Fixed_Point_Type (D_Type)
+      then
+         --  ??? Consider using Int_Cast instead
+         --  return Int_Cast
+         --    (Env.Bld, Val, Create_Type (Env, D_Type), "int-conv");
+
+         declare
+            Dest_LLVM_Type : constant Type_T := Create_Type (Env, D_Type);
          begin
-            if Src_Width < Dest_Width then
+            if RM_Size (S_Type) = RM_Size (D_Type) then
+               return Value;
+
+            elsif RM_Size (S_Type) < RM_Size (D_Type) then
                if Is_Unsigned_Type (Dest_Type) then
 
                   --  ??? raise an exception if the value is negative (hence
@@ -2011,10 +2162,6 @@ package body GNATLLVM.Compile is
                else
                   return S_Ext (Env.Bld, Value, Dest_LLVM_Type, "int_conv");
                end if;
-
-            elsif Src_Width = Dest_Width then
-               return Value;
-
             else
                return Trunc (Env.Bld, Value, Dest_LLVM_Type, "int_conv");
             end if;
@@ -2148,6 +2295,12 @@ package body GNATLLVM.Compile is
                   else Sub (Env.Bld, Base, One, "attr-pred"));
             end;
 
+         when Attribute_Machine =>
+            --  ??? For now return the prefix itself. Would need to force a
+            --  store in some cases.
+
+            return Emit_Expression (Env, First (Expressions (Node)));
+
          when others =>
             Error_Msg_N
               ("unsupported attribute: `" &
@@ -2168,7 +2321,15 @@ package body GNATLLVM.Compile is
    begin
       --  LLVM treats pointers as integers regarding comparison
 
-      if Is_Scalar_Type (Operand_Type)
+      if Is_Floating_Point_Type (Operand_Type) then
+         return F_Cmp
+           (Env.Bld,
+            Operation.Real,
+            Emit_Expression (Env, LHS),
+            Emit_Expression (Env, RHS),
+            "fcmp");
+
+      elsif Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
         or else Is_Access_Type (Operand_Type)
       then
          return I_Cmp
@@ -2179,14 +2340,6 @@ package body GNATLLVM.Compile is
             Emit_Expression (Env, LHS),
             Emit_Expression (Env, RHS),
             "icmp");
-
-      elsif Is_Floating_Point_Type (Operand_Type) then
-         return F_Cmp
-           (Env.Bld,
-            Operation.Real,
-            Emit_Expression (Env, LHS),
-            Emit_Expression (Env, RHS),
-            "fcmp");
 
       elsif Is_Record_Type (Operand_Type) then
          Error_Msg_N ("unsupported record comparison", LHS);
@@ -2398,7 +2551,7 @@ package body GNATLLVM.Compile is
       end if;
 
       --  Then prepare the instruction builder for the next
-      --  statements/expressions and return an merged expression if needed.
+      --  statements/expressions and return a merged expression if needed.
 
       Position_Builder_At_End (Env.Bld, BB_Next);
 

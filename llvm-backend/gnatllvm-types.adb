@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;   use Errout;
 with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
@@ -29,8 +30,7 @@ package body GNATLLVM.Types is
    -- Get_Address_Type --
    ----------------------
 
-   function Get_Address_Type return Type_T
-   is
+   function Get_Address_Type return Type_T is
      (Int_Ty (Natural (Ttypes.System_Address_Size)));
 
    function Create_Subprogram_Type
@@ -62,8 +62,7 @@ package body GNATLLVM.Types is
    -- Int_Ty --
    ------------
 
-   function Int_Ty (Num_Bits : Natural) return Type_T
-   is
+   function Int_Ty (Num_Bits : Natural) return Type_T is
       (Int_Type (Interfaces.C.unsigned (Num_Bits)));
 
    ----------------------------
@@ -89,7 +88,7 @@ package body GNATLLVM.Types is
       Set_Rec (Standard_Boolean, Int_Type_In_Context (Env.Ctx, 1));
       Set_Rec (Standard_Natural, Int_Type_In_Context (Env.Ctx, Int_Size));
 
-      --  TODO??? add other builtin types!
+      --  ???? add other builtin types!
    end Register_Builtin_Types;
 
    -----------
@@ -112,17 +111,35 @@ package body GNATLLVM.Types is
         (Get_First => First_Index,
          Get_Next  => Next_Index);
 
-      Indices : constant Entity_Iterator := Iterate (Array_Type_Node);
-      Fields  : array (1 .. 2 * Indices'Length) of Type_T;
-      I       : Natural := 1;
    begin
-      for Index of Indices loop
-         Fields (I) := Create_Type (Env, Etype (Index));
-         Fields (I + 1) := Fields (I);
-         I := I + 2;
-      end loop;
-      return Struct_Type_In_Context
-        (Env.Ctx, Fields'Address, Fields'Length, Packed => LLVM.Types.False);
+      if Ekind (Array_Type_Node) = E_String_Literal_Subtype then
+         declare
+            Fields  : aliased array (1 .. 2) of Type_T;
+         begin
+            Fields (1) := Create_Type (Env, Standard_Positive);
+            Fields (2) := Fields (1);
+            return Struct_Type_In_Context
+              (Env.Ctx, Fields'Address, Fields'Length,
+               Packed => LLVM.Types.False);
+         end;
+      else
+         declare
+            Indices : constant Entity_Iterator := Iterate (Array_Type_Node);
+            Fields  : aliased array (1 .. 2 * Indices'Length) of Type_T;
+            J       : Natural := 1;
+
+         begin
+            for Index of Indices loop
+               Fields (J) := Create_Type (Env, Etype (Index));
+               Fields (J + 1) := Fields (J);
+               J := J + 2;
+            end loop;
+
+            return Struct_Type_In_Context
+              (Env.Ctx, Fields'Address, Fields'Length,
+               Packed => LLVM.Types.False);
+         end;
+      end if;
    end Create_Array_Bounds_Type;
 
    ------------------------------------
@@ -207,9 +224,7 @@ package body GNATLLVM.Types is
       end if;
 
       case Ekind (Def_Ident) is
-
          when Discrete_Kind =>
-
             if Is_Modular_Integer_Type (Def_Ident) then
                return Int_Type_In_Context
                  (Env.Ctx,
@@ -220,8 +235,40 @@ package body GNATLLVM.Types is
               (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
-            --  TODO??? Replace this dummy handler
-            return Void_Type_In_Context (Env.Ctx);
+            declare
+               Float_Type : constant Node_Id := Etype (Etype (Def_Ident));
+               --  Use Full_Type as in gnat2il-gnat_utils.adb???
+
+               Size       : constant Uint := Esize (Float_Type);
+
+            begin
+               case Float_Rep (Float_Type) is
+                  when IEEE_Binary =>
+                     if Size = Uint_32 then
+                        return Float_Type_In_Context (Env.Ctx);
+                     elsif Size = Uint_64 then
+                        return Double_Type_In_Context (Env.Ctx);
+                     elsif Size = Uint_128 then
+                        --  Extended precision; not IEEE_128
+                        return X86_F_P80_Type_In_Context (Env.Ctx);
+                     else
+                        pragma Assert (UI_Is_In_Int_Range (Size));
+
+                        case UI_To_Int (Size) is
+                           when 80 | 96 =>
+                              return X86_F_P80_Type_In_Context (Env.Ctx);
+                           when others =>
+                              --  ??? Double check that
+                              return F_P128_Type_In_Context (Env.Ctx);
+                        end case;
+                     end if;
+
+                  when AAMP =>
+                     --  Not supported
+                     Error_Msg_N ("unsupported floating point type", TE);
+                     return Void_Type_In_Context (Env.Ctx);
+               end case;
+            end;
 
          when E_Access_Type .. E_General_Access_Type
             | E_Anonymous_Access_Type
@@ -512,21 +559,22 @@ package body GNATLLVM.Types is
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
    is
-      Args_Count   : constant Int :=
+      Args_Count : constant Int :=
         Params'Length + (if Takes_S_Link then 1 else 0);
-      Arg_Types    : Type_Array (1 .. Args_Count);
+      Arg_Types  : Type_Array (1 .. Args_Count);
+
    begin
       --  First, Associate an LLVM type for each Ada subprogram parameter
 
-      for I in Params'Range loop
+      for J in Params'Range loop
          declare
-            Param_Ent  : constant Entity_Id := Params (I);
+            Param_Ent  : constant Entity_Id := Params (J);
             Param_Type : constant Node_Id := Etype (Param_Ent);
          begin
             --  If this is an out parameter, or a parameter whose type is
             --  unconstrained, take a pointer to the actual parameter.
 
-            Arg_Types (I) :=
+            Arg_Types (J) :=
               (if Param_Needs_Ptr (Param_Ent)
                then Create_Access_Type (Env, Param_Type)
                else Create_Type (Env, Param_Type));

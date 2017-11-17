@@ -30,6 +30,7 @@ with Lib;      use Lib;
 with Namet;    use Namet;
 with Opt;      use Opt;
 with Osint.C;  use Osint.C;
+with Sem;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 
@@ -54,6 +55,42 @@ package body LLVM_Drive is
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
       Env : constant Environ :=
         new Environ_Record'(Ctx => Get_Global_Context, others => <>);
+
+      procedure Emit_Library_Item (U : Node_Id);
+      --  Generate code for the given library item
+
+      -----------------------
+      -- Emit_Library_Item --
+      -----------------------
+
+      procedure Emit_Library_Item (U : Node_Id) is
+      begin
+         --  Ignore Standard and ASCII packages
+
+         if Sloc (U) <= Standard_Location then
+            return;
+         end if;
+
+         --  Current_Unit := Get_Cunit_Unit_Number (Parent (U));
+         --  Current_Source_File := Source_Index (Current_Unit);
+
+         if In_Extended_Main_Code_Unit (U) then
+            Set_In_Main_Unit (Env);
+            Emit (Env, U);
+         else
+            --  Should we instead skip these units completely, and generate
+            --  referenced items on the fly???
+
+            Set_In_Main_Unit (Env, False);
+            Env.Begin_Declarations;
+            Emit (Env, U);
+            Env.End_Declarations;
+         end if;
+      end Emit_Library_Item;
+
+      procedure Walk_All_Units is
+        new Sem.Walk_Library_Items (Action => Emit_Library_Item);
+
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
 
@@ -91,7 +128,7 @@ package body LLVM_Drive is
 
       --  Actually translate
 
-      Emit_Compilation_Unit (Env, GNAT_Root, True);
+      Walk_All_Units;
 
       --  Output the translation
 

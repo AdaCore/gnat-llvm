@@ -16,10 +16,12 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C; use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Atree;  use Atree;
 with Nlists; use Nlists;
 with Sinfo;  use Sinfo;
+with Stand;  use Stand;
 with Uintp;  use Uintp;
 
 with LLVM.Core; use LLVM.Core;
@@ -42,9 +44,9 @@ package body GNATLLVM.Arrays is
    ---------------------
 
    function Get_Bound_Index (Dim : Natural; Bound : Bound_T) return unsigned is
-      Bounds_Pair_Idx        : constant Natural := (Dim - 1) * 2;
-      --  In the arary fat pointer bounds structure, bounds are stored as a
-      --  sequence of (lower bound, upper bound) pairs : get the offset of
+      Bounds_Pair_Idx : constant Natural := (Dim - 1) * 2;
+      --  In the array fat pointer bounds structure, bounds are stored as a
+      --  sequence of (lower bound, upper bound) pairs: get the offset of
       --  such a pair.
    begin
       return unsigned (Bounds_Pair_Idx + (if Bound = Low then 0 else 1));
@@ -248,53 +250,79 @@ package body GNATLLVM.Arrays is
       Array_Data : Value_T;
       Array_Type : Entity_Id) return Value_T
    is
-      Fat_Ptr_Type        : constant Type_T :=
+      Fat_Ptr_Type      : constant Type_T :=
         Create_Array_Fat_Pointer_Type (Env, Array_Type);
-      Fat_Ptr_Elt_Types   : Type_Array (1 .. 2);
+      Fat_Ptr_Elt_Types : aliased Type_Array (1 .. 2);
 
-      Array_Data_Type     : Type_T renames Fat_Ptr_Elt_Types (1);
-      Array_Bounds_Type   : Type_T renames Fat_Ptr_Elt_Types (2);
+      Array_Data_Type   : Type_T renames Fat_Ptr_Elt_Types (1);
+      Array_Bounds_Type : Type_T renames Fat_Ptr_Elt_Types (2);
 
-      Fat_Ptr             : Value_T := Get_Undef (Fat_Ptr_Type);
-      Array_Data_Casted   : Value_T;
-      Bounds              : Value_T;
-
-      Dim_I : Integer := 1;
+      Fat_Ptr        : Value_T := Get_Undef (Fat_Ptr_Type);
+      Array_Data_Ptr : Value_T;
+      Bounds         : Value_T;
+      Dim_I          : Integer;
+      R              : Node_Id;
 
    begin
       pragma Assert (Count_Struct_Element_Types (Fat_Ptr_Type) = 2);
       Get_Struct_Element_Types (Fat_Ptr_Type, Fat_Ptr_Elt_Types'Address);
 
-      Array_Data_Casted := Bit_Cast (Env.Bld, Array_Data, Array_Data_Type, "");
+      Array_Data_Ptr :=
+        Pointer_Cast (Env.Bld, Array_Data, Array_Data_Type, "");
       Bounds := Get_Undef (Array_Bounds_Type);
 
       --  Fill Bounds with actual array bounds
-      for Dim of
-        Iterate (List_Containing (First_Index (Array_Type)))
-      loop
+
+      if Ekind (Array_Type) = E_String_Literal_Subtype then
          declare
-            R : constant Node_Id := Get_Dim_Range (Dim);
+            Low : constant Uint :=
+              Intval (String_Literal_Low_Bound (Array_Type));
+            Typ : constant Type_T := Create_Type (Env, Standard_Positive);
+
          begin
+            Bounds := Insert_Value
+              (Env.Bld,
+               Bounds,
+               Const_Int
+                 (Typ,
+                  unsigned_long_long (UI_To_Int (Low)),
+                  Sign_Extend => LLVM.Types.False),
+               0,
+               "");
+            Bounds := Insert_Value
+              (Env.Bld,
+               Bounds,
+               Const_Int
+                 (Typ,
+                  unsigned_long_long
+                    (UI_To_Int (String_Literal_Length (Array_Type) - Low + 1)),
+                  Sign_Extend => LLVM.Types.False),
+               1,
+               "");
+         end;
+      else
+         Dim_I := 1;
+
+         for Dim of Iterate (List_Containing (First_Index (Array_Type))) loop
+            R := Get_Dim_Range (Dim);
             Bounds := Insert_Value
               (Env.Bld,
                Bounds,
                Emit_Expression (Env, Low_Bound (R)),
                Get_Bound_Index (Dim_I, Low),
                "");
-
             Bounds := Insert_Value
               (Env.Bld,
                Bounds,
                Emit_Expression (Env, High_Bound (R)),
                Get_Bound_Index (Dim_I, High),
                "");
-
             Dim_I := Dim_I + 1;
-         end;
-      end loop;
+         end loop;
+      end if;
 
       --  Then fill the fat pointer itself
-      Fat_Ptr := Insert_Value (Env.Bld, Fat_Ptr, Array_Data_Casted, 0, "");
+      Fat_Ptr := Insert_Value (Env.Bld, Fat_Ptr, Array_Data_Ptr, 0, "");
       Fat_Ptr := Insert_Value (Env.Bld, Fat_Ptr, Bounds, 1, "");
 
       return Fat_Ptr;

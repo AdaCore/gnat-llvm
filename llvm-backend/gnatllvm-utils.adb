@@ -18,8 +18,9 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
-with Namet;  use Namet;
-with Nlists; use Nlists;
+with Namet;    use Namet;
+with Nlists;   use Nlists;
+with Sem_Mech; use Sem_Mech;
 
 package body GNATLLVM.Utils is
 
@@ -153,21 +154,31 @@ package body GNATLLVM.Utils is
    ---------------------
 
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
-      PT : constant Entity_Id := Etype (Param);
+      Typ : constant Entity_Id := Get_Full_View (Etype (Param));
+
    begin
-      return
+      --  ??? Return True for all array types for now
 
-        --  Out/InOut parameters are passed by reference and thus need a
-        --  pointer.
+      if Is_Array_Type (Typ) then
+         return True;
 
-        (Ekind (Param) = E_In_Out_Parameter
-         or else Ekind (Param) = E_Out_Parameter
+      --  Pass records by reference when using the default mechanism, otherwise
+      --  this will cause an inefficient pass C struct by copy which is not
+      --  what users expect by default.
 
-         --  At the moment, let's consider that all arrays need to be
-         --  passed as pointers: constrained arrays can have dynamic
-         --  bounds.
+      elsif Is_Record_Type (Typ)
+        and then Mechanism (Param) = Default_Mechanism
+      then
+         return True;
 
-         or else Ekind (PT) in Array_Kind);
+      elsif Ekind_In (Param, E_In_Out_Parameter, E_Out_Parameter) then
+         return True;
+
+      --  ??? Missing cases of e.g. dynamic size objects, ...
+
+      else
+         return Mechanism (Param) = By_Reference;
+      end if;
    end Param_Needs_Ptr;
 
    ----------------------------
@@ -250,8 +261,7 @@ package body GNATLLVM.Utils is
    -- Iterate --
    -------------
 
-   function Iterate (L : List_Id) return List_Iterator
-   is
+   function Iterate (L : List_Id) return List_Iterator is
       Len : constant Nat := List_Length (L);
       A : List_Iterator (1 .. Len);
       N : Node_Id := First (L);
@@ -269,8 +279,7 @@ package body GNATLLVM.Utils is
    -- Iterate_Entities --
    ----------------------
 
-   function Iterate_Entities (Root : Entity_Id) return Entity_Iterator
-   is
+   function Iterate_Entities (Root : Entity_Id) return Entity_Iterator is
       Len : Nat := 0;
       Cur : Entity_Id := Get_First (Root);
    begin

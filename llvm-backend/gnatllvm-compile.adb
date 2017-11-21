@@ -1088,7 +1088,7 @@ package body GNATLLVM.Compile is
          when N_Explicit_Dereference =>
             return Emit_Expression (Env, Prefix (Node));
 
-         when N_Aggregate | N_String_Literal =>
+         when N_Aggregate =>
             declare
                --  The frontend can sometimes take a reference to an aggregate.
                --  In such cases, we have to create an anonymous object and use
@@ -1103,6 +1103,26 @@ package body GNATLLVM.Compile is
             begin
                Store (Env.Bld, Emit_Expression (Env, Node), V);
                return V;
+            end;
+
+         when N_String_Literal =>
+            declare
+               T : constant Type_T := Create_Type (Env, Etype (Node));
+               V : constant Value_T :=
+                     Add_Global (Env.Mdl, T, "string-literal");
+
+            begin
+               Env.Set (Node, V);
+               Set_Initializer (V, Emit_Expression (Env, Node));
+               Set_Linkage (V, Private_Linkage);
+               Set_Global_Constant (V, LLVM.Types.True);
+               return GEP
+                 (Env.Bld,
+                  V,
+                  (Const_Int (Intptr_T, 0, Sign_Extend => LLVM.Types.False),
+                   Const_Int (Create_Type (Env, Standard_Positive),
+                              0, Sign_Extend => LLVM.Types.False)),
+                  "address-of-string");
             end;
 
          when N_Selected_Component =>

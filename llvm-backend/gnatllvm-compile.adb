@@ -66,10 +66,12 @@ package body GNATLLVM.Compile is
       Value               : Value_T) return Value_T;
    --  Emit code to convert Src_Value to Dest_Type
 
-   type Scl_Op is (Op_Or, Op_And);
+   type Short_Circuit_Operator is (Op_Or, Op_And);
 
    function Build_Short_Circuit_Op
-     (Env : Environ; Left, Right : Value_T; Op : Scl_Op) return Value_T;
+     (Env : Environ;
+      Left, Right : Value_T;
+      Op  : Short_Circuit_Operator) return Value_T;
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 
    function Emit_Attribute_Reference
@@ -684,7 +686,7 @@ package body GNATLLVM.Compile is
                Dest : constant Value_T := Emit_LValue (Env, Name (Node));
 
             begin
-               Store (Env.Bld, Val, Dest);
+               Store (Env.Bld, Expr => Val, Ptr => Dest);
             end;
 
          when N_Procedure_Call_Statement =>
@@ -1251,7 +1253,9 @@ package body GNATLLVM.Compile is
    ----------------------------
 
    function Build_Short_Circuit_Op
-     (Env : Environ; Left, Right : Value_T; Op : Scl_Op) return Value_T
+     (Env : Environ;
+      Left, Right : Value_T;
+      Op  : Short_Circuit_Operator) return Value_T
    is
       Result : constant Value_T :=
         Alloca (Env.Bld, Type_Of (Left), "scl-res-1");
@@ -1586,37 +1590,76 @@ package body GNATLLVM.Compile is
                Value     => Emit_Expr (Expression (Node)));
 
          when N_Identifier | N_Expanded_Name =>
+            --  What if Node is a formal parameter passed by reference???
+            --  pragma Assert (not Is_Formal (Entity (Node)));
+
             --  N_Defining_Identifier nodes for enumeration literals are not
             --  stored in the environment. Handle them here.
 
-            if Ekind (Entity (Node)) = E_Enumeration_Literal then
-               return Const_Int
-                 (Create_Type (Env, Etype (Node)),
-                  Enumeration_Rep (Entity (Node)));
-            else
-               --  LLVM functions are pointers that cannot be dereferenced. If
-               --  Entity (Node) is a subprogram, return it as-is, the caller
-               --  expects a pointer to a function anyway.
+            declare
+               Def_Ident : constant Entity_Id := Entity (Node);
+            begin
+               if Ekind (Def_Ident) = E_Enumeration_Literal then
+                  return Const_Int
+                    (Create_Type (Env, Etype (Node)),
+                     Enumeration_Rep (Def_Ident));
 
-               declare
-                  Def_Ident     : constant Entity_Id := Entity (Node);
-                  Kind          : constant Entity_Kind := Ekind (Def_Ident);
-                  Type_Kind     : constant Entity_Kind :=
-                    Ekind (Etype (Def_Ident));
-                  Is_Subprogram : constant Boolean :=
-                    (Kind = E_Function
-                     or else Kind = E_Procedure
-                     or else Type_Kind = E_Subprogram_Type);
+               --  Handle entities in Standard and ASCII on the fly
 
-                  LValue : constant Value_T := Env.Get (Def_Ident);
+               elsif Sloc (Def_Ident) <= Standard_Location then
+                  declare
+                     N    : constant Node_Id := Get_Full_View (Def_Ident);
+                     Decl : constant Node_Id := Declaration_Node (N);
+                     Expr : Node_Id := Empty;
 
-               begin
-                  return
-                    (if Is_Subprogram
-                     then LValue
-                     else Load (Env.Bld, LValue, ""));
-               end;
-            end if;
+                  begin
+                     if Nkind (Decl) /= N_Object_Renaming_Declaration then
+                        Expr := Expression (Decl);
+                     end if;
+
+                     if Present (Expr)
+                       and then Nkind_In (Expr, N_Character_Literal,
+                                                N_Expanded_Name,
+                                                N_Integer_Literal,
+                                                N_Real_Literal)
+                     then
+                        return Emit_Expression (Env, Expr);
+
+                     elsif Present (Expr)
+                       and then Nkind (Expr) = N_Identifier
+                       and then Ekind (Entity (Expr)) = E_Enumeration_Literal
+                     then
+                        return Const_Int
+                          (Create_Type (Env, Etype (Node)),
+                           Enumeration_Rep (Entity (Expr)));
+                     else
+                        return Emit_Expression (Env, N);
+                     end if;
+                  end;
+
+               else
+                  --  LLVM functions are pointers that cannot be dereferenced.
+                  --  If Def_Ident is a subprogram, return it as-is, the caller
+                  --  expects a pointer to a function anyway.
+
+                  declare
+                     Kind          : constant Entity_Kind := Ekind (Def_Ident);
+                     Type_Kind     : constant Entity_Kind :=
+                       Ekind (Etype (Def_Ident));
+                     Is_Subprogram : constant Boolean :=
+                       (Kind = E_Function
+                        or else Kind = E_Procedure
+                        or else Type_Kind = E_Subprogram_Type);
+                     LValue        : constant Value_T := Env.Get (Def_Ident);
+
+                  begin
+                     return
+                       (if Is_Subprogram
+                        then LValue
+                        else Load (Env.Bld, LValue, ""));
+                  end;
+               end if;
+            end;
 
          when N_Function_Call =>
             return Emit_Call (Env, Node);
@@ -1722,6 +1765,9 @@ package body GNATLLVM.Compile is
 
          when N_Null =>
             return Const_Null (Create_Type (Env, Etype (Node)));
+
+         when N_Defining_Identifier =>
+            return Env.Get (Node);
 
          when others =>
             Error_Msg_N
@@ -2274,6 +2320,15 @@ package body GNATLLVM.Compile is
               (Env,
                Expressions (Node),
                Attr = Attribute_Max);
+
+         when Attribute_Pos
+            | Attribute_Val =>
+            pragma Assert (List_Length (Expressions (Node)) = 1);
+            return Build_Type_Conversion
+              (Env,
+               Etype (First (Expressions (Node))),
+               Etype (Node),
+               Emit_Expression (Env, First (Expressions (Node))));
 
          when Attribute_Succ
             | Attribute_Pred =>

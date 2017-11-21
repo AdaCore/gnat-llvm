@@ -302,7 +302,7 @@ package body GNATLLVM.Compile is
             --  subprogram body: just declare this subprogram and add it to
             --  the environment.
 
-            if Env.In_Declarations then
+            if not Env.In_Main_Unit then
                Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
                return;
 

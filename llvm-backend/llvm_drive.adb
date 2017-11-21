@@ -82,9 +82,7 @@ package body LLVM_Drive is
             --  referenced items on the fly???
 
             Set_In_Main_Unit (Env, False);
-            Env.Begin_Declarations;
             Emit (Env, U);
-            Env.End_Declarations;
          end if;
       end Emit_Library_Item;
 

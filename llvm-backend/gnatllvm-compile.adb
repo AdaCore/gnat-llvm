@@ -124,6 +124,9 @@ package body GNATLLVM.Compile is
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
+   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id);
+   --  Compile a subprogram body and save it in the environment
+
    function Emit_Type_Size
      (Env                   : Environ;
       T                     : Entity_Id;
@@ -257,6 +260,177 @@ package body GNATLLVM.Compile is
          Struct_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
    end Record_Field_Offset;
 
+   --------------------------
+   -- Emit_Subprogram_Body --
+   --------------------------
+
+   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
+      Spec       : constant Node_Id := Get_Acting_Spec (Node);
+      Def_Ident  : constant Entity_Id := Defining_Unit_Name (Spec);
+      Func       : constant Value_T :=
+        Emit_Subprogram_Decl (Env, Spec);
+      Subp       : constant Subp_Env := Env.Enter_Subp (Node, Func);
+      Wrapper    : Value_T;
+
+      LLVM_Param : Value_T;
+      LLVM_Var   : Value_T;
+      Param      : Entity_Id;
+      I          : Natural := 0;
+
+   begin
+      --  Create a value for the static-link structure
+
+      Subp.S_Link := Alloca
+        (Env.Bld,
+         Create_Static_Link_Type (Env, Subp.S_Link_Descr),
+         "static-link");
+
+      --  Create a wrapper for this function, if needed, and add its
+      --  implementation, still if needed.
+
+      Wrapper := Create_Callback_Wrapper (Env, Def_Ident);
+      Attach_Callback_Wrapper_Body (Env, Def_Ident, Wrapper);
+
+      --  Register each parameter into a new scope
+      Env.Push_Scope;
+
+      for P of Iterate (Parameter_Specifications (Spec)) loop
+         LLVM_Param := Get_Param (Subp.Func, unsigned (I));
+         Param := Defining_Identifier (P);
+
+         --  Define a name for the parameter P (which is the I'th
+         --  parameter), and associate the corresponding LLVM value to
+         --  its entity.
+
+         --  Set the name of the llvm value
+
+         Set_Value_Name (LLVM_Param, Get_Name (Param));
+
+         --  Special case for structures passed by value, we want to
+         --  store a pointer to them on the stack, so do an alloca,
+         --  to be able to do GEP on them.
+
+         if Param_Needs_Ptr (Param)
+           and then not
+             (Ekind (Etype (Param)) in Record_Kind
+              and (Get_Type_Kind (Type_Of (LLVM_Param))
+                   = Struct_Type_Kind))
+         then
+            LLVM_Var := LLVM_Param;
+         else
+            LLVM_Var := Alloca
+              (Env.Bld,
+               Type_Of (LLVM_Param), Get_Name (Param));
+            Store (Env.Bld, LLVM_Param, LLVM_Var);
+         end if;
+
+         --  Add the parameter to the environnment
+
+         Env.Set (Param, LLVM_Var);
+         Match_Static_Link_Variable (Env, Param, LLVM_Var);
+         I := I + 1;
+      end loop;
+
+      if Env.Takes_S_Link (Def_Ident) then
+
+         --  Rename the static link argument and link the static link
+         --  value to it.
+
+         declare
+            Parent_S_Link : constant Value_T :=
+              Get_Param (Subp.Func, unsigned (I));
+            Parent_S_Link_Type : constant Type_T :=
+              Pointer_Type
+                (Create_Static_Link_Type
+                   (Env, Subp.S_Link_Descr.Parent),
+                 0);
+            S_Link        : Value_T;
+
+         begin
+            Set_Value_Name (Parent_S_Link, "parent-static-link");
+            S_Link := Load (Env.Bld, Subp.S_Link, "static-link");
+            S_Link := Insert_Value
+              (Env.Bld,
+               S_Link,
+               Bit_Cast
+                 (Env.Bld,
+                  Parent_S_Link, Parent_S_Link_Type, ""),
+               0,
+               "updated-static-link");
+            Store (Env.Bld, S_Link, Subp.S_Link);
+         end;
+
+         --  Then "import" from the static link all the non-local
+         --  variables.
+
+         for Cur in Subp.S_Link_Descr.Accesses.Iterate loop
+            declare
+               use Local_Access_Maps;
+
+               Access_Info : Access_Record renames Element (Cur);
+               Depth       : Natural := Access_Info.Depth;
+               LValue      : Value_T := Subp.S_Link;
+
+               Idx_Type    : constant Type_T :=
+                 Int32_Type_In_Context (Env.Ctx);
+               Zero        : constant Value_T := Const_Null (Idx_Type);
+               Idx         : Value_Array (1 .. 2) := (Zero, Zero);
+
+            begin
+               --  Get a pointer to the target parent static link
+               --  structure.
+
+               while Depth > 0 loop
+                  LValue := Load
+                    (Env.Bld,
+                     GEP
+                       (Env.Bld,
+                        LValue,
+                        Idx'Address, Idx'Length,
+                        ""),
+                     "");
+                  Depth := Depth - 1;
+               end loop;
+
+               --  And then get the non-local variable as an lvalue
+
+               Idx (2) := Const_Int
+                 (Idx_Type,
+                  unsigned_long_long (Access_Info.Field),
+                  Sign_Extend => LLVM.Types.False);
+               LValue := Load
+                 (Env.Bld,
+                  GEP
+                    (Env.Bld,
+                     LValue, Idx'Address, Idx'Length, ""),
+                  "");
+
+               Set_Value_Name (LValue, Get_Name (Key (Cur)));
+               Env.Set (Key (Cur), LValue);
+            end;
+         end loop;
+      end if;
+
+      Emit_List (Env, Declarations (Node));
+      Emit_List (Env, Statements (Handled_Statement_Sequence (Node)));
+
+      --  This point should not be reached: a return must have
+      --  already... returned!
+
+      Discard (Build_Unreachable (Env.Bld));
+
+      Env.Pop_Scope;
+      Env.Leave_Subp;
+
+      if Verify_Function (Subp.Func, Print_Message_Action) = LLVM.Types.True
+      then
+         Error_Msg_N
+           ("the backend generated bad `LLVM` for this subprogram",
+            Node);
+         Dump_LLVM_Module (Env.Mdl);
+      end if;
+   end Emit_Subprogram_Body;
+
    ----------
    -- Emit --
    ----------
@@ -315,182 +489,7 @@ package body GNATLLVM.Compile is
                return;
             end if;
 
-            declare
-               Spec       : constant Node_Id := Get_Acting_Spec (Node);
-               Def_Ident  : constant Entity_Id := Defining_Unit_Name (Spec);
-               Func       : constant Value_T :=
-                 Emit_Subprogram_Decl (Env, Spec);
-               Subp       : constant Subp_Env := Env.Enter_Subp (Node, Func);
-               Wrapper    : Value_T;
-
-               LLVM_Param : Value_T;
-               LLVM_Var   : Value_T;
-               Param      : Entity_Id;
-               I          : Natural := 0;
-
-            begin
-               --  Create a value for the static-link structure
-
-               Subp.S_Link := Alloca
-                 (Env.Bld,
-                  Create_Static_Link_Type (Env, Subp.S_Link_Descr),
-                  "static-link");
-
-               --  Create a wrapper for this function, if needed, and add its
-               --  implementation, still if needed.
-
-               Wrapper := Create_Callback_Wrapper (Env, Def_Ident);
-               Attach_Callback_Wrapper_Body (Env, Def_Ident, Wrapper);
-
-               --  Register each parameter into a new scope
-               Env.Push_Scope;
-
-               for P of Iterate (Parameter_Specifications (Spec)) loop
-                  LLVM_Param := Get_Param (Subp.Func, unsigned (I));
-                  Param := Defining_Identifier (P);
-
-                  --  Define a name for the parameter P (which is the I'th
-                  --  parameter), and associate the corresponding LLVM value to
-                  --  its entity.
-
-                  --  Set the name of the llvm value
-
-                  Set_Value_Name (LLVM_Param, Get_Name (Param));
-
-                  --  Special case for structures passed by value, we want to
-                  --  store a pointer to them on the stack, so do an alloca,
-                  --  to be able to do GEP on them.
-
-                  if Param_Needs_Ptr (Param)
-                    and then not
-                      (Ekind (Etype (Param)) in Record_Kind
-                       and (Get_Type_Kind (Type_Of (LLVM_Param))
-                            = Struct_Type_Kind))
-                  then
-                     LLVM_Var := LLVM_Param;
-                  else
-                     LLVM_Var := Alloca
-                       (Env.Bld,
-                        Type_Of (LLVM_Param), Get_Name (Param));
-                     Store (Env.Bld, LLVM_Param, LLVM_Var);
-                  end if;
-
-                  --  Add the parameter to the environnment
-
-                  Env.Set (Param, LLVM_Var);
-
-                  Match_Static_Link_Variable
-                    (Env, Param, LLVM_Var);
-
-                  I := I + 1;
-               end loop;
-
-               if Env.Takes_S_Link (Def_Ident) then
-
-                  --  Rename the static link argument and link the static link
-                  --  value to it.
-
-                  declare
-                     Parent_S_Link : constant Value_T :=
-                       Get_Param (Subp.Func, unsigned (I));
-                     Parent_S_Link_Type : constant Type_T :=
-                       Pointer_Type
-                         (Create_Static_Link_Type
-                            (Env, Subp.S_Link_Descr.Parent),
-                          0);
-                     S_Link        : Value_T;
-
-                  begin
-                     Set_Value_Name (Parent_S_Link, "parent-static-link");
-                     S_Link := Load (Env.Bld, Subp.S_Link, "static-link");
-                     S_Link := Insert_Value
-                       (Env.Bld,
-                        S_Link,
-                        Bit_Cast
-                          (Env.Bld,
-                           Parent_S_Link, Parent_S_Link_Type, ""),
-                        0,
-                        "updated-static-link");
-                     Store (Env.Bld, S_Link, Subp.S_Link);
-                  end;
-
-                  --  Then "import" from the static link all the non-local
-                  --  variables.
-
-                  for Cur in Subp.S_Link_Descr.Accesses.Iterate loop
-                     declare
-                        use Local_Access_Maps;
-
-                        Access_Info : Access_Record renames Element (Cur);
-                        Depth       : Natural := Access_Info.Depth;
-                        LValue      : Value_T := Subp.S_Link;
-
-                        Idx_Type    : constant Type_T :=
-                          Int32_Type_In_Context (Env.Ctx);
-                        Zero        : constant Value_T :=
-                          Const_Null (Idx_Type);
-                        Idx         : Value_Array (1 .. 2) :=
-                          (Zero, Zero);
-
-                     begin
-                        --  Get a pointer to the target parent static link
-                        --  structure.
-
-                        while Depth > 0 loop
-                           LValue := Load
-                             (Env.Bld,
-                              GEP
-                                (Env.Bld,
-                                 LValue,
-                                 Idx'Address, Idx'Length,
-                                 ""),
-                              "");
-                           Depth := Depth - 1;
-                        end loop;
-
-                        --  And then get the non-local variable as an lvalue
-
-                        Idx (2) := Const_Int
-                          (Idx_Type,
-                           unsigned_long_long (Access_Info.Field),
-                           Sign_Extend => LLVM.Types.False);
-                        LValue := Load
-                          (Env.Bld,
-                           GEP
-                             (Env.Bld,
-                              LValue, Idx'Address, Idx'Length, ""),
-                           "");
-
-                        Set_Value_Name (LValue, Get_Name (Key (Cur)));
-                        Env.Set (Key (Cur), LValue);
-                     end;
-                  end loop;
-
-               end if;
-
-               Emit_List (Env, Declarations (Node));
-               Emit_List
-                 (Env, Statements (Handled_Statement_Sequence (Node)));
-
-               --  This point should not be reached: a return must have
-               --  already... returned!
-
-               Discard (Build_Unreachable (Env.Bld));
-
-               Env.Pop_Scope;
-               Env.Leave_Subp;
-
-               pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-               if Verify_Function
-                    (Subp.Func, Print_Message_Action) = LLVM.Types.True
-               then
-                  Error_Msg_N
-                    ("The backend generated bad LLVM for this subprogram.",
-                     Node);
-                  Dump_LLVM_Module (Env.Mdl);
-               end if;
-               pragma Annotate (Xcov, Exempt_Off);
-            end;
+            Emit_Subprogram_Body (Env, Node);
 
          when N_Subprogram_Declaration =>
             Discard (Emit_Subprogram_Decl (Env, Specification (Node)));
@@ -2310,6 +2309,15 @@ package body GNATLLVM.Compile is
               (Env.Bld,
                Emit_LValue
                  (Env, Prefix (Node)), Get_Address_Type, "to-address");
+
+         when Attribute_Deref =>
+            return Load
+              (Env.Bld,
+               Bit_Cast
+                 (Env.Bld,
+                  Emit_Expression (Env, First (Expressions (Node))),
+                  Create_Type (Env, Etype (Prefix (Node))), ""),
+               "attr-deref");
 
          when Attribute_First
             | Attribute_Last

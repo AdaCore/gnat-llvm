@@ -187,8 +187,8 @@ package body GNATLLVM.Types is
       then
          return Create_Array_Fat_Pointer_Type (Env, TE);
 
-      --  LLVM subprograms values already are already pointers. We want to
-      --  embed a static-link with them, though.
+      --  LLVM subprograms values are already pointers. We want to embed a
+      --  static-link with them, though.
 
       elsif Ekind (TE) = E_Function
         or else Ekind (TE) = E_Procedure
@@ -512,23 +512,28 @@ package body GNATLLVM.Types is
    function Create_Subprogram_Type_From_Spec
      (Env : Environ; Subp_Spec : Node_Id) return Type_T
    is
-      Def_Ident    : constant Entity_Id := Defining_Unit_Name (Subp_Spec);
-      Params       : constant Entity_Iterator  := Get_Params (Def_Ident);
+      Def_Ident : constant Entity_Id := Defining_Unit_Name (Subp_Spec);
+      Params    : constant Entity_Iterator := Get_Params (Def_Ident);
+      Result    : Node_Id := Empty;
+
    begin
+      case Nkind (Subp_Spec) is
+         when N_Procedure_Specification =>
+            null;
+         when N_Function_Specification =>
+            Result := Entity (Result_Definition (Subp_Spec));
+         when others =>
+            Error_Msg_N
+              ("invalid node kind: `" & Node_Kind'Image (Nkind (Subp_Spec)),
+               Subp_Spec);
+            raise Program_Error;
+      end case;
 
       return Create_Subprogram_Type
         (Env,
          Params,
-         (case Nkind (Subp_Spec) is
-             when N_Procedure_Specification =>
-                Empty,
-             when N_Function_Specification =>
-                Entity (Result_Definition (Subp_Spec)),
-             when others =>
-                raise Program_Error
-                  with "Invalid node: "
-          & Node_Kind'Image (Nkind (Subp_Spec))),
-        Env.Takes_S_Link (Defining_Unit_Name (Subp_Spec)));
+         Result,
+         Env.Takes_S_Link (Defining_Unit_Name (Subp_Spec)));
    end Create_Subprogram_Type_From_Spec;
 
    ----------------------------------------

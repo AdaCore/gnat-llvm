@@ -340,8 +340,12 @@ package body GNATLLVM.Environment is
 
       S_Link_Cur : constant Cursor := Env.S_Links.Find (Subp);
    begin
-      return S_Link_Cur /= No_Element
-        and then Element (S_Link_Cur).Parent /= null;
+      if Local_Nested_Support then
+         return S_Link_Cur /= No_Element
+           and then Element (S_Link_Cur).Parent /= null;
+      else
+         return False;
+      end if;
    end Takes_S_Link;
 
    ----------------

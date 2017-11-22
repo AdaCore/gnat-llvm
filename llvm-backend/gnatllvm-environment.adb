@@ -183,7 +183,7 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Element (Cur);
       else
-         Error_Msg_N ("cannot find matching LLVM type", TE);
+         Error_Msg_N ("cannot find matching `LLVM` type", TE);
          raise No_Such_Type;
       end if;
    end Get;
@@ -199,7 +199,7 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Element (Cur);
       else
-         Error_Msg_N ("cannot find matching LLVM value", VE);
+         Error_Msg_N ("cannot find matching `LLVM` value", VE);
          raise No_Such_Value;
       end if;
    end Get;
@@ -217,7 +217,7 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Element (Cur);
       else
-         Error_Msg_N ("cannot find matching LLVM value", RI);
+         Error_Msg_N ("cannot find matching `LLVM` value", RI);
          raise No_Such_Value;
       end if;
    end Get;
@@ -234,7 +234,7 @@ package body GNATLLVM.Environment is
       if Cur /= No_Element then
          return Value_As_Basic_Block (Env.Get (BE));
       else
-         Error_Msg_N ("cannot find matching LLVM basic block", BE);
+         Error_Msg_N ("cannot find matching `LLVM` basic block", BE);
          raise No_Such_Basic_Block;
       end if;
    end Get;

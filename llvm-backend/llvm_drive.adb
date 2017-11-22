@@ -99,7 +99,9 @@ package body LLVM_Drive is
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
 
-      Compute_Static_Link_Descriptors (GNAT_Root, Env.S_Links);
+      if Local_Nested_Support then
+         Compute_Static_Link_Descriptors (GNAT_Root, Env.S_Links);
+      end if;
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);

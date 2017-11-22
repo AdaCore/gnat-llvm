@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---                     Copyright (C) 1998-2014, AdaCore                     --
+--                     Copyright (C) 1998-2017, AdaCore                     --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -20,9 +20,9 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  This is the gnat2scil version of package body Sdefault.
+--  This is the GNAT-to-LLVM version of package body Sdefault.
 
---  This package body provides the gnat2scil implementation of the routines
+--  This package body provides the llvm-gnat1 implementation of the routines
 --  that locate the Ada library source and object directories.
 
 with Osint; use Osint;
@@ -35,7 +35,7 @@ package body Sdefault is
    ----------------
 
    Prefix : constant String := "@PREFIX@";
-   Target : constant String := "codepeer/";
+   Target : constant String := "llvm/";
 
    ------------------------------
    -- Include_Dir_Default_Name --

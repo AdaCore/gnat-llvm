@@ -2027,11 +2027,9 @@ package body GNATLLVM.Compile is
 
    function Emit_Call (Env : Environ; Call_Node : Node_Id) return Value_T is
       Subp        : constant Node_Id := Name (Call_Node);
+      Direct_Call : constant Boolean := Nkind (Subp) /= N_Explicit_Dereference;
       Params      : constant Entity_Iterator :=
-        Get_Params (if Nkind (Subp) = N_Identifier
-                    or else Nkind (Subp) = N_Expanded_Name
-                    then Entity (Subp)
-                    else Etype (Subp));
+        Get_Params (if Direct_Call then Entity (Subp) else Etype (Subp));
       Param_Assoc, Actual : Node_Id;
       Actual_Type         : Entity_Id;
       Current_Needs_Ptr   : Boolean;
@@ -2041,10 +2039,7 @@ package body GNATLLVM.Compile is
 
       Takes_S_Link   : constant Boolean :=
         Local_Nested_Support
-          and then
-            ((Nkind (Subp) /= N_Identifier
-              and then Nkind (Subp) /= N_Expanded_Name)
-             or else Env.Takes_S_Link (Entity (Subp)));
+          and then (not Direct_Call or else Env.Takes_S_Link (Entity (Subp)));
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
@@ -2067,13 +2062,11 @@ package body GNATLLVM.Compile is
       LLVM_Func := Emit_Expression (Env, Name (Call_Node));
 
       if Takes_S_Link then
-         if Nkind (Name (Call_Node)) /= N_Identifier
-           and then Nkind (Name (Call_Node)) /= N_Expanded_Name
-         then
+         if Direct_Call then
+            S_Link := Get_Static_Link (Env, Entity (Name (Call_Node)));
+         else
             S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link-ptr");
             LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
-         else
-            S_Link := Get_Static_Link (Env, Entity (Name (Call_Node)));
          end if;
       end if;
 

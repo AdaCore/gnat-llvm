@@ -56,7 +56,9 @@ setup:
 	    -e "s^@PREFIX@^$(prefix)^" \
 	    -e "s^@GNAT1DIR@^$(gnat1dir)^" \
 	    sdefault.adb.in > obj/sdefault.adb
-	sed -e "s^\(Expand_Nonbinary_Modular_Ops : Boolean :=\) False^\1 True^" $(GNAT_SRC)/opt.ads > obj/opt.ads
+	sed -e "s^\(Expand_Nonbinary_Modular_Ops : Boolean :=\) False^\1 True^"\
+	    -e "s^\(Unnest_Subprogram_Mode : Boolean :=\) False^\1 True^"\
+	    $(GNAT_SRC)/opt.ads > obj/opt.ads
 	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
@@ -125,6 +127,7 @@ ada.ads      \
 a-unccon.ads \
 a-uncdea.ads \
 gnat.ads     \
+g-souinf.ads \
 i-c.ads      \
 i-cexten.ads \
 interfac.ads \
@@ -133,7 +136,6 @@ s-fatflt.ads \
 s-fatsfl.ads \
 s-fatllf.ads \
 s-fatlfl.ads \
-g-souinf.ads \
 s-unstyp.ads \
 system.ads   \
 text_io.ads  \

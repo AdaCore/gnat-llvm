@@ -15,13 +15,13 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers;          use Ada.Containers;
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
 with Atree; use Atree;
 with Einfo;    use Einfo;
+with Exp_Unst; use Exp_Unst;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
 with Namet;    use Namet;
@@ -75,8 +75,9 @@ package body GNATLLVM.Compile is
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 
    function Emit_Attribute_Reference
-     (Env  : Environ;
-      Node : Node_Id) return Value_T
+     (Env    : Environ;
+      Node   : Node_Id;
+      LValue : Boolean) return Value_T
      with Pre => Nkind (Node) = N_Attribute_Reference;
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
@@ -264,7 +265,11 @@ package body GNATLLVM.Compile is
    -- Emit_Subprogram_Body --
    --------------------------
 
-   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
+   procedure Emit_Subprogram_Body_Old (Env : Environ; Node : Node_Id);
+   --  Version that does not use front-end expansion of nested subprograms,
+   --  kept for reference for now.
+
+   procedure Emit_Subprogram_Body_Old (Env : Environ; Node : Node_Id) is
       Spec       : constant Node_Id := Get_Acting_Spec (Node);
       Def_Ident  : constant Entity_Id := Defining_Unit_Name (Spec);
       Func       : constant Value_T :=
@@ -429,6 +434,206 @@ package body GNATLLVM.Compile is
             Node);
          Dump_LLVM_Module (Env.Mdl);
       end if;
+   end Emit_Subprogram_Body_Old;
+
+   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
+
+      procedure Emit_One_Body (Node : Node_Id);
+      --  Generate code for one given subprogram body
+
+      procedure Unsupported_Nested_Subprogram (N : Node_Id);
+      --  Locate the first inner nested subprogram and report the error on it
+
+      -------------------
+      -- Emit_One_Body --
+      -------------------
+
+      procedure Emit_One_Body (Node : Node_Id) is
+         Spec : constant Node_Id := Get_Acting_Spec (Node);
+         Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
+         Subp : constant Subp_Env := Env.Enter_Subp (Node, Func);
+
+         LLVM_Param : Value_T;
+         LLVM_Var   : Value_T;
+         Param_Num  : Natural := 0;
+
+         function Iterate is new Iterate_Entities
+           (Get_First => First_Formal_With_Extras,
+            Get_Next  => Next_Formal_With_Extras);
+
+      begin
+         --  Register each parameter into a new scope
+         Env.Push_Scope;
+
+         for Param of Iterate (Defining_Unit_Name (Spec)) loop
+            LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
+
+            --  Define a name for the parameter Param (which is the
+            --  Param_Num'th parameter), and associate the corresponding LLVM
+            --  value to its entity.
+
+            --  Set the name of the llvm value
+
+            Set_Value_Name (LLVM_Param, Get_Name (Param));
+
+            --  Special case for structures passed by value, we want to
+            --  store a pointer to them on the stack, so do an alloca,
+            --  to be able to do GEP on them.
+
+            if Param_Needs_Ptr (Param)
+              and then not
+                (Ekind (Etype (Param)) in Record_Kind
+                 and (Get_Type_Kind (Type_Of (LLVM_Param))
+                      = Struct_Type_Kind))
+            then
+               LLVM_Var := LLVM_Param;
+            else
+               LLVM_Var := Alloca
+                 (Env.Bld,
+                  Type_Of (LLVM_Param), Get_Name (Param));
+               Store (Env.Bld, LLVM_Param, LLVM_Var);
+            end if;
+
+            --  Add the parameter to the environnment
+
+            Env.Set (Param, LLVM_Var);
+            Param_Num := Param_Num + 1;
+         end loop;
+
+         Emit_List (Env, Declarations (Node));
+         Emit_List (Env, Statements (Handled_Statement_Sequence (Node)));
+
+         --  This point should not be reached: a return must have
+         --  already... returned!
+
+         Discard (Build_Unreachable (Env.Bld));
+
+         Env.Pop_Scope;
+         Env.Leave_Subp;
+
+         if Verify_Function (Subp.Func, Print_Message_Action) = LLVM.Types.True
+         then
+            Error_Msg_N
+              ("the backend generated bad `LLVM` for this subprogram",
+               Node);
+            Dump_LLVM_Module (Env.Mdl);
+         end if;
+      end Emit_One_Body;
+
+      -----------------------------------
+      -- Unsupported_Nested_Subprogram --
+      -----------------------------------
+
+      procedure Unsupported_Nested_Subprogram (N : Node_Id) is
+         function Search_Subprogram (Node : Node_Id) return Traverse_Result;
+         --  Subtree visitor which looks for the subprogram
+
+         -----------------------
+         -- Search_Subprogram --
+         -----------------------
+
+         function Search_Subprogram (Node : Node_Id) return Traverse_Result is
+         begin
+            if Node /= N
+              and then Nkind (Node) = N_Subprogram_Body
+
+               --  Do not report the error on generic subprograms; the error
+               --  will be reported only in their instantiations (to leave the
+               --  output more clean).
+
+              and then not
+                Is_Generic_Subprogram (Unique_Defining_Entity (Node))
+            then
+               Error_Msg_N ("unsupported kind of nested subprogram", Node);
+               return Abandon;
+            end if;
+
+            return OK;
+         end Search_Subprogram;
+
+         procedure Search is new Traverse_Proc (Search_Subprogram);
+         --  Subtree visitor instantiation
+
+      --  Start of processing for Unsupported_Nested_Subprogram
+
+      begin
+         Search (N);
+      end Unsupported_Nested_Subprogram;
+
+      Subp : constant Entity_Id := Unique_Defining_Entity (Node);
+
+   begin
+      if Local_Nested_Support then
+         Emit_Subprogram_Body_Old (Env, Node);
+         return;
+      end if;
+
+      if not Has_Nested_Subprogram (Subp) then
+         Emit_One_Body (Node);
+         return;
+
+      --  Temporarily protect us against unsupported kind of nested subprograms
+      --  (for example, subprograms defined in nested instantiations)???
+
+      elsif Subps_Index (Subp) = Uint_0 then
+         Unsupported_Nested_Subprogram (Node);
+         return;
+      end if;
+
+      --  Here we deal with a subprogram with nested subprograms
+
+      declare
+         Subps_First : constant SI_Type := UI_To_Int (Subps_Index (Subp));
+         Subps_Last  : constant SI_Type := Subps.Table (Subps_First).Last;
+         --  First and last indexes for Subps table entries for this nest
+
+      begin
+         --  Note: unlike in cprint.adb, we do not need to worry about
+         --  ARECnT and ARECnPT types since these will be generated on the fly.
+
+         --  First generate headers for all the nested bodies, and also for the
+         --  outer level body if it acts as its own spec. The order of these
+         --  does not matter.
+
+         Output_Headers : for J in Subps_First .. Subps_Last loop
+            declare
+               STJ : Subp_Entry renames Subps.Table (J);
+            begin
+               if J /= Subps_First or else Acts_As_Spec (STJ.Bod) then
+                  Discard
+                    (Emit_Subprogram_Decl (Env, Declaration_Node (STJ.Ent)));
+
+                  --  If there is a separate subprogram specification, remove
+                  --  it, since we have now dealt with outputting this spec.
+
+                  if Present (Corresponding_Spec (STJ.Bod)) then
+                     Remove (Parent
+                       (Declaration_Node (Corresponding_Spec (STJ.Bod))));
+                  end if;
+               end if;
+            end;
+         end loop Output_Headers;
+
+         --  Now we can output the actual bodies, we do this in reverse order
+         --  so that we deal with and remove the inner level bodies first. That
+         --  way when we print the enclosing subprogram, the body is gone!
+
+         Output_Bodies : for J in reverse Subps_First + 1 .. Subps_Last loop
+            declare
+               STJ : Subp_Entry renames Subps.Table (J);
+            begin
+               Emit_One_Body (STJ.Bod);
+
+               if Is_List_Member (STJ.Bod) then
+                  Remove (STJ.Bod);
+               end if;
+            end;
+         end loop Output_Bodies;
+
+         --  And finally we output the outer level body and we are done
+
+         Emit_One_Body (Node);
+      end;
    end Emit_Subprogram_Body;
 
    ----------
@@ -1048,41 +1253,47 @@ package body GNATLLVM.Compile is
             declare
                Def_Ident : constant Entity_Id := Entity (Node);
             begin
-               if Ekind (Def_Ident) = E_Function
-                 or else Ekind (Def_Ident) = E_Procedure
-               then
-                  --  Return a callback, which is a couple: subprogram code
-                  --  pointer, static link argument.
+               if Ekind (Def_Ident) in Subprogram_Kind then
+                  if not Local_Nested_Support then
+                     return Env.Get (Def_Ident);
+                  else
 
-                  declare
-                     Func   : constant Value_T :=
-                       Create_Callback_Wrapper (Env, Def_Ident);
-                     S_Link : constant Value_T :=
-                       Get_Static_Link (Env, Def_Ident);
+                     --  Return a callback, which is a couple: subprogram code
+                     --  pointer, static link argument.
 
-                     Fields_Types : constant array (1 .. 2) of Type_T :=
-                       (Type_Of (Func),
-                        Type_Of (S_Link));
-                     Callback_Type : constant Type_T :=
-                       Struct_Type_In_Context
-                         (Env.Ctx,
-                          Fields_Types'Address, Fields_Types'Length,
-                          Packed => LLVM.Types.False);
+                     declare
+                        Func   : constant Value_T :=
+                          Create_Callback_Wrapper (Env, Def_Ident);
+                        S_Link : constant Value_T :=
+                          Get_Static_Link (Env, Def_Ident);
 
-                     Result : Value_T := Get_Undef (Callback_Type);
+                        Fields_Types : constant array (1 .. 2) of Type_T :=
+                          (Type_Of (Func),
+                           Type_Of (S_Link));
+                        Callback_Type : constant Type_T :=
+                          Struct_Type_In_Context
+                            (Env.Ctx,
+                             Fields_Types'Address, Fields_Types'Length,
+                             Packed => LLVM.Types.False);
 
-                  begin
-                     Result := Insert_Value (Env.Bld, Result, Func, 0, "");
-                     Result := Insert_Value
-                       (Env.Bld,
-                        Result, S_Link, 1, "callback");
-                     return Result;
-                  end;
+                        Result : Value_T := Get_Undef (Callback_Type);
+
+                     begin
+                        Result := Insert_Value (Env.Bld, Result, Func, 0, "");
+                        Result := Insert_Value
+                          (Env.Bld,
+                           Result, S_Link, 1, "callback");
+                        return Result;
+                     end;
+                  end if;
 
                else
                   return Env.Get (Def_Ident);
                end if;
             end;
+
+         when N_Attribute_Reference =>
+            return Emit_Attribute_Reference (Env, Node, LValue => True);
 
          when N_Explicit_Dereference =>
             return Emit_Expression (Env, Prefix (Node));
@@ -1108,7 +1319,7 @@ package body GNATLLVM.Compile is
             declare
                T : constant Type_T := Create_Type (Env, Etype (Node));
                V : constant Value_T :=
-                     Add_Global (Env.Mdl, T, "string-literal");
+                     Add_Global (Env.Mdl, T, "str-lit");
 
             begin
                Env.Set (Node, V);
@@ -1192,7 +1403,7 @@ package body GNATLLVM.Compile is
                Array_Type  : constant Entity_Id := Etype (Array_Node);
 
                Array_Descr    : constant Value_T :=
-                 Emit_LValue (Env, Prefix (Node));
+                 Emit_LValue (Env, Array_Node);
                Array_Data_Ptr : constant Value_T :=
                  Array_Data (Env, Array_Descr, Array_Type);
 
@@ -1657,21 +1868,21 @@ package body GNATLLVM.Compile is
                   end;
 
                else
-                  --  LLVM functions are pointers that cannot be dereferenced.
-                  --  If Def_Ident is a subprogram, return it as-is, the caller
-                  --  expects a pointer to a function anyway.
-
                   declare
                      Kind          : constant Entity_Kind := Ekind (Def_Ident);
                      Type_Kind     : constant Entity_Kind :=
                        Ekind (Etype (Def_Ident));
                      Is_Subprogram : constant Boolean :=
-                       (Kind = E_Function
-                        or else Kind = E_Procedure
+                       (Kind in Subprogram_Kind
                         or else Type_Kind = E_Subprogram_Type);
                      LValue        : constant Value_T := Env.Get (Def_Ident);
 
                   begin
+                     --  LLVM functions are pointers that cannot be
+                     --  dereferenced. If Def_Ident is a subprogram, return it
+                     --  as-is, the caller expects a pointer to a function
+                     --  anyway.
+
                      return
                        (if Is_Subprogram
                         then LValue
@@ -1720,7 +1931,7 @@ package body GNATLLVM.Compile is
             return Emit_LValue (Env, Prefix (Node));
 
          when N_Attribute_Reference =>
-            return Emit_Attribute_Reference (Env, Node);
+            return Emit_Attribute_Reference (Env, Node, LValue => False);
 
          when N_Selected_Component =>
             declare
@@ -1829,9 +2040,11 @@ package body GNATLLVM.Compile is
       --  in such a case, it must accept a static link.
 
       Takes_S_Link   : constant Boolean :=
-        (Nkind (Subp) /= N_Identifier
-         and then Nkind (Subp) /= N_Expanded_Name)
-        or else Env.Takes_S_Link (Entity (Subp));
+        Local_Nested_Support
+          and then
+            ((Nkind (Subp) /= N_Identifier
+              and then Nkind (Subp) /= N_Expanded_Name)
+             or else Env.Takes_S_Link (Entity (Subp)));
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
@@ -1853,13 +2066,15 @@ package body GNATLLVM.Compile is
 
       LLVM_Func := Emit_Expression (Env, Name (Call_Node));
 
-      if Nkind (Name (Call_Node)) /= N_Identifier
-        and then Nkind (Name (Call_Node)) /= N_Expanded_Name
-      then
-         S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link-ptr");
-         LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
-      else
-         S_Link := Get_Static_Link (Env, Entity (Name (Call_Node)));
+      if Takes_S_Link then
+         if Nkind (Name (Call_Node)) /= N_Identifier
+           and then Nkind (Name (Call_Node)) /= N_Expanded_Name
+         then
+            S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link-ptr");
+            LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
+         else
+            S_Link := Get_Static_Link (Env, Entity (Name (Call_Node)));
+         end if;
       end if;
 
       Param_Assoc := First (Parameter_Associations (Call_Node));
@@ -1930,6 +2145,8 @@ package body GNATLLVM.Compile is
          Args_Types : constant Type_Array :=
            Get_Param_Types (Type_Of (LLVM_Func));
       begin
+         pragma Assert (Args'Length = Args_Types'Length);
+
          for J in Args'Range loop
             if Type_Of (Args (J)) /= Args_Types (J)
               and then Get_Type_Kind (Type_Of (Args (J))) = Pointer_Type_Kind
@@ -1945,7 +2162,7 @@ package body GNATLLVM.Compile is
           (Env.Bld,
            LLVM_Func, Args'Address, Args'Length,
            --  Assigning a name to a void value is not possible with LLVM
-           (if Nkind (Call_Node) = N_Function_Call then "subpcall" else ""));
+           (if Nkind (Call_Node) = N_Function_Call then "call" else ""));
    end Emit_Call;
 
    --------------------------
@@ -1962,21 +2179,21 @@ package body GNATLLVM.Compile is
 
       if Env.Has_Value (Def_Ident) then
          return Env.Get (Def_Ident);
-
       else
          declare
             Subp_Type : constant Type_T :=
               Create_Subprogram_Type_From_Spec (Env, Subp_Spec);
 
             Subp_Base_Name : constant String :=
-                Get_Name_String (Chars (Def_Ident));
-            Subp_Name : constant String :=
-              (if Scope_Depth_Value (Def_Ident) > 1
-               then Subp_Base_Name
-               else "_ada_" & Subp_Base_Name);
-
+              Get_Name_String (Chars (Def_Ident));
             LLVM_Func : constant Value_T :=
-              Add_Function (Env.Mdl, Subp_Name, Subp_Type);
+              Add_Function
+                (Env.Mdl,
+                 (if Is_Compilation_Unit (Def_Ident)
+                  then "_ada_" & Subp_Base_Name
+                  else Subp_Base_Name),
+                 Subp_Type);
+
          begin
             --  Define the appropriate linkage
 
@@ -2023,6 +2240,7 @@ package body GNATLLVM.Compile is
             Args_Count  : constant unsigned :=
               Count_Param_Types (Func_Type) + 1;
             Args        : array (1 .. Args_Count) of Type_T;
+
          begin
             Get_Param_Types (Func_Type, Args'Address);
             Args (Args'Last) :=
@@ -2046,8 +2264,7 @@ package body GNATLLVM.Compile is
    ----------------------------------
 
    procedure Attach_Callback_Wrapper_Body
-     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T)
-   is
+     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T) is
    begin
       if Env.Takes_S_Link (Subp) then
          return;
@@ -2100,10 +2317,14 @@ package body GNATLLVM.Compile is
       Subp   : Subp_Env;
       S_Link : Value_T;
    begin
+      if not Local_Nested_Support then
+         return;
+      end if;
+
       --  There is no static link variable to look for if we are at compilation
       --  unit top-level.
 
-      if Env.Current_Subps.Length < 1 then
+      if Is_Compilation_Unit (Def_Ident) then
          return;
       end if;
 
@@ -2285,8 +2506,9 @@ package body GNATLLVM.Compile is
    ------------------------------
 
    function Emit_Attribute_Reference
-     (Env  : Environ;
-      Node : Node_Id) return Value_T
+     (Env    : Environ;
+      Node   : Node_Id;
+      LValue : Boolean) return Value_T
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (Node));
    begin
@@ -2311,13 +2533,23 @@ package body GNATLLVM.Compile is
                  (Env, Prefix (Node)), Get_Address_Type, "to-address");
 
          when Attribute_Deref =>
-            return Load
-              (Env.Bld,
-               Bit_Cast
-                 (Env.Bld,
-                  Emit_Expression (Env, First (Expressions (Node))),
-                  Create_Type (Env, Etype (Prefix (Node))), ""),
-               "attr-deref");
+            declare
+               Expr : constant Node_Id := First (Expressions (Node));
+               pragma Assert (Is_Descendant_Of_Address (Etype (Expr)));
+
+               Val : constant Value_T :=
+                 Int_To_Ptr
+                   (Env.Bld,
+                    Emit_Expression (Env, Expr),
+                    Create_Access_Type (Env, Etype (Node)), "attr-deref");
+
+            begin
+               if LValue or else Is_Array_Type (Etype (Node)) then
+                  return Val;
+               else
+                  return Load (Env.Bld, Val, "attr-deref");
+               end if;
+            end;
 
          when Attribute_First
             | Attribute_Last

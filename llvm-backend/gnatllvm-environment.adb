@@ -377,7 +377,10 @@ package body GNATLLVM.Environment is
          S_Link_Descr           => null,
          S_Link                 => Value_T (System.Null_Address));
    begin
-      Subp.S_Link_Descr := Env.S_Links.Element (Subp_Ent);
+      if Local_Nested_Support then
+         Subp.S_Link_Descr := Env.S_Links.Element (Subp_Ent);
+      end if;
+
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
       Position_Builder_At_End (Env.Bld, Env.Create_Basic_Block ("entry"));

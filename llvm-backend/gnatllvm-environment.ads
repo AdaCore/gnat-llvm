@@ -29,7 +29,7 @@ with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
 
 package GNATLLVM.Environment is
 
-   Local_Nested_Support : constant Boolean := True;
+   Local_Nested_Support : constant Boolean := False;
 
    type Field_Info is record
       Containing_Struct_Index : Nat;
@@ -101,7 +101,7 @@ package GNATLLVM.Environment is
      (Index_Type   => Positive,
       Element_Type => Exit_Point);
 
-   --  Expansed Ada-to-LLVM translation context: gathers global information
+   --  Expanded Ada-to-LLVM translation context: gathers global information
    type Environ_Record is tagged;
    type Environ is access all Environ_Record;
 

@@ -190,12 +190,14 @@ package body GNATLLVM.Types is
       --  LLVM subprograms values are already pointers. We want to embed a
       --  static-link with them, though.
 
-      elsif Ekind (TE) = E_Function
-        or else Ekind (TE) = E_Procedure
+      elsif Ekind (TE) in Subprogram_Kind
         or else Ekind (TE) = E_Subprogram_Type
       then
-         return Create_Subprogram_Access_Type (Env, T);
-
+         if Local_Nested_Support then
+            return Create_Subprogram_Access_Type (Env, T);
+         else
+            return Pointer_Type (T, 0);
+         end if;
       else
          return Pointer_Type (T, 0);
       end if;
@@ -381,7 +383,7 @@ package body GNATLLVM.Types is
 
                for Index of reverse Iterate (Def_Ident) loop
                   declare
-                     --  Sometimes, the frontends leaves an identifier that
+                     --  Sometimes, the frontend leaves an identifier that
                      --  references an integer subtype instead of a range.
 
                      Idx_Range : constant Node_Id := Get_Dim_Range (Index);
@@ -410,11 +412,11 @@ package body GNATLLVM.Types is
             end;
 
          when E_Subprogram_Type =>
-            --  An access to a subprogram can point any subprogram (nested or
-            --  not), so it must accept a static link.
+            --  An access to a subprogram can point to any subprogram (nested
+            --  or not), so it must accept a static link.
 
             return Create_Subprogram_Type_From_Entity
-              (Env, Def_Ident, Takes_S_Link => True);
+              (Env, Def_Ident, Takes_S_Link => Local_Nested_Support);
 
          when E_Anonymous_Access_Subprogram_Type =>
             return Create_Access_Type

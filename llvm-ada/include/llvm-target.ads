@@ -96,8 +96,6 @@ package LLVM.Target is
   --    initialize the native target corresponding to the host.  This is useful
   --    for JIT applications to ensure that the target gets linked in correctly.  
 
-   function Initialize_Native_Target
-      return Boolean;
    function Initialize_Native_Target_C
       return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Target.h:136
    pragma Import (C, Initialize_Native_Target_C, "LLVMInitializeNativeTarget");
@@ -107,8 +105,6 @@ package LLVM.Target is
   --    function to initialize the parser for the native target corresponding to the
   --    host.  
 
-   function Initialize_Native_Asm_Parser
-      return Boolean;
    function Initialize_Native_Asm_Parser_C
       return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Target.h:151
    pragma Import (C, Initialize_Native_Asm_Parser_C, "LLVMInitializeNativeAsmParser");
@@ -117,8 +113,6 @@ package LLVM.Target is
   --    function to initialize the printer for the native target corresponding to
   --    the host.  
 
-   function Initialize_Native_Asm_Printer
-      return Boolean;
    function Initialize_Native_Asm_Printer_C
       return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Target.h:163
    pragma Import (C, Initialize_Native_Asm_Printer_C, "LLVMInitializeNativeAsmPrinter");
@@ -127,8 +121,6 @@ package LLVM.Target is
   --    function to initialize the disassembler for the native target corresponding
   --    to the host.  
 
-   function Initialize_Native_Disassembler
-      return Boolean;
    function Initialize_Native_Disassembler_C
       return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Target.h:175
    pragma Import (C, Initialize_Native_Disassembler_C, "LLVMInitializeNativeDisassembler");

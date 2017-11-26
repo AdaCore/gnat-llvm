@@ -26,14 +26,12 @@ Argument = namedtuple('Argument', 'name type')
 INDENT = ' ' * 3
 C_STRING = 'Interfaces.C.Strings.chars_ptr'
 LLVM_BOOL = 'Bool_T'
-LLVM_CORE_BOOL = 'LLVM.Core.Bool_T'
-LLVM_BUILDER = 'Builder_T'
+LLVM_TYPES_BOOL = 'LLVM.Types.Bool_T'
 
 TYPES_TRANSLATION_TABLE = {
     C_STRING: 'String',
     LLVM_BOOL: 'Boolean',
-    LLVM_CORE_BOOL: 'Boolean',
-    LLVM_BUILDER: 'Base_Builder_T',
+    LLVM_TYPES_BOOL: 'Boolean',
 }
 
 
@@ -196,7 +194,7 @@ def generate_body(package):
                 )
                 local_vars.extend([char_array, chars_ptr])
                 call_args[arg.name] = chars_ptr.name
-            elif arg.type in (LLVM_BOOL, LLVM_CORE_BOOL):
+            elif arg.type in (LLVM_BOOL, LLVM_TYPES_BOOL):
                 bool_t = LocalVariable(
                     '{}_Bool'.format(arg.name),
                     'constant Bool_T',
@@ -204,8 +202,6 @@ def generate_body(package):
                 )
                 local_vars.append(bool_t)
                 call_args[arg.name] = bool_t.name
-            elif arg.type == LLVM_BUILDER:
-                call_args[arg.name] = arg.name + ".Bld"
 
         # Emit them.
         elt_body.append('is')
@@ -230,10 +226,8 @@ def generate_body(package):
         if is_fnct:
             if elt.return_type == C_STRING:
                 call = 'Value ({})'.format(call)
-            elif elt.return_type in (LLVM_BOOL, LLVM_CORE_BOOL):
+            elif elt.return_type in (LLVM_BOOL, LLVM_TYPES_BOOL):
                 call = "{} /= 0".format(call)
-            elif elt.return_type == LLVM_BUILDER:
-                call = '(Bld => {})'.format(call)
             stmt = 'return {}'.format(call)
         else:
             stmt = call

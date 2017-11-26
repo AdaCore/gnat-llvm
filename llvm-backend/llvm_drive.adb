@@ -135,7 +135,7 @@ package body LLVM_Drive is
       if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) /= 0
       then
          --  TODO??? Display the crash message, or something like this
-         Error_Msg ("The backend generated bad LLVM code.", No_Location);
+         Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
 
       else
          if Dump_IR then
@@ -144,7 +144,8 @@ package body LLVM_Drive is
             if LLVM.Bit_Writer.Write_Bitcode_To_File
               (Env.Mdl, Output_File_Name) /= 0
             then
-               Error_Msg ("Could not write " & Output_File_Name, No_Location);
+               Error_Msg_N
+                 ("could not write `" & Output_File_Name & "`", GNAT_Root);
             end if;
          end if;
       end if;

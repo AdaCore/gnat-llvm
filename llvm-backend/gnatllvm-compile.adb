@@ -749,12 +749,11 @@ package body GNATLLVM.Compile is
                   Env.Set (Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
-                     --  if Is_Statically_Allocated (Def_Ident) then
-                     --     Set_Linkage (LLVM_Var, Internal_Linkage);
-                     --  end if;
+                     if Is_Statically_Allocated (Def_Ident) then
+                        Set_Linkage (LLVM_Var, Internal_Linkage);
+                     end if;
 
-                     --  Do we need to take Is_True_Constant (Def_Ident) into
-                     --  account???
+                     Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
 
                      --  Take Expression (Node) into account
                      --  ??? Will only work if Expression is static
@@ -1247,15 +1246,105 @@ package body GNATLLVM.Compile is
    -----------------
 
    function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T is
+
+      function Get_Static_Link (Subp : Entity_Id) return Value_T;
+      --  Build and return the static link to pass to a call to Subp, when
+      --  Local_Nested_Support is False.
+
+      ---------------------
+      -- Get_Static_Link --
+      ---------------------
+
+      function Get_Static_Link (Subp : Entity_Id) return Value_T is
+         Result_Type : constant Type_T :=
+           Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+         Result      : Value_T;
+
+         --  In this context, the "caller" is the subprogram that creates an
+         --  access to subprogram or that calls directly a subprogram, and the
+         --  "callee" is the target subprogram.
+
+         Caller_SLD, Callee_SLD : Static_Link_Descriptor;
+
+         Idx_Type : constant Type_T := Int32_Type_In_Context (Env.Ctx);
+         Zero     : constant Value_T := Const_Null (Idx_Type);
+         Idx      : constant Value_Array (1 .. 2) := (Zero, Zero);
+         Parent   : constant Entity_Id := Enclosing_Subprogram (Subp);
+
+      begin
+---------------
+         if Present (Parent) then
+            Result := Env.Get (Subps.Table (Subp_Index (Parent)).ARECnP);
+            --  ??? not necessarily the right ARECnP value
+            return Bit_Cast (Env.Bld, Result, Result_Type, "static-link");
+         else
+            return Const_Null (Result_Type);
+         end if;
+---------------
+
+         pragma Warnings (Off);
+         if False then
+            Caller_SLD := Env.Current_Subp.S_Link_Descr;
+            Callee_SLD := Env.Get_S_Link (Subp);
+            Result     := Env.Current_Subp.S_Link;
+
+            --  The language rules force the parent subprogram of the callee to
+            --  be the caller or one of its parent.
+
+            while Callee_SLD.Parent /= Caller_SLD loop
+               Caller_SLD := Caller_SLD.Parent;
+               Result := Load
+                 (Env.Bld,
+                  GEP (Env.Bld, Result, Idx'Address, Idx'Length, ""), "");
+            end loop;
+
+            return Bit_Cast (Env.Bld, Result, Result_Type, "");
+         end if;
+      end Get_Static_Link;
+
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>
             declare
                Def_Ident : constant Entity_Id := Entity (Node);
+               N         : Node_Id;
             begin
                if Ekind (Def_Ident) in Subprogram_Kind then
                   if not Local_Nested_Support then
-                     return Env.Get (Def_Ident);
+                     N := Associated_Node_For_Itype (Etype (Parent (Node)));
+
+                     if No (N) or else Nkind (N) = N_Full_Type_Declaration then
+                        return Env.Get (Def_Ident);
+                     else
+                        --  Return a callback, which is a couple: subprogram
+                        --  code pointer, static link argument.
+
+                        declare
+                           Func   : constant Value_T := Env.Get (Def_Ident);
+                           S_Link : constant Value_T :=
+                             Get_Static_Link (Def_Ident);
+
+                           Fields_Types  : constant array (1 .. 2) of Type_T :=
+                             (Type_Of (S_Link),
+                              Type_Of (S_Link));
+                           Callback_Type : constant Type_T :=
+                             Struct_Type_In_Context
+                               (Env.Ctx,
+                                Fields_Types'Address, Fields_Types'Length,
+                                Packed => LLVM.Types.False);
+
+                           Result : Value_T := Get_Undef (Callback_Type);
+
+                        begin
+                           Result := Insert_Value
+                             (Env.Bld, Result,
+                              Pointer_Cast
+                                (Env.Bld, Func, Fields_Types (1), ""), 0, "");
+                           Result := Insert_Value
+                             (Env.Bld, Result, S_Link, 1, "callback");
+                           return Result;
+                        end;
+                     end if;
                   else
 
                      --  Return a callback, which is a couple: subprogram code
@@ -2037,9 +2126,15 @@ package body GNATLLVM.Compile is
       --  If it's not an identifier, it must be an access to a subprogram and
       --  in such a case, it must accept a static link.
 
-      Takes_S_Link   : constant Boolean :=
-        Local_Nested_Support
-          and then (not Direct_Call or else Env.Takes_S_Link (Entity (Subp)));
+      Anonymous_Access : constant Boolean := not Direct_Call
+        and then Present (Associated_Node_For_Itype (Etype (Subp)))
+        and then Nkind (Associated_Node_For_Itype (Etype (Subp)))
+          /= N_Full_Type_Declaration;
+      Takes_S_Link     : constant Boolean :=
+        Anonymous_Access
+          or else (Local_Nested_Support
+            and then
+              (not Direct_Call or else Env.Takes_S_Link (Entity (Subp))));
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
@@ -2059,14 +2154,22 @@ package body GNATLLVM.Compile is
 
       I := 1;
 
-      LLVM_Func := Emit_Expression (Env, Name (Call_Node));
+      LLVM_Func := Emit_Expression (Env, Subp);
 
       if Takes_S_Link then
          if Direct_Call then
             S_Link := Get_Static_Link (Env, Entity (Name (Call_Node)));
          else
-            S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link-ptr");
+            S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
             LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
+
+            if Anonymous_Access then
+               LLVM_Func := Bit_Cast
+                 (Env.Bld, LLVM_Func,
+                  Create_Access_Type
+                    (Env, Designated_Type (Etype (Prefix (Subp)))),
+                  "");
+            end if;
          end if;
       end if;
 
@@ -2132,7 +2235,7 @@ package body GNATLLVM.Compile is
       end if;
 
       --  If there are any types mismatches for arguments passed by reference,
-      --  bitcast the pointer type.
+      --  cast the pointer type.
 
       declare
          Args_Types : constant Type_Array :=
@@ -2143,6 +2246,7 @@ package body GNATLLVM.Compile is
          for J in Args'Range loop
             if Type_Of (Args (J)) /= Args_Types (J)
               and then Get_Type_Kind (Type_Of (Args (J))) = Pointer_Type_Kind
+              and then Get_Type_Kind (Args_Types (J)) = Pointer_Type_Kind
             then
                Args (J) := Bit_Cast
                  (Env.Bld, Args (J), Args_Types (J), "param-bitcast");
@@ -2353,7 +2457,7 @@ package body GNATLLVM.Compile is
 
       --  In this context, the "caller" is the subprogram that creates an
       --  access to subprogram or that calls directly a subprogram, and the
-      --  "caller" is the target subprogram.
+      --  "callee" is the target subprogram.
 
       Caller_SLD, Callee_SLD : Static_Link_Descriptor;
 
@@ -2523,7 +2627,7 @@ package body GNATLLVM.Compile is
             return Ptr_To_Int
               (Env.Bld,
                Emit_LValue
-                 (Env, Prefix (Node)), Get_Address_Type, "to-address");
+                 (Env, Prefix (Node)), Get_Address_Type, "attr-address");
 
          when Attribute_Deref =>
             declare

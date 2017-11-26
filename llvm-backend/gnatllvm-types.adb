@@ -26,12 +26,9 @@ with GNATLLVM.Compile;
 
 package body GNATLLVM.Types is
 
-   ----------------------
-   -- Get_Address_Type --
-   ----------------------
-
-   function Get_Address_Type return Type_T is
-     (Int_Ty (Natural (Ttypes.System_Address_Size)));
+   -----------------------
+   -- Local Subprograms --
+   -----------------------
 
    function Create_Subprogram_Type
      (Env           : Environ;
@@ -46,6 +43,13 @@ package body GNATLLVM.Types is
      (Env       : Environ;
       Subp_Type : Type_T) return Type_T;
    --  Return a structure type that embeds Subp_Type and a static link pointer
+
+   ----------------------
+   -- Get_Address_Type --
+   ----------------------
+
+   function Get_Address_Type return Type_T is
+     (Int_Ty (Natural (Ttypes.System_Address_Size)));
 
    ----------------------------------
    -- Get_Innermost_Component_Type --
@@ -278,6 +282,10 @@ package body GNATLLVM.Types is
             return Create_Access_Type
               (Env, Designated_Type (Def_Ident));
 
+         when E_Anonymous_Access_Subprogram_Type =>
+            return Create_Subprogram_Access_Type
+              (Env, Create_Type (Env, Designated_Type (Def_Ident)));
+
          when Record_Kind =>
             declare
                function Rec_Comp_Filter (E : Entity_Id) return Boolean
@@ -412,15 +420,14 @@ package body GNATLLVM.Types is
             end;
 
          when E_Subprogram_Type =>
-            --  An access to a subprogram can point to any subprogram (nested
-            --  or not), so it must accept a static link.
+            --  An anonymous access to a subprogram can point to any subprogram
+            --  (nested or not), so it must accept a static link.
 
             return Create_Subprogram_Type_From_Entity
-              (Env, Def_Ident, Takes_S_Link => Local_Nested_Support);
-
-         when E_Anonymous_Access_Subprogram_Type =>
-            return Create_Access_Type
-              (Env, Designated_Type (Def_Ident));
+              (Env, Def_Ident,
+               Takes_S_Link => Local_Nested_Support or else
+                 Nkind (Associated_Node_For_Itype (TE))
+                   /= N_Full_Type_Declaration);
 
          when others =>
             pragma Annotate (Xcov, Exempt_On, "Defensive programming");
@@ -607,12 +614,15 @@ package body GNATLLVM.Types is
    -----------------------------------
 
    function Create_Subprogram_Access_Type
-     (Env : Environ;
+     (Env       : Environ;
       Subp_Type : Type_T) return Type_T
    is
-      Couple : constant Type_Array (1 .. 2) :=
-        (Pointer_Type (Subp_Type, 0),
-         Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
+      pragma Unreferenced (Subp_Type);
+
+      Void_Ptr : constant Type_T :=
+        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+      Couple : constant Type_Array (1 .. 2) := (Void_Ptr, Void_Ptr);
+      --  (Pointer_Type (Subp_Type, 0),
    begin
       return Struct_Type_In_Context
         (Env.Ctx,

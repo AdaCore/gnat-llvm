@@ -14,6 +14,61 @@ package LLVM.Core is
    --  arg-macro: procedure LLVM_FOR_EACH_VALUE_SUBCLASS (macro)
    --    macro(Argument) macro(BasicBlock) macro(InlineAsm) macro(User) macro(Constant) macro(BlockAddress) macro(ConstantAggregateZero) macro(ConstantArray) macro(ConstantDataSequential) macro(ConstantDataArray) macro(ConstantDataVector) macro(ConstantExpr) macro(ConstantFP) macro(ConstantInt) macro(ConstantPointerNull) macro(ConstantStruct) macro(ConstantTokenNone) macro(ConstantVector) macro(GlobalValue) macro(GlobalAlias) macro(GlobalObject) macro(Function) macro(GlobalVariable) macro(UndefValue) macro(Instruction) macro(BinaryOperator) macro(CallInst) macro(IntrinsicInst) macro(DbgInfoIntrinsic) macro(DbgDeclareInst) macro(MemIntrinsic) macro(MemCpyInst) macro(MemMoveInst) macro(MemSetInst) macro(CmpInst) macro(FCmpInst) macro(ICmpInst) macro(ExtractElementInst) macro(GetElementPtrInst) macro(InsertElementInst) macro(InsertValueInst) macro(LandingPadInst) macro(PHINode) macro(SelectInst) macro(ShuffleVectorInst) macro(StoreInst) macro(TerminatorInst) macro(BranchInst) macro(IndirectBrInst) macro(InvokeInst) macro(ReturnInst) macro(SwitchInst) macro(UnreachableInst) macro(ResumeInst) macro(CleanupReturnInst) macro(CatchReturnInst) macro(FuncletPadInst) macro(CatchPadInst) macro(CleanupPadInst) macro(UnaryInstruction) macro(AllocaInst) macro(CastInst) macro(AddrSpaceCastInst) macro(BitCastInst) macro(FPExtInst) macro(FPToSIInst) macro(FPToUIInst) macro(FPTruncInst) macro(IntToPtrInst) macro(PtrToIntInst) macro(SExtInst) macro(SIToFPInst) macro(TruncInst) macro(UIToFPInst) macro(ZExtInst) macro(ExtractValueInst) macro(LoadInst) macro(VAArgInst)
    --  unsupported macro: LLVM_DECLARE_VALUE_CAST(name) LLVMValueRef LLVMIsA ##name(LLVMValueRef Val);
+  --===-- llvm-c/Core.h - Core Library C Interface ------------------*- C -*-===*|*                                                                            *|
+  --|
+  --|*                     The LLVM Compiler Infrastructure                       *|
+  --|*                                                                            *|
+  --|* This file is distributed under the University of Illinois Open Source      *|
+  --|* License. See LICENSE.TXT for details.                                      *|
+  --|*                                                                            *|
+  --|*===----------------------------------------------------------------------===*|
+  --|*                                                                            *|
+  --|* This header declares the C interface to libLLVMCore.a, which implements    *|
+  --|* the LLVM intermediate representation.                                      *|
+  --|*                                                                            *|
+  --\*===----------------------------------------------------------------------=== 
+
+  --*
+  -- * @defgroup LLVMC LLVM-C: C interface to LLVM
+  -- *
+  -- * This module exposes parts of the LLVM library as a C API.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * @defgroup LLVMCTransforms Transforms
+  --  
+
+  --*
+  -- * @defgroup LLVMCCore Core
+  -- *
+  -- * This modules provide an interface to libLLVMCore, which implements
+  -- * the LLVM intermediate representation as well as other related types
+  -- * and utilities.
+  -- *
+  -- * Many exotic languages can interoperate with C code but have a harder time
+  -- * with C++ due to name mangling. So in addition to C, this interface enables
+  -- * tools written in such languages.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreTypes Types and Enumerations
+  -- *
+  -- * @{
+  --  
+
+  -- Terminator Instructions  
+  -- removed 6 due to API changes  
+  -- Standard Binary Operators  
+  -- Logical Operators  
+  -- Memory Operators  
+  -- Cast Operators  
+  -- Other Operators  
+  -- Atomic operators  
+  -- Exception Handling Operators  
    subtype Opcode_T is unsigned;
    Op_Ret : constant Opcode_T := 1;
    Op_Br : constant Opcode_T := 2;
@@ -78,8 +133,25 @@ package LLVM.Core is
    Op_Catch_Ret : constant Opcode_T := 62;
    Op_Catch_Pad : constant Opcode_T := 63;
    Op_Cleanup_Pad : constant Opcode_T := 64;
-   Op_Catch_Switch : constant Opcode_T := 65;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:138
+   Op_Catch_Switch : constant Opcode_T := 65;  -- llvm-5.0.0.src/include/llvm-c/Core.h:138
 
+  --*< type with no size  
+  --*< 16 bit floating point type  
+  --*< 32 bit floating point type  
+  --*< 64 bit floating point type  
+  --*< 80 bit floating point type (X87)  
+  --*< 128 bit floating point type (112-bit mantissa) 
+  --*< 128 bit floating point type (two 64-bits)  
+  --*< Labels  
+  --*< Arbitrary bit width integers  
+  --*< Functions  
+  --*< Structures  
+  --*< Arrays  
+  --*< Pointers  
+  --*< SIMD 'packed' format, or other vector type  
+  --*< Metadata  
+  --*< X86 MMX  
+  --*< Tokens  
    type Type_Kind_T is 
      (Void_Type_Kind,
       Half_Type_Kind,
@@ -98,8 +170,30 @@ package LLVM.Core is
       Metadata_Type_Kind,
       X86_Mmxtypekind,
       Token_Type_Kind);
-   pragma Convention (C, Type_Kind_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:158
+   pragma Convention (C, Type_Kind_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:158
 
+  --*< Externally visible function  
+  --*< Keep one copy of function when linking (inline) 
+  --*< Same, but only replaced by something
+  --                            equivalent.  
+
+  --*< Obsolete  
+  --*< Keep one copy of function when linking (weak)  
+  --*< Same, but only replaced by something
+  --                            equivalent.  
+
+  --*< Special purpose, only applies to global arrays  
+  --*< Rename collisions when linking (static
+  --                               functions)  
+
+  --*< Like Internal, but omit from symbol table  
+  --*< Obsolete  
+  --*< Obsolete  
+  --*< ExternalWeak linkage description  
+  --*< Obsolete  
+  --*< Tentative definitions  
+  --*< Like Private, but linker removes.  
+  --*< Like LinkerPrivate, but is weak.  
    type Linkage_T is 
      (External_Linkage,
       Available_Externally_Linkage,
@@ -118,19 +212,24 @@ package LLVM.Core is
       Common_Linkage,
       Linker_Private_Linkage,
       Linker_Private_Weak_Linkage);
-   pragma Convention (C, Linkage_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:181
+   pragma Convention (C, Linkage_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:181
 
+  --*< The GV is visible  
+  --*< The GV is hidden  
+  --*< The GV is protected  
    type Visibility_T is 
      (Default_Visibility,
       Hidden_Visibility,
       Protected_Visibility);
-   pragma Convention (C, Visibility_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:187
+   pragma Convention (C, Visibility_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:187
 
+  --*< Function to be imported from DLL.  
+  --*< Function to be accessible from DLL.  
    type DLL_Storage_Class_T is 
      (Default_Storage_Class,
       DLL_Import_Storage_Class,
       DLL_Export_Storage_Class);
-   pragma Convention (C, DLL_Storage_Class_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:193
+   pragma Convention (C, DLL_Storage_Class_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:193
 
    subtype Call_Conv_T is unsigned;
    C_Call_Conv : constant Call_Conv_T := 0;
@@ -139,7 +238,7 @@ package LLVM.Core is
    Web_Kit_JS_Call_Conv : constant Call_Conv_T := 12;
    Any_Reg_Call_Conv : constant Call_Conv_T := 13;
    X86_Stdcall_Call_Conv : constant Call_Conv_T := 64;
-   X86_Fastcall_Call_Conv : constant Call_Conv_T := 65;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:203
+   X86_Fastcall_Call_Conv : constant Call_Conv_T := 65;  -- llvm-5.0.0.src/include/llvm-c/Core.h:203
 
    type Value_Kind_T is 
      (Argument_Value_Kind,
@@ -167,8 +266,18 @@ package LLVM.Core is
       Metadata_As_Value_Value_Kind,
       Inline_Asm_Value_Kind,
       Instruction_Value_Kind);
-   pragma Convention (C, Value_Kind_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:235
+   pragma Convention (C, Value_Kind_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:235
 
+  --*< equal  
+  --*< not equal  
+  --*< unsigned greater than  
+  --*< unsigned greater or equal  
+  --*< unsigned less than  
+  --*< unsigned less or equal  
+  --*< signed greater than  
+  --*< signed greater or equal  
+  --*< signed less than  
+  --*< signed less or equal  
    subtype Int_Predicate_T is unsigned;
    Int_EQ : constant Int_Predicate_T := 32;
    Int_NE : constant Int_Predicate_T := 33;
@@ -179,8 +288,24 @@ package LLVM.Core is
    Int_SGT : constant Int_Predicate_T := 38;
    Int_SGE : constant Int_Predicate_T := 39;
    Int_SLT : constant Int_Predicate_T := 40;
-   Int_SLE : constant Int_Predicate_T := 41;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:248
+   Int_SLE : constant Int_Predicate_T := 41;  -- llvm-5.0.0.src/include/llvm-c/Core.h:248
 
+  --*< Always false (always folded)  
+  --*< True if ordered and equal  
+  --*< True if ordered and greater than  
+  --*< True if ordered and greater than or equal  
+  --*< True if ordered and less than  
+  --*< True if ordered and less than or equal  
+  --*< True if ordered and operands are unequal  
+  --*< True if ordered (no nans)  
+  --*< True if unordered: isnan(X) | isnan(Y)  
+  --*< True if unordered or equal  
+  --*< True if unordered or greater than  
+  --*< True if unordered, greater than, or equal  
+  --*< True if unordered or less than  
+  --*< True if unordered, less than, or equal  
+  --*< True if unordered or not equal  
+  --*< Always true (always folded)  
    type Real_Predicate_T is 
      (Real_Predicate_False,
       Real_OEQ,
@@ -198,12 +323,14 @@ package LLVM.Core is
       Real_ULE,
       Real_UNE,
       Real_Predicate_True);
-   pragma Convention (C, Real_Predicate_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:267
+   pragma Convention (C, Real_Predicate_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:267
 
+  --*< A catch clause    
+  --*< A filter clause   
    type Landing_Pad_Clause_Ty_T is 
      (Landing_Pad_Catch,
       Landing_Pad_Filter);
-   pragma Convention (C, Landing_Pad_Clause_Ty_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:272
+   pragma Convention (C, Landing_Pad_Clause_Ty_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:272
 
    type Thread_Local_Mode_T is 
      (Not_Thread_Local,
@@ -211,7 +338,37 @@ package LLVM.Core is
       Local_Dynamic_TLS_Model,
       Initial_Exec_TLS_Model,
       Local_Exec_TLS_Model);
-   pragma Convention (C, Thread_Local_Mode_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:280
+   pragma Convention (C, Thread_Local_Mode_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:280
+
+  --*< A load or store which is not atomic  
+  --*< Lowest level of atomicity, guarantees
+  --                                     somewhat sane results, lock free.  
+
+  --*< guarantees that if you take all the
+  --                                     operations affecting a specific address,
+  --                                     a consistent ordering exists  
+
+  --*< Acquire provides a barrier of the sort
+  --                                   necessary to acquire a lock to access other
+  --                                   memory with normal loads and stores.  
+
+  --*< Release is similar to Acquire, but with
+  --                                   a barrier of the sort necessary to release
+  --                                   a lock.  
+
+  --*< provides both an Acquire and a
+  --                                          Release barrier (for fences and
+  --                                          operations which both read and write
+  --                                           memory).  
+
+  --*< provides Acquire semantics
+  --                                                 for loads and Release
+  --                                                 semantics for stores.
+  --                                                 Additionally, it guarantees
+  --                                                 that a total ordering exists
+  --                                                 between all
+  --                                                 SequentiallyConsistent
+  --                                                 operations.  
 
    subtype Atomic_Ordering_T is unsigned;
    Atomic_Ordering_Not_Atomic : constant Atomic_Ordering_T := 0;
@@ -220,7 +377,30 @@ package LLVM.Core is
    Atomic_Ordering_Acquire : constant Atomic_Ordering_T := 4;
    Atomic_Ordering_Release : constant Atomic_Ordering_T := 5;
    Atomic_Ordering_Acquire_Release : constant Atomic_Ordering_T := 6;
-   Atomic_Ordering_Sequentially_Consistent : constant Atomic_Ordering_T := 7;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:307
+   Atomic_Ordering_Sequentially_Consistent : constant Atomic_Ordering_T := 7;  -- llvm-5.0.0.src/include/llvm-c/Core.h:307
+
+  --*< Set the new value and return the one old  
+  --*< Add a value and return the old one  
+  --*< Subtract a value and return the old one  
+  --*< And a value and return the old one  
+  --*< Not-And a value and return the old one  
+  --*< OR a value and return the old one  
+  --*< Xor a value and return the old one  
+  --*< Sets the value if it's greater than the
+  --                             original using a signed comparison and return
+  --                             the old one  
+
+  --*< Sets the value if it's Smaller than the
+  --                             original using a signed comparison and return
+  --                             the old one  
+
+  --*< Sets the value if it's greater than the
+  --                             original using an unsigned comparison and return
+  --                             the old one  
+
+  --*< Sets the value if it's greater than the
+  --                             original using an unsigned comparison  and return
+  --                             the old one  
 
    type Atomic_RMW_Bin_Op_T is 
      (Atomic_RMW_Bin_Op_Xchg,
@@ -234,79 +414,157 @@ package LLVM.Core is
       Atomic_RMW_Bin_Op_Min,
       Atomic_RMW_Bin_Op_U_Max,
       Atomic_RMW_Bin_Op_U_Min);
-   pragma Convention (C, Atomic_RMW_Bin_Op_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:329
+   pragma Convention (C, Atomic_RMW_Bin_Op_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:329
 
    type Diagnostic_Severity_T is 
      (DS_Error,
       DS_Warning,
       DS_Remark,
       DS_Note);
-   pragma Convention (C, Diagnostic_Severity_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:336
+   pragma Convention (C, Diagnostic_Severity_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:336
 
-   subtype Attribute_Index_T is unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:350
+  --*
+  -- * Attribute index are either LLVMAttributeReturnIndex,
+  -- * LLVMAttributeFunctionIndex or a parameter number from 1 to N.
+  --  
 
-   procedure Initialize_Core (R : LLVM.Types.Pass_Registry_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:356
+  -- ISO C restricts enumerator values to range of 'int'
+  -- (4294967295 is too large)
+  -- LLVMAttributeFunctionIndex = ~0U,
+   subtype Attribute_Index_T is unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:350
+
+  --*
+  -- * @}
+  --  
+
+   procedure Initialize_Core (R : LLVM.Types.Pass_Registry_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:356
    pragma Import (C, Initialize_Core, "LLVMInitializeCore");
 
-   procedure Shutdown;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:361
+  --* Deallocate and destroy all ManagedStatic variables.
+  --    @see llvm::llvm_shutdown
+  --    @see ManagedStatic  
+
+   procedure Shutdown;  -- llvm-5.0.0.src/include/llvm-c/Core.h:361
    pragma Import (C, Shutdown, "LLVMShutdown");
 
+  --===-- Error handling ----------------------------------------------------=== 
    function Create_Message
      (Message : String)
       return String;
    function Create_Message_C
      (Message : Interfaces.C.Strings.chars_ptr)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:365
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:365
    pragma Import (C, Create_Message_C, "LLVMCreateMessage");
 
    procedure Dispose_Message
      (Message : String);
    procedure Dispose_Message_C
-     (Message : Interfaces.C.Strings.chars_ptr);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:366
+     (Message : Interfaces.C.Strings.chars_ptr);  -- llvm-5.0.0.src/include/llvm-c/Core.h:366
    pragma Import (C, Dispose_Message_C, "LLVMDisposeMessage");
 
+  --*
+  -- * @defgroup LLVMCCoreContext Contexts
+  -- *
+  -- * Contexts are execution states for the core LLVM IR system.
+  -- *
+  -- * Most types are tied to a context instance. Multiple contexts can
+  -- * exist simultaneously. A single context is not thread safe. However,
+  -- * different contexts can execute on different threads simultaneously.
+  -- *
+  -- * @{
+  --  
+
    type Diagnostic_Handler_T is access procedure  (arg1 : LLVM.Types.Diagnostic_Info_T; arg2 : System.Address);
-   pragma Convention (C, Diagnostic_Handler_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:380
+   pragma Convention (C, Diagnostic_Handler_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:380
 
    type Yield_Callback_T is access procedure  (arg1 : LLVM.Types.Context_T; arg2 : System.Address);
-   pragma Convention (C, Yield_Callback_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:381
+   pragma Convention (C, Yield_Callback_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:381
 
-   function Context_Create return LLVM.Types.Context_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:389
+  --*
+  -- * Create a new context.
+  -- *
+  -- * Every call to this function should be paired with a call to
+  -- * LLVMContextDispose() or the context will leak memory.
+  --  
+
+   function Context_Create return LLVM.Types.Context_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:389
    pragma Import (C, Context_Create, "LLVMContextCreate");
 
-   function Get_Global_Context return LLVM.Types.Context_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:394
+  --*
+  -- * Obtain the global context instance.
+  --  
+
+   function Get_Global_Context return LLVM.Types.Context_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:394
    pragma Import (C, Get_Global_Context, "LLVMGetGlobalContext");
+
+  --*
+  -- * Set the diagnostic handler for this context.
+  --  
 
    procedure Context_Set_Diagnostic_Handler
      (C : LLVM.Types.Context_T;
       Handler : Diagnostic_Handler_T;
-      Diagnostic_Context : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:399
+      Diagnostic_Context : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:399
    pragma Import (C, Context_Set_Diagnostic_Handler, "LLVMContextSetDiagnosticHandler");
 
-   function Context_Get_Diagnostic_Handler (C : LLVM.Types.Context_T) return Diagnostic_Handler_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:406
+  --*
+  -- * Get the diagnostic handler of this context.
+  --  
+
+   function Context_Get_Diagnostic_Handler (C : LLVM.Types.Context_T) return Diagnostic_Handler_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:406
    pragma Import (C, Context_Get_Diagnostic_Handler, "LLVMContextGetDiagnosticHandler");
 
-   function Context_Get_Diagnostic_Context (C : LLVM.Types.Context_T) return System.Address;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:411
+  --*
+  -- * Get the diagnostic context of this context.
+  --  
+
+   function Context_Get_Diagnostic_Context (C : LLVM.Types.Context_T) return System.Address;  -- llvm-5.0.0.src/include/llvm-c/Core.h:411
    pragma Import (C, Context_Get_Diagnostic_Context, "LLVMContextGetDiagnosticContext");
+
+  --*
+  -- * Set the yield callback function for this context.
+  -- *
+  -- * @see LLVMContext::setYieldCallback()
+  --  
 
    procedure Context_Set_Yield_Callback
      (C : LLVM.Types.Context_T;
       Callback : Yield_Callback_T;
-      Opaque_Handle : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:418
+      Opaque_Handle : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:418
    pragma Import (C, Context_Set_Yield_Callback, "LLVMContextSetYieldCallback");
 
-   procedure Context_Dispose (C : LLVM.Types.Context_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:427
+  --*
+  -- * Destroy a context instance.
+  -- *
+  -- * This should be called for every call to LLVMContextCreate() or memory
+  -- * will be leaked.
+  --  
+
+   procedure Context_Dispose (C : LLVM.Types.Context_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:427
    pragma Import (C, Context_Dispose, "LLVMContextDispose");
+
+  --*
+  -- * Return a string representation of the DiagnosticInfo. Use
+  -- * LLVMDisposeMessage to free the string.
+  -- *
+  -- * @see DiagnosticInfo::print()
+  --  
 
    function Get_Diag_Info_Description
      (DI : LLVM.Types.Diagnostic_Info_T)
       return String;
    function Get_Diag_Info_Description_C
      (DI : LLVM.Types.Diagnostic_Info_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:435
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:435
    pragma Import (C, Get_Diag_Info_Description_C, "LLVMGetDiagInfoDescription");
 
-   function Get_Diag_Info_Severity (DI : LLVM.Types.Diagnostic_Info_T) return Diagnostic_Severity_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:442
+  --*
+  -- * Return an enum LLVMDiagnosticSeverity.
+  -- *
+  -- * @see DiagnosticInfo::getSeverity()
+  --  
+
+   function Get_Diag_Info_Severity (DI : LLVM.Types.Diagnostic_Info_T) return Diagnostic_Severity_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:442
    pragma Import (C, Get_Diag_Info_Severity, "LLVMGetDiagInfoSeverity");
 
 function Get_MD_Kind_ID_In_Context
@@ -328,8 +586,20 @@ function Get_MD_Kind_ID_In_Context
    function Get_MD_Kind_ID_C
      (Name  : Interfaces.C.Strings.chars_ptr;
       S_Len : unsigned)
-      return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:446
+      return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:446
    pragma Import (C, Get_MD_Kind_ID_C, "LLVMGetMDKindID");
+
+  --*
+  -- * Return an unique id given the name of a enum attribute,
+  -- * or 0 if no attribute by that name exists.
+  -- *
+  -- * See http://llvm.org/docs/LangRef.html#parameter-attributes
+  -- * and http://llvm.org/docs/LangRef.html#function-attributes
+  -- * for the list of available attributes.
+  -- *
+  -- * NB: Attribute names and/or id are subject to change without
+  -- * going through the C API deprecation cycle.
+  --  
 
    function Get_Enum_Attribute_Kind_For_Name
      (Name  : String;
@@ -338,23 +608,40 @@ function Get_MD_Kind_ID_In_Context
    function Get_Enum_Attribute_Kind_For_Name_C
      (Name  : Interfaces.C.Strings.chars_ptr;
       S_Len : stddef_h.size_t)
-      return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:459
+      return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:459
    pragma Import (C, Get_Enum_Attribute_Kind_For_Name_C, "LLVMGetEnumAttributeKindForName");
 
-   function Get_Last_Enum_Attribute_Kind return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:460
+   function Get_Last_Enum_Attribute_Kind return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:460
    pragma Import (C, Get_Last_Enum_Attribute_Kind, "LLVMGetLastEnumAttributeKind");
+
+  --*
+  -- * Create an enum attribute.
+  --  
 
    function Create_Enum_Attribute
      (C : LLVM.Types.Context_T;
       Kind_ID : unsigned;
-      Val : stdint_h.uint64_t) return LLVM.Types.Attribute_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:465
+      Val : stdint_h.uint64_t) return LLVM.Types.Attribute_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:465
    pragma Import (C, Create_Enum_Attribute, "LLVMCreateEnumAttribute");
 
-   function Get_Enum_Attribute_Kind (A : LLVM.Types.Attribute_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:472
+  --*
+  -- * Get the unique id corresponding to the enum attribute
+  -- * passed as argument.
+  --  
+
+   function Get_Enum_Attribute_Kind (A : LLVM.Types.Attribute_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:472
    pragma Import (C, Get_Enum_Attribute_Kind, "LLVMGetEnumAttributeKind");
 
-   function Get_Enum_Attribute_Value (A : LLVM.Types.Attribute_T) return stdint_h.uint64_t;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:477
+  --*
+  -- * Get the enum attribute's value. 0 is returned if none exists.
+  --  
+
+   function Get_Enum_Attribute_Value (A : LLVM.Types.Attribute_T) return stdint_h.uint64_t;  -- llvm-5.0.0.src/include/llvm-c/Core.h:477
    pragma Import (C, Get_Enum_Attribute_Value, "LLVMGetEnumAttributeValue");
+
+  --*
+  -- * Create a string attribute.
+  --  
 
 function Create_String_Attribute
      (C        : LLVM.Types.Context_T;
@@ -372,6 +659,10 @@ function Create_String_Attribute
       return LLVM.Types.Attribute_T;
    pragma Import (C, Create_String_Attribute_C, "LLVMCreateStringAttribute");
 
+  --*
+  -- * Get the string attribute's kind.
+  --  
+
    function Get_String_Attribute_Kind
      (A      : LLVM.Types.Attribute_T;
       Length : unsigned)
@@ -379,8 +670,12 @@ function Create_String_Attribute
    function Get_String_Attribute_Kind_C
      (A      : LLVM.Types.Attribute_T;
       Length : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:489
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:489
    pragma Import (C, Get_String_Attribute_Kind_C, "LLVMGetStringAttributeKind");
+
+  --*
+  -- * Get the string attribute's value.
+  --  
 
    function Get_String_Attribute_Value
      (A      : LLVM.Types.Attribute_T;
@@ -389,15 +684,19 @@ function Create_String_Attribute
    function Get_String_Attribute_Value_C
      (A      : LLVM.Types.Attribute_T;
       Length : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:494
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:494
    pragma Import (C, Get_String_Attribute_Value_C, "LLVMGetStringAttributeValue");
+
+  --*
+  -- * Check for the different types of attributes.
+  --  
 
    function Is_Enum_Attribute
      (A : LLVM.Types.Attribute_T)
       return Boolean;
    function Is_Enum_Attribute_C
      (A : LLVM.Types.Attribute_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:499
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:499
    pragma Import (C, Is_Enum_Attribute_C, "LLVMIsEnumAttribute");
 
    function Is_String_Attribute
@@ -405,16 +704,47 @@ function Create_String_Attribute
       return Boolean;
    function Is_String_Attribute_C
      (A : LLVM.Types.Attribute_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:500
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:500
    pragma Import (C, Is_String_Attribute_C, "LLVMIsStringAttribute");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreModule Modules
+  -- *
+  -- * Modules represent the top-level structure in an LLVM program. An LLVM
+  -- * module is effectively a translation unit or a collection of
+  -- * translation units merged together.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Create a new, empty module in the global context.
+  -- *
+  -- * This is equivalent to calling LLVMModuleCreateWithNameInContext with
+  -- * LLVMGetGlobalContext() as the context parameter.
+  -- *
+  -- * Every invocation should be paired with LLVMDisposeModule() or memory
+  -- * will be leaked.
+  --  
 
    function Module_Create_With_Name
      (Module_ID : String)
       return LLVM.Types.Module_T;
    function Module_Create_With_Name_C
      (Module_ID : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Module_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:525
+      return LLVM.Types.Module_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:525
    pragma Import (C, Module_Create_With_Name_C, "LLVMModuleCreateWithName");
+
+  --*
+  -- * Create a new, empty module in a specific context.
+  -- *
+  -- * Every invocation should be paired with LLVMDisposeModule() or memory
+  -- * will be leaked.
+  --  
 
    function Module_Create_With_Name_In_Context
      (Module_ID : String;
@@ -423,14 +753,34 @@ function Create_String_Attribute
    function Module_Create_With_Name_In_Context_C
      (Module_ID : Interfaces.C.Strings.chars_ptr;
       C         : LLVM.Types.Context_T)
-      return LLVM.Types.Module_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:533
+      return LLVM.Types.Module_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:533
    pragma Import (C, Module_Create_With_Name_In_Context_C, "LLVMModuleCreateWithNameInContext");
 
-   function Clone_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:538
+  --*
+  -- * Return an exact copy of the specified module.
+  --  
+
+   function Clone_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:538
    pragma Import (C, Clone_Module, "LLVMCloneModule");
 
-   procedure Dispose_Module (M : LLVM.Types.Module_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:546
+  --*
+  -- * Destroy a module instance.
+  -- *
+  -- * This must be called for every created module or memory will be
+  -- * leaked.
+  --  
+
+   procedure Dispose_Module (M : LLVM.Types.Module_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:546
    pragma Import (C, Dispose_Module, "LLVMDisposeModule");
+
+  --*
+  -- * Obtain the identifier of a module.
+  -- *
+  -- * @param M Module to obtain identifier of
+  -- * @param Len Out parameter which holds the length of the returned string.
+  -- * @return The identifier of M.
+  -- * @see Module::getModuleIdentifier()
+  --  
 
    function Get_Module_Identifier
      (M   : LLVM.Types.Module_T;
@@ -439,8 +789,17 @@ function Create_String_Attribute
    function Get_Module_Identifier_C
      (M   : LLVM.Types.Module_T;
       Len : stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:556
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:556
    pragma Import (C, Get_Module_Identifier_C, "LLVMGetModuleIdentifier");
+
+  --*
+  -- * Set the identifier of a module to a string Ident with length Len.
+  -- *
+  -- * @param M The module to set identifier
+  -- * @param Ident The string to set M's identifier to
+  -- * @param Len Length of Ident
+  -- * @see Module::setModuleIdentifier()
+  --  
 
 procedure Set_Module_Identifier
      (M     : LLVM.Types.Module_T;
@@ -452,12 +811,22 @@ procedure Set_Module_Identifier
       Len   : stddef_h.size_t);
    pragma Import (C, Set_Module_Identifier_C, "LLVMSetModuleIdentifier");
 
+  --*
+  -- * Obtain the data layout for a module.
+  -- *
+  -- * @see Module::getDataLayoutStr()
+  -- *
+  -- * LLVMGetDataLayout is DEPRECATED, as the name is not only incorrect,
+  -- * but match the name of another method on the module. Prefer the use
+  -- * of LLVMGetDataLayoutStr, which is not ambiguous.
+  --  
+
    function Get_Data_Layout_Str
      (M : LLVM.Types.Module_T)
       return String;
    function Get_Data_Layout_Str_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:577
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:577
    pragma Import (C, Get_Data_Layout_Str_C, "LLVMGetDataLayoutStr");
 
    function Get_Data_Layout
@@ -465,35 +834,66 @@ procedure Set_Module_Identifier
       return String;
    function Get_Data_Layout_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:578
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:578
    pragma Import (C, Get_Data_Layout_C, "LLVMGetDataLayout");
+
+  --*
+  -- * Set the data layout for a module.
+  -- *
+  -- * @see Module::setDataLayout()
+  --  
 
    procedure Set_Data_Layout
      (M               : LLVM.Types.Module_T;
       Data_Layout_Str : String);
    procedure Set_Data_Layout_C
      (M               : LLVM.Types.Module_T;
-      Data_Layout_Str : Interfaces.C.Strings.chars_ptr);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:585
+      Data_Layout_Str : Interfaces.C.Strings.chars_ptr);  -- llvm-5.0.0.src/include/llvm-c/Core.h:585
    pragma Import (C, Set_Data_Layout_C, "LLVMSetDataLayout");
+
+  --*
+  -- * Obtain the target triple for a module.
+  -- *
+  -- * @see Module::getTargetTriple()
+  --  
 
    function Get_Target
      (M : LLVM.Types.Module_T)
       return String;
    function Get_Target_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:592
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:592
    pragma Import (C, Get_Target_C, "LLVMGetTarget");
+
+  --*
+  -- * Set the target triple for a module.
+  -- *
+  -- * @see Module::setTargetTriple()
+  --  
 
    procedure Set_Target
      (M      : LLVM.Types.Module_T;
       Triple : String);
    procedure Set_Target_C
      (M      : LLVM.Types.Module_T;
-      Triple : Interfaces.C.Strings.chars_ptr);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:599
+      Triple : Interfaces.C.Strings.chars_ptr);  -- llvm-5.0.0.src/include/llvm-c/Core.h:599
    pragma Import (C, Set_Target_C, "LLVMSetTarget");
 
-   procedure Dump_Module (M : LLVM.Types.Module_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:606
+  --*
+  -- * Dump a representation of a module to stderr.
+  -- *
+  -- * @see Module::dump()
+  --  
+
+   procedure Dump_Module (M : LLVM.Types.Module_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:606
    pragma Import (C, Dump_Module, "LLVMDumpModule");
+
+  --*
+  -- * Print a representation of a module to a file. The ErrorMessage needs to be
+  -- * disposed with LLVMDisposeMessage. Returns 0 on success, 1 otherwise.
+  -- *
+  -- * @see Module::print()
+  --  
 
 function Print_Module_To_File
      (M             : LLVM.Types.Module_T;
@@ -507,24 +907,47 @@ function Print_Module_To_File
       return LLVM.Types.Bool_T;
    pragma Import (C, Print_Module_To_File_C, "LLVMPrintModuleToFile");
 
+  --*
+  -- * Return a string representation of the module. Use
+  -- * LLVMDisposeMessage to free the string.
+  -- *
+  -- * @see Module::print()
+  --  
+
    function Print_Module_To_String
      (M : LLVM.Types.Module_T)
       return String;
    function Print_Module_To_String_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:623
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:623
    pragma Import (C, Print_Module_To_String_C, "LLVMPrintModuleToString");
+
+  --*
+  -- * Set inline assembly for a module.
+  -- *
+  -- * @see Module::setModuleInlineAsm()
+  --  
 
    procedure Set_Module_Inline_Asm
      (M   : LLVM.Types.Module_T;
       Asm : String);
    procedure Set_Module_Inline_Asm_C
      (M   : LLVM.Types.Module_T;
-      Asm : Interfaces.C.Strings.chars_ptr);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:630
+      Asm : Interfaces.C.Strings.chars_ptr);  -- llvm-5.0.0.src/include/llvm-c/Core.h:630
    pragma Import (C, Set_Module_Inline_Asm_C, "LLVMSetModuleInlineAsm");
 
-   function Get_Module_Context (M : LLVM.Types.Module_T) return LLVM.Types.Context_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:637
+  --*
+  -- * Obtain the context to which this module is associated.
+  -- *
+  -- * @see Module::getContext()
+  --  
+
+   function Get_Module_Context (M : LLVM.Types.Module_T) return LLVM.Types.Context_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:637
    pragma Import (C, Get_Module_Context, "LLVMGetModuleContext");
+
+  --*
+  -- * Obtain a Type from a module by its registered name.
+  --  
 
    function Get_Type_By_Name
      (M    : LLVM.Types.Module_T;
@@ -533,8 +956,14 @@ function Print_Module_To_File
    function Get_Type_By_Name_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:642
+      return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:642
    pragma Import (C, Get_Type_By_Name_C, "LLVMGetTypeByName");
+
+  --*
+  -- * Obtain the number of operands for named metadata in a module.
+  -- *
+  -- * @see llvm::Module::getNamedMetadata()
+  --  
 
    function Get_Named_Metadata_Num_Operands
      (M    : LLVM.Types.Module_T;
@@ -543,8 +972,20 @@ function Print_Module_To_File
    function Get_Named_Metadata_Num_Operands_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:649
+      return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:649
    pragma Import (C, Get_Named_Metadata_Num_Operands_C, "LLVMGetNamedMetadataNumOperands");
+
+  --*
+  -- * Obtain the named metadata operands for a module.
+  -- *
+  -- * The passed LLVMValueRef pointer should refer to an array of
+  -- * LLVMValueRef at least LLVMGetNamedMetadataNumOperands long. This
+  -- * array will be populated with the LLVMValueRef instances. Each
+  -- * instance corresponds to a llvm::MDNode.
+  -- *
+  -- * @see llvm::Module::getNamedMetadata()
+  -- * @see llvm::MDNode::getOperand()
+  --  
 
 procedure Get_Named_Metadata_Operands
      (M    : LLVM.Types.Module_T;
@@ -556,6 +997,13 @@ procedure Get_Named_Metadata_Operands
       Dest : System.Address);
    pragma Import (C, Get_Named_Metadata_Operands_C, "LLVMGetNamedMetadataOperands");
 
+  --*
+  -- * Add an operand to named metadata.
+  -- *
+  -- * @see llvm::Module::getNamedMetadata()
+  -- * @see llvm::MDNode::addOperand()
+  --  
+
 procedure Add_Named_Metadata_Operand
      (M    : LLVM.Types.Module_T;
       Name : String;
@@ -565,6 +1013,12 @@ procedure Add_Named_Metadata_Operand
       Name : Interfaces.C.Strings.chars_ptr;
       Val  : LLVM.Types.Value_T);
    pragma Import (C, Add_Named_Metadata_Operand_C, "LLVMAddNamedMetadataOperand");
+
+  --*
+  -- * Add a function to a module under a specified name.
+  -- *
+  -- * @see llvm::Function::Create()
+  --  
 
 function Add_Function
      (M           : LLVM.Types.Module_T;
@@ -578,6 +1032,14 @@ function Add_Function
       return LLVM.Types.Value_T;
    pragma Import (C, Add_Function_C, "LLVMAddFunction");
 
+  --*
+  -- * Obtain a Function value from a Module by its name.
+  -- *
+  -- * The returned value corresponds to a llvm::Function value.
+  -- *
+  -- * @see llvm::Module::getFunction()
+  --  
+
    function Get_Named_Function
      (M    : LLVM.Types.Module_T;
       Name : String)
@@ -585,126 +1047,293 @@ function Add_Function
    function Get_Named_Function_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:689
+      return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:689
    pragma Import (C, Get_Named_Function_C, "LLVMGetNamedFunction");
 
-   function Get_First_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:696
+  --*
+  -- * Obtain an iterator to the first Function in a Module.
+  -- *
+  -- * @see llvm::Module::begin()
+  --  
+
+   function Get_First_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:696
    pragma Import (C, Get_First_Function, "LLVMGetFirstFunction");
 
-   function Get_Last_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:703
+  --*
+  -- * Obtain an iterator to the last Function in a Module.
+  -- *
+  -- * @see llvm::Module::end()
+  --  
+
+   function Get_Last_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:703
    pragma Import (C, Get_Last_Function, "LLVMGetLastFunction");
 
-   function Get_Next_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:711
+  --*
+  -- * Advance a Function iterator to the next Function.
+  -- *
+  -- * Returns NULL if the iterator was already at the end and there are no more
+  -- * functions.
+  --  
+
+   function Get_Next_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:711
    pragma Import (C, Get_Next_Function, "LLVMGetNextFunction");
 
-   function Get_Previous_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:719
+  --*
+  -- * Decrement a Function iterator to the previous Function.
+  -- *
+  -- * Returns NULL if the iterator was already at the beginning and there are
+  -- * no previous functions.
+  --  
+
+   function Get_Previous_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:719
    pragma Import (C, Get_Previous_Function, "LLVMGetPreviousFunction");
 
-   function Get_Type_Kind (Ty : LLVM.Types.Type_T) return Type_Kind_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:759
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreType Types
+  -- *
+  -- * Types represent the type of a value.
+  -- *
+  -- * Types are associated with a context instance. The context internally
+  -- * deduplicates types so there is only 1 instance of a specific type
+  -- * alive at a time. In other words, a unique type is shared among all
+  -- * consumers within a context.
+  -- *
+  -- * A Type in the C API corresponds to llvm::Type.
+  -- *
+  -- * Types have the following hierarchy:
+  -- *
+  -- *   types:
+  -- *     integer type
+  -- *     real type
+  -- *     function type
+  -- *     sequence types:
+  -- *       array type
+  -- *       pointer type
+  -- *       vector type
+  -- *     void type
+  -- *     label type
+  -- *     opaque type
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the enumerated type of a Type instance.
+  -- *
+  -- * @see llvm::Type:getTypeID()
+  --  
+
+   function Get_Type_Kind (Ty : LLVM.Types.Type_T) return Type_Kind_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:759
    pragma Import (C, Get_Type_Kind, "LLVMGetTypeKind");
+
+  --*
+  -- * Whether the type has a known size.
+  -- *
+  -- * Things that don't have a size are abstract types, labels, and void.a
+  -- *
+  -- * @see llvm::Type::isSized()
+  --  
 
    function Type_Is_Sized
      (Ty : LLVM.Types.Type_T)
       return Boolean;
    function Type_Is_Sized_C
      (Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:768
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:768
    pragma Import (C, Type_Is_Sized_C, "LLVMTypeIsSized");
 
-   function Get_Type_Context (Ty : LLVM.Types.Type_T) return LLVM.Types.Context_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:775
+  --*
+  -- * Obtain the context to which this type instance is associated.
+  -- *
+  -- * @see llvm::Type::getContext()
+  --  
+
+   function Get_Type_Context (Ty : LLVM.Types.Type_T) return LLVM.Types.Context_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:775
    pragma Import (C, Get_Type_Context, "LLVMGetTypeContext");
 
-   procedure Dump_Type (Val : LLVM.Types.Type_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:782
+  --*
+  -- * Dump a representation of a type to stderr.
+  -- *
+  -- * @see llvm::Type::dump()
+  --  
+
+   procedure Dump_Type (Val : LLVM.Types.Type_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:782
    pragma Import (C, Dump_Type, "LLVMDumpType");
+
+  --*
+  -- * Return a string representation of the type. Use
+  -- * LLVMDisposeMessage to free the string.
+  -- *
+  -- * @see llvm::Type::print()
+  --  
 
    function Print_Type_To_String
      (Val : LLVM.Types.Type_T)
       return String;
    function Print_Type_To_String_C
      (Val : LLVM.Types.Type_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:790
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:790
    pragma Import (C, Print_Type_To_String_C, "LLVMPrintTypeToString");
 
-   function Int1_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:803
+  --*
+  -- * @defgroup LLVMCCoreTypeInt Integer Types
+  -- *
+  -- * Functions in this section operate on integer types.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain an integer type from a context with specified bit width.
+  --  
+
+   function Int1_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:803
    pragma Import (C, Int1_Type_In_Context, "LLVMInt1TypeInContext");
 
-   function Int8_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:804
+   function Int8_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:804
    pragma Import (C, Int8_Type_In_Context, "LLVMInt8TypeInContext");
 
-   function Int16_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:805
+   function Int16_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:805
    pragma Import (C, Int16_Type_In_Context, "LLVMInt16TypeInContext");
 
-   function Int32_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:806
+   function Int32_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:806
    pragma Import (C, Int32_Type_In_Context, "LLVMInt32TypeInContext");
 
-   function Int64_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:807
+   function Int64_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:807
    pragma Import (C, Int64_Type_In_Context, "LLVMInt64TypeInContext");
 
-   function Int128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:808
+   function Int128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:808
    pragma Import (C, Int128_Type_In_Context, "LLVMInt128TypeInContext");
 
-   function Int_Type_In_Context (C : LLVM.Types.Context_T; Num_Bits : unsigned) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:809
+   function Int_Type_In_Context (C : LLVM.Types.Context_T; Num_Bits : unsigned) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:809
    pragma Import (C, Int_Type_In_Context, "LLVMIntTypeInContext");
 
-   function Int1_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:815
+  --*
+  -- * Obtain an integer type from the global context with a specified bit
+  -- * width.
+  --  
+
+   function Int1_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:815
    pragma Import (C, Int1_Type, "LLVMInt1Type");
 
-   function Int8_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:816
+   function Int8_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:816
    pragma Import (C, Int8_Type, "LLVMInt8Type");
 
-   function Int16_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:817
+   function Int16_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:817
    pragma Import (C, Int16_Type, "LLVMInt16Type");
 
-   function Int32_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:818
+   function Int32_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:818
    pragma Import (C, Int32_Type, "LLVMInt32Type");
 
-   function Int64_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:819
+   function Int64_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:819
    pragma Import (C, Int64_Type, "LLVMInt64Type");
 
-   function Int128_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:820
+   function Int128_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:820
    pragma Import (C, Int128_Type, "LLVMInt128Type");
 
-   function Int_Type (Num_Bits : unsigned) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:821
+   function Int_Type (Num_Bits : unsigned) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:821
    pragma Import (C, Int_Type, "LLVMIntType");
 
-   function Get_Int_Type_Width (Integer_Ty : LLVM.Types.Type_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:822
+   function Get_Int_Type_Width (Integer_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:822
    pragma Import (C, Get_Int_Type_Width, "LLVMGetIntTypeWidth");
 
-   function Half_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:837
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreTypeFloat Floating Point Types
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain a 16-bit floating point type from a context.
+  --  
+
+   function Half_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:837
    pragma Import (C, Half_Type_In_Context, "LLVMHalfTypeInContext");
 
-   function Float_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:842
+  --*
+  -- * Obtain a 32-bit floating point type from a context.
+  --  
+
+   function Float_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:842
    pragma Import (C, Float_Type_In_Context, "LLVMFloatTypeInContext");
 
-   function Double_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:847
+  --*
+  -- * Obtain a 64-bit floating point type from a context.
+  --  
+
+   function Double_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:847
    pragma Import (C, Double_Type_In_Context, "LLVMDoubleTypeInContext");
 
-   function X86_F_P80_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:852
+  --*
+  -- * Obtain a 80-bit floating point type (X87) from a context.
+  --  
+
+   function X86_F_P80_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:852
    pragma Import (C, X86_F_P80_Type_In_Context, "LLVMX86FP80TypeInContext");
 
-   function F_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:858
+  --*
+  -- * Obtain a 128-bit floating point type (112-bit mantissa) from a
+  -- * context.
+  --  
+
+   function F_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:858
    pragma Import (C, F_P128_Type_In_Context, "LLVMFP128TypeInContext");
 
-   function PPCF_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:863
+  --*
+  -- * Obtain a 128-bit floating point type (two 64-bits) from a context.
+  --  
+
+   function PPCF_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:863
    pragma Import (C, PPCF_P128_Type_In_Context, "LLVMPPCFP128TypeInContext");
 
-   function Half_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:870
+  --*
+  -- * Obtain a floating point type from the global context.
+  -- *
+  -- * These map to the functions in this group of the same name.
+  --  
+
+   function Half_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:870
    pragma Import (C, Half_Type, "LLVMHalfType");
 
-   function Float_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:871
+   function Float_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:871
    pragma Import (C, Float_Type, "LLVMFloatType");
 
-   function Double_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:872
+   function Double_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:872
    pragma Import (C, Double_Type, "LLVMDoubleType");
 
-   function X86_F_P80_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:873
+   function X86_F_P80_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:873
    pragma Import (C, X86_F_P80_Type, "LLVMX86FP80Type");
 
-   function F_P128_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:874
+   function F_P128_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:874
    pragma Import (C, F_P128_Type, "LLVMFP128Type");
 
-   function PPCF_P128_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:875
+   function PPCF_P128_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:875
    pragma Import (C, PPCF_P128_Type, "LLVMPPCFP128Type");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreTypeFunction Function Types
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain a function type consisting of a specified signature.
+  -- *
+  -- * The function is defined as a tuple of a return Type, a list of
+  -- * parameter types, and whether the function is variadic.
+  --  
 
 function Function_Type
      (Return_Type : LLVM.Types.Type_T;
@@ -720,22 +1349,69 @@ function Function_Type
       return LLVM.Types.Type_T;
    pragma Import (C, Function_Type_C, "LLVMFunctionType");
 
+  --*
+  -- * Returns whether a function type is variadic.
+  --  
+
    function Is_Function_Var_Arg
      (Function_Ty : LLVM.Types.Type_T)
       return Boolean;
    function Is_Function_Var_Arg_C
      (Function_Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:900
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:900
    pragma Import (C, Is_Function_Var_Arg_C, "LLVMIsFunctionVarArg");
 
-   function Get_Return_Type (Function_Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:905
+  --*
+  -- * Obtain the Type this function Type returns.
+  --  
+
+   function Get_Return_Type (Function_Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:905
    pragma Import (C, Get_Return_Type, "LLVMGetReturnType");
 
-   function Count_Param_Types (Function_Ty : LLVM.Types.Type_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:910
+  --*
+  -- * Obtain the number of parameters this function accepts.
+  --  
+
+   function Count_Param_Types (Function_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:910
    pragma Import (C, Count_Param_Types, "LLVMCountParamTypes");
 
-   procedure Get_Param_Types (Function_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:923
+  --*
+  -- * Obtain the types of a function's parameters.
+  -- *
+  -- * The Dest parameter should point to a pre-allocated array of
+  -- * LLVMTypeRef at least LLVMCountParamTypes() large. On return, the
+  -- * first LLVMCountParamTypes() entries in the array will be populated
+  -- * with LLVMTypeRef instances.
+  -- *
+  -- * @param FunctionTy The function type to operate on.
+  -- * @param Dest Memory address of an array to be filled with result.
+  --  
+
+   procedure Get_Param_Types (Function_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:923
    pragma Import (C, Get_Param_Types, "LLVMGetParamTypes");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreTypeStruct Structure Types
+  -- *
+  -- * These functions relate to LLVMTypeRef instances.
+  -- *
+  -- * @see llvm::StructType
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Create a new structure type in a context.
+  -- *
+  -- * A structure is specified by a list of inner elements/types and
+  -- * whether these can be packed together.
+  -- *
+  -- * @see llvm::StructType::create()
+  --  
 
 function Struct_Type_In_Context
      (C             : LLVM.Types.Context_T;
@@ -751,6 +1427,12 @@ function Struct_Type_In_Context
       return LLVM.Types.Type_T;
    pragma Import (C, Struct_Type_In_Context_C, "LLVMStructTypeInContext");
 
+  --*
+  -- * Create a new structure type in the global context.
+  -- *
+  -- * @see llvm::StructType::create()
+  --  
+
 function Struct_Type
      (Element_Types : System.Address;
       Element_Count : unsigned;
@@ -763,6 +1445,12 @@ function Struct_Type
       return LLVM.Types.Type_T;
    pragma Import (C, Struct_Type_C, "LLVMStructType");
 
+  --*
+  -- * Create an empty structure in a context having a specified name.
+  -- *
+  -- * @see llvm::StructType::create()
+  --  
+
    function Struct_Create_Named
      (C    : LLVM.Types.Context_T;
       Name : String)
@@ -770,16 +1458,28 @@ function Struct_Type
    function Struct_Create_Named_C
      (C    : LLVM.Types.Context_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:963
+      return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:963
    pragma Import (C, Struct_Create_Named_C, "LLVMStructCreateNamed");
+
+  --*
+  -- * Obtain the name of a structure.
+  -- *
+  -- * @see llvm::StructType::getName()
+  --  
 
    function Get_Struct_Name
      (Ty : LLVM.Types.Type_T)
       return String;
    function Get_Struct_Name_C
      (Ty : LLVM.Types.Type_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:970
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:970
    pragma Import (C, Get_Struct_Name_C, "LLVMGetStructName");
+
+  --*
+  -- * Set the contents of a structure type.
+  -- *
+  -- * @see llvm::StructType::setBody()
+  --  
 
 procedure Struct_Set_Body
      (Struct_Ty     : LLVM.Types.Type_T;
@@ -793,414 +1493,827 @@ procedure Struct_Set_Body
       Packed        : LLVM.Types.Bool_T);
    pragma Import (C, Struct_Set_Body_C, "LLVMStructSetBody");
 
-   function Count_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:985
+  --*
+  -- * Get the number of elements defined inside the structure.
+  -- *
+  -- * @see llvm::StructType::getNumElements()
+  --  
+
+   function Count_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:985
    pragma Import (C, Count_Struct_Element_Types, "LLVMCountStructElementTypes");
 
-   procedure Get_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:997
+  --*
+  -- * Get the elements within a structure.
+  -- *
+  -- * The function is passed the address of a pre-allocated array of
+  -- * LLVMTypeRef at least LLVMCountStructElementTypes() long. After
+  -- * invocation, this array will be populated with the structure's
+  -- * elements. The objects in the destination array will have a lifetime
+  -- * of the structure type itself, which is the lifetime of the context it
+  -- * is contained in.
+  --  
+
+   procedure Get_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:997
    pragma Import (C, Get_Struct_Element_Types, "LLVMGetStructElementTypes");
 
-   function Struct_Get_Type_At_Index (Struct_Ty : LLVM.Types.Type_T; i : unsigned) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1004
+  --*
+  -- * Get the type of the element at a given index in the structure.
+  -- *
+  -- * @see llvm::StructType::getTypeAtIndex()
+  --  
+
+   function Struct_Get_Type_At_Index (Struct_Ty : LLVM.Types.Type_T; i : unsigned) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1004
    pragma Import (C, Struct_Get_Type_At_Index, "LLVMStructGetTypeAtIndex");
+
+  --*
+  -- * Determine whether a structure is packed.
+  -- *
+  -- * @see llvm::StructType::isPacked()
+  --  
 
    function Is_Packed_Struct
      (Struct_Ty : LLVM.Types.Type_T)
       return Boolean;
    function Is_Packed_Struct_C
      (Struct_Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1011
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1011
    pragma Import (C, Is_Packed_Struct_C, "LLVMIsPackedStruct");
+
+  --*
+  -- * Determine whether a structure is opaque.
+  -- *
+  -- * @see llvm::StructType::isOpaque()
+  --  
 
    function Is_Opaque_Struct
      (Struct_Ty : LLVM.Types.Type_T)
       return Boolean;
    function Is_Opaque_Struct_C
      (Struct_Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1018
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1018
    pragma Import (C, Is_Opaque_Struct_C, "LLVMIsOpaqueStruct");
 
-   function Get_Element_Type (Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1040
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreTypeSequential Sequential Types
+  -- *
+  -- * Sequential types represents "arrays" of types. This is a super class
+  -- * for array, vector, and pointer types.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the type of elements within a sequential type.
+  -- *
+  -- * This works on array, vector, and pointer types.
+  -- *
+  -- * @see llvm::SequentialType::getElementType()
+  --  
+
+   function Get_Element_Type (Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1040
    pragma Import (C, Get_Element_Type, "LLVMGetElementType");
 
-   procedure Get_Subtypes (Tp : LLVM.Types.Type_T; Arr : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1047
+  --*
+  -- * Returns type's subtypes
+  -- *
+  -- * @see llvm::Type::subtypes()
+  --  
+
+   procedure Get_Subtypes (Tp : LLVM.Types.Type_T; Arr : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1047
    pragma Import (C, Get_Subtypes, "LLVMGetSubtypes");
 
-   function Get_Num_Contained_Types (Tp : LLVM.Types.Type_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1054
+  --*
+  -- *  Return the number of types in the derived type.
+  -- *
+  -- * @see llvm::Type::getNumContainedTypes()
+  --  
+
+   function Get_Num_Contained_Types (Tp : LLVM.Types.Type_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1054
    pragma Import (C, Get_Num_Contained_Types, "LLVMGetNumContainedTypes");
 
-   function Array_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1064
+  --*
+  -- * Create a fixed size array type that refers to a specific type.
+  -- *
+  -- * The created type will exist in the context that its element type
+  -- * exists in.
+  -- *
+  -- * @see llvm::ArrayType::get()
+  --  
+
+   function Array_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1064
    pragma Import (C, Array_Type, "LLVMArrayType");
 
-   function Get_Array_Length (Array_Ty : LLVM.Types.Type_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1073
+  --*
+  -- * Obtain the length of an array type.
+  -- *
+  -- * This only works on types that represent arrays.
+  -- *
+  -- * @see llvm::ArrayType::getNumElements()
+  --  
+
+   function Get_Array_Length (Array_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1073
    pragma Import (C, Get_Array_Length, "LLVMGetArrayLength");
 
-   function Pointer_Type (Element_Type : LLVM.Types.Type_T; Address_Space : unsigned) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1083
+  --*
+  -- * Create a pointer type that points to a defined type.
+  -- *
+  -- * The created type will exist in the context that its pointee type
+  -- * exists in.
+  -- *
+  -- * @see llvm::PointerType::get()
+  --  
+
+   function Pointer_Type (Element_Type : LLVM.Types.Type_T; Address_Space : unsigned) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1083
    pragma Import (C, Pointer_Type, "LLVMPointerType");
 
-   function Get_Pointer_Address_Space (Pointer_Ty : LLVM.Types.Type_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1092
+  --*
+  -- * Obtain the address space of a pointer type.
+  -- *
+  -- * This only works on types that represent pointers.
+  -- *
+  -- * @see llvm::PointerType::getAddressSpace()
+  --  
+
+   function Get_Pointer_Address_Space (Pointer_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1092
    pragma Import (C, Get_Pointer_Address_Space, "LLVMGetPointerAddressSpace");
 
-   function Vector_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1103
+  --*
+  -- * Create a vector type that contains a defined type and has a specific
+  -- * number of elements.
+  -- *
+  -- * The created type will exist in the context thats its element type
+  -- * exists in.
+  -- *
+  -- * @see llvm::VectorType::get()
+  --  
+
+   function Vector_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1103
    pragma Import (C, Vector_Type, "LLVMVectorType");
 
-   function Get_Vector_Size (Vector_Ty : LLVM.Types.Type_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1112
+  --*
+  -- * Obtain the number of elements in a vector type.
+  -- *
+  -- * This only works on types that represent vectors.
+  -- *
+  -- * @see llvm::VectorType::getNumElements()
+  --  
+
+   function Get_Vector_Size (Vector_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1112
    pragma Import (C, Get_Vector_Size, "LLVMGetVectorSize");
 
-   function Void_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1127
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreTypeOther Other Types
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Create a void type in a context.
+  --  
+
+   function Void_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1127
    pragma Import (C, Void_Type_In_Context, "LLVMVoidTypeInContext");
 
-   function Label_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1132
+  --*
+  -- * Create a label type in a context.
+  --  
+
+   function Label_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1132
    pragma Import (C, Label_Type_In_Context, "LLVMLabelTypeInContext");
 
-   function X86_MMX_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1137
+  --*
+  -- * Create a X86 MMX type in a context.
+  --  
+
+   function X86_MMX_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1137
    pragma Import (C, X86_MMX_Type_In_Context, "LLVMX86MMXTypeInContext");
 
-   function Void_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1143
+  --*
+  -- * These are similar to the above functions except they operate on the
+  -- * global context.
+  --  
+
+   function Void_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1143
    pragma Import (C, Void_Type, "LLVMVoidType");
 
-   function Label_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1144
+   function Label_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1144
    pragma Import (C, Label_Type, "LLVMLabelType");
 
-   function X86_MMX_Type return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1145
+   function X86_MMX_Type return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1145
    pragma Import (C, X86_MMX_Type, "LLVMX86MMXType");
 
-   function Type_Of (Val : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1271
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValues Values
+  -- *
+  -- * The bulk of LLVM's object model consists of values, which comprise a very
+  -- * rich type hierarchy.
+  -- *
+  -- * LLVMValueRef essentially represents llvm::Value. There is a rich
+  -- * hierarchy of classes within this type. Depending on the instance
+  -- * obtained, not all APIs are available.
+  -- *
+  -- * Callers can determine the type of an LLVMValueRef by calling the
+  -- * LLVMIsA* family of functions (e.g. LLVMIsAArgument()). These
+  -- * functions are defined by a macro, so it isn't obvious which are
+  -- * available by looking at the Doxygen source code. Instead, look at the
+  -- * source definition of LLVM_FOR_EACH_VALUE_SUBCLASS and note the list
+  -- * of value names given. These value names also correspond to classes in
+  -- * the llvm::Value hierarchy.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueGeneral General APIs
+  -- *
+  -- * Functions in this section work on all LLVMValueRef instances,
+  -- * regardless of their sub-type. They correspond to functions available
+  -- * on llvm::Value.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the type of a value.
+  -- *
+  -- * @see llvm::Value::getType()
+  --  
+
+   function Type_Of (Val : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1271
    pragma Import (C, Type_Of, "LLVMTypeOf");
 
-   function Get_Value_Kind (Val : LLVM.Types.Value_T) return Value_Kind_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1278
+  --*
+  -- * Obtain the enumerated type of a Value instance.
+  -- *
+  -- * @see llvm::Value::getValueID()
+  --  
+
+   function Get_Value_Kind (Val : LLVM.Types.Value_T) return Value_Kind_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1278
    pragma Import (C, Get_Value_Kind, "LLVMGetValueKind");
+
+  --*
+  -- * Obtain the string name of a value.
+  -- *
+  -- * @see llvm::Value::getName()
+  --  
 
    function Get_Value_Name
      (Val : LLVM.Types.Value_T)
       return String;
    function Get_Value_Name_C
      (Val : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1285
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1285
    pragma Import (C, Get_Value_Name_C, "LLVMGetValueName");
+
+  --*
+  -- * Set the string name of a value.
+  -- *
+  -- * @see llvm::Value::setName()
+  --  
 
    procedure Set_Value_Name
      (Val  : LLVM.Types.Value_T;
       Name : String);
    procedure Set_Value_Name_C
      (Val  : LLVM.Types.Value_T;
-      Name : Interfaces.C.Strings.chars_ptr);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1292
+      Name : Interfaces.C.Strings.chars_ptr);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1292
    pragma Import (C, Set_Value_Name_C, "LLVMSetValueName");
 
-   procedure Dump_Value (Val : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1299
+  --*
+  -- * Dump a representation of a value to stderr.
+  -- *
+  -- * @see llvm::Value::dump()
+  --  
+
+   procedure Dump_Value (Val : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1299
    pragma Import (C, Dump_Value, "LLVMDumpValue");
+
+  --*
+  -- * Return a string representation of the value. Use
+  -- * LLVMDisposeMessage to free the string.
+  -- *
+  -- * @see llvm::Value::print()
+  --  
 
    function Print_Value_To_String
      (Val : LLVM.Types.Value_T)
       return String;
    function Print_Value_To_String_C
      (Val : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1307
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1307
    pragma Import (C, Print_Value_To_String_C, "LLVMPrintValueToString");
 
-   procedure Replace_All_Uses_With (Old_Val : LLVM.Types.Value_T; New_Val : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1314
+  --*
+  -- * Replace all uses of a value with another one.
+  -- *
+  -- * @see llvm::Value::replaceAllUsesWith()
+  --  
+
+   procedure Replace_All_Uses_With (Old_Val : LLVM.Types.Value_T; New_Val : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1314
    pragma Import (C, Replace_All_Uses_With, "LLVMReplaceAllUsesWith");
+
+  --*
+  -- * Determine whether the specified value instance is constant.
+  --  
 
    function Is_Constant
      (Val : LLVM.Types.Value_T)
       return Boolean;
    function Is_Constant_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1319
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1319
    pragma Import (C, Is_Constant_C, "LLVMIsConstant");
+
+  --*
+  -- * Determine whether a value instance is undefined.
+  --  
 
    function Is_Undef
      (Val : LLVM.Types.Value_T)
       return Boolean;
    function Is_Undef_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1324
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1324
    pragma Import (C, Is_Undef_C, "LLVMIsUndef");
 
-   function Is_AVA_Arg_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+  --*
+  -- * Convert value instances between types.
+  -- *
+  -- * Internally, an LLVMValueRef is "pinned" to a specific type. This
+  -- * series of functions allows you to cast an instance to a specific
+  -- * type.
+  -- *
+  -- * If the cast is not valid for the specified type, NULL is returned.
+  -- *
+  -- * @see llvm::dyn_cast_or_null<>
+  --  
+
+   function Is_AVA_Arg_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AVA_Arg_Inst, "LLVMIsAVAArgInst");
 
-   function Is_A_Load_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Load_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Load_Inst, "LLVMIsALoadInst");
 
-   function Is_A_Extract_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Extract_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Extract_Value_Inst, "LLVMIsAExtractValueInst");
 
-   function Is_AZ_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AZ_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AZ_Ext_Inst, "LLVMIsAZExtInst");
 
-   function Is_AUI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AUI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AUI_To_FP_Inst, "LLVMIsAUIToFPInst");
 
-   function Is_A_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Trunc_Inst, "LLVMIsATruncInst");
 
-   function Is_ASI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_ASI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_ASI_To_FP_Inst, "LLVMIsASIToFPInst");
 
-   function Is_AS_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AS_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AS_Ext_Inst, "LLVMIsASExtInst");
 
-   function Is_A_Ptr_To_Int_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Ptr_To_Int_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Ptr_To_Int_Inst, "LLVMIsAPtrToIntInst");
 
-   function Is_A_Int_To_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Int_To_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Int_To_Ptr_Inst, "LLVMIsAIntToPtrInst");
 
-   function Is_AFP_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AFP_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AFP_Trunc_Inst, "LLVMIsAFPTruncInst");
 
-   function Is_AFP_To_UI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AFP_To_UI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AFP_To_UI_Inst, "LLVMIsAFPToUIInst");
 
-   function Is_AFP_To_SI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AFP_To_SI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AFP_To_SI_Inst, "LLVMIsAFPToSIInst");
 
-   function Is_AFP_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AFP_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AFP_Ext_Inst, "LLVMIsAFPExtInst");
 
-   function Is_A_Bit_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Bit_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Bit_Cast_Inst, "LLVMIsABitCastInst");
 
-   function Is_A_Addr_Space_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Addr_Space_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Addr_Space_Cast_Inst, "LLVMIsAAddrSpaceCastInst");
 
-   function Is_A_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Cast_Inst, "LLVMIsACastInst");
 
-   function Is_A_Alloca_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Alloca_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Alloca_Inst, "LLVMIsAAllocaInst");
 
-   function Is_A_Unary_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Unary_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Unary_Instruction, "LLVMIsAUnaryInstruction");
 
-   function Is_A_Cleanup_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Cleanup_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Cleanup_Pad_Inst, "LLVMIsACleanupPadInst");
 
-   function Is_A_Catch_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Catch_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Catch_Pad_Inst, "LLVMIsACatchPadInst");
 
-   function Is_A_Funclet_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Funclet_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Funclet_Pad_Inst, "LLVMIsAFuncletPadInst");
 
-   function Is_A_Catch_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Catch_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Catch_Return_Inst, "LLVMIsACatchReturnInst");
 
-   function Is_A_Cleanup_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Cleanup_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Cleanup_Return_Inst, "LLVMIsACleanupReturnInst");
 
-   function Is_A_Resume_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Resume_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Resume_Inst, "LLVMIsAResumeInst");
 
-   function Is_A_Unreachable_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Unreachable_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Unreachable_Inst, "LLVMIsAUnreachableInst");
 
-   function Is_A_Switch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Switch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Switch_Inst, "LLVMIsASwitchInst");
 
-   function Is_A_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Return_Inst, "LLVMIsAReturnInst");
 
-   function Is_A_Invoke_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Invoke_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Invoke_Inst, "LLVMIsAInvokeInst");
 
-   function Is_A_Indirect_Br_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Indirect_Br_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Indirect_Br_Inst, "LLVMIsAIndirectBrInst");
 
-   function Is_A_Branch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Branch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Branch_Inst, "LLVMIsABranchInst");
 
-   function Is_A_Terminator_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Terminator_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Terminator_Inst, "LLVMIsATerminatorInst");
 
-   function Is_A_Store_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Store_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Store_Inst, "LLVMIsAStoreInst");
 
-   function Is_A_Shuffle_Vector_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Shuffle_Vector_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Shuffle_Vector_Inst, "LLVMIsAShuffleVectorInst");
 
-   function Is_A_Select_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Select_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Select_Inst, "LLVMIsASelectInst");
 
-   function Is_APHI_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_APHI_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_APHI_Node, "LLVMIsAPHINode");
 
-   function Is_A_Landing_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Landing_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Landing_Pad_Inst, "LLVMIsALandingPadInst");
 
-   function Is_A_Insert_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Insert_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Insert_Value_Inst, "LLVMIsAInsertValueInst");
 
-   function Is_A_Insert_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Insert_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Insert_Element_Inst, "LLVMIsAInsertElementInst");
 
-   function Is_A_Get_Element_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Get_Element_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Get_Element_Ptr_Inst, "LLVMIsAGetElementPtrInst");
 
-   function Is_A_Extract_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Extract_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Extract_Element_Inst, "LLVMIsAExtractElementInst");
 
-   function Is_AI_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AI_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AI_Cmp_Inst, "LLVMIsAICmpInst");
 
-   function Is_AF_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_AF_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_AF_Cmp_Inst, "LLVMIsAFCmpInst");
 
-   function Is_A_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Cmp_Inst, "LLVMIsACmpInst");
 
-   function Is_A_Mem_Set_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Mem_Set_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Mem_Set_Inst, "LLVMIsAMemSetInst");
 
-   function Is_A_Mem_Move_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Mem_Move_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Mem_Move_Inst, "LLVMIsAMemMoveInst");
 
-   function Is_A_Mem_Cpy_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Mem_Cpy_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Mem_Cpy_Inst, "LLVMIsAMemCpyInst");
 
-   function Is_A_Mem_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Mem_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Mem_Intrinsic, "LLVMIsAMemIntrinsic");
 
-   function Is_A_Dbg_Declare_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Dbg_Declare_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Dbg_Declare_Inst, "LLVMIsADbgDeclareInst");
 
-   function Is_A_Dbg_Info_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Dbg_Info_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Dbg_Info_Intrinsic, "LLVMIsADbgInfoIntrinsic");
 
-   function Is_A_Intrinsic_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Intrinsic_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Intrinsic_Inst, "LLVMIsAIntrinsicInst");
 
-   function Is_A_Call_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Call_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Call_Inst, "LLVMIsACallInst");
 
-   function Is_A_Binary_Operator (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Binary_Operator (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Binary_Operator, "LLVMIsABinaryOperator");
 
-   function Is_A_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Instruction, "LLVMIsAInstruction");
 
-   function Is_A_Undef_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Undef_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Undef_Value, "LLVMIsAUndefValue");
 
-   function Is_A_Global_Variable (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Global_Variable (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Global_Variable, "LLVMIsAGlobalVariable");
 
-   function Is_A_Function (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Function (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Function, "LLVMIsAFunction");
 
-   function Is_A_Global_Object (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Global_Object (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Global_Object, "LLVMIsAGlobalObject");
 
-   function Is_A_Global_Alias (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Global_Alias (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Global_Alias, "LLVMIsAGlobalAlias");
 
-   function Is_A_Global_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Global_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Global_Value, "LLVMIsAGlobalValue");
 
-   function Is_A_Constant_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Vector, "LLVMIsAConstantVector");
 
-   function Is_A_Constant_Token_None (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Token_None (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Token_None, "LLVMIsAConstantTokenNone");
 
-   function Is_A_Constant_Struct (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Struct (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Struct, "LLVMIsAConstantStruct");
 
-   function Is_A_Constant_Pointer_Null (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Pointer_Null (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Pointer_Null, "LLVMIsAConstantPointerNull");
 
-   function Is_A_Constant_Int (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Int (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Int, "LLVMIsAConstantInt");
 
-   function Is_A_Constant_FP (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_FP (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_FP, "LLVMIsAConstantFP");
 
-   function Is_A_Constant_Expr (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Expr (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Expr, "LLVMIsAConstantExpr");
 
-   function Is_A_Constant_Data_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Data_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Data_Vector, "LLVMIsAConstantDataVector");
 
-   function Is_A_Constant_Data_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Data_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Data_Array, "LLVMIsAConstantDataArray");
 
-   function Is_A_Constant_Data_Sequential (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Data_Sequential (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Data_Sequential, "LLVMIsAConstantDataSequential");
 
-   function Is_A_Constant_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Array, "LLVMIsAConstantArray");
 
-   function Is_A_Constant_Aggregate_Zero (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant_Aggregate_Zero (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant_Aggregate_Zero, "LLVMIsAConstantAggregateZero");
 
-   function Is_A_Block_Address (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Block_Address (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Block_Address, "LLVMIsABlockAddress");
 
-   function Is_A_Constant (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Constant (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Constant, "LLVMIsAConstant");
 
-   function Is_A_User (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_User (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_User, "LLVMIsAUser");
 
-   function Is_A_Inline_Asm (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Inline_Asm (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Inline_Asm, "LLVMIsAInlineAsm");
 
-   function Is_A_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Basic_Block, "LLVMIsABasicBlock");
 
-   function Is_A_Argument (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1339
+   function Is_A_Argument (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1339
    pragma Import (C, Is_A_Argument, "LLVMIsAArgument");
 
-   function Is_AMD_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1341
+   function Is_AMD_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1341
    pragma Import (C, Is_AMD_Node, "LLVMIsAMDNode");
 
-   function Is_AMD_String (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1342
+   function Is_AMD_String (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1342
    pragma Import (C, Is_AMD_String, "LLVMIsAMDString");
 
-   function Get_First_Use (Val : LLVM.Types.Value_T) return LLVM.Types.Use_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1371
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueUses Usage
+  -- *
+  -- * This module defines functions that allow you to inspect the uses of a
+  -- * LLVMValueRef.
+  -- *
+  -- * It is possible to obtain an LLVMUseRef for any LLVMValueRef instance.
+  -- * Each LLVMUseRef (which corresponds to a llvm::Use instance) holds a
+  -- * llvm::User and llvm::Value.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the first use of a value.
+  -- *
+  -- * Uses are obtained in an iterator fashion. First, call this function
+  -- * to obtain a reference to the first use. Then, call LLVMGetNextUse()
+  -- * on that instance and all subsequently obtained instances until
+  -- * LLVMGetNextUse() returns NULL.
+  -- *
+  -- * @see llvm::Value::use_begin()
+  --  
+
+   function Get_First_Use (Val : LLVM.Types.Value_T) return LLVM.Types.Use_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1371
    pragma Import (C, Get_First_Use, "LLVMGetFirstUse");
 
-   function Get_Next_Use (U : LLVM.Types.Use_T) return LLVM.Types.Use_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1379
+  --*
+  -- * Obtain the next use of a value.
+  -- *
+  -- * This effectively advances the iterator. It returns NULL if you are on
+  -- * the final use and no more are available.
+  --  
+
+   function Get_Next_Use (U : LLVM.Types.Use_T) return LLVM.Types.Use_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1379
    pragma Import (C, Get_Next_Use, "LLVMGetNextUse");
 
-   function Get_User (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1388
+  --*
+  -- * Obtain the user value for a user.
+  -- *
+  -- * The returned value corresponds to a llvm::User type.
+  -- *
+  -- * @see llvm::Use::getUser()
+  --  
+
+   function Get_User (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1388
    pragma Import (C, Get_User, "LLVMGetUser");
 
-   function Get_Used_Value (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1395
+  --*
+  -- * Obtain the value this use corresponds to.
+  -- *
+  -- * @see llvm::Use::get().
+  --  
+
+   function Get_Used_Value (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1395
    pragma Import (C, Get_Used_Value, "LLVMGetUsedValue");
 
-   function Get_Operand (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1416
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueUser User value
+  -- *
+  -- * Function in this group pertain to LLVMValueRef instances that descent
+  -- * from llvm::User. This includes constants, instructions, and
+  -- * operators.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain an operand at a specific index in a llvm::User value.
+  -- *
+  -- * @see llvm::User::getOperand()
+  --  
+
+   function Get_Operand (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1416
    pragma Import (C, Get_Operand, "LLVMGetOperand");
 
-   function Get_Operand_Use (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Use_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1423
+  --*
+  -- * Obtain the use of an operand at a specific index in a llvm::User value.
+  -- *
+  -- * @see llvm::User::getOperandUse()
+  --  
+
+   function Get_Operand_Use (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Use_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1423
    pragma Import (C, Get_Operand_Use, "LLVMGetOperandUse");
+
+  --*
+  -- * Set an operand at a specific index in a llvm::User value.
+  -- *
+  -- * @see llvm::User::setOperand()
+  --  
 
    procedure Set_Operand
      (User : LLVM.Types.Value_T;
       Index : unsigned;
-      Val : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1430
+      Val : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1430
    pragma Import (C, Set_Operand, "LLVMSetOperand");
 
-   function Get_Num_Operands (Val : LLVM.Types.Value_T) return int;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1437
+  --*
+  -- * Obtain the number of operands in a llvm::User value.
+  -- *
+  -- * @see llvm::User::getNumOperands()
+  --  
+
+   function Get_Num_Operands (Val : LLVM.Types.Value_T) return int;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1437
    pragma Import (C, Get_Num_Operands, "LLVMGetNumOperands");
 
-   function Const_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1460
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueConstant Constants
+  -- *
+  -- * This section contains APIs for interacting with LLVMValueRef that
+  -- * correspond to llvm::Constant instances.
+  -- *
+  -- * These functions will work for any LLVMValueRef in the llvm::Constant
+  -- * class hierarchy.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain a constant value referring to the null instance of a type.
+  -- *
+  -- * @see llvm::Constant::getNullValue()
+  --  
+
+  -- all zeroes  
+   function Const_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1460
    pragma Import (C, Const_Null, "LLVMConstNull");
 
-   function Const_All_Ones (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1470
+  --*
+  -- * Obtain a constant value referring to the instance of a type
+  -- * consisting of all ones.
+  -- *
+  -- * This is only valid for integer types.
+  -- *
+  -- * @see llvm::Constant::getAllOnesValue()
+  --  
+
+   function Const_All_Ones (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1470
    pragma Import (C, Const_All_Ones, "LLVMConstAllOnes");
 
-   function Get_Undef (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1477
+  --*
+  -- * Obtain a constant value referring to an undefined value of a type.
+  -- *
+  -- * @see llvm::UndefValue::get()
+  --  
+
+   function Get_Undef (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1477
    pragma Import (C, Get_Undef, "LLVMGetUndef");
+
+  --*
+  -- * Determine whether a value instance is null.
+  -- *
+  -- * @see llvm::Constant::isNullValue()
+  --  
 
    function Is_Null
      (Val : LLVM.Types.Value_T)
       return Boolean;
    function Is_Null_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1484
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1484
    pragma Import (C, Is_Null_C, "LLVMIsNull");
 
-   function Const_Pointer_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1490
+  --*
+  -- * Obtain a constant that is a constant pointer pointing to NULL for a
+  -- * specified type.
+  --  
+
+   function Const_Pointer_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1490
    pragma Import (C, Const_Pointer_Null, "LLVMConstPointerNull");
+
+  --*
+  -- * @defgroup LLVMCCoreValueConstantScalar Scalar constants
+  -- *
+  -- * Functions in this group model LLVMValueRef instances that correspond
+  -- * to constants referring to scalar types.
+  -- *
+  -- * For integer types, the LLVMTypeRef parameter should correspond to a
+  -- * llvm::IntegerType instance and the returned LLVMValueRef will
+  -- * correspond to a llvm::ConstantInt.
+  -- *
+  -- * For floating point types, the LLVMTypeRef returned corresponds to a
+  -- * llvm::ConstantFP.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain a constant value for an integer type.
+  -- *
+  -- * The returned value corresponds to a llvm::ConstantInt.
+  -- *
+  -- * @see llvm::ConstantInt::get()
+  -- *
+  -- * @param IntTy Integer type to obtain value of.
+  -- * @param N The value the returned instance should refer to.
+  -- * @param SignExtend Whether to sign extend the produced value.
+  --  
 
 function Const_Int
      (Int_Ty      : LLVM.Types.Type_T;
@@ -1214,11 +2327,27 @@ function Const_Int
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Int_C, "LLVMConstInt");
 
+  --*
+  -- * Obtain a constant value for an integer of arbitrary precision.
+  -- *
+  -- * @see llvm::ConstantInt::get()
+  --  
+
    function Const_Int_Of_Arbitrary_Precision
      (Int_Ty : LLVM.Types.Type_T;
       Num_Words : unsigned;
-      Words : access stdint_h.uint64_t) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1527
+      Words : access stdint_h.uint64_t) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1527
    pragma Import (C, Const_Int_Of_Arbitrary_Precision, "LLVMConstIntOfArbitraryPrecision");
+
+  --*
+  -- * Obtain a constant value for an integer parsed from a string.
+  -- *
+  -- * A similar API, LLVMConstIntOfStringAndSize is also available. If the
+  -- * string's length is available, it is preferred to call that function
+  -- * instead.
+  -- *
+  -- * @see llvm::ConstantInt::get()
+  --  
 
 function Const_Int_Of_String
      (Int_Ty : LLVM.Types.Type_T;
@@ -1231,6 +2360,13 @@ function Const_Int_Of_String
       Radix  : stdint_h.uint8_t)
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Int_Of_String_C, "LLVMConstIntOfString");
+
+  --*
+  -- * Obtain a constant value for an integer parsed from a string with
+  -- * specified length.
+  -- *
+  -- * @see llvm::ConstantInt::get()
+  --  
 
 function Const_Int_Of_String_And_Size
      (Int_Ty : LLVM.Types.Type_T;
@@ -1246,8 +2382,19 @@ function Const_Int_Of_String_And_Size
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Int_Of_String_And_Size_C, "LLVMConstIntOfStringAndSize");
 
-   function Const_Real (Real_Ty : LLVM.Types.Type_T; N : double) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1555
+  --*
+  -- * Obtain a constant value referring to a double floating point value.
+  --  
+
+   function Const_Real (Real_Ty : LLVM.Types.Type_T; N : double) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1555
    pragma Import (C, Const_Real, "LLVMConstReal");
+
+  --*
+  -- * Obtain a constant for a floating point value parsed from a string.
+  -- *
+  -- * A similar API, LLVMConstRealOfStringAndSize is also available. It
+  -- * should be used if the input string's length is known.
+  --  
 
    function Const_Real_Of_String
      (Real_Ty : LLVM.Types.Type_T;
@@ -1256,8 +2403,12 @@ function Const_Int_Of_String_And_Size
    function Const_Real_Of_String_C
      (Real_Ty : LLVM.Types.Type_T;
       Text    : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1563
+      return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1563
    pragma Import (C, Const_Real_Of_String_C, "LLVMConstRealOfString");
+
+  --*
+  -- * Obtain a constant for a floating point value parsed from a string.
+  --  
 
 function Const_Real_Of_String_And_Size
      (Real_Ty : LLVM.Types.Type_T;
@@ -1271,11 +2422,30 @@ function Const_Real_Of_String_And_Size
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Real_Of_String_And_Size_C, "LLVMConstRealOfStringAndSize");
 
-   function Const_Int_Get_Z_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Extensions.unsigned_long_long;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1576
+  --*
+  -- * Obtain the zero extended value for an integer constant value.
+  -- *
+  -- * @see llvm::ConstantInt::getZExtValue()
+  --  
+
+   function Const_Int_Get_Z_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Extensions.unsigned_long_long;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1576
    pragma Import (C, Const_Int_Get_Z_Ext_Value, "LLVMConstIntGetZExtValue");
 
-   function Const_Int_Get_S_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Long_Long_Integer;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1583
+  --*
+  -- * Obtain the sign extended value for an integer constant value.
+  -- *
+  -- * @see llvm::ConstantInt::getSExtValue()
+  --  
+
+   function Const_Int_Get_S_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Long_Long_Integer;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1583
    pragma Import (C, Const_Int_Get_S_Ext_Value, "LLVMConstIntGetSExtValue");
+
+  --*
+  -- * Obtain the double value for an floating point constant value.
+  -- * losesInfo indicates if some precision was lost in the conversion.
+  -- *
+  -- * @see llvm::ConstantFP::getDoubleValue
+  --  
 
    function Const_Real_Get_Double
      (Constant_Val : LLVM.Types.Value_T;
@@ -1284,8 +2454,26 @@ function Const_Real_Of_String_And_Size
    function Const_Real_Get_Double_C
      (Constant_Val : LLVM.Types.Value_T;
       loses_Info   : LLVM.Types.Bool_T)
-      return double;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1591
+      return double;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1591
    pragma Import (C, Const_Real_Get_Double_C, "LLVMConstRealGetDouble");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueConstantComposite Composite Constants
+  -- *
+  -- * Functions in this group operate on composite constants.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Create a ConstantDataSequential and initialize it with a string.
+  -- *
+  -- * @see llvm::ConstantDataArray::getString()
+  --  
 
 function Const_String_In_Context
      (C                   : LLVM.Types.Context_T;
@@ -1301,6 +2489,16 @@ function Const_String_In_Context
       return LLVM.Types.Value_T;
    pragma Import (C, Const_String_In_Context_C, "LLVMConstStringInContext");
 
+  --*
+  -- * Create a ConstantDataSequential with string content in the global context.
+  -- *
+  -- * This is the same as LLVMConstStringInContext except it operates on the
+  -- * global context.
+  -- *
+  -- * @see LLVMConstStringInContext()
+  -- * @see llvm::ConstantDataArray::getString()
+  --  
+
 function Const_String
      (Str                 : String;
       Length              : unsigned;
@@ -1313,13 +2511,25 @@ function Const_String
       return LLVM.Types.Value_T;
    pragma Import (C, Const_String_C, "LLVMConstString");
 
+  --*
+  -- * Returns true if the specified constant is an array of i8.
+  -- *
+  -- * @see ConstantDataSequential::getAsString()
+  --  
+
    function Is_Constant_String
      (c : LLVM.Types.Value_T)
       return Boolean;
    function Is_Constant_String_C
      (c : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1630
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1630
    pragma Import (C, Is_Constant_String_C, "LLVMIsConstantString");
+
+  --*
+  -- * Get the given constant data sequential as a string.
+  -- *
+  -- * @see ConstantDataSequential::getAsString()
+  --  
 
    function Get_As_String
      (c      : LLVM.Types.Value_T;
@@ -1328,8 +2538,14 @@ function Const_String
    function Get_As_String_C
      (c      : LLVM.Types.Value_T;
       Length : stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1637
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1637
    pragma Import (C, Get_As_String_C, "LLVMGetAsString");
+
+  --*
+  -- * Create an anonymous ConstantStruct with the specified values.
+  -- *
+  -- * @see llvm::ConstantStruct::getAnon()
+  --  
 
 function Const_Struct_In_Context
      (C             : LLVM.Types.Context_T;
@@ -1345,6 +2561,15 @@ function Const_Struct_In_Context
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Struct_In_Context_C, "LLVMConstStructInContext");
 
+  --*
+  -- * Create a ConstantStruct in the global Context.
+  -- *
+  -- * This is the same as LLVMConstStructInContext except it operates on the
+  -- * global Context.
+  -- *
+  -- * @see LLVMConstStructInContext()
+  --  
+
 function Const_Struct
      (Constant_Vals : System.Address;
       Count         : unsigned;
@@ -1357,199 +2582,237 @@ function Const_Struct
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Struct_C, "LLVMConstStruct");
 
+  --*
+  -- * Create a ConstantArray from values.
+  -- *
+  -- * @see llvm::ConstantArray::get()
+  --  
+
    function Const_Array
      (Element_Ty : LLVM.Types.Type_T;
       Constant_Vals : System.Address;
-      Length : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1664
+      Length : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1664
    pragma Import (C, Const_Array, "LLVMConstArray");
+
+  --*
+  -- * Create a non-anonymous ConstantStruct from values.
+  -- *
+  -- * @see llvm::ConstantStruct::get()
+  --  
 
    function Const_Named_Struct
      (Struct_Ty : LLVM.Types.Type_T;
       Constant_Vals : System.Address;
-      Count : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1672
+      Count : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1672
    pragma Import (C, Const_Named_Struct, "LLVMConstNamedStruct");
 
-   function Get_Element_As_Constant (C : LLVM.Types.Value_T; idx : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1681
+  --*
+  -- * Get an element at specified index as a constant.
+  -- *
+  -- * @see ConstantDataSequential::getElementAsConstant()
+  --  
+
+   function Get_Element_As_Constant (C : LLVM.Types.Value_T; idx : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1681
    pragma Import (C, Get_Element_As_Constant, "LLVMGetElementAsConstant");
 
-   function Const_Vector (Scalar_Constant_Vals : System.Address; Size : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1688
+  --*
+  -- * Create a ConstantVector from values.
+  -- *
+  -- * @see llvm::ConstantVector::get()
+  --  
+
+   function Const_Vector (Scalar_Constant_Vals : System.Address; Size : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1688
    pragma Import (C, Const_Vector, "LLVMConstVector");
 
-   function Get_Const_Opcode (Constant_Val : LLVM.Types.Value_T) return Opcode_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1703
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueConstantExpressions Constant Expressions
+  -- *
+  -- * Functions in this group correspond to APIs on llvm::ConstantExpr.
+  -- *
+  -- * @see llvm::ConstantExpr.
+  -- *
+  -- * @{
+  --  
+
+   function Get_Const_Opcode (Constant_Val : LLVM.Types.Value_T) return Opcode_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1703
    pragma Import (C, Get_Const_Opcode, "LLVMGetConstOpcode");
 
-   function Align_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1704
+   function Align_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1704
    pragma Import (C, Align_Of, "LLVMAlignOf");
 
-   function Size_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1705
+   function Size_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1705
    pragma Import (C, Size_Of, "LLVMSizeOf");
 
-   function Const_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1706
+   function Const_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1706
    pragma Import (C, Const_Neg, "LLVMConstNeg");
 
-   function Const_NSW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1707
+   function Const_NSW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1707
    pragma Import (C, Const_NSW_Neg, "LLVMConstNSWNeg");
 
-   function Const_NUW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1708
+   function Const_NUW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1708
    pragma Import (C, Const_NUW_Neg, "LLVMConstNUWNeg");
 
-   function Const_F_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1709
+   function Const_F_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1709
    pragma Import (C, Const_F_Neg, "LLVMConstFNeg");
 
-   function Const_Not (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1710
+   function Const_Not (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1710
    pragma Import (C, Const_Not, "LLVMConstNot");
 
-   function Const_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1711
+   function Const_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1711
    pragma Import (C, Const_Add, "LLVMConstAdd");
 
-   function Const_NSW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1712
+   function Const_NSW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1712
    pragma Import (C, Const_NSW_Add, "LLVMConstNSWAdd");
 
-   function Const_NUW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1713
+   function Const_NUW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1713
    pragma Import (C, Const_NUW_Add, "LLVMConstNUWAdd");
 
-   function Const_F_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1714
+   function Const_F_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1714
    pragma Import (C, Const_F_Add, "LLVMConstFAdd");
 
-   function Const_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1715
+   function Const_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1715
    pragma Import (C, Const_Sub, "LLVMConstSub");
 
-   function Const_NSW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1716
+   function Const_NSW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1716
    pragma Import (C, Const_NSW_Sub, "LLVMConstNSWSub");
 
-   function Const_NUW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1717
+   function Const_NUW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1717
    pragma Import (C, Const_NUW_Sub, "LLVMConstNUWSub");
 
-   function Const_F_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1718
+   function Const_F_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1718
    pragma Import (C, Const_F_Sub, "LLVMConstFSub");
 
-   function Const_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1719
+   function Const_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1719
    pragma Import (C, Const_Mul, "LLVMConstMul");
 
-   function Const_NSW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1720
+   function Const_NSW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1720
    pragma Import (C, Const_NSW_Mul, "LLVMConstNSWMul");
 
-   function Const_NUW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1721
+   function Const_NUW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1721
    pragma Import (C, Const_NUW_Mul, "LLVMConstNUWMul");
 
-   function Const_F_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1722
+   function Const_F_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1722
    pragma Import (C, Const_F_Mul, "LLVMConstFMul");
 
-   function Const_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1723
+   function Const_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1723
    pragma Import (C, Const_U_Div, "LLVMConstUDiv");
 
-   function Const_Exact_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1724
+   function Const_Exact_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1724
    pragma Import (C, Const_Exact_U_Div, "LLVMConstExactUDiv");
 
-   function Const_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1725
+   function Const_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1725
    pragma Import (C, Const_S_Div, "LLVMConstSDiv");
 
-   function Const_Exact_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1726
+   function Const_Exact_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1726
    pragma Import (C, Const_Exact_S_Div, "LLVMConstExactSDiv");
 
-   function Const_F_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1727
+   function Const_F_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1727
    pragma Import (C, Const_F_Div, "LLVMConstFDiv");
 
-   function Const_U_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1728
+   function Const_U_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1728
    pragma Import (C, Const_U_Rem, "LLVMConstURem");
 
-   function Const_S_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1729
+   function Const_S_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1729
    pragma Import (C, Const_S_Rem, "LLVMConstSRem");
 
-   function Const_F_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1730
+   function Const_F_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1730
    pragma Import (C, Const_F_Rem, "LLVMConstFRem");
 
-   function Const_And (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1731
+   function Const_And (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1731
    pragma Import (C, Const_And, "LLVMConstAnd");
 
-   function Const_Or (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1732
+   function Const_Or (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1732
    pragma Import (C, Const_Or, "LLVMConstOr");
 
-   function Const_Xor (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1733
+   function Const_Xor (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1733
    pragma Import (C, Const_Xor, "LLVMConstXor");
 
    function Const_I_Cmp
      (Predicate : Int_Predicate_T;
       LHS_Constant : LLVM.Types.Value_T;
-      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1734
+      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1734
    pragma Import (C, Const_I_Cmp, "LLVMConstICmp");
 
    function Const_F_Cmp
      (Predicate : Real_Predicate_T;
       LHS_Constant : LLVM.Types.Value_T;
-      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1736
+      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1736
    pragma Import (C, Const_F_Cmp, "LLVMConstFCmp");
 
-   function Const_Shl (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1738
+   function Const_Shl (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1738
    pragma Import (C, Const_Shl, "LLVMConstShl");
 
-   function Const_L_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1739
+   function Const_L_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1739
    pragma Import (C, Const_L_Shr, "LLVMConstLShr");
 
-   function Const_A_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1740
+   function Const_A_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1740
    pragma Import (C, Const_A_Shr, "LLVMConstAShr");
 
    function Const_GEP
      (Constant_Val : LLVM.Types.Value_T;
       Constant_Indices : System.Address;
-      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1741
+      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1741
    pragma Import (C, Const_GEP, "LLVMConstGEP");
 
    function Const_In_Bounds_GEP
      (Constant_Val : LLVM.Types.Value_T;
       Constant_Indices : System.Address;
-      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1743
+      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1743
    pragma Import (C, Const_In_Bounds_GEP, "LLVMConstInBoundsGEP");
 
-   function Const_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1746
+   function Const_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1746
    pragma Import (C, Const_Trunc, "LLVMConstTrunc");
 
-   function Const_S_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1747
+   function Const_S_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1747
    pragma Import (C, Const_S_Ext, "LLVMConstSExt");
 
-   function Const_Z_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1748
+   function Const_Z_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1748
    pragma Import (C, Const_Z_Ext, "LLVMConstZExt");
 
-   function Const_FP_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1749
+   function Const_FP_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1749
    pragma Import (C, Const_FP_Trunc, "LLVMConstFPTrunc");
 
-   function Const_FP_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1750
+   function Const_FP_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1750
    pragma Import (C, Const_FP_Ext, "LLVMConstFPExt");
 
-   function Const_UI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1751
+   function Const_UI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1751
    pragma Import (C, Const_UI_To_FP, "LLVMConstUIToFP");
 
-   function Const_SI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1752
+   function Const_SI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1752
    pragma Import (C, Const_SI_To_FP, "LLVMConstSIToFP");
 
-   function Const_FP_To_UI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1753
+   function Const_FP_To_UI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1753
    pragma Import (C, Const_FP_To_UI, "LLVMConstFPToUI");
 
-   function Const_FP_To_SI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1754
+   function Const_FP_To_SI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1754
    pragma Import (C, Const_FP_To_SI, "LLVMConstFPToSI");
 
-   function Const_Ptr_To_Int (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1755
+   function Const_Ptr_To_Int (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1755
    pragma Import (C, Const_Ptr_To_Int, "LLVMConstPtrToInt");
 
-   function Const_Int_To_Ptr (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1756
+   function Const_Int_To_Ptr (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1756
    pragma Import (C, Const_Int_To_Ptr, "LLVMConstIntToPtr");
 
-   function Const_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1757
+   function Const_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1757
    pragma Import (C, Const_Bit_Cast, "LLVMConstBitCast");
 
-   function Const_Addr_Space_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1758
+   function Const_Addr_Space_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1758
    pragma Import (C, Const_Addr_Space_Cast, "LLVMConstAddrSpaceCast");
 
-   function Const_Z_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1759
+   function Const_Z_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1759
    pragma Import (C, Const_Z_Ext_Or_Bit_Cast, "LLVMConstZExtOrBitCast");
 
-   function Const_S_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1761
+   function Const_S_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1761
    pragma Import (C, Const_S_Ext_Or_Bit_Cast, "LLVMConstSExtOrBitCast");
 
-   function Const_Trunc_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1763
+   function Const_Trunc_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1763
    pragma Import (C, Const_Trunc_Or_Bit_Cast, "LLVMConstTruncOrBitCast");
 
-   function Const_Pointer_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1765
+   function Const_Pointer_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1765
    pragma Import (C, Const_Pointer_Cast, "LLVMConstPointerCast");
 
 function Const_Int_Cast
@@ -1564,41 +2827,41 @@ function Const_Int_Cast
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Int_Cast_C, "LLVMConstIntCast");
 
-   function Const_FP_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1769
+   function Const_FP_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1769
    pragma Import (C, Const_FP_Cast, "LLVMConstFPCast");
 
    function Const_Select
      (Constant_Condition : LLVM.Types.Value_T;
       Constant_If_True : LLVM.Types.Value_T;
-      Constant_If_False : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1770
+      Constant_If_False : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1770
    pragma Import (C, Const_Select, "LLVMConstSelect");
 
-   function Const_Extract_Element (Vector_Constant : LLVM.Types.Value_T; Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1773
+   function Const_Extract_Element (Vector_Constant : LLVM.Types.Value_T; Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1773
    pragma Import (C, Const_Extract_Element, "LLVMConstExtractElement");
 
    function Const_Insert_Element
      (Vector_Constant : LLVM.Types.Value_T;
       Element_Value_Constant : LLVM.Types.Value_T;
-      Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1775
+      Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1775
    pragma Import (C, Const_Insert_Element, "LLVMConstInsertElement");
 
    function Const_Shuffle_Vector
      (Vector_A_Constant : LLVM.Types.Value_T;
       Vector_B_Constant : LLVM.Types.Value_T;
-      Mask_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1778
+      Mask_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1778
    pragma Import (C, Const_Shuffle_Vector, "LLVMConstShuffleVector");
 
    function Const_Extract_Value
      (Agg_Constant : LLVM.Types.Value_T;
       Idx_List : access unsigned;
-      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1781
+      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1781
    pragma Import (C, Const_Extract_Value, "LLVMConstExtractValue");
 
    function Const_Insert_Value
      (Agg_Constant : LLVM.Types.Value_T;
       Element_Value_Constant : LLVM.Types.Value_T;
       Idx_List : access unsigned;
-      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1783
+      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1783
    pragma Import (C, Const_Insert_Value, "LLVMConstInsertValue");
 
 function Const_Inline_Asm
@@ -1617,10 +2880,25 @@ function Const_Inline_Asm
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Inline_Asm_C, "LLVMConstInlineAsm");
 
-   function Block_Address (F : LLVM.Types.Value_T; BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1789
+   function Block_Address (F : LLVM.Types.Value_T; BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1789
    pragma Import (C, Block_Address, "LLVMBlockAddress");
 
-   function Get_Global_Parent (Global : LLVM.Types.Value_T) return LLVM.Types.Module_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1806
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueConstantGlobals Global Values
+  -- *
+  -- * This group contains functions that operate on global values. Functions in
+  -- * this group relate to functions in the llvm::GlobalValue class tree.
+  -- *
+  -- * @see llvm::GlobalValue
+  -- *
+  -- * @{
+  --  
+
+   function Get_Global_Parent (Global : LLVM.Types.Value_T) return LLVM.Types.Module_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1806
    pragma Import (C, Get_Global_Parent, "LLVMGetGlobalParent");
 
    function Is_Declaration
@@ -1628,13 +2906,13 @@ function Const_Inline_Asm
       return Boolean;
    function Is_Declaration_C
      (Global : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1807
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1807
    pragma Import (C, Is_Declaration_C, "LLVMIsDeclaration");
 
-   function Get_Linkage (Global : LLVM.Types.Value_T) return Linkage_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1808
+   function Get_Linkage (Global : LLVM.Types.Value_T) return Linkage_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1808
    pragma Import (C, Get_Linkage, "LLVMGetLinkage");
 
-   procedure Set_Linkage (Global : LLVM.Types.Value_T; Linkage : Linkage_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1809
+   procedure Set_Linkage (Global : LLVM.Types.Value_T; Linkage : Linkage_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1809
    pragma Import (C, Set_Linkage, "LLVMSetLinkage");
 
    function Get_Section
@@ -1642,7 +2920,7 @@ function Const_Inline_Asm
       return String;
    function Get_Section_C
      (Global : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1810
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1810
    pragma Import (C, Get_Section_C, "LLVMGetSection");
 
    procedure Set_Section
@@ -1650,19 +2928,19 @@ function Const_Inline_Asm
       Section : String);
    procedure Set_Section_C
      (Global  : LLVM.Types.Value_T;
-      Section : Interfaces.C.Strings.chars_ptr);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1811
+      Section : Interfaces.C.Strings.chars_ptr);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1811
    pragma Import (C, Set_Section_C, "LLVMSetSection");
 
-   function Get_Visibility (Global : LLVM.Types.Value_T) return Visibility_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1812
+   function Get_Visibility (Global : LLVM.Types.Value_T) return Visibility_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1812
    pragma Import (C, Get_Visibility, "LLVMGetVisibility");
 
-   procedure Set_Visibility (Global : LLVM.Types.Value_T; Viz : Visibility_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1813
+   procedure Set_Visibility (Global : LLVM.Types.Value_T; Viz : Visibility_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1813
    pragma Import (C, Set_Visibility, "LLVMSetVisibility");
 
-   function Get_DLL_Storage_Class (Global : LLVM.Types.Value_T) return DLL_Storage_Class_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1814
+   function Get_DLL_Storage_Class (Global : LLVM.Types.Value_T) return DLL_Storage_Class_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1814
    pragma Import (C, Get_DLL_Storage_Class, "LLVMGetDLLStorageClass");
 
-   procedure Set_DLL_Storage_Class (Global : LLVM.Types.Value_T; Class : DLL_Storage_Class_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1815
+   procedure Set_DLL_Storage_Class (Global : LLVM.Types.Value_T; Class : DLL_Storage_Class_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1815
    pragma Import (C, Set_DLL_Storage_Class, "LLVMSetDLLStorageClass");
 
    function Has_Unnamed_Addr
@@ -1670,7 +2948,7 @@ function Const_Inline_Asm
       return Boolean;
    function Has_Unnamed_Addr_C
      (Global : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1816
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1816
    pragma Import (C, Has_Unnamed_Addr_C, "LLVMHasUnnamedAddr");
 
    procedure Set_Unnamed_Addr
@@ -1678,14 +2956,51 @@ function Const_Inline_Asm
       Has_Unnamed_Addr : Boolean);
    procedure Set_Unnamed_Addr_C
      (Global           : LLVM.Types.Value_T;
-      Has_Unnamed_Addr : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1817
+      Has_Unnamed_Addr : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1817
    pragma Import (C, Set_Unnamed_Addr_C, "LLVMSetUnnamedAddr");
 
-   function Get_Alignment (V : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1833
+  --*
+  -- * @defgroup LLVMCCoreValueWithAlignment Values with alignment
+  -- *
+  -- * Functions in this group only apply to values with alignment, i.e.
+  -- * global variables, load and store instructions.
+  --  
+
+  --*
+  -- * Obtain the preferred alignment of the value.
+  -- * @see llvm::AllocaInst::getAlignment()
+  -- * @see llvm::LoadInst::getAlignment()
+  -- * @see llvm::StoreInst::getAlignment()
+  -- * @see llvm::GlobalValue::getAlignment()
+  --  
+
+   function Get_Alignment (V : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1833
    pragma Import (C, Get_Alignment, "LLVMGetAlignment");
 
-   procedure Set_Alignment (V : LLVM.Types.Value_T; Bytes : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1842
+  --*
+  -- * Set the preferred alignment of the value.
+  -- * @see llvm::AllocaInst::setAlignment()
+  -- * @see llvm::LoadInst::setAlignment()
+  -- * @see llvm::StoreInst::setAlignment()
+  -- * @see llvm::GlobalValue::setAlignment()
+  --  
+
+   procedure Set_Alignment (V : LLVM.Types.Value_T; Bytes : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1842
    pragma Import (C, Set_Alignment, "LLVMSetAlignment");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCoreValueConstantGlobalVariable Global Variables
+  -- *
+  -- * This group contains functions that operate on global variable values.
+  -- *
+  -- * @see llvm::GlobalVariable
+  -- *
+  -- * @{
+  --  
 
 function Add_Global
      (M    : LLVM.Types.Module_T;
@@ -1720,28 +3035,28 @@ function Add_Global_In_Address_Space
    function Get_Named_Global_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1861
+      return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1861
    pragma Import (C, Get_Named_Global_C, "LLVMGetNamedGlobal");
 
-   function Get_First_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1862
+   function Get_First_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1862
    pragma Import (C, Get_First_Global, "LLVMGetFirstGlobal");
 
-   function Get_Last_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1863
+   function Get_Last_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1863
    pragma Import (C, Get_Last_Global, "LLVMGetLastGlobal");
 
-   function Get_Next_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1864
+   function Get_Next_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1864
    pragma Import (C, Get_Next_Global, "LLVMGetNextGlobal");
 
-   function Get_Previous_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1865
+   function Get_Previous_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1865
    pragma Import (C, Get_Previous_Global, "LLVMGetPreviousGlobal");
 
-   procedure Delete_Global (Global_Var : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1866
+   procedure Delete_Global (Global_Var : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1866
    pragma Import (C, Delete_Global, "LLVMDeleteGlobal");
 
-   function Get_Initializer (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1867
+   function Get_Initializer (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1867
    pragma Import (C, Get_Initializer, "LLVMGetInitializer");
 
-   procedure Set_Initializer (Global_Var : LLVM.Types.Value_T; Constant_Val : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1868
+   procedure Set_Initializer (Global_Var : LLVM.Types.Value_T; Constant_Val : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1868
    pragma Import (C, Set_Initializer, "LLVMSetInitializer");
 
    function Is_Thread_Local
@@ -1749,7 +3064,7 @@ function Add_Global_In_Address_Space
       return Boolean;
    function Is_Thread_Local_C
      (Global_Var : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1869
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1869
    pragma Import (C, Is_Thread_Local_C, "LLVMIsThreadLocal");
 
    procedure Set_Thread_Local
@@ -1757,7 +3072,7 @@ function Add_Global_In_Address_Space
       Is_Thread_Local : Boolean);
    procedure Set_Thread_Local_C
      (Global_Var      : LLVM.Types.Value_T;
-      Is_Thread_Local : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1870
+      Is_Thread_Local : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1870
    pragma Import (C, Set_Thread_Local_C, "LLVMSetThreadLocal");
 
    function Is_Global_Constant
@@ -1765,7 +3080,7 @@ function Add_Global_In_Address_Space
       return Boolean;
    function Is_Global_Constant_C
      (Global_Var : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1871
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1871
    pragma Import (C, Is_Global_Constant_C, "LLVMIsGlobalConstant");
 
    procedure Set_Global_Constant
@@ -1773,13 +3088,13 @@ function Add_Global_In_Address_Space
       Is_Constant : Boolean);
    procedure Set_Global_Constant_C
      (Global_Var  : LLVM.Types.Value_T;
-      Is_Constant : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1872
+      Is_Constant : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1872
    pragma Import (C, Set_Global_Constant_C, "LLVMSetGlobalConstant");
 
-   function Get_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T) return Thread_Local_Mode_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1873
+   function Get_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T) return Thread_Local_Mode_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1873
    pragma Import (C, Get_Thread_Local_Mode, "LLVMGetThreadLocalMode");
 
-   procedure Set_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T; Mode : Thread_Local_Mode_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1874
+   procedure Set_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T; Mode : Thread_Local_Mode_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1874
    pragma Import (C, Set_Thread_Local_Mode, "LLVMSetThreadLocalMode");
 
    function Is_Externally_Initialized
@@ -1787,7 +3102,7 @@ function Add_Global_In_Address_Space
       return Boolean;
    function Is_Externally_Initialized_C
      (Global_Var : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1875
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1875
    pragma Import (C, Is_Externally_Initialized_C, "LLVMIsExternallyInitialized");
 
    procedure Set_Externally_Initialized
@@ -1795,8 +3110,22 @@ function Add_Global_In_Address_Space
       Is_Ext_Init : Boolean);
    procedure Set_Externally_Initialized_C
      (Global_Var  : LLVM.Types.Value_T;
-      Is_Ext_Init : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1876
+      Is_Ext_Init : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1876
    pragma Import (C, Set_Externally_Initialized_C, "LLVMSetExternallyInitialized");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCoreValueConstantGlobalAlias Global Aliases
+  -- *
+  -- * This group contains function that operate on global alias values.
+  -- *
+  -- * @see llvm::GlobalAlias
+  -- *
+  -- * @{
+  --  
 
 function Add_Alias
      (M       : LLVM.Types.Module_T;
@@ -1812,67 +3141,148 @@ function Add_Alias
       return LLVM.Types.Value_T;
    pragma Import (C, Add_Alias_C, "LLVMAddAlias");
 
-   procedure Delete_Function (Fn : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1914
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueFunction Function values
+  -- *
+  -- * Functions in this group operate on LLVMValueRef instances that
+  -- * correspond to llvm::Function instances.
+  -- *
+  -- * @see llvm::Function
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Remove a function from its containing module and deletes it.
+  -- *
+  -- * @see llvm::Function::eraseFromParent()
+  --  
+
+   procedure Delete_Function (Fn : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1914
    pragma Import (C, Delete_Function, "LLVMDeleteFunction");
+
+  --*
+  -- * Check whether the given function has a personality function.
+  -- *
+  -- * @see llvm::Function::hasPersonalityFn()
+  --  
 
    function Has_Personality_Fn
      (Fn : LLVM.Types.Value_T)
       return Boolean;
    function Has_Personality_Fn_C
      (Fn : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1921
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1921
    pragma Import (C, Has_Personality_Fn_C, "LLVMHasPersonalityFn");
 
-   function Get_Personality_Fn (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1928
+  --*
+  -- * Obtain the personality function attached to the function.
+  -- *
+  -- * @see llvm::Function::getPersonalityFn()
+  --  
+
+   function Get_Personality_Fn (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1928
    pragma Import (C, Get_Personality_Fn, "LLVMGetPersonalityFn");
 
-   procedure Set_Personality_Fn (Fn : LLVM.Types.Value_T; Personality_Fn : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1935
+  --*
+  -- * Set the personality function attached to the function.
+  -- *
+  -- * @see llvm::Function::setPersonalityFn()
+  --  
+
+   procedure Set_Personality_Fn (Fn : LLVM.Types.Value_T; Personality_Fn : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1935
    pragma Import (C, Set_Personality_Fn, "LLVMSetPersonalityFn");
 
-   function Get_Intrinsic_ID (Fn : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1942
+  --*
+  -- * Obtain the ID number from a function instance.
+  -- *
+  -- * @see llvm::Function::getIntrinsicID()
+  --  
+
+   function Get_Intrinsic_ID (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1942
    pragma Import (C, Get_Intrinsic_ID, "LLVMGetIntrinsicID");
 
-   function Get_Function_Call_Conv (Fn : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1951
+  --*
+  -- * Obtain the calling function of a function.
+  -- *
+  -- * The returned value corresponds to the LLVMCallConv enumeration.
+  -- *
+  -- * @see llvm::Function::getCallingConv()
+  --  
+
+   function Get_Function_Call_Conv (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1951
    pragma Import (C, Get_Function_Call_Conv, "LLVMGetFunctionCallConv");
 
-   procedure Set_Function_Call_Conv (Fn : LLVM.Types.Value_T; CC : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1961
+  --*
+  -- * Set the calling convention of a function.
+  -- *
+  -- * @see llvm::Function::setCallingConv()
+  -- *
+  -- * @param Fn Function to operate on
+  -- * @param CC LLVMCallConv to set calling convention to
+  --  
+
+   procedure Set_Function_Call_Conv (Fn : LLVM.Types.Value_T; CC : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1961
    pragma Import (C, Set_Function_Call_Conv, "LLVMSetFunctionCallConv");
+
+  --*
+  -- * Obtain the name of the garbage collector to use during code
+  -- * generation.
+  -- *
+  -- * @see llvm::Function::getGC()
+  --  
 
    function Get_GC
      (Fn : LLVM.Types.Value_T)
       return String;
    function Get_GC_C
      (Fn : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1969
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1969
    pragma Import (C, Get_GC_C, "LLVMGetGC");
+
+  --*
+  -- * Define the garbage collector to use during code generation.
+  -- *
+  -- * @see llvm::Function::setGC()
+  --  
 
    procedure Set_GC
      (Fn   : LLVM.Types.Value_T;
       Name : String);
    procedure Set_GC_C
      (Fn   : LLVM.Types.Value_T;
-      Name : Interfaces.C.Strings.chars_ptr);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1976
+      Name : Interfaces.C.Strings.chars_ptr);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1976
    pragma Import (C, Set_GC_C, "LLVMSetGC");
+
+  --*
+  -- * Add an attribute to a function.
+  -- *
+  -- * @see llvm::Function::addAttribute()
+  --  
 
    procedure Add_Attribute_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      A : LLVM.Types.Attribute_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1983
+      A : LLVM.Types.Attribute_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1983
    pragma Import (C, Add_Attribute_At_Index, "LLVMAddAttributeAtIndex");
 
-   function Get_Attribute_Count_At_Index (F : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1985
+   function Get_Attribute_Count_At_Index (F : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1985
    pragma Import (C, Get_Attribute_Count_At_Index, "LLVMGetAttributeCountAtIndex");
 
    procedure Get_Attributes_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Attrs : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1986
+      Attrs : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1986
    pragma Import (C, Get_Attributes_At_Index, "LLVMGetAttributesAtIndex");
 
    function Get_Enum_Attribute_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1988
+      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:1988
    pragma Import (C, Get_Enum_Attribute_At_Index, "LLVMGetEnumAttributeAtIndex");
 
 function Get_String_Attribute_At_Index
@@ -1892,7 +3302,7 @@ function Get_String_Attribute_At_Index
    procedure Remove_Enum_Attribute_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:1994
+      Kind_ID : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:1994
    pragma Import (C, Remove_Enum_Attribute_At_Index, "LLVMRemoveEnumAttributeAtIndex");
 
 procedure Remove_String_Attribute_At_Index
@@ -1907,6 +3317,11 @@ procedure Remove_String_Attribute_At_Index
       K_Len : unsigned);
    pragma Import (C, Remove_String_Attribute_At_Index_C, "LLVMRemoveStringAttributeAtIndex");
 
+  --*
+  -- * Add a target-dependent attribute to a function
+  -- * @see llvm::AttrBuilder::addAttribute()
+  --  
+
 procedure Add_Target_Dependent_Function_Attr
      (Fn : LLVM.Types.Value_T;
       A  : String;
@@ -1917,32 +3332,144 @@ procedure Add_Target_Dependent_Function_Attr
       V  : Interfaces.C.Strings.chars_ptr);
    pragma Import (C, Add_Target_Dependent_Function_Attr_C, "LLVMAddTargetDependentFunctionAttr");
 
-   function Count_Params (Fn : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2022
+  --*
+  -- * @defgroup LLVMCCoreValueFunctionParameters Function Parameters
+  -- *
+  -- * Functions in this group relate to arguments/parameters on functions.
+  -- *
+  -- * Functions in this group expect LLVMValueRef instances that correspond
+  -- * to llvm::Function instances.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the number of parameters in a function.
+  -- *
+  -- * @see llvm::Function::arg_size()
+  --  
+
+   function Count_Params (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2022
    pragma Import (C, Count_Params, "LLVMCountParams");
 
-   procedure Get_Params (Fn : LLVM.Types.Value_T; Params : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2035
+  --*
+  -- * Obtain the parameters in a function.
+  -- *
+  -- * The takes a pointer to a pre-allocated array of LLVMValueRef that is
+  -- * at least LLVMCountParams() long. This array will be filled with
+  -- * LLVMValueRef instances which correspond to the parameters the
+  -- * function receives. Each LLVMValueRef corresponds to a llvm::Argument
+  -- * instance.
+  -- *
+  -- * @see llvm::Function::arg_begin()
+  --  
+
+   procedure Get_Params (Fn : LLVM.Types.Value_T; Params : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2035
    pragma Import (C, Get_Params, "LLVMGetParams");
 
-   function Get_Param (Fn : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2044
+  --*
+  -- * Obtain the parameter at the specified index.
+  -- *
+  -- * Parameters are indexed from 0.
+  -- *
+  -- * @see llvm::Function::arg_begin()
+  --  
+
+   function Get_Param (Fn : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2044
    pragma Import (C, Get_Param, "LLVMGetParam");
 
-   function Get_Param_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2055
+  --*
+  -- * Obtain the function to which this argument belongs.
+  -- *
+  -- * Unlike other functions in this group, this one takes an LLVMValueRef
+  -- * that corresponds to a llvm::Attribute.
+  -- *
+  -- * The returned LLVMValueRef is the llvm::Function to which this
+  -- * argument belongs.
+  --  
+
+   function Get_Param_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2055
    pragma Import (C, Get_Param_Parent, "LLVMGetParamParent");
 
-   function Get_First_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2062
+  --*
+  -- * Obtain the first parameter to a function.
+  -- *
+  -- * @see llvm::Function::arg_begin()
+  --  
+
+   function Get_First_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2062
    pragma Import (C, Get_First_Param, "LLVMGetFirstParam");
 
-   function Get_Last_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2069
+  --*
+  -- * Obtain the last parameter to a function.
+  -- *
+  -- * @see llvm::Function::arg_end()
+  --  
+
+   function Get_Last_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2069
    pragma Import (C, Get_Last_Param, "LLVMGetLastParam");
 
-   function Get_Next_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2078
+  --*
+  -- * Obtain the next parameter to a function.
+  -- *
+  -- * This takes an LLVMValueRef obtained from LLVMGetFirstParam() (which is
+  -- * actually a wrapped iterator) and obtains the next parameter from the
+  -- * underlying iterator.
+  --  
+
+   function Get_Next_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2078
    pragma Import (C, Get_Next_Param, "LLVMGetNextParam");
 
-   function Get_Previous_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2085
+  --*
+  -- * Obtain the previous parameter to a function.
+  -- *
+  -- * This is the opposite of LLVMGetNextParam().
+  --  
+
+   function Get_Previous_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2085
    pragma Import (C, Get_Previous_Param, "LLVMGetPreviousParam");
 
-   procedure Set_Param_Alignment (Arg : LLVM.Types.Value_T; Align : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2093
+  --*
+  -- * Set the alignment for a function parameter.
+  -- *
+  -- * @see llvm::Argument::addAttr()
+  -- * @see llvm::AttrBuilder::addAlignmentAttr()
+  --  
+
+   procedure Set_Param_Alignment (Arg : LLVM.Types.Value_T; Align : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2093
    pragma Import (C, Set_Param_Alignment, "LLVMSetParamAlignment");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueMetadata Metadata
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain a MDString value from a context.
+  -- *
+  -- * The returned instance corresponds to the llvm::MDString class.
+  -- *
+  -- * The instance is specified by string data of a specified length. The
+  -- * string content is copied, so the backing memory can be freed after
+  -- * this function returns.
+  --  
 
 function MD_String_In_Context
      (C     : LLVM.Types.Context_T;
@@ -1956,6 +3483,10 @@ function MD_String_In_Context
       return LLVM.Types.Value_T;
    pragma Import (C, MD_String_In_Context_C, "LLVMMDStringInContext");
 
+  --*
+  -- * Obtain a MDString value from the global context.
+  --  
+
    function MD_String
      (Str   : String;
       S_Len : unsigned)
@@ -1963,23 +3494,49 @@ function MD_String_In_Context
    function MD_String_C
      (Str   : Interfaces.C.Strings.chars_ptr;
       S_Len : unsigned)
-      return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2132
+      return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2132
    pragma Import (C, MD_String_C, "LLVMMDString");
+
+  --*
+  -- * Obtain a MDNode value from a context.
+  -- *
+  -- * The returned value corresponds to the llvm::MDNode class.
+  --  
 
    function MD_Node_In_Context
      (C : LLVM.Types.Context_T;
       Vals : System.Address;
-      Count : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2139
+      Count : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2139
    pragma Import (C, MD_Node_In_Context, "LLVMMDNodeInContext");
 
-   function MD_Node (Vals : System.Address; Count : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2145
+  --*
+  -- * Obtain a MDNode value from the global context.
+  --  
+
+   function MD_Node (Vals : System.Address; Count : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2145
    pragma Import (C, MD_Node, "LLVMMDNode");
 
-   function Metadata_As_Value (C : LLVM.Types.Context_T; MD : LLVM.Types.Metadata_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2150
+  --*
+  -- * Obtain a Metadata as a Value.
+  --  
+
+   function Metadata_As_Value (C : LLVM.Types.Context_T; MD : LLVM.Types.Metadata_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2150
    pragma Import (C, Metadata_As_Value, "LLVMMetadataAsValue");
 
-   function Value_As_Metadata (Val : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2155
+  --*
+  -- * Obtain a Value as a Metadata.
+  --  
+
+   function Value_As_Metadata (Val : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2155
    pragma Import (C, Value_As_Metadata, "LLVMValueAsMetadata");
+
+  --*
+  -- * Obtain the underlying string from a MDString value.
+  -- *
+  -- * @param V Instance to obtain string from.
+  -- * @param Length Memory address which will hold length of returned string.
+  -- * @return String data in MDString.
+  --  
 
    function Get_MD_String
      (V      : LLVM.Types.Value_T;
@@ -1988,63 +3545,187 @@ function MD_String_In_Context
    function Get_MD_String_C
      (V      : LLVM.Types.Value_T;
       Length : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2164
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2164
    pragma Import (C, Get_MD_String_C, "LLVMGetMDString");
 
-   function Get_MD_Node_Num_Operands (V : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2172
+  --*
+  -- * Obtain the number of operands from an MDNode value.
+  -- *
+  -- * @param V MDNode to get number of operands from.
+  -- * @return Number of operands of the MDNode.
+  --  
+
+   function Get_MD_Node_Num_Operands (V : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2172
    pragma Import (C, Get_MD_Node_Num_Operands, "LLVMGetMDNodeNumOperands");
 
-   procedure Get_MD_Node_Operands (V : LLVM.Types.Value_T; Dest : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2185
+  --*
+  -- * Obtain the given MDNode's operands.
+  -- *
+  -- * The passed LLVMValueRef pointer should point to enough memory to hold all of
+  -- * the operands of the given MDNode (see LLVMGetMDNodeNumOperands) as
+  -- * LLVMValueRefs. This memory will be populated with the LLVMValueRefs of the
+  -- * MDNode's operands.
+  -- *
+  -- * @param V MDNode to get the operands from.
+  -- * @param Dest Destination array for operands.
+  --  
+
+   procedure Get_MD_Node_Operands (V : LLVM.Types.Value_T; Dest : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2185
    pragma Import (C, Get_MD_Node_Operands, "LLVMGetMDNodeOperands");
 
-   function Basic_Block_As_Value (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2211
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueBasicBlock Basic Block
+  -- *
+  -- * A basic block represents a single entry single exit section of code.
+  -- * Basic blocks contain a list of instructions which form the body of
+  -- * the block.
+  -- *
+  -- * Basic blocks belong to functions. They have the type of label.
+  -- *
+  -- * Basic blocks are themselves values. However, the C API models them as
+  -- * LLVMBasicBlockRef.
+  -- *
+  -- * @see llvm::BasicBlock
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Convert a basic block instance to a value type.
+  --  
+
+   function Basic_Block_As_Value (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2211
    pragma Import (C, Basic_Block_As_Value, "LLVMBasicBlockAsValue");
+
+  --*
+  -- * Determine whether an LLVMValueRef is itself a basic block.
+  --  
 
    function Value_Is_Basic_Block
      (Val : LLVM.Types.Value_T)
       return Boolean;
    function Value_Is_Basic_Block_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2216
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2216
    pragma Import (C, Value_Is_Basic_Block_C, "LLVMValueIsBasicBlock");
 
-   function Value_As_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2221
+  --*
+  -- * Convert an LLVMValueRef to an LLVMBasicBlockRef instance.
+  --  
+
+   function Value_As_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2221
    pragma Import (C, Value_As_Basic_Block, "LLVMValueAsBasicBlock");
+
+  --*
+  -- * Obtain the string name of a basic block.
+  --  
 
    function Get_Basic_Block_Name
      (BB : LLVM.Types.Basic_Block_T)
       return String;
    function Get_Basic_Block_Name_C
      (BB : LLVM.Types.Basic_Block_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2226
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2226
    pragma Import (C, Get_Basic_Block_Name_C, "LLVMGetBasicBlockName");
 
-   function Get_Basic_Block_Parent (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2233
+  --*
+  -- * Obtain the function to which a basic block belongs.
+  -- *
+  -- * @see llvm::BasicBlock::getParent()
+  --  
+
+   function Get_Basic_Block_Parent (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2233
    pragma Import (C, Get_Basic_Block_Parent, "LLVMGetBasicBlockParent");
 
-   function Get_Basic_Block_Terminator (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2245
+  --*
+  -- * Obtain the terminator instruction for a basic block.
+  -- *
+  -- * If the basic block does not have a terminator (it is not well-formed
+  -- * if it doesn't), then NULL is returned.
+  -- *
+  -- * The returned LLVMValueRef corresponds to a llvm::TerminatorInst.
+  -- *
+  -- * @see llvm::BasicBlock::getTerminator()
+  --  
+
+   function Get_Basic_Block_Terminator (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2245
    pragma Import (C, Get_Basic_Block_Terminator, "LLVMGetBasicBlockTerminator");
 
-   function Count_Basic_Blocks (Fn : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2252
+  --*
+  -- * Obtain the number of basic blocks in a function.
+  -- *
+  -- * @param Fn Function value to operate on.
+  --  
+
+   function Count_Basic_Blocks (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2252
    pragma Import (C, Count_Basic_Blocks, "LLVMCountBasicBlocks");
 
-   procedure Get_Basic_Blocks (Fn : LLVM.Types.Value_T; Basic_Blocks : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2262
+  --*
+  -- * Obtain all of the basic blocks in a function.
+  -- *
+  -- * This operates on a function value. The BasicBlocks parameter is a
+  -- * pointer to a pre-allocated array of LLVMBasicBlockRef of at least
+  -- * LLVMCountBasicBlocks() in length. This array is populated with
+  -- * LLVMBasicBlockRef instances.
+  --  
+
+   procedure Get_Basic_Blocks (Fn : LLVM.Types.Value_T; Basic_Blocks : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2262
    pragma Import (C, Get_Basic_Blocks, "LLVMGetBasicBlocks");
 
-   function Get_First_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2272
+  --*
+  -- * Obtain the first basic block in a function.
+  -- *
+  -- * The returned basic block can be used as an iterator. You will likely
+  -- * eventually call into LLVMGetNextBasicBlock() with it.
+  -- *
+  -- * @see llvm::Function::begin()
+  --  
+
+   function Get_First_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2272
    pragma Import (C, Get_First_Basic_Block, "LLVMGetFirstBasicBlock");
 
-   function Get_Last_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2279
+  --*
+  -- * Obtain the last basic block in a function.
+  -- *
+  -- * @see llvm::Function::end()
+  --  
+
+   function Get_Last_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2279
    pragma Import (C, Get_Last_Basic_Block, "LLVMGetLastBasicBlock");
 
-   function Get_Next_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2284
+  --*
+  -- * Advance a basic block iterator.
+  --  
+
+   function Get_Next_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2284
    pragma Import (C, Get_Next_Basic_Block, "LLVMGetNextBasicBlock");
 
-   function Get_Previous_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2289
+  --*
+  -- * Go backwards in a basic block iterator.
+  --  
+
+   function Get_Previous_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2289
    pragma Import (C, Get_Previous_Basic_Block, "LLVMGetPreviousBasicBlock");
 
-   function Get_Entry_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2297
+  --*
+  -- * Obtain the basic block that corresponds to the entry point of a
+  -- * function.
+  -- *
+  -- * @see llvm::Function::getEntryBlock()
+  --  
+
+   function Get_Entry_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2297
    pragma Import (C, Get_Entry_Basic_Block, "LLVMGetEntryBasicBlock");
+
+  --*
+  -- * Append a basic block to the end of a function.
+  -- *
+  -- * @see llvm::BasicBlock::Create()
+  --  
 
 function Append_Basic_Block_In_Context
      (C    : LLVM.Types.Context_T;
@@ -2058,6 +3739,13 @@ function Append_Basic_Block_In_Context
       return LLVM.Types.Basic_Block_T;
    pragma Import (C, Append_Basic_Block_In_Context_C, "LLVMAppendBasicBlockInContext");
 
+  --*
+  -- * Append a basic block to the end of a function using the global
+  -- * context.
+  -- *
+  -- * @see llvm::BasicBlock::Create()
+  --  
+
    function Append_Basic_Block
      (Fn   : LLVM.Types.Value_T;
       Name : String)
@@ -2065,8 +3753,17 @@ function Append_Basic_Block_In_Context
    function Append_Basic_Block_C
      (Fn   : LLVM.Types.Value_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2314
+      return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2314
    pragma Import (C, Append_Basic_Block_C, "LLVMAppendBasicBlock");
+
+  --*
+  -- * Insert a basic block in a function before another basic block.
+  -- *
+  -- * The function to add to is determined by the function of the
+  -- * passed basic block.
+  -- *
+  -- * @see llvm::BasicBlock::Create()
+  --  
 
 function Insert_Basic_Block_In_Context
      (C    : LLVM.Types.Context_T;
@@ -2080,6 +3777,12 @@ function Insert_Basic_Block_In_Context
       return LLVM.Types.Basic_Block_T;
    pragma Import (C, Insert_Basic_Block_In_Context_C, "LLVMInsertBasicBlockInContext");
 
+  --*
+  -- * Insert a basic block in a function using the global context.
+  -- *
+  -- * @see llvm::BasicBlock::Create()
+  --  
+
    function Insert_Basic_Block
      (Insert_Before_BB : LLVM.Types.Basic_Block_T;
       Name             : String)
@@ -2087,100 +3790,288 @@ function Insert_Basic_Block_In_Context
    function Insert_Basic_Block_C
      (Insert_Before_BB : LLVM.Types.Basic_Block_T;
       Name             : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2333
+      return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2333
    pragma Import (C, Insert_Basic_Block_C, "LLVMInsertBasicBlock");
 
-   procedure Delete_Basic_Block (BB : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2344
+  --*
+  -- * Remove a basic block from a function and delete it.
+  -- *
+  -- * This deletes the basic block from its containing function and deletes
+  -- * the basic block itself.
+  -- *
+  -- * @see llvm::BasicBlock::eraseFromParent()
+  --  
+
+   procedure Delete_Basic_Block (BB : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2344
    pragma Import (C, Delete_Basic_Block, "LLVMDeleteBasicBlock");
 
-   procedure Remove_Basic_Block_From_Parent (BB : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2354
+  --*
+  -- * Remove a basic block from a function.
+  -- *
+  -- * This deletes the basic block from its containing function but keep
+  -- * the basic block alive.
+  -- *
+  -- * @see llvm::BasicBlock::removeFromParent()
+  --  
+
+   procedure Remove_Basic_Block_From_Parent (BB : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2354
    pragma Import (C, Remove_Basic_Block_From_Parent, "LLVMRemoveBasicBlockFromParent");
 
-   procedure Move_Basic_Block_Before (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2361
+  --*
+  -- * Move a basic block to before another one.
+  -- *
+  -- * @see llvm::BasicBlock::moveBefore()
+  --  
+
+   procedure Move_Basic_Block_Before (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2361
    pragma Import (C, Move_Basic_Block_Before, "LLVMMoveBasicBlockBefore");
 
-   procedure Move_Basic_Block_After (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2368
+  --*
+  -- * Move a basic block to after another one.
+  -- *
+  -- * @see llvm::BasicBlock::moveAfter()
+  --  
+
+   procedure Move_Basic_Block_After (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2368
    pragma Import (C, Move_Basic_Block_After, "LLVMMoveBasicBlockAfter");
 
-   function Get_First_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2376
+  --*
+  -- * Obtain the first instruction in a basic block.
+  -- *
+  -- * The returned LLVMValueRef corresponds to a llvm::Instruction
+  -- * instance.
+  --  
+
+   function Get_First_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2376
    pragma Import (C, Get_First_Instruction, "LLVMGetFirstInstruction");
 
-   function Get_Last_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2383
+  --*
+  -- * Obtain the last instruction in a basic block.
+  -- *
+  -- * The returned LLVMValueRef corresponds to an LLVM:Instruction.
+  --  
+
+   function Get_Last_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2383
    pragma Import (C, Get_Last_Instruction, "LLVMGetLastInstruction");
 
-   function Has_Metadata (Val : LLVM.Types.Value_T) return int;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2409
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueInstruction Instructions
+  -- *
+  -- * Functions in this group relate to the inspection and manipulation of
+  -- * individual instructions.
+  -- *
+  -- * In the C++ API, an instruction is modeled by llvm::Instruction. This
+  -- * class has a large number of descendents. llvm::Instruction is a
+  -- * llvm::Value and in the C API, instructions are modeled by
+  -- * LLVMValueRef.
+  -- *
+  -- * This group also contains sub-groups which operate on specific
+  -- * llvm::Instruction types, e.g. llvm::CallInst.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Determine whether an instruction has any metadata attached.
+  --  
+
+   function Has_Metadata (Val : LLVM.Types.Value_T) return int;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2409
    pragma Import (C, Has_Metadata, "LLVMHasMetadata");
 
-   function Get_Metadata (Val : LLVM.Types.Value_T; Kind_ID : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2414
+  --*
+  -- * Return metadata associated with an instruction value.
+  --  
+
+   function Get_Metadata (Val : LLVM.Types.Value_T; Kind_ID : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2414
    pragma Import (C, Get_Metadata, "LLVMGetMetadata");
+
+  --*
+  -- * Set metadata associated with an instruction value.
+  --  
 
    procedure Set_Metadata
      (Val : LLVM.Types.Value_T;
       Kind_ID : unsigned;
-      Node : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2419
+      Node : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2419
    pragma Import (C, Set_Metadata, "LLVMSetMetadata");
 
-   function Get_Instruction_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2426
+  --*
+  -- * Obtain the basic block to which an instruction belongs.
+  -- *
+  -- * @see llvm::Instruction::getParent()
+  --  
+
+   function Get_Instruction_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2426
    pragma Import (C, Get_Instruction_Parent, "LLVMGetInstructionParent");
 
-   function Get_Next_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2436
+  --*
+  -- * Obtain the instruction that occurs after the one specified.
+  -- *
+  -- * The next instruction will be from the same basic block.
+  -- *
+  -- * If this is the last instruction in a basic block, NULL will be
+  -- * returned.
+  --  
+
+   function Get_Next_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2436
    pragma Import (C, Get_Next_Instruction, "LLVMGetNextInstruction");
 
-   function Get_Previous_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2444
+  --*
+  -- * Obtain the instruction that occurred before this one.
+  -- *
+  -- * If the instruction is the first instruction in a basic block, NULL
+  -- * will be returned.
+  --  
+
+   function Get_Previous_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2444
    pragma Import (C, Get_Previous_Instruction, "LLVMGetPreviousInstruction");
 
-   procedure Instruction_Remove_From_Parent (Inst : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2454
+  --*
+  -- * Remove and delete an instruction.
+  -- *
+  -- * The instruction specified is removed from its containing building
+  -- * block but is kept alive.
+  -- *
+  -- * @see llvm::Instruction::removeFromParent()
+  --  
+
+   procedure Instruction_Remove_From_Parent (Inst : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2454
    pragma Import (C, Instruction_Remove_From_Parent, "LLVMInstructionRemoveFromParent");
 
-   procedure Instruction_Erase_From_Parent (Inst : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2464
+  --*
+  -- * Remove and delete an instruction.
+  -- *
+  -- * The instruction specified is removed from its containing building
+  -- * block and then deleted.
+  -- *
+  -- * @see llvm::Instruction::eraseFromParent()
+  --  
+
+   procedure Instruction_Erase_From_Parent (Inst : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2464
    pragma Import (C, Instruction_Erase_From_Parent, "LLVMInstructionEraseFromParent");
 
-   function Get_Instruction_Opcode (Inst : LLVM.Types.Value_T) return Opcode_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2471
+  --*
+  -- * Obtain the code opcode for an individual instruction.
+  -- *
+  -- * @see llvm::Instruction::getOpCode()
+  --  
+
+   function Get_Instruction_Opcode (Inst : LLVM.Types.Value_T) return Opcode_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2471
    pragma Import (C, Get_Instruction_Opcode, "LLVMGetInstructionOpcode");
 
-   function Get_I_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Int_Predicate_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2481
+  --*
+  -- * Obtain the predicate of an instruction.
+  -- *
+  -- * This is only valid for instructions that correspond to llvm::ICmpInst
+  -- * or llvm::ConstantExpr whose opcode is llvm::Instruction::ICmp.
+  -- *
+  -- * @see llvm::ICmpInst::getPredicate()
+  --  
+
+   function Get_I_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Int_Predicate_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2481
    pragma Import (C, Get_I_Cmp_Predicate, "LLVMGetICmpPredicate");
 
-   function Get_F_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Real_Predicate_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2491
+  --*
+  -- * Obtain the float predicate of an instruction.
+  -- *
+  -- * This is only valid for instructions that correspond to llvm::FCmpInst
+  -- * or llvm::ConstantExpr whose opcode is llvm::Instruction::FCmp.
+  -- *
+  -- * @see llvm::FCmpInst::getPredicate()
+  --  
+
+   function Get_F_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Real_Predicate_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2491
    pragma Import (C, Get_F_Cmp_Predicate, "LLVMGetFCmpPredicate");
 
-   function Instruction_Clone (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2501
+  --*
+  -- * Create a copy of 'this' instruction that is identical in all ways
+  -- * except the following:
+  -- *   * The instruction has no parent
+  -- *   * The instruction has no name
+  -- *
+  -- * @see llvm::Instruction::clone()
+  --  
+
+   function Instruction_Clone (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2501
    pragma Import (C, Instruction_Clone, "LLVMInstructionClone");
 
-   function Get_Num_Arg_Operands (Instr : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2522
+  --*
+  -- * @defgroup LLVMCCoreValueInstructionCall Call Sites and Invocations
+  -- *
+  -- * Functions in this group apply to instructions that refer to call
+  -- * sites and invocations. These correspond to C++ types in the
+  -- * llvm::CallInst class tree.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the argument count for a call instruction.
+  -- *
+  -- * This expects an LLVMValueRef that corresponds to a llvm::CallInst or
+  -- * llvm::InvokeInst.
+  -- *
+  -- * @see llvm::CallInst::getNumArgOperands()
+  -- * @see llvm::InvokeInst::getNumArgOperands()
+  --  
+
+   function Get_Num_Arg_Operands (Instr : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2522
    pragma Import (C, Get_Num_Arg_Operands, "LLVMGetNumArgOperands");
 
-   procedure Set_Instruction_Call_Conv (Instr : LLVM.Types.Value_T; CC : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2533
+  --*
+  -- * Set the calling convention for a call instruction.
+  -- *
+  -- * This expects an LLVMValueRef that corresponds to a llvm::CallInst or
+  -- * llvm::InvokeInst.
+  -- *
+  -- * @see llvm::CallInst::setCallingConv()
+  -- * @see llvm::InvokeInst::setCallingConv()
+  --  
+
+   procedure Set_Instruction_Call_Conv (Instr : LLVM.Types.Value_T; CC : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2533
    pragma Import (C, Set_Instruction_Call_Conv, "LLVMSetInstructionCallConv");
 
-   function Get_Instruction_Call_Conv (Instr : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2543
+  --*
+  -- * Obtain the calling convention for a call instruction.
+  -- *
+  -- * This is the opposite of LLVMSetInstructionCallConv(). Reads its
+  -- * usage.
+  -- *
+  -- * @see LLVMSetInstructionCallConv()
+  --  
+
+   function Get_Instruction_Call_Conv (Instr : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2543
    pragma Import (C, Get_Instruction_Call_Conv, "LLVMGetInstructionCallConv");
 
    procedure Set_Instr_Param_Alignment
      (Instr : LLVM.Types.Value_T;
       index : unsigned;
-      Align : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2545
+      Align : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2545
    pragma Import (C, Set_Instr_Param_Alignment, "LLVMSetInstrParamAlignment");
 
    procedure Add_Call_Site_Attribute
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      A : LLVM.Types.Attribute_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2548
+      A : LLVM.Types.Attribute_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2548
    pragma Import (C, Add_Call_Site_Attribute, "LLVMAddCallSiteAttribute");
 
-   function Get_Call_Site_Attribute_Count (C : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2550
+   function Get_Call_Site_Attribute_Count (C : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2550
    pragma Import (C, Get_Call_Site_Attribute_Count, "LLVMGetCallSiteAttributeCount");
 
    procedure Get_Call_Site_Attributes
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Attrs : System.Address);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2551
+      Attrs : System.Address);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2551
    pragma Import (C, Get_Call_Site_Attributes, "LLVMGetCallSiteAttributes");
 
    function Get_Call_Site_Enum_Attribute
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2553
+      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2553
    pragma Import (C, Get_Call_Site_Enum_Attribute, "LLVMGetCallSiteEnumAttribute");
 
 function Get_Call_Site_String_Attribute
@@ -2200,7 +4091,7 @@ function Get_Call_Site_String_Attribute
    procedure Remove_Call_Site_Enum_Attribute
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2559
+      Kind_ID : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2559
    pragma Import (C, Remove_Call_Site_Enum_Attribute, "LLVMRemoveCallSiteEnumAttribute");
 
 procedure Remove_Call_Site_String_Attribute
@@ -2215,132 +4106,364 @@ procedure Remove_Call_Site_String_Attribute
       K_Len : unsigned);
    pragma Import (C, Remove_Call_Site_String_Attribute_C, "LLVMRemoveCallSiteStringAttribute");
 
-   function Get_Called_Value (Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2573
+  --*
+  -- * Obtain the pointer to the function invoked by this instruction.
+  -- *
+  -- * This expects an LLVMValueRef that corresponds to a llvm::CallInst or
+  -- * llvm::InvokeInst.
+  -- *
+  -- * @see llvm::CallInst::getCalledValue()
+  -- * @see llvm::InvokeInst::getCalledValue()
+  --  
+
+   function Get_Called_Value (Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2573
    pragma Import (C, Get_Called_Value, "LLVMGetCalledValue");
+
+  --*
+  -- * Obtain whether a call instruction is a tail call.
+  -- *
+  -- * This only works on llvm::CallInst instructions.
+  -- *
+  -- * @see llvm::CallInst::isTailCall()
+  --  
 
    function Is_Tail_Call
      (Call_Inst : LLVM.Types.Value_T)
       return Boolean;
    function Is_Tail_Call_C
      (Call_Inst : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2582
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2582
    pragma Import (C, Is_Tail_Call_C, "LLVMIsTailCall");
+
+  --*
+  -- * Set whether a call instruction is a tail call.
+  -- *
+  -- * This only works on llvm::CallInst instructions.
+  -- *
+  -- * @see llvm::CallInst::setTailCall()
+  --  
 
    procedure Set_Tail_Call
      (Call_Inst    : LLVM.Types.Value_T;
       Is_Tail_Call : Boolean);
    procedure Set_Tail_Call_C
      (Call_Inst    : LLVM.Types.Value_T;
-      Is_Tail_Call : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2591
+      Is_Tail_Call : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2591
    pragma Import (C, Set_Tail_Call_C, "LLVMSetTailCall");
 
-   function Get_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2600
+  --*
+  -- * Return the normal destination basic block.
+  -- *
+  -- * This only works on llvm::InvokeInst instructions.
+  -- *
+  -- * @see llvm::InvokeInst::getNormalDest()
+  --  
+
+   function Get_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2600
    pragma Import (C, Get_Normal_Dest, "LLVMGetNormalDest");
 
-   function Get_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2609
+  --*
+  -- * Return the unwind destination basic block.
+  -- *
+  -- * This only works on llvm::InvokeInst instructions.
+  -- *
+  -- * @see llvm::InvokeInst::getUnwindDest()
+  --  
+
+   function Get_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2609
    pragma Import (C, Get_Unwind_Dest, "LLVMGetUnwindDest");
 
-   procedure Set_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2618
+  --*
+  -- * Set the normal destination basic block.
+  -- *
+  -- * This only works on llvm::InvokeInst instructions.
+  -- *
+  -- * @see llvm::InvokeInst::setNormalDest()
+  --  
+
+   procedure Set_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2618
    pragma Import (C, Set_Normal_Dest, "LLVMSetNormalDest");
 
-   procedure Set_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2627
+  --*
+  -- * Set the unwind destination basic block.
+  -- *
+  -- * This only works on llvm::InvokeInst instructions.
+  -- *
+  -- * @see llvm::InvokeInst::setUnwindDest()
+  --  
+
+   procedure Set_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2627
    pragma Import (C, Set_Unwind_Dest, "LLVMSetUnwindDest");
 
-   function Get_Num_Successors (Term : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2647
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueInstructionTerminator Terminators
+  -- *
+  -- * Functions in this group only apply to instructions that map to
+  -- * llvm::TerminatorInst instances.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Return the number of successors that this terminator has.
+  -- *
+  -- * @see llvm::TerminatorInst::getNumSuccessors
+  --  
+
+   function Get_Num_Successors (Term : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2647
    pragma Import (C, Get_Num_Successors, "LLVMGetNumSuccessors");
 
-   function Get_Successor (Term : LLVM.Types.Value_T; i : unsigned) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2654
+  --*
+  -- * Return the specified successor.
+  -- *
+  -- * @see llvm::TerminatorInst::getSuccessor
+  --  
+
+   function Get_Successor (Term : LLVM.Types.Value_T; i : unsigned) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2654
    pragma Import (C, Get_Successor, "LLVMGetSuccessor");
+
+  --*
+  -- * Update the specified successor to point at the provided block.
+  -- *
+  -- * @see llvm::TerminatorInst::setSuccessor
+  --  
 
    procedure Set_Successor
      (Term : LLVM.Types.Value_T;
       i : unsigned;
-      block : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2661
+      block : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2661
    pragma Import (C, Set_Successor, "LLVMSetSuccessor");
+
+  --*
+  -- * Return if a branch is conditional.
+  -- *
+  -- * This only works on llvm::BranchInst instructions.
+  -- *
+  -- * @see llvm::BranchInst::isConditional
+  --  
 
    function Is_Conditional
      (Branch : LLVM.Types.Value_T)
       return Boolean;
    function Is_Conditional_C
      (Branch : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2670
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2670
    pragma Import (C, Is_Conditional_C, "LLVMIsConditional");
 
-   function Get_Condition (Branch : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2679
+  --*
+  -- * Return the condition of a branch instruction.
+  -- *
+  -- * This only works on llvm::BranchInst instructions.
+  -- *
+  -- * @see llvm::BranchInst::getCondition
+  --  
+
+   function Get_Condition (Branch : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2679
    pragma Import (C, Get_Condition, "LLVMGetCondition");
 
-   procedure Set_Condition (Branch : LLVM.Types.Value_T; Cond : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2688
+  --*
+  -- * Set the condition of a branch instruction.
+  -- *
+  -- * This only works on llvm::BranchInst instructions.
+  -- *
+  -- * @see llvm::BranchInst::setCondition
+  --  
+
+   procedure Set_Condition (Branch : LLVM.Types.Value_T; Cond : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2688
    pragma Import (C, Set_Condition, "LLVMSetCondition");
 
-   function Get_Switch_Default_Dest (Switch_Instr : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2697
+  --*
+  -- * Obtain the default destination basic block of a switch instruction.
+  -- *
+  -- * This only works on llvm::SwitchInst instructions.
+  -- *
+  -- * @see llvm::SwitchInst::getDefaultDest()
+  --  
+
+   function Get_Switch_Default_Dest (Switch_Instr : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2697
    pragma Import (C, Get_Switch_Default_Dest, "LLVMGetSwitchDefaultDest");
 
-   function Get_Allocated_Type (Alloca : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2715
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueInstructionAlloca Allocas
+  -- *
+  -- * Functions in this group only apply to instructions that map to
+  -- * llvm::AllocaInst instances.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the type that is being allocated by the alloca instruction.
+  --  
+
+   function Get_Allocated_Type (Alloca : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2715
    pragma Import (C, Get_Allocated_Type, "LLVMGetAllocatedType");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueInstructionGetElementPointer GEPs
+  -- *
+  -- * Functions in this group only apply to instructions that map to
+  -- * llvm::GetElementPtrInst instances.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Check whether the given GEP instruction is inbounds.
+  --  
 
    function Is_In_Bounds
      (GEP : LLVM.Types.Value_T)
       return Boolean;
    function Is_In_Bounds_C
      (GEP : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2733
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2733
    pragma Import (C, Is_In_Bounds_C, "LLVMIsInBounds");
+
+  --*
+  -- * Set the given GEP instruction to be inbounds or not.
+  --  
 
    procedure Set_Is_In_Bounds
      (GEP       : LLVM.Types.Value_T;
       In_Bounds : Boolean);
    procedure Set_Is_In_Bounds_C
      (GEP       : LLVM.Types.Value_T;
-      In_Bounds : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2738
+      In_Bounds : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2738
    pragma Import (C, Set_Is_In_Bounds_C, "LLVMSetIsInBounds");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueInstructionPHINode PHI Nodes
+  -- *
+  -- * Functions in this group only apply to instructions that map to
+  -- * llvm::PHINode instances.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Add an incoming value to the end of a PHI list.
+  --  
 
    procedure Add_Incoming
      (Phi_Node : LLVM.Types.Value_T;
       Incoming_Values : System.Address;
       Incoming_Blocks : System.Address;
-      Count : unsigned);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2756
+      Count : unsigned);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2756
    pragma Import (C, Add_Incoming, "LLVMAddIncoming");
 
-   function Count_Incoming (Phi_Node : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2762
+  --*
+  -- * Obtain the number of incoming basic blocks to a PHI node.
+  --  
+
+   function Count_Incoming (Phi_Node : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2762
    pragma Import (C, Count_Incoming, "LLVMCountIncoming");
 
-   function Get_Incoming_Value (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2767
+  --*
+  -- * Obtain an incoming value to a PHI node as an LLVMValueRef.
+  --  
+
+   function Get_Incoming_Value (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2767
    pragma Import (C, Get_Incoming_Value, "LLVMGetIncomingValue");
 
-   function Get_Incoming_Block (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2772
+  --*
+  -- * Obtain an incoming value to a PHI node as an LLVMBasicBlockRef.
+  --  
+
+   function Get_Incoming_Block (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2772
    pragma Import (C, Get_Incoming_Block, "LLVMGetIncomingBlock");
 
-   function Get_Num_Indices (Inst : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2792
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreValueInstructionExtractValue ExtractValue
+  -- * @defgroup LLVMCCoreValueInstructionInsertValue InsertValue
+  -- *
+  -- * Functions in this group only apply to instructions that map to
+  -- * llvm::ExtractValue and llvm::InsertValue instances.
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Obtain the number of indices.
+  -- * NB: This also works on GEP.
+  --  
+
+   function Get_Num_Indices (Inst : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2792
    pragma Import (C, Get_Num_Indices, "LLVMGetNumIndices");
 
-   function Get_Indices (Inst : LLVM.Types.Value_T) return access unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2797
+  --*
+  -- * Obtain the indices as an array.
+  --  
+
+   function Get_Indices (Inst : LLVM.Types.Value_T) return access unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2797
    pragma Import (C, Get_Indices, "LLVMGetIndices");
 
-   function Create_Builder_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Builder_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2820
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreInstructionBuilder Instruction Builders
+  -- *
+  -- * An instruction builder represents a point within a basic block and is
+  -- * the exclusive means of building instructions using the C interface.
+  -- *
+  -- * @{
+  --  
+
+   function Create_Builder_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Builder_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2820
    pragma Import (C, Create_Builder_In_Context, "LLVMCreateBuilderInContext");
 
-   function Create_Builder return LLVM.Types.Builder_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2821
+   function Create_Builder return LLVM.Types.Builder_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2821
    pragma Import (C, Create_Builder, "LLVMCreateBuilder");
 
    procedure Position_Builder
      (Builder : LLVM.Types.Builder_T;
       Block : LLVM.Types.Basic_Block_T;
-      Instr : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2822
+      Instr : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2822
    pragma Import (C, Position_Builder, "LLVMPositionBuilder");
 
-   procedure Position_Builder_Before (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2824
+   procedure Position_Builder_Before (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2824
    pragma Import (C, Position_Builder_Before, "LLVMPositionBuilderBefore");
 
-   procedure Position_Builder_At_End (Builder : LLVM.Types.Builder_T; Block : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2825
+   procedure Position_Builder_At_End (Builder : LLVM.Types.Builder_T; Block : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2825
    pragma Import (C, Position_Builder_At_End, "LLVMPositionBuilderAtEnd");
 
-   function Get_Insert_Block (Builder : LLVM.Types.Builder_T) return LLVM.Types.Basic_Block_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2826
+   function Get_Insert_Block (Builder : LLVM.Types.Builder_T) return LLVM.Types.Basic_Block_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2826
    pragma Import (C, Get_Insert_Block, "LLVMGetInsertBlock");
 
-   procedure Clear_Insertion_Position (Builder : LLVM.Types.Builder_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2827
+   procedure Clear_Insertion_Position (Builder : LLVM.Types.Builder_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2827
    pragma Import (C, Clear_Insertion_Position, "LLVMClearInsertionPosition");
 
-   procedure Insert_Into_Builder (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2828
+   procedure Insert_Into_Builder (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2828
    pragma Import (C, Insert_Into_Builder, "LLVMInsertIntoBuilder");
 
 procedure Insert_Into_With_Name
@@ -2353,51 +4476,53 @@ procedure Insert_Into_With_Name
       Name    : Interfaces.C.Strings.chars_ptr);
    pragma Import (C, Insert_Into_Builder_With_Name_C, "LLVMInsertIntoBuilderWithName");
 
-   procedure Dispose_Builder (Builder : LLVM.Types.Builder_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2831
+   procedure Dispose_Builder (Builder : LLVM.Types.Builder_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2831
    pragma Import (C, Dispose_Builder, "LLVMDisposeBuilder");
 
-   procedure Set_Current_Debug_Location (Builder : LLVM.Types.Builder_T; L : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2834
+  -- Metadata  
+   procedure Set_Current_Debug_Location (Builder : LLVM.Types.Builder_T; L : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2834
    pragma Import (C, Set_Current_Debug_Location, "LLVMSetCurrentDebugLocation");
 
-   function Get_Current_Debug_Location (Builder : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2835
+   function Get_Current_Debug_Location (Builder : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2835
    pragma Import (C, Get_Current_Debug_Location, "LLVMGetCurrentDebugLocation");
 
-   procedure Set_Inst_Debug_Location (Builder : LLVM.Types.Builder_T; Inst : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2836
+   procedure Set_Inst_Debug_Location (Builder : LLVM.Types.Builder_T; Inst : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2836
    pragma Import (C, Set_Inst_Debug_Location, "LLVMSetInstDebugLocation");
 
-   function Build_Ret_Void (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2839
+  -- Terminators  
+   function Build_Ret_Void (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2839
    pragma Import (C, Build_Ret_Void, "LLVMBuildRetVoid");
 
-   function Build_Ret (arg1 : LLVM.Types.Builder_T; V : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2840
+   function Build_Ret (arg1 : LLVM.Types.Builder_T; V : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2840
    pragma Import (C, Build_Ret, "LLVMBuildRet");
 
    function Build_Aggregate_Ret
      (arg1 : LLVM.Types.Builder_T;
       Ret_Vals : System.Address;
-      N : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2841
+      N : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2841
    pragma Import (C, Build_Aggregate_Ret, "LLVMBuildAggregateRet");
 
-   function Build_Br (arg1 : LLVM.Types.Builder_T; Dest : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2843
+   function Build_Br (arg1 : LLVM.Types.Builder_T; Dest : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2843
    pragma Import (C, Build_Br, "LLVMBuildBr");
 
    function Build_Cond_Br
      (arg1 : LLVM.Types.Builder_T;
       C_If : LLVM.Types.Value_T;
       C_Then : LLVM.Types.Basic_Block_T;
-      C_Else : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2844
+      C_Else : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2844
    pragma Import (C, Build_Cond_Br, "LLVMBuildCondBr");
 
    function Build_Switch
      (arg1 : LLVM.Types.Builder_T;
       V : LLVM.Types.Value_T;
       C_Else : LLVM.Types.Basic_Block_T;
-      Num_Cases : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2846
+      Num_Cases : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2846
    pragma Import (C, Build_Switch, "LLVMBuildSwitch");
 
    function Build_Indirect_Br
      (B : LLVM.Types.Builder_T;
       Addr : LLVM.Types.Value_T;
-      Num_Dests : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2848
+      Num_Dests : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2848
    pragma Import (C, Build_Indirect_Br, "LLVMBuildIndirectBr");
 
 function Invoke
@@ -2436,46 +4561,54 @@ function Landing_Pad
       return LLVM.Types.Value_T;
    pragma Import (C, Build_Landing_Pad_C, "LLVMBuildLandingPad");
 
-   function Build_Resume (B : LLVM.Types.Builder_T; Exn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2857
+   function Build_Resume (B : LLVM.Types.Builder_T; Exn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2857
    pragma Import (C, Build_Resume, "LLVMBuildResume");
 
-   function Build_Unreachable (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2858
+   function Build_Unreachable (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2858
    pragma Import (C, Build_Unreachable, "LLVMBuildUnreachable");
 
+  -- Add a case to the switch instruction  
    procedure Add_Case
      (Switch : LLVM.Types.Value_T;
       On_Val : LLVM.Types.Value_T;
-      Dest : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2861
+      Dest : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2861
    pragma Import (C, Add_Case, "LLVMAddCase");
 
-   procedure Add_Destination (Indirect_Br : LLVM.Types.Value_T; Dest : LLVM.Types.Basic_Block_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2865
+  -- Add a destination to the indirectbr instruction  
+   procedure Add_Destination (Indirect_Br : LLVM.Types.Value_T; Dest : LLVM.Types.Basic_Block_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2865
    pragma Import (C, Add_Destination, "LLVMAddDestination");
 
-   function Get_Num_Clauses (Landing_Pad : LLVM.Types.Value_T) return unsigned;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2868
+  -- Get the number of clauses on the landingpad instruction  
+   function Get_Num_Clauses (Landing_Pad : LLVM.Types.Value_T) return unsigned;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2868
    pragma Import (C, Get_Num_Clauses, "LLVMGetNumClauses");
 
-   function Get_Clause (Landing_Pad : LLVM.Types.Value_T; Idx : unsigned) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2871
+  -- Get the value of the clause at idnex Idx on the landingpad instruction  
+   function Get_Clause (Landing_Pad : LLVM.Types.Value_T; Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2871
    pragma Import (C, Get_Clause, "LLVMGetClause");
 
-   procedure Add_Clause (Landing_Pad : LLVM.Types.Value_T; Clause_Val : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2874
+  -- Add a catch or filter clause to the landingpad instruction  
+   procedure Add_Clause (Landing_Pad : LLVM.Types.Value_T; Clause_Val : LLVM.Types.Value_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2874
    pragma Import (C, Add_Clause, "LLVMAddClause");
 
+  -- Get the 'cleanup' flag in the landingpad instruction  
    function Is_Cleanup
      (Landing_Pad : LLVM.Types.Value_T)
       return Boolean;
    function Is_Cleanup_C
      (Landing_Pad : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2877
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2877
    pragma Import (C, Is_Cleanup_C, "LLVMIsCleanup");
 
+  -- Set the 'cleanup' flag in the landingpad instruction  
    procedure Set_Cleanup
      (Landing_Pad : LLVM.Types.Value_T;
       Val         : Boolean);
    procedure Set_Cleanup_C
      (Landing_Pad : LLVM.Types.Value_T;
-      Val         : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2880
+      Val         : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2880
    pragma Import (C, Set_Cleanup_C, "LLVMSetCleanup");
 
+  -- Arithmetic  
 function Add
      (arg1 : LLVM.Types.Builder_T;
       LHS  : LLVM.Types.Value_T;
@@ -2916,6 +5049,7 @@ function Build_Not
       return LLVM.Types.Value_T;
    pragma Import (C, Build_Not_C, "LLVMBuildNot");
 
+  -- Memory  
 function Malloc
      (arg1 : LLVM.Types.Builder_T;
       Ty   : LLVM.Types.Type_T;
@@ -2968,7 +5102,7 @@ function Array_Alloca
       return LLVM.Types.Value_T;
    pragma Import (C, Build_Array_Alloca_C, "LLVMBuildArrayAlloca");
 
-   function Build_Free (arg1 : LLVM.Types.Builder_T; Pointer_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2953
+   function Build_Free (arg1 : LLVM.Types.Builder_T; Pointer_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2953
    pragma Import (C, Build_Free, "LLVMBuildFree");
 
 function Load
@@ -2986,7 +5120,7 @@ function Load
    function Build_Store
      (arg1 : LLVM.Types.Builder_T;
       Val : LLVM.Types.Value_T;
-      Ptr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2956
+      Ptr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2956
    pragma Import (C, Build_Store, "LLVMBuildStore");
 
 function GEP
@@ -3064,7 +5198,7 @@ function Global_String_Ptr
       return Boolean;
    function Get_Volatile_C
      (Memory_Access_Inst : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2969
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2969
    pragma Import (C, Get_Volatile_C, "LLVMGetVolatile");
 
    procedure Set_Volatile
@@ -3072,15 +5206,16 @@ function Global_String_Ptr
       Is_Volatile        : Boolean);
    procedure Set_Volatile_C
      (Memory_Access_Inst : LLVM.Types.Value_T;
-      Is_Volatile        : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2970
+      Is_Volatile        : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2970
    pragma Import (C, Set_Volatile_C, "LLVMSetVolatile");
 
-   function Get_Ordering (Memory_Access_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2971
+   function Get_Ordering (Memory_Access_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:2971
    pragma Import (C, Get_Ordering, "LLVMGetOrdering");
 
-   procedure Set_Ordering (Memory_Access_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:2972
+   procedure Set_Ordering (Memory_Access_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:2972
    pragma Import (C, Set_Ordering, "LLVMSetOrdering");
 
+  -- Casts  
 function Trunc
      (arg1    : LLVM.Types.Builder_T;
       Val     : LLVM.Types.Value_T;
@@ -3335,6 +5470,7 @@ function Pointer_Cast
       return LLVM.Types.Value_T;
    pragma Import (C, Build_Pointer_Cast_C, "LLVMBuildPointerCast");
 
+  --Signed cast! 
 function Int_Cast
      (arg1    : LLVM.Types.Builder_T;
       Val     : LLVM.Types.Value_T;
@@ -3363,6 +5499,7 @@ function FP_Cast
       return LLVM.Types.Value_T;
    pragma Import (C, Build_FP_Cast_C, "LLVMBuildFPCast");
 
+  -- Comparisons  
 function I_Cmp
      (arg1 : LLVM.Types.Builder_T;
       Op   : Int_Predicate_T;
@@ -3395,6 +5532,7 @@ function F_Cmp
       return LLVM.Types.Value_T;
    pragma Import (C, Build_F_Cmp_C, "LLVMBuildFCmp");
 
+  -- Miscellaneous instructions  
 function Phi
      (arg1 : LLVM.Types.Builder_T;
       Ty   : LLVM.Types.Type_T;
@@ -3624,7 +5762,7 @@ function Atomic_Cmp_Xchg
       return Boolean;
    function Is_Atomic_Single_Thread_C
      (Atomic_Inst : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3066
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3066
    pragma Import (C, Is_Atomic_Single_Thread_C, "LLVMIsAtomicSingleThread");
 
    procedure Set_Atomic_Single_Thread
@@ -3632,26 +5770,55 @@ function Atomic_Cmp_Xchg
       Single_Thread : Boolean);
    procedure Set_Atomic_Single_Thread_C
      (Atomic_Inst   : LLVM.Types.Value_T;
-      Single_Thread : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3067
+      Single_Thread : LLVM.Types.Bool_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:3067
    pragma Import (C, Set_Atomic_Single_Thread_C, "LLVMSetAtomicSingleThread");
 
-   function Get_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3069
+   function Get_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3069
    pragma Import (C, Get_Cmp_Xchg_Success_Ordering, "LLVMGetCmpXchgSuccessOrdering");
 
-   procedure Set_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3070
+   procedure Set_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:3070
    pragma Import (C, Set_Cmp_Xchg_Success_Ordering, "LLVMSetCmpXchgSuccessOrdering");
 
-   function Get_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3072
+   function Get_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3072
    pragma Import (C, Get_Cmp_Xchg_Failure_Ordering, "LLVMGetCmpXchgFailureOrdering");
 
-   procedure Set_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3073
+   procedure Set_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:3073
    pragma Import (C, Set_Cmp_Xchg_Failure_Ordering, "LLVMSetCmpXchgFailureOrdering");
 
-   function Create_Module_Provider_For_Existing_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_Provider_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3091
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreModuleProvider Module Providers
+  -- *
+  -- * @{
+  --  
+
+  --*
+  -- * Changes the type of M so it can be passed to FunctionPassManagers and the
+  -- * JIT.  They take ModuleProviders for historical reasons.
+  --  
+
+   function Create_Module_Provider_For_Existing_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_Provider_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3091
    pragma Import (C, Create_Module_Provider_For_Existing_Module, "LLVMCreateModuleProviderForExistingModule");
 
-   procedure Dispose_Module_Provider (M : LLVM.Types.Module_Provider_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3096
+  --*
+  -- * Destroys the module M.
+  --  
+
+   procedure Dispose_Module_Provider (M : LLVM.Types.Module_Provider_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:3096
    pragma Import (C, Dispose_Module_Provider, "LLVMDisposeModuleProvider");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreMemoryBuffers Memory Buffers
+  -- *
+  -- * @{
+  --  
 
 function Create_Memory_Buffer_With_Contents_Of_File
      (Path        : String;
@@ -3672,7 +5839,7 @@ function Create_Memory_Buffer_With_Contents_Of_File
    function Create_Memory_Buffer_With_STDIN_C
      (Out_Mem_Buf : System.Address;
       Out_Message : System.Address)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3111
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3111
    pragma Import (C, Create_Memory_Buffer_With_STDIN_C, "LLVMCreateMemoryBufferWithSTDIN");
 
 function Create_Memory_Buffer_With_Memory_Range
@@ -3706,26 +5873,64 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
       return String;
    function Get_Buffer_Start_C
      (Mem_Buf : LLVM.Types.Memory_Buffer_T)
-      return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3120
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3120
    pragma Import (C, Get_Buffer_Start_C, "LLVMGetBufferStart");
 
-   function Get_Buffer_Size (Mem_Buf : LLVM.Types.Memory_Buffer_T) return stddef_h.size_t;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3121
+   function Get_Buffer_Size (Mem_Buf : LLVM.Types.Memory_Buffer_T) return stddef_h.size_t;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3121
    pragma Import (C, Get_Buffer_Size, "LLVMGetBufferSize");
 
-   procedure Dispose_Memory_Buffer (Mem_Buf : LLVM.Types.Memory_Buffer_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3122
+   procedure Dispose_Memory_Buffer (Mem_Buf : LLVM.Types.Memory_Buffer_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:3122
    pragma Import (C, Dispose_Memory_Buffer, "LLVMDisposeMemoryBuffer");
 
-   function Get_Global_Pass_Registry return LLVM.Types.Pass_Registry_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3136
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCorePassRegistry Pass Registry
+  -- *
+  -- * @{
+  --  
+
+  --* Return the global pass registry, for use with initialization functions.
+  --    @see llvm::PassRegistry::getPassRegistry  
+
+   function Get_Global_Pass_Registry return LLVM.Types.Pass_Registry_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3136
    pragma Import (C, Get_Global_Pass_Registry, "LLVMGetGlobalPassRegistry");
 
-   function Create_Pass_Manager return LLVM.Types.Pass_Manager_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3151
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCorePassManagers Pass Managers
+  -- *
+  -- * @{
+  --  
+
+  --* Constructs a new whole-module pass pipeline. This type of pipeline is
+  --    suitable for link-time optimization and whole-module transformations.
+  --    @see llvm::PassManager::PassManager  
+
+   function Create_Pass_Manager return LLVM.Types.Pass_Manager_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3151
    pragma Import (C, Create_Pass_Manager, "LLVMCreatePassManager");
 
-   function Create_Function_Pass_Manager_For_Module (M : LLVM.Types.Module_T) return LLVM.Types.Pass_Manager_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3157
+  --* Constructs a new function-by-function pass pipeline over the module
+  --    provider. It does not take ownership of the module provider. This type of
+  --    pipeline is suitable for code generation and JIT compilation tasks.
+  --    @see llvm::FunctionPassManager::FunctionPassManager  
+
+   function Create_Function_Pass_Manager_For_Module (M : LLVM.Types.Module_T) return LLVM.Types.Pass_Manager_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3157
    pragma Import (C, Create_Function_Pass_Manager_For_Module, "LLVMCreateFunctionPassManagerForModule");
 
-   function Create_Function_Pass_Manager (MP : LLVM.Types.Module_Provider_T) return LLVM.Types.Pass_Manager_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3160
+  --* Deprecated: Use LLVMCreateFunctionPassManagerForModule instead.  
+   function Create_Function_Pass_Manager (MP : LLVM.Types.Module_Provider_T) return LLVM.Types.Pass_Manager_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3160
    pragma Import (C, Create_Function_Pass_Manager, "LLVMCreateFunctionPassManager");
+
+  --* Initializes, executes on the provided module, and finalizes all of the
+  --    passes scheduled in the pass manager. Returns 1 if any of the passes
+  --    modified the module, 0 otherwise.
+  --    @see llvm::PassManager::run(Module&)  
 
    function Run_Pass_Manager
      (PM : LLVM.Types.Pass_Manager_T;
@@ -3734,16 +5939,25 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
    function Run_Pass_Manager_C
      (PM : LLVM.Types.Pass_Manager_T;
       M  : LLVM.Types.Module_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3166
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3166
    pragma Import (C, Run_Pass_Manager_C, "LLVMRunPassManager");
+
+  --* Initializes all of the function passes scheduled in the function pass
+  --    manager. Returns 1 if any of the passes modified the module, 0 otherwise.
+  --    @see llvm::FunctionPassManager::doInitialization  
 
    function Initialize_Function_Pass_Manager
      (FPM : LLVM.Types.Pass_Manager_T)
       return Boolean;
    function Initialize_Function_Pass_Manager_C
      (FPM : LLVM.Types.Pass_Manager_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3171
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3171
    pragma Import (C, Initialize_Function_Pass_Manager_C, "LLVMInitializeFunctionPassManager");
+
+  --* Executes all of the function passes scheduled in the function pass manager
+  --    on the provided function. Returns 1 if any of the passes modified the
+  --    function, false otherwise.
+  --    @see llvm::FunctionPassManager::run(Function&)  
 
    function Run_Function_Pass_Manager
      (FPM : LLVM.Types.Pass_Manager_T;
@@ -3752,34 +5966,76 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
    function Run_Function_Pass_Manager_C
      (FPM : LLVM.Types.Pass_Manager_T;
       F   : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3177
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3177
    pragma Import (C, Run_Function_Pass_Manager_C, "LLVMRunFunctionPassManager");
+
+  --* Finalizes all of the function passes scheduled in in the function pass
+  --    manager. Returns 1 if any of the passes modified the module, 0 otherwise.
+  --    @see llvm::FunctionPassManager::doFinalization  
 
    function Finalize_Function_Pass_Manager
      (FPM : LLVM.Types.Pass_Manager_T)
       return Boolean;
    function Finalize_Function_Pass_Manager_C
      (FPM : LLVM.Types.Pass_Manager_T)
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3182
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3182
    pragma Import (C, Finalize_Function_Pass_Manager_C, "LLVMFinalizeFunctionPassManager");
 
-   procedure Dispose_Pass_Manager (PM : LLVM.Types.Pass_Manager_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3187
+  --* Frees the memory of a pass pipeline. For function pipelines, does not free
+  --    the module provider.
+  --    @see llvm::PassManagerBase::~PassManagerBase.  
+
+   procedure Dispose_Pass_Manager (PM : LLVM.Types.Pass_Manager_T);  -- llvm-5.0.0.src/include/llvm-c/Core.h:3187
    pragma Import (C, Dispose_Pass_Manager, "LLVMDisposePassManager");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @defgroup LLVMCCoreThreading Threading
+  -- *
+  -- * Handle the structures needed to make LLVM safe for multithreading.
+  -- *
+  -- * @{
+  --  
+
+  --* Deprecated: Multi-threading can only be enabled/disabled with the compile
+  --    time define LLVM_ENABLE_THREADS.  This function always returns
+  --    LLVMIsMultithreaded().  
 
    function Start_Multithreaded
       return Boolean;
    function Start_Multithreaded_C
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3204
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3204
    pragma Import (C, Start_Multithreaded_C, "LLVMStartMultithreaded");
 
-   procedure Stop_Multithreaded;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3208
+  --* Deprecated: Multi-threading can only be enabled/disabled with the compile
+  --    time define LLVM_ENABLE_THREADS.  
+
+   procedure Stop_Multithreaded;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3208
    pragma Import (C, Stop_Multithreaded, "LLVMStopMultithreaded");
+
+  --* Check whether LLVM is executing in thread-safe mode or not.
+  --    @see llvm::llvm_is_multithreaded  
 
    function Is_Multithreaded
       return Boolean;
    function Is_Multithreaded_C
-      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Core.h:3212
+      return LLVM.Types.Bool_T;  -- llvm-5.0.0.src/include/llvm-c/Core.h:3212
    pragma Import (C, Is_Multithreaded_C, "LLVMIsMultithreaded");
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
+
+  --*
+  -- * @}
+  --  
 
 end LLVM.Core;
 

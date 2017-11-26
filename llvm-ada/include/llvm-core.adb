@@ -6,7 +6,6 @@ pragma Warnings (Off, "*redundant with clause in body*");
 with Interfaces.C;         use Interfaces.C;
 pragma Unreferenced (Interfaces.C);
 with Interfaces.C.Strings; use Interfaces.C.Strings;pragma Unreferenced (Interfaces.C.Strings);
-with LLVM.Types; use LLVM.Types;
 
 package body LLVM.Core is
 

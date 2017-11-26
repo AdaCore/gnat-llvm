@@ -9,6 +9,34 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;pragma Unreferenced (Interfa
 
 package body LLVM.Target is
 
+   function Initialize_Native_Target
+      return Boolean
+   is
+   begin
+      return Initialize_Native_Target_C /= 0;
+   end Initialize_Native_Target;
+
+   function Initialize_Native_Asm_Parser
+      return Boolean
+   is
+   begin
+      return Initialize_Native_Asm_Parser_C /= 0;
+   end Initialize_Native_Asm_Parser;
+
+   function Initialize_Native_Asm_Printer
+      return Boolean
+   is
+   begin
+      return Initialize_Native_Asm_Printer_C /= 0;
+   end Initialize_Native_Asm_Printer;
+
+   function Initialize_Native_Disassembler
+      return Boolean
+   is
+   begin
+      return Initialize_Native_Disassembler_C /= 0;
+   end Initialize_Native_Disassembler;
+
    function Create_Target_Data
      (String_Rep : String)
       return Target_Data_T

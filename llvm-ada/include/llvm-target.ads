@@ -40,17 +40,21 @@ package LLVM.Target is
    procedure Initialize_All_Disassemblers;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:126
    pragma Import (C, Initialize_All_Disassemblers, "LLVMInitializeAllDisassemblers");
 
-   function Initialize_Native_Target return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:136
-   pragma Import (C, Initialize_Native_Target, "LLVMInitializeNativeTarget");
+   function Initialize_Native_Target_C
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:136
+   pragma Import (C, Initialize_Native_Target_C, "LLVMInitializeNativeTarget");
 
-   function Initialize_Native_Asm_Parser return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:151
-   pragma Import (C, Initialize_Native_Asm_Parser, "LLVMInitializeNativeAsmParser");
+   function Initialize_Native_Asm_Parser_C
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:151
+   pragma Import (C, Initialize_Native_Asm_Parser_C, "LLVMInitializeNativeAsmParser");
 
-   function Initialize_Native_Asm_Printer return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:163
-   pragma Import (C, Initialize_Native_Asm_Printer, "LLVMInitializeNativeAsmPrinter");
+   function Initialize_Native_Asm_Printer_C
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:163
+   pragma Import (C, Initialize_Native_Asm_Printer_C, "LLVMInitializeNativeAsmPrinter");
 
-   function Initialize_Native_Disassembler return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:175
-   pragma Import (C, Initialize_Native_Disassembler, "LLVMInitializeNativeDisassembler");
+   function Initialize_Native_Disassembler_C
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:175
+   pragma Import (C, Initialize_Native_Disassembler_C, "LLVMInitializeNativeDisassembler");
 
    function Get_Module_Data_Layout (M : LLVM.Types.Module_T) return Target_Data_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Target.h:191
    pragma Import (C, Get_Module_Data_Layout, "LLVMGetModuleDataLayout");

@@ -48,7 +48,7 @@ package body GNATLLVM.Bounds is
            Add
              (Env.Bld,
               Sub (Env.Bld, High_Bound, Low_Bound, ""),
-              Const_Int (Result_Type, 1, Sign_Extend => LLVM.Types.False),
+              Const_Int (Result_Type, 1, Sign_Extend => False),
               ""),
          Name   => "");
    end Bounds_To_Length;

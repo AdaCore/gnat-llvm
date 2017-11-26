@@ -178,7 +178,7 @@ package body GNATLLVM.Compile is
       return Const_Int
         (Int_Ptr_Type,
          Size_Of_Type_In_Bits (T_Data, T) / 8,
-         Sign_Extend => LLVM.Types.False);
+         Sign_Extend => False);
    end Get_Type_Size;
 
    --------------------
@@ -402,7 +402,7 @@ package body GNATLLVM.Compile is
                Idx (2) := Const_Int
                  (Idx_Type,
                   unsigned_long_long (Access_Info.Field),
-                  Sign_Extend => LLVM.Types.False);
+                  Sign_Extend => False);
                LValue := Load
                  (Env.Bld,
                   GEP
@@ -427,8 +427,7 @@ package body GNATLLVM.Compile is
       Env.Pop_Scope;
       Env.Leave_Subp;
 
-      if Verify_Function (Subp.Func, Print_Message_Action) = LLVM.Types.True
-      then
+      if Verify_Function (Subp.Func, Print_Message_Action) then
          Error_Msg_N
            ("the backend generated bad `LLVM` for this subprogram",
             Node);
@@ -511,8 +510,7 @@ package body GNATLLVM.Compile is
          Env.Pop_Scope;
          Env.Leave_Subp;
 
-         if Verify_Function (Subp.Func, Print_Message_Action) = LLVM.Types.True
-         then
+         if Verify_Function (Subp.Func, Print_Message_Action) then
             Error_Msg_N
               ("the backend generated bad `LLVM` for this subprogram",
                Node);
@@ -1102,7 +1100,7 @@ package body GNATLLVM.Compile is
                            Iter_Prev_Value : constant Value_T :=
                              Load (Env.Bld, LLVM_Var, "loop-var");
                            One             : constant Value_T :=
-                             Const_Int (LLVM_Type, 1, LLVM.Types.False);
+                             Const_Int (LLVM_Type, 1, False);
                            Iter_Next_Value : constant Value_T :=
                              (if Reversed
                               then Sub
@@ -1331,7 +1329,7 @@ package body GNATLLVM.Compile is
                              Struct_Type_In_Context
                                (Env.Ctx,
                                 Fields_Types'Address, Fields_Types'Length,
-                                Packed => LLVM.Types.False);
+                                Packed => False);
 
                            Result : Value_T := Get_Undef (Callback_Type);
 
@@ -1363,7 +1361,7 @@ package body GNATLLVM.Compile is
                           Struct_Type_In_Context
                             (Env.Ctx,
                              Fields_Types'Address, Fields_Types'Length,
-                             Packed => LLVM.Types.False);
+                             Packed => False);
 
                         Result : Value_T := Get_Undef (Callback_Type);
 
@@ -1414,13 +1412,13 @@ package body GNATLLVM.Compile is
                Env.Set (Node, V);
                Set_Initializer (V, Emit_Expression (Env, Node));
                Set_Linkage (V, Private_Linkage);
-               Set_Global_Constant (V, LLVM.Types.True);
+               Set_Global_Constant (V, True);
                return GEP
                  (Env.Bld,
                   V,
-                  (Const_Int (Intptr_T, 0, Sign_Extend => LLVM.Types.False),
+                  (Const_Int (Intptr_T, 0, Sign_Extend => False),
                    Const_Int (Create_Type (Env, Standard_Positive),
-                              0, Sign_Extend => LLVM.Types.False)),
+                              0, Sign_Extend => False)),
                   "address-of-string");
             end;
 
@@ -1480,7 +1478,7 @@ package body GNATLLVM.Compile is
                         Comp1,
                         Const_Int
                           (Create_Type (Env, Etype (Node)),
-                           0, Sign_Extend => LLVM.Types.False),
+                           0, Sign_Extend => False),
                         "not");
                   end if;
                end if;
@@ -1498,7 +1496,7 @@ package body GNATLLVM.Compile is
 
                Idxs : Value_Array (1 .. List_Length (Expressions (Node)) + 1)
                  := (1 => Const_Int
-                            (Intptr_T, 0, Sign_Extend => LLVM.Types.False),
+                            (Intptr_T, 0, Sign_Extend => False),
                      others => <>);
                --  Operands for the GetElementPtr instruction: one for the
                --  pointer deference, and then one per array index.
@@ -1552,7 +1550,7 @@ package body GNATLLVM.Compile is
                   GEP
                     (Env.Bld,
                      Array_Data_Ptr,
-                     (Const_Int (Intptr_T, 0, Sign_Extend => LLVM.Types.False),
+                     (Const_Int (Intptr_T, 0, Sign_Extend => False),
                       Index_Shift),
                      "array-shifted"),
                   Create_Access_Type (Env, Etype (Node)),
@@ -1818,7 +1816,7 @@ package body GNATLLVM.Compile is
                     (Element_Type,
                      unsigned_long_long
                        (Get_String_Char (String, Standard.Types.Int (J))),
-                     Sign_Extend => LLVM.Types.False);
+                     Sign_Extend => False);
                end loop;
 
                return Const_Array (Element_Type, Elements'Address, Length);
@@ -1868,7 +1866,7 @@ package body GNATLLVM.Compile is
                return Sub
                   (Env.Bld,
                    Const_Int
-                     (Create_Type (Env, Etype (Node)), 0, LLVM.Types.False),
+                     (Create_Type (Env, Etype (Node)), 0, False),
                    Emit_Expr (Right_Opnd (Node)),
                    "minus");
             end if;
@@ -2348,7 +2346,7 @@ package body GNATLLVM.Compile is
                Function_Type
                  (Return_Type,
                   Args'Address, Args'Length,
-                  Is_Var_Arg => LLVM.Types.False));
+                  Is_Var_Arg => False));
          end;
       end if;
 
@@ -2698,7 +2696,7 @@ package body GNATLLVM.Compile is
                pragma Assert (Get_Type_Kind (T) = Integer_Type_Kind);
 
                One  : constant Value_T :=
-                 Const_Int (T, 1, Sign_Extend => LLVM.Types.False);
+                 Const_Int (T, 1, Sign_Extend => False);
 
             begin
                return
@@ -2779,9 +2777,9 @@ package body GNATLLVM.Compile is
 
             Bool_Type    : constant Type_T := Int_Ty (1);
             False_Val    : constant Value_T :=
-              Const_Int (Bool_Type, 0, LLVM.Types.False);
+              Const_Int (Bool_Type, 0, False);
             True_Val     : constant Value_T :=
-              Const_Int (Bool_Type, 1, LLVM.Types.False);
+              Const_Int (Bool_Type, 1, False);
 
             LHS_Descr    : constant Value_T := Emit_LValue (Env, LHS);
             LHS_Type     : constant Entity_Id := Etype (LHS);
@@ -3002,7 +3000,7 @@ package body GNATLLVM.Compile is
       LHS_Bits  : constant Value_T := Const_Int
         (LHS_Type,
          unsigned_long_long (Get_Int_Type_Width (LHS_Type)),
-         Sign_Extend => LLVM.Types.False);
+         Sign_Extend => False);
 
       Saturated  : Value_T;
 

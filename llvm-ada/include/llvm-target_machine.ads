@@ -63,7 +63,7 @@ function Get_Target_From_Triple
      (Triple        : String;
       T             : System.Address;
       Error_Message : System.Address)
-      return LLVM.Types.Bool_T;
+      return Boolean;
    function Get_Target_From_Triple_C
      (Triple        : Interfaces.C.Strings.chars_ptr;
       T             : System.Address;
@@ -87,14 +87,29 @@ function Get_Target_From_Triple
       return Interfaces.C.Strings.chars_ptr;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:79
    pragma Import (C, Get_Target_Description_C, "LLVMGetTargetDescription");
 
-   function Target_Has_JIT (T : Target_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:82
-   pragma Import (C, Target_Has_JIT, "LLVMTargetHasJIT");
+   function Target_Has_JIT
+     (T : Target_T)
+      return Boolean;
+   function Target_Has_JIT_C
+     (T : Target_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:82
+   pragma Import (C, Target_Has_JIT_C, "LLVMTargetHasJIT");
 
-   function Target_Has_Target_Machine (T : Target_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:85
-   pragma Import (C, Target_Has_Target_Machine, "LLVMTargetHasTargetMachine");
+   function Target_Has_Target_Machine
+     (T : Target_T)
+      return Boolean;
+   function Target_Has_Target_Machine_C
+     (T : Target_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:85
+   pragma Import (C, Target_Has_Target_Machine_C, "LLVMTargetHasTargetMachine");
 
-   function Target_Has_Asm_Backend (T : Target_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:88
-   pragma Import (C, Target_Has_Asm_Backend, "LLVMTargetHasAsmBackend");
+   function Target_Has_Asm_Backend
+     (T : Target_T)
+      return Boolean;
+   function Target_Has_Asm_Backend_C
+     (T : Target_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:88
+   pragma Import (C, Target_Has_Asm_Backend_C, "LLVMTargetHasAsmBackend");
 
 function Create_Target_Machine
      (T          : Target_T;
@@ -149,8 +164,13 @@ function Create_Target_Machine
    function Create_Target_Data_Layout (T : Target_Machine_T) return LLVM.Target.Target_Data_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:119
    pragma Import (C, Create_Target_Data_Layout, "LLVMCreateTargetDataLayout");
 
-   procedure Set_Target_Machine_Asm_Verbosity (T : Target_Machine_T; Verbose_Asm : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:122
-   pragma Import (C, Set_Target_Machine_Asm_Verbosity, "LLVMSetTargetMachineAsmVerbosity");
+   procedure Set_Target_Machine_Asm_Verbosity
+     (T           : Target_Machine_T;
+      Verbose_Asm : Boolean);
+   procedure Set_Target_Machine_Asm_Verbosity_C
+     (T           : Target_Machine_T;
+      Verbose_Asm : LLVM.Types.Bool_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:122
+   pragma Import (C, Set_Target_Machine_Asm_Verbosity_C, "LLVMSetTargetMachineAsmVerbosity");
 
 function Target_Machine_Emit_To_File
      (T             : Target_Machine_T;
@@ -158,7 +178,7 @@ function Target_Machine_Emit_To_File
       Filename      : String;
       codegen       : Code_Gen_File_Type_T;
       Error_Message : System.Address)
-      return LLVM.Types.Bool_T;
+      return Boolean;
    function Target_Machine_Emit_To_File_C
      (T             : Target_Machine_T;
       M             : LLVM.Types.Module_T;
@@ -168,13 +188,21 @@ function Target_Machine_Emit_To_File
       return LLVM.Types.Bool_T;
    pragma Import (C, Target_Machine_Emit_To_File_C, "LLVMTargetMachineEmitToFile");
 
-   function Target_Machine_Emit_To_Memory_Buffer
-     (T : Target_Machine_T;
-      M : LLVM.Types.Module_T;
-      codegen : Code_Gen_File_Type_T;
+function Target_Machine_Emit_To_Memory_Buffer
+     (T             : Target_Machine_T;
+      M             : LLVM.Types.Module_T;
+      codegen       : Code_Gen_File_Type_T;
       Error_Message : System.Address;
-      Out_Mem_Buf : System.Address) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/TargetMachine.h:132
-   pragma Import (C, Target_Machine_Emit_To_Memory_Buffer, "LLVMTargetMachineEmitToMemoryBuffer");
+      Out_Mem_Buf   : System.Address)
+      return Boolean;
+   function Target_Machine_Emit_To_Memory_Buffer_C
+     (T             : Target_Machine_T;
+      M             : LLVM.Types.Module_T;
+      codegen       : Code_Gen_File_Type_T;
+      Error_Message : System.Address;
+      Out_Mem_Buf   : System.Address)
+      return LLVM.Types.Bool_T;
+   pragma Import (C, Target_Machine_Emit_To_Memory_Buffer_C, "LLVMTargetMachineEmitToMemoryBuffer");
 
    function Get_Default_Target_Triple
       return String;

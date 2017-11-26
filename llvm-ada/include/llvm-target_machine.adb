@@ -23,12 +23,12 @@ package body LLVM.Target_Machine is
      (Triple        : String;
       T             : System.Address;
       Error_Message : System.Address)
-      return LLVM.Types.Bool_T
+      return Boolean
    is
       Triple_Array  : aliased char_array := To_C (Triple);
       Triple_String : constant chars_ptr := To_Chars_Ptr (Triple_Array'Unchecked_Access);
    begin
-      return Get_Target_From_Triple_C (Triple_String, T, Error_Message);
+      return Get_Target_From_Triple_C (Triple_String, T, Error_Message) /= 0;
    end Get_Target_From_Triple;
 
    function Get_Target_Name
@@ -46,6 +46,30 @@ package body LLVM.Target_Machine is
    begin
       return Value (Get_Target_Description_C (T));
    end Get_Target_Description;
+
+   function Target_Has_JIT
+     (T : Target_T)
+      return Boolean
+   is
+   begin
+      return Target_Has_JIT_C (T) /= 0;
+   end Target_Has_JIT;
+
+   function Target_Has_Target_Machine
+     (T : Target_T)
+      return Boolean
+   is
+   begin
+      return Target_Has_Target_Machine_C (T) /= 0;
+   end Target_Has_Target_Machine;
+
+   function Target_Has_Asm_Backend
+     (T : Target_T)
+      return Boolean
+   is
+   begin
+      return Target_Has_Asm_Backend_C (T) /= 0;
+   end Target_Has_Asm_Backend;
 
    function Create_Target_Machine
      (T          : Target_T;
@@ -97,13 +121,25 @@ package body LLVM.Target_Machine is
       Filename      : String;
       codegen       : Code_Gen_File_Type_T;
       Error_Message : System.Address)
-      return LLVM.Types.Bool_T
+      return Boolean
    is
       Filename_Array  : aliased char_array := To_C (Filename);
       Filename_String : constant chars_ptr := To_Chars_Ptr (Filename_Array'Unchecked_Access);
    begin
-      return Target_Machine_Emit_To_File_C (T, M, Filename_String, codegen, Error_Message);
+      return Target_Machine_Emit_To_File_C (T, M, Filename_String, codegen, Error_Message) /= 0;
    end Target_Machine_Emit_To_File;
+
+   function Target_Machine_Emit_To_Memory_Buffer
+     (T             : Target_Machine_T;
+      M             : LLVM.Types.Module_T;
+      codegen       : Code_Gen_File_Type_T;
+      Error_Message : System.Address;
+      Out_Mem_Buf   : System.Address)
+      return Boolean
+   is
+   begin
+      return Target_Machine_Emit_To_Memory_Buffer_C (T, M, codegen, Error_Message, Out_Mem_Buf) /= 0;
+   end Target_Machine_Emit_To_Memory_Buffer;
 
    function Get_Default_Target_Triple
       return String
@@ -111,5 +147,14 @@ package body LLVM.Target_Machine is
    begin
       return Value (Get_Default_Target_Triple_C);
    end Get_Default_Target_Triple;
+
+   procedure Set_Target_Machine_Asm_Verbosity
+     (T           : Target_Machine_T;
+      Verbose_Asm : Boolean)
+   is
+      Verbose_Asm_Bool : constant Bool_T := Boolean'Pos (Verbose_Asm);
+   begin
+      Set_Target_Machine_Asm_Verbosity_C (T, Verbose_Asm_Bool);
+   end Set_Target_Machine_Asm_Verbosity;
 
 end LLVM.Target_Machine;

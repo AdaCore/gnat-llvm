@@ -132,8 +132,7 @@ package body LLVM_Drive is
 
       --  Output the translation
 
-      if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) /= 0
-      then
+      if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
          --  TODO??? Display the crash message, or something like this
          Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
 

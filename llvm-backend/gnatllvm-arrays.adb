@@ -188,7 +188,7 @@ package body GNATLLVM.Arrays is
       --  Start of processing for Array_Size
 
    begin
-      Size := Const_Int (Size_Type, 1, Sign_Extend => LLVM.Types.False);
+      Size := Const_Int (Size_Type, 1, Sign_Extend => False);
 
       --  Go through every array dimension
 
@@ -286,7 +286,7 @@ package body GNATLLVM.Arrays is
                Const_Int
                  (Typ,
                   unsigned_long_long (UI_To_Int (Low)),
-                  Sign_Extend => LLVM.Types.False),
+                  Sign_Extend => False),
                0,
                "");
             Bounds := Insert_Value
@@ -296,7 +296,7 @@ package body GNATLLVM.Arrays is
                  (Typ,
                   unsigned_long_long
                     (UI_To_Int (String_Literal_Length (Array_Type) - Low + 1)),
-                  Sign_Extend => LLVM.Types.False),
+                  Sign_Extend => False),
                1,
                "");
          end;

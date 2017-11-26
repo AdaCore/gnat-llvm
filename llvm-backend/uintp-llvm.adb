@@ -137,8 +137,7 @@ package body Uintp.LLVM is
       if UI_Is_In_Int_Range (U) then
          return Const_Int
            (T,
-            Interfaces.C.Extensions.unsigned_long_long (UI_To_Int (U)),
-            Standard.LLVM.Types.True);
+            Interfaces.C.Extensions.unsigned_long_long (UI_To_Int (U)), True);
 
       else
          return Big_UI_To_LLVM (T, U);

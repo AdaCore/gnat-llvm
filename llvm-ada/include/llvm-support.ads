@@ -10,7 +10,7 @@ package LLVM.Support is
 
    function Load_Library_Permanently
      (Filename : String)
-      return LLVM.Types.Bool_T;
+      return Boolean;
    function Load_Library_Permanently_C
      (Filename : Interfaces.C.Strings.chars_ptr)
       return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Support.h:30

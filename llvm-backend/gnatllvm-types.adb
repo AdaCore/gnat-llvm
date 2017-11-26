@@ -101,7 +101,7 @@ package body GNATLLVM.Types is
 
    function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T is
      (Function_Type
-       (Ret_Ty, Param_Ty'Address, Param_Ty'Length, LLVM.Types.False));
+       (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False));
 
    ------------------------------
    -- Create_Array_Bounds_Type --
@@ -124,7 +124,7 @@ package body GNATLLVM.Types is
             Fields (2) := Fields (1);
             return Struct_Type_In_Context
               (Env.Ctx, Fields'Address, Fields'Length,
-               Packed => LLVM.Types.False);
+               Packed => False);
          end;
       else
          declare
@@ -141,7 +141,7 @@ package body GNATLLVM.Types is
 
             return Struct_Type_In_Context
               (Env.Ctx, Fields'Address, Fields'Length,
-               Packed => LLVM.Types.False);
+               Packed => False);
          end;
       end if;
    end Create_Array_Bounds_Type;
@@ -174,7 +174,7 @@ package body GNATLLVM.Types is
         (Create_Array_Thin_Pointer_Type (Env, Array_Type),
          Create_Array_Bounds_Type (Env, Array_Type));
    begin
-      return Struct_Type (St_Els'Address, St_Els'Length, LLVM.Types.False);
+      return Struct_Type (St_Els'Address, St_Els'Length, False);
    end Create_Array_Fat_Pointer_Type;
 
    ------------------------
@@ -337,7 +337,7 @@ package body GNATLLVM.Types is
                   if Size_Depends_On_Discriminant (Etype (Comp)) then
                      Struct_Set_Body
                        (Struct_Type, LLVM_Comps'Address,
-                        unsigned (I - 1), LLVM.Types.False);
+                        unsigned (I - 1), False);
                      I := 1;
                      Struct_Num := Struct_Num + 1;
 
@@ -358,7 +358,7 @@ package body GNATLLVM.Types is
                if I > 1 then
                   Struct_Set_Body
                     (Struct_Type, LLVM_Comps'Address,
-                     unsigned (I - 1), LLVM.Types.False);
+                     unsigned (I - 1), False);
                end if;
 
                Env.Set (Def_Ident, Info);
@@ -511,7 +511,7 @@ package body GNATLLVM.Types is
          I := I + 1;
       end loop;
       return Struct_Type_In_Context
-        (Env.Ctx, Types'Address, Types'Length, Packed => LLVM.Types.False);
+        (Env.Ctx, Types'Address, Types'Length, Packed => False);
    end Create_Static_Link_Type;
 
    --------------------------------------
@@ -627,7 +627,7 @@ package body GNATLLVM.Types is
       return Struct_Type_In_Context
         (Env.Ctx,
          Couple'Address, Couple'Length,
-         Packed => LLVM.Types.False);
+         Packed => False);
    end Create_Subprogram_Access_Type;
 
 end GNATLLVM.Types;

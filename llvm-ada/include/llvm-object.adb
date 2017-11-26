@@ -9,6 +9,24 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;pragma Unreferenced (Interfa
 
 package body LLVM.Object is
 
+   function Is_Section_Iterator_At_End
+     (Object_File : Object_File_T;
+      SI          : Section_Iterator_T)
+      return Boolean
+   is
+   begin
+      return Is_Section_Iterator_At_End_C (Object_File, SI) /= 0;
+   end Is_Section_Iterator_At_End;
+
+   function Is_Symbol_Iterator_At_End
+     (Object_File : Object_File_T;
+      SI          : Symbol_Iterator_T)
+      return Boolean
+   is
+   begin
+      return Is_Symbol_Iterator_At_End_C (Object_File, SI) /= 0;
+   end Is_Symbol_Iterator_At_End;
+
    function Get_Section_Name
      (SI : Section_Iterator_T)
       return String
@@ -24,6 +42,24 @@ package body LLVM.Object is
    begin
       return Value (Get_Section_Contents_C (SI));
    end Get_Section_Contents;
+
+   function Get_Section_Contains_Symbol
+     (SI  : Section_Iterator_T;
+      Sym : Symbol_Iterator_T)
+      return Boolean
+   is
+   begin
+      return Get_Section_Contains_Symbol_C (SI, Sym) /= 0;
+   end Get_Section_Contains_Symbol;
+
+   function Is_Relocation_Iterator_At_End
+     (Section : Section_Iterator_T;
+      RI      : Relocation_Iterator_T)
+      return Boolean
+   is
+   begin
+      return Is_Relocation_Iterator_At_End_C (Section, RI) /= 0;
+   end Is_Relocation_Iterator_At_End;
 
    function Get_Symbol_Name
      (SI : Symbol_Iterator_T)

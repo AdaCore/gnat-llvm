@@ -13,14 +13,27 @@ package LLVM.Analysis is
       Return_Status_Action);
    pragma Convention (C, Verifier_Failure_Action_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Analysis.h:39
 
-   function Verify_Module
-     (M : LLVM.Types.Module_T;
-      Action : Verifier_Failure_Action_T;
-      Out_Message : System.Address) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Analysis.h:45
-   pragma Import (C, Verify_Module, "LLVMVerifyModule");
+function Verify_Module
+     (M           : LLVM.Types.Module_T;
+      Action      : Verifier_Failure_Action_T;
+      Out_Message : System.Address)
+      return Boolean;
+   function Verify_Module_C
+     (M           : LLVM.Types.Module_T;
+      Action      : Verifier_Failure_Action_T;
+      Out_Message : System.Address)
+      return LLVM.Types.Bool_T;
+   pragma Import (C, Verify_Module_C, "LLVMVerifyModule");
 
-   function Verify_Function (Fn : LLVM.Types.Value_T; Action : Verifier_Failure_Action_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Analysis.h:50
-   pragma Import (C, Verify_Function, "LLVMVerifyFunction");
+   function Verify_Function
+     (Fn     : LLVM.Types.Value_T;
+      Action : Verifier_Failure_Action_T)
+      return Boolean;
+   function Verify_Function_C
+     (Fn     : LLVM.Types.Value_T;
+      Action : Verifier_Failure_Action_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Analysis.h:50
+   pragma Import (C, Verify_Function_C, "LLVMVerifyFunction");
 
    procedure View_Function_CFG (Fn : LLVM.Types.Value_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Analysis.h:54
    pragma Import (C, View_Function_CFG, "LLVMViewFunctionCFG");

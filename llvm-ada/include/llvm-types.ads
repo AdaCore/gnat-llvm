@@ -8,9 +8,6 @@ package LLVM.Types is
 
    subtype Bool_T is int;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Types.h:29
 
-   False : constant Bool_T := 0;
-   True  : constant Bool_T := 1;
-
    --  skipped empty struct LLVMOpaqueMemoryBuffer
 
    type Memory_Buffer_T is new System.Address;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Types.h:49

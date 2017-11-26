@@ -59,7 +59,7 @@ package GNATLLVM.Utils is
    --  Return an LLVM value corresponding to the universal int Value
 
    function Const_Ones (T : Type_T) return Value_T is
-     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => LLVM.Types.True));
+     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True));
    --  Return an LLVM value for the given type where all bits are set
 
    Intptr_T : constant Type_T :=

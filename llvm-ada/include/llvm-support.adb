@@ -11,12 +11,12 @@ package body LLVM.Support is
 
    function Load_Library_Permanently
      (Filename : String)
-      return LLVM.Types.Bool_T
+      return Boolean
    is
       Filename_Array  : aliased char_array := To_C (Filename);
       Filename_String : constant chars_ptr := To_Chars_Ptr (Filename_Array'Unchecked_Access);
    begin
-      return Load_Library_Permanently_C (Filename_String);
+      return Load_Library_Permanently_C (Filename_String) /= 0;
    end Load_Library_Permanently;
 
    function Search_For_Address_Of_Symbol

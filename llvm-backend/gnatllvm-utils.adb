@@ -327,7 +327,7 @@ package body GNATLLVM.Utils is
       return Add_Function
         (Env.Mdl,
          "llvm.stacksave",
-         Function_Type (Result_Type, Null_Address, 0, LLVM.Types.False));
+         Function_Type (Result_Type, Null_Address, 0, False));
    end Get_Stack_Save;
 
    -----------------------
@@ -343,7 +343,7 @@ package body GNATLLVM.Utils is
          "llvm.stackrestore",
          Function_Type
            (Void_Type_In_Context (Env.Ctx),
-            Param_Type'Address, 1, LLVM.Types.False));
+            Param_Type'Address, 1, False));
    end Get_Stack_Restore;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

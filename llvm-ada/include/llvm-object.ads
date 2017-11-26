@@ -37,8 +37,15 @@ package LLVM.Object is
    procedure Dispose_Section_Iterator (SI : Section_Iterator_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:48
    pragma Import (C, Dispose_Section_Iterator, "LLVMDisposeSectionIterator");
 
-   function Is_Section_Iterator_At_End (Object_File : Object_File_T; SI : Section_Iterator_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:49
-   pragma Import (C, Is_Section_Iterator_At_End, "LLVMIsSectionIteratorAtEnd");
+   function Is_Section_Iterator_At_End
+     (Object_File : Object_File_T;
+      SI          : Section_Iterator_T)
+      return Boolean;
+   function Is_Section_Iterator_At_End_C
+     (Object_File : Object_File_T;
+      SI          : Section_Iterator_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:49
+   pragma Import (C, Is_Section_Iterator_At_End_C, "LLVMIsSectionIteratorAtEnd");
 
    procedure Move_To_Next_Section (SI : Section_Iterator_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:51
    pragma Import (C, Move_To_Next_Section, "LLVMMoveToNextSection");
@@ -52,8 +59,15 @@ package LLVM.Object is
    procedure Dispose_Symbol_Iterator (SI : Symbol_Iterator_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:57
    pragma Import (C, Dispose_Symbol_Iterator, "LLVMDisposeSymbolIterator");
 
-   function Is_Symbol_Iterator_At_End (Object_File : Object_File_T; SI : Symbol_Iterator_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:58
-   pragma Import (C, Is_Symbol_Iterator_At_End, "LLVMIsSymbolIteratorAtEnd");
+   function Is_Symbol_Iterator_At_End
+     (Object_File : Object_File_T;
+      SI          : Symbol_Iterator_T)
+      return Boolean;
+   function Is_Symbol_Iterator_At_End_C
+     (Object_File : Object_File_T;
+      SI          : Symbol_Iterator_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:58
+   pragma Import (C, Is_Symbol_Iterator_At_End_C, "LLVMIsSymbolIteratorAtEnd");
 
    procedure Move_To_Next_Symbol (SI : Symbol_Iterator_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:60
    pragma Import (C, Move_To_Next_Symbol, "LLVMMoveToNextSymbol");
@@ -80,8 +94,15 @@ package LLVM.Object is
    function Get_Section_Address (SI : Section_Iterator_T) return stdint_h.uint64_t;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:66
    pragma Import (C, Get_Section_Address, "LLVMGetSectionAddress");
 
-   function Get_Section_Contains_Symbol (SI : Section_Iterator_T; Sym : Symbol_Iterator_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:67
-   pragma Import (C, Get_Section_Contains_Symbol, "LLVMGetSectionContainsSymbol");
+   function Get_Section_Contains_Symbol
+     (SI  : Section_Iterator_T;
+      Sym : Symbol_Iterator_T)
+      return Boolean;
+   function Get_Section_Contains_Symbol_C
+     (SI  : Section_Iterator_T;
+      Sym : Symbol_Iterator_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:67
+   pragma Import (C, Get_Section_Contains_Symbol_C, "LLVMGetSectionContainsSymbol");
 
    function Get_Relocations (Section : Section_Iterator_T) return Relocation_Iterator_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:71
    pragma Import (C, Get_Relocations, "LLVMGetRelocations");
@@ -89,8 +110,15 @@ package LLVM.Object is
    procedure Dispose_Relocation_Iterator (RI : Relocation_Iterator_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:72
    pragma Import (C, Dispose_Relocation_Iterator, "LLVMDisposeRelocationIterator");
 
-   function Is_Relocation_Iterator_At_End (Section : Section_Iterator_T; RI : Relocation_Iterator_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:73
-   pragma Import (C, Is_Relocation_Iterator_At_End, "LLVMIsRelocationIteratorAtEnd");
+   function Is_Relocation_Iterator_At_End
+     (Section : Section_Iterator_T;
+      RI      : Relocation_Iterator_T)
+      return Boolean;
+   function Is_Relocation_Iterator_At_End_C
+     (Section : Section_Iterator_T;
+      RI      : Relocation_Iterator_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:73
+   pragma Import (C, Is_Relocation_Iterator_At_End_C, "LLVMIsRelocationIteratorAtEnd");
 
    procedure Move_To_Next_Relocation (RI : Relocation_Iterator_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Object.h:75
    pragma Import (C, Move_To_Next_Relocation, "LLVMMoveToNextRelocation");

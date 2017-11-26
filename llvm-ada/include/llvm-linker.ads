@@ -11,8 +11,15 @@ package LLVM.Linker is
       Linkerpreservesource_Removed);
    pragma Convention (C, Linker_Mode_T);  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Linker.h:28
 
-   function Link_Modules2 (Dest : LLVM.Types.Module_T; Src : LLVM.Types.Module_T) return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Linker.h:35
-   pragma Import (C, Link_Modules2, "LLVMLinkModules2");
+   function Link_Modules2
+     (Dest : LLVM.Types.Module_T;
+      Src  : LLVM.Types.Module_T)
+      return Boolean;
+   function Link_Modules2_C
+     (Dest : LLVM.Types.Module_T;
+      Src  : LLVM.Types.Module_T)
+      return LLVM.Types.Bool_T;  -- /chelles.b/users/charlet/git/gnat-llvm/llvm-ada/llvm-5.0.0.src/include/llvm-c/Linker.h:35
+   pragma Import (C, Link_Modules2_C, "LLVMLinkModules2");
 
 end LLVM.Linker;
 

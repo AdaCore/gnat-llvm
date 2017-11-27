@@ -1243,7 +1243,9 @@ package body GNATLLVM.Compile is
             Error_Msg_N ("exception handler ignored??", Node);
 
          when N_Exception_Renaming_Declaration =>
-            Error_Msg_N ("exception renaming ignored??", Node);
+            Env.Set
+              (Defining_Identifier (Node),
+               Value_T'(Env.Get (Entity (Name (Node)))));
 
          when N_Attribute_Definition_Clause =>
 

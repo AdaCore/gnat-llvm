@@ -1845,10 +1845,36 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Op_Abs =>
-            --  ??? Emit something like: X >= 0 ? X : -X;
+            --  Emit: X >= 0 ? X : -X;
 
-            Error_Msg_N ("??unsupported operator abs", Node);
-            return Emit_Expr (Right_Opnd (Node));
+            declare
+               Expr_Type : constant Entity_Id := Etype (Right_Opnd (Node));
+               Expr      : constant Value_T := Emit_Expr (Right_Opnd (Node));
+               Zero      : constant Value_T := Const_Null
+                 (Create_Type (Env, Expr_Type));
+
+            begin
+               if Is_Floating_Point_Type (Expr_Type) then
+                  return Build_Select
+                    (Env.Bld,
+                     C_If   => F_Cmp
+                       (Env.Bld, Real_OGE, Expr, Zero, "is-positive"),
+                     C_Then => Expr,
+                     C_Else => F_Sub (Env.Bld, Zero, Expr, "minus"),
+                     Name   => "abs");
+               else
+                  return Build_Select
+                    (Env.Bld,
+                     C_If   => I_Cmp
+                       (Env.Bld,
+                        (if Is_Unsigned_Type (Expr_Type)
+                         then Int_UGE else Int_SGE),
+                        Expr, Zero, "is-positive"),
+                     C_Then => Expr,
+                     C_Else => Sub (Env.Bld, Zero, Expr, "minus"),
+                     Name   => "abs");
+               end if;
+            end;
 
          when N_Op_Plus =>
             return Emit_Expr (Right_Opnd (Node));

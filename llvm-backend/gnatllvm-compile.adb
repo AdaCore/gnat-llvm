@@ -727,13 +727,9 @@ package body GNATLLVM.Compile is
                LLVM_Var, Expr : Value_T;
 
             begin
-               --  Nothing to do if this is a debug renaming type or if there
-               --  is an address clause on the object (will be handled as part
-               --  of N_Attribute_Definition_Clause)
+               --  Nothing to do if this is a debug renaming type.
 
-               if T = Standard_Debug_Renaming_Type
-               --  ???  or else Present (Address_Clause (Def_Ident))
-               then
+               if T = Standard_Debug_Renaming_Type then
                   return;
                end if;
 
@@ -741,7 +737,13 @@ package body GNATLLVM.Compile is
 
                if Env.Library_Level then
                   --  ??? Will only work for objects of static sizes
+
                   LLVM_Type := Create_Type (Env, T);
+
+                  if Present (Address_Clause (Def_Ident)) then
+                     LLVM_Type := Pointer_Type (LLVM_Type, 0);
+                  end if;
+
                   LLVM_Var :=
                     Add_Global (Env.Mdl, LLVM_Type, Get_Name (Def_Ident));
                   Env.Set (Def_Ident, LLVM_Var);
@@ -751,17 +753,22 @@ package body GNATLLVM.Compile is
                         Set_Linkage (LLVM_Var, Internal_Linkage);
                      end if;
 
-                     Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
+                     if Present (Address_Clause (Def_Ident)) then
+                        Set_Initializer
+                          (LLVM_Var,
+                           Emit_Expression
+                             (Env, Expression (Address_Clause (Def_Ident))));
+                        --  ??? Should also take Expression (Node) into account
 
                      --  Take Expression (Node) into account
-                     --  ??? Will only work if Expression is static
 
-                     if Present (Expression (Node))
+                     elsif Present (Expression (Node))
                        and then not
                          (Nkind (Node) = N_Object_Declaration
                           and then No_Initialization (Node))
                      then
-                        if False then --  Static_Expression (Expression (Node))
+                        --  ??? if Static_Expression (Expression (Node))
+                        if False then
                            Expr := Emit_Expression (Env, Expression (Node));
                            Set_Initializer (LLVM_Var, Expr);
                         else
@@ -769,8 +776,11 @@ package body GNATLLVM.Compile is
                            --  Expr :=
                            --    Emit_Expression (Env, Expression (Node));
                            --  Store (Env.Bld, Expr, LLVM_Var);
-                           null;
+
+                           Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
                         end if;
+                     else
+                        Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
                      end if;
                   else
                      Set_Linkage (LLVM_Var, External_Linkage);
@@ -788,25 +798,41 @@ package body GNATLLVM.Compile is
                      --    operations work properly.
 
                      LLVM_Type := Create_Access_Type (Env, T);
-                     LLVM_Var := Bit_Cast
-                        (Env.Bld,
-                         Array_Alloca
+
+                     if Present (Address_Clause (Def_Ident)) then
+                        Error_Msg_N ("unsupported address clause", Node);
+                     else
+                        LLVM_Var := Bit_Cast
                            (Env.Bld,
-                            Get_Innermost_Component_Type (Env, T),
-                            Array_Size (Env, No_Value_T, T),
-                            "array-alloca"),
-                        LLVM_Type,
-                        Get_Name (Def_Ident));
+                            Array_Alloca
+                              (Env.Bld,
+                               Get_Innermost_Component_Type (Env, T),
+                               Array_Size (Env, No_Value_T, T),
+                               "array-alloca"),
+                           LLVM_Type,
+                           Get_Name (Def_Ident));
+                     end if;
 
                   else
                      LLVM_Type := Create_Type (Env, T);
+
+                     if Present (Address_Clause (Def_Ident)) then
+                        LLVM_Type := Pointer_Type (LLVM_Type, 0);
+                     end if;
+
                      LLVM_Var := Alloca
-                       (Env.Bld, LLVM_Type,
-                        "local-" & Get_Name (Def_Ident));
+                       (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
                   end if;
 
                   Env.Set (Def_Ident, LLVM_Var);
                   Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
+
+                  if Present (Address_Clause (Def_Ident)) then
+                     Expr := Emit_Expression
+                       (Env, Expression (Address_Clause (Def_Ident)));
+                     Expr := Int_To_Ptr (Env.Bld, Expr, LLVM_Type, "to-ptr");
+                     Store (Env.Bld, Expr, LLVM_Var);
+                  end if;
 
                   if Present (Expression (Node))
                     and then not
@@ -882,7 +908,7 @@ package body GNATLLVM.Compile is
 
          when N_Assignment_Statement =>
             declare
-               Val : constant Value_T :=
+               Val  : constant Value_T :=
                  Emit_Expression (Env, Expression (Node));
                Dest : constant Value_T := Emit_LValue (Env, Name (Node));
 
@@ -1225,11 +1251,13 @@ package body GNATLLVM.Compile is
             --  clauses. We only deal with 'Address if the object has a Freeze
             --  node.
 
+            --  ??? For now keep it simple and deal with this case in
+            --  N_Object_Declaration.
+
             if Get_Attribute_Id (Chars (Node)) = Attribute_Address
               and then Present (Freeze_Node (Entity (Name (Node))))
             then
-               Error_Msg_N ("unsupported address clause", Node);
-               --  ??? Save/Compile Expression (Node) for use in
+               null;
             end if;
 
          when others =>
@@ -1375,7 +1403,11 @@ package body GNATLLVM.Compile is
                   end if;
 
                else
-                  return Env.Get (Def_Ident);
+                  if Present (Address_Clause (Def_Ident)) then
+                     return Load (Env.Bld, Env.Get (Def_Ident), "");
+                  else
+                     return Env.Get (Def_Ident);
+                  end if;
                end if;
             end;
 
@@ -1441,6 +1473,8 @@ package body GNATLLVM.Compile is
                Comp2 : Value_T;
 
             begin
+               --  ??? We are not creating a lvalue here
+
                if Present (Rng) then
                   if Nkind (Rng) = N_Identifier then
                      Rng := Scalar_Range (Etype (Rng));
@@ -1996,10 +2030,13 @@ package body GNATLLVM.Compile is
                      --  as-is, the caller expects a pointer to a function
                      --  anyway.
 
-                     return
-                       (if Is_Subprogram
-                        then LValue
-                        else Load (Env.Bld, LValue, ""));
+                     if Is_Subprogram then
+                        return LValue;
+                     elsif Present (Address_Clause (Def_Ident)) then
+                        return Load (Env.Bld, Load (Env.Bld, LValue, ""), "");
+                     else
+                        return Load (Env.Bld, LValue, "");
+                     end if;
                   end;
                end if;
             end;

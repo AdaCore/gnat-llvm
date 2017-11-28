@@ -14,6 +14,7 @@ RMDIR=rm -rf
 MV=mv -f
 MKDIR=mkdir -p
 CHMOD=chmod
+AR=ar q
 
 adainclude:=$(subst \,/,$(strip $(shell gnatls -v | grep adainclude)))/
 adalib:=$(subst \,/,$(strip $(shell gnatls -v | grep adalib)))/
@@ -168,5 +169,5 @@ zfp:
 	cd $(ADALIB) && for f in ../adainclude/*.adb; do \
 	  $(COMPILE) -I../adainclude $$f || exit 1; \
 	done
-	cd $(ADALIB) && $(CHMOD) a-wx *.ali
+	cd $(ADALIB) && $(CHMOD) a-wx *.ali && $(AR) libgnat.a *.o && $(RM) *.o
 

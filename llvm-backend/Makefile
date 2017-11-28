@@ -16,15 +16,8 @@ MKDIR=mkdir -p
 CHMOD=chmod
 AR=ar q
 
-adainclude:=$(subst \,/,$(strip $(shell gnatls -v | grep adainclude)))/
-adalib:=$(subst \,/,$(strip $(shell gnatls -v | grep adalib)))/
-gnat1dir:=$(shell echo $(adainclude) | sed -e 's^rts-.*^^' -e 's^adainclude^^')
-
 ifeq ($(AUTOMATED),1)
   GPRARGS=-XBuild=Production
-  prefix=$(shell echo $(adainclude) | sed -e 's!\(.*\)/lib/gcc/\(.*\)!\1!')/
-else
-  prefix:=@NOPREFIX@
 endif
 
 ifeq ($(DEBUG),0)
@@ -55,11 +48,6 @@ all: setup build
 
 setup:
 	mkdir -p obj obj-tools bin
-	sed -e "s^@ADAINCLUDE@^$(adainclude)^" \
-	    -e "s^@ADALIB@^$(adalib)^" \
-	    -e "s^@PREFIX@^$(prefix)^" \
-	    -e "s^@GNAT1DIR@^$(gnat1dir)^" \
-	    sdefault.adb.in > obj/sdefault.adb
 	sed -e "s^\(Expand_Nonbinary_Modular_Ops : Boolean :=\) False^\1 True^"\
 	    -e "s^\(Unnest_Subprogram_Mode : Boolean :=\) False^\1 True^"\
 	    $(GNAT_SRC)/opt.ads > obj/opt.ads

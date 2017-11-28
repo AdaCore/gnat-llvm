@@ -34,7 +34,6 @@ package body Sdefault is
    -- Local Data --
    ----------------
 
-   Prefix : constant String := "@PREFIX@";
    Target : constant String := "llvm/";
 
    ------------------------------
@@ -61,7 +60,7 @@ package body Sdefault is
 
    function Search_Dir_Prefix return String_Ptr is
    begin
-      return Relocate_Path (Prefix, "@GNAT1DIR@");
+      return Relocate_Path ("/PREFIX", "/PREFIX/bin");
    end Search_Dir_Prefix;
 
    -----------------

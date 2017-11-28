@@ -1796,6 +1796,7 @@ package body GNATLLVM.Compile is
                           (Real_Type,
                            -double (UI_To_Int (Numerator (Val))) /
                             double (UI_To_Int (Denominator (Val))));
+
                      else
                         return Const_Real
                           (Real_Type,
@@ -1803,9 +1804,36 @@ package body GNATLLVM.Compile is
                            double (UI_To_Int (Denominator (Val))));
                      end if;
                   else
-                     --  ???
-                     Error_Msg_N ("float point value too big", Node);
-                     return Const_Real (Real_Type, 0.0);
+                     declare
+                        function Const_Real_Of_String
+                          (Real_Ty : Type_T;
+                           Text    : String;
+                           S_Len   : unsigned) return Value_T;
+                        pragma Import
+                          (C, Const_Real_Of_String,
+                           "LLVMConstRealOfStringAndSize");
+
+                        Num_Str : constant String :=
+                          UI_Image (Numerator (Val), Decimal) & ".0";
+                        Den_Str : constant String :=
+                          UI_Image (Denominator (Val), Decimal) & ".0";
+                        Num     : constant Value_T :=
+                          Const_Real_Of_String
+                            (Real_Type, Num_Str, Num_Str'Length);
+                        Den     : constant Value_T :=
+                          Const_Real_Of_String
+                            (Real_Type, Den_Str, Den_Str'Length);
+
+                     begin
+                        if UR_Is_Negative (Val) then
+                           return F_Sub
+                             (Env.Bld,
+                              Const_Real (Real_Type, 0.0),
+                              F_Div (Env.Bld, Num, Den, ""), "");
+                        else
+                           return F_Div (Env.Bld, Num, Den, "");
+                        end if;
+                     end;
                   end if;
                end;
             end if;
@@ -2623,9 +2651,12 @@ package body GNATLLVM.Compile is
       then
          if RM_Size (S_Type) = RM_Size (D_Type) then
             return Value;
+         elsif RM_Size (S_Type) < RM_Size (D_Type) then
+            return FP_Ext
+              (Env.Bld, Value, Create_Type (Env, D_Type), "float-conv");
          else
-            Error_Msg_N ("unsupported floating point conversion", Src_Type);
-            return Value;
+            return FP_Trunc
+              (Env.Bld, Value, Create_Type (Env, D_Type), "float-conv");
          end if;
 
       elsif Is_Discrete_Or_Fixed_Point_Type (S_Type)

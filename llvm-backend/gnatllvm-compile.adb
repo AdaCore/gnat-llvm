@@ -759,6 +759,7 @@ package body GNATLLVM.Compile is
                  Get_Full_View (Etype (Def_Ident));
                LLVM_Type      : Type_T;
                LLVM_Var, Expr : Value_T;
+               Name           : Name_Id;
 
             begin
                --  Nothing to do if this is a debug renaming type.
@@ -774,12 +775,26 @@ package body GNATLLVM.Compile is
 
                   LLVM_Type := Create_Type (Env, T);
 
+                  --  ??? Should use Needs_Deref instead and handle case of
+                  --  global arrays with an address clause as done for local
+                  --  variables.
+
                   if Present (Address_Clause (Def_Ident)) then
                      LLVM_Type := Pointer_Type (LLVM_Type, 0);
                   end if;
 
+                  if (Is_Imported (Def_Ident) or else Is_Exported (Def_Ident))
+                    and then Present (Interface_Name (Def_Ident))
+                    and then No (Address_Clause (Def_Ident))
+                  then
+                     Name :=
+                       String_To_Name (Strval (Interface_Name (Def_Ident)));
+                  else
+                     Name := Chars (Def_Ident);
+                  end if;
+
                   LLVM_Var :=
-                    Add_Global (Env.Mdl, LLVM_Type, Get_Name (Def_Ident));
+                    Add_Global (Env.Mdl, LLVM_Type, Get_Name_String (Name));
                   Env.Set (Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then

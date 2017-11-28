@@ -218,7 +218,7 @@ package body LLVM_Drive is
       elsif Switch = "--dump-bc" then
          Code_Generation := Dump_BC;
          return True;
-      elsif Switch = "--dump-asm" then
+      elsif Switch = "-S" then
          Code_Generation := Dump_Assembly;
          return True;
       end if;

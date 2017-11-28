@@ -73,7 +73,9 @@ begin
    for J in Args'Range loop
       Args (J) := new String'(Argument (J));
 
-      if Args (J).all = "-c" then
+      if Args (J).all = "-c"
+        or else Args (J).all = "-S"
+      then
          Compile := True;
 
       elsif Args (J).all = "-v" then

@@ -695,7 +695,20 @@ package body GNATLLVM.Compile is
             Emit_Subprogram_Body (Env, Node);
 
          when N_Subprogram_Declaration =>
-            Discard (Emit_Subprogram_Decl (Env, Specification (Node)));
+            declare
+               Subp : constant Entity_Id := Unique_Defining_Entity (Node);
+            begin
+               --  Do not print intrinsic subprogram as calls to those will be
+               --  expanded.
+
+               if Convention (Subp) = Convention_Intrinsic
+                 or else Is_Intrinsic_Subprogram (Subp)
+               then
+                  null;
+               else
+                  Discard (Emit_Subprogram_Decl (Env, Specification (Node)));
+               end if;
+            end;
 
          when N_Raise_Constraint_Error | N_Raise_Program_Error =>
 
@@ -840,12 +853,17 @@ package body GNATLLVM.Compile is
                        and then No_Initialization (Node))
                   then
                      Expr := Emit_Expression (Env, Expression (Node));
-                     Store (Env.Bld, Expr, LLVM_Var);
 
-                     --  Would be nice to be able to use Set_Initializer, but
-                     --  this seems to generate cast errors in the llvm code
-                     --  generator right now???
-                     --  Set_Initializer (LLVM_Var, Expr);
+                     if Present (Address_Clause (Def_Ident)) then
+                        Store (Env.Bld, Expr, Load (Env.Bld, LLVM_Var, ""));
+                     else
+                        Store (Env.Bld, Expr, LLVM_Var);
+
+                        --  Would be nice to be able to use Set_Initializer,
+                        --  but this seems to generate cast errors in the llvm
+                        --  code generator right now???
+                        --  Set_Initializer (LLVM_Var, Expr);
+                     end if;
                   end if;
                end if;
             end;
@@ -885,14 +903,11 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Subprogram_Renaming_Declaration =>
-            declare
-               Def_Ident : constant Entity_Id :=
-                 Defining_Unit_Name (Specification (Node));
-               Renamed_Subp : constant Value_T :=
-                 Env.Get (Entity (Name (Node)));
-            begin
-               Env.Set (Def_Ident, Renamed_Subp);
-            end;
+            --  Nothing is needed except for debugging information.
+            --  Skip it for now???
+            --  Note that in any case, we should skip Intrinsic subprograms
+
+            null;
 
          when N_Package_Renaming_Declaration =>
             --  At the moment, packages aren't materialized in LLVM IR, so

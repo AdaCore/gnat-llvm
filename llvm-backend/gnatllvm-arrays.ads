@@ -84,4 +84,10 @@ package GNATLLVM.Arrays is
    --  Wrap a fat pointer around Array_Data according to its type Array_Type
    --  and return the created fat pointer.
 
+   function Array_Address
+     (Env        : Environ;
+      Array_Data : Value_T;
+      Array_Type : Entity_Id) return Value_T;
+   --  Return the pointer to the first element of Array_Data
+
 end GNATLLVM.Arrays;

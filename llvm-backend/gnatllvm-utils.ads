@@ -23,7 +23,6 @@ with Uintp.LLVM;
 with LLVM.Core; use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with System; use System;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Uintp; use Uintp;
@@ -112,9 +111,6 @@ package GNATLLVM.Utils is
    procedure Discard (V : Value_T);
 
    function Is_Binary_Operator (Node : Node_Id) return Boolean;
-
-   function Get_Stack_Save (Env : Environ) return Value_T;
-   function Get_Stack_Restore (Env : Environ) return Value_T;
 
    procedure Dump_LLVM_Value (V : Value_T);
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this

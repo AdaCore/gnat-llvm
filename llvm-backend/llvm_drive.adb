@@ -121,6 +121,16 @@ package body LLVM_Drive is
          Env.Memory_Cmp_Fn := Add_Function
            (Env.Mdl, "memcmp",
             Fn_Ty ((Void_Ptr_Type, Void_Ptr_Type, Size_Type), C_Int_Type));
+
+         --  And for stacksave/stackrestore
+
+         Env.Stack_Save_Fn := Add_Function
+           (Env.Mdl, "llvm.stacksave",
+            Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type));
+         Env.Stack_Restore_Fn := Add_Function
+           (Env.Mdl,
+            "llvm.stackrestore",
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Type_In_Context (Env.Ctx)));
       end;
 
       Env.Push_Scope;

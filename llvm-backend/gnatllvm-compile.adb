@@ -1187,7 +1187,7 @@ package body GNATLLVM.Compile is
                Env.Push_Scope;
                Stack_State := Call
                  (Env.Bld,
-                  Get_Stack_Save (Env), System.Null_Address, 0, "");
+                  Env.Stack_Save_Fn, System.Null_Address, 0, "");
 
                Emit_List (Env, Declarations (Node));
                Emit_List
@@ -1196,7 +1196,7 @@ package body GNATLLVM.Compile is
                Discard
                  (Call
                     (Env.Bld,
-                     Get_Stack_Restore (Env), Stack_State'Address, 1, ""));
+                     Env.Stack_Restore_Fn, Stack_State'Address, 1, ""));
 
                Env.Pop_Scope;
             end;

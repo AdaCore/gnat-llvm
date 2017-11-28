@@ -141,6 +141,8 @@ package GNATLLVM.Environment is
 
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
+      Stack_Save_Fn             : Value_T;
+      Stack_Restore_Fn          : Value_T;
 
       In_Main_Unit              : Boolean := False;
    end record;

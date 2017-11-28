@@ -63,36 +63,81 @@ procedure GCC_Wrapper is
       return Base (Base'First .. Last);
    end Get_Target;
 
-   GCC     : constant String := Command_Name;
-   Args    : Argument_List (1 .. Argument_Count);
-   Status  : Boolean;
-   Last    : Natural;
-   Compile : Boolean := False;
+   GCC       : constant String := Command_Name;
+   Args      : Argument_List (1 .. Argument_Count);
+   Arg_Count : Natural := 0;
+   Status    : Boolean;
+   Last      : Natural;
+   Compile   : Boolean := False;
+   Verbose   : Boolean := False;
+
+   procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
+   --  Call GNAT.OS_Lib.Spawn and take Verbose into account
+
+   -----------
+   -- Spawn --
+   -----------
+
+   procedure Spawn (S : String; Args : Argument_List; Status : out Boolean) is
+   begin
+      if Verbose then
+         Put (S);
+
+         for J in Args'Range loop
+            Put (" " & Args (J).all);
+         end loop;
+
+         New_Line;
+      end if;
+
+      GNAT.OS_Lib.Spawn (S, Args, Status);
+   end Spawn;
 
 begin
+   if Args'Last = 1 then
+      declare
+         Arg : constant String := Argument (1);
+      begin
+         if Arg = "-v" then
+            Put_Line ("Target: " & Get_Target);
+            Put_Line (Base_Name (GCC) & " version " &
+                        Gnatvsn.Library_Version & " for GNAT " &
+                        Gnatvsn.Gnat_Version_String);
+            OS_Exit (0);
+
+         elsif Arg = "-dumpversion" then
+            Put_Line (Gnatvsn.Gnat_Static_Version_String);
+            OS_Exit (0);
+
+         elsif Arg = "-dumpmachine" then
+            Put_Line (Get_Target);
+            OS_Exit (0);
+         end if;
+      end;
+   end if;
+
    for J in Args'Range loop
-      Args (J) := new String'(Argument (J));
+      declare
+         Arg  : constant String := Argument (J);
+         Skip : Boolean := False;
+      begin
+         if Arg = "-c" or else Arg = "-S" then
+            Compile := True;
 
-      if Args (J).all = "-c"
-        or else Args (J).all = "-S"
-      then
-         Compile := True;
+         elsif Arg = "-static-libgcc" or else Arg = "-shared-libgcc" then
+            --  Ignore switch
+            Skip := True;
 
-      elsif Args (J).all = "-v" then
-         Put_Line ("Target: " & Get_Target);
-         Put_Line (Base_Name (GCC) & " version " &
-                     Gnatvsn.Library_Version & " for GNAT " &
-                     Gnatvsn.Gnat_Version_String);
-         OS_Exit (0);
+         elsif Arg = "-v" then
+            Verbose := True;
+            Skip := True;
+         end if;
 
-      elsif Args (J).all = "-dumpversion" then
-         Put_Line (Gnatvsn.Gnat_Static_Version_String);
-         OS_Exit (0);
-
-      elsif Args (J).all = "-dumpmachine" then
-         Put_Line (Get_Target);
-         OS_Exit (0);
-      end if;
+         if not Skip then
+            Arg_Count := Arg_Count + 1;
+            Args (Arg_Count) := new String'(Arg);
+         end if;
+      end;
    end loop;
 
    if GCC'Length >= 3
@@ -124,7 +169,7 @@ begin
             return;
          end if;
 
-         Spawn (S.all, Args, Status);
+         Spawn (S.all, Args (1 .. Arg_Count), Status);
          Free (S);
       end;
    else
@@ -135,12 +180,17 @@ begin
          S := Locate_Exec_On_Path (Linker);
 
          if S = null then
+            --  If llvm-ld is not found, default to "gcc" for now
+            S := Locate_Exec_On_Path ("gcc");
+         end if;
+
+         if S = null then
             Put_Line (Linker & " not found");
             Set_Exit_Status (Failure);
             return;
          end if;
 
-         Spawn (S.all, Args, Status);
+         Spawn (S.all, Args (1 .. Arg_Count), Status);
          Free (S);
       end;
    end if;

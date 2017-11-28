@@ -29,7 +29,7 @@
 /*  extension for object and executable files. It is used by the compiler,  */
 /*  binder and tools.                                                       */
 
-#define TARGET_OBJECT_SUFFIX ".bc"
+#define TARGET_OBJECT_SUFFIX ".o"
 #define TARGET_EXECUTABLE_SUFFIX ""
 unsigned char __gnat_objlist_file_supported = 0; /* TODO??? */
 
@@ -42,8 +42,8 @@ const char *__gnat_target_debuggable_extension = TARGET_EXECUTABLE_SUFFIX;
 
 const char *__gnat_run_path_option = "";
 const char *__gnat_object_file_option = "@";
-char __gnat_shared_libgnat_default = SHARED;
+char __gnat_shared_libgnat_default = STATIC;
 int __gnat_link_max = 12000;
 unsigned char __gnat_using_gnu_linker = 0;
 const char *__gnat_object_library_extension = "";
-char __gnat_shared_libgcc_default = SHARED;
+char __gnat_shared_libgcc_default = STATIC;

@@ -666,13 +666,29 @@ package body GNATLLVM.Compile is
             Emit_List (Env, Visible_Declarations (Node));
             Emit_List (Env, Private_Declarations (Node));
 
+            if Env.In_Main_Unit
+              and then Nkind (Parent (Parent (Node))) = N_Compilation_Unit
+            then
+               Set_Has_No_Elaboration_Code (Parent (Parent (Node)), True);
+            end if;
+
          when N_Package_Body =>
             declare
                Def_Id : constant Entity_Id := Unique_Defining_Entity (Node);
             begin
-               if Ekind (Def_Id) not in Generic_Unit_Kind then
+               if Ekind (Def_Id) in Generic_Unit_Kind then
+                  if Nkind (Parent (Node)) = N_Compilation_Unit then
+                     Set_Has_No_Elaboration_Code (Parent (Node), True);
+                  end if;
+               else
                   Emit_List (Env, Declarations (Node));
                   --  ??? Handle statements
+
+                  if Env.In_Main_Unit
+                    and then Nkind (Parent (Node)) = N_Compilation_Unit
+                  then
+                     Set_Has_No_Elaboration_Code (Parent (Node), True);
+                  end if;
                end if;
             end;
 
@@ -919,12 +935,6 @@ package body GNATLLVM.Compile is
             --  Nothing is needed except for debugging information.
             --  Skip it for now???
             --  Note that in any case, we should skip Intrinsic subprograms
-
-            null;
-
-         when N_Package_Renaming_Declaration =>
-            --  At the moment, packages aren't materialized in LLVM IR, so
-            --  there is nothing to do here.
 
             null;
 
@@ -1252,15 +1262,21 @@ package body GNATLLVM.Compile is
          when N_Call_Marker
             | N_Empty
             | N_Function_Instantiation
-            | N_Package_Instantiation
-            | N_Generic_Package_Declaration
-            | N_Generic_Subprogram_Declaration
             | N_Itype_Reference
             | N_Number_Declaration
             | N_Procedure_Instantiation
             | N_Validate_Unchecked_Conversion
             | N_Variable_Reference_Marker =>
             null;
+
+         when N_Package_Instantiation
+            | N_Package_Renaming_Declaration
+            | N_Generic_Package_Declaration
+            | N_Generic_Subprogram_Declaration
+         =>
+            if Nkind (Parent (Node)) = N_Compilation_Unit then
+               Set_Has_No_Elaboration_Code (Parent (Node), True);
+            end if;
 
          --  ??? Ignore for now
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
@@ -2416,9 +2432,14 @@ package body GNATLLVM.Compile is
             Subp_Type : constant Type_T :=
               Create_Subprogram_Type_From_Spec (Env, Subp_Spec);
 
-            Subp_Base_Name : constant String :=
-              Get_Name_String (Chars (Def_Ident));
-            LLVM_Func : constant Value_T :=
+            Name           : constant Name_Id :=
+              (if (Is_Imported (Def_Ident) or else Is_Exported (Def_Ident))
+                   and then Present (Interface_Name (Def_Ident))
+                   and then No (Address_Clause (Def_Ident))
+               then String_To_Name (Strval (Interface_Name (Def_Ident)))
+               else Chars (Def_Ident));
+            Subp_Base_Name : constant String := Get_Name_String (Name);
+            LLVM_Func      : constant Value_T :=
               Add_Function
                 (Env.Mdl,
                  (if Is_Compilation_Unit (Def_Ident)

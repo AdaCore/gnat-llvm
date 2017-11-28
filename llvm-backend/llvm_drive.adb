@@ -78,6 +78,15 @@ package body LLVM_Drive is
 
          if In_Extended_Main_Code_Unit (U) then
             Set_In_Main_Unit (Env);
+
+            --  ??? Has_No_Elaboration_Code is supposed to be set by default
+            --  on subprogram bodies, but this is apparently not the case,
+            --  so force the flag here. Ditto for subprogram decls.
+
+            if Nkind_In (U, N_Subprogram_Body, N_Subprogram_Declaration) then
+               Set_Has_No_Elaboration_Code (Parent (U), True);
+            end if;
+
             Emit (Env, U);
          else
             --  Should we instead skip these units completely, and generate

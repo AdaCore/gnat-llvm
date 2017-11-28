@@ -43,10 +43,12 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body LLVM_Drive is
 
-   Dump_IR : Boolean := False;
+   type Code_Generation_Kind is (Dump_IR, Dump_BC, Dump_Assembly, Dump_Object);
 
-   function Output_File_Name return String;
-   --  Return the name of the output LLVM bitcode file
+   Code_Generation : Code_Generation_Kind := Dump_Object;
+
+   function Output_File_Name (Extension : String) return String;
+   --  Return the name of the output file, using the given Extension
 
    ------------------
    -- GNAT_To_LLVM --
@@ -88,6 +90,25 @@ package body LLVM_Drive is
 
       procedure Walk_All_Units is
         new Sem.Walk_Library_Items (Action => Emit_Library_Item);
+
+      function LLVM_Write_Object
+        (Module   : LLVM.Types.Module_T;
+         Object   : Boolean;
+         Filename : String) return Integer;
+
+      function LLVM_Write_Object
+        (Module   : LLVM.Types.Module_T;
+         Object   : Boolean;
+         Filename : String) return Integer
+      is
+         function Internal
+           (Module   : LLVM.Types.Module_T;
+            Object   : Integer;
+            Filename : String) return Integer;
+         pragma Import (C, Internal, "LLVM_Write_Object");
+      begin
+         return Internal (Module, Boolean'Pos (Object), Filename & ASCII.NUL);
+      end LLVM_Write_Object;
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
@@ -143,20 +164,40 @@ package body LLVM_Drive is
       --  Output the translation
 
       if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
-         --  TODO??? Display the crash message, or something like this
          Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
 
       else
-         if Dump_IR then
-            Dump_Module (Env.Mdl);
-         else
-            if LLVM.Bit_Writer.Write_Bitcode_To_File
-              (Env.Mdl, Output_File_Name) /= 0
-            then
-               Error_Msg_N
-                 ("could not write `" & Output_File_Name & "`", GNAT_Root);
-            end if;
-         end if;
+         case Code_Generation is
+            when Dump_IR =>
+               Dump_Module (Env.Mdl);
+            when Dump_BC =>
+               declare
+                  S : constant String := Output_File_Name (".bc");
+               begin
+                  if LLVM.Bit_Writer.Write_Bitcode_To_File (Env.Mdl, S) /= 0
+                  then
+                     Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
+                  end if;
+               end;
+
+            when Dump_Assembly =>
+               declare
+                  S : constant String := Output_File_Name (".s");
+               begin
+                  if LLVM_Write_Object (Env.Mdl, False, S) /= 0 then
+                     Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
+                  end if;
+               end;
+
+            when Dump_Object =>
+               declare
+                  S : constant String := Output_File_Name (".o");
+               begin
+                  if LLVM_Write_Object (Env.Mdl, True, S) /= 0 then
+                     Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
+                  end if;
+               end;
+         end case;
       end if;
 
       --  Release the environment
@@ -172,7 +213,13 @@ package body LLVM_Drive is
    function Is_Back_End_Switch (Switch : String) return Boolean is
    begin
       if Switch = "--dump-ir" then
-         Dump_IR := True;
+         Code_Generation := Dump_IR;
+         return True;
+      elsif Switch = "--dump-bc" then
+         Code_Generation := Dump_BC;
+         return True;
+      elsif Switch = "--dump-asm" then
+         Code_Generation := Dump_Assembly;
          return True;
       end if;
 
@@ -183,9 +230,7 @@ package body LLVM_Drive is
    -- Output_File_Name --
    ----------------------
 
-   function Output_File_Name return String is
-      Extension : constant String := ".bc";
-
+   function Output_File_Name (Extension : String) return String is
    begin
       if not Output_File_Name_Present then
          return

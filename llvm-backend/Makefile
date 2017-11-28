@@ -37,9 +37,12 @@ ADALIB=lib/rts-llvm/adalib
 uname:=$(shell uname)
 pwd:=$(shell pwd)
 
-LLVM_MODULES = Core Analysis BitWriter Target
-LDFLAGS=$(shell $(pwd)/../llvm-ada/llvm-obj/bin/llvm-config --libs \
-  $(LLVM_MODULES) --ldflags --system-libs) -lstdc++
+# LLVM_MODULES = Core Analysis BitWriter Target
+# LDFLAGS=$(shell $(pwd)/../llvm-ada/llvm-obj/bin/llvm-config --libs \
+#   $(LLVM_MODULES) --ldflags --system-libs) -lstdc++
+LDFLAGS=$(shell $(pwd)/../llvm-ada/llvm-obj/bin/llvm-config --libs all \
+  --ldflags --system-libs) -lstdc++
+CXXFLAGS=$(shell $(pwd)/../llvm-ada/llvm-obj/bin/llvm-config --cxxflags)
 
 ifeq ($(filter-out CYGWIN%,$(uname)),)
   LDFLAGS+=-Wl,--stack=0x2000000
@@ -70,7 +73,8 @@ setup:
 	cp -p $(GNAT_SRC)/ada_get_targ.adb obj/get_targ.adb
 
 build: setup force
-	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) -largs $(LDFLAGS)
+	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
+	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
 
 fast:

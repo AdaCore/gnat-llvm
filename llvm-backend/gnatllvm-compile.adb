@@ -159,6 +159,11 @@ package body GNATLLVM.Compile is
    --  descriptor, reference it to the static link structure. Do nothing
    --  if there is no current subprogram.
 
+   function Needs_Deref (Def_Ident : Entity_Id) return Boolean
+   is (Present (Address_Clause (Def_Ident))
+       and then not Is_Array_Type (Etype (Def_Ident)));
+   --  Return whether Def_Ident requires an extra level of indirection
+
    function Get_Static_Link
      (Env  : Environ;
       Subp : Entity_Id) return Value_T;
@@ -809,11 +814,19 @@ package body GNATLLVM.Compile is
                      --  * The result of the alloca is bitcasted to the proper
                      --    array type, so that multidimensional LLVM GEP
                      --    operations work properly.
+                     --  * If an address clause is specified, then simply
+                     --    cast the address into an array.
 
                      LLVM_Type := Create_Access_Type (Env, T);
 
                      if Present (Address_Clause (Def_Ident)) then
-                        Error_Msg_N ("unsupported address clause", Node);
+                        LLVM_Var := Int_To_Ptr
+                           (Env.Bld,
+                            Emit_Expression
+                              (Env,
+                               Expression (Address_Clause (Def_Ident))),
+                           LLVM_Type,
+                           Get_Name (Def_Ident));
                      else
                         LLVM_Var := Bit_Cast
                            (Env.Bld,
@@ -840,7 +853,7 @@ package body GNATLLVM.Compile is
                   Env.Set (Def_Ident, LLVM_Var);
                   Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
-                  if Present (Address_Clause (Def_Ident)) then
+                  if Needs_Deref (Def_Ident) then
                      Expr := Emit_Expression
                        (Env, Expression (Address_Clause (Def_Ident)));
                      Expr := Int_To_Ptr (Env.Bld, Expr, LLVM_Type, "to-ptr");
@@ -854,7 +867,7 @@ package body GNATLLVM.Compile is
                   then
                      Expr := Emit_Expression (Env, Expression (Node));
 
-                     if Present (Address_Clause (Def_Ident)) then
+                     if Needs_Deref (Def_Ident) then
                         Store (Env.Bld, Expr, Load (Env.Bld, LLVM_Var, ""));
                      else
                         Store (Env.Bld, Expr, LLVM_Var);
@@ -1420,7 +1433,7 @@ package body GNATLLVM.Compile is
                   end if;
 
                else
-                  if Present (Address_Clause (Def_Ident)) then
+                  if Needs_Deref (Def_Ident) then
                      return Load (Env.Bld, Env.Get (Def_Ident), "");
                   else
                      return Env.Get (Def_Ident);
@@ -1479,60 +1492,6 @@ package body GNATLLVM.Compile is
                  Parent (Entity (Selector_Name (Node)));
             begin
                return Record_Field_Offset (Env, Pfx_Ptr, Record_Component);
-            end;
-
-         when N_In | N_Not_In =>
-            declare
-               Is_In : constant Boolean := Nkind (Node) = N_In;
-               Rng   : Node_Id := Right_Opnd (Node);
-               First : Boolean := True;
-               Comp1 : Value_T;
-               Comp2 : Value_T;
-
-            begin
-               --  ??? We are not creating a lvalue here
-
-               if Present (Rng) then
-                  if Nkind (Rng) = N_Identifier then
-                     Rng := Scalar_Range (Etype (Rng));
-                  end if;
-
-                  Comp1 := Emit_Comparison
-                    (Env,
-                     Get_Preds (if Is_In then N_Op_Ge else N_Op_Lt),
-                     Get_Fullest_View (Etype (Left_Opnd (Node))),
-                     Left_Opnd (Node), Low_Bound (Rng));
-                  Comp2 := Emit_Comparison
-                    (Env,
-                     Get_Preds (if Is_In then N_Op_Le else N_Op_Gt),
-                     Get_Fullest_View (Etype (Left_Opnd (Node))),
-                     Left_Opnd (Node), High_Bound (Rng));
-                  return Build_Short_Circuit_Op (Env, Comp1, Comp2, Op_And);
-
-               else
-                  for N of Iterate (Alternatives (Node)) loop
-                     if First then
-                        Comp1 := Emit_Expression (Env, N);
-                        First := False;
-                     else
-                        Comp2 := Emit_Expression (Env, N);
-                        Comp1 := Build_Or (Env.Bld, Comp1, Comp2, "or");
-                     end if;
-                  end loop;
-
-                  if Is_In then
-                     return Comp1;
-                  else
-                     return I_Cmp
-                       (Env.Bld,
-                        Int_NE,
-                        Comp1,
-                        Const_Int
-                          (Create_Type (Env, Etype (Node)),
-                           0, Sign_Extend => False),
-                        "not");
-                  end if;
-               end if;
             end;
 
          when N_Indexed_Component =>
@@ -1950,27 +1909,45 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
             declare
-               Val     : constant Value_T := Emit_Expr (Expression (Node));
-               Dest_Ty : constant Type_T := Create_Type (Env, Etype (Node));
+               Val_Type  : constant Node_Id := Etype (Expression (Node));
+               Dest_Type : constant Node_Id := Etype (Node);
+               Dest_Ty   : constant Type_T := Create_Type (Env, Dest_Type);
+
+               function Val return Value_T is
+                 (Emit_Expression (Env, Expression (Node)));
+
             begin
-               if Is_Access_Type (Etype (Node))
-                 and then (Is_Scalar_Type (Etype (Expression (Node)))
-                           or else Is_Descendant_Of_Address
-                             (Etype (Expression (Node))))
+               if Is_Access_Type (Dest_Type)
+                 and then (Is_Scalar_Type (Val_Type)
+                           or else Is_Descendant_Of_Address (Val_Type))
                then
                   return Int_To_Ptr (Env.Bld, Val, Dest_Ty, "unchecked-conv");
-               elsif (Is_Scalar_Type (Etype (Node))
-                      or else Is_Descendant_Of_Address (Etype (Node)))
-                 and then (Is_Access_Type (Etype (Expression (Node))))
+               elsif (Is_Scalar_Type (Dest_Type)
+                      or else Is_Descendant_Of_Address (Dest_Type))
+                 and then Is_Access_Type (Val_Type)
                then
                   return Ptr_To_Int (Env.Bld, Val, Dest_Ty, "unchecked-conv");
-               elsif Is_Access_Type (Etype (Expression (Node))) then
+               elsif Is_Access_Type (Val_Type) then
                   return Pointer_Cast
                     (Env.Bld, Val, Dest_Ty, "unchecked-conv");
-               elsif Is_Integer_Type (Etype (Node))
-                 and then (Is_Integer_Type (Etype (Expression (Node))))
+               elsif Is_Integer_Type (Dest_Type)
+                 and then Is_Integer_Type (Val_Type)
                then
                   return Int_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
+               elsif Is_Array_Type (Val_Type)
+                 and then Is_Scalar_Type (Dest_Type)
+               then
+                  return Load
+                    (Env.Bld,
+                     Bit_Cast
+                       (Env.Bld,
+                        Array_Address
+                          (Env,
+                           Emit_LValue (Env, Expression (Node)),
+                           Val_Type),
+                        Pointer_Type (Dest_Ty, 0), ""),
+                     "unchecked-conv");
+
                else
                   return Bit_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                end if;
@@ -2049,7 +2026,7 @@ package body GNATLLVM.Compile is
 
                      if Is_Subprogram then
                         return LValue;
-                     elsif Present (Address_Clause (Def_Ident)) then
+                     elsif Needs_Deref (Def_Ident) then
                         return Load (Env.Bld, Load (Env.Bld, LValue, ""), "");
                      else
                         return Load (Env.Bld, LValue, "");
@@ -2165,6 +2142,58 @@ package body GNATLLVM.Compile is
 
          when N_Defining_Identifier =>
             return Env.Get (Node);
+
+         when N_In | N_Not_In =>
+            declare
+               Is_In : constant Boolean := Nkind (Node) = N_In;
+               Rng   : Node_Id := Right_Opnd (Node);
+               First : Boolean := True;
+               Comp1 : Value_T;
+               Comp2 : Value_T;
+
+            begin
+               if Present (Rng) then
+                  if Nkind (Rng) = N_Identifier then
+                     Rng := Scalar_Range (Etype (Rng));
+                  end if;
+
+                  Comp1 := Emit_Comparison
+                    (Env,
+                     Get_Preds (if Is_In then N_Op_Ge else N_Op_Lt),
+                     Get_Fullest_View (Etype (Left_Opnd (Node))),
+                     Left_Opnd (Node), Low_Bound (Rng));
+                  Comp2 := Emit_Comparison
+                    (Env,
+                     Get_Preds (if Is_In then N_Op_Le else N_Op_Gt),
+                     Get_Fullest_View (Etype (Left_Opnd (Node))),
+                     Left_Opnd (Node), High_Bound (Rng));
+                  return Build_Short_Circuit_Op (Env, Comp1, Comp2, Op_And);
+
+               else
+                  for N of Iterate (Alternatives (Node)) loop
+                     if First then
+                        Comp1 := Emit_Expression (Env, N);
+                        First := False;
+                     else
+                        Comp2 := Emit_Expression (Env, N);
+                        Comp1 := Build_Or (Env.Bld, Comp1, Comp2, "or");
+                     end if;
+                  end loop;
+
+                  if Is_In then
+                     return Comp1;
+                  else
+                     return I_Cmp
+                       (Env.Bld,
+                        Int_NE,
+                        Comp1,
+                        Const_Int
+                          (Create_Type (Env, Etype (Node)),
+                           0, Sign_Extend => False),
+                        "not");
+                  end if;
+               end if;
+            end;
 
          when others =>
             Error_Msg_N

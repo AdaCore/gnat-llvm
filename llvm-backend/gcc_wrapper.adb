@@ -169,6 +169,8 @@ begin
             return;
          end if;
 
+         --  ??? delete previous .o file
+
          Spawn (S.all, Args (1 .. Arg_Count), Status);
          Free (S);
       end;

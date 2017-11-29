@@ -77,7 +77,7 @@ def gnat_to_bc(adb, gargs=None):
         ]
     )
     gargs = list(gargs) if gargs else []
-    subprocess.check_call(prefix + [LLVM_GNATCOMPILE, '-c', '--dump-bc', adb] + gargs)
+    subprocess.check_call(prefix + [LLVM_GNATCOMPILE, '-c', '--dump-bc', '-gnatp', adb] + gargs)
     return change_ext(adb, 'bc')
 
 def gnat_to_obj(adb, gargs=None):

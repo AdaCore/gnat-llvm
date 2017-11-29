@@ -145,15 +145,12 @@ package GNATLLVM.Environment is
       Stack_Restore_Fn          : Value_T;
 
       In_Main_Unit              : Boolean := False;
+      Special_Elaboration_Code  : Boolean := False;
+      Current_Elab_Entity       : Node_Id := Empty;
    end record;
 
    procedure Push_Scope (Env : access Environ_Record);
    procedure Pop_Scope (Env : access Environ_Record);
-
-   procedure Set_In_Main_Unit
-     (Env : access Environ_Record; In_Main_Unit : Boolean := True);
-   function In_Main_Unit (Env : access Environ_Record) return Boolean is
-     (Env.In_Main_Unit);
 
    function Library_Level (Env : access Environ_Record) return Boolean;
 

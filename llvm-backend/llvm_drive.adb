@@ -77,7 +77,7 @@ package body LLVM_Drive is
          --  Current_Source_File := Source_Index (Current_Unit);
 
          if In_Extended_Main_Code_Unit (U) then
-            Set_In_Main_Unit (Env);
+            Env.In_Main_Unit := True;
 
             --  ??? Has_No_Elaboration_Code is supposed to be set by default
             --  on subprogram bodies, but this is apparently not the case,
@@ -92,7 +92,7 @@ package body LLVM_Drive is
             --  Should we instead skip these units completely, and generate
             --  referenced items on the fly???
 
-            Set_In_Main_Unit (Env, False);
+            Env.In_Main_Unit := False;
             Emit (Env, U);
          end if;
       end Emit_Library_Item;

@@ -62,16 +62,6 @@ package body GNATLLVM.Environment is
       Env.Scopes.Delete_Last;
    end Pop_Scope;
 
-   ----------------------
-   -- Set_In_Main_Unit --
-   ----------------------
-
-   procedure Set_In_Main_Unit
-     (Env : access Environ_Record; In_Main_Unit : Boolean := True) is
-   begin
-      Env.In_Main_Unit := In_Main_Unit;
-   end Set_In_Main_Unit;
-
    --------------
    -- Has_Type --
    --------------

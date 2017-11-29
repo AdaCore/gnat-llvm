@@ -1456,6 +1456,7 @@ package body GNATLLVM.Compile is
          when N_Call_Marker
             | N_Empty
             | N_Function_Instantiation
+            | N_Freeze_Generic_Entity
             | N_Itype_Reference
             | N_Number_Declaration
             | N_Procedure_Instantiation

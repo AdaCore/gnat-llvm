@@ -1001,9 +1001,7 @@ package body GNATLLVM.Compile is
                            Set_Initializer (LLVM_Var, Expr);
                         else
                            --  ??? Should append to the elab procedure
-                           --  Expr :=
-                           --    Emit_Expression (Env, Expression (Node));
-                           --  Store (Env.Bld, Expr, LLVM_Var);
+                           --  Elaboration_Table.Append (Node);
 
                            Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
                         end if;
@@ -1908,10 +1906,14 @@ package body GNATLLVM.Compile is
                   Op := F_Div (Env.Bld, LVal, RVal, "fdiv");
                elsif Is_Unsigned_Type (T) then
                   return U_Div (Env.Bld, LVal, RVal, "udiv");
+               elsif Is_Fixed_Point_Type (T) then
+                  if Is_Unsigned_Type (T) then
+                     Op := S_Div (Env.Bld, LVal, RVal, "udiv");
+                  else
+                     Op := S_Div (Env.Bld, LVal, RVal, "sdiv");
+                  end if;
                else
-                  Error_Msg_N
-                    ("not handled: Division with type `" & T'Img & "`",
-                     Node);
+                  Error_Msg_N ("unsupported kind of division", Node);
                end if;
 
             when N_Op_Rem =>
@@ -2155,6 +2157,9 @@ package body GNATLLVM.Compile is
                function Val return Value_T is
                  (Emit_Expression (Env, Expression (Node)));
 
+               function Is_Integer_Or_Fixed (T : Node_Id) return Boolean is
+                 (Is_Integer_Type (T) or else Is_Fixed_Point_Type (T));
+
             begin
                if Is_Access_Type (Dest_Type)
                  and then (Is_Scalar_Type (Val_Type)
@@ -2169,8 +2174,8 @@ package body GNATLLVM.Compile is
                elsif Is_Access_Type (Val_Type) then
                   return Pointer_Cast
                     (Env.Bld, Val, Dest_Ty, "unchecked-conv");
-               elsif Is_Integer_Type (Dest_Type)
-                 and then Is_Integer_Type (Val_Type)
+               elsif Is_Integer_Or_Fixed (Dest_Type)
+                 and then Is_Integer_Or_Fixed (Val_Type)
                then
                   return Int_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                elsif Is_Array_Type (Val_Type)

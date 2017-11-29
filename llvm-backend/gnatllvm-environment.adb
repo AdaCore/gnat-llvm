@@ -368,17 +368,17 @@ package body GNATLLVM.Environment is
       Subp_Body : Node_Id;
       Func      : Value_T) return Subp_Env
    is
-      Subp_Ent : constant Entity_Id :=
-        Defining_Unit_Name (Get_Acting_Spec (Subp_Body));
-      Subp     : constant Subp_Env := new Subp_Env_Record'
+      Subp : constant Subp_Env := new Subp_Env_Record'
         (Env                    => Environ (Env),
          Func                   => Func,
          Saved_Builder_Position => Get_Insert_Block (Env.Bld),
          S_Link_Descr           => null,
          S_Link                 => Value_T (System.Null_Address));
+
    begin
       if Local_Nested_Support then
-         Subp.S_Link_Descr := Env.S_Links.Element (Subp_Ent);
+         Subp.S_Link_Descr := Env.S_Links.Element
+           (Defining_Unit_Name (Get_Acting_Spec (Subp_Body)));
       end if;
 
       Env.Subprograms.Append (Subp);

@@ -429,6 +429,10 @@ package body GNATLLVM.Types is
                  Nkind (Associated_Node_For_Itype (TE))
                    /= N_Full_Type_Declaration);
 
+         when Fixed_Point_Kind =>
+            return Int_Type_In_Context
+              (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
+
          when others =>
             pragma Annotate (Xcov, Exempt_On, "Defensive programming");
             raise Program_Error

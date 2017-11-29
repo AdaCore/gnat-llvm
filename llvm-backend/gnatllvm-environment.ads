@@ -143,6 +143,7 @@ package GNATLLVM.Environment is
       Memory_Cmp_Fn             : Value_T;
       Stack_Save_Fn             : Value_T;
       Stack_Restore_Fn          : Value_T;
+      LCH_Fn                    : Value_T;
 
       In_Main_Unit              : Boolean := False;
       Special_Elaboration_Code  : Boolean := False;

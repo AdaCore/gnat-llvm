@@ -27,7 +27,8 @@ with Eval_Fat; use Eval_Fat;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Util; use Sem_Util;
-with Sinfo; use Sinfo;
+with Sinfo;    use Sinfo;
+with Sinput;   use Sinput;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
@@ -100,6 +101,9 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (Node) in N_If_Statement | N_If_Expression;
    --  Helper for Emit and Emit_Expression: handle if statements and if
    --  expressions.
+
+   function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T;
+   --  Generate a call to __gnat_last_chance_handler
 
    procedure Emit_List
      (Env : Environ; List : List_Id);
@@ -896,19 +900,29 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_Raise_Constraint_Error | N_Raise_Program_Error =>
+         when N_Raise_Statement =>
+            Discard (Emit_LCH_Call (Env, Node));
 
-            --  ??? When exceptions handling will be implemented, implement
-            --  this.
-
-            null;
-
-         when N_Raise_Storage_Error =>
-
-            --  ??? When exceptions handling will be implemented, implement
-            --  this.
-
-            null;
+         when N_Raise_xxx_Error =>
+            if Present (Condition (Node)) then
+               declare
+                  BB_Then    : Basic_Block_T;
+                  BB_Next    : Basic_Block_T;
+               begin
+                  BB_Then := Create_Basic_Block (Env, "if-then");
+                  BB_Next := Create_Basic_Block (Env, "if-next");
+                  Discard (Build_Cond_Br
+                    (Env.Bld,
+                     Emit_Expression (Env, Condition (Node)),
+                     BB_Then, BB_Next));
+                  Position_Builder_At_End (Env.Bld, BB_Then);
+                  Discard (Emit_LCH_Call (Env, Node));
+                  Discard (Build_Br (Env.Bld, BB_Next));
+                  Position_Builder_At_End (Env.Bld, BB_Next);
+               end;
+            else
+               Discard (Emit_LCH_Call (Env, Node));
+            end if;
 
          when N_Object_Declaration | N_Exception_Declaration =>
             --  Object declarations are variables either allocated on the stack
@@ -2419,6 +2433,9 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+         when N_Raise_Expression =>
+            return Emit_LCH_Call (Env, Node);
+
          when others =>
             Error_Msg_N
               ("unsupported node kind: `" &
@@ -2427,6 +2444,70 @@ package body GNATLLVM.Compile is
          end case;
       end if;
    end Emit_Expression;
+
+   -------------------
+   -- Emit_LCH_Call --
+   -------------------
+
+   function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T is
+      Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+      Int_Type      : constant Type_T := Create_Type (Env, Standard_Integer);
+      Args          : Value_Array (1 .. 2);
+
+      File : constant String :=
+        Get_Name_String (Reference_Name (Get_Source_File_Index (Sloc (Node))));
+
+      Element_Type : constant Type_T :=
+        Int_Type_In_Context (Env.Ctx, 8);
+      Array_Type   : constant Type_T :=
+        LLVM.Core.Array_Type (Element_Type, File'Length + 1);
+      Elements     : array (1 .. File'Length + 1) of Value_T;
+      V            : constant Value_T :=
+                       Add_Global (Env.Mdl, Array_Type, "str-lit");
+
+   begin
+      --  Build a call to __gnat_last_chance_handler (FILE, LINE)
+
+      --  First build a string literal for FILE
+
+      for J in File'Range loop
+         Elements (J) := Const_Int
+           (Element_Type,
+            unsigned_long_long (Character'Pos (File (J))),
+            Sign_Extend => False);
+      end loop;
+
+      --  Append NUL character
+
+      Elements (Elements'Last) :=
+        Const_Int (Element_Type, 0, Sign_Extend => False);
+
+      Set_Initializer
+        (V, Const_Array (Element_Type, Elements'Address, Elements'Length));
+      Set_Linkage (V, Private_Linkage);
+      Set_Global_Constant (V, True);
+
+      Args (1) := Bit_Cast
+        (Env.Bld,
+         GEP
+           (Env.Bld,
+            V,
+            (Const_Int (Intptr_T, 0, Sign_Extend => False),
+             Const_Int (Create_Type (Env, Standard_Positive),
+                        0, Sign_Extend => False)),
+            ""),
+         Void_Ptr_Type,
+         "");
+
+      --  Then provide the line number
+
+      Args (2) := Const_Int
+        (Int_Type,
+         unsigned_long_long (Get_Logical_Line_Number (Sloc (Node))),
+         Sign_Extend => False);
+      return Call
+        (Env.Bld, Env.LCH_Fn, Args'Address, Args'Length, "");
+   end Emit_LCH_Call;
 
    ---------------
    -- Emit_List --
@@ -2472,7 +2553,7 @@ package body GNATLLVM.Compile is
       Args_Count     : constant Nat :=
         Params'Length + (if Takes_S_Link then 1 else 0);
 
-      Args           : array (1 .. Args_Count) of Value_T;
+      Args           : Value_Array (1 .. Args_Count);
       I, Idx         : Standard.Types.Int := 1;
       P_Type         : Entity_Id;
       Params_Offsets : Name_Maps.Map;
@@ -3237,11 +3318,12 @@ package body GNATLLVM.Compile is
       --  Depending on the node to translate, we will have to compute and
       --  return an expression.
 
-      GNAT_Cond : constant Node_Id :=
+      Else_Created : Boolean := False;
+      GNAT_Cond    : constant Node_Id :=
         (if Is_Stmt
          then Condition (Node)
          else Pick (Expressions (Node), 1));
-      Cond      : constant Value_T := Emit_Expression (Env, GNAT_Cond);
+      Cond         : constant Value_T := Emit_Expression (Env, GNAT_Cond);
 
       BB_Then, BB_Else, BB_Next : Basic_Block_T;
       --  BB_Then is the basic block we jump to if the condition is true.
@@ -3251,17 +3333,22 @@ package body GNATLLVM.Compile is
       Then_Value, Else_Value : Value_T;
 
    begin
-      BB_Next := Create_Basic_Block (Env, "if-next");
       BB_Then := Create_Basic_Block (Env, "if-then");
 
       --  If this is an IF statement without ELSE part, then we jump to the
       --  BB_Next when the condition is false. Thus, BB_Else and BB_Next
       --  should be the same in this case.
 
-      BB_Else :=
-        (if not Is_Stmt or else not Is_Empty_List (Else_Statements (Node))
-         then Create_Basic_Block (Env, "if-else")
-         else BB_Next);
+      if not Is_Stmt or else not Is_Empty_List (Else_Statements (Node)) then
+         BB_Else := Create_Basic_Block (Env, "if-else");
+         Else_Created := True;
+      end if;
+
+      BB_Next := Create_Basic_Block (Env, "if-next");
+
+      if not Else_Created then
+         BB_Else := BB_Next;
+      end if;
 
       Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
 

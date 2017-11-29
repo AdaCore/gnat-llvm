@@ -646,6 +646,9 @@ package body GNATLLVM.Compile is
    procedure Emit (Env : Environ; Node : Node_Id) is
    begin
       case Nkind (Node) is
+         when N_Abstract_Subprogram_Declaration =>
+            null;
+
          when N_Compilation_Unit =>
             Emit_List (Env, Context_Items (Node));
             Emit_List (Env, Declarations (Aux_Decls_Node (Node)));

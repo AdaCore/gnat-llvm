@@ -105,10 +105,6 @@ package body GNATLLVM.Compile is
    function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T;
    --  Generate a call to __gnat_last_chance_handler
 
-   procedure Emit_List
-     (Env : Environ; List : List_Id);
-   --  Helper for Emit/Emit_Expression: call Emit on every element of List
-
    function Emit_Min_Max
      (Env         : Environ;
       Exprs       : List_Id;

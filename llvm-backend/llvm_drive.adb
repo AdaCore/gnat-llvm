@@ -67,6 +67,24 @@ package body LLVM_Drive is
       -----------------------
 
       procedure Emit_Library_Item (U : Node_Id) is
+         procedure Emit_Aux (Compilation_Unit : Node_Id);
+         --  Process any pragmas and declarations preceding the unit
+
+         --------------
+         -- Emit_Aux --
+         --------------
+
+         procedure Emit_Aux (Compilation_Unit : Node_Id) is
+         begin
+            for Prag of Iterate (Context_Items (Compilation_Unit)) loop
+               if Nkind (Prag) = N_Pragma then
+                  Emit (Env, Prag);
+               end if;
+            end loop;
+
+            Emit_List (Env, Declarations (Aux_Decls_Node (Compilation_Unit)));
+         end Emit_Aux;
+
       begin
          --  Ignore Standard and ASCII packages
 
@@ -88,12 +106,20 @@ package body LLVM_Drive is
                Set_Has_No_Elaboration_Code (Parent (U), True);
             end if;
 
+            --  Process any pragmas and declarations preceding the unit
+
+            Emit_Aux (Parent (U));
+
+            --  Process the unit itself
+
             Emit (Env, U);
+
          else
             --  Should we instead skip these units completely, and generate
             --  referenced items on the fly???
 
             Env.In_Main_Unit := False;
+            Emit_Aux (Parent (U));
             Emit (Env, U);
          end if;
       end Emit_Library_Item;

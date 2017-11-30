@@ -27,8 +27,10 @@ package GNATLLVM.Compile is
      with Pre => Env /= null;
    --  General compilation routine, called at the top-level.
 
-   function Emit_Expression
-     (Env : Environ; Node : Node_Id) return Value_T
+   procedure Emit_List (Env : Environ; List : List_Id);
+   --  Call Emit on every element of List
+
+   function Emit_Expression (Env : Environ; Node : Node_Id) return Value_T
      with Pre => Env /= null;
    --  Compile an expression node to an LLVM value.
 

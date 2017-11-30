@@ -1458,6 +1458,8 @@ package body GNATLLVM.Compile is
          --  Nodes we actually want to ignore
          when N_Call_Marker
             | N_Empty
+            | N_Enumeration_Representation_Clause
+            | N_Enumeration_Type_Definition
             | N_Function_Instantiation
             | N_Freeze_Generic_Entity
             | N_Itype_Reference

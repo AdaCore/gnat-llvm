@@ -3478,7 +3478,7 @@ package body GNATLLVM.Compile is
               (Env.Bld,
                Emit_Expression (Env, Expression (Node)),
                BBs (BBs'Last),
-               unsigned (List_Length (Alternatives (Node))));
+               BBs'Length);
 
             Alt := First (Alternatives (Node));
 

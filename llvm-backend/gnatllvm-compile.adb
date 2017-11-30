@@ -1098,10 +1098,15 @@ package body GNATLLVM.Compile is
                LLVM_Var  : Value_T;
             begin
                if Env.Library_Level then
-                  --  ??? Handle top-level declarations
+                  if Is_LValue (Name (Node)) then
+                     LLVM_Var := Emit_LValue (Env, Name (Node));
+                     Env.Set (Def_Ident, LLVM_Var);
+                  else
+                     --  ??? Handle top-level declarations
+                     Error_Msg_N
+                       ("library level object renaming not supported", Node);
+                  end if;
 
-                  Error_Msg_N
-                    ("library level object renaming not supported", Node);
                   return;
                end if;
 

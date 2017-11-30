@@ -33,6 +33,7 @@ with Osint.C;  use Osint.C;
 with Sem;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
+with Switch;   use Switch;
 
 with Get_Targ;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
@@ -228,6 +229,8 @@ package body LLVM_Drive is
    ------------------------
 
    function Is_Back_End_Switch (Switch : String) return Boolean is
+      First : constant Positive := Switch'First + 1;
+      Last  : constant Natural  := Switch_Last (Switch);
    begin
       if Switch = "--dump-ir" then
          Code_Generation := Dump_IR;
@@ -240,7 +243,15 @@ package body LLVM_Drive is
          return True;
       end if;
 
-      return False;
+      --  For now we allow the -g/-O/-f/-m/-W/-w and -pipe switches, even
+      --  though they will have no effect.
+      --  This permits compatibility with existing scripts.
+      --  ??? Should take into account -g and -O
+
+      return
+        Is_Switch (Switch)
+          and then (Switch (First) in 'f' | 'g' | 'm' | 'O' | 'W' | 'w'
+                    or else Switch (First .. Last) = "pipe");
    end Is_Back_End_Switch;
 
    ----------------------

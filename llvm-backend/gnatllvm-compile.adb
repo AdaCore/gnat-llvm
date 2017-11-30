@@ -873,11 +873,11 @@ package body GNATLLVM.Compile is
                Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
                return;
 
-            --  There is nothing to emit for the template of a generic
-            --  subprogram body: ignore them.
+            --  Skip generic subprograms
 
-            elsif Ekind (Defining_Unit_Name (Get_Acting_Spec (Node)))
-              in Generic_Subprogram_Kind
+            elsif Present (Corresponding_Spec (Node))
+              and then Ekind (Corresponding_Spec (Node)) in
+                         Generic_Subprogram_Kind
             then
                return;
             end if;

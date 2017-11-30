@@ -102,6 +102,9 @@ package body GNATLLVM.Compile is
    --  Helper for Emit and Emit_Expression: handle if statements and if
    --  expressions.
 
+   procedure Emit_Case (Env : Environ; Node : Node_Id);
+   --  Handle case statements
+
    function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T;
    --  Generate a call to __gnat_last_chance_handler
 
@@ -1450,6 +1453,9 @@ package body GNATLLVM.Compile is
                --  necessary.
                when others => null;
             end case;
+
+         when N_Case_Statement =>
+            Emit_Case (Env, Node);
 
          --  Nodes we actually want to ignore
          when N_Call_Marker
@@ -3314,6 +3320,188 @@ package body GNATLLVM.Compile is
          raise Program_Error;
       end if;
    end Emit_Comparison;
+
+   ---------------
+   -- Emit_Case --
+   ---------------
+
+   procedure Emit_Case (Env : Environ; Node : Node_Id) is
+      Use_If    : Boolean := False;
+      Alt       : Node_Id;
+      Choice    : Node_Id;
+      Switch    : Value_T;
+      BB_Next   : Basic_Block_T;
+
+   begin
+      --  First we do a prescan to see if there are any ranges, if so, we will
+      --  have to use an if/else translation since the LLVM switch instruction
+      --  does not accommodate ranges. Note that we do not have to test the
+      --  last alternative, since it translates to a default anyway without any
+      --  range tests.
+
+      Alt := First (Alternatives (Node));
+      Outer : while Present (Next (Alt)) loop
+         Choice := First (Discrete_Choices (Alt));
+         Inner : while Present (Choice) loop
+            if Nkind (Choice) = N_Range
+              or else (Is_Entity_Name (Choice)
+                        and then Is_Type (Entity (Choice)))
+            then
+               Use_If := True;
+               exit Outer;
+            end if;
+
+            Next (Choice);
+         end loop Inner;
+
+         Next (Alt);
+      end loop Outer;
+
+      --  Case where we have to use if's
+
+      if Use_If then
+         Error_Msg_N ("unsupported kind of case statement", Node);
+
+         Alt := First (Alternatives (Node));
+         loop
+            --  First alternative, use if
+
+            if No (Prev (Alt)) then
+               --  if
+               null;
+
+            --  All but last alternative, use else if
+
+            elsif Present (Next (Alt)) then
+               --  else if
+               null;
+
+            --  Last alternative, use else and we are done
+
+            else
+               --  else
+               --  Cprint_Indented_List (Statements (Alt));
+               exit;
+            end if;
+
+            Choice := First (Discrete_Choices (Alt));
+            loop
+               --  Simple expression, equality test
+
+               if not Nkind_In (Choice, N_Range, N_Subtype_Indication)
+                 and then (not Is_Entity_Name (Choice)
+                            or else not Is_Type (Entity (Choice)))
+               then
+                  null;
+                  --  Cprint_Node (Expression (Node));
+                  --  Write_Str (" == ");
+                  --  Cprint_Node (Choice);
+
+               --  Range, do range test
+
+               else
+                  declare
+                     LBD : Node_Id;
+                     HBD : Node_Id;
+
+                  begin
+                     case Nkind (Choice) is
+                        when N_Range =>
+                           LBD := Low_Bound  (Choice);
+                           HBD := High_Bound (Choice);
+
+                        when N_Subtype_Indication =>
+                           pragma Assert
+                             (Nkind (Constraint (Choice)) =
+                               N_Range_Constraint);
+
+                           LBD :=
+                             Low_Bound (Range_Expression
+                               (Constraint (Choice)));
+                           HBD :=
+                             High_Bound (Range_Expression
+                               (Constraint (Choice)));
+
+                        when others =>
+                           LBD := Type_Low_Bound  (Entity (Choice));
+                           HBD := Type_High_Bound (Entity (Choice));
+                     end case;
+
+                     --  Write_Char ('(');
+                     --  Cprint_Node (Expression (Node));
+                     --  Write_Str (" >= ");
+                     --  Write_Uint (Expr_Value (LBD));
+                     --  Write_Str (" && ");
+                     --  Cprint_Node (Expression (Node));
+                     --  Write_Str (" <= ");
+                     --  Write_Uint (Expr_Value (HBD));
+                     --  Write_Char (')');
+                  end;
+               end if;
+
+               if Present (Next (Choice)) then
+                  --  Write_Str_Col_Check (" || ");
+                  Next (Choice);
+               else
+                  exit;
+               end if;
+            end loop;
+
+            --  Write_Str (") ");
+            --  Open_Scope;
+            --  Cprint_Indented_List (Statements (Alt));
+            --  Write_Indent;
+            --  Close_Scope;
+
+            Next (Alt);
+         end loop;
+
+      --  Case where we can use Switch
+
+      else
+         --  Create basic blocks in the "natural" order
+
+         declare
+            BBs : array (1 .. List_Length (Alternatives (Node)))
+                    of Basic_Block_T;
+            J   : Integer;
+
+         begin
+            for J in BBs'First .. BBs'Last - 1 loop
+               BBs (J) := Create_Basic_Block (Env, "when");
+            end loop;
+
+            BBs (BBs'Last) := Create_Basic_Block (Env, "when-others");
+            BB_Next := Create_Basic_Block (Env, "when-next");
+
+            Switch := Build_Switch
+              (Env.Bld,
+               Emit_Expression (Env, Expression (Node)),
+               BBs (BBs'Last),
+               unsigned (List_Length (Alternatives (Node))));
+
+            Alt := First (Alternatives (Node));
+
+            for J in BBs'First .. BBs'Last - 1 loop
+               Choice := First (Discrete_Choices (Alt));
+
+               Position_Builder_At_End (Env.Bld, BBs (J));
+               Emit_List (Env, Statements (Alt));
+               Discard (Build_Br (Env.Bld, BB_Next));
+
+               Add_Case (Switch, Emit_Expression (Env, Choice), BBs (J));
+               Next (Alt);
+            end loop;
+
+            Position_Builder_At_End (Env.Bld, BBs (BBs'Last));
+            Alt := Last (Alternatives (Node));
+            Emit_List (Env, Statements (Alt));
+            Discard (Build_Br (Env.Bld, BB_Next));
+
+            Position_Builder_At_End (Env.Bld, BB_Next);
+         end;
+      end if;
+   end Emit_Case;
 
    -------------
    -- Emit_If --

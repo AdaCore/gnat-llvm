@@ -408,9 +408,13 @@ package body GNATLLVM.Types is
                     and then Compile_Time_Known_Value (LB)
                     and then Compile_Time_Known_Value (HB)
                   then
-                     Range_Size := Long_Long_Integer
-                       (UI_To_Long_Long_Integer (Expr_Value (HB))
-                        - UI_To_Long_Long_Integer (Expr_Value (LB)) + 1);
+                     if Expr_Value (LB) > Expr_Value (HB) then
+                        Range_Size := 0;
+                     else
+                        Range_Size := Long_Long_Integer
+                          (UI_To_Long_Long_Integer (Expr_Value (HB))
+                           - UI_To_Long_Long_Integer (Expr_Value (LB)) + 1);
+                     end if;
                   end if;
 
                   Result := Array_Type

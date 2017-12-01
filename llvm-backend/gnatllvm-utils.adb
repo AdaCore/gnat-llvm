@@ -55,13 +55,9 @@ package body GNATLLVM.Utils is
 
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer is
    begin
+      --  ??? Consider making this routine more efficient
       UI_Image (U, Decimal);
-      declare
-         Img   : constant String := UI_Image_Buffer (1 .. UI_Image_Length);
-         Img_W : constant String := (if Img (1) = '-' then "" else " ") & Img;
-      begin
-         return Long_Long_Integer'Value (Img_W);
-      end;
+      return Long_Long_Integer'Value (UI_Image_Buffer (1 .. UI_Image_Length));
    end UI_To_Long_Long_Integer;
 
    --------------------

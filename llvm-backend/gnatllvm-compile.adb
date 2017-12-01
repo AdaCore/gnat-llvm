@@ -24,6 +24,7 @@ with Einfo;    use Einfo;
 with Exp_Unst; use Exp_Unst;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
+with Get_Targ; use Get_Targ;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Util; use Sem_Util;
@@ -987,25 +988,34 @@ package body GNATLLVM.Compile is
                              (Env, Expression (Address_Clause (Def_Ident))));
                         --  ??? Should also take Expression (Node) into account
 
-                     --  Take Expression (Node) into account
+                     else
+                        if Is_Imported (Def_Ident) then
+                           Set_Linkage (LLVM_Var, External_Linkage);
+                        end if;
 
-                     elsif Present (Expression (Node))
-                       and then not
-                         (Nkind (Node) = N_Object_Declaration
-                          and then No_Initialization (Node))
-                     then
-                        --  ??? if Static_Expression (Expression (Node))
-                        if False then
-                           Expr := Emit_Expression (Env, Expression (Node));
-                           Set_Initializer (LLVM_Var, Expr);
-                        else
-                           --  ??? Should append to the elab procedure
-                           --  Elaboration_Table.Append (Node);
+                        --  Take Expression (Node) into account
 
+                        if Present (Expression (Node))
+                          and then not
+                            (Nkind (Node) = N_Object_Declaration
+                             and then No_Initialization (Node))
+                        then
+                           --  ??? if Static_Expression (Expression (Node))
+                           if False then
+                              Expr := Emit_Expression (Env, Expression (Node));
+                              Set_Initializer (LLVM_Var, Expr);
+                           else
+                              --  ??? Should append to the elab procedure
+                              --  Elaboration_Table.Append (Node);
+
+                              if not Is_Imported (Def_Ident) then
+                                 Set_Initializer
+                                   (LLVM_Var, Const_Null (LLVM_Type));
+                              end if;
+                           end if;
+                        elsif not Is_Imported (Def_Ident) then
                            Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
                         end if;
-                     else
-                        Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
                      end if;
                   else
                      Set_Linkage (LLVM_Var, External_Linkage);
@@ -1142,12 +1152,108 @@ package body GNATLLVM.Compile is
 
          when N_Assignment_Statement =>
             declare
-               Val  : constant Value_T :=
-                 Emit_Expression (Env, Expression (Node));
                Dest : constant Value_T := Emit_LValue (Env, Name (Node));
 
+               Dest_Typ : constant Node_Id :=
+                 Get_Full_View (Etype (Name (Node)));
+               Val_Typ  : constant Node_Id :=
+                 Get_Full_View (Etype (Expression (Node)));
+
+               function Compute_Size (Left, Right : Node_Id) return Value_T;
+
+               ------------------
+               -- Compute_Size --
+               ------------------
+
+               function Compute_Size (Left, Right : Node_Id) return Value_T is
+                  Size      : Uint := Uint_0;
+                  Left_Typ  : constant Node_Id :=
+                    Get_Full_View (Etype (Left));
+                  Right_Typ : constant Node_Id :=
+                    Get_Full_View (Etype (Right));
+
+                  Size_T      : constant Type_T :=
+                    Int_Ty (Integer (Get_Targ.Get_Pointer_Size));
+                  Array_Descr : Value_T;
+                  Array_Type  : Entity_Id;
+
+               begin
+                  Size := Esize (Left_Typ);
+
+                  if Size = Uint_0 then
+                     Size := Esize (Right_Typ);
+                  end if;
+
+                  if Size = Uint_0 then
+                     Size := RM_Size (Left_Typ);
+                  end if;
+
+                  if Size = Uint_0 then
+                     Size := RM_Size (Right_Typ);
+                  else
+                     Size := (Size + 7) / 8;
+                  end if;
+
+                  if Size /= Uint_0 then
+                     Size := (Size + 7) / 8;
+
+                  elsif Is_Array_Type (Left_Typ)
+                    and then Esize (Component_Type (Left_Typ)) /= Uint_0
+                  then
+                     Extract_Array_Info (Env, Left, Array_Descr, Array_Type);
+                     return Mul
+                       (Env.Bld,
+                        Z_Ext
+                          (Env.Bld,
+                           Array_Length (Env, Array_Descr, Array_Type),
+                           Size_T, ""),
+                        Const_Int
+                          (Size_T,
+                           unsigned_long_long
+                             (UI_To_Int
+                               (Esize (Component_Type (Left_Typ))) / 8),
+                           True), "");
+
+                  else
+                     Error_Msg_N ("unsupported assignment statement", Node);
+                  end if;
+
+                  return Const_Int
+                    (Size_T, unsigned_long_long (UI_To_Int (Size)), True);
+               end Compute_Size;
+
             begin
-               Store (Env.Bld, Expr => Val, Ptr => Dest);
+               if RM_Size (Val_Typ) /= 0 and then RM_Size (Dest_Typ) /= 0 then
+                  Store
+                    (Env.Bld,
+                     Expr => Emit_Expression (Env, Expression (Node)),
+                     Ptr => Dest);
+               else
+                  declare
+                     Void_Ptr_Type : constant Type_T :=
+                       Pointer_Type (Int_Ty (8), 0);
+
+                     Args : constant Value_Array (1 .. 5) :=
+                       (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
+                        Bit_Cast
+                          (Env.Bld,
+                           Emit_LValue (Env, Name (Node)),
+                           Void_Ptr_Type,
+                           ""),
+                        Compute_Size (Name (Node), Expression (Node)),
+                        Const_Int (Int_Ty (32), 1, False),  --  Alignment
+                        Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
+
+                  begin
+                     Discard (Call
+                       (Env.Bld,
+                        (if Forwards_OK (Node) and then Backwards_OK (Node)
+                         then Env.Memory_Copy_Fn
+                         else Env.Memory_Move_Fn),
+                        Args'Address, Args'Length,
+                        ""));
+                  end;
+               end if;
             end;
 
          when N_Procedure_Call_Statement =>
@@ -2715,7 +2821,17 @@ package body GNATLLVM.Compile is
                then String_To_Name (Strval (Interface_Name (Def_Ident)))
                else Chars (Def_Ident));
             Subp_Base_Name : constant String := Get_Name_String (Name);
-            LLVM_Func      : constant Value_T :=
+            LLVM_Func      : Value_T;
+
+         begin
+            --  ??? Special case __gnat_last_chance_handler which is
+            --  already defined as Env.LCH_Fn
+
+            if Subp_Base_Name = "__gnat_last_chance_handler" then
+               return Env.LCH_Fn;
+            end if;
+
+            LLVM_Func :=
               Add_Function
                 (Env.Mdl,
                  (if Is_Compilation_Unit (Def_Ident)
@@ -2723,7 +2839,6 @@ package body GNATLLVM.Compile is
                   else Subp_Base_Name),
                  Subp_Type);
 
-         begin
             --  Define the appropriate linkage
 
             if not Is_Public (Def_Ident) then

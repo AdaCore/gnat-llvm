@@ -9,7 +9,7 @@ steps:
     - If you are an AdaCore developer:
 
     $ cd llvm-backend
-    $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/gnat
+    $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/gnat gnat_src
 
     - Otherwise:
 

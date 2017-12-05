@@ -6,27 +6,34 @@ steps:
 -   Copy/move/link the src/ada directory from GNAT sources under the
     llvm-backend directory:
 
-        $ tar xzf [...]/gnat-xxx-src.tgz
-        $ mv gnat-*src/src/ada llvm-backend/gnat_src
-        $ rm -rf gnat-*src
+    - If you are an AdaCore developer:
 
--   Make sure you have a native version of GNAT which matches this package in
-    your PATH
+    $ cd llvm-backend
+    $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/gnat
+
+    - Otherwise:
+
+    $ tar xzf [...]/gnat-xxx-src.tgz
+    $ mv gnat-*src/src/ada llvm-backend/gnat_src
+    $ rm -rf gnat-*src
+
+-   Make sure you have a recent native version of GNAT which matches this
+    package in your PATH
 
 -   Then build llvm:
 
-        $ make llvm
+    $ make llvm
 
 -   Finally build GNAT-LLVM:
 
-        $ make
+    $ make
 
 This will create a "ready to use" set of directories "bin" and "lib" under
 llvm-backend which you can put in your PATH:
 
     PATH=$PWD/llvm-backend/bin:$PATH
 
-Note for developpers: there is a facility to assess the source coverage of
+Note for developers: there is a facility to assess the source coverage of
 GNAT-LLVM using its testsuite and GNATcoverage. To use it, make sure a
 GNATcoverage for a native target is in your path. Then make sure to have a
 suitable build:

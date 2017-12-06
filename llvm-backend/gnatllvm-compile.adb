@@ -1008,13 +1008,11 @@ package body GNATLLVM.Compile is
                             (Nkind (Node) = N_Object_Declaration
                              and then No_Initialization (Node))
                         then
-                           --  ??? if Static_Expression (Expression (Node))
-                           if False then
+                           if Compile_Time_Known_Value (Expression (Node)) then
                               Expr := Emit_Expression (Env, Expression (Node));
                               Set_Initializer (LLVM_Var, Expr);
                            else
-                              --  ??? Should append to the elab procedure
-                              --  Elaboration_Table.Append (Node);
+                              Elaboration_Table.Append (Node);
 
                               if not Is_Imported (Def_Ident) then
                                  Set_Initializer
@@ -1030,7 +1028,10 @@ package body GNATLLVM.Compile is
                   end if;
 
                else
-                  if Is_Array_Type (T) then
+                  if Env.Special_Elaboration_Code then
+                     LLVM_Var := Env.Get (Def_Ident);
+
+                  elsif Is_Array_Type (T) then
 
                      --  Alloca arrays are handled as follows:
                      --  * The total size is computed with Compile_Array_Size.
@@ -1064,6 +1065,9 @@ package body GNATLLVM.Compile is
                            Get_Name (Def_Ident));
                      end if;
 
+                     Env.Set (Def_Ident, LLVM_Var);
+                     Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
+
                   else
                      LLVM_Type := Create_Type (Env, T);
 
@@ -1073,10 +1077,9 @@ package body GNATLLVM.Compile is
 
                      LLVM_Var := Alloca
                        (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
+                     Env.Set (Def_Ident, LLVM_Var);
+                     Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
                   end if;
-
-                  Env.Set (Def_Ident, LLVM_Var);
-                  Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
                   if Needs_Deref (Def_Ident) then
                      Expr := Emit_Expression
@@ -1096,11 +1099,6 @@ package body GNATLLVM.Compile is
                         Store (Env.Bld, Expr, Load (Env.Bld, LLVM_Var, ""));
                      else
                         Store (Env.Bld, Expr, LLVM_Var);
-
-                        --  Would be nice to be able to use Set_Initializer,
-                        --  but this seems to generate cast errors in the llvm
-                        --  code generator right now???
-                        --  Set_Initializer (LLVM_Var, Expr);
                      end if;
                   end if;
                end if;

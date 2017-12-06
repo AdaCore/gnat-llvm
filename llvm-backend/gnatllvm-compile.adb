@@ -3815,64 +3815,17 @@ package body GNATLLVM.Compile is
      (Env  : Environ;
       Node : Node_Id) return Value_T
    is
-      Cond         : constant Value_T :=
-        Emit_Expression (Env, Pick (Expressions (Node), 1));
-
-      BB_Then, BB_Else, BB_Next : Basic_Block_T;
-      --  BB_Then is the basic block we jump to if the condition is true.
-      --  BB_Else is the basic block we jump to if the condition is false.
-      --  BB_Next is the BB we jump to after the IF is executed.
-
-      Then_Value, Else_Value : Value_T;
+      Condition  : constant Node_Id := First (Expressions (Node));
+      Then_Expr  : constant Node_Id := Next (Condition);
+      Else_Expr  : constant Node_Id := Next (Then_Expr);
 
    begin
-      BB_Then := Create_Basic_Block (Env, "if-then");
-      BB_Else := Create_Basic_Block (Env, "if-else");
-      BB_Next := Create_Basic_Block (Env, "if-next");
-      Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
-
-      --  Emit code for the THEN part
-
-      Position_Builder_At_End (Env.Bld, BB_Then);
-
-      Then_Value := Emit_Expression (Env, Pick (Expressions (Node), 2));
-
-      --  The THEN part may be composed of multiple basic blocks. We want
-      --  to get the one that jumps to the merge point to get the PHI node
-      --  predecessor.
-
-      BB_Then := Get_Insert_Block (Env.Bld);
-
-      Discard (Build_Br (Env.Bld, BB_Next));
-
-      --  ??? Missing handling of ELSIF parts
-
-      --  Emit code for the ELSE part
-
-      Position_Builder_At_End (Env.Bld, BB_Else);
-
-      Else_Value := Emit_Expression (Env, Pick (Expressions (Node), 3));
-      Discard (Build_Br (Env.Bld, BB_Next));
-
-      --  We want to get the basic blocks that jumps to the merge point: see
-      --  above.
-
-      BB_Else := Get_Insert_Block (Env.Bld);
-
-      --  Then prepare the instruction builder for the next
-      --  statements/expressions and return a merged expression if needed.
-
-      Position_Builder_At_End (Env.Bld, BB_Next);
-
-      declare
-         Values : constant Value_Array (1 .. 2) := (Then_Value, Else_Value);
-         BBs    : constant Basic_Block_Array (1 .. 2) := (BB_Then, BB_Else);
-         Phi    : constant Value_T :=
-           LLVM.Core.Phi (Env.Bld, Type_Of (Then_Value), "");
-      begin
-         Add_Incoming (Phi, Values'Address, BBs'Address, 2);
-         return Phi;
-      end;
+      return Build_Select
+        (Env.Bld,
+         C_If   => Emit_Expression (Env, Condition),
+         C_Then => Emit_Expression (Env, Then_Expr),
+         C_Else => Emit_Expression (Env, Else_Expr),
+         Name   => "if-expr");
    end Emit_If_Expression;
 
    ----------------

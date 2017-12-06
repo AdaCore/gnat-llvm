@@ -1901,6 +1901,10 @@ package body GNATLLVM.Compile is
                   "slice");
             end;
 
+         when N_Unchecked_Type_Conversion =>
+            --  ??? Strip the type conversion, likely not always correct
+            return Emit_LValue (Env, Expression (Node));
+
          when others =>
             Error_Msg_N
               ("unhandled node kind: `" &

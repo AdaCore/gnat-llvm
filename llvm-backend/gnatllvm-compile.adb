@@ -22,6 +22,7 @@ with System;
 with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Exp_Unst; use Exp_Unst;
+with Exp_Util; use Exp_Util;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
 with Get_Targ; use Get_Targ;
@@ -3815,8 +3816,9 @@ package body GNATLLVM.Compile is
      (Env  : Environ;
       Node : Node_Id) return Value_T
    is
-      Cond         : constant Value_T :=
-        Emit_Expression (Env, Pick (Expressions (Node), 1));
+      Condition  : constant Node_Id := First (Expressions (Node));
+      Then_Expr  : constant Node_Id := Next (Condition);
+      Else_Expr  : constant Node_Id := Next (Then_Expr);
 
       BB_Then, BB_Else, BB_Next : Basic_Block_T;
       --  BB_Then is the basic block we jump to if the condition is true.
@@ -3826,16 +3828,34 @@ package body GNATLLVM.Compile is
       Then_Value, Else_Value : Value_T;
 
    begin
+      --  Generate simple Select instruction when possible
+
+      if Side_Effect_Free (Condition)
+       and then Side_Effect_Free (Then_Expr)
+       and then Side_Effect_Free (Else_Expr)
+      then
+         return Build_Select
+           (Env.Bld,
+            C_If   => Emit_Expression (Env, Condition),
+            C_Then => Emit_Expression (Env, Then_Expr),
+            C_Else => Emit_Expression (Env, Else_Expr),
+            Name   => "if-expr");
+      end if;
+
+      --  In more complex cases, generate basic blocks and a phi node
+
       BB_Then := Create_Basic_Block (Env, "if-then");
       BB_Else := Create_Basic_Block (Env, "if-else");
       BB_Next := Create_Basic_Block (Env, "if-next");
-      Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
+      Discard
+        (Build_Cond_Br
+          (Env.Bld, Emit_Expression (Env, Condition), BB_Then, BB_Else));
 
       --  Emit code for the THEN part
 
       Position_Builder_At_End (Env.Bld, BB_Then);
 
-      Then_Value := Emit_Expression (Env, Pick (Expressions (Node), 2));
+      Then_Value := Emit_Expression (Env, Then_Expr);
 
       --  The THEN part may be composed of multiple basic blocks. We want
       --  to get the one that jumps to the merge point to get the PHI node
@@ -3845,13 +3865,11 @@ package body GNATLLVM.Compile is
 
       Discard (Build_Br (Env.Bld, BB_Next));
 
-      --  ??? Missing handling of ELSIF parts
-
       --  Emit code for the ELSE part
 
       Position_Builder_At_End (Env.Bld, BB_Else);
 
-      Else_Value := Emit_Expression (Env, Pick (Expressions (Node), 3));
+      Else_Value := Emit_Expression (Env, Else_Expr);
       Discard (Build_Br (Env.Bld, BB_Next));
 
       --  We want to get the basic blocks that jumps to the merge point: see

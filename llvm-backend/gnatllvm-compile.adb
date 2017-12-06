@@ -19,7 +19,7 @@ with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
-with Atree; use Atree;
+with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Exp_Unst; use Exp_Unst;
 with Errout;   use Errout;
@@ -27,6 +27,7 @@ with Eval_Fat; use Eval_Fat;
 with Get_Targ; use Get_Targ;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
+with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Sinput;   use Sinput;
@@ -94,7 +95,14 @@ package body GNATLLVM.Compile is
       Operation    : Pred_Mapping;
       Operand_Type : Entity_Id;
       LHS, RHS     : Node_Id) return Value_T;
-   --  Helper for Emit_Expression: handle comparison operations
+   function Emit_Comparison
+     (Env          : Environ;
+      Operation    : Pred_Mapping;
+      Operand_Type : Entity_Id;
+      Node         : Node_Id;
+      LHS, RHS     : Value_T) return Value_T;
+   --  Helper for Emit_Expression: handle comparison operations.
+   --  The second form only supports discrete or pointer types.
 
    function Emit_If
      (Env  : Environ;
@@ -1223,7 +1231,9 @@ package body GNATLLVM.Compile is
                end Compute_Size;
 
             begin
-               if RM_Size (Val_Typ) /= 0 and then RM_Size (Dest_Typ) /= 0 then
+               if Size_Known_At_Compile_Time (Val_Typ)
+                 and then Size_Known_At_Compile_Time (Dest_Typ)
+               then
                   Store
                     (Env.Bld,
                      Expr => Emit_Expression (Env, Expression (Node)),
@@ -3436,16 +3446,52 @@ package body GNATLLVM.Compile is
       end if;
    end Emit_Comparison;
 
+   function Emit_Comparison
+     (Env          : Environ;
+      Operation    : Pred_Mapping;
+      Operand_Type : Entity_Id;
+      Node         : Node_Id;
+      LHS, RHS     : Value_T) return Value_T is
+   begin
+      if Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
+        or else Is_Access_Type (Operand_Type)
+      then
+         return I_Cmp
+           (Env.Bld,
+            (if Is_Unsigned_Type (Operand_Type)
+             then Operation.Unsigned
+             else Operation.Signed),
+            LHS,
+            RHS,
+            "icmp");
+
+      else
+         Error_Msg_N ("unsupported kind of comparison", Node);
+         raise Program_Error;
+      end if;
+   end Emit_Comparison;
+
    ---------------
    -- Emit_Case --
    ---------------
 
    procedure Emit_Case (Env : Environ; Node : Node_Id) is
-      Use_If    : Boolean := False;
-      Alt       : Node_Id;
-      Choice    : Node_Id;
-      Switch    : Value_T;
-      BB_Next   : Basic_Block_T;
+      Use_If       : Boolean := False;
+      Alt          : Node_Id;
+      Choice       : Node_Id;
+      Val_Typ      : Node_Id;
+      LBD          : Node_Id;
+      HBD          : Node_Id;
+      Switch       : Value_T;
+      Comp         : Value_T;
+      Comp2        : Value_T;
+      Comp3        : Value_T;
+      BB           : Basic_Block_T;
+      BB2          : Basic_Block_T;
+      BB_Next      : Basic_Block_T;
+      Val          : Value_T;
+      Typ          : Type_T;
+      First_Choice : Boolean;
 
    begin
       --  First we do a prescan to see if there are any ranges, if so, we will
@@ -3475,31 +3521,22 @@ package body GNATLLVM.Compile is
       --  Case where we have to use if's
 
       if Use_If then
-         Error_Msg_N ("unsupported kind of case statement", Node);
+         Alt     := First (Alternatives (Node));
+         Val     := Emit_Expression (Env, Expression (Node));
+         Val_Typ := Get_Fullest_View (Etype (Expression (Node)));
+         Typ     := Create_Type (Env, Val_Typ);
+         BB_Next := Create_Basic_Block (Env, "case-next");
 
-         Alt := First (Alternatives (Node));
          loop
-            --  First alternative, use if
+            if No (Next (Alt)) then
+               Emit_List (Env, Statements (Alt));
+               Discard (Build_Br (Env.Bld, BB_Next));
 
-            if No (Prev (Alt)) then
-               --  if
-               null;
-
-            --  All but last alternative, use else if
-
-            elsif Present (Next (Alt)) then
-               --  else if
-               null;
-
-            --  Last alternative, use else and we are done
-
-            else
-               --  else
-               --  Cprint_Indented_List (Statements (Alt));
                exit;
             end if;
 
             Choice := First (Discrete_Choices (Alt));
+            First_Choice := True;
             loop
                --  Simple expression, equality test
 
@@ -3507,69 +3544,80 @@ package body GNATLLVM.Compile is
                  and then (not Is_Entity_Name (Choice)
                             or else not Is_Type (Entity (Choice)))
                then
-                  null;
-                  --  Cprint_Node (Expression (Node));
-                  --  Write_Str (" == ");
-                  --  Cprint_Node (Choice);
+                  Comp := Emit_Comparison
+                    (Env, Get_Preds (N_Op_Eq), Val_Typ,
+                     Node, Val, Emit_Expression (Env, Choice));
 
                --  Range, do range test
 
                else
-                  declare
-                     LBD : Node_Id;
-                     HBD : Node_Id;
+                  case Nkind (Choice) is
+                     when N_Range =>
+                        LBD := Low_Bound  (Choice);
+                        HBD := High_Bound (Choice);
 
-                  begin
-                     case Nkind (Choice) is
-                        when N_Range =>
-                           LBD := Low_Bound  (Choice);
-                           HBD := High_Bound (Choice);
+                     when N_Subtype_Indication =>
+                        pragma Assert
+                          (Nkind (Constraint (Choice)) = N_Range_Constraint);
 
-                        when N_Subtype_Indication =>
-                           pragma Assert
-                             (Nkind (Constraint (Choice)) =
-                               N_Range_Constraint);
+                        LBD :=
+                          Low_Bound (Range_Expression (Constraint (Choice)));
+                        HBD :=
+                          High_Bound (Range_Expression (Constraint (Choice)));
 
-                           LBD :=
-                             Low_Bound (Range_Expression
-                               (Constraint (Choice)));
-                           HBD :=
-                             High_Bound (Range_Expression
-                               (Constraint (Choice)));
+                     when others =>
+                        LBD := Type_Low_Bound  (Entity (Choice));
+                        HBD := Type_High_Bound (Entity (Choice));
+                  end case;
 
-                        when others =>
-                           LBD := Type_Low_Bound  (Entity (Choice));
-                           HBD := Type_High_Bound (Entity (Choice));
-                     end case;
+                  Comp := Emit_Comparison
+                    (Env, Get_Preds (N_Op_Ge), Val_Typ, Node, Val,
+                     Const_Int
+                       (Typ,
+                        unsigned_long_long
+                          (UI_To_Long_Long_Integer (Expr_Value (LBD))),
+                        False));
+                  Comp3 := Emit_Comparison
+                    (Env, Get_Preds (N_Op_Le), Val_Typ, Node, Val,
+                     Const_Int
+                       (Typ,
+                        unsigned_long_long
+                          (UI_To_Long_Long_Integer (Expr_Value (HBD))),
+                        False));
 
-                     --  Write_Char ('(');
-                     --  Cprint_Node (Expression (Node));
-                     --  Write_Str (" >= ");
-                     --  Write_Uint (Expr_Value (LBD));
-                     --  Write_Str (" && ");
-                     --  Cprint_Node (Expression (Node));
-                     --  Write_Str (" <= ");
-                     --  Write_Uint (Expr_Value (HBD));
-                     --  Write_Char (')');
-                  end;
+                  --  ??? Should use shortcuit here
+                  Comp := Build_And (Env.Bld, Comp, Comp3, "and");
+                  --    Build_Short_Circuit_Op (Env, Comp, Comp3, Op_And);
                end if;
 
-               if Present (Next (Choice)) then
-                  --  Write_Str_Col_Check (" || ");
-                  Next (Choice);
+               if First_Choice then
+                  First_Choice := False;
                else
-                  exit;
+                  --  ??? Should use shortcuit here
+                  --  Comp := Build_Short_Circuit_Op (Env, Comp, Comp2, Op_Or);
+                  Comp := Build_Or (Env.Bld, Comp, Comp2, "or");
                end if;
+
+               Comp2 := Comp;
+
+               Next (Choice);
+               exit when No (Choice);
             end loop;
 
-            --  Write_Str (") ");
-            --  Open_Scope;
-            --  Cprint_Indented_List (Statements (Alt));
-            --  Write_Indent;
-            --  Close_Scope;
+            BB := Create_Basic_Block (Env, "when-taken");
+            BB2 := Create_Basic_Block (Env, "when");
+            Discard (Build_Cond_Br (Env.Bld, Comp, BB, BB2));
+
+            Position_Builder_At_End (Env.Bld, BB);
+            Emit_List (Env, Statements (Alt));
+            Discard (Build_Br (Env.Bld, BB_Next));
+            Position_Builder_At_End (Env.Bld, BB2);
 
             Next (Alt);
+            BB := BB2;
          end loop;
+
+         Position_Builder_At_End (Env.Bld, BB_Next);
 
       --  Case where we can use Switch
 
@@ -3587,7 +3635,7 @@ package body GNATLLVM.Compile is
             end loop;
 
             BBs (BBs'Last) := Create_Basic_Block (Env, "when-others");
-            BB_Next := Create_Basic_Block (Env, "when-next");
+            BB_Next := Create_Basic_Block (Env, "case-next");
 
             Switch := Build_Switch
               (Env.Bld,

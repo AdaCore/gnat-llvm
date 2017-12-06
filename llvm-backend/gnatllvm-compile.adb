@@ -2322,7 +2322,14 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_Type_Conversion | N_Qualified_Expression =>
+         when N_Qualified_Expression =>
+            --  We can simply strip the type qualifier
+            --  ??? Need to take Do_Overflow_Check into account
+
+            return Emit_Expr (Expression (Node));
+
+         when N_Type_Conversion =>
+            --  ??? Need to take Do_Overflow_Check into account
             return Build_Type_Conversion
               (Env       => Env,
                Src_Type  => Etype (Expression (Node)),
@@ -2421,23 +2428,41 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Allocator =>
+            if Present (Storage_Pool (Node)) then
+               Error_Msg_N ("unsupported form of N_Allocator", Node);
+               raise Program_Error;
+            end if;
+
             declare
                Arg : array (1 .. 1) of Value_T :=
                  (1 => Size_Of (Create_Type (Env, Etype (Expression (Node)))));
-            begin
-               if Nkind (Expression (Node)) = N_Identifier then
-                  return Bit_Cast
-                    (Env.Bld,
-                     Call
-                       (Env.Bld,
-                        Env.Default_Alloc_Fn, Arg'Address, 1, "alloc"),
-                     Create_Type (Env, Etype (Node)),
-                     "alloc_bc");
+               Result : Value_T;
 
-               else
-                  Error_Msg_N ("unsupported form of N_Allocator", Node);
-                  raise Program_Error;
-               end if;
+            begin
+               Result := Bit_Cast
+                 (Env.Bld,
+                  Call
+                    (Env.Bld,
+                     Env.Default_Alloc_Fn, Arg'Address, 1, "alloc"),
+                  Create_Type (Env, Etype (Node)),
+                  "alloc_bc");
+
+               case Nkind (Expression (Node)) is
+                  when N_Identifier =>
+                     return Result;
+
+                  when N_Qualified_Expression =>
+                     --  ??? Handle unconstrained arrays
+                     Store
+                       (Env.Bld,
+                        Emit_Expression (Env, Expression (Node)),
+                        Result);
+                     return Result;
+
+                  when others =>
+                     Error_Msg_N ("unsupported form of N_Allocator", Node);
+                     raise Program_Error;
+               end case;
             end;
 
          when N_Reference =>
@@ -3100,24 +3125,31 @@ package body GNATLLVM.Compile is
                   --  ??? raise an exception if the value is negative (hence
                   --  the source type has to be checked).
 
-                  return Z_Ext (Env.Bld, Value, Dest_LLVM_Type, "int_conv");
+                  return Z_Ext (Env.Bld, Value, Dest_LLVM_Type, "int-conv");
 
                else
-                  return S_Ext (Env.Bld, Value, Dest_LLVM_Type, "int_conv");
+                  return S_Ext (Env.Bld, Value, Dest_LLVM_Type, "int-conv");
                end if;
             else
-               return Trunc (Env.Bld, Value, Dest_LLVM_Type, "int_conv");
+               return Trunc (Env.Bld, Value, Dest_LLVM_Type, "int-conv");
             end if;
          end;
 
-      elsif Is_Descendant_Of_Address (Src_Type)
-        and then Is_Descendant_Of_Address (Dest_Type)
+      elsif Is_Descendant_Of_Address (S_Type)
+        and then Is_Descendant_Of_Address (D_Type)
       then
          return Bit_Cast
            (Env.Bld,
             Value,
-            Create_Type (Env, Dest_Type),
+            Create_Type (Env, D_Type),
             "address-conv");
+
+      elsif Is_Array_Type (S_Type) then
+         return Bit_Cast
+           (Env.Bld,
+            Value,
+            Create_Type (Env, D_Type),
+            "array-conv");
 
       else
          Error_Msg_N ("unsupported type conversion", Src_Type);

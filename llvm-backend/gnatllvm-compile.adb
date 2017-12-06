@@ -104,12 +104,15 @@ package body GNATLLVM.Compile is
    --  Helper for Emit_Expression: handle comparison operations.
    --  The second form only supports discrete or pointer types.
 
-   function Emit_If
+   procedure Emit_If (Env : Environ; Node : Node_Id)
+     with Pre => Nkind (Node) = N_If_Statement;
+   --  Helper for Emit: handle if statements
+
+   function Emit_If_Expression
      (Env  : Environ;
       Node : Node_Id) return Value_T
-     with Pre => Nkind (Node) in N_If_Statement | N_If_Expression;
-   --  Helper for Emit and Emit_Expression: handle if statements and if
-   --  expressions.
+     with Pre => Nkind (Node) = N_If_Expression;
+   --  Helper for Emit_Expression: handle if expressions
 
    procedure Emit_Case (Env : Environ; Node : Node_Id);
    --  Handle case statements
@@ -181,6 +184,10 @@ package body GNATLLVM.Compile is
      (Env  : Environ;
       Subp : Entity_Id) return Value_T;
    --  Build and return the appropriate static link to pass to a call to Subp
+
+   function Is_Constant_Folded (E : Entity_Id) return Boolean
+   is (Ekind (E) = E_Constant
+       and then Is_Scalar_Type (Get_Full_View (Etype (E))));
 
    procedure Verify_Function
      (Env : Environ; Func : Value_T; Node : Node_Id; Msg : String);
@@ -1322,7 +1329,7 @@ package body GNATLLVM.Compile is
               (Env.Bld, Env.Create_Basic_Block ("unreachable"));
 
          when N_If_Statement =>
-            Discard (Emit_If (Env, Node));
+            Emit_If (Env, Node);
 
          when N_Loop_Statement =>
             declare
@@ -2395,31 +2402,58 @@ package body GNATLLVM.Compile is
                      end if;
                   end;
 
-               else
+               elsif Nkind (Node) in N_Subexpr
+                 and then Is_Constant_Folded (Entity (Node))
+               then
+                  --  Replace constant references by the direct values, to
+                  --  avoid a level of indirection for e.g. private values and
+                  --  to allow generation of static values and static
+                  --  aggregates.
+
                   declare
-                     Kind          : constant Entity_Kind := Ekind (Def_Ident);
-                     Type_Kind     : constant Entity_Kind :=
-                       Ekind (Etype (Def_Ident));
-                     Is_Subprogram : constant Boolean :=
-                       (Kind in Subprogram_Kind
-                        or else Type_Kind = E_Subprogram_Type);
-                     LValue        : constant Value_T := Env.Get (Def_Ident);
+                     N    : constant Node_Id := Get_Full_View (Entity (Node));
+                     Decl : constant Node_Id := Declaration_Node (N);
+                     Expr : Node_Id := Empty;
 
                   begin
-                     --  LLVM functions are pointers that cannot be
-                     --  dereferenced. If Def_Ident is a subprogram, return it
-                     --  as-is, the caller expects a pointer to a function
-                     --  anyway.
+                     if Nkind (Decl) /= N_Object_Renaming_Declaration then
+                        Expr := Expression (Decl);
+                     end if;
 
-                     if Is_Subprogram then
-                        return LValue;
-                     elsif Needs_Deref (Def_Ident) then
-                        return Load (Env.Bld, Load (Env.Bld, LValue, ""), "");
-                     else
-                        return Load (Env.Bld, LValue, "");
+                     if Present (Expr)
+                       and then Nkind_In (Expr, N_Character_Literal,
+                                                N_Expanded_Name,
+                                                N_Integer_Literal,
+                                                N_Real_Literal)
+                     then
+                        return Emit_Expression (Env, Expr);
                      end if;
                   end;
                end if;
+
+               declare
+                  Kind          : constant Entity_Kind := Ekind (Def_Ident);
+                  Type_Kind     : constant Entity_Kind :=
+                    Ekind (Etype (Def_Ident));
+                  Is_Subprogram : constant Boolean :=
+                    (Kind in Subprogram_Kind
+                     or else Type_Kind = E_Subprogram_Type);
+                  LValue        : constant Value_T := Env.Get (Def_Ident);
+
+               begin
+                  --  LLVM functions are pointers that cannot be
+                  --  dereferenced. If Def_Ident is a subprogram, return it
+                  --  as-is, the caller expects a pointer to a function
+                  --  anyway.
+
+                  if Is_Subprogram then
+                     return LValue;
+                  elsif Needs_Deref (Def_Ident) then
+                     return Load (Env.Bld, Load (Env.Bld, LValue, ""), "");
+                  else
+                     return Load (Env.Bld, LValue, "");
+                  end if;
+               end;
             end;
 
          when N_Function_Call =>
@@ -2540,7 +2574,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_If_Expression =>
-            return Emit_If (Env, Node);
+            return Emit_If_Expression (Env, Node);
 
          when N_Null =>
             return Const_Null (Create_Type (Env, Etype (Node)));
@@ -3713,20 +3747,76 @@ package body GNATLLVM.Compile is
    -- Emit_If --
    -------------
 
-   function Emit_If
+   procedure Emit_If (Env : Environ; Node : Node_Id) is
+      Cond    : Value_T;
+      BB_Then : Basic_Block_T;
+      BB_Else : Basic_Block_T;
+      BB_Next : Basic_Block_T;
+
+   begin
+      BB_Then := Create_Basic_Block (Env, "if-then");
+      BB_Next := Create_Basic_Block (Env, "if-next");
+
+      if Present (Elsif_Parts (Node)) then
+         BB_Else := Create_Basic_Block (Env, "elsif");
+      elsif Present (Else_Statements (Node)) then
+         BB_Else := Create_Basic_Block (Env, "else");
+      else
+         BB_Else := BB_Next;
+      end if;
+
+      Cond := Emit_Expression (Env, Condition (Node));
+      Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
+
+      --  Emit code for the THEN part
+
+      Position_Builder_At_End (Env.Bld, BB_Then);
+      Emit_List (Env, Then_Statements (Node));
+      Discard (Build_Br (Env.Bld, BB_Next));
+      Position_Builder_At_End (Env.Bld, BB_Else);
+
+      --  Emit code for the ELSIF parts
+
+      if Present (Elsif_Parts (Node)) then
+         for N of Iterate (Elsif_Parts (Node)) loop
+            BB_Then := Create_Basic_Block (Env, "elsif-then");
+
+            if Present (Next (N)) then
+               BB_Else := Create_Basic_Block (Env, "elsif");
+            elsif Present (Else_Statements (Node)) then
+               BB_Else := Create_Basic_Block (Env, "else");
+            else
+               BB_Else := BB_Next;
+            end if;
+
+            Cond := Emit_Expression (Env, Condition (N));
+            Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
+            Position_Builder_At_End (Env.Bld, BB_Then);
+            Emit_List (Env, Then_Statements (N));
+            Discard (Build_Br (Env.Bld, BB_Next));
+            Position_Builder_At_End (Env.Bld, BB_Else);
+         end loop;
+      end if;
+
+      --  Emit code for the ELSE part
+
+      if Present (Else_Statements (Node)) then
+         Emit_List (Env, Else_Statements (Node));
+         Discard (Build_Br (Env.Bld, BB_Next));
+         Position_Builder_At_End (Env.Bld, BB_Next);
+      end if;
+   end Emit_If;
+
+   ------------------------
+   -- Emit_If_Expression --
+   ------------------------
+
+   function Emit_If_Expression
      (Env  : Environ;
       Node : Node_Id) return Value_T
    is
-      Is_Stmt : constant Boolean := Nkind (Node) = N_If_Statement;
-      --  Depending on the node to translate, we will have to compute and
-      --  return an expression.
-
-      Else_Created : Boolean := False;
-      GNAT_Cond    : constant Node_Id :=
-        (if Is_Stmt
-         then Condition (Node)
-         else Pick (Expressions (Node), 1));
-      Cond         : constant Value_T := Emit_Expression (Env, GNAT_Cond);
+      Cond         : constant Value_T :=
+        Emit_Expression (Env, Pick (Expressions (Node), 1));
 
       BB_Then, BB_Else, BB_Next : Basic_Block_T;
       --  BB_Then is the basic block we jump to if the condition is true.
@@ -3737,81 +3827,53 @@ package body GNATLLVM.Compile is
 
    begin
       BB_Then := Create_Basic_Block (Env, "if-then");
-
-      --  If this is an IF statement without ELSE part, then we jump to the
-      --  BB_Next when the condition is false. Thus, BB_Else and BB_Next
-      --  should be the same in this case.
-
-      if not Is_Stmt or else not Is_Empty_List (Else_Statements (Node)) then
-         BB_Else := Create_Basic_Block (Env, "if-else");
-         Else_Created := True;
-      end if;
-
+      BB_Else := Create_Basic_Block (Env, "if-else");
       BB_Next := Create_Basic_Block (Env, "if-next");
-
-      if not Else_Created then
-         BB_Else := BB_Next;
-      end if;
-
       Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
 
       --  Emit code for the THEN part
 
       Position_Builder_At_End (Env.Bld, BB_Then);
 
-      if Is_Stmt then
-         Emit_List (Env, Then_Statements (Node));
-      else
-         Then_Value := Emit_Expression (Env, Pick (Expressions (Node), 2));
+      Then_Value := Emit_Expression (Env, Pick (Expressions (Node), 2));
 
-         --  The THEN part may be composed of multiple basic blocks. We want
-         --  to get the one that jumps to the merge point to get the PHI node
-         --  predecessor.
+      --  The THEN part may be composed of multiple basic blocks. We want
+      --  to get the one that jumps to the merge point to get the PHI node
+      --  predecessor.
 
-         BB_Then := Get_Insert_Block (Env.Bld);
-      end if;
+      BB_Then := Get_Insert_Block (Env.Bld);
 
       Discard (Build_Br (Env.Bld, BB_Next));
+
+      --  ??? Missing handling of ELSIF parts
 
       --  Emit code for the ELSE part
 
       Position_Builder_At_End (Env.Bld, BB_Else);
 
-      if not Is_Stmt then
-         Else_Value := Emit_Expression (Env, Pick (Expressions (Node), 3));
-         Discard (Build_Br (Env.Bld, BB_Next));
+      Else_Value := Emit_Expression (Env, Pick (Expressions (Node), 3));
+      Discard (Build_Br (Env.Bld, BB_Next));
 
-         --  We want to get the basic blocks that jumps to the merge point: see
-         --  above.
+      --  We want to get the basic blocks that jumps to the merge point: see
+      --  above.
 
-         BB_Else := Get_Insert_Block (Env.Bld);
-
-      elsif not Is_Empty_List (Else_Statements (Node)) then
-         Emit_List (Env, Else_Statements (Node));
-         Discard (Build_Br (Env.Bld, BB_Next));
-      end if;
+      BB_Else := Get_Insert_Block (Env.Bld);
 
       --  Then prepare the instruction builder for the next
       --  statements/expressions and return a merged expression if needed.
 
       Position_Builder_At_End (Env.Bld, BB_Next);
 
-      if Is_Stmt then
-         return No_Value_T;
-      else
-         declare
-            Values : constant Value_Array (1 .. 2) :=
-              (Then_Value, Else_Value);
-            BBs    : constant Basic_Block_Array (1 .. 2) :=
-              (BB_Then, BB_Else);
-            Phi    : constant Value_T :=
-              LLVM.Core.Phi (Env.Bld, Type_Of (Then_Value), "");
-         begin
-            Add_Incoming (Phi, Values'Address, BBs'Address, 2);
-            return Phi;
-         end;
-      end if;
-   end Emit_If;
+      declare
+         Values : constant Value_Array (1 .. 2) := (Then_Value, Else_Value);
+         BBs    : constant Basic_Block_Array (1 .. 2) := (BB_Then, BB_Else);
+         Phi    : constant Value_T :=
+           LLVM.Core.Phi (Env.Bld, Type_Of (Then_Value), "");
+      begin
+         Add_Incoming (Phi, Values'Address, BBs'Address, 2);
+         return Phi;
+      end;
+   end Emit_If_Expression;
 
    ----------------
    -- Emit_Shift --

@@ -2286,8 +2286,8 @@ package body GNATLLVM.Compile is
                function Val return Value_T is
                  (Emit_Expression (Env, Expression (Node)));
 
-               function Is_Integer_Or_Fixed (T : Node_Id) return Boolean is
-                 (Is_Integer_Type (T) or else Is_Fixed_Point_Type (T));
+               function Is_Discrete_Or_Fixed (T : Node_Id) return Boolean is
+                 (Is_Discrete_Type (T) or else Is_Fixed_Point_Type (T));
 
             begin
                if Is_Access_Type (Dest_Type)
@@ -2303,8 +2303,8 @@ package body GNATLLVM.Compile is
                elsif Is_Access_Type (Val_Type) then
                   return Pointer_Cast
                     (Env.Bld, Val, Dest_Ty, "unchecked-conv");
-               elsif Is_Integer_Or_Fixed (Dest_Type)
-                 and then Is_Integer_Or_Fixed (Val_Type)
+               elsif Is_Discrete_Or_Fixed (Dest_Type)
+                 and then Is_Discrete_Or_Fixed (Val_Type)
                then
                   return Int_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                elsif Is_Array_Type (Val_Type)
@@ -2321,7 +2321,16 @@ package body GNATLLVM.Compile is
                         Pointer_Type (Dest_Ty, 0), ""),
                      "unchecked-conv");
 
+               elsif Nkind (Val_Type) = N_Defining_Identifier
+                 and then Nkind (Dest_Type) = N_Defining_Identifier
+                 and then Etype (Val_Type) = Etype (Dest_Type)
+               then
+                  --  ??? Do we need to do more for e.g. different subtypes
+                  --  with different discriminant values
+                  return Val;
                else
+                  Error_Msg_N
+                    ("unsupported kind of unchecked conversion", Node);
                   return Bit_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                end if;
             end;

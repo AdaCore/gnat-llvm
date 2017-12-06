@@ -437,12 +437,17 @@ package body GNATLLVM.Types is
             return Int_Type_In_Context
               (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
 
+         when E_Private_Subtype =>
+            return Create_Type (Env, Etype (TE));
+
+         when E_Incomplete_Type =>
+            --  This is a taft amendment type, return a dummy type
+
+            return Void_Type_In_Context (Env.Ctx);
+
          when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Unhandled type kind: "
-              & Entity_Kind'Image (Ekind (Def_Ident));
-            pragma Annotate (Xcov, Exempt_Off);
+            Error_Msg_N ("unsupported type kind", Def_Ident);
+            raise Program_Error;
       end case;
    end Create_Type;
 

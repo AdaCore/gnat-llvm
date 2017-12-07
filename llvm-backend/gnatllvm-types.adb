@@ -446,7 +446,9 @@ package body GNATLLVM.Types is
             return Void_Type_In_Context (Env.Ctx);
 
          when others =>
-            Error_Msg_N ("unsupported type kind", Def_Ident);
+            Error_Msg_N
+              ("unsupported type kind: `"
+               & Ekind (Def_Ident)'Image & "`", Def_Ident);
             raise Program_Error;
       end case;
    end Create_Type;

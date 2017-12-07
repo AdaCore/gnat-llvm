@@ -2636,6 +2636,12 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_Expression =>
+            --  ??? Missing proper type cast/wrapping
+            return Emit_LCH_Call (Env, Node);
+
+         when N_Raise_xxx_Error =>
+            --  ??? Missing proper type cast/wrapping
+            pragma Assert (No (Condition (Node)));
             return Emit_LCH_Call (Env, Node);
 
          when others =>

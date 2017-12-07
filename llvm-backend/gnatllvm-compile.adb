@@ -1166,7 +1166,8 @@ package body GNATLLVM.Compile is
 
          when N_Assignment_Statement =>
             declare
-               Dest : constant Value_T := Emit_LValue (Env, Name (Node));
+               Dest : Value_T := Emit_LValue (Env, Name (Node));
+               Src  : Value_T;
 
                Dest_Typ : constant Node_Id :=
                  Get_Full_View (Etype (Name (Node)));
@@ -1215,18 +1216,27 @@ package body GNATLLVM.Compile is
                     and then Esize (Component_Type (Left_Typ)) /= Uint_0
                   then
                      Extract_Array_Info (Env, Left, Array_Descr, Array_Type);
-                     return Mul
-                       (Env.Bld,
-                        Z_Ext
+
+                     if Esize (Component_Type (Left_Typ)) = Uint_1 then
+                        return Z_Ext
                           (Env.Bld,
                            Array_Length (Env, Array_Descr, Array_Type),
-                           Size_T, ""),
-                        Const_Int
-                          (Size_T,
-                           unsigned_long_long
-                             (UI_To_Int
-                               (Esize (Component_Type (Left_Typ))) / 8),
-                           True), "");
+                           Size_T, "");
+
+                     else
+                        return Mul
+                          (Env.Bld,
+                           Z_Ext
+                             (Env.Bld,
+                              Array_Length (Env, Array_Descr, Array_Type),
+                              Size_T, ""),
+                           Const_Int
+                             (Size_T,
+                              unsigned_long_long
+                                (UI_To_Int
+                                  (Esize (Component_Type (Left_Typ))) / 8),
+                              True), "");
+                     end if;
 
                   else
                      Error_Msg_N ("unsupported assignment statement", Node);
@@ -1245,17 +1255,20 @@ package body GNATLLVM.Compile is
                      Expr => Emit_Expression (Env, Expression (Node)),
                      Ptr => Dest);
                else
+                  Src := Emit_LValue (Env, Expression (Node));
+
+                  if Is_Array_Type (Dest_Typ) then
+                     Dest := Array_Data (Env, Dest, Dest_Typ);
+                     Src := Array_Data (Env, Src, Val_Typ);
+                  end if;
+
                   declare
                      Void_Ptr_Type : constant Type_T :=
                        Pointer_Type (Int_Ty (8), 0);
 
                      Args : constant Value_Array (1 .. 5) :=
                        (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
-                        Bit_Cast
-                          (Env.Bld,
-                           Emit_LValue (Env, Name (Node)),
-                           Void_Ptr_Type,
-                           ""),
+                        Bit_Cast (Env.Bld, Src, Void_Ptr_Type, ""),
                         Compute_Size (Name (Node), Expression (Node)),
                         Const_Int (Int_Ty (32), 1, False),  --  Alignment
                         Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile

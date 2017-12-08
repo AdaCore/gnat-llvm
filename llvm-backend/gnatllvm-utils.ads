@@ -49,9 +49,14 @@ package GNATLLVM.Utils is
    --  than by value
 
    function Get_Fullest_View (E : Entity_Id) return Entity_Id is
-     (if Present (Full_View (E))
-      then Get_Fullest_View (Full_View (E))
-      else E);
+   (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)
+    then Non_Limited_View (E)
+    elsif Present (Full_View (E))
+    then Full_View (E)
+    elsif Ekind (E) in Private_Kind
+      and then Present (Underlying_Full_View (E))
+    then Underlying_Full_View (E)
+    else E);
 
    function Const_Int (T : Type_T; Value : Uintp.Uint)
      return Value_T renames Uintp.LLVM.UI_To_LLVM;

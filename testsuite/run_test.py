@@ -36,9 +36,9 @@ def main():
     # Make support Python packages available to tests.
     env.add_search_path('PYTHONPATH', os.path.join(GNATLLVM_ROOT, 'testsuite'))
     # Make the GNAT-LLVM compiler available to tests.
-    env.add_path(os.path.join(GNATLLVM_ROOT, 'llvm-backend', 'bin'))
+    env.add_path(os.path.join(GNATLLVM_ROOT, 'llvm-interface', 'bin'))
     # Make available the correct version of LLVM to tests.
-    env.add_path(os.path.join(GNATLLVM_ROOT, 'llvm-ada', 'llvm-obj', 'bin'))
+    env.add_path(os.path.join(GNATLLVM_ROOT, 'llvm', 'llvm-obj', 'bin'))
 
     m = Main()
     add_run_test_options(m)

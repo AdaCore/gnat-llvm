@@ -8,17 +8,17 @@ steps:
 
     - If you are an AdaCore developer:
 
-    $ cd llvm-backend
+    $ cd llvm-interface
     $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/gnat gnat_src
 
     - Otherwise:
 
     $ tar xzf [...]/gnat-xxx-src.tgz
-    $ mv gnat-*src/src/ada llvm-backend/gnat_src
+    $ mv gnat-*src/src/ada llvm-interface/gnat_src
     $ rm -rf gnat-*src
 
 -   Make sure you have a recent native version of GNAT which matches this
-    package in your PATH
+    package in your PATH, GNU make, and a recent version of cmake
 
 -   Then build llvm:
 
@@ -31,15 +31,15 @@ steps:
 This will create a "ready to use" set of directories "bin" and "lib" under
 llvm-backend which you can put in your PATH:
 
-    PATH=$PWD/llvm-backend/bin:$PATH
+    PATH=$PWD/llvm-interface/bin:$PATH
 
 Note for developers: there is a facility to assess the source coverage of
 GNAT-LLVM using its testsuite and GNATcoverage. To use it, make sure a
 GNATcoverage for a native target is in your path. Then make sure to have a
 suitable build:
 
-    $ rm llvm-backend/obj/*
-    $ make -C llvm-backend USE_GNATCOV=y
+    $ rm llvm-interface/obj/*
+    $ make -C llvm-interface USE_GNATCOV=y
 
 Finally, run the testsuite with the dedicated flag (the source coverage level
 is passed as-is to GNATcoverage):

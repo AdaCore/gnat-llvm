@@ -138,7 +138,7 @@ class Testsuite:
 
         setup_result_dir(self.main.options)
         if self.main.options.source_coverage_level:
-            src_dir = os.path.join(os.getcwd(), '..', 'llvm-backend')
+            src_dir = os.path.join(os.getcwd(), '..', 'llvm-interface')
             srccov_dir = 'srccov'
             traces_dir = os.path.join(srccov_dir, 'traces')
             units_list = os.path.join(srccov_dir, 'units.list')

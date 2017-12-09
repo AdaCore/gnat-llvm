@@ -1,20 +1,19 @@
-PARALLEL=24
-
 all: build
 
 sanity-check:
-	@if ! [ -d llvm-backend/gnat_src ]; then \
+	@if ! [ -d llvm-interface/gnat_src ]; then \
           echo "error: directory llvm-backend/gnat_src not found"; exit 1; \
 	fi
 
 build: sanity-check build-be
 
 build-be:
-	make -C llvm-backend
+	make -C llvm-interface
 
 llvm:
-	make -C llvm-ada PARALLEL=$(PARALLEL)
+	make -C llvm
 
 clean:
-	make -C llvm-backend clean
+	make -C llvm-interface clean
 
+.PHONY: llvm

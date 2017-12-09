@@ -1,7 +1,8 @@
+PARALLEL=$(shell grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 1)
+
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
-PARALLEL=24
 LLVM_SRC_DIR=llvm-5.0.0.src
 LLVM_INCLUDE_DIR=$(PWD)/$(LLVM_SRC_DIR)/include
 LLVM_INCLUDE_DIR_C=$(LLVM_INCLUDE_DIR)/llvm-c
@@ -23,6 +24,7 @@ setup:
 	if [ ! -d $(LLVM_SRC_DIR) ]; then $(DL) $(LLVM_SRC_LINK) && tar xavf $(LLVM_SRC_FNAME) && rm $(LLVM_SRC_FNAME) && $(CONFIGURE) ; fi
 
 configure:
+	mkdir -p llvm-obj
 	$(CONFIGURE)
 
 llvm:
@@ -45,7 +47,7 @@ $(OUT_DIR)/llvm-core.adb: $(LLVM_INCLUDE_DIR_C)/Core.h
 	rm -rf gen
 
 clean:
-	rm -rf $(TMP_GEN_DIR) $(OUT_DIR)
+	rm -rf $(TMP_GEN_DIR) $(OUT_DIR) llvm-obj
 
 distclean: clean
 	rm -rf $(LLVM_SRC_DIR)

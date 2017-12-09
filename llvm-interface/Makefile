@@ -32,11 +32,11 @@ uname:=$(shell uname)
 pwd:=$(shell pwd)
 
 # LLVM_MODULES = Core Analysis BitWriter Target
-# LDFLAGS=$(shell $(pwd)/../llvm-ada/llvm-obj/bin/llvm-config --libs \
+# LDFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --libs \
 #   $(LLVM_MODULES) --ldflags --system-libs) -lstdc++
-LDFLAGS=$(shell $(pwd)/../llvm-ada/llvm-obj/bin/llvm-config --libs all \
+LDFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --libs all \
   --ldflags --system-libs) -lstdc++
-CXXFLAGS=$(shell $(pwd)/../llvm-ada/llvm-obj/bin/llvm-config --cxxflags)
+CXXFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --cxxflags)
 
 ifeq ($(filter-out CYGWIN%,$(uname)),)
   LDFLAGS+=-Wl,--stack=0x2000000

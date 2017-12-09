@@ -3216,6 +3216,28 @@ package body GNATLLVM.Compile is
             Create_Type (Env, D_Type),
             "array-conv");
 
+      elsif Is_Integer_Type (S_Type)
+        and then Is_Floating_Point_Type (D_Type)
+      then
+         if Is_Unsigned_Type (S_Type) then
+            return UI_To_FP
+              (Env.Bld, Value, Create_Type (Env, D_Type), "uint-to-float");
+         else
+            return SI_To_FP
+              (Env.Bld, Value, Create_Type (Env, D_Type), "int-to-float");
+         end if;
+
+      elsif Is_Integer_Type (S_Type)
+        and then Is_Floating_Point_Type (D_Type)
+      then
+         if Is_Unsigned_Type (S_Type) then
+            return FP_To_UI
+              (Env.Bld, Value, Create_Type (Env, D_Type), "float-to-uint");
+         else
+            return FP_To_SI
+              (Env.Bld, Value, Create_Type (Env, D_Type), "float-to-int");
+         end if;
+
       else
          Error_Msg_N ("unsupported type conversion", Src_Type);
          raise Program_Error;
@@ -3309,22 +3331,37 @@ package body GNATLLVM.Compile is
             | Attribute_Last
             | Attribute_Length =>
 
-            --  Note that there is no need to handle these attributes for
-            --  scalar subtypes since the front-end expands them into
-            --  constant references.
-
             declare
+               Prefix_Type : constant Entity_Id :=
+                 Get_Fullest_View (Etype (Prefix (Node)));
                Array_Descr : Value_T;
                Array_Type  : Entity_Id;
+
             begin
-               Extract_Array_Info
-                 (Env, Prefix (Node), Array_Descr, Array_Type);
-               if Attr = Attribute_Length then
-                  return Array_Length (Env, Array_Descr, Array_Type);
+               if Is_Scalar_Type (Prefix_Type) then
+                  if Attr = Attribute_First then
+                     return Emit_Expression
+                       (Env, Type_Low_Bound (Prefix_Type));
+                  elsif Attr = Attribute_Last then
+                     return Emit_Expression
+                       (Env, Type_High_Bound (Prefix_Type));
+                  else
+                     Error_Msg_N ("unsupported attribute", Node);
+                  end if;
+               elsif Is_Array_Type (Prefix_Type) then
+                  Extract_Array_Info
+                    (Env, Prefix (Node), Array_Descr, Array_Type);
+
+                  if Attr = Attribute_Length then
+                     return Array_Length (Env, Array_Descr, Array_Type);
+                  else
+                     return Array_Bound
+                       (Env, Array_Descr, Array_Type,
+                        (if Attr = Attribute_First then Low else High));
+                  end if;
                else
-                  return Array_Bound
-                    (Env, Array_Descr, Array_Type,
-                     (if Attr = Attribute_First then Low else High));
+                  Error_Msg_N ("unsupported attribute", Node);
+                  raise Program_Error;
                end if;
             end;
 

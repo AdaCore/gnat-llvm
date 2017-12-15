@@ -3,28 +3,37 @@ This is an experimental LLVM backend to the GNAT front-end.
 In order to build GNAT-LLVM from sources, you need fo follow the following
 steps:
 
--   Copy/move/link the src/ada directory from GNAT sources under the
-    llvm-backend directory:
+- Get a check out of the GNAT sources under the llvm-interface directory:
 
-    - If you are an AdaCore developer:
+  $ cd llvm-interface
+  $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/gnat gnat_src
 
-    $ cd llvm-interface
-    $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/gnat gnat_src
+- Install gnatpython if not already done:
+  https://wiki.adacore.com/IT/Documentation/SoftwareProductionInfrastructure/GNATPython/Install
+  (download gnatpython from https://gaia.eu.adacore.com, bottom right corner).
 
-    - Otherwise:
+- Create or use an anod sandbox:
 
-    $ tar xzf [...]/gnat-xxx-src.tgz
-    $ mv gnat-*src/src/ada llvm-interface/gnat_src
-    $ rm -rf gnat-*src
+  $ cd $HOME
+  $ deploy-anod-sandbox wave sandbox
+  $ cd sandbox
 
--   Make sure you have a recent native version of GNAT which matches this
-    package in your PATH, GNU make, and a recent version of cmake
+- Build (and use) cmake, needed to build LLVM:
 
--   Then build llvm:
+  $ bin/anod build cmake --when-missing=install
+  $ eval `bin/anod setenv cmake`
 
-    $ make llvm
+- Install (and use) the latest GNAT wavefront:
 
--   Finally build GNAT-LLVM:
+  $ bin/anod install gnat
+  $ eval `bin/anod setenv gnat`
+
+- Then build llvm:
+
+  $ cd /path/to/gnat-llvm
+  $ make llvm
+
+- Finally build GNAT-LLVM:
 
     $ make
 
@@ -33,18 +42,27 @@ llvm-backend which you can put in your PATH:
 
     PATH=$PWD/llvm-interface/bin:$PATH
 
-Note for developers: there is a facility to assess the source coverage of
-GNAT-LLVM using its testsuite and GNATcoverage. To use it, make sure a
-GNATcoverage for a native target is in your path. Then make sure to have a
-suitable build:
+- To run the testsuite:
+
+  $ cd testsuite
+  $ ./run.sh
+
+  The results will be found under output/new, see e.g. output/new/report
+
+- Use of gnatcoverage (not tested recently)
+
+  There is a facility to assess the source coverage of GNAT-LLVM using its
+  testsuite and GNATcoverage. To use it, make sure a GNATcoverage for a native
+  target is in your path. Then make sure to have a suitable build:
 
     $ rm llvm-interface/obj/*
     $ make -C llvm-interface USE_GNATCOV=y
 
-Finally, run the testsuite with the dedicated flag (the source coverage level
-is passed as-is to GNATcoverage):
+  Finally, run the testsuite with the dedicated flag (the source coverage level
+  is passed as-is to GNATcoverage):
 
     $ (cd testsuite && ./testsuite.py --srccov-level=stmt+decision)
 
-When the command completes, you can open testsuite/srccov/index.html in a Web
-browser.
+  When the command completes, you can open testsuite/srccov/index.html in a Web
+  browser.
+

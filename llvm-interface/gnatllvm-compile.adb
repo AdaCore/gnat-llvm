@@ -28,6 +28,7 @@ with Eval_Fat; use Eval_Fat;
 with Get_Targ; use Get_Targ;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
+with Opt;      use Opt;
 with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
@@ -2348,8 +2349,13 @@ package body GNATLLVM.Compile is
                   --  with different discriminant values
                   return Val;
                else
-                  Error_Msg_N
-                    ("unsupported kind of unchecked conversion", Node);
+                  --  ??? To be refined further and use e.g. *(type*)val
+
+                  if not GNAT_Mode then
+                     Error_Msg_N
+                       ("unsupported kind of unchecked conversion", Node);
+                  end if;
+
                   return Bit_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
                end if;
             end;

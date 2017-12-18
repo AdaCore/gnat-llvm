@@ -67,7 +67,7 @@ build: setup force
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
 
 fast:
-        $(MAKE) DEBUG=0
+	$(MAKE) DEBUG=0
 
 force:
 

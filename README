@@ -42,12 +42,22 @@ llvm-backend which you can put in your PATH:
 
     PATH=$PWD/llvm-interface/bin:$PATH
 
-- To run the testsuite:
+- To run the LLVM testsuite:
 
   $ cd testsuite
   $ ./run.sh
 
   The results will be found under output/new, see e.g. output/new/report
+
+- To run the ACATS testsuite:
+
+  $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/acats
+  $ cd acats
+  $ mkdir -p tmp
+  $ ./run_acats_test.py --target=llvm -t tmp --acats-version=4 --disable-cleanup --jobs=24
+
+  You can then investigate any failure by going in the tmp/work/<acats test>
+  directory.
 
 - Use of gnatcoverage (not tested recently)
 

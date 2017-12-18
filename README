@@ -42,7 +42,7 @@ llvm-backend which you can put in your PATH:
 
     PATH=$PWD/llvm-interface/bin:$PATH
 
-- To run the LLVM testsuite:
+- To run the GNAT-LLVM testsuite:
 
   $ cd testsuite
   $ ./run.sh

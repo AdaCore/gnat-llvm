@@ -44,7 +44,7 @@ endif
 
 .PHONY: setup force clean
 
-all: setup build
+all: setup build zfp
 
 setup:
 	mkdir -p obj obj-tools bin
@@ -137,7 +137,7 @@ unchdeal.ads
 
 COMPILE=$(pwd)/bin/llvm-gcc -c -gnatpg -nostdinc -I../adainclude
 
-zfp:
+zfp: build
 	$(RMDIR) $(ADAINCLUDE) $(ADALIB)
 	$(MKDIR) $(ADAINCLUDE) $(ADALIB)
 	for f in $(COMMON_SRCS); do \

@@ -1,4 +1,4 @@
-PARALLEL=$(shell grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 1)
+PARALLEL=$(shell grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 8)
 
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen

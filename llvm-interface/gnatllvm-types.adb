@@ -642,7 +642,7 @@ package body GNATLLVM.Types is
       Void_Ptr : constant Type_T :=
         Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
       Couple : constant Type_Array (1 .. 2) := (Void_Ptr, Void_Ptr);
-      --  (Pointer_Type (Subp_Type, 0),
+
    begin
       return Struct_Type_In_Context
         (Env.Ctx,

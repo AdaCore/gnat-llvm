@@ -3428,7 +3428,18 @@ package body GNATLLVM.Compile is
      (Env          : Environ;
       Operation    : Pred_Mapping;
       Operand_Type : Entity_Id;
-      LHS, RHS     : Node_Id) return Value_T is
+      LHS, RHS     : Node_Id) return Value_T
+   is
+      function Subp_Ptr (Node : Node_Id) return Value_T is
+        (if Nkind (Node) = N_Null
+         then Const_Null (Pointer_Type (Int_Ty (8), 0))
+         else Load
+           (Env.Bld,
+            Struct_GEP
+              (Env.Bld, Emit_LValue (Env, Node), 0, "subp-addr"),
+            ""));
+      --  Return the subprogram pointer associated with Node
+
    begin
       --  LLVM treats pointers as integers regarding comparison
 
@@ -3439,6 +3450,14 @@ package body GNATLLVM.Compile is
             Emit_Expression (Env, LHS),
             Emit_Expression (Env, RHS),
             "fcmp");
+
+      elsif Ekind (Operand_Type) = E_Anonymous_Access_Subprogram_Type then
+         return I_Cmp
+           (Env.Bld,
+            Operation.Unsigned,
+            Subp_Ptr (LHS),
+            Subp_Ptr (RHS),
+            "icmp");
 
       elsif Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
         or else Is_Access_Type (Operand_Type)

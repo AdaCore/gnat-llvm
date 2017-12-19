@@ -1681,18 +1681,20 @@ package body GNATLLVM.Compile is
          Parent   : constant Entity_Id := Enclosing_Subprogram (Subp);
 
       begin
----------------
-         if Present (Parent) then
-            Result := Env.Get (Subps.Table (Subp_Index (Parent)).ARECnP);
-            --  ??? not necessarily the right ARECnP value
-            return Bit_Cast (Env.Bld, Result, Result_Type, "static-link");
-         else
-            return Const_Null (Result_Type);
-         end if;
----------------
+         if Unnest_Subprogram_Mode then
+            if Present (Parent) then
+               Result := Env.Get (Subps.Table (Subp_Index (Parent)).ARECnP);
+               --  ??? not necessarily the right ARECnP value
+               return Bit_Cast
+                 (Env.Bld,
+                  Load (Env.Bld, Result, ""),
+                  Result_Type,
+                  "static-link");
 
-         pragma Warnings (Off);
-         if False then
+            else
+               return Const_Null (Result_Type);
+            end if;
+         else
             Caller_SLD := Env.Current_Subp.S_Link_Descr;
             Callee_SLD := Env.Get_S_Link (Subp);
             Result     := Env.Current_Subp.S_Link;
@@ -3352,7 +3354,9 @@ package body GNATLLVM.Compile is
                        (Env, Type_High_Bound (Prefix_Type));
                   else
                      Error_Msg_N ("unsupported attribute", Node);
+                     raise Program_Error;
                   end if;
+
                elsif Is_Array_Type (Prefix_Type) then
                   Extract_Array_Info
                     (Env, Prefix (Node), Array_Descr, Array_Type);
@@ -3642,7 +3646,7 @@ package body GNATLLVM.Compile is
       HBD          : Node_Id;
       Switch       : Value_T;
       Comp         : Value_T;
-      Comp2        : Value_T;
+      Comp2        : Value_T := Value_T (System.Null_Address);
       Comp3        : Value_T;
       BB           : Basic_Block_T;
       BB2          : Basic_Block_T;
@@ -3785,8 +3789,6 @@ package body GNATLLVM.Compile is
          declare
             BBs : array (1 .. List_Length (Alternatives (Node)))
                     of Basic_Block_T;
-            J   : Integer;
-
          begin
             for J in BBs'First .. BBs'Last - 1 loop
                BBs (J) := Create_Basic_Block (Env, "when");

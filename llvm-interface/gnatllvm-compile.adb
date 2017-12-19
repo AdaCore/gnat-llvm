@@ -609,7 +609,7 @@ package body GNATLLVM.Compile is
       Subp : constant Entity_Id := Unique_Defining_Entity (Node);
 
    begin
-      if Local_Nested_Support then
+      if not Unnest_Subprogram_Mode then
          Emit_Subprogram_Body_Old (Env, Node);
          return;
       end if;
@@ -1658,8 +1658,7 @@ package body GNATLLVM.Compile is
    function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T is
 
       function Get_Static_Link (Subp : Entity_Id) return Value_T;
-      --  Build and return the static link to pass to a call to Subp, when
-      --  Local_Nested_Support is False.
+      --  Build and return the static link to pass to a call to Subp
 
       ---------------------
       -- Get_Static_Link --
@@ -1720,7 +1719,7 @@ package body GNATLLVM.Compile is
                N         : Node_Id;
             begin
                if Ekind (Def_Ident) in Subprogram_Kind then
-                  if not Local_Nested_Support then
+                  if Unnest_Subprogram_Mode then
                      N := Associated_Node_For_Itype (Etype (Parent (Node)));
 
                      if No (N) or else Nkind (N) = N_Full_Type_Declaration then
@@ -2771,7 +2770,7 @@ package body GNATLLVM.Compile is
           /= N_Full_Type_Declaration;
       Takes_S_Link     : constant Boolean :=
         Anonymous_Access
-          or else (Local_Nested_Support
+          or else (not Unnest_Subprogram_Mode
             and then
               (not Direct_Call or else Env.Takes_S_Link (Entity (Subp))));
 
@@ -3067,7 +3066,7 @@ package body GNATLLVM.Compile is
       Subp   : Subp_Env;
       S_Link : Value_T;
    begin
-      if not Local_Nested_Support then
+      if Unnest_Subprogram_Mode then
          return;
       end if;
 

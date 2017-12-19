@@ -156,7 +156,7 @@ package body LLVM_Drive is
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
 
-      if Local_Nested_Support then
+      if not Unnest_Subprogram_Mode then
          Compute_Static_Link_Descriptors (GNAT_Root, Env.S_Links);
       end if;
 

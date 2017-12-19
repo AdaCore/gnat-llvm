@@ -16,10 +16,11 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
+with Opt;      use Opt;
 with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
-with Uintp; use Uintp;
+with Uintp;    use Uintp;
 with Ttypes;
 
 with GNATLLVM.Compile;
@@ -197,10 +198,10 @@ package body GNATLLVM.Types is
       elsif Ekind (TE) in Subprogram_Kind
         or else Ekind (TE) = E_Subprogram_Type
       then
-         if Local_Nested_Support then
-            return Create_Subprogram_Access_Type (Env, T);
-         else
+         if Unnest_Subprogram_Mode then
             return Pointer_Type (T, 0);
+         else
+            return Create_Subprogram_Access_Type (Env, T);
          end if;
       else
          return Pointer_Type (T, 0);
@@ -429,7 +430,7 @@ package body GNATLLVM.Types is
 
             return Create_Subprogram_Type_From_Entity
               (Env, Def_Ident,
-               Takes_S_Link => Local_Nested_Support or else
+               Takes_S_Link => not Unnest_Subprogram_Mode or else
                  Nkind (Associated_Node_For_Itype (TE))
                    /= N_Full_Type_Declaration);
 

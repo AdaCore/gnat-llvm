@@ -19,7 +19,8 @@ with Ada.Unchecked_Deallocation;
 with System;
 
 with Errout; use Errout;
-with Sinfo; use Sinfo;
+with Opt;    use Opt;
+with Sinfo;  use Sinfo;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -330,11 +331,11 @@ package body GNATLLVM.Environment is
 
       S_Link_Cur : constant Cursor := Env.S_Links.Find (Subp);
    begin
-      if Local_Nested_Support then
+      if Unnest_Subprogram_Mode then
+         return False;
+      else
          return S_Link_Cur /= No_Element
            and then Element (S_Link_Cur).Parent /= null;
-      else
-         return False;
       end if;
    end Takes_S_Link;
 
@@ -366,7 +367,7 @@ package body GNATLLVM.Environment is
          S_Link                 => Value_T (System.Null_Address));
 
    begin
-      if Local_Nested_Support then
+      if not Unnest_Subprogram_Mode then
          Subp.S_Link_Descr := Env.S_Links.Element
            (Defining_Unit_Name (Get_Acting_Spec (Subp_Body)));
       end if;

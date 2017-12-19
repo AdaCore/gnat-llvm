@@ -29,8 +29,6 @@ with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
 
 package GNATLLVM.Environment is
 
-   Local_Nested_Support : constant Boolean := False;
-
    type Field_Info is record
       Containing_Struct_Index : Nat;
       Index_In_Struct : Nat;

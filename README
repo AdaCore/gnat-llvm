@@ -42,6 +42,30 @@ llvm-backend which you can put in your PATH:
 
     PATH=$PWD/llvm-interface/bin:$PATH
 
+- To run the compiler and produce a native object file:
+
+  $ llvm-gcc -c file.adb
+
+- To debug the compiler:
+
+  $ gdb -args llvm-gnat1 -c file.adb
+
+- To build a complete native executable:
+
+  $ llvm-gnatmake main.adb
+
+- To dump LLVM byte code (will generate a .bc file):
+
+  $ llvm-gcc -c --dump-bc file.adb
+
+- To dump LLVM representation in textual form (will dump on stdout):
+
+  $ llvm-gcc -c --dump-ir file.adb
+
+- To dump native assembly file (Will generate a .s file):
+
+  $ llvm-gcc -S file.adb
+
 - To run the GNAT-LLVM testsuite:
 
   $ cd testsuite

@@ -1697,10 +1697,20 @@ package body GNATLLVM.Compile is
 
             begin
                if Parent = Caller then
-                  Result := Env.Get (Subps.Table (Subp_Index (Parent)).ARECnP);
+                  Result := Env.Get (Ent.ARECnP);
                else
-                  --  ??? May need to go several levels up via Env.ARECnU
                   Result := Env.Get (Ent_Caller.ARECnF);
+
+                  --  Go levels up via the ARECnU field if needed
+
+                  for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
+                     Result :=
+                       Struct_GEP
+                         (Env.Bld,
+                          Load (Env.Bld, Result, ""),
+                          0,
+                          "ARECnF.all.ARECnU");
+                  end loop;
                end if;
 
                return Bit_Cast
@@ -1712,22 +1722,6 @@ package body GNATLLVM.Compile is
          else
             return Const_Null (Result_Type);
          end if;
-
-      --    Caller_SLD := Env.Current_Subp.S_Link_Descr;
-      --    Callee_SLD := Env.Get_S_Link (Subp);
-      --    Result     := Env.Current_Subp.S_Link;
-
-      --    --  The language rules force the parent subprogram of the callee to
-      --    --  be the caller or one of its parent.
-
-      --    while Callee_SLD.Parent /= Caller_SLD loop
-      --       Caller_SLD := Caller_SLD.Parent;
-      --       Result := Load
-      --         (Env.Bld,
-      --          GEP (Env.Bld, Result, Idx'Address, Idx'Length, ""), "");
-      --    end loop;
-
-      --    return Bit_Cast (Env.Bld, Result, Result_Type, "");
       end Get_Static_Link;
 
    begin

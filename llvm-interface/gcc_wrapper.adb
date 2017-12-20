@@ -124,10 +124,6 @@ begin
          if Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
-         elsif Arg = "-static-libgcc" or else Arg = "-shared-libgcc" then
-            --  Ignore switch
-            Skip := True;
-
          elsif Arg = "-v" then
             Verbose := True;
             Skip := True;

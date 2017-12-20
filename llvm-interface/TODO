@@ -1,0 +1,12 @@
+Missing main features (identified so far):
+
+- types with dynamic size
+- cleanups/at end handlers
+- secondary stack support
+- exception handlers
+- tagged types
+- various cases of unchecked conversion
+- freeze nodes
+- overflow checks (consider enabling the front-end mechanism?)
+- representation clauses
+- debug info

@@ -1657,60 +1657,77 @@ package body GNATLLVM.Compile is
 
    function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T is
 
-      function Get_Static_Link (Subp : Entity_Id) return Value_T;
-      --  Build and return the static link to pass to a call to Subp
+      function Get_Static_Link (Node : Entity_Id) return Value_T;
+      --  Build and return the static link to pass to a call to Node
 
       ---------------------
       -- Get_Static_Link --
       ---------------------
 
-      function Get_Static_Link (Subp : Entity_Id) return Value_T is
+      function Get_Static_Link (Node : Entity_Id) return Value_T is
+         Subp        : constant Entity_Id := Entity (Node);
          Result_Type : constant Type_T :=
            Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
          Result      : Value_T;
 
-         --  In this context, the "caller" is the subprogram that creates an
-         --  access to subprogram or that calls directly a subprogram, and the
-         --  "callee" is the target subprogram.
-
-         Caller_SLD, Callee_SLD : Static_Link_Descriptor;
-
-         Idx_Type : constant Type_T := Int32_Type_In_Context (Env.Ctx);
-         Zero     : constant Value_T := Const_Null (Idx_Type);
-         Idx      : constant Value_Array (1 .. 2) := (Zero, Zero);
-         Parent   : constant Entity_Id := Enclosing_Subprogram (Subp);
+         Parent : constant Entity_Id := Enclosing_Subprogram (Subp);
+         Caller : Node_Id := Node;
 
       begin
-         if Unnest_Subprogram_Mode then
-            if Present (Parent) then
-               Result := Env.Get (Subps.Table (Subp_Index (Parent)).ARECnP);
-               --  ??? not necessarily the right ARECnP value
+         if Present (Parent) then
+            loop
+               if Nkind (Caller) = N_Subprogram_Body then
+                  Caller := Defining_Unit_Name (Specification (Caller));
+
+                  exit;
+               end if;
+
+               Caller := Atree.Parent (Caller);
+
+               if No (Caller) then
+                  raise Program_Error;
+               end if;
+            end loop;
+
+            declare
+               Ent : constant Subp_Entry :=
+                 Subps.Table (Subp_Index (Parent));
+               Ent_Caller : constant Subp_Entry :=
+                 Subps.Table (Subp_Index (Caller));
+
+            begin
+               if Parent = Caller then
+                  Result := Env.Get (Subps.Table (Subp_Index (Parent)).ARECnP);
+               else
+                  --  ??? May need to go several levels up via Env.ARECnU
+                  Result := Env.Get (Ent_Caller.ARECnF);
+               end if;
+
                return Bit_Cast
                  (Env.Bld,
                   Load (Env.Bld, Result, ""),
                   Result_Type,
                   "static-link");
-
-            else
-               return Const_Null (Result_Type);
-            end if;
+            end;
          else
-            Caller_SLD := Env.Current_Subp.S_Link_Descr;
-            Callee_SLD := Env.Get_S_Link (Subp);
-            Result     := Env.Current_Subp.S_Link;
-
-            --  The language rules force the parent subprogram of the callee to
-            --  be the caller or one of its parent.
-
-            while Callee_SLD.Parent /= Caller_SLD loop
-               Caller_SLD := Caller_SLD.Parent;
-               Result := Load
-                 (Env.Bld,
-                  GEP (Env.Bld, Result, Idx'Address, Idx'Length, ""), "");
-            end loop;
-
-            return Bit_Cast (Env.Bld, Result, Result_Type, "");
+            return Const_Null (Result_Type);
          end if;
+
+      --    Caller_SLD := Env.Current_Subp.S_Link_Descr;
+      --    Callee_SLD := Env.Get_S_Link (Subp);
+      --    Result     := Env.Current_Subp.S_Link;
+
+      --    --  The language rules force the parent subprogram of the callee to
+      --    --  be the caller or one of its parent.
+
+      --    while Callee_SLD.Parent /= Caller_SLD loop
+      --       Caller_SLD := Caller_SLD.Parent;
+      --       Result := Load
+      --         (Env.Bld,
+      --          GEP (Env.Bld, Result, Idx'Address, Idx'Length, ""), "");
+      --    end loop;
+
+      --    return Bit_Cast (Env.Bld, Result, Result_Type, "");
       end Get_Static_Link;
 
    begin
@@ -1733,7 +1750,7 @@ package body GNATLLVM.Compile is
                         declare
                            Func   : constant Value_T := Env.Get (Def_Ident);
                            S_Link : constant Value_T :=
-                             Get_Static_Link (Def_Ident);
+                             Get_Static_Link (Node);
 
                            Fields_Types  : constant array (1 .. 2) of Type_T :=
                              (Type_Of (S_Link),

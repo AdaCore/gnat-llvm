@@ -83,6 +83,12 @@ llvm-backend which you can put in your PATH:
   You can then investigate any failure by going in the tmp/work/<acats test>
   directory.
 
+- LLVM documentation
+
+  Main entry point: http://llvm.org/docs/
+  See in particular: http://llvm.org/docs/LangRef.html and
+  http://llvm.org/docs/Frontend/PerformanceTips.html
+
 - Use of gnatcoverage (not tested recently)
 
   There is a facility to assess the source coverage of GNAT-LLVM using its

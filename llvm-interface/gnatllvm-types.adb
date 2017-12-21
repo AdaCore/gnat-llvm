@@ -88,12 +88,14 @@ package body GNATLLVM.Types is
       use Interfaces.C;
       Int_Size : constant unsigned := unsigned (Get_Int_Size);
    begin
-      Set_Rec (Universal_Integer, Int_Type_In_Context (Env.Ctx, Int_Size));
+      --  Should we bother registering any type in advance at all???
+
+      Set_Rec
+        (Universal_Integer,
+         Int_Type_In_Context (Env.Ctx, unsigned (Get_Long_Long_Size)));
       Set_Rec (Standard_Integer, Int_Type_In_Context (Env.Ctx, Int_Size));
       Set_Rec (Standard_Boolean, Int_Type_In_Context (Env.Ctx, 1));
       Set_Rec (Standard_Natural, Int_Type_In_Context (Env.Ctx, Int_Size));
-
-      --  ???? add other builtin types!
    end Register_Builtin_Types;
 
    -----------
@@ -232,14 +234,23 @@ package body GNATLLVM.Types is
 
       case Ekind (Def_Ident) is
          when Discrete_Kind =>
-            if Is_Modular_Integer_Type (Def_Ident) then
+            --  LLVM is expecting boolean expressions to be of size 1
+            --  ??? will not work properly if there is a size clause
+
+            if Is_Boolean_Type (Def_Ident) then
+               return Int_Type_In_Context (Env.Ctx, 1);
+            elsif Is_Modular_Integer_Type (Def_Ident) then
                return Int_Type_In_Context
                  (Env.Ctx,
-                  Interfaces.C.unsigned (UI_To_Int (RM_Size (Def_Ident))));
-            end if;
+                  Interfaces.C.unsigned
+                    (UI_To_Int (RM_Size (Def_Ident))));
 
-            return Int_Type_In_Context
-              (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
+            else
+               return Int_Type_In_Context
+                 (Env.Ctx,
+                  Interfaces.C.unsigned
+                    (UI_To_Int (Esize (Def_Ident))));
+            end if;
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
             declare

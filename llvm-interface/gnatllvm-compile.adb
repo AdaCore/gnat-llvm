@@ -22,7 +22,6 @@ with System;
 with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Exp_Unst; use Exp_Unst;
-with Exp_Util; use Exp_Util;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
 with Get_Targ; use Get_Targ;
@@ -3934,22 +3933,6 @@ package body GNATLLVM.Compile is
       Then_Value, Else_Value : Value_T;
 
    begin
-      --  Generate simple Select instruction when possible
-
-      if Side_Effect_Free (Condition)
-       and then Side_Effect_Free (Then_Expr)
-       and then Side_Effect_Free (Else_Expr)
-      then
-         return Build_Select
-           (Env.Bld,
-            C_If   => Emit_Expression (Env, Condition),
-            C_Then => Emit_Expression (Env, Then_Expr),
-            C_Else => Emit_Expression (Env, Else_Expr),
-            Name   => "if-expr");
-      end if;
-
-      --  In more complex cases, generate basic blocks and a phi node
-
       BB_Then := Create_Basic_Block (Env, "if-then");
       BB_Else := Create_Basic_Block (Env, "if-else");
       BB_Next := Create_Basic_Block (Env, "if-next");

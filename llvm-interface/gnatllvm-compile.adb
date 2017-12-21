@@ -1938,10 +1938,22 @@ package body GNATLLVM.Compile is
             return Emit_LValue (Env, Expression (Node));
 
          when others =>
-            Error_Msg_N
-              ("unhandled node kind: `" &
-               Node_Kind'Image (Nkind (Node)) & "`", Node);
-            raise Program_Error;
+            if not Env.Library_Level then
+               --  Create a temporary: is that always adequate???
+
+               declare
+                  Result : constant Value_T :=
+                    Alloca (Env.Bld, Create_Type (Env, Etype (Node)), "");
+               begin
+                  Store (Env.Bld, Emit_Expression (Env, Node), Result);
+                  return Result;
+               end;
+            else
+               Error_Msg_N
+                 ("unhandled node kind: `" &
+                  Node_Kind'Image (Nkind (Node)) & "`", Node);
+               raise Program_Error;
+            end if;
       end case;
    end Emit_LValue;
 
@@ -2361,14 +2373,15 @@ package body GNATLLVM.Compile is
                   --  with different discriminant values
                   return Val;
                else
-                  --  ??? To be refined further and use e.g. *(type*)val
+                  --  Generate *(type*)&expr
 
-                  if not GNAT_Mode then
-                     Error_Msg_N
-                       ("unsupported kind of unchecked conversion", Node);
-                  end if;
-
-                  return Bit_Cast (Env.Bld, Val, Dest_Ty, "unchecked-conv");
+                  return Load
+                    (Env.Bld,
+                     Pointer_Cast
+                       (Env.Bld,
+                        Emit_LValue (Env, Expression (Node)),
+                        Pointer_Type (Dest_Ty, 0), ""),
+                     "unchecked-conv");
                end if;
             end;
 

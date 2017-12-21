@@ -1,5 +1,6 @@
 Missing main features (identified so far):
 
+- variant records
 - types with dynamic size
 - cleanups/at end handlers
 - secondary stack support

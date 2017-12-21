@@ -1862,7 +1862,8 @@ package body GNATLLVM.Compile is
          when N_Indexed_Component =>
             declare
                Array_Node  : constant Node_Id := Prefix (Node);
-               Array_Type  : constant Entity_Id := Etype (Array_Node);
+               Array_Type  : constant Entity_Id :=
+                 Get_Fullest_View (Etype (Array_Node));
 
                Array_Descr    : constant Value_T :=
                  Emit_LValue (Env, Array_Node);
@@ -1903,7 +1904,8 @@ package body GNATLLVM.Compile is
          when N_Slice =>
             declare
                Array_Node     : constant Node_Id := Prefix (Node);
-               Array_Type     : constant Entity_Id := Etype (Array_Node);
+               Array_Type     : constant Entity_Id :=
+                 Get_Fullest_View (Etype (Array_Node));
 
                Array_Descr    : constant Value_T :=
                  Emit_LValue (Env, Array_Node);

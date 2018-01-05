@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2017, AdaCore                     --
+--                     Copyright (C) 2013-2018, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -19,6 +19,7 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Atree;  use Atree;
+with Errout; use Errout;
 with Nlists; use Nlists;
 with Sinfo;  use Sinfo;
 with Stand;  use Stand;
@@ -79,10 +80,32 @@ package body GNATLLVM.Arrays is
       Array_Descr : Value_T;
       Array_Type  : Entity_Id;
       Bound       : Bound_T;
-      Dim         : Natural := 1) return Value_T
-   is
+      Dim         : Natural := 1) return Value_T is
    begin
-      if Is_Constrained (Array_Type) then
+      if Ekind (Array_Type) = E_String_Literal_Subtype then
+         declare
+            First : constant Uint :=
+              Intval (String_Literal_Low_Bound (Array_Type));
+            Typ : constant Type_T := Create_Type (Env, Standard_Positive);
+
+         begin
+            if Bound = Low then
+               return Const_Int
+                 (Typ,
+                  unsigned_long_long (UI_To_Long_Long_Integer (First)),
+                  Sign_Extend => False);
+
+            else
+               return Const_Int
+                 (Typ,
+                  unsigned_long_long
+                    (UI_To_Long_Long_Integer
+                      (String_Literal_Length (Array_Type) - First + 1)),
+                  Sign_Extend => False);
+            end if;
+         end;
+
+      elsif Is_Constrained (Array_Type) then
          declare
             Indices_List  : constant List_Id :=
               List_Containing (First_Index (Array_Type));
@@ -124,17 +147,24 @@ package body GNATLLVM.Arrays is
       Array_Descr : Value_T;
       Array_Type  : Entity_Id) return Value_T
    is
-      First_Bound_Range : constant Entity_Id := First_Index (Array_Type);
-      Result            : constant Value_T :=
-        Bounds_To_Length
-          (Env => Env,
-           Low_Bound => Array_Bound (Env, Array_Descr, Array_Type, Low),
-           High_Bound => Array_Bound (Env, Array_Descr, Array_Type, High),
-           Bounds_Type => Etype (First_Bound_Range));
-
+      Result : Value_T;
    begin
-      Set_Value_Name (Result, "array-length");
-      return Result;
+      if Ekind (Array_Type) = E_String_Literal_Subtype then
+         return Const_Int
+           (Create_Type (Env, Standard_Positive),
+            unsigned_long_long
+              (UI_To_Int (String_Literal_Length (Array_Type))),
+            Sign_Extend => False);
+
+      else
+         Result := Bounds_To_Length
+           (Env => Env,
+            Low_Bound => Array_Bound (Env, Array_Descr, Array_Type, Low),
+            High_Bound => Array_Bound (Env, Array_Descr, Array_Type, High),
+            Bounds_Type => Etype (First_Index (Array_Type)));
+         Set_Value_Name (Result, "array-length");
+         return Result;
+      end if;
    end Array_Length;
 
    ----------------
@@ -264,6 +294,31 @@ package body GNATLLVM.Arrays is
       Dim_I          : Integer;
       R              : Node_Id;
 
+      procedure Handle_Bound (Bound : Node_Id; Bound_Type : Bound_T);
+      --  Insert the given Bound_Type bound in Bounds
+
+      ------------------
+      -- Handle_Bound --
+      ------------------
+
+      procedure Handle_Bound (Bound : Node_Id; Bound_Type : Bound_T) is
+      begin
+         if Nkind (Bound) = N_Identifier
+           and then Present (Entity (Bound))
+           and then Ekind (Entity (Bound)) = E_Discriminant
+         then
+            Error_Msg_N ("unsupported reference to discriminant", Bound);
+            raise Program_Error;
+         else
+            Bounds := Insert_Value
+              (Env.Bld,
+               Bounds,
+               Emit_Expression (Env, Bound),
+               Get_Bound_Index (Dim_I, Bound_Type),
+               "");
+         end if;
+      end Handle_Bound;
+
    begin
       pragma Assert (Count_Struct_Element_Types (Fat_Ptr_Type) = 2);
       Get_Struct_Element_Types (Fat_Ptr_Type, Fat_Ptr_Elt_Types'Address);
@@ -306,18 +361,8 @@ package body GNATLLVM.Arrays is
 
          for Dim of Iterate (List_Containing (First_Index (Array_Type))) loop
             R := Get_Dim_Range (Dim);
-            Bounds := Insert_Value
-              (Env.Bld,
-               Bounds,
-               Emit_Expression (Env, Low_Bound (R)),
-               Get_Bound_Index (Dim_I, Low),
-               "");
-            Bounds := Insert_Value
-              (Env.Bld,
-               Bounds,
-               Emit_Expression (Env, High_Bound (R)),
-               Get_Bound_Index (Dim_I, High),
-               "");
+            Handle_Bound (Low_Bound (R), Low);
+            Handle_Bound (High_Bound (R), High);
             Dim_I := Dim_I + 1;
          end loop;
       end if;

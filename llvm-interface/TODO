@@ -1,6 +1,7 @@
 Missing main features (identified so far):
 
 - variant records
+- packed arrays (Is_Packed_Array/Packed_Array_Impl_Type)
 - types with dynamic size
 - cleanups/at end handlers
 - secondary stack support

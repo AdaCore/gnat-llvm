@@ -143,6 +143,8 @@ zfp: build
 	for f in $(COMMON_SRCS); do \
 	  cp -p $(GNAT_SRC)/libgnat/$$f $(ADAINCLUDE); \
 	done
+	cp -p $(GNAT_SRC)/hie/a-tags__c.ads $(ADAINCLUDE)/a-tags.ads
+	cp -p $(GNAT_SRC)/hie/a-tags__c.adb $(ADAINCLUDE)/a-tags.adb
 	cp -p $(GNAT_SRC)/hie/a-except__c.adb $(ADAINCLUDE)/a-except.adb
 	cp -p $(GNAT_SRC)/hie/a-except__zfp.ads $(ADAINCLUDE)/a-except.ads
 	cp -p $(GNAT_SRC)/hie/a-textio__c.adb $(ADAINCLUDE)/a-textio.adb

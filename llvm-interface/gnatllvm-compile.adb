@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2017, AdaCore                     --
+--                     Copyright (C) 2013-2018, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -41,7 +41,6 @@ with Urealp;   use Urealp;
 
 with LLVM.Analysis; use LLVM.Analysis;
 with LLVM.Core; use LLVM.Core;
-with LLVM.Target; use LLVM.Target;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Bounds;       use GNATLLVM.Bounds;
@@ -55,15 +54,6 @@ package body GNATLLVM.Compile is
    --  Note: in order to find the right LLVM instruction to generate,
    --  you can compare with what Clang generates on corresponding C or C++
    --  code. This can be done online via http://ellcc.org/demo/index.cgi
-
-   function Get_Type_Size
-     (Env : Environ;
-      T   : Type_T) return Value_T;
-   --  Return the size of an LLVM type, in bytes
-   function Record_Field_Offset
-     (Env : Environ;
-      Record_Ptr : Value_T;
-      Record_Field : Node_Id) return Value_T;
 
    function Build_Type_Conversion
      (Env                 : Environ;
@@ -145,18 +135,6 @@ package body GNATLLVM.Compile is
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id);
    --  Compile a subprogram body and save it in the environment
 
-   function Emit_Type_Size
-     (Env                   : Environ;
-      T                     : Entity_Id;
-      Array_Descr           : Value_T;
-      Containing_Record_Ptr : Value_T) return Value_T;
-   --  Helper for Emit/Emit_Expression: emit code to compute the size of type
-   --  T, getting information from Containing_Record_Ptr for types that are
-   --  constrained by a discriminant record (in such case, this parameter
-   --  should be a pointer to the corresponding record). If T is an
-   --  unconstrained array, Array_Descr must be the corresponding fat
-   --  pointer. Return the computed size as value.
-
    function Create_Callback_Wrapper
      (Env : Environ; Subp : Entity_Id) return Value_T;
    --  If Subp takes a static link, return its LLVM declaration. Otherwise,
@@ -203,103 +181,6 @@ package body GNATLLVM.Compile is
       Table_Increment      => 100,
       Table_Name           => "Elaboration_Table");
    --  Table of statements part of the current elaboration procedure
-
-   -------------------
-   -- Get_Type_Size --
-   -------------------
-
-   function Get_Type_Size
-     (Env : Environ;
-      T   : Type_T) return Value_T
-   is
-      T_Data : constant Target_Data_T :=
-        Create_Target_Data (Get_Target (Env.Mdl));
-   begin
-      return Const_Int
-        (Int_Ptr_Type,
-         Size_Of_Type_In_Bits (T_Data, T) / 8,
-         Sign_Extend => False);
-   end Get_Type_Size;
-
-   --------------------
-   -- Emit_Type_Size --
-   --------------------
-
-   function Emit_Type_Size
-     (Env                   : Environ;
-      T                     : Entity_Id;
-      Array_Descr           : Value_T;
-      Containing_Record_Ptr : Value_T) return Value_T
-   is
-      LLVM_Type : constant Type_T := Create_Type (Env, T);
-   begin
-      if Is_Scalar_Type (T)
-        or else Is_Access_Type (T)
-      then
-         return Get_Type_Size (Env, LLVM_Type);
-      elsif Is_Array_Type (T) then
-         return Mul
-           (Env.Bld,
-            Emit_Type_Size
-              (Env, Component_Type (T), No_Value_T, Containing_Record_Ptr),
-            Array_Size
-              (Env, Array_Descr, T, Containing_Record_Ptr),
-            "array-size");
-
-      else
-         Error_Msg_N ("unimplemented case for emit type size", T);
-         raise Program_Error;
-      end if;
-   end Emit_Type_Size;
-
-   -------------------------
-   -- Record_Field_Offset --
-   -------------------------
-
-   function Record_Field_Offset
-     (Env : Environ;
-      Record_Ptr : Value_T;
-      Record_Field : Node_Id) return Value_T
-   is
-      Field_Id   : constant Entity_Id := Defining_Identifier (Record_Field);
-      Type_Id    : constant Entity_Id := Scope (Field_Id);
-      R_Info     : constant Record_Info := Env.Get (Type_Id);
-      F_Info     : constant Field_Info := R_Info.Fields.Element (Field_Id);
-      Struct_Ptr : Value_T := Record_Ptr;
-
-   begin
-      if F_Info.Containing_Struct_Index > 1 then
-         declare
-            Int_Struct_Address : Value_T := Ptr_To_Int
-              (Env.Bld,
-               Record_Ptr, Int_Ptr_Type, "offset-calc");
-            S_Info : constant Struct_Info :=
-              R_Info.Structs (F_Info.Containing_Struct_Index);
-
-         begin
-            --  Accumulate the size of every field
-            for Preceding_Field of S_Info.Preceding_Fields loop
-               Int_Struct_Address := Add
-                 (Env.Bld,
-                  Int_Struct_Address,
-                  Emit_Type_Size
-                    (Env,
-                     Etype (Preceding_Field.Entity),
-                     No_Value_T,
-                     Record_Ptr),
-                  "offset-calc");
-            end loop;
-
-            Struct_Ptr := Int_To_Ptr
-              (Env.Bld,
-               Int_Struct_Address, Pointer_Type (S_Info.LLVM_Type, 0), "back");
-         end;
-      end if;
-
-      return Struct_GEP
-        (Env.Bld,
-         Struct_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
-   end Record_Field_Offset;
 
    ---------------------
    -- Verify_Function --
@@ -2872,7 +2753,7 @@ package body GNATLLVM.Compile is
                --  Convert from thin to fat pointer
 
                Args (Idx) :=
-                 Array_Fat_Pointer (Env, Args (Idx), Actual_Type);
+                 Array_Fat_Pointer (Env, Args (Idx), Actual, Actual_Type);
 
             elsif not Is_Constrained (Actual_Type)
               and then Is_Constrained (P_Type)

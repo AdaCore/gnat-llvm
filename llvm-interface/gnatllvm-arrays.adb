@@ -26,6 +26,7 @@ with Stand;  use Stand;
 with Uintp;  use Uintp;
 
 with LLVM.Core; use LLVM.Core;
+with LLVM.Target; use LLVM.Target;
 with GNATLLVM.Builder; use GNATLLVM.Builder;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -279,6 +280,7 @@ package body GNATLLVM.Arrays is
    function Array_Fat_Pointer
      (Env        : Environ;
       Array_Data : Value_T;
+      Array_Node : Node_Id;
       Array_Type : Entity_Id) return Value_T
    is
       Fat_Ptr_Type      : constant Type_T :=
@@ -302,21 +304,32 @@ package body GNATLLVM.Arrays is
       ------------------
 
       procedure Handle_Bound (Bound : Node_Id; Bound_Type : Bound_T) is
+         Expr : Value_T;
       begin
          if Nkind (Bound) = N_Identifier
            and then Present (Entity (Bound))
            and then Ekind (Entity (Bound)) = E_Discriminant
          then
-            Error_Msg_N ("unsupported reference to discriminant", Bound);
-            raise Program_Error;
+            pragma Assert (Nkind (Array_Node) = N_Selected_Component);
+            Expr :=
+              Load
+                (Env.Bld,
+                 Record_Field_Offset
+                   (Env,
+                    Emit_LValue (Env, Prefix (Array_Node)),
+                    Parent (Entity (Bound))),
+                 "");
+
          else
-            Bounds := Insert_Value
-              (Env.Bld,
-               Bounds,
-               Emit_Expression (Env, Bound),
-               Get_Bound_Index (Dim_I, Bound_Type),
-               "");
+            Expr := Emit_Expression (Env, Bound);
          end if;
+
+         Bounds := Insert_Value
+           (Env.Bld,
+            Bounds,
+            Expr,
+            Get_Bound_Index (Dim_I, Bound_Type),
+            "");
       end Handle_Bound;
 
    begin
@@ -392,5 +405,103 @@ package body GNATLLVM.Arrays is
    begin
       return GEP (Env.Bld, Array_Data, Idx, "array-addr");
    end Array_Address;
+
+   -------------------
+   -- Get_Type_Size --
+   -------------------
+
+   function Get_Type_Size
+     (Env : Environ;
+      T   : Type_T) return Value_T
+   is
+      --  ??? Should create the target data separately
+      T_Data : constant Target_Data_T :=
+        Create_Target_Data (Get_Target (Env.Mdl));
+   begin
+      return Const_Int
+        (Int_Ptr_Type,
+         Size_Of_Type_In_Bits (T_Data, T) / 8,
+         Sign_Extend => False);
+   end Get_Type_Size;
+
+   --------------------
+   -- Emit_Type_Size --
+   --------------------
+
+   function Emit_Type_Size
+     (Env                   : Environ;
+      T                     : Entity_Id;
+      Array_Descr           : Value_T;
+      Containing_Record_Ptr : Value_T) return Value_T
+   is
+      LLVM_Type : constant Type_T := Create_Type (Env, T);
+   begin
+      if Is_Scalar_Type (T)
+        or else Is_Access_Type (T)
+      then
+         return Get_Type_Size (Env, LLVM_Type);
+      elsif Is_Array_Type (T) then
+         return Mul
+           (Env.Bld,
+            Emit_Type_Size
+              (Env, Component_Type (T), No_Value_T, Containing_Record_Ptr),
+            Array_Size
+              (Env, Array_Descr, T, Containing_Record_Ptr),
+            "array-size");
+
+      else
+         Error_Msg_N ("unimplemented case for emit type size", T);
+         raise Program_Error;
+      end if;
+   end Emit_Type_Size;
+
+   -------------------------
+   -- Record_Field_Offset --
+   -------------------------
+
+   function Record_Field_Offset
+     (Env : Environ;
+      Record_Ptr : Value_T;
+      Record_Field : Node_Id) return Value_T
+   is
+      Field_Id   : constant Entity_Id := Defining_Identifier (Record_Field);
+      Type_Id    : constant Entity_Id := Scope (Field_Id);
+      R_Info     : constant Record_Info := Env.Get (Type_Id);
+      F_Info     : constant Field_Info := R_Info.Fields.Element (Field_Id);
+      Struct_Ptr : Value_T := Record_Ptr;
+
+   begin
+      if F_Info.Containing_Struct_Index > 1 then
+         declare
+            Int_Struct_Address : Value_T := Ptr_To_Int
+              (Env.Bld,
+               Record_Ptr, Int_Ptr_Type, "offset-calc");
+            S_Info : constant Struct_Info :=
+              R_Info.Structs (F_Info.Containing_Struct_Index);
+
+         begin
+            --  Accumulate the size of every field
+            for Preceding_Field of S_Info.Preceding_Fields loop
+               Int_Struct_Address := Add
+                 (Env.Bld,
+                  Int_Struct_Address,
+                  Emit_Type_Size
+                    (Env,
+                     Etype (Preceding_Field.Entity),
+                     No_Value_T,
+                     Record_Ptr),
+                  "offset-calc");
+            end loop;
+
+            Struct_Ptr := Int_To_Ptr
+              (Env.Bld,
+               Int_Struct_Address, Pointer_Type (S_Info.LLVM_Type, 0), "back");
+         end;
+      end if;
+
+      return Struct_GEP
+        (Env.Bld,
+         Struct_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
+   end Record_Field_Offset;
 
 end GNATLLVM.Arrays;

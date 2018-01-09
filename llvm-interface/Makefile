@@ -157,7 +157,7 @@ zfp: build
 	  $(COMPILE) ../adainclude/$$f || exit 1; \
 	done
 	cd $(ADALIB) && for f in ../adainclude/*.adb; do \
-	  $(COMPILE) -I../adainclude $$f || exit 1; \
+	  $(COMPILE) $$f || exit 1; \
 	done
 	cd $(ADALIB) && $(CHMOD) a-wx *.ali && $(AR) libgnat.a *.o && $(RM) *.o
 

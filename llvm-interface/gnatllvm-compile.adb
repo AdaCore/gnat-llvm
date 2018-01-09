@@ -1530,6 +1530,7 @@ package body GNATLLVM.Compile is
 
          when N_Full_Type_Declaration | N_Subtype_Declaration
             | N_Incomplete_Type_Declaration | N_Private_Type_Declaration
+            | N_Private_Extension_Declaration
          =>
             Env.Set (Defining_Identifier (Node),
                      Create_Type (Env, Defining_Identifier (Node)));

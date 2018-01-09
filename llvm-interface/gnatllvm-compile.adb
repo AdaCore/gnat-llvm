@@ -3351,13 +3351,14 @@ package body GNATLLVM.Compile is
             return Emit_LValue (Env, Prefix (Node));
 
          when Attribute_Address =>
-
-            --  Likewise for addresses
-
-            return Ptr_To_Int
-              (Env.Bld,
-               Emit_LValue
-                 (Env, Prefix (Node)), Get_Address_Type, "attr-address");
+            if LValue then
+               return Emit_LValue (Env, Prefix (Node));
+            else
+               return Ptr_To_Int
+                 (Env.Bld,
+                  Emit_LValue
+                    (Env, Prefix (Node)), Get_Address_Type, "attr-address");
+            end if;
 
          when Attribute_Deref =>
             declare
@@ -3459,6 +3460,37 @@ package body GNATLLVM.Compile is
             --  store in some cases.
 
             return Emit_Expression (Env, First (Expressions (Node)));
+
+         when Attribute_Alignment =>
+            declare
+               Typ : constant Node_Id := Get_Fullest_View (Etype (Node));
+               Pre : constant Node_Id :=
+                 Get_Fullest_View (Etype (Prefix (Node)));
+            begin
+               return Const_Int
+                 (Create_Type (Env, Typ),
+                  unsigned_long_long (Get_Type_Alignment
+                   (Env, Create_Type (Env, Pre))),
+                  Sign_Extend => False);
+            end;
+
+         when Attribute_Size =>
+            declare
+               Typ : constant Node_Id := Get_Fullest_View (Etype (Node));
+               Pre : constant Node_Id :=
+                 Get_Fullest_View (Etype (Prefix (Node)));
+            begin
+               if Size_Known_At_Compile_Time (Pre) then
+                  return Const_Int
+                    (Create_Type (Env, Typ),
+                     Get_Type_Size_In_Bits
+                       (Env, Create_Type (Env, Pre)),
+                     Sign_Extend => False);
+               else
+                  Error_Msg_N ("unsupported size attribute", Node);
+                  return Const_Null (Create_Type (Env, Typ));
+               end if;
+            end;
 
          when others =>
             Error_Msg_N

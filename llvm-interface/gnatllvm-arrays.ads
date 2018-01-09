@@ -91,26 +91,4 @@ package GNATLLVM.Arrays is
       Array_Type : Entity_Id) return Value_T;
    --  Return the pointer to the first element of Array_Data
 
-   function Get_Type_Size
-     (Env : Environ;
-      T   : Type_T) return Value_T;
-   --  Return the size of an LLVM type, in bytes
-
-   function Emit_Type_Size
-     (Env                   : Environ;
-      T                     : Entity_Id;
-      Array_Descr           : Value_T;
-      Containing_Record_Ptr : Value_T) return Value_T;
-   --  Emit code to compute the size of type T, getting information from
-   --  Containing_Record_Ptr for types that are constrained by a discriminant
-   --  record (in such case, this parameter should be a pointer to the
-   --  corresponding record). If T is an unconstrained array, Array_Descr must
-   --  be the corresponding fat pointer. Return the computed size as value.
-
-   function Record_Field_Offset
-     (Env : Environ;
-      Record_Ptr : Value_T;
-      Record_Field : Node_Id) return Value_T;
-   --  Compute the offset of a given record field
-
 end GNATLLVM.Arrays;

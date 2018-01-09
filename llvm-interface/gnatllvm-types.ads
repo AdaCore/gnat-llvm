@@ -15,6 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
+
 with Types; use Types;
 
 with LLVM.Core; use LLVM.Core;
@@ -26,7 +29,6 @@ with Einfo; use Einfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
-with Interfaces.C;
 with Get_Targ; use Get_Targ;
 
 package GNATLLVM.Types is
@@ -95,5 +97,37 @@ package GNATLLVM.Types is
 
    function Int_Ptr_Type return Type_T is
       (Int_Type (Interfaces.C.unsigned (Get_Pointer_Size)));
+
+   function Get_Type_Size_In_Bits
+     (Env : Environ;
+      T   : Type_T) return unsigned_long_long;
+   --  Return the size of an LLVM type, in bits
+
+   function Get_Type_Alignment
+     (Env : Environ;
+      T   : Type_T) return Interfaces.C.unsigned;
+   --  Return the size of an LLVM type, in bits
+
+   function Get_Type_Size
+     (Env : Environ;
+      T   : Type_T) return Value_T;
+   --  Return the size of an LLVM type, in bytes
+
+   function Emit_Type_Size
+     (Env                   : Environ;
+      T                     : Entity_Id;
+      Array_Descr           : Value_T;
+      Containing_Record_Ptr : Value_T) return Value_T;
+   --  Emit code to compute the size of type T, getting information from
+   --  Containing_Record_Ptr for types that are constrained by a discriminant
+   --  record (in such case, this parameter should be a pointer to the
+   --  corresponding record). If T is an unconstrained array, Array_Descr must
+   --  be the corresponding fat pointer. Return the computed size as value.
+
+   function Record_Field_Offset
+     (Env : Environ;
+      Record_Ptr : Value_T;
+      Record_Field : Node_Id) return Value_T;
+   --  Compute the offset of a given record field
 
 end GNATLLVM.Types;

@@ -1551,6 +1551,19 @@ package body GNATLLVM.Compile is
          when N_Case_Statement =>
             Emit_Case (Env, Node);
 
+         when N_Body_Stub =>
+            if Nkind_In (Node, N_Protected_Body_Stub, N_Task_Body_Stub) then
+               raise Program_Error;
+            end if;
+
+            --  No action if the separate unit is not available
+
+            if No (Library_Unit (Node)) then
+               Error_Msg_N ("separate unit not available", Node);
+            else
+               Emit (Env, Get_Body_From_Stub (Node));
+            end if;
+
          --  Nodes we actually want to ignore
          when N_Call_Marker
             | N_Empty

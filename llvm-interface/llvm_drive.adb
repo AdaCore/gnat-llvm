@@ -169,6 +169,9 @@ package body LLVM_Drive is
          Memcopy_Type  : constant Type_T := Fn_Ty
            ((Void_Ptr_Type, Void_Ptr_Type, Size_Type, Int_Ty (32), Int_Ty (1)),
             Void_Type_In_Context (Env.Ctx));
+         Memset_Type   : constant Type_T := Fn_Ty
+           ((Void_Ptr_Type, Int_Ty (8), Size_Type, Int_Ty (32), Int_Ty (1)),
+            Void_Type_In_Context (Env.Ctx));
 
       begin
          --  Add malloc function to the env
@@ -177,7 +180,7 @@ package body LLVM_Drive is
            (Env.Mdl, "malloc",
             Fn_Ty ((1 => Size_Type), Void_Ptr_Type));
 
-         --  Likewise for memcmp/memcpy/memmove
+         --  Likewise for memcmp/memcpy/memmove/memset
 
          Env.Memory_Cmp_Fn := Add_Function
            (Env.Mdl, "memcmp",
@@ -188,6 +191,8 @@ package body LLVM_Drive is
               (Env.Mdl, "llvm.memcpy.p0i8.p0i8.i32", Memcopy_Type);
             Env.Memory_Move_Fn := Add_Function
               (Env.Mdl, "llvm.memmove.p0i8.p0i8.i32", Memcopy_Type);
+            Env.Memory_Set_Fn := Add_Function
+              (Env.Mdl, "llvm.memset.p0i8.i32", Memset_Type);
          else
             pragma Assert (Get_Targ.Get_Pointer_Size = 64);
 
@@ -195,6 +200,8 @@ package body LLVM_Drive is
               (Env.Mdl, "llvm.memcpy.p0i8.p0i8.i64", Memcopy_Type);
             Env.Memory_Move_Fn := Add_Function
               (Env.Mdl, "llvm.memmove.p0i8.p0i8.i64", Memcopy_Type);
+            Env.Memory_Set_Fn := Add_Function
+              (Env.Mdl, "llvm.memset.p0i8.i64", Memset_Type);
          end if;
 
          --  Likewise for stacksave/stackrestore

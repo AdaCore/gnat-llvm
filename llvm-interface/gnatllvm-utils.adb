@@ -186,25 +186,6 @@ package body GNATLLVM.Utils is
       return False;
    end Return_Needs_Sec_Stack;
 
-   -------------------
-   -- Index_In_List --
-   -------------------
-
-   function Index_In_List (N : Node_Id) return Natural is
-      L : constant List_Id := List_Containing (N);
-      Cur_N : Node_Id := First (L);
-      I : Natural := 1;
-   begin
-
-      while Present (Cur_N) loop
-         exit when Cur_N = N;
-         I := I + 1;
-         Cur_N := Next (Cur_N);
-      end loop;
-
-      return I;
-   end Index_In_List;
-
    ------------------------
    -- Is_Binary_Operator --
    ------------------------

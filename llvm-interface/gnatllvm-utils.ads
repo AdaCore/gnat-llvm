@@ -121,8 +121,6 @@ package GNATLLVM.Utils is
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
    --  function that is usable in debugging sessions.
 
-   function Index_In_List (N : Node_Id) return Natural;
-
    function Is_LValue (Node : Node_Id) return Boolean;
    --  Returns true if Node is an L value
 

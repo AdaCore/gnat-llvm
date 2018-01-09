@@ -141,6 +141,7 @@ package GNATLLVM.Environment is
       Memory_Cmp_Fn             : Value_T;
       Memory_Copy_Fn            : Value_T;
       Memory_Move_Fn            : Value_T;
+      Memory_Set_Fn             : Value_T;
       Stack_Save_Fn             : Value_T;
       Stack_Restore_Fn          : Value_T;
       LCH_Fn                    : Value_T;

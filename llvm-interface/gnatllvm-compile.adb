@@ -2392,6 +2392,9 @@ package body GNATLLVM.Compile is
                end;
             end;
 
+         when N_Defining_Operator_Symbol =>
+            return Env.Get (Node);
+
          when N_Function_Call =>
             return Emit_Call (Env, Node);
 
@@ -2708,7 +2711,7 @@ package body GNATLLVM.Compile is
    ---------------
 
    function Emit_Call (Env : Environ; Call_Node : Node_Id) return Value_T is
-      Subp        : constant Node_Id := Name (Call_Node);
+      Subp        : Node_Id := Name (Call_Node);
       Direct_Call : constant Boolean := Nkind (Subp) /= N_Explicit_Dereference;
       Params      : constant Entity_Iterator :=
         Get_Params (if Direct_Call then Entity (Subp) else Etype (Subp));
@@ -2747,11 +2750,15 @@ package body GNATLLVM.Compile is
 
       I := 1;
 
+      if Direct_Call then
+         Subp := Entity (Subp);
+      end if;
+
       LLVM_Func := Emit_Expression (Env, Subp);
 
       if Takes_S_Link then
          if Direct_Call then
-            S_Link := Get_Static_Link (Env, Entity (Name (Call_Node)));
+            S_Link := Get_Static_Link (Env, Subp);
          else
             S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
             LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");

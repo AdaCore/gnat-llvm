@@ -5,6 +5,7 @@ Missing main features (identified so far):
 - cleanups/at end handlers
 - secondary stack support
 - exception handlers
+- expression renaming
 - tagged types
 - freeze nodes
 - overflow checks (consider enabling the front-end mechanism?)

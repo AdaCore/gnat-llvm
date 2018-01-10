@@ -125,9 +125,13 @@ package GNATLLVM.Types is
    --  be the corresponding fat pointer. Return the computed size as value.
 
    function Record_Field_Offset
-     (Env : Environ;
-      Record_Ptr : Value_T;
+     (Env          : Environ;
+      Record_Ptr   : Value_T;
       Record_Field : Node_Id) return Value_T;
    --  Compute the offset of a given record field
+
+   function Record_With_Dynamic_Size
+     (Env : Environ; T : Entity_Id) return Boolean;
+   --  Return True is T denotes a record type with a dynamic size
 
 end GNATLLVM.Types;

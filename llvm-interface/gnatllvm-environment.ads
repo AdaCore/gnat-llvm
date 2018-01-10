@@ -55,6 +55,7 @@ package GNATLLVM.Environment is
    type Record_Info is record
       Fields : Field_Maps.Map;
       Structs : Struct_Info_Vectors.Vector;
+      Dynamic_Size : Boolean := False;
    end record;
 
    package Record_Info_Maps is new Ada.Containers.Ordered_Maps

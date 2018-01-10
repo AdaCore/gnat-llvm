@@ -936,9 +936,9 @@ package body GNATLLVM.Compile is
                   elsif Is_Array_Type (T) then
 
                      --  Alloca arrays are handled as follows:
-                     --  * The total size is computed with Compile_Array_Size.
+                     --  * The total size is computed with Array_Size.
                      --  * The type of the innermost component is computed with
-                     --    Get_Innermost_Component type.
+                     --    Get_Innermost_Component_Type.
                      --  * The result of the alloca is bitcasted to the proper
                      --    array type, so that multidimensional LLVM GEP
                      --    operations work properly.
@@ -967,6 +967,20 @@ package body GNATLLVM.Compile is
                            Get_Name (Def_Ident));
                      end if;
 
+                     Env.Set (Def_Ident, LLVM_Var);
+                     Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
+
+                  elsif Record_With_Dynamic_Size (Env, T) then
+                     LLVM_Type := Create_Access_Type (Env, T);
+                     LLVM_Var := Bit_Cast
+                       (Env.Bld,
+                        Array_Alloca
+                          (Env.Bld,
+                           Int_Ty (8),
+                           Emit_Type_Size (Env, T, No_Value_T, No_Value_T),
+                           "record-alloca"),
+                        LLVM_Type,
+                        Get_Name (Def_Ident));
                      Env.Set (Def_Ident, LLVM_Var);
                      Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
@@ -2470,20 +2484,13 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (Env, Node, LValue => False);
 
          when N_Selected_Component =>
-            declare
-               Pfx_Val : constant Value_T :=
-                 Emit_Expression (Env, Prefix (Node));
-               Pfx_Ptr : constant Value_T :=
-                 Alloca (Env.Bld, Type_Of (Pfx_Val), "pfx_ptr");
-               Record_Component : constant Entity_Id :=
-                 Parent (Entity (Selector_Name (Node)));
-
-            begin
-               Store (Env.Bld, Pfx_Val, Pfx_Ptr);
-               return Load
-                 (Env.Bld,
-                  Record_Field_Offset (Env, Pfx_Ptr, Record_Component), "");
-            end;
+            return Load
+              (Env.Bld,
+               Record_Field_Offset
+                 (Env,
+                  Emit_LValue (Env, Prefix (Node)),
+                  Parent (Entity (Selector_Name (Node)))),
+               "");
 
          when N_Indexed_Component | N_Slice =>
             return Load (Env.Bld, Emit_LValue (Env, Node), "");

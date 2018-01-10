@@ -48,6 +48,18 @@ package body GNATLLVM.Types is
       Subp_Type : Type_T) return Type_T;
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
+   function Dynamic_Size_Array (T : Entity_Id) return Boolean;
+   --  Return True if T denotees an array with a dynamic size
+
+   function Rec_Comp_Filter (E : Entity_Id) return Boolean is
+     (Ekind (E) in E_Component | E_Discriminant);
+
+   function Iterate_Components is new Iterate_Entities
+     (Get_First => First_Entity,
+      Get_Next  => Next_Entity,
+      Filter    => Rec_Comp_Filter);
+   --  Iterate over all components of a given record type
+
    ----------------------
    -- Get_Address_Type --
    ----------------------
@@ -303,16 +315,9 @@ package body GNATLLVM.Types is
 
          when Record_Kind =>
             declare
-               function Rec_Comp_Filter (E : Entity_Id) return Boolean
-               is (Ekind (E) in E_Component | E_Discriminant);
-
-               function Iterate is new Iterate_Entities
-                 (Get_First => First_Entity,
-                  Get_Next  => Next_Entity,
-                  Filter    => Rec_Comp_Filter);
-
                Struct_Type   : Type_T;
-               Comps         : constant Entity_Iterator := Iterate (Def_Ident);
+               Comps         : constant Entity_Iterator :=
+                 Iterate_Components (Def_Ident);
                LLVM_Comps    : array (1 .. Comps'Length) of Type_T;
                I             : Natural := 1;
                Struct_Num    : Nat := 1;
@@ -345,11 +350,11 @@ package body GNATLLVM.Types is
                   I := I + 1;
                   Num_Fields := Num_Fields + 1;
 
-                  --  If we are on a component which sizes depends on a
-                  --  discriminant, we create a new struct type for the
-                  --  following components.
+                  --  If we are on a component with a dynamic size,
+                  --  we create a new struct type for the following components.
 
-                  if Size_Depends_On_Discriminant (Etype (Comp)) then
+                  if Dynamic_Size_Array (Etype (Comp)) then
+                     Info.Dynamic_Size := True;
                      Struct_Set_Body
                        (Struct_Type, LLVM_Comps'Address,
                         unsigned (I - 1), False);
@@ -717,7 +722,10 @@ package body GNATLLVM.Types is
       Array_Descr           : Value_T;
       Containing_Record_Ptr : Value_T) return Value_T
    is
-      LLVM_Type : constant Type_T := Create_Type (Env, T);
+      LLVM_Type      : constant Type_T := Create_Type (Env, T);
+      Size           : Value_T;
+      Dynamic_Fields : Boolean := False;
+
    begin
       if Is_Scalar_Type (T)
         or else Is_Access_Type (T)
@@ -735,7 +743,33 @@ package body GNATLLVM.Types is
                  (Env, Array_Descr, T, Containing_Record_Ptr),
                "array-size");
          end if;
+      elsif Is_Record_Type (T) then
+         Size := Get_Type_Size (Env, LLVM_Type);
 
+         if Record_With_Dynamic_Size (Env, T) then
+            for Comp of Iterate_Components (T) loop
+               if Dynamic_Size_Array (Etype (Comp)) then
+                  Dynamic_Fields := True;
+               end if;
+
+               --  Compute size of all fields once we've found a dynamic
+               --  component.
+
+               if Dynamic_Fields then
+                  Size := Add
+                    (Env.Bld,
+                     Size,
+                     Emit_Type_Size
+                       (Env,
+                        Etype (Comp),
+                        No_Value_T,
+                        No_Value_T),
+                     "record-size");
+               end if;
+            end loop;
+         end if;
+
+         return Size;
       else
          Error_Msg_N ("unimplemented case for emit type size", T);
          raise Program_Error;
@@ -747,8 +781,8 @@ package body GNATLLVM.Types is
    -------------------------
 
    function Record_Field_Offset
-     (Env : Environ;
-      Record_Ptr : Value_T;
+     (Env          : Environ;
+      Record_Ptr   : Value_T;
       Record_Field : Node_Id) return Value_T
    is
       use Interfaces.C;
@@ -792,5 +826,63 @@ package body GNATLLVM.Types is
         (Env.Bld,
          Struct_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
    end Record_Field_Offset;
+
+   ------------------------------
+   -- Record_With_Dynamic_Size --
+   ------------------------------
+
+   function Record_With_Dynamic_Size
+     (Env : Environ; T : Entity_Id) return Boolean
+   is
+      Full_View : constant Entity_Id := Get_Fullest_View (T);
+      Unused    : Type_T;
+   begin
+      if Is_Record_Type (Full_View) then
+         --  First ensure the type is created
+         Unused := Create_Type (Env, Full_View);
+         return Env.Get (Full_View).Dynamic_Size;
+      else
+         return False;
+      end if;
+   end Record_With_Dynamic_Size;
+
+   ------------------------
+   -- Dynamic_Size_Array --
+   ------------------------
+
+   function Dynamic_Size_Array (T : Entity_Id) return Boolean is
+      E    : constant Entity_Id := Get_Fullest_View (T);
+      Indx : Node_Id;
+      Ityp : Entity_Id;
+
+   begin
+      if not Is_Array_Type (E) then
+         return False;
+      end if;
+
+      --  Loop to process array indexes
+
+      Indx := First_Index (E);
+      while Present (Indx) loop
+         Ityp := Etype (Indx);
+
+         --  If an index of the array is a generic formal type then there is
+         --  no point in determining a size for the array type.
+
+         if Is_Generic_Type (Ityp) then
+            return False;
+         end if;
+
+         if not Compile_Time_Known_Value (Type_Low_Bound (Ityp))
+           or else not Compile_Time_Known_Value (Type_High_Bound (Ityp))
+         then
+            return True;
+         end if;
+
+         Next_Index (Indx);
+      end loop;
+
+      return False;
+   end Dynamic_Size_Array;
 
 end GNATLLVM.Types;

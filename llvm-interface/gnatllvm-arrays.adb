@@ -319,7 +319,7 @@ package body GNATLLVM.Arrays is
                  Record_Field_Offset
                    (Env,
                     Emit_LValue (Env, Prefix (Array_Node)),
-                    Parent (Entity (Bound))),
+                    Original_Record_Component (Entity (Bound))),
                  "");
 
          else

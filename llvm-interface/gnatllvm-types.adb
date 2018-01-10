@@ -787,10 +787,9 @@ package body GNATLLVM.Types is
    is
       use Interfaces.C;
 
-      Field_Id   : constant Entity_Id := Defining_Identifier (Record_Field);
-      Type_Id    : constant Entity_Id := Scope (Field_Id);
+      Type_Id    : constant Entity_Id := Scope (Record_Field);
       R_Info     : constant Record_Info := Env.Get (Type_Id);
-      F_Info     : constant Field_Info := R_Info.Fields.Element (Field_Id);
+      F_Info     : constant Field_Info := R_Info.Fields.Element (Record_Field);
       Struct_Ptr : Value_T := Record_Ptr;
 
    begin

@@ -1821,7 +1821,7 @@ package body GNATLLVM.Compile is
                   (Const_Int (Intptr_T, 0, Sign_Extend => False),
                    Const_Int (Create_Type (Env, Standard_Positive),
                               0, Sign_Extend => False)),
-                  "address-of-string");
+                  "str-addr");
             end;
 
          when N_Selected_Component =>
@@ -1829,7 +1829,8 @@ package body GNATLLVM.Compile is
                Pfx_Ptr : constant Value_T :=
                  Emit_LValue (Env, Prefix (Node));
                Record_Component : constant Entity_Id :=
-                 Parent (Entity (Selector_Name (Node)));
+                 Original_Record_Component (Entity (Selector_Name (Node)));
+
             begin
                return Record_Field_Offset (Env, Pfx_Ptr, Record_Component);
             end;
@@ -2489,7 +2490,7 @@ package body GNATLLVM.Compile is
                Record_Field_Offset
                  (Env,
                   Emit_LValue (Env, Prefix (Node)),
-                  Parent (Entity (Selector_Name (Node)))),
+                  Original_Record_Component (Entity (Selector_Name (Node)))),
                "");
 
          when N_Indexed_Component | N_Slice =>

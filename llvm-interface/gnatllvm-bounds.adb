@@ -38,6 +38,8 @@ package body GNATLLVM.Bounds is
           (Env.Bld,
            (if Is_Bound_Unsigned then Int_UGT else Int_SGT),
            Low_Bound, High_Bound, "is-array-empty");
+      Const_1 : constant Value_T :=
+        Const_Int (Result_Type, 1, Sign_Extend => False);
 
    begin
       return Build_Select
@@ -45,11 +47,14 @@ package body GNATLLVM.Bounds is
          C_If   => Is_Empty,
          C_Then => Const_Null (Result_Type),
          C_Else =>
-           Add
-             (Env.Bld,
-              Sub (Env.Bld, High_Bound, Low_Bound, ""),
-              Const_Int (Result_Type, 1, Sign_Extend => False),
-              ""),
+           (if Low_Bound = Const_1
+            then High_Bound
+            else
+              Add
+                (Env.Bld,
+                 Sub (Env.Bld, High_Bound, Low_Bound, ""),
+                 Const_1,
+                 "")),
          Name   => "");
    end Bounds_To_Length;
 

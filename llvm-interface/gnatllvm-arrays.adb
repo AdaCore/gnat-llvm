@@ -205,7 +205,7 @@ package body GNATLLVM.Arrays is
 
       Constrained : constant Boolean := Is_Constrained (Array_Type);
 
-      Size        : Value_T := No_Value_T;
+      Size        : Value_T;
       Size_Type   : constant Type_T := Int_Ptr_Type;
       --  Type for the result. An array can be as big as the memory space, so
       --  use a type as large as pointers.
@@ -244,9 +244,13 @@ package body GNATLLVM.Arrays is
          Dim_Length :=
            Z_Ext (Env.Bld, Dim_Length, Size_Type, "array-dim-length");
 
-         --  Accumulate the product of the sizes
+         if Dim_Index = 1 then
+            Size := Dim_Length;
+         else
+            --  Accumulate the product of the sizes
 
-         Size := Mul (Env.Bld, Size, Dim_Length, "");
+            Size := Mul (Env.Bld, Size, Dim_Length, "");
+         end if;
 
          DSD := Next (DSD);
          Dim_Index := Dim_Index + 1;

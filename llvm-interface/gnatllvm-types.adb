@@ -316,7 +316,7 @@ package body GNATLLVM.Types is
                LLVM_Comps    : array (1 .. Comps'Length) of Type_T;
                I             : Natural := 1;
                Struct_Num    : Nat := 1;
-               Num_Fields    : Natural := 1;
+               Num_Fields    : Natural := 0;
                Info          : Record_Info;
                Fields        : Field_Info_Vectors.Vector;
                Current_Field : Field_Info;
@@ -724,13 +724,17 @@ package body GNATLLVM.Types is
       then
          return Get_Type_Size (Env, LLVM_Type);
       elsif Is_Array_Type (T) then
-         return Mul
-           (Env.Bld,
-            Emit_Type_Size
-              (Env, Component_Type (T), No_Value_T, Containing_Record_Ptr),
-            Array_Size
-              (Env, Array_Descr, T, Containing_Record_Ptr),
-            "array-size");
+         if Esize (Component_Type (T)) = Uint_1 then
+            return Array_Size (Env, Array_Descr, T, Containing_Record_Ptr);
+         else
+            return Mul
+              (Env.Bld,
+               Emit_Type_Size
+                 (Env, Component_Type (T), No_Value_T, Containing_Record_Ptr),
+               Array_Size
+                 (Env, Array_Descr, T, Containing_Record_Ptr),
+               "array-size");
+         end if;
 
       else
          Error_Msg_N ("unimplemented case for emit type size", T);

@@ -3173,10 +3173,10 @@ package body GNATLLVM.Compile is
          declare
             Dest_LLVM_Type : constant Type_T := Create_Type (Env, D_Type);
          begin
-            if RM_Size (S_Type) = RM_Size (D_Type) then
+            if Esize (S_Type) = Esize (D_Type) then
                return Value;
 
-            elsif RM_Size (S_Type) < RM_Size (D_Type) then
+            elsif Esize (S_Type) < Esize (D_Type) then
                if Is_Unsigned_Type (Dest_Type) then
 
                   --  ??? raise an exception if the value is negative (hence
@@ -3219,10 +3219,10 @@ package body GNATLLVM.Compile is
               (Env.Bld, Value, Create_Type (Env, D_Type), "int-to-float");
          end if;
 
-      elsif Is_Integer_Type (S_Type)
-        and then Is_Floating_Point_Type (D_Type)
+      elsif Is_Floating_Point_Type (S_Type)
+        and then Is_Integer_Type (D_Type)
       then
-         if Is_Unsigned_Type (S_Type) then
+         if Is_Unsigned_Type (D_Type) then
             return FP_To_UI
               (Env.Bld, Value, Create_Type (Env, D_Type), "float-to-uint");
          else
@@ -3234,7 +3234,7 @@ package body GNATLLVM.Compile is
          return Build_Unchecked_Conversion (Env, Src_Type, Dest_Type, Expr);
 
       else
-         Error_Msg_N ("unsupported type conversion", Src_Type);
+         Error_Msg_N ("unsupported type conversion", Expr);
          raise Program_Error;
       end if;
    end Build_Type_Conversion;

@@ -1974,19 +1974,8 @@ package body GNATLLVM.Compile is
 
       Position_Builder_At_End (Env.Bld, Block_Right_Expr);
 
-      declare
-         Left_Result : constant Value_T := Load (Env.Bld, Result, "load-left");
-         Res : Value_T;
-      begin
-         if Op = Op_And then
-            Res := Build_And (Env.Bld, Left_Result, Right, "scl-and");
-         else
-            Res := Build_Or (Env.Bld, Left_Result, Right, "scl-or");
-         end if;
-
-         Store (Env.Bld, Res, Result);
-         Discard (Build_Br (Env.Bld, Block_Exit));
-      end;
+      Store (Env.Bld, Right, Result);
+      Discard (Build_Br (Env.Bld, Block_Exit));
 
       Position_Builder_At_End (Env.Bld, Block_Exit);
       return Load (Env.Bld, Result, "scl-final-res");

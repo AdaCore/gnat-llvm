@@ -50,6 +50,7 @@ def main():
         m.options.restricted_discs = m.options.restricted_discs.split(',')
 
     os.environ['TESTCASE_NAME'] = m.args[0]
+    os.environ['TESTSUITE_ROOT'] = os.getcwd()
 
     # Make sure the result directory exists.
     test_name = m.args[0]
@@ -57,7 +58,7 @@ def main():
         m.options.output_dir, test_name.strip('/')))
     try:
         mkdir(result_dir)
-    except:
+    except Exception:
         # The result directory probably already exists.
         pass
 

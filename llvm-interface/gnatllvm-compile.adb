@@ -1943,11 +1943,10 @@ package body GNATLLVM.Compile is
       Left, Right : Value_T;
       Op  : Short_Circuit_Operator) return Value_T
    is
-      Result : constant Value_T :=
-        Alloca (Env.Bld, Type_Of (Left), "scl-res-1");
-
       --  Block which contains the evaluation of the right part
       --  expression of the operator.
+
+      Block_Left_Expr : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
 
       Block_Right_Expr : constant Basic_Block_T :=
         Append_Basic_Block (Env.Current_Subp.Func, "scl-right-expr");
@@ -1959,8 +1958,6 @@ package body GNATLLVM.Compile is
         Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");
 
    begin
-      Store (Env.Bld, Left, Result);
-
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
 
@@ -1973,12 +1970,25 @@ package body GNATLLVM.Compile is
       --  Emit code for the evaluation of the right part expression
 
       Position_Builder_At_End (Env.Bld, Block_Right_Expr);
-
-      Store (Env.Bld, Right, Result);
       Discard (Build_Br (Env.Bld, Block_Exit));
 
       Position_Builder_At_End (Env.Bld, Block_Exit);
-      return Load (Env.Bld, Result, "scl-final-res");
+
+      --  If we exited the enty block, it means that for AND, then result
+      --  is false and for OR, it's true.  Otherwise, the result is the right.
+
+      declare
+         Values : constant Value_Array (1 .. 2)
+           := (Const_Int (Int_Ty (1), (if Op = Op_And then 0 else 1), False),
+             Right);
+         BBs    : constant Basic_Block_Array (1 .. 2)
+           := (Block_Left_Expr, Block_Right_Expr);
+         Phi    : constant Value_T :=
+           LLVM.Core.Phi (Env.Bld, Int_Ty (1), "");
+      begin
+         Add_Incoming (Phi, Values'Address, BBs'Address, 2);
+         return Phi;
+      end;
    end Build_Short_Circuit_Op;
 
    ---------------------

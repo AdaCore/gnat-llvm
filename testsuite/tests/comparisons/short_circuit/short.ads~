@@ -1,0 +1,6 @@
+package Short is
+   
+   Counter: Integer := 0;
+   
+   function Ret0 Returns Integer;
+end Short;

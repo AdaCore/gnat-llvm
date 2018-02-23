@@ -4,9 +4,8 @@ from ctypes import cdll
 import os
 import os.path
 import subprocess
-import sys
 
-from gnatpython.fileutils import mkdir, rm, which
+from gnatpython.fileutils import which
 
 
 TESTSUITE_ROOT = os.environ['TESTSUITE_ROOT']
@@ -27,15 +26,18 @@ Func = namedtuple('Func', 'name argtypes restype')
 
 trace_count = 0
 
+
 def get_trace_filename():
     global trace_count
     trace_count += 1
     test_basename = TESTCASE_NAME.lstrip('./').replace('/', '-')
     return '{}-{}.trace'.format(test_basename, trace_count)
 
+
 def get_library_name(filename):
     """Return the library file name for the given Ada source file name."""
     return os.path.splitext(filename)[0]
+
 
 def change_ext(filename, new_ext):
     """Replace "filename" extension with "new_ext"."""
@@ -77,8 +79,10 @@ def gnat_to_bc(adb, gargs=None):
         ]
     )
     gargs = list(gargs) if gargs else []
-    subprocess.check_call(prefix + [LLVM_GNATCOMPILE, '-c', '--dump-bc', '-gnatp', adb] + gargs)
+    subprocess.check_call(
+        prefix + [LLVM_GNATCOMPILE, '-c', '--dump-bc', '-gnatp', adb] + gargs)
     return change_ext(adb, 'bc')
+
 
 def gnat_to_obj(adb, gargs=None):
     """Compile the "adb" unit and return the result object file filename."""
@@ -91,6 +95,7 @@ def gnat_to_obj(adb, gargs=None):
             ['llc', '-relocation-model=pic', gnat_to_bc(adb, gargs)])
         subprocess.check_call(['gcc', '-c', change_ext(adb, 's')])
     return change_ext(adb, 'o')
+
 
 def gnat_to_shared(adb_list, name, gargs=None):
     """Compile sources to a shared object.
@@ -115,6 +120,7 @@ def gnat_to_shared(adb_list, name, gargs=None):
         ['gcc', '-shared', '-o', result] + extra_options + obj_list)
     return result
 
+
 def build_and_load(adb_list, name, *objects, **kwargs):
     """Build a shared object from sources and load objects from it.
 
@@ -123,7 +129,7 @@ def build_and_load(adb_list, name, *objects, **kwargs):
     "objects".
     """
     shared = gnat_to_shared(adb_list, name, **kwargs)
-    lib = cdll.LoadLibrary(shared)
+    lib = cdll.LoadLibrary(os.path.abspath(shared))
     result = []
 
     for obj in objects:

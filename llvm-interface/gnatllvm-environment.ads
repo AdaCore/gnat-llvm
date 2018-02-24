@@ -104,7 +104,7 @@ package GNATLLVM.Environment is
    type Environ_Record is tagged;
    type Environ is access all Environ_Record;
 
-   type Subp_Env_Record is tagged record
+   type Subp_Env_Record is record
       Env                    : Environ;
       Func                   : Value_T;
       Saved_Builder_Position : Basic_Block_T;

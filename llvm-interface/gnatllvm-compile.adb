@@ -1951,8 +1951,7 @@ package body GNATLLVM.Compile is
       Block_Right_Expr : constant Basic_Block_T :=
         Append_Basic_Block (Env.Current_Subp.Func, "scl-right-expr");
 
-      --  Block containing the exit code (load the final cond value into
-      --  Result
+      --  Block containing the exit code (the phi that selects that value)
 
       Block_Exit : constant Basic_Block_T :=
         Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");

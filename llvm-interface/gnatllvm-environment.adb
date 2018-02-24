@@ -223,7 +223,7 @@ package body GNATLLVM.Environment is
       Cur : constant Cursor := Get (Env, BE);
    begin
       if Cur /= No_Element then
-         return Value_As_Basic_Block (Env.Get (BE));
+         return Value_As_Basic_Block (Get (Env, BE));
       else
          Error_Msg_N ("cannot find matching `LLVM` basic block", BE);
          raise No_Such_Basic_Block;
@@ -265,7 +265,7 @@ package body GNATLLVM.Environment is
    procedure Set
      (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T) is
    begin
-      Env.Set (BE, Basic_Block_As_Value (BL));
+      Set (Env, BE, Basic_Block_As_Value (BL));
    end Set;
 
    ---------------
@@ -374,7 +374,7 @@ package body GNATLLVM.Environment is
 
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
-      Position_Builder_At_End (Env.Bld, Env.Create_Basic_Block ("entry"));
+      Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));
       return Subp;
    end Enter_Subp;
 

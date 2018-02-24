@@ -94,7 +94,7 @@ package body GNATLLVM.Types is
       procedure Set_Rec (E : Entity_Id; T : Type_T);
       procedure Set_Rec (E : Entity_Id; T : Type_T) is
       begin
-         Env.Set (E, T);
+         Set (Env, E, T);
          if Etype (E) /= E then
             Set_Rec (Etype (E), T);
          end if;
@@ -235,16 +235,16 @@ package body GNATLLVM.Types is
       --  First, return any already translated type from the environment, if
       --  any. Allow definition only for N_Defining_Identifier.
 
-      if Env.Has_Type (TE) then
-         return Env.Get (TE);
+      if Has_Type (Env, TE) then
+         return Get (Env, TE);
       end if;
 
       Def_Ident := Get_Fullest_View (TE);
 
       --  The full view may already be in the environment
 
-      if Env.Has_Type (Def_Ident) then
-         return Env.Get (Def_Ident);
+      if Has_Type (Env, Def_Ident) then
+         return Get (Env, Def_Ident);
       end if;
 
       case Ekind (Def_Ident) is
@@ -339,7 +339,7 @@ package body GNATLLVM.Types is
                --  the environment so that there is no infinite recursion when
                --  nested components reference it.
 
-               Env.Set (Def_Ident, Struct_Type);
+               Set (Env, Def_Ident, Struct_Type);
 
                for Comp of Comps loop
                   LLVM_Comps (I) := Create_Type (Env, Etype (Comp));
@@ -381,8 +381,8 @@ package body GNATLLVM.Types is
                      unsigned (I - 1), False);
                end if;
 
-               Env.Set (Def_Ident, Info);
-               return Env.Get (Def_Ident);
+               Set (Env, Def_Ident, Info);
+               return Get (Env, Def_Ident);
             end;
 
          when Array_Kind =>
@@ -581,7 +581,7 @@ package body GNATLLVM.Types is
         (Env,
          Params,
          Result,
-         Env.Takes_S_Link (Defining_Unit_Name (Subp_Spec)));
+         Takes_S_Link (Env, Defining_Unit_Name (Subp_Spec)));
    end Create_Subprogram_Type_From_Spec;
 
    ----------------------------------------
@@ -788,7 +788,7 @@ package body GNATLLVM.Types is
       use Interfaces.C;
 
       Type_Id    : constant Entity_Id := Scope (Record_Field);
-      R_Info     : constant Record_Info := Env.Get (Type_Id);
+      R_Info     : constant Record_Info := Get (Env, Type_Id);
       F_Info     : constant Field_Info := R_Info.Fields.Element (Record_Field);
       Struct_Ptr : Value_T := Record_Ptr;
 
@@ -839,7 +839,7 @@ package body GNATLLVM.Types is
       if Is_Record_Type (Full_View) then
          --  First ensure the type is created
          Unused := Create_Type (Env, Full_View);
-         return Env.Get (Full_View).Dynamic_Size;
+         return Get (Env, Full_View).Dynamic_Size;
       else
          return False;
       end if;

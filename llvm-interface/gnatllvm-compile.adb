@@ -221,7 +221,7 @@ package body GNATLLVM.Compile is
       Def_Ident  : constant Entity_Id := Defining_Unit_Name (Spec);
       Func       : constant Value_T :=
         Emit_Subprogram_Decl (Env, Spec);
-      Subp       : constant Subp_Env := Env.Enter_Subp (Node, Func);
+      Subp       : constant Subp_Env := Enter_Subp (Env, Node, Func);
       Wrapper    : Value_T;
 
       LLVM_Param : Value_T;
@@ -244,7 +244,7 @@ package body GNATLLVM.Compile is
       Attach_Callback_Wrapper_Body (Env, Def_Ident, Wrapper);
 
       --  Register each parameter into a new scope
-      Env.Push_Scope;
+      Push_Scope (Env);
 
       for P of Iterate (Parameter_Specifications (Spec)) loop
          LLVM_Param := Get_Param (Subp.Func, unsigned (I));
@@ -278,12 +278,12 @@ package body GNATLLVM.Compile is
 
          --  Add the parameter to the environnment
 
-         Env.Set (Param, LLVM_Var);
+         Set (Env, Param, LLVM_Var);
          Match_Static_Link_Variable (Env, Param, LLVM_Var);
          I := I + 1;
       end loop;
 
-      if Env.Takes_S_Link (Def_Ident) then
+      if Takes_S_Link (Env, Def_Ident) then
 
          --  Rename the static link argument and link the static link
          --  value to it.
@@ -358,7 +358,7 @@ package body GNATLLVM.Compile is
                   "");
 
                Set_Value_Name (LValue, Get_Name (Key (Cur)));
-               Env.Set (Key (Cur), LValue);
+               Set (Env, Key (Cur), LValue);
             end;
          end loop;
       end if;
@@ -371,8 +371,8 @@ package body GNATLLVM.Compile is
 
       Discard (Build_Unreachable (Env.Bld));
 
-      Env.Pop_Scope;
-      Env.Leave_Subp;
+      Pop_Scope (Env);
+      Leave_Subp (Env);
 
       Verify_Function
         (Env, Subp.Func, Node,
@@ -394,7 +394,7 @@ package body GNATLLVM.Compile is
       procedure Emit_One_Body (Node : Node_Id) is
          Spec : constant Node_Id := Get_Acting_Spec (Node);
          Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
-         Subp : constant Subp_Env := Env.Enter_Subp (Node, Func);
+         Subp : constant Subp_Env := Enter_Subp (Env, Node, Func);
 
          LLVM_Param : Value_T;
          LLVM_Var   : Value_T;
@@ -406,7 +406,7 @@ package body GNATLLVM.Compile is
 
       begin
          --  Register each parameter into a new scope
-         Env.Push_Scope;
+         Push_Scope (Env);
 
          for Param of Iterate (Defining_Unit_Name (Spec)) loop
             LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
@@ -439,7 +439,7 @@ package body GNATLLVM.Compile is
 
             --  Add the parameter to the environnment
 
-            Env.Set (Param, LLVM_Var);
+            Set (Env, Param, LLVM_Var);
             Param_Num := Param_Num + 1;
          end loop;
 
@@ -451,8 +451,8 @@ package body GNATLLVM.Compile is
 
          Discard (Build_Unreachable (Env.Bld));
 
-         Env.Pop_Scope;
-         Env.Leave_Subp;
+         Pop_Scope (Env);
+         Leave_Subp (Env);
 
          Verify_Function
            (Env, Subp.Func, Node,
@@ -581,7 +581,7 @@ package body GNATLLVM.Compile is
 
    procedure Emit (Env : Environ; Node : Node_Id) is
    begin
-      if Env.Library_Level
+      if Library_Level (Env)
         and then (Nkind (Node) in N_Statement_Other_Than_Procedure_Call
                    or else Nkind (Node) in N_Subprogram_Call
                    or else Nkind (Node) = N_Handled_Sequence_Of_Statements
@@ -648,8 +648,8 @@ package body GNATLLVM.Compile is
                          (Env.Mdl,
                           Get_Name_String (Chars (Unit)) & "___elabs",
                           Elab_Type);
-                     Subp := Env.Enter_Subp (Node, LLVM_Func);
-                     Env.Push_Scope;
+                     Subp := Enter_Subp (Env, Node, LLVM_Func);
+                     Push_Scope (Env);
 
                      Env.Special_Elaboration_Code := True;
 
@@ -663,8 +663,8 @@ package body GNATLLVM.Compile is
                      Env.Special_Elaboration_Code := False;
                      Discard (Build_Ret_Void (Env.Bld));
 
-                     Env.Pop_Scope;
-                     Env.Leave_Subp;
+                     Pop_Scope (Env);
+                     Leave_Subp (Env);
 
                      Verify_Function
                        (Env, Subp.Func, Node,
@@ -708,7 +708,7 @@ package body GNATLLVM.Compile is
                      --  For packages inside subprograms, generate elaboration
                      --  code as standard code as part of the enclosing unit.
 
-                     if not Env.Library_Level then
+                     if not Library_Level (Env) then
                         if Has_Stmts then
                            Emit_List (Env, Statements (Stmts));
                         end if;
@@ -740,8 +740,8 @@ package body GNATLLVM.Compile is
                             (Env.Mdl,
                              Get_Name_String (Chars (Unit)) & "___elabb",
                              Elab_Type);
-                        Subp := Env.Enter_Subp (Node, LLVM_Func);
-                        Env.Push_Scope;
+                        Subp := Enter_Subp (Env, Node, LLVM_Func);
+                        Push_Scope (Env);
                         Env.Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop
@@ -759,8 +759,8 @@ package body GNATLLVM.Compile is
                         end if;
 
                         Discard (Build_Ret_Void (Env.Bld));
-                        Env.Pop_Scope;
-                        Env.Leave_Subp;
+                        Pop_Scope (Env);
+                        Leave_Subp (Env);
 
                         Verify_Function
                           (Env, Subp.Func, Node,
@@ -859,7 +859,7 @@ package body GNATLLVM.Compile is
 
                --  Handle top-level declarations
 
-               if Env.Library_Level then
+               if Library_Level (Env) then
                   --  ??? Will only work for objects of static sizes
 
                   LLVM_Type := Create_Type (Env, T);
@@ -884,7 +884,7 @@ package body GNATLLVM.Compile is
 
                   LLVM_Var :=
                     Add_Global (Env.Mdl, LLVM_Type, Get_Name_String (Name));
-                  Env.Set (Def_Ident, LLVM_Var);
+                  Set (Env, Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
                      if Is_Statically_Allocated (Def_Ident) then
@@ -931,7 +931,7 @@ package body GNATLLVM.Compile is
 
                else
                   if Env.Special_Elaboration_Code then
-                     LLVM_Var := Env.Get (Def_Ident);
+                     LLVM_Var := Get (Env, Def_Ident);
 
                   elsif Is_Array_Type (T) then
 
@@ -967,7 +967,7 @@ package body GNATLLVM.Compile is
                            Get_Name (Def_Ident));
                      end if;
 
-                     Env.Set (Def_Ident, LLVM_Var);
+                     Set (Env, Def_Ident, LLVM_Var);
                      Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
                   elsif Record_With_Dynamic_Size (Env, T) then
@@ -981,7 +981,7 @@ package body GNATLLVM.Compile is
                            "record-alloca"),
                         LLVM_Type,
                         Get_Name (Def_Ident));
-                     Env.Set (Def_Ident, LLVM_Var);
+                     Set (Env, Def_Ident, LLVM_Var);
                      Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
                   else
@@ -993,7 +993,7 @@ package body GNATLLVM.Compile is
 
                      LLVM_Var := Alloca
                        (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
-                     Env.Set (Def_Ident, LLVM_Var);
+                     Set (Env, Def_Ident, LLVM_Var);
                      Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
                   end if;
 
@@ -1028,10 +1028,10 @@ package body GNATLLVM.Compile is
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                LLVM_Var  : Value_T;
             begin
-               if Env.Library_Level then
+               if Library_Level (Env) then
                   if Is_LValue (Name (Node)) then
                      LLVM_Var := Emit_LValue (Env, Name (Node));
-                     Env.Set (Def_Ident, LLVM_Var);
+                     Set (Env, Def_Ident, LLVM_Var);
                   else
                      --  ??? Handle top-level declarations
                      Error_Msg_N
@@ -1055,7 +1055,7 @@ package body GNATLLVM.Compile is
                     (Env.Bld, Emit_Expression (Env, Name (Node)), LLVM_Var);
                end if;
 
-               Env.Set (Def_Ident, LLVM_Var);
+               Set (Env, Def_Ident, LLVM_Var);
                Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
             end;
 
@@ -1067,8 +1067,8 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Implicit_Label_Declaration =>
-            Env.Set
-              (Defining_Identifier (Node),
+            Set
+              (Env, Defining_Identifier (Node),
                Create_Basic_Block
                  (Env, Get_Name (Defining_Identifier (Node))));
 
@@ -1251,25 +1251,25 @@ package body GNATLLVM.Compile is
          when N_Label =>
             declare
                BB : constant Basic_Block_T :=
-                 Env.Get (Entity (Identifier (Node)));
+                 Get (Env, Entity (Identifier (Node)));
             begin
                Discard (Build_Br (Env.Bld, BB));
                Position_Builder_At_End (Env.Bld, BB);
             end;
 
          when N_Goto_Statement =>
-            Discard (Build_Br (Env.Bld, Env.Get (Entity (Name (Node)))));
+            Discard (Build_Br (Env.Bld, Get (Env, Entity (Name (Node)))));
             Position_Builder_At_End
-              (Env.Bld, Env.Create_Basic_Block ("after-goto"));
+              (Env.Bld, Create_Basic_Block (Env, "after-goto"));
 
          when N_Exit_Statement =>
             declare
                Exit_Point : constant Basic_Block_T :=
                  (if Present (Name (Node))
-                  then Env.Get_Exit_Point (Entity (Name (Node)))
-                  else Env.Get_Exit_Point);
+                  then Get_Exit_Point (Env, Entity (Name (Node)))
+                  else Get_Exit_Point (Env));
                Next_BB    : constant Basic_Block_T :=
-                 Env.Create_Basic_Block ("loop-after-exit");
+                 Create_Basic_Block (Env, "loop-after-exit");
 
             begin
                if Present (Condition (Node)) then
@@ -1312,7 +1312,7 @@ package body GNATLLVM.Compile is
             end if;
 
             Position_Builder_At_End
-              (Env.Bld, Env.Create_Basic_Block ("unreachable"));
+              (Env.Bld, Create_Basic_Block (Env, "unreachable"));
 
          when N_If_Statement =>
             Emit_If (Env, Node);
@@ -1351,8 +1351,8 @@ package body GNATLLVM.Compile is
                --  entry (INIT) basic block. Create one otherwise.
                BB_Init :=
                  (if Present (Identifier (Node))
-                    and then Env.Has_BB (Entity (Identifier (Node)))
-                  then Env.Get (Entity (Identifier (Node)))
+                    and then Has_BB (Env, Entity (Identifier (Node)))
+                  then Get (Env, Entity (Identifier (Node)))
                   else Create_Basic_Block (Env, ""));
                Discard (Build_Br (Env.Bld, BB_Init));
                Position_Builder_At_End (Env.Bld, BB_Init);
@@ -1362,20 +1362,20 @@ package body GNATLLVM.Compile is
                BB_Cond :=
                  (if not Is_For_Loop
                   then BB_Init
-                  else Env.Create_Basic_Block ("loop-cond"));
+                  else Create_Basic_Block (Env, "loop-cond"));
 
                --  If this is a mere loop, there is even no condition block:
                --  alias it with the STMTS block.
                BB_Stmts :=
                  (if Is_Mere_Loop
                   then BB_Cond
-                  else Env.Create_Basic_Block ("loop-stmts"));
+                  else Create_Basic_Block (Env, "loop-stmts"));
 
                --  If this is not a FOR loop, there is no iteration: alias it
                --  with the COND block, so that at the end of every STMTS, jump
                --  on ITER or COND.
                BB_Iter :=
-                 (if Is_For_Loop then Env.Create_Basic_Block ("loop-iter")
+                 (if Is_For_Loop then Create_Basic_Block (Env, "loop-iter")
                   else BB_Cond);
 
                --  The NEXT step contains no statement that comes from the
@@ -1386,8 +1386,8 @@ package body GNATLLVM.Compile is
                --  but exit statements can target them anyway, so register such
                --  loops.
 
-               Env.Push_Loop (Loop_Identifier, BB_Next);
-               Env.Push_Scope;
+               Push_Loop (Env, Loop_Identifier, BB_Next);
+               Push_Scope (Env);
 
                --  First compile the iterative part of the loop: evaluation of
                --  the exit condition, etc.
@@ -1426,7 +1426,7 @@ package body GNATLLVM.Compile is
                           (Env, Etype (Def_Ident), LLVM_Type, Low, High);
                         LLVM_Var := Alloca
                           (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
-                        Env.Set (Def_Ident, LLVM_Var);
+                        Set (Env, Def_Ident, LLVM_Var);
                         Store
                           (Env.Bld,
                           (if Reversed then High else Low), LLVM_Var);
@@ -1448,7 +1448,7 @@ package body GNATLLVM.Compile is
                         Position_Builder_At_End (Env.Bld, BB_Cond);
                         Discard (Build_Br (Env.Bld, BB_Stmts));
 
-                        BB_Cond := Env.Create_Basic_Block ("loop-cond-iter");
+                        BB_Cond := Create_Basic_Block (Env, "loop-cond-iter");
                         Position_Builder_At_End (Env.Bld, BB_Cond);
                         Cond := I_Cmp
                           (Env.Bld,
@@ -1492,8 +1492,8 @@ package body GNATLLVM.Compile is
                Emit_List (Env, Statements (Node));
                Discard (Build_Br (Env.Bld, BB_Iter));
 
-               Env.Pop_Scope;
-               Env.Pop_Loop;
+               Pop_Scope (Env);
+               Pop_Loop (Env);
 
                Position_Builder_At_End (Env.Bld, BB_Next);
             end;
@@ -1512,20 +1512,20 @@ package body GNATLLVM.Compile is
                --  that are not declared: try to get any existing basic block,
                --  create and register a new one if it does not exist yet.
 
-               if Env.Has_BB (BE) then
-                  BB := Env.Get (BE);
+               if Has_BB (Env, BE) then
+                  BB := Get (Env, BE);
                else
                   BB := Create_Basic_Block (Env, "");
 
                   if Present (BE) then
-                     Env.Set (BE, BB);
+                     Set (Env, BE, BB);
                   end if;
                end if;
 
                Discard (Build_Br (Env.Bld, BB));
                Position_Builder_At_End (Env.Bld, BB);
 
-               Env.Push_Scope;
+               Push_Scope (Env);
                Stack_State := Call
                  (Env.Bld,
                   Env.Stack_Save_Fn, System.Null_Address, 0, "");
@@ -1539,15 +1539,15 @@ package body GNATLLVM.Compile is
                     (Env.Bld,
                      Env.Stack_Restore_Fn, Stack_State'Address, 1, ""));
 
-               Env.Pop_Scope;
+               Pop_Scope (Env);
             end;
 
          when N_Full_Type_Declaration | N_Subtype_Declaration
             | N_Incomplete_Type_Declaration | N_Private_Type_Declaration
             | N_Private_Extension_Declaration
          =>
-            Env.Set (Defining_Identifier (Node),
-                     Create_Type (Env, Defining_Identifier (Node)));
+            Set (Env, Defining_Identifier (Node),
+                 Create_Type (Env, Defining_Identifier (Node)));
 
          when N_Freeze_Entity =>
             --  ??? Need to process Node itself
@@ -1611,9 +1611,9 @@ package body GNATLLVM.Compile is
             Error_Msg_N ("exception handler ignored??", Node);
 
          when N_Exception_Renaming_Declaration =>
-            Env.Set
-              (Defining_Identifier (Node),
-               Value_T'(Env.Get (Entity (Name (Node)))));
+            Set
+              (Env, Defining_Identifier (Node),
+               Value_T'(Get (Env, Entity (Name (Node)))));
 
          when N_Attribute_Definition_Clause =>
 
@@ -1671,9 +1671,9 @@ package body GNATLLVM.Compile is
 
             begin
                if Parent = Caller then
-                  Result := Env.Get (Ent.ARECnP);
+                  Result := Get (Env, Ent.ARECnP);
                else
-                  Result := Env.Get (Ent_Caller.ARECnF);
+                  Result := Get (Env, Ent_Caller.ARECnF);
 
                   --  Go levels up via the ARECnU field if needed
 
@@ -1710,13 +1710,13 @@ package body GNATLLVM.Compile is
                      N := Associated_Node_For_Itype (Etype (Parent (Node)));
 
                      if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                        return Env.Get (Def_Ident);
+                        return Get (Env, Def_Ident);
                      else
                         --  Return a callback, which is a couple: subprogram
                         --  code pointer, static link argument.
 
                         declare
-                           Func   : constant Value_T := Env.Get (Def_Ident);
+                           Func   : constant Value_T := Get (Env, Def_Ident);
                            S_Link : constant Value_T :=
                              Get_Static_Link (Node);
 
@@ -1774,9 +1774,9 @@ package body GNATLLVM.Compile is
 
                else
                   if Needs_Deref (Def_Ident) then
-                     return Load (Env.Bld, Env.Get (Def_Ident), "");
+                     return Load (Env.Bld, Get (Env, Def_Ident), "");
                   else
-                     return Env.Get (Def_Ident);
+                     return Get (Env, Def_Ident);
                   end if;
                end if;
             end;
@@ -1811,7 +1811,7 @@ package body GNATLLVM.Compile is
                      Add_Global (Env.Mdl, T, "str-lit");
 
             begin
-               Env.Set (Node, V);
+               Set (Env, Node, V);
                Set_Initializer (V, Emit_Expression (Env, Node));
                Set_Linkage (V, Private_Linkage);
                Set_Global_Constant (V, True);
@@ -1915,7 +1915,7 @@ package body GNATLLVM.Compile is
             return Emit_LValue (Env, Expression (Node));
 
          when others =>
-            if not Env.Library_Level then
+            if not Library_Level (Env) then
                --  Create a temporary: is that always adequate???
 
                declare
@@ -1949,12 +1949,12 @@ package body GNATLLVM.Compile is
       Block_Left_Expr : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
 
       Block_Right_Expr : constant Basic_Block_T :=
-        Append_Basic_Block (Env.Current_Subp.Func, "scl-right-expr");
+        Append_Basic_Block (Current_Subp (Env).Func, "scl-right-expr");
 
       --  Block containing the exit code (the phi that selects that value)
 
       Block_Exit : constant Basic_Block_T :=
-        Append_Basic_Block (Env.Current_Subp.Func, "scl-exit");
+        Append_Basic_Block (Current_Subp (Env).Func, "scl-exit");
 
    begin
       --  In the case of And, evaluate the right expression when Left is
@@ -2401,7 +2401,7 @@ package body GNATLLVM.Compile is
                   Is_Subprogram : constant Boolean :=
                     (Kind in Subprogram_Kind
                      or else Type_Kind = E_Subprogram_Type);
-                  LValue        : constant Value_T := Env.Get (Def_Ident);
+                  LValue        : constant Value_T := Get (Env, Def_Ident);
 
                begin
                   --  LLVM functions are pointers that cannot be
@@ -2420,7 +2420,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Defining_Operator_Symbol =>
-            return Env.Get (Node);
+            return Get (Env, Node);
 
          when N_Function_Call =>
             return Emit_Call (Env, Node);
@@ -2577,7 +2577,7 @@ package body GNATLLVM.Compile is
             return Const_Null (Create_Type (Env, Etype (Node)));
 
          when N_Defining_Identifier =>
-            return Env.Get (Node);
+            return Get (Env, Node);
 
          when N_In | N_Not_In =>
             declare
@@ -2746,16 +2746,16 @@ package body GNATLLVM.Compile is
         and then Present (Associated_Node_For_Itype (Etype (Subp)))
         and then Nkind (Associated_Node_For_Itype (Etype (Subp)))
           /= N_Full_Type_Declaration;
-      Takes_S_Link     : constant Boolean :=
+      This_Takes_S_Link     : constant Boolean :=
         Anonymous_Access
           or else (not Unnest_Subprogram_Mode
             and then
-              (not Direct_Call or else Env.Takes_S_Link (Entity (Subp))));
+              (not Direct_Call or else Takes_S_Link (Env, Entity (Subp))));
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
       Args_Count     : constant Nat :=
-        Params'Length + (if Takes_S_Link then 1 else 0);
+        Params'Length + (if This_Takes_S_Link then 1 else 0);
 
       Args           : Value_Array (1 .. Args_Count);
       I, Idx         : Standard.Types.Int := 1;
@@ -2776,7 +2776,7 @@ package body GNATLLVM.Compile is
 
       LLVM_Func := Emit_Expression (Env, Subp);
 
-      if Takes_S_Link then
+      if This_Takes_S_Link then
          if Direct_Call then
             S_Link := Get_Static_Link (Env, Subp);
          else
@@ -2850,7 +2850,7 @@ package body GNATLLVM.Compile is
 
       --  Set the argument for the static link, if any
 
-      if Takes_S_Link then
+      if This_Takes_S_Link then
          Args (Args'Last) := S_Link;
       end if;
 
@@ -2894,8 +2894,8 @@ package body GNATLLVM.Compile is
       --  If this subprogram specification has already been compiled, do
       --  nothing.
 
-      if Env.Has_Value (Def_Ident) then
-         return Env.Get (Def_Ident);
+      if Has_Value (Env, Def_Ident) then
+         return Get (Env, Def_Ident);
       else
          declare
             Subp_Type : constant Type_T :=
@@ -2932,7 +2932,7 @@ package body GNATLLVM.Compile is
                Set_Linkage (LLVM_Func, Internal_Linkage);
             end if;
 
-            Env.Set (Def_Ident, LLVM_Func);
+            Set (Env, Def_Ident, LLVM_Func);
             return LLVM_Func;
          end;
       end if;
@@ -2957,9 +2957,9 @@ package body GNATLLVM.Compile is
       --  This subprogram is referenced, and thus should at least already be
       --  declared. Thus, it must be registered in the environment.
 
-      Result := Env.Get (Subp);
+      Result := Get (Env, Subp);
 
-      if not Env.Takes_S_Link (Subp) then
+      if not Takes_S_Link (Env, Subp) then
          --  This is a top-level subprogram: wrap it so it can take a static
          --  link as its last argument.
 
@@ -2997,7 +2997,7 @@ package body GNATLLVM.Compile is
    procedure Attach_Callback_Wrapper_Body
      (Env : Environ; Subp : Entity_Id; Wrapper : Value_T) is
    begin
-      if Env.Takes_S_Link (Subp) then
+      if Takes_S_Link (Env, Subp) then
          return;
       end if;
 
@@ -3059,7 +3059,7 @@ package body GNATLLVM.Compile is
          return;
       end if;
 
-      Subp := Env.Current_Subp;
+      Subp := Current_Subp (Env);
 
       for Cur in Subp.S_Link_Descr.Closure.Iterate loop
          if Element (Cur) = Def_Ident then
@@ -3100,10 +3100,10 @@ package body GNATLLVM.Compile is
       Idx      : constant Value_Array (1 .. 2) := (Zero, Zero);
 
    begin
-      if Env.Takes_S_Link (Subp) then
-         Caller_SLD := Env.Current_Subp.S_Link_Descr;
-         Callee_SLD := Env.Get_S_Link (Subp);
-         Result     := Env.Current_Subp.S_Link;
+      if Takes_S_Link (Env, Subp) then
+         Caller_SLD := Current_Subp (Env).S_Link_Descr;
+         Callee_SLD := Get_S_Link (Env, Subp);
+         Result     := Current_Subp (Env).S_Link;
 
          --  The language rules force the parent subprogram of the callee to be
          --  the caller or one of its parent.

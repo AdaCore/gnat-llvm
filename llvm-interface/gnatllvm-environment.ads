@@ -101,7 +101,7 @@ package GNATLLVM.Environment is
       Element_Type => Exit_Point);
 
    --  Expanded Ada-to-LLVM translation context: gathers global information
-   type Environ_Record is tagged;
+   type Environ_Record;
    type Environ is access all Environ_Record;
 
    type Subp_Env_Record is record
@@ -115,7 +115,7 @@ package GNATLLVM.Environment is
 
    package Subp_Lists is new Ada.Containers.Doubly_Linked_Lists (Subp_Env);
 
-   type Environ_Record is tagged record
+   type Environ_Record is record
       Ctx                       : LLVM.Types.Context_T;
       Bld                       : GNATLLVM.Builder.Builder;
       Mdl                       : LLVM.Types.Module_T;

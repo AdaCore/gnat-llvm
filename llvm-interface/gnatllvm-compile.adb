@@ -2018,69 +2018,67 @@ package body GNATLLVM.Compile is
 
          declare
             T    : constant Entity_Id := Etype (Left_Opnd (Node));
-            LVal : constant Value_T :=
-              Emit_Expr (Left_Opnd (Node));
-            RVal : constant Value_T :=
-              Emit_Expr (Right_Opnd (Node));
-            Op : Value_T;
+            LVal : constant Value_T := Emit_Expr (Left_Opnd (Node));
+            RVal : constant Value_T := Emit_Expr (Right_Opnd (Node));
 
          begin
             case Nkind (Node) is
             when N_Op_Add =>
                if Is_Floating_Point_Type (T) then
-                  Op := F_Add (Env.Bld, LVal, RVal, "");
+                  return F_Add (Env.Bld, LVal, RVal, "");
                else
-                  Op := NSW_Add (Env.Bld, LVal, RVal, "");
+                  return NSW_Add (Env.Bld, LVal, RVal, "");
                end if;
 
             when N_Op_Subtract =>
                if Is_Floating_Point_Type (T) then
-                  Op := F_Sub (Env.Bld, LVal, RVal, "");
+                  return F_Sub (Env.Bld, LVal, RVal, "");
                else
-                  Op := NSW_Sub (Env.Bld, LVal, RVal, "");
+                  return NSW_Sub (Env.Bld, LVal, RVal, "");
                end if;
 
             when N_Op_Multiply =>
                if Is_Floating_Point_Type (T) then
-                  Op := F_Mul (Env.Bld, LVal, RVal, "");
+                  return F_Mul (Env.Bld, LVal, RVal, "");
                else
-                  Op := NSW_Mul (Env.Bld, LVal, RVal, "");
+                  return NSW_Mul (Env.Bld, LVal, RVal, "");
                end if;
 
             when N_Op_Divide =>
                if Is_Signed_Integer_Type (T) then
-                  Op := S_Div (Env.Bld, LVal, RVal, "");
+                  return S_Div (Env.Bld, LVal, RVal, "");
                elsif Is_Floating_Point_Type (T) then
-                  Op := F_Div (Env.Bld, LVal, RVal, "");
+                  return F_Div (Env.Bld, LVal, RVal, "");
                elsif Is_Unsigned_Type (T) then
                   return U_Div (Env.Bld, LVal, RVal, "");
                elsif Is_Fixed_Point_Type (T) then
                   if Is_Unsigned_Type (T) then
-                     Op := S_Div (Env.Bld, LVal, RVal, "");
+                     return S_Div (Env.Bld, LVal, RVal, "");
                   else
-                     Op := S_Div (Env.Bld, LVal, RVal, "");
+                     return S_Div (Env.Bld, LVal, RVal, "");
                   end if;
                else
                   Error_Msg_N ("unsupported kind of division", Node);
+                  return Const_Null (Create_Type (Env, T));
                end if;
 
             when N_Op_Rem =>
-               Op :=
+               return
                  (if Is_Unsigned_Type (Etype (Left_Opnd (Node)))
                   then U_Rem (Env.Bld, LVal, RVal, "")
                   else S_Rem (Env.Bld, LVal, RVal, ""));
 
             when N_Op_And =>
-               Op := Build_And (Env.Bld, LVal, RVal, "");
+               return Build_And (Env.Bld, LVal, RVal, "");
 
             when N_Op_Or =>
-               Op := Build_Or (Env.Bld, LVal, RVal, "");
+               return Build_Or (Env.Bld, LVal, RVal, "");
 
             when N_Op_Xor =>
-               Op := Build_Xor (Env.Bld, LVal, RVal, "");
+               return Build_Xor (Env.Bld, LVal, RVal, "");
 
             when N_Op_Mod =>
-               Op := U_Rem (Env.Bld, LVal, RVal, "");
+               return U_Rem (Env.Bld, LVal, RVal, "");
 
             when N_Op_Shift_Left | N_Op_Shift_Right
                | N_Op_Shift_Right_Arithmetic
@@ -2091,13 +2089,12 @@ package body GNATLLVM.Compile is
             when others =>
                Error_Msg_N
                  ("unhandled node kind in expression: `" &
-                  Node_Kind'Image (Nkind (Node)) & "`", Node);
+                    Node_Kind'Image (Nkind (Node)) & "`", Node);
+               return Const_Null (Create_Type (Env, T));
             end case;
 
             --  No need to handle modulo manually for non binary modulus types,
             --  this is taken care of by the front-end.
-
-            return Op;
          end;
       else
          case Nkind (Node) is

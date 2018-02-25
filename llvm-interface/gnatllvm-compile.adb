@@ -2028,37 +2028,37 @@ package body GNATLLVM.Compile is
             case Nkind (Node) is
             when N_Op_Add =>
                if Is_Floating_Point_Type (T) then
-                  Op := F_Add (Env.Bld, LVal, RVal, "add");
+                  Op := F_Add (Env.Bld, LVal, RVal, "");
                else
-                  Op := NSW_Add (Env.Bld, LVal, RVal, "add");
+                  Op := NSW_Add (Env.Bld, LVal, RVal, "");
                end if;
 
             when N_Op_Subtract =>
                if Is_Floating_Point_Type (T) then
-                  Op := F_Sub (Env.Bld, LVal, RVal, "sub");
+                  Op := F_Sub (Env.Bld, LVal, RVal, "");
                else
-                  Op := NSW_Sub (Env.Bld, LVal, RVal, "sub");
+                  Op := NSW_Sub (Env.Bld, LVal, RVal, "");
                end if;
 
             when N_Op_Multiply =>
                if Is_Floating_Point_Type (T) then
-                  Op := F_Mul (Env.Bld, LVal, RVal, "mul");
+                  Op := F_Mul (Env.Bld, LVal, RVal, "");
                else
-                  Op := NSW_Mul (Env.Bld, LVal, RVal, "mul");
+                  Op := NSW_Mul (Env.Bld, LVal, RVal, "");
                end if;
 
             when N_Op_Divide =>
                if Is_Signed_Integer_Type (T) then
-                  Op := S_Div (Env.Bld, LVal, RVal, "sdiv");
+                  Op := S_Div (Env.Bld, LVal, RVal, "");
                elsif Is_Floating_Point_Type (T) then
-                  Op := F_Div (Env.Bld, LVal, RVal, "fdiv");
+                  Op := F_Div (Env.Bld, LVal, RVal, "");
                elsif Is_Unsigned_Type (T) then
-                  return U_Div (Env.Bld, LVal, RVal, "udiv");
+                  return U_Div (Env.Bld, LVal, RVal, "");
                elsif Is_Fixed_Point_Type (T) then
                   if Is_Unsigned_Type (T) then
-                     Op := S_Div (Env.Bld, LVal, RVal, "udiv");
+                     Op := S_Div (Env.Bld, LVal, RVal, "");
                   else
-                     Op := S_Div (Env.Bld, LVal, RVal, "sdiv");
+                     Op := S_Div (Env.Bld, LVal, RVal, "");
                   end if;
                else
                   Error_Msg_N ("unsupported kind of division", Node);
@@ -2067,20 +2067,20 @@ package body GNATLLVM.Compile is
             when N_Op_Rem =>
                Op :=
                  (if Is_Unsigned_Type (Etype (Left_Opnd (Node)))
-                  then U_Rem (Env.Bld, LVal, RVal, "urem")
-                  else S_Rem (Env.Bld, LVal, RVal, "srem"));
+                  then U_Rem (Env.Bld, LVal, RVal, "")
+                  else S_Rem (Env.Bld, LVal, RVal, ""));
 
             when N_Op_And =>
-               Op := Build_And (Env.Bld, LVal, RVal, "and");
+               Op := Build_And (Env.Bld, LVal, RVal, "");
 
             when N_Op_Or =>
-               Op := Build_Or (Env.Bld, LVal, RVal, "or");
+               Op := Build_Or (Env.Bld, LVal, RVal, "");
 
             when N_Op_Xor =>
-               Op := Build_Xor (Env.Bld, LVal, RVal, "xor");
+               Op := Build_Xor (Env.Bld, LVal, RVal, "");
 
             when N_Op_Mod =>
-               Op := U_Rem (Env.Bld, LVal, RVal, "mod");
+               Op := U_Rem (Env.Bld, LVal, RVal, "");
 
             when N_Op_Shift_Left | N_Op_Shift_Right
                | N_Op_Shift_Right_Arithmetic
@@ -4152,11 +4152,11 @@ package body GNATLLVM.Compile is
          --  Now, compute the value using the underlying LLVM instruction
          Result :=
            (if To_Left
-            then Shl (Env.Bld, LHS, N, "shift-left-raw")
+            then Shl (Env.Bld, LHS, N, "")
             else
               (if Arithmetic
-               then A_Shr (Env.Bld, LHS, N, "lshift-right-raw")
-               else L_Shr (Env.Bld, LHS, N, "ashift-right-raw")));
+               then A_Shr (Env.Bld, LHS, N, "")
+               else L_Shr (Env.Bld, LHS, N, "")));
 
          --  Now, we must decide at runtime if it is safe to rely on the
          --  underlying LLVM instruction. If so, use it, otherwise return

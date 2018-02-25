@@ -2576,56 +2576,34 @@ package body GNATLLVM.Compile is
 
          when N_In | N_Not_In =>
             declare
-               Is_In : constant Boolean := Nkind (Node) = N_In;
                Rng   : Node_Id := Right_Opnd (Node);
-               First : Boolean := True;
                Left  : constant Value_T := Emit_Expr (Left_Opnd (Node));
                Comp1 : Value_T;
                Comp2 : Value_T;
 
             begin
-               if Present (Rng) then
-                  if Nkind (Rng) = N_Identifier then
-                     Rng := Scalar_Range (Etype (Rng));
-                  end if;
+               pragma Assert (No (Alternatives (Node)));
+               pragma Assert (Present (Rng));
+               --  The front end guarantees the above.
 
-                  Comp1 := Emit_Comparison
-                    (Env,
-                     Get_Preds (if Is_In then N_Op_Ge else N_Op_Lt),
-                     Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
-                     Left, Emit_Expr (Low_Bound (Rng)));
-                  Comp2 := Emit_Comparison
-                    (Env,
-                     Get_Preds (if Is_In then N_Op_Le else N_Op_Gt),
-                     Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
-                     Left, Emit_Expr (High_Bound (Rng)));
-                     return Build_Short_Circuit_Op
-                       (Env, Empty, Empty, Comp1, Comp2, N_And_Then);
-
-               else
-                  for N of Iterate (Alternatives (Node)) loop
-                     if First then
-                        Comp1 := Emit_Expression (Env, N);
-                        First := False;
-                     else
-                        Comp2 := Emit_Expression (Env, N);
-                        Comp1 := Build_Or (Env.Bld, Comp1, Comp2, "or");
-                     end if;
-                  end loop;
-
-                  if Is_In then
-                     return Comp1;
-                  else
-                     return I_Cmp
-                       (Env.Bld,
-                        Int_NE,
-                        Comp1,
-                        Const_Int
-                          (Create_Type (Env, Etype (Node)),
-                           0, Sign_Extend => False),
-                        "not");
-                  end if;
+               if Nkind (Rng) = N_Identifier then
+                  Rng := Scalar_Range (Etype (Rng));
                end if;
+
+               Comp1 := Emit_Comparison
+                 (Env,
+                  Get_Preds (if Nkind (Node) = N_In then N_Op_Ge else N_Op_Lt),
+                  Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
+                  Left, Emit_Expr (Low_Bound (Rng)));
+
+               Comp2 := Emit_Comparison
+                 (Env,
+                  Get_Preds (if Nkind (Node) = N_In then N_Op_Le else N_Op_Gt),
+                  Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
+                  Left, Emit_Expr (High_Bound (Rng)));
+
+               return Build_Short_Circuit_Op
+                    (Env, Empty, Empty, Comp1, Comp2, N_And_Then);
             end;
 
          when N_Raise_Expression =>

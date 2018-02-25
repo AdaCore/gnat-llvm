@@ -21,6 +21,7 @@ with Ada.Unchecked_Conversion;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Mech; use Sem_Mech;
+with Stringt;  use Stringt;
 
 package body GNATLLVM.Utils is
 
@@ -277,6 +278,24 @@ package body GNATLLVM.Utils is
    begin
       return Iterate (Subp);
    end Get_Params;
+
+   --------------------------
+   -- Get_Subprog_Ext_Name --
+   --------------------------
+
+   function Get_Subprog_Ext_Name (E : Entity_Id) return String is
+      Buf : Bounded_String;
+   begin
+      if (Is_Imported (E) or else Is_Exported (E))
+        and then Present (Interface_Name (E))
+        and then No (Address_Clause (E))
+      then
+         Append (Buf, Strval (Interface_Name (E)));
+         return +Buf;
+      else
+         return Get_Name_String (Chars (E));
+      end if;
+   end Get_Subprog_Ext_Name;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

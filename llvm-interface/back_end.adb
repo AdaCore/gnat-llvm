@@ -17,9 +17,6 @@
 
 with LLVM_Drive;
 with Adabkend;
-with Elists;
-with Stringt;
-with Namet;
 
 package body Back_End is
 
@@ -39,20 +36,7 @@ package body Back_End is
       pragma Unreferenced (Mode); -- Mode not referenced
 
    begin
-      --  Since the back end is called with all tables locked,
-      --  first unlock any tables that we need to change.
-
-      Stringt.Unlock;
-      Namet.Unlock;
-      Elists.Unlock;
-
       GNAT2LLVM.Call_Back_End;
-
-      --  Make sure to lock any unlocked tables again before returning
-
-      Elists.Lock;
-      Namet.Lock;
-      Stringt.Lock;
    end Call_Back_End;
 
    -------------------------------

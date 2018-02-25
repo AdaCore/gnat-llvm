@@ -848,7 +848,6 @@ package body GNATLLVM.Compile is
                  Get_Full_View (Etype (Def_Ident));
                LLVM_Type      : Type_T;
                LLVM_Var, Expr : Value_T;
-               Name           : Name_Id;
 
             begin
                --  Nothing to do if this is a debug renaming type.
@@ -872,18 +871,9 @@ package body GNATLLVM.Compile is
                      LLVM_Type := Pointer_Type (LLVM_Type, 0);
                   end if;
 
-                  if (Is_Imported (Def_Ident) or else Is_Exported (Def_Ident))
-                    and then Present (Interface_Name (Def_Ident))
-                    and then No (Address_Clause (Def_Ident))
-                  then
-                     Name :=
-                       String_To_Name (Strval (Interface_Name (Def_Ident)));
-                  else
-                     Name := Chars (Def_Ident);
-                  end if;
-
                   LLVM_Var :=
-                    Add_Global (Env.Mdl, LLVM_Type, Get_Name_String (Name));
+                    Add_Global (Env.Mdl, LLVM_Type,
+                                Get_Subprog_Ext_Name (Def_Ident));
                   Set (Env, Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
@@ -2893,13 +2883,8 @@ package body GNATLLVM.Compile is
             Subp_Type : constant Type_T :=
               Create_Subprogram_Type_From_Spec (Env, Subp_Spec);
 
-            Name           : constant Name_Id :=
-              (if (Is_Imported (Def_Ident) or else Is_Exported (Def_Ident))
-                   and then Present (Interface_Name (Def_Ident))
-                   and then No (Address_Clause (Def_Ident))
-               then String_To_Name (Strval (Interface_Name (Def_Ident)))
-               else Chars (Def_Ident));
-            Subp_Base_Name : constant String := Get_Name_String (Name);
+            Subp_Base_Name : constant String :=
+              Get_Subprog_Ext_Name (Def_Ident);
             LLVM_Func      : Value_T;
 
          begin

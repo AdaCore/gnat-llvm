@@ -131,6 +131,9 @@ package GNATLLVM.Utils is
    --  Img function for Nat type that doesn't append a space in front of it
    --  (since a Nat is always positive)
 
+   function Get_Subprog_Ext_Name (E : Entity_Id) return String;
+   --  Returns a string correspoding to the external name of E
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_LLVM_Module (M : Module_T);
    --  Likewise, for LLVM.Core.Dump_Module

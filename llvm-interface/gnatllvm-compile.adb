@@ -72,10 +72,15 @@ package body GNATLLVM.Compile is
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
    function Build_Short_Circuit_Op
-     (Env : Environ;
-      Left, Right : Value_T;
-      Op  : Node_Kind) return Value_T;
+     (Env                   : Environ;
+      Node_Left, Node_Right : Node_Id;
+      Orig_Left, Orig_Right : Value_T;
+      Op                    : Node_Kind) return Value_T;
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
+   --  If we've already computed one or more of the expressions, we
+   --  pass those as Orig_Left and Orig_Right; if not, Node_Left and
+   --  Node_Right will be the Node_Ids to be used for the computation.  This
+   --  allows sharing this code for multiple cases.
 
    function Emit_Attribute_Reference
      (Env    : Environ;
@@ -1928,17 +1933,26 @@ package body GNATLLVM.Compile is
    ----------------------------
 
    function Build_Short_Circuit_Op
-     (Env : Environ;
-      Left, Right : Value_T;
-      Op  : Node_Kind) return Value_T
+     (Env                   : Environ;
+      Node_Left, Node_Right : Node_Id;
+      Orig_Left, Orig_Right : Value_T;
+      Op                    : Node_Kind) return Value_T
    is
-      --  Block which contains the evaluation of the right part
-      --  expression of the operator.
+      Left  : Value_T := Orig_Left;
+      Right : Value_T := Orig_Right;
 
-      Block_Left_Expr : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
+      --  We start evaluating the LHS in the current block, but we need to
+      --  record which block it completes in, since it may not be the
+      --  same block.
+
+      Block_Left_Expr_End : Basic_Block_T;
+
+      --  Block which contains the evaluation of the right part
+      --  expression of the operator and its end.
 
       Block_Right_Expr : constant Basic_Block_T :=
         Append_Basic_Block (Current_Subp (Env).Func, "scl-right-expr");
+      Block_Right_Expr_End : Basic_Block_T;
 
       --  Block containing the exit code (the phi that selects that value)
 
@@ -1948,8 +1962,13 @@ package body GNATLLVM.Compile is
    begin
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
+      if Left = No_Value_T then
+         Left := Emit_Expression (Env, Node_Left);
+      end if;
 
-      if Op = N_Op_And then
+      Block_Left_Expr_End := Get_Insert_Block (Env.Bld);
+
+      if Op = N_And_Then then
          Discard (Build_Cond_Br (Env.Bld, Left, Block_Right_Expr, Block_Exit));
       else
          Discard (Build_Cond_Br (Env.Bld, Left, Block_Exit, Block_Right_Expr));
@@ -1958,6 +1977,11 @@ package body GNATLLVM.Compile is
       --  Emit code for the evaluation of the right part expression
 
       Position_Builder_At_End (Env.Bld, Block_Right_Expr);
+      if Right = No_Value_T then
+         Right := Emit_Expression (Env, Node_Right);
+      end if;
+
+      Block_Right_Expr_End := Get_Insert_Block (Env.Bld);
       Discard (Build_Br (Env.Bld, Block_Exit));
 
       Position_Builder_At_End (Env.Bld, Block_Exit);
@@ -1966,13 +1990,14 @@ package body GNATLLVM.Compile is
       --  is false and for OR, it's true.  Otherwise, the result is the right.
 
       declare
-         Values : constant Value_Array (1 .. 2)
-           := (Const_Int (Int_Ty (1), (if Op = N_Op_And then 0 else 1), False),
-             Right);
-         BBs    : constant Basic_Block_Array (1 .. 2)
-           := (Block_Left_Expr, Block_Right_Expr);
-         Phi    : constant Value_T :=
-           LLVM.Core.Phi (Env.Bld, Int_Ty (1), "");
+         LHS_Const : constant unsigned_long_long :=
+           (if Op = N_And_Then then 0 else 1);
+         Values    : constant Value_Array (1 .. 2) :=
+             (Const_Int (Int_Ty (1), LHS_Const, False), Right);
+         BBs       : constant Basic_Block_Array (1 .. 2) :=
+             (Block_Left_Expr_End, Block_Right_Expr_End);
+         Phi       : constant Value_T :=
+             LLVM.Core.Phi (Env.Bld, Int_Ty (1), "");
       begin
          Add_Incoming (Phi, Values'Address, BBs'Address, 2);
          return Phi;
@@ -2202,19 +2227,10 @@ package body GNATLLVM.Compile is
                return Const_Array (Element_Type, Elements'Address, Length);
             end;
 
-         when N_And_Then =>
+         when N_And_Then | N_Or_Else =>
             return Build_Short_Circuit_Op
-              (Env,
-               Emit_Expr (Left_Opnd (Node)),
-               Emit_Expr (Right_Opnd (Node)),
-               N_Op_And);
-
-         when N_Or_Else =>
-            return Build_Short_Circuit_Op
-              (Env,
-               Emit_Expr (Left_Opnd (Node)),
-               Emit_Expr (Right_Opnd (Node)),
-               N_Op_Or);
+              (Env, Left_Opnd (Node), Right_Opnd (Node),
+               No_Value_T, No_Value_T, Nkind (Node));
 
          when N_Op_Not =>
             declare
@@ -2582,7 +2598,8 @@ package body GNATLLVM.Compile is
                      Get_Preds (if Is_In then N_Op_Le else N_Op_Gt),
                      Get_Fullest_View (Etype (Left_Opnd (Node))),
                      Left_Opnd (Node), High_Bound (Rng));
-                  return Build_Short_Circuit_Op (Env, Comp1, Comp2, N_Op_And);
+                     return Build_Short_Circuit_Op
+                       (Env, Empty, Empty, Comp1, Comp2, N_And_Then);
 
                else
                   for N of Iterate (Alternatives (Node)) loop
@@ -3798,17 +3815,15 @@ package body GNATLLVM.Compile is
                           (UI_To_Long_Long_Integer (Expr_Value (HBD))),
                         False));
 
-                  --  ??? Should use shortcuit here
-                  Comp := Build_And (Env.Bld, Comp, Comp3, "and");
-                  --    Build_Short_Circuit_Op (Env, Comp, Comp3, Op_And);
+                  Comp := Build_Short_Circuit_Op
+                    (Env, Empty, Empty, Comp, Comp3, N_And_Then);
                end if;
 
                if First_Choice then
                   First_Choice := False;
                else
-                  --  ??? Should use shortcuit here
-                  --  Comp := Build_Short_Circuit_Op (Env, Comp, Comp2, Op_Or);
-                  Comp := Build_Or (Env.Bld, Comp, Comp2, "or");
+                  Comp := Build_Short_Circuit_Op
+                    (Env, Empty, Empty, Comp, Comp2, N_Or_Else);
                end if;
 
                Comp2 := Comp;

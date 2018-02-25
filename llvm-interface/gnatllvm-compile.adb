@@ -2003,18 +2003,13 @@ package body GNATLLVM.Compile is
       --  environment during recursion.
 
    begin
-      if Is_Binary_Operator (Node) then
-         case Nkind (Node) is
-            when N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge | N_Op_Eq | N_Op_Ne =>
-               return Emit_Comparison
-                 (Env,
-                  Get_Preds (Nkind (Node)),
-                  Get_Fullest_View (Etype (Left_Opnd (Node))),
-                  Left_Opnd (Node), Right_Opnd (Node));
-
-            when others =>
-               null;
-         end case;
+      if Nkind (Node) in N_Binary_Op then
+         if Nkind (Node) in N_Op_Compare then
+            return Emit_Comparison
+              (Env, Get_Preds (Nkind (Node)),
+               Get_Fullest_View (Etype (Left_Opnd (Node))),
+               Left_Opnd (Node), Right_Opnd (Node));
+         end if;
 
          declare
             T    : constant Entity_Id := Etype (Left_Opnd (Node));

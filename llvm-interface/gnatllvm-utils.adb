@@ -186,21 +186,6 @@ package body GNATLLVM.Utils is
       return False;
    end Return_Needs_Sec_Stack;
 
-   ------------------------
-   -- Is_Binary_Operator --
-   ------------------------
-
-   function Is_Binary_Operator (Node : Node_Id) return Boolean is
-     (case Nkind (Node) is
-         when N_Op_Add | N_Op_Subtract | N_Op_Divide | N_Op_Multiply
-           | N_Op_Rem | N_Op_Mod
-           | N_Op_Eq | N_Op_Ne
-           | N_Op_Gt | N_Op_Lt | N_Op_Le | N_Op_Ge
-           | N_Op_Shift_Left | N_Op_Shift_Right | N_Op_Shift_Right_Arithmetic
-           | N_Op_Rotate_Left | N_Op_Rotate_Right
-           | N_Op_And | N_Op_Or | N_Op_Xor => True,
-         when others => False);
-
    -------------
    -- Discard --
    -------------

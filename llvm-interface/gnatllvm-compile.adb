@@ -1962,7 +1962,7 @@ package body GNATLLVM.Compile is
 
       Position_Builder_At_End (Env.Bld, Block_Exit);
 
-      --  If we exited the enty block, it means that for AND, then result
+      --  If we exited the entry block, it means that for AND, the result
       --  is false and for OR, it's true.  Otherwise, the result is the right.
 
       declare

@@ -2237,20 +2237,18 @@ package body GNATLLVM.Compile is
                   return Build_Select
                     (Env.Bld,
                      C_If   => F_Cmp
-                       (Env.Bld, Real_OGE, Expr, Zero, "is-positive"),
+                       (Env.Bld, Real_OGE, Expr, Zero, ""),
                      C_Then => Expr,
-                     C_Else => F_Sub (Env.Bld, Zero, Expr, "minus"),
+                     C_Else => F_Neg (Env.Bld, Expr, ""),
                      Name   => "abs");
+               elsif Is_Unsigned_Type (Expr_Type) then
+                  return Expr;
                else
                   return Build_Select
                     (Env.Bld,
-                     C_If   => I_Cmp
-                       (Env.Bld,
-                        (if Is_Unsigned_Type (Expr_Type)
-                         then Int_UGE else Int_SGE),
-                        Expr, Zero, "is-positive"),
+                     C_If   => I_Cmp (Env.Bld, Int_SGE, Expr, Zero, ""),
                      C_Then => Expr,
-                     C_Else => NSW_Sub (Env.Bld, Zero, Expr, "minus"),
+                     C_Else => NSW_Neg (Env.Bld, Expr, ""),
                      Name   => "abs");
                end if;
             end;

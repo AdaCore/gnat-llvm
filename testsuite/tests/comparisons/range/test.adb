@@ -9,8 +9,11 @@ package body Test is
    function Test (I : Integer) return Integer is
       Result : Integer := 0;
    begin
-      if I in 10 .. 20 then
+      Counter := 0;
+ 
+      if Ret (I) in 10 .. 20 then
          Result := 10;
+      end if;
       
       return Counter + Result;
    end Test;

@@ -1,6 +1,6 @@
 package Test is
 
-   Counter : Integer := 0;
+   Counter : Integer;
 
    function Ret (I : Integer) return Integer;
 

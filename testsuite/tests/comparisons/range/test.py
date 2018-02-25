@@ -7,8 +7,8 @@ from gnatllvm import build_and_load, Func
 )
 
 assert test(9) == 1
+assert test(15) == 11
 assert test(10) == 11
 assert test(20) == 11
-assert test(15) == 11
 assert test(30) == 1
 

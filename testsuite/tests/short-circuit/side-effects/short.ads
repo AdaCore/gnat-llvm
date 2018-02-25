@@ -1,6 +1,6 @@
 package Short is
 
-   Counter : Integer := 0;
+   Counter : Integer;
 
    function Ret0 return Boolean;
 

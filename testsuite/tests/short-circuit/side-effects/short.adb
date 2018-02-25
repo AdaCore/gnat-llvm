@@ -8,6 +8,7 @@ package body Short is
 
    function Test return Integer is
    begin
+      Counter := 0;
       if Ret0 and then Ret0 then
          null;
       end if;

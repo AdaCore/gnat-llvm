@@ -2579,6 +2579,7 @@ package body GNATLLVM.Compile is
                Is_In : constant Boolean := Nkind (Node) = N_In;
                Rng   : Node_Id := Right_Opnd (Node);
                First : Boolean := True;
+               Left  : constant Value_T := Emit_Expr (Left_Opnd (Node));
                Comp1 : Value_T;
                Comp2 : Value_T;
 
@@ -2591,13 +2592,13 @@ package body GNATLLVM.Compile is
                   Comp1 := Emit_Comparison
                     (Env,
                      Get_Preds (if Is_In then N_Op_Ge else N_Op_Lt),
-                     Get_Fullest_View (Etype (Left_Opnd (Node))),
-                     Left_Opnd (Node), Low_Bound (Rng));
+                     Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
+                     Left, Emit_Expr (Low_Bound (Rng)));
                   Comp2 := Emit_Comparison
                     (Env,
                      Get_Preds (if Is_In then N_Op_Le else N_Op_Gt),
-                     Get_Fullest_View (Etype (Left_Opnd (Node))),
-                     Left_Opnd (Node), High_Bound (Rng));
+                     Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
+                     Left, Emit_Expr (High_Bound (Rng)));
                      return Build_Short_Circuit_Op
                        (Env, Empty, Empty, Comp1, Comp2, N_And_Then);
 

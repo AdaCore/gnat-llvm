@@ -1867,7 +1867,7 @@ package body GNATLLVM.Compile is
                          (Env, Array_Descr, Array_Type, Low, Integer (J - 1));
                   begin
                      Idxs (J) :=
-                       Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
+                       NSW_Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
                   end;
 
                   J := J + 1;
@@ -2030,21 +2030,21 @@ package body GNATLLVM.Compile is
                if Is_Floating_Point_Type (T) then
                   Op := F_Add (Env.Bld, LVal, RVal, "add");
                else
-                  Op := Add (Env.Bld, LVal, RVal, "add");
+                  Op := NSW_Add (Env.Bld, LVal, RVal, "add");
                end if;
 
             when N_Op_Subtract =>
                if Is_Floating_Point_Type (T) then
                   Op := F_Sub (Env.Bld, LVal, RVal, "sub");
                else
-                  Op := Sub (Env.Bld, LVal, RVal, "sub");
+                  Op := NSW_Sub (Env.Bld, LVal, RVal, "sub");
                end if;
 
             when N_Op_Multiply =>
                if Is_Floating_Point_Type (T) then
                   Op := F_Mul (Env.Bld, LVal, RVal, "mul");
                else
-                  Op := Mul (Env.Bld, LVal, RVal, "mul");
+                  Op := NSW_Mul (Env.Bld, LVal, RVal, "mul");
                end if;
 
             when N_Op_Divide =>
@@ -2270,7 +2270,7 @@ package body GNATLLVM.Compile is
                          then Int_UGE else Int_SGE),
                         Expr, Zero, "is-positive"),
                      C_Then => Expr,
-                     C_Else => Sub (Env.Bld, Zero, Expr, "minus"),
+                     C_Else => NSW_Sub (Env.Bld, Zero, Expr, "minus"),
                      Name   => "abs");
                end if;
             end;
@@ -3457,8 +3457,8 @@ package body GNATLLVM.Compile is
             begin
                return
                  (if Attr = Attribute_Succ
-                  then Add (Env.Bld, Base, One, "attr-succ")
-                  else Sub (Env.Bld, Base, One, "attr-pred"));
+                  then NSW_Add (Env.Bld, Base, One, "attr-succ")
+                  else NSW_Sub (Env.Bld, Base, One, "attr-pred"));
             end;
 
          when Attribute_Machine =>
@@ -4111,7 +4111,7 @@ package body GNATLLVM.Compile is
             --  two shifts.
 
             Lower_Shift : constant Value_T :=
-              Sub (Env.Bld, LHS_Bits, N, "lower-shift");
+              NSW_Sub (Env.Bld, LHS_Bits, N, "lower-shift");
             Upper       : constant Value_T :=
               (if To_Left
                then Shl (Env.Bld, LHS, N, "rotate-upper")

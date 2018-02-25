@@ -3503,37 +3503,27 @@ package body GNATLLVM.Compile is
    begin
       --  LLVM treats pointers as integers regarding comparison
 
-      if Is_Floating_Point_Type (Operand_Type) then
-         return F_Cmp
-           (Env.Bld,
-            Operation.Real,
-            Emit_Expression (Env, LHS),
-            Emit_Expression (Env, RHS),
-            "fcmp");
-
-      elsif Ekind (Operand_Type) = E_Anonymous_Access_Subprogram_Type then
+      if Ekind (Operand_Type) = E_Anonymous_Access_Subprogram_Type then
+         --  ??? It's unclear why there's special handling here that's
+         --  not present in Gigi.
          return I_Cmp
            (Env.Bld,
             Operation.Unsigned,
             Subp_Ptr (LHS),
             Subp_Ptr (RHS),
-            "icmp");
+            "");
 
-      elsif Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
+      elsif Is_Floating_Point_Type (Operand_Type)
+        or else Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
         or else Is_Access_Type (Operand_Type)
       then
-         return I_Cmp
-           (Env.Bld,
-            (if Is_Unsigned_Type (Operand_Type)
-             then Operation.Unsigned
-             else Operation.Signed),
-            Emit_Expression (Env, LHS),
-            Emit_Expression (Env, RHS),
-            "icmp");
+         return Emit_Comparison (Env, Operation, Operand_Type, LHS,
+                                 Emit_Expression (Env, LHS),
+                                 Emit_Expression (Env, RHS));
 
       elsif Is_Record_Type (Operand_Type) then
          Error_Msg_N ("unsupported record comparison", LHS);
-         return Get_Undef (Create_Type (Env, Operand_Type));
+         return Get_Undef (Int_Ty (1));
 
       elsif Is_Array_Type (Operand_Type) then
          pragma Assert (Operation.Signed in Int_EQ | Int_NE);
@@ -3660,7 +3650,7 @@ package body GNATLLVM.Compile is
          Error_Msg_N
            ("unsupported operand type for comparison: `"
             & Entity_Kind'Image (Ekind (Operand_Type)) & "`", LHS);
-         return Get_Undef (Create_Type (Env, Operand_Type));
+         return Get_Undef (Int_Ty (1));
       end if;
    end Emit_Comparison;
 
@@ -3671,21 +3661,26 @@ package body GNATLLVM.Compile is
       Node         : Node_Id;
       LHS, RHS     : Value_T) return Value_T is
    begin
-      if Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
+      if Is_Floating_Point_Type (Operand_Type) then
+         return F_Cmp
+           (Env.Bld, Operation.Real, LHS, RHS, "");
+
+      elsif Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
         or else Is_Access_Type (Operand_Type)
       then
          return I_Cmp
            (Env.Bld,
             (if Is_Unsigned_Type (Operand_Type)
+               or else Is_Access_Type (Operand_Type)
              then Operation.Unsigned
              else Operation.Signed),
-            LHS,
-            RHS,
-            "icmp");
+            LHS, RHS, "");
 
       else
-         Error_Msg_N ("unsupported kind of comparison", Node);
-         return Get_Undef (Create_Type (Env, Operand_Type));
+         Error_Msg_N
+           ("unsupported operand type for comparison: `"
+            & Entity_Kind'Image (Ekind (Operand_Type)) & "`", Node);
+         return Get_Undef (Int_Ty (1));
       end if;
    end Emit_Comparison;
 

@@ -13,6 +13,9 @@ build-be:
 llvm:
 	make -C llvm
 
+tests:
+	make -C testsuite
+
 clean:
 	make -C llvm-interface clean
 

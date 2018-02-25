@@ -71,12 +71,10 @@ package body GNATLLVM.Compile is
       Expr                : Node_Id) return Value_T;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
-   type Short_Circuit_Operator is (Op_Or, Op_And);
-
    function Build_Short_Circuit_Op
      (Env : Environ;
       Left, Right : Value_T;
-      Op  : Short_Circuit_Operator) return Value_T;
+      Op  : Node_Kind) return Value_T;
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 
    function Emit_Attribute_Reference
@@ -1931,7 +1929,7 @@ package body GNATLLVM.Compile is
    function Build_Short_Circuit_Op
      (Env : Environ;
       Left, Right : Value_T;
-      Op  : Short_Circuit_Operator) return Value_T
+      Op  : Node_Kind) return Value_T
    is
       --  Block which contains the evaluation of the right part
       --  expression of the operator.
@@ -1950,7 +1948,7 @@ package body GNATLLVM.Compile is
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
 
-      if Op = Op_And then
+      if Op = N_Op_And then
          Discard (Build_Cond_Br (Env.Bld, Left, Block_Right_Expr, Block_Exit));
       else
          Discard (Build_Cond_Br (Env.Bld, Left, Block_Exit, Block_Right_Expr));
@@ -1968,7 +1966,7 @@ package body GNATLLVM.Compile is
 
       declare
          Values : constant Value_Array (1 .. 2)
-           := (Const_Int (Int_Ty (1), (if Op = Op_And then 0 else 1), False),
+           := (Const_Int (Int_Ty (1), (if Op = N_Op_And then 0 else 1), False),
              Right);
          BBs    : constant Basic_Block_Array (1 .. 2)
            := (Block_Left_Expr, Block_Right_Expr);
@@ -2208,14 +2206,14 @@ package body GNATLLVM.Compile is
               (Env,
                Emit_Expr (Left_Opnd (Node)),
                Emit_Expr (Right_Opnd (Node)),
-               Op_And);
+               N_Op_And);
 
          when N_Or_Else =>
             return Build_Short_Circuit_Op
               (Env,
                Emit_Expr (Left_Opnd (Node)),
                Emit_Expr (Right_Opnd (Node)),
-               Op_Or);
+               N_Op_Or);
 
          when N_Op_Not =>
             declare
@@ -2585,7 +2583,7 @@ package body GNATLLVM.Compile is
                      Get_Preds (if Is_In then N_Op_Le else N_Op_Gt),
                      Get_Fullest_View (Etype (Left_Opnd (Node))),
                      Left_Opnd (Node), High_Bound (Rng));
-                  return Build_Short_Circuit_Op (Env, Comp1, Comp2, Op_And);
+                  return Build_Short_Circuit_Op (Env, Comp1, Comp2, N_Op_And);
 
                else
                   for N of Iterate (Alternatives (Node)) loop

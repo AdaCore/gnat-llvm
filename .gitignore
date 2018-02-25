@@ -18,6 +18,8 @@ obj
 
 # Code editors artifacts
 .#*
+#*
+*~
 gnatinspect.db
 
 # Compilation artifacts

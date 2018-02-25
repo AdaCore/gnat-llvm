@@ -1139,6 +1139,7 @@ package body GNATLLVM.Compile is
 
                   else
                      Error_Msg_N ("unsupported assignment statement", Node);
+                     return Get_Undef (Size_T);
                   end if;
 
                   return Const_Int
@@ -1169,7 +1170,7 @@ package body GNATLLVM.Compile is
                        (Int_Ty (8), Enumeration_Rep (Entity (Inner)));
                   else
                      Error_Msg_N ("unsupported kind of aggregate", Node);
-                     Src := Const_Null (Int_Ty (8));
+                     Src := Get_Undef (Int_Ty (8));
                   end if;
 
                   declare
@@ -1917,7 +1918,7 @@ package body GNATLLVM.Compile is
                Error_Msg_N
                  ("unhandled node kind: `" &
                   Node_Kind'Image (Nkind (Node)) & "`", Node);
-               raise Program_Error;
+               return Get_Undef (Create_Type (Env, Etype (Node)));
             end if;
       end case;
    end Emit_LValue;
@@ -2042,7 +2043,7 @@ package body GNATLLVM.Compile is
                   end if;
                else
                   Error_Msg_N ("unsupported kind of division", Node);
-                  return Const_Null (Create_Type (Env, T));
+                  return Get_Undef (Create_Type (Env, T));
                end if;
 
             when N_Op_Rem =>
@@ -2073,7 +2074,7 @@ package body GNATLLVM.Compile is
                Error_Msg_N
                  ("unhandled node kind in expression: `" &
                     Node_Kind'Image (Nkind (Node)) & "`", Node);
-               return Const_Null (Create_Type (Env, T));
+               return Get_Undef (Create_Type (Env, T));
             end case;
 
             --  No need to handle modulo manually for non binary modulus types,
@@ -2419,7 +2420,7 @@ package body GNATLLVM.Compile is
          when N_Allocator =>
             if Present (Storage_Pool (Node)) then
                Error_Msg_N ("unsupported form of N_Allocator", Node);
-               raise Program_Error;
+               return Get_Undef (Create_Type (Env, Etype (Node)));
             end if;
 
             declare
@@ -2450,7 +2451,7 @@ package body GNATLLVM.Compile is
 
                   when others =>
                      Error_Msg_N ("unsupported form of N_Allocator", Node);
-                     raise Program_Error;
+                     return Get_Undef (Create_Type (Env, Etype (Node)));
                end case;
             end;
 
@@ -2622,7 +2623,7 @@ package body GNATLLVM.Compile is
             Error_Msg_N
               ("unsupported node kind: `" &
                Node_Kind'Image (Nkind (Node)) & "`", Node);
-            raise Program_Error;
+            return Get_Undef (Create_Type (Env, Etype (Node)));
          end case;
       end if;
    end Emit_Expression;
@@ -3206,7 +3207,7 @@ package body GNATLLVM.Compile is
 
       else
          Error_Msg_N ("unsupported type conversion", Expr);
-         raise Program_Error;
+         return Get_Undef (Create_Type (Env, Dest_Type));
       end if;
    end Build_Type_Conversion;
 
@@ -3378,7 +3379,7 @@ package body GNATLLVM.Compile is
                        (Env, Type_High_Bound (Prefix_Type));
                   else
                      Error_Msg_N ("unsupported attribute", Node);
-                     raise Program_Error;
+                     return Get_Undef (Create_Type (Env, Etype (Node)));
                   end if;
 
                elsif Is_Array_Type (Prefix_Type) then
@@ -3394,7 +3395,7 @@ package body GNATLLVM.Compile is
                   end if;
                else
                   Error_Msg_N ("unsupported attribute", Node);
-                  raise Program_Error;
+                  return Get_Undef (Create_Type (Env, Etype (Node)));
                end if;
             end;
 
@@ -3467,7 +3468,7 @@ package body GNATLLVM.Compile is
                      Sign_Extend => False);
                else
                   Error_Msg_N ("unsupported size attribute", Node);
-                  return Const_Null (Create_Type (Env, Typ));
+                  return Get_Undef (Create_Type (Env, Typ));
                end if;
             end;
 
@@ -3475,7 +3476,7 @@ package body GNATLLVM.Compile is
             Error_Msg_N
               ("unsupported attribute: `" &
                Attribute_Id'Image (Attr) & "`", Node);
-            raise Program_Error;
+            return Get_Undef (Create_Type (Env, Etype (Node)));
       end case;
    end Emit_Attribute_Reference;
 
@@ -3532,7 +3533,7 @@ package body GNATLLVM.Compile is
 
       elsif Is_Record_Type (Operand_Type) then
          Error_Msg_N ("unsupported record comparison", LHS);
-         raise Program_Error;
+         return Get_Undef (Create_Type (Env, Operand_Type));
 
       elsif Is_Array_Type (Operand_Type) then
          pragma Assert (Operation.Signed in Int_EQ | Int_NE);
@@ -3659,7 +3660,7 @@ package body GNATLLVM.Compile is
          Error_Msg_N
            ("unsupported operand type for comparison: `"
             & Entity_Kind'Image (Ekind (Operand_Type)) & "`", LHS);
-         raise Program_Error;
+         return Get_Undef (Create_Type (Env, Operand_Type));
       end if;
    end Emit_Comparison;
 
@@ -3684,7 +3685,7 @@ package body GNATLLVM.Compile is
 
       else
          Error_Msg_N ("unsupported kind of comparison", Node);
-         raise Program_Error;
+         return Get_Undef (Create_Type (Env, Operand_Type));
       end if;
    end Emit_Comparison;
 
@@ -4056,7 +4057,7 @@ package body GNATLLVM.Compile is
             Error_Msg_N
               ("unsupported shift/rotate operation: `"
                & Node_Kind'Image (Operation) & "`", Node);
-            raise Program_Error;
+            return Get_Undef (Create_Type (Env, Etype (Node)));
       end case;
 
       if Rotate then

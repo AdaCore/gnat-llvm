@@ -3739,63 +3739,73 @@ package body GNATLLVM.Compile is
    -------------
 
    procedure Emit_If (Env : Environ; Node : Node_Id) is
-      Cond    : Value_T;
-      BB_Then : Basic_Block_T;
-      BB_Else : Basic_Block_T;
-      BB_Next : Basic_Block_T;
+
+      --  Record information about each part of an "if" statement.
+      type If_Ent is record
+         Cond     : Node_Id;         --  Expression to test.
+         Stmts    : List_Id;         --  Statements to emit if true.
+         BB_True  : Basic_Block_T;   --  Basic block to branch for true.
+         BB_False : Basic_Block_T;   --  Basic block to branch for false.
+      end record;
+
+      If_Parts     : array (0 .. List_Length (Elsif_Parts (Node))) of If_Ent;
+
+      Cond         : Value_T;
+      BB_End       : Basic_Block_T;
+      If_Parts_Pos : Nat := 1;
+      Elsif_Part   : Node_Id;
 
    begin
-      BB_Then := Create_Basic_Block (Env, "if-then");
-      BB_Next := Create_Basic_Block (Env, "if-next");
+
+      --  First go through all the parts of the "if" statement recording
+      --  the expressions and statements.
+      If_Parts (0) := (Cond => Condition (Node),
+                       Stmts => Then_Statements (Node),
+                       BB_True => Create_Basic_Block (Env, "true"),
+                       BB_False => Create_Basic_Block (Env, "false"));
 
       if Present (Elsif_Parts (Node)) then
-         BB_Else := Create_Basic_Block (Env, "elsif");
-      elsif Present (Else_Statements (Node)) then
-         BB_Else := Create_Basic_Block (Env, "else");
-      else
-         BB_Else := BB_Next;
-      end if;
-
-      Cond := Emit_Expression (Env, Condition (Node));
-      Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
-
-      --  Emit code for the THEN part
-
-      Position_Builder_At_End (Env.Bld, BB_Then);
-      Emit_List (Env, Then_Statements (Node));
-      Discard (Build_Br (Env.Bld, BB_Next));
-      Position_Builder_At_End (Env.Bld, BB_Else);
-
-      --  Emit code for the ELSIF parts
-
-      if Present (Elsif_Parts (Node)) then
-         for N of Iterate (Elsif_Parts (Node)) loop
-            BB_Then := Create_Basic_Block (Env, "elsif-then");
-
-            if Present (Next (N)) then
-               BB_Else := Create_Basic_Block (Env, "elsif");
-            elsif Present (Else_Statements (Node)) then
-               BB_Else := Create_Basic_Block (Env, "else");
-            else
-               BB_Else := BB_Next;
-            end if;
-
-            Cond := Emit_Expression (Env, Condition (N));
-            Discard (Build_Cond_Br (Env.Bld, Cond, BB_Then, BB_Else));
-            Position_Builder_At_End (Env.Bld, BB_Then);
-            Emit_List (Env, Then_Statements (N));
-            Discard (Build_Br (Env.Bld, BB_Next));
-            Position_Builder_At_End (Env.Bld, BB_Else);
+         Elsif_Part := First (Elsif_Parts (Node));
+         while Present (Elsif_Part) loop
+            If_Parts (If_Parts_Pos) := (Cond => Condition (Elsif_Part),
+                                        Stmts => Then_Statements (Elsif_Part),
+                                        BB_True => Create_Basic_Block
+                                          (Env, "true"),
+                                       BB_False => Create_Basic_Block
+                                         (Env, "false"));
+            If_Parts_Pos := If_Parts_Pos + 1;
+            Elsif_Part := Next (Elsif_Part);
          end loop;
       end if;
 
-      --  Emit code for the ELSE part
+      --  When done, each part goes to the end of the statement.  If there's
+      --  an "else" clause, it's a new basic block and the end; otherwise,
+      --  it's the last False block.
+      BB_End := (if Present (Else_Statements (Node))
+                 then Create_Basic_Block (Env, "end")
+                 else If_Parts (If_Parts_Pos - 1).BB_False);
 
+      --  Now process each entry that we made: test the condition and branch;
+      --  emit the statements in the appropriate block; branch to the end;
+      --  and set up the block for the next test, the "else", or next
+      --  statement.
+
+      for Part of If_Parts loop
+         Cond := Emit_Expression (Env, Part.Cond);
+         Discard (Build_Cond_Br (Env.Bld, Cond, Part.BB_True, Part.BB_False));
+         Position_Builder_At_End (Env.Bld, Part.BB_True);
+         Emit_List (Env, Part.Stmts);
+         Discard (Build_Br (Env.Bld, BB_End));
+         Position_Builder_At_End (Env.Bld, Part.BB_False);
+      end loop;
+
+      --  If there's an Else part, emit it and go into the "end" basic block.
       if Present (Else_Statements (Node)) then
          Emit_List (Env, Else_Statements (Node));
-         Discard (Build_Br (Env.Bld, BB_Next));
-         Position_Builder_At_End (Env.Bld, BB_Next);
+         Discard (Build_Br (Env.Bld, BB_End));
+         Position_Builder_At_End (Env.Bld, BB_End);
       end if;
+
    end Emit_If;
 
    ------------------------

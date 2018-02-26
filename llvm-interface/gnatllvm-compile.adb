@@ -3856,6 +3856,9 @@ package body GNATLLVM.Compile is
 
       Position_Builder_At_End (Env.Bld, BB_Next);
 
+      --  ??? We can't use Phi if this is a composite type: Phi can only
+      --  be used in LLVM for first-class types.
+
       declare
          Values : constant Value_Array (1 .. 2) := (Then_Value, Else_Value);
          BBs    : constant Basic_Block_Array (1 .. 2) := (BB_Then, BB_Else);

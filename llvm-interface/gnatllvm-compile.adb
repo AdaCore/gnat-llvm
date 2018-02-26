@@ -124,6 +124,8 @@ package body GNATLLVM.Compile is
    function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T;
    --  Generate a call to __gnat_last_chance_handler
 
+   function Emit_Literal (Env : Environ; Node : Node_Id) return Value_T;
+
    function Emit_Min_Max
      (Env         : Environ;
       Exprs       : List_Id;
@@ -2101,116 +2103,8 @@ package body GNATLLVM.Compile is
 
             return Emit_Expr (Expression (Node));
 
-         when N_Character_Literal =>
-            return Const_Int
-              (Create_Type (Env, Etype (Node)),
-               Char_Literal_Value (Node));
-
-         when N_Integer_Literal =>
-            return Const_Int
-              (Create_Type (Env, Etype (Node)),
-               Intval (Node));
-
-         when N_Real_Literal =>
-            if Is_Fixed_Point_Type (Underlying_Type (Etype (Node))) then
-               return Const_Int
-                 (Create_Type (Env, Etype (Node)),
-                  Corresponding_Integer_Value (Node));
-            else
-               declare
-                  Real_Type : constant Type_T :=
-                    Create_Type (Env, Etype (Node));
-                  Val       : Ureal := Realval (Node);
-
-               begin
-                  if UR_Is_Zero (Val) then
-                     return Const_Real (Real_Type, 0.0);
-                  end if;
-
-                  --  First convert the value to a machine number if it isn't
-                  --  already. That will force the base to 2 for non-zero
-                  --  values and simplify the rest of the logic.
-
-                  if not Is_Machine_Number (Node) then
-                     Val := Machine
-                       (Base_Type (Underlying_Type (Etype (Node))),
-                        Val, Round_Even, Node);
-                  end if;
-
-                  --  ??? See trans.c (case N_Real_Literal) for handling of
-                  --  N_Real_Literal in gigi.
-
-                  if UI_Is_In_Int_Range (Numerator (Val))
-                    and then UI_Is_In_Int_Range (Denominator (Val))
-                  then
-                     if UR_Is_Negative (Val) then
-                        return Const_Real
-                          (Real_Type,
-                           -double (UI_To_Int (Numerator (Val))) /
-                            double (UI_To_Int (Denominator (Val))));
-
-                     else
-                        return Const_Real
-                          (Real_Type,
-                           double (UI_To_Int (Numerator (Val))) /
-                           double (UI_To_Int (Denominator (Val))));
-                     end if;
-                  else
-                     declare
-                        function Const_Real_Of_String
-                          (Real_Ty : Type_T;
-                           Text    : String;
-                           S_Len   : unsigned) return Value_T;
-                        pragma Import
-                          (C, Const_Real_Of_String,
-                           "LLVMConstRealOfStringAndSize");
-
-                        Num_Str : constant String :=
-                          UI_Image (Numerator (Val), Decimal) & ".0";
-                        Den_Str : constant String :=
-                          UI_Image (Denominator (Val), Decimal) & ".0";
-                        Num     : constant Value_T :=
-                          Const_Real_Of_String
-                            (Real_Type, Num_Str, Num_Str'Length);
-                        Den     : constant Value_T :=
-                          Const_Real_Of_String
-                            (Real_Type, Den_Str, Den_Str'Length);
-
-                     begin
-                        if UR_Is_Negative (Val) then
-                           return F_Sub
-                             (Env.Bld,
-                              Const_Real (Real_Type, 0.0),
-                              F_Div (Env.Bld, Num, Den, ""), "");
-                        else
-                           return F_Div (Env.Bld, Num, Den, "");
-                        end if;
-                     end;
-                  end if;
-               end;
-            end if;
-
-         when N_String_Literal =>
-            declare
-               String       : constant String_Id := Strval (Node);
-               Array_Type   : constant Type_T :=
-                 Create_Type (Env, Etype (Node));
-               Element_Type : constant Type_T := Get_Element_Type (Array_Type);
-               Length       : constant Interfaces.C.unsigned :=
-                 Get_Array_Length (Array_Type);
-               Elements     : array (1 .. Length) of Value_T;
-
-            begin
-               for J in Elements'Range loop
-                  Elements (J) := Const_Int
-                    (Element_Type,
-                     unsigned_long_long
-                       (Get_String_Char (String, Standard.Types.Int (J))),
-                     Sign_Extend => False);
-               end loop;
-
-               return Const_Array (Element_Type, Elements'Address, Length);
-            end;
+         when  N_Character_Literal | N_Numeric_Or_String_Literal =>
+            return Emit_Literal (Env, Node);
 
          when N_And_Then | N_Or_Else =>
             return Build_Short_Circuit_Op
@@ -3988,6 +3882,131 @@ package body GNATLLVM.Compile is
          return Phi;
       end;
    end Emit_If_Expression;
+
+   ------------------
+   -- Emit_Literal --
+   ------------------
+
+   function Emit_Literal (Env : Environ; Node : Node_Id) return Value_T is
+   begin
+      case Nkind (Node) is
+         when N_Character_Literal =>
+            return Const_Int
+              (Create_Type (Env, Etype (Node)),
+               Char_Literal_Value (Node));
+
+         when N_Integer_Literal =>
+            return Const_Int
+              (Create_Type (Env, Etype (Node)),
+               Intval (Node));
+
+         when N_Real_Literal =>
+            if Is_Fixed_Point_Type (Underlying_Type (Etype (Node))) then
+               return Const_Int
+                 (Create_Type (Env, Etype (Node)),
+                  Corresponding_Integer_Value (Node));
+            else
+               declare
+                  Real_Type : constant Type_T :=
+                    Create_Type (Env, Etype (Node));
+                  Val       : Ureal := Realval (Node);
+
+               begin
+                  if UR_Is_Zero (Val) then
+                     return Const_Real (Real_Type, 0.0);
+                  end if;
+
+                  --  First convert the value to a machine number if it isn't
+                  --  already. That will force the base to 2 for non-zero
+                  --  values and simplify the rest of the logic.
+
+                  if not Is_Machine_Number (Node) then
+                     Val := Machine
+                       (Base_Type (Underlying_Type (Etype (Node))),
+                        Val, Round_Even, Node);
+                  end if;
+
+                  --  ??? See trans.c (case N_Real_Literal) for handling of
+                  --  N_Real_Literal in gigi.
+
+                  if UI_Is_In_Int_Range (Numerator (Val))
+                    and then UI_Is_In_Int_Range (Denominator (Val))
+                  then
+                     if UR_Is_Negative (Val) then
+                        return Const_Real
+                          (Real_Type,
+                           -double (UI_To_Int (Numerator (Val))) /
+                            double (UI_To_Int (Denominator (Val))));
+
+                     else
+                        return Const_Real
+                          (Real_Type,
+                           double (UI_To_Int (Numerator (Val))) /
+                           double (UI_To_Int (Denominator (Val))));
+                     end if;
+                  else
+                     declare
+                        function Const_Real_Of_String
+                          (Real_Ty : Type_T;
+                           Text    : String;
+                           S_Len   : unsigned) return Value_T;
+                        pragma Import
+                          (C, Const_Real_Of_String,
+                           "LLVMConstRealOfStringAndSize");
+
+                        Num_Str : constant String :=
+                          UI_Image (Numerator (Val), Decimal) & ".0";
+                        Den_Str : constant String :=
+                          UI_Image (Denominator (Val), Decimal) & ".0";
+                        Num     : constant Value_T :=
+                          Const_Real_Of_String
+                            (Real_Type, Num_Str, Num_Str'Length);
+                        Den     : constant Value_T :=
+                          Const_Real_Of_String
+                            (Real_Type, Den_Str, Den_Str'Length);
+
+                     begin
+                        if UR_Is_Negative (Val) then
+                           return F_Sub
+                             (Env.Bld,
+                              Const_Real (Real_Type, 0.0),
+                              F_Div (Env.Bld, Num, Den, ""), "");
+                        else
+                           return F_Div (Env.Bld, Num, Den, "");
+                        end if;
+                     end;
+                  end if;
+               end;
+            end if;
+
+         when N_String_Literal =>
+            declare
+               String       : constant String_Id := Strval (Node);
+               Array_Type   : constant Type_T :=
+                 Create_Type (Env, Etype (Node));
+               Element_Type : constant Type_T := Get_Element_Type (Array_Type);
+               Length       : constant Interfaces.C.unsigned :=
+                 Get_Array_Length (Array_Type);
+               Elements     : array (1 .. Length) of Value_T;
+
+            begin
+               for J in Elements'Range loop
+                  Elements (J) := Const_Int
+                    (Element_Type,
+                     unsigned_long_long
+                       (Get_String_Char (String, Standard.Types.Int (J))),
+                     Sign_Extend => False);
+               end loop;
+
+               return Const_Array (Element_Type, Elements'Address, Length);
+            end;
+
+         when others =>
+            Error_Msg_N ("unhandled literal node", Node);
+            return Get_Undef (Create_Type (Env, Etype (Node)));
+
+      end case;
+   end Emit_Literal;
 
    ----------------
    -- Emit_Shift --

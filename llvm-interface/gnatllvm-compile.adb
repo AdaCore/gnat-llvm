@@ -2149,20 +2149,9 @@ package body GNATLLVM.Compile is
 
          when N_Op_Minus =>
             if Is_Floating_Point_Type (Etype (Node)) then
-               return F_Sub
-                  (Env.Bld,
-                   Const_Real
-                     (Create_Type (Env, Etype (Node)), 0.0),
-                   Emit_Expr (Right_Opnd (Node)),
-                   "minus");
-
+               return F_Neg (Env.Bld, Emit_Expr (Right_Opnd (Node)), "");
             else
-               return Sub
-                  (Env.Bld,
-                   Const_Int
-                     (Create_Type (Env, Etype (Node)), 0, False),
-                   Emit_Expr (Right_Opnd (Node)),
-                   "minus");
+               return NSW_Neg (Env.Bld, Emit_Expr (Right_Opnd (Node)), "");
             end if;
 
          when N_Unchecked_Type_Conversion =>

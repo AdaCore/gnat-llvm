@@ -135,9 +135,9 @@ package body GNATLLVM.Compile is
    --  maximum value and return the minimum otherwise.
 
    function Emit_Shift
-     (Env       : Environ;
-      Node      : Node_Id;
-      LHS, RHS  : Value_T) return Value_T;
+     (Env                 : Environ;
+      Node                : Node_Id;
+      LHS_Node, RHS_Node  : Node_Id) return Value_T;
    --  Helper for Emit_Expression: handle shift and rotate operations
 
    function Emit_Subprogram_Decl
@@ -2018,93 +2018,78 @@ package body GNATLLVM.Compile is
 
    begin
       if Nkind (Node) in N_Binary_Op then
+
+         --  Handle comparisons and shifts with helper functions, then
+         --  the rest are by generating the appropriate LLVM IR entry.
+
          if Nkind (Node) in N_Op_Compare then
             return Emit_Comparison
               (Env, Get_Preds (Nkind (Node)),
                Get_Fullest_View (Etype (Left_Opnd (Node))),
                Left_Opnd (Node), Right_Opnd (Node));
+
+         elsif Nkind (Node) in N_Op_Shift then
+            return Emit_Shift (Env, Node, Left_Opnd (Node), Right_Opnd (Node));
          end if;
 
          declare
-            T    : constant Entity_Id := Etype (Left_Opnd (Node));
-            LVal : constant Value_T := Emit_Expr (Left_Opnd (Node));
-            RVal : constant Value_T := Emit_Expr (Right_Opnd (Node));
+            type Opf is access function
+              (Bld : Builder_T; LHS, RHS : Value_T; Name : String)
+              return Value_T;
+
+            T      : constant Entity_Id := Etype (Left_Opnd (Node));
+            LVal   : constant Value_T := Emit_Expr (Left_Opnd (Node));
+            RVal   : constant Value_T := Emit_Expr (Right_Opnd (Node));
+            FP     : constant Boolean := Is_Floating_Point_Type (T);
+            Unsign : constant Boolean := Is_Unsigned_Type (T);
+            Subp : Opf := null;
 
          begin
             case Nkind (Node) is
-            when N_Op_Add =>
-               if Is_Floating_Point_Type (T) then
-                  return F_Add (Env.Bld, LVal, RVal, "");
-               else
-                  return NSW_Add (Env.Bld, LVal, RVal, "");
-               end if;
+               when N_Op_Add =>
+                  Subp := (if FP then F_Add'Access else NSW_Add'Access);
 
-            when N_Op_Subtract =>
-               if Is_Floating_Point_Type (T) then
-                  return F_Sub (Env.Bld, LVal, RVal, "");
-               else
-                  return NSW_Sub (Env.Bld, LVal, RVal, "");
-               end if;
+               when N_Op_Subtract =>
+                  Subp := (if FP then F_Sub'Access else NSW_Sub'Access);
 
-            when N_Op_Multiply =>
-               if Is_Floating_Point_Type (T) then
-                  return F_Mul (Env.Bld, LVal, RVal, "");
-               else
-                  return NSW_Mul (Env.Bld, LVal, RVal, "");
-               end if;
+               when N_Op_Multiply =>
+                  Subp := (if FP then F_Mul'Access else NSW_Mul'Access);
 
-            when N_Op_Divide =>
-               if Is_Signed_Integer_Type (T) then
-                  return S_Div (Env.Bld, LVal, RVal, "");
-               elsif Is_Floating_Point_Type (T) then
-                  return F_Div (Env.Bld, LVal, RVal, "");
-               elsif Is_Unsigned_Type (T) then
-                  return U_Div (Env.Bld, LVal, RVal, "");
-               elsif Is_Fixed_Point_Type (T) then
-                  if Is_Unsigned_Type (T) then
-                     return S_Div (Env.Bld, LVal, RVal, "");
-                  else
-                     return S_Div (Env.Bld, LVal, RVal, "");
-                  end if;
-               else
-                  Error_Msg_N ("unsupported kind of division", Node);
-                  return Get_Undef (Create_Type (Env, T));
-               end if;
+               when N_Op_Divide =>
+                  Subp :=
+                    (if FP then F_Div'Access
+                     elsif Unsign then U_Div'Access else S_Div'Access);
 
-            when N_Op_Rem =>
-               return
-                 (if Is_Unsigned_Type (Etype (Left_Opnd (Node)))
-                  then U_Rem (Env.Bld, LVal, RVal, "")
-                  else S_Rem (Env.Bld, LVal, RVal, ""));
+               when N_Op_Rem =>
+                  Subp := (if Unsign then U_Rem'Access else S_Rem'Access);
 
-            when N_Op_And =>
-               return Build_And (Env.Bld, LVal, RVal, "");
+               when N_Op_And =>
+                  Subp := Build_And'Access;
 
-            when N_Op_Or =>
-               return Build_Or (Env.Bld, LVal, RVal, "");
+               when N_Op_Or =>
+                  Subp := Build_Or'Access;
 
-            when N_Op_Xor =>
-               return Build_Xor (Env.Bld, LVal, RVal, "");
+               when N_Op_Xor =>
+                  Subp := Build_Xor'Access;
 
-            when N_Op_Mod =>
-               return U_Rem (Env.Bld, LVal, RVal, "");
+               when N_Op_Mod =>
+                  Subp := U_Rem'Access;
 
-            when N_Op_Shift_Left | N_Op_Shift_Right
-               | N_Op_Shift_Right_Arithmetic
-               | N_Op_Rotate_Left | N_Op_Rotate_Right
-            =>
-               return Emit_Shift (Env, Node, LVal, RVal);
+               when others =>
+                  null;
 
-            when others =>
+            end case;
+
+            if Subp /= null then
+               return Subp (Env.Bld, LVal, RVal, "");
+            else
                Error_Msg_N
                  ("unhandled node kind in expression: `" &
                     Node_Kind'Image (Nkind (Node)) & "`", Node);
                return Get_Undef (Create_Type (Env, T));
-            end case;
-
-            --  No need to handle modulo manually for non binary modulus types,
-            --  this is taken care of by the front-end.
+            end if;
          end;
+
       else
          case Nkind (Node) is
          when N_Expression_With_Actions =>
@@ -4009,12 +3994,14 @@ package body GNATLLVM.Compile is
    ----------------
 
    function Emit_Shift
-     (Env       : Environ;
-      Node      : Node_Id;
-      LHS, RHS  : Value_T) return Value_T
+     (Env                 : Environ;
+      Node                : Node_Id;
+      LHS_Node, RHS_Node  : Node_Id) return Value_T
    is
       To_Left, Rotate, Arithmetic : Boolean := False;
 
+      LHS       : constant Value_T := Emit_Expression (Env, LHS_Node);
+      RHS       : constant Value_T := Emit_Expression (Env, RHS_Node);
       Operation : constant Node_Kind := Nkind (Node);
       Result    : Value_T := LHS;
       LHS_Type  : constant Type_T := Type_Of (LHS);

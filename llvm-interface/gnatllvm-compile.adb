@@ -2112,12 +2112,7 @@ package body GNATLLVM.Compile is
                No_Value_T, No_Value_T, Nkind (Node));
 
          when N_Op_Not =>
-            declare
-               Expr : constant Value_T := Emit_Expr (Right_Opnd (Node));
-            begin
-               return Build_Xor
-                 (Env.Bld, Expr, Const_Ones (Type_Of (Expr)), "not");
-            end;
+            return Build_Not (Env.Bld, Emit_Expr (Right_Opnd (Node)), "");
 
          when N_Op_Abs =>
             --  Emit: X >= 0 ? X : -X;

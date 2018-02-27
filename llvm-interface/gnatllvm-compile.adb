@@ -117,7 +117,7 @@ package body GNATLLVM.Compile is
       Cond              : Node_Id;
       BB_True, BB_False : Basic_Block_T);
    --  Helper for Emit_If to generate branch to BB_True or BB_False
-   --  depending on whether Node is true or false.a
+   --  depending on whether Node is true or false.
 
    function Emit_If_Expression
      (Env  : Environ;
@@ -3820,14 +3820,15 @@ package body GNATLLVM.Compile is
    procedure Emit_If_Cond
      (Env               : Environ;
       Cond              : Node_Id;
-      BB_True, BB_False : Basic_Block_T) is
-
-      BB_New            : Basic_Block_T;
+      BB_True, BB_False : Basic_Block_T)
+   is
+      BB_New : Basic_Block_T;
    begin
       case Nkind (Cond) is
 
          --  Process operations that we can handle in terms of different branch
          --  mechanisms, such as short-circuit operators.
+
          when N_Op_Not =>
             Emit_If_Cond (Env, Right_Opnd (Cond), BB_False, BB_True);
 
@@ -3835,6 +3836,7 @@ package body GNATLLVM.Compile is
             --  Depending on the result of the the test of the left operand,
             --  we either go to a final basic block or to a new intermediate
             --  one where we test the right operand.
+
             BB_New := Create_Basic_Block (Env, "short-circuit");
             Emit_If_Cond (Env, Left_Opnd (Cond),
                           (if Nkind (Cond) = N_And_Then

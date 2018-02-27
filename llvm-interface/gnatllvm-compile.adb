@@ -3836,6 +3836,7 @@ package body GNATLLVM.Compile is
             Emit_If_Cond (Env, Right_Opnd (Cond), BB_False, BB_True);
 
          when N_And_Then | N_Or_Else =>
+
             --  Depending on the result of the the test of the left operand,
             --  we either go to a final basic block or to a new intermediate
             --  one where we test the right operand.

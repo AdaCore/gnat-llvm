@@ -112,6 +112,13 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (Node) = N_If_Statement;
    --  Helper for Emit: handle if statements
 
+   procedure Emit_If_Cond
+     (Env               : Environ;
+      Cond              : Node_Id;
+      BB_True, BB_False : Basic_Block_T);
+   --  Helper for Emit_If to generate branch to BB_True or BB_False
+   --  depending on whether Node is true or false.a
+
    function Emit_If_Expression
      (Env  : Environ;
       Node : Node_Id) return Value_T
@@ -3750,7 +3757,6 @@ package body GNATLLVM.Compile is
 
       If_Parts     : array (0 .. List_Length (Elsif_Parts (Node))) of If_Ent;
 
-      Cond         : Value_T;
       BB_End       : Basic_Block_T;
       If_Parts_Pos : Nat := 1;
       Elsif_Part   : Node_Id;
@@ -3791,8 +3797,7 @@ package body GNATLLVM.Compile is
       --  statement.
 
       for Part of If_Parts loop
-         Cond := Emit_Expression (Env, Part.Cond);
-         Discard (Build_Cond_Br (Env.Bld, Cond, Part.BB_True, Part.BB_False));
+         Emit_If_Cond (Env, Part.Cond, Part.BB_True, Part.BB_False);
          Position_Builder_At_End (Env.Bld, Part.BB_True);
          Emit_List (Env, Part.Stmts);
          Discard (Build_Br (Env.Bld, BB_End));
@@ -3807,6 +3812,43 @@ package body GNATLLVM.Compile is
       end if;
 
    end Emit_If;
+
+   ------------------
+   -- Emit_If_Cond --
+   ------------------
+
+   procedure Emit_If_Cond
+     (Env               : Environ;
+      Cond              : Node_Id;
+      BB_True, BB_False : Basic_Block_T) is
+
+      BB_New            : Basic_Block_T;
+   begin
+      case Nkind (Cond) is
+
+         --  Process operations that we can handle in terms of different branch
+         --  mechanisms, such as short-circuit operators.
+         when N_Op_Not =>
+            Emit_If_Cond (Env, Right_Opnd (Cond), BB_False, BB_True);
+
+         when N_And_Then | N_Or_Else =>
+            --  Depending on the result of the the test of the left operand,
+            --  we either go to a final basic block or to a new intermediate
+            --  one where we test the right operand.
+            BB_New := Create_Basic_Block (Env, "short-circuit");
+            Emit_If_Cond (Env, Left_Opnd (Cond),
+                          (if Nkind (Cond) = N_And_Then
+                           then BB_New else BB_True),
+                          (if Nkind (Cond) = N_And_Then
+                           then BB_False else BB_New));
+            Position_Builder_At_End (Env.Bld, BB_New);
+            Emit_If_Cond (Env, Right_Opnd (Cond), BB_True, BB_False);
+
+         when others =>
+            Discard (Build_Cond_Br (Env.Bld, Emit_Expression (Env, Cond),
+                                    BB_True, BB_False));
+      end case;
+   end Emit_If_Cond;
 
    ------------------------
    -- Emit_If_Expression --

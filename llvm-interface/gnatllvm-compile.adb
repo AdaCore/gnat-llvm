@@ -96,12 +96,12 @@ package body GNATLLVM.Compile is
 
    function Emit_Comparison
      (Env          : Environ;
-      Operation    : Pred_Mapping;
+      Kind         : Node_Kind;
       Operand_Type : Entity_Id;
       LHS, RHS     : Node_Id) return Value_T;
    function Emit_Comparison
      (Env          : Environ;
-      Operation    : Pred_Mapping;
+      Kind         : Node_Kind;
       Operand_Type : Entity_Id;
       Node         : Node_Id;
       LHS, RHS     : Value_T) return Value_T;
@@ -2033,7 +2033,7 @@ package body GNATLLVM.Compile is
 
          if Nkind (Node) in N_Op_Compare then
             return Emit_Comparison
-              (Env, Get_Preds (Nkind (Node)),
+              (Env, Nkind (Node),
                Get_Fullest_View (Etype (Left_Opnd (Node))),
                Left_Opnd (Node), Right_Opnd (Node));
 
@@ -2462,13 +2462,13 @@ package body GNATLLVM.Compile is
 
                Comp1 := Emit_Comparison
                  (Env,
-                  Get_Preds (if Nkind (Node) = N_In then N_Op_Ge else N_Op_Lt),
+                  (if Nkind (Node) = N_In then N_Op_Ge else N_Op_Lt),
                   Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
                   Left, Emit_Expr (Low_Bound (Rng)));
 
                Comp2 := Emit_Comparison
                  (Env,
-                  Get_Preds (if Nkind (Node) = N_In then N_Op_Le else N_Op_Gt),
+                  (if Nkind (Node) = N_In then N_Op_Le else N_Op_Gt),
                   Get_Fullest_View (Etype (Left_Opnd (Node))), Node,
                   Left, Emit_Expr (High_Bound (Rng)));
 
@@ -3352,10 +3352,11 @@ package body GNATLLVM.Compile is
 
    function Emit_Comparison
      (Env          : Environ;
-      Operation    : Pred_Mapping;
+      Kind         : Node_Kind;
       Operand_Type : Entity_Id;
       LHS, RHS     : Node_Id) return Value_T
    is
+      Operation    : constant Pred_Mapping := Get_Preds (Kind);
       function Subp_Ptr (Node : Node_Id) return Value_T is
         (if Nkind (Node) = N_Null
          then Const_Null (Pointer_Type (Int_Ty (8), 0))
@@ -3383,7 +3384,7 @@ package body GNATLLVM.Compile is
         or else Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
         or else Is_Access_Type (Operand_Type)
       then
-         return Emit_Comparison (Env, Operation, Operand_Type, LHS,
+         return Emit_Comparison (Env, Kind, Operand_Type, LHS,
                                  Emit_Expression (Env, LHS),
                                  Emit_Expression (Env, RHS));
 
@@ -3522,10 +3523,12 @@ package body GNATLLVM.Compile is
 
    function Emit_Comparison
      (Env          : Environ;
-      Operation    : Pred_Mapping;
+      Kind         : Node_Kind;
       Operand_Type : Entity_Id;
       Node         : Node_Id;
-      LHS, RHS     : Value_T) return Value_T is
+      LHS, RHS     : Value_T) return Value_T
+   is
+      Operation    : constant Pred_Mapping := Get_Preds (Kind);
    begin
       if Is_Floating_Point_Type (Operand_Type) then
          return F_Cmp
@@ -3624,7 +3627,7 @@ package body GNATLLVM.Compile is
                             or else not Is_Type (Entity (Choice)))
                then
                   Comp := Emit_Comparison
-                    (Env, Get_Preds (N_Op_Eq), Val_Typ,
+                    (Env, N_Op_Eq, Val_Typ,
                      Node, Val, Emit_Expression (Env, Choice));
 
                --  Range, do range test
@@ -3650,14 +3653,14 @@ package body GNATLLVM.Compile is
                   end case;
 
                   Comp := Emit_Comparison
-                    (Env, Get_Preds (N_Op_Ge), Val_Typ, Node, Val,
+                    (Env, N_Op_Ge, Val_Typ, Node, Val,
                      Const_Int
                        (Typ,
                         unsigned_long_long
                           (UI_To_Long_Long_Integer (Expr_Value (LBD))),
                         False));
                   Comp3 := Emit_Comparison
-                    (Env, Get_Preds (N_Op_Le), Val_Typ, Node, Val,
+                    (Env, N_Op_Le, Val_Typ, Node, Val,
                      Const_Int
                        (Typ,
                         unsigned_long_long

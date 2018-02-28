@@ -3932,11 +3932,7 @@ package body GNATLLVM.Compile is
          when N_In | N_Not_In =>
 
             --  We don't bother with FP cases here since it's too much work
-            --  for too little benefit.  For discrete types, handle ranges
-            --  by testing against the high and the low and branching as
-            --  appropriate.  We must be sure to evaluate the LHS only
-            --  once.  But first check for a range of size one since that's
-            --  only one comparison.
+            --  for too little benefit.
 
             if Is_Discrete_Type (Etype (Left_Opnd (Cond))) then
                declare
@@ -3985,6 +3981,12 @@ package body GNATLLVM.Compile is
       Inner_BB          : Basic_Block_T;
       LLVM_Type         : constant Type_T := Create_Type (Env, Operand_Type);
    begin
+
+      --  For discrete types (all we handle here), handle ranges by testing
+      --  against the high and the low and branching as appropriate.  We
+      --  must be sure to evaluate the LHS only once.  But first check for
+      --  a range of size one since that's only one comparison.
+
       if Low = High then
          Cond := Emit_Comparison
            (Env, N_Op_Eq, Operand_Type, Node,

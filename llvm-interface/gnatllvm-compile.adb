@@ -125,6 +125,17 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (Node) = N_If_Expression;
    --  Helper for Emit_Expression: handle if expressions
 
+   procedure Emit_If_Range
+     (Env               : Environ;
+      Node              : Node_Id;
+      Operand_Type      : Entity_Id;
+      LHS               : Value_T;
+      Low, High         : Uint;
+      BB_True, BB_False : Basic_Block_T);
+   --  Emit code to branch to BB_True or BB_False depending on whether LHS,
+   --  which is of type Operand_Type, is in the range from Low to High.  Node
+   --  is used only for error messages.
+
    procedure Emit_Case (Env : Environ; Node : Node_Id);
    --  Handle case statements
 
@@ -3931,41 +3942,16 @@ package body GNATLLVM.Compile is
                declare
                   Operand_Type  : constant Entity_Id :=
                     Etype (Left_Opnd (Cond));
-                  LLVM_Type     : constant Type_T :=
-                    Create_Type (Env, Operand_Type);
-                  This_BB_True  : constant Basic_Block_T :=
-                    (if Nkind (Cond) = N_In then BB_True else BB_False);
-                  This_BB_False : constant Basic_Block_T :=
-                    (if Nkind (Cond) = N_In then BB_False else BB_True);
-                  Inner_BB      : Basic_Block_T;
+                  LHS           : constant Value_T :=
+                    Emit_Expression (Env, Left_Opnd (Cond));
                   Low, High     : Uint;
-                  LHS, L_Cond     : Value_T;
 
                begin
-                  LHS := Emit_Expression (Env, Left_Opnd (Cond));
                   Decode_Range (Right_Opnd (Cond), Low, High);
-                  if Low = High then
-                     L_Cond := Emit_Comparison
-                       (Env, N_Op_Eq, Operand_Type, Cond,
-                        LHS, Const_Int (LLVM_Type, Low));
-                     Discard (Build_Cond_Br
-                                (Env.Bld, L_Cond,
-                                 This_BB_True, This_BB_False));
-                  else
-                     Inner_BB := Create_Basic_Block (Env, "range-test");
-                     L_Cond := Emit_Comparison
-                       (Env, N_Op_Ge, Operand_Type, Cond,
-                        LHS, Const_Int (LLVM_Type, Low));
-                     Discard (Build_Cond_Br
-                                (Env.Bld, L_Cond, Inner_BB, This_BB_False));
-                     Position_Builder_At_End (Env.Bld, Inner_BB);
-                     L_Cond := Emit_Comparison
-                       (Env, N_Op_Le, Operand_Type, Cond,
-                        LHS, Const_Int (LLVM_Type, High));
-                     Discard (Build_Cond_Br
-                                (Env.Bld, L_Cond,
-                                 This_BB_True, This_BB_False));
-                  end if;
+                  Emit_If_Range
+                    (Env, Cond, Operand_Type, LHS, Low, High,
+                     (if Nkind (Cond) = N_In then BB_True else BB_False),
+                     (if Nkind (Cond) = N_In then BB_False else BB_True));
                end;
                return;
             end if;
@@ -3982,6 +3968,39 @@ package body GNATLLVM.Compile is
                               BB_True, BB_False));
 
    end Emit_If_Cond;
+
+   -------------------
+   -- Emit_If_Range --
+   -------------------
+
+   procedure Emit_If_Range
+     (Env               : Environ;
+      Node              : Node_Id;
+      Operand_Type      : Entity_Id;
+      LHS               : Value_T;
+      Low, High         : Uint;
+      BB_True, BB_False : Basic_Block_T)
+   is
+      Cond              : Value_T;
+      Inner_BB          : Basic_Block_T;
+      LLVM_Type         : constant Type_T := Create_Type (Env, Operand_Type);
+   begin
+      if Low = High then
+         Cond := Emit_Comparison
+           (Env, N_Op_Eq, Operand_Type, Node,
+            LHS, Const_Int (LLVM_Type, Low));
+         Discard (Build_Cond_Br (Env.Bld, Cond, BB_True, BB_False));
+      else
+         Inner_BB := Create_Basic_Block (Env, "range-test");
+         Cond := Emit_Comparison (Env, N_Op_Ge, Operand_Type, Node,
+                                  LHS, Const_Int (LLVM_Type, Low));
+         Discard (Build_Cond_Br (Env.Bld, Cond, Inner_BB, BB_False));
+         Position_Builder_At_End (Env.Bld, Inner_BB);
+         Cond := Emit_Comparison (Env, N_Op_Le, Operand_Type, Node,
+                                  LHS, Const_Int (LLVM_Type, High));
+         Discard (Build_Cond_Br (Env.Bld, Cond, BB_True, BB_False));
+      end if;
+   end Emit_If_Range;
 
    ------------------------
    -- Emit_If_Expression --

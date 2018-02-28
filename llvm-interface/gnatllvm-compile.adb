@@ -154,6 +154,13 @@ package body GNATLLVM.Compile is
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
+   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint);
+   --  Decode the right operand of an N_In or N_Not_In or of a Choice in
+   --  a case statement into the low and high bounds.  We only handle
+   --  discrete types here: real types can't occur in switch statements
+   --  and don't occur in range tests in "if" statements often enough to
+   --  bother with.
+
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id);
    --  Compile a subprogram body and save it in the environment
 
@@ -586,6 +593,63 @@ package body GNATLLVM.Compile is
          Emit_One_Body (Node);
       end;
    end Emit_Subprogram_Body;
+
+   ------------------
+   -- Decode_Range --
+   ------------------
+
+   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint)
+   is
+      N_Low, N_High : Node_Id;
+   begin
+
+      case Nkind (Rng) is
+         when N_Identifier =>
+
+            --  An N_Identifier can either be a type, in which case we look
+            --  at the range of the type, or a constant, in which case we
+            --  look at the initializing expression.
+
+            if Is_Type (Entity (Rng)) then
+               Decode_Range (Scalar_Range (Etype (Rng)), Low, High);
+            else
+               Decode_Range (Expression (Parent (Defining_Identifier (Rng))),
+                             Low, High);
+            end if;
+            return;
+
+         when N_Subtype_Indication =>
+            Decode_Range (Range_Expression (Constraint (Rng)), Low, High);
+            return;
+
+         when N_Range =>
+            N_Low := Low_Bound (Rng);
+            N_High := High_Bound (Rng);
+
+         when N_Character_Literal | N_Integer_Literal =>
+            N_Low := Rng;
+            N_High := Rng;
+
+         when others =>
+            Error_Msg_N ("unknown range operand", Rng);
+            return;
+      end case;
+
+      --  The low and high bounds must be of the same type, so unpack them.
+
+      pragma Assert (Nkind (N_Low) = Nkind (N_High));
+      pragma Assert (Nkind (N_Low) = N_Integer_Literal
+                     or else Nkind (N_Low) = N_Character_Literal);
+      pragma Assert (Is_Discrete_Type (Etype (N_Low)));
+
+      if Nkind (N_Low) = N_Integer_Literal then
+            Low := Intval (N_Low);
+            High := Intval (N_High);
+      elsif Nkind (N_Low) =  N_Character_Literal then
+            Low := Char_Literal_Value (N_Low);
+            High := Char_Literal_Value (N_High);
+      end if;
+   end Decode_Range;
 
    ----------
    -- Emit --
@@ -3574,6 +3638,7 @@ package body GNATLLVM.Compile is
       Val          : Value_T;
       Typ          : Type_T;
       First_Choice : Boolean;
+      Low, High    : Uint;
 
    begin
       --  First we do a prescan to see if there are any ranges, if so, we will
@@ -3622,6 +3687,7 @@ package body GNATLLVM.Compile is
             loop
                --  Simple expression, equality test
 
+               Decode_Range (Choice, Low, High);
                if not Nkind_In (Choice, N_Range, N_Subtype_Indication)
                  and then (not Is_Entity_Name (Choice)
                             or else not Is_Type (Entity (Choice)))
@@ -3834,6 +3900,7 @@ package body GNATLLVM.Compile is
 
          when N_Op_Not =>
             Emit_If_Cond (Env, Right_Opnd (Cond), BB_False, BB_True);
+            return;
 
          when N_And_Then | N_Or_Else =>
 
@@ -3849,11 +3916,71 @@ package body GNATLLVM.Compile is
                            then BB_False else BB_New));
             Position_Builder_At_End (Env.Bld, BB_New);
             Emit_If_Cond (Env, Right_Opnd (Cond), BB_True, BB_False);
+            return;
+
+         when N_In | N_Not_In =>
+
+            --  We don't bother with FP cases here since it's too much work
+            --  for too little benefit.  For discrete types, handle ranges
+            --  by testing against the high and the low and branching as
+            --  appropriate.  We must be sure to evaluate the LHS only
+            --  once.  But first check for a range of size one since that's
+            --  only one comparison.
+
+            if Is_Discrete_Type (Etype (Left_Opnd (Cond))) then
+               declare
+                  Operand_Type  : constant Entity_Id :=
+                    Etype (Left_Opnd (Cond));
+                  LLVM_Type     : constant Type_T :=
+                    Create_Type (Env, Operand_Type);
+                  This_BB_True  : constant Basic_Block_T :=
+                    (if Nkind (Cond) = N_In then BB_True else BB_False);
+                  This_BB_False : constant Basic_Block_T :=
+                    (if Nkind (Cond) = N_In then BB_False else BB_True);
+                  Inner_BB      : Basic_Block_T;
+                  Low, High     : Uint;
+                  LHS, L_Cond     : Value_T;
+
+               begin
+                  LHS := Emit_Expression (Env, Left_Opnd (Cond));
+                  Decode_Range (Right_Opnd (Cond), Low, High);
+                  if Low = High then
+                     L_Cond := Emit_Comparison
+                       (Env, N_Op_Eq, Operand_Type, Cond,
+                        LHS, Const_Int (LLVM_Type, Low));
+                     Discard (Build_Cond_Br
+                                (Env.Bld, L_Cond,
+                                 This_BB_True, This_BB_False));
+                  else
+                     Inner_BB := Create_Basic_Block (Env, "range-test");
+                     L_Cond := Emit_Comparison
+                       (Env, N_Op_Ge, Operand_Type, Cond,
+                        LHS, Const_Int (LLVM_Type, Low));
+                     Discard (Build_Cond_Br
+                                (Env.Bld, L_Cond, Inner_BB, This_BB_False));
+                     Position_Builder_At_End (Env.Bld, Inner_BB);
+                     L_Cond := Emit_Comparison
+                       (Env, N_Op_Le, Operand_Type, Cond,
+                        LHS, Const_Int (LLVM_Type, High));
+                     Discard (Build_Cond_Br
+                                (Env.Bld, L_Cond,
+                                 This_BB_True, This_BB_False));
+                  end if;
+               end;
+               return;
+            end if;
 
          when others =>
-            Discard (Build_Cond_Br (Env.Bld, Emit_Expression (Env, Cond),
-                                    BB_True, BB_False));
+            null;
+
       end case;
+
+      --  If we haven't handling it via one of the special cases above,
+      --  just evaluate the expression and do the branch.
+
+      Discard (Build_Cond_Br (Env.Bld, Emit_Expression (Env, Cond),
+                              BB_True, BB_False));
+
    end Emit_If_Cond;
 
    ------------------------

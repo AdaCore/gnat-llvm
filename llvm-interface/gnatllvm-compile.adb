@@ -165,12 +165,15 @@ package body GNATLLVM.Compile is
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
+   function Get_Uint_Value (Node : Node_Id) return Uint;
+   --  If Node has a static Uint value, return it.  Otherwise, return No_Uint.
+
    procedure Decode_Range (Rng : Node_Id; Low, High : out Uint);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in
-   --  a case statement into the low and high bounds.  We only handle
-   --  discrete types here: real types can't occur in switch statements
-   --  and don't occur in range tests in "if" statements often enough to
-   --  bother with.
+   --  a case statement into the low and high bounds.  If either Low or High
+   --  is No_Uint, it means that we have a nonstatic value, a non-discrete
+   --  value, or we can't find the value.  This should not happen in switch
+   --  statements.
 
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id);
    --  Compile a subprogram body and save it in the environment
@@ -605,14 +608,61 @@ package body GNATLLVM.Compile is
       end;
    end Emit_Subprogram_Body;
 
+   --------------------
+   -- Get_Uint_Value --
+   --------------------
+
+   function Get_Uint_Value (Node : Node_Id) return Uint is
+      E : Entity_Id;
+   begin
+      case Nkind (Node) is
+         when N_Character_Literal =>
+            return Char_Literal_Value (Node);
+
+         when N_Integer_Literal =>
+            return Intval (Node);
+
+         when N_Real_Literal =>
+
+            --  We can only do something here if this is a fixed-point type.
+
+            if Is_Fixed_Point_Type (Get_Fullest_View (Etype (Node))) then
+               return Corresponding_Integer_Value (Node);
+            else
+               return No_Uint;
+            end if;
+
+         when N_Identifier =>
+
+            --  If an N_Identifier is static, its N_Defining_Identifier is
+            --  either an E_Constant or an E_Enumeration_Literal.
+
+            E := Entity (Node);
+            if Ekind (E) = E_Constant then
+               return Get_Uint_Value (Expression (Parent (E)));
+            elsif Ekind (E) = E_Enumeration_Literal then
+               return Enumeration_Rep (E);
+            else
+               return No_Uint;
+            end if;
+
+         when others =>
+            return No_Uint;
+      end case;
+   end Get_Uint_Value;
+
    ------------------
    -- Decode_Range --
    ------------------
 
-   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint)
-   is
-      N_Low, N_High : Node_Id;
+   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint) is
    begin
+      if not Is_Discrete_Or_Fixed_Point_Type (Get_Fullest_View (Etype (Rng)))
+      then
+         Low := No_Uint;
+         High := No_Uint;
+         return;
+      end if;
 
       case Nkind (Rng) is
          when N_Identifier =>
@@ -624,42 +674,24 @@ package body GNATLLVM.Compile is
             if Is_Type (Entity (Rng)) then
                Decode_Range (Scalar_Range (Etype (Rng)), Low, High);
             else
-               Decode_Range (Expression (Parent (Defining_Identifier (Rng))),
-                             Low, High);
+               Low := Get_Uint_Value (Rng);
+               High := Low;
             end if;
-            return;
 
          when N_Subtype_Indication =>
             Decode_Range (Range_Expression (Constraint (Rng)), Low, High);
-            return;
 
          when N_Range =>
-            N_Low := Low_Bound (Rng);
-            N_High := High_Bound (Rng);
+            Low := Get_Uint_Value (Low_Bound (Rng));
+            High := Get_Uint_Value (High_Bound (Rng));
 
          when N_Character_Literal | N_Integer_Literal =>
-            N_Low := Rng;
-            N_High := Rng;
+            Low := Get_Uint_Value (Rng);
+            High := Low;
 
          when others =>
             Error_Msg_N ("unknown range operand", Rng);
-            return;
       end case;
-
-      --  The low and high bounds must be of the same type, so unpack them.
-
-      pragma Assert (Nkind (N_Low) = Nkind (N_High));
-      pragma Assert (Nkind (N_Low) = N_Integer_Literal
-                     or else Nkind (N_Low) = N_Character_Literal);
-      pragma Assert (Is_Discrete_Type (Etype (N_Low)));
-
-      if Nkind (N_Low) = N_Integer_Literal then
-            Low := Intval (N_Low);
-            High := Intval (N_High);
-      elsif Nkind (N_Low) =  N_Character_Literal then
-            Low := Char_Literal_Value (N_Low);
-            High := Char_Literal_Value (N_High);
-      end if;
    end Decode_Range;
 
    ----------
@@ -3931,33 +3963,29 @@ package body GNATLLVM.Compile is
 
          when N_In | N_Not_In =>
 
-            --  We don't bother with FP cases here since it's too much work
-            --  for too little benefit.
+            --  If we can decode the range into Uint's, we can just do
+            --  simple comparisons.
 
-            if Is_Discrete_Type (Etype (Left_Opnd (Cond))) then
-               declare
-                  Operand_Type  : constant Entity_Id :=
-                    Etype (Left_Opnd (Cond));
-                  LHS           : constant Value_T :=
-                    Emit_Expression (Env, Left_Opnd (Cond));
-                  Low, High     : Uint;
-
-               begin
-                  Decode_Range (Right_Opnd (Cond), Low, High);
+            declare
+               Low, High     : Uint;
+            begin
+               Decode_Range (Right_Opnd (Cond), Low, High);
+               if Low /= No_Uint and then High /= No_Uint then
                   Emit_If_Range
-                    (Env, Cond, Operand_Type, LHS, Low, High,
+                    (Env, Cond, Etype (Left_Opnd (Cond)),
+                     Emit_Expression (Env, Left_Opnd (Cond)), Low, High,
                      (if Nkind (Cond) = N_In then BB_True else BB_False),
                      (if Nkind (Cond) = N_In then BB_False else BB_True));
-               end;
-               return;
-            end if;
+                  return;
+               end if;
+            end;
 
          when others =>
             null;
 
       end case;
 
-      --  If we haven't handling it via one of the special cases above,
+      --  If we haven't handled it via one of the special cases above,
       --  just evaluate the expression and do the branch.
 
       Discard (Build_Cond_Br (Env.Bld, Emit_Expression (Env, Cond),

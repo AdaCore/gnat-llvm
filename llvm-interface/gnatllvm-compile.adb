@@ -691,6 +691,8 @@ package body GNATLLVM.Compile is
 
          when others =>
             Error_Msg_N ("unknown range operand", Rng);
+            Low := No_Uint;
+            High := No_Uint;
       end case;
    end Decode_Range;
 

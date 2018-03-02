@@ -657,13 +657,6 @@ package body GNATLLVM.Compile is
 
    procedure Decode_Range (Rng : Node_Id; Low, High : out Uint) is
    begin
-      if not Is_Discrete_Or_Fixed_Point_Type (Get_Fullest_View (Etype (Rng)))
-      then
-         Low := No_Uint;
-         High := No_Uint;
-         return;
-      end if;
-
       case Nkind (Rng) is
          when N_Identifier =>
 
@@ -3667,192 +3660,246 @@ package body GNATLLVM.Compile is
    ---------------
 
    procedure Emit_Case (Env : Environ; Node : Node_Id) is
-      Use_If       : Boolean := False;
-      Alt          : Node_Id;
-      Choice       : Node_Id;
-      Val_Typ      : Node_Id;
-      LBD          : Node_Id;
-      HBD          : Node_Id;
-      Switch       : Value_T;
-      Comp         : Value_T;
-      Comp2        : Value_T := Value_T (System.Null_Address);
-      Comp3        : Value_T;
-      BB           : Basic_Block_T;
-      BB2          : Basic_Block_T;
-      BB_Next      : Basic_Block_T;
-      Val          : Value_T;
-      Typ          : Type_T;
-      First_Choice : Boolean;
-      Low, High    : Uint;
 
-   begin
-      --  First we do a prescan to see if there are any ranges, if so, we will
-      --  have to use an if/else translation since the LLVM switch instruction
-      --  does not accommodate ranges. Note that we do not have to test the
-      --  last alternative, since it translates to a default anyway without any
-      --  range tests.
+      function Count_Choices (Node : Node_Id) return Nat;
+      --  Count the total number of choices in this case statement.
 
-      Alt := First (Alternatives (Node));
-      Outer : while Present (Next (Alt)) loop
-         Choice := First (Discrete_Choices (Alt));
-         Inner : while Present (Choice) loop
-            if Nkind (Choice) = N_Range
-              or else (Is_Entity_Name (Choice)
-                        and then Is_Type (Entity (Choice)))
-            then
-               Use_If := True;
-               exit Outer;
-            end if;
+      -------------------
+      -- Count_Choices --
+      -------------------
 
-            Next (Choice);
-         end loop Inner;
+      function Count_Choices (Node : Node_Id) return Nat is
+         Num_Choices  : Nat := 0;
+         Alt          : Node_Id;
+         First_Choice : Node_Id;
+      begin
+         Alt := First (Alternatives (Node));
+         while Present (Alt) loop
 
-         Next (Alt);
-      end loop Outer;
+            --  We have a peculiarity in the "others" case of a case statement.
+            --  The Alternative points to a list of choices of which the
+            --  first choice is an N_Others_Choice.  So handle  that specially
+            --  both here and when we compute our Choices below.
 
-      --  Case where we have to use if's
-
-      if Use_If then
-         Alt     := First (Alternatives (Node));
-         Val     := Emit_Expression (Env, Expression (Node));
-         Val_Typ := Get_Fullest_View (Etype (Expression (Node)));
-         Typ     := Create_Type (Env, Val_Typ);
-         BB_Next := Create_Basic_Block (Env, "case-next");
-
-         loop
-            if No (Next (Alt)) then
-               Emit_List (Env, Statements (Alt));
-               Discard (Build_Br (Env.Bld, BB_Next));
-
-               exit;
-            end if;
-
-            Choice := First (Discrete_Choices (Alt));
-            First_Choice := True;
-            loop
-               --  Simple expression, equality test
-
-               Decode_Range (Choice, Low, High);
-               if not Nkind_In (Choice, N_Range, N_Subtype_Indication)
-                 and then (not Is_Entity_Name (Choice)
-                            or else not Is_Type (Entity (Choice)))
-               then
-                  Comp := Emit_Comparison
-                    (Env, N_Op_Eq, Val_Typ,
-                     Node, Val, Emit_Expression (Env, Choice));
-
-               --  Range, do range test
-
-               else
-                  case Nkind (Choice) is
-                     when N_Range =>
-                        LBD := Low_Bound  (Choice);
-                        HBD := High_Bound (Choice);
-
-                     when N_Subtype_Indication =>
-                        pragma Assert
-                          (Nkind (Constraint (Choice)) = N_Range_Constraint);
-
-                        LBD :=
-                          Low_Bound (Range_Expression (Constraint (Choice)));
-                        HBD :=
-                          High_Bound (Range_Expression (Constraint (Choice)));
-
-                     when others =>
-                        LBD := Type_Low_Bound  (Entity (Choice));
-                        HBD := Type_High_Bound (Entity (Choice));
-                  end case;
-
-                  Comp := Emit_Comparison
-                    (Env, N_Op_Ge, Val_Typ, Node, Val,
-                     Const_Int
-                       (Typ,
-                        unsigned_long_long
-                          (UI_To_Long_Long_Integer (Expr_Value (LBD))),
-                        False));
-                  Comp3 := Emit_Comparison
-                    (Env, N_Op_Le, Val_Typ, Node, Val,
-                     Const_Int
-                       (Typ,
-                        unsigned_long_long
-                          (UI_To_Long_Long_Integer (Expr_Value (HBD))),
-                        False));
-
-                  Comp := Build_Short_Circuit_Op
-                    (Env, Empty, Empty, Comp, Comp3, N_And_Then);
-               end if;
-
-               if First_Choice then
-                  First_Choice := False;
-               else
-                  Comp := Build_Short_Circuit_Op
-                    (Env, Empty, Empty, Comp, Comp2, N_Or_Else);
-               end if;
-
-               Comp2 := Comp;
-
-               Next (Choice);
-               exit when No (Choice);
-            end loop;
-
-            BB := Create_Basic_Block (Env, "when-taken");
-            BB2 := Create_Basic_Block (Env, "when");
-            Discard (Build_Cond_Br (Env.Bld, Comp, BB, BB2));
-
-            Position_Builder_At_End (Env.Bld, BB);
-            Emit_List (Env, Statements (Alt));
-            Discard (Build_Br (Env.Bld, BB_Next));
-            Position_Builder_At_End (Env.Bld, BB2);
-
-            Next (Alt);
-            BB := BB2;
+            First_Choice := First (Discrete_Choices (Alt));
+            Num_Choices := Num_Choices +
+              (if Nkind (First_Choice) = N_Others_Choice then
+               List_Length (Others_Discrete_Choices (First_Choice))
+               else List_Length (Discrete_Choices (Alt)));
+            Alt := Next (Alt);
          end loop;
 
-         Position_Builder_At_End (Env.Bld, BB_Next);
+         return Num_Choices;
+      end Count_Choices;
 
-      --  Case where we can use Switch
+      --  We have data structures to record information about each choice
+      --  and each alternative in the case statement.  For each choice, we
+      --  record the bounds and costs.  The "if" cost is one if both bounds
+      --  are the same, otherwise two.  The "switch" cost is the size of the
+      --  range, if known and fits in an integer, otherwise a large number
+      --  (we arbitrary use 1000).  For the alternative, we record the
+      --  basic block in which we've emitted the relevant code, the basic
+      --  block we'll use for the test (in the "if" case), the first and
+      --  last choice, and the total costs for all the choices in this
+      --  alternative.
 
-      else
-         --  Create basic blocks in the "natural" order
+      type One_Choice is record
+         Low, High            : Uint;
+         If_Cost, Switch_Cost : Nat;
+      end record;
+
+      type One_Alt is record
+         BB                        : Basic_Block_T;
+         First_Choice, Last_Choice : Nat;
+         If_Cost, Switch_Cost      : Nat;
+      end record;
+
+      Num_Alts         : constant Nat := List_Length (Alternatives (Node));
+      Alts             : array (1 .. Num_Alts) of One_Alt;
+      Choices          : array (1 .. Count_Choices (Node)) of One_Choice;
+      LHS              : constant Value_T :=
+        Emit_Expression (Env, Expression (Node));
+      LHS_Type         : constant Entity_Id :=
+        Get_Fullest_View (Etype (Expression (Node)));
+      Typ              : constant Type_T := Create_Type (Env, LHS_Type);
+      Start_BB         : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
+      Current_Alt      : Nat := 1;
+      First_Choice     : Nat;
+      Current_Choice   : Nat := 1;
+      Alt, Choice      : Node_Id;
+      Low, High        : Uint;
+      If_Cost          : Nat;
+      Switch_Cost      : Nat;
+      BB               : Basic_Block_T;
+      BB_End           : constant Basic_Block_T :=
+        Create_Basic_Block (Env, "switch-end");
+      Switch           : Value_T;
+
+      procedure Swap_Highest_Cost (Is_Switch : Boolean);
+      --  Move the highest-cost alternative to the last entry.  Is_Switch
+      --  says whether we look at the switch cost or the if cost.
+
+      procedure Swap_Highest_Cost (Is_Switch : Boolean) is
+         Temp_Alt         : One_Alt;
+         Worst_Alt        : Nat;
+         Worst_Cost       : Nat;
+         Our_Cost         : Nat;
+      begin
+         Worst_Alt := Alts'Last;
+         Worst_Cost := 0;
+         for I in Alts'Range loop
+            Our_Cost := (if Is_Switch then Alts (I).Switch_Cost
+                         else Alts (I).If_Cost);
+            if Our_Cost > Worst_Cost then
+               Worst_Cost := Our_Cost;
+               Worst_Alt := I;
+            end if;
+         end loop;
+
+         Temp_Alt := Alts (Alts'Last);
+         Alts (Alts'Last) := Alts (Worst_Alt);
+         Alts (Worst_Alt) := Temp_Alt;
+      end Swap_Highest_Cost;
+
+   begin
+
+      --  First we scan all the alternatives and choices and fill in most
+      --  of the data.  We emit the code for each alternative as part of
+      --  that process.
+
+      Alt := First (Alternatives (Node));
+      while Present (Alt) loop
+         First_Choice := Current_Choice;
+         BB := Create_Basic_Block (Env, "case-alt");
+         Position_Builder_At_End (Env.Bld, BB);
+         Emit_List (Env, Statements (Alt));
+         Discard (Build_Br (Env.Bld, BB_End));
+
+         Choice := First (Discrete_Choices (Alt));
+         if Nkind (Choice) = N_Others_Choice then
+            Choice := First (Others_Discrete_Choices (Choice));
+         end if;
+
+         while Present (Choice) loop
+            Decode_Range (Choice, Low, High);
+
+            --  When we compute the cost, set the cost of a null range
+            --  to zero.  If the if cost is 0 or 1, that's the switch cost too,
+            --  but if either of the bounds aren't in Int, we can't use
+            --  switch at all.
+
+            If_Cost := (if UI_Gt (Low, High) then 0
+                        elsif UI_Eq (Low, High) then 1 else 2);
+
+            Switch_Cost := (if not UI_Is_In_Int_Range (Low)
+                            or else not UI_Is_In_Int_Range (High)
+                            then 1000
+                            elsif If_Cost <= 1 then If_Cost
+                            elsif Integer (UI_To_Int (Low)) /= Integer'First
+                            and then Integer (UI_To_Int (High)) /= Integer'Last
+                            and then UI_To_Int (High) - UI_To_Int (Low) < 1000
+                            then UI_To_Int (High) - UI_To_Int (Low) + 1
+                            else 1000);
+            Choices (Current_Choice) := (Low => Low, High => High,
+                                         If_Cost => If_Cost,
+                                         Switch_Cost => Switch_Cost);
+            Current_Choice := Current_Choice + 1;
+            Choice := Next (Choice);
+         end loop;
+
+         If_Cost := 0;
+         Switch_Cost := 0;
+
+         --  Sum up the costs of all the choices in this alternative.
+
+         for I in First_Choice .. Current_Choice - 1 loop
+            If_Cost := If_Cost + Choices (I).If_Cost;
+            Switch_Cost := Switch_Cost + Choices (I).Switch_Cost;
+         end loop;
+
+         Alts (Current_Alt) := (BB => BB, First_Choice => First_Choice,
+                                Last_Choice => Current_Choice - 1,
+                                If_Cost => If_Cost,
+                                Switch_Cost => Switch_Cost);
+         Current_Alt := Current_Alt + 1;
+         Alt := Next (Alt);
+      end loop;
+
+      --  We have two strategies: we can use an LLVM switch instruction if
+      --  there aren't too many choices.  If not, we use "if".  First we
+      --  find the alternative with the largest switch cost and make that
+      --  the "others" option.  Then we see if the total cost of the remaining
+      --  alternatives is low enough (we use 100).  If so, use that approach.
+
+      Swap_Highest_Cost (True);
+      Position_Builder_At_End (Env.Bld, Start_BB);
+      Switch_Cost := 0;
+      for I in Alts'First .. Alts'Last - 1 loop
+         Switch_Cost := Switch_Cost + Alts (I).Switch_Cost;
+      end loop;
+
+      if Switch_Cost < 100 then
+
+         --  First we emit the actual "switch" statement, then we add
+         --  the cases to it.  Here we collect all the basic blocks.
 
          declare
-            BBs : array (1 .. List_Length (Alternatives (Node)))
-                    of Basic_Block_T;
+            BBs : array (Alts'Range) of Basic_Block_T;
          begin
-            for J in BBs'First .. BBs'Last - 1 loop
-               BBs (J) := Create_Basic_Block (Env, "when");
+            for I in BBs'Range loop
+               BBs (I) := Alts (I).BB;
             end loop;
 
-            BBs (BBs'Last) := Create_Basic_Block (Env, "when-others");
-            BB_Next := Create_Basic_Block (Env, "case-next");
-
-            Switch := Build_Switch
-              (Env.Bld,
-               Emit_Expression (Env, Expression (Node)),
-               BBs (BBs'Last),
-               BBs'Length);
-
-            Alt := First (Alternatives (Node));
-
-            for J in BBs'First .. BBs'Last - 1 loop
-               Choice := First (Discrete_Choices (Alt));
-
-               Position_Builder_At_End (Env.Bld, BBs (J));
-               Emit_List (Env, Statements (Alt));
-               Discard (Build_Br (Env.Bld, BB_Next));
-
-               Add_Case (Switch, Emit_Expression (Env, Choice), BBs (J));
-               Next (Alt);
+            Switch := Build_Switch (Env.Bld, LHS, BBs (BBs'Last), BBs'Length);
+            for I in Alts'First .. Alts'Last - 1 loop
+               for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
+                  for K in UI_To_Int (Choices (J).Low) ..
+                    UI_To_Int (Choices (J).High) loop
+                     Add_Case (Switch,
+                               Const_Int (Typ,
+                                          unsigned_long_long (Integer (K)),
+                                          Sign_Extend => True),
+                               Alts (I).BB);
+                  end loop;
+               end loop;
             end loop;
-
-            Position_Builder_At_End (Env.Bld, BBs (BBs'Last));
-            Alt := Last (Alternatives (Node));
-            Emit_List (Env, Statements (Alt));
-            Discard (Build_Br (Env.Bld, BB_Next));
-
-            Position_Builder_At_End (Env.Bld, BB_Next);
          end;
+
+      else
+
+         --  Otherwise, we generate if/elsif/elsif/else.
+
+         Swap_Highest_Cost (False);
+         for I in Alts'First .. Alts'Last - 1 loop
+            for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
+
+               --  Only do something if this is not a null range.
+
+               if Choices (J).If_Cost /= 0 then
+
+                  --  If we're processing the very last choice, then
+                  --  if the choice is not a match, we go to "others".
+                  --  Otherwise, we go to a new basic block that's the
+                  --  next choice.  Note that we can't simply test
+                  --  against Choices'Last because we may have swapped
+                  --  some other alternative with Alts'Last.
+
+                  if I = Alts'Last - 1 and then J = Alts (I).Last_Choice then
+                     BB := Alts (Alts'Last).BB;
+                  else
+                     BB := Create_Basic_Block (Env, "case-when");
+                  end if;
+
+                  Emit_If_Range (Env, Node, LHS_Type, LHS,
+                                 Choices (J).Low, Choices (J).High,
+                                 Alts (I).BB, BB);
+                  Position_Builder_At_End (Env.Bld, BB);
+               end if;
+            end loop;
+         end loop;
       end if;
+
+      Position_Builder_At_End (Env.Bld, BB_End);
    end Emit_Case;
 
    -------------

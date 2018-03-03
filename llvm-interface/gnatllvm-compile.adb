@@ -71,6 +71,12 @@ package body GNATLLVM.Compile is
       Expr                : Node_Id) return Value_T;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
+   function Convert_Scalar_Types
+     (Env            : Environ;
+      S_Type, D_Type : Entity_Id;
+      Expr           : Node_Id) return Value_T;
+   --  Helper of Build_Type_Conversion if both types are scalar.
+
    function Build_Short_Circuit_Op
      (Env                   : Environ;
       Node_Left, Node_Right : Node_Id;
@@ -3082,15 +3088,47 @@ package body GNATLLVM.Compile is
       function Value return Value_T is (Emit_Expression (Env, Expr));
 
    begin
-      --  For the moment, we handle only the simple cases of scalar and
-      --  float conversions.
 
-      if Is_Access_Type (D_Type) then
+      --  If both types are scalar, hand that off to our helper.
+
+      if Is_Scalar_Type (S_Type) and then Is_Scalar_Type (D_Type) then
+         return Convert_Scalar_Types (Env, S_Type, D_Type, Expr);
+
+      elsif Is_Access_Type (D_Type) then
          return Pointer_Cast
            (Env.Bld,
             Value, Create_Type (Env, D_Type), "ptr-conv");
 
-      elsif Is_Floating_Point_Type (S_Type)
+      elsif Is_Array_Type (S_Type) then
+         return Bit_Cast
+           (Env.Bld,
+            Value,
+            Create_Type (Env, D_Type),
+            "array-conv");
+
+      elsif Is_Record_Type (S_Type) and then Is_Record_Type (D_Type) then
+         return Build_Unchecked_Conversion (Env, Src_Type, Dest_Type, Expr);
+
+      else
+         Error_Msg_N ("unsupported type conversion", Expr);
+         return Get_Undef (Create_Type (Env, Dest_Type));
+
+      end if;
+   end Build_Type_Conversion;
+
+   --------------------------
+   -- Convert_Scalar_Types --
+   --------------------------
+
+   function Convert_Scalar_Types
+     (Env            : Environ;
+      S_Type, D_Type : Entity_Id;
+      Expr           : Node_Id) return Value_T
+   is
+      function Value return Value_T is (Emit_Expression (Env, Expr));
+   begin
+
+      if Is_Floating_Point_Type (S_Type)
         and then Is_Floating_Point_Type (D_Type)
       then
          if RM_Size (S_Type) = RM_Size (D_Type) then
@@ -3117,7 +3155,7 @@ package body GNATLLVM.Compile is
                return Value;
 
             elsif Esize (S_Type) < Esize (D_Type) then
-               if Is_Unsigned_Type (Dest_Type) then
+               if Is_Unsigned_Type (D_Type) then
 
                   --  ??? raise an exception if the value is negative (hence
                   --  the source type has to be checked).
@@ -3141,13 +3179,6 @@ package body GNATLLVM.Compile is
             Create_Type (Env, D_Type),
             "address-conv");
 
-      elsif Is_Array_Type (S_Type) then
-         return Bit_Cast
-           (Env.Bld,
-            Value,
-            Create_Type (Env, D_Type),
-            "array-conv");
-
       elsif Is_Integer_Type (S_Type)
         and then Is_Floating_Point_Type (D_Type)
       then
@@ -3170,14 +3201,11 @@ package body GNATLLVM.Compile is
               (Env.Bld, Value, Create_Type (Env, D_Type), "float-to-int");
          end if;
 
-      elsif Is_Record_Type (S_Type) and then Is_Record_Type (D_Type) then
-         return Build_Unchecked_Conversion (Env, Src_Type, Dest_Type, Expr);
-
       else
          Error_Msg_N ("unsupported type conversion", Expr);
-         return Get_Undef (Create_Type (Env, Dest_Type));
+         return Get_Undef (Create_Type (Env, D_Type));
       end if;
-   end Build_Type_Conversion;
+   end Convert_Scalar_Types;
 
    --------------------------------
    -- Build_Unchecked_Conversion --

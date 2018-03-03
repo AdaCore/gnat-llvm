@@ -3125,86 +3125,53 @@ package body GNATLLVM.Compile is
       S_Type, D_Type : Entity_Id;
       Expr           : Node_Id) return Value_T
    is
-      function Value return Value_T is (Emit_Expression (Env, Expr));
+      Value : constant Value_T := Emit_Expression (Env, Expr);
+      type Cvtf is access function
+        (Bld : Builder_T; Value : Value_T; Typ : Type_T; Name : String)
+        return Value_T;
+
+      Subp      : Cvtf := null;
+      Typ       : constant Type_T  := Create_Type (Env, D_Type);
+      Src_FP    : constant Boolean := Is_Floating_Point_Type (S_Type);
+      Dest_FP   : constant Boolean := Is_Floating_Point_Type (D_Type);
+      Src_Uns   : constant Boolean := Is_Unsigned_Type (S_Type);
+      Dest_Uns  : constant Boolean := Is_Unsigned_Type (D_Type);
+      Src_Size  : constant Uint := Esize (S_Type);
+      Dest_Size : constant Uint := Esize (D_Type);
+      Is_Trunc  : constant Boolean := Dest_Size < Src_Size;
    begin
 
-      if Is_Floating_Point_Type (S_Type)
-        and then Is_Floating_Point_Type (D_Type)
-      then
-         if RM_Size (S_Type) = RM_Size (D_Type) then
+      --  We have four cases: FP to FP, FP to Int, Int to FP, and Int to Int
+
+      if Src_FP and then Dest_FP then
+         if Src_Size = Dest_Size then
             return Value;
-         elsif RM_Size (S_Type) < RM_Size (D_Type) then
-            return FP_Ext
-              (Env.Bld, Value, Create_Type (Env, D_Type), "float-conv");
          else
-            return FP_Trunc
-              (Env.Bld, Value, Create_Type (Env, D_Type), "float-conv");
+            Subp := (if Is_Trunc then FP_Trunc'Access else FP_Ext'Access);
          end if;
 
-      elsif Is_Discrete_Or_Fixed_Point_Type (S_Type)
-        and then Is_Discrete_Or_Fixed_Point_Type (D_Type)
-      then
-         --  ??? Consider using Int_Cast instead
-         --  return Int_Cast
-         --    (Env.Bld, Val, Create_Type (Env, D_Type), "int-conv");
-
-         declare
-            Dest_LLVM_Type : constant Type_T := Create_Type (Env, D_Type);
-         begin
-            if Esize (S_Type) = Esize (D_Type) then
-               return Value;
-
-            elsif Esize (S_Type) < Esize (D_Type) then
-               if Is_Unsigned_Type (D_Type) then
-
-                  --  ??? raise an exception if the value is negative (hence
-                  --  the source type has to be checked).
-
-                  return Z_Ext (Env.Bld, Value, Dest_LLVM_Type, "int-conv");
-
-               else
-                  return S_Ext (Env.Bld, Value, Dest_LLVM_Type, "int-conv");
-               end if;
-            else
-               return Trunc (Env.Bld, Value, Dest_LLVM_Type, "int-conv");
-            end if;
-         end;
-
-      elsif Is_Descendant_Of_Address (S_Type)
-        and then Is_Descendant_Of_Address (D_Type)
-      then
-         return Bit_Cast
-           (Env.Bld,
-            Value,
-            Create_Type (Env, D_Type),
-            "address-conv");
-
-      elsif Is_Integer_Type (S_Type)
-        and then Is_Floating_Point_Type (D_Type)
-      then
-         if Is_Unsigned_Type (S_Type) then
-            return UI_To_FP
-              (Env.Bld, Value, Create_Type (Env, D_Type), "uint-to-float");
-         else
-            return SI_To_FP
-              (Env.Bld, Value, Create_Type (Env, D_Type), "int-to-float");
-         end if;
-
-      elsif Is_Floating_Point_Type (S_Type)
-        and then Is_Integer_Type (D_Type)
-      then
-         if Is_Unsigned_Type (D_Type) then
-            return FP_To_UI
-              (Env.Bld, Value, Create_Type (Env, D_Type), "float-to-uint");
-         else
-            return FP_To_SI
-              (Env.Bld, Value, Create_Type (Env, D_Type), "float-to-int");
-         end if;
-
+      elsif Src_FP and then not Dest_FP then
+         Subp := (if Dest_Uns then FP_To_UI'Access else FP_To_SI'Access);
+      elsif not Src_FP and then Dest_FP then
+         Subp := (if Src_Uns then UI_To_FP'Access else SI_To_FP'Access);
       else
-         Error_Msg_N ("unsupported type conversion", Expr);
-         return Get_Undef (Create_Type (Env, D_Type));
+
+         --  Remaining case is descrete to discrete
+
+         if Src_Size = Dest_Size then
+            if Src_Uns = Dest_Uns then
+               Subp := Bit_Cast'Access;
+            else
+               return Value;
+            end if;
+         elsif Is_Trunc then
+            Subp := Trunc'Access;
+         else
+            Subp := (if Src_Uns then Z_Ext'Access else S_Ext'Access);
+         end if;
       end if;
+
+      return Subp (Env.Bld, Value, Typ, "");
    end Convert_Scalar_Types;
 
    --------------------------------
@@ -3816,8 +3783,7 @@ package body GNATLLVM.Compile is
             --  but if either of the bounds aren't in Int, we can't use
             --  switch at all.
 
-            If_Cost := (if UI_Gt (Low, High) then 0
-                        elsif UI_Eq (Low, High) then 1 else 2);
+            If_Cost := (if Low > High then 0 elsif Low = High then 1 else 2);
 
             Switch_Cost := (if not UI_Is_In_Int_Range (Low)
                             or else not UI_Is_In_Int_Range (High)

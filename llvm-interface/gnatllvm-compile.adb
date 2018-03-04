@@ -891,9 +891,6 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_String_Literal =>
-            Discard (Emit_Expression (Env, Node));
-
          when N_Subprogram_Body =>
             --  If we are processing only declarations, do not emit a
             --  subprogram body: just declare this subprogram and add it to
@@ -2210,12 +2207,7 @@ package body GNATLLVM.Compile is
       else
          case Nkind (Node) is
          when N_Expression_With_Actions =>
-            if not Is_Empty_List (Actions (Node)) then
-               --  ??? Should probably wrap this into a separate compound
-               --  statement
-               Emit_List (Env, Actions (Node));
-            end if;
-
+            Emit_List (Env, Actions (Node));
             return Emit_Expr (Expression (Node));
 
          when  N_Character_Literal | N_Numeric_Or_String_Literal =>
@@ -2230,6 +2222,7 @@ package body GNATLLVM.Compile is
             return Build_Not (Env.Bld, Emit_Expr (Right_Opnd (Node)), "");
 
          when N_Op_Abs =>
+
             --  Emit: X >= 0 ? X : -X;
 
             declare
@@ -2671,10 +2664,13 @@ package body GNATLLVM.Compile is
    ---------------
 
    procedure Emit_List (Env : Environ; List : List_Id) is
+      N : Node_Id;
    begin
       if Present (List) then
-         for N of Iterate (List) loop
+         N := First (List);
+         while Present (N) loop
             Emit (Env, N);
+            N := Next (N);
          end loop;
       end if;
    end Emit_List;
@@ -3248,28 +3244,16 @@ package body GNATLLVM.Compile is
       Exprs       : List_Id;
       Compute_Max : Boolean) return Value_T
    is
-      Name      : constant String :=
-        (if Compute_Max then "max" else "min");
-
-      Expr_Type : constant Entity_Id := Etype (First (Exprs));
+      Expr_Type : constant Entity_Id :=
+            Get_Fullest_View (Etype (First (Exprs)));
       Left      : constant Value_T := Emit_Expression (Env, First (Exprs));
       Right     : constant Value_T := Emit_Expression (Env, Last (Exprs));
-
-      Comparison_Operators : constant
-        array (Boolean, Boolean) of Int_Predicate_T :=
-        (True  => (True => Int_UGT, False => Int_ULT),
-         False => (True => Int_SGT, False => Int_SLT));
-      --  Provide the appropriate scalar comparison operator in order to select
-      --  the min/max. First index = is unsigned? Second one = computing max?
-
-      Choose_Left : constant Value_T := I_Cmp
-        (Env.Bld,
-         Comparison_Operators (Is_Unsigned_Type (Expr_Type), Compute_Max),
-         Left, Right,
-         "choose-left-as-" & Name);
-
+      Choose    : constant Value_T :=
+          Emit_Comparison (Env, (if Compute_Max then N_Op_Gt else N_Op_Lt),
+                           Expr_Type, First (Exprs), Left, Right);
    begin
-      return Build_Select (Env.Bld, Choose_Left, Left, Right, Name);
+      return Build_Select (Env.Bld, Choose, Left, Right,
+                           (if Compute_Max then "max" else "min"));
    end Emit_Min_Max;
 
    ------------------------------

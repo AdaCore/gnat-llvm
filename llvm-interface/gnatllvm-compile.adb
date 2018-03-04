@@ -3141,7 +3141,9 @@ package body GNATLLVM.Compile is
       Is_Trunc  : constant Boolean := Dest_Size < Src_Size;
    begin
 
-      --  We have four cases: FP to FP, FP to Int, Int to FP, and Int to Int
+      --  We have four cases: FP to FP, FP to Int, Int to FP, and Int to Int.
+      --  In some cases, we do nothing and just return the input.  For the
+      --  others, we set Subp to the function to build the appropriate IR.
 
       if Src_FP and then Dest_FP then
          if Src_Size = Dest_Size then
@@ -3171,7 +3173,10 @@ package body GNATLLVM.Compile is
          end if;
       end if;
 
+      --  Here all that's left to do is generate the IR instruction.
+
       return Subp (Env.Bld, Value, Typ, "");
+
    end Convert_Scalar_Types;
 
    --------------------------------
@@ -3183,12 +3188,8 @@ package body GNATLLVM.Compile is
       Src_Type, Dest_Type : Entity_Id;
       Expr                : Node_Id) return Value_T
    is
-      Dest_Ty   : constant Type_T := Create_Type (Env, Dest_Type);
-
-      function Value return Value_T is (Emit_Expression (Env, Expr));
-
-      function Is_Discrete_Or_Fixed (T : Node_Id) return Boolean is
-        (Is_Discrete_Type (T) or else Is_Fixed_Point_Type (T));
+      Dest_Ty : constant Type_T := Create_Type (Env, Dest_Type);
+      Value   : constant Value_T := Emit_Expression (Env, Expr);
 
    begin
       if Is_Access_Type (Dest_Type)
@@ -3204,8 +3205,8 @@ package body GNATLLVM.Compile is
       elsif Is_Access_Type (Src_Type) then
          return Pointer_Cast
            (Env.Bld, Value, Dest_Ty, "unchecked-conv");
-      elsif Is_Discrete_Or_Fixed (Dest_Type)
-        and then Is_Discrete_Or_Fixed (Src_Type)
+      elsif Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
+        and then Is_Discrete_Or_Fixed_Point_Type (Src_Type)
       then
          return Int_Cast (Env.Bld, Value, Dest_Ty, "unchecked-conv");
       elsif Is_Array_Type (Src_Type)

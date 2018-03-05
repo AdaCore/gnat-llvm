@@ -16,11 +16,8 @@
 ------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
-with System;
 
 with Errout; use Errout;
-with Opt;    use Opt;
-with Sinfo;  use Sinfo;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -319,59 +316,20 @@ package body GNATLLVM.Environment is
       return Env.Exit_Points.Last_Element.Exit_BB;
    end Get_Exit_Point;
 
-   ------------------
-   -- Takes_S_Link --
-   ------------------
-
-   function Takes_S_Link
-     (Env  : access Environ_Record;
-      Subp : Entity_Id) return Boolean
-   is
-      use Static_Link_Descriptor_Maps;
-
-      S_Link_Cur : constant Cursor := Env.S_Links.Find (Subp);
-   begin
-      if Unnest_Subprogram_Mode then
-         return False;
-      else
-         return S_Link_Cur /= No_Element
-           and then Element (S_Link_Cur).Parent /= null;
-      end if;
-   end Takes_S_Link;
-
-   ----------------
-   -- Get_S_Link --
-   ----------------
-
-   function Get_S_Link
-     (Env  : access Environ_Record;
-      Subp : Entity_Id) return Static_Link_Descriptor is
-   begin
-      return Env.S_Links.Element (Subp);
-   end Get_S_Link;
-
    ----------------
    -- Enter_Subp --
    ----------------
 
    function Enter_Subp
      (Env       : access Environ_Record;
-      Subp_Body : Node_Id;
       Func      : Value_T) return Subp_Env
    is
       Subp : constant Subp_Env := new Subp_Env_Record'
         (Env                    => Environ (Env),
          Func                   => Func,
-         Saved_Builder_Position => Get_Insert_Block (Env.Bld),
-         S_Link_Descr           => null,
-         S_Link                 => Value_T (System.Null_Address));
+         Saved_Builder_Position => Get_Insert_Block (Env.Bld));
 
    begin
-      if not Unnest_Subprogram_Mode then
-         Subp.S_Link_Descr := Env.S_Links.Element
-           (Defining_Unit_Name (Get_Acting_Spec (Subp_Body)));
-      end if;
-
       Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
       Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));

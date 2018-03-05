@@ -27,7 +27,6 @@ with Eval_Fat; use Eval_Fat;
 with Get_Targ; use Get_Targ;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
-with Opt;      use Opt;
 with Sem_Aggr; use Sem_Aggr;
 with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
@@ -46,7 +45,6 @@ with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Bounds;       use GNATLLVM.Bounds;
 with GNATLLVM.Builder;      use GNATLLVM.Builder;
-with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
@@ -184,33 +182,12 @@ package body GNATLLVM.Compile is
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id);
    --  Compile a subprogram body and save it in the environment
 
-   function Create_Callback_Wrapper
-     (Env : Environ; Subp : Entity_Id) return Value_T;
-   --  If Subp takes a static link, return its LLVM declaration. Otherwise,
-   --  create a wrapper declaration to it that accepts a static link and
-   --  return it.
-
-   procedure Attach_Callback_Wrapper_Body
-     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T);
-   --  If Subp takes a static link, do nothing. Otherwise, add the
-   --  implementation of its wrapper.
-
-   procedure Match_Static_Link_Variable
-     (Env       : Environ;
-      Def_Ident : Entity_Id;
-      LValue    : Value_T);
-   --  If Def_Ident belongs to the closure of the current static link
-   --  descriptor, reference it to the static link structure. Do nothing
-   --  if there is no current subprogram.
-
    function Needs_Deref (Def_Ident : Entity_Id) return Boolean
    is (Present (Address_Clause (Def_Ident))
        and then not Is_Array_Type (Etype (Def_Ident)));
    --  Return whether Def_Ident requires an extra level of indirection
 
-   function Get_Static_Link
-     (Env  : Environ;
-      Subp : Entity_Id) return Value_T;
+   function Get_Static_Link (Env : Environ) return Value_T;
    --  Build and return the appropriate static link to pass to a call to Subp
 
    function Is_Constant_Folded (E : Entity_Id) return Boolean
@@ -251,173 +228,6 @@ package body GNATLLVM.Compile is
    -- Emit_Subprogram_Body --
    --------------------------
 
-   procedure Emit_Subprogram_Body_Old (Env : Environ; Node : Node_Id);
-   --  Version that does not use front-end expansion of nested subprograms,
-   --  kept for reference for now.
-
-   procedure Emit_Subprogram_Body_Old (Env : Environ; Node : Node_Id) is
-      Spec       : constant Node_Id := Get_Acting_Spec (Node);
-      Def_Ident  : constant Entity_Id := Defining_Unit_Name (Spec);
-      Func       : constant Value_T :=
-        Emit_Subprogram_Decl (Env, Spec);
-      Subp       : constant Subp_Env := Enter_Subp (Env, Node, Func);
-      Wrapper    : Value_T;
-
-      LLVM_Param : Value_T;
-      LLVM_Var   : Value_T;
-      Param      : Entity_Id;
-      I          : Natural := 0;
-
-   begin
-      --  Create a value for the static-link structure
-
-      Subp.S_Link := Alloca
-        (Env.Bld,
-         Create_Static_Link_Type (Env, Subp.S_Link_Descr),
-         "static-link");
-
-      --  Create a wrapper for this function, if needed, and add its
-      --  implementation, still if needed.
-
-      Wrapper := Create_Callback_Wrapper (Env, Def_Ident);
-      Attach_Callback_Wrapper_Body (Env, Def_Ident, Wrapper);
-
-      --  Register each parameter into a new scope
-      Push_Scope (Env);
-
-      for P of Iterate (Parameter_Specifications (Spec)) loop
-         LLVM_Param := Get_Param (Subp.Func, unsigned (I));
-         Param := Defining_Identifier (P);
-
-         --  Define a name for the parameter P (which is the I'th
-         --  parameter), and associate the corresponding LLVM value to
-         --  its entity.
-
-         --  Set the name of the llvm value
-
-         Set_Value_Name (LLVM_Param, Get_Name (Param));
-
-         --  Special case for structures passed by value, we want to
-         --  store a pointer to them on the stack, so do an alloca,
-         --  to be able to do GEP on them.
-
-         if Param_Needs_Ptr (Param)
-           and then not
-             (Ekind (Etype (Param)) in Record_Kind
-              and (Get_Type_Kind (Type_Of (LLVM_Param))
-                   = Struct_Type_Kind))
-         then
-            LLVM_Var := LLVM_Param;
-         else
-            LLVM_Var := Alloca
-              (Env.Bld,
-               Type_Of (LLVM_Param), Get_Name (Param));
-            Store (Env.Bld, LLVM_Param, LLVM_Var);
-         end if;
-
-         --  Add the parameter to the environnment
-
-         Set (Env, Param, LLVM_Var);
-         Match_Static_Link_Variable (Env, Param, LLVM_Var);
-         I := I + 1;
-      end loop;
-
-      if Takes_S_Link (Env, Def_Ident) then
-
-         --  Rename the static link argument and link the static link
-         --  value to it.
-
-         declare
-            Parent_S_Link : constant Value_T :=
-              Get_Param (Subp.Func, unsigned (I));
-            Parent_S_Link_Type : constant Type_T :=
-              Pointer_Type
-                (Create_Static_Link_Type
-                   (Env, Subp.S_Link_Descr.Parent),
-                 0);
-            S_Link        : Value_T;
-
-         begin
-            Set_Value_Name (Parent_S_Link, "parent-static-link");
-            S_Link := Load (Env.Bld, Subp.S_Link, "static-link");
-            S_Link := Insert_Value
-              (Env.Bld,
-               S_Link,
-               Bit_Cast
-                 (Env.Bld,
-                  Parent_S_Link, Parent_S_Link_Type, ""),
-               0,
-               "updated-static-link");
-            Store (Env.Bld, S_Link, Subp.S_Link);
-         end;
-
-         --  Then "import" from the static link all the non-local
-         --  variables.
-
-         for Cur in Subp.S_Link_Descr.Accesses.Iterate loop
-            declare
-               use Local_Access_Maps;
-
-               Access_Info : Access_Record renames Element (Cur);
-               Depth       : Natural := Access_Info.Depth;
-               LValue      : Value_T := Subp.S_Link;
-
-               Idx_Type    : constant Type_T :=
-                 Int32_Type_In_Context (Env.Ctx);
-               Zero        : constant Value_T := Const_Null (Idx_Type);
-               Idx         : Value_Array (1 .. 2) := (Zero, Zero);
-
-            begin
-               --  Get a pointer to the target parent static link
-               --  structure.
-
-               while Depth > 0 loop
-                  LValue := Load
-                    (Env.Bld,
-                     GEP
-                       (Env.Bld,
-                        LValue,
-                        Idx'Address, Idx'Length,
-                        ""),
-                     "");
-                  Depth := Depth - 1;
-               end loop;
-
-               --  And then get the non-local variable as an lvalue
-
-               Idx (2) := Const_Int
-                 (Idx_Type,
-                  unsigned_long_long (Access_Info.Field),
-                  Sign_Extend => False);
-               LValue := Load
-                 (Env.Bld,
-                  GEP
-                    (Env.Bld,
-                     LValue, Idx'Address, Idx'Length, ""),
-                  "");
-
-               Set_Value_Name (LValue, Get_Name (Key (Cur)));
-               Set (Env, Key (Cur), LValue);
-            end;
-         end loop;
-      end if;
-
-      Emit_List (Env, Declarations (Node));
-      Emit_List (Env, Statements (Handled_Statement_Sequence (Node)));
-
-      --  This point should not be reached: a return must have
-      --  already... returned!
-
-      Discard (Build_Unreachable (Env.Bld));
-
-      Pop_Scope (Env);
-      Leave_Subp (Env);
-
-      Verify_Function
-        (Env, Subp.Func, Node,
-         "the backend generated bad `LLVM` for this subprogram");
-   end Emit_Subprogram_Body_Old;
-
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
 
       procedure Emit_One_Body (Node : Node_Id);
@@ -433,7 +243,7 @@ package body GNATLLVM.Compile is
       procedure Emit_One_Body (Node : Node_Id) is
          Spec : constant Node_Id := Get_Acting_Spec (Node);
          Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
-         Subp : constant Subp_Env := Enter_Subp (Env, Node, Func);
+         Subp : constant Subp_Env := Enter_Subp (Env, Func);
 
          LLVM_Param : Value_T;
          LLVM_Var   : Value_T;
@@ -541,11 +351,6 @@ package body GNATLLVM.Compile is
       Subp : constant Entity_Id := Unique_Defining_Entity (Node);
 
    begin
-      if not Unnest_Subprogram_Mode then
-         Emit_Subprogram_Body_Old (Env, Node);
-         return;
-      end if;
-
       if not Has_Nested_Subprogram (Subp) then
          Emit_One_Body (Node);
          return;
@@ -768,7 +573,7 @@ package body GNATLLVM.Compile is
                          (Env.Mdl,
                           Get_Name_String (Chars (Unit)) & "___elabs",
                           Elab_Type);
-                     Subp := Enter_Subp (Env, Node, LLVM_Func);
+                     Subp := Enter_Subp (Env, LLVM_Func);
                      Push_Scope (Env);
 
                      Env.Special_Elaboration_Code := True;
@@ -860,7 +665,7 @@ package body GNATLLVM.Compile is
                             (Env.Mdl,
                              Get_Name_String (Chars (Unit)) & "___elabb",
                              Elab_Type);
-                        Subp := Enter_Subp (Env, Node, LLVM_Func);
+                        Subp := Enter_Subp (Env, LLVM_Func);
                         Push_Scope (Env);
                         Env.Special_Elaboration_Code := True;
 
@@ -1075,7 +880,6 @@ package body GNATLLVM.Compile is
                      end if;
 
                      Set (Env, Def_Ident, LLVM_Var);
-                     Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
                   elsif Record_With_Dynamic_Size (Env, T) then
                      LLVM_Type := Create_Access_Type (Env, T);
@@ -1089,7 +893,6 @@ package body GNATLLVM.Compile is
                         LLVM_Type,
                         Get_Name (Def_Ident));
                      Set (Env, Def_Ident, LLVM_Var);
-                     Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
 
                   else
                      LLVM_Type := Create_Type (Env, T);
@@ -1101,7 +904,6 @@ package body GNATLLVM.Compile is
                      LLVM_Var := Alloca
                        (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
                      Set (Env, Def_Ident, LLVM_Var);
-                     Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
                   end if;
 
                   if Needs_Deref (Def_Ident) then
@@ -1163,7 +965,6 @@ package body GNATLLVM.Compile is
                end if;
 
                Set (Env, Def_Ident, LLVM_Var);
-               Match_Static_Link_Variable (Env, Def_Ident, LLVM_Var);
             end;
 
          when N_Subprogram_Renaming_Declaration =>
@@ -1814,68 +1615,36 @@ package body GNATLLVM.Compile is
                N         : Node_Id;
             begin
                if Ekind (Def_Ident) in Subprogram_Kind then
-                  if Unnest_Subprogram_Mode then
-                     N := Associated_Node_For_Itype (Etype (Parent (Node)));
+                  N := Associated_Node_For_Itype (Etype (Parent (Node)));
 
-                     if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                        return Get (Env, Def_Ident);
-                     else
-                        --  Return a callback, which is a couple: subprogram
-                        --  code pointer, static link argument.
-
-                        declare
-                           Func   : constant Value_T := Get (Env, Def_Ident);
-                           S_Link : constant Value_T :=
-                             Get_Static_Link (Node);
-
-                           Fields_Types  : constant array (1 .. 2) of Type_T :=
-                             (Type_Of (S_Link),
-                              Type_Of (S_Link));
-                           Callback_Type : constant Type_T :=
-                             Struct_Type_In_Context
-                               (Env.Ctx,
-                                Fields_Types'Address, Fields_Types'Length,
-                                Packed => False);
-
-                           Result : Value_T := Get_Undef (Callback_Type);
-
-                        begin
-                           Result := Insert_Value
-                             (Env.Bld, Result,
-                              Pointer_Cast
-                                (Env.Bld, Func, Fields_Types (1), ""), 0, "");
-                           Result := Insert_Value
-                             (Env.Bld, Result, S_Link, 1, "callback");
-                           return Result;
-                        end;
-                     end if;
+                  if No (N) or else Nkind (N) = N_Full_Type_Declaration then
+                     return Get (Env, Def_Ident);
                   else
-
-                     --  Return a callback, which is a couple: subprogram code
-                     --  pointer, static link argument.
+                     --  Return a callback, which is a couple: subprogram
+                     --  code pointer, static link argument.
 
                      declare
-                        Func   : constant Value_T :=
-                          Create_Callback_Wrapper (Env, Def_Ident);
-                        S_Link : constant Value_T :=
-                          Get_Static_Link (Env, Def_Ident);
+                        Func   : constant Value_T := Get (Env, Def_Ident);
+                        S_Link : constant Value_T := Get_Static_Link (Node);
 
-                        Fields_Types : constant array (1 .. 2) of Type_T :=
-                          (Type_Of (Func),
+                        Fields_Types  : constant array (1 .. 2) of Type_T :=
+                          (Type_Of (S_Link),
                            Type_Of (S_Link));
                         Callback_Type : constant Type_T :=
                           Struct_Type_In_Context
-                            (Env.Ctx,
-                             Fields_Types'Address, Fields_Types'Length,
-                             Packed => False);
+                          (Env.Ctx,
+                           Fields_Types'Address, Fields_Types'Length,
+                           Packed => False);
 
                         Result : Value_T := Get_Undef (Callback_Type);
 
                      begin
-                        Result := Insert_Value (Env.Bld, Result, Func, 0, "");
                         Result := Insert_Value
-                          (Env.Bld,
-                           Result, S_Link, 1, "callback");
+                          (Env.Bld, Result,
+                           Pointer_Cast
+                             (Env.Bld, Func, Fields_Types (1), ""), 0, "");
+                        Result := Insert_Value
+                          (Env.Bld, Result, S_Link, 1, "callback");
                         return Result;
                      end;
                   end if;
@@ -2695,11 +2464,7 @@ package body GNATLLVM.Compile is
         and then Present (Associated_Node_For_Itype (Etype (Subp)))
         and then Nkind (Associated_Node_For_Itype (Etype (Subp)))
           /= N_Full_Type_Declaration;
-      This_Takes_S_Link     : constant Boolean :=
-        Anonymous_Access
-          or else (not Unnest_Subprogram_Mode
-            and then
-              (not Direct_Call or else Takes_S_Link (Env, Entity (Subp))));
+      This_Takes_S_Link     : constant Boolean := Anonymous_Access;
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
@@ -2727,7 +2492,7 @@ package body GNATLLVM.Compile is
 
       if This_Takes_S_Link then
          if Direct_Call then
-            S_Link := Get_Static_Link (Env, Subp);
+            S_Link := Get_Static_Link (Env);
          else
             S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
             LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
@@ -2882,191 +2647,16 @@ package body GNATLLVM.Compile is
       end if;
    end Emit_Subprogram_Decl;
 
-   -----------------------------
-   -- Create_Callback_Wrapper --
-   -----------------------------
-
-   function Create_Callback_Wrapper
-     (Env : Environ; Subp : Entity_Id) return Value_T
-   is
-      use Value_Maps;
-      Wrapper : constant Cursor := Env.Subp_Wrappers.Find (Subp);
-
-      Result : Value_T;
-   begin
-      if Wrapper /= No_Element then
-         return Element (Wrapper);
-      end if;
-
-      --  This subprogram is referenced, and thus should at least already be
-      --  declared. Thus, it must be registered in the environment.
-
-      Result := Get (Env, Subp);
-
-      if not Takes_S_Link (Env, Subp) then
-         --  This is a top-level subprogram: wrap it so it can take a static
-         --  link as its last argument.
-
-         declare
-            Func_Type   : constant Type_T :=
-              Get_Element_Type (Type_Of (Result));
-            Name        : constant String := Get_Value_Name (Result) & "__CB";
-            Return_Type : constant Type_T := Get_Return_Type (Func_Type);
-            Args_Count  : constant unsigned :=
-              Count_Param_Types (Func_Type) + 1;
-            Args        : array (1 .. Args_Count) of Type_T;
-
-         begin
-            Get_Param_Types (Func_Type, Args'Address);
-            Args (Args'Last) :=
-              Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
-            Result := Add_Function
-              (Env.Mdl,
-               Name,
-               Function_Type
-                 (Return_Type,
-                  Args'Address, Args'Length,
-                  Is_Var_Arg => False));
-         end;
-      end if;
-
-      Env.Subp_Wrappers.Insert (Subp, Result);
-      return Result;
-   end Create_Callback_Wrapper;
-
-   ----------------------------------
-   -- Attach_Callback_Wrapper_Body --
-   ----------------------------------
-
-   procedure Attach_Callback_Wrapper_Body
-     (Env : Environ; Subp : Entity_Id; Wrapper : Value_T) is
-   begin
-      if Takes_S_Link (Env, Subp) then
-         return;
-      end if;
-
-      declare
-         BB        : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
-         --  Back up the current insert block not to break the caller's
-         --  workflow.
-
-         Subp_Spec : constant Node_Id := Parent (Subp);
-         Func      : constant Value_T := Emit_Subprogram_Decl (Env, Subp_Spec);
-         Func_Type : constant Type_T := Get_Element_Type (Type_Of (Func));
-
-         Call      : Value_T;
-         Args      : array (1 .. Count_Param_Types (Func_Type) + 1) of Value_T;
-      begin
-         Position_Builder_At_End
-           (Env.Bld,
-            Append_Basic_Block_In_Context (Env.Ctx, Wrapper, ""));
-
-         --  The wrapper must call the wrapped function with the same argument
-         --  and return its result, if any.
-
-         Get_Params (Wrapper, Args'Address);
-         Call := LLVM.Core.Call
-           (Env.Bld, Func, Args'Address, Args'Length - 1, "");
-
-         if Get_Return_Type (Func_Type) = Void_Type then
-            Discard (Build_Ret_Void (Env.Bld));
-         else
-            Discard (Build_Ret (Env.Bld, Call));
-         end if;
-
-         Position_Builder_At_End (Env.Bld, BB);
-      end;
-   end Attach_Callback_Wrapper_Body;
-
-   --------------------------------
-   -- Match_Static_Link_Variable --
-   --------------------------------
-
-   procedure Match_Static_Link_Variable
-     (Env       : Environ;
-      Def_Ident : Entity_Id;
-      LValue    : Value_T)
-   is
-      use Defining_Identifier_Vectors;
-
-      Subp   : Subp_Env;
-      S_Link : Value_T;
-   begin
-      if Unnest_Subprogram_Mode then
-         return;
-      end if;
-
-      --  There is no static link variable to look for if we are at compilation
-      --  unit top-level.
-
-      if Is_Compilation_Unit (Def_Ident) then
-         return;
-      end if;
-
-      Subp := Current_Subp (Env);
-
-      for Cur in Subp.S_Link_Descr.Closure.Iterate loop
-         if Element (Cur) = Def_Ident then
-            S_Link := Load (Env.Bld, Subp.S_Link, "static-link");
-            S_Link := Insert_Value
-              (Env.Bld,
-               S_Link,
-               LValue,
-               unsigned (To_Index (Cur)),
-               "updated-static-link");
-            Store (Env.Bld, S_Link, Subp.S_Link);
-
-            return;
-         end if;
-      end loop;
-   end Match_Static_Link_Variable;
-
    ---------------------
    -- Get_Static_Link --
    ---------------------
 
-   function Get_Static_Link
-     (Env  : Environ;
-      Subp : Entity_Id) return Value_T
-   is
-      Result_Type : constant Type_T :=
-        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
-      Result      : Value_T;
-
-      --  In this context, the "caller" is the subprogram that creates an
-      --  access to subprogram or that calls directly a subprogram, and the
-      --  "callee" is the target subprogram.
-
-      Caller_SLD, Callee_SLD : Static_Link_Descriptor;
-
-      Idx_Type : constant Type_T := Int32_Type_In_Context (Env.Ctx);
-      Zero     : constant Value_T := Const_Null (Idx_Type);
-      Idx      : constant Value_Array (1 .. 2) := (Zero, Zero);
-
+   function Get_Static_Link (Env : Environ) return Value_T is
    begin
-      if Takes_S_Link (Env, Subp) then
-         Caller_SLD := Current_Subp (Env).S_Link_Descr;
-         Callee_SLD := Get_S_Link (Env, Subp);
-         Result     := Current_Subp (Env).S_Link;
+      --  We end up here for external (and thus top-level) subprograms, so
+      --  they take no static link.
 
-         --  The language rules force the parent subprogram of the callee to be
-         --  the caller or one of its parent.
-
-         while Callee_SLD.Parent /= Caller_SLD loop
-            Caller_SLD := Caller_SLD.Parent;
-            Result := Load
-              (Env.Bld,
-               GEP (Env.Bld, Result, Idx'Address, Idx'Length, ""), "");
-         end loop;
-
-         return Bit_Cast (Env.Bld, Result, Result_Type, "");
-
-      else
-         --  We end up here for external (and thus top-level) subprograms, so
-         --  they take no static link.
-
-         return Const_Null (Result_Type);
-      end if;
+      return Const_Null (Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
    end Get_Static_Link;
 
    ---------------------------

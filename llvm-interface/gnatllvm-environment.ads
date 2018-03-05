@@ -25,8 +25,6 @@ with LLVM.Types; use LLVM.Types;
 with Ada.Containers.Doubly_Linked_Lists;
 with GNATLLVM.Builder;
 
-with GNATLLVM.Nested_Subps; use GNATLLVM.Nested_Subps;
-
 package GNATLLVM.Environment is
 
    type Field_Info is record
@@ -108,8 +106,6 @@ package GNATLLVM.Environment is
       Env                    : Environ;
       Func                   : Value_T;
       Saved_Builder_Position : Basic_Block_T;
-      S_Link_Descr           : Static_Link_Descriptor;
-      S_Link                 : Value_T;
    end record;
    type Subp_Env is access all Subp_Env_Record;
 
@@ -132,12 +128,6 @@ package GNATLLVM.Environment is
 
       Subprograms               : Subp_Lists.List;
       Current_Subps             : Subp_Lists.List;
-
-      S_Links                   : Static_Link_Descriptor_Maps.Map;
-      Subp_Wrappers             : Value_Maps.Map;
-      --  Associate a static-link-taking subprogram wrapper to each global
-      --  subprogram. Provide actual subprograms for other ones.
-
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
       Memory_Copy_Fn            : Value_T;
@@ -189,16 +179,8 @@ package GNATLLVM.Environment is
    function Get_Exit_Point
      (Env : access Environ_Record) return Basic_Block_T;
 
-   function Takes_S_Link
-     (Env  : access Environ_Record;
-      Subp : Entity_Id) return Boolean;
-   function Get_S_Link
-     (Env       : access Environ_Record;
-      Subp : Entity_Id) return Static_Link_Descriptor;
-
    function Enter_Subp
      (Env       : access Environ_Record;
-      Subp_Body : Node_Id;
       Func      : Value_T) return Subp_Env;
    --  Create, push and return a subprogram environment. Also create an entry
    --  basic block for this subprogram and position the builder at its end. To

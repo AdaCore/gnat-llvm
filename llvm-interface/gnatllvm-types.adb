@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
-with Opt;      use Opt;
 with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
@@ -209,17 +208,6 @@ package body GNATLLVM.Types is
       then
          return Create_Array_Fat_Pointer_Type (Env, TE);
 
-      --  LLVM subprograms values are already pointers. We want to embed a
-      --  static-link with them, though.
-
-      elsif Ekind (TE) in Subprogram_Kind
-        or else Ekind (TE) = E_Subprogram_Type
-      then
-         if Unnest_Subprogram_Mode then
-            return Pointer_Type (T, 0);
-         else
-            return Create_Subprogram_Access_Type (Env, T);
-         end if;
       else
          return Pointer_Type (T, 0);
       end if;
@@ -449,9 +437,8 @@ package body GNATLLVM.Types is
 
             return Create_Subprogram_Type_From_Entity
               (Env, Def_Ident,
-               Takes_S_Link => not Unnest_Subprogram_Mode or else
-                 Nkind (Associated_Node_For_Itype (TE))
-                   /= N_Full_Type_Declaration);
+               Takes_S_Link => (Nkind (Associated_Node_For_Itype (TE))
+                                  /= N_Full_Type_Declaration));
 
          when Fixed_Point_Kind =>
             return Int_Type_In_Context
@@ -522,37 +509,6 @@ package body GNATLLVM.Types is
       end case;
    end Create_Discrete_Type;
 
-   -----------------------------
-   -- Create_Static_Link_Type --
-   -----------------------------
-
-   function Create_Static_Link_Type
-     (Env         : Environ;
-      S_Link_Desc : Static_Link_Descriptor) return Type_T
-   is
-      Types : array (1 .. Natural (S_Link_Desc.Closure.Length) + 1) of Type_T;
-      I     : Natural := 2;
-   begin
-      --  The first element points to the parent static link
-
-      Types (1) :=
-        (if S_Link_Desc.Parent /= null
-         then Pointer_Type
-           (Create_Static_Link_Type (Env, S_Link_Desc.Parent),
-            0)
-         else Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
-
-      --  The following elements point to the variables this closure give
-      --  access to.
-
-      for Def_Ident of S_Link_Desc.Closure loop
-         Types (I) := Create_Access_Type (Env, Etype (Def_Ident));
-         I := I + 1;
-      end loop;
-      return Struct_Type_In_Context
-        (Env.Ctx, Types'Address, Types'Length, Packed => False);
-   end Create_Static_Link_Type;
-
    --------------------------------------
    -- Create_Subprogram_Type_From_Spec --
    --------------------------------------
@@ -577,11 +533,7 @@ package body GNATLLVM.Types is
             raise Program_Error;
       end case;
 
-      return Create_Subprogram_Type
-        (Env,
-         Params,
-         Result,
-         Takes_S_Link (Env, Defining_Unit_Name (Subp_Spec)));
+      return Create_Subprogram_Type (Env, Params, Result, False);
    end Create_Subprogram_Type_From_Spec;
 
    ----------------------------------------

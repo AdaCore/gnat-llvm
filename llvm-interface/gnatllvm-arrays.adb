@@ -34,10 +34,56 @@ with GNATLLVM.Types;   use GNATLLVM.Types;
 
 package body GNATLLVM.Arrays is
 
+   function Bounds_To_Length
+     (Env                   : Environ;
+      Low_Bound, High_Bound : Value_T;
+      Bounds_Type           : Entity_Id) return Value_T;
+   --  Return the length of the Low_Bound .. High_Bound range, handling the
+   --  empty case. Bounds_Type indicates how to interpret the provided bounds
+   --  with respect to signedness.
+
    function Get_Bound_Index (Dim : Natural; Bound : Bound_T) return unsigned;
    --  An array fat pointer embbeds a structure holding the bounds of the
    --  array. This returns the index for some bound given its dimension
    --  inside the array and on whether this is the lower or the upper bound.
+
+   ----------------------
+   -- Bounds_To_Length --
+   ----------------------
+
+   function Bounds_To_Length
+     (Env                   : Environ;
+      Low_Bound, High_Bound : Value_T;
+      Bounds_Type           : Entity_Id) return Value_T
+   is
+      Result_Type : constant Type_T := Type_Of (Low_Bound);
+
+      Is_Bound_Unsigned  : constant Boolean :=
+        Is_Unsigned_Type (Bounds_Type);
+      Is_Empty         : constant Value_T :=
+        I_Cmp
+          (Env.Bld,
+           (if Is_Bound_Unsigned then Int_UGT else Int_SGT),
+           Low_Bound, High_Bound, "is-array-empty");
+      Const_1 : constant Value_T :=
+        Const_Int (Result_Type, 1, Sign_Extend => False);
+
+   begin
+      return Build_Select
+        (Env.Bld,
+         C_If   => Is_Empty,
+         C_Then => Const_Null (Result_Type),
+         C_Else =>
+           (if Low_Bound = Const_1
+            then High_Bound
+            else
+              Add
+                (Env.Bld,
+                 Sub (Env.Bld, High_Bound, Low_Bound, ""),
+                 Const_1,
+                 "")),
+         Name   => "");
+   end Bounds_To_Length;
 
    ---------------------
    -- Get_Bound_Index --

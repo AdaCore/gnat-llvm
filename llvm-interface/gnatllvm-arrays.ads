@@ -20,7 +20,6 @@ with Types; use Types;
 
 with LLVM.Types; use LLVM.Types;
 
-with GNATLLVM.Bounds; use GNATLLVM.Bounds;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
@@ -45,6 +44,8 @@ package GNATLLVM.Arrays is
    --  unconstrained array, Array_Descr must be an expression that evaluates
    --  to the array. If Array_Type is constrained by record discriminants,
    --  use Containing_Record_Instance to get its bounds.
+
+   type Bound_T is (Low, High);
 
    function Array_Bound
      (Env         : Environ;

@@ -1050,11 +1050,8 @@ package body GNATLLVM.Compile is
                               Array_Length (Env, Array_Descr, Array_Type),
                               Size_T, ""),
                            Const_Int
-                             (Size_T,
-                              unsigned_long_long
-                                (UI_To_Int
-                                  (Esize (Component_Type (Left_Typ))) / 8),
-                              True), "");
+                             (Size_T, Esize (Component_Type (Left_Typ)) / 8),
+                          "");
                      end if;
 
                   else
@@ -1062,8 +1059,7 @@ package body GNATLLVM.Compile is
                      return Get_Undef (Size_T);
                   end if;
 
-                  return Const_Int
-                    (Size_T, unsigned_long_long (UI_To_Int (Size)), True);
+                  return Const_Int (Size_T, Size);
                end Compute_Size;
 
             begin

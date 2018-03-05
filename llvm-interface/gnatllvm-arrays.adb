@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C; use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Atree;  use Atree;
 with Nlists; use Nlists;
@@ -89,18 +88,10 @@ package body GNATLLVM.Arrays is
 
          begin
             if Bound = Low then
-               return Const_Int
-                 (Typ,
-                  unsigned_long_long (UI_To_Long_Long_Integer (First)),
-                  Sign_Extend => False);
-
+               return Const_Int (Typ, First);
             else
                return Const_Int
-                 (Typ,
-                  unsigned_long_long
-                    (UI_To_Long_Long_Integer
-                      (String_Literal_Length (Array_Type) - First + 1)),
-                  Sign_Extend => False);
+                 (Typ, String_Literal_Length (Array_Type) - First + 1);
             end if;
          end;
 
@@ -151,9 +142,7 @@ package body GNATLLVM.Arrays is
       if Ekind (Array_Type) = E_String_Literal_Subtype then
          return Const_Int
            (Create_Type (Env, Standard_Positive),
-            unsigned_long_long
-              (UI_To_Int (String_Literal_Length (Array_Type))),
-            Sign_Extend => False);
+            String_Literal_Length (Array_Type));
 
       else
          Result := Bounds_To_Length
@@ -352,22 +341,11 @@ package body GNATLLVM.Arrays is
 
          begin
             Bounds := Insert_Value
-              (Env.Bld,
-               Bounds,
-               Const_Int
-                 (Typ,
-                  unsigned_long_long (UI_To_Int (Low)),
-                  Sign_Extend => False),
-               0,
-               "");
+              (Env.Bld, Bounds, Const_Int (Typ, Low), 0, "");
             Bounds := Insert_Value
               (Env.Bld,
                Bounds,
-               Const_Int
-                 (Typ,
-                  unsigned_long_long
-                    (UI_To_Int (String_Literal_Length (Array_Type) - Low + 1)),
-                  Sign_Extend => False),
+               Const_Int (Typ, String_Literal_Length (Array_Type) - Low + 1),
                1,
                "");
          end;

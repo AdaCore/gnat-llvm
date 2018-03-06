@@ -23,7 +23,7 @@ LLVM_Init_Module (Module *TheModule)
   InitializeAllAsmPrinters();
 
   auto TargetTriple = sys::getDefaultTargetTriple();
-  TheModule->setTargetTriple(TargetTriple);
+  /*  TheModule->setTargetTriple(TargetTriple); */
 
   std::string Error;
   auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
@@ -43,7 +43,7 @@ LLVM_Init_Module (Module *TheModule)
   auto TheTargetMachine =
     Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
-  TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+  /*  TheModule->setDataLayout(TheTargetMachine->createDataLayout()); */
   return 0;
 }
 
@@ -76,6 +76,7 @@ LLVM_Write_Object (Module *TheModule, int object, char *Filename)
   auto TheTargetMachine =
       Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
+  TheModule->setDataLayout(TheTargetMachine->createDataLayout());
   if (TheTargetMachine->addPassesToEmitFile(pass, dest, FileType)) {
     // Could not emit a file of this type
     return 3;

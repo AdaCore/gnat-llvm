@@ -13,7 +13,7 @@ using namespace llvm::sys;
 
 extern "C"
 int
-LLVM_Write_Object (Module *TheModule, int object, char *Filename)
+LLVM_Init_Module (Module *TheModule)
 {
   // Initialize the target registry etc.
   InitializeAllTargetInfos();
@@ -44,7 +44,13 @@ LLVM_Write_Object (Module *TheModule, int object, char *Filename)
     Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+  return 0;
+}
 
+extern "C"
+int
+LLVM_Write_Object (Module *TheModule, int object, char *Filename)
+{
   std::error_code EC;
   raw_fd_ostream dest(Filename, EC, sys::fs::F_None);
 
@@ -56,6 +62,19 @@ LLVM_Write_Object (Module *TheModule, int object, char *Filename)
   legacy::PassManager pass;
   auto FileType = object ?
     TargetMachine::CGFT_ObjectFile : TargetMachine::CGFT_AssemblyFile;
+
+  auto TargetTriple = sys::getDefaultTargetTriple();
+  TheModule->setTargetTriple(TargetTriple);
+
+  std::string Error;
+  auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
+  auto CPU = "generic";
+  auto Features = "";
+
+  TargetOptions opt;
+  auto RM = Optional<Reloc::Model>();
+  auto TheTargetMachine =
+      Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
   if (TheTargetMachine->addPassesToEmitFile(pass, dest, FileType)) {
     // Could not emit a file of this type

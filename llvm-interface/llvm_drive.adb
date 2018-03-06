@@ -57,6 +57,7 @@ package body LLVM_Drive is
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
       Env : constant Environ :=
         new Environ_Record'(Ctx => Get_Global_Context, others => <>);
+      Result : Integer;
 
       procedure Emit_Library_Item (U : Node_Id);
       --  Generate code for the given library item
@@ -126,6 +127,10 @@ package body LLVM_Drive is
       procedure Walk_All_Units is
         new Sem.Walk_Library_Items (Action => Emit_Library_Item);
 
+      function LLVM_Init_Module (Module : LLVM.Types.Module_T) return Integer;
+      pragma Import (C, LLVM_Init_Module, "LLVM_Init_Module");
+      --  Initialize the LLVM module.  Returns 0 if it succeeds.
+
       function LLVM_Write_Object
         (Module   : LLVM.Types.Module_T;
          Object   : Boolean;
@@ -154,6 +159,8 @@ package body LLVM_Drive is
       Env.Mdl := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
+      Result := LLVM_Init_Module (Env.Mdl);
+      pragma Assert (Result = 0);
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);

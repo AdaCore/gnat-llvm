@@ -21,6 +21,7 @@ with Ada.Containers.Vectors;
 with Types; use Types;
 with Namet; use Namet;
 
+with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
 with Ada.Containers.Doubly_Linked_Lists;
 with GNATLLVM.Builder;
@@ -115,8 +116,9 @@ package GNATLLVM.Environment is
       Ctx                       : LLVM.Types.Context_T;
       Bld                       : GNATLLVM.Builder.Builder;
       Mdl                       : LLVM.Types.Module_T;
-      --  Pure-LLVM environment : LLVM context, instruction builder and current
-      --  module.
+      Module_Data_Layout        : LLVM.Target.Target_Data_T;
+      --  Pure-LLVM environment : LLVM context, instruction builder, current
+      --  module, and current module data layout.
 
       Scopes                    : Scope_Vectors.Vector;
       --  Stack of scopes, to associate LLVM types/values to expansed tree's

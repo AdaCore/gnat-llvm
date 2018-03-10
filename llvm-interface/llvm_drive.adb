@@ -20,6 +20,7 @@ with Interfaces.C; use Interfaces.C;
 with System;       use System;
 
 with LLVM.Analysis; use LLVM.Analysis;
+with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
 with LLVM.Bit_Writer;
 with LLVM.Core;     use LLVM.Core;
@@ -161,6 +162,7 @@ package body LLVM_Drive is
          Env.Ctx);
       Result := LLVM_Init_Module (Env.Mdl);
       pragma Assert (Result = 0);
+      Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);

@@ -629,8 +629,7 @@ package body GNATLLVM.Types is
      (Env : Environ;
       T   : Type_T) return Interfaces.C.unsigned
    is
-      T_Data : constant Target_Data_T :=
-        Create_Target_Data (Get_Target (Env.Mdl));
+      T_Data : constant Target_Data_T := Get_Module_Data_Layout (Env.Mdl);
    begin
       return ABI_Alignment_Of_Type (T_Data, T);
    end Get_Type_Alignment;
@@ -643,9 +642,7 @@ package body GNATLLVM.Types is
      (Env : Environ;
       T   : Type_T) return Value_T
    is
-      --  ??? Should create the target data separately
-      T_Data : constant Target_Data_T :=
-        Create_Target_Data (Get_Target (Env.Mdl));
+      T_Data : constant Target_Data_T := Get_Module_Data_Layout (Env.Mdl);
    begin
       return Const_Int
         (Int_Ptr_Type,
@@ -657,9 +654,7 @@ package body GNATLLVM.Types is
      (Env : Environ;
       T   : Type_T) return unsigned_long_long
    is
-      --  ??? Should create the target data separately
-      T_Data : constant Target_Data_T :=
-        Create_Target_Data (Get_Target (Env.Mdl));
+      T_Data : constant Target_Data_T := Get_Module_Data_Layout (Env.Mdl);
    begin
       return Size_Of_Type_In_Bits (T_Data, T);
    end Get_Type_Size_In_Bits;

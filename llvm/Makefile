@@ -3,12 +3,12 @@ PARALLEL=$(shell grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 8)
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
-LLVM_SRC_DIR=llvm-5.0.0.src
+LLVM_SRC_DIR=llvm-6.0.0.src
 LLVM_INCLUDE_DIR=$(PWD)/$(LLVM_SRC_DIR)/include
 LLVM_INCLUDE_DIR_C=$(LLVM_INCLUDE_DIR)/llvm-c
 DL=wget
-LLVM_SRC_FNAME=llvm-5.0.0.src.tar.xz
-LLVM_SRC_LINK=http://releases.llvm.org/5.0.0/$(LLVM_SRC_FNAME)
+LLVM_SRC_FNAME=llvm-6.0.0.src.tar.xz
+LLVM_SRC_LINK=http://releases.llvm.org/6.0.0/$(LLVM_SRC_FNAME)
 
 all: setup llvm
 

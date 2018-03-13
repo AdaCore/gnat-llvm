@@ -197,7 +197,7 @@ def generate_body(package):
             elif arg.type in (LLVM_BOOL, LLVM_TYPES_BOOL):
                 bool_t = LocalVariable(
                     '{}_Bool'.format(arg.name),
-                    'constant Bool_T',
+                    'constant LLVM.Types.Bool_T',
                     "Boolean'Pos ({})".format(arg.name)
                 )
                 local_vars.append(bool_t)
@@ -250,6 +250,7 @@ def generate_decl(function):
         get_prototype(wrapped_fn, decl=True)
     )
     return ret
+
 
 if __name__ == '__main__':
 

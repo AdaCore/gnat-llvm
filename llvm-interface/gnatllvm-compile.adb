@@ -244,19 +244,17 @@ package body GNATLLVM.Compile is
          Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
          Subp : constant Subp_Env := Enter_Subp (Env, Func);
 
+         Param      : Entity_Id;
          LLVM_Param : Value_T;
          LLVM_Var   : Value_T;
          Param_Num  : Natural := 0;
-
-         function Iterate is new Iterate_Entities
-           (Get_First => First_Formal_With_Extras,
-            Get_Next  => Next_Formal_With_Extras);
 
       begin
          --  Register each parameter into a new scope
          Push_Scope (Env);
 
-         for Param of Iterate (Defining_Unit_Name (Spec)) loop
+         Param := First_Formal_With_Extras (Defining_Unit_Name (Spec));
+         while Present (Param) loop
             LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
 
             --  Define a name for the parameter Param (which is the
@@ -289,6 +287,7 @@ package body GNATLLVM.Compile is
 
             Set (Env, Param, LLVM_Var);
             Param_Num := Param_Num + 1;
+            Param := Next_Formal_With_Extras (Param);
          end loop;
 
          Emit_List (Env, Declarations (Node));

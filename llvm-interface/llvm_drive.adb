@@ -19,6 +19,8 @@ with Ada.Directories;
 with Interfaces.C; use Interfaces.C;
 with System;       use System;
 
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+
 with LLVM.Analysis; use LLVM.Analysis;
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
@@ -128,10 +130,6 @@ package body LLVM_Drive is
       procedure Walk_All_Units is
         new Sem.Walk_Library_Items (Action => Emit_Library_Item);
 
-      function LLVM_Init_Module (Module : LLVM.Types.Module_T) return Integer;
-      pragma Import (C, LLVM_Init_Module, "LLVM_Init_Module");
-      --  Initialize the LLVM module.  Returns 0 if it succeeds.
-
       function LLVM_Write_Object
         (Module   : LLVM.Types.Module_T;
          Object   : Boolean;
@@ -142,13 +140,9 @@ package body LLVM_Drive is
          Object   : Boolean;
          Filename : String) return Integer
       is
-         function Internal
-           (Module   : LLVM.Types.Module_T;
-            Object   : Integer;
-            Filename : String) return Integer;
-         pragma Import (C, Internal, "LLVM_Write_Object");
       begin
-         return Internal (Module, Boolean'Pos (Object), Filename & ASCII.NUL);
+         return LLVM_Write_Module_Internal
+           (Module, Boolean'Pos (Object), Filename & ASCII.NUL);
       end LLVM_Write_Object;
 
    begin

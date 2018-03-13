@@ -330,7 +330,6 @@ package body GNATLLVM.Environment is
          Saved_Builder_Position => Get_Insert_Block (Env.Bld));
 
    begin
-      Env.Subprograms.Append (Subp);
       Env.Current_Subps.Append (Subp);
       Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));
       return Subp;

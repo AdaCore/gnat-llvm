@@ -128,7 +128,6 @@ package GNATLLVM.Environment is
       --  Stack of scoped loop exit points. Last inserted exit point correspond
       --  to the innermost loop.
 
-      Subprograms               : Subp_Lists.List;
       Current_Subps             : Subp_Lists.List;
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;

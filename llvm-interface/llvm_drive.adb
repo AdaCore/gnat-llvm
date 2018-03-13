@@ -31,6 +31,7 @@ with Atree;    use Atree;
 with Errout;   use Errout;
 with Lib;      use Lib;
 with Namet;    use Namet;
+with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Osint.C;  use Osint.C;
 with Sem;
@@ -78,11 +79,15 @@ package body LLVM_Drive is
          --------------
 
          procedure Emit_Aux (Compilation_Unit : Node_Id) is
+            Prag : Node_Id;
          begin
-            for Prag of Iterate (Context_Items (Compilation_Unit)) loop
+            Prag := First (Context_Items (Compilation_Unit));
+            while Present (Prag) loop
                if Nkind (Prag) = N_Pragma then
                   Emit (Env, Prag);
                end if;
+
+               Prag := Next (Prag);
             end loop;
 
             Emit_List (Env, Declarations (Aux_Decls_Node (Compilation_Unit)));

@@ -60,6 +60,9 @@ def is_wrapper_needed(element):
     """
     Return whether an Ada wrapper is needed for the "element" C subprogram.
     """
+    if element.name.startswith("Initialize_Native_"):
+        return False
+
     for arg in element.args:
         if arg.type in TYPES_TRANSLATION_TABLE:
             return True

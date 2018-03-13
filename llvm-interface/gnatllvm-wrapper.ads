@@ -19,8 +19,6 @@ with LLVM.Types; use LLVM.Types;
 
 package GNATLLVM.Wrapper is
 
-   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-
    function LLVM_Init_Module (Module : LLVM.Types.Module_T) return Integer;
    pragma Import (C, LLVM_Init_Module, "LLVM_Init_Module");
    --  Initialize the LLVM module.  Returns 0 if it succeeds.

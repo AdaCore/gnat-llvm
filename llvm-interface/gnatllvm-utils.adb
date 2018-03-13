@@ -19,7 +19,6 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
 with Namet;    use Namet;
-with Nlists;   use Nlists;
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
 
@@ -218,24 +217,6 @@ package body GNATLLVM.Utils is
          return Parent (Corresponding_Spec (Subp_Body));
       end if;
    end Get_Acting_Spec;
-
-   -------------
-   -- Iterate --
-   -------------
-
-   function Iterate (L : List_Id) return List_Iterator is
-      Len : constant Nat := List_Length (L);
-      A : List_Iterator (1 .. Len);
-      N : Node_Id := First (L);
-      I : Nat := 1;
-   begin
-      while Present (N) loop
-         A (I) := N;
-         I := I + 1;
-         N := Next (N);
-      end loop;
-      return A;
-   end Iterate;
 
    ----------------------
    -- Iterate_Entities --

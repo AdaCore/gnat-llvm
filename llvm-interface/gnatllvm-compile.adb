@@ -1725,9 +1725,11 @@ package body GNATLLVM.Compile is
                --  pointer deference, and then one per array index.
 
                J : Nat := 2;
+               N : Node_Id;
 
             begin
-               for N of Iterate (Expressions (Node)) loop
+               N := First (Expressions (Node));
+               while Present (N) loop
                   --  Adjust the index according to the range lower bound
 
                   declare
@@ -1742,6 +1744,7 @@ package body GNATLLVM.Compile is
                   end;
 
                   J := J + 1;
+                  N := Next (N);
                end loop;
 
                return GEP
@@ -2237,6 +2240,7 @@ package body GNATLLVM.Compile is
                Cur_Expr   : Value_T;
                Cur_Index  : Integer := 0;
                Ent        : Entity_Id;
+               Expr       : Node_Id;
 
             begin
                if Ekind (Agg_Type) in Record_Kind then
@@ -2244,7 +2248,8 @@ package body GNATLLVM.Compile is
                   --  The GNAT expander will always put fields in the right
                   --  order, so we can ignore Choices (Expr).
 
-                  for Expr of Iterate (Component_Associations (Node)) loop
+                  Expr := First (Component_Associations (Node));
+                  while Present (Expr) loop
                      Ent := Entity (First (Choices (Expr)));
 
                      --  Ignore discriminants that have
@@ -2273,11 +2278,14 @@ package body GNATLLVM.Compile is
                            "");
                         Cur_Index := Cur_Index + 1;
                      end if;
+
+                     Expr := Next (Expr);
                   end loop;
                else
                   pragma Assert (Ekind (Agg_Type) in Array_Kind);
 
-                  for Expr of Iterate (Expressions (Node)) loop
+                  Expr := First (Expressions (Node));
+                  while Present (Expr) loop
                      --  If the expression is a conversion to an unconstrained
                      --  array type, skip it to avoid spilling to memory.
 
@@ -2293,6 +2301,7 @@ package body GNATLLVM.Compile is
                      Result := Insert_Value
                        (Env.Bld, Result, Cur_Expr, unsigned (Cur_Index), "");
                      Cur_Index := Cur_Index + 1;
+                     Expr := Next (Expr);
                   end loop;
                end if;
 

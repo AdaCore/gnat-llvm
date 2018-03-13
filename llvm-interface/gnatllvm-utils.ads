@@ -89,11 +89,7 @@ package GNATLLVM.Utils is
         when N_Op_Ge => (Int_SGE, Int_UGE, Real_OGE),
         when others => (others => <>));
 
-   type List_Iterator is array (Nat range <>) of Node_Id;
    type Entity_Iterator is array (Nat range <>) of Entity_Id;
-
-   function Iterate (L : List_Id) return List_Iterator;
-   --  Return an iterator on list L
 
    function Filter (Elt : Entity_Id) return Boolean is (True);
 

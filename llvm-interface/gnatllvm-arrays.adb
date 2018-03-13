@@ -330,6 +330,7 @@ package body GNATLLVM.Arrays is
       Fat_Ptr        : Value_T := Get_Undef (Fat_Ptr_Type);
       Array_Data_Ptr : Value_T;
       Bounds         : Value_T;
+      Dim            : Node_Id;
       Dim_I          : Integer;
       R              : Node_Id;
 
@@ -397,12 +398,13 @@ package body GNATLLVM.Arrays is
          end;
       else
          Dim_I := 1;
-
-         for Dim of Iterate (List_Containing (First_Index (Array_Type))) loop
+         Dim := First (List_Containing (First_Index (Array_Type)));
+         while Present (Dim) loop
             R := Get_Dim_Range (Dim);
             Handle_Bound (Low_Bound (R), Low);
             Handle_Bound (High_Bound (R), High);
             Dim_I := Dim_I + 1;
+            Dim := Next (Dim);
          end loop;
       end if;
 

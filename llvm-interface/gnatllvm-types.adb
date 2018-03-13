@@ -128,10 +128,6 @@ package body GNATLLVM.Types is
      (Env             : Environ;
       Array_Type_Node : Entity_Id) return Type_T
    is
-      function Iterate is new Iterate_Entities
-        (Get_First => First_Index,
-         Get_Next  => Next_Index);
-
    begin
       if Ekind (Array_Type_Node) = E_String_Literal_Subtype then
          declare
@@ -145,15 +141,18 @@ package body GNATLLVM.Types is
          end;
       else
          declare
-            Indices : constant Entity_Iterator := Iterate (Array_Type_Node);
-            Fields  : aliased array (1 .. 2 * Indices'Length) of Type_T;
-            J       : Natural := 1;
+            Index   : Entity_Id;
+            Fields  : aliased array (1 .. 2 * Number_Dimensions
+                                       (Array_Type_Node)) of Type_T;
+            J       : Pos := 1;
 
          begin
-            for Index of Indices loop
+            Index :=  First_Index (Array_Type_Node);
+            while Present (Index) loop
                Fields (J) := Create_Type (Env, Etype (Index));
                Fields (J + 1) := Fields (J);
                J := J + 2;
+               Index := Next_Index (Index);
             end loop;
 
             return Struct_Type_In_Context

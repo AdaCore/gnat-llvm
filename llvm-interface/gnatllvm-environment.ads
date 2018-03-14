@@ -24,6 +24,7 @@ with Namet; use Namet;
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
 with Ada.Containers.Doubly_Linked_Lists;
+
 with GNATLLVM.Builder;
 
 package GNATLLVM.Environment is
@@ -107,6 +108,7 @@ package GNATLLVM.Environment is
       Env                    : Environ;
       Func                   : Value_T;
       Saved_Builder_Position : Basic_Block_T;
+      Activation_Rec_Param   : Value_T;
    end record;
    type Subp_Env is access all Subp_Env_Record;
 

@@ -286,6 +286,13 @@ package body GNATLLVM.Compile is
             --  Add the parameter to the environnment
 
             Set (Env, Param, LLVM_Var);
+
+            if Ekind (Param) = E_In_Parameter
+              and then Is_Activation_Record (Param)
+            then
+               Subp.Activation_Rec_Param := LLVM_Param;
+            end if;
+
             Param_Num := Param_Num + 1;
             Param := Next_Formal_With_Extras (Param);
          end loop;
@@ -2064,6 +2071,38 @@ package body GNATLLVM.Compile is
                     (Create_Type (Env, Etype (Node)),
                      Enumeration_Rep (Def_Ident));
 
+               --  See if this is an entity that's present in our
+               --  activation record.
+
+               elsif Ekind_In (Def_Ident, E_Constant,
+                               E_Discriminant,
+                               E_In_Parameter,
+                               E_In_Out_Parameter,
+                               E_Loop_Parameter,
+                               E_Out_Parameter,
+                               E_Variable)
+                 and then Present (Activation_Record_Component (Def_Ident))
+                 and then Current_Subp (Env).Activation_Rec_Param /= No_Value_T
+                 and then (Get (Env, Scope (Def_Ident)) /=
+                             Current_Subp (Env).Func)
+               then
+                  declare
+                     Component         : constant Entity_Id :=
+                       Activation_Record_Component (Def_Ident);
+                     Activation_Record : constant Value_T :=
+                       Current_Subp (Env).Activation_Rec_Param;
+                     Pointer           : constant Value_T :=
+                       Record_Field_Offset (Env, Activation_Record, Component);
+                     Value_Address     : constant Value_T :=
+                       Load (Env.Bld, Pointer, "");
+                     Typ               : constant Type_T :=
+                       Pointer_Type (Create_Type (Env, Etype (Def_Ident)), 0);
+                     Value_Ptr         : constant Value_T :=
+                       Int_To_Ptr (Env.Bld, Value_Address, Typ, "");
+                  begin
+                     return Load (Env.Bld, Value_Ptr, "");
+                  end;
+
                --  Handle entities in Standard and ASCII on the fly
 
                elsif Sloc (Def_Ident) <= Standard_Location then
@@ -2684,7 +2723,11 @@ package body GNATLLVM.Compile is
          return Convert_Scalar_Types (Env, S_Type, D_Type, Expr);
 
       elsif Is_Access_Type (D_Type) then
-         return Pointer_Cast
+         return Int_To_Ptr
+           (Env.Bld,
+            Value, Create_Type (Env, D_Type), "ptr-conv");
+      elsif Is_Access_Type (S_Type) then
+         return Ptr_To_Int
            (Env.Bld,
             Value, Create_Type (Env, D_Type), "ptr-conv");
 

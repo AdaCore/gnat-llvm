@@ -373,6 +373,11 @@ package body GNATLLVM.Types is
             end;
 
          when Array_Kind =>
+            --  Handle packed arrays.
+            if Present (Packed_Array_Impl_Type (Def_Ident)) then
+               return Create_Type (Env, Packed_Array_Impl_Type (Def_Ident));
+            end if;
+
             declare
                Result     : Type_T :=
                  Create_Type (Env, Component_Type (Def_Ident));

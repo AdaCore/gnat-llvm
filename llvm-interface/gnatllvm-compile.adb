@@ -74,6 +74,12 @@ package body GNATLLVM.Compile is
       Expr           : Node_Id) return Value_T;
    --  Helper of Build_Type_Conversion if both types are scalar.
 
+   function Convert_To_Scalar_Type
+     (Env  : Environ;
+      Expr : Value_T;
+      T    : Entity_Id) return Value_T;
+   --  Variant of above to convert an LLVM Expr to the type T.
+
    function Build_Short_Circuit_Op
      (Env                   : Environ;
       Node_Left, Node_Right : Node_Id;
@@ -2801,6 +2807,34 @@ package body GNATLLVM.Compile is
 
    end Convert_Scalar_Types;
 
+   ----------------------------
+   -- Convert_To_Scalar_Type --
+   ----------------------------
+   function Convert_To_Scalar_Type
+     (Env  : Environ;
+      Expr : Value_T;
+      T    : Entity_Id) return Value_T
+   is
+      type Cvtf is access function
+        (Bld : Builder_T; Value : Value_T; Typ : Type_T; Name : String)
+        return Value_T;
+
+      In_Typ    : constant Type_T := Type_Of (Expr);
+      In_Width  : constant Integer := Integer (Get_Int_Type_Width (In_Typ));
+      Out_Width : constant Integer := Integer (UI_To_Int (Esize (T)));
+      Subp      : Cvtf := null;
+   begin
+      if In_Width = Out_Width then
+         return Expr;
+      elsif In_Width > Out_Width then
+         Subp := Trunc'Access;
+      else
+         Subp := (if Is_Unsigned_Type (T) then Z_Ext'Access else S_Ext'Access);
+      end if;
+
+      return Subp (Env.Bld, Expr, Create_Type (Env, T), "");
+   end Convert_To_Scalar_Type;
+
    --------------------------------
    -- Build_Unchecked_Conversion --
    --------------------------------
@@ -2987,18 +3021,19 @@ package body GNATLLVM.Compile is
                  Get_Fullest_View (Etype (Prefix (Node)));
                Array_Descr : Value_T;
                Array_Type  : Entity_Id;
+               Result      : Value_T;
 
             begin
                if Is_Scalar_Type (Prefix_Type) then
                   if Attr = Attribute_First then
-                     return Emit_Expression
+                     Result := Emit_Expression
                        (Env, Type_Low_Bound (Prefix_Type));
                   elsif Attr = Attribute_Last then
-                     return Emit_Expression
+                     Result := Emit_Expression
                        (Env, Type_High_Bound (Prefix_Type));
                   else
                      Error_Msg_N ("unsupported attribute", Node);
-                     return Get_Undef (Create_Type (Env, Etype (Node)));
+                     Result := Get_Undef (Create_Type (Env, Etype (Node)));
                   end if;
 
                elsif Is_Array_Type (Prefix_Type) then
@@ -3006,16 +3041,18 @@ package body GNATLLVM.Compile is
                     (Env, Prefix (Node), Array_Descr, Array_Type);
 
                   if Attr = Attribute_Length then
-                     return Array_Length (Env, Array_Descr, Array_Type);
+                     Result := Array_Length (Env, Array_Descr, Array_Type);
                   else
-                     return Array_Bound
+                     Result := Array_Bound
                        (Env, Array_Descr, Array_Type,
                         (if Attr = Attribute_First then Low else High));
                   end if;
                else
                   Error_Msg_N ("unsupported attribute", Node);
-                  return Get_Undef (Create_Type (Env, Etype (Node)));
+                  Result := Get_Undef (Create_Type (Env, Etype (Node)));
                end if;
+
+               return Convert_To_Scalar_Type (Env, Result, Etype (Node));
             end;
 
          when Attribute_Max

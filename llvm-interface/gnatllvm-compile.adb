@@ -157,6 +157,15 @@ package body GNATLLVM.Compile is
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
 
+   function Emit_Array_Aggregate
+     (Env           : Environ;
+      Node          : Node_Id;
+      Dims_Left     : Pos;
+      Typ           : Type_T) return Value_T;
+   --  Emit an N_Aggregate of LLVM type Typ, which is an array, returning the
+   --  Value_T that contains the data.  Dims_Left says how many dimensions of
+   --  the outer array type we still can recurse into.
+
    function Emit_Shift
      (Env                 : Environ;
       Node                : Node_Id;
@@ -2276,7 +2285,6 @@ package body GNATLLVM.Compile is
                LLVM_Type  : constant Type_T :=
                  Create_Type (Env, Agg_Type);
                Result     : Value_T := Get_Undef (LLVM_Type);
-               Cur_Expr   : Value_T;
                Cur_Index  : Integer := 0;
                Ent        : Entity_Id;
                Expr       : Node_Id;
@@ -2322,26 +2330,8 @@ package body GNATLLVM.Compile is
                   end loop;
                else
                   pragma Assert (Ekind (Agg_Type) in Array_Kind);
-
-                  Expr := First (Expressions (Node));
-                  while Present (Expr) loop
-                     --  If the expression is a conversion to an unconstrained
-                     --  array type, skip it to avoid spilling to memory.
-
-                     if Nkind (Expr) = N_Type_Conversion
-                       and then Is_Array_Type (Etype (Expr))
-                       and then not Is_Constrained (Etype (Expr))
-                     then
-                        Cur_Expr := Emit_Expr (Expression (Expr));
-                     else
-                        Cur_Expr := Emit_Expr (Expr);
-                     end if;
-
-                     Result := Insert_Value
-                       (Env.Bld, Result, Cur_Expr, unsigned (Cur_Index), "");
-                     Cur_Index := Cur_Index + 1;
-                     Expr := Next (Expr);
-                  end loop;
+                  return Emit_Array_Aggregate
+                    (Env, Node, Number_Dimensions (Agg_Type), LLVM_Type);
                end if;
 
                return Result;
@@ -2891,6 +2881,51 @@ package body GNATLLVM.Compile is
       return Build_Select (Env.Bld, Choose, Left, Right,
                            (if Compute_Max then "max" else "min"));
    end Emit_Min_Max;
+
+   --------------------
+   -- Emit_Aggregate --
+   --------------------
+
+   function Emit_Array_Aggregate
+     (Env           : Environ;
+      Node          : Node_Id;
+      Dims_Left     : Pos;
+      Typ           : Type_T) return Value_T
+   is
+      Result     : Value_T := Get_Undef (Typ);
+      Cur_Expr   : Value_T;
+      Cur_Index  : Integer := 0;
+      Expr       : Node_Id;
+   begin
+      Expr := First (Expressions (Node));
+      while Present (Expr) loop
+         --  If this is a nested N_Aggregate and we have dimensions left
+         --  in the outer array, use recursion to fill in the aggregate
+         --  since we won't have the proper type for the inner aggregate.
+         if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
+            Cur_Expr := Emit_Array_Aggregate
+              (Env, Expr, Dims_Left - 1, Get_Element_Type (Typ));
+
+         --  If the expression is a conversion to an unconstrained
+         --  array type, skip it to avoid spilling to memory.
+
+         elsif Nkind (Expr) = N_Type_Conversion
+           and then Is_Array_Type (Etype (Expr))
+           and then not Is_Constrained (Etype (Expr))
+         then
+            Cur_Expr := Emit_Expression (Env, Expression (Expr));
+         else
+            Cur_Expr := Emit_Expression (Env, Expr);
+         end if;
+
+         Result := Insert_Value
+           (Env.Bld, Result, Cur_Expr, unsigned (Cur_Index), "");
+         Cur_Index := Cur_Index + 1;
+         Expr := Next (Expr);
+      end loop;
+
+      return Result;
+   end Emit_Array_Aggregate;
 
    ------------------------------
    -- Emit_Attribute_Reference --

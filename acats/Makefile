@@ -3,6 +3,7 @@
 all: tests
 
 save-results:
+	if [ -d output/old ]; then rm -rf output/old; fi
 	if [ -d output/new ]; then mv output/new output/old; fi
 
 tests:

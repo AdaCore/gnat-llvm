@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Deallocation;
-
 with Errout; use Errout;
 
 with LLVM.Core; use LLVM.Core;
@@ -38,27 +36,6 @@ package body GNATLLVM.Environment is
    function Get
      (Env : access Environ_Record; RI : Entity_Id)
       return Record_Info_Maps.Cursor;
-
-   ----------------
-   -- Push_Scope --
-   ----------------
-
-   procedure Push_Scope (Env : access Environ_Record) is
-   begin
-      Env.Scopes.Append (new Scope_Type'(others => <>));
-   end Push_Scope;
-
-   ---------------
-   -- Pop_Scope --
-   ---------------
-
-   procedure Pop_Scope (Env : access Environ_Record) is
-      procedure Free is new Ada.Unchecked_Deallocation (Scope_Type, Scope_Acc);
-      Last_Scope : Scope_Acc := Env.Scopes.Last_Element;
-   begin
-      Free (Last_Scope);
-      Env.Scopes.Delete_Last;
-   end Pop_Scope;
 
    --------------
    -- Has_Type --
@@ -102,19 +79,11 @@ package body GNATLLVM.Environment is
 
    function Get
      (Env : access Environ_Record; TE : Entity_Id)
-      return Type_Maps.Cursor is
+     return Type_Maps.Cursor
+   is
       use Type_Maps;
    begin
-      for S of reverse Env.Scopes loop
-         declare
-            C : constant Cursor := S.Types.Find (TE);
-         begin
-            if C /= No_Element then
-               return C;
-            end if;
-         end;
-      end loop;
-      return No_Element;
+      return Env.Scope.Types.Find (TE);
    end Get;
 
    ---------
@@ -126,16 +95,7 @@ package body GNATLLVM.Environment is
       return Value_Maps.Cursor is
       use Value_Maps;
    begin
-      for S of reverse Env.Scopes loop
-         declare
-            C : constant Cursor := S.Values.Find (VE);
-         begin
-            if C /= No_Element then
-               return C;
-            end if;
-         end;
-      end loop;
-      return No_Element;
+      return Env.Scope.Values.Find (VE);
    end Get;
 
    ---------
@@ -148,16 +108,7 @@ package body GNATLLVM.Environment is
       use Record_Info_Maps;
       E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (RI);
    begin
-      for S of reverse Env.Scopes loop
-         declare
-            C : constant Cursor := S.Records_Infos.Find (E);
-         begin
-            if C /= No_Element then
-               return C;
-            end if;
-         end;
-      end loop;
-      return No_Element;
+      return Env.Scope.Records_Infos.Find (E);
    end Get;
 
    ---------
@@ -233,7 +184,7 @@ package body GNATLLVM.Environment is
 
    procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T) is
    begin
-      Env.Scopes.Last_Element.Types.Include (TE, TL);
+      Env.Scope.Types.Include (TE, TL);
    end Set;
 
    ---------
@@ -243,7 +194,7 @@ package body GNATLLVM.Environment is
    procedure Set
      (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info) is
    begin
-      Env.Scopes.Last_Element.Records_Infos.Include (TE, RI);
+      Env.Scope.Records_Infos.Include (TE, RI);
    end Set;
 
    ---------
@@ -252,7 +203,7 @@ package body GNATLLVM.Environment is
 
    procedure Set (Env : access Environ_Record; VE : Entity_Id; VL : Value_T) is
    begin
-      Env.Scopes.Last_Element.Values.Insert (VE, VL);
+      Env.Scope.Values.Insert (VE, VL);
    end Set;
 
    ---------

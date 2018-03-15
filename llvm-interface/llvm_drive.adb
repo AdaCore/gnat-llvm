@@ -226,7 +226,6 @@ package body LLVM_Drive is
                    Void_Type_In_Context (Env.Ctx)));
       end;
 
-      Push_Scope (Env);
       Register_Builtin_Types (Env);
 
       --  Actually translate

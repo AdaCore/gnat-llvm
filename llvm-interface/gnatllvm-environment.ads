@@ -85,11 +85,6 @@ package GNATLLVM.Environment is
 
       Records_Infos : Record_Info_Maps.Map;
    end record;
-   type Scope_Acc is access Scope_Type;
-
-   package Scope_Vectors is new Ada.Containers.Vectors
-     (Index_Type   => Positive,
-      Element_Type => Scope_Acc);
 
    type Exit_Point is record
       Label_Entity : Entity_Id;
@@ -122,9 +117,8 @@ package GNATLLVM.Environment is
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.
 
-      Scopes                    : Scope_Vectors.Vector;
-      --  Stack of scopes, to associate LLVM types/values to expansed tree's
-      --  entities.
+      Scope                     : Scope_Type;
+      --  Scope, to associate LLVM types/values to expansed tree's entities.
 
       Exit_Points               : Exit_Point_Vectors.Vector;
       --  Stack of scoped loop exit points. Last inserted exit point correspond
@@ -144,9 +138,6 @@ package GNATLLVM.Environment is
       Special_Elaboration_Code  : Boolean := False;
       Current_Elab_Entity       : Node_Id := Empty;
    end record;
-
-   procedure Push_Scope (Env : access Environ_Record);
-   procedure Pop_Scope (Env : access Environ_Record);
 
    function Library_Level (Env : access Environ_Record) return Boolean;
 

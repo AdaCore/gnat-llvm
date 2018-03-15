@@ -265,9 +265,6 @@ package body GNATLLVM.Compile is
          Param_Num  : Natural := 0;
 
       begin
-         --  Register each parameter into a new scope
-         Push_Scope (Env);
-
          Param := First_Formal_With_Extras (Defining_Unit_Name (Spec));
          while Present (Param) loop
             LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
@@ -319,8 +316,6 @@ package body GNATLLVM.Compile is
          --  already... returned!
 
          Discard (Build_Unreachable (Env.Bld));
-
-         Pop_Scope (Env);
          Leave_Subp (Env);
 
          Verify_Function
@@ -594,7 +589,6 @@ package body GNATLLVM.Compile is
                           Get_Name_String (Chars (Unit)) & "___elabs",
                           Elab_Type);
                      Subp := Enter_Subp (Env, LLVM_Func);
-                     Push_Scope (Env);
 
                      Env.Special_Elaboration_Code := True;
 
@@ -607,8 +601,6 @@ package body GNATLLVM.Compile is
                      Env.Current_Elab_Entity := Empty;
                      Env.Special_Elaboration_Code := False;
                      Discard (Build_Ret_Void (Env.Bld));
-
-                     Pop_Scope (Env);
                      Leave_Subp (Env);
 
                      Verify_Function
@@ -686,7 +678,6 @@ package body GNATLLVM.Compile is
                              Get_Name_String (Chars (Unit)) & "___elabb",
                              Elab_Type);
                         Subp := Enter_Subp (Env, LLVM_Func);
-                        Push_Scope (Env);
                         Env.Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop
@@ -704,7 +695,6 @@ package body GNATLLVM.Compile is
                         end if;
 
                         Discard (Build_Ret_Void (Env.Bld));
-                        Pop_Scope (Env);
                         Leave_Subp (Env);
 
                         Verify_Function
@@ -1312,7 +1302,6 @@ package body GNATLLVM.Compile is
                --  loops.
 
                Push_Loop (Env, Loop_Identifier, BB_Next);
-               Push_Scope (Env);
 
                --  First compile the iterative part of the loop: evaluation of
                --  the exit condition, etc.
@@ -1416,8 +1405,6 @@ package body GNATLLVM.Compile is
                Position_Builder_At_End (Env.Bld, BB_Stmts);
                Emit_List (Env, Statements (Node));
                Discard (Build_Br (Env.Bld, BB_Iter));
-
-               Pop_Scope (Env);
                Pop_Loop (Env);
 
                Position_Builder_At_End (Env.Bld, BB_Next);
@@ -1450,7 +1437,6 @@ package body GNATLLVM.Compile is
                Discard (Build_Br (Env.Bld, BB));
                Position_Builder_At_End (Env.Bld, BB);
 
-               Push_Scope (Env);
                Stack_State := Call
                  (Env.Bld,
                   Env.Stack_Save_Fn, System.Null_Address, 0, "");
@@ -1463,8 +1449,6 @@ package body GNATLLVM.Compile is
                  (Call
                     (Env.Bld,
                      Env.Stack_Restore_Fn, Stack_State'Address, 1, ""));
-
-               Pop_Scope (Env);
             end;
 
          when N_Full_Type_Declaration | N_Subtype_Declaration

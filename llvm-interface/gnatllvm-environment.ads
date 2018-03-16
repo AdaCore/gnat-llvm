@@ -62,15 +62,6 @@ package GNATLLVM.Environment is
      (Key_Type     => Name_Id,
       Element_Type => Nat);
 
-   type Exit_Point is record
-      Label_Entity : Entity_Id;
-      Exit_BB      : Basic_Block_T;
-   end record;
-
-   package Exit_Point_Vectors is new Ada.Containers.Vectors
-     (Index_Type   => Positive,
-      Element_Type => Exit_Point);
-
    --  Expanded Ada-to-LLVM translation context: gathers global information
    type Environ_Record;
    type Environ is access all Environ_Record;
@@ -105,13 +96,32 @@ package GNATLLVM.Environment is
       Activation_Rec_Param   : Value_T;
    end record;
 
+   Subp_First_Id : constant := 1;
+
    package Subp_Table is new Table.Table
      (Table_Component_Type => Subp_Env,
       Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
+      Table_Low_Bound      => Subp_First_Id,
       Table_Initial        => 2,
       Table_Increment      => 2,
       Table_Name           => "Subp_Table");
+
+   type Exit_Point is record
+      Label_Entity : Entity_Id;
+      Exit_BB      : Basic_Block_T;
+   end record;
+
+   Exit_Point_Low_Bound : constant := 1;
+
+   package Exit_Point_Table is new Table.Table
+     (Table_Component_Type => Exit_Point,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => Exit_Point_Low_Bound,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Exit_Point_Table");
+   --  Table of scoped loop exit points. Last inserted exit point correspond
+   --  to the innermost loop.
 
    type Environ_Record (Max_Nodes : Node_Id) is record
       Ctx                       : LLVM.Types.Context_T;
@@ -120,10 +130,6 @@ package GNATLLVM.Environment is
       Module_Data_Layout        : LLVM.Target.Target_Data_T;
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.
-
-      Exit_Points               : Exit_Point_Vectors.Vector;
-      --  Stack of scoped loop exit points. Last inserted exit point correspond
-      --  to the innermost loop.
 
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
@@ -167,13 +173,10 @@ package GNATLLVM.Environment is
    procedure Set
      (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T);
 
-   procedure Push_Loop
-     (Env : access Environ_Record; LE : Entity_Id; Exit_Point : Basic_Block_T);
-   procedure Pop_Loop (Env : access Environ_Record);
-   function Get_Exit_Point
-     (Env : access Environ_Record; LE : Entity_Id) return Basic_Block_T;
-   function Get_Exit_Point
-     (Env : access Environ_Record) return Basic_Block_T;
+   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T);
+   procedure Pop_Loop;
+   function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T;
+   function Get_Exit_Point return Basic_Block_T;
 
    function Enter_Subp
      (Env       : access Environ_Record;

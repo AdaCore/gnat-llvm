@@ -184,33 +184,29 @@ package body GNATLLVM.Environment is
    -- Push_Loop --
    ---------------
 
-   procedure Push_Loop
-     (Env : access Environ_Record;
-      LE : Entity_Id;
-      Exit_Point : Basic_Block_T) is
+   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T) is
    begin
-      Env.Exit_Points.Append ((LE, Exit_Point));
+      Exit_Point_Table.Append ((LE, Exit_Point));
    end Push_Loop;
 
    --------------
    -- Pop_Loop --
    --------------
 
-   procedure Pop_Loop (Env : access Environ_Record) is
+   procedure Pop_Loop is
    begin
-      Env.Exit_Points.Delete_Last;
+      Exit_Point_Table.Decrement_Last;
    end Pop_Loop;
 
    --------------------
    -- Get_Exit_Point --
    --------------------
 
-   function Get_Exit_Point
-     (Env : access Environ_Record; LE : Entity_Id) return Basic_Block_T is
+   function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T is
    begin
-      for Exit_Point of Env.Exit_Points loop
-         if Exit_Point.Label_Entity = LE then
-            return Exit_Point.Exit_BB;
+      for I in Exit_Point_Low_Bound .. Exit_Point_Table.Last loop
+         if Exit_Point_Table.Table (I).Label_Entity = LE then
+            return Exit_Point_Table.Table (I).Exit_BB;
          end if;
       end loop;
 
@@ -225,10 +221,9 @@ package body GNATLLVM.Environment is
    -- Get_Exit_Point --
    --------------------
 
-   function Get_Exit_Point
-     (Env : access Environ_Record) return Basic_Block_T is
+   function Get_Exit_Point return Basic_Block_T is
    begin
-      return Env.Exit_Points.Last_Element.Exit_BB;
+      return Exit_Point_Table.Table (Exit_Point_Table.Last).Exit_BB;
    end Get_Exit_Point;
 
    ----------------
@@ -259,7 +254,7 @@ package body GNATLLVM.Environment is
       --  There is no builder position to restore if no subprogram translation
       --  was interrupted in order to translate the current subprogram.
 
-      if Subp_Table.Last > 1 then
+      if Subp_Table.Last > Subp_First_Id then
          Position_Builder_At_End
            (Env.Bld,
             Subp_Table.Table (Subp_Table.Last).Saved_Builder_Position);
@@ -273,7 +268,7 @@ package body GNATLLVM.Environment is
    -------------------
 
    function Library_Level return Boolean is
-     (Subp_Table.Last = 0);
+     (Subp_Table.Last = Subp_First_Id - 1);
 
    ------------------
    -- Current_Subp --

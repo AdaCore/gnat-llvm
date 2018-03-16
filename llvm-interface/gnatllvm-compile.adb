@@ -1182,8 +1182,8 @@ package body GNATLLVM.Compile is
             declare
                Exit_Point : constant Basic_Block_T :=
                  (if Present (Name (Node))
-                  then Get_Exit_Point (Env, Entity (Name (Node)))
-                  else Get_Exit_Point (Env));
+                  then Get_Exit_Point (Entity (Name (Node)))
+                  else Get_Exit_Point);
                Next_BB    : constant Basic_Block_T :=
                  Create_Basic_Block (Env, "loop-after-exit");
 
@@ -1302,7 +1302,7 @@ package body GNATLLVM.Compile is
                --  but exit statements can target them anyway, so register such
                --  loops.
 
-               Push_Loop (Env, Loop_Identifier, BB_Next);
+               Push_Loop (Loop_Identifier, BB_Next);
 
                --  First compile the iterative part of the loop: evaluation of
                --  the exit condition, etc.
@@ -1406,7 +1406,7 @@ package body GNATLLVM.Compile is
                Position_Builder_At_End (Env.Bld, BB_Stmts);
                Emit_List (Env, Statements (Node));
                Discard (Build_Br (Env.Bld, BB_Iter));
-               Pop_Loop (Env);
+               Pop_Loop;
 
                Position_Builder_At_End (Env.Bld, BB_Next);
             end;

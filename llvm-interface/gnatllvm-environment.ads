@@ -24,7 +24,6 @@ with Namet; use Namet;
 
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
-with Ada.Containers.Doubly_Linked_Lists;
 
 with GNATLLVM.Builder;
 
@@ -76,16 +75,6 @@ package GNATLLVM.Environment is
    type Environ_Record;
    type Environ is access all Environ_Record;
 
-   type Subp_Env_Record is record
-      Env                    : Environ;
-      Func                   : Value_T;
-      Saved_Builder_Position : Basic_Block_T;
-      Activation_Rec_Param   : Value_T;
-   end record;
-   type Subp_Env is access all Subp_Env_Record;
-
-   package Subp_Lists is new Ada.Containers.Doubly_Linked_Lists (Subp_Env);
-
    type LLVM_Info is record
       Value       : Value_T;
       Typ         : Type_T;
@@ -109,6 +98,21 @@ package GNATLLVM.Environment is
 
    type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info_Id;
 
+   type Subp_Env is record
+      Env                    : Environ;
+      Func                   : Value_T;
+      Saved_Builder_Position : Basic_Block_T;
+      Activation_Rec_Param   : Value_T;
+   end record;
+
+   package Subp_Table is new Table.Table
+     (Table_Component_Type => Subp_Env,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 2,
+      Table_Increment      => 2,
+      Table_Name           => "Subp_Table");
+
    type Environ_Record (Max_Nodes : Node_Id) is record
       Ctx                       : LLVM.Types.Context_T;
       Bld                       : GNATLLVM.Builder.Builder;
@@ -121,7 +125,6 @@ package GNATLLVM.Environment is
       --  Stack of scoped loop exit points. Last inserted exit point correspond
       --  to the innermost loop.
 
-      Current_Subps             : Subp_Lists.List;
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
       Memory_Copy_Fn            : Value_T;
@@ -138,7 +141,7 @@ package GNATLLVM.Environment is
       LLVM_Info                 : LLVM_Info_Array (First_Node_Id .. Max_Nodes);
    end record;
 
-   function Library_Level (Env : access Environ_Record) return Boolean;
+   function Library_Level return Boolean;
 
    No_Such_Type        : exception;
    No_Such_Value       : exception;
@@ -187,6 +190,6 @@ package GNATLLVM.Environment is
    function Create_Basic_Block
      (Env : access Environ_Record; Name : String) return Basic_Block_T;
 
-   function Current_Subp (Env : access Environ_Record) return Subp_Env;
+   function Current_Subp return Subp_Env;
 
 end GNATLLVM.Environment;

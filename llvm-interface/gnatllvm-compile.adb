@@ -302,7 +302,8 @@ package body GNATLLVM.Compile is
             if Ekind (Param) = E_In_Parameter
               and then Is_Activation_Record (Param)
             then
-               Subp.Activation_Rec_Param := LLVM_Param;
+               Subp_Table.Table (Subp_Table.Last).Activation_Rec_Param :=
+                 LLVM_Param;
             end if;
 
             Param_Num := Param_Num + 1;
@@ -521,7 +522,7 @@ package body GNATLLVM.Compile is
 
    procedure Emit (Env : Environ; Node : Node_Id) is
    begin
-      if Library_Level (Env)
+      if Library_Level
         and then (Nkind (Node) in N_Statement_Other_Than_Procedure_Call
                    or else Nkind (Node) in N_Subprogram_Call
                    or else Nkind (Node) = N_Handled_Sequence_Of_Statements
@@ -645,7 +646,7 @@ package body GNATLLVM.Compile is
                      --  For packages inside subprograms, generate elaboration
                      --  code as standard code as part of the enclosing unit.
 
-                     if not Library_Level (Env) then
+                     if not Library_Level then
                         if Has_Stmts then
                            Emit_List (Env, Statements (Stmts));
                         end if;
@@ -790,7 +791,7 @@ package body GNATLLVM.Compile is
 
                --  Handle top-level declarations
 
-               if Library_Level (Env) then
+               if Library_Level then
                   --  ??? Will only work for objects of static sizes
 
                   LLVM_Type := Create_Type (Env, T);
@@ -947,7 +948,7 @@ package body GNATLLVM.Compile is
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                LLVM_Var  : Value_T;
             begin
-               if Library_Level (Env) then
+               if Library_Level then
                   if Is_LValue (Name (Node)) then
                      LLVM_Var := Emit_LValue (Env, Name (Node));
                      Set (Env, Def_Ident, LLVM_Var);
@@ -1795,7 +1796,7 @@ package body GNATLLVM.Compile is
             return Emit_LValue (Env, Expression (Node));
 
          when others =>
-            if not Library_Level (Env) then
+            if not Library_Level then
                --  Create a temporary: is that always adequate???
 
                declare
@@ -1837,13 +1838,13 @@ package body GNATLLVM.Compile is
       --  expression of the operator and its end.
 
       Block_Right_Expr : constant Basic_Block_T :=
-        Append_Basic_Block (Current_Subp (Env).Func, "scl-right-expr");
+        Append_Basic_Block (Current_Subp.Func, "scl-right-expr");
       Block_Right_Expr_End : Basic_Block_T;
 
       --  Block containing the exit code (the phi that selects that value)
 
       Block_Exit : constant Basic_Block_T :=
-        Append_Basic_Block (Current_Subp (Env).Func, "scl-exit");
+        Append_Basic_Block (Current_Subp.Func, "scl-exit");
 
    begin
       --  In the case of And, evaluate the right expression when Left is
@@ -2081,15 +2082,14 @@ package body GNATLLVM.Compile is
                                E_Out_Parameter,
                                E_Variable)
                  and then Present (Activation_Record_Component (Def_Ident))
-                 and then Current_Subp (Env).Activation_Rec_Param /= No_Value_T
-                 and then (Get (Env, Scope (Def_Ident)) /=
-                             Current_Subp (Env).Func)
+                 and then Current_Subp.Activation_Rec_Param /= No_Value_T
+                 and then (Get (Env, Scope (Def_Ident)) /= Current_Subp.Func)
                then
                   declare
                      Component         : constant Entity_Id :=
                        Activation_Record_Component (Def_Ident);
                      Activation_Record : constant Value_T :=
-                       Current_Subp (Env).Activation_Rec_Param;
+                       Current_Subp.Activation_Rec_Param;
                      Pointer           : constant Value_T :=
                        Record_Field_Offset (Env, Activation_Record, Component);
                      Value_Address     : constant Value_T :=

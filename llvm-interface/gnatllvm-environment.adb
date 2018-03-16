@@ -23,8 +23,6 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 
-   use Ada.Containers;
-
    --------------
    -- Has_Type --
    --------------
@@ -241,14 +239,13 @@ package body GNATLLVM.Environment is
      (Env       : access Environ_Record;
       Func      : Value_T) return Subp_Env
    is
-      Subp : constant Subp_Env := new Subp_Env_Record'
+      Subp : constant Subp_Env :=
         (Env                    => Environ (Env),
          Func                   => Func,
          Saved_Builder_Position => Get_Insert_Block (Env.Bld),
          Activation_Rec_Param   => No_Value_T);
-
    begin
-      Env.Current_Subps.Append (Subp);
+      Subp_Table.Append (Subp);
       Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));
       return Subp;
    end Enter_Subp;
@@ -262,28 +259,29 @@ package body GNATLLVM.Environment is
       --  There is no builder position to restore if no subprogram translation
       --  was interrupted in order to translate the current subprogram.
 
-      if Env.Current_Subps.Length > 1 then
+      if Subp_Table.Last > 1 then
          Position_Builder_At_End
-           (Env.Bld, Env.Current_Subps.Last_Element.Saved_Builder_Position);
+           (Env.Bld,
+            Subp_Table.Table (Subp_Table.Last).Saved_Builder_Position);
       end if;
 
-      Env.Current_Subps.Delete_Last;
+      Subp_Table.Decrement_Last;
    end Leave_Subp;
 
    -------------------
    -- Library_Level --
    -------------------
 
-   function Library_Level (Env : access Environ_Record) return Boolean is
-     (Env.Current_Subps.Length = 0);
+   function Library_Level return Boolean is
+     (Subp_Table.Last = 0);
 
    ------------------
    -- Current_Subp --
    ------------------
 
-   function Current_Subp (Env : access Environ_Record) return Subp_Env is
+   function Current_Subp return Subp_Env is
    begin
-      return Env.Current_Subps.Last_Element;
+      return Subp_Table.Table (Subp_Table.Last);
    end Current_Subp;
 
    ------------------------
@@ -294,7 +292,7 @@ package body GNATLLVM.Environment is
      (Env : access Environ_Record; Name : String) return Basic_Block_T is
    begin
       return Append_Basic_Block_In_Context
-        (Env.Ctx, Current_Subp (Env).Func, Name);
+        (Env.Ctx, Current_Subp.Func, Name);
    end Create_Basic_Block;
 
 end GNATLLVM.Environment;

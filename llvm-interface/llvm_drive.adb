@@ -163,10 +163,7 @@ package body LLVM_Drive is
       Result := LLVM_Init_Module (Env.Mdl);
       pragma Assert (Result = 0);
       Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
-      Env.LLVM_Info := (others => (Value => No_Value_T,
-                                   Typ => No_Type_T,
-                                   Basic_Block => No_BB_T,
-                                   Record_Inf => <>));
+      Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);

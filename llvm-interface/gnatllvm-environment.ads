@@ -18,6 +18,7 @@
 with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Vectors;
 
+with Table; use Table;
 with Types; use Types;
 with Namet; use Namet;
 
@@ -92,7 +93,21 @@ package GNATLLVM.Environment is
       Record_Inf  : Record_Info;
    end record;
 
-   type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info;
+   LLVM_Info_Low_Bound  : constant := 200_000_000;
+   LLVM_Info_High_Bound : constant := 299_999_999;
+   type LLVM_Info_Id is range LLVM_Info_Low_Bound .. LLVM_Info_High_Bound;
+   First_LLVM_Info_Id   : constant LLVM_Info_Id := LLVM_Info_Low_Bound;
+   Empty_LLVM_Info_Id   : constant LLVM_Info_Id := First_LLVM_Info_Id;
+
+   package LLVM_Info_Table is new Table.Table
+     (Table_Component_Type => LLVM_Info,
+      Table_Index_Type     => LLVM_Info_Id'Base,
+      Table_Low_Bound      => LLVM_Info_Low_Bound,
+      Table_Initial        => 1024,
+      Table_Increment      => 100,
+      Table_Name           => "LLVM_Info_Table");
+
+   type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info_Id;
 
    type Environ_Record (Max_Nodes : Node_Id) is record
       Ctx                       : LLVM.Types.Context_T;

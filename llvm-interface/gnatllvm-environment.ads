@@ -58,33 +58,9 @@ package GNATLLVM.Environment is
       Dynamic_Size : Boolean := False;
    end record;
 
-   package Record_Info_Maps is new Ada.Containers.Ordered_Maps
-     (Key_Type     => Entity_Id,
-      Element_Type => Record_Info);
-
-   package Type_Maps is new Ada.Containers.Ordered_Maps
-     (Key_Type     => Entity_Id,
-      Element_Type => Type_T);
-
-   package Value_Maps is new Ada.Containers.Ordered_Maps
-     (Key_Type     => Entity_Id,
-      Element_Type => Value_T);
-
-   package Entity_Maps is new Ada.Containers.Ordered_Maps
-     (Key_Type     => Entity_Id,
-      Element_Type => Nat);
-
    package Name_Maps is new Ada.Containers.Ordered_Maps
      (Key_Type     => Name_Id,
       Element_Type => Nat);
-
-   type Scope_Type is record
-      Types         : Type_Maps.Map;
-      Values        : Value_Maps.Map;
-      --  Types and values registered so far for this scope
-
-      Records_Infos : Record_Info_Maps.Map;
-   end record;
 
    type Exit_Point is record
       Label_Entity : Entity_Id;
@@ -109,16 +85,22 @@ package GNATLLVM.Environment is
 
    package Subp_Lists is new Ada.Containers.Doubly_Linked_Lists (Subp_Env);
 
-   type Environ_Record is record
+   type LLVM_Info is record
+      Value       : Value_T;
+      Typ         : Type_T;
+      Basic_Block : Basic_Block_T;
+      Record_Inf  : Record_Info;
+   end record;
+
+   type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info;
+
+   type Environ_Record (Max_Nodes : Node_Id) is record
       Ctx                       : LLVM.Types.Context_T;
       Bld                       : GNATLLVM.Builder.Builder;
       Mdl                       : LLVM.Types.Module_T;
       Module_Data_Layout        : LLVM.Target.Target_Data_T;
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.
-
-      Scope                     : Scope_Type;
-      --  Scope, to associate LLVM types/values to expansed tree's entities.
 
       Exit_Points               : Exit_Point_Vectors.Vector;
       --  Stack of scoped loop exit points. Last inserted exit point correspond
@@ -137,6 +119,8 @@ package GNATLLVM.Environment is
       In_Main_Unit              : Boolean := False;
       Special_Elaboration_Code  : Boolean := False;
       Current_Elab_Entity       : Node_Id := Empty;
+
+      LLVM_Info                 : LLVM_Info_Array (First_Node_Id .. Max_Nodes);
    end record;
 
    function Library_Level (Env : access Environ_Record) return Boolean;

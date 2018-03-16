@@ -25,18 +25,6 @@ package body GNATLLVM.Environment is
 
    use Ada.Containers;
 
-   function Get
-     (Env : access Environ_Record; TE : Entity_Id)
-      return Type_Maps.Cursor;
-
-   function Get
-     (Env : access Environ_Record; VE : Entity_Id)
-      return Value_Maps.Cursor;
-
-   function Get
-     (Env : access Environ_Record; RI : Entity_Id)
-      return Record_Info_Maps.Cursor;
-
    --------------
    -- Has_Type --
    --------------
@@ -44,9 +32,8 @@ package body GNATLLVM.Environment is
    function Has_Type
      (Env : access Environ_Record; TE : Entity_Id) return Boolean
    is
-      use Type_Maps;
    begin
-      return Get (Env, TE) /= No_Element;
+      return Get (Env, TE) /= No_Type_T;
    end Has_Type;
 
    ---------------
@@ -56,9 +43,8 @@ package body GNATLLVM.Environment is
    function Has_Value
      (Env : access Environ_Record; VE : Entity_Id) return Boolean
    is
-      use Value_Maps;
    begin
-      return Get (Env, VE) /= No_Element;
+      return Get (Env, VE) /= No_Value_T;
    end Has_Value;
 
    ------------
@@ -68,10 +54,18 @@ package body GNATLLVM.Environment is
    function Has_BB
      (Env : access Environ_Record; BE : Entity_Id) return Boolean
    is
-      use Value_Maps;
    begin
-      return Get (Env, BE) /= No_Element;
+      return Get (Env, BE) /= No_BB_T;
    end Has_BB;
+
+   ---------
+   -- Get --
+   ---------
+
+   function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T is
+   begin
+      return Env.LLVM_Info (VE).Value;
+   end Get;
 
    ---------
    -- Get --
@@ -79,68 +73,11 @@ package body GNATLLVM.Environment is
 
    function Get
      (Env : access Environ_Record; TE : Entity_Id)
-     return Type_Maps.Cursor
+     return Type_T
    is
-      use Type_Maps;
+      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (TE);
    begin
-      return Env.Scope.Types.Find (TE);
-   end Get;
-
-   ---------
-   -- Get --
-   ---------
-
-   function Get
-     (Env : access Environ_Record; VE : Entity_Id)
-      return Value_Maps.Cursor is
-      use Value_Maps;
-   begin
-      return Env.Scope.Values.Find (VE);
-   end Get;
-
-   ---------
-   -- Get --
-   ---------
-
-   function Get
-     (Env : access Environ_Record; RI : Entity_Id)
-      return Record_Info_Maps.Cursor is
-      use Record_Info_Maps;
-      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (RI);
-   begin
-      return Env.Scope.Records_Infos.Find (E);
-   end Get;
-
-   ---------
-   -- Get --
-   ---------
-
-   function Get (Env : access Environ_Record; TE : Entity_Id) return Type_T is
-      use Type_Maps;
-      Cur : constant Cursor := Get (Env, TE);
-   begin
-      if Cur /= No_Element then
-         return Element (Cur);
-      else
-         Error_Msg_N ("cannot find matching `LLVM` type", TE);
-         raise No_Such_Type;
-      end if;
-   end Get;
-
-   ---------
-   -- Get --
-   ---------
-
-   function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T is
-      use Value_Maps;
-      Cur : constant Cursor := Get (Env, VE);
-   begin
-      if Cur /= No_Element then
-         return Element (Cur);
-      else
-         Error_Msg_N ("cannot find matching `LLVM` value", VE);
-         raise No_Such_Value;
-      end if;
+      return Env.LLVM_Info (E).Typ;
    end Get;
 
    ---------
@@ -150,15 +87,9 @@ package body GNATLLVM.Environment is
    function Get
      (Env : access Environ_Record; RI : Entity_Id) return Record_Info
    is
-      use Record_Info_Maps;
-      Cur : constant Cursor := Get (Env, RI);
+      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (RI);
    begin
-      if Cur /= No_Element then
-         return Element (Cur);
-      else
-         Error_Msg_N ("cannot find matching `LLVM` value", RI);
-         raise No_Such_Value;
-      end if;
+      return Env.LLVM_Info (E).Record_Inf;
    end Get;
 
    ---------
@@ -167,15 +98,8 @@ package body GNATLLVM.Environment is
 
    function Get
      (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T is
-      use Value_Maps;
-      Cur : constant Cursor := Get (Env, BE);
    begin
-      if Cur /= No_Element then
-         return Value_As_Basic_Block (Get (Env, BE));
-      else
-         Error_Msg_N ("cannot find matching `LLVM` basic block", BE);
-         raise No_Such_Basic_Block;
-      end if;
+      return Env.LLVM_Info (BE).Basic_Block;
    end Get;
 
    ---------
@@ -184,7 +108,7 @@ package body GNATLLVM.Environment is
 
    procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T) is
    begin
-      Env.Scope.Types.Include (TE, TL);
+      Env.LLVM_Info (TE).Typ :=  TL;
    end Set;
 
    ---------
@@ -194,7 +118,7 @@ package body GNATLLVM.Environment is
    procedure Set
      (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info) is
    begin
-      Env.Scope.Records_Infos.Include (TE, RI);
+      Env.LLVM_Info (TE).Record_Inf := RI;
    end Set;
 
    ---------
@@ -203,7 +127,7 @@ package body GNATLLVM.Environment is
 
    procedure Set (Env : access Environ_Record; VE : Entity_Id; VL : Value_T) is
    begin
-      Env.Scope.Values.Insert (VE, VL);
+      Env.LLVM_Info (VE).Value :=  VL;
    end Set;
 
    ---------
@@ -213,7 +137,7 @@ package body GNATLLVM.Environment is
    procedure Set
      (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T) is
    begin
-      Set (Env, BE, Basic_Block_As_Value (BL));
+      Env.LLVM_Info (BE).Basic_Block := BL;
    end Set;
 
    ---------------

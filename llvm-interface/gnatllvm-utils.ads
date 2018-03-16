@@ -71,7 +71,13 @@ package GNATLLVM.Utils is
    --  Return a LLVM integer type that is as big as pointers
 
    No_Value_T : constant Value_T := Value_T (Null_Address);
-   --  Constant for the null llvm value
+   --  Constant for the null LLVM value
+
+   No_Type_T : constant Type_T := Type_T (Null_Address);
+   --  Constant for the null LLVM type
+
+   No_BB_T : constant Basic_Block_T := Basic_Block_T (Null_Address);
+   --  Constant for the null LLVM basic block
 
    type Pred_Mapping is record
       Signed : Int_Predicate_T;

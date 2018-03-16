@@ -60,7 +60,8 @@ package body LLVM_Drive is
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
       Env : constant Environ :=
-        new Environ_Record'(Ctx => Get_Global_Context, others => <>);
+        new Environ_Record'(Max_Nodes => Last_Node_Id,
+                            Ctx => Get_Global_Context, others => <>);
       Result : Integer;
 
       procedure Emit_Library_Item (U : Node_Id);
@@ -162,6 +163,10 @@ package body LLVM_Drive is
       Result := LLVM_Init_Module (Env.Mdl);
       pragma Assert (Result = 0);
       Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
+      Env.LLVM_Info := (others => (Value => No_Value_T,
+                                   Typ => No_Type_T,
+                                   Basic_Block => No_BB_T,
+                                   Record_Inf => <>));
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);

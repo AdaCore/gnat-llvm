@@ -21,7 +21,6 @@ with Types; use Types;
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package GNATLLVM.Arrays is
 

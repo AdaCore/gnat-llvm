@@ -72,7 +72,7 @@ package body GNATLLVM.Environment is
    function Get_Type
      (Env : access Environ_Record; TE : Entity_Id) return Type_T
    is
-      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (TE);
+      E : constant Entity_Id := Get_Fullest_View (TE);
    begin
       if Env.LLVM_Info (E) = Empty_LLVM_Info_Id then
          return No_Type_T;
@@ -88,7 +88,7 @@ package body GNATLLVM.Environment is
    function Get_TBAA
      (Env : access Environ_Record; TE : Entity_Id) return Metadata_T
    is
-      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (TE);
+      E : constant Entity_Id := Base_Type (Get_Fullest_View (TE));
    begin
       if Env.LLVM_Info (E) = Empty_LLVM_Info_Id then
          return No_Metadata_T;
@@ -134,7 +134,7 @@ package body GNATLLVM.Environment is
    function Get_Record_Info
      (Env : access Environ_Record; RI : Entity_Id) return Record_Info
    is
-      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (RI);
+      E : constant Entity_Id := Get_Fullest_View (RI);
    begin
       return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Record_Inf;
    end Get_Record_Info;

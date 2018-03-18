@@ -1121,8 +1121,8 @@ package body GNATLLVM.Compile is
                elsif Size_Known_At_Compile_Time (Val_Typ)
                  and then Size_Known_At_Compile_Time (Dest_Typ)
                then
-                  Store
-                    (Env.Bld,
+                  Store_With_Type
+                    (Env, Dest_Typ,
                      Expr => Emit_Expression (Env, Expr),
                      Ptr => Dest);
 
@@ -1463,7 +1463,7 @@ package body GNATLLVM.Compile is
             begin
                Set_Type (Env, Def_Ident, Typ);
                if TBAA /= No_Metadata_T then
-                  Set_TBAA (Env, Def_Ident, TBAA);
+                  Set_TBAA (Env, Base_Type (Def_Ident), TBAA);
                end if;
             end;
 
@@ -2216,7 +2216,7 @@ package body GNATLLVM.Compile is
                return
                  (if Ekind (Etype (Node)) = E_Subprogram_Type
                   then Access_Value
-                  else Load (Env.Bld, Access_Value, ""));
+                  else Load_With_Type (Env, Etype (Node), Access_Value));
             end;
 
          when N_Allocator =>

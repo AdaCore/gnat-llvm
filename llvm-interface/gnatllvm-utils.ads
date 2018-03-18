@@ -15,20 +15,19 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;      use Atree;
-with Einfo;      use Einfo;
-with Sinfo;      use Sinfo;
-with Types;      use Types;
-with Uintp;      use Uintp;
+with Sinfo; use Sinfo;
+with Types; use Types;
+with Uintp; use Uintp;
 with Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
-with System; use System;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Get_Targ;
 with LLVM.Target; use LLVM.Target;
+
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Utils is
 
@@ -48,16 +47,6 @@ package GNATLLVM.Utils is
    --  Returns true if Param needs to be passed by reference (pointer) rather
    --  than by value
 
-   function Get_Fullest_View (E : Entity_Id) return Entity_Id is
-   (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)
-    then Non_Limited_View (E)
-    elsif Present (Full_View (E))
-    then Full_View (E)
-    elsif Ekind (E) in Private_Kind
-      and then Present (Underlying_Full_View (E))
-    then Underlying_Full_View (E)
-    else E);
-
    function Const_Int (T : Type_T; Value : Uintp.Uint)
      return Value_T renames Uintp.LLVM.UI_To_LLVM;
    --  Return an LLVM value corresponding to the universal int Value
@@ -69,12 +58,6 @@ package GNATLLVM.Utils is
    Intptr_T : constant Type_T :=
      Int_Type (Interfaces.C.unsigned (Get_Targ.Get_Pointer_Size));
    --  Return a LLVM integer type that is as big as pointers
-
-   No_Value_T : constant Value_T := Value_T (Null_Address);
-   No_Type_T : constant Type_T := Type_T (Null_Address);
-   No_BB_T : constant Basic_Block_T := Basic_Block_T (Null_Address);
-   No_Metadata_T : constant Metadata_T := Metadata_T (Null_Address);
-   --  Constant for null objects of various LLVM types
 
    type Pred_Mapping is record
       Signed : Int_Predicate_T;
@@ -156,13 +139,24 @@ package GNATLLVM.Utils is
    type Value_Array is array (Nat range <>) of Value_T;
    type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
 
-   subtype Builder is Builder_T;
-
-   procedure Store (Bld : Builder; Expr : Value_T; Ptr : Value_T);
+   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T);
    --  Helper for LLVM's Build_Store
 
+   procedure Store_With_Type
+     (Env  : access Environ_Record;
+      TE   : Entity_Id;
+      Expr : Value_T;
+      Ptr  : Value_T);
+   --  Similar, but allows annotating store
+
+   function Load_With_Type
+     (Env  : access Environ_Record;
+      TE   : Entity_Id;
+      Ptr  : Value_T) return Value_T;
+   --  Likewise for a load
+
    function GEP
-     (Bld : Builder; Ptr : Value_T; Indices : Value_Array; Name : String)
+     (Bld : Builder_T; Ptr : Value_T; Indices : Value_Array; Name : String)
       return Value_T;
    --  Helper for LLVM's Build_GEP
 

@@ -18,6 +18,8 @@
 with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Vectors;
 
+with Atree; use Atree;
+with Einfo; use Einfo;
 with Table; use Table;
 with Types; use Types;
 with Namet; use Namet;
@@ -25,10 +27,17 @@ with Namet; use Namet;
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
 
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
+with System; use System;
+
 package GNATLLVM.Environment is
+
+   No_Value_T : constant Value_T := Value_T (Null_Address);
+   No_Type_T : constant Type_T := Type_T (Null_Address);
+   No_BB_T : constant Basic_Block_T := Basic_Block_T (Null_Address);
+   No_Metadata_T : constant Metadata_T := Metadata_T (Null_Address);
+   --  Constant for null objects of various LLVM types
 
    type Field_Info is record
       Containing_Struct_Index : Nat;
@@ -127,7 +136,7 @@ package GNATLLVM.Environment is
 
    type Environ_Record (Max_Nodes : Node_Id) is record
       Ctx                       : LLVM.Types.Context_T;
-      Bld                       : Builder;
+      Bld                       : Builder_T;
       MDBld                     : MD_Builder_T;
       Mdl                       : LLVM.Types.Module_T;
       TBAA_Root                 : LLVM.Types.Metadata_T;
@@ -208,5 +217,15 @@ package GNATLLVM.Environment is
      (Env : access Environ_Record; Name : String) return Basic_Block_T;
 
    function Current_Subp return Subp_Env;
+
+   function Get_Fullest_View (E : Entity_Id) return Entity_Id is
+   (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)
+    then Non_Limited_View (E)
+    elsif Present (Full_View (E))
+    then Full_View (E)
+    elsif Ekind (E) in Private_Kind
+      and then Present (Underlying_Full_View (E))
+    then Underlying_Full_View (E)
+    else E);
 
 end GNATLLVM.Environment;

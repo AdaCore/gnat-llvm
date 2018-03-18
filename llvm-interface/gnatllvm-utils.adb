@@ -18,9 +18,13 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
+with Atree;    use Atree;
+with Einfo;    use Einfo;
 with Namet;    use Namet;
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
+
+with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 
@@ -329,21 +333,68 @@ package body GNATLLVM.Utils is
    ---------
 
    function GEP
-     (Bld : Builder; Ptr : Value_T; Indices : Value_Array; Name : String)
+     (Bld : Builder_T; Ptr : Value_T; Indices : Value_Array; Name : String)
       return Value_T
    is
      (GEP (Bld, Ptr, Indices'Address, Indices'Length, Name));
+
+   --------------------
+   -- Load_With_Type --
+   --------------------
+   function Load_With_Type
+     (Env  : access Environ_Record;
+      TE   : Entity_Id;
+      Ptr  : Value_T) return Value_T
+   is
+      Load_Inst    : constant Value_T := Load (Env.Bld, Ptr, "");
+      TBAA         : constant Metadata_T := Get_TBAA (Env, TE);
+   begin
+      if Is_Volatile (TE) then
+         Set_Volatile (Load_Inst);
+      end if;
+
+      if TBAA /= No_Metadata_T then
+         Add_TBAA_Access (Load_Inst,
+                          Create_TBAA_Access_Tag
+                            (Env.MDBld, TBAA, TBAA, 0, 0, 0));
+      end if;
+
+      return Load_Inst;
+   end Load_With_Type;
 
    -----------
    -- Store --
    -----------
 
-   procedure Store (Bld : Builder; Expr : Value_T; Ptr : Value_T)
+   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
    is
       Dummy : Value_T;
       pragma Unreferenced (Dummy);
    begin
       Dummy := Build_Store (Bld, Expr, Ptr);
    end Store;
+
+   ---------------------
+   -- Store_With_Type --
+   ---------------------
+   procedure Store_With_Type
+     (Env  : access Environ_Record;
+      TE   : Entity_Id;
+      Expr : Value_T;
+      Ptr  : Value_T)
+   is
+      Store   : constant Value_T := Build_Store (Env.Bld, Expr, Ptr);
+      TBAA    : constant Metadata_T := Get_TBAA (Env, TE);
+   begin
+      if Is_Volatile (TE) then
+         Set_Volatile (Store);
+      end if;
+
+      if TBAA /= No_Metadata_T then
+         Add_TBAA_Access (Store,
+                          Create_TBAA_Access_Tag
+                            (Env.MDBld, TBAA, TBAA, 0, 0, 0));
+      end if;
+   end Store_With_Type;
 
 end GNATLLVM.Utils;

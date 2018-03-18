@@ -1,5 +1,6 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/FileSystem.h"
@@ -33,6 +34,33 @@ Create_TBAA_Scalar_Type_Node_C (MDBuilder *MDHelper, const char *name,
 				MDNode *root)
 {
   return MDHelper->createTBAAScalarTypeNode (name, root, 0);
+}
+
+extern "C"
+MDNode *
+Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
+			MDNode *AccessType, unsigned long long offset,
+			unsigned long long size, bool IsImmutable)
+{
+  return MDHelper->createTBAAAccessTag (BaseType, AccessType, offset, size,
+					IsImmutable);
+}
+
+extern "C"
+void
+Set_Volatile (Instruction *inst)
+{
+  if (StoreInst *SI = dyn_cast<StoreInst> (inst))
+    SI->setVolatile (true);
+  else if (LoadInst *LI = dyn_cast<LoadInst> (inst))
+    LI->setVolatile (true);
+}
+
+extern "C"
+void
+Add_TBAA_Access (Instruction *inst, MDNode *md)
+{
+  inst->setMetadata (LLVMContext::MD_tbaa, md);
 }
 
 extern "C"

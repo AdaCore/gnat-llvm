@@ -26,6 +26,7 @@ with Uintp;  use Uintp;
 with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 ---------------------
 -- GNATLLVM.Arrays --

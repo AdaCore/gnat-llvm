@@ -19,9 +19,6 @@ with System;
 
 with LLVM.Types; use LLVM.Types;
 
---  with Interfaces.C;         use Interfaces.C;
---  with Interfaces.C.Strings; use Interfaces.C.Strings;
-
 package GNATLLVM.Wrapper is
 
    type MD_Builder_T is new System.Address;
@@ -35,6 +32,13 @@ package GNATLLVM.Wrapper is
    function Create_TBAA_Root (MDBld : MD_Builder_T)
      return LLVM.Types.Metadata_T;
    pragma Import (C, Create_TBAA_Root, "Create_TBAA_Root");
+   --  Create the root of the TBAA metadata tree
+
+   function Create_TBAA_Scalar_Type_Node
+     (MDBld : MD_Builder_T;
+      Name  : String;
+      Root  : Metadata_T) return Metadata_T;
+   --  Create a TBAA metadata node for a scalar type
 
    function LLVM_Init_Module (Module : LLVM.Types.Module_T) return Integer;
    pragma Import (C, LLVM_Init_Module, "LLVM_Init_Module");

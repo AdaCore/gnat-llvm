@@ -28,6 +28,14 @@ Create_TBAA_Root (MDBuilder *MDHelper)
 }
 
 extern "C"
+MDNode *
+Create_TBAA_Scalar_Type_Node_C (MDBuilder *MDHelper, const char *name,
+				MDNode *root)
+{
+  return MDHelper->createTBAAScalarTypeNode (name, root, 0);
+}
+
+extern "C"
 int
 LLVM_Init_Module (Module *TheModule)
 {

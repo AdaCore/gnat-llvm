@@ -25,6 +25,7 @@ with Ttypes;
 with LLVM.Target; use LLVM.Target;
 
 with GNATLLVM.Arrays; use GNATLLVM.Arrays;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 with GNATLLVM.Compile;
 
 package body GNATLLVM.Types is
@@ -445,10 +446,16 @@ package body GNATLLVM.Types is
    ------------------
 
    function Create_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
-      pragma Unreferenced (Env);
-      pragma Unreferenced (TE);
    begin
-      return No_Metadata_T;
+      if Ekind (TE) in E_Signed_Integer_Type  |
+                        E_Modular_Integer_Type |
+                        E_Floating_Point_Type
+      then
+         return Create_TBAA_Scalar_Type_Node (Env.MDBld, Get_Name (TE),
+                                              Env.TBAA_Root);
+      else
+         return No_Metadata_T;
+      end if;
    end Create_TBAA;
 
    --------------------------

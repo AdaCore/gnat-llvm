@@ -15,9 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Types;      use Types;
 with Atree;      use Atree;
+with Einfo;      use Einfo;
 with Sinfo;      use Sinfo;
+with Types;      use Types;
+with Uintp;      use Uintp;
 with Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
@@ -25,8 +27,6 @@ with LLVM.Types; use LLVM.Types;
 
 with System; use System;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
-with Uintp; use Uintp;
-with Einfo; use Einfo;
 with Get_Targ;
 with LLVM.Target; use LLVM.Target;
 
@@ -152,5 +152,18 @@ package GNATLLVM.Utils is
    function LLVM_Size_Of (T_Data : Target_Data_T; Ty : Type_T) return Nat
    is (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
+
+   type Value_Array is array (Nat range <>) of Value_T;
+   type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
+
+   subtype Builder is Builder_T;
+
+   procedure Store (Bld : Builder; Expr : Value_T; Ptr : Value_T);
+   --  Helper for LLVM's Build_Store
+
+   function GEP
+     (Bld : Builder; Ptr : Value_T; Indices : Value_Array; Name : String)
+      return Value_T;
+   --  Helper for LLVM's Build_GEP
 
 end GNATLLVM.Utils;

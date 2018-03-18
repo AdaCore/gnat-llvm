@@ -25,7 +25,7 @@ with Namet; use Namet;
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
 
-with GNATLLVM.Builder;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package GNATLLVM.Environment is
@@ -127,7 +127,7 @@ package GNATLLVM.Environment is
 
    type Environ_Record (Max_Nodes : Node_Id) is record
       Ctx                       : LLVM.Types.Context_T;
-      Bld                       : GNATLLVM.Builder.Builder;
+      Bld                       : Builder;
       MDBld                     : MD_Builder_T;
       Mdl                       : LLVM.Types.Module_T;
       TBAA_Root                 : LLVM.Types.Metadata_T;

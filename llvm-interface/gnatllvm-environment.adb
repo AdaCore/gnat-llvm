@@ -19,8 +19,6 @@ with Errout; use Errout;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Utils; use GNATLLVM.Utils;
-
 package body GNATLLVM.Environment is
 
    --------------

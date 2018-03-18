@@ -43,7 +43,6 @@ with LLVM.Analysis; use LLVM.Analysis;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
-with GNATLLVM.Builder;      use GNATLLVM.Builder;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 

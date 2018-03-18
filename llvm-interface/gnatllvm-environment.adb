@@ -31,7 +31,7 @@ package body GNATLLVM.Environment is
      (Env : access Environ_Record; TE : Entity_Id) return Boolean
    is
    begin
-      return Get (Env, TE) /= No_Type_T;
+      return Get_Type (Env, TE) /= No_Type_T;
    end Has_Type;
 
    ---------------
@@ -42,7 +42,7 @@ package body GNATLLVM.Environment is
      (Env : access Environ_Record; VE : Entity_Id) return Boolean
    is
    begin
-      return Get (Env, VE) /= No_Value_T;
+      return Get_Value (Env, VE) /= No_Value_T;
    end Has_Value;
 
    ------------
@@ -53,29 +53,15 @@ package body GNATLLVM.Environment is
      (Env : access Environ_Record; BE : Entity_Id) return Boolean
    is
    begin
-      return Get (Env, BE) /= No_BB_T;
+      return Get_Basic_Block (Env, BE) /= No_BB_T;
    end Has_BB;
 
-   ---------
-   -- Get --
-   ---------
+   --------------
+   -- Get_Type --
+   --------------
 
-   function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T is
-   begin
-      if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
-         return No_Value_T;
-      else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Value;
-      end if;
-   end Get;
-
-   ---------
-   -- Get --
-   ---------
-
-   function Get
-     (Env : access Environ_Record; TE : Entity_Id)
-     return Type_T
+   function Get_Type
+     (Env : access Environ_Record; TE : Entity_Id) return Type_T
    is
       E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (TE);
    begin
@@ -84,33 +70,49 @@ package body GNATLLVM.Environment is
       else
          return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Typ;
       end if;
-   end Get;
+   end Get_Type;
 
-   ---------
-   -- Get --
-   ---------
+   ---------------
+   -- Get_Value --
+   ---------------
 
-   function Get
-     (Env : access Environ_Record; RI : Entity_Id) return Record_Info
+   function Get_Value
+     (Env : access Environ_Record; VE : Entity_Id) return Value_T
    is
-      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (RI);
    begin
-      return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Record_Inf;
-   end Get;
+      if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
+         return No_Value_T;
+      else
+         return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Value;
+      end if;
+   end Get_Value;
 
-   ---------
-   -- Get --
-   ---------
+   ---------------------
+   -- Get_Basic_Block --
+   ---------------------
 
-   function Get
-     (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T is
+   function Get_Basic_Block
+     (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T
+   is
    begin
       if Env.LLVM_Info (BE) = Empty_LLVM_Info_Id then
          return No_BB_T;
       else
          return LLVM_Info_Table.Table (Env.LLVM_Info (BE)).Basic_Block;
       end if;
-   end Get;
+   end Get_Basic_Block;
+
+   ---------------------
+   -- Get_Record_Info --
+   ---------------------
+
+   function Get_Record_Info
+     (Env : access Environ_Record; RI : Entity_Id) return Record_Info
+   is
+      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (RI);
+   begin
+      return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Record_Inf;
+   end Get_Record_Info;
 
    function Get_LLVM_Info_Id
      (Env : access Environ_Record; N : Node_Id) return LLVM_Info_Id;
@@ -136,49 +138,53 @@ package body GNATLLVM.Environment is
       end if;
    end Get_LLVM_Info_Id;
 
-   ---------
-   -- Set --
-   ---------
+   --------------
+   -- Set_Type --
+   --------------
 
-   procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
-   begin
-      LLVM_Info_Table.Table (Id).Typ :=  TL;
-   end Set;
-
-   ---------
-   -- Set --
-   ---------
-
-   procedure Set
-     (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info)
+   procedure Set_Type
+     (Env : access Environ_Record; TE : Entity_Id; TL : Type_T)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
    begin
-      LLVM_Info_Table.Table (Id).Record_Inf := RI;
-   end Set;
+      LLVM_Info_Table.Table (Id).Typ :=  TL;
+   end Set_Type;
 
-   ---------
-   -- Set --
-   ---------
+   ---------------
+   -- Set_Value --
+   ---------------
 
-   procedure Set (Env : access Environ_Record; VE : Entity_Id; VL : Value_T) is
+   procedure Set_Value
+     (Env : access Environ_Record; VE : Entity_Id; VL : Value_T)
+   is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, VE);
    begin
       LLVM_Info_Table.Table (Id).Value :=  VL;
-   end Set;
+   end Set_Value;
 
-   ---------
-   -- Set --
-   ---------
+   ---------------------
+   -- Set_Basic_Block --
+   ---------------------
 
-   procedure Set
+   procedure Set_Basic_Block
      (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, BE);
    begin
       LLVM_Info_Table.Table (Id).Basic_Block := BL;
-   end Set;
+   end Set_Basic_Block;
+
+   ---------------------
+   -- Set_Record_Info --
+   ---------------------
+
+   procedure Set_Record_Info
+     (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info)
+   is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+   begin
+      LLVM_Info_Table.Table (Id).Record_Inf := RI;
+   end Set_Record_Info;
 
    ---------------
    -- Push_Loop --

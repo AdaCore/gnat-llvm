@@ -297,7 +297,7 @@ package body GNATLLVM.Compile is
 
             --  Add the parameter to the environnment
 
-            Set (Env, Param, LLVM_Var);
+            Set_Value (Env, Param, LLVM_Var);
 
             if Ekind (Param) = E_In_Parameter
               and then Is_Activation_Record (Param)
@@ -807,7 +807,7 @@ package body GNATLLVM.Compile is
                   LLVM_Var :=
                     Add_Global (Env.Mdl, LLVM_Type,
                                 Get_Subprog_Ext_Name (Def_Ident));
-                  Set (Env, Def_Ident, LLVM_Var);
+                  Set_Value (Env, Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
                      if Is_Statically_Allocated (Def_Ident) then
@@ -854,7 +854,7 @@ package body GNATLLVM.Compile is
 
                else
                   if Env.Special_Elaboration_Code then
-                     LLVM_Var := Get (Env, Def_Ident);
+                     LLVM_Var := Get_Value (Env, Def_Ident);
 
                   elsif Is_Array_Type (T) then
 
@@ -890,7 +890,7 @@ package body GNATLLVM.Compile is
                            Get_Name (Def_Ident));
                      end if;
 
-                     Set (Env, Def_Ident, LLVM_Var);
+                     Set_Value (Env, Def_Ident, LLVM_Var);
 
                   elsif Record_With_Dynamic_Size (Env, T) then
                      LLVM_Type := Create_Access_Type (Env, T);
@@ -903,7 +903,7 @@ package body GNATLLVM.Compile is
                            "record-alloca"),
                         LLVM_Type,
                         Get_Name (Def_Ident));
-                     Set (Env, Def_Ident, LLVM_Var);
+                     Set_Value (Env, Def_Ident, LLVM_Var);
 
                   else
                      LLVM_Type := Create_Type (Env, T);
@@ -914,7 +914,7 @@ package body GNATLLVM.Compile is
 
                      LLVM_Var := Alloca
                        (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
-                     Set (Env, Def_Ident, LLVM_Var);
+                     Set_Value (Env, Def_Ident, LLVM_Var);
                   end if;
 
                   if Needs_Deref (Def_Ident) then
@@ -951,7 +951,7 @@ package body GNATLLVM.Compile is
                if Library_Level then
                   if Is_LValue (Name (Node)) then
                      LLVM_Var := Emit_LValue (Env, Name (Node));
-                     Set (Env, Def_Ident, LLVM_Var);
+                     Set_Value (Env, Def_Ident, LLVM_Var);
                   else
                      --  ??? Handle top-level declarations
                      Error_Msg_N
@@ -975,7 +975,7 @@ package body GNATLLVM.Compile is
                     (Env.Bld, Emit_Expression (Env, Name (Node)), LLVM_Var);
                end if;
 
-               Set (Env, Def_Ident, LLVM_Var);
+               Set_Value (Env, Def_Ident, LLVM_Var);
             end;
 
          when N_Subprogram_Renaming_Declaration =>
@@ -986,7 +986,7 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Implicit_Label_Declaration =>
-            Set
+            Set_Basic_Block
               (Env, Defining_Identifier (Node),
                Create_Basic_Block
                  (Env, Get_Name (Defining_Identifier (Node))));
@@ -1167,14 +1167,15 @@ package body GNATLLVM.Compile is
          when N_Label =>
             declare
                BB : constant Basic_Block_T :=
-                 Get (Env, Entity (Identifier (Node)));
+                 Get_Basic_Block (Env, Entity (Identifier (Node)));
             begin
                Discard (Build_Br (Env.Bld, BB));
                Position_Builder_At_End (Env.Bld, BB);
             end;
 
          when N_Goto_Statement =>
-            Discard (Build_Br (Env.Bld, Get (Env, Entity (Name (Node)))));
+            Discard (Build_Br (Env.Bld,
+                               Get_Basic_Block (Env, Entity (Name (Node)))));
             Position_Builder_At_End
               (Env.Bld, Create_Basic_Block (Env, "after-goto"));
 
@@ -1268,7 +1269,7 @@ package body GNATLLVM.Compile is
                BB_Init :=
                  (if Present (Identifier (Node))
                     and then Has_BB (Env, Entity (Identifier (Node)))
-                  then Get (Env, Entity (Identifier (Node)))
+                  then Get_Basic_Block (Env, Entity (Identifier (Node)))
                   else Create_Basic_Block (Env, ""));
                Discard (Build_Br (Env.Bld, BB_Init));
                Position_Builder_At_End (Env.Bld, BB_Init);
@@ -1341,7 +1342,7 @@ package body GNATLLVM.Compile is
                           (Env, Etype (Def_Ident), LLVM_Type, Low, High);
                         LLVM_Var := Alloca
                           (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
-                        Set (Env, Def_Ident, LLVM_Var);
+                        Set_Value (Env, Def_Ident, LLVM_Var);
                         Store
                           (Env.Bld,
                           (if Reversed then High else Low), LLVM_Var);
@@ -1426,12 +1427,12 @@ package body GNATLLVM.Compile is
                --  create and register a new one if it does not exist yet.
 
                if Has_BB (Env, BE) then
-                  BB := Get (Env, BE);
+                  BB := Get_Basic_Block (Env, BE);
                else
                   BB := Create_Basic_Block (Env, "");
 
                   if Present (BE) then
-                     Set (Env, BE, BB);
+                     Set_Basic_Block (Env, BE, BB);
                   end if;
                end if;
 
@@ -1456,8 +1457,8 @@ package body GNATLLVM.Compile is
             | N_Incomplete_Type_Declaration | N_Private_Type_Declaration
             | N_Private_Extension_Declaration
          =>
-            Set (Env, Defining_Identifier (Node),
-                 Create_Type (Env, Defining_Identifier (Node)));
+            Set_Type (Env, Defining_Identifier (Node),
+                      Create_Type (Env, Defining_Identifier (Node)));
 
          when N_Freeze_Entity =>
             --  ??? Need to process Node itself
@@ -1521,9 +1522,9 @@ package body GNATLLVM.Compile is
             Error_Msg_N ("exception handler ignored??", Node);
 
          when N_Exception_Renaming_Declaration =>
-            Set
+            Set_Value
               (Env, Defining_Identifier (Node),
-               Value_T'(Get (Env, Entity (Name (Node)))));
+               (Get_Value (Env, Entity (Name (Node)))));
 
          when N_Attribute_Definition_Clause =>
 
@@ -1581,9 +1582,9 @@ package body GNATLLVM.Compile is
 
             begin
                if Parent = Caller then
-                  Result := Get (Env, Ent.ARECnP);
+                  Result := Get_Value (Env, Ent.ARECnP);
                else
-                  Result := Get (Env, Ent_Caller.ARECnF);
+                  Result := Get_Value (Env, Ent_Caller.ARECnF);
 
                   --  Go levels up via the ARECnU field if needed
 
@@ -1619,13 +1620,14 @@ package body GNATLLVM.Compile is
                   N := Associated_Node_For_Itype (Etype (Parent (Node)));
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                     return Get (Env, Def_Ident);
+                     return Get_Value (Env, Def_Ident);
                   else
                      --  Return a callback, which is a couple: subprogram
                      --  code pointer, static link argument.
 
                      declare
-                        Func   : constant Value_T := Get (Env, Def_Ident);
+                        Func   : constant Value_T :=
+                          Get_Value (Env, Def_Ident);
                         S_Link : constant Value_T := Get_Static_Link (Node);
 
                         Fields_Types  : constant array (1 .. 2) of Type_T :=
@@ -1652,9 +1654,9 @@ package body GNATLLVM.Compile is
 
                else
                   if Needs_Deref (Def_Ident) then
-                     return Load (Env.Bld, Get (Env, Def_Ident), "");
+                     return Load (Env.Bld, Get_Value (Env, Def_Ident), "");
                   else
-                     return Get (Env, Def_Ident);
+                     return Get_Value (Env, Def_Ident);
                   end if;
                end if;
             end;
@@ -1689,7 +1691,7 @@ package body GNATLLVM.Compile is
                      Add_Global (Env.Mdl, T, "str-lit");
 
             begin
-               Set (Env, Node, V);
+               Set_Value (Env, Node, V);
                Set_Initializer (V, Emit_Expression (Env, Node));
                Set_Linkage (V, Private_Linkage);
                Set_Global_Constant (V, True);
@@ -2083,7 +2085,8 @@ package body GNATLLVM.Compile is
                                E_Variable)
                  and then Present (Activation_Record_Component (Def_Ident))
                  and then Current_Subp.Activation_Rec_Param /= No_Value_T
-                 and then (Get (Env, Scope (Def_Ident)) /= Current_Subp.Func)
+                 and then (Get_Value (Env, Scope (Def_Ident)) /=
+                             Current_Subp.Func)
                then
                   declare
                      Component         : constant Entity_Id :=
@@ -2171,7 +2174,8 @@ package body GNATLLVM.Compile is
                   Is_Subprogram : constant Boolean :=
                     (Kind in Subprogram_Kind
                      or else Type_Kind = E_Subprogram_Type);
-                  LValue        : constant Value_T := Get (Env, Def_Ident);
+                  LValue        : constant Value_T :=
+                    Get_Value (Env, Def_Ident);
 
                begin
                   --  LLVM functions are pointers that cannot be
@@ -2190,7 +2194,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Defining_Operator_Symbol =>
-            return Get (Env, Node);
+            return Get_Value (Env, Node);
 
          when N_Function_Call =>
             return Emit_Call (Env, Node);
@@ -2334,7 +2338,7 @@ package body GNATLLVM.Compile is
             return Const_Null (Create_Type (Env, Etype (Node)));
 
          when N_Defining_Identifier =>
-            return Get (Env, Node);
+            return Get_Value (Env, Node);
 
          when N_In | N_Not_In =>
             declare
@@ -2631,7 +2635,7 @@ package body GNATLLVM.Compile is
       --  nothing.
 
       if Has_Value (Env, Def_Ident) then
-         return Get (Env, Def_Ident);
+         return Get_Value (Env, Def_Ident);
       else
          declare
             Subp_Type : constant Type_T :=
@@ -2663,7 +2667,7 @@ package body GNATLLVM.Compile is
                Set_Linkage (LLVM_Func, Internal_Linkage);
             end if;
 
-            Set (Env, Def_Ident, LLVM_Func);
+            Set_Value (Env, Def_Ident, LLVM_Func);
             return LLVM_Func;
          end;
       end if;

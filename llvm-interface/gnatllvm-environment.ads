@@ -159,19 +159,23 @@ package GNATLLVM.Environment is
      (Env : access Environ_Record; VE : Entity_Id) return Boolean;
    function Has_BB
      (Env : access Environ_Record; BE : Entity_Id) return Boolean;
-   function Get (Env : access Environ_Record; TE : Entity_Id) return Type_T;
-   function Get (Env : access Environ_Record; VE : Entity_Id) return Value_T;
-   function Get
+   function Get_Type
+     (Env : access Environ_Record; TE : Entity_Id) return Type_T;
+   function Get_Value
+     (Env : access Environ_Record; VE : Entity_Id) return Value_T;
+   function Get_Basic_Block
      (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T;
-   function Get
+   function Get_Record_Info
      (Env : access Environ_Record; RI : Entity_Id) return Record_Info;
 
-   procedure Set
-     (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info);
-   procedure Set (Env : access Environ_Record; TE : Entity_Id; TL : Type_T);
-   procedure Set (Env : access Environ_Record; VE : Entity_Id; VL : Value_T);
-   procedure Set
+   procedure Set_Type
+     (Env : access Environ_Record; TE : Entity_Id; TL : Type_T);
+   procedure Set_Value
+     (Env : access Environ_Record; VE : Entity_Id; VL : Value_T);
+   procedure Set_Basic_Block
      (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T);
+   procedure Set_Record_Info
+     (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info);
 
    procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T);
    procedure Pop_Loop;

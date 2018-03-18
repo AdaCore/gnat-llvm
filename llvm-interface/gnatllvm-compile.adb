@@ -1457,8 +1457,16 @@ package body GNATLLVM.Compile is
             | N_Incomplete_Type_Declaration | N_Private_Type_Declaration
             | N_Private_Extension_Declaration
          =>
-            Set_Type (Env, Defining_Identifier (Node),
-                      Create_Type (Env, Defining_Identifier (Node)));
+            declare
+               Def_Ident : constant Entity_Id := Defining_Identifier (Node);
+               Typ : constant Type_T := Create_Type (Env, Def_Ident);
+               TBAA : constant Metadata_T := Create_TBAA (Env, Def_Ident);
+            begin
+               Set_Type (Env, Def_Ident, Typ);
+               if TBAA /= No_Metadata_T then
+                  Set_TBAA (Env, Def_Ident, TBAA);
+               end if;
+            end;
 
          when N_Freeze_Entity =>
             --  ??? Need to process Node itself

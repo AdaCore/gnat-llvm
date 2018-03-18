@@ -71,6 +71,9 @@ package GNATLLVM.Types is
    function Create_Type (Env : Environ; TE : Entity_Id) return Type_T
      with Pre => Is_Type (TE);
 
+   function Create_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T
+     with Pre => Is_Type (TE);
+
    procedure Create_Discrete_Type
      (Env       : Environ;
       TE        : Entity_Id;

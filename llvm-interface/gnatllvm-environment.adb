@@ -34,6 +34,17 @@ package body GNATLLVM.Environment is
       return Get_Type (Env, TE) /= No_Type_T;
    end Has_Type;
 
+   --------------
+   -- Has_TBAA --
+   --------------
+
+   function Has_TBAA
+     (Env : access Environ_Record; TE : Entity_Id) return Boolean
+   is
+   begin
+      return Get_TBAA (Env, TE) /= No_Metadata_T;
+   end Has_TBAA;
+
    ---------------
    -- Has_Value --
    ---------------
@@ -71,6 +82,22 @@ package body GNATLLVM.Environment is
          return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Typ;
       end if;
    end Get_Type;
+
+   --------------
+   -- Get_TBAA --
+   --------------
+
+   function Get_TBAA
+     (Env : access Environ_Record; TE : Entity_Id) return Metadata_T
+   is
+      E : constant Entity_Id := GNATLLVM.Utils.Get_Fullest_View (TE);
+   begin
+      if Env.LLVM_Info (E) = Empty_LLVM_Info_Id then
+         return No_Metadata_T;
+      else
+         return LLVM_Info_Table.Table (Env.LLVM_Info (E)).TBAA;
+      end if;
+   end Get_TBAA;
 
    ---------------
    -- Get_Value --
@@ -131,6 +158,7 @@ package body GNATLLVM.Environment is
          return Id;
       else
          LLVM_Info_Table.Append ((Value => No_Value_T, Typ => No_Type_T,
+                                  TBAA => No_Metadata_T,
                                   Basic_Block => No_BB_T, others => <>));
          Id := LLVM_Info_Table.Last;
          Env.LLVM_Info (N) := Id;
@@ -149,6 +177,18 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Typ :=  TL;
    end Set_Type;
+
+   --------------
+   -- Set_TBAA --
+   --------------
+
+   procedure Set_TBAA
+     (Env : access Environ_Record; TE : Entity_Id; TBAA : Metadata_T)
+   is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+   begin
+      LLVM_Info_Table.Table (Id).TBAA := TBAA;
+   end Set_TBAA;
 
    ---------------
    -- Set_Value --

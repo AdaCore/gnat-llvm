@@ -440,6 +440,17 @@ package body GNATLLVM.Types is
       end case;
    end Create_Type;
 
+   ------------------
+   --  Create_TBAA --
+   ------------------
+
+   function Create_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
+      pragma Unreferenced (Env);
+      pragma Unreferenced (TE);
+   begin
+      return No_Metadata_T;
+   end Create_TBAA;
+
    --------------------------
    -- Create_Discrete_Type --
    --------------------------

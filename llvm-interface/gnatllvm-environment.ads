@@ -70,6 +70,7 @@ package GNATLLVM.Environment is
    type LLVM_Info is record
       Value       : Value_T;
       Typ         : Type_T;
+      TBAA        : Metadata_T;
       Basic_Block : Basic_Block_T;
       Record_Inf  : Record_Info;
    end record;
@@ -158,12 +159,16 @@ package GNATLLVM.Environment is
 
    function Has_Type
      (Env : access Environ_Record; TE : Entity_Id) return Boolean;
+   function Has_TBAA
+     (Env : access Environ_Record; TE : Entity_Id) return Boolean;
    function Has_Value
      (Env : access Environ_Record; VE : Entity_Id) return Boolean;
    function Has_BB
      (Env : access Environ_Record; BE : Entity_Id) return Boolean;
    function Get_Type
      (Env : access Environ_Record; TE : Entity_Id) return Type_T;
+   function Get_TBAA
+     (Env : access Environ_Record; TE : Entity_Id) return Metadata_T;
    function Get_Value
      (Env : access Environ_Record; VE : Entity_Id) return Value_T;
    function Get_Basic_Block
@@ -173,6 +178,8 @@ package GNATLLVM.Environment is
 
    procedure Set_Type
      (Env : access Environ_Record; TE : Entity_Id; TL : Type_T);
+   procedure Set_TBAA
+     (Env : access Environ_Record; TE : Entity_Id; TBAA : Metadata_T);
    procedure Set_Value
      (Env : access Environ_Record; VE : Entity_Id; VL : Value_T);
    procedure Set_Basic_Block

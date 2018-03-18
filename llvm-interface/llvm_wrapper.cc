@@ -1,4 +1,6 @@
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
@@ -10,6 +12,20 @@
 
 using namespace llvm;
 using namespace llvm::sys;
+
+extern "C"
+MDBuilder *
+Create_MDBuilder_In_Context (LLVMContext &Ctx)
+{
+    return new MDBuilder (Ctx);
+}
+
+extern "C"
+MDNode *
+Create_TBAA_Root (MDBuilder *MDHelper)
+{
+  return MDHelper->createTBAARoot ("Ada TBAA");
+}
 
 extern "C"
 int

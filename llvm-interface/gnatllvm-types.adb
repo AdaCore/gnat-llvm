@@ -84,34 +84,6 @@ package body GNATLLVM.Types is
    function Int_Ty (Num_Bits : Natural) return Type_T is
       (Int_Type (Interfaces.C.unsigned (Num_Bits)));
 
-   ----------------------------
-   -- Register_Builtin_Types --
-   ----------------------------
-
-   procedure Register_Builtin_Types (Env : Environ) is
-
-      procedure Set_Rec (E : Entity_Id; T : Type_T);
-      procedure Set_Rec (E : Entity_Id; T : Type_T) is
-      begin
-         Set_Type (Env, E, T);
-         if Etype (E) /= E then
-            Set_Rec (Etype (E), T);
-         end if;
-      end Set_Rec;
-
-      use Interfaces.C;
-      Int_Size : constant unsigned := unsigned (Get_Int_Size);
-   begin
-      --  Should we bother registering any type in advance at all???
-
-      Set_Rec
-        (Universal_Integer,
-         Int_Type_In_Context (Env.Ctx, unsigned (Get_Long_Long_Size)));
-      Set_Rec (Standard_Integer, Int_Type_In_Context (Env.Ctx, Int_Size));
-      Set_Rec (Standard_Boolean, Int_Type_In_Context (Env.Ctx, 1));
-      Set_Rec (Standard_Natural, Int_Type_In_Context (Env.Ctx, Int_Size));
-   end Register_Builtin_Types;
-
    -----------
    -- Fn_Ty --
    -----------

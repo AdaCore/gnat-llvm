@@ -15,9 +15,26 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with System;
+
 with LLVM.Types; use LLVM.Types;
 
+--  with Interfaces.C;         use Interfaces.C;
+--  with Interfaces.C.Strings; use Interfaces.C.Strings;
+
 package GNATLLVM.Wrapper is
+
+   type MD_Builder_T is new System.Address;
+   --  Metadata builder type: opaque for us.
+
+   function Create_MDBuilder_In_Context
+     (Ctx : LLVM.Types.Context_T) return MD_Builder_T;
+   pragma Import (C, Create_MDBuilder_In_Context,
+                  "Create_MDBuilder_In_Context");
+
+   function Create_TBAA_Root (MDBld : MD_Builder_T)
+     return LLVM.Types.Metadata_T;
+   pragma Import (C, Create_TBAA_Root, "Create_TBAA_Root");
 
    function LLVM_Init_Module (Module : LLVM.Types.Module_T) return Integer;
    pragma Import (C, LLVM_Init_Module, "LLVM_Init_Module");

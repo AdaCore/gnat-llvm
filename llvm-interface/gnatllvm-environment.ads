@@ -26,6 +26,7 @@ with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Builder;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package GNATLLVM.Environment is
 
@@ -126,7 +127,9 @@ package GNATLLVM.Environment is
    type Environ_Record (Max_Nodes : Node_Id) is record
       Ctx                       : LLVM.Types.Context_T;
       Bld                       : GNATLLVM.Builder.Builder;
+      MDBld                     : MD_Builder_T;
       Mdl                       : LLVM.Types.Module_T;
+      TBAA_Root                 : LLVM.Types.Metadata_T;
       Module_Data_Layout        : LLVM.Target.Target_Data_T;
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.

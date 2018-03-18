@@ -33,7 +33,6 @@ with Get_Targ; use Get_Targ;
 package GNATLLVM.Types is
 
    pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-   procedure Register_Builtin_Types (Env : Environ);
 
    function Create_Access_Type
      (Env : Environ; TE : Entity_Id) return Type_T

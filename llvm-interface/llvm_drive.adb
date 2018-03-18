@@ -157,6 +157,8 @@ package body LLVM_Drive is
       --  Initialize the translation environment
 
       Env.Bld := Create_Builder_In_Context (Env.Ctx);
+      Env.MDBld := Create_MDBuilder_In_Context (Env.Ctx);
+      Env.TBAA_Root := Create_TBAA_Root (Env.MDBld);
       Env.Mdl := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
@@ -164,6 +166,10 @@ package body LLVM_Drive is
       pragma Assert (Result = 0);
       Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
+
+      Set_Value (Env, Empty, No_Value_T);
+      --  Do an initial Set_Value here so that the first real LLVM_Info entry
+      --  isn't Empty_LLVM_Info_Id.
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
@@ -227,8 +233,6 @@ package body LLVM_Drive is
             Fn_Ty ((Void_Ptr_Type, C_Int_Type),
                    Void_Type_In_Context (Env.Ctx)));
       end;
-
-      Register_Builtin_Types (Env);
 
       --  Actually translate
 

@@ -69,12 +69,17 @@ package GNATLLVM.Types is
 
    function Create_Subprogram_Type_From_Spec
      (Env       : Environ;
-      Subp_Spec : Node_Id) return Type_T;
+      Subp_Spec : Node_Id) return Type_T
+     with Post => (Get_Type_Kind (Create_Subprogram_Type_From_Spec'Result) =
+                   Function_Type_Kind);
 
    function Create_Subprogram_Type_From_Entity
      (Env           : Environ;
       Subp_Type_Ent : Entity_Id;
-      Takes_S_Link  : Boolean) return Type_T;
+      Takes_S_Link  : Boolean) return Type_T
+     with Pre => Ekind (Subp_Type_Ent) = E_Subprogram_Type,
+          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
+                   Function_Type_Kind);
 
    function GNAT_To_LLVM_Type
      (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
@@ -92,15 +97,18 @@ package GNATLLVM.Types is
       TE        : Entity_Id;
       TL        : out Type_T;
       Low, High : out Value_T)
-     with Pre => Ekind (TE) in Discrete_Kind;
+     with Pre => Ekind (TE) in Discrete_Kind, Post => TL /= No_Type_T;
 
-   function Int_Ty (Num_Bits : Natural) return Type_T;
-   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T;
+   function Int_Ty (Num_Bits : Natural) return Type_T
+     with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
+   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T
+     with Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
    function Get_Innermost_Component_Type
      (Env : Environ; N : Entity_Id) return Type_T;
 
-   function Get_Address_Type return Type_T;
+   function Get_Address_Type return Type_T
+     with Post => Get_Type_Kind (Get_Address_Type'Result) = Integer_Type_Kind;
    pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
    function Int_Ptr_Type return Type_T is

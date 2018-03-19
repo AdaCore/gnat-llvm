@@ -1457,15 +1457,11 @@ package body GNATLLVM.Compile is
             | N_Private_Extension_Declaration
          =>
             declare
-               Def_Ident : constant Entity_Id := Defining_Identifier (Node);
-               Typ : constant Type_T :=
-                 GNAT_To_LLVM_Type (Env, Def_Ident, True);
-               TBAA : constant Metadata_T := Create_TBAA (Env, Def_Ident);
+               Discard : Type_T;
+               pragma Unreferenced (Discard);
             begin
-               Set_Type (Env, Def_Ident, Typ);
-               if TBAA /= No_Metadata_T then
-                  Set_TBAA (Env, Base_Type (Def_Ident), TBAA);
-               end if;
+               Discard := GNAT_To_LLVM_Type
+                 (Env, Defining_Identifier (Node), True);
             end;
 
          when N_Freeze_Entity =>

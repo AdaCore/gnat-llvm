@@ -184,6 +184,10 @@ package GNATLLVM.Environment is
    procedure Set_Basic_Block
      (Env : Environ; BE : Entity_Id; BL : Basic_Block_T);
 
+   procedure Copy_Type_Info (Env : Environ; Old_T, New_T : Entity_Id)
+     with Pre => Has_Type (Env, Old_T), Post => Has_Type (Env, New_T);
+   --  Copy type-related information from Old_T to New_T
+
    procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T);
    procedure Pop_Loop;
    function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T;

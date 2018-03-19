@@ -62,12 +62,11 @@ package body GNATLLVM.Environment is
    --------------
 
    function Get_Type (Env : Environ; TE : Entity_Id) return Type_T is
-      E : constant Entity_Id := Get_Fullest_View (TE);
    begin
-      if Env.LLVM_Info (E) = Empty_LLVM_Info_Id then
+      if Env.LLVM_Info (TE) = Empty_LLVM_Info_Id then
          return No_Type_T;
       else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Typ;
+         return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Typ;
       end if;
    end Get_Type;
 
@@ -76,12 +75,11 @@ package body GNATLLVM.Environment is
    --------------
 
    function Get_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
-      E : constant Entity_Id := Base_Type (Get_Fullest_View (TE));
    begin
-      if Env.LLVM_Info (E) = Empty_LLVM_Info_Id then
+      if Env.LLVM_Info (TE) = Empty_LLVM_Info_Id then
          return No_Metadata_T;
       else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (E)).TBAA;
+         return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).TBAA;
       end if;
    end Get_TBAA;
 
@@ -120,9 +118,8 @@ package body GNATLLVM.Environment is
    function Get_Record_Info
      (Env : Environ; RI : Entity_Id) return Record_Info
    is
-      E : constant Entity_Id := Get_Fullest_View (RI);
    begin
-      return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Record_Inf;
+      return LLVM_Info_Table.Table (Env.LLVM_Info (RI)).Record_Inf;
    end Get_Record_Info;
 
    function Get_LLVM_Info_Id (Env : Environ; N : Node_Id) return LLVM_Info_Id;
@@ -148,6 +145,22 @@ package body GNATLLVM.Environment is
          return Id;
       end if;
    end Get_LLVM_Info_Id;
+
+   --------------------
+   -- Copy_Type_Info --
+   --------------------
+
+   procedure Copy_Type_Info (Env : Environ; Old_T, New_T : Entity_Id) is
+      Id : constant LLVM_Info_Id := Env.LLVM_Info (Old_T);
+   begin
+      pragma Assert (Id /= Empty_LLVM_Info_Id);
+      pragma Assert (Env.LLVM_Info (New_T) = Empty_LLVM_Info_Id);
+      --  We know this is a type and one for which we don't have any
+      --  data, so we shouldn't have allocated anything for it.
+
+      LLVM_Info_Table.Append (LLVM_Info_Table.Table (Id));
+      Env.LLVM_Info (New_T) := LLVM_Info_Table.Last;
+   end Copy_Type_Info;
 
    --------------
    -- Set_Type --

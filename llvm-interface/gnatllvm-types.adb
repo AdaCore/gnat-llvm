@@ -189,22 +189,39 @@ package body GNATLLVM.Types is
    function GNAT_To_LLVM_Type
      (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
    is
-      pragma Unreferenced (Definition);
       Def_Ident : Entity_Id;
+      Typ       : Type_T := No_Type_T;
+      TBAA      : Metadata_T := No_Metadata_T;
+      Discard   : Type_T;
+      pragma Unreferenced (Discard);
+      pragma Unreferenced (Definition);
    begin
-      --  First, return any already translated type from the environment, if
-      --  any. Allow definition only for N_Defining_Identifier.
+      --  See if we already have a type.  If so, we must not be defining
+      --  this type.  ??? But we can't add that test just yet.
 
-      if Has_Type (Env, TE) then
-         return Get_Type (Env, TE);
+      Typ := Get_Type (Env, TE);
+      if Typ /= No_Type_T then
+         --  pragma Assert (not Definition);
+         return Typ;
       end if;
 
+      --  See if we can get the type from the fullest view.
+      --  ??? This isn't quite right in the case where we're not
+      --  defining the type, or where there's a Freeze_Node, but add this
+      --  logic later.
       Def_Ident := Get_Fullest_View (TE);
+      if Def_Ident /= TE then
+         Typ := GNAT_To_LLVM_Type (Env, Def_Ident, False);
+         if Typ /= No_Type_T then
+            Copy_Type_Info (Env, Def_Ident, TE);
+            return Typ;
+         end if;
+      end if;
 
-      --  The full view may already be in the environment
-
-      if Has_Type (Env, Def_Ident) then
-         return Get_Type (Env, Def_Ident);
+      --  ??? This probably needs to be cleaned up, but before we do anything,
+      --  see if this isn't a base type and process that if so.
+      if Base_Type (Def_Ident) /= Def_Ident then
+         Discard := GNAT_To_LLVM_Type (Env, Base_Type (Def_Ident), False);
       end if;
 
       case Ekind (Def_Ident) is
@@ -213,15 +230,15 @@ package body GNATLLVM.Types is
             --  ??? will not work properly if there is a size clause
 
             if Is_Boolean_Type (Def_Ident) then
-               return Int_Type_In_Context (Env.Ctx, 1);
+               Typ := Int_Type_In_Context (Env.Ctx, 1);
             elsif Is_Modular_Integer_Type (Def_Ident) then
-               return Int_Type_In_Context
+               Typ := Int_Type_In_Context
                  (Env.Ctx,
                   Interfaces.C.unsigned
                     (UI_To_Int (RM_Size (Def_Ident))));
 
             else
-               return Int_Type_In_Context
+               Typ := Int_Type_In_Context
                  (Env.Ctx,
                   Interfaces.C.unsigned
                     (UI_To_Int (Esize (Def_Ident))));
@@ -238,39 +255,39 @@ package body GNATLLVM.Types is
                case Float_Rep (Float_Type) is
                   when IEEE_Binary =>
                      if Size = Uint_32 then
-                        return Float_Type_In_Context (Env.Ctx);
+                        Typ := Float_Type_In_Context (Env.Ctx);
                      elsif Size = Uint_64 then
-                        return Double_Type_In_Context (Env.Ctx);
+                        Typ := Double_Type_In_Context (Env.Ctx);
                      elsif Size = Uint_128 then
                         --  Extended precision; not IEEE_128
-                        return X86_F_P80_Type_In_Context (Env.Ctx);
+                        Typ := X86_F_P80_Type_In_Context (Env.Ctx);
                      else
                         pragma Assert (UI_Is_In_Int_Range (Size));
 
                         case UI_To_Int (Size) is
                            when 80 | 96 =>
-                              return X86_F_P80_Type_In_Context (Env.Ctx);
+                              Typ := X86_F_P80_Type_In_Context (Env.Ctx);
                            when others =>
                               --  ??? Double check that
-                              return F_P128_Type_In_Context (Env.Ctx);
+                              Typ := F_P128_Type_In_Context (Env.Ctx);
                         end case;
                      end if;
 
                   when AAMP =>
                      --  Not supported
                      Error_Msg_N ("unsupported floating point type", TE);
-                     return Void_Type_In_Context (Env.Ctx);
+                     Typ := Void_Type_In_Context (Env.Ctx);
                end case;
             end;
 
          when E_Access_Type .. E_General_Access_Type
             | E_Anonymous_Access_Type
             | E_Access_Subprogram_Type =>
-            return Create_Access_Type
+            Typ := Create_Access_Type
               (Env, Designated_Type (Def_Ident));
 
          when E_Anonymous_Access_Subprogram_Type =>
-            return Create_Subprogram_Access_Type
+            Typ := Create_Subprogram_Access_Type
               (Env, Create_Type (Env, Designated_Type (Def_Ident)));
 
          when Record_Kind =>
@@ -342,96 +359,95 @@ package body GNATLLVM.Types is
                end if;
 
                Set_Record_Info (Env, Def_Ident, Info);
-               return Get_Type (Env, Def_Ident);
+               Typ := Get_Type (Env, Def_Ident);
             end;
 
          when Array_Kind =>
             --  Handle packed arrays.
             if Present (Packed_Array_Impl_Type (Def_Ident)) then
-               return Create_Type (Env, Packed_Array_Impl_Type (Def_Ident));
-            end if;
+               Typ := Create_Type (Env, Packed_Array_Impl_Type (Def_Ident));
+            else
+               declare
+                  LB, HB     : Node_Id;
+                  Range_Size : Long_Long_Integer := 0;
 
-            declare
-               Result     : Type_T :=
-                 Create_Type (Env, Component_Type (Def_Ident));
-               LB, HB     : Node_Id;
-               Range_Size : Long_Long_Integer := 0;
+                  function Iterate is new Iterate_Entities
+                    (Get_First => First_Index, Get_Next  => Next_Index);
+               begin
 
-               function Iterate is new Iterate_Entities
-                 (Get_First => First_Index,
-                  Get_Next  => Next_Index);
-            begin
-               --  Special case for string literals: they do not include
-               --  regular index information.
+                  Typ := Create_Type (Env, Component_Type (Def_Ident));
 
-               if Ekind (TE) = E_String_Literal_Subtype then
-                  Range_Size := UI_To_Long_Long_Integer
-                    (String_Literal_Length (Def_Ident));
-                  return Array_Type
-                    (Result, Interfaces.C.unsigned (Range_Size));
-               end if;
+                  --  Special case for string literals: they do not include
+                  --  regular index information.
 
-               --  Wrap each "nested type" into an array using the previous
-               --  index.
-
-               for Index of reverse Iterate (Def_Ident) loop
-                  declare
-                     --  Sometimes, the frontend leaves an identifier that
-                     --  references an integer subtype instead of a range.
-
-                     Idx_Range : constant Node_Id := Get_Dim_Range (Index);
-
-                  begin
-                     LB := Low_Bound (Idx_Range);
-                     HB := High_Bound (Idx_Range);
-                  end;
-
-                  --  Compute the size of this range if possible, otherwise
-                  --  keep 0 for "unknown".
-
-                  if Is_Constrained (TE)
-                    and then Compile_Time_Known_Value (LB)
-                    and then Compile_Time_Known_Value (HB)
-                  then
-                     if Expr_Value (LB) > Expr_Value (HB) then
-                        Range_Size := 0;
-                     else
-                        Range_Size := Long_Long_Integer
-                          (UI_To_Long_Long_Integer (Expr_Value (HB))
-                           - UI_To_Long_Long_Integer (Expr_Value (LB)) + 1);
-                     end if;
+                  if Ekind (TE) = E_String_Literal_Subtype then
+                     Range_Size := UI_To_Long_Long_Integer
+                       (String_Literal_Length (Def_Ident));
+                     Typ :=
+                       Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
                   end if;
 
-                  Result := Array_Type
-                    (Result, Interfaces.C.unsigned (Range_Size));
-               end loop;
-               return Result;
-            end;
+                  --  Wrap each "nested type" into an array using the previous
+                  --  index.
+
+                  for Index of reverse Iterate (Def_Ident) loop
+                     declare
+                        --  Sometimes, the frontend leaves an identifier that
+                        --  references an integer subtype instead of a range.
+
+                        Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+                     begin
+                        LB := Low_Bound (Idx_Range);
+                        HB := High_Bound (Idx_Range);
+                     end;
+
+                     --  Compute the size of this range if possible, otherwise
+                     --  keep 0 for "unknown".
+
+                     if Is_Constrained (TE)
+                       and then Compile_Time_Known_Value (LB)
+                       and then Compile_Time_Known_Value (HB)
+                     then
+                        if Expr_Value (LB) > Expr_Value (HB) then
+                           Range_Size := 0;
+                        else
+                           Range_Size := Long_Long_Integer
+                             (UI_To_Long_Long_Integer (Expr_Value (HB))
+                                - UI_To_Long_Long_Integer (Expr_Value (LB))
+                                + 1);
+                        end if;
+                     end if;
+
+                     Typ :=
+                       Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
+                  end loop;
+               end;
+            end if;
 
          when E_Subprogram_Type =>
             --  An anonymous access to a subprogram can point to any subprogram
             --  (nested or not), so it must accept a static link.
 
-            return Create_Subprogram_Type_From_Entity
+            Typ := Create_Subprogram_Type_From_Entity
               (Env, Def_Ident,
                Takes_S_Link => (Nkind (Associated_Node_For_Itype (TE))
                                   /= N_Full_Type_Declaration));
 
          when Fixed_Point_Kind =>
-            return Int_Type_In_Context
+            Typ := Int_Type_In_Context
               (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
 
          when E_Incomplete_Type =>
             --  This is a taft amendment type, return a dummy type
 
-            return Void_Type_In_Context (Env.Ctx);
+            Typ := Void_Type_In_Context (Env.Ctx);
 
          when E_Private_Type
             | E_Private_Subtype
             | E_Limited_Private_Type
             | E_Limited_Private_Subtype
          =>
-            return Create_Type (Env, Etype (Def_Ident));
+            Typ := Create_Type (Env, Etype (Def_Ident));
 
          when others =>
             Error_Msg_N
@@ -439,6 +455,18 @@ package body GNATLLVM.Types is
                & Ekind (Def_Ident)'Image & "`", Def_Ident);
             raise Program_Error;
       end case;
+
+      --  Now save the result, if we have one, and compute any TBAA
+      --  information.
+      if Typ /= No_Type_T then
+         Set_Type (Env, TE, Typ);
+         TBAA := Create_TBAA (Env, TE);
+         if TBAA /= No_Metadata_T then
+            Set_TBAA (Env, TE, TBAA);
+         end if;
+      end if;
+
+      return Typ;
    end GNAT_To_LLVM_Type;
 
    ------------------

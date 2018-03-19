@@ -143,16 +143,11 @@ package GNATLLVM.Utils is
    --  Helper for LLVM's Build_Store
 
    procedure Store_With_Type
-     (Env  : access Environ_Record;
-      TE   : Entity_Id;
-      Expr : Value_T;
-      Ptr  : Value_T);
+     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T);
    --  Similar, but allows annotating store
 
    function Load_With_Type
-     (Env  : access Environ_Record;
-      TE   : Entity_Id;
-      Ptr  : Value_T) return Value_T;
+     (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T;
    --  Likewise for a load
 
    function GEP

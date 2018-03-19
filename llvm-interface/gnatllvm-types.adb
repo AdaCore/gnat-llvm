@@ -140,13 +140,12 @@ package body GNATLLVM.Types is
    ------------------------------------
 
    function Create_Array_Thin_Pointer_Type
-     (Env        : Environ;
-      Array_Type : Entity_Id) return Type_T
+     (Env             : Environ;
+      Array_Type_Node : Entity_Id) return Type_T
    is
       Elt_Type : constant Type_T :=
-        Create_Type (Env, Component_Type (Array_Type));
-      Arr_Type : constant Type_T :=
-        LLVM.Core.Array_Type (Elt_Type, 0);
+        Create_Type (Env, Component_Type (Array_Type_Node));
+      Arr_Type : constant Type_T := Array_Type (Elt_Type, 0);
    begin
       return Pointer_Type (Arr_Type, 0);
    end Create_Array_Thin_Pointer_Type;
@@ -179,17 +178,18 @@ package body GNATLLVM.Types is
         and then not Is_Constrained (TE)
       then
          return Create_Array_Fat_Pointer_Type (Env, TE);
-
       else
          return Pointer_Type (T, 0);
       end if;
    end Create_Access_Type;
 
-   -----------------
-   -- Create_Type --
-   -----------------
-
-   function Create_Type (Env : Environ; TE : Entity_Id) return Type_T is
+   -----------------------
+   -- GNAT_To_LLVM_Type --
+   -----------------------
+   function GNAT_To_LLVM_Type
+     (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
+   is
+      pragma Unreferenced (Definition);
       Def_Ident : Entity_Id;
    begin
       --  First, return any already translated type from the environment, if
@@ -439,7 +439,7 @@ package body GNATLLVM.Types is
                & Ekind (Def_Ident)'Image & "`", Def_Ident);
             raise Program_Error;
       end case;
-   end Create_Type;
+   end GNAT_To_LLVM_Type;
 
    ------------------
    --  Create_TBAA --

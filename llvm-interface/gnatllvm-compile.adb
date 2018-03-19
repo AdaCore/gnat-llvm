@@ -1458,7 +1458,8 @@ package body GNATLLVM.Compile is
          =>
             declare
                Def_Ident : constant Entity_Id := Defining_Identifier (Node);
-               Typ : constant Type_T := Create_Type (Env, Def_Ident);
+               Typ : constant Type_T :=
+                 GNAT_To_LLVM_Type (Env, Def_Ident, True);
                TBAA : constant Metadata_T := Create_TBAA (Env, Def_Ident);
             begin
                Set_Type (Env, Def_Ident, Typ);

@@ -342,9 +342,7 @@ package body GNATLLVM.Utils is
    -- Load_With_Type --
    --------------------
    function Load_With_Type
-     (Env  : access Environ_Record;
-      TE   : Entity_Id;
-      Ptr  : Value_T) return Value_T
+     (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T
    is
       Load_Inst    : constant Value_T := Load (Env.Bld, Ptr, "");
       TBAA         : constant Metadata_T := Get_TBAA (Env, TE);
@@ -378,10 +376,7 @@ package body GNATLLVM.Utils is
    -- Store_With_Type --
    ---------------------
    procedure Store_With_Type
-     (Env  : access Environ_Record;
-      TE   : Entity_Id;
-      Expr : Value_T;
-      Ptr  : Value_T)
+     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
    is
       Store   : constant Value_T := Build_Store (Env.Bld, Expr, Ptr);
       TBAA    : constant Metadata_T := Get_TBAA (Env, TE);

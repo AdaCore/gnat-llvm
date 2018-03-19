@@ -36,25 +36,33 @@ package GNATLLVM.Types is
 
    function Create_Access_Type
      (Env : Environ; TE : Entity_Id) return Type_T
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type (TE), Post => Create_Access_Type'Result /= No_Type_T;
+
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
    --  between the two. For the moment, it handles array accesses and thin
    --  (normal) accesses.
 
    function Create_Array_Thin_Pointer_Type
-     (Env        : Environ;
-      Array_Type : Entity_Id) return Type_T;
+     (Env             : Environ;
+      Array_Type_Node : Entity_Id) return Type_T
+     with Pre =>  Is_Array_Type (Array_Type_Node),
+          Post => (Get_Type_Kind (Create_Array_Thin_Pointer_Type'Result) =
+                  Pointer_Type_Kind);
    --  Return the type used to store thin pointers to Array_Type
 
    function Create_Array_Fat_Pointer_Type
      (Env        : Environ;
-      Array_Type : Entity_Id) return Type_T;
+      Array_Type : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (Array_Type),
+          Post => Create_Array_Fat_Pointer_Type'Result /= No_Type_T;
    --  Return the type used to store fat pointers to Array_Type
 
    function Create_Array_Bounds_Type
      (Env             : Environ;
-      Array_Type_Node : Entity_Id) return Type_T;
+      Array_Type_Node : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (Array_Type_Node),
+          Post => Create_Array_Bounds_Type'Result /= No_Type_T;
    --  Helper that returns the type used to store array bounds. This is a
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
@@ -68,8 +76,13 @@ package GNATLLVM.Types is
       Subp_Type_Ent : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T;
 
-   function Create_Type (Env : Environ; TE : Entity_Id) return Type_T
-     with Pre => Is_Type (TE);
+   function GNAT_To_LLVM_Type
+     (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
+     with Pre => Is_Type (TE), Post => GNAT_To_LLVM_Type'Result /= No_Type_T;
+
+   function Create_Type (Env : Environ; TE : Entity_Id) return Type_T is
+      (GNAT_To_LLVM_Type (Env, TE, False))
+     with Pre => Is_Type (TE), Post => Create_Type'Result /= No_Type_T;
 
    function Create_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T
      with Pre => Is_Type (TE);

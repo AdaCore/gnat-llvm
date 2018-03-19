@@ -25,9 +25,7 @@ package body GNATLLVM.Environment is
    -- Has_Type --
    --------------
 
-   function Has_Type
-     (Env : access Environ_Record; TE : Entity_Id) return Boolean
-   is
+   function Has_Type (Env : Environ; TE : Entity_Id) return Boolean is
    begin
       return Get_Type (Env, TE) /= No_Type_T;
    end Has_Type;
@@ -36,9 +34,7 @@ package body GNATLLVM.Environment is
    -- Has_TBAA --
    --------------
 
-   function Has_TBAA
-     (Env : access Environ_Record; TE : Entity_Id) return Boolean
-   is
+   function Has_TBAA (Env : Environ; TE : Entity_Id) return Boolean is
    begin
       return Get_TBAA (Env, TE) /= No_Metadata_T;
    end Has_TBAA;
@@ -47,9 +43,7 @@ package body GNATLLVM.Environment is
    -- Has_Value --
    ---------------
 
-   function Has_Value
-     (Env : access Environ_Record; VE : Entity_Id) return Boolean
-   is
+   function Has_Value (Env : Environ; VE : Entity_Id) return Boolean is
    begin
       return Get_Value (Env, VE) /= No_Value_T;
    end Has_Value;
@@ -58,9 +52,7 @@ package body GNATLLVM.Environment is
    -- Has_BB --
    ------------
 
-   function Has_BB
-     (Env : access Environ_Record; BE : Entity_Id) return Boolean
-   is
+   function Has_BB (Env : Environ; BE : Entity_Id) return Boolean is
    begin
       return Get_Basic_Block (Env, BE) /= No_BB_T;
    end Has_BB;
@@ -69,9 +61,7 @@ package body GNATLLVM.Environment is
    -- Get_Type --
    --------------
 
-   function Get_Type
-     (Env : access Environ_Record; TE : Entity_Id) return Type_T
-   is
+   function Get_Type (Env : Environ; TE : Entity_Id) return Type_T is
       E : constant Entity_Id := Get_Fullest_View (TE);
    begin
       if Env.LLVM_Info (E) = Empty_LLVM_Info_Id then
@@ -85,9 +75,7 @@ package body GNATLLVM.Environment is
    -- Get_TBAA --
    --------------
 
-   function Get_TBAA
-     (Env : access Environ_Record; TE : Entity_Id) return Metadata_T
-   is
+   function Get_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
       E : constant Entity_Id := Base_Type (Get_Fullest_View (TE));
    begin
       if Env.LLVM_Info (E) = Empty_LLVM_Info_Id then
@@ -101,9 +89,7 @@ package body GNATLLVM.Environment is
    -- Get_Value --
    ---------------
 
-   function Get_Value
-     (Env : access Environ_Record; VE : Entity_Id) return Value_T
-   is
+   function Get_Value (Env : Environ; VE : Entity_Id) return Value_T is
    begin
       if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
          return No_Value_T;
@@ -117,7 +103,7 @@ package body GNATLLVM.Environment is
    ---------------------
 
    function Get_Basic_Block
-     (Env : access Environ_Record; BE : Entity_Id) return Basic_Block_T
+     (Env : Environ; BE : Entity_Id) return Basic_Block_T
    is
    begin
       if Env.LLVM_Info (BE) = Empty_LLVM_Info_Id then
@@ -132,15 +118,14 @@ package body GNATLLVM.Environment is
    ---------------------
 
    function Get_Record_Info
-     (Env : access Environ_Record; RI : Entity_Id) return Record_Info
+     (Env : Environ; RI : Entity_Id) return Record_Info
    is
       E : constant Entity_Id := Get_Fullest_View (RI);
    begin
       return LLVM_Info_Table.Table (Env.LLVM_Info (E)).Record_Inf;
    end Get_Record_Info;
 
-   function Get_LLVM_Info_Id
-     (Env : access Environ_Record; N : Node_Id) return LLVM_Info_Id;
+   function Get_LLVM_Info_Id (Env : Environ; N : Node_Id) return LLVM_Info_Id;
    --  Helper for below to allocate LLVM_Info_Table entry if needed.
 
    ----------------------
@@ -148,7 +133,7 @@ package body GNATLLVM.Environment is
    ----------------------
 
    function Get_LLVM_Info_Id
-     (Env : access Environ_Record; N : Node_Id) return LLVM_Info_Id
+     (Env : Environ; N : Node_Id) return LLVM_Info_Id
    is
       Id : LLVM_Info_Id := Env.LLVM_Info (N);
    begin
@@ -168,9 +153,7 @@ package body GNATLLVM.Environment is
    -- Set_Type --
    --------------
 
-   procedure Set_Type
-     (Env : access Environ_Record; TE : Entity_Id; TL : Type_T)
-   is
+   procedure Set_Type (Env : Environ; TE : Entity_Id; TL : Type_T) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
    begin
       LLVM_Info_Table.Table (Id).Typ :=  TL;
@@ -180,9 +163,7 @@ package body GNATLLVM.Environment is
    -- Set_TBAA --
    --------------
 
-   procedure Set_TBAA
-     (Env : access Environ_Record; TE : Entity_Id; TBAA : Metadata_T)
-   is
+   procedure Set_TBAA (Env : Environ; TE : Entity_Id; TBAA : Metadata_T) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
    begin
       LLVM_Info_Table.Table (Id).TBAA := TBAA;
@@ -192,9 +173,7 @@ package body GNATLLVM.Environment is
    -- Set_Value --
    ---------------
 
-   procedure Set_Value
-     (Env : access Environ_Record; VE : Entity_Id; VL : Value_T)
-   is
+   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, VE);
    begin
       LLVM_Info_Table.Table (Id).Value :=  VL;
@@ -205,7 +184,7 @@ package body GNATLLVM.Environment is
    ---------------------
 
    procedure Set_Basic_Block
-     (Env : access Environ_Record; BE : Entity_Id; BL : Basic_Block_T)
+     (Env : Environ; BE : Entity_Id; BL : Basic_Block_T)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, BE);
    begin
@@ -217,7 +196,7 @@ package body GNATLLVM.Environment is
    ---------------------
 
    procedure Set_Record_Info
-     (Env : access Environ_Record; TE : Entity_Id; RI : Record_Info)
+     (Env : Environ; TE : Entity_Id; RI : Record_Info)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
    begin
@@ -274,12 +253,9 @@ package body GNATLLVM.Environment is
    -- Enter_Subp --
    ----------------
 
-   function Enter_Subp
-     (Env       : access Environ_Record;
-      Func      : Value_T) return Subp_Env
-   is
+   function Enter_Subp (Env : Environ; Func : Value_T) return Subp_Env is
       Subp : constant Subp_Env :=
-        (Env                    => Environ (Env),
+        (Env                    => Env,
          Func                   => Func,
          Saved_Builder_Position => Get_Insert_Block (Env.Bld),
          Activation_Rec_Param   => No_Value_T);
@@ -293,7 +269,7 @@ package body GNATLLVM.Environment is
    -- Leave_Subp --
    ----------------
 
-   procedure Leave_Subp (Env  : access Environ_Record) is
+   procedure Leave_Subp (Env  : Environ) is
    begin
       --  There is no builder position to restore if no subprogram translation
       --  was interrupted in order to translate the current subprogram.
@@ -328,7 +304,8 @@ package body GNATLLVM.Environment is
    ------------------------
 
    function Create_Basic_Block
-     (Env : access Environ_Record; Name : String) return Basic_Block_T is
+     (Env : Environ; Name : String) return Basic_Block_T
+   is
    begin
       return Append_Basic_Block_In_Context
         (Env.Ctx, Current_Subp.Func, Name);

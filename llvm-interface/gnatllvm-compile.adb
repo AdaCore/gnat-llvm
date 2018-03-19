@@ -1049,7 +1049,7 @@ package body GNATLLVM.Compile is
                      if Esize (Component_Type (Left_Typ)) = Uint_1 then
                         return Z_Ext
                           (Env.Bld,
-                           Array_Length (Env, Array_Descr, Array_Type),
+                           Array_Length (Env, Array_Descr, Array_Type, 1),
                            Size_T, "");
 
                      else
@@ -1057,7 +1057,7 @@ package body GNATLLVM.Compile is
                           (Env.Bld,
                            Z_Ext
                              (Env.Bld,
-                              Array_Length (Env, Array_Descr, Array_Type),
+                              Array_Length (Env, Array_Descr, Array_Type, 1),
                               Size_T, ""),
                            Const_Int
                              (Size_T, Esize (Component_Type (Left_Typ)) / 8),
@@ -1753,7 +1753,7 @@ package body GNATLLVM.Compile is
                        Emit_Expression (Env, N);
                      Dim_Low_Bound : constant Value_T :=
                        Array_Bound
-                         (Env, Array_Descr, Array_Type, Low, Integer (J - 1));
+                         (Env, Array_Descr, Array_Type, Low, J - 1);
                   begin
                      Idxs (J) :=
                        NSW_Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
@@ -1785,7 +1785,7 @@ package body GNATLLVM.Compile is
                  Sub
                    (Env.Bld,
                     Emit_Expression (Env, Low_Bound (Discrete_Range (Node))),
-                    Array_Bound (Env, Array_Descr, Array_Type, Low),
+                    Array_Bound (Env, Array_Descr, Array_Type, Low, 1),
                     "offset");
             begin
                return Bit_Cast
@@ -3017,6 +3017,10 @@ package body GNATLLVM.Compile is
                Array_Descr : Value_T;
                Array_Type  : Entity_Id;
                Result      : Value_T;
+               Dim         : constant Nat :=
+                 (if Present (Expressions (Node)) then
+                  UI_To_Int (Intval (First (Expressions (Node))))
+                  else 1);
 
             begin
                if Is_Scalar_Type (Prefix_Type) then
@@ -3036,11 +3040,13 @@ package body GNATLLVM.Compile is
                     (Env, Prefix (Node), Array_Descr, Array_Type);
 
                   if Attr = Attribute_Length then
-                     Result := Array_Length (Env, Array_Descr, Array_Type);
+                     Result :=
+                       Array_Length (Env, Array_Descr, Array_Type, Dim);
                   else
                      Result := Array_Bound
                        (Env, Array_Descr, Array_Type,
-                        (if Attr = Attribute_First then Low else High));
+                        (if Attr = Attribute_First then Low else High),
+                        Dim);
                   end if;
                else
                   Error_Msg_N ("unsupported attribute", Node);
@@ -3209,9 +3215,9 @@ package body GNATLLVM.Compile is
             RHS_Type     : constant Entity_Id := Etype (RHS);
 
             Left_Length  : constant Value_T :=
-              Array_Length (Env, LHS_Descr, LHS_Type);
+              Array_Length (Env, LHS_Descr, LHS_Type, 1);
             Right_Length : constant Value_T :=
-              Array_Length (Env, RHS_Descr, RHS_Type);
+              Array_Length (Env, RHS_Descr, RHS_Type, 1);
             Null_Length  : constant Value_T :=
               Const_Null (Type_Of (Left_Length));
             Same_Length  : constant Value_T := I_Cmp

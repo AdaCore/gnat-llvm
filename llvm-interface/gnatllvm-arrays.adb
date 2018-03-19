@@ -42,7 +42,7 @@ package body GNATLLVM.Arrays is
    --  empty case. Bounds_Type indicates how to interpret the provided bounds
    --  with respect to signedness.
 
-   function Get_Bound_Index (Dim : Natural; Bound : Bound_T) return unsigned;
+   function Get_Bound_Index (Dim : Nat; Bound : Bound_T) return unsigned;
    --  An array fat pointer embbeds a structure holding the bounds of the
    --  array. This returns the index for some bound given its dimension
    --  inside the array and on whether this is the lower or the upper bound.
@@ -89,8 +89,8 @@ package body GNATLLVM.Arrays is
    -- Get_Bound_Index --
    ---------------------
 
-   function Get_Bound_Index (Dim : Natural; Bound : Bound_T) return unsigned is
-      Bounds_Pair_Idx : constant Natural := (Dim - 1) * 2;
+   function Get_Bound_Index (Dim : Nat; Bound : Bound_T) return unsigned is
+      Bounds_Pair_Idx : constant Nat := (Dim - 1) * 2;
       --  In the array fat pointer bounds structure, bounds are stored as a
       --  sequence of (lower bound, upper bound) pairs: get the offset of
       --  such a pair.
@@ -124,7 +124,7 @@ package body GNATLLVM.Arrays is
       Array_Descr : Value_T;
       Array_Type  : Entity_Id;
       Bound       : Bound_T;
-      Dim         : Natural := 1) return Value_T is
+      Dim         : Nat) return Value_T is
    begin
       if Ekind (Array_Type) = E_String_Literal_Subtype then
          declare
@@ -146,7 +146,7 @@ package body GNATLLVM.Arrays is
             Indices_List  : constant List_Id :=
               List_Containing (First_Index (Array_Type));
             Index_Subtype : constant Node_Id :=
-              Etype (Pick (Indices_List, Nat (Dim)));
+              Etype (Pick (Indices_List, Dim));
          begin
             return Emit_Expression
               (Env,
@@ -181,7 +181,8 @@ package body GNATLLVM.Arrays is
    function Array_Length
      (Env         : Environ;
       Array_Descr : Value_T;
-      Array_Type  : Entity_Id) return Value_T
+      Array_Type  : Entity_Id;
+      Dim         : Nat) return Value_T
    is
       Result : Value_T;
    begin
@@ -193,8 +194,10 @@ package body GNATLLVM.Arrays is
       else
          Result := Bounds_To_Length
            (Env => Env,
-            Low_Bound => Array_Bound (Env, Array_Descr, Array_Type, Low),
-            High_Bound => Array_Bound (Env, Array_Descr, Array_Type, High),
+            Low_Bound  =>
+              Array_Bound (Env, Array_Descr, Array_Type, Low, Dim),
+            High_Bound =>
+              Array_Bound (Env, Array_Descr, Array_Type, High, Dim),
             Bounds_Type => Etype (First_Index (Array_Type)));
          Set_Value_Name (Result, "array-length");
          return Result;
@@ -247,7 +250,7 @@ package body GNATLLVM.Arrays is
 
       DSD         : Node_Id := First_Index (Array_Type);
       Dim         : Node_Id;
-      Dim_Index   : Natural;
+      Dim_Index   : Nat;
       Dim_Length  : Value_T;
 
       --  Start of processing for Array_Size
@@ -331,7 +334,7 @@ package body GNATLLVM.Arrays is
       Array_Data_Ptr : Value_T;
       Bounds         : Value_T;
       Dim            : Node_Id;
-      Dim_I          : Integer;
+      Dim_I          : Nat;
       R              : Node_Id;
 
       procedure Handle_Bound (Bound : Node_Id; Bound_Type : Bound_T);

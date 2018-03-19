@@ -51,7 +51,7 @@ package GNATLLVM.Arrays is
       Array_Descr : Value_T;
       Array_Type  : Entity_Id;
       Bound       : Bound_T;
-      Dim         : Natural := 1) return Value_T;
+      Dim         : Nat) return Value_T;
    --  Compute the bound for the array corresponding to Array_Descr, whose type
    --  is Array_Type. If Array_Type is a constrained array, Array_Descr will
    --  not be used, and can thus then be No_Value_T. Otherwise, it will be
@@ -60,7 +60,8 @@ package GNATLLVM.Arrays is
    function Array_Length
      (Env         : Environ;
       Array_Descr : Value_T;
-      Array_Type  : Entity_Id) return Value_T;
+      Array_Type  : Entity_Id;
+      Dim         : Nat) return Value_T;
    --  Emit code to compute the length for the array corresponding to
    --  Array_Descr, whose type is Array_Type. If Array_Type is a constrained
    --  array, Array_Descr will not be used, and can thus then be No_Value_T.

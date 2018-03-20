@@ -17,6 +17,7 @@
 
 with Errout;   use Errout;
 with Sem_Eval; use Sem_Eval;
+with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
 with Uintp;    use Uintp;
@@ -540,7 +541,7 @@ package body GNATLLVM.Types is
    function Create_Subprogram_Type_From_Spec
      (Env : Environ; Subp_Spec : Node_Id) return Type_T
    is
-      Def_Ident : constant Entity_Id := Defining_Unit_Name (Subp_Spec);
+      Def_Ident : constant Entity_Id := Defining_Entity (Subp_Spec);
       Params    : constant Entity_Iterator := Get_Params (Def_Ident);
       Result    : Node_Id := Empty;
 

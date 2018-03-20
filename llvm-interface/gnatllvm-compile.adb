@@ -276,7 +276,7 @@ package body GNATLLVM.Compile is
          Param_Num  : Natural := 0;
 
       begin
-         Param := First_Formal_With_Extras (Defining_Unit_Name (Spec));
+         Param := First_Formal_With_Extras (Defining_Entity (Spec));
          while Present (Param) loop
             LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
 
@@ -2582,7 +2582,7 @@ package body GNATLLVM.Compile is
    function Emit_Subprogram_Decl
      (Env : Environ; Subp_Spec : Node_Id) return Value_T
    is
-      Def_Ident : constant Node_Id := Defining_Unit_Name (Subp_Spec);
+      Def_Ident : constant Node_Id := Defining_Entity (Subp_Spec);
    begin
       --  If this subprogram specification has already been compiled, do
       --  nothing.

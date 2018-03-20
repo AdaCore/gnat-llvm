@@ -186,6 +186,7 @@ package body GNATLLVM.Types is
    -----------------------
    -- GNAT_To_LLVM_Type --
    -----------------------
+
    function GNAT_To_LLVM_Type
      (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
    is
@@ -469,9 +470,9 @@ package body GNATLLVM.Types is
       return Typ;
    end GNAT_To_LLVM_Type;
 
-   ------------------
-   --  Create_TBAA --
-   ------------------
+   -----------------
+   -- Create_TBAA --
+   -----------------
 
    function Create_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
       BT : constant Entity_Id := Base_Type (TE);

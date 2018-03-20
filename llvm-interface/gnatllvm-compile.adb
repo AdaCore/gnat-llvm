@@ -107,7 +107,7 @@ package body GNATLLVM.Compile is
       LHS, E                    : Node_Id;
       Forwards_OK, Backwards_OK : Boolean);
    --  Helper for Emit: Copy the value of the expression E to LValue
-   --  with the specified destionation and expression types
+   --  with the specified destination and expression types
 
    function Emit_Call
      (Env : Environ; Call_Node : Node_Id) return Value_T;

@@ -1646,7 +1646,8 @@ package body GNATLLVM.Compile is
                   "slice");
             end;
 
-         when N_Unchecked_Type_Conversion =>
+         when N_Unchecked_Type_Conversion | N_Type_Conversion =>
+
             --  ??? Strip the type conversion, likely not always correct
             return Emit_LValue (Env, Expression (Node));
 

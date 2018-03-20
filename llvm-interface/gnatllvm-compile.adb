@@ -1758,6 +1758,8 @@ package body GNATLLVM.Compile is
       --  Shortcut to Emit_Expression. Used to implicitely pass the
       --  environment during recursion.
 
+      Discard : Value_T;
+      pragma Unreferenced (Discard);
    begin
       if Nkind (Node) in N_Binary_Op then
 
@@ -2226,13 +2228,13 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_Expression =>
-            --  ??? Missing proper type cast/wrapping
-            return Emit_LCH_Call (Env, Node);
+            Discard := Emit_LCH_Call (Env, Node);
+            return Get_Undef (Create_Type (Env, Etype (Node)));
 
          when N_Raise_xxx_Error =>
-            --  ??? Missing proper type cast/wrapping
             pragma Assert (No (Condition (Node)));
-            return Emit_LCH_Call (Env, Node);
+            Discard := Emit_LCH_Call (Env, Node);
+            return Get_Undef (Create_Type (Env, Etype (Node)));
 
          when others =>
             Error_Msg_N

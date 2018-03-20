@@ -340,26 +340,14 @@ package body GNATLLVM.Types is
                      I := 1;
                      Struct_Num := Struct_Num + 1;
 
-                     --  Only create a new struct if we have remaining fields
-                     --  after this one
-
-                     if Num_Fields < Comps'Length then
-                        Struct_Type := Struct_Create_Named
-                          (Env.Ctx, Get_Name (Def_Ident) & Img (Struct_Num));
-                        Info.Structs.Append (New_Struct_Info);
-                     end if;
+                     Struct_Type := Struct_Create_Named
+                       (Env.Ctx, Get_Name (Def_Ident) & Img (Struct_Num));
+                     Info.Structs.Append (New_Struct_Info);
                   end if;
                end loop;
 
-               --  If there are components remaining, set them to be the
-               --  current struct body
-
-               if I > 1 then
-                  Struct_Set_Body
-                    (Struct_Type, LLVM_Comps'Address,
-                     unsigned (I - 1), False);
-               end if;
-
+               Struct_Set_Body
+                 (Struct_Type, LLVM_Comps'Address, unsigned (I - 1), False);
                Set_Record_Info (Env, Def_Ident, Info);
                Typ := Get_Type (Env, Def_Ident);
             end;

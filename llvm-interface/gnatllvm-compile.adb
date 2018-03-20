@@ -178,7 +178,7 @@ package body GNATLLVM.Compile is
      (Env           : Environ;
       Node          : Node_Id;
       Dims_Left     : Pos;
-      Typ           : Type_T) return Value_T;
+      Typ, Comp_Typ : Type_T) return Value_T;
    --  Emit an N_Aggregate of LLVM type Typ, which is an array, returning the
    --  Value_T that contains the data.  Dims_Left says how many dimensions of
    --  the outer array type we still can recurse into.
@@ -2177,7 +2177,8 @@ package body GNATLLVM.Compile is
                else
                   pragma Assert (Ekind (Agg_Type) in Array_Kind);
                   return Emit_Array_Aggregate
-                    (Env, Node, Number_Dimensions (Agg_Type), LLVM_Type);
+                    (Env, Node, Number_Dimensions (Agg_Type),
+                     LLVM_Type, Create_Type (Env, Component_Type (Agg_Type)));
                end if;
 
                return Result;
@@ -2930,7 +2931,7 @@ package body GNATLLVM.Compile is
      (Env           : Environ;
       Node          : Node_Id;
       Dims_Left     : Pos;
-      Typ           : Type_T) return Value_T
+      Typ, Comp_Typ : Type_T) return Value_T
    is
       Result     : Value_T := Get_Undef (Typ);
       Cur_Expr   : Value_T;
@@ -2944,7 +2945,7 @@ package body GNATLLVM.Compile is
          --  since we won't have the proper type for the inner aggregate.
          if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
             Cur_Expr := Emit_Array_Aggregate
-              (Env, Expr, Dims_Left - 1, Get_Element_Type (Typ));
+              (Env, Expr, Dims_Left - 1, Get_Element_Type (Typ), Comp_Typ);
 
          --  If the expression is a conversion to an unconstrained
          --  array type, skip it to avoid spilling to memory.
@@ -2956,6 +2957,15 @@ package body GNATLLVM.Compile is
             Cur_Expr := Emit_Expression (Env, Expression (Expr));
          else
             Cur_Expr := Emit_Expression (Env, Expr);
+         end if;
+
+         --  If this operand's type is a pointer and so is the element
+         --  type, but they aren't the same, convert.
+         if Type_Of (Cur_Expr) /= Comp_Typ
+           and then Get_Type_Kind (Comp_Typ) = Pointer_Type_Kind
+           and then Get_Type_Kind (Type_Of (Cur_Expr)) = Pointer_Type_Kind
+         then
+            Cur_Expr := Bit_Cast (Env.Bld, Cur_Expr, Comp_Typ, "");
          end if;
 
          Result := Insert_Value

@@ -3914,6 +3914,8 @@ package body GNATLLVM.Compile is
 
                   --  ??? See trans.c (case N_Real_Literal) for handling of
                   --  N_Real_Literal in gigi.
+                  --  This is wrong because if the base is two, the normal
+                  --  case, the Denominator is the exponent.
 
                   if UI_Is_In_Int_Range (Numerator (Val))
                     and then UI_Is_In_Int_Range (Denominator (Val))

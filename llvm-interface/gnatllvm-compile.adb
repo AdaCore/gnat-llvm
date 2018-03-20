@@ -67,6 +67,9 @@ package body GNATLLVM.Compile is
       Expr                : Node_Id) return Value_T;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
+   function Compute_Size (Env : Environ; Left, Right : Node_Id) return Value_T;
+   --  Helper for assignments
+
    function Convert_Scalar_Types
      (Env            : Environ;
       S_Type, D_Type : Entity_Id;
@@ -96,6 +99,15 @@ package body GNATLLVM.Compile is
       LValue : Boolean) return Value_T
      with Pre => Nkind (Node) = N_Attribute_Reference;
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
+
+   procedure Emit_Assignment
+     (Env                       : Environ;
+      Dest_Typ, Typ             : Entity_Id;
+      LValue                    : Value_T;
+      LHS, E                    : Node_Id;
+      Forwards_OK, Backwards_OK : Boolean);
+   --  Helper for Emit: Copy the value of the expression E to LValue
+   --  with the specified destionation and expression types
 
    function Emit_Call
      (Env : Environ; Call_Node : Node_Id) return Value_T;
@@ -928,13 +940,9 @@ package body GNATLLVM.Compile is
                       (Nkind (Node) = N_Object_Declaration
                        and then No_Initialization (Node))
                   then
-                     Expr := Emit_Expression (Env, Expression (Node));
-
-                     if Needs_Deref (Def_Ident) then
-                        Store (Env.Bld, Expr, Load (Env.Bld, LLVM_Var, ""));
-                     else
-                        Store (Env.Bld, Expr, LLVM_Var);
-                     end if;
+                     Emit_Assignment (Env, T, Etype (Expression (Node)),
+                                      LLVM_Var, Def_Ident,
+                                      Expression (Node), True, True);
                   end if;
                end if;
             end;
@@ -991,171 +999,12 @@ package body GNATLLVM.Compile is
                  (Env, Get_Name (Defining_Identifier (Node))));
 
          when N_Assignment_Statement =>
-            declare
-               Dest : Value_T := Emit_LValue (Env, Name (Node));
-               Src  : Value_T;
-
-               Expr     : constant Node_Id := Expression (Node);
-               Dest_Typ : constant Node_Id :=
-                 Get_Full_View (Etype (Name (Node)));
-               Val_Typ  : constant Node_Id := Get_Full_View (Etype (Expr));
-               Inner    : Node_Id;
-
-               function Compute_Size (Left, Right : Node_Id) return Value_T;
-
-               ------------------
-               -- Compute_Size --
-               ------------------
-
-               function Compute_Size (Left, Right : Node_Id) return Value_T is
-                  Size      : Uint := Uint_0;
-                  Left_Typ  : constant Node_Id :=
-                    Get_Full_View (Etype (Left));
-                  Right_Typ : constant Node_Id :=
-                    Get_Full_View (Etype (Right));
-
-                  Size_T      : constant Type_T :=
-                    Int_Ty (Integer (Get_Targ.Get_Pointer_Size));
-                  Array_Descr : Value_T;
-                  Array_Type  : Entity_Id;
-
-               begin
-                  Size := Esize (Left_Typ);
-
-                  if Size = Uint_0 then
-                     Size := Esize (Right_Typ);
-                  end if;
-
-                  if Size = Uint_0 then
-                     Size := RM_Size (Left_Typ);
-                  end if;
-
-                  if Size = Uint_0 then
-                     Size := RM_Size (Right_Typ);
-                  else
-                     Size := (Size + 7) / 8;
-                  end if;
-
-                  if Size /= Uint_0 then
-                     Size := (Size + 7) / 8;
-
-                  elsif Is_Array_Type (Left_Typ)
-                    and then Esize (Component_Type (Left_Typ)) /= Uint_0
-                  then
-                     --  ??? Will not work for multidimensional arrays
-
-                     Extract_Array_Info (Env, Left, Array_Descr, Array_Type);
-
-                     if Esize (Component_Type (Left_Typ)) = Uint_1 then
-                        return Z_Ext
-                          (Env.Bld,
-                           Array_Length (Env, Array_Descr, Array_Type, 1),
-                           Size_T, "");
-
-                     else
-                        return Mul
-                          (Env.Bld,
-                           Z_Ext
-                             (Env.Bld,
-                              Array_Length (Env, Array_Descr, Array_Type, 1),
-                              Size_T, ""),
-                           Const_Int
-                             (Size_T, Esize (Component_Type (Left_Typ)) / 8),
-                          "");
-                     end if;
-
-                  else
-                     Error_Msg_N ("unsupported assignment statement", Node);
-                     return Get_Undef (Size_T);
-                  end if;
-
-                  return Const_Int (Size_T, Size);
-               end Compute_Size;
-
-            begin
-               if Is_Array_Type (Dest_Typ)
-                 and then not Is_Bit_Packed_Array (Dest_Typ)
-                 and then Nkind (Expr) = N_Aggregate
-                 and then Is_Others_Aggregate (Expr)
-               then
-                  --  We'll use memset, so we need to find the inner expression
-
-                  Inner := Expression (First (Component_Associations (Expr)));
-
-                  while Nkind (Inner) = N_Aggregate
-                    and then Is_Others_Aggregate (Inner)
-                  loop
-                     Inner :=
-                       Expression (First (Component_Associations (Inner)));
-                  end loop;
-
-                  if Nkind (Inner) = N_Integer_Literal then
-                     Src := Const_Int (Int_Ty (8), Intval (Inner));
-                  elsif Ekind (Entity (Inner)) = E_Enumeration_Literal then
-                     Src := Const_Int
-                       (Int_Ty (8), Enumeration_Rep (Entity (Inner)));
-                  else
-                     Error_Msg_N ("unsupported kind of aggregate", Node);
-                     Src := Get_Undef (Int_Ty (8));
-                  end if;
-
-                  declare
-                     Void_Ptr_Type : constant Type_T :=
-                       Pointer_Type (Int_Ty (8), 0);
-
-                     Args : constant Value_Array (1 .. 5) :=
-                       (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
-                        Src,
-                        Compute_Size (Name (Node), Expr),
-                        Const_Int (Int_Ty (32), 1, False),  --  Alignment
-                        Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
-
-                  begin
-                     Discard (Call
-                       (Env.Bld,
-                        Env.Memory_Set_Fn,
-                        Args'Address, Args'Length,
-                        ""));
-                  end;
-
-               elsif Size_Known_At_Compile_Time (Val_Typ)
-                 and then Size_Known_At_Compile_Time (Dest_Typ)
-               then
-                  Store_With_Type
-                    (Env, Dest_Typ,
-                     Expr => Emit_Expression (Env, Expr),
-                     Ptr => Dest);
-
-               else
-                  Src := Emit_LValue (Env, Expr);
-
-                  if Is_Array_Type (Dest_Typ) then
-                     Dest := Array_Data (Env, Dest, Dest_Typ);
-                     Src := Array_Data (Env, Src, Val_Typ);
-                  end if;
-
-                  declare
-                     Void_Ptr_Type : constant Type_T :=
-                       Pointer_Type (Int_Ty (8), 0);
-
-                     Args : constant Value_Array (1 .. 5) :=
-                       (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
-                        Bit_Cast (Env.Bld, Src, Void_Ptr_Type, ""),
-                        Compute_Size (Name (Node), Expr),
-                        Const_Int (Int_Ty (32), 1, False),  --  Alignment
-                        Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
-
-                  begin
-                     Discard (Call
-                       (Env.Bld,
-                        (if Forwards_OK (Node) and then Backwards_OK (Node)
-                         then Env.Memory_Copy_Fn
-                         else Env.Memory_Move_Fn),
-                        Args'Address, Args'Length,
-                        ""));
-                  end;
-               end if;
-            end;
+            Emit_Assignment (Env,
+                             Get_Full_View (Etype (Name (Node))),
+                             Get_Full_View (Etype (Expression (Node))),
+                             Emit_LValue (Env, Name (Node)),
+                             Name (Node), Expression (Node),
+                             Forwards_OK (Node), Backwards_OK (Node));
 
          when N_Procedure_Call_Statement =>
             Discard (Emit_Call (Env, Node));
@@ -2280,8 +2129,7 @@ package body GNATLLVM.Compile is
             declare
                Agg_Type   : constant Entity_Id :=
                  Get_Fullest_View (Etype (Node));
-               LLVM_Type  : constant Type_T :=
-                 Create_Type (Env, Agg_Type);
+               LLVM_Type  : constant Type_T := Create_Type (Env, Agg_Type);
                Result     : Value_T := Get_Undef (LLVM_Type);
                Cur_Index  : Integer := 0;
                Ent        : Entity_Id;
@@ -2473,6 +2321,100 @@ package body GNATLLVM.Compile is
          end loop;
       end if;
    end Emit_List;
+
+   ---------------------
+   -- Emit_Assignment --
+   ---------------------
+
+   procedure Emit_Assignment
+     (Env                       : Environ;
+      Dest_Typ, Typ             : Entity_Id;
+      LValue                    : Value_T;
+      LHS, E                    : Node_Id;
+      Forwards_OK, Backwards_OK : Boolean)
+   is
+      Dest  : Value_T := LValue;
+      Src   : Value_T;
+      Inner : Node_Id;
+   begin
+      if Is_Array_Type (Dest_Typ)
+        and then not Is_Bit_Packed_Array (Dest_Typ)
+        and then Nkind (E) = N_Aggregate
+        and then Is_Others_Aggregate (E)
+      then
+         --  We'll use memset, so we need to find the inner expression
+
+         Inner := Expression (First (Component_Associations (E)));
+         while Nkind (Inner) = N_Aggregate
+           and then Is_Others_Aggregate (Inner)
+         loop
+            Inner := Expression (First (Component_Associations (Inner)));
+         end loop;
+
+         if Nkind (Inner) = N_Integer_Literal then
+            Src := Const_Int (Int_Ty (8), Intval (Inner));
+         elsif Ekind (Entity (Inner)) = E_Enumeration_Literal then
+            Src := Const_Int (Int_Ty (8), Enumeration_Rep (Entity (Inner)));
+         else
+            Error_Msg_N ("unsupported kind of aggregate", E);
+            Src := Get_Undef (Int_Ty (8));
+         end if;
+
+         declare
+            Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+
+            Args : constant Value_Array (1 .. 5) :=
+              (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
+               Src,
+               Compute_Size (Env, LHS, E),
+               Const_Int (Int_Ty (32), 1, False),  --  Alignment
+               Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
+
+         begin
+            Discard (Call
+                       (Env.Bld,
+                        Env.Memory_Set_Fn,
+                        Args'Address, Args'Length,
+                        ""));
+         end;
+
+      elsif Size_Known_At_Compile_Time (Typ)
+        and then Size_Known_At_Compile_Time (Dest_Typ)
+      then
+         Store_With_Type
+           (Env, Dest_Typ,
+            Expr => Emit_Expression (Env, E),
+            Ptr => Dest);
+
+      else
+         Src := Emit_LValue (Env, E);
+
+         if Is_Array_Type (Dest_Typ) then
+            Dest := Array_Data (Env, Dest, Dest_Typ);
+            Src  := Array_Data (Env, Src, Typ);
+         end if;
+
+         declare
+            Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+
+            Args : constant Value_Array (1 .. 5) :=
+              (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
+               Bit_Cast (Env.Bld, Src, Void_Ptr_Type, ""),
+               Compute_Size (Env, LHS, E),
+               Const_Int (Int_Ty (32), 1, False),  --  Alignment
+               Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
+
+         begin
+            Discard (Call
+                       (Env.Bld,
+                        (if Forwards_OK and then Backwards_OK
+                         then Env.Memory_Copy_Fn
+                         else Env.Memory_Move_Fn),
+                        Args'Address, Args'Length,
+                        ""));
+         end;
+      end if;
+   end Emit_Assignment;
 
    ---------------
    -- Emit_Call --
@@ -2735,6 +2677,72 @@ package body GNATLLVM.Compile is
 
       end if;
    end Build_Type_Conversion;
+
+   ------------------
+   -- Compute_Size --
+   ------------------
+
+   function Compute_Size
+     (Env : Environ; Left, Right : Node_Id) return Value_T
+   is
+      Size      : Uint := Uint_0;
+      Left_Typ  : constant Node_Id := Get_Full_View (Etype (Left));
+      Right_Typ : constant Node_Id := Get_Full_View (Etype (Right));
+
+      Size_T      : constant Type_T :=
+        Int_Ty (Integer (Get_Targ.Get_Pointer_Size));
+      Array_Descr : Value_T;
+      Array_Type  : Entity_Id;
+   begin
+      Size := Esize (Left_Typ);
+
+      if Size = Uint_0 then
+         Size := Esize (Right_Typ);
+      end if;
+
+      if Size = Uint_0 then
+         Size := RM_Size (Left_Typ);
+      end if;
+
+      if Size = Uint_0 then
+         Size := RM_Size (Right_Typ);
+      else
+         Size := (Size + 7) / 8;
+      end if;
+
+      if Size /= Uint_0 then
+         Size := (Size + 7) / 8;
+
+      elsif Is_Array_Type (Left_Typ)
+        and then Esize (Component_Type (Left_Typ)) /= Uint_0
+      then
+         --  ??? Will not work for multidimensional arrays
+
+         Extract_Array_Info (Env, Left, Array_Descr, Array_Type);
+         if Esize (Component_Type (Left_Typ)) = Uint_1 then
+            return Z_Ext
+              (Env.Bld,
+               Array_Length (Env, Array_Descr, Array_Type, 1),
+               Size_T, "");
+         else
+            return Mul
+              (Env.Bld,
+               Z_Ext
+                 (Env.Bld,
+                  Array_Length (Env, Array_Descr, Array_Type, 1),
+                  Size_T, ""),
+               Const_Int
+                 (Size_T, Esize (Component_Type (Left_Typ)) / 8),
+               "");
+         end if;
+
+      else
+         Error_Msg_N ("unsupported assignment statement", Left);
+         return Get_Undef (Size_T);
+      end if;
+
+      return Const_Int (Size_T, Size);
+   end Compute_Size;
 
    --------------------------
    -- Convert_Scalar_Types --

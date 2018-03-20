@@ -2011,13 +2011,17 @@ package body GNATLLVM.Compile is
                         Expr := Expression (Decl);
                      end if;
 
-                     if Present (Expr)
-                       and then Nkind_In (Expr, N_Character_Literal,
-                                                N_Expanded_Name,
-                                                N_Integer_Literal,
-                                                N_Real_Literal)
-                     then
-                        return Emit_Expression (Env, Expr);
+                     if Present (Expr) then
+                        if Nkind_In (Expr, N_Character_Literal,
+                                           N_Expanded_Name,
+                                           N_Integer_Literal,
+                                           N_Real_Literal)
+                          or else (Nkind (Expr) = N_Identifier
+                                   and then Ekind (Entity (Expr)) =
+                                     E_Enumeration_Literal)
+                        then
+                           return Emit_Expression (Env, Expr);
+                        end if;
                      end if;
                   end;
                end if;

@@ -2381,10 +2381,16 @@ package body GNATLLVM.Compile is
       elsif Size_Known_At_Compile_Time (Typ)
         and then Size_Known_At_Compile_Time (Dest_Typ)
       then
-         Store_With_Type
-           (Env, Dest_Typ,
-            Expr => Emit_Expression (Env, E),
-            Ptr => Dest);
+         Src := Emit_Expression (Env, E);
+
+         --  If the pointer type of Src is not the same as the type of
+         --  Dest, convert it.
+         if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
+            Dest := Bit_Cast (Env.Bld, Dest,
+                              Pointer_Type (Type_Of (Src), 0), "");
+         end if;
+
+         Store_With_Type (Env, Dest_Typ, Src, Dest);
 
       else
          Src := Emit_LValue (Env, E);

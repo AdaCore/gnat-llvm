@@ -2,7 +2,6 @@ Missing main features (identified so far):
 
 - multi-dimension arrays
 - comparison of fat pointers (and detecting they're fat pointers)
-- packed arrays (Is_Packed_Array/Packed_Array_Impl_Type)
 - variant records only partly supported
 - cleanups/at end handlers
 - secondary stack support

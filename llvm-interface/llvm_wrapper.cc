@@ -31,19 +31,17 @@ Create_TBAA_Root (MDBuilder *MDHelper)
 extern "C"
 MDNode *
 Create_TBAA_Scalar_Type_Node_C (MDBuilder *MDHelper, const char *name,
-				MDNode *root)
+				MDNode *parent)
 {
-  return MDHelper->createTBAAScalarTypeNode (name, root, 0);
+  return MDHelper->createTBAAScalarTypeNode (name, parent);
 }
 
 extern "C"
 MDNode *
 Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
-			MDNode *AccessType, unsigned long long offset,
-			unsigned long long size, bool IsImmutable)
+			MDNode *AccessType, unsigned long long offset)
 {
-  return MDHelper->createTBAAAccessTag (BaseType, AccessType, offset, size,
-					IsImmutable);
+  return MDHelper->createTBAAStructTagNode (BaseType, AccessType, offset);
 }
 
 extern "C"
@@ -65,7 +63,7 @@ Add_TBAA_Access (Instruction *inst, MDNode *md)
 
 extern "C"
 int
-LLVM_Init_Module (Module *TheModule)
+LLVM_Init_Module (Module *TheModule, const char *Filename)
 {
   // Initialize the target registry etc.
   InitializeAllTargetInfos();
@@ -76,7 +74,7 @@ LLVM_Init_Module (Module *TheModule)
 
   auto TargetTriple = sys::getDefaultTargetTriple();
   TheModule->setTargetTriple(TargetTriple);
-
+  TheModule->setSourceFileName(Filename);
   std::string Error;
   auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
 
@@ -101,7 +99,7 @@ LLVM_Init_Module (Module *TheModule)
 
 extern "C"
 int
-LLVM_Write_Object (Module *TheModule, int object, char *Filename)
+LLVM_Write_Module (Module *TheModule, int object, char *Filename)
 {
   std::error_code EC;
   raw_fd_ostream dest(Filename, EC, sys::fs::F_None);

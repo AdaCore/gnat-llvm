@@ -28,6 +28,11 @@ with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 
+   procedure Add_Type_Data_To_Instruction
+     (Env : Environ; Inst : Value_T; TE : Entity_Id);
+   --  Helper to add type data (e.g., volatility and TBAA info) to
+   --  an Instruction.
+
    ---------
    -- Img --
    ---------
@@ -338,25 +343,35 @@ package body GNATLLVM.Utils is
    is
      (GEP (Bld, Ptr, Indices'Address, Indices'Length, Name));
 
+   ----------------------------------
+   -- Add_Type_Data_To_Instruction --
+   ----------------------------------
+
+   procedure Add_Type_Data_To_Instruction
+     (Env : Environ; Inst : Value_T; TE : Entity_Id)
+   is
+      TBAA : constant Metadata_T :=
+        Get_TBAA (Env, Implementation_Base_Type (TE));
+   begin
+      if Is_Volatile (TE) then
+         Set_Volatile (Inst);
+      end if;
+
+      if TBAA /= No_Metadata_T then
+         Add_TBAA_Access
+           (Inst, Create_TBAA_Access_Tag (Env.MDBld, TBAA, TBAA, 0));
+      end if;
+   end Add_Type_Data_To_Instruction;
+
    --------------------
    -- Load_With_Type --
    --------------------
    function Load_With_Type
      (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T
    is
-      Load_Inst    : constant Value_T := Load (Env.Bld, Ptr, "");
-      TBAA         : constant Metadata_T := Get_TBAA (Env, TE);
+      Load_Inst : constant Value_T := Load (Env.Bld, Ptr, "");
    begin
-      if Is_Volatile (TE) then
-         Set_Volatile (Load_Inst);
-      end if;
-
-      if TBAA /= No_Metadata_T then
-         Add_TBAA_Access (Load_Inst,
-                          Create_TBAA_Access_Tag
-                            (Env.MDBld, TBAA, TBAA, 0, 0, 0));
-      end if;
-
+      Add_Type_Data_To_Instruction (Env, Load_Inst, TE);
       return Load_Inst;
    end Load_With_Type;
 
@@ -367,7 +382,6 @@ package body GNATLLVM.Utils is
    procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
    is
       Dummy : Value_T;
-      pragma Unreferenced (Dummy);
    begin
       Dummy := Build_Store (Bld, Expr, Ptr);
    end Store;
@@ -378,18 +392,9 @@ package body GNATLLVM.Utils is
    procedure Store_With_Type
      (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
    is
-      Store   : constant Value_T := Build_Store (Env.Bld, Expr, Ptr);
-      TBAA    : constant Metadata_T := Get_TBAA (Env, TE);
+      Store_Inst : constant Value_T := Build_Store (Env.Bld, Expr, Ptr);
    begin
-      if Is_Volatile (TE) then
-         Set_Volatile (Store);
-      end if;
-
-      if TBAA /= No_Metadata_T then
-         Add_TBAA_Access (Store,
-                          Create_TBAA_Access_Tag
-                            (Env.MDBld, TBAA, TBAA, 0, 0, 0));
-      end if;
+      Add_Type_Data_To_Instruction (Env, Store_Inst, TE);
    end Store_With_Type;
 
 end GNATLLVM.Utils;

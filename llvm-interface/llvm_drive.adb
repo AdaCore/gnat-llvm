@@ -136,21 +136,6 @@ package body LLVM_Drive is
       procedure Walk_All_Units is
         new Sem.Walk_Library_Items (Action => Emit_Library_Item);
 
-      function LLVM_Write_Object
-        (Module   : LLVM.Types.Module_T;
-         Object   : Boolean;
-         Filename : String) return Integer;
-
-      function LLVM_Write_Object
-        (Module   : LLVM.Types.Module_T;
-         Object   : Boolean;
-         Filename : String) return Integer
-      is
-      begin
-         return LLVM_Write_Module_Internal
-           (Module, Boolean'Pos (Object), Filename & ASCII.NUL);
-      end LLVM_Write_Object;
-
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
 
@@ -162,7 +147,9 @@ package body LLVM_Drive is
       Env.Mdl := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))),
          Env.Ctx);
-      Result := LLVM_Init_Module (Env.Mdl);
+      Result := LLVM_Init_Module
+        (Env.Mdl,
+         Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))));
       pragma Assert (Result = 0);
       Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
@@ -261,7 +248,7 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".s");
                begin
-                  if LLVM_Write_Object (Env.Mdl, False, S) /= 0 then
+                  if LLVM_Write_Module (Env.Mdl, False, S) /= 0 then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
                end;
@@ -270,7 +257,7 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".o");
                begin
-                  if LLVM_Write_Object (Env.Mdl, True, S) /= 0 then
+                  if LLVM_Write_Module (Env.Mdl, True, S) /= 0 then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
                end;

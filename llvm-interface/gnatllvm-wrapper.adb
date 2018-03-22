@@ -15,26 +15,59 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C.Strings;    use Interfaces.C.Strings;
-
 package body GNATLLVM.Wrapper is
 
    function Create_TBAA_Scalar_Type_Node
-     (MDBld : MD_Builder_T; Name : String; Root : Metadata_T)
+     (MDBld  : MD_Builder_T;
+      Name   : String;
+      Parent : Metadata_T)
      return Metadata_T is
       function Create_TBAA_Scalar_Type_Node_C
-        (MDBld : MD_Builder_T;
-         Name  : Interfaces.C.Strings.chars_ptr;
-         Root  : Metadata_T)
+        (MDBld  : MD_Builder_T;
+         Name   : String;
+         Parent : Metadata_T)
         return Metadata_T;
       pragma Import (C, Create_TBAA_Scalar_Type_Node_C,
                      "Create_TBAA_Scalar_Type_Node_C");
 
-      Name_Array  : aliased char_array := To_C (Name);
-      Name_String : constant chars_ptr :=
-        To_Chars_Ptr (Name_Array'Unchecked_Access);
    begin
-      return Create_TBAA_Scalar_Type_Node_C (MDBld, Name_String, Root);
+      return Create_TBAA_Scalar_Type_Node_C (MDBld, Name & ASCII.NUL, Parent);
    end Create_TBAA_Scalar_Type_Node;
+
+   ----------------------
+   -- LLVM_Init_Module --
+   ----------------------
+
+   function LLVM_Init_Module
+     (Module   : LLVM.Types.Module_T;
+      Filename : String) return Integer
+   is
+      function LLVM_Init_Module_C
+        (Module   : LLVM.Types.Module_T;
+         Filename : String) return Integer;
+      pragma Import (C, LLVM_Init_Module_C, "LLVM_Init_Module");
+   begin
+      return LLVM_Init_Module_C (Module, Filename & ASCII.NUL);
+   end LLVM_Init_Module;
+
+   ----------------------
+   -- LLVM_Write_Modue --
+   ----------------------
+
+   function LLVM_Write_Module
+        (Module   : LLVM.Types.Module_T;
+         Object   : Boolean;
+         Filename : String) return Integer is
+
+      function LLVM_Write_Module_C
+        (Module   : LLVM.Types.Module_T;
+         Object   : Integer;
+         Filename : String) return Integer;
+      pragma Import (C, LLVM_Write_Module_C, "LLVM_Write_Module");
+
+   begin
+      return LLVM_Write_Module_C
+        (Module, Boolean'Pos (Object), Filename & ASCII.NUL);
+   end LLVM_Write_Module;
 
 end GNATLLVM.Wrapper;

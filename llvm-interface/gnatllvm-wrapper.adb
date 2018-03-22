@@ -50,15 +50,15 @@ package body GNATLLVM.Wrapper is
       return LLVM_Init_Module_C (Module, Filename & ASCII.NUL);
    end LLVM_Init_Module;
 
-   ----------------------
-   -- LLVM_Write_Modue --
-   ----------------------
+   -----------------------
+   -- LLVM_Write_Module --
+   -----------------------
 
    function LLVM_Write_Module
-        (Module   : LLVM.Types.Module_T;
-         Object   : Boolean;
-         Filename : String) return Integer is
-
+     (Module   : LLVM.Types.Module_T;
+      Object   : Boolean;
+      Filename : String) return Integer
+   is
       function LLVM_Write_Module_C
         (Module   : LLVM.Types.Module_T;
          Object   : Integer;

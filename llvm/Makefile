@@ -4,11 +4,14 @@ PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
 LLVM_SRC_DIR=llvm-6.0.0.src
+LLVM_CLANG_EXP_NAME=cfe-6.0.0.src
 LLVM_INCLUDE_DIR=$(PWD)/$(LLVM_SRC_DIR)/include
 LLVM_INCLUDE_DIR_C=$(LLVM_INCLUDE_DIR)/llvm-c
 DL=wget
-LLVM_SRC_FNAME=llvm-6.0.0.src.tar.xz
+LLVM_SRC_FNAME=$(LLVM_SRC_DIR).tar.xz
+LLVM_CLANG_SRC_FNAME=$(LLVM_CLANG_EXP_NAME).tar.xz
 LLVM_SRC_LINK=http://releases.llvm.org/6.0.0/$(LLVM_SRC_FNAME)
+LLVM_CLANG_SRC_LINK=http://releases.llvm.org/6.0.0/$(LLVM_CLANG_SRC_FNAME)
 
 all: setup llvm
 
@@ -19,9 +22,18 @@ CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" ../$(LLVM_SRC_DIR)
 # -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-setup:
+setup: $(LLVM_SRC_DIR)
 	mkdir -p llvm-obj
-	if [ ! -d $(LLVM_SRC_DIR) ]; then $(DL) $(LLVM_SRC_LINK) && tar xavf $(LLVM_SRC_FNAME) && rm $(LLVM_SRC_FNAME) && $(CONFIGURE) ; fi
+	$(CONFIGURE)
+
+$(LLVM_SRC_DIR): 
+	$(DL) $(LLVM_SRC_LINK)
+	tar xaf $(LLVM_SRC_FNAME)
+	rm $(LLVM_SRC_FNAME)
+	$(DL) $(LLVM_CLANG_SRC_LINK)
+	tar xaf $(LLVM_CLANG_SRC_FNAME)
+	mv $(LLVM_CLANG_EXP_NAME) $(LLVM_SRC_DIR)/tools/clang
+	rm $(LLVM_CLANG_SRC_FNAME)
 
 configure:
 	mkdir -p llvm-obj

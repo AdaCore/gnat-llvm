@@ -22,7 +22,6 @@ binding: $(OUT_DIR)/llvm-core.adb
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(PWD)/install \
   -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" ../$(LLVM_SRC_DIR)
-# -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 setup: $(LLVM_SRC_DIR) llvm-obj
 
@@ -42,6 +41,10 @@ llvm-obj:
 configure:
 	mkdir -p llvm-obj
 	$(CONFIGURE)
+
+configure-prod:
+	mkdir -p llvm-obj
+	$(CONFIGURE) -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 llvm:
 	$(MAKE) -s -j$(PARALLEL) -C llvm-obj

@@ -13,6 +13,8 @@ LLVM_CLANG_SRC_FNAME=$(LLVM_CLANG_EXP_NAME).tar.xz
 LLVM_SRC_LINK=http://releases.llvm.org/6.0.0/$(LLVM_SRC_FNAME)
 LLVM_CLANG_SRC_LINK=http://releases.llvm.org/6.0.0/$(LLVM_CLANG_SRC_FNAME)
 
+.PHONY: configure
+
 all: setup llvm
 
 binding: $(OUT_DIR)/llvm-core.adb
@@ -22,9 +24,7 @@ CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" ../$(LLVM_SRC_DIR)
 # -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-setup: $(LLVM_SRC_DIR)
-	mkdir -p llvm-obj
-	$(CONFIGURE)
+setup: $(LLVM_SRC_DIR) llvm-obj
 
 $(LLVM_SRC_DIR): 
 	$(DL) $(LLVM_SRC_LINK)
@@ -34,6 +34,10 @@ $(LLVM_SRC_DIR):
 	tar xaf $(LLVM_CLANG_SRC_FNAME)
 	mv $(LLVM_CLANG_EXP_NAME) $(LLVM_SRC_DIR)/tools/clang
 	rm $(LLVM_CLANG_SRC_FNAME)
+
+llvm-obj:
+	mkdir -p llvm-obj
+	$(CONFIGURE)
 
 configure:
 	mkdir -p llvm-obj

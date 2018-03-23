@@ -48,6 +48,9 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
+   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T;
+   --  Build and return the static link to pass to a call to Node
+
    --  Note: in order to find the right LLVM instruction to generate,
    --  you can compare with what Clang generates on corresponding C or C++
    --  code. This can be done online via http://ellcc.org/demo/index.cgi
@@ -1398,67 +1401,62 @@ package body GNATLLVM.Compile is
       end case;
    end Emit;
 
+   ---------------------
+   -- Get_Static_Link --
+   ---------------------
+
+   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T is
+      Subp        : constant Entity_Id := Entity (Node);
+      Result_Type : constant Type_T :=
+        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+      Result      : Value_T;
+
+      Parent : constant Entity_Id := Enclosing_Subprogram (Subp);
+      Caller : Node_Id;
+
+   begin
+      if Present (Parent) then
+         Caller := Node_Enclosing_Subprogram (Node);
+
+         declare
+            Ent : constant Subp_Entry := Subps.Table (Subp_Index (Parent));
+            Ent_Caller : constant Subp_Entry :=
+              Subps.Table (Subp_Index (Caller));
+
+         begin
+            if Parent = Caller then
+               Result := Get_Value (Env, Ent.ARECnP);
+            else
+               Result := Get_Value (Env, Ent_Caller.ARECnF);
+
+               --  Go levels up via the ARECnU field if needed
+
+               for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
+                  Result :=
+                    Struct_GEP
+                    (Env.Bld,
+                     Load (Env.Bld, Result, ""),
+                     0,
+                     "ARECnF.all.ARECnU");
+               end loop;
+            end if;
+
+            return Bit_Cast
+              (Env.Bld,
+               Load (Env.Bld, Result, ""),
+               Result_Type,
+               "static-link");
+         end;
+      else
+         return Const_Null (Result_Type);
+      end if;
+   end Get_Static_Link;
+
    -----------------
    -- Emit_LValue --
    -----------------
 
    function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T is
-
-      function Get_Static_Link (Node : Entity_Id) return Value_T;
-      --  Build and return the static link to pass to a call to Node
-
-      ---------------------
-      -- Get_Static_Link --
-      ---------------------
-
-      function Get_Static_Link (Node : Entity_Id) return Value_T is
-         Subp        : constant Entity_Id := Entity (Node);
-         Result_Type : constant Type_T :=
-           Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
-         Result      : Value_T;
-
-         Parent : constant Entity_Id := Enclosing_Subprogram (Subp);
-         Caller : Node_Id;
-
-      begin
-         if Present (Parent) then
-            Caller := Node_Enclosing_Subprogram (Node);
-
-            declare
-               Ent : constant Subp_Entry :=
-                 Subps.Table (Subp_Index (Parent));
-               Ent_Caller : constant Subp_Entry :=
-                 Subps.Table (Subp_Index (Caller));
-
-            begin
-               if Parent = Caller then
-                  Result := Get_Value (Env, Ent.ARECnP);
-               else
-                  Result := Get_Value (Env, Ent_Caller.ARECnF);
-
-                  --  Go levels up via the ARECnU field if needed
-
-                  for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-                     Result :=
-                       Struct_GEP
-                         (Env.Bld,
-                          Load (Env.Bld, Result, ""),
-                          0,
-                          "ARECnF.all.ARECnU");
-                  end loop;
-               end if;
-
-               return Bit_Cast
-                 (Env.Bld,
-                  Load (Env.Bld, Result, ""),
-                  Result_Type,
-                  "static-link");
-            end;
-         else
-            return Const_Null (Result_Type);
-         end if;
-      end Get_Static_Link;
-
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>
@@ -1478,7 +1476,8 @@ package body GNATLLVM.Compile is
                      declare
                         Func   : constant Value_T :=
                           Get_Value (Env, Def_Ident);
-                        S_Link : constant Value_T := Get_Static_Link (Node);
+                        S_Link : constant Value_T :=
+                          Get_Static_Link (Env, Node);
 
                         Fields_Types  : constant array (1 .. 2) of Type_T :=
                           (Type_Of (S_Link),

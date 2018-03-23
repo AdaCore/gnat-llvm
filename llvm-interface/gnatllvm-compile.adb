@@ -128,7 +128,7 @@ package body GNATLLVM.Compile is
       Operand_Type : Entity_Id;
       Node         : Node_Id;
       LHS, RHS     : Value_T) return Value_T;
-   --  Helper for Emit_Expression: handle comparison operations.
+   --  Helpers for Emit_Expression: handle comparison operations.
    --  The second form only supports discrete or pointer types.
 
    procedure Emit_If (Env : Environ; Node : Node_Id)
@@ -176,6 +176,9 @@ package body GNATLLVM.Compile is
    --  Exprs must be a list of two scalar expressions with compatible types.
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
+
+   procedure Emit_One_Body (Env : Environ; Node : Node_Id);
+   --  Generate code for one given subprogram body
 
    function Emit_Array_Aggregate
      (Env           : Environ;
@@ -249,91 +252,87 @@ package body GNATLLVM.Compile is
       end if;
    end Verify_Function;
 
+   -------------------
+   -- Emit_One_Body --
+   -------------------
+
+   procedure Emit_One_Body (Env : Environ; Node : Node_Id) is
+      Spec : constant Node_Id := Get_Acting_Spec (Node);
+      Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
+      Subp : constant Subp_Env := Enter_Subp (Env, Func);
+
+      Param      : Entity_Id;
+      LLVM_Param : Value_T;
+      LLVM_Var   : Value_T;
+      Param_Num  : Natural := 0;
+
+   begin
+      Param := First_Formal_With_Extras (Defining_Entity (Spec));
+      while Present (Param) loop
+         LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
+
+         --  Define a name for the parameter Param (which is the
+         --  Param_Num'th parameter), and associate the corresponding
+         --  LLVM value to its entity.
+
+         --  Set the name of the llvm value
+
+         Set_Value_Name (LLVM_Param, Get_Name (Param));
+
+         --  Special case for structures passed by value, we want to
+         --  store a pointer to them on the stack, so do an alloca,
+         --  to be able to do GEP on them.
+
+         if Param_Needs_Ptr (Param)
+           and then not
+           (Ekind (Etype (Param)) in Record_Kind
+              and (Get_Type_Kind (Type_Of (LLVM_Param)) = Struct_Type_Kind))
+         then
+            LLVM_Var := LLVM_Param;
+         else
+            LLVM_Var := Alloca
+              (Env.Bld,
+               Type_Of (LLVM_Param), Get_Name (Param));
+            Store (Env.Bld, LLVM_Param, LLVM_Var);
+         end if;
+
+         --  Add the parameter to the environnment
+
+         Set_Value (Env, Param, LLVM_Var);
+
+         if Ekind (Param) = E_In_Parameter
+           and then Is_Activation_Record (Param)
+         then
+            Subp_Table.Table (Subp_Table.Last).Activation_Rec_Param :=
+              LLVM_Param;
+         end if;
+
+         Param_Num := Param_Num + 1;
+         Param := Next_Formal_With_Extras (Param);
+      end loop;
+
+      Emit_List (Env, Declarations (Node));
+      Emit_List (Env, Statements (Handled_Statement_Sequence (Node)));
+
+      --  This point should not be reached: a return must have
+      --  already... returned!
+
+      Discard (Build_Unreachable (Env.Bld));
+      Leave_Subp (Env);
+
+      Verify_Function
+        (Env, Subp.Func, Node,
+         "the backend generated bad `LLVM` for this subprogram");
+   end Emit_One_Body;
+
    --------------------------
    -- Emit_Subprogram_Body --
    --------------------------
 
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
 
-      procedure Emit_One_Body (Node : Node_Id);
-      --  Generate code for one given subprogram body
-
       procedure Unsupported_Nested_Subprogram (N : Node_Id);
       --  Locate the first inner nested subprogram and report the error on it
-
-      -------------------
-      -- Emit_One_Body --
-      -------------------
-
-      procedure Emit_One_Body (Node : Node_Id) is
-         Spec : constant Node_Id := Get_Acting_Spec (Node);
-         Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
-         Subp : constant Subp_Env := Enter_Subp (Env, Func);
-
-         Param      : Entity_Id;
-         LLVM_Param : Value_T;
-         LLVM_Var   : Value_T;
-         Param_Num  : Natural := 0;
-
-      begin
-         Param := First_Formal_With_Extras (Defining_Entity (Spec));
-         while Present (Param) loop
-            LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
-
-            --  Define a name for the parameter Param (which is the
-            --  Param_Num'th parameter), and associate the corresponding LLVM
-            --  value to its entity.
-
-            --  Set the name of the llvm value
-
-            Set_Value_Name (LLVM_Param, Get_Name (Param));
-
-            --  Special case for structures passed by value, we want to
-            --  store a pointer to them on the stack, so do an alloca,
-            --  to be able to do GEP on them.
-
-            if Param_Needs_Ptr (Param)
-              and then not
-                (Ekind (Etype (Param)) in Record_Kind
-                 and (Get_Type_Kind (Type_Of (LLVM_Param))
-                      = Struct_Type_Kind))
-            then
-               LLVM_Var := LLVM_Param;
-            else
-               LLVM_Var := Alloca
-                 (Env.Bld,
-                  Type_Of (LLVM_Param), Get_Name (Param));
-               Store (Env.Bld, LLVM_Param, LLVM_Var);
-            end if;
-
-            --  Add the parameter to the environnment
-
-            Set_Value (Env, Param, LLVM_Var);
-
-            if Ekind (Param) = E_In_Parameter
-              and then Is_Activation_Record (Param)
-            then
-               Subp_Table.Table (Subp_Table.Last).Activation_Rec_Param :=
-                 LLVM_Param;
-            end if;
-
-            Param_Num := Param_Num + 1;
-            Param := Next_Formal_With_Extras (Param);
-         end loop;
-
-         Emit_List (Env, Declarations (Node));
-         Emit_List (Env, Statements (Handled_Statement_Sequence (Node)));
-
-         --  This point should not be reached: a return must have
-         --  already... returned!
-
-         Discard (Build_Unreachable (Env.Bld));
-         Leave_Subp (Env);
-
-         Verify_Function
-           (Env, Subp.Func, Node,
-            "the backend generated bad `LLVM` for this subprogram");
-      end Emit_One_Body;
 
       -----------------------------------
       -- Unsupported_Nested_Subprogram --
@@ -379,7 +378,7 @@ package body GNATLLVM.Compile is
 
    begin
       if not Has_Nested_Subprogram (Subp) then
-         Emit_One_Body (Node);
+         Emit_One_Body (Env, Node);
          return;
 
       --  Temporarily protect us against unsupported kind of nested subprograms
@@ -432,7 +431,7 @@ package body GNATLLVM.Compile is
             declare
                STJ : Subp_Entry renames Subps.Table (J);
             begin
-               Emit_One_Body (STJ.Bod);
+               Emit_One_Body (Env, STJ.Bod);
 
                if Is_List_Member (STJ.Bod) then
                   Remove (STJ.Bod);
@@ -442,7 +441,7 @@ package body GNATLLVM.Compile is
 
          --  And finally we output the outer level body and we are done
 
-         Emit_One_Body (Node);
+         Emit_One_Body (Env, Node);
       end;
    end Emit_Subprogram_Body;
 

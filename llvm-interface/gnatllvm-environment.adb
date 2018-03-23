@@ -266,16 +266,11 @@ package body GNATLLVM.Environment is
    -- Enter_Subp --
    ----------------
 
-   function Enter_Subp (Env : Environ; Func : Value_T) return Subp_Env is
-      Subp : constant Subp_Env :=
-        (Env                    => Env,
-         Func                   => Func,
-         Saved_Builder_Position => Get_Insert_Block (Env.Bld),
-         Activation_Rec_Param   => No_Value_T);
+   procedure Enter_Subp (Env : Environ; Func : Value_T) is
    begin
-      Subp_Table.Append (Subp);
+      Env.Func := Func;
+      Env.Activation_Rec_Param := No_Value_T;
       Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));
-      return Subp;
    end Enter_Subp;
 
    ----------------
@@ -284,33 +279,15 @@ package body GNATLLVM.Environment is
 
    procedure Leave_Subp (Env  : Environ) is
    begin
-      --  There is no builder position to restore if no subprogram translation
-      --  was interrupted in order to translate the current subprogram.
-
-      if Subp_Table.Last > Subp_First_Id then
-         Position_Builder_At_End
-           (Env.Bld,
-            Subp_Table.Table (Subp_Table.Last).Saved_Builder_Position);
-      end if;
-
-      Subp_Table.Decrement_Last;
+      Env.Func := No_Value_T;
    end Leave_Subp;
 
    -------------------
    -- Library_Level --
    -------------------
 
-   function Library_Level return Boolean is
-     (Subp_Table.Last = Subp_First_Id - 1);
-
-   ------------------
-   -- Current_Subp --
-   ------------------
-
-   function Current_Subp return Subp_Env is
-   begin
-      return Subp_Table.Table (Subp_Table.Last);
-   end Current_Subp;
+   function Library_Level (Env : Environ) return Boolean is
+     (Env.Func = No_Value_T);
 
    ------------------------
    -- Create_Basic_Block --
@@ -320,8 +297,7 @@ package body GNATLLVM.Environment is
      (Env : Environ; Name : String) return Basic_Block_T
    is
    begin
-      return Append_Basic_Block_In_Context
-        (Env.Ctx, Current_Subp.Func, Name);
+      return Append_Basic_Block_In_Context (Env.Ctx, Env.Func, Name);
    end Create_Basic_Block;
 
 end GNATLLVM.Environment;

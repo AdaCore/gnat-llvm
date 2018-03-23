@@ -61,7 +61,9 @@ package body LLVM_Drive is
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
       Env : constant Environ :=
         new Environ_Record'(Max_Nodes => Last_Node_Id,
-                            Ctx => Get_Global_Context, others => <>);
+                            Ctx => Get_Global_Context,
+                            Func => No_Value_T,
+                            others => <>);
       Result : Integer;
 
       procedure Emit_Library_Item (U : Node_Id);

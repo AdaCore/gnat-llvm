@@ -100,23 +100,6 @@ package GNATLLVM.Environment is
 
    type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info_Id;
 
-   type Subp_Env is record
-      Env                    : Environ;
-      Func                   : Value_T;
-      Saved_Builder_Position : Basic_Block_T;
-      Activation_Rec_Param   : Value_T;
-   end record;
-
-   Subp_First_Id : constant := 1;
-
-   package Subp_Table is new Table.Table
-     (Table_Component_Type => Subp_Env,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => Subp_First_Id,
-      Table_Initial        => 2,
-      Table_Increment      => 2,
-      Table_Name           => "Subp_Table");
-
    type Exit_Point is record
       Label_Entity : Entity_Id;
       Exit_BB      : Basic_Block_T;
@@ -144,6 +127,12 @@ package GNATLLVM.Environment is
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.
 
+      Func                      : Value_T;
+      --  LLVM value for current function.
+
+      Activation_Rec_Param      : Value_T;
+      --  Parameter to this subprogram that represents an activtion record.
+
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
       Memory_Copy_Fn            : Value_T;
@@ -160,7 +149,7 @@ package GNATLLVM.Environment is
       LLVM_Info                 : LLVM_Info_Array (First_Node_Id .. Max_Nodes);
    end record;
 
-   function Library_Level return Boolean;
+   function Library_Level (Env : Environ) return Boolean;
 
    No_Such_Type        : exception;
    No_Such_Value       : exception;
@@ -193,20 +182,16 @@ package GNATLLVM.Environment is
    function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T;
    function Get_Exit_Point return Basic_Block_T;
 
-   function Enter_Subp (Env : Environ; Func : Value_T) return Subp_Env;
-   --  Create, push and return a subprogram environment. Also create an entry
-   --  basic block for this subprogram and position the builder at its end. To
-   --  be used when starting the compilation of a subprogram body.
+   procedure Enter_Subp (Env : Environ; Func : Value_T);
+   --  Create an entry basic block for this subprogram and position
+   --  the builder at its end. Mark that we're in a subprogram.  To be
+   --  used when starting the compilation of a subprogram body.
 
    procedure Leave_Subp (Env : Environ);
-   --  Pop and free the most recent subprogram environment. Restore the
-   --  previous builder position, if any. To be used when finishing the
-   --  compilation of a subprogram body.
+   --  Indicate that we're no longer compiling a subprogram.
 
    function Create_Basic_Block
      (Env : Environ; Name : String) return Basic_Block_T;
-
-   function Current_Subp return Subp_Env;
 
    function Get_Fullest_View (E : Entity_Id) return Entity_Id is
    (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)

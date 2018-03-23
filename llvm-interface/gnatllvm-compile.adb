@@ -259,17 +259,16 @@ package body GNATLLVM.Compile is
    procedure Emit_One_Body (Env : Environ; Node : Node_Id) is
       Spec : constant Node_Id := Get_Acting_Spec (Node);
       Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
-      Subp : constant Subp_Env := Enter_Subp (Env, Func);
-
       Param      : Entity_Id;
       LLVM_Param : Value_T;
       LLVM_Var   : Value_T;
       Param_Num  : Natural := 0;
 
    begin
+      Enter_Subp (Env, Func);
       Param := First_Formal_With_Extras (Defining_Entity (Spec));
       while Present (Param) loop
-         LLVM_Param := Get_Param (Subp.Func, unsigned (Param_Num));
+         LLVM_Param := Get_Param (Func, unsigned (Param_Num));
 
          --  Define a name for the parameter Param (which is the
          --  Param_Num'th parameter), and associate the corresponding
@@ -303,8 +302,7 @@ package body GNATLLVM.Compile is
          if Ekind (Param) = E_In_Parameter
            and then Is_Activation_Record (Param)
          then
-            Subp_Table.Table (Subp_Table.Last).Activation_Rec_Param :=
-              LLVM_Param;
+            Env.Activation_Rec_Param := LLVM_Param;
          end if;
 
          Param_Num := Param_Num + 1;
@@ -321,7 +319,7 @@ package body GNATLLVM.Compile is
       Leave_Subp (Env);
 
       Verify_Function
-        (Env, Subp.Func, Node,
+        (Env, Func, Node,
          "the backend generated bad `LLVM` for this subprogram");
    end Emit_One_Body;
 
@@ -487,7 +485,7 @@ package body GNATLLVM.Compile is
 
    procedure Emit (Env : Environ; Node : Node_Id) is
    begin
-      if Library_Level
+      if Library_Level (Env)
         and then (Nkind (Node) in N_Statement_Other_Than_Procedure_Call
                    or else Nkind (Node) in N_Subprogram_Call
                    or else Nkind (Node) = N_Handled_Sequence_Of_Statements
@@ -542,7 +540,6 @@ package body GNATLLVM.Compile is
                      Elab_Type : constant Type_T :=
                        Fn_Ty ((1 .. 0 => <>), Void_Type_In_Context (Env.Ctx));
                      LLVM_Func : Value_T;
-                     Subp      : Subp_Env;
 
                   begin
                      if Nkind (Unit) = N_Defining_Program_Unit_Name then
@@ -554,7 +551,7 @@ package body GNATLLVM.Compile is
                          (Env.Mdl,
                           Get_Name_String (Chars (Unit)) & "___elabs",
                           Elab_Type);
-                     Subp := Enter_Subp (Env, LLVM_Func);
+                     Enter_Subp (Env, LLVM_Func);
 
                      Env.Special_Elaboration_Code := True;
 
@@ -570,7 +567,7 @@ package body GNATLLVM.Compile is
                      Leave_Subp (Env);
 
                      Verify_Function
-                       (Env, Subp.Func, Node,
+                       (Env, LLVM_Func, Node,
                         "the backend generated bad `LLVM` for package " &
                         "spec elaboration");
                   end;
@@ -604,14 +601,13 @@ package body GNATLLVM.Compile is
 
                      Elab_Type : Type_T;
                      LLVM_Func : Value_T;
-                     Subp      : Subp_Env;
                      Unit      : Node_Id;
 
                   begin
                      --  For packages inside subprograms, generate elaboration
                      --  code as standard code as part of the enclosing unit.
 
-                     if not Library_Level then
+                     if not Library_Level (Env) then
                         if Has_Stmts then
                            Emit_List (Env, Statements (Stmts));
                         end if;
@@ -643,7 +639,7 @@ package body GNATLLVM.Compile is
                             (Env.Mdl,
                              Get_Name_String (Chars (Unit)) & "___elabb",
                              Elab_Type);
-                        Subp := Enter_Subp (Env, LLVM_Func);
+                        Enter_Subp (Env, LLVM_Func);
                         Env.Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop
@@ -664,7 +660,7 @@ package body GNATLLVM.Compile is
                         Leave_Subp (Env);
 
                         Verify_Function
-                          (Env, Subp.Func, Node,
+                          (Env, LLVM_Func, Node,
                            "the backend generated bad `LLVM` for package " &
                            "body elaboration");
                      end if;
@@ -756,7 +752,7 @@ package body GNATLLVM.Compile is
 
                --  Handle top-level declarations
 
-               if Library_Level then
+               if Library_Level (Env) then
                   --  ??? Will only work for objects of static sizes
 
                   LLVM_Type := Create_Type (Env, T);
@@ -909,7 +905,7 @@ package body GNATLLVM.Compile is
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                LLVM_Var  : Value_T;
             begin
-               if Library_Level then
+               if Library_Level (Env) then
                   if Is_LValue (Name (Node)) then
                      LLVM_Var := Emit_LValue (Env, Name (Node));
                      Set_Value (Env, Def_Ident, LLVM_Var);
@@ -1601,7 +1597,7 @@ package body GNATLLVM.Compile is
             return Emit_LValue (Env, Expression (Node));
 
          when others =>
-            if not Library_Level then
+            if not Library_Level (Env) then
                --  Create a temporary: is that always adequate???
 
                declare
@@ -1643,13 +1639,13 @@ package body GNATLLVM.Compile is
       --  expression of the operator and its end.
 
       Block_Right_Expr : constant Basic_Block_T :=
-        Append_Basic_Block (Current_Subp.Func, "scl-right-expr");
+        Create_Basic_Block (Env, "scl-right-expr");
       Block_Right_Expr_End : Basic_Block_T;
 
       --  Block containing the exit code (the phi that selects that value)
 
       Block_Exit : constant Basic_Block_T :=
-        Append_Basic_Block (Current_Subp.Func, "scl-exit");
+        Create_Basic_Block (Env, "scl-exit");
 
    begin
       --  In the case of And, evaluate the right expression when Left is
@@ -1889,15 +1885,14 @@ package body GNATLLVM.Compile is
                                E_Out_Parameter,
                                E_Variable)
                  and then Present (Activation_Record_Component (Def_Ident))
-                 and then Current_Subp.Activation_Rec_Param /= No_Value_T
-                 and then (Get_Value (Env, Scope (Def_Ident)) /=
-                             Current_Subp.Func)
+                 and then Env.Activation_Rec_Param /= No_Value_T
+                 and then Get_Value (Env, Scope (Def_Ident)) /= Env.Func
                then
                   declare
                      Component         : constant Entity_Id :=
                        Activation_Record_Component (Def_Ident);
                      Activation_Record : constant Value_T :=
-                       Current_Subp.Activation_Rec_Param;
+                       Env.Activation_Rec_Param;
                      Pointer           : constant Value_T :=
                        Record_Field_Offset (Env, Activation_Record, Component);
                      Value_Address     : constant Value_T :=

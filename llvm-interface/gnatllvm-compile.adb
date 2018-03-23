@@ -212,9 +212,6 @@ package body GNATLLVM.Compile is
        and then not Is_Array_Type (Etype (Def_Ident)));
    --  Return whether Def_Ident requires an extra level of indirection
 
-   function Get_Static_Link (Env : Environ) return Value_T;
-   --  Build and return the appropriate static link to pass to a call to Subp
-
    function Is_Constant_Folded (E : Entity_Id) return Boolean
    is (Ekind (E) = E_Constant
        and then Is_Scalar_Type (Get_Full_View (Etype (E))));
@@ -2477,19 +2474,15 @@ package body GNATLLVM.Compile is
       LLVM_Func := Emit_Expression (Env, Subp);
 
       if This_Takes_S_Link then
-         if Direct_Call then
-            S_Link := Get_Static_Link (Env);
-         else
-            S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
-            LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
+         S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
+         LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
 
-            if Anonymous_Access then
-               LLVM_Func := Bit_Cast
-                 (Env.Bld, LLVM_Func,
-                  Create_Access_Type
-                    (Env, Designated_Type (Etype (Prefix (Subp)))),
-                  "");
-            end if;
+         if Anonymous_Access then
+            LLVM_Func := Bit_Cast
+              (Env.Bld, LLVM_Func,
+               Create_Access_Type
+                 (Env, Designated_Type (Etype (Prefix (Subp)))),
+               "");
          end if;
       end if;
 
@@ -2632,18 +2625,6 @@ package body GNATLLVM.Compile is
          end;
       end if;
    end Emit_Subprogram_Decl;
-
-   ---------------------
-   -- Get_Static_Link --
-   ---------------------
-
-   function Get_Static_Link (Env : Environ) return Value_T is
-   begin
-      --  We end up here for external (and thus top-level) subprograms, so
-      --  they take no static link.
-
-      return Const_Null (Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0));
-   end Get_Static_Link;
 
    ---------------------------
    -- Build_Type_Conversion --

@@ -1470,8 +1470,8 @@ package body GNATLLVM.Compile is
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
                      return Get_Value (Env, Def_Ident);
                   else
-                     --  Return a callback, which is a couple: subprogram
-                     --  code pointer, static link argument.
+                     --  Return a callback, which is a pair: subprogram
+                     --  code pointer and static link argument.
 
                      declare
                         Func   : constant Value_T :=
@@ -1536,8 +1536,7 @@ package body GNATLLVM.Compile is
          when N_String_Literal =>
             declare
                T : constant Type_T := Create_Type (Env, Etype (Node));
-               V : constant Value_T :=
-                     Add_Global (Env.Mdl, T, "str-lit");
+               V : constant Value_T := Add_Global (Env.Mdl, T, "str-lit");
 
             begin
                Set_Value (Env, Node, V);
@@ -2112,17 +2111,8 @@ package body GNATLLVM.Compile is
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (Env, Node, LValue => False);
 
-         when N_Selected_Component =>
-            return Load
-              (Env.Bld,
-               Record_Field_Offset
-                 (Env,
-                  Emit_LValue (Env, Prefix (Node)),
-                  Original_Record_Component (Entity (Selector_Name (Node)))),
-               "");
-
-         when N_Indexed_Component | N_Slice =>
-            return Load (Env.Bld, Emit_LValue (Env, Node), "");
+         when N_Selected_Component | N_Indexed_Component  | N_Slice =>
+            return Load_With_Type (Env, Etype (Node), Emit_LValue (Env, Node));
 
          when N_Aggregate =>
             if Null_Record_Present (Node) then

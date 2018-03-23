@@ -330,66 +330,21 @@ package body GNATLLVM.Compile is
    --------------------------
 
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
-
-      procedure Unsupported_Nested_Subprogram (N : Node_Id);
-      --  Locate the first inner nested subprogram and report the error on it
-
-      -----------------------------------
-      -- Unsupported_Nested_Subprogram --
-      -----------------------------------
-
-      procedure Unsupported_Nested_Subprogram (N : Node_Id) is
-         function Search_Subprogram (Node : Node_Id) return Traverse_Result;
-         --  Subtree visitor which looks for the subprogram
-
-         -----------------------
-         -- Search_Subprogram --
-         -----------------------
-
-         function Search_Subprogram (Node : Node_Id) return Traverse_Result is
-         begin
-            if Node /= N
-              and then Nkind (Node) = N_Subprogram_Body
-
-               --  Do not report the error on generic subprograms; the error
-               --  will be reported only in their instantiations (to leave the
-               --  output more clean).
-
-              and then not
-                Is_Generic_Subprogram (Unique_Defining_Entity (Node))
-            then
-               Error_Msg_N ("unsupported kind of nested subprogram", Node);
-               return Abandon;
-            end if;
-
-            return OK;
-         end Search_Subprogram;
-
-         procedure Search is new Traverse_Proc (Search_Subprogram);
-         --  Subtree visitor instantiation
-
-      --  Start of processing for Unsupported_Nested_Subprogram
-
-      begin
-         Search (N);
-      end Unsupported_Nested_Subprogram;
-
       Subp : constant Entity_Id := Unique_Defining_Entity (Node);
 
    begin
       if not Has_Nested_Subprogram (Subp) then
          Emit_One_Body (Env, Node);
          return;
-
-      --  Temporarily protect us against unsupported kind of nested subprograms
-      --  (for example, subprograms defined in nested instantiations)???
-
-      elsif Subps_Index (Subp) = Uint_0 then
-         Unsupported_Nested_Subprogram (Node);
-         return;
       end if;
 
       --  Here we deal with a subprogram with nested subprograms
+      --  ??? However, this code is incorrect since we really must
+      --  elaborate the outer subprogram first (consider if it declares
+      --  a static type that's referenced by the nested subprogram)
+
+      pragma Assert (Subps_Index (Subp) /= Uint_0);
+      --  Ensure there are no unhandled nested subprograms
 
       declare
          Subps_First : constant SI_Type := UI_To_Int (Subps_Index (Subp));

@@ -19,7 +19,6 @@ with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
-with Einfo;    use Einfo;
 with Exp_Unst; use Exp_Unst;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
@@ -207,6 +206,16 @@ package body GNATLLVM.Compile is
      with Pre  => Env /= null and then Present (Node),
           Post => Emit_Literal'Result /= No_Value_T;
 
+   function Emit_LValue_Internal (Env : Environ; Node : Node_Id) return Value_T
+     with Pre => Env /= null and then Present (Node),
+          Post => Emit_LValue_Internal'Result /= No_Value_T;
+   --  Called by Emit_LValue to walk the tree saving values
+
+   function Emit_LValue_Main (Env : Environ; Node : Node_Id) return Value_T
+     with Pre => Env /= null and then Present (Node),
+          Post => Emit_LValue_Main'Result /= No_Value_T;
+   --  Called by Emit_LValue_Internal to do the work at each level
+
    function Emit_Min_Max
      (Env         : Environ;
       Exprs       : List_Id;
@@ -309,6 +318,21 @@ package body GNATLLVM.Compile is
       Table_Increment      => 5,
       Table_Name           => "Nested_Function_Table");
    --  Table of nested functions to elaborate
+
+   --  We save pairs of GNAT type and LLVM Value_T for each level of
+   --  processing of an Emit_LValue so we can find it if we have a
+   --  self-referential item (a discriminated record).
+
+   type LValue_Pair is record T : Entity_Id; Value : Value_T; end record;
+
+   package LValue_Pair_Table is new Table.Table
+     (Table_Component_Type => LValue_Pair,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "LValue_Pair_Table");
+   --  Table of intermediate results for Emit_LValue
 
    ---------------------
    -- Verify_Function --
@@ -1429,7 +1453,44 @@ package body GNATLLVM.Compile is
    -- Emit_LValue --
    -----------------
 
-   function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T is
+   function Emit_LValue
+     (Env : Environ; Node : Node_Id) return Value_T
+   is
+   begin
+      LValue_Pair_Table.Set_Last (0);
+      --  Each time we start a new recursive call, we free the entries
+      --  from the last one.
+
+      return Emit_LValue_Internal (Env, Node);
+   end Emit_LValue;
+
+   --------------------------
+   -- Emit_LValue_Internal --
+   --------------------------
+
+   function Emit_LValue_Internal
+     (Env : Environ; Node : Node_Id) return Value_T
+   is
+      Value : constant Value_T := Emit_LValue_Main (Env, Node);
+      Typ   : constant Entity_Id := Etype (Node);
+   begin
+
+      --  If the object is not of void type, save the result in the
+      --  pair table under the base type of the fullest view.
+
+      if Ekind (Typ) /= E_Void then
+         LValue_Pair_Table.Append
+           ((Implementation_Base_Type (Get_Fullest_View (Typ)), Value));
+      end if;
+
+      return Value;
+   end Emit_LValue_Internal;
+
+   ----------------------
+   -- Emit_LValue_Main --
+   ----------------------
+
+   function Emit_LValue_Main (Env : Environ; Node : Node_Id) return Value_T is
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>
@@ -1528,7 +1589,7 @@ package body GNATLLVM.Compile is
          when N_Selected_Component =>
             declare
                Pfx_Ptr : constant Value_T :=
-                 Emit_LValue (Env, Prefix (Node));
+                 Emit_LValue_Internal (Env, Prefix (Node));
                Record_Component : constant Entity_Id :=
                  Original_Record_Component (Entity (Selector_Name (Node)));
 
@@ -1543,7 +1604,7 @@ package body GNATLLVM.Compile is
                  Get_Fullest_View (Etype (Array_Node));
 
                Array_Descr    : constant Value_T :=
-                 Emit_LValue (Env, Array_Node);
+                 Emit_LValue_Internal (Env, Array_Node);
                Array_Data_Ptr : constant Value_T :=
                  Array_Data (Env, Array_Descr, Array_Type);
 
@@ -1588,7 +1649,7 @@ package body GNATLLVM.Compile is
                  Get_Fullest_View (Etype (Array_Node));
 
                Array_Descr    : constant Value_T :=
-                 Emit_LValue (Env, Array_Node);
+                 Emit_LValue_Internal (Env, Array_Node);
                Array_Data_Ptr : constant Value_T :=
                  Array_Data (Env, Array_Descr, Array_Type);
 
@@ -1617,7 +1678,7 @@ package body GNATLLVM.Compile is
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
 
             --  ??? Strip the type conversion, likely not always correct
-            return Emit_LValue (Env, Expression (Node));
+            return Emit_LValue_Internal (Env, Expression (Node));
 
          when others =>
             if not Library_Level (Env) then
@@ -1637,7 +1698,24 @@ package body GNATLLVM.Compile is
                return Get_Undef (Create_Type (Env, Etype (Node)));
             end if;
       end case;
-   end Emit_LValue;
+   end Emit_LValue_Main;
+
+   ------------------------
+   -- Get_Matching_Value --
+   ------------------------
+
+   function Get_Matching_Value (T : Entity_Id) return Value_T is
+   begin
+      for I in 1 .. LValue_Pair_Table.Last loop
+         if Implementation_Base_Type (T) = LValue_Pair_Table.Table (I).T then
+            return LValue_Pair_Table.Table (I).Value;
+         end if;
+      end loop;
+
+      --  Should never get here and postcondition verifies.
+
+      return No_Value_T;
+   end Get_Matching_Value;
 
    ----------------------------
    -- Build_Short_Circuit_Op --

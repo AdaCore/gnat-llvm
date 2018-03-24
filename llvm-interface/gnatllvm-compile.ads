@@ -15,7 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;    use Atree;
+with Atree; use Atree;
+with Einfo; use Einfo;
 with Types; use Types;
 
 with LLVM.Types; use LLVM.Types;
@@ -44,4 +45,9 @@ package GNATLLVM.Compile is
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc.)
 
+   function Get_Matching_Value (T : Entity_Id) return Value_T
+     with Pre  => Is_Type (T),
+     Post => Get_Matching_Value'Result /= No_Value_T;
+   --  Find a value that's being computed by the current Emit_LValue
+   --  recursion that has the same base type as T
 end GNATLLVM.Compile;

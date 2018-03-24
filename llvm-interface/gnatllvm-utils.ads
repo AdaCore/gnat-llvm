@@ -96,6 +96,7 @@ package GNATLLVM.Utils is
    --  subprogram declaration otherwise.
 
    procedure Discard (V : Value_T);
+   procedure Discard (T : Type_T);
 
    procedure Dump_LLVM_Value (V : Value_T);
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this

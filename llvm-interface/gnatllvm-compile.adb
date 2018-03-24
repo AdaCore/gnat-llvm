@@ -239,6 +239,15 @@ package body GNATLLVM.Compile is
       Table_Name           => "Elaboration_Table");
    --  Table of statements part of the current elaboration procedure
 
+   package Nested_Functions_Table is new Table.Table
+     (Table_Component_Type => Node_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Nested_Function_Table");
+   --  Table of nested functions to elaborate
+
    ---------------------
    -- Verify_Function --
    ---------------------
@@ -328,74 +337,28 @@ package body GNATLLVM.Compile is
    --------------------------
 
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
-      Subp : constant Entity_Id := Unique_Defining_Entity (Node);
-
+      Nest_Table_First : constant Nat := Nested_Functions_Table.Last + 1;
    begin
-      if not Has_Nested_Subprogram (Subp) then
-         Emit_One_Body (Env, Node);
+      --  If we're not at library level, this a nested function.  Defer it
+      --  until we complete elaboration of the enclosing function.  But do
+      --  ensure that the spec has been elaborated.
+      if not Library_Level (Env) then
+         Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
+         Nested_Functions_Table.Increment_Last;
+         Nested_Functions_Table.Table (Nested_Functions_Table.Last) := Node;
          return;
       end if;
 
-      --  Here we deal with a subprogram with nested subprograms
-      --  ??? However, this code is incorrect since we really must
-      --  elaborate the outer subprogram first (consider if it declares
-      --  a static type that's referenced by the nested subprogram)
+      --  Otherwise, elaborate this function and then any nested functions
+      --  within in.
 
-      pragma Assert (Subps_Index (Subp) /= Uint_0);
-      --  Ensure there are no unhandled nested subprograms
+      Emit_One_Body (Env, Node);
 
-      declare
-         Subps_First : constant SI_Type := UI_To_Int (Subps_Index (Subp));
-         Subps_Last  : constant SI_Type := Subps.Table (Subps_First).Last;
-         --  First and last indexes for Subps table entries for this nest
+      for I in Nest_Table_First .. Nested_Functions_Table.Last loop
+         Emit_Subprogram_Body (Env, Nested_Functions_Table.Table (I));
+      end loop;
 
-      begin
-         --  Note: unlike in cprint.adb, we do not need to worry about
-         --  ARECnT and ARECnPT types since these will be generated on the fly.
-
-         --  First generate headers for all the nested bodies, and also for the
-         --  outer level body if it acts as its own spec. The order of these
-         --  does not matter.
-
-         Output_Headers : for J in Subps_First .. Subps_Last loop
-            declare
-               STJ : Subp_Entry renames Subps.Table (J);
-            begin
-               if J /= Subps_First or else Acts_As_Spec (STJ.Bod) then
-                  Discard
-                    (Emit_Subprogram_Decl (Env, Declaration_Node (STJ.Ent)));
-
-                  --  If there is a separate subprogram specification, remove
-                  --  it, since we have now dealt with outputting this spec.
-
-                  if Present (Corresponding_Spec (STJ.Bod)) then
-                     Remove (Parent
-                       (Declaration_Node (Corresponding_Spec (STJ.Bod))));
-                  end if;
-               end if;
-            end;
-         end loop Output_Headers;
-
-         --  Now we can output the actual bodies, we do this in reverse order
-         --  so that we deal with and remove the inner level bodies first. That
-         --  way when we print the enclosing subprogram, the body is gone!
-
-         Output_Bodies : for J in reverse Subps_First + 1 .. Subps_Last loop
-            declare
-               STJ : Subp_Entry renames Subps.Table (J);
-            begin
-               Emit_One_Body (Env, STJ.Bod);
-
-               if Is_List_Member (STJ.Bod) then
-                  Remove (STJ.Bod);
-               end if;
-            end;
-         end loop Output_Bodies;
-
-         --  And finally we output the outer level body and we are done
-
-         Emit_One_Body (Env, Node);
-      end;
+      Nested_Functions_Table.Set_Last (Nest_Table_First);
    end Emit_Subprogram_Body;
 
    --------------------
@@ -1255,13 +1218,8 @@ package body GNATLLVM.Compile is
             | N_Incomplete_Type_Declaration | N_Private_Type_Declaration
             | N_Private_Extension_Declaration
          =>
-            declare
-               Discard : Type_T;
-               pragma Unreferenced (Discard);
-            begin
-               Discard := GNAT_To_LLVM_Type
-                 (Env, Defining_Identifier (Node), True);
-            end;
+            Discard
+              (GNAT_To_LLVM_Type (Env, Defining_Identifier (Node), True));
 
          when N_Freeze_Entity =>
             --  ??? Need to process Node itself
@@ -1704,8 +1662,6 @@ package body GNATLLVM.Compile is
       --  Shortcut to Emit_Expression. Used to implicitely pass the
       --  environment during recursion.
 
-      Discard : Value_T;
-      pragma Unreferenced (Discard);
    begin
       if Nkind (Node) in N_Binary_Op then
 
@@ -2168,12 +2124,12 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_Expression =>
-            Discard := Emit_LCH_Call (Env, Node);
+            Discard (Emit_LCH_Call (Env, Node));
             return Get_Undef (Create_Type (Env, Etype (Node)));
 
          when N_Raise_xxx_Error =>
             pragma Assert (No (Condition (Node)));
-            Discard := Emit_LCH_Call (Env, Node);
+            Discard (Emit_LCH_Call (Env, Node));
             return Get_Undef (Create_Type (Env, Etype (Node)));
 
          when others =>

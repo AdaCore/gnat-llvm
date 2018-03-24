@@ -205,6 +205,16 @@ package body GNATLLVM.Utils is
       null;
    end Discard;
 
+   -------------
+   -- Discard --
+   -------------
+
+   procedure Discard (T : Type_T) is
+      pragma Unreferenced (T);
+   begin
+      null;
+   end Discard;
+
    --------------
    -- Get_Name --
    --------------

@@ -19,7 +19,6 @@ with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with System;
 
-with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Exp_Unst; use Exp_Unst;
 with Errout;   use Errout;
@@ -67,29 +66,45 @@ package body GNATLLVM.Compile is
       Expr                : Node_Id) return Value_T;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
-   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T;
+   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T
+     with Pre  => Env /= null and then Present (Node),
+          Post => Get_Static_Link'Result /= No_Value_T;
    --  Build and return the static link to pass to a call to Node
 
-   function Compute_Size (Env : Environ; Left, Right : Node_Id) return Value_T;
+   function Compute_Size (Env : Environ; Left, Right : Node_Id) return Value_T
+     with Pre  => Env /= null and then Present (Left) and then Present (Right),
+          Post =>  Compute_Size'Result /= No_Value_T;
    --  Helper for assignments
 
    function Convert_Scalar_Types
      (Env            : Environ;
       S_Type, D_Type : Entity_Id;
-      Expr           : Node_Id) return Value_T;
+      Expr           : Node_Id) return Value_T
+     with Pre  => Env /= null and then Is_Type (S_Type)
+                  and then Is_Type (D_Type) and then Present (Expr),
+          Post => Convert_Scalar_Types'Result /= No_Value_T;
    --  Helper of Build_Type_Conversion if both types are scalar.
 
    function Convert_To_Scalar_Type
      (Env  : Environ;
       Expr : Value_T;
-      T    : Entity_Id) return Value_T;
+      T    : Entity_Id) return Value_T
+     with Pre  => Env /= null and then Expr /= No_Value_T
+                  and then Is_Type (T),
+          Post => Convert_To_Scalar_Type'Result /= No_Value_T;
    --  Variant of above to convert an LLVM Expr to the type T.
 
    function Build_Short_Circuit_Op
      (Env                   : Environ;
       Node_Left, Node_Right : Node_Id;
       Orig_Left, Orig_Right : Value_T;
-      Op                    : Node_Kind) return Value_T;
+      Op                    : Node_Kind) return Value_T
+     with Pre  => Env /= null
+                  and then (Present (Node_Left)
+                              or else Orig_Left /= No_Value_T)
+                  and then (Present (Node_Right)
+                              or else Orig_Right /= No_Value_T),
+          Post => Build_Short_Circuit_Op'Result /= No_Value_T;
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
    --  If we've already computed one or more of the expressions, we
    --  pass those as Orig_Left and Orig_Right; if not, Node_Left and
@@ -100,7 +115,8 @@ package body GNATLLVM.Compile is
      (Env    : Environ;
       Node   : Node_Id;
       LValue : Boolean) return Value_T
-     with Pre => Nkind (Node) = N_Attribute_Reference;
+     with Pre  => Env /= null and then Nkind (Node) = N_Attribute_Reference,
+          Post => Emit_Attribute_Reference'Result /= No_Value_T;
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
    procedure Emit_Assignment
@@ -108,12 +124,17 @@ package body GNATLLVM.Compile is
       Dest_Typ, Typ             : Entity_Id;
       LValue                    : Value_T;
       LHS, E                    : Node_Id;
-      Forwards_OK, Backwards_OK : Boolean);
+      Forwards_OK, Backwards_OK : Boolean)
+     with Pre => Env /= null and then Is_Type (Dest_Typ)
+                 and then Is_Type (Typ) and then LValue /= No_Value_T
+                 and then Present (LHS) and then Present (E);
    --  Helper for Emit: Copy the value of the expression E to LValue
    --  with the specified destination and expression types
 
    function Emit_Call
-     (Env : Environ; Call_Node : Node_Id) return Value_T;
+     (Env : Environ; Call_Node : Node_Id) return Value_T
+     with Pre  => Env /= null and then Nkind (Call_Node) in N_Subprogram_Call,
+          Post => Emit_Call'Result /= No_Value_T;
    --  Helper for Emit/Emit_Expression: compile a call statement/expression and
    --  return its result value.
 
@@ -121,31 +142,42 @@ package body GNATLLVM.Compile is
      (Env          : Environ;
       Kind         : Node_Kind;
       Operand_Type : Entity_Id;
-      LHS, RHS     : Node_Id) return Value_T;
+      LHS, RHS     : Node_Id) return Value_T
+     with Pre  => Env /= null and then Is_Type (Operand_Type)
+                  and then Present (LHS) and then Present (RHS),
+          Post => Emit_Comparison'Result /= No_Value_T;
+
    function Emit_Comparison
      (Env          : Environ;
       Kind         : Node_Kind;
       Operand_Type : Entity_Id;
       Node         : Node_Id;
-      LHS, RHS     : Value_T) return Value_T;
+      LHS, RHS     : Value_T) return Value_T
+     with Pre  => Env /= null and then Is_Type (Operand_Type)
+                  and then Present (Node) and then LHS /= No_Value_T
+                  and then RHS /= No_Value_T,
+          Post => Emit_Comparison'Result /= No_Value_T;
    --  Helpers for Emit_Expression: handle comparison operations.
    --  The second form only supports discrete or pointer types.
 
    procedure Emit_If (Env : Environ; Node : Node_Id)
-     with Pre => Nkind (Node) = N_If_Statement;
+     with Pre => Env /= null and then Nkind (Node) = N_If_Statement;
    --  Helper for Emit: handle if statements
 
    procedure Emit_If_Cond
      (Env               : Environ;
       Cond              : Node_Id;
-      BB_True, BB_False : Basic_Block_T);
+      BB_True, BB_False : Basic_Block_T)
+     with Pre => Env /= null and then Present (Cond)
+                 and then BB_True /= No_BB_T and then BB_False /= No_BB_T;
    --  Helper for Emit_If to generate branch to BB_True or BB_False
    --  depending on whether Node is true or false.
 
    function Emit_If_Expression
      (Env  : Environ;
       Node : Node_Id) return Value_T
-     with Pre => Nkind (Node) = N_If_Expression;
+     with Pre  => Env /= null and then Nkind (Node) = N_If_Expression,
+          Post => Emit_If_Expression'Result /= No_Value_T;
    --  Helper for Emit_Expression: handle if expressions
 
    procedure Emit_If_Range
@@ -154,37 +186,50 @@ package body GNATLLVM.Compile is
       Operand_Type      : Entity_Id;
       LHS               : Value_T;
       Low, High         : Uint;
-      BB_True, BB_False : Basic_Block_T);
+      BB_True, BB_False : Basic_Block_T)
+     with Pre => Env /= null and then Present (Node)
+                 and then Is_Type (Operand_Type) and then LHS /= No_Value_T
+                 and then BB_True /= No_BB_T and then BB_False /= No_BB_T;
    --  Emit code to branch to BB_True or BB_False depending on whether LHS,
    --  which is of type Operand_Type, is in the range from Low to High.  Node
    --  is used only for error messages.
 
-   procedure Emit_Case (Env : Environ; Node : Node_Id);
+   procedure Emit_Case (Env : Environ; Node : Node_Id)
+     with Pre => Env /= null and then Nkind (Node) = N_Case_Statement;
    --  Handle case statements
 
-   function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T;
+   function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T
+     with Pre  => Env /= null and then Present (Node),
+          Post => Emit_LCH_Call'Result /= No_Value_T;
    --  Generate a call to __gnat_last_chance_handler
 
-   function Emit_Literal (Env : Environ; Node : Node_Id) return Value_T;
+   function Emit_Literal (Env : Environ; Node : Node_Id) return Value_T
+     with Pre  => Env /= null and then Present (Node),
+          Post => Emit_Literal'Result /= No_Value_T;
 
    function Emit_Min_Max
      (Env         : Environ;
       Exprs       : List_Id;
       Compute_Max : Boolean) return Value_T
-     with Pre => List_Length (Exprs) = 2
-     and then Is_Scalar_Type (Etype (First (Exprs)));
+     with Pre  => Env /= null and then List_Length (Exprs) = 2
+                 and then Is_Scalar_Type (Etype (First (Exprs))),
+          Post => Emit_Min_Max'Result /= No_Value_T;
    --  Exprs must be a list of two scalar expressions with compatible types.
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
 
-   procedure Emit_One_Body (Env : Environ; Node : Node_Id);
+   procedure Emit_One_Body (Env : Environ; Node : Node_Id)
+     with Pre => Env /= null and then Present (Node);
    --  Generate code for one given subprogram body
 
    function Emit_Array_Aggregate
      (Env           : Environ;
       Node          : Node_Id;
       Dims_Left     : Pos;
-      Typ, Comp_Typ : Type_T) return Value_T;
+      Typ, Comp_Typ : Type_T) return Value_T
+     with Pre  => Env /= null and then Nkind (Node) = N_Aggregate
+                  and then Typ /= No_Type_T and then Comp_Typ /= No_Type_T,
+          Post => Emit_Array_Aggregate'Result /= No_Value_T;
    --  Emit an N_Aggregate of LLVM type Typ, which is an array, returning the
    --  Value_T that contains the data.  Dims_Left says how many dimensions of
    --  the outer array type we still can recurse into.
@@ -192,31 +237,39 @@ package body GNATLLVM.Compile is
    function Emit_Shift
      (Env                 : Environ;
       Node                : Node_Id;
-      LHS_Node, RHS_Node  : Node_Id) return Value_T;
+      LHS_Node, RHS_Node  : Node_Id) return Value_T
+     with Pre  => Env /= null and then Nkind (Node) in N_Op_Shift
+                  and then Present (LHS_Node) and then Present (RHS_Node),
+          Post => Emit_Shift'Result /= No_Value_T;
    --  Helper for Emit_Expression: handle shift and rotate operations
 
    function Emit_Subprogram_Decl
-     (Env : Environ; Subp_Spec : Node_Id) return Value_T;
+     (Env : Environ; Subp_Spec : Node_Id) return Value_T
+     with Pre  => Env /= null,
+          Post => Emit_Subprogram_Decl'Result /= No_Value_T;
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
-   function Get_Uint_Value (Node : Node_Id) return Uint;
+   function Get_Uint_Value (Node : Node_Id) return Uint
+     with Pre => Present (Node);
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint.
 
    function Get_Label_BB (Env : Environ; E : Entity_Id) return Basic_Block_T
-     with Pre => Ekind (E) = E_Label,
+     with Pre  => Env /= null and then Ekind (E) = E_Label,
           Post => Get_Label_BB'Result /= No_BB_T;
    --  Lazily get the basic block associated with label E, creating it
    --  if we don't have it already.
 
-   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint);
+   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint)
+     with Pre => Present (Rng);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in
    --  a case statement into the low and high bounds.  If either Low or High
    --  is No_Uint, it means that we have a nonstatic value, a non-discrete
    --  value, or we can't find the value.  This should not happen in switch
    --  statements.
 
-   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id);
+   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id)
+     with Pre => Env /= null and then Present (Node);
    --  Compile a subprogram body and save it in the environment
 
    function Needs_Deref (Def_Ident : Entity_Id) return Boolean
@@ -229,11 +282,14 @@ package body GNATLLVM.Compile is
        and then Is_Scalar_Type (Get_Full_View (Etype (E))));
 
    procedure Verify_Function
-     (Env : Environ; Func : Value_T; Node : Node_Id; Msg : String);
+     (Env : Environ; Func : Value_T; Node : Node_Id; Msg : String)
+     with Pre => Env /= null and then Func /= No_Value_T
+                 and then Present (Node);
    --  Verify the validity of the given function, emit an error message if not
    --  and dump the generated byte code.
 
-   function Node_Enclosing_Subprogram (Node : Node_Id) return Node_Id;
+   function Node_Enclosing_Subprogram (Node : Node_Id) return Node_Id
+     with Pre =>  Present (Node);
    --  Return the enclosing subprogram containing Node.
 
    package Elaboration_Table is new Table.Table

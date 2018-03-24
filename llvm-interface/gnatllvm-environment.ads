@@ -155,43 +155,75 @@ package GNATLLVM.Environment is
    No_Such_Value       : exception;
    No_Such_Basic_Block : exception;
 
-   function Has_Type        (Env : Environ; TE : Entity_Id) return Boolean;
-   function Has_TBAA        (Env : Environ; TE : Entity_Id) return Boolean;
-   function Has_Value       (Env : Environ; VE : Entity_Id) return Boolean;
-   function Has_BB          (Env : Environ; BE : Entity_Id) return Boolean;
-   function Get_Type        (Env : Environ; TE : Entity_Id) return Type_T;
-   function Get_TBAA        (Env : Environ; TE : Entity_Id) return Metadata_T;
-   function Get_Value       (Env : Environ; VE : Entity_Id) return Value_T;
-   function Get_Record_Info (Env : Environ; RI : Entity_Id) return Record_Info;
-   function Get_Basic_Block
-     (Env : Environ; BE : Entity_Id) return Basic_Block_T;
+   function Has_Type        (Env : Environ; TE : Entity_Id) return Boolean
+     with Pre => Env /= null and then Is_Type (TE);
+   function Has_TBAA        (Env : Environ; TE : Entity_Id) return Boolean
+     with Pre => Env /= null and then Is_Type (TE);
+   function Has_Value       (Env : Environ; VE : Entity_Id) return Boolean
+     with Pre => Env /= null and then Present (VE);
+   function Has_BB          (Env : Environ; BE : Entity_Id) return Boolean
+     with Pre => Env /= null and then Present (BE);
 
-   procedure Set_Type (Env : Environ; TE : Entity_Id; TL : Type_T);
-   procedure Set_TBAA (Env : Environ; TE : Entity_Id; TBAA : Metadata_T);
-   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T);
-   procedure Set_Record_Info (Env : Environ; TE : Entity_Id; RI : Record_Info);
+   function Get_Type        (Env : Environ; TE : Entity_Id) return Type_T
+     with Pre => Env /= null and then Is_Type (TE);
+   function Get_TBAA        (Env : Environ; TE : Entity_Id) return Metadata_T
+     with Pre => Env /= null and then Is_Type (TE);
+   function Get_Value       (Env : Environ; VE : Entity_Id) return Value_T
+     with Pre => Env /= null and then Present (VE);
+   function Get_Record_Info (Env : Environ; RI : Entity_Id) return Record_Info
+     with Pre => Env /= null and then Is_Record_Type (RI);
+   function Get_Basic_Block
+     (Env : Environ; BE : Entity_Id) return Basic_Block_T
+     with Pre => Env /= null and then Present (BE);
+
+   procedure Set_Type (Env : Environ; TE : Entity_Id; TL : Type_T)
+     with Pre  => Env /= null and then Is_Type (TE) and then TL /= No_Type_T,
+          Post => Get_Type (Env, TE) = TL;
+
+   procedure Set_TBAA (Env : Environ; TE : Entity_Id; TBAA : Metadata_T)
+     with Pre  => Env /= null and then Is_Type (TE)
+                  and then TBAA /= No_Metadata_T,
+          Post => Get_TBAA (Env, TE) = TBAA;
+   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T)
+     with Pre  => Env /= null and then Present (VE) and then VL /= No_Value_T,
+          Post => Get_Value (Env, VE) = VL;
+   procedure Set_Record_Info (Env : Environ; TE : Entity_Id; RI : Record_Info)
+     with Pre  => Env /= null and then Is_Record_Type (TE),
+          Post => Get_Record_Info (Env, TE) = RI;
    procedure Set_Basic_Block
-     (Env : Environ; BE : Entity_Id; BL : Basic_Block_T);
+     (Env : Environ; BE : Entity_Id; BL : Basic_Block_T)
+     with Pre  => Env /= null and then Present (BE),
+          Post => Get_Basic_Block (Env, BE) = BL;
 
    procedure Copy_Type_Info (Env : Environ; Old_T, New_T : Entity_Id)
-     with Pre => Has_Type (Env, Old_T), Post => Has_Type (Env, New_T);
+     with Pre  => Env /= null and then Has_Type (Env, Old_T),
+          Post => Has_Type (Env, New_T);
    --  Copy type-related information from Old_T to New_T
 
-   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T);
+   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T)
+     with Pre => Exit_Point /= No_BB_T;
    procedure Pop_Loop;
    function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T;
-   function Get_Exit_Point return Basic_Block_T;
+   function Get_Exit_Point return Basic_Block_T
+     with Post => Get_Exit_Point'Result /= No_BB_T;
 
-   procedure Enter_Subp (Env : Environ; Func : Value_T);
+   procedure Enter_Subp (Env : Environ; Func : Value_T)
+     with Pre  => Env /= null and then Func /= No_Value_T
+                  and then Library_Level (Env),
+          Post => not Library_Level (Env);
    --  Create an entry basic block for this subprogram and position
    --  the builder at its end. Mark that we're in a subprogram.  To be
    --  used when starting the compilation of a subprogram body.
 
-   procedure Leave_Subp (Env : Environ);
+   procedure Leave_Subp (Env : Environ)
+     with Pre  => Env /= null and not Library_Level (Env),
+          Post => Library_Level (Env);
    --  Indicate that we're no longer compiling a subprogram.
 
    function Create_Basic_Block
-     (Env : Environ; Name : String) return Basic_Block_T;
+     (Env : Environ; Name : String) return Basic_Block_T
+     with Pre  => Env /= null,
+          Post => Create_Basic_Block'Result /= No_BB_T;
 
    function Get_Fullest_View (E : Entity_Id) return Entity_Id is
    (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)

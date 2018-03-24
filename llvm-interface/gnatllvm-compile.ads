@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Atree;    use Atree;
 with Types; use Types;
 
 with LLVM.Types; use LLVM.Types;
@@ -24,18 +25,21 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 package GNATLLVM.Compile is
 
    procedure Emit (Env : Environ; Node : Node_Id)
-     with Pre => Env /= null;
+     with Pre => Env /= null and Present (Node);
    --  General compilation routine, called at the top-level.
 
-   procedure Emit_List (Env : Environ; List : List_Id);
+   procedure Emit_List (Env : Environ; List : List_Id)
+     with Pre => Env /= null;
    --  Call Emit on every element of List
 
    function Emit_Expression (Env : Environ; Node : Node_Id) return Value_T
-     with Pre => Env /= null;
+     with Pre => Env /= null and then Present (Node),
+          Post => Emit_Expression'Result /= No_Value_T;
    --  Compile an expression node to an LLVM value.
 
    function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T
-     with Pre => Env /= null;
+     with Pre => Env /= null and then Present (Node),
+          Post => Emit_LValue'Result /= No_Value_T;
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc.)

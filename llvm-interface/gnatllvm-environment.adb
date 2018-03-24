@@ -268,9 +268,6 @@ package body GNATLLVM.Environment is
 
    procedure Enter_Subp (Env : Environ; Func : Value_T) is
    begin
-      pragma Assert (Env.Func = No_Value_T);
-      --  We don't nest subprograms, so make sure nobody tries.
-
       Env.Func := Func;
       Env.Activation_Rec_Param := No_Value_T;
       Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));

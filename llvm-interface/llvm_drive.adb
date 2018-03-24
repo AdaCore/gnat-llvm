@@ -156,9 +156,8 @@ package body LLVM_Drive is
       Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
 
-      Set_Value (Env, Empty, No_Value_T);
-      --  Do an initial Set_Value here so that the first real LLVM_Info entry
-      --  isn't Empty_LLVM_Info_Id.
+      LLVM_Info_Table.Increment_Last;
+      --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id.
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);

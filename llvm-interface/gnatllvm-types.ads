@@ -44,30 +44,6 @@ package GNATLLVM.Types is
    --  between the two. For the moment, it handles array accesses and thin
    --  (normal) accesses.
 
-   function Create_Array_Raw_Pointer_Type
-     (Env             : Environ;
-      Array_Type_Node : Entity_Id) return Type_T
-     with Pre  => Env /= null and then  Is_Array_Type (Array_Type_Node),
-          Post => (Get_Type_Kind (Create_Array_Raw_Pointer_Type'Result) =
-                   Pointer_Type_Kind);
-   --  Return the type used to store thin pointers to Array_Type
-
-   function Create_Array_Fat_Pointer_Type
-     (Env        : Environ;
-      Array_Type : Entity_Id) return Type_T
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type),
-          Post => Create_Array_Fat_Pointer_Type'Result /= No_Type_T;
-   --  Return the type used to store fat pointers to Array_Type
-
-   function Create_Array_Bounds_Type
-     (Env             : Environ;
-      Array_Type_Node : Entity_Id) return Type_T
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type_Node),
-          Post => Create_Array_Bounds_Type'Result /= No_Type_T;
-   --  Helper that returns the type used to store array bounds. This is a
-   --  structure that that follows the following pattern: { LB0, UB0, LB1,
-   --  UB1, ... }
-
    function Create_Subprogram_Type_From_Spec
      (Env       : Environ;
       Subp_Spec : Node_Id) return Type_T

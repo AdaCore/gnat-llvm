@@ -18,11 +18,36 @@
 with Einfo; use Einfo;
 with Types; use Types;
 
+with LLVM.Core; use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Arrays is
+
+   function Create_Array_Raw_Pointer_Type
+     (Env             : Environ;
+      Array_Type_Node : Entity_Id) return Type_T
+     with Pre  => Env /= null and then  Is_Array_Type (Array_Type_Node),
+          Post => (Get_Type_Kind (Create_Array_Raw_Pointer_Type'Result) =
+                   Pointer_Type_Kind);
+   --  Return the type used to store thin pointers to Array_Type
+
+   function Create_Array_Fat_Pointer_Type
+     (Env        : Environ;
+      Array_Type : Entity_Id) return Type_T
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type),
+          Post => Create_Array_Fat_Pointer_Type'Result /= No_Type_T;
+   --  Return the type used to store fat pointers to Array_Type
+
+   function Create_Array_Bounds_Type
+     (Env             : Environ;
+      Array_Type_Node : Entity_Id) return Type_T
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type_Node),
+          Post => Create_Array_Bounds_Type'Result /= No_Type_T;
+   --  Helper that returns the type used to store array bounds. This is a
+   --  structure that that follows the following pattern: { LB0, UB0, LB1,
+   --  UB1, ... }
 
    procedure Extract_Array_Info
      (Env         : Environ;

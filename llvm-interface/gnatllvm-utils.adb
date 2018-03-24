@@ -20,7 +20,6 @@ with Ada.Unchecked_Conversion;
 
 with Atree;    use Atree;
 with Einfo;    use Einfo;
-with Namet;    use Namet;
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
 
@@ -214,13 +213,6 @@ package body GNATLLVM.Utils is
    begin
       null;
    end Discard;
-
-   --------------
-   -- Get_Name --
-   --------------
-
-   function Get_Name (E : Entity_Id) return String is
-      (Get_Name_String (Chars (E)));
 
    ---------------------
    -- Get_Acting_Spec --

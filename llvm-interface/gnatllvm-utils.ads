@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Namet;    use Namet;
 with Sinfo; use Sinfo;
 with Types; use Types;
 with Uintp; use Uintp;
@@ -88,7 +89,8 @@ package GNATLLVM.Utils is
 
    function Get_Params (Subp : Entity_Id) return Entity_Iterator;
 
-   function Get_Name (E : Entity_Id) return String;
+   function Get_Name (E : Entity_Id) return String is
+      (Get_Name_String (Chars (E)));
    --  Return the name of an entity: Get_Name_String (Chars (E))
 
    function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id;

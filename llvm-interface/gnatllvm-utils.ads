@@ -77,7 +77,7 @@ package GNATLLVM.Utils is
 
    type Entity_Iterator is array (Nat range <>) of Entity_Id;
 
-   function Filter (Elt : Entity_Id) return Boolean is (True);
+   function Filter (Unused : Entity_Id) return Boolean is (True);
 
    generic
       with function Get_First (Root : Entity_Id) return Entity_Id is <>;

@@ -175,23 +175,31 @@ package GNATLLVM.Environment is
 
    function Has_Type        (Env : Environ; TE : Entity_Id) return Boolean
      with Pre => Env /= null and then Is_Type (TE);
+
    function Has_TBAA        (Env : Environ; TE : Entity_Id) return Boolean
      with Pre => Env /= null and then Is_Type (TE);
+
    function Has_Value       (Env : Environ; VE : Entity_Id) return Boolean
      with Pre => Env /= null and then Present (VE);
+
    function Has_BB          (Env : Environ; BE : Entity_Id) return Boolean
      with Pre => Env /= null and then Present (BE);
 
    function Get_Type        (Env : Environ; TE : Entity_Id) return Type_T
      with Pre => Env /= null and then Is_Type (TE);
+
    function Get_TBAA        (Env : Environ; TE : Entity_Id) return Metadata_T
      with Pre => Env /= null and then Is_Type (TE);
+
    function Get_Value       (Env : Environ; VE : Entity_Id) return Value_T
      with Pre => Env /= null and then Present (VE);
+
    function Get_Array_Info (Env : Environ; TE : Entity_Id) return Nat
      with Pre => Env /= null and then Is_Array_Type (TE);
+
    function Get_Record_Info (Env : Environ; TE : Entity_Id) return Record_Info
      with Pre => Env /= null and then Is_Record_Type (TE);
+
    function Get_Basic_Block
      (Env : Environ; BE : Entity_Id) return Basic_Block_T
      with Pre => Env /= null and then Present (BE);
@@ -204,15 +212,19 @@ package GNATLLVM.Environment is
      with Pre  => Env /= null and then Is_Type (TE)
                   and then TBAA /= No_Metadata_T,
           Post => Get_TBAA (Env, TE) = TBAA;
+
    procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T)
      with Pre  => Env /= null and then Present (VE) and then VL /= No_Value_T,
           Post => Get_Value (Env, VE) = VL;
+
    procedure Set_Array_Info (Env : Environ; TE : Entity_Id; AI : Nat_Info)
      with Pre  => Env /= null and then Is_Array_Type (TE),
           Post => Get_Array_Info (Env, TE) = AI;
+
    procedure Set_Record_Info (Env : Environ; TE : Entity_Id; RI : Record_Info)
      with Pre  => Env /= null and then Is_Record_Type (TE),
           Post => Get_Record_Info (Env, TE) = RI;
+
    procedure Set_Basic_Block
      (Env : Environ; BE : Entity_Id; BL : Basic_Block_T)
      with Pre  => Env /= null and then Present (BE),
@@ -226,6 +238,7 @@ package GNATLLVM.Environment is
    procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T)
      with Pre => Exit_Point /= No_BB_T;
    procedure Pop_Loop;
+
    function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T;
    function Get_Exit_Point return Basic_Block_T
      with Post => Get_Exit_Point'Result /= No_BB_T;

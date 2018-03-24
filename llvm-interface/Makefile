@@ -169,7 +169,7 @@ zfp: build
 rts-full: build
 	$(RMDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
 	$(MKDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
-	make -f $(GNAT_SRC)/Makefile.adalib -C $(FULL_ADALIB) \
+	$(MAKE) -f $(GNAT_SRC)/Makefile.adalib -C $(FULL_ADALIB) \
 	  target=$(shell gcc -dumpmachine) version=$(shell gcc -dumpversion) \
 	  ROOT=$(GNAT_ROOT) CC=$(LLVM_GCC) \
 	  CFLAGS="-O2 -nostdinc -I$(NATIVE_ADAINCLUDE)"

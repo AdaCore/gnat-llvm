@@ -217,7 +217,7 @@ package GNATLLVM.Environment is
      with Pre  => Env /= null and then Present (VE) and then VL /= No_Value_T,
           Post => Get_Value (Env, VE) = VL;
 
-   procedure Set_Array_Info (Env : Environ; TE : Entity_Id; AI : Nat_Info)
+   procedure Set_Array_Info (Env : Environ; TE : Entity_Id; AI : Nat)
      with Pre  => Env /= null and then Is_Array_Type (TE),
           Post => Get_Array_Info (Env, TE) = AI;
 

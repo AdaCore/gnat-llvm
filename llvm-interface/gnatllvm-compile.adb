@@ -48,9 +48,6 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
-   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T;
-   --  Build and return the static link to pass to a call to Node
-
    --  Note: in order to find the right LLVM instruction to generate,
    --  you can compare with what Clang generates on corresponding C or C++
    --  code. This can be done online via http://ellcc.org/demo/index.cgi
@@ -69,6 +66,9 @@ package body GNATLLVM.Compile is
       Src_Type, Dest_Type : Entity_Id;
       Expr                : Node_Id) return Value_T;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
+
+   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T;
+   --  Build and return the static link to pass to a call to Node
 
    function Compute_Size (Env : Environ; Left, Right : Node_Id) return Value_T;
    --  Helper for assignments
@@ -202,6 +202,12 @@ package body GNATLLVM.Compile is
 
    function Get_Uint_Value (Node : Node_Id) return Uint;
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint.
+
+   function Get_Label_BB (Env : Environ; E : Entity_Id) return Basic_Block_T
+     with Pre => Ekind (E) = E_Label,
+          Post => Get_Label_BB'Result /= No_BB_T;
+   --  Lazily get the basic block associated with label E, creating it
+   --  if we don't have it already.
 
    procedure Decode_Range (Rng : Node_Id; Low, High : out Uint);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in
@@ -905,10 +911,14 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Implicit_Label_Declaration =>
-            Set_Basic_Block
-              (Env, Defining_Identifier (Node),
-               Create_Basic_Block
-                 (Env, Get_Name (Defining_Identifier (Node))));
+            --  Don't do anything here in case this label isn't actually
+            --  used as a label.  In that case, the basic block we create
+            --  here will be empty, which LLVM doesn't allow.  This can't
+            --  occur for user-defined labels, but can occur with some
+            --  labels placed by the front end.  Instead, lazily create
+            --  the basic block where it's placed or when its the target
+            --  of a goto.
+            null;
 
          when N_Assignment_Statement =>
             Emit_Assignment (Env,
@@ -927,7 +937,7 @@ package body GNATLLVM.Compile is
          when N_Label =>
             declare
                BB : constant Basic_Block_T :=
-                 Get_Basic_Block (Env, Entity (Identifier (Node)));
+                 Get_Label_BB (Env, Entity (Identifier (Node)));
             begin
                Discard (Build_Br (Env.Bld, BB));
                Position_Builder_At_End (Env.Bld, BB);
@@ -935,7 +945,7 @@ package body GNATLLVM.Compile is
 
          when N_Goto_Statement =>
             Discard (Build_Br (Env.Bld,
-                               Get_Basic_Block (Env, Entity (Name (Node)))));
+                               Get_Label_BB (Env, Entity (Name (Node)))));
             Position_Builder_At_End
               (Env.Bld, Create_Basic_Block (Env, "after-goto"));
 
@@ -4005,6 +4015,21 @@ package body GNATLLVM.Compile is
             Name   => "shift-rotate-result");
       end if;
    end Emit_Shift;
+
+   ------------------
+   -- Get_Label_BB --
+   ------------------
+
+   function Get_Label_BB (Env : Environ; E : Entity_Id) return Basic_Block_T is
+      BB : Basic_Block_T := Get_Basic_Block (Env, E);
+   begin
+      if BB = No_BB_T then
+         BB := Create_Basic_Block (Env, Get_Name (E));
+         Set_Basic_Block (Env, E, BB);
+      end if;
+
+      return BB;
+   end Get_Label_BB;
 
    -------------------------------
    -- Node_Enclosing_Subprogram --

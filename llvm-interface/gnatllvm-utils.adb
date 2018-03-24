@@ -220,9 +220,7 @@ package body GNATLLVM.Utils is
    --------------
 
    function Get_Name (E : Entity_Id) return String is
-   begin
-      return Get_Name_String (Chars (E));
-   end Get_Name;
+      (Get_Name_String (Chars (E)));
 
    ---------------------
    -- Get_Acting_Spec --

@@ -1,6 +1,5 @@
 Missing main features (identified so far):
 
-- extended return (see e.g. a-chahan.adb)
 - multi-dimension arrays
 - comparison of fat pointers (and detecting they're fat pointers)
 - variant records only partly supported

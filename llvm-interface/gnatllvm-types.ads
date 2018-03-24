@@ -36,7 +36,8 @@ package GNATLLVM.Types is
 
    function Create_Access_Type
      (Env : Environ; TE : Entity_Id) return Type_T
-     with Pre => Is_Type (TE), Post => Create_Access_Type'Result /= No_Type_T;
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => Create_Access_Type'Result /= No_Type_T;
 
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
@@ -46,22 +47,22 @@ package GNATLLVM.Types is
    function Create_Array_Thin_Pointer_Type
      (Env             : Environ;
       Array_Type_Node : Entity_Id) return Type_T
-     with Pre =>  Is_Array_Type (Array_Type_Node),
+     with Pre  => Env /= null and then  Is_Array_Type (Array_Type_Node),
           Post => (Get_Type_Kind (Create_Array_Thin_Pointer_Type'Result) =
-                  Pointer_Type_Kind);
+                   Pointer_Type_Kind);
    --  Return the type used to store thin pointers to Array_Type
 
    function Create_Array_Fat_Pointer_Type
      (Env        : Environ;
       Array_Type : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (Array_Type),
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type),
           Post => Create_Array_Fat_Pointer_Type'Result /= No_Type_T;
    --  Return the type used to store fat pointers to Array_Type
 
    function Create_Array_Bounds_Type
      (Env             : Environ;
       Array_Type_Node : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (Array_Type_Node),
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type_Node),
           Post => Create_Array_Bounds_Type'Result /= No_Type_T;
    --  Helper that returns the type used to store array bounds. This is a
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
@@ -70,42 +71,48 @@ package GNATLLVM.Types is
    function Create_Subprogram_Type_From_Spec
      (Env       : Environ;
       Subp_Spec : Node_Id) return Type_T
-     with Post => (Get_Type_Kind (Create_Subprogram_Type_From_Spec'Result) =
+     with Pre  => Env /= null and then Present (Subp_Spec),
+          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Spec'Result) =
                    Function_Type_Kind);
 
    function Create_Subprogram_Type_From_Entity
      (Env           : Environ;
       Subp_Type_Ent : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
-     with Pre => Ekind (Subp_Type_Ent) = E_Subprogram_Type,
+     with Pre  => Env /= null
+                  and then Ekind (Subp_Type_Ent) = E_Subprogram_Type,
           Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
                    Function_Type_Kind);
 
    function GNAT_To_LLVM_Type
      (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
-     with Pre => Is_Type (TE), Post => GNAT_To_LLVM_Type'Result /= No_Type_T;
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => GNAT_To_LLVM_Type'Result /= No_Type_T;
 
    function Create_Type (Env : Environ; TE : Entity_Id) return Type_T is
-      (GNAT_To_LLVM_Type (Env, TE, False))
-     with Pre => Is_Type (TE), Post => Create_Type'Result /= No_Type_T;
+      (GNAT_To_LLVM_Type (Env, TE, False));
 
    function Create_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T
-     with Pre => Is_Type (TE);
+     with Pre => Env /= null and then Is_Type (TE);
 
    procedure Create_Discrete_Type
      (Env       : Environ;
       TE        : Entity_Id;
       TL        : out Type_T;
       Low, High : out Value_T)
-     with Pre => Ekind (TE) in Discrete_Kind, Post => TL /= No_Type_T;
+     with Pre  => Env /= null and then Ekind (TE) in Discrete_Kind,
+          Post => TL /= No_Type_T;
 
    function Int_Ty (Num_Bits : Natural) return Type_T
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
    function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T
-     with Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
+     with Pre => Ret_Ty /= No_Type_T,
+          Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
    function Get_Innermost_Component_Type
-     (Env : Environ; N : Entity_Id) return Type_T;
+     (Env : Environ; N : Entity_Id) return Type_T
+     with Pre  => Env /= null and then Is_Type (N),
+          Post => Get_Innermost_Component_Type'Result /= No_Type_T;
 
    function Get_Address_Type return Type_T
      with Post => Get_Type_Kind (Get_Address_Type'Result) = Integer_Type_Kind;
@@ -116,24 +123,29 @@ package GNATLLVM.Types is
 
    function Get_Type_Size_In_Bits
      (Env : Environ;
-      T   : Type_T) return unsigned_long_long;
+      T   : Type_T) return unsigned_long_long
+     with Pre => Env /= null and then T /= No_Type_T;
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment
      (Env : Environ;
-      T   : Type_T) return Interfaces.C.unsigned;
+      T   : Type_T) return Interfaces.C.unsigned
+     with Pre => Env /= null and then T /= No_Type_T;
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Size
      (Env : Environ;
-      T   : Type_T) return Value_T;
+      T   : Type_T) return Value_T
+     with Pre => Env /= null and then T /= No_Type_T;
    --  Return the size of an LLVM type, in bytes
 
    function Emit_Type_Size
      (Env                   : Environ;
       T                     : Entity_Id;
       Array_Descr           : Value_T;
-      Containing_Record_Ptr : Value_T) return Value_T;
+      Containing_Record_Ptr : Value_T) return Value_T
+     with Pre  => Env /= null and then Is_Type (T),
+          Post => Emit_Type_Size'Result /= No_Value_T;
    --  Emit code to compute the size of type T, getting information from
    --  Containing_Record_Ptr for types that are constrained by a discriminant
    --  record (in such case, this parameter should be a pointer to the
@@ -143,11 +155,15 @@ package GNATLLVM.Types is
    function Record_Field_Offset
      (Env          : Environ;
       Record_Ptr   : Value_T;
-      Record_Field : Node_Id) return Value_T;
+      Record_Field : Node_Id) return Value_T
+     with Pre  => Env /= null and then Record_Ptr /= No_Value_T
+                  and then Present (Record_Field),
+          Post => Record_Field_Offset'Result /= No_Value_T;
    --  Compute the offset of a given record field
 
    function Record_With_Dynamic_Size
-     (Env : Environ; T : Entity_Id) return Boolean;
+     (Env : Environ; T : Entity_Id) return Boolean
+     with Pre => Env /= null and then Is_Type (T);
    --  Return True is T denotes a record type with a dynamic size
 
 end GNATLLVM.Types;

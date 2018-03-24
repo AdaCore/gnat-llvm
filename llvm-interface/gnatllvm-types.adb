@@ -39,17 +39,22 @@ package body GNATLLVM.Types is
      (Env           : Environ;
       Params        : Entity_Iterator;
       Return_Type   : Entity_Id;
-      Takes_S_Link  : Boolean) return Type_T;
+      Takes_S_Link  : Boolean) return Type_T
+     with Pre  => Env /= null,
+          Post => Create_Subprogram_Type'Result /= No_Type_T;
    --  Helper for public Create_Subprogram_Type functions: the public ones
    --  harmonize input and this one actually creates the LLVM type for
-   --  subprograms.
+   --  subprograms.  Return_Type can be Empty if this is a procedure.
 
    function Create_Subprogram_Access_Type
      (Env       : Environ;
-      Subp_Type : Type_T) return Type_T;
+      Subp_Type : Type_T) return Type_T
+     with Pre  => Env /= null and then Subp_Type /= No_Type_T,
+          Post => Create_Subprogram_Access_Type'Result /= No_Type_T;
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
-   function Dynamic_Size_Array (T : Entity_Id) return Boolean;
+   function Dynamic_Size_Array (T : Entity_Id) return Boolean
+     with Pre => Is_Type (T);
    --  Return True if T denotees an array with a dynamic size
 
    function Rec_Comp_Filter (E : Entity_Id) return Boolean is

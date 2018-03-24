@@ -141,11 +141,11 @@ package body GNATLLVM.Types is
       end if;
    end Create_Array_Bounds_Type;
 
-   ------------------------------------
-   -- Create_Array_Thin_Pointer_Type --
-   ------------------------------------
+   -----------------------------------
+   -- Create_Array_Raw_Pointer_Type --
+   -----------------------------------
 
-   function Create_Array_Thin_Pointer_Type
+   function Create_Array_Raw_Pointer_Type
      (Env             : Environ;
       Array_Type_Node : Entity_Id) return Type_T
    is
@@ -154,7 +154,7 @@ package body GNATLLVM.Types is
       Arr_Type : constant Type_T := Array_Type (Elt_Type, 0);
    begin
       return Pointer_Type (Arr_Type, 0);
-   end Create_Array_Thin_Pointer_Type;
+   end Create_Array_Raw_Pointer_Type;
 
    -----------------------------------
    -- Create_Array_Fat_Pointer_Type --
@@ -165,7 +165,7 @@ package body GNATLLVM.Types is
       Array_Type : Entity_Id) return Type_T
    is
       St_Els : Type_Array (1 .. 2) :=
-        (Create_Array_Thin_Pointer_Type (Env, Array_Type),
+        (Create_Array_Raw_Pointer_Type (Env, Array_Type),
          Create_Array_Bounds_Type (Env, Array_Type));
    begin
       return Struct_Type (St_Els'Address, St_Els'Length, False);

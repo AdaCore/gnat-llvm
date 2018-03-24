@@ -44,11 +44,11 @@ package GNATLLVM.Types is
    --  between the two. For the moment, it handles array accesses and thin
    --  (normal) accesses.
 
-   function Create_Array_Thin_Pointer_Type
+   function Create_Array_Raw_Pointer_Type
      (Env             : Environ;
       Array_Type_Node : Entity_Id) return Type_T
      with Pre  => Env /= null and then  Is_Array_Type (Array_Type_Node),
-          Post => (Get_Type_Kind (Create_Array_Thin_Pointer_Type'Result) =
+          Post => (Get_Type_Kind (Create_Array_Raw_Pointer_Type'Result) =
                    Pointer_Type_Kind);
    --  Return the type used to store thin pointers to Array_Type
 

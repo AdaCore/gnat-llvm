@@ -17,11 +17,12 @@
 
 with Interfaces.C; use Interfaces.C;
 
-with Atree;  use Atree;
-with Nlists; use Nlists;
-with Sinfo;  use Sinfo;
-with Stand;  use Stand;
-with Uintp;  use Uintp;
+with Atree;    use Atree;
+with Nlists;   use Nlists;
+with Sem_Eval; use Sem_Eval;
+with Sinfo;    use Sinfo;
+with Stand;    use Stand;
+with Uintp;    use Uintp;
 
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -96,6 +97,69 @@ package body GNATLLVM.Arrays is
    begin
       return unsigned (Bounds_Pair_Idx + (if Bound = Low then 0 else 1));
    end Get_Bound_Index;
+
+   -----------------------
+   -- Create_Array_Type --
+   -----------------------
+
+   function Create_Array_Type
+     (Env        : Environ;
+      Def_Ident  : Entity_Id) return Type_T
+   is
+      Typ        : Type_T;
+      LB, HB     : Node_Id;
+      Range_Size : Long_Long_Integer := 0;
+
+      function Iterate is new Iterate_Entities
+        (Get_First => First_Index, Get_Next  => Next_Index);
+   begin
+      Typ := Create_Type (Env, Component_Type (Def_Ident));
+
+      --  Special case for string literals: they do not include
+      --  regular index information.
+
+      if Ekind (Def_Ident) = E_String_Literal_Subtype then
+         Range_Size := UI_To_Long_Long_Integer
+           (String_Literal_Length (Def_Ident));
+         Typ := Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
+      end if;
+
+      --  Wrap each "nested type" into an array using the previous index.
+
+      for Index of reverse Iterate (Def_Ident) loop
+         declare
+            --  Sometimes, the frontend leaves an identifier that
+            --  references an integer subtype instead of a range.
+
+            Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+         begin
+            LB := Low_Bound (Idx_Range);
+            HB := High_Bound (Idx_Range);
+         end;
+
+         --  Compute the size of this range if possible, otherwise
+         --  keep 0 for "unknown".
+
+         if Is_Constrained (Def_Ident)
+           and then Compile_Time_Known_Value (LB)
+           and then Compile_Time_Known_Value (HB)
+         then
+            if Expr_Value (LB) > Expr_Value (HB) then
+               Range_Size := 0;
+            else
+               Range_Size := Long_Long_Integer
+                 (UI_To_Long_Long_Integer (Expr_Value (HB))
+                    - UI_To_Long_Long_Integer (Expr_Value (LB))
+                    + 1);
+            end if;
+         end if;
+
+         Typ :=
+           Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
+      end loop;
+
+      return Typ;
+   end Create_Array_Type;
 
    ------------------------------
    -- Create_Array_Bounds_Type --

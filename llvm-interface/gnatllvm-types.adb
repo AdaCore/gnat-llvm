@@ -290,61 +290,7 @@ package body GNATLLVM.Types is
             if Present (Packed_Array_Impl_Type (Def_Ident)) then
                Typ := Create_Type (Env, Packed_Array_Impl_Type (Def_Ident));
             else
-               declare
-                  LB, HB     : Node_Id;
-                  Range_Size : Long_Long_Integer := 0;
-
-                  function Iterate is new Iterate_Entities
-                    (Get_First => First_Index, Get_Next  => Next_Index);
-               begin
-
-                  Typ := Create_Type (Env, Component_Type (Def_Ident));
-
-                  --  Special case for string literals: they do not include
-                  --  regular index information.
-
-                  if Ekind (TE) = E_String_Literal_Subtype then
-                     Range_Size := UI_To_Long_Long_Integer
-                       (String_Literal_Length (Def_Ident));
-                     Typ :=
-                       Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
-                  end if;
-
-                  --  Wrap each "nested type" into an array using the previous
-                  --  index.
-
-                  for Index of reverse Iterate (Def_Ident) loop
-                     declare
-                        --  Sometimes, the frontend leaves an identifier that
-                        --  references an integer subtype instead of a range.
-
-                        Idx_Range : constant Node_Id := Get_Dim_Range (Index);
-                     begin
-                        LB := Low_Bound (Idx_Range);
-                        HB := High_Bound (Idx_Range);
-                     end;
-
-                     --  Compute the size of this range if possible, otherwise
-                     --  keep 0 for "unknown".
-
-                     if Is_Constrained (TE)
-                       and then Compile_Time_Known_Value (LB)
-                       and then Compile_Time_Known_Value (HB)
-                     then
-                        if Expr_Value (LB) > Expr_Value (HB) then
-                           Range_Size := 0;
-                        else
-                           Range_Size := Long_Long_Integer
-                             (UI_To_Long_Long_Integer (Expr_Value (HB))
-                                - UI_To_Long_Long_Integer (Expr_Value (LB))
-                                + 1);
-                        end if;
-                     end if;
-
-                     Typ :=
-                       Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
-                  end loop;
-               end;
+               Typ := Create_Array_Type (Env, Def_Ident);
             end if;
 
          when E_Subprogram_Type =>

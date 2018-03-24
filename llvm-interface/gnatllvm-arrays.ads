@@ -25,6 +25,14 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Arrays is
 
+   function Create_Array_Type
+     (Env       : Environ;
+      Def_Ident : Entity_Id) return Type_T
+     with Pre  => Env /= null and then  Is_Array_Type (Def_Ident),
+          Post => Create_Array_Type'Result /= No_Type_T;
+   --  Return the type used to represent Array_Type_Node.  This will be
+   --  an opaque type if LLVM can't represent it directly.
+
    function Create_Array_Raw_Pointer_Type
      (Env             : Environ;
       Array_Type_Node : Entity_Id) return Type_T

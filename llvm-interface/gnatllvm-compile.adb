@@ -344,8 +344,7 @@ package body GNATLLVM.Compile is
       --  ensure that the spec has been elaborated.
       if not Library_Level (Env) then
          Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
-         Nested_Functions_Table.Increment_Last;
-         Nested_Functions_Table.Table (Nested_Functions_Table.Last) := Node;
+         Nested_Functions_Table.Append (Node);
          return;
       end if;
 

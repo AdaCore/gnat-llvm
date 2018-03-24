@@ -24,9 +24,13 @@ ifeq ($(DEBUG),0)
   GPRARGS=-XBuild=Production
 endif
 
-GNAT_SRC=gnat_src
+GNAT_SRC=$(pwd)/gnat_src
 ADAINCLUDE=lib/rts-llvm/adainclude
 ADALIB=lib/rts-llvm/adalib
+FULL_ADAINCLUDE=lib/rts-full/adainclude
+FULL_ADALIB=lib/rts-full/adalib
+GNAT_ROOT:=$(dir $(shell which gnatls))..
+NATIVE_ADAINCLUDE:=$(strip $(shell gnatls -v | grep adainclude))
 
 uname:=$(shell uname)
 pwd:=$(shell pwd)
@@ -135,7 +139,8 @@ text_io.ads  \
 unchconv.ads \
 unchdeal.ads
 
-COMPILE=$(pwd)/bin/llvm-gcc -c -gnatpg -nostdinc -I../adainclude
+LLVM_GCC=$(pwd)/bin/llvm-gcc
+COMPILE=$(LLVM_GCC) -c -gnatpg -nostdinc -I../adainclude
 
 zfp: build
 	$(RMDIR) $(ADAINCLUDE) $(ADALIB)
@@ -160,4 +165,13 @@ zfp: build
 	  $(COMPILE) $$f || exit 1; \
 	done
 	cd $(ADALIB) && $(CHMOD) a-wx *.ali && $(AR) libgnat.a *.o && $(RM) *.o
+
+rts-full: build
+	$(RMDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
+	$(MKDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
+	make -f $(GNAT_SRC)/Makefile.adalib -C $(FULL_ADALIB) \
+	  target=$(shell gcc -dumpmachine) version=$(shell gcc -dumpversion) \
+	  ROOT=$(GNAT_ROOT) CC=$(LLVM_GCC) \
+	  CFLAGS="-O2 -nostdinc -I$(NATIVE_ADAINCLUDE)"
+	cp -p $(NATIVE_ADAINCLUDE)/*.ad? $(FULL_ADAINCLUDE)
 

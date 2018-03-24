@@ -76,11 +76,29 @@ package GNATLLVM.Environment is
    type Environ_Record;
    type Environ is access all Environ_Record;
 
+   --  For each GNAT entity, we store various information.  Not all of this
+   --  information is used for each Ekind.
    type LLVM_Info is record
-      Value       : Value_T;
-      Typ         : Type_T;
+      Value            : Value_T;
+      --  The LLVM Value corresponding to this entity, if a value
+
+      Typ              : Type_T;
+      --  The LLVM Type corresponding to this entity, if a type.  Set for
+      --  all types.  If the GNAT type doesn't correspond directly to an LLVM
+      --  type (e.g., variable size arrays and records), this is an opaque
+      --  type and we get the information from other fields of this record.
+
+      Array_Bound_Info : Nat;
+      --  For constrained arrays of type not of known size, an index into
+      --  bounds information maintained in GNATLLVM.Arrays.
+
       TBAA        : Metadata_T;
+      --  An LLVM TBAA Metadata node corresponding to the type.  Set only
+      --  for types that are sufficiently primitive.
+
       Basic_Block : Basic_Block_T;
+      --  For labels and loop ids, records the corresponding basic block
+
       Record_Inf  : Record_Info;
    end record;
 
@@ -170,8 +188,10 @@ package GNATLLVM.Environment is
      with Pre => Env /= null and then Is_Type (TE);
    function Get_Value       (Env : Environ; VE : Entity_Id) return Value_T
      with Pre => Env /= null and then Present (VE);
-   function Get_Record_Info (Env : Environ; RI : Entity_Id) return Record_Info
-     with Pre => Env /= null and then Is_Record_Type (RI);
+   function Get_Array_Info (Env : Environ; TE : Entity_Id) return Nat
+     with Pre => Env /= null and then Is_Array_Type (TE);
+   function Get_Record_Info (Env : Environ; TE : Entity_Id) return Record_Info
+     with Pre => Env /= null and then Is_Record_Type (TE);
    function Get_Basic_Block
      (Env : Environ; BE : Entity_Id) return Basic_Block_T
      with Pre => Env /= null and then Present (BE);
@@ -187,6 +207,9 @@ package GNATLLVM.Environment is
    procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T)
      with Pre  => Env /= null and then Present (VE) and then VL /= No_Value_T,
           Post => Get_Value (Env, VE) = VL;
+   procedure Set_Array_Info (Env : Environ; TE : Entity_Id; AI : Nat_Info)
+     with Pre  => Env /= null and then Is_Array_Type (TE),
+          Post => Get_Array_Info (Env, TE) = AI;
    procedure Set_Record_Info (Env : Environ; TE : Entity_Id; RI : Record_Info)
      with Pre  => Env /= null and then Is_Record_Type (TE),
           Post => Get_Record_Info (Env, TE) = RI;

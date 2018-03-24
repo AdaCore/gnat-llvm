@@ -112,14 +112,25 @@ package body GNATLLVM.Environment is
    end Get_Basic_Block;
 
    ---------------------
+   -- Get_Array_Info --
+   ---------------------
+
+   function Get_Array_Info
+     (Env : Environ; TE : Entity_Id) return Nat
+   is
+   begin
+      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Array_Bound_Info;
+   end Get_Array_Info;
+
+   ---------------------
    -- Get_Record_Info --
    ---------------------
 
    function Get_Record_Info
-     (Env : Environ; RI : Entity_Id) return Record_Info
+     (Env : Environ; TE : Entity_Id) return Record_Info
    is
    begin
-      return LLVM_Info_Table.Table (Env.LLVM_Info (RI)).Record_Inf;
+      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Record_Inf;
    end Get_Record_Info;
 
    function Get_LLVM_Info_Id (Env : Environ; N : Node_Id) return LLVM_Info_Id;
@@ -203,6 +214,18 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Basic_Block := BL;
    end Set_Basic_Block;
+
+   ---------------------
+   -- Set_Record_Info --
+   ---------------------
+
+   procedure Set_Array_Info
+     (Env : Environ; TE : Entity_Id; AI : Nat)
+   is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+   begin
+      LLVM_Info_Table.Table (Id).Array_Bound_Info := AI;
+   end Set_Array_Info;
 
    ---------------------
    -- Set_Record_Info --

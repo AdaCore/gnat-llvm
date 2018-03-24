@@ -2652,8 +2652,12 @@ package body GNATLLVM.Compile is
       Dest_FP   : constant Boolean := Is_Floating_Point_Type (D_Type);
       Src_Uns   : constant Boolean := Is_Unsigned_Type (S_Type);
       Dest_Uns  : constant Boolean := Is_Unsigned_Type (D_Type);
-      Src_Size  : constant Uint := Esize (S_Type);
-      Dest_Size : constant Uint := Esize (D_Type);
+      Src_Size  : constant Uint :=
+        (if Is_Modular_Integer_Type (S_Type) then RM_Size (S_Type)
+         else Esize (S_Type));
+      Dest_Size  : constant Uint :=
+        (if Is_Modular_Integer_Type (D_Type) then RM_Size (D_Type)
+         else Esize (D_Type));
       Is_Trunc  : constant Boolean := Dest_Size < Src_Size;
    begin
 

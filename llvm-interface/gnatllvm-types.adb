@@ -743,7 +743,8 @@ package body GNATLLVM.Types is
    is
       use Interfaces.C;
 
-      Type_Id    : constant Entity_Id := Scope (Record_Field);
+      Type_Id    : constant Entity_Id :=
+        Get_Fullest_View (Scope (Record_Field));
       R_Info     : constant Record_Info := Get_Record_Info (Env, Type_Id);
       F_Info     : constant Field_Info := R_Info.Fields.Element (Record_Field);
       Struct_Ptr : Value_T := Record_Ptr;

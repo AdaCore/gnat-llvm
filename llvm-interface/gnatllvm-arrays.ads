@@ -57,6 +57,15 @@ package GNATLLVM.Arrays is
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
+   function Get_Innermost_Component_Type
+     (Env : Environ; N : Entity_Id) return Type_T
+     with Pre  => Env /= null and then Is_Type (N),
+          Post => Get_Innermost_Component_Type'Result /= No_Type_T;
+
+   function Dynamic_Size_Array (T : Entity_Id) return Boolean
+     with Pre => Is_Type (T);
+   --  Return True if T denotees an array with a dynamic size
+
    procedure Extract_Array_Info
      (Env         : Environ;
       Array_Node  : Node_Id;

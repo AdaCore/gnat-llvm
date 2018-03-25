@@ -85,11 +85,6 @@ package GNATLLVM.Types is
      with Pre => Ret_Ty /= No_Type_T,
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
-   function Get_Innermost_Component_Type
-     (Env : Environ; N : Entity_Id) return Type_T
-     with Pre  => Env /= null and then Is_Type (N),
-          Post => Get_Innermost_Component_Type'Result /= No_Type_T;
-
    function Get_Address_Type return Type_T
      with Post => Get_Type_Kind (Get_Address_Type'Result) = Integer_Type_Kind;
    pragma Annotate (Xcov, Exempt_Off, "Defensive programming");

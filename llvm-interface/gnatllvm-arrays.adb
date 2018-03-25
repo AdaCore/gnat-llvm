@@ -572,4 +572,54 @@ package body GNATLLVM.Arrays is
       return GEP (Env.Bld, Array_Data, Idx, "array-addr");
    end Array_Address;
 
+   ----------------------------------
+   -- Get_Innermost_Component_Type --
+   ----------------------------------
+
+   function Get_Innermost_Component_Type
+     (Env : Environ; N : Entity_Id) return Type_T
+   is
+     (if Is_Array_Type (N)
+      then Get_Innermost_Component_Type (Env, Component_Type (N))
+      else Create_Type (Env, N));
+
+   ------------------------
+   -- Dynamic_Size_Array --
+   ------------------------
+
+   function Dynamic_Size_Array (T : Entity_Id) return Boolean is
+      E    : constant Entity_Id := Get_Fullest_View (T);
+      Indx : Node_Id;
+      Ityp : Entity_Id;
+
+   begin
+      if not Is_Array_Type (E) then
+         return False;
+      end if;
+
+      --  Loop to process array indexes
+
+      Indx := First_Index (E);
+      while Present (Indx) loop
+         Ityp := Etype (Indx);
+
+         --  If an index of the array is a generic formal type then there is
+         --  no point in determining a size for the array type.
+
+         if Is_Generic_Type (Ityp) then
+            return False;
+         end if;
+
+         if not Compile_Time_Known_Value (Type_Low_Bound (Ityp))
+           or else not Compile_Time_Known_Value (Type_High_Bound (Ityp))
+         then
+            return True;
+         end if;
+
+         Next_Index (Indx);
+      end loop;
+
+      return False;
+   end Dynamic_Size_Array;
+
 end GNATLLVM.Arrays;

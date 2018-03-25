@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
-with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
@@ -53,10 +52,6 @@ package body GNATLLVM.Types is
           Post => Create_Subprogram_Access_Type'Result /= No_Type_T;
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
-   function Dynamic_Size_Array (T : Entity_Id) return Boolean
-     with Pre => Is_Type (T);
-   --  Return True if T denotees an array with a dynamic size
-
    function Rec_Comp_Filter (E : Entity_Id) return Boolean is
      (Ekind (E) in E_Component | E_Discriminant);
 
@@ -72,17 +67,6 @@ package body GNATLLVM.Types is
 
    function Get_Address_Type return Type_T is
      (Int_Ty (Natural (Ttypes.System_Address_Size)));
-
-   ----------------------------------
-   -- Get_Innermost_Component_Type --
-   ----------------------------------
-
-   function Get_Innermost_Component_Type
-     (Env : Environ; N : Entity_Id) return Type_T
-   is
-     (if Is_Array_Type (N)
-      then Get_Innermost_Component_Type (Env, Component_Type (N))
-      else Create_Type (Env, N));
 
    ------------
    -- Int_Ty --
@@ -680,44 +664,5 @@ package body GNATLLVM.Types is
          return False;
       end if;
    end Record_With_Dynamic_Size;
-
-   ------------------------
-   -- Dynamic_Size_Array --
-   ------------------------
-
-   function Dynamic_Size_Array (T : Entity_Id) return Boolean is
-      E    : constant Entity_Id := Get_Fullest_View (T);
-      Indx : Node_Id;
-      Ityp : Entity_Id;
-
-   begin
-      if not Is_Array_Type (E) then
-         return False;
-      end if;
-
-      --  Loop to process array indexes
-
-      Indx := First_Index (E);
-      while Present (Indx) loop
-         Ityp := Etype (Indx);
-
-         --  If an index of the array is a generic formal type then there is
-         --  no point in determining a size for the array type.
-
-         if Is_Generic_Type (Ityp) then
-            return False;
-         end if;
-
-         if not Compile_Time_Known_Value (Type_Low_Bound (Ityp))
-           or else not Compile_Time_Known_Value (Type_High_Bound (Ityp))
-         then
-            return True;
-         end if;
-
-         Next_Index (Indx);
-      end loop;
-
-      return False;
-   end Dynamic_Size_Array;
 
 end GNATLLVM.Types;

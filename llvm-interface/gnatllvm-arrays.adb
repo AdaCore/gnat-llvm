@@ -18,7 +18,6 @@
 with Interfaces.C; use Interfaces.C;
 
 with Atree;    use Atree;
-with Nlists;   use Nlists;
 with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
@@ -621,5 +620,74 @@ package body GNATLLVM.Arrays is
 
       return False;
    end Dynamic_Size_Array;
+
+   ------------------------
+   -- Get_Indexed_LValue --
+   ------------------------
+   function Get_Indexed_LValue
+     (Env     : Environ;
+      Arr_Typ : Entity_Id;
+      Indexes : List_Id;
+      Value   : Value_T) return Value_T
+   is
+      Array_Data_Ptr : constant Value_T := Array_Data (Env, Value, Arr_Typ);
+
+      Idxs : Value_Array (1 .. List_Length (Indexes) + 1) :=
+        (1 => Const_Int (Intptr_T, 0, Sign_Extend => False), others => <>);
+      --  Operands for the GetElementPtr instruction: one for the
+      --  pointer deference, and then one per array index.
+
+      J : Nat := 2;
+      N : Node_Id;
+   begin
+      N := First (Indexes);
+      while Present (N) loop
+         --  Adjust the index according to the range lower bound
+
+         declare
+            User_Index    : constant Value_T := Emit_Expression (Env, N);
+            Dim_Low_Bound : constant Value_T :=
+              Array_Bound (Env, Value, Arr_Typ, Low, J - 1);
+         begin
+            Idxs (J) := NSW_Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
+         end;
+
+         J := J + 1;
+         N := Next (N);
+      end loop;
+
+      return GEP (Env.Bld, Array_Data_Ptr, Idxs, "array-element-access");
+   end Get_Indexed_LValue;
+
+   ----------------------
+   -- Get_Slice_LValue --
+   ----------------------
+
+   function Get_Slice_LValue
+     (Env         : Environ;
+      Arr_Typ     : Entity_Id;
+      Result_Type : Entity_Id;
+      Rng         : Node_Id;
+      Value       : Value_T) return Value_T
+     is
+      Array_Data_Ptr : constant Value_T := Array_Data (Env, Value, Arr_Typ);
+
+      --  Compute how much we need to offset the array pointer. Slices
+      --  can be built only on single-dimension arrays
+
+      Index_Shift : constant Value_T :=
+        Sub
+        (Env.Bld, Emit_Expression (Env, Low_Bound (Rng)),
+         Array_Bound (Env, Value, Arr_Typ, Low, 1), "offset");
+   begin
+      return Bit_Cast
+        (Env.Bld,
+         GEP
+           (Env.Bld,
+            Array_Data_Ptr,
+            (Const_Int (Intptr_T, 0, Sign_Extend => False), Index_Shift),
+            "array-shifted"),
+         Create_Access_Type (Env, Result_Type), "slice");
+   end Get_Slice_LValue;
 
 end GNATLLVM.Arrays;

@@ -15,8 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Einfo; use Einfo;
-with Types; use Types;
+with Einfo;  use Einfo;
+with Nlists; use Nlists;
+with Types;  use Types;
 
 with LLVM.Core; use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
@@ -74,6 +75,30 @@ package GNATLLVM.Arrays is
    --  Set Array_Type to the type of Array_Node. If it is a constrained array,
    --  set Array_Descr to No_Value_T, or emit the value corresponding to
    --  Array_Node if it is unconstrained.
+
+   function Get_Indexed_LValue
+     (Env     : Environ;
+      Arr_Typ : Entity_Id;
+      Indexes : List_Id;
+      Value   : Value_T) return Value_T
+     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
+                  and then List_Length (Indexes) = Number_Dimensions (Arr_Typ)
+                  and then Value /= No_Value_T,
+          Post => Get_Indexed_LValue'Result /= No_Value_T;
+   --  Get an LValue corresponding to indexing Value by Indexes.  Arr_Type
+   --  is the array type.
+
+   function Get_Slice_LValue
+     (Env         : Environ;
+      Arr_Typ     : Entity_Id;
+      Result_Type : Entity_Id;
+      Rng         : Node_Id;
+      Value       : Value_T) return Value_T
+     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
+                  and then Number_Dimensions (Arr_Typ) = 1
+                  and then Value /= No_Value_T,
+          Post => Get_Slice_LValue'Result /= No_Value_T;
+   --  Similar, but Rng is the Discrete_Range for the slice.
 
    function Array_Size
      (Env                        : Environ;

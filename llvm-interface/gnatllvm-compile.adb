@@ -1598,82 +1598,16 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Indexed_Component =>
-            declare
-               Array_Node  : constant Node_Id := Prefix (Node);
-               Array_Type  : constant Entity_Id :=
-                 Get_Fullest_View (Etype (Array_Node));
-
-               Array_Descr    : constant Value_T :=
-                 Emit_LValue_Internal (Env, Array_Node);
-               Array_Data_Ptr : constant Value_T :=
-                 Array_Data (Env, Array_Descr, Array_Type);
-
-               Idxs : Value_Array (1 .. List_Length (Expressions (Node)) + 1)
-                 := (1 => Const_Int
-                            (Intptr_T, 0, Sign_Extend => False),
-                     others => <>);
-               --  Operands for the GetElementPtr instruction: one for the
-               --  pointer deference, and then one per array index.
-
-               J : Nat := 2;
-               N : Node_Id;
-
-            begin
-               N := First (Expressions (Node));
-               while Present (N) loop
-                  --  Adjust the index according to the range lower bound
-
-                  declare
-                     User_Index    : constant Value_T :=
-                       Emit_Expression (Env, N);
-                     Dim_Low_Bound : constant Value_T :=
-                       Array_Bound
-                         (Env, Array_Descr, Array_Type, Low, J - 1);
-                  begin
-                     Idxs (J) :=
-                       NSW_Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
-                  end;
-
-                  J := J + 1;
-                  N := Next (N);
-               end loop;
-
-               return GEP
-                 (Env.Bld, Array_Data_Ptr, Idxs, "array-element-access");
-            end;
+            return Get_Indexed_LValue
+              (Env, Get_Fullest_View (Etype (Prefix (Node))),
+               Expressions (Node),
+               Emit_LValue_Internal (Env, Prefix (Node)));
 
          when N_Slice =>
-            declare
-               Array_Node     : constant Node_Id := Prefix (Node);
-               Array_Type     : constant Entity_Id :=
-                 Get_Fullest_View (Etype (Array_Node));
-
-               Array_Descr    : constant Value_T :=
-                 Emit_LValue_Internal (Env, Array_Node);
-               Array_Data_Ptr : constant Value_T :=
-                 Array_Data (Env, Array_Descr, Array_Type);
-
-               --  Compute how much we need to offset the array pointer. Slices
-               --  can be built only on single-dimension arrays
-
-               Index_Shift : constant Value_T :=
-                 Sub
-                   (Env.Bld,
-                    Emit_Expression (Env, Low_Bound (Discrete_Range (Node))),
-                    Array_Bound (Env, Array_Descr, Array_Type, Low, 1),
-                    "offset");
-            begin
-               return Bit_Cast
-                 (Env.Bld,
-                  GEP
-                    (Env.Bld,
-                     Array_Data_Ptr,
-                     (Const_Int (Intptr_T, 0, Sign_Extend => False),
-                      Index_Shift),
-                     "array-shifted"),
-                  Create_Access_Type (Env, Etype (Node)),
-                  "slice");
-            end;
+            return Get_Slice_LValue
+              (Env, Get_Fullest_View (Etype (Prefix (Node))), Etype (Node),
+               Discrete_Range (Node),
+               Emit_LValue_Internal (Env, Prefix (Node)));
 
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
 

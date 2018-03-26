@@ -23,7 +23,7 @@ steps:
   $ bin/anod build cmake --when-missing=install
   $ eval `bin/anod setenv cmake`
 
-- Install (and use) the latest GNAT wavefront:
+- Install (and use) a recent GNAT, e.g:
 
   $ bin/anod install gnat
   $ eval `bin/anod setenv gnat`
@@ -38,7 +38,7 @@ steps:
     $ make
 
 This will create a "ready to use" set of directories "bin" and "lib" under
-llvm-backend which you can put in your PATH:
+llvm-interface which you can put in your PATH:
 
     PATH=$PWD/llvm-interface/bin:$PATH
 
@@ -68,10 +68,10 @@ llvm-backend which you can put in your PATH:
 
 - To run the GNAT-LLVM testsuite:
 
-  $ cd testsuite
-  $ ./run.sh
+  $ make tests
 
-  The results will be found under output/new, see e.g. output/new/report
+  The results will be found under testsuite/output/new, see e.g.
+  testsuite/output/new/report
 
 - To run the ACATS testsuite:
 

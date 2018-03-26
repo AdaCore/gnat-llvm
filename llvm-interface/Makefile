@@ -64,6 +64,7 @@ setup:
 	mv nmake.ads nmake.adb treeprs.ads ../obj && \
 	mv snames.ns ../obj/snames.ads && mv snames.nb ../obj/snames.adb
 	cp -p $(GNAT_SRC)/ada_get_targ.adb obj/get_targ.adb
+	cp -p $(GNAT_SRC)/libgnat/s-rident.ads obj
 
 build: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \

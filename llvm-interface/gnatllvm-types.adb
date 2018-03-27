@@ -265,6 +265,8 @@ package body GNATLLVM.Types is
             --  Handle packed arrays.
             if Present (Packed_Array_Impl_Type (Def_Ident)) then
                Typ := Create_Type (Env, Packed_Array_Impl_Type (Def_Ident));
+               Copy_Type_Info (Env, Packed_Array_Impl_Type (Def_Ident),
+                               Def_Ident);
             else
                Typ := Create_Array_Type (Env, Def_Ident);
             end if;

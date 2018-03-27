@@ -1511,12 +1511,10 @@ package body GNATLLVM.Compile is
                      end;
                   end if;
 
+               elsif Needs_Deref (Def_Ident) then
+                  return Load (Env.Bld, Get_Value (Env, Def_Ident), "");
                else
-                  if Needs_Deref (Def_Ident) then
-                     return Load (Env.Bld, Get_Value (Env, Def_Ident), "");
-                  else
-                     return Get_Value (Env, Def_Ident);
-                  end if;
+                  return Get_Value (Env, Def_Ident);
                end if;
             end;
 

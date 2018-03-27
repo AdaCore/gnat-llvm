@@ -35,12 +35,12 @@ steps:
 
 - Finally build GNAT-LLVM:
 
-    $ make
+  $ make
 
 This will create a "ready to use" set of directories "bin" and "lib" under
 llvm-interface which you can put in your PATH:
 
-    PATH=$PWD/llvm-interface/bin:$PATH
+  PATH=$PWD/llvm-interface/bin:$PATH
 
 - To run the compiler and produce a native object file:
 

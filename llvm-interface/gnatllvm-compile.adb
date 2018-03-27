@@ -22,7 +22,6 @@ with System;
 with Exp_Unst; use Exp_Unst;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
-with Get_Targ; use Get_Targ;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
@@ -70,8 +69,12 @@ package body GNATLLVM.Compile is
           Post => Get_Static_Link'Result /= No_Value_T;
    --  Build and return the static link to pass to a call to Node
 
-   function Compute_Size (Env : Environ; Left, Right : Node_Id) return Value_T
-     with Pre  => Env /= null and then Present (Left) and then Present (Right),
+   function Compute_Size
+     (Env         : Environ;
+      Left, Right : Node_Id;
+      Right_Value : Value_T) return Value_T
+     with Pre  => Env /= null and then Present (Left) and then Present (Right)
+                  and then Right_Value /= No_Value_T,
           Post =>  Compute_Size'Result /= No_Value_T;
    --  Helper for assignments
 
@@ -2339,7 +2342,7 @@ package body GNATLLVM.Compile is
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
                Src,
-               Compute_Size (Env, LHS, E),
+               Compute_Size (Env, LHS, E, Src),
                Const_Int (Int_Ty (32), 1, False),  --  Alignment
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2379,7 +2382,7 @@ package body GNATLLVM.Compile is
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
                Bit_Cast (Env.Bld, Src, Void_Ptr_Type, ""),
-               Compute_Size (Env, LHS, E),
+               Compute_Size (Env, LHS, E, Src),
                Const_Int (Int_Ty (32), 1, False),  --  Alignment
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2663,65 +2666,29 @@ package body GNATLLVM.Compile is
    ------------------
 
    function Compute_Size
-     (Env : Environ; Left, Right : Node_Id) return Value_T
+     (Env         : Environ;
+      Left, Right : Node_Id;
+      Right_Value : Value_T) return Value_T
    is
-      Size      : Uint := Uint_0;
       Left_Typ  : constant Node_Id := Full_Etype (Left);
       Right_Typ : constant Node_Id := Full_Etype (Right);
-
-      Size_T      : constant Type_T :=
-        Int_Ty (Integer (Get_Targ.Get_Pointer_Size));
-      Array_Descr : Value_T;
    begin
-      Size := Esize (Left_Typ);
 
-      if Size = Uint_0 then
-         Size := Esize (Right_Typ);
-      end if;
+      --  If the left type is of constant size, return the size of that
+      --  one, otherwise return the size of the right one (for which we have
+      --  a value) unless that type is an unconstrained array.
 
-      if Size = Uint_0 then
-         Size := RM_Size (Left_Typ);
-      end if;
-
-      if Size = Uint_0 then
-         Size := RM_Size (Right_Typ);
-      else
-         Size := (Size + 7) / 8;
-      end if;
-
-      if Size /= Uint_0 then
-         Size := (Size + 7) / 8;
-
-      elsif Is_Array_Type (Left_Typ)
-        and then not Present (Packed_Array_Impl_Type (Left_Typ))
-        and then Esize (Component_Type (Left_Typ)) /= Uint_0
+      if not Is_Dynamic_Size (Env, Left_Typ)
+        or else (Is_Array_Type (Right_Typ)
+                   and then not Is_Constrained (Right_Typ))
       then
-         --  ??? Will not work for multidimensional arrays
-
-         Array_Descr := Emit_LValue (Env, Left);
-         if Esize (Component_Type (Left_Typ)) = Uint_1 then
-            return Z_Ext
-              (Env.Bld,
-               Get_Array_Length (Env, Left_Typ, 0, Array_Descr),
-               Size_T, "");
-         else
-            return Mul
-              (Env.Bld,
-               Z_Ext
-                 (Env.Bld,
-                  Get_Array_Length (Env, Left_Typ, 0, Array_Descr),
-                  Size_T, ""),
-               Const_Int
-                 (Size_T, Esize (Component_Type (Left_Typ)) / 8),
-               "");
-         end if;
-
+         return Get_Type_Size
+           (Env, Create_Type (Env, Left_Typ), Left_Typ, No_Value_T);
       else
-         Error_Msg_N ("unsupported assignment statement", Left);
-         return Get_Undef (Size_T);
+         return Get_Type_Size
+           (Env, Create_Type (Env, Right_Typ), Right_Typ, Right_Value);
       end if;
 
-      return Const_Int (Size_T, Size);
    end Compute_Size;
 
    --------------------------

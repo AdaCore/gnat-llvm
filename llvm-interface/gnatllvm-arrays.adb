@@ -23,7 +23,6 @@ with Sinfo;      use Sinfo;
 with Stand;      use Stand;
 with Table;
 with Uintp;      use Uintp;
-with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -162,7 +161,7 @@ package body GNATLLVM.Arrays is
       --  access that field of the enclosing record.
 
       if Bound_Info.Cnst /= No_Uint then
-         return UI_To_LLVM (Dim_Info.Bound_Type, Bound_Info.Cnst);
+         return Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
          return Emit_Expression (Env, Bound_Info.Value);
       elsif not Is_Constrained (Arr_Typ) then

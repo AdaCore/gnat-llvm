@@ -314,15 +314,21 @@ package body GNATLLVM.Arrays is
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 
-            Typ      : constant Type_T :=
-              Create_Type (Env, Full_Etype (Index));
+            Index_Type : constant Entity_Id := Full_Etype (Index);
+            Index_Base : constant Entity_Id :=
+              Implementation_Base_Type (Index_Type);
+            Typ      : constant Type_T := Create_Type (Env, Index_Type);
             LB       : constant Node_Id := Low_Bound (Idx_Range);
             HB       : constant Node_Id := High_Bound (Idx_Range);
             Dim_Info : constant Index_Bounds :=
               (Bound_Type => Typ,
-               Bound_Is_Unsigned => Is_Unsigned_Type (Full_Etype (Index)),
+               Bound_Is_Unsigned => Is_Unsigned_Type (Index_Base),
                Low => Build_One_Bound (LB, Unconstrained),
                High => Build_One_Bound (HB, Unconstrained));
+            --  We have to be careful here and flag the signedness of the
+            --  index from that of the base type since we can have index
+            --  ranges that are outside the base type if the subtype is
+            --  superflat (see C37172C).
 
          begin
 

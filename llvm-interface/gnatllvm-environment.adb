@@ -70,17 +70,22 @@ package body GNATLLVM.Environment is
       end if;
    end Get_Type;
 
+   ---------------------
+   -- Is_Dynamic_Size --
+   ---------------------
+
+   function Is_Dynamic_Size (Env : Environ; TE : Entity_Id) return Boolean is
+   begin
+      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Is_Dynamic_Size;
+   end Is_Dynamic_Size;
+
    --------------
    -- Get_TBAA --
    --------------
 
    function Get_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
    begin
-      if Env.LLVM_Info (TE) = Empty_LLVM_Info_Id then
-         return No_Metadata_T;
-      else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).TBAA;
-      end if;
+      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).TBAA;
    end Get_TBAA;
 
    ---------------
@@ -150,6 +155,7 @@ package body GNATLLVM.Environment is
       else
          LLVM_Info_Table.Append ((Value => No_Value_T, Typ => No_Type_T,
                                   TBAA => No_Metadata_T,
+                                  Is_Dynamic_Size => False,
                                   Basic_Block => No_BB_T, others => <>));
          Id := LLVM_Info_Table.Last;
          Env.LLVM_Info (N) := Id;
@@ -180,8 +186,18 @@ package body GNATLLVM.Environment is
    procedure Set_Type (Env : Environ; TE : Entity_Id; TL : Type_T) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
    begin
-      LLVM_Info_Table.Table (Id).Typ :=  TL;
+      LLVM_Info_Table.Table (Id).Typ := TL;
    end Set_Type;
+
+   ----------------------
+   -- Set_Dynamic_Size --
+   ----------------------
+
+   procedure Set_Dynamic_Size (Env : Environ; TE : Entity_Id; B : Boolean) is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+   begin
+      LLVM_Info_Table.Table (Id).Is_Dynamic_Size := B;
+   end Set_Dynamic_Size;
 
    --------------
    -- Set_TBAA --

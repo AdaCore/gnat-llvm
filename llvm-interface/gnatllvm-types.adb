@@ -22,8 +22,6 @@ with Stand;    use Stand;
 with Uintp;    use Uintp;
 with Ttypes;
 
-with LLVM.Target; use LLVM.Target;
-
 with GNATLLVM.Arrays; use GNATLLVM.Arrays;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 with GNATLLVM.Compile;
@@ -73,7 +71,7 @@ package body GNATLLVM.Types is
    ------------
 
    function Int_Ty (Num_Bits : Natural) return Type_T is
-      (Int_Type (Interfaces.C.unsigned (Num_Bits)));
+      (Int_Type (unsigned (Num_Bits)));
 
    -----------
    -- Fn_Ty --
@@ -92,9 +90,7 @@ package body GNATLLVM.Types is
    is
       T : constant Type_T := Create_Type (Env, TE);
    begin
-      if Get_Type_Kind (T) = Array_Type_Kind
-        and then not Is_Constrained (TE)
-      then
+      if Is_Array_Type (TE) and then not Is_Constrained (TE) then
          return Create_Array_Fat_Pointer_Type (Env, TE);
       else
          return Pointer_Type (T, 0);
@@ -153,21 +149,18 @@ package body GNATLLVM.Types is
             elsif Is_Modular_Integer_Type (Def_Ident) then
                Typ := Int_Type_In_Context
                  (Env.Ctx,
-                  Interfaces.C.unsigned
-                    (UI_To_Int (RM_Size (Def_Ident))));
+                  unsigned (UI_To_Int (RM_Size (Def_Ident))));
 
             else
                Typ := Int_Type_In_Context
                  (Env.Ctx,
-                  Interfaces.C.unsigned
-                    (UI_To_Int (Esize (Def_Ident))));
+                  unsigned (UI_To_Int (Esize (Def_Ident))));
             end if;
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
             declare
-               Float_Type : constant Node_Id := Etype (Etype (Def_Ident));
-               --  Use Full_Type as in gnat2il-gnat_utils.adb???
-
+               Float_Type : constant Node_Id
+                 := Full_Etype (Full_Etype (Def_Ident));
                Size       : constant Uint := Esize (Float_Type);
 
             begin
@@ -221,7 +214,6 @@ package body GNATLLVM.Types is
                Info          : Record_Info;
                Fields        : Field_Info_Vectors.Vector;
                Current_Field : Field_Info;
-               use Interfaces.C;
 
                function New_Struct_Info return Struct_Info is
                  ((LLVM_Type => Struct_Type, Preceding_Fields => Fields));
@@ -238,7 +230,7 @@ package body GNATLLVM.Types is
                Set_Type (Env, Def_Ident, Struct_Type);
 
                for Comp of Comps loop
-                  LLVM_Comps (I) := Create_Type (Env, Etype (Comp));
+                  LLVM_Comps (I) := Create_Type (Env, Full_Etype (Comp));
                   Current_Field :=
                     (Struct_Num, Nat (I - 1), Comp, LLVM_Comps (I));
                   Fields.Append (Current_Field);
@@ -249,7 +241,7 @@ package body GNATLLVM.Types is
                   --  If we are on a component with a dynamic size,
                   --  we create a new struct type for the following components.
 
-                  if Dynamic_Size_Array (Etype (Comp)) then
+                  if Dynamic_Size_Array (Full_Etype (Comp)) then
                      Info.Dynamic_Size := True;
                      Struct_Set_Body
                        (Struct_Type, LLVM_Comps'Address,
@@ -288,7 +280,7 @@ package body GNATLLVM.Types is
 
          when Fixed_Point_Kind =>
             Typ := Int_Type_In_Context
-              (Env.Ctx, Interfaces.C.unsigned (UI_To_Int (Esize (Def_Ident))));
+              (Env.Ctx, unsigned (UI_To_Int (Esize (Def_Ident))));
 
          when E_Incomplete_Type =>
             --  This is a taft amendment type, return a dummy type
@@ -300,7 +292,7 @@ package body GNATLLVM.Types is
             | E_Limited_Private_Type
             | E_Limited_Private_Subtype
          =>
-            Typ := Create_Type (Env, Etype (Def_Ident));
+            Typ := Create_Type (Env, Full_Etype (Def_Ident));
 
          when others =>
             Error_Msg_N
@@ -423,9 +415,9 @@ package body GNATLLVM.Types is
       return Create_Subprogram_Type
         (Env,
          Get_Params (Subp_Type_Ent),
-         (if Etype (Subp_Type_Ent) = Standard_Void_Type
+         (if Full_Etype (Subp_Type_Ent) = Standard_Void_Type
           then Empty
-          else Etype (Subp_Type_Ent)),
+          else Full_Etype (Subp_Type_Ent)),
          Takes_S_Link);
    end Create_Subprogram_Type_From_Entity;
 
@@ -439,7 +431,7 @@ package body GNATLLVM.Types is
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
    is
-      Args_Count : constant Int :=
+      Args_Count : constant Nat :=
         Params'Length + (if Takes_S_Link then 1 else 0);
       Arg_Types  : Type_Array (1 .. Args_Count);
 
@@ -449,7 +441,7 @@ package body GNATLLVM.Types is
       for J in Params'Range loop
          declare
             Param_Ent  : constant Entity_Id := Params (J);
-            Param_Type : constant Node_Id := Etype (Param_Ent);
+            Param_Type : constant Node_Id := Full_Etype (Param_Ent);
          begin
             --  If this is an out parameter, or a parameter whose type is
             --  unconstrained, take a pointer to the actual parameter.
@@ -496,78 +488,50 @@ package body GNATLLVM.Types is
          Packed => False);
    end Create_Subprogram_Access_Type;
 
-   ------------------------
-   -- Get_Type_Alignment --
-   ------------------------
+   ---------------------------
+   --  Convert_To_Size_Type --
+   ---------------------------
 
-   function Get_Type_Alignment
-     (Env : Environ;
-      T   : Type_T) return Interfaces.C.unsigned
-   is
+   function Convert_To_Size_Type (Env : Environ; V : Value_T) return Value_T is
+      Val_Width  : constant unsigned_long_long :=
+        Get_LLVM_Type_Size_In_Bits (Env, Type_Of (V));
+      Size_Width : constant unsigned_long_long :=
+        unsigned_long_long (Get_Targ.Get_Pointer_Size);
    begin
-      return ABI_Alignment_Of_Type (Env.Module_Data_Layout, T);
-   end Get_Type_Alignment;
+      if Val_Width > Size_Width then
+         return Trunc (Env.Bld, V, Env.Size_Type, "");
+      elsif Val_Width < Size_Width then
+         return S_Ext (Env.Bld, V, Env.Size_Type, "");
+      else
+         return V;
+      end if;
+   end Convert_To_Size_Type;
 
    -------------------
    -- Get_Type_Size --
    -------------------
 
    function Get_Type_Size
-     (Env : Environ;
-      T   : Type_T) return Value_T
+     (Env      : Environ;
+      T        : Type_T;
+      TE       : Entity_Id;
+      V        : Value_T;
+      For_Type : Boolean := False) return Value_T
    is
-   begin
-      return Const_Int
-        (Int_Ptr_Type,
-         Size_Of_Type_In_Bits (Env.Module_Data_Layout, T) / 8,
-         Sign_Extend => False);
-   end Get_Type_Size;
-
-   function Get_Type_Size_In_Bits
-     (Env : Environ;
-      T   : Type_T) return unsigned_long_long
-   is
-   begin
-      return Size_Of_Type_In_Bits (Env.Module_Data_Layout, T);
-   end Get_Type_Size_In_Bits;
-
-   --------------------
-   -- Emit_Type_Size --
-   --------------------
-
-   function Emit_Type_Size
-     (Env                   : Environ;
-      T                     : Entity_Id;
-      Array_Descr           : Value_T;
-      Containing_Record_Ptr : Value_T) return Value_T
-   is
-      LLVM_Type      : constant Type_T := Create_Type (Env, T);
       Size           : Value_T;
       Dynamic_Fields : Boolean := False;
 
    begin
-      if Is_Scalar_Type (T)
-        or else Is_Access_Type (T)
-      then
-         return Get_Type_Size (Env, LLVM_Type);
-      elsif Is_Array_Type (T) then
-         if Esize (Component_Type (T)) = Uint_1 then
-            return Array_Size (Env, Array_Descr, T, Containing_Record_Ptr);
-         else
-            return Mul
-              (Env.Bld,
-               Emit_Type_Size
-                 (Env, Component_Type (T), No_Value_T, Containing_Record_Ptr),
-               Array_Size
-                 (Env, Array_Descr, T, Containing_Record_Ptr),
-               "array-size");
-         end if;
-      elsif Is_Record_Type (T) then
-         Size := Get_Type_Size (Env, LLVM_Type);
 
-         if Record_With_Dynamic_Size (Env, T) then
-            for Comp of Iterate_Components (T) loop
-               if Dynamic_Size_Array (Etype (Comp)) then
+      --  ?? Record types still use the old mechanism, so keep the old code
+      --  and check first.
+
+      if Is_Record_Type (TE) then
+         Size := Get_LLVM_Type_Size (Env, T);
+
+         if Record_With_Dynamic_Size (Env, TE) then
+            for Comp of Iterate_Components (TE) loop
+               if Dynamic_Size_Array (Full_Etype (Comp)) then
                   Dynamic_Fields := True;
                end if;
 
@@ -575,25 +539,41 @@ package body GNATLLVM.Types is
                --  component.
 
                if Dynamic_Fields then
-                  Size := Add
+                  Size := NSW_Add
                     (Env.Bld,
                      Size,
-                     Emit_Type_Size
+                     Get_Type_Size
                        (Env,
-                        Etype (Comp),
-                        No_Value_T,
-                        No_Value_T),
+                        Create_Type (Env, Full_Etype (Comp)),
+                        Full_Etype (Comp), No_Value_T, For_Type),
                      "record-size");
                end if;
             end loop;
          end if;
 
-         return Size;
+      elsif Is_Array_Type (TE) and then Is_Dynamic_Size (Env, TE) then
+         declare
+            Comp_Type : constant Entity_Id :=
+              Get_Fullest_View (Component_Type (TE));
+            Comp_Size : constant Value_T :=
+              Get_Type_Size (Env, Create_Type (Env, Comp_Type),
+                             Comp_Type, No_Value_T, For_Type);
+            Our_Size  : constant Value_T :=
+              Get_Array_Size (Env, V, TE, For_Type);
+         begin
+            Size := NSW_Mul
+              (Env.Bld, Convert_To_Size_Type (Env, Comp_Size),
+               Convert_To_Size_Type (Env, Our_Size),
+               "size");
+         end;
+
       else
-         Error_Msg_N ("unimplemented case for emit type size", T);
-         raise Program_Error;
+         Size := Get_LLVM_Type_Size (Env, T);
       end if;
-   end Emit_Type_Size;
+
+      return Size;
+
+   end Get_Type_Size;
 
    -------------------------
    -- Record_Field_Offset --
@@ -604,7 +584,6 @@ package body GNATLLVM.Types is
       Record_Ptr   : Value_T;
       Record_Field : Node_Id) return Value_T
    is
-      use Interfaces.C;
 
       Type_Id    : constant Entity_Id :=
         Get_Fullest_View (Scope (Record_Field));
@@ -627,11 +606,10 @@ package body GNATLLVM.Types is
                Int_Struct_Address := Add
                  (Env.Bld,
                   Int_Struct_Address,
-                  Emit_Type_Size
+                  Get_Type_Size
                     (Env,
-                     Etype (Preceding_Field.Entity),
-                     No_Value_T,
-                     Record_Ptr),
+                     Create_Type (Env, Full_Etype (Preceding_Field.Entity)),
+                     Full_Etype (Preceding_Field.Entity), No_Value_T),
                   "offset-calc");
             end loop;
 

@@ -20,6 +20,7 @@ with Ada.Containers.Vectors;
 
 with Atree; use Atree;
 with Einfo; use Einfo;
+with Sinfo; use Sinfo;
 with Table; use Table;
 with Types; use Types;
 with Namet; use Namet;
@@ -84,17 +85,24 @@ package GNATLLVM.Environment is
 
       Typ              : Type_T;
       --  The LLVM Type corresponding to this entity, if a type.  Set for
-      --  all types.  If the GNAT type doesn't correspond directly to an LLVM
-      --  type (e.g., variable size arrays and records), this is an opaque
-      --  type and we get the information from other fields of this record.
+      --  all types.  If the GNAT type doesn't correspond directly to an
+      --  LLVM type (e.g., some variable size arrays and records), this is
+      --  an opaque type and we get the information from other fields of
+      --  this record.
+
+      Is_Dynamic_Size  : Boolean;
+      --  True if the size of this type is dynamic.  This is always the case
+      --  if the saved type is an opaque type, but if we have an array type
+      --  with zero size, we need to use this flag to disambiguate the cases
+      --  of a zero-length array and a variable-sized array.
 
       Array_Bound_Info : Nat;
-      --  For constrained arrays of type not of known size, an index into
-      --  bounds information maintained in GNATLLVM.Arrays.
+      --  For arrays, an index into bounds information maintained by
+      --  GNATLLVM.Arrays.
 
       TBAA        : Metadata_T;
       --  An LLVM TBAA Metadata node corresponding to the type.  Set only
-      --  for types that are sufficiently primitive.
+      --  For types that are sufficiently primitive.
 
       Basic_Block : Basic_Block_T;
       --  For labels and loop ids, records the corresponding basic block
@@ -151,6 +159,9 @@ package GNATLLVM.Environment is
       Activation_Rec_Param      : Value_T;
       --  Parameter to this subprogram that represents an activtion record.
 
+      Size_Type                 : Type_T;
+      --  Type to use for sizes.
+
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
       Memory_Copy_Fn            : Value_T;
@@ -182,23 +193,30 @@ package GNATLLVM.Environment is
    function Has_Value       (Env : Environ; VE : Entity_Id) return Boolean
      with Pre => Env /= null and then Present (VE);
 
-   function Has_BB          (Env : Environ; BE : Entity_Id) return Boolean
+   function Has_BB           (Env : Environ; BE : Entity_Id) return Boolean
      with Pre => Env /= null and then Present (BE);
 
-   function Get_Type        (Env : Environ; TE : Entity_Id) return Type_T
+   function Get_Type         (Env : Environ; TE : Entity_Id) return Type_T
      with Pre => Env /= null and then Is_Type (TE);
 
-   function Get_TBAA        (Env : Environ; TE : Entity_Id) return Metadata_T
-     with Pre => Env /= null and then Is_Type (TE);
+   function Is_Dynamic_Size  (Env : Environ; TE : Entity_Id) return Boolean
+     with Pre => Env /= null and then Is_Type (TE)
+                 and then Has_Type (Env, TE);
+
+   function Get_TBAA         (Env : Environ; TE : Entity_Id) return Metadata_T
+     with Pre => Env /= null and then Is_Type (TE)
+                 and then Has_Type (Env, TE);
 
    function Get_Value       (Env : Environ; VE : Entity_Id) return Value_T
      with Pre => Env /= null and then Present (VE);
 
-   function Get_Array_Info (Env : Environ; TE : Entity_Id) return Nat
-     with Pre => Env /= null and then Is_Array_Type (TE);
+   function Get_Array_Info  (Env : Environ; TE : Entity_Id) return Nat
+     with Pre => Env /= null and then Is_Array_Type (TE)
+                 and then Has_Type (Env, TE);
 
    function Get_Record_Info (Env : Environ; TE : Entity_Id) return Record_Info
-     with Pre => Env /= null and then Is_Record_Type (TE);
+     with Pre => Env /= null and then Is_Record_Type (TE)
+                 and then Has_Type (Env, TE);
 
    function Get_Basic_Block
      (Env : Environ; BE : Entity_Id) return Basic_Block_T
@@ -208,9 +226,14 @@ package GNATLLVM.Environment is
      with Pre  => Env /= null and then Is_Type (TE) and then TL /= No_Type_T,
           Post => Get_Type (Env, TE) = TL;
 
+   procedure Set_Dynamic_Size (Env : Environ; TE : Entity_Id; B : Boolean)
+     with Pre  => Env /= null and then Is_Type (TE)
+                  and then Has_Type (Env, TE),
+          Post => Is_Dynamic_Size (Env, TE) = B;
+
    procedure Set_TBAA (Env : Environ; TE : Entity_Id; TBAA : Metadata_T)
      with Pre  => Env /= null and then Is_Type (TE)
-                  and then TBAA /= No_Metadata_T,
+                  and then TBAA /= No_Metadata_T and then Has_Type (Env, TE),
           Post => Get_TBAA (Env, TE) = TBAA;
 
    procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T)
@@ -218,11 +241,13 @@ package GNATLLVM.Environment is
           Post => Get_Value (Env, VE) = VL;
 
    procedure Set_Array_Info (Env : Environ; TE : Entity_Id; AI : Nat)
-     with Pre  => Env /= null and then Is_Array_Type (TE),
+     with Pre  => Env /= null and then Is_Array_Type (TE)
+                  and then Has_Type (Env, TE),
           Post => Get_Array_Info (Env, TE) = AI;
 
    procedure Set_Record_Info (Env : Environ; TE : Entity_Id; RI : Record_Info)
-     with Pre  => Env /= null and then Is_Record_Type (TE),
+     with Pre  => Env /= null and then Is_Record_Type (TE)
+                  and then Has_Type (Env, TE),
           Post => Get_Record_Info (Env, TE) = RI;
 
    procedure Set_Basic_Block
@@ -270,5 +295,9 @@ package GNATLLVM.Environment is
       and then Present (Underlying_Full_View (E))
     then Underlying_Full_View (E)
     else E);
+
+   function Full_Etype (N : Node_Id) return Entity_Id is
+      (if Ekind (Etype (N)) = E_Void then Etype (N)
+       else Get_Fullest_View (Etype (N)));
 
 end GNATLLVM.Environment;

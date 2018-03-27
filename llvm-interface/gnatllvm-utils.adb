@@ -18,7 +18,6 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
-with Atree;    use Atree;
 with Einfo;    use Einfo;
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
@@ -69,61 +68,47 @@ package body GNATLLVM.Utils is
    end UI_To_Long_Long_Integer;
 
    --------------------
-   -- Get_Type_Range --
+   -- Get_Uint_Value --
    --------------------
 
-   function Get_Dim_Range (N : Node_Id) return Node_Id is
+   function Get_Uint_Value (Node : Node_Id) return Uint is
+      E : Entity_Id;
    begin
-      case Nkind (N) is
-         when N_Range =>
-            return N;
+      case Nkind (Node) is
+         when N_Character_Literal =>
+            return Char_Literal_Value (Node);
+
+         when N_Integer_Literal =>
+            return Intval (Node);
+
+         when N_Real_Literal =>
+
+            --  We can only do something here if this is a fixed-point type.
+
+            if Is_Fixed_Point_Type (Full_Etype (Node)) then
+               return Corresponding_Integer_Value (Node);
+            else
+               return No_Uint;
+            end if;
+
          when N_Identifier =>
-            return Scalar_Range (Entity (N));
 
-         when N_Subtype_Indication =>
-            declare
-               Constr : constant Node_Id := Constraint (N);
-            begin
-               if Present (Constr) then
-                  case Nkind (Constr) is
-                     when N_Range_Constraint =>
-                        return Range_Expression (Constr);
+            --  If an N_Identifier is static, its N_Defining_Identifier is
+            --  either an E_Constant or an E_Enumeration_Literal.
 
-                     when N_Index_Or_Discriminant_Constraint =>
-                        --  TODO
-                        raise Program_Error
-                          with "Composite constraints are unhandled,"
-                          & " right now";
-
-                     when N_Digits_Constraint | N_Delta_Constraint =>
-                        raise Program_Error
-                          with "Unhandled subtype indication constraint"
-                          & " (no fixed point arithmetics): "
-                          & Node_Kind'Image (Nkind (N));
-
-                     when others =>
-                        pragma Annotate
-                          (Xcov, Exempt_On, "Defensive programming");
-                        raise Program_Error
-                          with "Invalid subtype indication constraint: "
-                          & Node_Kind'Image (Nkind (N));
-                        pragma Annotate
-                          (Xcov, Exempt_Off, "Defensive programming");
-                  end case;
-
-               else
-                  return Scalar_Range (Entity (Subtype_Mark (N)));
-               end if;
-            end;
+            E := Entity (Node);
+            if Ekind (E) = E_Constant then
+               return Get_Uint_Value (Expression (Parent (E)));
+            elsif Ekind (E) = E_Enumeration_Literal then
+               return Enumeration_Rep (E);
+            else
+               return No_Uint;
+            end if;
 
          when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Invalid node kind in context: "
-              & Node_Kind'Image (Nkind (N));
-            pragma Annotate (Xcov, Exempt_Off);
+            return No_Uint;
       end case;
-   end Get_Dim_Range;
+   end Get_Uint_Value;
 
    ---------------
    -- Is_LValue --
@@ -157,7 +142,7 @@ package body GNATLLVM.Utils is
    ---------------------
 
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
-      Typ : constant Entity_Id := Get_Full_View (Etype (Param));
+      Typ : constant Entity_Id := Full_Etype (Param);
 
    begin
       --  ??? Return True for all array types for now

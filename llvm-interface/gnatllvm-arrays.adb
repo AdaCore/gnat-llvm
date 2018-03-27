@@ -17,11 +17,13 @@
 
 with Interfaces.C; use Interfaces.C;
 
-with Atree;    use Atree;
-with Sem_Eval; use Sem_Eval;
-with Sinfo;    use Sinfo;
-with Stand;    use Stand;
-with Uintp;    use Uintp;
+with Atree;      use Atree;
+with Sem_Eval;   use Sem_Eval;
+with Sinfo;      use Sinfo;
+with Stand;      use Stand;
+with Table;
+with Uintp;      use Uintp;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -33,48 +35,206 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.Arrays is
 
-   function Bounds_To_Length
-     (Env                   : Environ;
-      Low_Bound, High_Bound : Value_T;
-      Bounds_Type           : Entity_Id) return Value_T;
-   --  Return the length of the Low_Bound .. High_Bound range, handling the
-   --  empty case. Bounds_Type indicates how to interpret the provided bounds
-   --  with respect to signedness.
+   --  A bound of a constrained array can either be a compile-time
+   --  constant, which we record as a Uint, the discriminant of an array,
+   --  which we record as the Entity_Id of the E_Discriminant, or some
+   --  dynamic value that was known at the declaration of the type.  We
+   --  use the structures and table below to indicate which.  The value
+   --  return by Get_Array_Info is the index into this table for the
+   --  first index of a constrained array whose size isn't known at
+   --  compile-time.  The remaining bounds are subsequent entries in the table.
+   --
+   --  For unconstrained arrays, we have an entry in the table for each
+   --  dimension to record the type information abut each bound.
 
-   function Get_Bound_Index (Dim : Nat; Bound : Bound_T) return unsigned;
-   --  An array fat pointer embbeds a structure holding the bounds of the
-   --  array. This returns the index for some bound given its dimension
-   --  inside the array and on whether this is the lower or the upper bound.
+   type One_Bound is record
+      Cnst    : Uint;
+      Value   : Node_Id;
+      Discr   : Entity_Id;
+      Dynamic : Boolean;
+   end record;
 
-   ----------------------
-   -- Bounds_To_Length --
-   ----------------------
+   type Index_Bounds is record
+      Bound_Type        : Type_T;
+      Bound_Is_Unsigned : Boolean;
+      Low, High         : One_Bound;
+   end record;
 
-   function Bounds_To_Length
-     (Env                   : Environ;
-      Low_Bound, High_Bound : Value_T;
-      Bounds_Type           : Entity_Id) return Value_T
+   package Array_Info is new Table.Table
+     (Table_Component_Type => Index_Bounds,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 1024,
+      Table_Increment      => 100,
+      Table_Name           => "Array_Info_Table");
+   --  Table of representation of arrays indexes.
+
+   function Get_And_Create_Array_Info
+     (Env : Environ; TE : Entity_Id) return Nat
+     with Pre  => Env /= null and then Is_Array_Type (TE),
+          Post => Get_And_Create_Array_Info'Result > 0
+                  and then Has_Type (Env, TE);
+   --  Utility function to verify that type is created and then get
+   --  array info.
+
+   function Build_One_Bound
+     (N : Node_Id; Unconstrained : Boolean) return One_Bound
+     with Pre => Present (N);
+   --  Helper function to build a One_Bound object from N
+
+   function Create_String_Literal_Type
+     (Env : Environ; TE : Entity_Id; Comp_Typ : Type_T) return Type_T
+     with Pre  => Env /= null and then Ekind (TE) = E_String_Literal_Subtype
+                  and then Comp_Typ /= No_Type_T,
+          Post => (Get_Type_Kind (Create_String_Literal_Type'Result) =
+                     Array_Type_Kind);
+   --  Helper function to create type for string literals
+
+   function Get_Dim_Range (N : Node_Id) return Node_Id
+     with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
+   --  Return the N_Range for an array type
+
+   -------------------------------
+   -- Get_And_Create_Array_Info --
+   -------------------------------
+
+   function Get_And_Create_Array_Info
+     (Env : Environ; TE : Entity_Id) return Nat
    is
-      Result_Type : constant Type_T := Type_Of (Low_Bound);
+   begin
+      Discard (Create_Type (Env, TE));
+      return Get_Array_Info (Env, TE);
+   end Get_And_Create_Array_Info;
 
-      Is_Bound_Unsigned  : constant Boolean :=
-        Is_Unsigned_Type (Bounds_Type);
-      Is_Empty         : constant Value_T :=
-        I_Cmp
-          (Env.Bld,
-           (if Is_Bound_Unsigned then Int_UGT else Int_SGT),
-           Low_Bound, High_Bound, "is-array-empty");
-      Const_1 : constant Value_T :=
+   ---------------------
+   -- Build_One_Bound --
+   ---------------------
+
+   function Build_One_Bound
+     (N : Node_Id; Unconstrained : Boolean) return One_Bound
+   is
+   begin
+      if Unconstrained then
+         return (Cnst => No_Uint, Value => Empty, Discr => Empty,
+                 Dynamic => True);
+      elsif Compile_Time_Known_Value (N) then
+         return (Cnst => Expr_Value (N), Value => Empty, Discr => Empty,
+                 Dynamic => not UI_Is_In_Int_Range (Expr_Value (N)));
+      elsif Is_Entity_Name (N)
+        and then Ekind (Entity (N)) = E_Discriminant
+      then
+         return (Cnst => No_Uint, Value => Empty,
+                 Discr => Original_Record_Component (Entity (N)),
+                 Dynamic => True);
+      else
+         return (Cnst => No_Uint, Discr => Empty,
+                 Value => N, Dynamic => True);
+      end if;
+
+   end Build_One_Bound;
+
+   ---------------------
+   -- Get_Array_Bound --
+   ---------------------
+
+   function Get_Array_Bound
+     (Env      : Environ;
+      Arr_Typ  : Entity_Id;
+      Dim      : Nat;
+      Is_Low   : Boolean;
+      Value    : Value_T;
+      For_Type : Boolean := False) return Value_T
+   is
+      Info_Idx   : constant Nat := Get_And_Create_Array_Info (Env, Arr_Typ);
+      Dim_Info   : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
+      Bound_Info : constant One_Bound :=
+        (if Is_Low then Dim_Info.Low else Dim_Info.High);
+      Bound_Idx    : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
+      --  In the array fat pointer bounds structure, bounds are stored as a
+      --  sequence of (lower bound, upper bound) pairs.
+
+   begin
+
+      --  There are four cases: a constant size, in which case we return
+      --  that size, a saved value, in which case we return that value,
+      --  an unconstrained array, in which case we have a fat pointer and
+      --  extract the bounds from it, or a discriminant, in which case we
+      --  access that field of the enclosing record.
+
+      if Bound_Info.Cnst /= No_Uint then
+         return UI_To_LLVM (Dim_Info.Bound_Type, Bound_Info.Cnst);
+      elsif Present (Bound_Info.Value) then
+         return Emit_Expression (Env, Bound_Info.Value);
+      elsif not Is_Constrained (Arr_Typ) then
+         return Extract_Value
+           (Env.Bld,
+            Extract_Value (Env.Bld, Value, 1, "bounds"),
+            unsigned (Bound_Idx),
+            (if Is_Low then "low-bound" else "high-bound"));
+      end if;
+
+      --  We now should have the discriminated case.  Make sure we do.
+
+      pragma Assert (Ekind (Bound_Info.Discr) = E_Discriminant);
+
+      --  If we are getting the size of a type, as opposed to a value,
+      --  we have to use the first/last value of the range of the type
+      --  of the discriminant.
+
+      if For_Type then
+         declare
+            Disc_Type : constant Entity_Id := Full_Etype (Bound_Info.Discr);
+         begin
+            return Emit_Expression
+              (Env,
+               (if Is_Low then Type_Low_Bound (Disc_Type)
+               else Type_High_Bound (Disc_Type)));
+         end;
+      else
+         return
+           Load_With_Type
+           (Env, Full_Etype (Bound_Info.Discr),
+            Record_Field_Offset
+              (Env,
+               Get_Matching_Value (Full_Etype (Scope (Bound_Info.Discr))),
+               Bound_Info.Discr));
+      end if;
+
+   end Get_Array_Bound;
+
+   ----------------------
+   -- Get_Array_Length --
+   ----------------------
+
+   function Get_Array_Length
+     (Env      : Environ;
+      Arr_Typ  : Entity_Id;
+      Dim      : Nat;
+      Value    : Value_T;
+      For_Type : Boolean := False) return Value_T
+   is
+      Info_Idx    : constant Nat := Get_And_Create_Array_Info (Env, Arr_Typ);
+      Dim_Info    : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
+      Result_Type : constant Type_T  := Dim_Info.Bound_Type;
+      Is_Unsigned : constant Boolean := Dim_Info.Bound_Is_Unsigned;
+      Low_Bound   : constant Value_T :=
+        Get_Array_Bound (Env, Arr_Typ, Dim, True, Value, For_Type);
+      High_Bound  : constant Value_T :=
+        Get_Array_Bound (Env, Arr_Typ, Dim, False, Value, For_Type);
+      Const_1     : constant Value_T :=
         Const_Int (Result_Type, 1, Sign_Extend => False);
-
+      Is_Empty    : constant Value_T :=
+        I_Cmp
+        (Env.Bld,
+         (if Is_Unsigned then Int_UGT else Int_SGT),
+         Low_Bound, High_Bound, "is-empty");
    begin
       return Build_Select
         (Env.Bld,
          C_If   => Is_Empty,
          C_Then => Const_Null (Result_Type),
          C_Else =>
-           (if Low_Bound = Const_1
-            then High_Bound
+           (if Low_Bound = Const_1 then High_Bound
             else
               Add
                 (Env.Bld,
@@ -82,80 +242,139 @@ package body GNATLLVM.Arrays is
                  Const_1,
                  "")),
          Name   => "");
-   end Bounds_To_Length;
+   end Get_Array_Length;
 
-   ---------------------
-   -- Get_Bound_Index --
-   ---------------------
+   --------------------------------
+   -- Create_String_Literal_Type --
+   --------------------------------
 
-   function Get_Bound_Index (Dim : Nat; Bound : Bound_T) return unsigned is
-      Bounds_Pair_Idx : constant Nat := (Dim - 1) * 2;
-      --  In the array fat pointer bounds structure, bounds are stored as a
-      --  sequence of (lower bound, upper bound) pairs: get the offset of
-      --  such a pair.
+   function Create_String_Literal_Type
+     (Env : Environ; TE : Entity_Id; Comp_Typ   : Type_T) return Type_T
+   is
+      Ind_Typ    : constant Type_T := Create_Type (Env, Standard_Positive);
+      First      : constant Uint :=
+        Get_Uint_Value (String_Literal_Low_Bound (TE));
+      Length     : constant Uint := String_Literal_Length (TE);
+      Last       : constant Uint := First + Length - 1;
+      Low_Bound  : constant One_Bound := (Cnst => First, Value => Empty,
+                                         Discr => Empty, Dynamic => False);
+      High_Bound : constant One_Bound := (Cnst => Last, Value => Empty,
+                                          Discr => Empty, Dynamic => False);
+      Dim_Info   : constant Index_Bounds := (Bound_Type => Ind_Typ,
+                                             Bound_Is_Unsigned => False,
+                                             Low => Low_Bound,
+                                             High => High_Bound);
+      Result_Typ : constant Type_T :=
+        Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
    begin
-      return unsigned (Bounds_Pair_Idx + (if Bound = Low then 0 else 1));
-   end Get_Bound_Index;
+
+      --  It's redundant to set the type here, since our caller will set it,
+      --  but we have to set it in order to set the array info.
+
+      Set_Type (Env, TE, Result_Typ);
+      Array_Info.Append (Dim_Info);
+      Set_Array_Info (Env, TE, Array_Info.Last);
+      return Result_Typ;
+
+   end Create_String_Literal_Type;
 
    -----------------------
    -- Create_Array_Type --
    -----------------------
 
    function Create_Array_Type
-     (Env        : Environ;
-      Def_Ident  : Entity_Id) return Type_T
+     (Env : Environ;
+      TE  : Entity_Id) return Type_T
    is
-      Typ        : Type_T;
-      LB, HB     : Node_Id;
-      Range_Size : Long_Long_Integer := 0;
+      Unconstrained     : constant Boolean := not Is_Constrained (TE);
+      Comp_Type         : constant Entity_Id := Component_Type (TE);
+      Typ               : Type_T := Create_Type (Env, Comp_Type);
+      Must_Use_Opaque   : Boolean := Is_Dynamic_Size (Env, Comp_Type);
+      This_Dynamic_Size : Boolean := Must_Use_Opaque or Unconstrained;
+      Index             : Entity_Id;
+      Dim               : Nat := 0;
+      First_Info        : constant Nat := Array_Info.Last + 1;
 
-      function Iterate is new Iterate_Entities
-        (Get_First => First_Index, Get_Next  => Next_Index);
    begin
-      Typ := Create_Type (Env, Component_Type (Def_Ident));
-
-      --  Special case for string literals: they do not include
-      --  regular index information.
-
-      if Ekind (Def_Ident) = E_String_Literal_Subtype then
-         Range_Size := UI_To_Long_Long_Integer
-           (String_Literal_Length (Def_Ident));
-         Typ := Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
+      if Ekind (TE) = E_String_Literal_Subtype then
+         return Create_String_Literal_Type (Env, TE, Typ);
       end if;
 
-      --  Wrap each "nested type" into an array using the previous index.
+      --  We loop through each dimension of the array creating the entries
+      --  for Array_Info.  If the component type is of variable size or if
+      --  either bound of an index is a dynamic size, this type is of
+      --  dynamic size.  We must an opaque type if this is of dynamic size
+      --  unless the only reason it's dynamic is because the first dimension
+      --  is of variable-size: in that case, we can use an LLVM array with
+      --  zero as the bound.
 
-      for Index of reverse Iterate (Def_Ident) loop
+      Index := First_Index (TE);
+      while Present (Index) loop
          declare
+            Idx_Range : constant Node_Id := Get_Dim_Range (Index);
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 
-            Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+            Typ      : constant Type_T :=
+              Create_Type (Env, Full_Etype (Index));
+            LB       : constant Node_Id := Low_Bound (Idx_Range);
+            HB       : constant Node_Id := High_Bound (Idx_Range);
+            Dim_Info : constant Index_Bounds :=
+              (Bound_Type => Typ,
+               Bound_Is_Unsigned => Is_Unsigned_Type (Full_Etype (Index)),
+               Low => Build_One_Bound (LB, Unconstrained),
+               High => Build_One_Bound (HB, Unconstrained));
+
          begin
-            LB := Low_Bound (Idx_Range);
-            HB := High_Bound (Idx_Range);
-         end;
 
-         --  Compute the size of this range if possible, otherwise
-         --  keep 0 for "unknown".
+            --  Update whether or not this will be of dynamic size and
+            --  whether we must use an opaque type based on this dimension.
+            --  Then record it.  Note that LLVM only allows the range of an
+            --  array to be in the range of "unsigned".  So we have to treat
+            --  a too-large constant as if it's of variable size.
 
-         if Is_Constrained (Def_Ident)
-           and then Compile_Time_Known_Value (LB)
-           and then Compile_Time_Known_Value (HB)
-         then
-            if Expr_Value (LB) > Expr_Value (HB) then
-               Range_Size := 0;
-            else
-               Range_Size := Long_Long_Integer
-                 (UI_To_Long_Long_Integer (Expr_Value (HB))
-                    - UI_To_Long_Long_Integer (Expr_Value (LB))
-                    + 1);
+            if Dim_Info.Low.Dynamic or else Dim_Info.High.Dynamic then
+               This_Dynamic_Size := True;
+               if Dim /= 0 then
+                  Must_Use_Opaque := True;
+               end if;
             end if;
-         end if;
 
-         Typ :=
-           Array_Type (Typ, Interfaces.C.unsigned (Range_Size));
+            Array_Info.Append (Dim_Info);
+            Index := Next_Index (Index);
+            Dim := Dim + 1;
+         end;
       end loop;
+
+      --  If we must use an opaque type, make one.  Otherwise loop through
+      --  the types making the LLVM type.
+
+      if Must_Use_Opaque then
+         Typ := Struct_Create_Named (Env.Ctx, "");
+      else
+         for I in reverse First_Info .. Array_Info.Last loop
+            declare
+               Dim_Info : constant Index_Bounds := Array_Info.Table (I);
+               Low      : constant One_Bound := Dim_Info.Low;
+               High     : constant One_Bound := Dim_Info.High;
+               Dynamic  : constant Boolean := Low.Dynamic or else High.Dynamic;
+               Rng : Long_Long_Integer := 0;
+            begin
+               if not Dynamic and then Low.Cnst <= High.Cnst then
+                  Rng := UI_To_Long_Long_Integer (High.Cnst - Low.Cnst + 1);
+               end if;
+
+               Typ := Array_Type (Typ, unsigned (Rng));
+            end;
+         end loop;
+      end if;
+
+      --  It's redundant to set the type here, since our caller will set it,
+      --  but we have to set it in order to set the array info.
+
+      Set_Type (Env, TE, Typ);
+      Set_Dynamic_Size (Env, TE, This_Dynamic_Size);
+      Set_Array_Info (Env, TE, First_Info);
 
       return Typ;
    end Create_Array_Type;
@@ -168,38 +387,20 @@ package body GNATLLVM.Arrays is
      (Env             : Environ;
       Array_Type_Node : Entity_Id) return Type_T
    is
+      Dims       : constant Nat := Number_Dimensions (Array_Type_Node);
+      Fields     : aliased array (Nat range 0 .. 2 * Dims - 1) of Type_T;
+      First_Info : constant Nat :=
+        Get_And_Create_Array_Info (Env, Array_Type_Node);
+      J          : Nat := 0;
    begin
-      if Ekind (Array_Type_Node) = E_String_Literal_Subtype then
-         declare
-            Fields  : aliased array (1 .. 2) of Type_T;
-         begin
-            Fields (1) := Create_Type (Env, Standard_Positive);
-            Fields (2) := Fields (1);
-            return Struct_Type_In_Context
-              (Env.Ctx, Fields'Address, Fields'Length,
-               Packed => False);
-         end;
-      else
-         declare
-            Index   : Entity_Id;
-            Fields  : aliased array (1 .. 2 * Number_Dimensions
-                                       (Array_Type_Node)) of Type_T;
-            J       : Pos := 1;
+      for I in Nat range 0 .. Dims - 1 loop
+         Fields (J) := Array_Info.Table (First_Info + I).Bound_Type;
+         Fields (J + 1) := Fields (J);
+         J := J + 2;
+      end loop;
 
-         begin
-            Index :=  First_Index (Array_Type_Node);
-            while Present (Index) loop
-               Fields (J) := Create_Type (Env, Etype (Index));
-               Fields (J + 1) := Fields (J);
-               J := J + 2;
-               Index := Next_Index (Index);
-            end loop;
-
-            return Struct_Type_In_Context
-              (Env.Ctx, Fields'Address, Fields'Length,
-               Packed => False);
-         end;
-      end if;
+      return Struct_Type_In_Context
+        (Env.Ctx, Fields'Address, Fields'Length, Packed => False);
    end Create_Array_Bounds_Type;
 
    -----------------------------------
@@ -232,204 +433,33 @@ package body GNATLLVM.Arrays is
       return Struct_Type (St_Els'Address, St_Els'Length, False);
    end Create_Array_Fat_Pointer_Type;
 
-   ------------------------
-   -- Extract_Array_Info --
-   ------------------------
+   --------------------
+   -- Get_Array_Size --
+   --------------------
 
-   procedure Extract_Array_Info
-     (Env         : Environ;
-      Array_Node  : Node_Id;
-      Array_Descr : out Value_T;
-      Array_Type  : out Entity_Id) is
-   begin
-      Array_Type := Etype (Array_Node);
-      Array_Descr :=
-        (if Is_Constrained (Array_Type)
-         then No_Value_T
-         else Emit_LValue (Env, Array_Node));
-   end Extract_Array_Info;
-
-   -----------------
-   -- Array_Bound --
-   -----------------
-
-   function Array_Bound
+   function Get_Array_Size
      (Env         : Environ;
       Array_Descr : Value_T;
       Array_Type  : Entity_Id;
-      Bound       : Bound_T;
-      Dim         : Nat) return Value_T is
-   begin
-      if Ekind (Array_Type) = E_String_Literal_Subtype then
-         declare
-            First : constant Uint :=
-              Intval (String_Literal_Low_Bound (Array_Type));
-            Typ : constant Type_T := Create_Type (Env, Standard_Positive);
-
-         begin
-            if Bound = Low then
-               return Const_Int (Typ, First);
-            else
-               return Const_Int
-                 (Typ, String_Literal_Length (Array_Type) - First + 1);
-            end if;
-         end;
-
-      elsif Is_Constrained (Array_Type) then
-         declare
-            Indices_List  : constant List_Id :=
-              List_Containing (First_Index (Array_Type));
-            Index_Subtype : constant Node_Id :=
-              Etype (Pick (Indices_List, Dim));
-         begin
-            return Emit_Expression
-              (Env,
-               (if Bound = Low
-                then Type_Low_Bound (Index_Subtype)
-                else Type_High_Bound (Index_Subtype)));
-         end;
-
-      else
-         --  Array_Descr must be a fat pointer
-
-         declare
-            Array_Bounds : constant Value_T :=
-              Extract_Value (Env.Bld, Array_Descr, 1, "array-bounds");
-            --  Get the structure that contains array bounds
-         begin
-            return Extract_Value
-              (Env.Bld,
-               Array_Bounds,
-               Get_Bound_Index (Dim, Bound),
-               (if Bound = Low
-                then "low-bound"
-                else "high-bound"));
-         end;
-      end if;
-   end Array_Bound;
-
-   ------------------
-   -- Array_Length --
-   ------------------
-
-   function Array_Length
-     (Env         : Environ;
-      Array_Descr : Value_T;
-      Array_Type  : Entity_Id;
-      Dim         : Nat) return Value_T
+      For_Type    : Boolean := False) return Value_T
    is
-      Result : Value_T;
+      Size : Value_T := Const_Int (Env.Size_Type, 1, Sign_Extend => False);
    begin
-      if Ekind (Array_Type) = E_String_Literal_Subtype then
-         return Const_Int
-           (Create_Type (Env, Standard_Positive),
-            String_Literal_Length (Array_Type));
 
-      else
-         Result := Bounds_To_Length
-           (Env => Env,
-            Low_Bound  =>
-              Array_Bound (Env, Array_Descr, Array_Type, Low, Dim),
-            High_Bound =>
-              Array_Bound (Env, Array_Descr, Array_Type, High, Dim),
-            Bounds_Type => Etype (First_Index (Array_Type)));
-         Set_Value_Name (Result, "array-length");
-         return Result;
-      end if;
-   end Array_Length;
+      --  Go through every array dimension.  Get its size and multiply all
+      --  of them together.
 
-   ----------------
-   -- Array_Size --
-   ----------------
-
-   function Array_Size
-     (Env                        : Environ;
-      Array_Descr                : Value_T;
-      Array_Type                 : Entity_Id;
-      Containing_Record_Instance : Value_T := No_Value_T) return Value_T
-   is
-      function Emit_Bound (N : Node_Id) return Value_T;
-      --  Emit code to compute N as an array bound of a constrained arary,
-      --  handling bounds that come from record discriminants.
-
-      ----------------
-      -- Emit_Bound --
-      ----------------
-
-      function Emit_Bound (N : Node_Id) return Value_T is
-      begin
-         if Size_Depends_On_Discriminant (Array_Type)
-           and then Nkind (N) = N_Identifier
-         --  The component is indeed a discriminant
-           and then Nkind (Parent (Entity (N))) = N_Discriminant_Specification
-         then
-            return Load
-              (Env.Bld,
-               Struct_GEP
-                 (Env.Bld,
-                  Containing_Record_Instance,
-                  unsigned (UI_To_Int (Discriminant_Number (Entity (N))) - 1),
-                  "field_access"), "field_load");
-         else
-            return Emit_Expression (Env, N);
-         end if;
-      end Emit_Bound;
-
-      Constrained : constant Boolean := Is_Constrained (Array_Type);
-
-      Size        : Value_T;
-      Size_Type   : constant Type_T := Int_Ptr_Type;
-      --  Type for the result. An array can be as big as the memory space, so
-      --  use a type as large as pointers.
-
-      DSD         : Node_Id := First_Index (Array_Type);
-      Dim         : Node_Id;
-      Dim_Index   : Nat;
-      Dim_Length  : Value_T;
-
-      --  Start of processing for Array_Size
-
-   begin
-      Size := Const_Int (Size_Type, 1, Sign_Extend => False);
-
-      --  Go through every array dimension
-
-      Dim_Index := 1;
-      while Present (DSD) loop
-
-         --  Compute the length of the dimension from the range bounds
-
-         Dim := Get_Dim_Range (DSD);
-         Dim_Length := Bounds_To_Length
-           (Env         => Env,
-            Low_Bound   =>
-              (if Constrained
-               then Emit_Bound (Low_Bound (Dim))
-               else Array_Bound
-                 (Env, Array_Descr, Array_Type, Low, Dim_Index)),
-            High_Bound  =>
-              (if Constrained
-               then Emit_Bound (High_Bound (Dim))
-               else Array_Bound
-                 (Env, Array_Descr, Array_Type, High, Dim_Index)),
-            Bounds_Type => Etype (Low_Bound (Dim)));
-         Dim_Length :=
-           Z_Ext (Env.Bld, Dim_Length, Size_Type, "array-dim-length");
-
-         if Dim_Index = 1 then
-            Size := Dim_Length;
-         else
-            --  Accumulate the product of the sizes
-
-            Size := Mul (Env.Bld, Size, Dim_Length, "");
-         end if;
-
-         DSD := Next (DSD);
-         Dim_Index := Dim_Index + 1;
+      for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop
+         Size :=
+           NSW_Mul (Env.Bld, Size,
+                    Convert_To_Size_Type
+                      (Env, Get_Array_Length (Env, Array_Type, Dim,
+                                              Array_Descr, For_Type)),
+                    "");
       end loop;
 
       return Size;
-   end Array_Size;
+   end Get_Array_Size;
 
    ----------------
    -- Array_Data --
@@ -454,58 +484,17 @@ package body GNATLLVM.Arrays is
    function Array_Fat_Pointer
      (Env        : Environ;
       Array_Data : Value_T;
-      Array_Node : Node_Id;
       Array_Type : Entity_Id) return Value_T
    is
+
       Fat_Ptr_Type      : constant Type_T :=
         Create_Array_Fat_Pointer_Type (Env, Array_Type);
       Fat_Ptr_Elt_Types : aliased Type_Array (1 .. 2);
-
       Array_Data_Type   : Type_T renames Fat_Ptr_Elt_Types (1);
       Array_Bounds_Type : Type_T renames Fat_Ptr_Elt_Types (2);
-
-      Fat_Ptr        : Value_T := Get_Undef (Fat_Ptr_Type);
-      Array_Data_Ptr : Value_T;
-      Bounds         : Value_T;
-      Dim            : Node_Id;
-      Dim_I          : Nat;
-      R              : Node_Id;
-
-      procedure Handle_Bound (Bound : Node_Id; Bound_Type : Bound_T);
-      --  Insert the given Bound_Type bound in Bounds
-
-      ------------------
-      -- Handle_Bound --
-      ------------------
-
-      procedure Handle_Bound (Bound : Node_Id; Bound_Type : Bound_T) is
-         Expr : Value_T;
-      begin
-         if Nkind (Bound) = N_Identifier
-           and then Present (Entity (Bound))
-           and then Ekind (Entity (Bound)) = E_Discriminant
-         then
-            pragma Assert (Nkind (Array_Node) = N_Selected_Component);
-            Expr :=
-              Load
-                (Env.Bld,
-                 Record_Field_Offset
-                   (Env,
-                    Emit_LValue (Env, Prefix (Array_Node)),
-                    Original_Record_Component (Entity (Bound))),
-                 "");
-
-         else
-            Expr := Emit_Expression (Env, Bound);
-         end if;
-
-         Bounds := Insert_Value
-           (Env.Bld,
-            Bounds,
-            Expr,
-            Get_Bound_Index (Dim_I, Bound_Type),
-            "");
-      end Handle_Bound;
+      Fat_Ptr           : Value_T := Get_Undef (Fat_Ptr_Type);
+      Array_Data_Ptr    : Value_T;
+      Bounds            : Value_T;
 
    begin
       pragma Assert (Count_Struct_Element_Types (Fat_Ptr_Type) = 2);
@@ -515,35 +504,26 @@ package body GNATLLVM.Arrays is
         Pointer_Cast (Env.Bld, Array_Data, Array_Data_Type, "");
       Bounds := Get_Undef (Array_Bounds_Type);
 
-      --  Fill Bounds with actual array bounds
+      --  ??  This may be a kludge until we figure out a consistent
+      --  way of elaborating all types.
 
-      if Ekind (Array_Type) = E_String_Literal_Subtype then
-         declare
-            Low : constant Uint :=
-              Intval (String_Literal_Low_Bound (Array_Type));
-            Typ : constant Type_T := Create_Type (Env, Standard_Positive);
+      Discard (Create_Type (Env, Array_Type));
 
-         begin
-            Bounds := Insert_Value
-              (Env.Bld, Bounds, Const_Int (Typ, Low), 0, "");
-            Bounds := Insert_Value
-              (Env.Bld,
-               Bounds,
-               Const_Int (Typ, String_Literal_Length (Array_Type) - Low + 1),
-               1,
-               "");
-         end;
-      else
-         Dim_I := 1;
-         Dim := First (List_Containing (First_Index (Array_Type)));
-         while Present (Dim) loop
-            R := Get_Dim_Range (Dim);
-            Handle_Bound (Low_Bound (R), Low);
-            Handle_Bound (High_Bound (R), High);
-            Dim_I := Dim_I + 1;
-            Dim := Next (Dim);
-         end loop;
-      end if;
+      for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop
+         Bounds := Insert_Value
+           (Env.Bld,
+            Bounds,
+            Get_Array_Bound (Env, Array_Type, Dim, True, Array_Data),
+            unsigned (Dim * 2),
+            "");
+
+         Bounds := Insert_Value
+           (Env.Bld,
+            Bounds,
+            Get_Array_Bound (Env, Array_Type, Dim, False, Array_Data),
+            unsigned (Dim * 2 + 1),
+            "");
+      end loop;
 
       --  Then fill the fat pointer itself
       Fat_Ptr := Insert_Value (Env.Bld, Fat_Ptr, Array_Data_Ptr, 0, "");
@@ -562,7 +542,7 @@ package body GNATLLVM.Arrays is
       Array_Type : Entity_Id) return Value_T
    is
       Idx_Type : constant Type_T :=
-        Create_Type (Env, Etype (First_Index (Array_Type)));
+        Create_Type (Env, Full_Etype (First_Index (Array_Type)));
       Zero     : constant Value_T := Const_Null (Idx_Type);
       Idx      : constant Value_Array (0 .. Number_Dimensions (Array_Type)) :=
         (0 => Const_Null (Intptr_T), others => Zero);
@@ -587,20 +567,19 @@ package body GNATLLVM.Arrays is
    ------------------------
 
    function Dynamic_Size_Array (T : Entity_Id) return Boolean is
-      E    : constant Entity_Id := Get_Fullest_View (T);
       Indx : Node_Id;
       Ityp : Entity_Id;
 
    begin
-      if not Is_Array_Type (E) then
+      if not Is_Array_Type (T) then
          return False;
       end if;
 
       --  Loop to process array indexes
 
-      Indx := First_Index (E);
+      Indx := First_Index (T);
       while Present (Indx) loop
-         Ityp := Etype (Indx);
+         Ityp := Full_Etype (Indx);
 
          --  If an index of the array is a generic formal type then there is
          --  no point in determining a size for the array type.
@@ -631,7 +610,7 @@ package body GNATLLVM.Arrays is
       Value   : Value_T) return Value_T
    is
       Array_Data_Ptr : constant Value_T := Array_Data (Env, Value, Arr_Typ);
-
+      LLVM_Array_Typ : constant Type_T := Create_Type (Env, Arr_Typ);
       Idxs : Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Const_Int (Intptr_T, 0, Sign_Extend => False), others => <>);
       --  Operands for the GetElementPtr instruction: one for the
@@ -647,7 +626,7 @@ package body GNATLLVM.Arrays is
          declare
             User_Index    : constant Value_T := Emit_Expression (Env, N);
             Dim_Low_Bound : constant Value_T :=
-              Array_Bound (Env, Value, Arr_Typ, Low, J - 1);
+              Get_Array_Bound (Env, Arr_Typ, J - 2, True, Value);
          begin
             Idxs (J) := NSW_Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
          end;
@@ -656,7 +635,54 @@ package body GNATLLVM.Arrays is
          N := Next (N);
       end loop;
 
-      return GEP (Env.Bld, Array_Data_Ptr, Idxs, "array-element-access");
+      --  There are two approaches we can take here.  If we haven't used
+      --  an opaque type, we can just do a GEP with the values above.
+
+      if Type_Is_Sized (LLVM_Array_Typ) then
+         return GEP (Env.Bld, Array_Data_Ptr, Idxs, "array-element-access");
+      end if;
+
+      --  Otherwise, we convert the array data type to an i8*, compute the
+      --  byte offset from the index and size information, index that, and
+      --  then convert back to the array type.  We index by multiplying the
+      --  last index by the size of the component, then for each other
+      --  index, we multiply by the length of the next dimension and add
+      --  the index.  We do all of this in Size_Type.
+
+      declare
+         Int8_Ptr      : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+         Data          : constant Value_T :=
+           Bit_Cast (Env.Bld, Array_Data_Ptr, Int8_Ptr, "");
+         Comp_Type     : constant Entity_Id :=
+           Get_Fullest_View (Component_Type (Arr_Typ));
+         LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
+         Comp_Size     : constant Value_T :=
+           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_Value_T);
+         Index         : Value_T :=
+           NSW_Mul (Env.Bld, Comp_Size,
+                    Convert_To_Size_Type (Env, Idxs (Idxs'Last)),
+                    "");
+      begin
+
+         for Dim in reverse  0 .. Number_Dimensions (Arr_Typ) - 2 loop
+            Index := NSW_Add (Env.Bld,
+                              NSW_Mul (Env.Bld,
+                                       Index,
+                                       Convert_To_Size_Type
+                                         (Env,
+                                          Get_Array_Length (Env, Arr_Typ,
+                                                            Dim,
+                                                            Array_Data_Ptr)),
+                                       ""),
+                              Convert_To_Size_Type (Env, Idxs (Dim + 2)),
+                              "");
+         end loop;
+
+         return Bit_Cast
+           (Env.Bld, GEP (Env.Bld, Data, (1 => Index), "gen-index"),
+            Pointer_Type (LLVM_Array_Typ, 0), "");
+      end;
+
    end Get_Indexed_LValue;
 
    ----------------------
@@ -671,6 +697,7 @@ package body GNATLLVM.Arrays is
       Value       : Value_T) return Value_T
      is
       Array_Data_Ptr : constant Value_T := Array_Data (Env, Value, Arr_Typ);
+      LLVM_Array_Typ : constant Type_T := Create_Type (Env, Arr_Typ);
 
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
@@ -678,16 +705,76 @@ package body GNATLLVM.Arrays is
       Index_Shift : constant Value_T :=
         Sub
         (Env.Bld, Emit_Expression (Env, Low_Bound (Rng)),
-         Array_Bound (Env, Value, Arr_Typ, Low, 1), "offset");
+         Get_Array_Bound (Env, Arr_Typ, 0, True, Value), "offset");
    begin
-      return Bit_Cast
-        (Env.Bld,
-         GEP
+
+      --  Like the above case, we have to hande both the opaque and non-opaque
+      --  cases.  Luckily, we know we're only a single dimension.
+
+      if Type_Is_Sized (LLVM_Array_Typ) then
+         return Bit_Cast
            (Env.Bld,
-            Array_Data_Ptr,
-            (Const_Int (Intptr_T, 0, Sign_Extend => False), Index_Shift),
-            "array-shifted"),
-         Create_Access_Type (Env, Result_Type), "slice");
+            GEP
+              (Env.Bld,
+               Array_Data_Ptr,
+               (Const_Int (Intptr_T, 0, Sign_Extend => False), Index_Shift),
+               "array-shifted"),
+            Create_Access_Type (Env, Result_Type), "slice");
+      end if;
+
+      declare
+         Int8_Ptr      : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+         Data          : constant Value_T :=
+           Bit_Cast (Env.Bld, Array_Data_Ptr, Int8_Ptr, "");
+         Comp_Type     : constant Entity_Id :=
+           Get_Fullest_View (Component_Type (Arr_Typ));
+         LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
+         Comp_Size     : constant Value_T :=
+           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_Value_T);
+         Index         : constant Value_T :=
+           NSW_Mul (Env.Bld, Comp_Size,
+                    Convert_To_Size_Type (Env, Index_Shift),
+                    "");
+      begin
+         return Bit_Cast
+           (Env.Bld, GEP (Env.Bld, Data, (1 => Index), "gen-index"),
+            Pointer_Type (LLVM_Array_Typ, 0), "");
+      end;
+
    end Get_Slice_LValue;
+
+   -------------------
+   -- Get_Dim_Range --
+   -------------------
+
+   function Get_Dim_Range (N : Node_Id) return Node_Id is
+   begin
+      case Nkind (N) is
+         when N_Range =>
+            return N;
+         when N_Identifier =>
+            return Scalar_Range (Entity (N));
+
+         when N_Subtype_Indication =>
+            declare
+               Constr : constant Node_Id := Constraint (N);
+            begin
+               if Present (Constr) then
+                  if Nkind (Constr) = N_Range_Constraint then
+                     return Range_Expression (Constr);
+                  end if;
+               else
+                  return Scalar_Range (Entity (Subtype_Mark (N)));
+               end if;
+            end;
+
+         when others =>
+            null;
+      end case;
+
+      raise Program_Error
+        with "Invalid node kind in context: " & Node_Kind'Image (Nkind (N));
+      pragma Annotate (Xcov, Exempt_Off);
+   end Get_Dim_Range;
 
 end GNATLLVM.Arrays;

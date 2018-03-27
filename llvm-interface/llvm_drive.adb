@@ -173,6 +173,8 @@ package body LLVM_Drive is
             Void_Type_In_Context (Env.Ctx));
 
       begin
+         Env.Size_Type := Size_Type;
+
          --  Add malloc function to the env
 
          Env.Default_Alloc_Fn := Add_Function

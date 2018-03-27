@@ -27,9 +27,9 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 package GNATLLVM.Arrays is
 
    function Create_Array_Type
-     (Env       : Environ;
-      Def_Ident : Entity_Id) return Type_T
-     with Pre  => Env /= null and then  Is_Array_Type (Def_Ident),
+     (Env : Environ;
+      TE  : Entity_Id) return Type_T
+     with Pre  => Env /= null and then  Is_Array_Type (TE),
           Post => Create_Array_Type'Result /= No_Type_T;
    --  Return the type used to represent Array_Type_Node.  This will be
    --  an opaque type if LLVM can't represent it directly.
@@ -58,6 +58,37 @@ package GNATLLVM.Arrays is
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
+   function Get_Array_Bound
+     (Env      : Environ;
+      Arr_Typ  : Entity_Id;
+      Dim      : Nat;
+      Is_Low   : Boolean;
+      Value    : Value_T;
+      For_Type : Boolean := False) return Value_T
+     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
+                  and then Dim < Number_Dimensions (Arr_Typ)
+                  and then (Value /= No_Value_T
+                              or else Is_Constrained (Arr_Typ))
+                  and then (not For_Type or else Value = No_Value_T),
+          Post => Get_Array_Bound'Result /= No_Value_T;
+   --  Get the bound (lower if Is_Low, else upper) for dimension number
+   --  Dim (0-origin) of an array whose LValue is Value and is of type
+   --  Arr_Typ.
+
+   function Get_Array_Length
+     (Env     : Environ;
+      Arr_Typ : Entity_Id;
+      Dim     : Nat;
+      Value   : Value_T;
+      For_Type : Boolean := False) return Value_T
+     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
+                  and then Dim < Number_Dimensions (Arr_Typ)
+                  and then (Value /= No_Value_T
+                              or else Is_Constrained (Arr_Typ))
+                  and then (not For_Type or else Value = No_Value_T),
+          Post => Get_Array_Length'Result /= No_Value_T;
+   --  Similar, but get the length of that dimension of the array.
+
    function Get_Innermost_Component_Type
      (Env : Environ; N : Entity_Id) return Type_T
      with Pre  => Env /= null and then Is_Type (N),
@@ -66,15 +97,6 @@ package GNATLLVM.Arrays is
    function Dynamic_Size_Array (T : Entity_Id) return Boolean
      with Pre => Is_Type (T);
    --  Return True if T denotees an array with a dynamic size
-
-   procedure Extract_Array_Info
-     (Env         : Environ;
-      Array_Node  : Node_Id;
-      Array_Descr : out Value_T;
-      Array_Type  : out Entity_Id);
-   --  Set Array_Type to the type of Array_Node. If it is a constrained array,
-   --  set Array_Descr to No_Value_T, or emit the value corresponding to
-   --  Array_Node if it is unconstrained.
 
    function Get_Indexed_LValue
      (Env     : Environ;
@@ -100,44 +122,28 @@ package GNATLLVM.Arrays is
           Post => Get_Slice_LValue'Result /= No_Value_T;
    --  Similar, but Rng is the Discrete_Range for the slice.
 
-   function Array_Size
-     (Env                        : Environ;
-      Array_Descr                : Value_T;
-      Array_Type                 : Entity_Id;
-      Containing_Record_Instance : Value_T := No_Value_T) return Value_T;
+   function Get_Array_Size
+     (Env         : Environ;
+      Array_Descr : Value_T;
+      Array_Type  : Entity_Id;
+      For_Type    : Boolean := False) return Value_T
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
+                  and then (Array_Descr /= No_Value_T
+                              or else Is_Constrained (Array_Type))
+                  and then (not For_Type or else Array_Descr = No_Value_T),
+          Post => Get_Array_Size'Result /= No_Value_T;
    --  Return the number of elements contained in an Array_Type object as an
    --  integer as large as a pointer for the target architecture. If it is an
    --  unconstrained array, Array_Descr must be an expression that evaluates
-   --  to the array. If Array_Type is constrained by record discriminants,
-   --  use Containing_Record_Instance to get its bounds.
-
-   type Bound_T is (Low, High);
-
-   function Array_Bound
-     (Env         : Environ;
-      Array_Descr : Value_T;
-      Array_Type  : Entity_Id;
-      Bound       : Bound_T;
-      Dim         : Nat) return Value_T;
-   --  Compute the bound for the array corresponding to Array_Descr, whose type
-   --  is Array_Type. If Array_Type is a constrained array, Array_Descr will
-   --  not be used, and can thus then be No_Value_T. Otherwise, it will be
-   --  used to compute the bound at runtime.
-
-   function Array_Length
-     (Env         : Environ;
-      Array_Descr : Value_T;
-      Array_Type  : Entity_Id;
-      Dim         : Nat) return Value_T;
-   --  Emit code to compute the length for the array corresponding to
-   --  Array_Descr, whose type is Array_Type. If Array_Type is a constrained
-   --  array, Array_Descr will not be used, and can thus then be No_Value_T.
-   --  Otherwise, it will be used to compute the length at runtime.
+   --  to the array.
 
    function Array_Data
      (Env         : Environ;
       Array_Descr : Value_T;
-      Array_Type  : Entity_Id) return Value_T;
+      Array_Type  : Entity_Id) return Value_T
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
+                  and then Array_Descr /= No_Value_T,
+          Post => Array_Data'Result /= No_Value_T;
    --  Emit code to compute the address of the array data and return the
    --  corresponding value. Handle both constrained and unconstrained arrays,
    --  depending on Array_Type. If this is a constrained array, Array_Descr
@@ -147,16 +153,22 @@ package GNATLLVM.Arrays is
    function Array_Fat_Pointer
      (Env        : Environ;
       Array_Data : Value_T;
-      Array_Node : Node_Id;
       Array_Type : Entity_Id) return Value_T
-     with Pre => Is_Constrained (Array_Type);
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
+                  and then Is_Constrained (Array_Type)
+                  and then Array_Data /= No_Value_T,
+          Post => Array_Fat_Pointer'Result /= No_Value_T;
    --  Wrap a fat pointer around Array_Data according to its type Array_Type
    --  and return the created fat pointer.
 
    function Array_Address
      (Env        : Environ;
       Array_Data : Value_T;
-      Array_Type : Entity_Id) return Value_T;
+      Array_Type : Entity_Id) return Value_T
+     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
+                  and then Is_Constrained (Array_Type)
+                  and then Array_Data /= No_Value_T,
+          Post => Array_Address'Result /= No_Value_T;
    --  Return the pointer to the first element of Array_Data
 
 end GNATLLVM.Arrays;

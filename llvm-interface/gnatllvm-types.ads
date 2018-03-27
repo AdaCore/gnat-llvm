@@ -15,13 +15,14 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C;
+with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Types; use Types;
 
-with LLVM.Core; use LLVM.Core;
-with LLVM.Types; use LLVM.Types;
+with LLVM.Core;   use LLVM.Core;
+with LLVM.Target; use LLVM.Target;
+with LLVM.Types;  use LLVM.Types;
 
 with Atree; use Atree;
 with Einfo; use Einfo;
@@ -90,38 +91,57 @@ package GNATLLVM.Types is
    pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
 
    function Int_Ptr_Type return Type_T is
-      (Int_Type (Interfaces.C.unsigned (Get_Pointer_Size)));
+      (Int_Type (unsigned (Get_Pointer_Size)));
 
-   function Get_Type_Size_In_Bits
+   function Get_LLVM_Type_Size
      (Env : Environ;
-      T   : Type_T) return unsigned_long_long
+      T   : Type_T) return unsigned_long_long is
+     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, T) / 8)
+     with Pre => Env /= null and then T /= No_Type_T;
+   --  Return the size of an LLVM type, in bytes
+
+   function Get_LLVM_Type_Size
+     (Env : Environ;
+      T   : Type_T) return Value_T is
+     (Const_Int (Env.Size_Type, Get_LLVM_Type_Size (Env, T), False));
+   --  Return the size of an LLVM type, in bytes, as an LLVM constant
+
+   function Get_LLVM_Type_Size_In_Bits
+     (Env : Environ;
+      T   : Type_T) return unsigned_long_long is
+     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, T))
      with Pre => Env /= null and then T /= No_Type_T;
    --  Return the size of an LLVM type, in bits
 
+   function Get_LLVM_Type_Size_In_Bits
+     (Env : Environ;
+      T   : Type_T) return Value_T is
+     (Const_Int (Env.Size_Type, Get_LLVM_Type_Size_In_Bits (Env, T), False));
+   --  Return the size of an LLVM type, in bits, as an LLVM constant
+
+   function Convert_To_Size_Type (Env : Environ; V : Value_T) return Value_T
+     with Pre  => Env /= null and then V /= No_Value_T,
+          Post => Type_Of (Convert_To_Size_Type'Result) = Env.Size_Type;
+   --  Convert V to Size_Type
+
    function Get_Type_Alignment
      (Env : Environ;
-      T   : Type_T) return Interfaces.C.unsigned
+      T   : Type_T) return unsigned is
+     (ABI_Alignment_Of_Type (Env.Module_Data_Layout, T))
      with Pre => Env /= null and then T /= No_Type_T;
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Size
-     (Env : Environ;
-      T   : Type_T) return Value_T
-     with Pre => Env /= null and then T /= No_Type_T;
-   --  Return the size of an LLVM type, in bytes
-
-   function Emit_Type_Size
-     (Env                   : Environ;
-      T                     : Entity_Id;
-      Array_Descr           : Value_T;
-      Containing_Record_Ptr : Value_T) return Value_T
-     with Pre  => Env /= null and then Is_Type (T),
-          Post => Emit_Type_Size'Result /= No_Value_T;
-   --  Emit code to compute the size of type T, getting information from
-   --  Containing_Record_Ptr for types that are constrained by a discriminant
-   --  record (in such case, this parameter should be a pointer to the
-   --  corresponding record). If T is an unconstrained array, Array_Descr must
-   --  be the corresponding fat pointer. Return the computed size as value.
+     (Env      : Environ;
+      T        : Type_T;
+      TE       : Entity_Id;
+      V        : Value_T;
+      For_Type : Boolean := False) return Value_T
+     with Pre  => Env /= null and then T /= No_Type_T and then Is_Type (TE)
+                  and then (not For_Type or else V = No_Value_T),
+          Post => Get_Type_Size'Result /= No_Value_T;
+   --  Return the size of an LLVM type, in bytes, as an LLVM Value_T.
+   --  If TE is an unconstrained array type, V must be the value of the array.
 
    function Record_Field_Offset
      (Env          : Environ;

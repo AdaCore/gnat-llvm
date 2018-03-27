@@ -15,7 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Namet;    use Namet;
+with Atree; use Atree;
+with Namet; use Namet;
 with Sinfo; use Sinfo;
 with Types; use Types;
 with Uintp; use Uintp;
@@ -36,9 +37,6 @@ package GNATLLVM.Utils is
 
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer;
 
-   function Get_Dim_Range (N : Node_Id) return Node_Id;
-   --  Return the N_Range of your Type
-
    function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean;
    --  Returns true if given function needs to return its arg via the secondary
    --  stack
@@ -47,6 +45,10 @@ package GNATLLVM.Utils is
      (Param : Entity_Id) return Boolean;
    --  Returns true if Param needs to be passed by reference (pointer) rather
    --  than by value
+
+   function Get_Uint_Value (Node : Node_Id) return Uint
+     with Pre => Present (Node);
+   --  If Node has a static Uint value, return it.  Otherwise, return No_Uint.
 
    function Const_Int (T : Type_T; Value : Uintp.Uint)
      return Value_T renames Uintp.LLVM.UI_To_LLVM;

@@ -52,6 +52,13 @@ package body GNATLLVM.Compile is
    --  See also DragonEgg sources for comparison on how GCC nodes are converted
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
 
+   function Allocate_For_Type
+     (Env : Environ; TE : Entity_Id; Name : String) return Value_T
+     with Pre  => Env /= null and Is_Type (TE),
+          Post => Allocate_For_Type'Result /= No_Value_T;
+   --  Allocate space on the stack for an object of type TE and return
+   --  a pointer to the space.  Name is the name to use for the LLVM value.
+
    function Build_Type_Conversion
      (Env                 : Environ;
       Src_Type, Dest_Type : Entity_Id;
@@ -70,10 +77,11 @@ package body GNATLLVM.Compile is
    --  Build and return the static link to pass to a call to Node
 
    function Compute_Size
-     (Env         : Environ;
-      Left, Right : Node_Id;
-      Right_Value : Value_T) return Value_T
-     with Pre  => Env /= null and then Present (Left) and then Present (Right)
+     (Env                 : Environ;
+      Left_Typ, Right_Typ : Entity_Id;
+      Right_Value         : Value_T) return Value_T
+     with Pre  => Env /= null and then Is_Type (Left_Typ)
+                  and then Present (Right_Typ)
                   and then Right_Value /= No_Value_T,
           Post =>  Compute_Size'Result /= No_Value_T;
    --  Helper for assignments
@@ -125,11 +133,12 @@ package body GNATLLVM.Compile is
      (Env                       : Environ;
       LHS_Typ, RHS_Typ          : Entity_Id;
       LValue                    : Value_T;
-      LHS, E                    : Node_Id;
+      E                         : Node_Id;
+      E_Value                   : Value_T;
       Forwards_OK, Backwards_OK : Boolean)
      with Pre => Env /= null and then Is_Type (LHS_Typ)
                  and then Is_Type (RHS_Typ) and then LValue /= No_Value_T
-                 and then Present (LHS) and then Present (E);
+                 and then Present (E);
    --  Helper for Emit: Copy the value of the expression E to LValue
    --  with the specified destination and expression types
 
@@ -346,13 +355,57 @@ package body GNATLLVM.Compile is
       end if;
    end Verify_Function;
 
+   -----------------------
+   -- Allocate_For_Type --
+   -----------------------
+
+   function Allocate_For_Type
+     (Env : Environ; TE : Entity_Id; Name : String) return Value_T
+   is
+      LLVM_Type   : constant Type_T := Create_Type (Env, TE);
+      Element_Typ : Type_T;
+      Num_Elts    : Value_T;
+   begin
+
+      --  We have three cases.  If the object is not of a dynamic size,
+      --  we just do the alloca and that's all.
+
+      if not Is_Dynamic_Size (Env, TE) then
+         return Alloca (Env.Bld, LLVM_Type, Name);
+      end if;
+
+      --  Otherwise, we have to do some sort of dynamic allocation.  If
+      --  this is an array of a component that's not of dynamic size, then
+      --  we can allocate an array of the component type corresponding to
+      --  the array type and cast it to a pointer to the actual type.
+      --  If not, we have to allocate it as an array of bytes.
+
+      if Is_Array_Type (TE)
+        and not Is_Dynamic_Size (Env, Component_Type (TE))
+      then
+         Element_Typ := Create_Type (Env, Component_Type (TE));
+         Num_Elts    := Get_Array_Size (Env, No_Value_T, TE);
+      else
+         Element_Typ := Int_Ty (8);
+         Num_Elts    := Get_Type_Size (Env, LLVM_Type, TE, No_Value_T);
+      end if;
+
+      return Bit_Cast
+        (Env.Bld,
+         Array_Alloca (Env.Bld, Element_Typ, Num_Elts, "dyn-array"),
+         Pointer_Type (LLVM_Type, 0), Name);
+
+   end Allocate_For_Type;
+
    -------------------
    -- Emit_One_Body --
    -------------------
 
    procedure Emit_One_Body (Env : Environ; Node : Node_Id) is
-      Spec : constant Node_Id := Get_Acting_Spec (Node);
-      Func : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
+      Spec       : constant Node_Id := Get_Acting_Spec (Node);
+      Func       : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
+      Def_Ident  : constant Entity_Id := Defining_Entity (Spec);
+      Return_Typ : constant Entity_Id := Full_Etype (Def_Ident);
       Param      : Entity_Id;
       LLVM_Param : Value_T;
       LLVM_Var   : Value_T;
@@ -360,7 +413,7 @@ package body GNATLLVM.Compile is
 
    begin
       Enter_Subp (Env, Func);
-      Param := First_Formal_With_Extras (Defining_Entity (Spec));
+      Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          LLVM_Param := Get_Param (Func, unsigned (Param_Num));
 
@@ -402,6 +455,18 @@ package body GNATLLVM.Compile is
          Param_Num := Param_Num + 1;
          Param := Next_Formal_With_Extras (Param);
       end loop;
+
+      --  If the return type has dynamic size, we've added a parameter
+      --  that's passed the address to which we want to copy our return
+      --  value.
+
+      if Ekind (Return_Typ) /= E_Void
+        and then Is_Dynamic_Size (Env, Return_Typ)
+      then
+         LLVM_Param := Get_Param (Func, unsigned (Param_Num));
+         Set_Value_Name (LLVM_Param, "return");
+         Env.Return_Address_Param := LLVM_Param;
+      end if;
 
       Emit_List (Env, Declarations (Node));
       Emit_List (Env, Statements (Handled_Statement_Sequence (Node)));
@@ -901,8 +966,8 @@ package body GNATLLVM.Compile is
                        and then No_Initialization (Node))
                   then
                      Emit_Assignment (Env, T, Full_Etype (Expression (Node)),
-                                      LLVM_Var, Def_Ident,
-                                      Expression (Node), True, True);
+                                      LLVM_Var, Expression (Node),
+                                      No_Value_T, True, True);
                   end if;
                end if;
             end;
@@ -967,7 +1032,7 @@ package body GNATLLVM.Compile is
                              Full_Etype (Name (Node)),
                              Full_Etype (Expression (Node)),
                              Emit_LValue (Env, Name (Node)),
-                             Name (Node), Expression (Node),
+                             Expression (Node), No_Value_T,
                              Forwards_OK (Node), Backwards_OK (Node));
 
          when N_Procedure_Call_Statement =>
@@ -1018,22 +1083,41 @@ package body GNATLLVM.Compile is
 
          when N_Simple_Return_Statement =>
             if Present (Expression (Node)) then
+
                declare
+                  Subp        : constant Node_Id :=
+                    Node_Enclosing_Subprogram (Node);
+                  Our_Typ     : constant Entity_Id := Full_Etype (Subp);
+                  Return_Expr : constant Node_Id := Expression (Node);
+                  Expr_Typ    : constant Entity_Id := Full_Etype (Return_Expr);
                   Expr : Value_T;
-                  Subp : constant Node_Id := Node_Enclosing_Subprogram (Node);
                begin
-                  if Full_Etype (Subp) /= Full_Etype (Expression (Node)) then
-                     Expr := Build_Type_Conversion
-                       (Env       => Env,
-                        Src_Type  => Full_Etype (Expression (Node)),
-                        Dest_Type => Full_Etype (Subp),
-                        Expr      => Expression (Node));
+                  --  If we have a parameter giving the address to which to
+                  --  copy the return value, do that copy instead of returning
+                  --  it.
+
+                  if Env.Return_Address_Param /= No_Value_T then
+                     Emit_Assignment (Env, Our_Typ, Expr_Typ,
+                                      Env.Return_Address_Param,
+                                      Return_Expr, No_Value_T, False, False);
+
+                     Discard (Build_Ret_Void (Env.Bld));
 
                   else
-                     Expr := Emit_Expression (Env, Expression (Node));
-                  end if;
 
-                  Discard (Build_Ret (Env.Bld, Expr));
+                     if Our_Typ /= Expr_Typ then
+                        Expr := Build_Type_Conversion
+                          (Env       => Env,
+                           Src_Type  => Expr_Typ,
+                           Dest_Type => Our_Typ,
+                           Expr      => Return_Expr);
+
+                     else
+                        Expr := Emit_Expression (Env, Return_Expr);
+                     end if;
+
+                     Discard (Build_Ret (Env.Bld, Expr));
+                  end if;
                end;
 
             else
@@ -1540,8 +1624,8 @@ package body GNATLLVM.Compile is
                --  ??? This alloca will not necessarily be free'd before
                --  returning from the current subprogram: it's a leak.
 
-               T : constant Type_T := Create_Type (Env, Full_Etype (Node));
-               V : constant Value_T := Alloca (Env.Bld, T, "anonymous-obj");
+               V : constant Value_T :=
+                 Allocate_For_Type (Env, Full_Etype (Node), "anon-obj");
 
             begin
                Store (Env.Bld, Emit_Expression (Env, Node), V);
@@ -1596,13 +1680,16 @@ package body GNATLLVM.Compile is
 
          when others =>
             if not Library_Level (Env) then
-               --  Create a temporary: is that always adequate???
+               --  Otherwise, create a temporary: is that always
+               --  adequate???
 
                declare
                   Result : constant Value_T :=
-                    Alloca (Env.Bld, Create_Type (Env, Full_Etype (Node)), "");
+                    Allocate_For_Type (Env, Full_Etype (Node), "");
                begin
-                  Store (Env.Bld, Emit_Expression (Env, Node), Result);
+                  Emit_Assignment (Env, Full_Etype (Node), Full_Etype (Node),
+                                   Result, Node,
+                                   Emit_Expression (Env, Node), True, True);
                   return Result;
                end;
             else
@@ -2290,15 +2377,34 @@ package body GNATLLVM.Compile is
      (Env                       : Environ;
       LHS_Typ, RHS_Typ          : Entity_Id;
       LValue                    : Value_T;
-      LHS, E                    : Node_Id;
+      E                         : Node_Id;
+      E_Value                   : Value_T;
       Forwards_OK, Backwards_OK : Boolean)
    is
+      Src_Node : Node_Id := E;
       Dest     : Value_T := LValue;
       Src      : Value_T;
       Inner    : Node_Id;
       Dest_Typ : Entity_Id := LHS_Typ;
       Typ      : Entity_Id := RHS_Typ;
    begin
+
+      --  If we have checked or unchecked conversions between aggregate types
+      --  on the RHS, we don't care about then and can strip them off.
+
+      while Present (Src_Node)
+        and then (Nkind (Src_Node) = N_Type_Conversion
+            or else Nkind (Src_Node) = N_Unchecked_Type_Conversion)
+        and then Is_Aggregate_Type (Typ)
+        and then Is_Aggregate_Type (Full_Etype (Expression (Src_Node)))
+      loop
+         Src_Node := Expression (Src_Node);
+         Typ := Full_Etype (Src_Node);
+      end loop;
+
+      --  Make sure all types have been elaborated.
+      Discard (Create_Type (Env, Dest_Typ));
+      Discard (Create_Type (Env, Typ));
 
       while Is_Array_Type (Dest_Typ)
         and then Present (Packed_Array_Impl_Type (Dest_Typ))
@@ -2312,13 +2418,13 @@ package body GNATLLVM.Compile is
          Typ := Packed_Array_Impl_Type (Typ);
       end loop;
 
-      if Is_Array_Type (Dest_Typ)
-        and then Nkind (E) = N_Aggregate
-        and then Is_Others_Aggregate (E)
+      if Is_Array_Type (Dest_Typ) and then E_Value = No_Value_T
+        and then Nkind (Src_Node) = N_Aggregate
+        and then Is_Others_Aggregate (Src_Node)
       then
          --  We'll use memset, so we need to find the inner expression
 
-         Inner := Expression (First (Component_Associations (E)));
+         Inner := Expression (First (Component_Associations (Src_Node)));
          while Nkind (Inner) = N_Aggregate
            and then Is_Others_Aggregate (Inner)
          loop
@@ -2340,7 +2446,7 @@ package body GNATLLVM.Compile is
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
                Src,
-               Compute_Size (Env, LHS, E, Src),
+               Compute_Size (Env, Dest_Typ, Typ, Src),
                Const_Int (Int_Ty (32), 1, False),  --  Alignment
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2352,10 +2458,11 @@ package body GNATLLVM.Compile is
                         ""));
          end;
 
-      elsif Size_Known_At_Compile_Time (Typ)
-        and then Size_Known_At_Compile_Time (Dest_Typ)
+      elsif not Is_Dynamic_Size (Env, Typ)
+        and then not Is_Dynamic_Size (Env, Dest_Typ)
       then
-         Src := Emit_Expression (Env, E);
+         Src := (if E_Value = No_Value_T then Emit_Expression (Env, Src_Node)
+                 else E_Value);
 
          --  If the pointer type of Src is not the same as the type of
          --  Dest, convert it.
@@ -2367,7 +2474,8 @@ package body GNATLLVM.Compile is
          Store_With_Type (Env, Dest_Typ, Src, Dest);
 
       else
-         Src := Emit_LValue (Env, E);
+         Src := (if E_Value = No_Value_T then Emit_LValue (Env, Src_Node)
+                 else E_Value);
 
          if Is_Array_Type (Dest_Typ) then
             Dest := Array_Data (Env, Dest, Dest_Typ);
@@ -2380,7 +2488,7 @@ package body GNATLLVM.Compile is
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
                Bit_Cast (Env.Bld, Src, Void_Ptr_Type, ""),
-               Compute_Size (Env, LHS, E, Src),
+               Compute_Size (Env, Dest_Typ, Typ, Src),
                Const_Int (Int_Ty (32), 1, False),  --  Alignment
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2402,9 +2510,16 @@ package body GNATLLVM.Compile is
 
    function Emit_Call (Env : Environ; Call_Node : Node_Id) return Value_T is
       Subp        : Node_Id := Name (Call_Node);
+      Return_Typ  : constant Entity_Id := Full_Etype (Call_Node);
+      Void_Return : constant Boolean := Ekind (Return_Typ) = E_Void;
+      LLVM_Return_Typ : constant Type_T :=
+        (if Void_Return then No_Type_T else Create_Type (Env, Return_Typ));
+      Dynamic_Return : constant Boolean :=
+        not Void_Return and then Is_Dynamic_Size (Env, Return_Typ);
       Direct_Call : constant Boolean := Nkind (Subp) /= N_Explicit_Dereference;
-      Params      : constant Entity_Iterator :=
-        Get_Params (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
+      Subp_Typ    : constant Entity_Id :=
+        (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
+      Params      : constant Entity_Iterator := Get_Params (Subp_Typ);
       Param_Assoc, Actual : Node_Id;
       Actual_Type         : Entity_Id;
       Current_Needs_Ptr   : Boolean;
@@ -2421,12 +2536,13 @@ package body GNATLLVM.Compile is
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
       Args_Count     : constant Nat :=
-        Params'Length + (if This_Takes_S_Link then 1 else 0);
-
+        Params'Length + (if This_Takes_S_Link then 1 else 0) +
+                        (if Dynamic_Return then 1 else 0);
       Args           : Value_Array (1 .. Args_Count);
       I, Idx         : Standard.Types.Int := 1;
       P_Type         : Entity_Id;
       Params_Offsets : Name_Maps.Map;
+      pragma Unreferenced (LLVM_Return_Typ);
 
    begin
       for Param of Params loop
@@ -2518,7 +2634,15 @@ package body GNATLLVM.Compile is
       --  Set the argument for the static link, if any
 
       if This_Takes_S_Link then
-         Args (Args'Last) := S_Link;
+         Args (Params'Length + 1) := S_Link;
+      end if;
+
+      --  Add a pointer to the location of the return value if the return
+      --  type is of dynamic size.
+
+      if Dynamic_Return then
+         Args (Args'Last) :=
+           Allocate_For_Type (Env, Return_Typ, "call-return");
       end if;
 
       --  If there are any types mismatches for arguments passed by reference,
@@ -2541,12 +2665,21 @@ package body GNATLLVM.Compile is
          end loop;
       end;
 
-      return
-        Call
-          (Env.Bld,
-           LLVM_Func, Args'Address, Args'Length,
-           --  Assigning a name to a void value is not possible with LLVM
-           (if Nkind (Call_Node) = N_Function_Call then "call" else ""));
+      --  Set the argument for the static link, if any
+
+      if This_Takes_S_Link then
+         Args (Params'Length + 1) := S_Link;
+      end if;
+
+      --  If the return type is of dynamic size, call as a procedure and
+      --  return the address we set as the last parameter.
+
+      if Dynamic_Return then
+         Discard (Call (Env.Bld, LLVM_Func, Args'Address, Args'Length, ""));
+         return Args (Args'Last);
+      else
+         return Call (Env.Bld, LLVM_Func, Args'Address, Args'Length, "");
+      end if;
    end Emit_Call;
 
    --------------------------
@@ -2664,12 +2797,10 @@ package body GNATLLVM.Compile is
    ------------------
 
    function Compute_Size
-     (Env         : Environ;
-      Left, Right : Node_Id;
-      Right_Value : Value_T) return Value_T
+     (Env                 : Environ;
+      Left_Typ, Right_Typ : Entity_Id;
+      Right_Value         : Value_T) return Value_T
    is
-      Left_Typ  : constant Node_Id := Full_Etype (Left);
-      Right_Typ : constant Node_Id := Full_Etype (Right);
    begin
 
       --  If the left type is of constant size, return the size of that

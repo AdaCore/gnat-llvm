@@ -157,7 +157,12 @@ package GNATLLVM.Environment is
       --  LLVM value for current function.
 
       Activation_Rec_Param      : Value_T;
-      --  Parameter to this subprogram that represents an activtion record.
+      --  Parameter to this subprogram, if any, that represents an
+      --  activtion record.
+
+      Return_Address_Param      : Value_T;
+      --  Parameter to this subprogram, if any, that represent the address
+      --  to which we are to copy the return value.
 
       Size_Type                 : Type_T;
       --  Type to use for sizes.

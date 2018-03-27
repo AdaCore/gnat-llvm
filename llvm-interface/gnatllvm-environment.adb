@@ -309,6 +309,7 @@ package body GNATLLVM.Environment is
    begin
       Env.Func := Func;
       Env.Activation_Rec_Param := No_Value_T;
+      Env.Return_Address_Param := No_Value_T;
       Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));
    end Enter_Subp;
 

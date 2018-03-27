@@ -433,10 +433,15 @@ package body GNATLLVM.Types is
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
    is
-      Args_Count : constant Nat :=
-        Params'Length + (if Takes_S_Link then 1 else 0);
-      Arg_Types  : Type_Array (1 .. Args_Count);
-
+      LLVM_Return_Typ : Type_T :=
+         (if Present (Return_Type) then Create_Type (Env, Return_Type)
+          else Void_Type_In_Context (Env.Ctx));
+      Args_Count      : constant Nat :=
+        Params'Length + (if Takes_S_Link then 1 else 0) +
+                        (if Present (Return_Type)
+                           and then Is_Dynamic_Size (Env, Return_Type)
+                           then 1 else 0);
+      Arg_Types       : Type_Array (1 .. Args_Count);
    begin
       --  First, Associate an LLVM type for each Ada subprogram parameter
 
@@ -458,15 +463,21 @@ package body GNATLLVM.Types is
       --  Set the argument for the static link, if any
 
       if Takes_S_Link then
-         Arg_Types (Arg_Types'Last) :=
+         Arg_Types (Params'Length + 1) :=
            Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
       end if;
 
-      return Fn_Ty
-        (Arg_Types,
-         (if Present (Return_Type)
-          then Create_Type (Env, Return_Type)
-          else Void_Type_In_Context (Env.Ctx)));
+      --  If the return type has dynamic size, we need to add a parameter
+      --  to which we pass the address for the return to be placed in.
+
+      if Present (Return_Type)
+        and then Is_Dynamic_Size (Env, Return_Type)
+      then
+         Arg_Types (Arg_Types'Last) := Create_Access_Type (Env, Return_Type);
+         LLVM_Return_Typ := Void_Type_In_Context (Env.Ctx);
+      end if;
+
+      return Fn_Ty (Arg_Types, LLVM_Return_Typ);
    end Create_Subprogram_Type;
 
    -----------------------------------

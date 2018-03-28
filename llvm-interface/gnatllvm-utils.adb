@@ -18,7 +18,6 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
-with Einfo;    use Einfo;
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
 

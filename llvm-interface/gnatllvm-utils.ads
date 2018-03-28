@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Atree; use Atree;
+with Einfo; use Einfo;
 with Namet; use Namet;
 with Sinfo; use Sinfo;
 with Types; use Types;
@@ -108,6 +109,11 @@ package GNATLLVM.Utils is
 
    function Is_LValue (Node : Node_Id) return Boolean;
    --  Returns true if Node is an L value
+
+   function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
+     (Is_Access_Type (T) and then Is_Array_Type (Designated_Type (T))
+      and then not Is_Constrained (Designated_Type (T)))
+     with Pre => Is_Type (T);
 
    function Get_Param_Types (Fn_Ty : Type_T) return Type_Array;
    --  Wrapper for equivalent LLVM function, returning a proper type array.

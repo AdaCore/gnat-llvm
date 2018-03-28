@@ -137,8 +137,8 @@ package body GNATLLVM.Compile is
       E_Value                   : Value_T;
       Forwards_OK, Backwards_OK : Boolean)
      with Pre => Env /= null and then Is_Type (LHS_Typ)
-                 and then Is_Type (RHS_Typ) and then LValue /= No_Value_T
-                 and then Present (E);
+                 and then Is_Type (RHS_Typ)
+                 and then (LValue /= No_Value_T or else Present (E));
    --  Helper for Emit: Copy the value of the expression E to LValue
    --  with the specified destination and expression types
 
@@ -2088,9 +2088,12 @@ package body GNATLLVM.Compile is
                   --  LLVM functions are pointers that cannot be
                   --  dereferenced. If Def_Ident is a subprogram, return it
                   --  as-is, the caller expects a pointer to a function
-                  --  anyway.
+                  --  anyway.  For dynamic-sized types, we always return
+                  --  the address of the object, so leave it the way it is.
 
-                  if Is_Subprogram then
+                  if Is_Subprogram
+                    or else Is_Dynamic_Size (Env, Full_Etype (Def_Ident))
+                  then
                      return LValue;
                   elsif Needs_Deref (Def_Ident) then
                      return Load (Env.Bld, Load (Env.Bld, LValue, ""), "");
@@ -2126,37 +2129,54 @@ package body GNATLLVM.Compile is
             end if;
 
             declare
-               Typ    : constant Entity_Id := Full_Etype (Expression (Node));
-               Arg    : array (1 .. 1) of Value_T :=
-                 (1 => Get_Type_Size (Env, Create_Type (Env, Typ), Typ,
-                                      No_Value_T, For_Type => True));
-               Result : Value_T;
+               Expr             : constant Node_Id := Expression (Node);
+               Typ              : Entity_Id;
+               Arg              : array (1 .. 1) of Value_T;
+               Value            : Value_T;
+               Result_Type      : constant Entity_Id := Full_Etype (Node);
+               LLVM_Result_Type : Type_T;
+               Result           : Value_T;
 
             begin
-               Result := Bit_Cast
-                 (Env.Bld,
-                  Call
-                    (Env.Bld,
-                     Env.Default_Alloc_Fn, Arg'Address, 1, "alloc"),
-                  Create_Type (Env, Full_Etype (Node)),
-                  "alloc_bc");
+               --  There are two cases: the Expression operand can either be
+               --  an N_Identifier or Expanded_Name, which must represent a
+               --  type, or a N_Qualified_Expression, which contains both
+               --  the object type and an initial value for the object.
 
-               case Nkind (Expression (Node)) is
-                  when N_Identifier =>
-                     return Result;
+               if Is_Entity_Name (Expr) then
+                  Typ         := Entity (Expr);
+                  Value       := No_Value_T;
+               else
+                  pragma Assert (Nkind (Expr) = N_Qualified_Expression);
+                  Typ         := Full_Etype (Expression (Expr));
+                  Value       := Emit_Expr (Expression (Expr));
+               end if;
 
-                  when N_Qualified_Expression =>
-                     --  ??? Handle unconstrained arrays
-                     Store
-                       (Env.Bld,
-                        Emit_Expression (Env, Expression (Node)),
-                        Result);
-                     return Result;
+               Arg := (1 => Get_Type_Size (Env, Create_Type (Env, Typ),
+                                           Typ, Value,
+                                           For_Type => Value = No_Value_T));
+               Result := Call
+                 (Env.Bld, Env.Default_Alloc_Fn, Arg'Address, 1, "alloc");
+               LLVM_Result_Type := Create_Type (Env, Result_Type);
 
-                  when others =>
-                     Error_Msg_N ("unsupported form of N_Allocator", Node);
-                     return Get_Undef (Create_Type (Env, Full_Etype (Node)));
-               end case;
+               if Nkind (Expr) = N_Qualified_Expression then
+                  Emit_Assignment (Env, Typ, Typ, Result, Empty, Value,
+                                   True, True);
+               end if;
+
+               --  ??? This should be common code at some point.
+               --  If we need a fat pointer, make one.  Otherwise, just do
+               --  a bitwise conversion.
+
+               if Is_Array_Type (Designated_Type (Result_Type))
+                 and then not Is_Constrained (Designated_Type (Result_Type))
+               then
+                  Result := Array_Fat_Pointer (Env, Result, Typ);
+               else
+                  Result := Bit_Cast (Env.Bld, Result, LLVM_Result_Type, "");
+               end if;
+
+               return Result;
             end;
 
          when N_Reference =>
@@ -2419,7 +2439,7 @@ package body GNATLLVM.Compile is
          Typ := Packed_Array_Impl_Type (Typ);
       end loop;
 
-      if Is_Array_Type (Dest_Typ) and then E_Value = No_Value_T
+      if Is_Array_Type (Dest_Typ) and then Present (Src_Node)
         and then Nkind (Src_Node) = N_Aggregate
         and then Is_Others_Aggregate (Src_Node)
       then
@@ -3456,7 +3476,19 @@ package body GNATLLVM.Compile is
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
    begin
-      if Is_Floating_Point_Type (Operand_Type) then
+      --  If these are fat pointer, they are equal iff their addresses are
+      --  equal.  It's not possible for the addresses to be equal and not
+      --  the bounds. We can't make a recursive call here or we'll try to do
+      --  it again that time.
+
+      if Is_Access_Unconstrained (Operand_Type) then
+         return I_Cmp
+           (Env.Bld, Operation.Unsigned,
+            Array_Data (Env, LHS, Designated_Type (Operand_Type)),
+            Array_Data (Env, RHS, Designated_Type (Operand_Type)),
+            "");
+
+      elsif Is_Floating_Point_Type (Operand_Type) then
          return F_Cmp
            (Env.Bld, Operation.Real, LHS, RHS, "");
 

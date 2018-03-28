@@ -96,9 +96,10 @@ package body GNATLLVM.Compile is
    --  Helper of Build_Type_Conversion if both types are scalar.
 
    function Convert_To_Scalar_Type
-     (Env  : Environ;
-      Expr : Value_T;
-      T    : Entity_Id) return Value_T
+     (Env         : Environ;
+      Expr        : Value_T;
+      T           : Entity_Id;
+      Is_Unsigned : Boolean) return Value_T
      with Pre  => Env /= null and then Expr /= No_Value_T
                   and then Is_Type (T),
           Post => Convert_To_Scalar_Type'Result /= No_Value_T;
@@ -1833,7 +1834,7 @@ package body GNATLLVM.Compile is
             RVal   : constant Value_T := Emit_Expr (Right_Opnd (Node));
             FP     : constant Boolean := Is_Floating_Point_Type (T);
             Unsign : constant Boolean := Is_Unsigned_Type (T);
-            Subp : Opf := null;
+            Subp   : Opf := null;
 
          begin
             case Nkind (Node) is
@@ -2912,9 +2913,10 @@ package body GNATLLVM.Compile is
    -- Convert_To_Scalar_Type --
    ----------------------------
    function Convert_To_Scalar_Type
-     (Env  : Environ;
-      Expr : Value_T;
-      T    : Entity_Id) return Value_T
+     (Env         : Environ;
+      Expr        : Value_T;
+      T           : Entity_Id;
+      Is_Unsigned : Boolean) return Value_T
    is
       type Cvtf is access function
         (Bld : Builder_T; Value : Value_T; Typ : Type_T; Name : String)
@@ -2930,7 +2932,7 @@ package body GNATLLVM.Compile is
       elsif In_Width > Out_Width then
          Subp := Trunc'Access;
       else
-         Subp := (if Is_Unsigned_Type (T) then Z_Ext'Access else S_Ext'Access);
+         Subp := (if Is_Unsigned then Z_Ext'Access else S_Ext'Access);
       end if;
 
       return Subp (Env.Bld, Expr, Create_Type (Env, T), "");
@@ -2945,11 +2947,15 @@ package body GNATLLVM.Compile is
       S_Type, D_Type      : Entity_Id;
       Expr                : Node_Id) return Value_T
    is
+      type Opf is access function
+        (Bld : Builder_T; Op : Value_T; Ty : Type_T; Name : String)
+        return Value_T;
+
       Dest_Ty   : constant Type_T := Create_Type (Env, D_Type);
       Value     : constant Value_T := Emit_Expression (Env, Expr);
       Src_Type  : Entity_Id := S_Type;
       Dest_Type : Entity_Id := D_Type;
-
+      Subp      : Opf := null;
    begin
 
       while Is_Array_Type (Src_Type)
@@ -2964,51 +2970,63 @@ package body GNATLLVM.Compile is
          Dest_Type := Packed_Array_Impl_Type (Dest_Type);
       end loop;
 
-      if Is_Access_Type (Dest_Type)
-        and then (Is_Scalar_Type (Src_Type)
-                  or else Is_Descendant_Of_Address (Src_Type))
+      --  If the value is already of the desired LLVM type, we're done.
+
+      if Type_Of (Value) = Dest_Ty then
+         return Value;
+
+      --  If converting pointer to pointer or pointer to/from integer, we
+      --  just copy the bits using the appropriate instruction.
+      elsif Is_Access_Type (Dest_Type) and then Is_Scalar_Type (Src_Type) then
+         Subp := Int_To_Ptr'Access;
+      elsif Is_Scalar_Type (Dest_Type) and then Is_Access_Type (Src_Type) then
+         Subp := Ptr_To_Int'Access;
+      elsif Is_Access_Type (Src_Type) and then Is_Access_Type (Dest_Type)
+        and then not Is_Access_Unconstrained (Src_Type)
+        and then not Is_Access_Unconstrained (Dest_Type)
       then
-         return Int_To_Ptr (Env.Bld, Value, Dest_Ty, "unchecked-conv");
-      elsif (Is_Scalar_Type (Dest_Type)
-             or else Is_Descendant_Of_Address (Dest_Type))
-        and then Is_Access_Type (Src_Type)
-      then
-         return Ptr_To_Int (Env.Bld, Value, Dest_Ty, "unchecked-conv");
-      elsif Is_Access_Type (Src_Type) then
-         return Pointer_Cast
-           (Env.Bld, Value, Dest_Ty, "unchecked-conv");
+         Subp := Pointer_Cast'Access;
+
+      --  If these are both integral types, we handle this as a normal
+      --  conversion.  Unchecked conversion is only defined if the sizes
+      --  are the same, which is handled above by checking for the same
+      --  LLVM type, but the front-end generates it, meaning to do
+      --  a normal conversion.
+
       elsif Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
         and then Is_Discrete_Or_Fixed_Point_Type (Src_Type)
       then
-         return Int_Cast (Env.Bld, Value, Dest_Ty, "unchecked-conv");
-      elsif Is_Array_Type (Src_Type)
-        and then Is_Scalar_Type (Dest_Type)
-      then
-         return Load
-           (Env.Bld,
-            Bit_Cast
-              (Env.Bld,
-               Array_Address (Env, Emit_LValue (Env, Expr), Src_Type),
-               Pointer_Type (Dest_Ty, 0), ""),
-            "unchecked-conv");
+         return Convert_To_Scalar_Type (Env, Value, Dest_Type,
+                                        Is_Unsigned_Type (Src_Type));
 
-      elsif Nkind (Src_Type) = N_Defining_Identifier
-        and then Nkind (Dest_Type) = N_Defining_Identifier
-        and then Full_Etype (Src_Type) = Full_Etype (Dest_Type)
-        and then not Has_Discriminants (Src_Type)
-      then
-         return Value;
+      --  Otherwise, these must be cases where we have to convert by
+      --  pointer punning.  If the source is a type of dynamic size, the
+      --  value is already a pointer.  Otherwise, we have to make it a
+      --  pointer.  ??? This code has a problem in that it calls Emit_LValue
+      --  on an expression that's already been elaborated, but let's fix
+      --  that double-elaboration issue later.
+
       else
-         --  Generate *(type*)&expr
-
-         return Load
-           (Env.Bld,
-            Pointer_Cast
-              (Env.Bld,
-               Emit_LValue (Env, Expr),
-               Pointer_Type (Dest_Ty, 0), ""),
-            "unchecked-conv");
+         declare
+            Addr           : constant Value_T :=
+              (if Is_Dynamic_Size (Env, Src_Type) then Value
+               else Emit_LValue (Env, Expr));
+            Dest_Ptr       : constant Type_T := Pointer_Type (Dest_Ty, 0);
+            Converted_Addr : constant Value_T :=
+               Pointer_Cast (Env.Bld, Addr, Dest_Ptr, "unc-ptr-cvt");
+         begin
+            if Is_Dynamic_Size (Env, Dest_Type) then
+               return Converted_Addr;
+            else
+               return Load_With_Type (Env, Dest_Type, Converted_Addr);
+            end if;
+         end;
       end if;
+
+      --  If we get here, we should have set Subp to point to the function
+      --  to call to do the conversion.
+
+      return Subp (Env.Bld, Value, Dest_Ty, "unchecked-conv");
    end Build_Unchecked_Conversion;
 
    ------------------
@@ -3189,7 +3207,9 @@ package body GNATLLVM.Compile is
                   Result := Get_Undef (Create_Type (Env, Full_Etype (Node)));
                end if;
 
-               return Convert_To_Scalar_Type (Env, Result, Full_Etype (Node));
+               return Convert_To_Scalar_Type
+                 (Env, Result, Full_Etype (Node),
+                  Is_Unsigned_Type (Full_Etype (Node)));
             end;
 
          when Attribute_Max
@@ -3271,7 +3291,7 @@ package body GNATLLVM.Compile is
                            Get_Type_Size (Env, LLVM_Typ, Typ, Value, For_Type),
                            Const_8,
                            ""),
-                  Result_Typ);
+                  Result_Typ, Is_Unsigned => False);
             end;
 
          when others =>

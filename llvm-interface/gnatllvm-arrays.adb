@@ -649,10 +649,10 @@ package body GNATLLVM.Arrays is
 
       --  Otherwise, we convert the array data type to an i8*, compute the
       --  byte offset from the index and size information, index that, and
-      --  then convert back to the array type.  We index by multiplying the
-      --  last index by the size of the component, then for each other
-      --  index, we multiply by the length of the next dimension and add
-      --  the index.  We do all of this in Size_Type.
+      --  then convert back to the array type.  We start with the first
+      --  index then for each dimension after the first, multiply by the
+      --  size of that dimension and add that index.  Finally, we multiply
+      --  by the size of the component.  We do all of this in Size_Type.
 
       declare
          Int8_Ptr      : constant Type_T := Pointer_Type (Int_Ty (8), 0);
@@ -663,13 +663,10 @@ package body GNATLLVM.Arrays is
          LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
          Comp_Size     : constant Value_T :=
            Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_Value_T);
-         Index         : Value_T :=
-           NSW_Mul (Env.Bld, Comp_Size,
-                    Convert_To_Size_Type (Env, Idxs (Idxs'Last)),
-                    "");
+         Index         : Value_T := Convert_To_Size_Type (Env, Idxs (2));
       begin
 
-         for Dim in reverse  0 .. Number_Dimensions (Arr_Typ) - 2 loop
+         for Dim in 1 .. Number_Dimensions (Arr_Typ) - 1 loop
             Index := NSW_Add (Env.Bld,
                               NSW_Mul (Env.Bld,
                                        Index,
@@ -683,6 +680,7 @@ package body GNATLLVM.Arrays is
                               "");
          end loop;
 
+         Index := NSW_Mul (Env.Bld, Index, Comp_Size, "");
          return Bit_Cast
            (Env.Bld, GEP (Env.Bld, Data, (1 => Index), "gen-index"),
             Pointer_Type (LLVM_Array_Typ, 0), "");

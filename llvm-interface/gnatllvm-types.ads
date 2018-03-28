@@ -96,7 +96,7 @@ package GNATLLVM.Types is
    function Get_LLVM_Type_Size
      (Env : Environ;
       T   : Type_T) return unsigned_long_long is
-     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, T) / 8)
+     ((Size_Of_Type_In_Bits (Env.Module_Data_Layout, T) + 7) / 8)
      with Pre => Env /= null and then T /= No_Type_T;
    --  Return the size of an LLVM type, in bytes
 

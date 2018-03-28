@@ -918,8 +918,9 @@ package body GNATLLVM.Compile is
                            (Env.Bld,
                             Array_Alloca
                               (Env.Bld,
-                               Get_Innermost_Component_Type (Env, T),
-                               Get_Array_Size (Env, No_Value_T, T),
+                               Int_Ty (8),
+                               Get_Type_Size (Env, Create_Type (Env, T), T,
+                                              No_Value_T),
                                "array-alloca"),
                            LLVM_Type,
                            Get_Name (Def_Ident));
@@ -3108,7 +3109,7 @@ package body GNATLLVM.Compile is
                     Create_Access_Type (Env, Full_Etype (Node)), "attr-deref");
 
             begin
-               if LValue or else Is_Array_Type (Full_Etype (Node)) then
+               if LValue or else Is_Dynamic_Size (Env, Full_Etype (Node)) then
                   return Val;
                else
                   return Load (Env.Bld, Val, "attr-deref");

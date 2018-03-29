@@ -534,7 +534,7 @@ package body GNATLLVM.Compile is
          when N_Subtype_Indication =>
             Decode_Range (Range_Expression (Constraint (Rng)), Low, High);
 
-         when N_Range =>
+         when N_Range | N_Signed_Integer_Type_Definition =>
             Low := Get_Uint_Value (Low_Bound (Rng));
             High := Get_Uint_Value (High_Bound (Rng));
 

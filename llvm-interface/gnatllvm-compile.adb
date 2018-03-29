@@ -1829,11 +1829,20 @@ package body GNATLLVM.Compile is
               (Bld : Builder_T; LHS, RHS : Value_T; Name : String)
               return Value_T;
 
-            T      : constant Entity_Id := Full_Etype (Left_Opnd (Node));
-            LVal   : constant Value_T := Emit_Expr (Left_Opnd (Node));
-            RVal   : constant Value_T := Emit_Expr (Right_Opnd (Node));
-            FP     : constant Boolean := Is_Floating_Point_Type (T);
-            Unsign : constant Boolean := Is_Unsigned_Type (T);
+            Left_Type : constant Entity_Id := Full_Etype (Left_Opnd (Node));
+            Right_Type : constant Entity_Id := Full_Etype (Right_Opnd (Node));
+            Left_BT : constant Entity_Id :=
+              Implementation_Base_Type (Left_Type);
+            Right_BT : constant Entity_Id :=
+              Implementation_Base_Type (Right_Type);
+            LVal   : constant Value_T :=
+              Build_Type_Conversion
+              (Env, Left_Type, Left_BT, Left_Opnd (Node));
+            RVal   : constant Value_T :=
+              Build_Type_Conversion
+              (Env, Right_Type, Right_BT, Right_Opnd (Node));
+            FP     : constant Boolean := Is_Floating_Point_Type (Left_BT);
+            Unsign : constant Boolean := Is_Unsigned_Type (Right_BT);
             Subp   : Opf := null;
 
          begin
@@ -1878,7 +1887,7 @@ package body GNATLLVM.Compile is
                Error_Msg_N
                  ("unhandled node kind in expression: `" &
                     Node_Kind'Image (Nkind (Node)) & "`", Node);
-               return Get_Undef (Create_Type (Env, T));
+               return Get_Undef (Create_Type (Env, Left_BT));
             end if;
          end;
 
@@ -2767,8 +2776,6 @@ package body GNATLLVM.Compile is
       S_Type  : Entity_Id := Get_Fullest_View (Src_Type);
       D_Type  : Entity_Id := Get_Fullest_View (Dest_Type);
 
-      function Value return Value_T is (Emit_Expression (Env, Expr));
-
    begin
 
       while Is_Array_Type (S_Type)
@@ -2788,28 +2795,10 @@ package body GNATLLVM.Compile is
       if Is_Scalar_Type (S_Type) and then Is_Scalar_Type (D_Type) then
          return Convert_Scalar_Types (Env, S_Type, D_Type, Expr);
 
-      elsif Is_Access_Type (D_Type) then
-         return Int_To_Ptr
-           (Env.Bld,
-            Value, Create_Type (Env, D_Type), "ptr-conv");
-      elsif Is_Access_Type (S_Type) then
-         return Ptr_To_Int
-           (Env.Bld,
-            Value, Create_Type (Env, D_Type), "ptr-conv");
-
-      elsif Is_Array_Type (S_Type) then
-         return Bit_Cast
-           (Env.Bld,
-            Value,
-            Create_Type (Env, D_Type),
-            "array-conv");
-
-      elsif Is_Record_Type (S_Type) and then Is_Record_Type (D_Type) then
-         return Build_Unchecked_Conversion (Env, Src_Type, Dest_Type, Expr);
+      --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         Error_Msg_N ("unsupported type conversion", Expr);
-         return Get_Undef (Create_Type (Env, Dest_Type));
+         return Build_Unchecked_Conversion (Env, Src_Type, Dest_Type, Expr);
 
       end if;
    end Build_Type_Conversion;

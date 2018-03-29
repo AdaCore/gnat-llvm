@@ -4050,9 +4050,10 @@ package body GNATLLVM.Compile is
                   Corresponding_Integer_Value (Node));
             else
                declare
-                  Real_Type : constant Type_T :=
+                  Real_Type           : constant Type_T :=
                     Create_Type (Env, Full_Etype (Node));
-                  Val       : Ureal := Realval (Node);
+                  Val                 : Ureal := Realval (Node);
+                  FP_Num, FP_Denom    : double;
 
                begin
                   if UR_Is_Zero (Val) then
@@ -4069,58 +4070,22 @@ package body GNATLLVM.Compile is
                         Val, Round_Even, Node);
                   end if;
 
-                  --  ??? See trans.c (case N_Real_Literal) for handling of
-                  --  N_Real_Literal in gigi.
-                  --  This is wrong because if the base is two, the normal
-                  --  case, the Denominator is the exponent.
+                  pragma Assert (Rbase (Val) = 2);
 
-                  if UI_Is_In_Int_Range (Numerator (Val))
-                    and then UI_Is_In_Int_Range (Denominator (Val))
-                  then
-                     if UR_Is_Negative (Val) then
-                        return Const_Real
-                          (Real_Type,
-                           -double (UI_To_Int (Numerator (Val))) /
-                            double (UI_To_Int (Denominator (Val))));
+                  --  ??? This code is not necessarily the most efficient,
+                  --  may not give full precision in all cases, and may not
+                  --  handle denormalized constants, but should work in enough
+                  --  cases for now.
 
-                     else
-                        return Const_Real
-                          (Real_Type,
-                           double (UI_To_Int (Numerator (Val))) /
-                           double (UI_To_Int (Denominator (Val))));
-                     end if;
-                  else
-                     declare
-                        function Const_Real_Of_String
-                          (Real_Ty : Type_T;
-                           Text    : String;
-                           S_Len   : unsigned) return Value_T;
-                        pragma Import
-                          (C, Const_Real_Of_String,
-                           "LLVMConstRealOfStringAndSize");
-
-                        Num_Str : constant String :=
-                          UI_Image (Numerator (Val), Decimal) & ".0";
-                        Den_Str : constant String :=
-                          UI_Image (Denominator (Val), Decimal) & ".0";
-                        Num     : constant Value_T :=
-                          Const_Real_Of_String
-                            (Real_Type, Num_Str, Num_Str'Length);
-                        Den     : constant Value_T :=
-                          Const_Real_Of_String
-                            (Real_Type, Den_Str, Den_Str'Length);
-
-                     begin
-                        if UR_Is_Negative (Val) then
-                           return F_Sub
-                             (Env.Bld,
-                              Const_Real (Real_Type, 0.0),
-                              F_Div (Env.Bld, Num, Den, ""), "");
-                        else
-                           return F_Div (Env.Bld, Num, Den, "");
-                        end if;
-                     end;
+                  FP_Num :=
+                    double (UI_To_Long_Long_Integer (Numerator (Val)));
+                  if UR_Is_Negative (Val) then
+                     FP_Num := -FP_Num;
                   end if;
+
+                  FP_Denom :=
+                    2.0 ** (Integer (-UI_To_Int (Denominator (Val))));
+                  return Const_Real (Real_Type, FP_Num * FP_Denom);
                end;
             end if;
 

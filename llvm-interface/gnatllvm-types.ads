@@ -18,22 +18,37 @@
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
+with Atree; use Atree;
+with Einfo; use Einfo;
+with Sinfo; use Sinfo;
 with Types; use Types;
 
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types;  use LLVM.Types;
 
-with Atree; use Atree;
-with Einfo; use Einfo;
-
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
+
 with Get_Targ; use Get_Targ;
 
 package GNATLLVM.Types is
 
    pragma Annotate (Xcov, Exempt_On, "Defensive programming");
+
+   function Get_Fullest_View (E : Entity_Id) return Entity_Id is
+   (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)
+    then Non_Limited_View (E)
+    elsif Present (Full_View (E))
+    then Full_View (E)
+    elsif Ekind (E) in Private_Kind
+      and then Present (Underlying_Full_View (E))
+    then Underlying_Full_View (E)
+    else E);
+
+   function Full_Etype (N : Node_Id) return Entity_Id is
+      (if Ekind (Etype (N)) = E_Void then Etype (N)
+       else Get_Fullest_View (Etype (N)));
 
    function Create_Access_Type
      (Env : Environ; TE : Entity_Id) return Type_T

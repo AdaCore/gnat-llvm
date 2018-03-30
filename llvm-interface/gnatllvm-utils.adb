@@ -21,6 +21,7 @@ with Ada.Unchecked_Conversion;
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
 
+with GNATLLVM.Types;      use GNATLLVM.Types;
 with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is

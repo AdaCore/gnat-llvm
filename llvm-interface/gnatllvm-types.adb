@@ -17,14 +17,13 @@
 
 with Errout;   use Errout;
 with Sem_Util; use Sem_Util;
-with Sinfo;    use Sinfo;
 with Stand;    use Stand;
 with Uintp;    use Uintp;
 with Ttypes;
 
-with GNATLLVM.Arrays; use GNATLLVM.Arrays;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
 with GNATLLVM.Compile;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
 

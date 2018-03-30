@@ -20,10 +20,9 @@ with Ada.Containers.Vectors;
 
 with Atree; use Atree;
 with Einfo; use Einfo;
-with Sinfo; use Sinfo;
+with Namet; use Namet;
 with Table; use Table;
 with Types; use Types;
-with Namet; use Namet;
 
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types; use LLVM.Types;
@@ -290,19 +289,5 @@ package GNATLLVM.Environment is
      (Env : Environ; Name : String) return Basic_Block_T
      with Pre  => Env /= null,
           Post => Create_Basic_Block'Result /= No_BB_T;
-
-   function Get_Fullest_View (E : Entity_Id) return Entity_Id is
-   (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)
-    then Non_Limited_View (E)
-    elsif Present (Full_View (E))
-    then Full_View (E)
-    elsif Ekind (E) in Private_Kind
-      and then Present (Underlying_Full_View (E))
-    then Underlying_Full_View (E)
-    else E);
-
-   function Full_Etype (N : Node_Id) return Entity_Id is
-      (if Ekind (Etype (N)) = E_Void then Etype (N)
-       else Get_Fullest_View (Etype (N)));
 
 end GNATLLVM.Environment;

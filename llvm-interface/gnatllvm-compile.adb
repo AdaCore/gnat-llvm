@@ -67,7 +67,7 @@ package body GNATLLVM.Compile is
 
    function Build_Unchecked_Conversion
      (Env                 : Environ;
-      S_Type, D_Type      : Entity_Id;
+      Src_Type, Dest_Type : Entity_Id;
       Expr                : Node_Id) return Value_T;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
@@ -132,13 +132,13 @@ package body GNATLLVM.Compile is
 
    procedure Emit_Assignment
      (Env                       : Environ;
-      LHS_Typ, RHS_Typ          : Entity_Id;
+      Dest_Typ, LHS_Typ         : Entity_Id;
       LValue                    : Value_T;
       E                         : Node_Id;
       E_Value                   : Value_T;
       Forwards_OK, Backwards_OK : Boolean)
-     with Pre => Env /= null and then Is_Type (LHS_Typ)
-                 and then Is_Type (RHS_Typ)
+     with Pre => Env /= null and then Is_Type (Dest_Typ)
+                 and then Is_Type (LHS_Typ)
                  and then (LValue /= No_Value_T or else Present (E));
    --  Helper for Emit: Copy the value of the expression E to LValue
    --  with the specified destination and expression types
@@ -151,11 +151,11 @@ package body GNATLLVM.Compile is
    --  return its result value.
 
    function Emit_Comparison
-     (Env      : Environ;
-      Kind     : Node_Kind;
-      Op_Type  : Entity_Id;
-      LHS, RHS : Node_Id) return Value_T
-     with Pre  => Env /= null and then Is_Type (Op_Type)
+     (Env           : Environ;
+      Kind          : Node_Kind;
+      Operand_Type  : Entity_Id;
+      LHS, RHS      : Node_Id) return Value_T
+     with Pre  => Env /= null and then Is_Type (Operand_Type)
                   and then Present (LHS) and then Present (RHS),
           Post => Emit_Comparison'Result /= No_Value_T;
 
@@ -813,7 +813,7 @@ package body GNATLLVM.Compile is
 
             declare
                Def_Ident      : constant Node_Id := Defining_Identifier (Node);
-               T              : Entity_Id := Full_Etype (Def_Ident);
+               T              : constant Entity_Id := Full_Etype (Def_Ident);
                LLVM_Type      : Type_T;
                LLVM_Var, Expr : Value_T;
 
@@ -823,12 +823,6 @@ package body GNATLLVM.Compile is
                if T = Standard_Debug_Renaming_Type then
                   return;
                end if;
-
-               while Is_Array_Type (T)
-                 and then Present (Packed_Array_Impl_Type (T))
-               loop
-                  T := Packed_Array_Impl_Type (T);
-               end loop;
 
                --  Handle top-level declarations
 
@@ -1973,10 +1967,10 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
             return Build_Unchecked_Conversion
-              (Env    => Env,
-               S_Type => Full_Etype (Expression (Node)),
-               D_Type => Full_Etype (Node),
-               Expr   => Expression (Node));
+              (Env       => Env,
+               Src_Type  => Full_Etype (Expression (Node)),
+               Dest_Type => Full_Etype (Node),
+               Expr      => Expression (Node));
 
          when N_Qualified_Expression =>
             --  We can simply strip the type qualifier
@@ -2427,7 +2421,7 @@ package body GNATLLVM.Compile is
 
    procedure Emit_Assignment
      (Env                       : Environ;
-      LHS_Typ, RHS_Typ          : Entity_Id;
+      Dest_Typ, LHS_Typ         : Entity_Id;
       LValue                    : Value_T;
       E                         : Node_Id;
       E_Value                   : Value_T;
@@ -2435,10 +2429,9 @@ package body GNATLLVM.Compile is
    is
       Src_Node : Node_Id := E;
       Dest     : Value_T := LValue;
+      Typ      : Entity_Id := LHS_Typ;
       Src      : Value_T;
       Inner    : Node_Id;
-      Dest_Typ : Entity_Id := LHS_Typ;
-      Typ      : Entity_Id := RHS_Typ;
    begin
 
       --  If we have checked or unchecked conversions between aggregate types
@@ -2457,18 +2450,6 @@ package body GNATLLVM.Compile is
       --  Make sure all types have been elaborated.
       Discard (Create_Type (Env, Dest_Typ));
       Discard (Create_Type (Env, Typ));
-
-      while Is_Array_Type (Dest_Typ)
-        and then Present (Packed_Array_Impl_Type (Dest_Typ))
-      loop
-         Dest_Typ := Packed_Array_Impl_Type (Dest_Typ);
-      end loop;
-
-      while Is_Array_Type (Typ)
-        and then Present (Packed_Array_Impl_Type (Typ))
-      loop
-         Typ := Packed_Array_Impl_Type (Typ);
-      end loop;
 
       if Is_Array_Type (Dest_Typ) and then Present (Src_Node)
         and then Nkind (Src_Node) = N_Aggregate
@@ -2635,12 +2616,6 @@ package body GNATLLVM.Compile is
          end if;
 
          Actual_Type := Full_Etype (Actual);
-         while Is_Array_Type (Actual_Type)
-           and then Present (Packed_Array_Impl_Type (Actual_Type))
-         loop
-            Actual_Type := Packed_Array_Impl_Type (Actual_Type);
-         end loop;
-
          Current_Needs_Ptr := Param_Needs_Ptr (Params (Idx));
          Args (Idx) :=
            (if Current_Needs_Ptr
@@ -2810,22 +2785,9 @@ package body GNATLLVM.Compile is
       Src_Type, Dest_Type : Entity_Id;
       Expr                : Node_Id) return Value_T
    is
-      S_Type  : Entity_Id := Get_Fullest_View (Src_Type);
-      D_Type  : Entity_Id := Get_Fullest_View (Dest_Type);
-
+      S_Type  : constant Entity_Id := Get_Fullest_View (Src_Type);
+      D_Type  : constant Entity_Id := Get_Fullest_View (Dest_Type);
    begin
-
-      while Is_Array_Type (S_Type)
-        and then Present (Packed_Array_Impl_Type (S_Type))
-      loop
-         S_Type := Packed_Array_Impl_Type (S_Type);
-      end loop;
-
-      while Is_Array_Type (D_Type)
-        and then Present (Packed_Array_Impl_Type (D_Type))
-      loop
-         D_Type := Packed_Array_Impl_Type (D_Type);
-      end loop;
 
       --  If both types are scalar, hand that off to our helper.
 
@@ -2970,31 +2932,17 @@ package body GNATLLVM.Compile is
 
    function Build_Unchecked_Conversion
      (Env                 : Environ;
-      S_Type, D_Type      : Entity_Id;
+      Src_Type, Dest_Type : Entity_Id;
       Expr                : Node_Id) return Value_T
    is
       type Opf is access function
         (Bld : Builder_T; Op : Value_T; Ty : Type_T; Name : String)
         return Value_T;
 
-      Dest_Ty   : constant Type_T := Create_Type (Env, D_Type);
+      Dest_Ty   : constant Type_T := Create_Type (Env, Dest_Type);
       Value     : constant Value_T := Emit_Expression (Env, Expr);
-      Src_Type  : Entity_Id := S_Type;
-      Dest_Type : Entity_Id := D_Type;
       Subp      : Opf := null;
    begin
-
-      while Is_Array_Type (Src_Type)
-        and then Present (Packed_Array_Impl_Type (Src_Type))
-      loop
-         Src_Type := Packed_Array_Impl_Type (Src_Type);
-      end loop;
-
-      while Is_Array_Type (Dest_Type)
-        and then Present (Packed_Array_Impl_Type (Dest_Type))
-      loop
-         Dest_Type := Packed_Array_Impl_Type (Dest_Type);
-      end loop;
 
       --  If the value is already of the desired LLVM type, we're done.
 
@@ -3333,13 +3281,12 @@ package body GNATLLVM.Compile is
    ---------------------
 
    function Emit_Comparison
-     (Env      : Environ;
-      Kind     : Node_Kind;
-      Op_Type  : Entity_Id;
-      LHS, RHS : Node_Id) return Value_T
+     (Env           : Environ;
+      Kind          : Node_Kind;
+      Operand_Type  : Entity_Id;
+      LHS, RHS      : Node_Id) return Value_T
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
-      Operand_Type : Entity_Id := Op_Type;
       function Subp_Ptr (Node : Node_Id) return Value_T is
         (if Nkind (Node) = N_Null
          then Const_Null (Pointer_Type (Int_Ty (8), 0))
@@ -3351,12 +3298,6 @@ package body GNATLLVM.Compile is
       --  Return the subprogram pointer associated with Node
 
    begin
-
-      while Is_Array_Type (Operand_Type)
-        and then Present (Packed_Array_Impl_Type (Operand_Type))
-      loop
-         Operand_Type := Packed_Array_Impl_Type (Operand_Type);
-      end loop;
 
       --  LLVM treats pointers as integers regarding comparison
 

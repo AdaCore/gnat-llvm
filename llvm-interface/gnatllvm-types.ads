@@ -36,15 +36,10 @@ package GNATLLVM.Types is
 
    pragma Annotate (Xcov, Exempt_On, "Defensive programming");
 
-   function Get_Fullest_View (E : Entity_Id) return Entity_Id is
-   (if Ekind (E) in Incomplete_Kind and then From_Limited_With (E)
-    then Non_Limited_View (E)
-    elsif Present (Full_View (E))
-    then Full_View (E)
-    elsif Ekind (E) in Private_Kind
-      and then Present (Underlying_Full_View (E))
-    then Underlying_Full_View (E)
-    else E);
+   function Get_Fullest_View (E : Entity_Id) return Entity_Id
+     with Pre => Is_Type (E), Post => Is_Type (Get_Fullest_View'Result);
+   --  Get the fullest possible view of E, looking through private,
+   --  limited, and packed array implementation types.
 
    function Full_Etype (N : Node_Id) return Entity_Id is
       (if Ekind (Etype (N)) = E_Void then Etype (N)

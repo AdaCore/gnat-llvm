@@ -73,8 +73,7 @@ package GNATLLVM.Utils is
       --  is Typ.
    end record
      with Dynamic_Predicate => GL_Value.Value /= No_Value_T
-                               and then (Ekind (GL_Value.Typ) = E_Void
-                                           or else Is_Type (GL_Value.Typ));
+                               and then Is_Type (GL_Value.Typ);
 
    function G
      (V            : Value_T;

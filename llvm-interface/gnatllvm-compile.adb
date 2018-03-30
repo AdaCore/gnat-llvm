@@ -1568,11 +1568,18 @@ package body GNATLLVM.Compile is
          when N_Identifier | N_Expanded_Name =>
             declare
                Def_Ident : constant Entity_Id := Entity (Node);
-               Typ       : constant Entity_Id := Full_Etype (Def_Ident);
+               Typ       : Entity_Id := Full_Etype (Def_Ident);
                N         : Node_Id;
             begin
                if Ekind (Def_Ident) in Subprogram_Kind then
                   N := Associated_Node_For_Itype (Full_Etype (Parent (Node)));
+
+                  --  If we are elaborating this for 'Access, we want the
+                  --  actual subprogram type here, not the type of the return
+                  --  value, which is what Typ is set to.
+                  if Nkind (Parent (Node)) = N_Attribute_Reference then
+                     Typ := Designated_Type (Full_Etype (Parent (Node)));
+                  end if;
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
                      return (Get_Value (Env, Def_Ident), Typ,

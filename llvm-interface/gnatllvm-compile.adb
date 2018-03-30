@@ -372,7 +372,7 @@ package body GNATLLVM.Compile is
       --  we just do the alloca and that's all.
 
       if not Is_Dynamic_Size (Env, TE) then
-         return (Alloca (Env.Bld, LLVM_Type, Name), TE, Is_Reference => True);
+         return Alloca (Env, LLVM_Type, TE, Name);
       end if;
 
       --  Otherwise, we have to do some sort of dynamic allocation.  If
@@ -1279,10 +1279,10 @@ package body GNATLLVM.Compile is
                              Const_Int (LLVM_Type, 1, False);
                            Iter_Next_Value : constant Value_T :=
                              (if Reversed
-                              then Sub
+                              then NSW_Sub
                                 (Env.Bld,
                                  Iter_Prev_Value, One, "next-loop-var")
-                              else Add
+                              else NSW_Add
                                 (Env.Bld,
                                  Iter_Prev_Value, One, "next-loop-var"));
                         begin

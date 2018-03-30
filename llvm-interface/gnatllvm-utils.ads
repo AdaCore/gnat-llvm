@@ -19,6 +19,7 @@ with Atree; use Atree;
 with Einfo; use Einfo;
 with Namet; use Namet;
 with Sinfo; use Sinfo;
+with Stand; use Stand;
 with Types; use Types;
 with Uintp; use Uintp;
 with Uintp.LLVM;
@@ -33,6 +34,25 @@ with LLVM.Target; use LLVM.Target;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Utils is
+
+   type Value_Array is array (Nat range <>) of Value_T;
+
+   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T);
+   --  Helper for LLVM's Build_Store
+
+   procedure Store_With_Type
+     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T);
+   --  Similar, but allows annotating store
+
+   function Load_With_Type
+     (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T;
+   --  Likewise for a load
+
+   function GEP
+     (Bld : Builder_T; Ptr : Value_T; Indices : Value_Array; Name : String)
+      return Value_T;
+
+   --  Helper for LLVM's Build_GEP
 
    --  It's not sufficient to just pass around an LLVM Value_T when
    --  generating code because there's a lot of information lost about the
@@ -114,6 +134,188 @@ package GNATLLVM.Utils is
 
    function Is_Unsigned_Type (G : GL_Value) return Boolean is
      (not G.Is_Reference and then Is_Unsigned_Type (G.Typ));
+
+   --  Define IR builder variants which take and/or return GL_Value
+
+   function Alloca
+      (Env : Environ; T : Type_T; TE : Entity_Id; Name : String)
+      return GL_Value
+   is
+     (Alloca (Env.Bld, T, Name),
+      TE, Is_Reference => True);
+
+   function Int_To_Ptr
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Int_To_Ptr (Env.Bld, V.Value, T, Name), TE));
+
+   function Ptr_To_Int
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Ptr_To_Int (Env.Bld, V.Value, T, Name), TE));
+
+   function Bit_Cast
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Bit_Cast (Env.Bld, V.Value, T, Name), TE));
+
+   function Trunca
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Trunc (Env.Bld, V.Value, T, Name), TE));
+
+   function S_Ext
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (S_Ext (Env.Bld, V.Value, T, Name), TE));
+
+   function Z_Ext
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Z_Ext (Env.Bld, V.Value, T, Name), TE));
+
+   function FP_Trunc
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_Trunc (Env.Bld, V.Value, T, Name), TE));
+
+   function FP_Ext
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_Ext (Env.Bld, V.Value, T, Name), TE));
+
+   function FP_To_SI
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_To_SI (Env.Bld, V.Value, T, Name), TE));
+
+   function FP_To_UI
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_To_UI (Env.Bld, V.Value, T, Name), TE));
+
+   function UI_To_FP
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (UI_To_FP (Env.Bld, V.Value, T, Name), TE));
+
+   function SI_To_FP
+     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (SI_To_FP (Env.Bld, V.Value, T, Name), TE));
+
+   procedure Store
+     (Env : Environ; Expr : GL_Value; Ptr : GL_Value)
+     with Pre => Is_Access_Type (Ptr);
+
+   function Load (Env : Environ; Ptr : GL_Value) return GL_Value is
+     (G (Load_With_Type (Env, Ptr.Typ, Ptr.Value), Designated_Type (Ptr)))
+     with Pre => Is_Access_Type (Ptr);
+
+   function I_Cmp
+     (Env      : Environ;
+      Op       : Int_Predicate_T;
+      LHS, RHS : GL_Value;
+      Name     : String) return GL_Value
+   is
+     (G (I_Cmp (Env.Bld, Op, LHS.Value, RHS.Value, Name), Standard_Boolean));
+
+   function F_Cmp
+     (Env      : Environ;
+      Op       : Real_Predicate_T;
+      LHS, RHS : GL_Value;
+      Name     : String) return GL_Value
+   is
+     (G (F_Cmp (Env.Bld, Op, LHS.Value, RHS.Value, Name), Standard_Boolean));
+
+   function NSW_Add
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      ((NSW_Add (Env.Bld, LHS.Value, RHS.Value, Name),
+        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference));
+
+   function NSW_Sub
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      ((NSW_Sub (Env.Bld, LHS.Value, RHS.Value, Name),
+        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference));
+
+   function NSW_Mul
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (NSW_Mul (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function S_Div
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (S_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function U_Div
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (U_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function S_Rem
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (S_Rem (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function U_Rem
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (U_Rem (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function Build_And
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (Build_And (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function Build_Or
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (Build_Or (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function Build_Xor
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (Build_Xor (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function F_Add
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (F_Add (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function F_Sub
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (F_Sub (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function F_Mul
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (F_Mul (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function F_Div
+     (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
+   is
+      (G (F_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+
+   function Build_Not
+     (Env : Environ; V : GL_Value; Name : String) return GL_Value
+   is
+      (G (Build_Not (Env.Bld, V.Value, Name), V.Typ));
 
    type Type_Array is array (Nat range <>) of Type_T;
 
@@ -228,23 +430,6 @@ package GNATLLVM.Utils is
    is (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
-   type Value_Array is array (Nat range <>) of Value_T;
    type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
-
-   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T);
-   --  Helper for LLVM's Build_Store
-
-   procedure Store_With_Type
-     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T);
-   --  Similar, but allows annotating store
-
-   function Load_With_Type
-     (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T;
-   --  Likewise for a load
-
-   function GEP
-     (Bld : Builder_T; Ptr : Value_T; Indices : Value_Array; Name : String)
-      return Value_T;
-   --  Helper for LLVM's Build_GEP
 
 end GNATLLVM.Utils;

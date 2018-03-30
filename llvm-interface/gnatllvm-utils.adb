@@ -371,6 +371,14 @@ package body GNATLLVM.Utils is
       Dummy := Build_Store (Bld, Expr, Ptr);
    end Store;
 
+   -----------
+   -- Store --
+   -----------
+   procedure Store (Env : Environ; Expr : GL_Value; Ptr : GL_Value) is
+   begin
+      Store_With_Type (Env, Expr.Typ, Expr.Value, Ptr.Value);
+   end Store;
+
    ---------------------
    -- Store_With_Type --
    ---------------------

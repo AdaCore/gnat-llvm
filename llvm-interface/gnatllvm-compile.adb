@@ -290,6 +290,11 @@ package body GNATLLVM.Compile is
      with Pre => Env /= null and then Present (Node);
    --  Compile a subprogram body and save it in the environment
 
+   function Skip_Conversions (Node : Node_Id) return Node_Id
+     with Pre => Present (Node), Post => Present (Skip_Conversions'Result);
+   --  If Node is a conversion (normal or unchecked) skip to its operand
+   --  and do this until we get to something that isn't a conversion.
+
    function Needs_Deref (Def_Ident : Entity_Id) return Boolean
    is (Present (Address_Clause (Def_Ident))
        and then not Is_Array_Type (Full_Etype (Def_Ident)));
@@ -1519,9 +1524,21 @@ package body GNATLLVM.Compile is
    function Emit_LValue_Internal
      (Env : Environ; Node : Node_Id) return Value_T
    is
-      Typ      : constant Entity_Id := Full_Etype (Node);
-      Value    : Value_T := Emit_LValue_Main (Env, Node);
+      Typ        : Entity_Id := Full_Etype (Node);
+      Value      : Value_T := Emit_LValue_Main (Env, Node);
+      Inner_Node : Node_Id := Node;
    begin
+
+      --  For all purposes below, we want to look at the type of an inner
+      --  node if Node is a conversion and Typ is a composite type.
+
+      while Is_Composite_Type (Typ)
+        and then Nkind_In (Inner_Node, N_Type_Conversion,
+                           N_Unchecked_Type_Conversion)
+      loop
+         Inner_Node := Expression (Inner_Node);
+         Typ        := Full_Etype (Inner_Node);
+      end loop;
 
       --  Unless Typ is an unconstrained array type, convert the LValue
       --  we have so far into a pointer to that type (unless it already is).
@@ -1553,6 +1570,7 @@ package body GNATLLVM.Compile is
    ----------------------
 
    function Emit_LValue_Main (Env : Environ; Node : Node_Id) return Value_T is
+      Prefix_Node : Node_Id;
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>
@@ -1654,9 +1672,10 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Selected_Component =>
+            Prefix_Node := Skip_Conversions (Prefix (Node));
             declare
                Pfx_Ptr : constant Value_T :=
-                 Emit_LValue_Internal (Env, Prefix (Node));
+                 Emit_LValue_Internal (Env, Prefix_Node);
                Record_Component : constant Entity_Id :=
                  Original_Record_Component (Entity (Selector_Name (Node)));
 
@@ -1665,15 +1684,17 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Indexed_Component =>
+            Prefix_Node := Skip_Conversions (Prefix (Node));
             return Get_Indexed_LValue
-              (Env, Full_Etype (Prefix (Node)), Expressions (Node),
-               Emit_LValue_Internal (Env, Prefix (Node)));
+              (Env, Full_Etype (Prefix_Node), Expressions (Node),
+               Emit_LValue_Internal (Env, Prefix_Node));
 
          when N_Slice =>
+            Prefix_Node := Skip_Conversions (Prefix (Node));
             return Get_Slice_LValue
-              (Env, Full_Etype (Prefix (Node)), Full_Etype (Node),
+              (Env, Full_Etype (Prefix_Node), Full_Etype (Node),
                Discrete_Range (Node),
-               Emit_LValue_Internal (Env, Prefix (Node)));
+               Emit_LValue_Internal (Env, Prefix_Node));
 
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
 
@@ -2424,8 +2445,8 @@ package body GNATLLVM.Compile is
       --  on the RHS, we don't care about then and can strip them off.
 
       while Present (Src_Node)
-        and then (Nkind (Src_Node) = N_Type_Conversion
-            or else Nkind (Src_Node) = N_Unchecked_Type_Conversion)
+        and then Nkind_In (Src_Node, N_Type_Conversion,
+                           N_Unchecked_Type_Conversion)
         and then Is_Aggregate_Type (Typ)
         and then Is_Aggregate_Type (Full_Etype (Expression (Src_Node)))
       loop
@@ -2628,28 +2649,44 @@ package body GNATLLVM.Compile is
 
          P_Type := Full_Etype (Params (Idx));
 
-         --  At this point we need to handle view conversions: from array thin
-         --  pointer to array fat pointer, unconstrained array pointer type
-         --  conversion, ... For other parameters that needs to be passed
-         --  as pointers, we should also make sure the pointed type fits
-         --  the LLVM formal.
+         --  At this point we need to handle view conversions: from array
+         --  thin pointer to array fat pointer, unconstrained array pointer
+         --  type conversion, ... For other parameters that needs to be
+         --  passed as pointers, we should also make sure the pointed type
+         --  fits the LLVM formal.  ??? Here, we replace an access type to
+         --  an aggregate by its designated type.  This probably is not
+         --  correct long-term.
 
-         if Is_Array_Type (Actual_Type) then
-            if Is_Constrained (Actual_Type)
-              and then not Is_Constrained (P_Type)
-            then
-               --  Convert from raw to fat pointer
+         if Is_Access_Type (Actual_Type)
+           and then Is_Array_Type (Designated_Type (Actual_Type))
+         then
+            Actual_Type := Designated_Type (Actual_Type);
+         end if;
 
-               Args (Idx) :=
-                 Array_Fat_Pointer (Env, Args (Idx), Actual_Type);
+         if Is_Access_Type (P_Type)
+           and then Is_Array_Type (Designated_Type (P_Type))
+         then
+            P_Type := Designated_Type (P_Type);
+         end if;
 
-            elsif not Is_Constrained (Actual_Type)
-              and then Is_Constrained (P_Type)
-            then
+         if Is_Array_Type (P_Type)
+           and then not Is_Constrained (P_Type)
+           and then Is_Array_Type (Actual_Type)
+           and then Is_Constrained (Actual_Type)
+         then
+            --  Convert from raw to fat pointer
+
+            Args (Idx) := Array_Fat_Pointer (Env, Args (Idx), Actual_Type);
+
+         elsif Is_Array_Type (P_Type)
+           and then Is_Constrained (P_Type)
+           and then Is_Array_Type (Actual_Type)
+           and then not Is_Constrained (Actual_Type)
+         then
+
                --  Convert from fat to thin pointer
 
-               Args (Idx) := Array_Data (Env, Args (Idx), Actual_Type);
-            end if;
+            Args (Idx) := Array_Data (Env, Args (Idx), Actual_Type);
 
          elsif Current_Needs_Ptr then
             Args (Idx) := Bit_Cast
@@ -3485,7 +3522,7 @@ package body GNATLLVM.Compile is
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
    begin
-      --  If these are fat pointer, they are equal iff their addresses are
+      --  If these are fat pointers, they are equal iff their addresses are
       --  equal.  It's not possible for the addresses to be equal and not
       --  the bounds. We can't make a recursive call here or we'll try to do
       --  it again that time.
@@ -4238,6 +4275,20 @@ package body GNATLLVM.Compile is
             Name   => "shift-rotate-result");
       end if;
    end Emit_Shift;
+
+   ---------------------
+   -- Skip_Conversion --
+   ---------------------
+
+   function Skip_Conversions (Node : Node_Id) return Node_Id is
+      N : Node_Id := Node;
+   begin
+      while Nkind_In (N, N_Type_Conversion, N_Unchecked_Type_Conversion) loop
+         N := Expression (N);
+      end loop;
+
+      return N;
+   end Skip_Conversions;
 
    ------------------
    -- Get_Label_BB --

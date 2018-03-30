@@ -19,7 +19,6 @@ with Errout;   use Errout;
 with Sem_Util; use Sem_Util;
 with Stand;    use Stand;
 with Uintp;    use Uintp;
-with Ttypes;
 
 with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
 with GNATLLVM.Compile;
@@ -84,13 +83,6 @@ package body GNATLLVM.Types is
       end if;
 
    end Get_Fullest_View;
-
-   ----------------------
-   -- Get_Address_Type --
-   ----------------------
-
-   function Get_Address_Type return Type_T is
-     (Int_Ty (Natural (Ttypes.System_Address_Size)));
 
    ------------
    -- Int_Ty --

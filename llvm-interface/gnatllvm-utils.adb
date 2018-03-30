@@ -86,11 +86,22 @@ package body GNATLLVM.Utils is
    ---------------
 
    function Const_Int
-     (Env         : Environ;
-      TE          : Entity_Id;
-      N           : Uint) return GL_Value
+     (Env : Environ; TE : Entity_Id; N : Uint) return GL_Value
    is
      (G (Const_Int (Create_Type (Env, TE), N), TE));
+
+   ---------------
+   -- Const_Int --
+   ---------------
+
+   function Const_Int
+     (Env         : Environ;
+      TE          : Entity_Id;
+      N           : unsigned_long_long;
+      Sign_Extend : Boolean) return GL_Value
+   is
+     (G (Const_Int (Create_Type (Env, TE), N, Sign_Extend => Sign_Extend),
+         TE));
 
    ----------------
    -- Int_To_Ptr --

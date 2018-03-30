@@ -158,10 +158,14 @@ package GNATLLVM.Utils is
      with Pre => Env /= null and then Is_Type (TE);
 
    function Const_Int
+     (Env : Environ; TE : Entity_Id; N : Uint) return GL_Value
+     with Pre => Env /= null and then Is_Type (TE);
+
+   function Const_Int
      (Env         : Environ;
       TE          : Entity_Id;
-      N           : Uint) return GL_Value
-     with Pre => Env /= null and then Is_Type (TE);
+      N           : unsigned_long_long;
+      Sign_Extend : Boolean) return GL_Value;
 
    --  Define IR builder variants which take and/or return GL_Value
 

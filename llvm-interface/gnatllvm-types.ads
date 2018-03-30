@@ -96,10 +96,6 @@ package GNATLLVM.Types is
      with Pre => Ret_Ty /= No_Type_T,
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
-   function Get_Address_Type return Type_T
-     with Post => Get_Type_Kind (Get_Address_Type'Result) = Integer_Type_Kind;
-   pragma Annotate (Xcov, Exempt_Off, "Defensive programming");
-
    function Int_Ptr_Type return Type_T is
       (Int_Type (unsigned (Get_Pointer_Size)));
 

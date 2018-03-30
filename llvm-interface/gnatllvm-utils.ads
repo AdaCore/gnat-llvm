@@ -170,6 +170,14 @@ package GNATLLVM.Utils is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value;
 
+   function Pointer_Cast
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
+
+   function Pointer_To_Ref
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
+
    function Trunc
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value;

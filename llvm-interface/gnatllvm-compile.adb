@@ -60,13 +60,13 @@ package body GNATLLVM.Compile is
    function Build_Type_Conversion
      (Env                 : Environ;
       Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return Value_T;
+      Expr                : Node_Id) return GL_Value;
    --  Emit code to convert Expr to Dest_Type
 
    function Build_Unchecked_Conversion
      (Env                 : Environ;
       Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return Value_T;
+      Expr                : Node_Id) return GL_Value;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
    function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T
@@ -229,10 +229,9 @@ package body GNATLLVM.Compile is
    function Emit_Min_Max
      (Env         : Environ;
       Exprs       : List_Id;
-      Compute_Max : Boolean) return Value_T
+      Compute_Max : Boolean) return GL_Value
      with Pre  => Env /= null and then List_Length (Exprs) = 2
-                 and then Is_Scalar_Type (Full_Etype (First (Exprs))),
-          Post => Emit_Min_Max'Result /= No_Value_T;
+                 and then Is_Scalar_Type (Full_Etype (First (Exprs)));
    --  Exprs must be a list of two scalar expressions with compatible types.
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
@@ -1097,7 +1096,7 @@ package body GNATLLVM.Compile is
                   Our_Typ     : constant Entity_Id := Full_Etype (Subp);
                   Return_Expr : constant Node_Id := Expression (Node);
                   Expr_Typ    : constant Entity_Id := Full_Etype (Return_Expr);
-                  Expr : Value_T;
+                  Expr        : GL_Value;
                begin
                   --  If we have a parameter giving the address to which to
                   --  copy the return value, do that copy instead of returning
@@ -1120,10 +1119,10 @@ package body GNATLLVM.Compile is
                            Expr      => Return_Expr);
 
                      else
-                        Expr := Emit_Expression (Env, Return_Expr).Value;
+                        Expr := Emit_Expression (Env, Return_Expr);
                      end if;
 
-                     Discard (Build_Ret (Env.Bld, Expr));
+                     Discard (Build_Ret (Env.Bld, Expr.Value));
                   end if;
                end;
 
@@ -1886,13 +1885,11 @@ package body GNATLLVM.Compile is
             Right_BT : constant Entity_Id :=
               Implementation_Base_Type (Right_Type);
             LVal   : constant GL_Value :=
-              G (Build_Type_Conversion
-                   (Env, Left_Type, Left_BT, Left_Opnd (Node)),
-                 Left_BT);
+              Build_Type_Conversion
+              (Env, Left_Type, Left_BT, Left_Opnd (Node));
             RVal   : constant GL_Value :=
-              G (Build_Type_Conversion
-                   (Env, Right_Type, Right_BT, Right_Opnd (Node)),
-                 Right_BT);
+              Build_Type_Conversion
+              (Env, Right_Type, Right_BT, Right_Opnd (Node));
             FP     : constant Boolean := Is_Floating_Point_Type (Left_BT);
             Unsign : constant Boolean := Is_Unsigned_Type (Right_BT);
             Subp   : Opf := null;
@@ -2005,12 +2002,11 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Unchecked_Type_Conversion =>
-            return G (Build_Unchecked_Conversion
-                        (Env       => Env,
-                         Src_Type  => Full_Etype (Expression (Node)),
-                         Dest_Type => Full_Etype (Node),
-                         Expr      => Expression (Node)),
-                      Full_Etype (Node));
+            return Build_Unchecked_Conversion
+              (Env       => Env,
+               Src_Type  => Full_Etype (Expression (Node)),
+               Dest_Type => Full_Etype (Node),
+               Expr      => Expression (Node));
 
          when N_Qualified_Expression =>
             --  We can simply strip the type qualifier
@@ -2020,12 +2016,11 @@ package body GNATLLVM.Compile is
 
          when N_Type_Conversion =>
             --  ??? Need to take Do_Overflow_Check into account
-            return G (Build_Type_Conversion
-                        (Env       => Env,
-                         Src_Type  => Full_Etype (Expression (Node)),
-                         Dest_Type => Full_Etype (Node),
-                         Expr      => Expression (Node)),
-                      Full_Etype (Node));
+            return Build_Type_Conversion
+              (Env       => Env,
+               Src_Type  => Full_Etype (Expression (Node)),
+               Dest_Type => Full_Etype (Node),
+               Expr      => Expression (Node));
 
          when N_Identifier | N_Expanded_Name =>
             --  What if Node is a formal parameter passed by reference???
@@ -2830,7 +2825,7 @@ package body GNATLLVM.Compile is
    function Build_Type_Conversion
      (Env                 : Environ;
       Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return Value_T
+      Expr                : Node_Id) return GL_Value
    is
       S_Type  : constant Entity_Id := Get_Fullest_View (Src_Type);
       D_Type  : constant Entity_Id := Get_Fullest_View (Dest_Type);
@@ -2839,7 +2834,8 @@ package body GNATLLVM.Compile is
       --  If both types are scalar, hand that off to our helper.
 
       if Is_Scalar_Type (S_Type) and then Is_Scalar_Type (D_Type) then
-         return Convert_Scalar_Types (Env, S_Type, D_Type, Expr);
+         return G (Convert_Scalar_Types (Env, S_Type, D_Type, Expr),
+                   D_Type);
 
       --  Otherwise, we do the same as an unchecked conversion.
 
@@ -2980,14 +2976,14 @@ package body GNATLLVM.Compile is
    function Build_Unchecked_Conversion
      (Env                 : Environ;
       Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return Value_T
+      Expr                : Node_Id) return GL_Value
    is
       type Opf is access function
-        (Bld : Builder_T; Op : Value_T; Ty : Type_T; Name : String)
-        return Value_T;
+        (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+        return GL_Value;
 
       Dest_Ty   : constant Type_T := Create_Type (Env, Dest_Type);
-      Value     : constant Value_T := Emit_Expression (Env, Expr).Value;
+      Value     : constant GL_Value := Emit_Expression (Env, Expr);
       Subp      : Opf := null;
    begin
 
@@ -3017,8 +3013,9 @@ package body GNATLLVM.Compile is
       elsif Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
         and then Is_Discrete_Or_Fixed_Point_Type (Src_Type)
       then
-         return Convert_To_Scalar_Type (Env, Value, Dest_Type,
-                                        Is_Unsigned_Type (Src_Type));
+         return G (Convert_To_Scalar_Type (Env, Value.Value, Dest_Type,
+                                           Is_Unsigned_Type (Src_Type)),
+                   Dest_Type);
 
       --  Otherwise, these must be cases where we have to convert by
       --  pointer punning.  If the source is a type of dynamic size, the
@@ -3029,17 +3026,16 @@ package body GNATLLVM.Compile is
 
       else
          declare
-            Addr           : constant Value_T :=
+            Addr           : constant GL_Value :=
               (if Is_Dynamic_Size (Env, Src_Type) then Value
-               else Emit_LValue (Env, Expr).Value);
-            Dest_Ptr       : constant Type_T := Pointer_Type (Dest_Ty, 0);
-            Converted_Addr : constant Value_T :=
-               Pointer_Cast (Env.Bld, Addr, Dest_Ptr, "unc-ptr-cvt");
+               else Emit_LValue (Env, Expr));
+            Converted_Addr : constant GL_Value :=
+               Pointer_To_Ref (Env, Addr, Dest_Type, "unc-ptr-cvt");
          begin
             if Is_Dynamic_Size (Env, Dest_Type) then
                return Converted_Addr;
             else
-               return Load_With_Type (Env, Dest_Type, Converted_Addr);
+               return Load (Env, Converted_Addr);
             end if;
          end;
       end if;
@@ -3047,7 +3043,7 @@ package body GNATLLVM.Compile is
       --  If we get here, we should have set Subp to point to the function
       --  to call to do the conversion.
 
-      return Subp (Env.Bld, Value, Dest_Ty, "unchecked-conv");
+      return Subp (Env, Value, Dest_Type, "unchecked-conv");
    end Build_Unchecked_Conversion;
 
    ------------------
@@ -3057,7 +3053,7 @@ package body GNATLLVM.Compile is
    function Emit_Min_Max
      (Env         : Environ;
       Exprs       : List_Id;
-      Compute_Max : Boolean) return Value_T
+      Compute_Max : Boolean) return GL_Value
    is
       Expr_Type : constant Entity_Id := Full_Etype (First (Exprs));
       Left      : constant GL_Value := Emit_Expression (Env, First (Exprs));
@@ -3067,7 +3063,7 @@ package body GNATLLVM.Compile is
                            Expr_Type, First (Exprs), Left.Value, Right.Value);
    begin
       return Build_Select (Env, G (Choose, Standard_Boolean), Left, Right,
-                           (if Compute_Max then "max" else "min")).Value;
+                           (if Compute_Max then "max" else "min"));
    end Emit_Min_Max;
 
    --------------------
@@ -3238,7 +3234,7 @@ package body GNATLLVM.Compile is
             return Emit_Min_Max
               (Env,
                Expressions (Node),
-               Attr = Attribute_Max);
+               Attr = Attribute_Max).Value;
 
          when Attribute_Pos
             | Attribute_Val =>
@@ -3247,7 +3243,7 @@ package body GNATLLVM.Compile is
               (Env,
                Full_Etype (First (Expressions (Node))),
                Full_Etype (Node),
-               First (Expressions (Node)));
+               First (Expressions (Node))).Value;
 
          when Attribute_Succ
             | Attribute_Pred =>

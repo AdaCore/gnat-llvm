@@ -133,6 +133,28 @@ package body GNATLLVM.Utils is
    is
      (G (Bit_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
 
+   ------------------
+   -- Pointer_Cast --
+   ------------------
+
+   function Pointer_Cast
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     ((Pointer_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name),
+       TE, Is_Reference => V.Is_Reference));
+
+   --------------------
+   -- Pointer_To_Ref --
+   --------------------
+
+   function Pointer_To_Ref
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     ((Pointer_Cast (Env.Bld, V.Value, Create_Access_Type (Env, TE), Name),
+       TE, Is_Reference => True));
+
    -----------
    -- Trunc --
    -----------

@@ -22,6 +22,7 @@ with Types; use Types;
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Compile is
 
@@ -38,9 +39,8 @@ package GNATLLVM.Compile is
           Post => Emit_Expression'Result /= No_Value_T;
    --  Compile an expression node to an LLVM value.
 
-   function Emit_LValue (Env : Environ; Node : Node_Id) return Value_T
-     with Pre => Env /= null and then Present (Node),
-          Post => Emit_LValue'Result /= No_Value_T;
+   function Emit_LValue (Env : Environ; Node : Node_Id) return GL_Value
+     with Pre => Env /= null and then Present (Node);
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc.)

@@ -41,7 +41,6 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
@@ -53,9 +52,8 @@ package body GNATLLVM.Compile is
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
 
    function Allocate_For_Type
-     (Env : Environ; TE : Entity_Id; Name : String) return Value_T
-     with Pre  => Env /= null and Is_Type (TE),
-          Post => Allocate_For_Type'Result /= No_Value_T;
+     (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
+     with Pre  => Env /= null and Is_Type (TE);
    --  Allocate space on the stack for an object of type TE and return
    --  a pointer to the space.  Name is the name to use for the LLVM value.
 
@@ -219,14 +217,13 @@ package body GNATLLVM.Compile is
      with Pre  => Env /= null and then Present (Node),
           Post => Emit_Literal'Result /= No_Value_T;
 
-   function Emit_LValue_Internal (Env : Environ; Node : Node_Id) return Value_T
-     with Pre => Env /= null and then Present (Node),
-          Post => Emit_LValue_Internal'Result /= No_Value_T;
+   function Emit_LValue_Internal
+     (Env : Environ; Node : Node_Id) return GL_Value
+     with Pre => Env /= null and then Present (Node);
    --  Called by Emit_LValue to walk the tree saving values
 
-   function Emit_LValue_Main (Env : Environ; Node : Node_Id) return Value_T
-     with Pre => Env /= null and then Present (Node),
-          Post => Emit_LValue_Main'Result /= No_Value_T;
+   function Emit_LValue_Main (Env : Environ; Node : Node_Id) return GL_Value
+     with Pre => Env /= null and then Present (Node);
    --  Called by Emit_LValue_Internal to do the work at each level
 
    function Emit_Min_Max
@@ -337,10 +334,8 @@ package body GNATLLVM.Compile is
    --  processing of an Emit_LValue so we can find it if we have a
    --  self-referential item (a discriminated record).
 
-   type LValue_Pair is record T : Entity_Id; Value : Value_T; end record;
-
    package LValue_Pair_Table is new Table.Table
-     (Table_Component_Type => LValue_Pair,
+     (Table_Component_Type => GL_Value,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 10,
@@ -366,7 +361,7 @@ package body GNATLLVM.Compile is
    -----------------------
 
    function Allocate_For_Type
-     (Env : Environ; TE : Entity_Id; Name : String) return Value_T
+     (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
    is
       LLVM_Type   : constant Type_T := Create_Type (Env, TE);
       Element_Typ : Type_T;
@@ -377,7 +372,7 @@ package body GNATLLVM.Compile is
       --  we just do the alloca and that's all.
 
       if not Is_Dynamic_Size (Env, TE) then
-         return Alloca (Env.Bld, LLVM_Type, Name);
+         return (Alloca (Env.Bld, LLVM_Type, Name), TE, Is_Reference => True);
       end if;
 
       --  Otherwise, we have to do some sort of dynamic allocation.  If
@@ -396,10 +391,11 @@ package body GNATLLVM.Compile is
          Num_Elts    := Get_Type_Size (Env, LLVM_Type, TE, No_Value_T);
       end if;
 
-      return Bit_Cast
-        (Env.Bld,
-         Array_Alloca (Env.Bld, Element_Typ, Num_Elts, "dyn-array"),
-         Pointer_Type (LLVM_Type, 0), Name);
+      return (Bit_Cast
+                (Env.Bld,
+                 Array_Alloca (Env.Bld, Element_Typ, Num_Elts, "dyn-array"),
+                 Pointer_Type (LLVM_Type, 0), Name),
+              TE, Is_Reference => True);
 
    end Allocate_For_Type;
 
@@ -983,7 +979,7 @@ package body GNATLLVM.Compile is
             begin
                if Library_Level (Env) then
                   if Is_LValue (Name (Node)) then
-                     LLVM_Var := Emit_LValue (Env, Name (Node));
+                     LLVM_Var := Emit_LValue (Env, Name (Node)).Value;
                      Set_Value (Env, Def_Ident, LLVM_Var);
                   else
                      --  ??? Handle top-level declarations
@@ -998,7 +994,7 @@ package body GNATLLVM.Compile is
                --  Otherwise, create one for it.
 
                if Is_LValue (Name (Node)) then
-                  LLVM_Var := Emit_LValue (Env, Name (Node));
+                  LLVM_Var := Emit_LValue (Env, Name (Node)).Value;
                else
                   LLVM_Var := Alloca
                     (Env.Bld,
@@ -1032,7 +1028,7 @@ package body GNATLLVM.Compile is
             Emit_Assignment (Env,
                              Full_Etype (Name (Node)),
                              Full_Etype (Expression (Node)),
-                             Emit_LValue (Env, Name (Node)),
+                             Emit_LValue (Env, Name (Node)).Value,
                              Expression (Node), No_Value_T,
                              Forwards_OK (Node), Backwards_OK (Node));
 
@@ -1501,7 +1497,7 @@ package body GNATLLVM.Compile is
    -----------------
 
    function Emit_LValue
-     (Env : Environ; Node : Node_Id) return Value_T
+     (Env : Environ; Node : Node_Id) return GL_Value
    is
    begin
       LValue_Pair_Table.Set_Last (0);
@@ -1516,10 +1512,10 @@ package body GNATLLVM.Compile is
    --------------------------
 
    function Emit_LValue_Internal
-     (Env : Environ; Node : Node_Id) return Value_T
+     (Env : Environ; Node : Node_Id) return GL_Value
    is
       Typ        : Entity_Id := Full_Etype (Node);
-      Value      : Value_T := Emit_LValue_Main (Env, Node);
+      Value      : GL_Value := Emit_LValue_Main (Env, Node);
       Inner_Node : Node_Id := Node;
    begin
 
@@ -1545,15 +1541,17 @@ package body GNATLLVM.Compile is
                         and then Ekind (Entity (Node)) in Subprogram_Kind)
         and then Type_Of (Value) /= Create_Access_Type (Env, Typ)
       then
-         Value := Bit_Cast (Env.Bld, Value, Create_Access_Type (Env, Typ), "");
+         Value
+           := (Bit_Cast (Env.Bld, Value.Value,
+                         Create_Access_Type (Env, Typ), ""),
+               Typ, Is_Reference => True);
       end if;
 
       --  If the object is not of void type, save the result in the
       --  pair table under the base type of the fullest view.
 
       if Ekind (Typ) /= E_Void then
-         LValue_Pair_Table.Append
-           ((Implementation_Base_Type (Get_Fullest_View (Typ)), Value));
+         LValue_Pair_Table.Append (Value);
       end if;
 
       return Value;
@@ -1563,20 +1561,22 @@ package body GNATLLVM.Compile is
    -- Emit_LValue_Main --
    ----------------------
 
-   function Emit_LValue_Main (Env : Environ; Node : Node_Id) return Value_T is
+   function Emit_LValue_Main (Env : Environ; Node : Node_Id) return GL_Value is
       Prefix_Node : Node_Id;
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>
             declare
                Def_Ident : constant Entity_Id := Entity (Node);
+               Typ       : constant Entity_Id := Full_Etype (Def_Ident);
                N         : Node_Id;
             begin
                if Ekind (Def_Ident) in Subprogram_Kind then
                   N := Associated_Node_For_Itype (Full_Etype (Parent (Node)));
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                     return Get_Value (Env, Def_Ident);
+                     return (Get_Value (Env, Def_Ident), Typ,
+                             Is_Reference => True);
                   else
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
@@ -1605,29 +1605,36 @@ package body GNATLLVM.Compile is
                              (Env.Bld, Func, Fields_Types (1), ""), 0, "");
                         Result := Insert_Value
                           (Env.Bld, Result, S_Link, 1, "callback");
-                        return Result;
+                        return (Result, Typ, Is_Reference => True);
                      end;
                   end if;
 
                elsif Needs_Deref (Def_Ident) then
-                  return Load (Env.Bld, Get_Value (Env, Def_Ident), "");
+                  return
+                    (Load (Env.Bld, Get_Value (Env, Def_Ident), ""), Typ,
+                     Is_Reference => True);
                else
-                  return Get_Value (Env, Def_Ident);
+                  return (Get_Value (Env, Def_Ident), Typ,
+                          Is_Reference => True);
                end if;
             end;
 
          when N_Defining_Identifier =>
             if Needs_Deref (Node) then
-               return Load (Env.Bld, Get_Value (Env, Node), "");
+               return (Load (Env.Bld, Get_Value (Env, Node), ""),
+                       Full_Etype (Node), Is_Reference => True);
             else
-               return Get_Value (Env, Node);
+               return (Get_Value (Env, Node), Full_Etype (Node),
+                       Is_Reference => True);
             end if;
 
          when N_Attribute_Reference =>
-            return Emit_Attribute_Reference (Env, Node, LValue => True);
+            return (Emit_Attribute_Reference (Env, Node, LValue => True),
+                    Full_Etype (Node), Is_Reference => True);
 
          when N_Explicit_Dereference =>
-            return Emit_Expression (Env, Prefix (Node));
+            return (Emit_Expression (Env, Prefix (Node)),
+                    Full_Etype (Node), Is_Reference => True);
 
          when N_Aggregate =>
             declare
@@ -1638,11 +1645,11 @@ package body GNATLLVM.Compile is
                --  ??? This alloca will not necessarily be free'd before
                --  returning from the current subprogram: it's a leak.
 
-               V : constant Value_T :=
+               V : constant GL_Value :=
                  Allocate_For_Type (Env, Full_Etype (Node), "anon-obj");
 
             begin
-               Store (Env.Bld, Emit_Expression (Env, Node), V);
+               Store (Env.Bld, Emit_Expression (Env, Node), V.Value);
                return V;
             end;
 
@@ -1656,39 +1663,44 @@ package body GNATLLVM.Compile is
                Set_Initializer (V, Emit_Expression (Env, Node));
                Set_Linkage (V, Private_Linkage);
                Set_Global_Constant (V, True);
-               return GEP
-                 (Env.Bld,
-                  V,
-                  (Const_Int (Intptr_T, 0, Sign_Extend => False),
-                   Const_Int (Create_Type (Env, Standard_Positive),
-                              0, Sign_Extend => False)),
-                  "str-addr");
+               return (GEP
+                         (Env.Bld,
+                          V,
+                          (Const_Int (Intptr_T, 0, Sign_Extend => False),
+                           Const_Int (Create_Type (Env, Standard_Positive),
+                                      0, Sign_Extend => False)),
+                          "str-addr"),
+                       Full_Etype (Node), Is_Reference => True);
             end;
 
          when N_Selected_Component =>
             Prefix_Node := Skip_Conversions (Prefix (Node));
             declare
-               Pfx_Ptr : constant Value_T :=
+               Pfx_Ptr : constant GL_Value :=
                  Emit_LValue_Internal (Env, Prefix_Node);
                Record_Component : constant Entity_Id :=
                  Original_Record_Component (Entity (Selector_Name (Node)));
 
             begin
-               return Record_Field_Offset (Env, Pfx_Ptr, Record_Component);
+               return (Record_Field_Offset (Env, Pfx_Ptr.Value,
+                                            Record_Component),
+                       Full_Etype (Node), Is_Reference => True);
             end;
 
          when N_Indexed_Component =>
             Prefix_Node := Skip_Conversions (Prefix (Node));
-            return Get_Indexed_LValue
-              (Env, Full_Etype (Prefix_Node), Expressions (Node),
-               Emit_LValue_Internal (Env, Prefix_Node));
+            return (Get_Indexed_LValue
+                      (Env, Full_Etype (Prefix_Node), Expressions (Node),
+                       Emit_LValue_Internal (Env, Prefix_Node).Value),
+                    Full_Etype (Node), Is_Reference => True);
 
          when N_Slice =>
             Prefix_Node := Skip_Conversions (Prefix (Node));
-            return Get_Slice_LValue
-              (Env, Full_Etype (Prefix_Node), Full_Etype (Node),
-               Discrete_Range (Node),
-               Emit_LValue_Internal (Env, Prefix_Node));
+            return (Get_Slice_LValue
+                      (Env, Full_Etype (Prefix_Node), Full_Etype (Node),
+                       Discrete_Range (Node),
+                       Emit_LValue_Internal (Env, Prefix_Node).Value),
+                    Full_Etype (Node), Is_Reference => True);
 
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
 
@@ -1701,11 +1713,11 @@ package body GNATLLVM.Compile is
                --  adequate???
 
                declare
-                  Result : constant Value_T :=
+                  Result : constant GL_Value :=
                     Allocate_For_Type (Env, Full_Etype (Node), "");
                begin
                   Emit_Assignment (Env, Full_Etype (Node), Full_Etype (Node),
-                                   Result, Node,
+                                   Result.Value, Node,
                                    Emit_Expression (Env, Node), True, True);
                   return Result;
                end;
@@ -1713,7 +1725,8 @@ package body GNATLLVM.Compile is
                Error_Msg_N
                  ("unhandled node kind: `" &
                   Node_Kind'Image (Nkind (Node)) & "`", Node);
-               return Get_Undef (Create_Type (Env, Full_Etype (Node)));
+               return (Get_Undef (Create_Type (Env, Full_Etype (Node))),
+                       Full_Etype (Node), Is_Reference => True);
             end if;
       end case;
    end Emit_LValue_Main;
@@ -1725,7 +1738,9 @@ package body GNATLLVM.Compile is
    function Get_Matching_Value (T : Entity_Id) return Value_T is
    begin
       for I in 1 .. LValue_Pair_Table.Last loop
-         if Implementation_Base_Type (T) = LValue_Pair_Table.Table (I).T then
+         if Implementation_Base_Type (T) =
+           Implementation_Base_Type (LValue_Pair_Table.Table (I).Typ)
+         then
             return LValue_Pair_Table.Table (I).Value;
          end if;
       end loop;
@@ -2205,14 +2220,14 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Reference =>
-            return Emit_LValue (Env, Prefix (Node));
+            return Emit_LValue (Env, Prefix (Node)).Value;
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (Env, Node, LValue => False);
 
          when N_Selected_Component | N_Indexed_Component  | N_Slice =>
             return Load_With_Type (Env, Full_Etype (Node),
-                                   Emit_LValue (Env, Node));
+                                   Emit_LValue (Env, Node).Value);
 
          when N_Aggregate =>
             if Null_Record_Present (Node) then
@@ -2507,7 +2522,7 @@ package body GNATLLVM.Compile is
          Store_With_Type (Env, Dest_Typ, Src, Dest);
 
       else
-         Src := (if E_Value = No_Value_T then Emit_LValue (Env, Src_Node)
+         Src := (if E_Value = No_Value_T then Emit_LValue (Env, Src_Node).Value
                  else E_Value);
 
          if Is_Array_Type (Dest_Typ) then
@@ -2619,7 +2634,7 @@ package body GNATLLVM.Compile is
          Current_Needs_Ptr := Param_Needs_Ptr (Params (Idx));
          Args (Idx) :=
            (if Current_Needs_Ptr
-            then Emit_LValue (Env, Actual)
+            then Emit_LValue (Env, Actual).Value
             else Emit_Expression (Env, Actual));
 
          P_Type := Full_Etype (Params (Idx));
@@ -2685,7 +2700,7 @@ package body GNATLLVM.Compile is
 
       if Dynamic_Return then
          Args (Args'Last) :=
-           Allocate_For_Type (Env, Return_Typ, "call-return");
+           Allocate_For_Type (Env, Return_Typ, "call-return").Value;
       end if;
 
       --  If there are any types mismatches for arguments passed by reference,
@@ -2984,7 +2999,7 @@ package body GNATLLVM.Compile is
          declare
             Addr           : constant Value_T :=
               (if Is_Dynamic_Size (Env, Src_Type) then Value
-               else Emit_LValue (Env, Expr));
+               else Emit_LValue (Env, Expr).Value);
             Dest_Ptr       : constant Type_T := Pointer_Type (Dest_Ty, 0);
             Converted_Addr : constant Value_T :=
                Pointer_Cast (Env.Bld, Addr, Dest_Ptr, "unc-ptr-cvt");
@@ -3097,16 +3112,16 @@ package body GNATLLVM.Compile is
             --  expression is the same thing as getting an LValue, and has
             --  the same constraints.
 
-            return Emit_LValue (Env, Prefix (Node));
+            return Emit_LValue (Env, Prefix (Node)).Value;
 
          when Attribute_Address =>
             if LValue then
-               return Emit_LValue (Env, Prefix (Node));
+               return Emit_LValue (Env, Prefix (Node)).Value;
             else
                return Ptr_To_Int
                  (Env.Bld,
-                  Emit_LValue
-                    (Env, Prefix (Node)), Get_Address_Type, "attr-address");
+                  Emit_LValue (Env, Prefix (Node)).Value, Get_Address_Type,
+                  "attr-address");
             end if;
 
          when Attribute_Deref =>
@@ -3165,7 +3180,7 @@ package body GNATLLVM.Compile is
                   then
                      Array_Descr := No_Value_T;
                   else
-                     Array_Descr := Emit_LValue (Env, Prefix (Node));
+                     Array_Descr := Emit_LValue (Env, Prefix (Node)).Value;
                   end if;
 
                   if Attr = Attribute_Length then
@@ -3255,7 +3270,7 @@ package body GNATLLVM.Compile is
 
             begin
                if not For_Type then
-                  Value := Emit_LValue (Env, Prefix (Node));
+                  Value := Emit_LValue (Env, Prefix (Node)).Value;
                end if;
 
                return
@@ -3293,7 +3308,7 @@ package body GNATLLVM.Compile is
          else Load
            (Env.Bld,
             Struct_GEP
-              (Env.Bld, Emit_LValue (Env, Node), 0, "subp-addr"),
+              (Env.Bld, Emit_LValue (Env, Node).Value, 0, "subp-addr"),
             ""));
       --  Return the subprogram pointer associated with Node
 
@@ -3349,9 +3364,9 @@ package body GNATLLVM.Compile is
             True_Val     : constant Value_T :=
               Const_Int (Bool_Type, 1, False);
 
-            LHS_Descr    : constant Value_T := Emit_LValue (Env, LHS);
+            LHS_Descr    : constant Value_T := Emit_LValue (Env, LHS).Value;
             LHS_Type     : constant Entity_Id := Full_Etype (LHS);
-            RHS_Descr    : constant Value_T := Emit_LValue (Env, RHS);
+            RHS_Descr    : constant Value_T := Emit_LValue (Env, RHS).Value;
             RHS_Type     : constant Entity_Id := Full_Etype (RHS);
 
             Left_Length  : constant Value_T :=

@@ -64,9 +64,7 @@ package body GNATLLVM.Compile is
    --  Emit code to convert Expr to Dest_Type
 
    function Build_Unchecked_Conversion
-     (Env                 : Environ;
-      Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return GL_Value;
+     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value;
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
    function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T
@@ -85,23 +83,15 @@ package body GNATLLVM.Compile is
    --  Helper for assignments
 
    function Convert_Scalar_Types
-     (Env            : Environ;
-      S_Type, D_Type : Entity_Id;
-      Expr           : Node_Id) return Value_T
-     with Pre  => Env /= null and then Is_Type (S_Type)
-                  and then Is_Type (D_Type) and then Present (Expr),
-          Post => Convert_Scalar_Types'Result /= No_Value_T;
+     (Env : Environ; D_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Type (D_Type)
+                  and then Present (Expr);
    --  Helper of Build_Type_Conversion if both types are scalar.
 
    function Convert_To_Scalar_Type
-     (Env         : Environ;
-      Expr        : Value_T;
-      T           : Entity_Id;
-      Is_Unsigned : Boolean) return Value_T
-     with Pre  => Env /= null and then Expr /= No_Value_T
-                  and then Is_Type (T),
-          Post => Convert_To_Scalar_Type'Result /= No_Value_T;
-   --  Variant of above to convert an LLVM Expr to the type T.
+     (Env : Environ; Expr : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Type (TE);
+   --  Variant of above to convert an LLVM Expr to the type TE.
 
    function Build_Short_Circuit_Op
      (Env                   : Environ;
@@ -2004,7 +1994,6 @@ package body GNATLLVM.Compile is
          when N_Unchecked_Type_Conversion =>
             return Build_Unchecked_Conversion
               (Env       => Env,
-               Src_Type  => Full_Etype (Expression (Node)),
                Dest_Type => Full_Etype (Node),
                Expr      => Expression (Node));
 
@@ -2157,8 +2146,8 @@ package body GNATLLVM.Compile is
                      return (LValue, Full_Etype (Def_Ident),
                              Is_Reference => True);
                   elsif Needs_Deref (Def_Ident) then
-                     return (Load (Env.Bld, Load (Env.Bld, LValue, ""), ""),
-                             Full_Etype (Def_Ident), Is_Reference => True);
+                     return G (Load (Env.Bld, Load (Env.Bld, LValue, ""), ""),
+                               Full_Etype (Def_Ident));
                   else
                      return G (Load (Env.Bld, LValue, ""),
                                Full_Etype (Def_Ident));
@@ -2834,13 +2823,12 @@ package body GNATLLVM.Compile is
       --  If both types are scalar, hand that off to our helper.
 
       if Is_Scalar_Type (S_Type) and then Is_Scalar_Type (D_Type) then
-         return G (Convert_Scalar_Types (Env, S_Type, D_Type, Expr),
-                   D_Type);
+         return Convert_Scalar_Types (Env, D_Type, Expr);
 
       --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         return Build_Unchecked_Conversion (Env, Src_Type, Dest_Type, Expr);
+         return Build_Unchecked_Conversion (Env, Dest_Type, Expr);
 
       end if;
    end Build_Type_Conversion;
@@ -2878,24 +2866,21 @@ package body GNATLLVM.Compile is
    --------------------------
 
    function Convert_Scalar_Types
-     (Env            : Environ;
-      S_Type, D_Type : Entity_Id;
-      Expr           : Node_Id) return Value_T
+     (Env : Environ; D_Type : Entity_Id; Expr : Node_Id) return GL_Value
    is
-      Value : constant Value_T := Emit_Expression (Env, Expr).Value;
+      Value : constant GL_Value := Emit_Expression (Env, Expr);
       type Cvtf is access function
-        (Bld : Builder_T; Value : Value_T; Typ : Type_T; Name : String)
-        return Value_T;
+        (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String)
+        return GL_Value;
 
       Subp      : Cvtf := null;
-      Typ       : constant Type_T  := Create_Type (Env, D_Type);
-      Src_FP    : constant Boolean := Is_Floating_Point_Type (S_Type);
+      Src_FP    : constant Boolean := Is_Floating_Point_Type (Value);
       Dest_FP   : constant Boolean := Is_Floating_Point_Type (D_Type);
-      Src_Uns   : constant Boolean := Is_Unsigned_Type (S_Type);
-      Dest_Uns  : constant Boolean := Is_Unsigned_Type (D_Type);
+      Src_Uns   : constant Boolean := Is_Unsigned_Type (Value);
+      Dest_Uns  : constant Boolean := Is_Unsigned_Type (Value);
       Src_Size  : constant Uint :=
-        (if Is_Modular_Integer_Type (S_Type) then RM_Size (S_Type)
-         else Esize (S_Type));
+        (if Is_Modular_Integer_Type (Value) then RM_Size (Value)
+         else Esize (Value));
       Dest_Size  : constant Uint :=
         (if Is_Modular_Integer_Type (D_Type) then RM_Size (D_Type)
          else Esize (D_Type));
@@ -2936,7 +2921,7 @@ package body GNATLLVM.Compile is
 
       --  Here all that's left to do is generate the IR instruction.
 
-      return Subp (Env.Bld, Value, Typ, "");
+      return Subp (Env, Value, D_Type, "");
 
    end Convert_Scalar_Types;
 
@@ -2944,19 +2929,17 @@ package body GNATLLVM.Compile is
    -- Convert_To_Scalar_Type --
    ----------------------------
    function Convert_To_Scalar_Type
-     (Env         : Environ;
-      Expr        : Value_T;
-      T           : Entity_Id;
-      Is_Unsigned : Boolean) return Value_T
+     (Env : Environ; Expr : GL_Value; TE : Entity_Id) return GL_Value
    is
       type Cvtf is access function
-        (Bld : Builder_T; Value : Value_T; Typ : Type_T; Name : String)
-        return Value_T;
+        (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String)
+        return GL_Value;
 
-      In_Typ    : constant Type_T := Type_Of (Expr);
-      In_Width  : constant Integer := Integer (Get_Int_Type_Width (In_Typ));
-      Out_Width : constant Integer := Integer (UI_To_Int (Esize (T)));
-      Subp      : Cvtf := null;
+      In_Typ      : constant Type_T := Type_Of (Expr);
+      In_Width    : constant Integer := Integer (Get_Int_Type_Width (In_Typ));
+      Out_Width   : constant Integer := Integer (UI_To_Int (Esize (TE)));
+      Is_Unsigned : constant Boolean := Is_Unsigned_Type (Expr);
+      Subp        : Cvtf := null;
    begin
       if In_Width = Out_Width then
          return Expr;
@@ -2966,7 +2949,7 @@ package body GNATLLVM.Compile is
          Subp := (if Is_Unsigned then Z_Ext'Access else S_Ext'Access);
       end if;
 
-      return Subp (Env.Bld, Expr, Create_Type (Env, T), "");
+      return Subp (Env, Expr, TE, "");
    end Convert_To_Scalar_Type;
 
    --------------------------------
@@ -2974,9 +2957,7 @@ package body GNATLLVM.Compile is
    --------------------------------
 
    function Build_Unchecked_Conversion
-     (Env                 : Environ;
-      Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return GL_Value
+     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
    is
       type Opf is access function
         (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
@@ -2994,12 +2975,12 @@ package body GNATLLVM.Compile is
 
       --  If converting pointer to pointer or pointer to/from integer, we
       --  just copy the bits using the appropriate instruction.
-      elsif Is_Access_Type (Dest_Type) and then Is_Scalar_Type (Src_Type) then
+      elsif Is_Access_Type (Dest_Type) and then Is_Scalar_Type (Value) then
          Subp := Int_To_Ptr'Access;
-      elsif Is_Scalar_Type (Dest_Type) and then Is_Access_Type (Src_Type) then
+      elsif Is_Scalar_Type (Dest_Type) and then Is_Access_Type (Value) then
          Subp := Ptr_To_Int'Access;
-      elsif Is_Access_Type (Src_Type) and then Is_Access_Type (Dest_Type)
-        and then not Is_Access_Unconstrained (Src_Type)
+      elsif Is_Access_Type (Value) and then Is_Access_Type (Dest_Type)
+        and then not Is_Access_Unconstrained (Value)
         and then not Is_Access_Unconstrained (Dest_Type)
       then
          Subp := Pointer_Cast'Access;
@@ -3011,11 +2992,9 @@ package body GNATLLVM.Compile is
       --  a normal conversion.
 
       elsif Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
-        and then Is_Discrete_Or_Fixed_Point_Type (Src_Type)
+        and then Is_Discrete_Or_Fixed_Point_Type (Value)
       then
-         return G (Convert_To_Scalar_Type (Env, Value.Value, Dest_Type,
-                                           Is_Unsigned_Type (Src_Type)),
-                   Dest_Type);
+         return Convert_To_Scalar_Type (Env, Value, Dest_Type);
 
       --  Otherwise, these must be cases where we have to convert by
       --  pointer punning.  If the source is a type of dynamic size, the
@@ -3027,7 +3006,7 @@ package body GNATLLVM.Compile is
       else
          declare
             Addr           : constant GL_Value :=
-              (if Is_Dynamic_Size (Env, Src_Type) then Value
+              (if Is_Dynamic_Size (Env, Value) then Value
                else Emit_LValue (Env, Expr));
             Converted_Addr : constant GL_Value :=
                Pointer_To_Ref (Env, Addr, Dest_Type, "unc-ptr-cvt");
@@ -3225,8 +3204,8 @@ package body GNATLLVM.Compile is
                end if;
 
                return Convert_To_Scalar_Type
-                 (Env, Result, Full_Etype (Node),
-                  Is_Unsigned_Type (Full_Etype (Node)));
+                 (Env, G (Result, Full_Etype (Node)),
+                  Full_Etype (Node)).Value;
             end;
 
          when Attribute_Max
@@ -3305,11 +3284,13 @@ package body GNATLLVM.Compile is
                return
                  Convert_To_Scalar_Type
                  (Env,
-                  NSW_Mul (Env.Bld,
-                           Get_Type_Size (Env, LLVM_Typ, Typ, Value, For_Type),
-                           Const_8,
-                           ""),
-                  Result_Typ, Is_Unsigned => False);
+                  G (NSW_Mul (Env.Bld,
+                              Get_Type_Size (Env, LLVM_Typ, Typ,
+                                             Value, For_Type),
+                              Const_8,
+                              ""),
+                     Standard_Short_Short_Integer),
+                 Result_Typ).Value;
             end;
 
          when others =>

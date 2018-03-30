@@ -100,6 +100,9 @@ package GNATLLVM.Utils is
      ((if G.Is_Reference then G.Typ else Designated_Type (G.Typ)))
      with Pre => Is_Access_Type (G), Post => Is_Type (Designated_Type'Result);
 
+   function Is_Dynamic_Size (Env : Environ; G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Dynamic_Size (Env, G.Typ));
+
    function Is_Array_Type (G : GL_Value) return Boolean is
      (not G.Is_Reference and then Is_Array_Type (G.Typ));
 
@@ -136,6 +139,17 @@ package GNATLLVM.Utils is
 
    function Is_Unsigned_Type (G : GL_Value) return Boolean is
      (not G.Is_Reference and then Is_Unsigned_Type (G.Typ));
+
+   function Is_Modular_Integer_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Modular_Integer_Type (G.Typ));
+
+   function RM_Size (G : GL_Value) return Uint is
+     (RM_Size (G.Typ))
+     with Pre => not Is_Access_Type (G);
+
+   function Esize (G : GL_Value) return Uint is
+     (Esize (G.Typ))
+     with Pre => not Is_Access_Type (G);
 
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
      with Pre => Env /= null and then Is_Type (TE);

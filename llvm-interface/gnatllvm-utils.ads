@@ -34,6 +34,78 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Utils is
 
+   --  It's not sufficient to just pass around an LLVM Value_T when
+   --  generating code because there's a lot of information lost about the
+   --  value and where it came from.  Contrast with Gigi, where we pass around
+   --  a GCC tree node, which already has a lot of information, and which we
+   --  further annotate with flags.  So we pass the following record:
+
+   type GL_Value is record
+      Value        : Value_T;
+      --  The LLVM value that was generated
+
+      Typ          : Entity_Id;
+      --  The GNAT type of this value.
+
+      Is_Reference : Boolean := False;
+      --  If True, this is actually a pointer to Typ, so Value's type is
+      --  actually an E_Access_Type (not provided) whose Designated_Type
+      --  is Typ.
+   end record
+     with Dynamic_Predicate => GL_Value.Value /= No_Value_T
+                               and then Is_Type (GL_Value.Typ);
+
+   --  Now define predicates on this type to easily access properties of
+   --  the LLVM value and the effective type.  These have the same names
+   --  as those for types and Value_T's.
+
+   function Type_Of (G : GL_Value) return Type_T is
+     (Type_Of (G.Value));
+
+   function Is_Access_Type (G : GL_Value) return Boolean is
+     (G.Is_Reference or else Is_Access_Type (G.Typ));
+
+   function Designated_Type (G : GL_Value) return Entity_Id is
+     ((if G.Is_Reference then G.Typ else Designated_Type (G.Typ)))
+     with Pre => Is_Access_Type (G), Post => Is_Type (Designated_Type'Result);
+
+   function Is_Array_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Array_Type (G.Typ));
+
+   function Is_Access_Unconstrained (G : GL_Value) return Boolean is
+     (Is_Access_Type (G) and then Is_Array_Type (Designated_Type (G))
+                         and then not Is_Constrained (Designated_Type (G)));
+
+   function Is_Constrained (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Constrained (G.Typ));
+
+   function Is_Record_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Record_Type (G.Typ));
+
+   function Is_Composite_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Composite_Type (G.Typ));
+
+   function Is_Elementary_Type (G : GL_Value) return Boolean is
+     (G.Is_Reference or else Is_Elementary_Type (G.Typ));
+
+   function Is_Scalar_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Scalar_Type (G.Typ));
+
+   function Is_Discrete_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Discrete_Type (G.Typ));
+
+   function Is_Discrete_Or_Fixed_Point_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Discrete_Or_Fixed_Point_Type (G.Typ));
+
+   function Is_Fixed_Point_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Fixed_Point_Type (G.Typ));
+
+   function Is_Floating_Point_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Floating_Point_Type (G.Typ));
+
+   function Is_Unsigned_Type (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then Is_Unsigned_Type (G.Typ));
+
    type Type_Array is array (Nat range <>) of Type_T;
 
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer;

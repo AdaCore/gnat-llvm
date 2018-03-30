@@ -385,9 +385,9 @@ package body GNATLLVM.Types is
             case Nkind (SRange) is
                when N_Range =>
                   Low := GNATLLVM.Compile.Emit_Expression
-                    (Env, Low_Bound (SRange));
+                    (Env, Low_Bound (SRange)).Value;
                   High := GNATLLVM.Compile.Emit_Expression
-                    (Env, High_Bound (SRange));
+                    (Env, High_Bound (SRange)).Value;
                when others =>
                   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                   raise Program_Error

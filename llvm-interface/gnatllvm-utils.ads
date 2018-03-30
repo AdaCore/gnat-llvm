@@ -51,8 +51,11 @@ package GNATLLVM.Utils is
    function GEP
      (Bld : Builder_T; Ptr : Value_T; Indices : Value_Array; Name : String)
       return Value_T;
-
    --  Helper for LLVM's Build_GEP
+
+   function Is_Type_Or_Void (E : Entity_Id) return Boolean is
+     (Ekind (E) = E_Void or else Is_Type (E));
+   --  We can have Etype's that are E_Void for E_Procedure
 
    --  It's not sufficient to just pass around an LLVM Value_T when
    --  generating code because there's a lot of information lost about the
@@ -73,7 +76,7 @@ package GNATLLVM.Utils is
       --  is Typ.
    end record
      with Dynamic_Predicate => GL_Value.Value /= No_Value_T
-                               and then Is_Type (GL_Value.Typ);
+                               and then Is_Type_Or_Void (GL_Value.Typ);
 
    function G
      (V            : Value_T;
@@ -81,7 +84,7 @@ package GNATLLVM.Utils is
       Is_Reference : Boolean := False) return GL_Value
    is
      ((V, TE, Is_Reference))
-     with Pre => V /= No_Value_T and then Is_Type (TE);
+     with Pre => V /= No_Value_T and then Is_Type_Or_Void (TE);
 
    --  Now define predicates on this type to easily access properties of
    --  the LLVM value and the effective type.  These have the same names
@@ -134,6 +137,18 @@ package GNATLLVM.Utils is
    function Is_Unsigned_Type (G : GL_Value) return Boolean is
      (not G.Is_Reference and then Is_Unsigned_Type (G.Typ));
 
+   function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
+     with Pre => Env /= null and then Is_Type (TE);
+
+   function Const_Null (Env : Environ; TE : Entity_Id) return GL_Value
+     with Pre => Env /= null and then Is_Type (TE);
+
+   function Const_Int
+     (Env         : Environ;
+      TE          : Entity_Id;
+      N           : Uint) return GL_Value
+     with Pre => Env /= null and then Is_Type (TE);
+
    --  Define IR builder variants which take and/or return GL_Value
 
    function Alloca
@@ -144,76 +159,52 @@ package GNATLLVM.Utils is
       TE, Is_Reference => True);
 
    function Int_To_Ptr
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (Int_To_Ptr (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function Ptr_To_Int
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (Ptr_To_Int (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function Bit_Cast
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (Bit_Cast (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
-   function Trunca
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (Trunc (Env.Bld, V.Value, T, Name), TE));
+   function Trunc
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function S_Ext
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (S_Ext (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function Z_Ext
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (Z_Ext (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function FP_Trunc
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (FP_Trunc (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function FP_Ext
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (FP_Ext (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function FP_To_SI
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (FP_To_SI (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function FP_To_UI
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (FP_To_UI (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function UI_To_FP
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (UI_To_FP (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    function SI_To_FP
-     (Env : Environ; V : GL_Value; T : Type_T; TE : Entity_Id; Name : String)
-     return GL_Value
-   is
-     (G (SI_To_FP (Env.Bld, V.Value, T, Name), TE));
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
 
    procedure Store
      (Env : Environ; Expr : GL_Value; Ptr : GL_Value)
@@ -316,6 +307,30 @@ package GNATLLVM.Utils is
    is
       (G (Build_Not (Env.Bld, V.Value, Name), V.Typ));
 
+   function NSW_Neg
+     (Env : Environ; V : GL_Value; Name : String) return GL_Value
+   is
+      (G (NSW_Neg (Env.Bld, V.Value, Name), V.Typ));
+
+   function F_Neg
+     (Env : Environ; V : GL_Value; Name : String) return GL_Value
+   is
+      (G (F_Neg (Env.Bld, V.Value, Name), V.Typ));
+
+   function Build_Select
+     (Env : Environ; C_If, C_Then, C_Else : GL_Value; Name : String)
+     return GL_Value
+   is
+     ((Build_Select (Env.Bld, C_If => C_If.Value, C_Then => C_Then.Value,
+                     C_Else => C_Else.Value, Name => Name),
+       C_If.Typ, C_If.Is_Reference));
+
+   function Int_To_Ref
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value;
+   --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
+   --  access type.
+
    type Type_Array is array (Nat range <>) of Type_T;
 
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer;
@@ -333,7 +348,7 @@ package GNATLLVM.Utils is
      with Pre => Present (Node);
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint.
 
-   function Const_Int (T : Type_T; Value : Uintp.Uint)
+   function Const_Int (T : Type_T; Value : Uint)
      return Value_T renames Uintp.LLVM.UI_To_LLVM;
    --  Return an LLVM value corresponding to the universal int Value
 

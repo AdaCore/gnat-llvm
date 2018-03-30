@@ -163,7 +163,7 @@ package body GNATLLVM.Arrays is
       if Bound_Info.Cnst /= No_Uint then
          return Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
-         return Emit_Expression (Env, Bound_Info.Value);
+         return Emit_Expression (Env, Bound_Info.Value).Value;
       elsif not Is_Constrained (Arr_Typ) then
          return Extract_Value
            (Env.Bld,
@@ -187,7 +187,7 @@ package body GNATLLVM.Arrays is
             return Emit_Expression
               (Env,
                (if Is_Low then Type_Low_Bound (Disc_Type)
-               else Type_High_Bound (Disc_Type)));
+               else Type_High_Bound (Disc_Type))).Value;
          end;
       else
          return
@@ -629,7 +629,7 @@ package body GNATLLVM.Arrays is
          --  Adjust the index according to the range lower bound
 
          declare
-            User_Index    : constant Value_T := Emit_Expression (Env, N);
+            User_Index    : constant Value_T := Emit_Expression (Env, N).Value;
             Dim_Low_Bound : constant Value_T :=
               Get_Array_Bound (Env, Arr_Typ, J - 2, True, Value);
          begin
@@ -707,7 +707,7 @@ package body GNATLLVM.Arrays is
 
       Index_Shift : constant Value_T :=
         Sub
-        (Env.Bld, Emit_Expression (Env, Low_Bound (Rng)),
+        (Env.Bld, Emit_Expression (Env, Low_Bound (Rng)).Value,
          Get_Array_Bound (Env, Arr_Typ, 0, True, Value), "offset");
    begin
 

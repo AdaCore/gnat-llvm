@@ -34,9 +34,8 @@ package GNATLLVM.Compile is
      with Pre => Env /= null;
    --  Call Emit on every element of List
 
-   function Emit_Expression (Env : Environ; Node : Node_Id) return Value_T
-     with Pre => Env /= null and then Present (Node),
-          Post => Emit_Expression'Result /= No_Value_T;
+   function Emit_Expression (Env : Environ; Node : Node_Id) return GL_Value
+     with Pre => Env /= null and then Present (Node);
    --  Compile an expression node to an LLVM value.
 
    function Emit_LValue (Env : Environ; Node : Node_Id) return GL_Value

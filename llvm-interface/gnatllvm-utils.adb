@@ -67,6 +67,162 @@ package body GNATLLVM.Utils is
       return Long_Long_Integer'Value (UI_Image_Buffer (1 .. UI_Image_Length));
    end UI_To_Long_Long_Integer;
 
+   ----------------
+   --  Get_Undef --
+   ----------------
+
+   function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value is
+     (G (Get_Undef (Create_Type (Env, TE)), TE));
+
+   ----------------
+   -- Const_Null --
+   ----------------
+
+   function Const_Null (Env : Environ; TE : Entity_Id) return GL_Value is
+     (G (Const_Null (Create_Type (Env, TE)), TE));
+
+   ---------------
+   -- Const_Int --
+   ---------------
+
+   function Const_Int
+     (Env         : Environ;
+      TE          : Entity_Id;
+      N           : Uint) return GL_Value
+   is
+     (G (Const_Int (Create_Type (Env, TE), N), TE));
+
+   ----------------
+   -- Int_To_Ptr --
+   ----------------
+
+   function Int_To_Ptr
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Int_To_Ptr (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   ----------------
+   -- Int_To_Ref --
+   ----------------
+
+   function Int_To_Ref
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     ((Int_To_Ptr (Env.Bld, V.Value, Create_Access_Type (Env, TE), Name),
+       TE, Is_Reference => True));
+
+   ----------------
+   -- Ptr_To_Int --
+   ----------------
+
+   function Ptr_To_Int
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Ptr_To_Int (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   --------------
+   -- Bit_Cast --
+   --------------
+
+   function Bit_Cast
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Bit_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   -----------
+   -- Trunc --
+   -----------
+
+   function Trunc
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Trunc (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   -----------
+   -- S_Ext --
+   -----------
+
+   function S_Ext
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (S_Ext (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   -----------
+   -- Z_Ext --
+   -----------
+
+   function Z_Ext
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (Z_Ext (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   --------------
+   -- FP_Trunc --
+   --------------
+
+   function FP_Trunc
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_Trunc (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   ------------
+   -- FP_Ext --
+   ------------
+
+   function FP_Ext
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_Ext (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   --------------
+   -- FP_To_SI --
+   --------------
+
+   function FP_To_SI
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_To_SI (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   --------------
+   -- FP_To_UI --
+   --------------
+
+   function FP_To_UI
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (FP_To_UI (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   --------------
+   -- UI_To_FP --
+   --------------
+
+   function UI_To_FP
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (UI_To_FP (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   --------------
+   -- SI_To_FP --
+   --------------
+
+   function SI_To_FP
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     return GL_Value
+   is
+     (G (SI_To_FP (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
    --------------------
    -- Get_Uint_Value --
    --------------------

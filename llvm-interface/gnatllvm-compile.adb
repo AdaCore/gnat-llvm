@@ -845,8 +845,7 @@ package body GNATLLVM.Compile is
                   end if;
 
                   LLVM_Var :=
-                    Add_Global (Env.Mdl, LLVM_Type,
-                                Get_Subprog_Ext_Name (Def_Ident));
+                    Add_Global (Env.Mdl, LLVM_Type, Get_Ext_Name (Def_Ident));
                   Set_Value (Env, Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
@@ -2798,8 +2797,7 @@ package body GNATLLVM.Compile is
             Subp_Type : constant Type_T :=
               Create_Subprogram_Type_From_Spec (Env, Subp_Spec);
 
-            Subp_Base_Name : constant String :=
-              Get_Subprog_Ext_Name (Def_Ident);
+            Subp_Base_Name : constant String := Get_Ext_Name (Def_Ident);
             LLVM_Func      : Value_T;
 
          begin

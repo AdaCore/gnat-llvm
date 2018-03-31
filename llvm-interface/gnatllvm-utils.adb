@@ -443,11 +443,11 @@ package body GNATLLVM.Utils is
       return Iterate (Subp);
    end Get_Params;
 
-   --------------------------
-   -- Get_Subprog_Ext_Name --
-   --------------------------
+   ------------------
+   -- Get_Ext_Name --
+   ------------------
 
-   function Get_Subprog_Ext_Name (E : Entity_Id) return String is
+   function Get_Ext_Name (E : Entity_Id) return String is
       Buf : Bounded_String;
    begin
       if (Is_Imported (E) or else Is_Exported (E))
@@ -459,7 +459,7 @@ package body GNATLLVM.Utils is
       else
          return Get_Name_String (Chars (E));
       end if;
-   end Get_Subprog_Ext_Name;
+   end Get_Ext_Name;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

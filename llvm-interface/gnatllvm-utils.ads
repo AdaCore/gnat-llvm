@@ -37,20 +37,27 @@ package GNATLLVM.Utils is
 
    type Value_Array is array (Nat range <>) of Value_T;
 
-   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T);
+   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
+     with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
    --  Helper for LLVM's Build_Store
 
    procedure Store_With_Type
-     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T);
+     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
+     with Pre => Env /= null and then Is_Type (TE)
+                 and then Present (Expr) and then Present (Ptr);
    --  Similar, but allows annotating store
 
    function Load_With_Type
-     (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T;
+     (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T
+     with Pre  => Env /= null and then Is_Type (TE) and then Present (Ptr),
+          Post => Present (Load_With_Type'Result);
    --  Likewise for a load
 
    function GEP
      (Bld : Builder_T; Ptr : Value_T; Indices : Value_Array; Name : String)
-      return Value_T;
+     return Value_T
+     with Pre  => Present (Bld) and then Present (Ptr),
+          Post => Present (GEP'Result);
    --  Helper for LLVM's Build_GEP
 
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
@@ -218,67 +225,98 @@ package GNATLLVM.Utils is
 
    function Int_To_Ptr
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Int_To_Ptr'Result);
 
    function Ptr_To_Int
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Ptr_To_Int'Result);
 
    function Bit_Cast
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Bit_Cast'Result);
 
    function Pointer_Cast
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Pointer_Cast'Result);
 
    function Pointer_To_Ref
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Pointer_To_Ref'Result);
 
    function Trunc
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Trunc'Result);
 
    function S_Ext
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (S_Ext'Result);
 
    function Z_Ext
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Z_Ext'Result);
 
    function FP_Trunc
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (FP_Trunc'Result);
 
    function FP_Ext
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (FP_Ext'Result);
 
    function FP_To_SI
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (FP_To_SI'Result);
 
    function FP_To_UI
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (FP_To_UI'Result);
 
    function UI_To_FP
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (UI_To_FP'Result);
 
    function SI_To_FP
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (SI_To_FP'Result);
 
    procedure Store
      (Env : Environ; Expr : GL_Value; Ptr : GL_Value)
-     with Pre => Is_Access_Type (Ptr);
+     with Pre => Env /= null and then Present (Expr)
+                 and then Present (Ptr) and then Is_Access_Type (Ptr);
 
    function Load (Env : Environ; Ptr : GL_Value) return GL_Value is
      (G (Load_With_Type (Env, Ptr.Typ, Ptr.Value), Designated_Type (Ptr)))
-     with Pre => Is_Access_Type (Ptr);
+     with Pre  => Env /= null and then Present (Ptr)
+                  and then  Is_Access_Type (Ptr),
+          Post => Present (Load'Result);
 
    function I_Cmp
      (Env      : Environ;
@@ -286,7 +324,9 @@ package GNATLLVM.Utils is
       LHS, RHS : GL_Value;
       Name     : String) return GL_Value
    is
-     (G (I_Cmp (Env.Bld, Op, LHS.Value, RHS.Value, Name), Standard_Boolean));
+     (G (I_Cmp (Env.Bld, Op, LHS.Value, RHS.Value, Name), Standard_Boolean))
+     with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+          Post => Present (I_Cmp'Result);
 
    function F_Cmp
      (Env      : Environ;
@@ -294,94 +334,130 @@ package GNATLLVM.Utils is
       LHS, RHS : GL_Value;
       Name     : String) return GL_Value
    is
-     (G (F_Cmp (Env.Bld, Op, LHS.Value, RHS.Value, Name), Standard_Boolean));
+     (G (F_Cmp (Env.Bld, Op, LHS.Value, RHS.Value, Name), Standard_Boolean))
+     with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+          Post => Present (F_Cmp'Result);
 
    function NSW_Add
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
       ((NSW_Add (Env.Bld, LHS.Value, RHS.Value, Name),
-        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference));
+        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (NSW_Add'Result);
 
    function NSW_Sub
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
       ((NSW_Sub (Env.Bld, LHS.Value, RHS.Value, Name),
-        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference));
+        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (NSW_Sub'Result);
 
    function NSW_Mul
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (NSW_Mul (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (NSW_Mul (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (NSW_Mul'Result);
 
    function S_Div
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (S_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (S_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (S_Div'Result);
 
    function U_Div
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (U_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (U_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (U_Div'Result);
 
    function S_Rem
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (S_Rem (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (S_Rem (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (S_Rem'Result);
 
    function U_Rem
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (U_Rem (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (U_Rem (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (U_Rem'Result);
 
    function Build_And
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (Build_And (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (Build_And (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (Build_And'Result);
 
    function Build_Or
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (Build_Or (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (Build_Or (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (Build_Or'Result);
 
    function Build_Xor
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (Build_Xor (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (Build_Xor (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (Build_Xor'Result);
 
    function F_Add
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (F_Add (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (F_Add (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (F_Add'Result);
 
    function F_Sub
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (F_Sub (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (F_Sub (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (F_Sub'Result);
 
    function F_Mul
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (F_Mul (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (F_Mul (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (F_Mul'Result);
 
    function F_Div
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      (G (F_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ));
+      (G (F_Div (Env.Bld, LHS.Value, RHS.Value, Name), LHS.Typ))
+      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+           Post => Present (F_Div'Result);
 
    function Build_Not
      (Env : Environ; V : GL_Value; Name : String) return GL_Value
    is
-      (G (Build_Not (Env.Bld, V.Value, Name), V.Typ));
+      (G (Build_Not (Env.Bld, V.Value, Name), V.Typ))
+      with Pre  => Env /= null and then Present (V),
+           Post => Present (Build_Not'Result);
 
    function NSW_Neg
      (Env : Environ; V : GL_Value; Name : String) return GL_Value
    is
-      (G (NSW_Neg (Env.Bld, V.Value, Name), V.Typ));
+      (G (NSW_Neg (Env.Bld, V.Value, Name), V.Typ))
+      with Pre  => Env /= null and then Present (V),
+           Post => Present (NSW_Neg'Result);
 
    function F_Neg
      (Env : Environ; V : GL_Value; Name : String) return GL_Value
    is
-      (G (F_Neg (Env.Bld, V.Value, Name), V.Typ));
+      (G (F_Neg (Env.Bld, V.Value, Name), V.Typ))
+      with Pre  => Env /= null and then Present (V),
+           Post => Present (F_Neg'Result);
 
    function Build_Select
      (Env : Environ; C_If, C_Then, C_Else : GL_Value; Name : String)
@@ -389,24 +465,32 @@ package GNATLLVM.Utils is
    is
      ((Build_Select (Env.Bld, C_If => C_If.Value, C_Then => C_Then.Value,
                      C_Else => C_Else.Value, Name => Name),
-       C_Then.Typ, C_If.Is_Reference));
+       C_Then.Typ, C_If.Is_Reference))
+     with Pre  => Env /= null and then Present (C_If)
+                  and then Present (C_Then) and then Present (C_Else),
+          Post => Present (Build_Select'Result);
 
    function Int_To_Ref
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
-     return GL_Value;
+     return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (Int_To_Ref'Result)
+                  and then Is_Access_Type (Int_To_Ref'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
 
    type Type_Array is array (Nat range <>) of Type_T;
 
-   function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer;
+   function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer
+     with Pre => U /= No_Uint;
 
-   function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean;
+   function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean
+     with Pre => Present (Arg);
    --  Returns true if given function needs to return its arg via the secondary
    --  stack
 
-   function Param_Needs_Ptr
-     (Param : Entity_Id) return Boolean;
+   function Param_Needs_Ptr (Param : Entity_Id) return Boolean
+     with Pre => Present (Param);
    --  Returns true if Param needs to be passed by reference (pointer) rather
    --  than by value
 
@@ -419,7 +503,8 @@ package GNATLLVM.Utils is
    --  Return an LLVM value corresponding to the universal int Value
 
    function Const_Ones (T : Type_T) return Value_T is
-     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True));
+     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True))
+     with Pre => Present (T), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
    Intptr_T : constant Type_T :=
@@ -456,21 +541,24 @@ package GNATLLVM.Utils is
    function Get_Params (Subp : Entity_Id) return Entity_Iterator;
 
    function Get_Name (E : Entity_Id) return String is
-      (Get_Name_String (Chars (E)));
+      (Get_Name_String (Chars (E)))
+     with Pre => Present (E);
    --  Return the name of an entity: Get_Name_String (Chars (E))
 
-   function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id;
+   function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id
+     with Pre => Present (Subp_Body);
    --  If Subp_Body acts as a spec, return it. Return the corresponding
    --  subprogram declaration otherwise.
 
-   procedure Discard (V : Value_T);
-   procedure Discard (T : Type_T);
+   procedure Discard (V : Value_T) with Pre => Present (V);
+   procedure Discard (T : Type_T)  with Pre => Present (T);
 
    procedure Dump_LLVM_Value (V : Value_T);
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
    --  function that is usable in debugging sessions.
 
-   function Is_LValue (Node : Node_Id) return Boolean;
+   function Is_LValue (Node : Node_Id) return Boolean
+     with Pre => Present (Node);
    --  Returns true if Node is an L value
 
    function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
@@ -478,7 +566,8 @@ package GNATLLVM.Utils is
       and then not Is_Constrained (Designated_Type (T)))
      with Pre => Is_Type (T);
 
-   function Get_Param_Types (Fn_Ty : Type_T) return Type_Array;
+   function Get_Param_Types (Fn_Ty : Type_T) return Type_Array
+     with Pre => Present (Fn_Ty);
    --  Wrapper for equivalent LLVM function, returning a proper type array.
    --  Given a function type or a pointer to function type, returns the types
    --  of the arguments.
@@ -487,7 +576,8 @@ package GNATLLVM.Utils is
    --  Img function for Nat type that doesn't append a space in front of it
    --  (since a Nat is always positive)
 
-   function Get_Subprog_Ext_Name (E : Entity_Id) return String;
+   function Get_Ext_Name (E : Entity_Id) return String
+     with Pre => Present (E);
    --  Returns a string corresponding to the external name of E
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

@@ -37,17 +37,20 @@ package GNATLLVM.Environment is
    No_Type_T : constant Type_T := Type_T (Null_Address);
    No_BB_T : constant Basic_Block_T := Basic_Block_T (Null_Address);
    No_Metadata_T : constant Metadata_T := Metadata_T (Null_Address);
+   No_Builder_T : constant Builder_T := Builder_T (Null_Address);
    --  Constant for null objects of various LLVM types
 
    function No (V : Value_T) return Boolean            is (V = No_Value_T);
    function No (T : Type_T) return Boolean             is (T = No_Type_T);
    function No (B : Basic_Block_T) return Boolean      is (B = No_BB_T);
    function No (M : Metadata_T) return Boolean         is (M = No_Metadata_T);
+   function No (M : Builder_T) return Boolean          is (M = No_Builder_T);
 
    function Present (V : Value_T) return Boolean       is (V /= No_Value_T);
    function Present (T : Type_T) return Boolean        is (T /= No_Type_T);
    function Present (B : Basic_Block_T) return Boolean is (B /= No_BB_T);
    function Present (M : Metadata_T) return Boolean    is (M /= No_Metadata_T);
+   function Present (M : Builder_T) return Boolean     is (M /= No_Builder_T);
    --  Test for presence and absence of field of LLVM types
 
    type Field_Info is record

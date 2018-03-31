@@ -161,22 +161,14 @@ package body GNATLLVM.Compile is
    --  return its result value.
 
    function Emit_Comparison
-     (Env           : Environ;
-      Kind          : Node_Kind;
-      Operand_Type  : Entity_Id;
-      LHS, RHS      : Node_Id) return Value_T
-     with Pre  => Env /= null and then Is_Type (Operand_Type)
-                  and then Present (LHS) and then Present (RHS),
+     (Env : Environ; Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
+     with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
           Post => Present (Emit_Comparison'Result);
 
    function Emit_Comparison
-     (Env          : Environ;
-      Kind         : Node_Kind;
-      Operand_Type : Entity_Id;
-      Node         : Node_Id;
-      LHS, RHS     : Value_T) return Value_T
-     with Pre  => Env /= null and then Is_Type (Operand_Type)
-                  and then Present (Node)
+     (Env : Environ; Kind : Node_Kind; Node : Node_Id; LHS, RHS : GL_Value)
+     return GL_Value
+     with Pre  => Env /= null and then Present (Node)
                   and then Present (LHS) and then Present (RHS),
           Post => Present (Emit_Comparison'Result);
    --  Helpers for Emit_Expression: handle comparison operations.
@@ -197,7 +189,7 @@ package body GNATLLVM.Compile is
 
    function Emit_If_Expression
      (Env  : Environ;
-      Node : Node_Id) return Value_T
+      Node : Node_Id) return GL_Value
      with Pre  => Env /= null and then Nkind (Node) = N_If_Expression,
           Post => Present (Emit_If_Expression'Result);
    --  Helper for Emit_Expression: handle if expressions
@@ -205,12 +197,10 @@ package body GNATLLVM.Compile is
    procedure Emit_If_Range
      (Env               : Environ;
       Node              : Node_Id;
-      Operand_Type      : Entity_Id;
-      LHS               : Value_T;
+      LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
-     with Pre => Env /= null and then Present (Node)
-                 and then Is_Type (Operand_Type) and then Present (LHS)
+     with Pre => Env /= null and then Present (Node) and then Present (LHS)
                  and then Present (BB_True) and then Present (BB_False);
    --  Emit code to branch to BB_True or BB_False depending on whether LHS,
    --  which is of type Operand_Type, is in the range from Low to High.  Node
@@ -220,12 +210,11 @@ package body GNATLLVM.Compile is
      with Pre => Env /= null and then Nkind (Node) = N_Case_Statement;
    --  Handle case statements
 
-   function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T
-     with Pre  => Env /= null and then Present (Node),
-          Post => Present (Emit_LCH_Call'Result);
+   procedure Emit_LCH_Call (Env : Environ; Node : Node_Id)
+     with Pre  => Env /= null and then Present (Node);
    --  Generate a call to __gnat_last_chance_handler
 
-   function Emit_Literal (Env : Environ; Node : Node_Id) return Value_T
+   function Emit_Literal (Env : Environ; Node : Node_Id) return GL_Value
      with Pre  => Env /= null and then Present (Node),
           Post => Present (Emit_Literal'Result);
 
@@ -788,7 +777,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_Statement =>
-            Discard (Emit_LCH_Call (Env, Node));
+            Emit_LCH_Call (Env, Node);
 
          when N_Raise_xxx_Error =>
             if Present (Condition (Node)) then
@@ -798,17 +787,16 @@ package body GNATLLVM.Compile is
                begin
                   BB_Then := Create_Basic_Block (Env, "if-then");
                   BB_Next := Create_Basic_Block (Env, "if-next");
-                  Discard (Build_Cond_Br
-                    (Env.Bld,
-                     Emit_Expression (Env, Condition (Node)).Value,
-                     BB_Then, BB_Next));
+                  Build_Cond_Br
+                    (Env, Emit_Expression (Env, Condition (Node)),
+                     BB_Then, BB_Next);
                   Position_Builder_At_End (Env.Bld, BB_Then);
-                  Discard (Emit_LCH_Call (Env, Node));
+                  Emit_LCH_Call (Env, Node);
                   Discard (Build_Br (Env.Bld, BB_Next));
                   Position_Builder_At_End (Env.Bld, BB_Next);
                end;
             else
-               Discard (Emit_LCH_Call (Env, Node));
+               Emit_LCH_Call (Env, Node);
             end if;
 
          when N_Object_Declaration | N_Exception_Declaration =>
@@ -1085,12 +1073,9 @@ package body GNATLLVM.Compile is
 
             begin
                if Present (Condition (Node)) then
-                  Discard
-                    (Build_Cond_Br
-                       (Env.Bld,
-                        Emit_Expression (Env, Condition (Node)).Value,
-                        Exit_Point,
-                        Next_BB));
+                  Build_Cond_Br
+                    (Env, Emit_Expression (Env, Condition (Node)),
+                     Exit_Point, Next_BB);
 
                else
                   Discard (Build_Br (Env.Bld, Exit_Point));
@@ -1166,7 +1151,7 @@ package body GNATLLVM.Compile is
                BB_Init, BB_Cond  : Basic_Block_T;
                BB_Stmts, BB_Iter : Basic_Block_T;
                BB_Next           : Basic_Block_T;
-               Cond              : Value_T;
+               Cond              : GL_Value;
             begin
                --  The general format for a loop is:
                --    INIT;
@@ -1230,10 +1215,8 @@ package body GNATLLVM.Compile is
                      --  otherwise.
 
                      Position_Builder_At_End (Env.Bld, BB_Cond);
-                     Cond :=
-                       Emit_Expression (Env, Condition (Iter_Scheme)).Value;
-                     Discard
-                       (Build_Cond_Br (Env.Bld, Cond, BB_Stmts, BB_Next));
+                     Cond := Emit_Expression (Env, Condition (Iter_Scheme));
+                     Build_Cond_Br (Env, Cond, BB_Stmts, BB_Next);
 
                   else
                      --  This is a FOR loop
@@ -1246,31 +1229,32 @@ package body GNATLLVM.Compile is
                           Reverse_Present (Loop_Param_Spec);
                         Unsigned_Type   : constant Boolean :=
                           Is_Unsigned_Type (Full_Etype (Def_Ident));
+                        Var_Type        : constant Entity_Id :=
+                          Full_Etype (Def_Ident);
                         LLVM_Type       : Type_T;
-                        LLVM_Var        : Value_T;
-                        Low, High       : Value_T;
+                        LLVM_Var        : GL_Value;
+                        Low, High       : GL_Value;
 
                      begin
                         --  Initialization block: create the loop variable and
                         --  initialize it.
                         Create_Discrete_Type
-                          (Env, Full_Etype (Def_Ident), LLVM_Type, Low, High);
+                          (Env, Var_Type, LLVM_Type, Low, High);
                         LLVM_Var := Alloca
-                          (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
-                        Set_Value (Env, Def_Ident, LLVM_Var);
+                          (Env, LLVM_Type, Var_Type, Get_Name (Def_Ident));
+                        Set_Value (Env, Def_Ident, LLVM_Var.Value);
                         Store
-                          (Env.Bld,
-                          (if Reversed then High else Low), LLVM_Var);
+                          (Env,
+                           (if Reversed then High else Low), LLVM_Var);
 
                         --  Then go to the condition block if the range isn't
                         --  empty.
                         Cond := I_Cmp
-                          (Env.Bld,
+                          (Env,
                            (if Unsigned_Type then Int_ULE else Int_SLE),
                            Low, High,
                            "loop-entry-cond");
-                        Discard
-                          (Build_Cond_Br (Env.Bld, Cond, BB_Cond, BB_Next));
+                        Build_Cond_Br (Env, Cond, BB_Cond, BB_Next);
 
                         --  The FOR loop is special: the condition is evaluated
                         --  during the INIT step and right before the ITER
@@ -1282,33 +1266,30 @@ package body GNATLLVM.Compile is
                         BB_Cond := Create_Basic_Block (Env, "loop-cond-iter");
                         Position_Builder_At_End (Env.Bld, BB_Cond);
                         Cond := I_Cmp
-                          (Env.Bld,
-                           Int_EQ,
-                           Load (Env.Bld, LLVM_Var, "loop-var"),
+                          (Env, Int_EQ, Load (Env, LLVM_Var),
                            (if Reversed then Low else High),
-                            "loop-iter-cond");
-                        Discard
-                          (Build_Cond_Br (Env.Bld, Cond, BB_Next, BB_Iter));
+                           "loop-iter-cond");
+                        Build_Cond_Br (Env, Cond, BB_Next, BB_Iter);
 
                         --  After STMTS, stop if the loop variable was equal to
                         --  the "exit" bound. Increment/decrement it otherwise.
                         Position_Builder_At_End (Env.Bld, BB_Iter);
 
                         declare
-                           Iter_Prev_Value : constant Value_T :=
-                             Load (Env.Bld, LLVM_Var, "loop-var");
-                           One             : constant Value_T :=
-                             Const_Int (LLVM_Type, 1, False);
-                           Iter_Next_Value : constant Value_T :=
+                           Iter_Prev_Value : constant GL_Value :=
+                             Load (Env, LLVM_Var);
+                           One             : constant GL_Value :=
+                             Const_Int (Env, Var_Type, 1, False);
+                           Iter_Next_Value : constant GL_Value :=
                              (if Reversed
                               then NSW_Sub
-                                (Env.Bld,
+                                (Env,
                                  Iter_Prev_Value, One, "next-loop-var")
                               else NSW_Add
-                                (Env.Bld,
+                                (Env,
                                  Iter_Prev_Value, One, "next-loop-var"));
                         begin
-                           Store (Env.Bld, Iter_Next_Value, LLVM_Var);
+                           Store (Env, Iter_Next_Value, LLVM_Var);
                         end;
 
                         Discard (Build_Br (Env.Bld, BB_Stmts));
@@ -1836,15 +1817,11 @@ package body GNATLLVM.Compile is
       declare
          LHS_Const : constant unsigned_long_long :=
            (if Op = N_And_Then then 0 else 1);
-         Values    : constant Value_Array (1 .. 2) :=
-             (Const_Int (Int_Ty (1), LHS_Const, False), Right.Value);
-         BBs       : constant Basic_Block_Array (1 .. 2) :=
-             (Block_Left_Expr_End, Block_Right_Expr_End);
-         Phi       : constant Value_T :=
-             LLVM.Core.Phi (Env.Bld, Int_Ty (1), "");
       begin
-         Add_Incoming (Phi, Values'Address, BBs'Address, 2);
-         return G (Phi, Standard_Boolean);
+         return Build_Phi
+           (Env, (Const_Int (Env, Right, LHS_Const), Right),
+            (Block_Left_Expr_End, Block_Right_Expr_End),
+            "");
       end;
    end Build_Short_Circuit_Op;
 
@@ -1868,10 +1845,8 @@ package body GNATLLVM.Compile is
 
          if Nkind (Node) in N_Op_Compare then
 
-            return G (Emit_Comparison
-                        (Env, Nkind (Node), Full_Etype (Left_Opnd (Node)),
-                         Left_Opnd (Node), Right_Opnd (Node)),
-                      Standard_Boolean);
+            return Emit_Comparison
+              (Env, Nkind (Node), Left_Opnd (Node), Right_Opnd (Node));
 
          elsif Nkind (Node) in N_Op_Shift then
             return Emit_Shift (Env, Node, Left_Opnd (Node), Right_Opnd (Node));
@@ -1950,8 +1925,8 @@ package body GNATLLVM.Compile is
             Emit_List (Env, Actions (Node));
             return Emit_Expr (Expression (Node));
 
-         when  N_Character_Literal | N_Numeric_Or_String_Literal =>
-            return G (Emit_Literal (Env, Node), Full_Etype (Node));
+         when N_Character_Literal | N_Numeric_Or_String_Literal =>
+            return Emit_Literal (Env, Node);
 
          when N_And_Then | N_Or_Else =>
             return Build_Short_Circuit_Op
@@ -2318,7 +2293,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_If_Expression =>
-            return G (Emit_If_Expression (Env, Node), Full_Etype (Node));
+            return Emit_If_Expression (Env, Node);
 
          when N_Null =>
             return Const_Null (Env, Full_Etype (Node));
@@ -2330,8 +2305,8 @@ package body GNATLLVM.Compile is
             declare
                Rng   : Node_Id := Right_Opnd (Node);
                Left  : constant GL_Value := Emit_Expr (Left_Opnd (Node));
-               Comp1 : Value_T;
-               Comp2 : Value_T;
+               Comp1 : GL_Value;
+               Comp2 : GL_Value;
 
             begin
                pragma Assert (No (Alternatives (Node)));
@@ -2345,27 +2320,24 @@ package body GNATLLVM.Compile is
                Comp1 := Emit_Comparison
                  (Env,
                   (if Nkind (Node) = N_In then N_Op_Ge else N_Op_Lt),
-                  Full_Etype (Left_Opnd (Node)), Node,
-                  Left.Value, Emit_Expr (Low_Bound (Rng)).Value);
+                  Node, Left, Emit_Expr (Low_Bound (Rng)));
 
                Comp2 := Emit_Comparison
                  (Env,
                   (if Nkind (Node) = N_In then N_Op_Le else N_Op_Gt),
-                  Full_Etype (Left_Opnd (Node)), Node,
-                  Left.Value, Emit_Expr (High_Bound (Rng)).Value);
+                  Node, Left, Emit_Expr (High_Bound (Rng)));
 
                return Build_Short_Circuit_Op
-                 (Env, Empty, Empty, G (Comp1, Standard_Boolean),
-                  G (Comp2, Standard_Boolean), N_And_Then);
+                 (Env, Empty, Empty, Comp1, Comp2, N_And_Then);
             end;
 
          when N_Raise_Expression =>
-            Discard (Emit_LCH_Call (Env, Node));
+            Emit_LCH_Call (Env, Node);
             return Get_Undef (Env, Full_Etype (Node));
 
          when N_Raise_xxx_Error =>
             pragma Assert (No (Condition (Node)));
-            Discard (Emit_LCH_Call (Env, Node));
+            Emit_LCH_Call (Env, Node);
             return Get_Undef (Env, Full_Etype (Node));
 
          when others =>
@@ -2381,7 +2353,8 @@ package body GNATLLVM.Compile is
    -- Emit_LCH_Call --
    -------------------
 
-   function Emit_LCH_Call (Env : Environ; Node : Node_Id) return Value_T is
+   procedure Emit_LCH_Call (Env : Environ; Node : Node_Id)
+   is
       Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
       Int_Type      : constant Type_T := Create_Type (Env, Standard_Integer);
       Args          : Value_Array (1 .. 2);
@@ -2437,8 +2410,7 @@ package body GNATLLVM.Compile is
         (Int_Type,
          unsigned_long_long (Get_Logical_Line_Number (Sloc (Node))),
          Sign_Extend => False);
-      return Call
-        (Env.Bld, Env.LCH_Fn, Args'Address, Args'Length, "");
+      Discard (Call (Env.Bld, Env.LCH_Fn, Args'Address, Args'Length, ""));
    end Emit_LCH_Call;
 
    ---------------
@@ -3051,14 +3023,13 @@ package body GNATLLVM.Compile is
       Exprs       : List_Id;
       Compute_Max : Boolean) return GL_Value
    is
-      Expr_Type : constant Entity_Id := Full_Etype (First (Exprs));
       Left      : constant GL_Value := Emit_Expression (Env, First (Exprs));
       Right     : constant GL_Value := Emit_Expression (Env, Last (Exprs));
-      Choose    : constant Value_T :=
+      Choose    : constant GL_Value :=
           Emit_Comparison (Env, (if Compute_Max then N_Op_Gt else N_Op_Lt),
-                           Expr_Type, First (Exprs), Left.Value, Right.Value);
+                           First (Exprs), Left, Right);
    begin
-      return Build_Select (Env, G (Choose, Standard_Boolean), Left, Right,
+      return Build_Select (Env, Choose, Left, Right,
                            (if Compute_Max then "max" else "min"));
    end Emit_Min_Max;
 
@@ -3312,10 +3283,10 @@ package body GNATLLVM.Compile is
    function Emit_Comparison
      (Env           : Environ;
       Kind          : Node_Kind;
-      Operand_Type  : Entity_Id;
-      LHS, RHS      : Node_Id) return Value_T
+      LHS, RHS      : Node_Id) return GL_Value
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
+      Operand_Type : constant Entity_Id := Full_Etype (LHS);
       function Subp_Ptr (Node : Node_Id) return Value_T is
         (if Nkind (Node) = N_Null
          then Const_Null (Pointer_Type (Int_Ty (8), 0))
@@ -3333,24 +3304,22 @@ package body GNATLLVM.Compile is
       if Ekind (Operand_Type) = E_Anonymous_Access_Subprogram_Type then
          --  ??? It's unclear why there's special handling here that's
          --  not present in Gigi.
-         return I_Cmp
-           (Env.Bld,
-            Operation.Unsigned,
-            Subp_Ptr (LHS),
-            Subp_Ptr (RHS),
-            "");
+         return G (I_Cmp
+                     (Env.Bld, Operation.Unsigned,
+                      Subp_Ptr (LHS), Subp_Ptr (RHS), ""),
+                   Standard_Boolean);
 
       elsif Is_Floating_Point_Type (Operand_Type)
         or else Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
         or else Is_Access_Type (Operand_Type)
       then
-         return Emit_Comparison (Env, Kind, Operand_Type, LHS,
-                                 Emit_Expression (Env, LHS).Value,
-                                 Emit_Expression (Env, RHS).Value);
+         return Emit_Comparison (Env, Kind, LHS,
+                                 Emit_Expression (Env, LHS),
+                                 Emit_Expression (Env, RHS));
 
       elsif Is_Record_Type (Operand_Type) then
          Error_Msg_N ("unsupported record comparison", LHS);
-         return Get_Undef (Int_Ty (1));
+         return Get_Undef (Env, Standard_Boolean);
 
       elsif Is_Array_Type (Operand_Type) then
          pragma Assert (Operation.Signed in Int_EQ | Int_NE);
@@ -3372,11 +3341,10 @@ package body GNATLLVM.Compile is
             --  We are generating LLVM IR (SSA form), so the return mechanism
             --  is implemented with control-flow and PHI nodes.
 
-            Bool_Type    : constant Type_T := Int_Ty (1);
-            False_Val    : constant Value_T :=
-              Const_Int (Bool_Type, 0, False);
-            True_Val     : constant Value_T :=
-              Const_Int (Bool_Type, 1, False);
+            False_Val    : constant GL_Value :=
+              Const_Int (Env, Standard_Boolean, 0, False);
+            True_Val     : constant GL_Value :=
+              Const_Int (Env, Standard_Boolean, 1, False);
 
             LHS_Descr    : constant GL_Value := Emit_LValue (Env, LHS);
             LHS_Type     : constant Entity_Id := Full_Etype (LHS);
@@ -3395,31 +3363,23 @@ package body GNATLLVM.Compile is
               (Get_Insert_Block (Env.Bld),
                Create_Basic_Block (Env, "when-null-length"),
                Create_Basic_Block (Env, "when-same-length"));
-            Results      : Value_Array (1 .. 3);
+            Results      : GL_Value_Array (1 .. 3);
             BB_Merge     : constant Basic_Block_T :=
               Create_Basic_Block (Env, "array-cmp-merge");
-            Phi          : Value_T;
 
          begin
-            Discard
-              (Build_Cond_Br
-                (Env.Bld,
-                 C_If   => Same_Length.Value,
-                 C_Then => BB_Merge,
-                 C_Else => Basic_Blocks (2)));
+            Build_Cond_Br (Env, Same_Length,  BB_Merge, Basic_Blocks (2));
             Results (1) := (if Kind = N_Op_Eq then False_Val else True_Val);
 
             --  If we jump from here to BB_Merge, we are returning False
 
             Position_Builder_At_End (Env.Bld, Basic_Blocks (2));
-            Discard
-              (Build_Cond_Br
-                (Env.Bld,
-                 C_If   => I_Cmp
-                   (Env, Int_EQ, Left_Length,
-                    Null_Length, "test-null-length").Value,
-                 C_Then => BB_Merge,
-                 C_Else => Basic_Blocks (3)));
+            Build_Cond_Br
+              (Env,
+               C_If   => I_Cmp
+                 (Env, Int_EQ, Left_Length, Null_Length, "test-null-length"),
+               C_Then => BB_Merge,
+               C_Else => Basic_Blocks (3));
             Results (2) := (if Kind = N_Op_Eq then True_Val else False_Val);
 
             --  If we jump from here to BB_Merge, we are returning True
@@ -3455,38 +3415,37 @@ package body GNATLLVM.Compile is
             begin
                --  The two arrays are equal iff. the call to memcmp returned 0
 
-               Results (3) := I_Cmp
-                 (Env.Bld,
-                  Operation.Signed,
-                  Memcmp,
-                  Const_Null (Type_Of (Memcmp)),
-                  "array-comparison");
+               Results (3) := G (I_Cmp
+                                   (Env.Bld,
+                                    Operation.Signed,
+                                    Memcmp,
+                                    Const_Null (Type_Of (Memcmp)),
+                                    "array-comparison"),
+                                 Standard_Boolean);
             end;
+
             Discard (Build_Br (Env.Bld, BB_Merge));
 
             --  If we jump from here to BB_Merge, we are returning the result
             --  of the memory comparison.
 
             Position_Builder_At_End (Env.Bld, BB_Merge);
-            Phi := LLVM.Core.Phi (Env.Bld, Bool_Type, "");
-            Add_Incoming (Phi, Results'Address, Basic_Blocks'Address, 3);
-            return Phi;
+            return Build_Phi (Env, Results, Basic_Blocks, "");
          end;
 
       else
          Error_Msg_N
            ("unsupported operand type for comparison: `"
             & Entity_Kind'Image (Ekind (Operand_Type)) & "`", LHS);
-         return Get_Undef (Int_Ty (1));
+         return Get_Undef (Env, Standard_Boolean);
       end if;
    end Emit_Comparison;
 
    function Emit_Comparison
      (Env          : Environ;
       Kind         : Node_Kind;
-      Operand_Type : Entity_Id;
       Node         : Node_Id;
-      LHS, RHS     : Value_T) return Value_T
+      LHS, RHS     : GL_Value) return GL_Value
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
    begin
@@ -3495,24 +3454,23 @@ package body GNATLLVM.Compile is
       --  the bounds. We can't make a recursive call here or we'll try to do
       --  it again that time.
 
-      if Is_Access_Unconstrained (Operand_Type) then
-         return I_Cmp
-           (Env.Bld, Operation.Unsigned,
-            Array_Data (Env, LHS, Designated_Type (Operand_Type)),
-            Array_Data (Env, RHS, Designated_Type (Operand_Type)),
-            "");
+      if Is_Access_Unconstrained (LHS) then
+         return G (I_Cmp
+                     (Env.Bld, Operation.Unsigned,
+                      Array_Data (Env, LHS.Value, Designated_Type (LHS)),
+                      Array_Data (Env, RHS.Value, Designated_Type (LHS)),
+                      ""),
+                   Standard_Boolean);
 
-      elsif Is_Floating_Point_Type (Operand_Type) then
-         return F_Cmp
-           (Env.Bld, Operation.Real, LHS, RHS, "");
+      elsif Is_Floating_Point_Type (LHS) then
+         return F_Cmp (Env, Operation.Real, LHS, RHS, "");
 
-      elsif Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
-        or else Is_Access_Type (Operand_Type)
+      elsif Is_Discrete_Or_Fixed_Point_Type (LHS)
+        or else Is_Access_Type (LHS)
       then
          return I_Cmp
-           (Env.Bld,
-            (if Is_Unsigned_Type (Operand_Type)
-               or else Is_Access_Type (Operand_Type)
+           (Env,
+            (if Is_Unsigned_Type (LHS) or else Is_Access_Type (LHS)
              then Operation.Unsigned
              else Operation.Signed),
             LHS, RHS, "");
@@ -3520,8 +3478,8 @@ package body GNATLLVM.Compile is
       else
          Error_Msg_N
            ("unsupported operand type for comparison: `"
-            & Entity_Kind'Image (Ekind (Operand_Type)) & "`", Node);
-         return Get_Undef (Int_Ty (1));
+            & Entity_Kind'Image (Ekind (LHS.Typ)) & "`", Node);
+         return Get_Undef (Env, Standard_Boolean);
       end if;
    end Emit_Comparison;
 
@@ -3587,10 +3545,9 @@ package body GNATLLVM.Compile is
       Num_Alts         : constant Nat := List_Length (Alternatives (Node));
       Alts             : array (1 .. Num_Alts) of One_Alt;
       Choices          : array (1 .. Count_Choices (Node)) of One_Choice;
-      LHS              : constant Value_T :=
-        Emit_Expression (Env, Expression (Node)).Value;
-      LHS_Type         : constant Entity_Id := Full_Etype (Expression (Node));
-      Typ              : constant Type_T := Create_Type (Env, LHS_Type);
+      LHS              : constant GL_Value :=
+        Emit_Expression (Env, Expression (Node));
+      Typ              : constant Type_T := Create_Type (Env, LHS.Typ);
       Start_BB         : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
       Current_Alt      : Nat := 1;
       First_Choice     : Nat;
@@ -3718,7 +3675,8 @@ package body GNATLLVM.Compile is
                BBs (I) := Alts (I).BB;
             end loop;
 
-            Switch := Build_Switch (Env.Bld, LHS, BBs (BBs'Last), BBs'Length);
+            Switch := Build_Switch (Env.Bld, LHS.Value,
+                                    BBs (BBs'Last), BBs'Length);
             for I in Alts'First .. Alts'Last - 1 loop
                for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
                   for K in UI_To_Int (Choices (J).Low) ..
@@ -3758,7 +3716,7 @@ package body GNATLLVM.Compile is
                      BB := Create_Basic_Block (Env, "case-when");
                   end if;
 
-                  Emit_If_Range (Env, Node, LHS_Type, LHS,
+                  Emit_If_Range (Env, Node, LHS,
                                  Choices (J).Low, Choices (J).High,
                                  Alts (I).BB, BB);
                   Position_Builder_At_End (Env.Bld, BB);
@@ -3889,8 +3847,8 @@ package body GNATLLVM.Compile is
                Decode_Range (Right_Opnd (Cond), Low, High);
                if Low /= No_Uint and then High /= No_Uint then
                   Emit_If_Range
-                    (Env, Cond, Full_Etype (Left_Opnd (Cond)),
-                     Emit_Expression (Env, Left_Opnd (Cond)).Value, Low, High,
+                    (Env, Cond, Emit_Expression (Env, Left_Opnd (Cond)),
+                     Low, High,
                      (if Nkind (Cond) = N_In then BB_True else BB_False),
                      (if Nkind (Cond) = N_In then BB_False else BB_True));
                   return;
@@ -3917,14 +3875,12 @@ package body GNATLLVM.Compile is
    procedure Emit_If_Range
      (Env               : Environ;
       Node              : Node_Id;
-      Operand_Type      : Entity_Id;
-      LHS               : Value_T;
+      LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
    is
-      Cond              : Value_T;
+      Cond              : GL_Value;
       Inner_BB          : Basic_Block_T;
-      LLVM_Type         : constant Type_T := Create_Type (Env, Operand_Type);
    begin
 
       --  For discrete types (all we handle here), handle ranges by testing
@@ -3934,18 +3890,17 @@ package body GNATLLVM.Compile is
 
       if Low = High then
          Cond := Emit_Comparison
-           (Env, N_Op_Eq, Operand_Type, Node,
-            LHS, Const_Int (LLVM_Type, Low));
-         Discard (Build_Cond_Br (Env.Bld, Cond, BB_True, BB_False));
+           (Env, N_Op_Eq, Node, LHS, Const_Int (Env, LHS, Low));
+         Build_Cond_Br (Env, Cond, BB_True, BB_False);
       else
          Inner_BB := Create_Basic_Block (Env, "range-test");
-         Cond := Emit_Comparison (Env, N_Op_Ge, Operand_Type, Node,
-                                  LHS, Const_Int (LLVM_Type, Low));
-         Discard (Build_Cond_Br (Env.Bld, Cond, Inner_BB, BB_False));
+         Cond := Emit_Comparison (Env, N_Op_Ge, Node,
+                                  LHS, Const_Int (Env, LHS, Low));
+         Build_Cond_Br (Env, Cond, Inner_BB, BB_False);
          Position_Builder_At_End (Env.Bld, Inner_BB);
-         Cond := Emit_Comparison (Env, N_Op_Le, Operand_Type, Node,
-                                  LHS, Const_Int (LLVM_Type, High));
-         Discard (Build_Cond_Br (Env.Bld, Cond, BB_True, BB_False));
+         Cond := Emit_Comparison (Env, N_Op_Le, Node, LHS,
+                                  Const_Int (Env, LHS, High));
+         Build_Cond_Br (Env, Cond, BB_True, BB_False);
       end if;
    end Emit_If_Range;
 
@@ -3955,7 +3910,7 @@ package body GNATLLVM.Compile is
 
    function Emit_If_Expression
      (Env  : Environ;
-      Node : Node_Id) return Value_T
+      Node : Node_Id) return GL_Value
    is
       Condition  : constant Node_Id := First (Expressions (Node));
       Then_Expr  : constant Node_Id := Next (Condition);
@@ -3966,21 +3921,18 @@ package body GNATLLVM.Compile is
       --  BB_Else is the basic block we jump to if the condition is false.
       --  BB_Next is the BB we jump to after the IF is executed.
 
-      Then_Value, Else_Value : Value_T;
+      Then_Value, Else_Value : GL_Value;
 
    begin
       BB_Then := Create_Basic_Block (Env, "if-then");
       BB_Else := Create_Basic_Block (Env, "if-else");
       BB_Next := Create_Basic_Block (Env, "if-next");
-      Discard
-        (Build_Cond_Br
-          (Env.Bld, Emit_Expression (Env, Condition).Value, BB_Then, BB_Else));
+      Build_Cond_Br (Env, Emit_Expression (Env, Condition), BB_Then, BB_Else);
 
       --  Emit code for the THEN part
 
       Position_Builder_At_End (Env.Bld, BB_Then);
-
-      Then_Value := Emit_Expression (Env, Then_Expr).Value;
+      Then_Value := Emit_Expression (Env, Then_Expr);
 
       --  The THEN part may be composed of multiple basic blocks. We want
       --  to get the one that jumps to the merge point to get the PHI node
@@ -3994,7 +3946,7 @@ package body GNATLLVM.Compile is
 
       Position_Builder_At_End (Env.Bld, BB_Else);
 
-      Else_Value := Emit_Expression (Env, Else_Expr).Value;
+      Else_Value := Emit_Expression (Env, Else_Expr);
       Discard (Build_Br (Env.Bld, BB_Next));
 
       --  We want to get the basic blocks that jumps to the merge point: see
@@ -4006,52 +3958,36 @@ package body GNATLLVM.Compile is
       --  statements/expressions and return a merged expression if needed.
 
       Position_Builder_At_End (Env.Bld, BB_Next);
-
-      --  ??? We can't use Phi if this is a composite type: Phi can only
-      --  be used in LLVM for first-class types.
-
-      declare
-         Values : constant Value_Array (1 .. 2) := (Then_Value, Else_Value);
-         BBs    : constant Basic_Block_Array (1 .. 2) := (BB_Then, BB_Else);
-         Phi    : constant Value_T :=
-           LLVM.Core.Phi (Env.Bld, Type_Of (Then_Value), "");
-      begin
-         Add_Incoming (Phi, Values'Address, BBs'Address, 2);
-         return Phi;
-      end;
+      return Build_Phi (Env, (Then_Value, Else_Value), (BB_Then, BB_Else), "");
    end Emit_If_Expression;
 
    ------------------
    -- Emit_Literal --
    ------------------
 
-   function Emit_Literal (Env : Environ; Node : Node_Id) return Value_T is
+   function Emit_Literal (Env : Environ; Node : Node_Id) return GL_Value is
    begin
       case Nkind (Node) is
          when N_Character_Literal =>
-            return Const_Int
-              (Create_Type (Env, Full_Etype (Node)),
-               Char_Literal_Value (Node));
+            return Const_Int (Env, Full_Etype (Node),
+                              Char_Literal_Value (Node));
 
          when N_Integer_Literal =>
-            return Const_Int
-              (Create_Type (Env, Full_Etype (Node)), Intval (Node));
+            return Const_Int (Env, Full_Etype (Node), Intval (Node));
 
          when N_Real_Literal =>
             if Is_Fixed_Point_Type (Full_Etype (Node)) then
-               return Const_Int
-                 (Create_Type (Env, Full_Etype (Node)),
-                  Corresponding_Integer_Value (Node));
+               return Const_Int (Env, Full_Etype (Node),
+                                 Corresponding_Integer_Value (Node));
             else
                declare
-                  Real_Type           : constant Type_T :=
-                    Create_Type (Env, Full_Etype (Node));
-                  Val                 : Ureal := Realval (Node);
-                  FP_Num, FP_Denom    : double;
+                  Real_Type        : constant Entity_Id := Full_Etype (Node);
+                  Val              : Ureal := Realval (Node);
+                  FP_Num, FP_Denom : double;
 
                begin
                   if UR_Is_Zero (Val) then
-                     return Const_Real (Real_Type, 0.0);
+                     return Const_Real (Env, Real_Type, 0.0);
                   end if;
 
                   --  First convert the value to a machine number if it isn't
@@ -4079,7 +4015,7 @@ package body GNATLLVM.Compile is
 
                   FP_Denom :=
                     2.0 ** (Integer (-UI_To_Int (Denominator (Val))));
-                  return Const_Real (Real_Type, FP_Num * FP_Denom);
+                  return Const_Real (Env, Real_Type, FP_Num * FP_Denom);
                end;
             end if;
 
@@ -4102,12 +4038,13 @@ package body GNATLLVM.Compile is
                      Sign_Extend => False);
                end loop;
 
-               return Const_Array (Element_Type, Elements'Address, Length);
+               return G (Const_Array (Element_Type, Elements'Address, Length),
+                         Full_Etype (Node));
             end;
 
          when others =>
             Error_Msg_N ("unhandled literal node", Node);
-            return Get_Undef (Create_Type (Env, Full_Etype (Node)));
+            return Get_Undef (Env, Full_Etype (Node));
 
       end case;
    end Emit_Literal;

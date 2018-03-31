@@ -28,6 +28,7 @@ with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types;  use LLVM.Types;
 
+with Interfaces.C;             use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
@@ -35,6 +36,7 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 package GNATLLVM.Utils is
 
    type Value_Array is array (Nat range <>) of Value_T;
+   type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
 
    procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
      with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
@@ -244,6 +246,11 @@ package GNATLLVM.Utils is
    is
      (Const_Int (Env, Env.Size_Type, N, Sign_Extend))
      with Pre => Env /= null, Post => Present (Size_Const_Int'Result);
+
+   function Const_Real
+     (Env : Environ; TE : Entity_Id; V : double) return GL_Value
+     with Pre  => Env /= null and then Present (TE),
+          Post => Present (Const_Real'Result);
 
    --  Define IR builder variants which take and/or return GL_Value
 
@@ -522,6 +529,20 @@ package GNATLLVM.Utils is
                   and then Present (C_Then) and then Present (C_Else),
           Post => Present (Build_Select'Result);
 
+   procedure Build_Cond_Br
+     (Env : Environ; C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
+     with Pre => Env /= null and then Present (C_If)
+                 and then Present (C_Then) and then Present (C_Else);
+
+   function Build_Phi
+     (Env       : Environ;
+      GL_Values : GL_Value_Array;
+      BBs       : Basic_Block_Array;
+      Name      : String) return GL_Value
+     with Pre  => Env /= null and then GL_Values'First = BBs'First
+                  and then GL_Values'Last = BBs'Last,
+          Post => Present (Build_Phi'Result);
+
    function Int_To_Ref
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
@@ -655,7 +676,5 @@ package GNATLLVM.Utils is
    function LLVM_Size_Of (T_Data : Target_Data_T; Ty : Type_T) return Nat
    is (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
-
-   type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
 
 end GNATLLVM.Utils;

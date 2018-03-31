@@ -105,6 +105,15 @@ package body GNATLLVM.Utils is
          TE));
 
    ----------------
+   -- Const_Real --
+   ----------------
+
+   function Const_Real
+     (Env : Environ; TE : Entity_Id; V : double) return GL_Value
+   is
+     (G (Const_Real (Create_Type (Env, TE), V), TE));
+
+   ----------------
    -- Int_To_Ptr --
    ----------------
 
@@ -260,6 +269,40 @@ package body GNATLLVM.Utils is
      return GL_Value
    is
      (G (SI_To_FP (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
+
+   -------------------
+   -- Build_Cond_Br --
+   -------------------
+
+   procedure Build_Cond_Br
+     (Env : Environ; C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
+   is
+   begin
+      Discard (Build_Cond_Br (Env.Bld, C_If.Value, C_Then, C_Else));
+   end Build_Cond_Br;
+
+   ---------------
+   -- Build_Phi --
+   ---------------
+
+   function Build_Phi
+     (Env       : Environ;
+      GL_Values : GL_Value_Array;
+      BBs       : Basic_Block_Array;
+      Name      : String) return GL_Value
+   is
+      Values  : Value_Array (GL_Values'Range);
+      Our_Phi : Value_T;
+   begin
+      for I in Values'Range loop
+         Values (I) := GL_Values (I).Value;
+      end loop;
+
+      Our_Phi := Phi (Env.Bld, Type_Of (GL_Values (GL_Values'First)), Name);
+      Add_Incoming (Our_Phi, Values'Address, BBs'Address, Values'Length);
+      return (Our_Phi, GL_Values (GL_Values'First).Typ,
+              GL_Values (GL_Values'First).Is_Reference);
+   end Build_Phi;
 
    --------------------
    -- Get_Uint_Value --
@@ -543,7 +586,7 @@ package body GNATLLVM.Utils is
       Indices     : GL_Value_Array;
       Name        : String) return GL_Value
    is
-      Val_Idxs    : Value_Array (Indices'First .. Indices'Last);
+      Val_Idxs    : Value_Array (Indices'Range);
       Result      : Value_T;
    begin
       for I in Indices'Range loop

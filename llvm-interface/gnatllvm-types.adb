@@ -369,42 +369,20 @@ package body GNATLLVM.Types is
    --------------------------
 
    procedure Create_Discrete_Type
-     (Env       : Environ;
-      TE        : Entity_Id;
-      TL        : out Type_T;
-      Low, High : out Value_T) is
-      SRange : Node_Id;
+     (Env : Environ; TE : Entity_Id; TL : out Type_T; Low, High : out GL_Value)
+   is
+      SRange : constant Node_Id := Scalar_Range (TE);
    begin
       --  Delegate LLVM Type creation to Create_Type
 
       TL := Create_Type (Env, TE);
 
-      --  Compute ourselves the bounds
+      --  Compute the bounds
 
-      case Ekind (TE) is
-         when E_Enumeration_Type | E_Enumeration_Subtype
-            | E_Signed_Integer_Type | E_Signed_Integer_Subtype
-            | E_Modular_Integer_Type | E_Modular_Integer_Subtype =>
+      pragma Assert (Nkind (SRange) = N_Range);
+      Low := Emit_Expression (Env, Low_Bound (SRange));
+      High := Emit_Expression (Env, High_Bound (SRange));
 
-            SRange := Scalar_Range (TE);
-            case Nkind (SRange) is
-               when N_Range =>
-                  Low := Emit_Expression (Env, Low_Bound (SRange)).Value;
-                  High := Emit_Expression (Env, High_Bound (SRange)).Value;
-               when others =>
-                  pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-                  raise Program_Error
-                    with "Invalid scalar range: "
-                    & Node_Kind'Image (Nkind (SRange));
-                  pragma Annotate (Xcov, Exempt_Off);
-            end case;
-
-         when others =>
-            pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-            raise Program_Error
-              with "Invalid discrete type: " & Entity_Kind'Image (Ekind (TE));
-            pragma Annotate (Xcov, Exempt_Off);
-      end case;
    end Create_Discrete_Type;
 
    --------------------------------------

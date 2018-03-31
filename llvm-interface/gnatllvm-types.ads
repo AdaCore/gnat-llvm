@@ -83,12 +83,9 @@ package GNATLLVM.Types is
      with Pre => Env /= null and then Is_Type (TE);
 
    procedure Create_Discrete_Type
-     (Env       : Environ;
-      TE        : Entity_Id;
-      TL        : out Type_T;
-      Low, High : out Value_T)
+     (Env : Environ; TE : Entity_Id; TL : out Type_T; Low, High : out GL_Value)
      with Pre  => Env /= null and then Ekind (TE) in Discrete_Kind,
-          Post => Present (TL);
+          Post => Present (TL) and then Present (Low) and then Present (High);
 
    function Int_Ty (Num_Bits : Natural) return Type_T
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;

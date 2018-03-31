@@ -161,20 +161,51 @@ package GNATLLVM.Utils is
      with Pre => not Is_Access_Type (G);
 
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
-     with Pre => Env /= null and then Is_Type (TE);
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => Present (Get_Undef'Result);
 
    function Const_Null (Env : Environ; TE : Entity_Id) return GL_Value
-     with Pre => Env /= null and then Is_Type (TE);
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => Present (Const_Null'Result);
 
    function Const_Int
      (Env : Environ; TE : Entity_Id; N : Uint) return GL_Value
-     with Pre => Env /= null and then Is_Type (TE);
+     with Pre  => Env /= null and then Is_Type (TE) and then N /= No_Uint,
+          Post => Present (Const_Int'Result);
 
    function Const_Int
      (Env         : Environ;
       TE          : Entity_Id;
       N           : unsigned_long_long;
-      Sign_Extend : Boolean) return GL_Value;
+      Sign_Extend : Boolean) return GL_Value
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => Present (Const_Int'Result);
+
+   function Get_Undef (Env : Environ; G : GL_Value) return GL_Value is
+     (Get_Undef (Env, G.Typ))
+     with  Pre  => Env /= null and then Present (G),
+           Post => Present (Get_Undef'Result);
+
+   function Const_Null (Env : Environ; G : GL_Value) return GL_Value is
+     (Const_Null (Env, G.Typ))
+     with Pre  => Env /= null and then Present (G),
+          Post => Present (Const_Null'Result);
+
+   function Const_Int
+     (Env : Environ; G : GL_Value; N : Uint) return GL_Value is
+     (Const_Int (Env, G.Typ, N))
+     with Pre  => Env /= null and then Present (G) and then N /= No_Uint,
+          Post => Present (Const_Int'Result);
+
+   function Const_Int
+     (Env         : Environ;
+      G           : GL_Value;
+      N           : unsigned_long_long;
+      Sign_Extend : Boolean) return GL_Value
+   is
+     (Const_Int (Env, G.Typ, N, Sign_Extend))
+     with Pre  => Env /= null and then Present (G),
+          Post => Present (Const_Int'Result);
 
    --  Define IR builder variants which take and/or return GL_Value
 
@@ -358,7 +389,7 @@ package GNATLLVM.Utils is
    is
      ((Build_Select (Env.Bld, C_If => C_If.Value, C_Then => C_Then.Value,
                      C_Else => C_Else.Value, Name => Name),
-       C_If.Typ, C_If.Is_Reference));
+       C_Then.Typ, C_If.Is_Reference));
 
    function Int_To_Ref
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)

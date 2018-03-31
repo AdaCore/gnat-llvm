@@ -26,7 +26,6 @@ with Uintp;      use Uintp;
 
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 ---------------------
 -- GNATLLVM.Arrays --
@@ -54,8 +53,7 @@ package body GNATLLVM.Arrays is
    end record;
 
    type Index_Bounds is record
-      Bound_Type        : Type_T;
-      Bound_Is_Unsigned : Boolean;
+      Bound_Type        : Entity_Id;
       Low, High         : One_Bound;
    end record;
 
@@ -141,8 +139,8 @@ package body GNATLLVM.Arrays is
       Arr_Typ  : Entity_Id;
       Dim      : Nat;
       Is_Low   : Boolean;
-      Value    : Value_T;
-      For_Type : Boolean := False) return Value_T
+      Value    : GL_Value;
+      For_Type : Boolean := False) return GL_Value
    is
       Info_Idx   : constant Nat := Get_And_Create_Array_Info (Env, Arr_Typ);
       Dim_Info   : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
@@ -161,15 +159,16 @@ package body GNATLLVM.Arrays is
       --  access that field of the enclosing record.
 
       if Bound_Info.Cnst /= No_Uint then
-         return Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
+         return Const_Int (Env, Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
-         return Emit_Expression (Env, Bound_Info.Value).Value;
+         return Emit_Expression (Env, Bound_Info.Value);
       elsif not Is_Constrained (Arr_Typ) then
-         return Extract_Value
-           (Env.Bld,
-            Extract_Value (Env.Bld, Value, 1, "bounds"),
-            unsigned (Bound_Idx),
-            (if Is_Low then "low-bound" else "high-bound"));
+         return G (Extract_Value
+                     (Env.Bld,
+                      Extract_Value (Env.Bld, Value.Value, 1, "bounds"),
+                      unsigned (Bound_Idx),
+                      (if Is_Low then "low-bound" else "high-bound")),
+                   Dim_Info.Bound_Type);
       end if;
 
       --  We now should have the discriminated case.  Make sure we do.
@@ -187,17 +186,18 @@ package body GNATLLVM.Arrays is
             return Emit_Expression
               (Env,
                (if Is_Low then Type_Low_Bound (Disc_Type)
-               else Type_High_Bound (Disc_Type))).Value;
+               else Type_High_Bound (Disc_Type)));
          end;
       else
          return
-           Load_With_Type
-           (Env, Full_Etype (Bound_Info.Discr),
-            Record_Field_Offset
-              (Env,
-               Get_Matching_Value
-                 (Full_Etype (Scope (Bound_Info.Discr))).Value,
-               Bound_Info.Discr));
+           Load
+           (Env,
+            ((Record_Field_Offset
+                 (Env,
+                  Get_Matching_Value
+                    (Full_Etype (Scope (Bound_Info.Discr))).Value,
+                  Bound_Info.Discr)),
+             Dim_Info.Bound_Type, Is_Reference => True));
       end if;
 
    end Get_Array_Bound;
@@ -210,37 +210,31 @@ package body GNATLLVM.Arrays is
      (Env      : Environ;
       Arr_Typ  : Entity_Id;
       Dim      : Nat;
-      Value    : Value_T;
-      For_Type : Boolean := False) return Value_T
+      Value    : GL_Value;
+      For_Type : Boolean := False) return GL_Value
    is
       Info_Idx    : constant Nat := Get_And_Create_Array_Info (Env, Arr_Typ);
       Dim_Info    : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
-      Result_Type : constant Type_T  := Dim_Info.Bound_Type;
-      Is_Unsigned : constant Boolean := Dim_Info.Bound_Is_Unsigned;
-      Low_Bound   : constant Value_T :=
+      Low_Bound   : constant GL_Value :=
         Get_Array_Bound (Env, Arr_Typ, Dim, True, Value, For_Type);
-      High_Bound  : constant Value_T :=
+      High_Bound  : constant GL_Value :=
         Get_Array_Bound (Env, Arr_Typ, Dim, False, Value, For_Type);
-      Const_1     : constant Value_T :=
-        Const_Int (Result_Type, 1, Sign_Extend => False);
-      Is_Empty    : constant Value_T :=
+      Const_1     : constant GL_Value :=
+        Const_Int (Env, Dim_Info.Bound_Type, Uint_1);
+      Is_Empty    : constant GL_Value :=
         I_Cmp
-        (Env.Bld,
-         (if Is_Unsigned then Int_UGT else Int_SGT),
+        (Env,
+         (if Is_Unsigned_Type (Low_Bound) then Int_UGT else Int_SGT),
          Low_Bound, High_Bound, "is-empty");
    begin
       return Build_Select
-        (Env.Bld,
+        (Env,
          C_If   => Is_Empty,
-         C_Then => Const_Null (Result_Type),
+         C_Then => Const_Null (Env, Dim_Info.Bound_Type),
          C_Else =>
            (if Low_Bound = Const_1 then High_Bound
-            else
-              Add
-                (Env.Bld,
-                 Sub (Env.Bld, High_Bound, Low_Bound, ""),
-                 Const_1,
-                 "")),
+           else NSW_Add
+             (Env, NSW_Sub (Env, High_Bound, Low_Bound, ""), Const_1, "")),
          Name   => "");
    end Get_Array_Length;
 
@@ -251,7 +245,6 @@ package body GNATLLVM.Arrays is
    function Create_String_Literal_Type
      (Env : Environ; TE : Entity_Id; Comp_Typ   : Type_T) return Type_T
    is
-      Ind_Typ    : constant Type_T := Create_Type (Env, Standard_Positive);
       First      : constant Uint :=
         Get_Uint_Value (String_Literal_Low_Bound (TE));
       Length     : constant Uint := String_Literal_Length (TE);
@@ -260,8 +253,7 @@ package body GNATLLVM.Arrays is
                                          Discr => Empty, Dynamic => False);
       High_Bound : constant One_Bound := (Cnst => Last, Value => Empty,
                                           Discr => Empty, Dynamic => False);
-      Dim_Info   : constant Index_Bounds := (Bound_Type => Ind_Typ,
-                                             Bound_Is_Unsigned => False,
+      Dim_Info   : constant Index_Bounds := (Bound_Type => Standard_Positive,
                                              Low => Low_Bound,
                                              High => High_Bound);
       Result_Typ : constant Type_T :=
@@ -318,18 +310,16 @@ package body GNATLLVM.Arrays is
             Index_Type : constant Entity_Id := Full_Etype (Index);
             Index_Base : constant Entity_Id :=
               Implementation_Base_Type (Index_Type);
-            Typ      : constant Type_T := Create_Type (Env, Index_Type);
             LB       : constant Node_Id := Low_Bound (Idx_Range);
             HB       : constant Node_Id := High_Bound (Idx_Range);
             Dim_Info : constant Index_Bounds :=
-              (Bound_Type => Typ,
-               Bound_Is_Unsigned => Is_Unsigned_Type (Index_Base),
+              (Bound_Type => Index_Base,
                Low => Build_One_Bound (LB, Unconstrained),
                High => Build_One_Bound (HB, Unconstrained));
-            --  We have to be careful here and flag the signedness of the
-            --  index from that of the base type since we can have index
-            --  ranges that are outside the base type if the subtype is
-            --  superflat (see C37172C).
+            --  We have to be careful here and flag the type of the index
+            --  from that of the base type since we can have index ranges
+            --  that are outside the base type if the subtype is superflat
+            --  (see C37172C).
 
          begin
 
@@ -400,7 +390,8 @@ package body GNATLLVM.Arrays is
       J          : Nat := 0;
    begin
       for I in Nat range 0 .. Dims - 1 loop
-         Fields (J) := Array_Info.Table (First_Info + I).Bound_Type;
+         Fields (J) :=
+           Create_Type (Env, Array_Info.Table (First_Info + I).Bound_Type);
          Fields (J + 1) := Fields (J);
          J := J + 2;
       end loop;
@@ -459,8 +450,11 @@ package body GNATLLVM.Arrays is
          Size :=
            NSW_Mul (Env.Bld, Size,
                     Convert_To_Size_Type
-                      (Env, Get_Array_Length (Env, Array_Type, Dim,
-                                              Array_Descr, For_Type)),
+                      (Env, Get_Array_Length
+                         (Env, Array_Type, Dim,
+                          (if No (Array_Descr) then No_GL_Value
+                           else G (Array_Descr, Array_Type)),
+                             For_Type).Value),
                     "");
       end loop;
 
@@ -519,14 +513,16 @@ package body GNATLLVM.Arrays is
          Bounds := Insert_Value
            (Env.Bld,
             Bounds,
-            Get_Array_Bound (Env, Array_Type, Dim, True, Array_Data),
+            Get_Array_Bound (Env, Array_Type, Dim, True,
+                             G (Array_Data, Array_Type)).Value,
             unsigned (Dim * 2),
             "");
 
          Bounds := Insert_Value
            (Env.Bld,
             Bounds,
-            Get_Array_Bound (Env, Array_Type, Dim, False, Array_Data),
+            Get_Array_Bound (Env, Array_Type, Dim, False,
+                             G (Array_Data, Array_Type)).Value,
             unsigned (Dim * 2 + 1),
             "");
       end loop;
@@ -632,7 +628,8 @@ package body GNATLLVM.Arrays is
          declare
             User_Index    : constant Value_T := Emit_Expression (Env, N).Value;
             Dim_Low_Bound : constant Value_T :=
-              Get_Array_Bound (Env, Arr_Typ, J - 2, True, Value);
+              Get_Array_Bound (Env, Arr_Typ, J - 2, True,
+                               G (Value, Arr_Typ)).Value;
          begin
             Idxs (J) := NSW_Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
          end;
@@ -673,9 +670,10 @@ package body GNATLLVM.Arrays is
                                        Index,
                                        Convert_To_Size_Type
                                          (Env,
-                                          Get_Array_Length (Env, Arr_Typ,
-                                                            Dim,
-                                                            Array_Data_Ptr)),
+                                          Get_Array_Length
+                                            (Env, Arr_Typ, Dim,
+                                             G (Array_Data_Ptr,
+                                                Arr_Typ)).Value),
                                        ""),
                               Convert_To_Size_Type (Env, Idxs (Dim + 2)),
                               "");
@@ -709,7 +707,8 @@ package body GNATLLVM.Arrays is
       Index_Shift : constant Value_T :=
         Sub
         (Env.Bld, Emit_Expression (Env, Low_Bound (Rng)).Value,
-         Get_Array_Bound (Env, Arr_Typ, 0, True, Value), "offset");
+         Get_Array_Bound (Env, Arr_Typ, 0, True,
+                          G (Value, Arr_Typ)).Value, "offset");
    begin
 
       --  Like the above case, we have to hande both the opaque and non-opaque

@@ -3182,7 +3182,7 @@ package body GNATLLVM.Compile is
 
             declare
                Prefix_Type : constant Entity_Id := Full_Etype (Prefix (Node));
-               Array_Descr : Value_T;
+               Array_Descr : GL_Value;
                Result      : GL_Value;
                Dim         : constant Nat :=
                  (if Present (Expressions (Node)) then
@@ -3211,22 +3211,19 @@ package body GNATLLVM.Compile is
                   if Is_Entity_Name (Prefix (Node))
                     and then Is_Type (Entity (Prefix (Node)))
                   then
-                     Array_Descr := No_Value_T;
+                     Array_Descr := No_GL_Value;
                   else
-                     Array_Descr := Emit_LValue (Env, Prefix (Node)).Value;
+                     Array_Descr := Emit_LValue (Env, Prefix (Node));
                   end if;
 
                   if Attr = Attribute_Length then
                      Result :=
-                       G (Get_Array_Length (Env, Prefix_Type, Dim,
-                                            Array_Descr),
-                          Standard_Integer);
+                       Get_Array_Length (Env, Prefix_Type, Dim, Array_Descr);
                   else
-                     Result := G (Get_Array_Bound
-                                    (Env, Prefix_Type, Dim,
-                                     Attr = Attribute_First,
-                                     Array_Descr),
-                                  Standard_Integer);
+                     Result :=
+                       Get_Array_Bound
+                       (Env, Prefix_Type, Dim, Attr = Attribute_First,
+                        Array_Descr);
                   end if;
                else
                   Error_Msg_N ("unsupported attribute", Node);
@@ -3396,20 +3393,18 @@ package body GNATLLVM.Compile is
             True_Val     : constant Value_T :=
               Const_Int (Bool_Type, 1, False);
 
-            LHS_Descr    : constant Value_T := Emit_LValue (Env, LHS).Value;
+            LHS_Descr    : constant GL_Value := Emit_LValue (Env, LHS);
             LHS_Type     : constant Entity_Id := Full_Etype (LHS);
-            RHS_Descr    : constant Value_T := Emit_LValue (Env, RHS).Value;
+            RHS_Descr    : constant GL_Value := Emit_LValue (Env, RHS);
             RHS_Type     : constant Entity_Id := Full_Etype (RHS);
 
-            Left_Length  : constant Value_T :=
+            Left_Length  : constant GL_Value :=
               Get_Array_Length (Env, LHS_Type, 0, LHS_Descr);
-            Right_Length : constant Value_T :=
+            Right_Length : constant GL_Value :=
               Get_Array_Length (Env, RHS_Type, 0, RHS_Descr);
-            Null_Length  : constant Value_T :=
-              Const_Null (Type_Of (Left_Length));
-            Same_Length  : constant Value_T := I_Cmp
-              (Env.Bld, Int_NE, Left_Length,
-               Right_Length, "test-same-length");
+            Null_Length  : constant GL_Value := Const_Null (Env, Left_Length);
+            Same_Length  : constant GL_Value := I_Cmp
+              (Env, Int_NE, Left_Length, Right_Length, "test-same-length");
 
             Basic_Blocks : constant Basic_Block_Array (1 .. 3) :=
               (Get_Insert_Block (Env.Bld),
@@ -3424,7 +3419,7 @@ package body GNATLLVM.Compile is
             Discard
               (Build_Cond_Br
                 (Env.Bld,
-                 C_If   => Same_Length,
+                 C_If   => Same_Length.Value,
                  C_Then => BB_Merge,
                  C_Else => Basic_Blocks (2)));
             Results (1) := (if Kind = N_Op_Eq then False_Val else True_Val);
@@ -3436,8 +3431,8 @@ package body GNATLLVM.Compile is
               (Build_Cond_Br
                 (Env.Bld,
                  C_If   => I_Cmp
-                   (Env.Bld, Int_EQ, Left_Length,
-                    Null_Length, "test-null-length"),
+                   (Env, Int_EQ, Left_Length,
+                    Null_Length, "test-null-length").Value,
                  C_Then => BB_Merge,
                  C_Else => Basic_Blocks (3)));
             Results (2) := (if Kind = N_Op_Eq then True_Val else False_Val);
@@ -3448,9 +3443,9 @@ package body GNATLLVM.Compile is
 
             declare
                Left        : constant Value_T :=
-                 Array_Data (Env, LHS_Descr, LHS_Type);
+                 Array_Data (Env, LHS_Descr.Value, LHS_Type);
                Right       : constant Value_T :=
-                 Array_Data (Env, RHS_Descr, RHS_Type);
+                 Array_Data (Env, RHS_Descr.Value, RHS_Type);
 
                Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
                Comp_Type     : constant Entity_Id :=
@@ -3459,7 +3454,7 @@ package body GNATLLVM.Compile is
                Size          : constant Value_T :=
                  NSW_Mul
                    (Env.Bld,
-                    Z_Ext (Env.Bld, Left_Length, Env.Size_Type, ""),
+                    Z_Ext (Env.Bld, Left_Length.Value, Env.Size_Type, ""),
                     Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_Value_T),
                     "byte-size");
 

@@ -19,10 +19,11 @@ with Einfo;  use Einfo;
 with Nlists; use Nlists;
 with Types;  use Types;
 
-with LLVM.Core; use LLVM.Core;
+with LLVM.Core;  use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Arrays is
 
@@ -63,8 +64,8 @@ package GNATLLVM.Arrays is
       Arr_Typ  : Entity_Id;
       Dim      : Nat;
       Is_Low   : Boolean;
-      Value    : Value_T;
-      For_Type : Boolean := False) return Value_T
+      Value    : GL_Value;
+      For_Type : Boolean := False) return GL_Value
      with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
                   and then Dim < Number_Dimensions (Arr_Typ)
                   and then (Present (Value)
@@ -79,8 +80,8 @@ package GNATLLVM.Arrays is
      (Env     : Environ;
       Arr_Typ : Entity_Id;
       Dim     : Nat;
-      Value   : Value_T;
-      For_Type : Boolean := False) return Value_T
+      Value   : GL_Value;
+      For_Type : Boolean := False) return GL_Value
      with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
                   and then Dim < Number_Dimensions (Arr_Typ)
                   and then (Present (Value)

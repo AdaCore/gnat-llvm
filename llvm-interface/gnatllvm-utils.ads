@@ -63,6 +63,11 @@ package GNATLLVM.Utils is
      (Ekind (E) = E_Void or else Is_Type (E));
    --  We can have Etype's that are E_Void for E_Procedure
 
+   function Const_Ones (T : Type_T) return Value_T is
+     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True))
+     with Pre => Present (T), Post => Present (Const_Ones'Result);
+   --  Return an LLVM value for the given type where all bits are set
+
    --  It's not sufficient to just pass around an LLVM Value_T when
    --  generating code because there's a lot of information lost about the
    --  value and where it came from.  Contrast with Gigi, where we pass around
@@ -189,6 +194,12 @@ package GNATLLVM.Utils is
      with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Const_Int'Result);
 
+   function Const_Ones (Env : Environ; TE : Entity_Id) return GL_Value is
+     (Const_Int (Env, TE, unsigned_long_long'Last, Sign_Extend => True))
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => Present (Const_Ones'Result);
+
+   --  Return an LLVM value for the given type where all bits are set
    function Get_Undef (Env : Environ; G : GL_Value) return GL_Value is
      (Get_Undef (Env, G.Typ))
      with  Pre  => Env /= null and then Present (G),
@@ -214,6 +225,11 @@ package GNATLLVM.Utils is
      (Const_Int (Env, G.Typ, N, Sign_Extend))
      with Pre  => Env /= null and then Present (G),
           Post => Present (Const_Int'Result);
+
+   function Const_Ones (Env : Environ; G : GL_Value) return GL_Value is
+     (Const_Ones (Env, G.Typ))
+     with Pre => Present (G), Post => Present (Const_Ones'Result);
+   --  Return an LLVM value for the given type where all bits are set
 
    function Size_Const_Int
      (Env : Environ; N : Uint) return GL_Value is
@@ -453,6 +469,27 @@ package GNATLLVM.Utils is
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (F_Div'Result);
 
+   function Shl
+     (Env : Environ; E, Count : GL_Value; Name : String) return GL_Value
+   is
+      (G (Shl (Env.Bld, E.Value, Count.Value, Name), E.Typ))
+      with Pre  => Env /= null and then Present (E) and then Present (Count),
+           Post => Present (Shl'Result);
+
+   function L_Shr
+     (Env : Environ; E, Count : GL_Value; Name : String) return GL_Value
+   is
+      (G (L_Shr (Env.Bld, E.Value, Count.Value, Name), E.Typ))
+      with Pre  => Env /= null and then Present (E) and then Present (Count),
+           Post => Present (L_Shr'Result);
+
+   function A_Shr
+     (Env : Environ; E, Count : GL_Value; Name : String) return GL_Value
+   is
+      (G (A_Shr (Env.Bld, E.Value, Count.Value, Name), E.Typ))
+      with Pre  => Env /= null and then Present (E) and then Present (Count),
+           Post => Present (A_Shr'Result);
+
    function Build_Not
      (Env : Environ; V : GL_Value; Name : String) return GL_Value
    is
@@ -526,11 +563,6 @@ package GNATLLVM.Utils is
    function Const_Int (T : Type_T; Value : Uint)
      return Value_T renames Uintp.LLVM.UI_To_LLVM;
    --  Return an LLVM value corresponding to the universal int Value
-
-   function Const_Ones (T : Type_T) return Value_T is
-     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True))
-     with Pre => Present (T), Post => Present (Const_Ones'Result);
-   --  Return an LLVM value for the given type where all bits are set
 
    type Pred_Mapping is record
       Signed : Int_Predicate_T;

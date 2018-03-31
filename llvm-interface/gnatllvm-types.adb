@@ -99,6 +99,19 @@ package body GNATLLVM.Types is
      (Function_Type
        (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False));
 
+   --------------------------------
+   -- Get_LLVM_Type_Size_In_Bits --
+   --------------------------------
+
+   function Get_LLVM_Type_Size_In_Bits
+     (Env : Environ; TE : Entity_Id) return GL_Value
+   is
+      LLVM_Type : constant Type_T := Create_Type (Env, TE);
+   begin
+      pragma Assert (not Is_Dynamic_Size (Env, TE));
+      return Get_LLVM_Type_Size_In_Bits (Env, LLVM_Type);
+   end Get_LLVM_Type_Size_In_Bits;
+
    ------------------------
    -- Create_Access_Type --
    ------------------------

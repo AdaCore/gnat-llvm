@@ -100,31 +100,47 @@ package GNATLLVM.Types is
       (Int_Type (unsigned (Get_Pointer_Size)));
 
    function Get_LLVM_Type_Size
-     (Env : Environ;
-      T   : Type_T) return unsigned_long_long is
+     (Env : Environ; T : Type_T) return unsigned_long_long
+   is
      ((Size_Of_Type_In_Bits (Env.Module_Data_Layout, T) + 7) / 8)
      with Pre => Env /= null and then Present (T);
    --  Return the size of an LLVM type, in bytes
 
    function Get_LLVM_Type_Size
-     (Env : Environ;
-      T   : Type_T) return GL_Value is
+     (Env : Environ; T : Type_T) return GL_Value
+   is
      (Const_Int (Env, Env.Size_Type, Get_LLVM_Type_Size (Env, T), False));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
    function Get_LLVM_Type_Size_In_Bits
-     (Env : Environ;
-      T   : Type_T) return unsigned_long_long is
+     (Env : Environ; T : Type_T) return unsigned_long_long
+   is
      (Size_Of_Type_In_Bits (Env.Module_Data_Layout, T))
      with Pre => Env /= null and then Present (T);
    --  Return the size of an LLVM type, in bits
 
    function Get_LLVM_Type_Size_In_Bits
-     (Env : Environ;
-      T   : Type_T) return GL_Value is
+     (Env : Environ; T : Type_T) return GL_Value
+   is
      (Const_Int (Env, Env.Size_Type,
-                 Get_LLVM_Type_Size_In_Bits (Env, T), False));
+                 Get_LLVM_Type_Size_In_Bits (Env, T), False))
+     with Pre  => Env /= null and Present (T),
+          Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
    --  Return the size of an LLVM type, in bits, as an LLVM constant
+
+   function Get_LLVM_Type_Size_In_Bits
+     (Env : Environ; TE : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Present (TE),
+          Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
+   --  Likewise, but convert from a GNAT type
+
+   function Get_LLVM_Type_Size_In_Bits
+     (Env : Environ; G : GL_Value) return GL_Value
+   is
+     (Get_LLVM_Type_Size_In_Bits (Env, G.Typ))
+     with Pre  => Env /= null and then Present (G),
+          Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
+   --  Variant of above to get type from a GL_Value
 
    function Convert_To_Size_Type (Env : Environ; V : GL_Value) return GL_Value
      with Pre  => Env /= null and then Present (V),

@@ -531,7 +531,7 @@ package body GNATLLVM.Utils is
          Set_Volatile (Inst);
       end if;
 
-      if TBAA /= No_Metadata_T then
+      if Present (TBAA) then
          Add_TBAA_Access
            (Inst, Create_TBAA_Access_Tag (Env.MDBld, TBAA, TBAA, 0));
       end if;

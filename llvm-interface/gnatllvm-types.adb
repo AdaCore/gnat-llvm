@@ -21,7 +21,7 @@ with Stand;    use Stand;
 with Uintp;    use Uintp;
 
 with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
-with GNATLLVM.Compile;
+with GNATLLVM.Compile; use GNATLLVM.Compile;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
@@ -36,7 +36,7 @@ package body GNATLLVM.Types is
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
      with Pre  => Env /= null,
-          Post => Create_Subprogram_Type'Result /= No_Type_T;
+          Post => Present (Create_Subprogram_Type'Result);
    --  Helper for public Create_Subprogram_Type functions: the public ones
    --  harmonize input and this one actually creates the LLVM type for
    --  subprograms.  Return_Type can be Empty if this is a procedure.
@@ -44,8 +44,8 @@ package body GNATLLVM.Types is
    function Create_Subprogram_Access_Type
      (Env       : Environ;
       Subp_Type : Type_T) return Type_T
-     with Pre  => Env /= null and then Subp_Type /= No_Type_T,
-          Post => Create_Subprogram_Access_Type'Result /= No_Type_T;
+     with Pre  => Env /= null and then Present (Subp_Type),
+          Post => Present (Create_Subprogram_Access_Type'Result);
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
    function Rec_Comp_Filter (E : Entity_Id) return Boolean is
@@ -133,7 +133,7 @@ package body GNATLLVM.Types is
       --  this type.  ??? But we can't add that test just yet.
 
       Typ := Get_Type (Env, TE);
-      if Typ /= No_Type_T then
+      if Present (Typ) then
          --  pragma Assert (not Definition);
          return Typ;
       end if;
@@ -145,7 +145,7 @@ package body GNATLLVM.Types is
       Def_Ident := Get_Fullest_View (TE);
       if Def_Ident /= TE then
          Typ := GNAT_To_LLVM_Type (Env, Def_Ident, False);
-         if Typ /= No_Type_T then
+         if Present (Typ) then
             Copy_Type_Info (Env, Def_Ident, TE);
             return Typ;
          end if;
@@ -323,10 +323,10 @@ package body GNATLLVM.Types is
 
       --  Now save the result, if we have one, and compute any TBAA
       --  information.
-      if Typ /= No_Type_T then
+      if Present (Typ) then
          Set_Type (Env, TE, Typ);
          TBAA := Create_TBAA (Env, TE);
-         if TBAA /= No_Metadata_T then
+         if Present (TBAA) then
             Set_TBAA (Env, TE, TBAA);
          end if;
       end if;
@@ -376,10 +376,8 @@ package body GNATLLVM.Types is
             SRange := Scalar_Range (TE);
             case Nkind (SRange) is
                when N_Range =>
-                  Low := GNATLLVM.Compile.Emit_Expression
-                    (Env, Low_Bound (SRange)).Value;
-                  High := GNATLLVM.Compile.Emit_Expression
-                    (Env, High_Bound (SRange)).Value;
+                  Low := Emit_Expression (Env, Low_Bound (SRange)).Value;
+                  High := Emit_Expression (Env, High_Bound (SRange)).Value;
                when others =>
                   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
                   raise Program_Error

@@ -35,18 +35,20 @@ package GNATLLVM.Compile is
    --  Call Emit on every element of List
 
    function Emit_Expression (Env : Environ; Node : Node_Id) return GL_Value
-     with Pre => Env /= null and then Present (Node);
+     with Pre  => Env /= null and then Present (Node),
+          Post => Present (Emit_Expression'Result);
    --  Compile an expression node to an LLVM value.
 
    function Emit_LValue (Env : Environ; Node : Node_Id) return GL_Value
-     with Pre => Env /= null and then Present (Node);
+     with Pre  => Env /= null and then Present (Node),
+          Post => Present (Emit_LValue'Result);
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc.)
 
    function Get_Matching_Value (T : Entity_Id) return Value_T
      with Pre  => Is_Type (T),
-     Post => Get_Matching_Value'Result /= No_Value_T;
+          Post => Present (Get_Matching_Value'Result);
    --  Find a value that's being computed by the current Emit_LValue
    --  recursion that has the same base type as T
 end GNATLLVM.Compile;

@@ -84,7 +84,7 @@ package body GNATLLVM.Arrays is
    function Create_String_Literal_Type
      (Env : Environ; TE : Entity_Id; Comp_Typ : Type_T) return Type_T
      with Pre  => Env /= null and then Ekind (TE) = E_String_Literal_Subtype
-                  and then Comp_Typ /= No_Type_T,
+                  and then Present (Comp_Typ),
           Post => (Get_Type_Kind (Create_String_Literal_Type'Result) =
                      Array_Type_Kind);
    --  Helper function to create type for string literals

@@ -48,7 +48,7 @@ package GNATLLVM.Types is
    function Create_Access_Type
      (Env : Environ; TE : Entity_Id) return Type_T
      with Pre  => Env /= null and then Is_Type (TE),
-          Post => Create_Access_Type'Result /= No_Type_T;
+          Post => Present (Create_Access_Type'Result);
 
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
@@ -74,7 +74,7 @@ package GNATLLVM.Types is
    function GNAT_To_LLVM_Type
      (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
      with Pre  => Env /= null and then Is_Type (TE),
-          Post => GNAT_To_LLVM_Type'Result /= No_Type_T;
+          Post => Present (GNAT_To_LLVM_Type'Result);
 
    function Create_Type (Env : Environ; TE : Entity_Id) return Type_T is
       (GNAT_To_LLVM_Type (Env, TE, False));
@@ -88,12 +88,12 @@ package GNATLLVM.Types is
       TL        : out Type_T;
       Low, High : out Value_T)
      with Pre  => Env /= null and then Ekind (TE) in Discrete_Kind,
-          Post => TL /= No_Type_T;
+          Post => Present (TL);
 
    function Int_Ty (Num_Bits : Natural) return Type_T
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
    function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T
-     with Pre => Ret_Ty /= No_Type_T,
+     with Pre  => Present (Ret_Ty),
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
    function Int_Ptr_Type return Type_T is
@@ -103,7 +103,7 @@ package GNATLLVM.Types is
      (Env : Environ;
       T   : Type_T) return unsigned_long_long is
      ((Size_Of_Type_In_Bits (Env.Module_Data_Layout, T) + 7) / 8)
-     with Pre => Env /= null and then T /= No_Type_T;
+     with Pre => Env /= null and then Present (T);
    --  Return the size of an LLVM type, in bytes
 
    function Get_LLVM_Type_Size
@@ -116,7 +116,7 @@ package GNATLLVM.Types is
      (Env : Environ;
       T   : Type_T) return unsigned_long_long is
      (Size_Of_Type_In_Bits (Env.Module_Data_Layout, T))
-     with Pre => Env /= null and then T /= No_Type_T;
+     with Pre => Env /= null and then Present (T);
    --  Return the size of an LLVM type, in bits
 
    function Get_LLVM_Type_Size_In_Bits
@@ -126,7 +126,7 @@ package GNATLLVM.Types is
    --  Return the size of an LLVM type, in bits, as an LLVM constant
 
    function Convert_To_Size_Type (Env : Environ; V : Value_T) return Value_T
-     with Pre  => Env /= null and then V /= No_Value_T,
+     with Pre  => Env /= null and then Present (V),
           Post => Type_Of (Convert_To_Size_Type'Result) = Env.Size_Type;
    --  Convert V to Size_Type
 
@@ -134,7 +134,7 @@ package GNATLLVM.Types is
      (Env : Environ;
       T   : Type_T) return unsigned is
      (ABI_Alignment_Of_Type (Env.Module_Data_Layout, T))
-     with Pre => Env /= null and then T /= No_Type_T;
+     with Pre => Env /= null and then Present (T);
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Size
@@ -143,9 +143,9 @@ package GNATLLVM.Types is
       TE       : Entity_Id;
       V        : Value_T;
       For_Type : Boolean := False) return Value_T
-     with Pre  => Env /= null and then T /= No_Type_T and then Is_Type (TE)
-                  and then (not For_Type or else V = No_Value_T),
-          Post => Get_Type_Size'Result /= No_Value_T;
+     with Pre  => Env /= null and then Present (T) and then Is_Type (TE)
+                  and then (not For_Type or else No (V)),
+          Post => Present (Get_Type_Size'Result);
    --  Return the size of an LLVM type, in bytes, as an LLVM Value_T.
    --  If TE is an unconstrained array type, V must be the value of the array.
 
@@ -153,9 +153,9 @@ package GNATLLVM.Types is
      (Env          : Environ;
       Record_Ptr   : Value_T;
       Record_Field : Node_Id) return Value_T
-     with Pre  => Env /= null and then Record_Ptr /= No_Value_T
+     with Pre  => Env /= null and then Present (Record_Ptr)
                   and then Present (Record_Field),
-          Post => Record_Field_Offset'Result /= No_Value_T;
+          Post => Present (Record_Field_Offset'Result);
    --  Compute the offset of a given record field
 
    function Record_With_Dynamic_Size

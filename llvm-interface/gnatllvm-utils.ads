@@ -75,8 +75,10 @@ package GNATLLVM.Utils is
       --  actually an E_Access_Type (not provided) whose Designated_Type
       --  is Typ.
    end record
-     with Dynamic_Predicate => GL_Value.Value /= No_Value_T
-                               and then Is_Type_Or_Void (GL_Value.Typ);
+     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
+                               or else (Present (GL_Value.Value)
+                                          and then Is_Type_Or_Void
+                                             (GL_Value.Typ));
 
    function G
      (V            : Value_T;
@@ -84,7 +86,12 @@ package GNATLLVM.Utils is
       Is_Reference : Boolean := False) return GL_Value
    is
      ((V, TE, Is_Reference))
-     with Pre => V /= No_Value_T and then Is_Type_Or_Void (TE);
+     with Pre => Present (V) and then Is_Type_Or_Void (TE);
+
+   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False);
+
+   function No (V : GL_Value) return Boolean      is (V = No_GL_Value);
+   function Present (V : GL_Value) return Boolean is (V /= No_GL_Value);
 
    --  Now define predicates on this type to easily access properties of
    --  the LLVM value and the effective type.  These have the same names

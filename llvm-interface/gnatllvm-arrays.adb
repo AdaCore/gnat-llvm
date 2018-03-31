@@ -195,7 +195,8 @@ package body GNATLLVM.Arrays is
            (Env, Full_Etype (Bound_Info.Discr),
             Record_Field_Offset
               (Env,
-               Get_Matching_Value (Full_Etype (Scope (Bound_Info.Discr))),
+               Get_Matching_Value
+                 (Full_Etype (Scope (Bound_Info.Discr))).Value,
                Bound_Info.Discr));
       end if;
 

@@ -37,7 +37,8 @@ with Uintp;    use Uintp;
 with Urealp;   use Urealp;
 
 with LLVM.Analysis; use LLVM.Analysis;
-with LLVM.Core; use LLVM.Core;
+with LLVM.Core;     use LLVM.Core;
+with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Types;        use GNATLLVM.Types;
@@ -82,10 +83,10 @@ package body GNATLLVM.Compile is
    function Compute_Size
      (Env                 : Environ;
       Left_Typ, Right_Typ : Entity_Id;
-      Right_Value         : Value_T) return Value_T
+      Right_Value         : GL_Value) return GL_Value
      with Pre  => Env /= null and then Is_Type (Left_Typ)
                   and then Present (Right_Typ)
-                  and then Right_Value /= No_Value_T,
+                  and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
    --  Helper for assignments
 
@@ -105,8 +106,8 @@ package body GNATLLVM.Compile is
    function Build_Short_Circuit_Op
      (Env                   : Environ;
       Node_Left, Node_Right : Node_Id;
-      Orig_Left, Orig_Right : Value_T;
-      Op                    : Node_Kind) return Value_T
+      Orig_Left, Orig_Right : GL_Value;
+      Op                    : Node_Kind) return GL_Value
      with Pre  => Env /= null
                   and then (Present (Node_Left) or else Present (Orig_Left))
                   and then (Present (Node_Right) or else Present (Orig_Right)),
@@ -125,15 +126,21 @@ package body GNATLLVM.Compile is
           Post => Present (Emit_Attribute_Reference'Result);
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
+   function Is_Zero_Aggregate (Src_Node : Node_Id) return Boolean
+     with Pre => Nkind (Src_Node) = N_Aggregate
+                 and then Is_Others_Aggregate (Src_Node);
+   --  Helper for Emit_Assignment: say whether this is an aggregate of all
+   --  zeros
+
    procedure Emit_Assignment
      (Env                       : Environ;
-      Dest_Typ, LHS_Typ         : Entity_Id;
+      Dest_Typ, RHS_Typ         : Entity_Id;
       LValue                    : Value_T;
       E                         : Node_Id;
       E_Value                   : Value_T;
       Forwards_OK, Backwards_OK : Boolean)
      with Pre => Env /= null and then Is_Type (Dest_Typ)
-                 and then Is_Type (LHS_Typ)
+                 and then Is_Type (RHS_Typ)
                  and then (Present (LValue) or else Present (E));
    --  Helper for Emit: Copy the value of the expression E to LValue
    --  with the specified destination and expression types
@@ -1104,7 +1111,7 @@ package body GNATLLVM.Compile is
                   --  copy the return value, do that copy instead of returning
                   --  it.
 
-                  if Env.Return_Address_Param /= No_Value_T then
+                  if Present (Env.Return_Address_Param) then
                      Emit_Assignment (Env, Our_Typ, Expr_Typ,
                                       Env.Return_Address_Param,
                                       Return_Expr, No_Value_T, False, False);
@@ -1752,19 +1759,19 @@ package body GNATLLVM.Compile is
    -- Get_Matching_Value --
    ------------------------
 
-   function Get_Matching_Value (T : Entity_Id) return Value_T is
+   function Get_Matching_Value (T : Entity_Id) return GL_Value is
    begin
       for I in 1 .. LValue_Pair_Table.Last loop
          if Implementation_Base_Type (T) =
            Implementation_Base_Type (LValue_Pair_Table.Table (I).Typ)
          then
-            return LValue_Pair_Table.Table (I).Value;
+            return LValue_Pair_Table.Table (I);
          end if;
       end loop;
 
       --  Should never get here and postcondition verifies.
 
-      return No_Value_T;
+      return No_GL_Value;
    end Get_Matching_Value;
 
    ----------------------------
@@ -1774,11 +1781,11 @@ package body GNATLLVM.Compile is
    function Build_Short_Circuit_Op
      (Env                   : Environ;
       Node_Left, Node_Right : Node_Id;
-      Orig_Left, Orig_Right : Value_T;
-      Op                    : Node_Kind) return Value_T
+      Orig_Left, Orig_Right : GL_Value;
+      Op                    : Node_Kind) return GL_Value
    is
-      Left  : Value_T := Orig_Left;
-      Right : Value_T := Orig_Right;
+      Left  : GL_Value := Orig_Left;
+      Right : GL_Value := Orig_Right;
 
       --  We start evaluating the LHS in the current block, but we need to
       --  record which block it completes in, since it may not be the
@@ -1801,23 +1808,25 @@ package body GNATLLVM.Compile is
    begin
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
-      if Left = No_Value_T then
-         Left := Emit_Expression (Env, Node_Left).Value;
+      if No (Left) then
+         Left := Emit_Expression (Env, Node_Left);
       end if;
 
       Block_Left_Expr_End := Get_Insert_Block (Env.Bld);
 
       if Op = N_And_Then then
-         Discard (Build_Cond_Br (Env.Bld, Left, Block_Right_Expr, Block_Exit));
+         Discard (Build_Cond_Br (Env.Bld, Left.Value,
+                                 Block_Right_Expr, Block_Exit));
       else
-         Discard (Build_Cond_Br (Env.Bld, Left, Block_Exit, Block_Right_Expr));
+         Discard (Build_Cond_Br (Env.Bld, Left.Value,
+                                 Block_Exit, Block_Right_Expr));
       end if;
 
       --  Emit code for the evaluation of the right part expression
 
       Position_Builder_At_End (Env.Bld, Block_Right_Expr);
-      if Right = No_Value_T then
-         Right := Emit_Expression (Env, Node_Right).Value;
+      if No (Right) then
+         Right := Emit_Expression (Env, Node_Right);
       end if;
 
       Block_Right_Expr_End := Get_Insert_Block (Env.Bld);
@@ -1832,14 +1841,14 @@ package body GNATLLVM.Compile is
          LHS_Const : constant unsigned_long_long :=
            (if Op = N_And_Then then 0 else 1);
          Values    : constant Value_Array (1 .. 2) :=
-             (Const_Int (Int_Ty (1), LHS_Const, False), Right);
+             (Const_Int (Int_Ty (1), LHS_Const, False), Right.Value);
          BBs       : constant Basic_Block_Array (1 .. 2) :=
              (Block_Left_Expr_End, Block_Right_Expr_End);
          Phi       : constant Value_T :=
              LLVM.Core.Phi (Env.Bld, Int_Ty (1), "");
       begin
          Add_Incoming (Phi, Values'Address, BBs'Address, 2);
-         return Phi;
+         return G (Phi, Standard_Boolean);
       end;
    end Build_Short_Circuit_Op;
 
@@ -1951,10 +1960,9 @@ package body GNATLLVM.Compile is
             return G (Emit_Literal (Env, Node), Full_Etype (Node));
 
          when N_And_Then | N_Or_Else =>
-            return G (Build_Short_Circuit_Op
-                        (Env, Left_Opnd (Node), Right_Opnd (Node),
-                         No_Value_T, No_Value_T, Nkind (Node)),
-                      Standard_Boolean);
+            return Build_Short_Circuit_Op
+              (Env, Left_Opnd (Node), Right_Opnd (Node),
+               No_GL_Value, No_GL_Value, Nkind (Node));
 
          when N_Op_Not =>
             return Build_Not (Env, Emit_Expr (Right_Opnd (Node)), "");
@@ -2047,7 +2055,7 @@ package body GNATLLVM.Compile is
                                E_Out_Parameter,
                                E_Variable)
                  and then Present (Activation_Record_Component (Def_Ident))
-                 and then Env.Activation_Rec_Param /= No_Value_T
+                 and then Present (Env.Activation_Rec_Param)
                  and then Get_Value (Env, Scope (Def_Ident)) /= Env.Func
                then
                   declare
@@ -2217,7 +2225,7 @@ package body GNATLLVM.Compile is
 
                Arg := (1 => Get_Type_Size (Env, Create_Type (Env, Typ),
                                            Typ, Value,
-                                           For_Type => Value = No_Value_T));
+                                           For_Type => No (Value)));
                Result := Call
                  (Env.Bld, Env.Default_Alloc_Fn, Arg'Address, 1, "alloc");
                LLVM_Result_Type := Create_Type (Env, Result_Type);
@@ -2352,9 +2360,9 @@ package body GNATLLVM.Compile is
                   Full_Etype (Left_Opnd (Node)), Node,
                   Left.Value, Emit_Expr (High_Bound (Rng)).Value);
 
-               return G (Build_Short_Circuit_Op
-                           (Env, Empty, Empty, Comp1, Comp2, N_And_Then),
-                         Full_Etype (Node));
+               return Build_Short_Circuit_Op
+                 (Env, Empty, Empty, G (Comp1, Standard_Boolean),
+                  G (Comp2, Standard_Boolean), N_And_Then);
             end;
 
          when N_Raise_Expression =>
@@ -2455,13 +2463,31 @@ package body GNATLLVM.Compile is
       end if;
    end Emit_List;
 
+   -----------------------
+   -- Is_Zero_Aggregate --
+   -----------------------
+
+   function Is_Zero_Aggregate (Src_Node : Node_Id) return Boolean is
+      Inner    : Node_Id;
+      Val      : Uint;
+   begin
+      Inner := Expression (First (Component_Associations (Src_Node)));
+      while Nkind (Inner) = N_Aggregate and then Is_Others_Aggregate (Inner)
+      loop
+         Inner := Expression (First (Component_Associations (Inner)));
+      end loop;
+
+      Val := Get_Uint_Value (Inner);
+      return Val = Uint_0;
+   end Is_Zero_Aggregate;
+
    ---------------------
    -- Emit_Assignment --
    ---------------------
 
    procedure Emit_Assignment
      (Env                       : Environ;
-      Dest_Typ, LHS_Typ         : Entity_Id;
+      Dest_Typ, RHS_Typ         : Entity_Id;
       LValue                    : Value_T;
       E                         : Node_Id;
       E_Value                   : Value_T;
@@ -2469,9 +2495,8 @@ package body GNATLLVM.Compile is
    is
       Src_Node : Node_Id := E;
       Dest     : Value_T := LValue;
-      Typ      : Entity_Id := LHS_Typ;
-      Src      : Value_T;
-      Inner    : Node_Id;
+      Typ      : Entity_Id := RHS_Typ;
+      Src      : GL_Value;
    begin
 
       --  If we have checked or unchecked conversions between aggregate types
@@ -2491,52 +2516,39 @@ package body GNATLLVM.Compile is
       Discard (Create_Type (Env, Dest_Typ));
       Discard (Create_Type (Env, Typ));
 
-      if Is_Array_Type (Dest_Typ) and then Present (Src_Node)
+      --  See if we have the special case where we're assigning all zeros.
+      --  ?? This should really be in Emit_Array_Aggregate, which should take
+      --  an LHS.
+
+      if Is_Array_Type (Typ) and then Present (Src_Node)
         and then Nkind (Src_Node) = N_Aggregate
         and then Is_Others_Aggregate (Src_Node)
+        and then Is_Zero_Aggregate (Src_Node)
       then
-         --  We'll use memset, so we need to find the inner expression
-
-         Inner := Expression (First (Component_Associations (Src_Node)));
-         while Nkind (Inner) = N_Aggregate
-           and then Is_Others_Aggregate (Inner)
-         loop
-            Inner := Expression (First (Component_Associations (Inner)));
-         end loop;
-
-         if Nkind (Inner) = N_Integer_Literal then
-            Src := Const_Int (Int_Ty (8), Intval (Inner));
-         elsif Ekind (Entity (Inner)) = E_Enumeration_Literal then
-            Src := Const_Int (Int_Ty (8), Enumeration_Rep (Entity (Inner)));
-         else
-            Error_Msg_N ("unsupported kind of aggregate", E);
-            Src := Get_Undef (Int_Ty (8));
-         end if;
-
          declare
-            Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-
+            Void_Ptr_Type  : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+            Src_LLVM_Type  : constant Type_T := Create_Type (Env, Typ);
+            Dest_LLVM_Type : constant Type_T := Create_Type (Env, Dest_Typ);
+            Align          : constant unsigned :=
+              Get_Type_Alignment (Env, Dest_LLVM_Type);
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
-               Src,
-               Compute_Size (Env, Dest_Typ, Typ, Src),
-               Const_Int (Int_Ty (32), 1, False),  --  Alignment
+               Const_Null (Int_Ty (8)),
+               Get_Type_Size (Env, Src_LLVM_Type, Typ, No_Value_T),
+               Const_Int (Int_Ty (32), unsigned_long_long (Align), False),
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
          begin
-            Discard (Call
-                       (Env.Bld,
-                        Env.Memory_Set_Fn,
-                        Args'Address, Args'Length,
-                        ""));
+            Discard
+              (Call (Env.Bld, Env.Memory_Set_Fn, Args'Address, Args'Length,
+                     ""));
          end;
 
       elsif not Is_Dynamic_Size (Env, Typ)
         and then not Is_Dynamic_Size (Env, Dest_Typ)
       then
-         Src := (if E_Value = No_Value_T
-                 then Emit_Expression (Env, Src_Node).Value
-                 else E_Value);
+         Src := (if No (E_Value) then Emit_Expression (Env, Src_Node)
+                 else G (E_Value, Typ));
 
          --  If the pointer type of Src is not the same as the type of
          --  Dest, convert it.
@@ -2545,15 +2557,16 @@ package body GNATLLVM.Compile is
                               Pointer_Type (Type_Of (Src), 0), "");
          end if;
 
-         Store_With_Type (Env, Dest_Typ, Src, Dest);
+         Store_With_Type (Env, Dest_Typ, Src.Value, Dest);
 
       else
-         Src := (if E_Value = No_Value_T then Emit_LValue (Env, Src_Node).Value
-                 else E_Value);
+         Src := (if No (E_Value) then Emit_LValue (Env, Src_Node)
+                 else G (E_Value, Typ));
 
          if Is_Array_Type (Dest_Typ) then
             Dest := Array_Data (Env, Dest, Dest_Typ);
-            Src  := Array_Data (Env, Src, Typ);
+            Src  := G (Array_Data (Env, Src.Value, Typ),
+                       Dest_Typ);
          end if;
 
          declare
@@ -2561,8 +2574,8 @@ package body GNATLLVM.Compile is
 
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
-               Bit_Cast (Env.Bld, Src, Void_Ptr_Type, ""),
-               Compute_Size (Env, Dest_Typ, Typ, Src),
+               Bit_Cast (Env.Bld, Src.Value, Void_Ptr_Type, ""),
+               Compute_Size (Env, Dest_Typ, Typ, Src).Value,
                Const_Int (Int_Ty (32), 1, False),  --  Alignment
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2850,7 +2863,7 @@ package body GNATLLVM.Compile is
    function Compute_Size
      (Env                 : Environ;
       Left_Typ, Right_Typ : Entity_Id;
-      Right_Value         : Value_T) return Value_T
+      Right_Value         : GL_Value) return GL_Value
    is
    begin
 
@@ -2862,11 +2875,14 @@ package body GNATLLVM.Compile is
         or else (Is_Array_Type (Right_Typ)
                    and then not Is_Constrained (Right_Typ))
       then
-         return Get_Type_Size
-           (Env, Create_Type (Env, Left_Typ), Left_Typ, No_Value_T);
+         return G (Get_Type_Size
+                     (Env, Create_Type (Env, Left_Typ), Left_Typ, No_Value_T),
+                   Standard_Long_Integer);
       else
-         return Get_Type_Size
-           (Env, Create_Type (Env, Right_Typ), Right_Typ, Right_Value);
+         return G (Get_Type_Size
+                     (Env, Create_Type (Env, Right_Typ), Right_Typ,
+                      Right_Value.Value),
+                   Standard_Long_Integer);
       end if;
 
    end Compute_Size;

@@ -19,8 +19,6 @@ with Atree; use Atree;
 with Einfo; use Einfo;
 with Types; use Types;
 
-with LLVM.Types; use LLVM.Types;
-
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -46,7 +44,7 @@ package GNATLLVM.Compile is
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc.)
 
-   function Get_Matching_Value (T : Entity_Id) return Value_T
+   function Get_Matching_Value (T : Entity_Id) return GL_Value
      with Pre  => Is_Type (T),
           Post => Present (Get_Matching_Value'Result);
    --  Find a value that's being computed by the current Emit_LValue

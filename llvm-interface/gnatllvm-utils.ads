@@ -90,8 +90,10 @@ package GNATLLVM.Utils is
 
    No_GL_Value : constant GL_Value := (No_Value_T, Empty, False);
 
-   function No (V : GL_Value) return Boolean      is (V = No_GL_Value);
-   function Present (V : GL_Value) return Boolean is (V /= No_GL_Value);
+   function No (G : GL_Value) return Boolean      is (G = No_GL_Value);
+   function Present (G : GL_Value) return Boolean is (G /= No_GL_Value);
+
+   function Is_Reference (G : GL_Value) return Boolean is (G.Is_Reference);
 
    --  Now define predicates on this type to easily access properties of
    --  the LLVM value and the effective type.  These have the same names
@@ -101,54 +103,54 @@ package GNATLLVM.Utils is
      (Type_Of (G.Value));
 
    function Is_Access_Type (G : GL_Value) return Boolean is
-     (G.Is_Reference or else Is_Access_Type (G.Typ));
+     (Is_Reference (G) or else Is_Access_Type (G.Typ));
 
    function Designated_Type (G : GL_Value) return Entity_Id is
-     ((if G.Is_Reference then G.Typ else Designated_Type (G.Typ)))
+     ((if Is_Reference (G) then G.Typ else Designated_Type (G.Typ)))
      with Pre => Is_Access_Type (G), Post => Is_Type (Designated_Type'Result);
 
    function Is_Dynamic_Size (Env : Environ; G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Dynamic_Size (Env, G.Typ));
+     (not Is_Reference (G) and then Is_Dynamic_Size (Env, G.Typ));
 
    function Is_Array_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Array_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Array_Type (G.Typ));
 
    function Is_Access_Unconstrained (G : GL_Value) return Boolean is
      (Is_Access_Type (G) and then Is_Array_Type (Designated_Type (G))
                          and then not Is_Constrained (Designated_Type (G)));
 
    function Is_Constrained (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Constrained (G.Typ));
+     (not Is_Reference (G) and then Is_Constrained (G.Typ));
 
    function Is_Record_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Record_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Record_Type (G.Typ));
 
    function Is_Composite_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Composite_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Composite_Type (G.Typ));
 
    function Is_Elementary_Type (G : GL_Value) return Boolean is
-     (G.Is_Reference or else Is_Elementary_Type (G.Typ));
+     (Is_Reference (G) or else Is_Elementary_Type (G.Typ));
 
    function Is_Scalar_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Scalar_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Scalar_Type (G.Typ));
 
    function Is_Discrete_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Discrete_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Discrete_Type (G.Typ));
 
    function Is_Discrete_Or_Fixed_Point_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Discrete_Or_Fixed_Point_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Discrete_Or_Fixed_Point_Type (G.Typ));
 
    function Is_Fixed_Point_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Fixed_Point_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Fixed_Point_Type (G.Typ));
 
    function Is_Floating_Point_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Floating_Point_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Floating_Point_Type (G.Typ));
 
    function Is_Unsigned_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Unsigned_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Unsigned_Type (G.Typ));
 
    function Is_Modular_Integer_Type (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then Is_Modular_Integer_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Modular_Integer_Type (G.Typ));
 
    function RM_Size (G : GL_Value) return Uint is
      (RM_Size (G.Typ))

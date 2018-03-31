@@ -293,11 +293,6 @@ package body GNATLLVM.Compile is
      with Pre => Env /= null and then Present (Node);
    --  Compile a subprogram body and save it in the environment
 
-   function Skip_Conversions (Node : Node_Id) return Node_Id
-     with Pre => Present (Node), Post => Present (Skip_Conversions'Result);
-   --  If Node is a conversion (normal or unchecked) skip to its operand
-   --  and do this until we get to something that isn't a conversion.
-
    function Needs_Deref (Def_Ident : Entity_Id) return Boolean
    is (Present (Address_Clause (Def_Ident))
        and then not Is_Array_Type (Full_Etype (Def_Ident)))
@@ -1581,7 +1576,6 @@ package body GNATLLVM.Compile is
    ----------------------
 
    function Emit_LValue_Main (Env : Environ; Node : Node_Id) return GL_Value is
-      Prefix_Node : Node_Id;
    begin
       case Nkind (Node) is
          when N_Identifier | N_Expanded_Name =>
@@ -1697,10 +1691,9 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Selected_Component =>
-            Prefix_Node := Skip_Conversions (Prefix (Node));
             declare
                Pfx_Ptr : constant GL_Value :=
-                 Emit_LValue_Internal (Env, Prefix_Node);
+                 Emit_LValue_Internal (Env, Prefix (Node));
                Record_Component : constant Entity_Id :=
                  Original_Record_Component (Entity (Selector_Name (Node)));
 
@@ -1711,17 +1704,15 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Indexed_Component =>
-            Prefix_Node := Skip_Conversions (Prefix (Node));
             return Get_Indexed_LValue
-              (Env, Full_Etype (Prefix_Node), Expressions (Node),
-               Emit_LValue_Internal (Env, Prefix_Node));
+              (Env, Full_Etype (Prefix (Node)), Expressions (Node),
+               Emit_LValue_Internal (Env, Prefix (Node)));
 
          when N_Slice =>
-            Prefix_Node := Skip_Conversions (Prefix (Node));
             return Get_Slice_LValue
-              (Env, Full_Etype (Prefix_Node), Full_Etype (Node),
+              (Env, Full_Etype (Prefix (Node)), Full_Etype (Node),
                Discrete_Range (Node),
-               Emit_LValue_Internal (Env, Prefix_Node));
+               Emit_LValue_Internal (Env, Prefix (Node)));
 
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
 
@@ -4246,20 +4237,6 @@ package body GNATLLVM.Compile is
             Name   => "shift-rotate-result");
       end if;
    end Emit_Shift;
-
-   ---------------------
-   -- Skip_Conversion --
-   ---------------------
-
-   function Skip_Conversions (Node : Node_Id) return Node_Id is
-      N : Node_Id := Node;
-   begin
-      while Nkind_In (N, N_Type_Conversion, N_Unchecked_Type_Conversion) loop
-         N := Expression (N);
-      end loop;
-
-      return N;
-   end Skip_Conversions;
 
    ------------------
    -- Get_Label_BB --

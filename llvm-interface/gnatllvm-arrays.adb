@@ -446,11 +446,11 @@ package body GNATLLVM.Arrays is
 
    function Get_Array_Size
      (Env         : Environ;
-      Array_Descr : Value_T;
+      Array_Descr : GL_Value;
       Array_Type  : Entity_Id;
-      For_Type    : Boolean := False) return Value_T
+      For_Type    : Boolean := False) return GL_Value
    is
-      Size : Value_T := Const_Int (Env.Size_Type, 1, Sign_Extend => False);
+      Size : GL_Value := Size_Const_Int (Env, Uint_1);
    begin
 
       --  Go through every array dimension.  Get its size and multiply all
@@ -458,13 +458,11 @@ package body GNATLLVM.Arrays is
 
       for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop
          Size :=
-           NSW_Mul (Env.Bld, Size,
+           NSW_Mul (Env, Size,
                     Convert_To_Size_Type
                       (Env, Get_Array_Length
-                         (Env, Array_Type, Dim,
-                          (if No (Array_Descr) then No_GL_Value
-                           else G (Array_Descr, Array_Type)),
-                             For_Type).Value),
+                         (Env, Array_Type, Dim, Array_Descr,
+                          For_Type)),
                     "");
       end loop;
 
@@ -557,7 +555,7 @@ package body GNATLLVM.Arrays is
         Create_Type (Env, Full_Etype (First_Index (Array_Type)));
       Zero     : constant Value_T := Const_Null (Idx_Type);
       Idx      : constant Value_Array (0 .. Number_Dimensions (Array_Type)) :=
-        (0 => Const_Null (Intptr_T), others => Zero);
+        (0 => Const_Null (Env.LLVM_Size_Type), others => Zero);
 
    begin
       return GEP (Env.Bld, Array_Data, Idx, "array-addr");
@@ -615,16 +613,22 @@ package body GNATLLVM.Arrays is
    ------------------------
    -- Get_Indexed_LValue --
    ------------------------
+
    function Get_Indexed_LValue
      (Env     : Environ;
       Arr_Typ : Entity_Id;
       Indexes : List_Id;
-      Value   : Value_T) return Value_T
+      Value   : GL_Value) return GL_Value
    is
-      Array_Data_Ptr : constant Value_T := Array_Data (Env, Value, Arr_Typ);
+      Comp_Type      : constant Entity_Id :=
+        Get_Fullest_View (Component_Type (Arr_Typ));
+      LLVM_Comp_Typ  : constant Type_T := Create_Type (Env, Comp_Type);
+      Array_Data_Ptr : constant GL_Value :=
+        (Array_Data (Env, Value.Value, Arr_Typ), Arr_Typ,
+         Is_Reference => True);
       LLVM_Array_Typ : constant Type_T := Create_Type (Env, Arr_Typ);
-      Idxs : Value_Array (1 .. List_Length (Indexes) + 1) :=
-        (1 => Const_Int (Intptr_T, 0, Sign_Extend => False), others => <>);
+      Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
+        (1 => Size_Const_Int (Env, 0), others => <>);
       --  Operands for the GetElementPtr instruction: one for the
       --  pointer deference, and then one per array index.
 
@@ -636,12 +640,11 @@ package body GNATLLVM.Arrays is
          --  Adjust the index according to the range lower bound
 
          declare
-            User_Index    : constant Value_T := Emit_Expression (Env, N).Value;
-            Dim_Low_Bound : constant Value_T :=
-              Get_Array_Bound (Env, Arr_Typ, J - 2, True,
-                               G (Value, Arr_Typ)).Value;
+            User_Index    : constant GL_Value := Emit_Expression (Env, N);
+            Dim_Low_Bound : constant GL_Value :=
+              Get_Array_Bound (Env, Arr_Typ, J - 2, True, Value);
          begin
-            Idxs (J) := NSW_Sub (Env.Bld, User_Index, Dim_Low_Bound, "index");
+            Idxs (J) := NSW_Sub (Env, User_Index, Dim_Low_Bound, "index");
          end;
 
          J := J + 1;
@@ -652,7 +655,8 @@ package body GNATLLVM.Arrays is
       --  an opaque type, we can just do a GEP with the values above.
 
       if Type_Is_Sized (LLVM_Array_Typ) then
-         return GEP (Env.Bld, Array_Data_Ptr, Idxs, "array-element-access");
+         return GEP (Env, Comp_Type, Array_Data_Ptr,
+                     Idxs, "array-element-access");
       end if;
 
       --  Otherwise, we convert the array data type to an i8*, compute the
@@ -663,36 +667,32 @@ package body GNATLLVM.Arrays is
       --  by the size of the component.  We do all of this in Size_Type.
 
       declare
-         Int8_Ptr      : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-         Data          : constant Value_T :=
-           Bit_Cast (Env.Bld, Array_Data_Ptr, Int8_Ptr, "");
-         Comp_Type     : constant Entity_Id :=
-           Get_Fullest_View (Component_Type (Arr_Typ));
-         LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
-         Comp_Size     : constant Value_T :=
-           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_Value_T);
-         Index         : Value_T := Convert_To_Size_Type (Env, Idxs (2));
+         Data          : constant GL_Value :=
+           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer, "");
+         Comp_Size     : constant GL_Value :=
+           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_GL_Value);
+         Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
       begin
 
          for Dim in 1 .. Number_Dimensions (Arr_Typ) - 1 loop
-            Index := NSW_Add (Env.Bld,
-                              NSW_Mul (Env.Bld,
+            Index := NSW_Add (Env,
+                              NSW_Mul (Env,
                                        Index,
                                        Convert_To_Size_Type
                                          (Env,
                                           Get_Array_Length
                                             (Env, Arr_Typ, Dim,
-                                             G (Array_Data_Ptr,
-                                                Arr_Typ)).Value),
+                                             Array_Data_Ptr)),
                                        ""),
                               Convert_To_Size_Type (Env, Idxs (Dim + 2)),
                               "");
          end loop;
 
-         Index := NSW_Mul (Env.Bld, Index, Comp_Size, "");
-         return Bit_Cast
-           (Env.Bld, GEP (Env.Bld, Data, (1 => Index), "gen-index"),
-            Pointer_Type (LLVM_Array_Typ, 0), "");
+         Index := NSW_Mul (Env, Index, Comp_Size, "");
+         return Ptr_To_Ref
+           (Env, GEP (Env, Standard_Short_Short_Integer, Data,
+                      (1 => Index), "gen-index"),
+            Arr_Typ, "");
       end;
 
    end Get_Indexed_LValue;
@@ -706,52 +706,49 @@ package body GNATLLVM.Arrays is
       Arr_Typ     : Entity_Id;
       Result_Type : Entity_Id;
       Rng         : Node_Id;
-      Value       : Value_T) return Value_T
+      Value       : GL_Value) return GL_Value
      is
-      Array_Data_Ptr : constant Value_T := Array_Data (Env, Value, Arr_Typ);
+      Array_Data_Ptr : constant GL_Value :=
+        (Array_Data (Env, Value.Value, Arr_Typ), Arr_Typ,
+         Is_Reference => True);
       LLVM_Array_Typ : constant Type_T := Create_Type (Env, Arr_Typ);
 
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
-      Index_Shift : constant Value_T :=
-        Sub
-        (Env.Bld, Emit_Expression (Env, Low_Bound (Rng)).Value,
-         Get_Array_Bound (Env, Arr_Typ, 0, True,
-                          G (Value, Arr_Typ)).Value, "offset");
+      Index_Shift : constant GL_Value :=
+        NSW_Sub
+        (Env, Emit_Expression (Env, Low_Bound (Rng)),
+         Get_Array_Bound (Env, Arr_Typ, 0, True, Value),
+        "offset");
    begin
 
       --  Like the above case, we have to hande both the opaque and non-opaque
       --  cases.  Luckily, we know we're only a single dimension.
 
       if Type_Is_Sized (LLVM_Array_Typ) then
-         return Bit_Cast
-           (Env.Bld,
-            GEP
-              (Env.Bld,
-               Array_Data_Ptr,
-               (Const_Int (Intptr_T, 0, Sign_Extend => False), Index_Shift),
-               "array-shifted"),
-            Create_Access_Type (Env, Result_Type), "slice");
+         return GEP
+           (Env, Result_Type, Array_Data_Ptr,
+            (Size_Const_Int (Env, 0), Index_Shift),
+            "array-shifted");
       end if;
 
       declare
-         Int8_Ptr      : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-         Data          : constant Value_T :=
-           Bit_Cast (Env.Bld, Array_Data_Ptr, Int8_Ptr, "");
+         Data          : constant GL_Value :=
+           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer, "");
          Comp_Type     : constant Entity_Id :=
            Get_Fullest_View (Component_Type (Arr_Typ));
          LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
-         Comp_Size     : constant Value_T :=
-           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_Value_T);
-         Index         : constant Value_T :=
-           NSW_Mul (Env.Bld, Comp_Size,
+         Comp_Size     : constant GL_Value :=
+           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_GL_Value);
+         Index         : constant GL_Value :=
+           NSW_Mul (Env, Comp_Size,
                     Convert_To_Size_Type (Env, Index_Shift),
                     "");
       begin
-         return Bit_Cast
-           (Env.Bld, GEP (Env.Bld, Data, (1 => Index), "gen-index"),
-            Pointer_Type (LLVM_Array_Typ, 0), "");
+         return Ptr_To_Ref
+           (Env, GEP (Env, Arr_Typ, Data, (1 => Index), "gen-index"),
+            Arr_Typ, "");
       end;
 
    end Get_Slice_LValue;

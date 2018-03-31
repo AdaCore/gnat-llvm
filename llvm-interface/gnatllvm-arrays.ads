@@ -103,7 +103,7 @@ package GNATLLVM.Arrays is
      (Env     : Environ;
       Arr_Typ : Entity_Id;
       Indexes : List_Id;
-      Value   : Value_T) return Value_T
+      Value   : GL_Value) return GL_Value
      with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
                   and then List_Length (Indexes) = Number_Dimensions (Arr_Typ)
                   and then Present (Value),
@@ -116,7 +116,7 @@ package GNATLLVM.Arrays is
       Arr_Typ     : Entity_Id;
       Result_Type : Entity_Id;
       Rng         : Node_Id;
-      Value       : Value_T) return Value_T
+      Value       : GL_Value) return GL_Value
      with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
                   and then Number_Dimensions (Arr_Typ) = 1
                   and then Present (Value),
@@ -125,9 +125,9 @@ package GNATLLVM.Arrays is
 
    function Get_Array_Size
      (Env         : Environ;
-      Array_Descr : Value_T;
+      Array_Descr : GL_Value;
       Array_Type  : Entity_Id;
-      For_Type    : Boolean := False) return Value_T
+      For_Type    : Boolean := False) return GL_Value
      with Pre  => Env /= null and then Is_Array_Type (Array_Type)
                   and then (Present (Array_Descr)
                               or else Is_Constrained (Array_Type))

@@ -24,12 +24,11 @@ with Types; use Types;
 with Uintp; use Uintp;
 with Uintp.LLVM;
 
-with LLVM.Core; use LLVM.Core;
-with LLVM.Types; use LLVM.Types;
+with LLVM.Core;   use LLVM.Core;
+with LLVM.Target; use LLVM.Target;
+with LLVM.Types;  use LLVM.Types;
 
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
-with Get_Targ;
-with LLVM.Target; use LLVM.Target;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
@@ -94,6 +93,8 @@ package GNATLLVM.Utils is
    is
      ((V, TE, Is_Reference))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
+
+   type GL_Value_Array is array (Nat range <>) of GL_Value;
 
    No_GL_Value : constant GL_Value := (No_Value_T, Empty, False);
 
@@ -184,7 +185,7 @@ package GNATLLVM.Utils is
      (Env         : Environ;
       TE          : Entity_Id;
       N           : unsigned_long_long;
-      Sign_Extend : Boolean) return GL_Value
+      Sign_Extend : Boolean := False) return GL_Value
      with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Const_Int'Result);
 
@@ -208,11 +209,25 @@ package GNATLLVM.Utils is
      (Env         : Environ;
       G           : GL_Value;
       N           : unsigned_long_long;
-      Sign_Extend : Boolean) return GL_Value
+      Sign_Extend : Boolean := False) return GL_Value
    is
      (Const_Int (Env, G.Typ, N, Sign_Extend))
      with Pre  => Env /= null and then Present (G),
           Post => Present (Const_Int'Result);
+
+   function Size_Const_Int
+     (Env : Environ; N : Uint) return GL_Value is
+     (Const_Int (Env, Env.Size_Type, N))
+     with Pre  => Env /= null and then N /= No_Uint,
+          Post => Present (Size_Const_Int'Result);
+
+   function Size_Const_Int
+     (Env : Environ;
+      N : unsigned_long_long;
+      Sign_Extend : Boolean := False) return GL_Value
+   is
+     (Const_Int (Env, Env.Size_Type, N, Sign_Extend))
+     with Pre => Env /= null, Post => Present (Size_Const_Int'Result);
 
    --  Define IR builder variants which take and/or return GL_Value
 
@@ -247,11 +262,11 @@ package GNATLLVM.Utils is
      with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
           Post => Present (Pointer_Cast'Result);
 
-   function Pointer_To_Ref
+   function Ptr_To_Ref
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
      with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
-          Post => Present (Pointer_To_Ref'Result);
+          Post => Present (Ptr_To_Ref'Result);
 
    function Trunc
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
@@ -479,6 +494,16 @@ package GNATLLVM.Utils is
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
 
+   function GEP
+     (Env         : Environ;
+      Result_Type : Entity_Id;
+      Ptr         : GL_Value;
+      Indices     : GL_Value_Array;
+      Name        : String) return GL_Value
+     with Pre  => Env /= null and then Present (Ptr),
+          Post => Present (GEP'Result);
+   --  Helper for LLVM's Build_GEP
+
    type Type_Array is array (Nat range <>) of Type_T;
 
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer
@@ -506,10 +531,6 @@ package GNATLLVM.Utils is
      (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True))
      with Pre => Present (T), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
-
-   Intptr_T : constant Type_T :=
-     Int_Type (Interfaces.C.unsigned (Get_Targ.Get_Pointer_Size));
-   --  Return a LLVM integer type that is as big as pointers
 
    type Pred_Mapping is record
       Signed : Int_Predicate_T;
@@ -556,6 +577,9 @@ package GNATLLVM.Utils is
    procedure Dump_LLVM_Value (V : Value_T);
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
    --  function that is usable in debugging sessions.
+
+   procedure Dump_GL_Value (G : GL_Value);
+   --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
 
    function Is_LValue (Node : Node_Id) return Boolean
      with Pre => Present (Node);

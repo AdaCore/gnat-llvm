@@ -108,8 +108,8 @@ package GNATLLVM.Types is
 
    function Get_LLVM_Type_Size
      (Env : Environ;
-      T   : Type_T) return Value_T is
-     (Const_Int (Env.Size_Type, Get_LLVM_Type_Size (Env, T), False));
+      T   : Type_T) return GL_Value is
+     (Const_Int (Env, Env.Size_Type, Get_LLVM_Type_Size (Env, T), False));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
    function Get_LLVM_Type_Size_In_Bits
@@ -121,13 +121,15 @@ package GNATLLVM.Types is
 
    function Get_LLVM_Type_Size_In_Bits
      (Env : Environ;
-      T   : Type_T) return Value_T is
-     (Const_Int (Env.Size_Type, Get_LLVM_Type_Size_In_Bits (Env, T), False));
+      T   : Type_T) return GL_Value is
+     (Const_Int (Env, Env.Size_Type,
+                 Get_LLVM_Type_Size_In_Bits (Env, T), False));
    --  Return the size of an LLVM type, in bits, as an LLVM constant
 
-   function Convert_To_Size_Type (Env : Environ; V : Value_T) return Value_T
+   function Convert_To_Size_Type (Env : Environ; V : GL_Value) return GL_Value
      with Pre  => Env /= null and then Present (V),
-          Post => Type_Of (Convert_To_Size_Type'Result) = Env.Size_Type;
+          Post => Type_Of (Convert_To_Size_Type'Result) = Env.LLVM_Size_Type
+                  and then Convert_To_Size_Type'Result.Typ = Env.Size_Type;
    --  Convert V to Size_Type
 
    function Get_Type_Alignment
@@ -141,12 +143,12 @@ package GNATLLVM.Types is
      (Env      : Environ;
       T        : Type_T;
       TE       : Entity_Id;
-      V        : Value_T;
-      For_Type : Boolean := False) return Value_T
+      V        : GL_Value;
+      For_Type : Boolean := False) return GL_Value
      with Pre  => Env /= null and then Present (T) and then Is_Type (TE)
                   and then (not For_Type or else No (V)),
           Post => Present (Get_Type_Size'Result);
-   --  Return the size of an LLVM type, in bytes, as an LLVM Value_T.
+   --  Return the size of an LLVM type, in bytes, as a GL_Value.
    --  If TE is an unconstrained array type, V must be the value of the array.
 
    function Record_Field_Offset

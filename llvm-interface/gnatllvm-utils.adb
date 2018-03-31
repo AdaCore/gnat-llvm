@@ -20,6 +20,7 @@ with Ada.Unchecked_Conversion;
 
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
+with Treepr;   use Treepr;
 
 with GNATLLVM.Types;      use GNATLLVM.Types;
 with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
@@ -98,7 +99,7 @@ package body GNATLLVM.Utils is
      (Env         : Environ;
       TE          : Entity_Id;
       N           : unsigned_long_long;
-      Sign_Extend : Boolean) return GL_Value
+      Sign_Extend : Boolean := False) return GL_Value
    is
      (G (Const_Int (Create_Type (Env, TE), N, Sign_Extend => Sign_Extend),
          TE));
@@ -121,7 +122,9 @@ package body GNATLLVM.Utils is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
    is
-     ((Int_To_Ptr (Env.Bld, V.Value, Create_Access_Type (Env, TE), Name),
+      ((Int_To_Ptr (Env.Bld, V.Value,
+                    Pointer_Type (Create_Type (Env, TE), 0),
+                    Name),
        TE, Is_Reference => True));
 
    ----------------
@@ -155,15 +158,17 @@ package body GNATLLVM.Utils is
      ((Pointer_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name),
        TE, Is_Reference => V.Is_Reference));
 
-   --------------------
-   -- Pointer_To_Ref --
-   --------------------
+   ----------------
+   -- Ptr_To_Ref --
+   ----------------
 
-   function Pointer_To_Ref
+   function Ptr_To_Ref
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
    is
-     ((Pointer_Cast (Env.Bld, V.Value, Create_Access_Type (Env, TE), Name),
+      ((Pointer_Cast (Env.Bld, V.Value,
+                      Pointer_Type (Create_Type (Env, TE), 0),
+                      Name),
        TE, Is_Reference => True));
 
    -----------
@@ -472,6 +477,16 @@ package body GNATLLVM.Utils is
       Dump_Value (V);
    end Dump_LLVM_Value;
 
+   -------------------
+   -- Dump_GL_Value --
+   -------------------
+
+   procedure Dump_GL_Value (G : GL_Value) is
+   begin
+      Dump_LLVM_Value (G.Value);
+      Print_Tree_Node (G.Typ);
+   end Dump_GL_Value;
+
    ----------------------
    -- Dump_LLVM_Module --
    ----------------------
@@ -516,6 +531,29 @@ package body GNATLLVM.Utils is
       return Value_T
    is
      (GEP (Bld, Ptr, Indices'Address, Indices'Length, Name));
+
+   ---------
+   -- GEP --
+   ---------
+
+   function GEP
+     (Env         : Environ;
+      Result_Type : Entity_Id;
+      Ptr         : GL_Value;
+      Indices     : GL_Value_Array;
+      Name        : String) return GL_Value
+   is
+      Val_Idxs    : Value_Array (Indices'First .. Indices'Last);
+      Result      : Value_T;
+   begin
+      for I in Indices'Range loop
+         Val_Idxs (I) := Indices (I).Value;
+      end loop;
+
+      Result := GEP (Env.Bld, Ptr.Value, Val_Idxs'Address,
+                     Val_Idxs'Length, Name);
+      return (Result, Result_Type, Is_Reference => True);
+   end GEP;
 
    ----------------------------------
    -- Add_Type_Data_To_Instruction --

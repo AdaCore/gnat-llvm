@@ -521,18 +521,20 @@ package body GNATLLVM.Types is
    --  Convert_To_Size_Type --
    ---------------------------
 
-   function Convert_To_Size_Type (Env : Environ; V : Value_T) return Value_T is
+   function Convert_To_Size_Type
+     (Env : Environ; V : GL_Value) return GL_Value
+   is
       Val_Width  : constant unsigned_long_long :=
         Get_LLVM_Type_Size_In_Bits (Env, Type_Of (V));
       Size_Width : constant unsigned_long_long :=
         unsigned_long_long (Get_Targ.Get_Pointer_Size);
    begin
       if Val_Width > Size_Width then
-         return Trunc (Env.Bld, V, Env.Size_Type, "");
+         return Trunc (Env, V, Env.Size_Type, "");
       elsif Val_Width < Size_Width then
-         return S_Ext (Env.Bld, V, Env.Size_Type, "");
+         return S_Ext (Env, V, Env.Size_Type, "");
       else
-         return V;
+         return G (V.Value, Env.Size_Type);
       end if;
    end Convert_To_Size_Type;
 
@@ -544,10 +546,10 @@ package body GNATLLVM.Types is
      (Env      : Environ;
       T        : Type_T;
       TE       : Entity_Id;
-      V        : Value_T;
-      For_Type : Boolean := False) return Value_T
+      V        : GL_Value;
+      For_Type : Boolean := False) return GL_Value
    is
-      Size           : Value_T;
+      Size           : GL_Value;
       Dynamic_Fields : Boolean := False;
 
    begin
@@ -569,12 +571,12 @@ package body GNATLLVM.Types is
 
                if Dynamic_Fields then
                   Size := NSW_Add
-                    (Env.Bld,
+                    (Env,
                      Size,
                      Get_Type_Size
                        (Env,
                         Create_Type (Env, Full_Etype (Comp)),
-                        Full_Etype (Comp), No_Value_T, For_Type),
+                        Full_Etype (Comp), No_GL_Value, For_Type),
                      "record-size");
                end if;
             end loop;
@@ -584,14 +586,14 @@ package body GNATLLVM.Types is
          declare
             Comp_Type : constant Entity_Id :=
               Get_Fullest_View (Component_Type (TE));
-            Comp_Size : constant Value_T :=
+            Comp_Size : constant GL_Value :=
               Get_Type_Size (Env, Create_Type (Env, Comp_Type),
-                             Comp_Type, No_Value_T, For_Type);
-            Our_Size  : constant Value_T :=
+                             Comp_Type, No_GL_Value, For_Type);
+            Our_Size  : constant GL_Value :=
               Get_Array_Size (Env, V, TE, For_Type);
          begin
             Size := NSW_Mul
-              (Env.Bld, Convert_To_Size_Type (Env, Comp_Size),
+              (Env, Convert_To_Size_Type (Env, Comp_Size),
                Convert_To_Size_Type (Env, Our_Size),
                "size");
          end;
@@ -632,13 +634,13 @@ package body GNATLLVM.Types is
          begin
             --  Accumulate the size of every field
             for Preceding_Field of S_Info.Preceding_Fields loop
-               Int_Struct_Address := Add
+               Int_Struct_Address := NSW_Add
                  (Env.Bld,
                   Int_Struct_Address,
                   Get_Type_Size
                     (Env,
                      Create_Type (Env, Full_Etype (Preceding_Field.Entity)),
-                     Full_Etype (Preceding_Field.Entity), No_Value_T),
+                     Full_Etype (Preceding_Field.Entity), No_GL_Value).Value,
                   "offset-calc");
             end loop;
 

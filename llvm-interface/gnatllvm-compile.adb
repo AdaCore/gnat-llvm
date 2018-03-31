@@ -373,7 +373,7 @@ package body GNATLLVM.Compile is
    is
       LLVM_Type   : constant Type_T := Create_Type (Env, TE);
       Element_Typ : Type_T;
-      Num_Elts    : Value_T;
+      Num_Elts    : GL_Value;
    begin
 
       --  We have three cases.  If the object is not of a dynamic size,
@@ -393,15 +393,16 @@ package body GNATLLVM.Compile is
         and not Is_Dynamic_Size (Env, Component_Type (TE))
       then
          Element_Typ := Create_Type (Env, Component_Type (TE));
-         Num_Elts    := Get_Array_Size (Env, No_Value_T, TE);
+         Num_Elts    := Get_Array_Size (Env, No_GL_Value, TE);
       else
          Element_Typ := Int_Ty (8);
-         Num_Elts    := Get_Type_Size (Env, LLVM_Type, TE, No_Value_T);
+         Num_Elts    := Get_Type_Size (Env, LLVM_Type, TE, No_GL_Value);
       end if;
 
       return (Bit_Cast
                 (Env.Bld,
-                 Array_Alloca (Env.Bld, Element_Typ, Num_Elts, "dyn-array"),
+                 Array_Alloca (Env.Bld, Element_Typ, Num_Elts.Value,
+                               "dyn-array"),
                  Pointer_Type (LLVM_Type, 0), Name),
               TE, Is_Reference => True);
 
@@ -925,7 +926,7 @@ package body GNATLLVM.Compile is
                               (Env.Bld,
                                Int_Ty (8),
                                Get_Type_Size (Env, Create_Type (Env, T), T,
-                                              No_Value_T),
+                                              No_GL_Value).Value,
                                "array-alloca"),
                            LLVM_Type,
                            Get_Name (Def_Ident));
@@ -941,7 +942,7 @@ package body GNATLLVM.Compile is
                           (Env.Bld,
                            Int_Ty (8),
                            Get_Type_Size (Env, Create_Type (Env, T),
-                                          T, No_Value_T, True),
+                                          T, No_GL_Value, True).Value,
                            "record-alloca"),
                         LLVM_Type,
                         Get_Name (Def_Ident));
@@ -1679,21 +1680,20 @@ package body GNATLLVM.Compile is
          when N_String_Literal =>
             declare
                T : constant Type_T := Create_Type (Env, Full_Etype (Node));
-               V : constant Value_T := Add_Global (Env.Mdl, T, "str-lit");
+               V : constant GL_Value :=
+                 (Add_Global (Env.Mdl, T, "str-lit"), Full_Etype (Node),
+                  Is_Reference => True);
 
             begin
-               Set_Value (Env, Node, V);
-               Set_Initializer (V, Emit_Expression (Env, Node).Value);
-               Set_Linkage (V, Private_Linkage);
-               Set_Global_Constant (V, True);
-               return (GEP
-                         (Env.Bld,
-                          V,
-                          (Const_Int (Intptr_T, 0, Sign_Extend => False),
-                           Const_Int (Create_Type (Env, Standard_Positive),
-                                      0, Sign_Extend => False)),
-                          "str-addr"),
-                       Full_Etype (Node), Is_Reference => True);
+               Set_Value (Env, Node, V.Value);
+               Set_Initializer (V.Value, Emit_Expression (Env, Node).Value);
+               Set_Linkage (V.Value, Private_Linkage);
+               Set_Global_Constant (V.Value, True);
+               return GEP
+                 (Env, Full_Etype (Node), V,
+                  (Size_Const_Int (Env, 0),
+                   Const_Null (Env, Standard_Positive)),
+                  "str-addr");
             end;
 
          when N_Selected_Component =>
@@ -1712,18 +1712,16 @@ package body GNATLLVM.Compile is
 
          when N_Indexed_Component =>
             Prefix_Node := Skip_Conversions (Prefix (Node));
-            return (Get_Indexed_LValue
-                      (Env, Full_Etype (Prefix_Node), Expressions (Node),
-                       Emit_LValue_Internal (Env, Prefix_Node).Value),
-                    Full_Etype (Node), Is_Reference => True);
+            return Get_Indexed_LValue
+              (Env, Full_Etype (Prefix_Node), Expressions (Node),
+               Emit_LValue_Internal (Env, Prefix_Node));
 
          when N_Slice =>
             Prefix_Node := Skip_Conversions (Prefix (Node));
-            return (Get_Slice_LValue
-                      (Env, Full_Etype (Prefix_Node), Full_Etype (Node),
-                       Discrete_Range (Node),
-                       Emit_LValue_Internal (Env, Prefix_Node).Value),
-                    Full_Etype (Node), Is_Reference => True);
+            return Get_Slice_LValue
+              (Env, Full_Etype (Prefix_Node), Full_Etype (Node),
+               Discrete_Range (Node),
+               Emit_LValue_Internal (Env, Prefix_Node));
 
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
 
@@ -2202,7 +2200,7 @@ package body GNATLLVM.Compile is
                Expr             : constant Node_Id := Expression (Node);
                Typ              : Entity_Id;
                Arg              : array (1 .. 1) of Value_T;
-               Value            : Value_T;
+               Value            : GL_Value;
                Result_Type      : constant Entity_Id := Full_Etype (Node);
                LLVM_Result_Type : Type_T;
                Result           : Value_T;
@@ -2214,23 +2212,23 @@ package body GNATLLVM.Compile is
                --  the object type and an initial value for the object.
 
                if Is_Entity_Name (Expr) then
-                  Typ         := Entity (Expr);
-                  Value       := No_Value_T;
+                  Typ   := Entity (Expr);
+                  Value := No_GL_Value;
                else
                   pragma Assert (Nkind (Expr) = N_Qualified_Expression);
-                  Typ         := Full_Etype (Expression (Expr));
-                  Value       := Emit_Expr (Expression (Expr)).Value;
+                  Typ   := Full_Etype (Expression (Expr));
+                  Value := Emit_Expr (Expression (Expr));
                end if;
 
                Arg := (1 => Get_Type_Size (Env, Create_Type (Env, Typ),
                                            Typ, Value,
-                                           For_Type => No (Value)));
+                                           For_Type => No (Value)).Value);
                Result := Call
                  (Env.Bld, Env.Default_Alloc_Fn, Arg'Address, 1, "alloc");
                LLVM_Result_Type := Create_Type (Env, Result_Type);
 
                if Nkind (Expr) = N_Qualified_Expression then
-                  Emit_Assignment (Env, Typ, Typ, Result, Empty, Value,
+                  Emit_Assignment (Env, Typ, Typ, Result, Empty, Value.Value,
                                    True, True);
                end if;
 
@@ -2429,7 +2427,7 @@ package body GNATLLVM.Compile is
          GEP
            (Env.Bld,
             V,
-            (Const_Int (Intptr_T, 0, Sign_Extend => False),
+            (Const_Int (Env.LLVM_Size_Type, 0, Sign_Extend => False),
              Const_Int (Create_Type (Env, Standard_Positive),
                         0, Sign_Extend => False)),
             ""),
@@ -2533,7 +2531,7 @@ package body GNATLLVM.Compile is
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
                Const_Null (Int_Ty (8)),
-               Get_Type_Size (Env, Src_LLVM_Type, Typ, No_Value_T),
+               Get_Type_Size (Env, Src_LLVM_Type, Typ, No_GL_Value).Value,
                Const_Int (Int_Ty (32), unsigned_long_long (Align), False),
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2873,14 +2871,11 @@ package body GNATLLVM.Compile is
         or else (Is_Array_Type (Right_Typ)
                    and then not Is_Constrained (Right_Typ))
       then
-         return G (Get_Type_Size
-                     (Env, Create_Type (Env, Left_Typ), Left_Typ, No_Value_T),
-                   Standard_Long_Integer);
+         return Get_Type_Size
+           (Env, Create_Type (Env, Left_Typ), Left_Typ, No_GL_Value);
       else
-         return G (Get_Type_Size
-                     (Env, Create_Type (Env, Right_Typ), Right_Typ,
-                      Right_Value.Value),
-                   Standard_Long_Integer);
+         return Get_Type_Size
+           (Env, Create_Type (Env, Right_Typ), Right_Typ, Right_Value);
       end if;
 
    end Compute_Size;
@@ -3034,7 +3029,7 @@ package body GNATLLVM.Compile is
               (if Is_Dynamic_Size (Env, Value) then Value
                else Emit_LValue (Env, Expr));
             Converted_Addr : constant GL_Value :=
-               Pointer_To_Ref (Env, Addr, Dest_Type, "unc-ptr-cvt");
+               Ptr_To_Ref (Env, Addr, Dest_Type, "unc-ptr-cvt");
          begin
             if Is_Dynamic_Size (Env, Dest_Type) then
                return Converted_Addr;
@@ -3283,31 +3278,26 @@ package body GNATLLVM.Compile is
          when Attribute_Size =>
             declare
 
-               Typ        : constant Node_Id := Full_Etype (Prefix (Node));
+               Typ        : constant Entity_Id := Full_Etype (Prefix (Node));
                LLVM_Typ   : constant Type_T := Create_Type (Env, Typ);
-               Result_Typ : constant Node_Id := Full_Etype (Node);
-               Const_8    : constant Value_T :=
-                 Const_Int (Env.Size_Type, 8, False);
+               Result_Typ : constant Entity_Id := Full_Etype (Node);
+               Const_8    : constant GL_Value := Size_Const_Int (Env, 8);
                For_Type   : constant Boolean :=
                  (Is_Entity_Name (Prefix (Node))
                     and then Is_Type (Entity (Prefix (Node))));
-               Value      : Value_T := No_Value_T;
+               Value      : GL_Value := No_GL_Value;
 
             begin
                if not For_Type then
-                  Value := Emit_LValue (Env, Prefix (Node)).Value;
+                  Value := Emit_LValue (Env, Prefix (Node));
                end if;
 
-               return
-                 Convert_To_Scalar_Type
+               return Convert_To_Scalar_Type
                  (Env,
-                  G (NSW_Mul (Env.Bld,
-                              Get_Type_Size (Env, LLVM_Typ, Typ,
-                                             Value, For_Type),
-                              Const_8,
-                              ""),
-                     Standard_Short_Short_Integer),
-                 Result_Typ);
+                  NSW_Mul (Env,
+                           Get_Type_Size (Env, LLVM_Typ, Typ, Value, For_Type),
+                           Const_8, ""),
+                  Result_Typ);
             end;
 
          when others =>
@@ -3449,17 +3439,17 @@ package body GNATLLVM.Compile is
                Comp_Type     : constant Entity_Id :=
                  Get_Fullest_View (Component_Type (Full_Etype (LHS)));
                LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
-               Size          : constant Value_T :=
+               Size          : constant GL_Value :=
                  NSW_Mul
-                   (Env.Bld,
-                    Z_Ext (Env.Bld, Left_Length.Value, Env.Size_Type, ""),
-                    Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_Value_T),
+                   (Env,
+                    Z_Ext (Env, Left_Length, Env.Size_Type, ""),
+                    Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_GL_Value),
                     "byte-size");
 
                Memcmp_Args : constant Value_Array (1 .. 3) :=
                  (Bit_Cast (Env.Bld, Left, Void_Ptr_Type, ""),
                   Bit_Cast (Env.Bld, Right, Void_Ptr_Type, ""),
-                  Size);
+                  Size.Value);
                Memcmp      : constant Value_T := Call
                  (Env.Bld,
                   Env.Memory_Cmp_Fn,

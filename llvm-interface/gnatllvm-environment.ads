@@ -177,8 +177,9 @@ package GNATLLVM.Environment is
       --  Parameter to this subprogram, if any, that represent the address
       --  to which we are to copy the return value.
 
-      Size_Type                 : Type_T;
-      --  Type to use for sizes.
+      Size_Type                 : Entity_Id;
+      LLVM_Size_Type            : Type_T;
+      --  Types to use for sizes.
 
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;

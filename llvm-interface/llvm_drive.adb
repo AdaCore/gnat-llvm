@@ -37,9 +37,10 @@ with Osint.C;  use Osint.C;
 with Sem;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
+with Stand;    use Stand;
 with Switch;   use Switch;
 
-with Get_Targ;
+with Get_Targ; use Get_Targ;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Types;        use GNATLLVM.Types;
@@ -162,9 +163,8 @@ package body LLVM_Drive is
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
          Size_Type     : constant Type_T :=
-           Int_Ty (Integer (Get_Targ.Get_Pointer_Size));
-         C_Int_Type    : constant Type_T :=
-           Int_Ty (Integer (Get_Targ.Get_Int_Size));
+           Int_Ty (Integer (Get_Pointer_Size));
+         C_Int_Type    : constant Type_T := Int_Ty (Integer (Get_Int_Size));
          Memcopy_Type  : constant Type_T := Fn_Ty
            ((Void_Ptr_Type, Void_Ptr_Type, Size_Type, Int_Ty (32), Int_Ty (1)),
             Void_Type_In_Context (Env.Ctx));
@@ -173,7 +173,19 @@ package body LLVM_Drive is
             Void_Type_In_Context (Env.Ctx));
 
       begin
-         Env.Size_Type := Size_Type;
+         Env.LLVM_Size_Type := Size_Type;
+
+         --  Find the integer type corresponding to the size of a pointer
+         --  and use that are our Size Type.
+         if Get_Pointer_Size = Get_Long_Long_Size then
+            Env.Size_Type := Standard_Long_Long_Integer;
+         elsif Get_Pointer_Size = Get_Long_Size then
+            Env.Size_Type := Standard_Long_Integer;
+         else
+            Env.Size_Type := Standard_Integer;
+         end if;
+
+         pragma Assert (Create_Type (Env, Env.Size_Type) = Env.LLVM_Size_Type);
 
          --  Add malloc function to the env
 

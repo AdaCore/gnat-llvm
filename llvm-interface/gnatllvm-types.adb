@@ -289,6 +289,7 @@ package body GNATLLVM.Types is
                Struct_Set_Body
                  (Struct_Type, LLVM_Comps'Address, unsigned (I - 1), False);
                Set_Record_Info (Env, Def_Ident, Info);
+               Set_Dynamic_Size (Env, Def_Ident, Info.Dynamic_Size);
                Typ := Get_Type (Env, Def_Ident);
             end;
 

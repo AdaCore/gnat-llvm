@@ -291,12 +291,6 @@ package body GNATLLVM.Compile is
      with Pre => Env /= null and then Present (Node);
    --  Compile a subprogram body and save it in the environment
 
-   function Needs_Deref (Def_Ident : Entity_Id) return Boolean
-   is (Present (Address_Clause (Def_Ident))
-       and then not Is_Array_Type (Full_Etype (Def_Ident)))
-     with Pre => Present (Def_Ident);
-   --  Return whether Def_Ident requires an extra level of indirection
-
    function Is_Constant_Folded (E : Entity_Id) return Boolean
    is (Ekind (E) = E_Constant
        and then Is_Scalar_Type (Get_Full_View (Full_Etype (E))))
@@ -382,7 +376,7 @@ package body GNATLLVM.Compile is
       --  If not, we have to allocate it as an array of bytes.
 
       if Is_Array_Type (TE)
-        and not Is_Dynamic_Size (Env, Component_Type (TE))
+        and then not Is_Dynamic_Size (Env, Component_Type (TE))
       then
          Element_Typ := Component_Type (TE);
          Num_Elts    := Get_Array_Elements (Env, No_GL_Value, TE);
@@ -808,7 +802,7 @@ package body GNATLLVM.Compile is
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
                T         : constant Entity_Id := Full_Etype (Def_Ident);
                LLVM_Type : Type_T;
-               LLVM_Var  : Value_T;
+               LLVM_Var  : GL_Value;
                Expr      : GL_Value;
 
             begin
@@ -825,26 +819,27 @@ package body GNATLLVM.Compile is
 
                   LLVM_Type := Create_Type (Env, T);
 
-                  --  ??? Should use Needs_Deref instead and handle case of
-                  --  global arrays with an address clause as done for local
-                  --  variables.
-
                   if Present (Address_Clause (Def_Ident)) then
                      LLVM_Type := Pointer_Type (LLVM_Type, 0);
                   end if;
 
                   LLVM_Var :=
-                    Add_Global (Env.Mdl, LLVM_Type, Get_Ext_Name (Def_Ident));
-                  Set_Value (Env, Def_Ident, LLVM_Var);
+                    (Add_Global (Env.Mdl, LLVM_Type,
+                                 Get_Ext_Name (Def_Ident)),
+                     T, Is_Reference => True);
+                  Set_Value (Env, Def_Ident, LLVM_Var.Value);
 
                   if Env.In_Main_Unit then
                      if Is_Statically_Allocated (Def_Ident) then
-                        Set_Linkage (LLVM_Var, Internal_Linkage);
+                        Set_Linkage (LLVM_Var.Value, Internal_Linkage);
                      end if;
+
+                     --  ??? This code is probably wrong, but is rare enough
+                     --  that we'll worry about it later.
 
                      if Present (Address_Clause (Def_Ident)) then
                         Set_Initializer
-                          (LLVM_Var,
+                          (LLVM_Var.Value,
                            Emit_Expression
                              (Env, Expression (Address_Clause (Def_Ident)))
                              .Value);
@@ -852,7 +847,7 @@ package body GNATLLVM.Compile is
 
                      else
                         if Is_Imported (Def_Ident) then
-                           Set_Linkage (LLVM_Var, External_Linkage);
+                           Set_Linkage (LLVM_Var.Value, External_Linkage);
                         end if;
 
                         --  Take Expression (Node) into account
@@ -864,101 +859,42 @@ package body GNATLLVM.Compile is
                         then
                            if Compile_Time_Known_Value (Expression (Node)) then
                               Expr := Emit_Expression (Env, Expression (Node));
-                              Set_Initializer (LLVM_Var, Expr.Value);
+                              Set_Initializer (LLVM_Var.Value, Expr.Value);
                            else
                               Elaboration_Table.Append (Node);
 
                               if not Is_Imported (Def_Ident) then
                                  Set_Initializer
-                                   (LLVM_Var, Const_Null (LLVM_Type));
+                                   (LLVM_Var.Value, Const_Null (LLVM_Type));
                               end if;
                            end if;
                         elsif not Is_Imported (Def_Ident) then
-                           Set_Initializer (LLVM_Var, Const_Null (LLVM_Type));
+                           Set_Initializer (LLVM_Var.Value,
+                                            Const_Null (LLVM_Type));
                         end if;
                      end if;
                   else
-                     Set_Linkage (LLVM_Var, External_Linkage);
+                     Set_Linkage (LLVM_Var.Value, External_Linkage);
                   end if;
 
                else
                   if Env.Special_Elaboration_Code then
-                     LLVM_Var := Get_Value (Env, Def_Ident);
+                     LLVM_Var := (Get_Value (Env, Def_Ident), T,
+                                  Is_Reference => True);
 
-                  elsif Is_Array_Type (T) then
-
-                     --  Alloca arrays are handled as follows:
-                     --  * The total size is computed with Array_Size.
-                     --  * The type of the innermost component is computed with
-                     --    Get_Innermost_Component_Type.
-                     --  * The result of the alloca is bitcasted to the proper
-                     --    array type, so that multidimensional LLVM GEP
-                     --    operations work properly.
-                     --  * If an address clause is specified, then simply
-                     --    cast the address into an array.
-
-                     LLVM_Type := Create_Access_Type (Env, T);
-
-                     if Present (Address_Clause (Def_Ident)) then
-                        LLVM_Var := Int_To_Ptr
-                           (Env.Bld,
-                            Emit_Expression
-                              (Env,
-                               Expression (Address_Clause (Def_Ident))).Value,
-                           LLVM_Type,
-                           Get_Name (Def_Ident));
-                     else
-                        LLVM_Var := Bit_Cast
-                           (Env.Bld,
-                            Array_Alloca
-                              (Env.Bld,
-                               Int_Ty (8),
-                               Get_Type_Size (Env, T, No_GL_Value).Value,
-                               "array-alloca"),
-                           LLVM_Type,
-                           Get_Name (Def_Ident));
-                     end if;
-
-                     Set_Value (Env, Def_Ident, LLVM_Var);
-
-                  elsif Record_With_Dynamic_Size (Env, T) then
-                     LLVM_Type := Create_Access_Type (Env, T);
-                     LLVM_Var := Bit_Cast
-                       (Env.Bld,
-                        Array_Alloca
-                          (Env.Bld,
-                           Int_Ty (8),
-                           Get_Type_Size (Env, T, No_GL_Value, True).Value,
-                           "record-alloca"),
-                        LLVM_Type,
-                        Get_Name (Def_Ident));
-                     Set_Value (Env, Def_Ident, LLVM_Var);
-
+                  elsif Present (Address_Clause (Def_Ident)) then
+                        LLVM_Var := Int_To_Ref
+                          (Env,
+                           Emit_Expression
+                             (Env, Expression (Address_Clause (Def_Ident))),
+                           T, Get_Name (Def_Ident));
                   else
-                     LLVM_Type := Create_Type (Env, T);
-
-                     if Present (Address_Clause (Def_Ident)) then
-                        LLVM_Type := Pointer_Type (LLVM_Type, 0);
-                     end if;
-
-                     LLVM_Var := Alloca
-                       (Env.Bld, LLVM_Type, Get_Name (Def_Ident));
-                     Set_Value (Env, Def_Ident, LLVM_Var);
-                  end if;
-
-                  if Needs_Deref (Def_Ident) then
-                     Expr := Emit_Expression
-                       (Env, Expression (Address_Clause (Def_Ident)));
-                     Expr := Int_To_Ref (Env, Expr, T, "to-ptr");
-                     Store (Env, Expr, (LLVM_Var, T, True));
-                     --  ??? The above isn't quite correct because
-                     --  we're saying that the address of the store
-                     --  (as looked at in the GNT tree) has type of
-                     --  pointer to the data, but it's really pointer
-                     --  to pointer to the data.  It's not clear what
-                     --  we can do about this or if it matters.
+                     LLVM_Var :=
+                       Allocate_For_Type (Env, T, Get_Name (Def_Ident));
 
                   end if;
+
+                  Set_Value (Env, Def_Ident, LLVM_Var.Value);
 
                   if Present (Expression (Node))
                     and then not
@@ -966,7 +902,7 @@ package body GNATLLVM.Compile is
                        and then No_Initialization (Node))
                   then
                      Emit_Assignment (Env, T, Full_Etype (Expression (Node)),
-                                      LLVM_Var, Expression (Node),
+                                      LLVM_Var.Value, Expression (Node),
                                       No_Value_T, True, True);
                   end if;
                end if;
@@ -1613,10 +1549,6 @@ package body GNATLLVM.Compile is
                      end;
                   end if;
 
-               elsif Needs_Deref (Def_Ident) then
-                  return
-                    (Load (Env.Bld, Get_Value (Env, Def_Ident), ""), Typ,
-                     Is_Reference => True);
                else
                   return (Get_Value (Env, Def_Ident), Typ,
                           Is_Reference => True);
@@ -1624,13 +1556,8 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Defining_Identifier =>
-            if Needs_Deref (Node) then
-               return (Load (Env.Bld, Get_Value (Env, Node), ""),
-                       Full_Etype (Node), Is_Reference => True);
-            else
-               return (Get_Value (Env, Node), Full_Etype (Node),
-                       Is_Reference => True);
-            end if;
+            return (Get_Value (Env, Node), Full_Etype (Node),
+                    Is_Reference => True);
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (Env, Node, LValue => True);
@@ -2125,9 +2052,6 @@ package body GNATLLVM.Compile is
                   then
                      return (LValue, Full_Etype (Def_Ident),
                              Is_Reference => True);
-                  elsif Needs_Deref (Def_Ident) then
-                     return G (Load (Env.Bld, Load (Env.Bld, LValue, ""), ""),
-                               Full_Etype (Def_Ident));
                   else
                      return G (Load (Env.Bld, LValue, ""),
                                Full_Etype (Def_Ident));

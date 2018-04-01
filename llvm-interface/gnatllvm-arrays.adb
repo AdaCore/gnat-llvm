@@ -681,8 +681,7 @@ package body GNATLLVM.Arrays is
                                        Convert_To_Size_Type
                                          (Env,
                                           Get_Array_Length
-                                            (Env, Arr_Typ, Dim,
-                                             Array_Data_Ptr)),
+                                            (Env, Arr_Typ, Dim, Value)),
                                        ""),
                               Convert_To_Size_Type (Env, Idxs (Dim + 2)),
                               "");

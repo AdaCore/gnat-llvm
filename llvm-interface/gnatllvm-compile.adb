@@ -62,11 +62,9 @@ package body GNATLLVM.Compile is
    --  a pointer to the space.  Name is the name to use for the LLVM value.
 
    function Build_Type_Conversion
-     (Env                 : Environ;
-      Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return GL_Value
-     with  Pre  => Env /= null and then Is_Type (Src_Type)
-                   and then Is_Type (Dest_Type) and then Present (Expr),
+     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     with  Pre  => Env /= null and then Is_Type (Dest_Type)
+                   and then Present (Expr),
            Post => Present (Build_Type_Conversion'Result);
    --  Emit code to convert Expr to Dest_Type
 
@@ -108,7 +106,7 @@ package body GNATLLVM.Compile is
    function Convert_To_Scalar_Type
      (Env : Environ; Expr : GL_Value; G : GL_Value) return GL_Value
    is
-     (Convert_To_Scalar_Type (Env, Expr, G.Typ))
+     (Convert_To_Scalar_Type (Env, Expr, Full_Etype (G)))
      with Pre  => Env /= null and then Present (G),
           Post => Present (Convert_To_Scalar_Type'Result);
    --  Variant of above where the type is that of another value (G)
@@ -168,10 +166,12 @@ package body GNATLLVM.Compile is
           Post => Present (Emit_Comparison'Result);
 
    function Emit_Comparison
-     (Env : Environ; Kind : Node_Kind; Node : Node_Id; LHS, RHS : GL_Value)
-     return GL_Value
+     (Env                : Environ;
+      Kind               : Node_Kind;
+      Node               : Node_Id;
+      Orig_LHS, Orig_RHS : GL_Value) return GL_Value
      with Pre  => Env /= null and then Present (Node)
-                  and then Present (LHS) and then Present (RHS),
+                  and then Present (Orig_LHS) and then Present (Orig_RHS),
           Post => Present (Emit_Comparison'Result);
    --  Helpers for Emit_Expression: handle comparison operations.
    --  The second form only supports discrete or pointer types.
@@ -461,7 +461,7 @@ package body GNATLLVM.Compile is
          LLVM_Param := Get_Param (Func, unsigned (Param_Num));
          Set_Value_Name (LLVM_Param, "return");
          Env.Return_Address_Param :=
-           (LLVM_Param, Return_Typ, Is_Reference => True);
+           G (LLVM_Param, Return_Typ, Is_Reference => True);
       end if;
 
       Emit_List (Env, Declarations (Node));
@@ -826,9 +826,9 @@ package body GNATLLVM.Compile is
                   end if;
 
                   LLVM_Var :=
-                    (Add_Global (Env.Mdl, LLVM_Type,
-                                 Get_Ext_Name (Def_Ident)),
-                     T, Is_Reference => True);
+                    G (Add_Global (Env.Mdl, LLVM_Type,
+                                   Get_Ext_Name (Def_Ident)),
+                       T, Is_Reference => True);
                   Set_Value (Env, Def_Ident, LLVM_Var.Value);
 
                   if Env.In_Main_Unit then
@@ -881,8 +881,8 @@ package body GNATLLVM.Compile is
 
                else
                   if Env.Special_Elaboration_Code then
-                     LLVM_Var := (Get_Value (Env, Def_Ident), T,
-                                  Is_Reference => True);
+                     LLVM_Var := G (Get_Value (Env, Def_Ident), T,
+                                    Is_Reference => True);
 
                   elsif Present (Address_Clause (Def_Ident)) then
                         LLVM_Var := Int_To_Ref
@@ -1044,7 +1044,6 @@ package body GNATLLVM.Compile is
                      if Our_Typ /= Expr_Typ then
                         Expr := Build_Type_Conversion
                           (Env       => Env,
-                           Src_Type  => Expr_Typ,
                            Dest_Type => Our_Typ,
                            Expr      => Return_Expr);
 
@@ -1478,9 +1477,9 @@ package body GNATLLVM.Compile is
         and then Type_Of (Value) /= Create_Access_Type (Env, Typ)
       then
          Value
-           := (Bit_Cast (Env.Bld, Value.Value,
-                         Create_Access_Type (Env, Typ), ""),
-               Typ, Is_Reference => True);
+           := G (Bit_Cast (Env.Bld, Value.Value,
+                           Create_Access_Type (Env, Typ), ""),
+                 Typ, Is_Reference => True);
       end if;
 
       --  If the object is not of void type, save the result in the
@@ -1517,8 +1516,8 @@ package body GNATLLVM.Compile is
                   end if;
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                     return (Get_Value (Env, Def_Ident), Typ,
-                             Is_Reference => True);
+                     return G (Get_Value (Env, Def_Ident), Typ,
+                               Is_Reference => True);
                   else
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
@@ -1547,19 +1546,19 @@ package body GNATLLVM.Compile is
                              (Env.Bld, Func, Fields_Types (1), ""), 0, "");
                         Result := Insert_Value
                           (Env.Bld, Result, S_Link, 1, "callback");
-                        return (Result, Typ, Is_Reference => True);
+                        return G (Result, Typ, Is_Reference => True);
                      end;
                   end if;
 
                else
-                  return (Get_Value (Env, Def_Ident), Typ,
-                          Is_Reference => True);
+                  return G (Get_Value (Env, Def_Ident), Typ,
+                            Is_Reference => True);
                end if;
             end;
 
          when N_Defining_Identifier =>
-            return (Get_Value (Env, Node), Full_Etype (Node),
-                    Is_Reference => True);
+            return G (Get_Value (Env, Node), Full_Etype (Node),
+                      Is_Reference => True);
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (Env, Node, LValue => True);
@@ -1585,8 +1584,8 @@ package body GNATLLVM.Compile is
             declare
                T : constant Type_T := Create_Type (Env, Full_Etype (Node));
                V : constant GL_Value :=
-                 (Add_Global (Env.Mdl, T, "str-lit"), Full_Etype (Node),
-                  Is_Reference => True);
+                 G (Add_Global (Env.Mdl, T, "str-lit"), Full_Etype (Node),
+                    Is_Reference => True);
 
             begin
                Set_Value (Env, Node, V.Value);
@@ -1608,9 +1607,9 @@ package body GNATLLVM.Compile is
                  Original_Record_Component (Entity (Selector_Name (Node)));
 
             begin
-               return (Record_Field_Offset (Env, Pfx_Ptr.Value,
-                                            Record_Component),
-                       Full_Etype (Node), Is_Reference => True);
+               return G (Record_Field_Offset (Env, Pfx_Ptr.Value,
+                                              Record_Component),
+                         Full_Etype (Node), Is_Reference => True);
             end;
 
          when N_Indexed_Component =>
@@ -1764,7 +1763,6 @@ package body GNATLLVM.Compile is
          --  the rest are by generating the appropriate LLVM IR entry.
 
          if Nkind (Node) in N_Op_Compare then
-
             return Emit_Comparison
               (Env, Nkind (Node), Left_Opnd (Node), Right_Opnd (Node));
 
@@ -1784,11 +1782,9 @@ package body GNATLLVM.Compile is
             Right_BT : constant Entity_Id :=
               Implementation_Base_Type (Right_Type);
             LVal   : constant GL_Value :=
-              Build_Type_Conversion
-              (Env, Left_Type, Left_BT, Left_Opnd (Node));
+              Build_Type_Conversion (Env, Left_BT, Left_Opnd (Node));
             RVal   : constant GL_Value :=
-              Build_Type_Conversion
-              (Env, Right_Type, Right_BT, Right_Opnd (Node));
+              Build_Type_Conversion (Env, Right_BT, Right_Opnd (Node));
             FP     : constant Boolean := Is_Floating_Point_Type (Left_BT);
             Unsign : constant Boolean := Is_Unsigned_Type (Right_BT);
             Subp   : Opf := null;
@@ -1862,7 +1858,7 @@ package body GNATLLVM.Compile is
 
             declare
                Expr      : constant GL_Value := Emit_Expr (Right_Opnd (Node));
-               Zero      : constant GL_Value := Const_Null (Env, Expr.Typ);
+               Zero      : constant GL_Value := Const_Null (Env, Expr);
 
             begin
                if Is_Floating_Point_Type (Expr) then
@@ -1914,10 +1910,7 @@ package body GNATLLVM.Compile is
          when N_Type_Conversion =>
             --  ??? Need to take Do_Overflow_Check into account
             return Build_Type_Conversion
-              (Env       => Env,
-               Src_Type  => Full_Etype (Expression (Node)),
-               Dest_Type => Full_Etype (Node),
-               Expr      => Expression (Node));
+              (Env, Full_Etype (Node), Expression (Node));
 
          when N_Identifier | N_Expanded_Name =>
             --  What if Node is a formal parameter passed by reference???
@@ -2051,8 +2044,8 @@ package body GNATLLVM.Compile is
                   if Is_Subprogram
                     or else Is_Dynamic_Size (Env, Full_Etype (Def_Ident))
                   then
-                     return (LValue, Full_Etype (Def_Ident),
-                             Is_Reference => True);
+                     return G (LValue, Full_Etype (Def_Ident),
+                               Is_Reference => True);
                   else
                      return G (Load (Env.Bld, LValue, ""),
                                Full_Etype (Def_Ident));
@@ -2064,7 +2057,10 @@ package body GNATLLVM.Compile is
             return G (Get_Value (Env, Node), Full_Etype (Node));
 
          when N_Function_Call =>
-            return G (Emit_Call (Env, Node), Full_Etype (Node));
+            return G (Emit_Call (Env, Node),
+                      Full_Etype (Node),
+                      Is_Reference => Is_Dynamic_Size
+                        (Env, Full_Etype (Node)));
 
          when N_Explicit_Dereference =>
             --  Access to subprograms require special handling, see
@@ -2091,8 +2087,7 @@ package body GNATLLVM.Compile is
                Arg              : array (1 .. 1) of Value_T;
                Value            : GL_Value;
                Result_Type      : constant Entity_Id := Full_Etype (Node);
-               LLVM_Result_Type : Type_T;
-               Result           : Value_T;
+               Result           : GL_Value;
 
             begin
                --  There are two cases: the Expression operand can either be
@@ -2111,14 +2106,22 @@ package body GNATLLVM.Compile is
 
                Arg := (1 => Get_Type_Size (Env, Typ, Value,
                                            For_Type => No (Value)).Value);
-               Result := Call
-                 (Env.Bld, Env.Default_Alloc_Fn, Arg'Address, 1, "alloc");
-               LLVM_Result_Type := Create_Type (Env, Result_Type);
+               Result := G (Call
+                              (Env.Bld, Env.Default_Alloc_Fn,
+                               Arg'Address, 1, "alloc"),
+                            Standard_Short_Short_Integer,
+                            Is_Reference => True);
+
+               --  Convert to a pointer to the type that the thing is suppose
+               --  to point to.
+
+               Result := Ptr_To_Ref (Env, Result, Typ, "");
+
+               --  Now copy the data, if there is any, into the value.
 
                if Nkind (Expr) = N_Qualified_Expression then
-                  Emit_Assignment (Env, Typ, Typ, G (Result, Result_Type),
-                                   Empty, Value,
-                                   True, True);
+                  Emit_Assignment (Env, Typ, Typ, Result,
+                                   Empty, Value, True, True);
                end if;
 
                --  ??? This should be common code at some point.
@@ -2128,12 +2131,14 @@ package body GNATLLVM.Compile is
                if Is_Array_Type (Designated_Type (Result_Type))
                  and then not Is_Constrained (Designated_Type (Result_Type))
                then
-                  Result := Array_Fat_Pointer (Env, Result, Typ);
+                  Result := Array_Fat_Pointer (Env, Result);
+                  Result.Typ := Result_Type;
+                  Result.Is_Reference := False;
                else
-                  Result := Bit_Cast (Env.Bld, Result, LLVM_Result_Type, "");
+                  Result := Pointer_Cast (Env, Result, Result_Type, "");
                end if;
 
-               return G (Result, Result_Type);
+               return Result;
             end;
 
          when N_Reference =>
@@ -2435,7 +2440,7 @@ package body GNATLLVM.Compile is
          --  If the pointer type of Src is not the same as the type of
          --  Dest, convert it.
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            Dest := Ptr_To_Ref (Env, Dest, Src.Typ, "");
+            Dest := Ptr_To_Ref (Env, Dest, Full_Etype (Src), "");
          end if;
 
          Store (Env, Src, Dest);
@@ -2445,8 +2450,8 @@ package body GNATLLVM.Compile is
                  else E_Value);
 
          if Is_Array_Type (Dest_Typ) then
-            Dest := G (Array_Data (Env, Dest.Value, Dest_Typ), Dest_Typ);
-            Src  := G (Array_Data (Env, Src.Value, Typ), Dest_Typ);
+            Dest := Array_Data (Env, Dest);
+            Src  := Array_Data (Env, Src);
          end if;
 
          declare
@@ -2585,7 +2590,10 @@ package body GNATLLVM.Compile is
          then
             --  Convert from raw to fat pointer
 
-            Args (Idx) := Array_Fat_Pointer (Env, Args (Idx), Actual_Type);
+            Args (Idx) :=
+              Array_Fat_Pointer (Env,
+                                 G (Args (Idx), Actual_Type,
+                                    Is_Reference => True)).Value;
 
          elsif Is_Array_Type (P_Type)
            and then Is_Constrained (P_Type)
@@ -2595,7 +2603,9 @@ package body GNATLLVM.Compile is
 
                --  Convert from fat to thin pointer
 
-            Args (Idx) := Array_Data (Env, Args (Idx), Actual_Type);
+            Args (Idx) := Array_Data (Env,
+                                      G (Args (Idx), Actual_Type,
+                                         Is_Reference => True)).Value;
 
          elsif Current_Needs_Ptr then
             Args (Idx) := Bit_Cast
@@ -2714,11 +2724,9 @@ package body GNATLLVM.Compile is
    ---------------------------
 
    function Build_Type_Conversion
-     (Env                 : Environ;
-      Src_Type, Dest_Type : Entity_Id;
-      Expr                : Node_Id) return GL_Value
+     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
    is
-      S_Type  : constant Entity_Id := Get_Fullest_View (Src_Type);
+      S_Type  : constant Entity_Id := Full_Etype (Expr);
       D_Type  : constant Entity_Id := Get_Fullest_View (Dest_Type);
    begin
 
@@ -2836,9 +2844,10 @@ package body GNATLLVM.Compile is
         (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String)
         return GL_Value;
 
-      In_Typ      : constant Type_T := Type_Of (Expr);
-      In_Width    : constant Integer := Integer (Get_Int_Type_Width (In_Typ));
-      Out_Width   : constant Integer := Integer (UI_To_Int (Esize (TE)));
+      In_Width    : constant unsigned_long_long :=
+        Get_LLVM_Type_Size_In_Bits (Env, Expr);
+      Out_Width   : constant unsigned_long_long :=
+        unsigned_long_long (UI_To_Int (Esize (TE)));
       Is_Unsigned : constant Boolean := Is_Unsigned_Type (Expr);
       Subp        : Cvtf := null;
    begin
@@ -3115,10 +3124,7 @@ package body GNATLLVM.Compile is
             | Attribute_Val =>
             pragma Assert (List_Length (Expressions (Node)) = 1);
             return Build_Type_Conversion
-              (Env,
-               Full_Etype (First (Expressions (Node))),
-               Full_Etype (Node),
-               First (Expressions (Node)));
+              (Env, Full_Etype (Node), First (Expressions (Node)));
 
          when Attribute_Succ
             | Attribute_Pred =>
@@ -3128,7 +3134,7 @@ package body GNATLLVM.Compile is
 
                Base : constant GL_Value :=
                  Emit_Expression (Env, First (Exprs));
-               One  : constant GL_Value := Const_Int (Env, Base.Typ, Uint_1);
+               One  : constant GL_Value := Const_Int (Env, Base, Uint_1);
 
             begin
                return
@@ -3192,9 +3198,7 @@ package body GNATLLVM.Compile is
    ---------------------
 
    function Emit_Comparison
-     (Env           : Environ;
-      Kind          : Node_Kind;
-      LHS, RHS      : Node_Id) return GL_Value
+     (Env : Environ; Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
       Operand_Type : constant Entity_Id := Full_Etype (LHS);
@@ -3220,10 +3224,7 @@ package body GNATLLVM.Compile is
                       Subp_Ptr (LHS), Subp_Ptr (RHS), ""),
                    Standard_Boolean);
 
-      elsif Is_Floating_Point_Type (Operand_Type)
-        or else Is_Discrete_Or_Fixed_Point_Type (Operand_Type)
-        or else Is_Access_Type (Operand_Type)
-      then
+      elsif Is_Elementary_Type (Operand_Type) then
          return Emit_Comparison (Env, Kind, LHS,
                                  Emit_Expression (Env, LHS),
                                  Emit_Expression (Env, RHS));
@@ -3298,11 +3299,10 @@ package body GNATLLVM.Compile is
             Position_Builder_At_End (Env.Bld, Basic_Blocks (3));
 
             declare
-               Left        : constant Value_T :=
-                 Array_Data (Env, LHS_Descr.Value, LHS_Type);
-               Right       : constant Value_T :=
-                 Array_Data (Env, RHS_Descr.Value, RHS_Type);
-
+               Left          : constant GL_Value :=
+                 Array_Data (Env, LHS_Descr);
+               Right         : constant GL_Value :=
+                 Array_Data (Env, RHS_Descr);
                Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
                Comp_Type     : constant Entity_Id :=
                  Get_Fullest_View (Component_Type (Full_Etype (LHS)));
@@ -3314,8 +3314,8 @@ package body GNATLLVM.Compile is
                     "byte-size");
 
                Memcmp_Args : constant Value_Array (1 .. 3) :=
-                 (Bit_Cast (Env.Bld, Left, Void_Ptr_Type, ""),
-                  Bit_Cast (Env.Bld, Right, Void_Ptr_Type, ""),
+                 (Bit_Cast (Env.Bld, Left.Value, Void_Ptr_Type, ""),
+                  Bit_Cast (Env.Bld, Right.Value, Void_Ptr_Type, ""),
                   Size.Value);
                Memcmp      : constant Value_T := Call
                  (Env.Bld,
@@ -3351,26 +3351,53 @@ package body GNATLLVM.Compile is
       end if;
    end Emit_Comparison;
 
+   ---------------------
+   -- Emit_Comparison --
+   ---------------------
+
    function Emit_Comparison
-     (Env          : Environ;
-      Kind         : Node_Kind;
-      Node         : Node_Id;
-      LHS, RHS     : GL_Value) return GL_Value
+     (Env                : Environ;
+      Kind               : Node_Kind;
+      Node               : Node_Id;
+      Orig_LHS, Orig_RHS : GL_Value) return GL_Value
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
+      LHS          : GL_Value := Orig_LHS;
+      RHS          : GL_Value := Orig_RHS;
    begin
-      --  If these are fat pointers, they are equal iff their addresses are
+
+      --  If a scalar type (meaning both must be), convert each operand to
+      --  its base type.
+
+      if Is_Scalar_Type (LHS) then
+         LHS := Convert_To_Scalar_Type (Env, LHS,
+                                        Implementation_Base_Type (LHS));
+         RHS := Convert_To_Scalar_Type (Env, RHS,
+                                        Implementation_Base_Type (RHS));
+      end if;
+
+      --  If one is a fat pointer and one isn't, get a raw pointer for the
+      --  one that isn't.
+
+      if Is_Access_Unconstrained (LHS)
+        and then not Is_Access_Unconstrained (RHS)
+      then
+         LHS := Array_Data (Env, LHS);
+      elsif Is_Access_Unconstrained (RHS)
+        and then not Is_Access_Unconstrained (LHS)
+      then
+         RHS := Array_Data (Env, RHS);
+      end if;
+
+      --  If these are fat pointers (because of the above, we know that if
+      --  one is, both must be), they are equal iff their addresses are
       --  equal.  It's not possible for the addresses to be equal and not
-      --  the bounds. We can't make a recursive call here or we'll try to do
-      --  it again that time.
+      --  the bounds. We can't make a recursive call here or we'll try to
+      --  do it again that time.
 
       if Is_Access_Unconstrained (LHS) then
-         return G (I_Cmp
-                     (Env.Bld, Operation.Unsigned,
-                      Array_Data (Env, LHS.Value, Designated_Type (LHS)),
-                      Array_Data (Env, RHS.Value, Designated_Type (LHS)),
-                      ""),
-                   Standard_Boolean);
+         return I_Cmp (Env, Operation.Unsigned,
+                       Array_Data (Env, LHS), Array_Data (Env, RHS), "");
 
       elsif Is_Floating_Point_Type (LHS) then
          return F_Cmp (Env, Operation.Real, LHS, RHS, "");
@@ -3388,7 +3415,7 @@ package body GNATLLVM.Compile is
       else
          Error_Msg_N
            ("unsupported operand type for comparison: `"
-            & Entity_Kind'Image (Ekind (LHS.Typ)) & "`", Node);
+            & Entity_Kind'Image (Ekind (Full_Etype (LHS))) & "`", Node);
          return Get_Undef (Env, Standard_Boolean);
       end if;
    end Emit_Comparison;
@@ -3457,7 +3484,8 @@ package body GNATLLVM.Compile is
       Choices          : array (1 .. Count_Choices (Node)) of One_Choice;
       LHS              : constant GL_Value :=
         Emit_Expression (Env, Expression (Node));
-      Typ              : constant Type_T := Create_Type (Env, LHS.Typ);
+      Typ              : constant Type_T :=
+          Create_Type (Env, Full_Etype (LHS));
       Start_BB         : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
       Current_Alt      : Nat := 1;
       First_Choice     : Nat;

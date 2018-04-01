@@ -23,6 +23,7 @@ with LLVM.Core;  use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Arrays is
 
@@ -139,10 +140,8 @@ package GNATLLVM.Arrays is
 
    function Array_Data
      (Env         : Environ;
-      Array_Descr : Value_T;
-      Array_Type  : Entity_Id) return Value_T
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
-                  and then Present (Array_Descr),
+      Array_Descr : GL_Value) return GL_Value
+     with Pre  => Env /= null and then Present (Array_Descr),
           Post => Present (Array_Data'Result);
    --  Emit code to compute the address of the array data and return the
    --  corresponding value. Handle both constrained and unconstrained arrays,
@@ -152,14 +151,12 @@ package GNATLLVM.Arrays is
 
    function Array_Fat_Pointer
      (Env        : Environ;
-      Array_Data : Value_T;
-      Array_Type : Entity_Id) return Value_T
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
-                  and then Is_Constrained (Array_Type)
-                  and then Present (Array_Data),
+      Array_Data : GL_Value) return GL_Value
+     with Pre  => Env /= null and then Is_Access_Type (Array_Data)
+                  and then Is_Array_Type (Designated_Type (Array_Data))
+                  and then Is_Constrained (Designated_Type (Array_Data)),
           Post => Present (Array_Fat_Pointer'Result);
-   --  Wrap a fat pointer around Array_Data according to its type Array_Type
-   --  and return the created fat pointer.
+   --  Wrap a fat pointer around Array_Data and return the created fat pointer.
 
    function Array_Address
      (Env        : Environ;

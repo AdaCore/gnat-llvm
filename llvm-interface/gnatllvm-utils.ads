@@ -69,9 +69,10 @@ package GNATLLVM.Utils is
    function G
      (V            : Value_T;
       TE           : Entity_Id;
-      Is_Reference : Boolean := False) return GL_Value
+      Is_Reference : Boolean := False;
+      Is_Raw_Array : Boolean := False) return GL_Value
    is
-     ((V, TE, Is_Reference))
+     ((V, TE, Is_Reference, Is_Raw_Array))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
 
    --  Now define predicates on the GL_Value type to easily access
@@ -79,57 +80,87 @@ package GNATLLVM.Utils is
    --  same names as those for types and Value_T's.
 
    function Type_Of (G : GL_Value) return Type_T is
-     (Type_Of (G.Value));
+     (Type_Of (G.Value))
+     with Pre => Present (G), Post => Present (Type_Of'Result);
+
+   function Etype (G : GL_Value) return Entity_Id is
+     (G.Typ)
+     with Pre => Present (G), Post => Present (Etype'Result);
+
+   function Full_Etype (G : GL_Value) return Entity_Id is
+     (G.Typ)
+     with Pre => Present (G), Post => Present (Full_Etype'Result);
 
    function Is_Access_Type (G : GL_Value) return Boolean is
-     (Is_Reference (G) or else Is_Access_Type (G.Typ));
+     (Is_Reference (G) or else Is_Access_Type (G.Typ))
+     with Pre => Present (G);
 
    function Designated_Type (G : GL_Value) return Entity_Id is
      ((if Is_Reference (G) then G.Typ else Designated_Type (G.Typ)))
      with Pre => Is_Access_Type (G), Post => Is_Type (Designated_Type'Result);
 
+   function Implementation_Base_Type (G : GL_Value) return Entity_Id is
+     ((if Is_Reference (G) then G.Typ else Implementation_Base_Type (G.Typ)))
+       with Pre  => not Is_Reference (G),
+            Post => Is_Type (Implementation_Base_Type'Result);
+
    function Is_Dynamic_Size (Env : Environ; G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Dynamic_Size (Env, G.Typ));
+     (not Is_Reference (G) and then Is_Dynamic_Size (Env, G.Typ))
+     with Pre => Env /= null and then Present (G);
 
    function Is_Array_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Array_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Array_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Access_Unconstrained (G : GL_Value) return Boolean is
      (Is_Access_Type (G) and then Is_Array_Type (Designated_Type (G))
-                         and then not Is_Constrained (Designated_Type (G)));
+                         and then not Is_Constrained (Designated_Type (G))
+                         and then not Is_Raw_Array (G))
+     with Pre => Present (G);
 
    function Is_Constrained (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Constrained (G.Typ));
+     (not Is_Reference (G) and then Is_Constrained (G.Typ))
+     with Pre => Present (G);
 
    function Is_Record_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Record_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Record_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Composite_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Composite_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Composite_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Elementary_Type (G : GL_Value) return Boolean is
-     (Is_Reference (G) or else Is_Elementary_Type (G.Typ));
+     (Is_Reference (G) or else Is_Elementary_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Scalar_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Scalar_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Scalar_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Discrete_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Discrete_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Discrete_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Discrete_Or_Fixed_Point_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Discrete_Or_Fixed_Point_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Discrete_Or_Fixed_Point_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Fixed_Point_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Fixed_Point_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Fixed_Point_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Floating_Point_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Floating_Point_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Floating_Point_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Unsigned_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Unsigned_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Unsigned_Type (G.Typ))
+     with Pre => Present (G);
 
    function Is_Modular_Integer_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Modular_Integer_Type (G.Typ));
+     (not Is_Reference (G) and then Is_Modular_Integer_Type (G.Typ))
+     with Pre => Present (G);
 
    function RM_Size (G : GL_Value) return Uint is
      (RM_Size (G.Typ))
@@ -352,16 +383,16 @@ package GNATLLVM.Utils is
    function NSW_Add
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      ((NSW_Add (Env.Bld, LHS.Value, RHS.Value, Name),
-        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference))
+      (G (NSW_Add (Env.Bld, LHS.Value, RHS.Value, Name),
+          LHS.Typ, Is_Reference => LHS.Is_Reference or RHS.Is_Reference))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (NSW_Add'Result);
 
    function NSW_Sub
      (Env : Environ; LHS, RHS : GL_Value; Name : String) return GL_Value
    is
-      ((NSW_Sub (Env.Bld, LHS.Value, RHS.Value, Name),
-        LHS.Typ, LHS.Is_Reference or RHS.Is_Reference))
+      (G (NSW_Sub (Env.Bld, LHS.Value, RHS.Value, Name),
+          LHS.Typ, Is_Reference => LHS.Is_Reference or RHS.Is_Reference))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (NSW_Sub'Result);
 
@@ -495,9 +526,9 @@ package GNATLLVM.Utils is
      (Env : Environ; C_If, C_Then, C_Else : GL_Value; Name : String)
      return GL_Value
    is
-     ((Build_Select (Env.Bld, C_If => C_If.Value, C_Then => C_Then.Value,
+     (G (Build_Select (Env.Bld, C_If => C_If.Value, C_Then => C_Then.Value,
                      C_Else => C_Else.Value, Name => Name),
-       C_Then.Typ, C_If.Is_Reference))
+         C_Then.Typ, Is_Reference => C_If.Is_Reference))
      with Pre  => Env /= null and then Present (C_If)
                   and then Present (C_Then) and then Present (C_Else),
           Post => Present (Build_Select'Result);
@@ -524,6 +555,15 @@ package GNATLLVM.Utils is
                   and then Is_Access_Type (Int_To_Ref'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
+
+   function Insert_Value
+     (Env : Environ; Arg, Elt : GL_Value; Index : unsigned; Name : String)
+     return GL_Value
+   is
+      (G (Insert_Value (Env.Bld, Arg.Value, Elt.Value, Index, Name),
+          Arg.Typ, Is_Reference => Arg.Is_Reference))
+     with  Pre  => Env /= null and then Present (Arg) and then Present (Elt),
+           Post => Present (Insert_Value'Result);
 
    function GEP
      (Env         : Environ;

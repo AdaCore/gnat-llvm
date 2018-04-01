@@ -117,6 +117,13 @@ package GNATLLVM.Types is
    --  Return the size of an LLVM type, in bits
 
    function Get_LLVM_Type_Size_In_Bits
+     (Env : Environ; G : GL_Value) return unsigned_long_long
+   is
+     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, Type_Of (G.Value)))
+     with Pre => Env /= null and then Present (G);
+   --  Return the size of an LLVM type, in bits
+
+   function Get_LLVM_Type_Size_In_Bits
      (Env : Environ; T : Type_T) return GL_Value
    is
      (Const_Int (Env, Env.Size_Type,

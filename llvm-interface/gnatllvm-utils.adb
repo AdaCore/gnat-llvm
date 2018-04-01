@@ -76,8 +76,8 @@ package body GNATLLVM.Utils is
    function Alloca
       (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
    is
-     (Alloca (Env.Bld, Create_Type (Env, TE), Name),
-      TE, Is_Reference => True);
+     (G (Alloca (Env.Bld, Create_Type (Env, TE), Name),
+         TE, Is_Reference => True));
 
    ------------------
    -- Array_Alloca --
@@ -89,8 +89,8 @@ package body GNATLLVM.Utils is
       Num_Elts : GL_Value;
       Name     : String) return GL_Value
    is
-     ((Array_Alloca (Env.Bld, Create_Type (Env, TE), Num_Elts.Value, Name),
-       TE, Is_Reference => True));
+     (G (Array_Alloca (Env.Bld, Create_Type (Env, TE), Num_Elts.Value, Name),
+         TE, Is_Reference => True));
 
    ----------------
    --  Get_Undef --
@@ -155,10 +155,10 @@ package body GNATLLVM.Utils is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
    is
-      ((Int_To_Ptr (Env.Bld, V.Value,
+      (G (Int_To_Ptr (Env.Bld, V.Value,
                     Pointer_Type (Create_Type (Env, TE), 0),
                     Name),
-       TE, Is_Reference => True));
+          TE, Is_Reference => True));
 
    ----------------
    -- Ptr_To_Int --
@@ -198,10 +198,10 @@ package body GNATLLVM.Utils is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
    is
-      ((Pointer_Cast (Env.Bld, V.Value,
+      (G (Pointer_Cast (Env.Bld, V.Value,
                       Pointer_Type (Create_Type (Env, TE), 0),
                       Name),
-       TE, Is_Reference => True));
+          TE, Is_Reference => True));
 
    -----------
    -- Trunc --
@@ -323,8 +323,8 @@ package body GNATLLVM.Utils is
 
       Our_Phi := Phi (Env.Bld, Type_Of (GL_Values (GL_Values'First)), Name);
       Add_Incoming (Our_Phi, Values'Address, BBs'Address, Values'Length);
-      return (Our_Phi, GL_Values (GL_Values'First).Typ,
-              GL_Values (GL_Values'First).Is_Reference);
+      return G (Our_Phi, GL_Values (GL_Values'First).Typ,
+                Is_Reference => GL_Values (GL_Values'First).Is_Reference);
    end Build_Phi;
 
    --------------------
@@ -618,7 +618,7 @@ package body GNATLLVM.Utils is
 
       Result := GEP (Env.Bld, Ptr.Value, Val_Idxs'Address,
                      Val_Idxs'Length, Name);
-      return (Result, Result_Type, Is_Reference => True);
+      return G (Result, Result_Type, Is_Reference => True);
    end GEP;
 
    ----------------------------------

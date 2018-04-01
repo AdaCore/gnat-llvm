@@ -145,6 +145,10 @@ package GNATLLVM.Environment is
       --  If True, this is actually a pointer to Typ, so Value's type is
       --  actually an E_Access_Type (not provided) whose Designated_Type
       --  is Typ.
+
+      Is_Raw_Array : Boolean;
+      --  If True, means that, even though the type here is unconstrained,
+      --  we've extracted the actual address of the array.
    end record
      with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
                                or else (Present (GL_Value.Value)
@@ -153,12 +157,13 @@ package GNATLLVM.Environment is
 
    type GL_Value_Array is array (Nat range <>) of GL_Value;
 
-   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False);
+   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False, False);
 
    function No (G : GL_Value) return Boolean      is (G = No_GL_Value);
    function Present (G : GL_Value) return Boolean is (G /= No_GL_Value);
 
    function Is_Reference (G : GL_Value) return Boolean is (G.Is_Reference);
+   function Is_Raw_Array (G : GL_Value) return Boolean is (G.Is_Raw_Array);
 
    LLVM_Info_Low_Bound  : constant := 200_000_000;
    LLVM_Info_High_Bound : constant := 299_999_999;

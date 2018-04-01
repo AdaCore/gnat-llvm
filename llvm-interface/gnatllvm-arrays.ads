@@ -123,7 +123,7 @@ package GNATLLVM.Arrays is
           Post => Present (Get_Slice_LValue'Result);
    --  Similar, but Rng is the Discrete_Range for the slice.
 
-   function Get_Array_Size
+   function Get_Array_Elements
      (Env         : Environ;
       Array_Descr : GL_Value;
       Array_Type  : Entity_Id;
@@ -132,7 +132,7 @@ package GNATLLVM.Arrays is
                   and then (Present (Array_Descr)
                               or else Is_Constrained (Array_Type))
                   and then (not For_Type or else No (Array_Descr)),
-          Post => Present (Get_Array_Size'Result);
+          Post => Present (Get_Array_Elements'Result);
    --  Return the number of elements contained in an Array_Type object as an
    --  integer as large as a pointer for the target architecture. If it is an
    --  unconstrained array, Array_Descr must be an expression that evaluates

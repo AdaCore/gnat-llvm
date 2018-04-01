@@ -440,11 +440,11 @@ package body GNATLLVM.Arrays is
       return Struct_Type (St_Els'Address, St_Els'Length, False);
    end Create_Array_Fat_Pointer_Type;
 
-   --------------------
-   -- Get_Array_Size --
-   --------------------
+   ------------------------
+   -- Get_Array_Elements --
+   ------------------------
 
-   function Get_Array_Size
+   function Get_Array_Elements
      (Env         : Environ;
       Array_Descr : GL_Value;
       Array_Type  : Entity_Id;
@@ -467,7 +467,7 @@ package body GNATLLVM.Arrays is
       end loop;
 
       return Size;
-   end Get_Array_Size;
+   end Get_Array_Elements;
 
    ----------------
    -- Array_Data --
@@ -622,7 +622,6 @@ package body GNATLLVM.Arrays is
    is
       Comp_Type      : constant Entity_Id :=
         Get_Fullest_View (Component_Type (Arr_Typ));
-      LLVM_Comp_Typ  : constant Type_T := Create_Type (Env, Comp_Type);
       Array_Data_Ptr : constant GL_Value :=
         (Array_Data (Env, Value.Value, Arr_Typ), Arr_Typ,
          Is_Reference => True);
@@ -670,7 +669,7 @@ package body GNATLLVM.Arrays is
          Data          : constant GL_Value :=
            Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer, "");
          Comp_Size     : constant GL_Value :=
-           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_GL_Value);
+           Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
       begin
 
@@ -738,9 +737,8 @@ package body GNATLLVM.Arrays is
            Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer, "");
          Comp_Type     : constant Entity_Id :=
            Get_Fullest_View (Component_Type (Arr_Typ));
-         LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
          Comp_Size     : constant GL_Value :=
-           Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_GL_Value);
+           Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : constant GL_Value :=
            NSW_Mul (Env, Comp_Size,
                     Convert_To_Size_Type (Env, Index_Shift),

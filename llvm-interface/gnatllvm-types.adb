@@ -535,14 +535,13 @@ package body GNATLLVM.Types is
 
    function Get_Type_Size
      (Env      : Environ;
-      T        : Type_T;
       TE       : Entity_Id;
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
       Size           : GL_Value;
       Dynamic_Fields : Boolean := False;
-
+      T              : constant Type_T := Create_Type (Env, TE);
    begin
 
       --  ?? Record types still use the old mechanism, so keep the old code
@@ -565,9 +564,7 @@ package body GNATLLVM.Types is
                     (Env,
                      Size,
                      Get_Type_Size
-                       (Env,
-                        Create_Type (Env, Full_Etype (Comp)),
-                        Full_Etype (Comp), No_GL_Value, For_Type),
+                       (Env, Full_Etype (Comp), No_GL_Value, For_Type),
                      "record-size");
                end if;
             end loop;
@@ -575,17 +572,16 @@ package body GNATLLVM.Types is
 
       elsif Is_Array_Type (TE) and then Is_Dynamic_Size (Env, TE) then
          declare
-            Comp_Type : constant Entity_Id :=
+            Comp_Type     : constant Entity_Id :=
               Get_Fullest_View (Component_Type (TE));
-            Comp_Size : constant GL_Value :=
-              Get_Type_Size (Env, Create_Type (Env, Comp_Type),
-                             Comp_Type, No_GL_Value, For_Type);
-            Our_Size  : constant GL_Value :=
-              Get_Array_Size (Env, V, TE, For_Type);
+            Comp_Size     : constant GL_Value :=
+              Get_Type_Size (Env, Comp_Type, No_GL_Value, For_Type);
+            Num_Elements  : constant GL_Value :=
+              Get_Array_Elements (Env, V, TE, For_Type);
          begin
             Size := NSW_Mul
               (Env, Convert_To_Size_Type (Env, Comp_Size),
-               Convert_To_Size_Type (Env, Our_Size),
+               Convert_To_Size_Type (Env, Num_Elements),
                "size");
          end;
 
@@ -630,7 +626,6 @@ package body GNATLLVM.Types is
                   Int_Struct_Address,
                   Get_Type_Size
                     (Env,
-                     Create_Type (Env, Full_Etype (Preceding_Field.Entity)),
                      Full_Etype (Preceding_Field.Entity), No_GL_Value).Value,
                   "offset-calc");
             end loop;

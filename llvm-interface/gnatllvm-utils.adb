@@ -68,6 +68,29 @@ package body GNATLLVM.Utils is
       return Long_Long_Integer'Value (UI_Image_Buffer (1 .. UI_Image_Length));
    end UI_To_Long_Long_Integer;
 
+   ------------
+   -- Alloca --
+   ------------
+
+   function Alloca
+      (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
+   is
+     (Alloca (Env.Bld, Create_Type (Env, TE), Name),
+      TE, Is_Reference => True);
+
+   ------------------
+   -- Array_Alloca --
+   ------------------
+
+   function Array_Alloca
+     (Env      : Environ;
+      TE       : Entity_Id;
+      Num_Elts : GL_Value;
+      Name     : String) return GL_Value
+   is
+     ((Array_Alloca (Env.Bld, Create_Type (Env, TE), Num_Elts.Value, Name),
+       TE, Is_Reference => True));
+
    ----------------
    --  Get_Undef --
    ----------------
@@ -164,8 +187,7 @@ package body GNATLLVM.Utils is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
    is
-     ((Pointer_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name),
-       TE, Is_Reference => V.Is_Reference));
+     (G (Pointer_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
 
    ----------------
    -- Ptr_To_Ref --

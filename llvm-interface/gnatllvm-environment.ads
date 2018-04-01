@@ -203,23 +203,19 @@ package GNATLLVM.Environment is
      with Pre => Env /= null and then Is_Type (TE);
 
    function Is_Dynamic_Size  (Env : Environ; TE : Entity_Id) return Boolean
-     with Pre => Env /= null and then Is_Type (TE)
-                 and then Has_Type (Env, TE);
+     with Pre => Env /= null and then Is_Type (TE);
 
    function Get_TBAA         (Env : Environ; TE : Entity_Id) return Metadata_T
-     with Pre => Env /= null and then Is_Type (TE)
-                 and then Has_Type (Env, TE);
+     with Pre => Env /= null and then Is_Type (TE);
 
    function Get_Value       (Env : Environ; VE : Entity_Id) return Value_T
      with Pre => Env /= null and then Present (VE);
 
    function Get_Array_Info  (Env : Environ; TE : Entity_Id) return Nat
-     with Pre => Env /= null and then Is_Array_Type (TE)
-                 and then Has_Type (Env, TE);
+     with Pre => Env /= null and then Is_Array_Type (TE);
 
    function Get_Record_Info (Env : Environ; TE : Entity_Id) return Record_Info
-     with Pre => Env /= null and then Is_Record_Type (TE)
-                 and then Has_Type (Env, TE);
+     with Pre => Env /= null and then Is_Record_Type (TE);
 
    function Get_Basic_Block
      (Env : Environ; BE : Entity_Id) return Basic_Block_T

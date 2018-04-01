@@ -55,7 +55,8 @@ package body GNATLLVM.Compile is
    function Allocate_For_Type
      (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
      with Pre  => Env /= null and Is_Type (TE),
-          Post => Present (Allocate_For_Type'Result);
+          Post => Present (Allocate_For_Type'Result)
+                  and then Is_Access_Type (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type TE and return
    --  a pointer to the space.  Name is the name to use for the LLVM value.
 
@@ -363,8 +364,7 @@ package body GNATLLVM.Compile is
    function Allocate_For_Type
      (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
    is
-      LLVM_Type   : constant Type_T := Create_Type (Env, TE);
-      Element_Typ : Type_T;
+      Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
    begin
 
@@ -372,7 +372,7 @@ package body GNATLLVM.Compile is
       --  we just do the alloca and that's all.
 
       if not Is_Dynamic_Size (Env, TE) then
-         return Alloca (Env, LLVM_Type, TE, Name);
+         return Alloca (Env, TE, Name);
       end if;
 
       --  Otherwise, we have to do some sort of dynamic allocation.  If
@@ -384,19 +384,16 @@ package body GNATLLVM.Compile is
       if Is_Array_Type (TE)
         and not Is_Dynamic_Size (Env, Component_Type (TE))
       then
-         Element_Typ := Create_Type (Env, Component_Type (TE));
-         Num_Elts    := Get_Array_Size (Env, No_GL_Value, TE);
+         Element_Typ := Component_Type (TE);
+         Num_Elts    := Get_Array_Elements (Env, No_GL_Value, TE);
       else
-         Element_Typ := Int_Ty (8);
-         Num_Elts    := Get_Type_Size (Env, LLVM_Type, TE, No_GL_Value);
+         Element_Typ := Standard_Short_Short_Integer;
+         Num_Elts    := Get_Type_Size (Env, TE, No_GL_Value);
       end if;
 
-      return (Bit_Cast
-                (Env.Bld,
-                 Array_Alloca (Env.Bld, Element_Typ, Num_Elts.Value,
-                               "dyn-array"),
-                 Pointer_Type (LLVM_Type, 0), Name),
-              TE, Is_Reference => True);
+      return Ptr_To_Ref
+        (Env,
+         Array_Alloca (Env, Element_Typ, Num_Elts, "dyn-array"), TE, Name);
 
    end Allocate_For_Type;
 
@@ -916,8 +913,7 @@ package body GNATLLVM.Compile is
                             Array_Alloca
                               (Env.Bld,
                                Int_Ty (8),
-                               Get_Type_Size (Env, Create_Type (Env, T), T,
-                                              No_GL_Value).Value,
+                               Get_Type_Size (Env, T, No_GL_Value).Value,
                                "array-alloca"),
                            LLVM_Type,
                            Get_Name (Def_Ident));
@@ -932,8 +928,7 @@ package body GNATLLVM.Compile is
                         Array_Alloca
                           (Env.Bld,
                            Int_Ty (8),
-                           Get_Type_Size (Env, Create_Type (Env, T),
-                                          T, No_GL_Value, True).Value,
+                           Get_Type_Size (Env, T, No_GL_Value, True).Value,
                            "record-alloca"),
                         LLVM_Type,
                         Get_Name (Def_Ident));
@@ -1241,7 +1236,7 @@ package body GNATLLVM.Compile is
                         Create_Discrete_Type
                           (Env, Var_Type, LLVM_Type, Low, High);
                         LLVM_Var := Alloca
-                          (Env, LLVM_Type, Var_Type, Get_Name (Def_Ident));
+                          (Env, Var_Type, Get_Name (Def_Ident));
                         Set_Value (Env, Def_Ident, LLVM_Var.Value);
                         Store
                           (Env,
@@ -1648,9 +1643,6 @@ package body GNATLLVM.Compile is
                --  The frontend can sometimes take a reference to an aggregate.
                --  In such cases, we have to create an anonymous object and use
                --  its value as the aggregate value.
-
-               --  ??? This alloca will not necessarily be free'd before
-               --  returning from the current subprogram: it's a leak.
 
                V : constant GL_Value :=
                  Allocate_For_Type (Env, Full_Etype (Node), "anon-obj");
@@ -2192,8 +2184,7 @@ package body GNATLLVM.Compile is
                   Value := Emit_Expr (Expression (Expr));
                end if;
 
-               Arg := (1 => Get_Type_Size (Env, Create_Type (Env, Typ),
-                                           Typ, Value,
+               Arg := (1 => Get_Type_Size (Env, Typ, Value,
                                            For_Type => No (Value)).Value);
                Result := Call
                  (Env.Bld, Env.Default_Alloc_Fn, Arg'Address, 1, "alloc");
@@ -2493,14 +2484,13 @@ package body GNATLLVM.Compile is
       then
          declare
             Void_Ptr_Type  : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-            Src_LLVM_Type  : constant Type_T := Create_Type (Env, Typ);
             Dest_LLVM_Type : constant Type_T := Create_Type (Env, Dest_Typ);
             Align          : constant unsigned :=
               Get_Type_Alignment (Env, Dest_LLVM_Type);
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
                Const_Null (Int_Ty (8)),
-               Get_Type_Size (Env, Src_LLVM_Type, Typ, No_GL_Value).Value,
+               Get_Type_Size (Env, Typ, No_GL_Value).Value,
                Const_Int (Int_Ty (32), unsigned_long_long (Align), False),
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2840,11 +2830,9 @@ package body GNATLLVM.Compile is
         or else (Is_Array_Type (Right_Typ)
                    and then not Is_Constrained (Right_Typ))
       then
-         return Get_Type_Size
-           (Env, Create_Type (Env, Left_Typ), Left_Typ, No_GL_Value);
+         return Get_Type_Size (Env, Left_Typ, No_GL_Value);
       else
-         return Get_Type_Size
-           (Env, Create_Type (Env, Right_Typ), Right_Typ, Right_Value);
+         return Get_Type_Size (Env, Right_Typ, Right_Value);
       end if;
 
    end Compute_Size;
@@ -3247,7 +3235,6 @@ package body GNATLLVM.Compile is
             declare
 
                Typ        : constant Entity_Id := Full_Etype (Prefix (Node));
-               LLVM_Typ   : constant Type_T := Create_Type (Env, Typ);
                Result_Typ : constant Entity_Id := Full_Etype (Node);
                Const_8    : constant GL_Value := Size_Const_Int (Env, 8);
                For_Type   : constant Boolean :=
@@ -3263,7 +3250,7 @@ package body GNATLLVM.Compile is
                return Convert_To_Scalar_Type
                  (Env,
                   NSW_Mul (Env,
-                           Get_Type_Size (Env, LLVM_Typ, Typ, Value, For_Type),
+                           Get_Type_Size (Env, Typ, Value, For_Type),
                            Const_8, ""),
                   Result_Typ);
             end;
@@ -3395,12 +3382,11 @@ package body GNATLLVM.Compile is
                Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
                Comp_Type     : constant Entity_Id :=
                  Get_Fullest_View (Component_Type (Full_Etype (LHS)));
-               LLVM_Comp_Typ : constant Type_T := Create_Type (Env, Comp_Type);
                Size          : constant GL_Value :=
                  NSW_Mul
                    (Env,
                     Z_Ext (Env, Left_Length, Env.Size_Type, ""),
-                    Get_Type_Size (Env, LLVM_Comp_Typ, Comp_Type, No_GL_Value),
+                    Get_Type_Size (Env, Comp_Type, No_GL_Value),
                     "byte-size");
 
                Memcmp_Args : constant Value_Array (1 .. 3) :=

@@ -19,6 +19,9 @@ with Errout; use Errout;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Types; use GNATLLVM.Types;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
+
 package body GNATLLVM.Environment is
 
    --------------
@@ -40,6 +43,15 @@ package body GNATLLVM.Environment is
 
    function Is_Dynamic_Size (Env : Environ; TE : Entity_Id) return Boolean is
    begin
+
+      --  ??? It would be better structuring if we could guarantee that this
+      --  would only be called after the type has been elaborated, but
+      --  we don't yet (and may never) have a good way of early lazy
+      --  elaboration of those types.
+      if not Has_Type (Env, TE) then
+         Discard (Create_Type (Env, TE));
+      end if;
+
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Is_Dynamic_Size;
    end Is_Dynamic_Size;
 
@@ -49,6 +61,10 @@ package body GNATLLVM.Environment is
 
    function Get_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
    begin
+      if not Has_Type (Env, TE) then
+         Discard (Create_Type (Env, TE));
+      end if;
+
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).TBAA;
    end Get_TBAA;
 
@@ -84,10 +100,12 @@ package body GNATLLVM.Environment is
    -- Get_Array_Info --
    ---------------------
 
-   function Get_Array_Info
-     (Env : Environ; TE : Entity_Id) return Nat
-   is
+   function Get_Array_Info (Env : Environ; TE : Entity_Id) return Nat is
    begin
+      if not Has_Type (Env, TE) then
+         Discard (Create_Type (Env, TE));
+      end if;
+
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Array_Bound_Info;
    end Get_Array_Info;
 
@@ -99,6 +117,10 @@ package body GNATLLVM.Environment is
      (Env : Environ; TE : Entity_Id) return Record_Info
    is
    begin
+      if not Has_Type (Env, TE) then
+         Discard (Create_Type (Env, TE));
+      end if;
+
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Record_Inf;
    end Get_Record_Info;
 

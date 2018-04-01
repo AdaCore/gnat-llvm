@@ -255,11 +255,20 @@ package GNATLLVM.Utils is
    --  Define IR builder variants which take and/or return GL_Value
 
    function Alloca
-      (Env : Environ; T : Type_T; TE : Entity_Id; Name : String)
-      return GL_Value
-   is
-     (Alloca (Env.Bld, T, Name),
-      TE, Is_Reference => True);
+      (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
+     with Pre  => Env /= null and then Present (TE),
+          Post => Present (Alloca'Result)
+                  and then Is_Access_Type (Alloca'Result);
+
+   function Array_Alloca
+     (Env      : Environ;
+      TE       : Entity_Id;
+      Num_Elts : GL_Value;
+      Name     : String) return GL_Value
+     with Pre  => Env /= null and then Present (TE)
+                  and then Present (Num_Elts),
+          Post => Present (Array_Alloca'Result)
+                  and then Is_Access_Type (Array_Alloca'Result);
 
    function Int_To_Ptr
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)

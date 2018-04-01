@@ -154,15 +154,14 @@ package GNATLLVM.Types is
 
    function Get_Type_Size
      (Env      : Environ;
-      T        : Type_T;
       TE       : Entity_Id;
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
-     with Pre  => Env /= null and then Present (T) and then Is_Type (TE)
+     with Pre  => Env /= null and then Is_Type (TE)
                   and then (not For_Type or else No (V)),
           Post => Present (Get_Type_Size'Result);
-   --  Return the size of an LLVM type, in bytes, as a GL_Value.
-   --  If TE is an unconstrained array type, V must be the value of the array.
+   --  Return the size of a type, in bytes, as a GL_Value.  If TE is
+   --  an unconstrained array type, V must be the value of the array.
 
    function Record_Field_Offset
      (Env          : Environ;

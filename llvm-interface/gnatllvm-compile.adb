@@ -42,6 +42,7 @@ with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
@@ -144,9 +145,9 @@ package body GNATLLVM.Compile is
    procedure Emit_Assignment
      (Env                       : Environ;
       Dest_Typ, RHS_Typ         : Entity_Id;
-      LValue                    : Value_T;
+      LValue                    : GL_Value;
       E                         : Node_Id;
-      E_Value                   : Value_T;
+      E_Value                   : GL_Value;
       Forwards_OK, Backwards_OK : Boolean)
      with Pre => Env /= null and then Is_Type (Dest_Typ)
                  and then Is_Type (RHS_Typ)
@@ -459,7 +460,8 @@ package body GNATLLVM.Compile is
       then
          LLVM_Param := Get_Param (Func, unsigned (Param_Num));
          Set_Value_Name (LLVM_Param, "return");
-         Env.Return_Address_Param := LLVM_Param;
+         Env.Return_Address_Param :=
+           (LLVM_Param, Return_Typ, Is_Reference => True);
       end if;
 
       Emit_List (Env, Declarations (Node));
@@ -902,8 +904,8 @@ package body GNATLLVM.Compile is
                        and then No_Initialization (Node))
                   then
                      Emit_Assignment (Env, T, Full_Etype (Expression (Node)),
-                                      LLVM_Var.Value, Expression (Node),
-                                      No_Value_T, True, True);
+                                      LLVM_Var, Expression (Node),
+                                      No_GL_Value, True, True);
                   end if;
                end if;
             end;
@@ -968,8 +970,8 @@ package body GNATLLVM.Compile is
             Emit_Assignment (Env,
                              Full_Etype (Name (Node)),
                              Full_Etype (Expression (Node)),
-                             Emit_LValue (Env, Name (Node)).Value,
-                             Expression (Node), No_Value_T,
+                             Emit_LValue (Env, Name (Node)),
+                             Expression (Node), No_GL_Value,
                              Forwards_OK (Node), Backwards_OK (Node));
 
          when N_Procedure_Call_Statement =>
@@ -1033,7 +1035,7 @@ package body GNATLLVM.Compile is
                   if Present (Env.Return_Address_Param) then
                      Emit_Assignment (Env, Our_Typ, Expr_Typ,
                                       Env.Return_Address_Param,
-                                      Return_Expr, No_Value_T, False, False);
+                                      Return_Expr, No_GL_Value, False, False);
 
                      Discard (Build_Ret_Void (Env.Bld));
 
@@ -1637,8 +1639,7 @@ package body GNATLLVM.Compile is
                     Allocate_For_Type (Env, Full_Etype (Node), "");
                begin
                   Emit_Assignment (Env, Full_Etype (Node), Full_Etype (Node),
-                                   Result.Value, Node,
-                                   Emit_Expression (Env, Node).Value,
+                                   Result, Node, Emit_Expression (Env, Node),
                                    True, True);
                   return Result;
                end;
@@ -2115,7 +2116,8 @@ package body GNATLLVM.Compile is
                LLVM_Result_Type := Create_Type (Env, Result_Type);
 
                if Nkind (Expr) = N_Qualified_Expression then
-                  Emit_Assignment (Env, Typ, Typ, Result, Empty, Value.Value,
+                  Emit_Assignment (Env, Typ, Typ, G (Result, Result_Type),
+                                   Empty, Value,
                                    True, True);
                end if;
 
@@ -2369,13 +2371,13 @@ package body GNATLLVM.Compile is
    procedure Emit_Assignment
      (Env                       : Environ;
       Dest_Typ, RHS_Typ         : Entity_Id;
-      LValue                    : Value_T;
+      LValue                    : GL_Value;
       E                         : Node_Id;
-      E_Value                   : Value_T;
+      E_Value                   : GL_Value;
       Forwards_OK, Backwards_OK : Boolean)
    is
       Src_Node : Node_Id := E;
-      Dest     : Value_T := LValue;
+      Dest     : GL_Value := LValue;
       Typ      : Entity_Id := RHS_Typ;
       Src      : GL_Value;
    begin
@@ -2412,7 +2414,7 @@ package body GNATLLVM.Compile is
             Align          : constant unsigned :=
               Get_Type_Alignment (Env, Dest_LLVM_Type);
             Args : constant Value_Array (1 .. 5) :=
-              (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
+              (Bit_Cast (Env.Bld, Dest.Value, Void_Ptr_Type, ""),
                Const_Null (Int_Ty (8)),
                Get_Type_Size (Env, Typ, No_GL_Value).Value,
                Const_Int (Int_Ty (32), unsigned_long_long (Align), False),
@@ -2428,32 +2430,30 @@ package body GNATLLVM.Compile is
         and then not Is_Dynamic_Size (Env, Dest_Typ)
       then
          Src := (if No (E_Value) then Emit_Expression (Env, Src_Node)
-                 else G (E_Value, Typ));
+                 else E_Value);
 
          --  If the pointer type of Src is not the same as the type of
          --  Dest, convert it.
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            Dest := Bit_Cast (Env.Bld, Dest,
-                              Pointer_Type (Type_Of (Src), 0), "");
+            Dest := Ptr_To_Ref (Env, Dest, Src.Typ, "");
          end if;
 
-         Store_With_Type (Env, Dest_Typ, Src.Value, Dest);
+         Store (Env, Src, Dest);
 
       else
          Src := (if No (E_Value) then Emit_LValue (Env, Src_Node)
-                 else G (E_Value, Typ));
+                 else E_Value);
 
          if Is_Array_Type (Dest_Typ) then
-            Dest := Array_Data (Env, Dest, Dest_Typ);
-            Src  := G (Array_Data (Env, Src.Value, Typ),
-                       Dest_Typ);
+            Dest := G (Array_Data (Env, Dest.Value, Dest_Typ), Dest_Typ);
+            Src  := G (Array_Data (Env, Src.Value, Typ), Dest_Typ);
          end if;
 
          declare
             Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
 
             Args : constant Value_Array (1 .. 5) :=
-              (Bit_Cast (Env.Bld, Dest, Void_Ptr_Type, ""),
+              (Bit_Cast (Env.Bld, Dest.Value, Void_Ptr_Type, ""),
                Bit_Cast (Env.Bld, Src.Value, Void_Ptr_Type, ""),
                Compute_Size (Env, Dest_Typ, Typ, Src).Value,
                Const_Int (Int_Ty (32), 1, False),  --  Alignment

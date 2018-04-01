@@ -61,37 +61,10 @@ package GNATLLVM.Utils is
           Post => Present (GEP'Result);
    --  Helper for LLVM's Build_GEP
 
-   function Is_Type_Or_Void (E : Entity_Id) return Boolean is
-     (Ekind (E) = E_Void or else Is_Type (E));
-   --  We can have Etype's that are E_Void for E_Procedure
-
    function Const_Ones (T : Type_T) return Value_T is
      (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True))
      with Pre => Present (T), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
-
-   --  It's not sufficient to just pass around an LLVM Value_T when
-   --  generating code because there's a lot of information lost about the
-   --  value and where it came from.  Contrast with Gigi, where we pass around
-   --  a GCC tree node, which already has a lot of information, and which we
-   --  further annotate with flags.  So we pass the following record:
-
-   type GL_Value is record
-      Value        : Value_T;
-      --  The LLVM value that was generated
-
-      Typ          : Entity_Id;
-      --  The GNAT type of this value.
-
-      Is_Reference : Boolean;
-      --  If True, this is actually a pointer to Typ, so Value's type is
-      --  actually an E_Access_Type (not provided) whose Designated_Type
-      --  is Typ.
-   end record
-     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
-                               or else (Present (GL_Value.Value)
-                                          and then Is_Type_Or_Void
-                                             (GL_Value.Typ));
 
    function G
      (V            : Value_T;
@@ -101,18 +74,9 @@ package GNATLLVM.Utils is
      ((V, TE, Is_Reference))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
 
-   type GL_Value_Array is array (Nat range <>) of GL_Value;
-
-   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False);
-
-   function No (G : GL_Value) return Boolean      is (G = No_GL_Value);
-   function Present (G : GL_Value) return Boolean is (G /= No_GL_Value);
-
-   function Is_Reference (G : GL_Value) return Boolean is (G.Is_Reference);
-
-   --  Now define predicates on this type to easily access properties of
-   --  the LLVM value and the effective type.  These have the same names
-   --  as those for types and Value_T's.
+   --  Now define predicates on the GL_Value type to easily access
+   --  properties of the LLVM value and the effective type.  These have the
+   --  same names as those for types and Value_T's.
 
    function Type_Of (G : GL_Value) return Type_T is
      (Type_Of (G.Value));

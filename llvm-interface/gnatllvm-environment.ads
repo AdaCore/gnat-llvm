@@ -123,6 +123,43 @@ package GNATLLVM.Environment is
       Record_Inf  : Record_Info;
    end record;
 
+   function Is_Type_Or_Void (E : Entity_Id) return Boolean is
+     (Ekind (E) = E_Void or else Is_Type (E));
+     --  We can have Etype's that are E_Void for E_Procedure; needed for
+     --  aspect of below record.
+
+   --  It's not sufficient to just pass around an LLVM Value_T when
+   --  generating code because there's a lot of information lost about the
+   --  value and where it came from.  Contrast with Gigi, where we pass around
+   --  a GCC tree node, which already has a lot of information, and which we
+   --  further annotate with flags.  So we pass the following record:
+
+   type GL_Value is record
+      Value        : Value_T;
+      --  The LLVM value that was generated
+
+      Typ          : Entity_Id;
+      --  The GNAT type of this value.
+
+      Is_Reference : Boolean;
+      --  If True, this is actually a pointer to Typ, so Value's type is
+      --  actually an E_Access_Type (not provided) whose Designated_Type
+      --  is Typ.
+   end record
+     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
+                               or else (Present (GL_Value.Value)
+                                          and then Is_Type_Or_Void
+                                             (GL_Value.Typ));
+
+   type GL_Value_Array is array (Nat range <>) of GL_Value;
+
+   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False);
+
+   function No (G : GL_Value) return Boolean      is (G = No_GL_Value);
+   function Present (G : GL_Value) return Boolean is (G /= No_GL_Value);
+
+   function Is_Reference (G : GL_Value) return Boolean is (G.Is_Reference);
+
    LLVM_Info_Low_Bound  : constant := 200_000_000;
    LLVM_Info_High_Bound : constant := 299_999_999;
    type LLVM_Info_Id is range LLVM_Info_Low_Bound .. LLVM_Info_High_Bound;
@@ -173,7 +210,7 @@ package GNATLLVM.Environment is
       --  Parameter to this subprogram, if any, that represents an
       --  activtion record.
 
-      Return_Address_Param      : Value_T;
+      Return_Address_Param      : GL_Value;
       --  Parameter to this subprogram, if any, that represent the address
       --  to which we are to copy the return value.
 

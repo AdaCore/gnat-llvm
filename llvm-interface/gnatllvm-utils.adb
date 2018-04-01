@@ -23,6 +23,7 @@ with Stringt;  use Stringt;
 with Treepr;   use Treepr;
 
 with GNATLLVM.Types;      use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is

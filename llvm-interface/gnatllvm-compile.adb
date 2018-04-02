@@ -3043,8 +3043,8 @@ package body GNATLLVM.Compile is
                Array_Descr : GL_Value;
                Result      : GL_Value;
                Dim         : constant Nat :=
-                 (if Present (Expressions (Node)) then
-                  UI_To_Int (Intval (First (Expressions (Node)))) - 1
+                 (if Present (Expressions (Node))
+                  then UI_To_Int (Intval (First (Expressions (Node)))) - 1
                   else 0);
 
             begin
@@ -3435,8 +3435,8 @@ package body GNATLLVM.Compile is
 
             First_Choice := First (Discrete_Choices (Alt));
             Num_Choices := Num_Choices +
-              (if Nkind (First_Choice) = N_Others_Choice then
-               List_Length (Others_Discrete_Choices (First_Choice))
+              (if Nkind (First_Choice) = N_Others_Choice
+               then List_Length (Others_Discrete_Choices (First_Choice))
                else List_Length (Discrete_Choices (Alt)));
             Alt := Next (Alt);
          end loop;
@@ -3542,12 +3542,14 @@ package body GNATLLVM.Compile is
             If_Cost := (if Low > High then 0 elsif Low = High then 1 else 2);
 
             Switch_Cost := (if not UI_Is_In_Int_Range (Low)
-                            or else not UI_Is_In_Int_Range (High)
+                              or else not UI_Is_In_Int_Range (High)
                             then 1000
                             elsif If_Cost <= 1 then If_Cost
                             elsif Integer (UI_To_Int (Low)) /= Integer'First
-                            and then Integer (UI_To_Int (High)) /= Integer'Last
-                            and then UI_To_Int (High) - UI_To_Int (Low) < 1000
+                              and then Integer (UI_To_Int (High)) /=
+                                         Integer'Last
+                              and then UI_To_Int (High) - UI_To_Int (Low) <
+                                         1000
                             then UI_To_Int (High) - UI_To_Int (Low) + 1
                             else 1000);
             Choices (Current_Choice) := (Low => Low, High => High,

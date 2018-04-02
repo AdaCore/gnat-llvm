@@ -58,8 +58,8 @@ package body GNATLLVM.Arrays is
      with Dynamic_Predicate => ((if Cnst = No_Uint then 0 else 1) +
                                 (if No (Value) then 0 else 1) +
                                 (if No (Discr) then 0 else 1)) <= 1
-                                and then ((No (Value) and then No (Discr))
-                                          or else Dynamic);
+                                   and then ((No (Value) and then No (Discr))
+                                             or else Dynamic);
 
    type Index_Bounds is record
       Bound_Type        : Entity_Id;
@@ -176,7 +176,7 @@ package body GNATLLVM.Arrays is
             return Emit_Expression
               (Env,
                (if Is_Low then Type_Low_Bound (Disc_Type)
-               else Type_High_Bound (Disc_Type)));
+                else Type_High_Bound (Disc_Type)));
          end;
       else
          return
@@ -223,8 +223,8 @@ package body GNATLLVM.Arrays is
          C_Then => Const_Null (Env, Dim_Info.Bound_Type),
          C_Else =>
            (if Low_Bound = Const_1 then High_Bound
-           else NSW_Add
-             (Env, NSW_Sub (Env, High_Bound, Low_Bound, ""), Const_1, "")),
+            else NSW_Add
+              (Env, NSW_Sub (Env, High_Bound, Low_Bound, ""), Const_1, "")),
          Name   => "");
    end Get_Array_Length;
 

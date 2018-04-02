@@ -105,18 +105,14 @@ package body Uintp.LLVM is
 
    begin
       Push_Bits
-        (Bits   => (if Is_Negative
-                    then Ones (N_Padding_Bits)
-                    else 0),
+        (Bits   => (if Is_Negative then Ones (N_Padding_Bits) else 0),
          Length => N_Padding_Bits);
 
       for I in 1 .. Length loop
          declare
             Digit : Int renames D_Table (Loc + I - 1);
             Bits  : constant uint64_t := uint64_t
-              (if Digit < Nat (0)
-               then 2 ** Base_Bits - Digit
-               else Digit);
+              (if Digit < Nat (0) then 2 ** Base_Bits - Digit else Digit);
          begin
             Push_Bits (Bits, Base_Bits);
          end;

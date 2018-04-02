@@ -426,13 +426,13 @@ package body GNATLLVM.Types is
    is
       LLVM_Return_Typ : Type_T :=
         (if Ekind (Return_Type) = E_Void
-           then Void_Type_In_Context (Env.Ctx)
-           else Create_Type (Env, Return_Type));
+         then Void_Type_In_Context (Env.Ctx)
+         else Create_Type (Env, Return_Type));
       Args_Count      : constant Nat :=
         Params'Length + (if Takes_S_Link then 1 else 0) +
                         (if Ekind (Return_Type) /= E_Void
                            and then Is_Dynamic_Size (Env, Return_Type)
-                           then 1 else 0);
+                         then 1 else 0);
       Arg_Types       : Type_Array (1 .. Args_Count);
    begin
       --  First, Associate an LLVM type for each Ada subprogram parameter

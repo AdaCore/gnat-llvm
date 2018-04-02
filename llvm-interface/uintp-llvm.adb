@@ -35,10 +35,7 @@ package body Uintp.LLVM is
       D_Table : Udigits.Table_Ptr renames Udigits.Table;
 
       N_Bits  : constant Nat := Base_Bits * Length;
-      N_Words : constant Nat :=
-        (if N_Bits /= Nat (0) and then N_Bits mod Nat (64) = Nat (0)
-         then N_Bits / 64
-         else N_Bits / 64 + 1);
+      N_Words : constant Nat := (N_Bits + 63) / 64;
       N_Padding_Bits : constant Nat := N_Words * 64 - N_Bits;
 
       Is_Negative : constant Boolean := D_Table (Loc) < Int (0);

@@ -17,7 +17,6 @@
 
 with Errout;   use Errout;
 with Sem_Util; use Sem_Util;
-with Stand;    use Stand;
 with Uintp;    use Uintp;
 
 with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
@@ -37,9 +36,10 @@ package body GNATLLVM.Types is
       Takes_S_Link  : Boolean) return Type_T
      with Pre  => Env /= null,
           Post => Present (Create_Subprogram_Type'Result);
-   --  Helper for public Create_Subprogram_Type functions: the public ones
-   --  harmonize input and this one actually creates the LLVM type for
-   --  subprograms.  Return_Type can be Empty if this is a procedure.
+   --  Helper for public Create_Subprogram_Type functions: the public
+   --  ones harmonize input and this one actually creates the LLVM
+   --  type for subprograms.  Return_Type will be of Ekind E_Void if
+   --  this is a procedure.
 
    function Create_Subprogram_Access_Type
      (Env       : Environ;
@@ -394,21 +394,9 @@ package body GNATLLVM.Types is
    is
       Def_Ident : constant Entity_Id := Defining_Entity (Subp_Spec);
       Params    : constant Entity_Iterator := Get_Params (Def_Ident);
-      Result    : Node_Id := Empty;
+      Result    : constant Node_Id := Full_Etype (Def_Ident);
 
    begin
-      case Nkind (Subp_Spec) is
-         when N_Procedure_Specification =>
-            null;
-         when N_Function_Specification =>
-            Result := Entity (Result_Definition (Subp_Spec));
-         when others =>
-            Error_Msg_N
-              ("invalid node kind: `" & Node_Kind'Image (Nkind (Subp_Spec)),
-               Subp_Spec);
-            raise Program_Error;
-      end case;
-
       return Create_Subprogram_Type (Env, Params, Result, False);
    end Create_Subprogram_Type_From_Spec;
 
@@ -422,11 +410,7 @@ package body GNATLLVM.Types is
       Takes_S_Link  : Boolean) return Type_T is
    begin
       return Create_Subprogram_Type
-        (Env,
-         Get_Params (Subp_Type_Ent),
-         (if Full_Etype (Subp_Type_Ent) = Standard_Void_Type
-          then Empty
-          else Full_Etype (Subp_Type_Ent)),
+        (Env, Get_Params (Subp_Type_Ent), Full_Etype (Subp_Type_Ent),
          Takes_S_Link);
    end Create_Subprogram_Type_From_Entity;
 
@@ -441,11 +425,12 @@ package body GNATLLVM.Types is
       Takes_S_Link  : Boolean) return Type_T
    is
       LLVM_Return_Typ : Type_T :=
-         (if Present (Return_Type) then Create_Type (Env, Return_Type)
-          else Void_Type_In_Context (Env.Ctx));
+        (if Ekind (Return_Type) = E_Void
+           then Void_Type_In_Context (Env.Ctx)
+           else Create_Type (Env, Return_Type));
       Args_Count      : constant Nat :=
         Params'Length + (if Takes_S_Link then 1 else 0) +
-                        (if Present (Return_Type)
+                        (if Ekind (Return_Type) /= E_Void
                            and then Is_Dynamic_Size (Env, Return_Type)
                            then 1 else 0);
       Arg_Types       : Type_Array (1 .. Args_Count);
@@ -477,7 +462,7 @@ package body GNATLLVM.Types is
       --  If the return type has dynamic size, we need to add a parameter
       --  to which we pass the address for the return to be placed in.
 
-      if Present (Return_Type)
+      if Ekind (Return_Type) /= E_Void
         and then Is_Dynamic_Size (Env, Return_Type)
       then
          Arg_Types (Arg_Types'Last) := Create_Access_Type (Env, Return_Type);

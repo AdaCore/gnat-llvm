@@ -1449,43 +1449,13 @@ package body GNATLLVM.Compile is
    function Emit_LValue_Internal
      (Env : Environ; Node : Node_Id) return GL_Value
    is
-      Typ        : Entity_Id := Full_Etype (Node);
-      Value      : GL_Value := Emit_LValue_Main (Env, Node);
-      Inner_Node : Node_Id := Node;
+      Value : constant GL_Value := Emit_LValue_Main (Env, Node);
    begin
-
-      --  For all purposes below, we want to look at the type of an inner
-      --  node if Node is a conversion and Typ is a composite type.
-
-      while Is_Composite_Type (Typ)
-        and then Nkind_In (Inner_Node, N_Type_Conversion,
-                           N_Unchecked_Type_Conversion)
-      loop
-         Inner_Node := Expression (Inner_Node);
-         Typ        := Full_Etype (Inner_Node);
-      end loop;
-
-      --  Unless Typ is an unconstrained array type, convert the LValue
-      --  we have so far into a pointer to that type (unless it already is).
-      --  We also don't do this if the value is a subprogram since we may
-      --  we may have made a complex object for it.  We have to be careful
-      --  of the order in which we test since Typ may be E_Void
-
-      if (not Is_Array_Type (Typ) or else Is_Constrained (Typ))
-        and then not (Is_Entity_Name (Node)
-                        and then Ekind (Entity (Node)) in Subprogram_Kind)
-        and then Type_Of (Value) /= Create_Access_Type (Env, Typ)
-      then
-         Value
-           := G (Bit_Cast (Env.Bld, Value.Value,
-                           Create_Access_Type (Env, Typ), ""),
-                 Typ, Is_Reference => True);
-      end if;
 
       --  If the object is not of void type, save the result in the
       --  pair table under the base type of the fullest view.
 
-      if Ekind (Typ) /= E_Void then
+      if Ekind (Value) /= E_Void then
          LValue_Pair_Table.Append (Value);
       end if;
 
@@ -1592,11 +1562,7 @@ package body GNATLLVM.Compile is
                Set_Initializer (V.Value, Emit_Expression (Env, Node).Value);
                Set_Linkage (V.Value, Private_Linkage);
                Set_Global_Constant (V.Value, True);
-               return GEP
-                 (Env, Full_Etype (Node), V,
-                  (Size_Const_Int (Env, 0),
-                   Const_Null (Env, Standard_Positive)),
-                  "str-addr");
+               return V;
             end;
 
          when N_Selected_Component =>
@@ -2148,7 +2114,17 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (Env, Node, LValue => False);
 
          when N_Selected_Component | N_Indexed_Component  | N_Slice =>
-            return Load (Env, Emit_LValue (Env, Node));
+            declare
+               LValue : constant GL_Value :=  Emit_LValue (Env, Node);
+            begin
+
+               --  If this is of dynamic size, we leave it as a reference to
+               --  the value since we can't do a simple load and all consumers
+               --  know what to do.
+
+               return (if Is_Dynamic_Size (Env, LValue) then LValue
+                       else Load (Env, LValue));
+            end;
 
          when N_Aggregate =>
             if Null_Record_Present (Node) then
@@ -3405,6 +3381,17 @@ package body GNATLLVM.Compile is
       elsif Is_Discrete_Or_Fixed_Point_Type (LHS)
         or else Is_Access_Type (LHS)
       then
+         --  At this point, if LHS is an access type, then RHS is too and
+         --  we know the aren't pointers to unconstrained arrays.  It's
+         --  possible that the two pointer types aren't the same, however.
+         --  So in that case, convert one to the pointer of the other.
+         --  ?? We do this at low-level since the pointer cast operations
+         --  on GL_Value don't quite do exactly the right thing yet.
+
+         if Is_Access_Type (LHS) and then Type_Of (RHS) /= Type_Of (LHS) then
+            RHS.Value := Pointer_Cast (Env.Bld, RHS.Value, Type_Of (LHS), "");
+         end if;
+
          return I_Cmp
            (Env,
             (if Is_Unsigned_Type (LHS) or else Is_Access_Type (LHS)

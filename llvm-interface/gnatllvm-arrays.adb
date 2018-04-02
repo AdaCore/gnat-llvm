@@ -461,7 +461,7 @@ package body GNATLLVM.Arrays is
          return Array_Descr;
       else
          return G (Extract_Value (Env.Bld, Array_Descr.Value, 0, "array-data"),
-                   Full_Etype (Array_Descr),
+                   Full_Etype (Designated_Type (Array_Descr)),
                    Is_Reference => True, Is_Raw_Array => True);
       end if;
    end Array_Data;
@@ -666,7 +666,7 @@ package body GNATLLVM.Arrays is
          return Ptr_To_Ref
            (Env, GEP (Env, Standard_Short_Short_Integer, Data,
                       (1 => Index), "gen-index"),
-            Arr_Typ, "");
+            Comp_Type, "");
       end;
 
    end Get_Indexed_LValue;
@@ -696,13 +696,17 @@ package body GNATLLVM.Arrays is
    begin
 
       --  Like the above case, we have to hande both the opaque and non-opaque
-      --  cases.  Luckily, we know we're only a single dimension.
+      --  cases.  Luckily, we know we're only a single dimension.  However,
+      --  GEP's result type is a pointer to the component type, so we need
+      --  to cast to the result (array) type in both cases.
 
       if Type_Is_Sized (LLVM_Array_Typ) then
-         return GEP
-           (Env, Result_Type, Array_Data_Ptr,
-            (Size_Const_Int (Env, 0), Index_Shift),
-            "array-shifted");
+         return Ptr_To_Ref (Env,
+                            GEP
+                              (Env, Result_Type, Array_Data_Ptr,
+                               (Size_Const_Int (Env, 0), Index_Shift),
+                               "array-shifted"),
+                            Result_Type, "");
       end if;
 
       declare
@@ -719,7 +723,7 @@ package body GNATLLVM.Arrays is
       begin
          return Ptr_To_Ref
            (Env, GEP (Env, Arr_Typ, Data, (1 => Index), "gen-index"),
-            Arr_Typ, "");
+            Result_Type, "");
       end;
 
    end Get_Slice_LValue;

@@ -91,6 +91,10 @@ package GNATLLVM.Utils is
      (G.Typ)
      with Pre => Present (G), Post => Present (Full_Etype'Result);
 
+   function Ekind (G : GL_Value) return Entity_Kind is
+     (Ekind (G.Typ))
+     with Pre => Present (G);
+
    function Is_Access_Type (G : GL_Value) return Boolean is
      (Is_Reference (G) or else Is_Access_Type (G.Typ))
      with Pre => Present (G);

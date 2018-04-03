@@ -95,10 +95,6 @@ package GNATLLVM.Arrays is
      with Pre  => Env /= null and then Is_Type (N),
           Post => Present (Get_Innermost_Component_Type'Result);
 
-   function Dynamic_Size_Array (T : Entity_Id) return Boolean
-     with Pre => Is_Type (T);
-   --  Return True if T denotees an array with a dynamic size
-
    function Get_Indexed_LValue
      (Env     : Environ;
       Arr_Typ : Entity_Id;

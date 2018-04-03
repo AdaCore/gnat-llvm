@@ -271,7 +271,7 @@ package body GNATLLVM.Types is
                   --  If we are on a component with a dynamic size,
                   --  we create a new struct type for the following components.
 
-                  if Dynamic_Size_Array (Full_Etype (Comp)) then
+                  if Is_Dynamic_Size (Env, Full_Etype (Comp)) then
                      Info.Dynamic_Size := True;
                      Struct_Set_Body
                        (Struct_Type, LLVM_Comps'Address,
@@ -537,7 +537,7 @@ package body GNATLLVM.Types is
 
          if Record_With_Dynamic_Size (Env, TE) then
             for Comp of Iterate_Components (TE) loop
-               if Dynamic_Size_Array (Full_Etype (Comp)) then
+               if Is_Dynamic_Size (Env, Full_Etype (Comp)) then
                   Dynamic_Fields := True;
                end if;
 

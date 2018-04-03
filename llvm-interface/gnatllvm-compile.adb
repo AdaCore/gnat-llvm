@@ -1811,6 +1811,77 @@ package body GNATLLVM.Compile is
                     (Env, Signs_Same, Result, Add_Back, "");
                end;
 
+            --  If this is a division operation with Round_Result set, we
+            --  have to do that rounding.  There are two different cases,
+            --  one for signed and one for unsigned.
+
+            elsif Nkind (Node) = N_Op_Divide
+              and then Rounded_Result (Node) and then Unsign
+            then
+               declare
+
+                  --  We compute the remainder.  If the remainder is greater
+                  --  then half of the RHS (e.g., > (RHS + 1) / 2), we add
+                  --  one to the result.
+
+                  Remainder       : constant GL_Value :=
+                    U_Rem (Env, LVal, RVal, "");
+                  Half_RHS        : constant GL_Value :=
+                    L_Shr (Env, NSW_Sub (Env, RVal,
+                                         Const_Int (Env, RVal, 1), ""),
+                           Const_Int (Env, RVal, 1), "");
+                  Result_Plus_One : constant GL_Value :=
+                    NSW_Add (Env, Result, Const_Int (Env, RVal, 1), "");
+                  Need_Adjust     : constant GL_Value :=
+                    I_Cmp (Env, Int_UGT, Remainder, Half_RHS, "");
+               begin
+                  Result := Build_Select (Env, Need_Adjust,
+                                          Result_Plus_One, Result, "");
+               end;
+
+            elsif Nkind (Node) = N_Op_Divide
+              and then Rounded_Result (Node) and then not Unsign
+            then
+               declare
+
+                  --  We compute the remainder.  Then it gets more
+                  --  complicated.  Like in the mod case, we optimize for
+                  --  the case when rhs RHS is a constant.  If twice the
+                  --  absolute value of the remainder is greater than the
+                  --  RHS, we have to either add or subtract one from the
+                  --  result, depending on whether the RHS is positive or
+                  --  negative.
+
+                  Remainder        : constant GL_Value :=
+                    S_Rem (Env, LVal, RVal, "");
+                  Rem_Negative     : constant GL_Value :=
+                    I_Cmp (Env, Int_SLT, Remainder,
+                           Const_Null (Env, Remainder), "");
+                  Abs_Rem          : constant GL_Value :=
+                    Build_Select (Env, Rem_Negative,
+                                  NSW_Neg (Env, Remainder, ""),
+                                  Remainder, "");
+                  RHS_Negative     : constant GL_Value :=
+                    I_Cmp (Env, Int_SLT, RVal, Const_Null (Env, RVal), "");
+                  Abs_RHS : constant GL_Value :=
+                    Build_Select (Env, RHS_Negative,
+                                  NSW_Neg (Env, RVal, ""),
+                                  RVal, "");
+                  Need_Adjust      : constant GL_Value :=
+                    I_Cmp (Env, Int_UGE,
+                           Shl (Env, Abs_Rem, Const_Int (Env, RVal, 1), ""),
+                           Abs_RHS, "");
+                  Result_Plus_One  : constant GL_Value :=
+                    NSW_Add (Env, Result, Const_Int (Env, RVal, 1), "");
+                  Result_Minus_One : constant GL_Value :=
+                    NSW_Sub (Env, Result, Const_Int (Env, RVal, 1), "");
+                  Which_Adjust     : constant GL_Value :=
+                    Build_Select (Env, RHS_Negative, Result_Minus_One,
+                                  Result_Plus_One, "");
+               begin
+                  Result := Build_Select (Env, Need_Adjust,
+                                          Which_Adjust, Result, "");
+               end;
             end if;
 
             return Result;
@@ -2768,12 +2839,11 @@ package body GNATLLVM.Compile is
    function Convert_Scalar_Types
      (Env : Environ; D_Type : Entity_Id; Expr : Node_Id) return GL_Value
    is
-      Value : constant GL_Value := Emit_Expression (Env, Expr);
       type Cvtf is access function
         (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String)
         return GL_Value;
 
-      Subp        : Cvtf := null;
+      Value       : GL_Value := Emit_Expression (Env, Expr);
       Src_FP      : constant Boolean := Is_Floating_Point_Type (Value);
       Dest_FP     : constant Boolean := Is_Floating_Point_Type (D_Type);
       Src_Uns     : constant Boolean := Is_Unsigned_Type (Value);
@@ -2785,7 +2855,8 @@ package body GNATLLVM.Compile is
          else Esize (D_Type));
       Dest_Size   : constant unsigned_long_long :=
         unsigned_long_long (UI_To_Int (Dest_Usize));
-      Is_Trunc  : constant Boolean := Dest_Size < Src_Size;
+      Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
+      Subp        : Cvtf := null;
    begin
 
       --  We have four cases: FP to FP, FP to Int, Int to FP, and Int to Int.
@@ -2801,6 +2872,56 @@ package body GNATLLVM.Compile is
 
       elsif Src_FP and then not Dest_FP then
          Subp := (if Dest_Uns then FP_To_UI'Access else FP_To_SI'Access);
+
+         --  In the FP to Integer case, the LLVM instructions round to
+         --  zero, but the Ada semantics round away from zero, so we have
+         --  to adjust the input.  We first compute Type'Pred (0.5).  If
+         --  the input is strictly negative, subtract this value and
+         --  otherwise add it from the input.  For 0.5, the result is
+         --  exactly between 1.0 and the machine number preceding 1.0.
+         --  Since the last bit of 1.0 is even, this 0.5 will round to 1.0,
+         --  while all other number with an absolute value less than 0.5
+         --  round to 0.0.  For larger numbers exactly halfway between
+         --  integers, rounding will always be correct as the true
+         --  mathematical result will be closer to the higher integer
+         --  compared to the lower one.  So, this constant works for all
+         --  floating-point numbers.
+
+         --  The reason to use the same constant with subtract/add instead
+         --  of a positive and negative constant is to allow the comparison
+         --  to be scheduled in parallel with retrieval of the constant and
+         --  conversion of the input to the calc_type (if necessary).
+
+         --  The easiest way of computing the constant is to do it at
+         --  compile-time by finding the correct floating-point type to use.
+
+         declare
+            Size_In_Bits : constant unsigned_long_long :=
+              Get_LLVM_Type_Size_In_Bits (Env, Value);
+            PredHalf     : constant Long_Long_Float :=
+              (if Long_Long_Float'Size = Size_In_Bits
+               then Long_Long_Float'Pred (0.5)
+               elsif Long_Float'Size = Size_In_Bits
+               then Long_Long_Float (Long_Float'Pred (0.5))
+               elsif Float'Size = Size_In_Bits
+               then Long_Long_Float (Float'Pred (0.5))
+               else Long_Long_Float (Short_Float'Pred (0.5)));
+            Val_Neg    : constant GL_Value :=
+              F_Cmp (Env, Real_OLT, Value, Const_Real (Env, Value, 0.0), "");
+            Adjust_Amt : constant GL_Value :=
+                Const_Real (Env, Value, double (PredHalf));
+            --  ?? The conversion to "double" above may be problematic,
+            --  but it's not clear how else to get the constant to LLVM.
+
+            Add_Amt    : constant GL_Value :=
+                F_Add (Env, Value, Adjust_Amt, "round-add");
+            Sub_Amt    : constant GL_Value :=
+                F_Sub (Env, Value, Adjust_Amt, "round-sub");
+
+         begin
+            Value := Build_Select (Env, Val_Neg, Sub_Amt, Add_Amt, "");
+         end;
+
       elsif not Src_FP and then Dest_FP then
          Subp := (if Src_Uns then UI_To_FP'Access else SI_To_FP'Access);
       else

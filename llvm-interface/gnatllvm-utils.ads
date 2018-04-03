@@ -250,6 +250,11 @@ package GNATLLVM.Utils is
      with Pre => Present (G), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
+   function Const_Real
+     (Env : Environ; TE : Entity_Id; V : double) return GL_Value
+     with Pre  => Env /= null and then Present (TE),
+          Post => Present (Const_Real'Result);
+
    function Size_Const_Int
      (Env : Environ; N : Uint) return GL_Value is
      (Const_Int (Env, Env.Size_Type, N))
@@ -265,8 +270,9 @@ package GNATLLVM.Utils is
      with Pre => Env /= null, Post => Present (Size_Const_Int'Result);
 
    function Const_Real
-     (Env : Environ; TE : Entity_Id; V : double) return GL_Value
-     with Pre  => Env /= null and then Present (TE),
+     (Env : Environ; G : GL_Value; V : double) return GL_Value is
+     (Const_Real (Env, G.Typ, V))
+     with Pre  => Env /= null and then Present (G),
           Post => Present (Const_Real'Result);
 
    --  Define IR builder variants which take and/or return GL_Value

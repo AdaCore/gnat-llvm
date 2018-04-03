@@ -45,6 +45,10 @@ package body Uintp.LLVM is
       Cur_Bit  : Integer := 64;
       Result   : Value_T;
 
+      function Ones (Length : Integer) return uint64_t is
+         (uint64_t (2 ** Length - 1));
+      --  Return a bitfield with the Length least significant bits set to 1
+
       procedure Push_Bits (Bits : uint64_t; Length : Integer);
       --  Push Bits (an integer Length bits arge) into the upper bits of Words
       --  right after the cursor. Update the cursor accordingly.

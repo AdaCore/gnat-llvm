@@ -1,7 +1,7 @@
 function Foo return Integer is
    type Int_UC_Array is array (Natural range <>) of Integer;
 
-   A1 : Int_UC_Array := (1000 .. 3000 => 0);
+   A1 : Int_UC_Array := (1000 .. 1100 => 0);
    A2 : Int_UC_Array := A1;
 begin
    for I in A1'Range loop

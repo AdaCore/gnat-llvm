@@ -1784,27 +1784,31 @@ package body GNATLLVM.Compile is
             --  is zero or the result and the RHS have the same sign, the
             --  result is correct.  Otherwise, we have to add the RHS to
             --  the result.  Two values have the same sign iff their xor
-            --  is non-negative.
+            --  is non-negative, which is the best code for the general case,
+            --  but having a variable as the second operand of mod is quite
+            --  rare, so it's best to do slightly less efficient code for
+            --  then general case that will get constant-folded in the
+            --  constant case.
 
             if not Unsign and Nkind (Node) = N_Op_Mod then
                declare
-                  Add_Back     : constant GL_Value :=
+                  Add_Back      : constant GL_Value :=
                     NSW_Add (Env, Result, RVal, "addback");
-                  Result_0     : constant GL_Value :=
-                    I_Cmp (Env, Int_EQ, Result, Const_Null (Env, Result),
-                          "mod-res-0");
-                  Sign_Xor     : constant GL_Value :=
-                    Build_Xor (Env, Result, RVal, "mod-sign-compute");
-                  Signs_Same : constant GL_Value :=
-                    I_Cmp (Env, Int_SGE, Sign_Xor, Const_Null (Env, Result),
-                          "mod-sign-check");
+                  RHS_Neg       : constant GL_Value :=
+                    I_Cmp (Env, Int_SLT, RVal, Const_Null (Env, RVal),
+                           "RHS-neg");
+                  Result_Nonpos : constant GL_Value :=
+                    I_Cmp (Env, Int_SLE, Result, Const_Null (Env, Result),
+                           "result-nonpos");
+                  Result_Nonneg : constant GL_Value :=
+                    I_Cmp (Env, Int_SGE, Result, Const_Null (Env, Result),
+                           "result-nonneg");
+                  Signs_Same    : constant GL_Value :=
+                    Build_Select (Env, RHS_Neg, Result_Nonpos, Result_Nonneg,
+                                  "signs-same");
                begin
                   Result := Build_Select
-                    (Env, C_If => Signs_Same,
-                     C_Then => Result,
-                     C_Else => Build_Select
-                       (Env, Result_0, Result, Add_Back, ""),
-                     Name => "");
+                    (Env, Signs_Same, Result, Add_Back, "");
                end;
 
             end if;

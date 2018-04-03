@@ -336,7 +336,14 @@ package body GNATLLVM.Utils is
    begin
       case Nkind (Node) is
          when N_Character_Literal =>
-            return Char_Literal_Value (Node);
+
+            --  If a Entity is present, it means that this was one of the
+            --  literals in a user-defined character type.
+
+            return
+              (if Present (Entity (Node))
+               then Enumeration_Rep (Entity (Node))
+               else Char_Literal_Value (Node));
 
          when N_Integer_Literal =>
             return Intval (Node);

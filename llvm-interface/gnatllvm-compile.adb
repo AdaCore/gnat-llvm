@@ -3923,8 +3923,14 @@ package body GNATLLVM.Compile is
    begin
       case Nkind (Node) is
          when N_Character_Literal =>
+
+            --  If a Entity is present, it means that this was one of the
+            --  literals in a user-defined character type.
+
             return Const_Int (Env, Full_Etype (Node),
-                              Char_Literal_Value (Node));
+                              (if Present (Entity (Node))
+                               then Enumeration_Rep (Entity (Node))
+                               else Char_Literal_Value (Node)));
 
          when N_Integer_Literal =>
             return Const_Int (Env, Full_Etype (Node), Intval (Node));

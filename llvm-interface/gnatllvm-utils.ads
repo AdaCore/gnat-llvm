@@ -35,6 +35,15 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Utils is
 
+   function Get_Fullest_View (E : Entity_Id) return Entity_Id
+     with Pre => Is_Type (E), Post => Is_Type (Get_Fullest_View'Result);
+   --  Get the fullest possible view of E, looking through private,
+   --  limited, and packed array implementation types.
+
+   function Full_Etype (N : Node_Id) return Entity_Id is
+      (if Ekind (Etype (N)) = E_Void then Etype (N)
+       else Get_Fullest_View (Etype (N)));
+
    type Value_Array is array (Nat range <>) of Value_T;
    type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
 
@@ -100,7 +109,8 @@ package GNATLLVM.Utils is
      with Pre => Present (G);
 
    function Designated_Type (G : GL_Value) return Entity_Id is
-     ((if Is_Reference (G) then G.Typ else Designated_Type (G.Typ)))
+     ((if Is_Reference (G) then G.Typ
+       else Get_Fullest_View (Designated_Type (G.Typ))))
      with Pre => Is_Access_Type (G), Post => Is_Type (Designated_Type'Result);
 
    function Implementation_Base_Type (G : GL_Value) return Entity_Id is
@@ -173,6 +183,14 @@ package GNATLLVM.Utils is
    function Esize (G : GL_Value) return Uint is
      (Esize (G.Typ))
      with Pre => not Is_Access_Type (G);
+
+   function Component_Type (G : GL_Value) return Entity_Id is
+     (Component_Type (G.Typ))
+     with Pre => Is_Array_Type (G), Post => Present (Component_Type'Result);
+
+   function Number_Dimensions (G : GL_Value) return Pos is
+     (Number_Dimensions (G.Typ))
+     with Pre => Is_Array_Type (G);
 
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
      with Pre  => Env /= null and then Is_Type (TE),
@@ -351,6 +369,78 @@ package GNATLLVM.Utils is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
      return GL_Value
      with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+          Post => Present (SI_To_FP'Result);
+
+   function Trunc
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (Trunc (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (Trunc'Result);
+
+   function S_Ext
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (S_Ext (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (S_Ext'Result);
+
+   function Z_Ext
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (Z_Ext (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (Z_Ext'Result);
+
+   function FP_Trunc
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (FP_Trunc (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (FP_Trunc'Result);
+
+   function FP_Ext
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (FP_Ext (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (FP_Ext'Result);
+
+   function FP_To_SI
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (FP_To_SI (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (FP_To_SI'Result);
+
+   function FP_To_UI
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (FP_To_UI (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (FP_To_UI'Result);
+
+   function UI_To_FP
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (UI_To_FP (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
+          Post => Present (UI_To_FP'Result);
+
+   function SI_To_FP
+     (Env : Environ; V : GL_Value; T : GL_Value; Name : String)
+     return GL_Value
+   is
+     (SI_To_FP (Env, V, T.Typ, Name))
+     with Pre  => Env /= null and then Present (V) and then Present (T),
           Post => Present (SI_To_FP'Result);
 
    procedure Store

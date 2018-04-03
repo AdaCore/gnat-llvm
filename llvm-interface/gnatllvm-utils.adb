@@ -43,6 +43,33 @@ package body GNATLLVM.Utils is
       return Str (Str'First + 1 .. Str'Last);
    end Img;
 
+   ----------------------
+   -- Get_Fullest_View --
+   ----------------------
+
+   function Get_Fullest_View (E : Entity_Id) return Entity_Id is
+   begin
+      --  Strictly speaking, the recursion below isn't necessary, but
+      --  it's both simplest and safest.
+
+      if Ekind (E) in Incomplete_Kind and then From_Limited_With (E) then
+         return Get_Fullest_View (Non_Limited_View (E));
+      elsif Present (Full_View (E)) then
+         return Get_Fullest_View (Full_View (E));
+      elsif Ekind (E) in Private_Kind
+        and then Present (Underlying_Full_View (E))
+      then
+         return Get_Fullest_View (Underlying_Full_View (E));
+      elsif Is_Array_Type (E)
+        and then Present (Packed_Array_Impl_Type (E))
+      then
+         return Get_Fullest_View (Packed_Array_Impl_Type (E));
+      else
+         return E;
+      end if;
+
+   end Get_Fullest_View;
+
    ---------------------
    -- Get_Param_Types --
    ---------------------

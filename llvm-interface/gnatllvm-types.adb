@@ -17,6 +17,7 @@
 
 with Errout;   use Errout;
 with Sem_Util; use Sem_Util;
+with Sinfo; use Sinfo;
 with Uintp;    use Uintp;
 
 with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
@@ -56,33 +57,6 @@ package body GNATLLVM.Types is
       Get_Next  => Next_Entity,
       Filter    => Rec_Comp_Filter);
    --  Iterate over all components of a given record type
-
-   ----------------------
-   -- Get_Fullest_View --
-   ----------------------
-
-   function Get_Fullest_View (E : Entity_Id) return Entity_Id is
-   begin
-      --  Strictly speaking, the recursion below isn't necessary, but
-      --  it's both simplest and safest.
-
-      if Ekind (E) in Incomplete_Kind and then From_Limited_With (E) then
-         return Get_Fullest_View (Non_Limited_View (E));
-      elsif Present (Full_View (E)) then
-         return Get_Fullest_View (Full_View (E));
-      elsif Ekind (E) in Private_Kind
-        and then Present (Underlying_Full_View (E))
-      then
-         return Get_Fullest_View (Underlying_Full_View (E));
-      elsif Is_Array_Type (E)
-        and then Present (Packed_Array_Impl_Type (E))
-      then
-         return Get_Fullest_View (Packed_Array_Impl_Type (E));
-      else
-         return E;
-      end if;
-
-   end Get_Fullest_View;
 
    ------------
    -- Int_Ty --

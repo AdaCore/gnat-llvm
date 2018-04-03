@@ -90,32 +90,24 @@ package GNATLLVM.Arrays is
           Post => Present (Get_Array_Length'Result);
    --  Similar, but get the length of that dimension of the array.
 
-   function Get_Innermost_Component_Type
-     (Env : Environ; N : Entity_Id) return Type_T
-     with Pre  => Env /= null and then Is_Type (N),
-          Post => Present (Get_Innermost_Component_Type'Result);
-
    function Get_Indexed_LValue
      (Env     : Environ;
-      Arr_Typ : Entity_Id;
       Indexes : List_Id;
       Value   : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
-                  and then List_Length (Indexes) = Number_Dimensions (Arr_Typ)
-                  and then Present (Value),
+     with Pre  => Env /= null and then Is_Array_Type (Designated_Type (Value))
+                  and then List_Length (Indexes) =
+                    Number_Dimensions (Designated_Type (Value)),
           Post => Present (Get_Indexed_LValue'Result);
    --  Get an LValue corresponding to indexing Value by Indexes.  Arr_Type
    --  is the array type.
 
    function Get_Slice_LValue
      (Env         : Environ;
-      Arr_Typ     : Entity_Id;
       Result_Type : Entity_Id;
       Rng         : Node_Id;
       Value       : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
-                  and then Number_Dimensions (Arr_Typ) = 1
-                  and then Present (Value),
+     with Pre  => Env /= null and then Is_Array_Type (Designated_Type (Value))
+                  and then Number_Dimensions (Designated_Type (Value)) = 1,
           Post => Present (Get_Slice_LValue'Result);
    --  Similar, but Rng is the Discrete_Range for the slice.
 

@@ -269,7 +269,8 @@ package body GNATLLVM.Arrays is
       TE  : Entity_Id) return Type_T
    is
       Unconstrained     : constant Boolean := not Is_Constrained (TE);
-      Comp_Type         : constant Entity_Id := Component_Type (TE);
+      Comp_Type         : constant Entity_Id :=
+        Get_Fullest_View (Component_Type (TE));
       Typ               : Type_T := Create_Type (Env, Comp_Type);
       Must_Use_Opaque   : Boolean := Is_Dynamic_Size (Env, Comp_Type);
       This_Dynamic_Size : Boolean := Must_Use_Opaque or Unconstrained;
@@ -298,11 +299,17 @@ package body GNATLLVM.Arrays is
             --  references an integer subtype instead of a range.
 
             Index_Type : constant Entity_Id := Full_Etype (Index);
-            Index_Base : constant Entity_Id :=
+            Index_BT   : constant Entity_Id :=
               Implementation_Base_Type (Index_Type);
-            LB       : constant Node_Id := Low_Bound (Idx_Range);
-            HB       : constant Node_Id := High_Bound (Idx_Range);
-            Dim_Info : constant Index_Bounds :=
+            Index_Base : constant Entity_Id :=
+              (if Index_BT = Standard_Boolean then Standard_Short_Short_Integer
+               else Index_BT);
+            --  We have a kludge here since LLVM treats i1 as signed for the
+            --  purposes of GEP (see C55C02B).
+
+            LB          : constant Node_Id := Low_Bound (Idx_Range);
+            HB          : constant Node_Id := High_Bound (Idx_Range);
+            Dim_Info    : constant Index_Bounds :=
               (Bound_Type => Index_Base,
                Low => Build_One_Bound (LB, Unconstrained),
                High => Build_One_Bound (HB, Unconstrained));
@@ -398,7 +405,7 @@ package body GNATLLVM.Arrays is
       Array_Type_Node : Entity_Id) return Type_T
    is
       Elt_Type : constant Type_T :=
-        Create_Type (Env, Component_Type (Array_Type_Node));
+        Create_Type (Env, Get_Fullest_View (Component_Type (Array_Type_Node)));
       Arr_Type : constant Type_T := Array_Type (Elt_Type, 0);
    begin
       return Pointer_Type (Arr_Type, 0);
@@ -539,31 +546,18 @@ package body GNATLLVM.Arrays is
       return GEP (Env.Bld, Array_Data, Idx, "array-addr");
    end Array_Address;
 
-   ----------------------------------
-   -- Get_Innermost_Component_Type --
-   ----------------------------------
-
-   function Get_Innermost_Component_Type
-     (Env : Environ; N : Entity_Id) return Type_T
-   is
-     (if Is_Array_Type (N)
-      then Get_Innermost_Component_Type (Env, Component_Type (N))
-      else Create_Type (Env, N));
-
    ------------------------
    -- Get_Indexed_LValue --
    ------------------------
 
    function Get_Indexed_LValue
      (Env     : Environ;
-      Arr_Typ : Entity_Id;
       Indexes : List_Id;
       Value   : GL_Value) return GL_Value
    is
       Comp_Type      : constant Entity_Id :=
-        Get_Fullest_View (Component_Type (Arr_Typ));
+        Get_Fullest_View (Component_Type (Designated_Type (Value)));
       Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
-      LLVM_Array_Typ : constant Type_T := Create_Type (Env, Arr_Typ);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Size_Const_Int (Env, 0), others => <>);
       --  Operands for the GetElementPtr instruction: one for the
@@ -579,9 +573,12 @@ package body GNATLLVM.Arrays is
          declare
             User_Index    : constant GL_Value := Emit_Expression (Env, N);
             Dim_Low_Bound : constant GL_Value :=
-              Get_Array_Bound (Env, Arr_Typ, J - 2, True, Value);
+              Get_Array_Bound (Env, Designated_Type (Value),
+                               J - 2, True, Value);
+            Converted_Index : constant GL_Value :=
+              Convert_To_Scalar_Type (Env, User_Index, Dim_Low_Bound);
          begin
-            Idxs (J) := NSW_Sub (Env, User_Index, Dim_Low_Bound, "index");
+            Idxs (J) := NSW_Sub (Env, Converted_Index, Dim_Low_Bound, "index");
          end;
 
          J := J + 1;
@@ -591,7 +588,7 @@ package body GNATLLVM.Arrays is
       --  There are two approaches we can take here.  If we haven't used
       --  an opaque type, we can just do a GEP with the values above.
 
-      if Type_Is_Sized (LLVM_Array_Typ) then
+      if Type_Is_Sized (Create_Type (Env, Designated_Type (Value))) then
          return GEP (Env, Comp_Type, Array_Data_Ptr,
                      Idxs, "array-element-access");
       end if;
@@ -611,14 +608,15 @@ package body GNATLLVM.Arrays is
          Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
       begin
 
-         for Dim in 1 .. Number_Dimensions (Arr_Typ) - 1 loop
+         for Dim in 1 .. Number_Dimensions (Designated_Type (Value)) - 1 loop
             Index := NSW_Add (Env,
                               NSW_Mul (Env,
                                        Index,
                                        Convert_To_Size_Type
                                          (Env,
                                           Get_Array_Length
-                                            (Env, Arr_Typ, Dim, Value)),
+                                            (Env, Full_Etype (Value),
+                                             Dim, Value)),
                                        ""),
                               Convert_To_Size_Type (Env, Idxs (Dim + 2)),
                               "");
@@ -639,22 +637,24 @@ package body GNATLLVM.Arrays is
 
    function Get_Slice_LValue
      (Env         : Environ;
-      Arr_Typ     : Entity_Id;
       Result_Type : Entity_Id;
       Rng         : Node_Id;
       Value       : GL_Value) return GL_Value
      is
       Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
-      LLVM_Array_Typ : constant Type_T := Create_Type (Env, Arr_Typ);
+      Low_Idx_Bound  : constant GL_Value :=
+        Get_Array_Bound (Env, Designated_Type (Value), 0, True, Value);
+      Index_Val      : constant GL_Value :=
+        Emit_Expression (Env, Low_Bound (Rng));
+      Converted_Index : constant GL_Value :=
+        Convert_To_Scalar_Type (Env, Index_Val, Index_Val);
 
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
       Index_Shift : constant GL_Value :=
-        NSW_Sub
-        (Env, Emit_Expression (Env, Low_Bound (Rng)),
-         Get_Array_Bound (Env, Arr_Typ, 0, True, Value),
-        "offset");
+        NSW_Sub (Env, Converted_Index, Low_Idx_Bound, "offset");
+
    begin
 
       --  Like the above case, we have to hande both the opaque and non-opaque
@@ -662,7 +662,7 @@ package body GNATLLVM.Arrays is
       --  GEP's result type is a pointer to the component type, so we need
       --  to cast to the result (array) type in both cases.
 
-      if Type_Is_Sized (LLVM_Array_Typ) then
+      if Type_Is_Sized (Create_Type (Env, Designated_Type (Value))) then
          return Ptr_To_Ref (Env,
                             GEP
                               (Env, Result_Type, Array_Data_Ptr,
@@ -675,7 +675,7 @@ package body GNATLLVM.Arrays is
          Data          : constant GL_Value :=
            Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer, "");
          Comp_Type     : constant Entity_Id :=
-           Get_Fullest_View (Component_Type (Arr_Typ));
+           Get_Fullest_View (Component_Type (Designated_Type (Value)));
          Comp_Size     : constant GL_Value :=
            Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : constant GL_Value :=
@@ -684,7 +684,8 @@ package body GNATLLVM.Arrays is
                     "");
       begin
          return Ptr_To_Ref
-           (Env, GEP (Env, Arr_Typ, Data, (1 => Index), "gen-index"),
+           (Env, GEP (Env, Designated_Type (Value),
+                      Data, (1 => Index), "gen-index"),
             Result_Type, "");
       end;
 

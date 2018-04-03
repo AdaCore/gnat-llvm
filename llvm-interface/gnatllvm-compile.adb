@@ -42,7 +42,6 @@ with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 
@@ -96,20 +95,6 @@ package body GNATLLVM.Compile is
                   and then Present (Expr),
           Post => Present (Convert_Scalar_Types'Result);
    --  Helper of Build_Type_Conversion if both types are scalar.
-
-   function Convert_To_Scalar_Type
-     (Env : Environ; Expr : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Convert_To_Scalar_Type'Result);
-   --  Variant of above to convert an Expr to the type TE.
-
-   function Convert_To_Scalar_Type
-     (Env : Environ; Expr : GL_Value; G : GL_Value) return GL_Value
-   is
-     (Convert_To_Scalar_Type (Env, Expr, Full_Etype (G)))
-     with Pre  => Env /= null and then Present (G),
-          Post => Present (Convert_To_Scalar_Type'Result);
-   --  Variant of above where the type is that of another value (G)
 
    function Build_Short_Circuit_Op
      (Env                   : Environ;
@@ -1580,12 +1565,12 @@ package body GNATLLVM.Compile is
 
          when N_Indexed_Component =>
             return Get_Indexed_LValue
-              (Env, Full_Etype (Prefix (Node)), Expressions (Node),
+              (Env, Expressions (Node),
                Emit_LValue_Internal (Env, Prefix (Node)));
 
          when N_Slice =>
             return Get_Slice_LValue
-              (Env, Full_Etype (Prefix (Node)), Full_Etype (Node),
+              (Env, Full_Etype (Node),
                Discrete_Range (Node),
                Emit_LValue_Internal (Env, Prefix (Node)));
 

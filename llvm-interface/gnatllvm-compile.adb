@@ -1741,19 +1741,20 @@ package body GNATLLVM.Compile is
               (Env : Environ; LHS, RHS : GL_Value; Name : String)
               return GL_Value;
 
-            Left_Type : constant Entity_Id := Full_Etype (Left_Opnd (Node));
+            Left_Type  : constant Entity_Id := Full_Etype (Left_Opnd (Node));
             Right_Type : constant Entity_Id := Full_Etype (Right_Opnd (Node));
-            Left_BT : constant Entity_Id :=
+            Left_BT    : constant Entity_Id :=
               Implementation_Base_Type (Left_Type);
-            Right_BT : constant Entity_Id :=
+            Right_BT   : constant Entity_Id :=
               Implementation_Base_Type (Right_Type);
-            LVal   : constant GL_Value :=
+            LVal       : constant GL_Value :=
               Build_Type_Conversion (Env, Left_BT, Left_Opnd (Node));
-            RVal   : constant GL_Value :=
+            RVal       : constant GL_Value :=
               Build_Type_Conversion (Env, Right_BT, Right_Opnd (Node));
-            FP     : constant Boolean := Is_Floating_Point_Type (Left_BT);
-            Unsign : constant Boolean := Is_Unsigned_Type (Right_BT);
-            Subp   : Opf := null;
+            FP         : constant Boolean := Is_Floating_Point_Type (Left_BT);
+            Unsign     : constant Boolean := Is_Unsigned_Type (Left_BT);
+            Subp       : Opf := null;
+            Result     : GL_Value;
 
          begin
             case Nkind (Node) is
@@ -1784,21 +1785,47 @@ package body GNATLLVM.Compile is
                   Subp := Build_Xor'Access;
 
                when N_Op_Mod =>
-                  Subp := U_Rem'Access;
+                  Subp := (if Unsign then U_Rem'Access else S_Rem'Access);
 
                when others =>
                   null;
 
             end case;
 
-            if Subp /= null then
-               return Subp (Env, LVal, RVal, "");
-            else
-               Error_Msg_N
-                 ("unhandled node kind in expression: `" &
-                    Node_Kind'Image (Nkind (Node)) & "`", Node);
-               return Get_Undef (Env, Left_BT);
+            Result := Subp (Env, LVal, RVal, "");
+
+            --  If this is a signed mod operation, we have to adjust the
+            --  result, since what we did is a rem operation.  If the result
+            --  is zero or the result and the RHS have the same sign, the
+            --  result is correct.  Otherwise, we have to add the RHS to
+            --  the result.  Two values have the same sign iff their xor
+            --  is non-negative.
+
+            if not Unsign and Nkind (Node) = N_Op_Mod then
+               declare
+                  Add_Back     : constant GL_Value :=
+                    NSW_Add (Env, Result, RVal, "addback");
+                  Result_0     : constant GL_Value :=
+                    I_Cmp (Env, Int_EQ, Result, Const_Null (Env, Result),
+                          "mod-res-0");
+                  Sign_Xor     : constant GL_Value :=
+                    Build_Xor (Env, Result, RVal, "mod-sign-compute");
+                  Signs_Same : constant GL_Value :=
+                    I_Cmp (Env, Int_SGE, Sign_Xor, Const_Null (Env, Result),
+                          "mod-sign-check");
+               begin
+                  Result := Build_Select
+                    (Env, C_If => Signs_Same,
+                     C_Then => Result,
+                     C_Else => Build_Select
+                       (Env, Result_0, Result, Add_Back, ""),
+                     Name => "");
+               end;
+
             end if;
+
+            return Result;
+
          end;
 
       else

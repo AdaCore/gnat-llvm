@@ -3083,6 +3083,13 @@ package body GNATLLVM.Compile is
       Cur_Index  : Integer := 0;
       Expr       : Node_Id;
    begin
+
+      pragma Assert (not Is_Dynamic_Size
+                       (Env, Full_Component_Type (Array_Type)));
+      --  The code below, by using Insert_Value, restricts itself to
+      --  Components of fixed sizes.  But that's OK because the front end
+      --  handles those cases.
+
       Expr := First (Expressions (Node));
       while Present (Expr) loop
          --  If this is a nested N_Aggregate and we have dimensions left

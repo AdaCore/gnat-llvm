@@ -531,8 +531,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Array_Type (TE) and then Is_Dynamic_Size (Env, TE) then
          declare
-            Comp_Type     : constant Entity_Id :=
-              Get_Fullest_View (Component_Type (TE));
+            Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
             Comp_Size     : constant GL_Value :=
               Get_Type_Size (Env, Comp_Type, No_GL_Value, For_Type);
             Num_Elements  : constant GL_Value :=

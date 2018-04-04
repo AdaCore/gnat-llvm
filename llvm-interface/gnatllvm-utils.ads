@@ -41,8 +41,13 @@ package GNATLLVM.Utils is
    --  limited, and packed array implementation types.
 
    function Full_Etype (N : Node_Id) return Entity_Id is
-      (if Ekind (Etype (N)) = E_Void then Etype (N)
-       else Get_Fullest_View (Etype (N)));
+     (if Ekind (Etype (N)) = E_Void then Etype (N)
+      else Get_Fullest_View (Etype (N)));
+
+   function Full_Component_Type (E : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Component_Type (E)))
+     with Pre  => Is_Array_Type (E),
+          Post => Present (Full_Component_Type'Result);
 
    type Value_Array is array (Nat range <>) of Value_T;
    type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;

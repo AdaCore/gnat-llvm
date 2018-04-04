@@ -268,8 +268,7 @@ package body GNATLLVM.Arrays is
       TE  : Entity_Id) return Type_T
    is
       Unconstrained     : constant Boolean := not Is_Constrained (TE);
-      Comp_Type         : constant Entity_Id :=
-        Get_Fullest_View (Component_Type (TE));
+      Comp_Type         : constant Entity_Id := Full_Component_Type (TE);
       Typ               : Type_T := Create_Type (Env, Comp_Type);
       Must_Use_Opaque   : Boolean := Is_Dynamic_Size (Env, Comp_Type);
       This_Dynamic_Size : Boolean := Must_Use_Opaque or Unconstrained;
@@ -404,7 +403,7 @@ package body GNATLLVM.Arrays is
       Array_Type_Node : Entity_Id) return Type_T
    is
       Elt_Type : constant Type_T :=
-        Create_Type (Env, Get_Fullest_View (Component_Type (Array_Type_Node)));
+        Create_Type (Env, Full_Component_Type (Array_Type_Node));
       Arr_Type : constant Type_T := Array_Type (Elt_Type, 0);
    begin
       return Pointer_Type (Arr_Type, 0);
@@ -552,7 +551,7 @@ package body GNATLLVM.Arrays is
       Value   : GL_Value) return GL_Value
    is
       Comp_Type      : constant Entity_Id :=
-        Get_Fullest_View (Component_Type (Designated_Type (Value)));
+        Full_Component_Type (Designated_Type (Value));
       Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Size_Const_Int (Env, 0), others => <>);
@@ -667,7 +666,7 @@ package body GNATLLVM.Arrays is
          Data          : constant GL_Value :=
            Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer);
          Comp_Type     : constant Entity_Id :=
-           Get_Fullest_View (Component_Type (Designated_Type (Value)));
+           Full_Component_Type (Designated_Type (Value));
          Comp_Size     : constant GL_Value :=
            Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : constant GL_Value :=

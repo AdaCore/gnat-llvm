@@ -362,9 +362,9 @@ package body GNATLLVM.Compile is
       --  If not, we have to allocate it as an array of bytes.
 
       if Is_Array_Type (TE)
-        and then not Is_Dynamic_Size (Env, Component_Type (TE))
+        and then not Is_Dynamic_Size (Env, Full_Component_Type (TE))
       then
-         Element_Typ := Component_Type (TE);
+         Element_Typ := Full_Component_Type (TE);
          Num_Elts    := Get_Array_Elements (Env, No_GL_Value, TE);
       else
          Element_Typ := Standard_Short_Short_Integer;
@@ -2265,7 +2265,8 @@ package body GNATLLVM.Compile is
                   return G (Emit_Array_Aggregate
                               (Env, Node, Number_Dimensions (Agg_Type),
                                LLVM_Type,
-                               Create_Type (Env, Component_Type (Agg_Type))),
+                               Create_Type (Env,
+                                            Full_Component_Type (Agg_Type))),
                             Full_Etype (Node));
                end if;
 
@@ -3412,7 +3413,7 @@ package body GNATLLVM.Compile is
                  Array_Data (Env, RHS_Descr);
                Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
                Comp_Type     : constant Entity_Id :=
-                 Get_Fullest_View (Component_Type (Full_Etype (LHS)));
+                 Full_Component_Type (Full_Etype (LHS));
                Size          : constant GL_Value :=
                  NSW_Mul
                    (Env,

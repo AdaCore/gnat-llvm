@@ -156,7 +156,7 @@ package body GNATLLVM.Arrays is
       elsif not Is_Constrained (Arr_Typ) then
          return G (Extract_Value
                      (Env.Bld,
-                      Extract_Value (Env.Bld, Value.Value, 1, "bounds"),
+                      Extract_Value (Env.Bld, LLVM_Value (Value), 1, "bounds"),
                       unsigned (Bound_Idx),
                       (if Is_Low then "low-bound" else "high-bound")),
                    Dim_Info.Bound_Type);
@@ -185,8 +185,8 @@ package body GNATLLVM.Arrays is
            (Env,
             (G (Record_Field_Offset
                   (Env,
-                   Get_Matching_Value
-                     (Full_Etype (Scope (Bound_Info.Discr))).Value,
+                   LLVM_Value (Get_Matching_Value
+                                 (Full_Etype (Scope (Bound_Info.Discr)))),
                    Bound_Info.Discr),
                 Dim_Info.Bound_Type, Is_Reference => True)));
       end if;
@@ -465,7 +465,8 @@ package body GNATLLVM.Arrays is
       then
          return Array_Descr;
       else
-         return G (Extract_Value (Env.Bld, Array_Descr.Value, 0, "array-data"),
+         return G (Extract_Value (Env.Bld, LLVM_Value (Array_Descr),
+                                  0, "array-data"),
                    Full_Designated_Type (Array_Descr),
                    Is_Reference => True, Is_Raw_Array => True);
       end if;
@@ -495,7 +496,8 @@ package body GNATLLVM.Arrays is
       Get_Struct_Element_Types (Fat_Ptr_Type, Fat_Ptr_Elt_Types'Address);
 
       Array_Data_Ptr :=
-        G (Pointer_Cast (Env.Bld, Array_Data.Value, Array_Data_Type, ""),
+        G (Pointer_Cast (Env.Bld, LLVM_Value (Array_Data),
+                         Array_Data_Type, ""),
            Array_Data.Typ, Is_Reference => Array_Data.Is_Reference);
       Bounds := G (Get_Undef (Array_Bounds_Type),
                    Array_Type);

@@ -817,11 +817,11 @@ package body GNATLLVM.Compile is
                     G (Add_Global (Env.Mdl, LLVM_Type,
                                    Get_Ext_Name (Def_Ident)),
                        T, Is_Reference => True);
-                  Set_Value (Env, Def_Ident, LLVM_Var.Value);
+                  Set_Value (Env, Def_Ident, LLVM_Value (LLVM_Var));
 
                   if Env.In_Main_Unit then
                      if Is_Statically_Allocated (Def_Ident) then
-                        Set_Linkage (LLVM_Var.Value, Internal_Linkage);
+                        Set_Linkage (LLVM_Value (LLVM_Var), Internal_Linkage);
                      end if;
 
                      --  ??? This code is probably wrong, but is rare enough
@@ -829,15 +829,17 @@ package body GNATLLVM.Compile is
 
                      if Present (Address_Clause (Def_Ident)) then
                         Set_Initializer
-                          (LLVM_Var.Value,
-                           Emit_Expression
-                             (Env, Expression (Address_Clause (Def_Ident)))
-                             .Value);
+                          (LLVM_Value (LLVM_Var),
+                           LLVM_Value (Emit_Expression
+                                         (Env,
+                                          Expression
+                                            (Address_Clause (Def_Ident)))));
                         --  ??? Should also take Expression (Node) into account
 
                      else
                         if Is_Imported (Def_Ident) then
-                           Set_Linkage (LLVM_Var.Value, External_Linkage);
+                           Set_Linkage (LLVM_Value (LLVM_Var),
+                                        External_Linkage);
                         end if;
 
                         --  Take Expression (Node) into account
@@ -849,22 +851,24 @@ package body GNATLLVM.Compile is
                         then
                            if Compile_Time_Known_Value (Expression (Node)) then
                               Expr := Emit_Expression (Env, Expression (Node));
-                              Set_Initializer (LLVM_Var.Value, Expr.Value);
+                              Set_Initializer (LLVM_Value (LLVM_Var),
+                                               LLVM_Value (Expr));
                            else
                               Elaboration_Table.Append (Node);
 
                               if not Is_Imported (Def_Ident) then
                                  Set_Initializer
-                                   (LLVM_Var.Value, Const_Null (LLVM_Type));
+                                   (LLVM_Value (LLVM_Var),
+                                    Const_Null (LLVM_Type));
                               end if;
                            end if;
                         elsif not Is_Imported (Def_Ident) then
-                           Set_Initializer (LLVM_Var.Value,
+                           Set_Initializer (LLVM_Value (LLVM_Var),
                                             Const_Null (LLVM_Type));
                         end if;
                      end if;
                   else
-                     Set_Linkage (LLVM_Var.Value, External_Linkage);
+                     Set_Linkage (LLVM_Value (LLVM_Var), External_Linkage);
                   end if;
 
                else
@@ -884,7 +888,7 @@ package body GNATLLVM.Compile is
 
                   end if;
 
-                  Set_Value (Env, Def_Ident, LLVM_Var.Value);
+                  Set_Value (Env, Def_Ident, LLVM_Value (LLVM_Var));
 
                   if Present (Expression (Node))
                     and then not
@@ -908,7 +912,7 @@ package body GNATLLVM.Compile is
             begin
                if Library_Level (Env) then
                   if Is_LValue (Name (Node)) then
-                     LLVM_Var := Emit_LValue (Env, Name (Node)).Value;
+                     LLVM_Var := LLVM_Value (Emit_LValue (Env, Name (Node)));
                      Set_Value (Env, Def_Ident, LLVM_Var);
                   else
                      --  ??? Handle top-level declarations
@@ -923,14 +927,14 @@ package body GNATLLVM.Compile is
                --  Otherwise, create one for it.
 
                if Is_LValue (Name (Node)) then
-                  LLVM_Var := Emit_LValue (Env, Name (Node)).Value;
+                  LLVM_Var := LLVM_Value (Emit_LValue (Env, Name (Node)));
                else
                   LLVM_Var := Alloca
                     (Env.Bld,
                      Create_Type (Env, Full_Etype (Def_Ident)),
                      Get_Name (Def_Ident));
                   Store
-                    (Env.Bld, Emit_Expression (Env, Name (Node)).Value,
+                    (Env.Bld, LLVM_Value (Emit_Expression (Env, Name (Node))),
                      LLVM_Var);
                end if;
 
@@ -1039,7 +1043,7 @@ package body GNATLLVM.Compile is
                         Expr := Emit_Expression (Env, Return_Expr);
                      end if;
 
-                     Discard (Build_Ret (Env.Bld, Expr.Value));
+                     Discard (Build_Ret (Env.Bld, LLVM_Value (Expr)));
                   end if;
                end;
 
@@ -1162,7 +1166,7 @@ package body GNATLLVM.Compile is
                           (Env, Var_Type, LLVM_Type, Low, High);
                         LLVM_Var := Alloca
                           (Env, Var_Type, Get_Name (Def_Ident));
-                        Set_Value (Env, Def_Ident, LLVM_Var.Value);
+                        Set_Value (Env, Def_Ident, LLVM_Value (LLVM_Var));
                         Store
                           (Env,
                            (if Reversed then High else Low), LLVM_Var);
@@ -1546,10 +1550,11 @@ package body GNATLLVM.Compile is
                     Is_Reference => True);
 
             begin
-               Set_Value (Env, Node, V.Value);
-               Set_Initializer (V.Value, Emit_Expression (Env, Node).Value);
-               Set_Linkage (V.Value, Private_Linkage);
-               Set_Global_Constant (V.Value, True);
+               Set_Value (Env, Node, LLVM_Value (V));
+               Set_Initializer (LLVM_Value (V),
+                                LLVM_Value (Emit_Expression (Env, Node)));
+               Set_Linkage (LLVM_Value (V), Private_Linkage);
+               Set_Global_Constant (LLVM_Value (V), True);
                return V;
             end;
 
@@ -1561,7 +1566,7 @@ package body GNATLLVM.Compile is
                  Original_Record_Component (Entity (Selector_Name (Node)));
 
             begin
-               return G (Record_Field_Offset (Env, Pfx_Ptr.Value,
+               return G (Record_Field_Offset (Env, LLVM_Value (Pfx_Ptr),
                                               Record_Component),
                          Full_Etype (Node), Is_Reference => True);
             end;
@@ -1665,11 +1670,9 @@ package body GNATLLVM.Compile is
       Block_Left_Expr_End := Get_Insert_Block (Env.Bld);
 
       if Op = N_And_Then then
-         Discard (Build_Cond_Br (Env.Bld, Left.Value,
-                                 Block_Right_Expr, Block_Exit));
+         Build_Cond_Br (Env, Left, Block_Right_Expr, Block_Exit);
       else
-         Discard (Build_Cond_Br (Env.Bld, Left.Value,
-                                 Block_Exit, Block_Right_Expr));
+         Build_Cond_Br (Env, Left, Block_Exit, Block_Right_Expr);
       end if;
 
       --  Emit code for the evaluation of the right part expression
@@ -2155,8 +2158,9 @@ package body GNATLLVM.Compile is
                   Value := Emit_Expr (Expression (Expr));
                end if;
 
-               Arg := (1 => Get_Type_Size (Env, Typ, Value,
-                                           For_Type => No (Value)).Value);
+               Arg := (1 => LLVM_Value
+                         (Get_Type_Size (Env, Typ, Value,
+                                         For_Type => No (Value))));
                Result := G (Call
                               (Env.Bld, Env.Default_Alloc_Fn,
                                Arg'Address, 1, "alloc"),
@@ -2256,7 +2260,7 @@ package body GNATLLVM.Compile is
                         Result := Insert_Value
                           (Env.Bld,
                            Result,
-                           Emit_Expr (Expression (Expr)).Value,
+                           LLVM_Value (Emit_Expr (Expression (Expr))),
                            unsigned (Cur_Index),
                            "");
                         Cur_Index := Cur_Index + 1;
@@ -2479,9 +2483,9 @@ package body GNATLLVM.Compile is
             Align          : constant unsigned :=
               Get_Type_Alignment (Env, Dest_LLVM_Type);
             Args : constant Value_Array (1 .. 5) :=
-              (Bit_Cast (Env.Bld, Dest.Value, Void_Ptr_Type, ""),
+              (Bit_Cast (Env.Bld, LLVM_Value (Dest), Void_Ptr_Type, ""),
                Const_Null (Int_Ty (8)),
-               Get_Type_Size (Env, Typ, No_GL_Value).Value,
+               LLVM_Value (Get_Type_Size (Env, Typ, No_GL_Value)),
                Const_Int (Int_Ty (32), unsigned_long_long (Align), False),
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2518,9 +2522,9 @@ package body GNATLLVM.Compile is
             Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
 
             Args : constant Value_Array (1 .. 5) :=
-              (Bit_Cast (Env.Bld, Dest.Value, Void_Ptr_Type, ""),
-               Bit_Cast (Env.Bld, Src.Value, Void_Ptr_Type, ""),
-               Compute_Size (Env, Dest_Typ, Typ, Src).Value,
+              (Bit_Cast (Env.Bld, LLVM_Value (Dest), Void_Ptr_Type, ""),
+               Bit_Cast (Env.Bld, LLVM_Value (Src), Void_Ptr_Type, ""),
+               LLVM_Value (Compute_Size (Env, Dest_Typ, Typ, Src)),
                Const_Int (Int_Ty (32), 1, False),  --  Alignment
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2588,7 +2592,7 @@ package body GNATLLVM.Compile is
          Subp := Entity (Subp);
       end if;
 
-      LLVM_Func := Emit_Expression (Env, Subp).Value;
+      LLVM_Func := LLVM_Value (Emit_Expression (Env, Subp));
 
       if This_Takes_S_Link then
          S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
@@ -2618,8 +2622,8 @@ package body GNATLLVM.Compile is
          Current_Needs_Ptr := Param_Needs_Ptr (Params (Idx));
          Args (Idx) :=
            (if Current_Needs_Ptr
-            then Emit_LValue (Env, Actual).Value
-            else Emit_Expression (Env, Actual).Value);
+            then LLVM_Value (Emit_LValue (Env, Actual))
+            else LLVM_Value (Emit_Expression (Env, Actual)));
 
          P_Type := Full_Etype (Params (Idx));
 
@@ -2651,9 +2655,9 @@ package body GNATLLVM.Compile is
             --  Convert from raw to fat pointer
 
             Args (Idx) :=
-              Array_Fat_Pointer (Env,
-                                 G (Args (Idx), Actual_Type,
-                                    Is_Reference => True)).Value;
+              LLVM_Value (Array_Fat_Pointer (Env,
+                                             G (Args (Idx), Actual_Type,
+                                                Is_Reference => True)));
 
          elsif Is_Array_Type (P_Type)
            and then Is_Constrained (P_Type)
@@ -2663,9 +2667,9 @@ package body GNATLLVM.Compile is
 
                --  Convert from fat to thin pointer
 
-            Args (Idx) := Array_Data (Env,
-                                      G (Args (Idx), Actual_Type,
-                                         Is_Reference => True)).Value;
+            Args (Idx) := LLVM_Value (Array_Data (Env,
+                                                  G (Args (Idx), Actual_Type,
+                                                     Is_Reference => True)));
 
          elsif Current_Needs_Ptr then
             Args (Idx) := Bit_Cast
@@ -2689,7 +2693,7 @@ package body GNATLLVM.Compile is
 
       if Dynamic_Return then
          Args (Args'Last) :=
-           Allocate_For_Type (Env, Return_Typ, "call-return").Value;
+           LLVM_Value (Allocate_For_Type (Env, Return_Typ, "call-return"));
       end if;
 
       --  If there are any types mismatches for arguments passed by reference,
@@ -3320,7 +3324,7 @@ package body GNATLLVM.Compile is
          else Load
            (Env.Bld,
             Struct_GEP
-              (Env.Bld, Emit_LValue (Env, Node).Value, 0, "subp-addr"),
+              (Env.Bld, LLVM_Value (Emit_LValue (Env, Node)), 0, "subp-addr"),
             ""));
       --  Return the subprogram pointer associated with Node
 
@@ -3426,9 +3430,9 @@ package body GNATLLVM.Compile is
                     "byte-size");
 
                Memcmp_Args : constant Value_Array (1 .. 3) :=
-                 (Bit_Cast (Env.Bld, Left.Value, Void_Ptr_Type, ""),
-                  Bit_Cast (Env.Bld, Right.Value, Void_Ptr_Type, ""),
-                  Size.Value);
+                 (Bit_Cast (Env.Bld, LLVM_Value (Left), Void_Ptr_Type, ""),
+                  Bit_Cast (Env.Bld, LLVM_Value (Right), Void_Ptr_Type, ""),
+                  LLVM_Value (Size));
                Memcmp      : constant Value_T := Call
                  (Env.Bld,
                   Env.Memory_Cmp_Fn,
@@ -3525,7 +3529,8 @@ package body GNATLLVM.Compile is
          --  on GL_Value don't quite do exactly the right thing yet.
 
          if Is_Access_Type (LHS) and then Type_Of (RHS) /= Type_Of (LHS) then
-            RHS.Value := Pointer_Cast (Env.Bld, RHS.Value, Type_Of (LHS), "");
+            RHS.Value := Pointer_Cast (Env.Bld, LLVM_Value (RHS),
+                                       Type_Of (LHS), "");
          end if;
 
          return I_Cmp
@@ -3738,7 +3743,7 @@ package body GNATLLVM.Compile is
                BBs (I) := Alts (I).BB;
             end loop;
 
-            Switch := Build_Switch (Env.Bld, LHS.Value,
+            Switch := Build_Switch (Env.Bld, LLVM_Value (LHS),
                                     BBs (BBs'Last), BBs'Length);
             for I in Alts'First .. Alts'Last - 1 loop
                for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
@@ -3926,8 +3931,7 @@ package body GNATLLVM.Compile is
       --  If we haven't handled it via one of the special cases above,
       --  just evaluate the expression and do the branch.
 
-      Discard (Build_Cond_Br (Env.Bld, Emit_Expression (Env, Cond).Value,
-                              BB_True, BB_False));
+      Build_Cond_Br (Env, Emit_Expression (Env, Cond), BB_True, BB_False);
 
    end Emit_If_Cond;
 

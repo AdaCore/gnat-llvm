@@ -1468,7 +1468,7 @@ package body GNATLLVM.Compile is
                   --  actual subprogram type here, not the type of the return
                   --  value, which is what Typ is set to.
                   if Nkind (Parent (Node)) = N_Attribute_Reference then
-                     Typ := Designated_Type (Full_Etype (Parent (Node)));
+                     Typ := Full_Designated_Type (Full_Etype (Parent (Node)));
                   end if;
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
@@ -2177,8 +2177,9 @@ package body GNATLLVM.Compile is
                --  If we need a fat pointer, make one.  Otherwise, just do
                --  a bitwise conversion.
 
-               if Is_Array_Type (Designated_Type (Result_Type))
-                 and then not Is_Constrained (Designated_Type (Result_Type))
+               if Is_Array_Type (Full_Designated_Type (Result_Type))
+                 and then not Is_Constrained
+                 (Full_Designated_Type (Result_Type))
                then
                   Result := Array_Fat_Pointer (Env, Result);
                   Result.Typ := Result_Type;
@@ -2598,7 +2599,7 @@ package body GNATLLVM.Compile is
             LLVM_Func := Bit_Cast
               (Env.Bld, LLVM_Func,
                Create_Access_Type
-                 (Env, Designated_Type (Full_Etype (Prefix (Subp)))),
+                 (Env, Full_Designated_Type (Full_Etype (Prefix (Subp)))),
                "");
          end if;
       end if;
@@ -2632,15 +2633,15 @@ package body GNATLLVM.Compile is
          --  correct long-term.
 
          if Is_Access_Type (Actual_Type)
-           and then Is_Array_Type (Designated_Type (Actual_Type))
+           and then Is_Array_Type (Full_Designated_Type (Actual_Type))
          then
-            Actual_Type := Designated_Type (Actual_Type);
+            Actual_Type := Full_Designated_Type (Actual_Type);
          end if;
 
          if Is_Access_Type (P_Type)
-           and then Is_Array_Type (Designated_Type (P_Type))
+           and then Is_Array_Type (Full_Designated_Type (P_Type))
          then
-            P_Type := Designated_Type (P_Type);
+            P_Type := Full_Designated_Type (P_Type);
          end if;
 
          if Is_Array_Type (P_Type)

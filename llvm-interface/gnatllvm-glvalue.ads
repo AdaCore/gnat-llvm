@@ -64,8 +64,9 @@ package GNATLLVM.GLValue is
      (Is_Reference (G) or else Is_Access_Type (G.Typ))
      with Pre => Present (G);
 
-   function Designated_Type (G : GL_Value) return Entity_Id
-     with Pre => Is_Access_Type (G), Post => Is_Type (Designated_Type'Result);
+   function Full_Designated_Type (G : GL_Value) return Entity_Id
+     with Pre  => Is_Access_Type (G),
+          Post => Is_Type (Full_Designated_Type'Result);
 
    function Implementation_Base_Type (G : GL_Value) return Entity_Id is
      ((if Is_Reference (G) then G.Typ else Implementation_Base_Type (G.Typ)))
@@ -81,8 +82,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (G);
 
    function Is_Access_Unconstrained (G : GL_Value) return Boolean is
-     (Is_Access_Type (G) and then Is_Array_Type (Designated_Type (G))
-                         and then not Is_Constrained (Designated_Type (G))
+     (Is_Access_Type (G) and then Is_Array_Type (Full_Designated_Type (G))
+                         and then not Is_Constrained (Full_Designated_Type (G))
                          and then not Is_Raw_Array (G))
      with Pre => Present (G);
 

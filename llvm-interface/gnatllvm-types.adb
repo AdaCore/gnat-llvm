@@ -200,11 +200,11 @@ package body GNATLLVM.Types is
          when E_Access_Type .. E_General_Access_Type
             | E_Anonymous_Access_Type
             | E_Access_Subprogram_Type =>
-            Typ := Create_Access_Type (Env, Designated_Type (Def_Ident));
+            Typ := Create_Access_Type (Env, Full_Designated_Type (Def_Ident));
 
          when E_Anonymous_Access_Subprogram_Type =>
             Typ := Create_Subprogram_Access_Type
-              (Env, Create_Type (Env, Designated_Type (Def_Ident)));
+              (Env, Create_Type (Env, Full_Designated_Type (Def_Ident)));
 
          when Record_Kind =>
             declare

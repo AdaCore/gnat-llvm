@@ -280,13 +280,13 @@ package body GNATLLVM.GLValue is
                 Is_Reference => GL_Values (GL_Values'First).Is_Reference);
    end Build_Phi;
 
-   ---------------------
-   -- Designated_Type --
-   ---------------------
+   --------------------------
+   -- Full_Designated_Type --
+   --------------------------
 
-   function Designated_Type (G : GL_Value) return Entity_Id is
-     ((if Is_Reference (G) then G.Typ
-       else Get_Fullest_View (Designated_Type (G.Typ))));
+   function Full_Designated_Type (G : GL_Value) return Entity_Id is
+     ((if Is_Reference (G) then Get_Fullest_View (G.Typ)
+       else Full_Designated_Type (G.Typ)));
 
    ---------
    -- GEP --
@@ -318,7 +318,7 @@ package body GNATLLVM.GLValue is
    function Load (Env : Environ; Ptr : GL_Value; Name : String := "")
                  return GL_Value is
      (G (Load_With_Type (Env, Ptr.Typ, Ptr.Value, Name),
-         Designated_Type (Ptr)));
+         Full_Designated_Type (Ptr)));
 
    -----------
    -- Store --

@@ -48,6 +48,11 @@ package GNATLLVM.Utils is
      with Pre  => Is_Array_Type (E),
           Post => Present (Full_Component_Type'Result);
 
+   function Full_Designated_Type (E : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Designated_Type (E)))
+     with Pre  => Is_Access_Type (E),
+          Post => Present (Full_Designated_Type'Result);
+
    procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
      with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
    --  Helper for LLVM's Build_Store
@@ -157,8 +162,8 @@ package GNATLLVM.Utils is
    --  Returns true if Node is an L value
 
    function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
-     (Is_Access_Type (T) and then Is_Array_Type (Designated_Type (T))
-      and then not Is_Constrained (Designated_Type (T)))
+     (Is_Access_Type (T) and then Is_Array_Type (Full_Designated_Type (T))
+      and then not Is_Constrained (Full_Designated_Type (T)))
      with Pre => Is_Type (T);
 
    function Get_Param_Types (Fn_Ty : Type_T) return Type_Array

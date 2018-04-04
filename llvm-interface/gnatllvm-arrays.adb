@@ -461,12 +461,12 @@ package body GNATLLVM.Arrays is
      (Env : Environ; Array_Descr : GL_Value) return GL_Value is
    begin
       if Is_Raw_Array (Array_Descr)
-        or else Is_Constrained (Designated_Type (Array_Descr))
+        or else Is_Constrained (Full_Designated_Type (Array_Descr))
       then
          return Array_Descr;
       else
          return G (Extract_Value (Env.Bld, Array_Descr.Value, 0, "array-data"),
-                   Full_Etype (Designated_Type (Array_Descr)),
+                   Full_Designated_Type (Array_Descr),
                    Is_Reference => True, Is_Raw_Array => True);
       end if;
    end Array_Data;
@@ -552,7 +552,7 @@ package body GNATLLVM.Arrays is
       Value   : GL_Value) return GL_Value
    is
       Comp_Type      : constant Entity_Id :=
-        Full_Component_Type (Designated_Type (Value));
+        Full_Component_Type (Full_Designated_Type (Value));
       Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Size_Const_Int (Env, 0), others => <>);
@@ -569,7 +569,7 @@ package body GNATLLVM.Arrays is
          declare
             User_Index    : constant GL_Value := Emit_Expression (Env, N);
             Dim_Low_Bound : constant GL_Value :=
-              Get_Array_Bound (Env, Designated_Type (Value),
+              Get_Array_Bound (Env, Full_Designated_Type (Value),
                                J - 2, True, Value);
             Converted_Index : constant GL_Value :=
               Convert_To_Scalar_Type (Env, User_Index, Dim_Low_Bound);
@@ -584,7 +584,7 @@ package body GNATLLVM.Arrays is
       --  There are two approaches we can take here.  If we haven't used
       --  an opaque type, we can just do a GEP with the values above.
 
-      if Type_Is_Sized (Create_Type (Env, Designated_Type (Value))) then
+      if Type_Is_Sized (Create_Type (Env, Full_Designated_Type (Value))) then
          return GEP (Env, Comp_Type, Array_Data_Ptr,
                      Idxs, "array-element-access");
       end if;
@@ -604,7 +604,8 @@ package body GNATLLVM.Arrays is
          Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
       begin
 
-         for Dim in 1 .. Number_Dimensions (Designated_Type (Value)) - 1 loop
+         for Dim in 1 ..
+           Number_Dimensions (Full_Designated_Type (Value)) - 1 loop
             Index := NSW_Add (Env,
                               NSW_Mul (Env,
                                        Index,
@@ -636,7 +637,7 @@ package body GNATLLVM.Arrays is
      is
       Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
       Low_Idx_Bound  : constant GL_Value :=
-        Get_Array_Bound (Env, Designated_Type (Value), 0, True, Value);
+        Get_Array_Bound (Env, Full_Designated_Type (Value), 0, True, Value);
       Index_Val      : constant GL_Value :=
         Emit_Expression (Env, Low_Bound (Rng));
       Converted_Index : constant GL_Value :=
@@ -655,7 +656,7 @@ package body GNATLLVM.Arrays is
       --  GEP's result type is a pointer to the component type, so we need
       --  to cast to the result (array) type in both cases.
 
-      if Type_Is_Sized (Create_Type (Env, Designated_Type (Value))) then
+      if Type_Is_Sized (Create_Type (Env, Full_Designated_Type (Value))) then
          return Ptr_To_Ref (Env,
                             GEP
                               (Env, Result_Type, Array_Data_Ptr,
@@ -667,7 +668,7 @@ package body GNATLLVM.Arrays is
          Data          : constant GL_Value :=
            Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer);
          Comp_Type     : constant Entity_Id :=
-           Full_Component_Type (Designated_Type (Value));
+           Full_Component_Type (Full_Designated_Type (Value));
          Comp_Size     : constant GL_Value :=
            Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : constant GL_Value :=
@@ -675,7 +676,7 @@ package body GNATLLVM.Arrays is
                     Convert_To_Size_Type (Env, Index_Shift));
       begin
          return Ptr_To_Ref
-           (Env, GEP (Env, Designated_Type (Value),
+           (Env, GEP (Env, Full_Designated_Type (Value),
                       Data, (1 => Index), "gen-index"), Result_Type);
       end;
 

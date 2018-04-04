@@ -94,9 +94,10 @@ package GNATLLVM.Arrays is
      (Env     : Environ;
       Indexes : List_Id;
       Value   : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Array_Type (Designated_Type (Value))
+     with Pre  => Env /= null
+                  and then Is_Array_Type (Full_Designated_Type (Value))
                   and then List_Length (Indexes) =
-                    Number_Dimensions (Designated_Type (Value)),
+                    Number_Dimensions (Full_Designated_Type (Value)),
           Post => Present (Get_Indexed_LValue'Result);
    --  Get an LValue corresponding to indexing Value by Indexes.  Arr_Type
    --  is the array type.
@@ -106,8 +107,10 @@ package GNATLLVM.Arrays is
       Result_Type : Entity_Id;
       Rng         : Node_Id;
       Value       : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Array_Type (Designated_Type (Value))
-                  and then Number_Dimensions (Designated_Type (Value)) = 1,
+     with Pre  => Env /= null
+                  and then Is_Array_Type (Full_Designated_Type (Value))
+                  and then Number_Dimensions
+                    (Full_Designated_Type (Value)) = 1,
           Post => Present (Get_Slice_LValue'Result);
    --  Similar, but Rng is the Discrete_Range for the slice.
 
@@ -141,8 +144,8 @@ package GNATLLVM.Arrays is
      (Env        : Environ;
       Array_Data : GL_Value) return GL_Value
      with Pre  => Env /= null and then Is_Access_Type (Array_Data)
-                  and then Is_Array_Type (Designated_Type (Array_Data))
-                  and then Is_Constrained (Designated_Type (Array_Data)),
+                  and then Is_Array_Type (Full_Designated_Type (Array_Data))
+                  and then Is_Constrained (Full_Designated_Type (Array_Data)),
           Post => Present (Array_Fat_Pointer'Result);
    --  Wrap a fat pointer around Array_Data and return the created fat pointer.
 

@@ -236,8 +236,10 @@ package body GNATLLVM.Compile is
      (Env           : Environ;
       Node          : Node_Id;
       Dims_Left     : Pos;
-      Typ, Comp_Typ : Type_T) return Value_T
+      Array_Type    : Entity_Id;
+      Typ, Comp_Typ : Type_T) return GL_Value
      with Pre  => Env /= null and then Nkind (Node) = N_Aggregate
+                  and then Is_Array_Type (Array_Type)
                   and then Present (Typ) and then Present (Comp_Typ),
           Post => Present (Emit_Array_Aggregate'Result);
    --  Emit an N_Aggregate of LLVM type Typ, which is an array, returning the
@@ -2263,13 +2265,10 @@ package body GNATLLVM.Compile is
                      Expr := Next (Expr);
                   end loop;
                else
-                  pragma Assert (Ekind (Agg_Type) in Array_Kind);
-                  return G (Emit_Array_Aggregate
-                              (Env, Node, Number_Dimensions (Agg_Type),
-                               LLVM_Type,
-                               Create_Type (Env,
-                                            Full_Component_Type (Agg_Type))),
-                            Full_Etype (Node));
+                  return Emit_Array_Aggregate
+                    (Env, Node, Number_Dimensions (Agg_Type),
+                     Agg_Type, LLVM_Type,
+                     Create_Type (Env, Full_Component_Type (Agg_Type)));
                end if;
 
                return G (Result, Full_Etype (Node));
@@ -3073,10 +3072,14 @@ package body GNATLLVM.Compile is
      (Env           : Environ;
       Node          : Node_Id;
       Dims_Left     : Pos;
-      Typ, Comp_Typ : Type_T) return Value_T
+      Array_Type    : Entity_Id;
+      Typ, Comp_Typ : Type_T) return GL_Value
    is
-      Result     : Value_T := Get_Undef (Typ);
-      Cur_Expr   : Value_T;
+      Result     : GL_Value := G (Get_Undef (Typ), Array_Type);
+      --  ?? The type above is really only correct if Dims_Left is one, since
+      --  we don't have any type corresponding to the intermediate dimensions
+      --  of the array.
+      Cur_Expr   : GL_Value;
       Cur_Index  : Integer := 0;
       Expr       : Node_Id;
    begin
@@ -3087,7 +3090,8 @@ package body GNATLLVM.Compile is
          --  since we won't have the proper type for the inner aggregate.
          if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
             Cur_Expr := Emit_Array_Aggregate
-              (Env, Expr, Dims_Left - 1, Get_Element_Type (Typ), Comp_Typ);
+              (Env, Expr, Dims_Left - 1, Array_Type,
+               Get_Element_Type (Typ), Comp_Typ);
 
          --  If the expression is a conversion to an unconstrained
          --  array type, skip it to avoid spilling to memory.
@@ -3096,22 +3100,13 @@ package body GNATLLVM.Compile is
            and then Is_Array_Type (Full_Etype (Expr))
            and then not Is_Constrained (Full_Etype (Expr))
          then
-            Cur_Expr := Emit_Expression (Env, Expression (Expr)).Value;
+            Cur_Expr := Emit_Expression (Env, Expression (Expr));
          else
-            Cur_Expr := Emit_Expression (Env, Expr).Value;
-         end if;
-
-         --  If this operand's type is a pointer and so is the element
-         --  type, but they aren't the same, convert.
-         if Type_Of (Cur_Expr) /= Comp_Typ
-           and then Get_Type_Kind (Comp_Typ) = Pointer_Type_Kind
-           and then Get_Type_Kind (Type_Of (Cur_Expr)) = Pointer_Type_Kind
-         then
-            Cur_Expr := Bit_Cast (Env.Bld, Cur_Expr, Comp_Typ, "");
+            Cur_Expr := Emit_Expression (Env, Expr);
          end if;
 
          Result := Insert_Value
-           (Env.Bld, Result, Cur_Expr, unsigned (Cur_Index), "");
+           (Env, Result, Cur_Expr, unsigned (Cur_Index));
          Cur_Index := Cur_Index + 1;
          Expr := Next (Expr);
       end loop;

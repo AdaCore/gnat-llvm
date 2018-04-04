@@ -101,7 +101,7 @@ package body GNATLLVM.Utils is
    ------------
 
    function Alloca
-      (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
+      (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
    is
      (G (Alloca (Env.Bld, Create_Type (Env, TE), Name),
          TE, Is_Reference => True));
@@ -114,7 +114,7 @@ package body GNATLLVM.Utils is
      (Env      : Environ;
       TE       : Entity_Id;
       Num_Elts : GL_Value;
-      Name     : String) return GL_Value
+      Name     : String := "") return GL_Value
    is
      (G (Array_Alloca (Env.Bld, Create_Type (Env, TE), Num_Elts.Value, Name),
          TE, Is_Reference => True));
@@ -169,7 +169,7 @@ package body GNATLLVM.Utils is
    ----------------
 
    function Int_To_Ptr
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (Int_To_Ptr (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -179,7 +179,7 @@ package body GNATLLVM.Utils is
    ----------------
 
    function Int_To_Ref
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
       (G (Int_To_Ptr (Env.Bld, V.Value,
@@ -192,7 +192,7 @@ package body GNATLLVM.Utils is
    ----------------
 
    function Ptr_To_Int
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (Ptr_To_Int (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -202,7 +202,7 @@ package body GNATLLVM.Utils is
    --------------
 
    function Bit_Cast
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (Bit_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -212,7 +212,7 @@ package body GNATLLVM.Utils is
    ------------------
 
    function Pointer_Cast
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (Pointer_Cast (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -222,7 +222,7 @@ package body GNATLLVM.Utils is
    ----------------
 
    function Ptr_To_Ref
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
       (G (Pointer_Cast (Env.Bld, V.Value,
@@ -235,7 +235,7 @@ package body GNATLLVM.Utils is
    -----------
 
    function Trunc
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (Trunc (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -245,7 +245,7 @@ package body GNATLLVM.Utils is
    -----------
 
    function S_Ext
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (S_Ext (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -255,7 +255,7 @@ package body GNATLLVM.Utils is
    -----------
 
    function Z_Ext
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (Z_Ext (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -265,7 +265,7 @@ package body GNATLLVM.Utils is
    --------------
 
    function FP_Trunc
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (FP_Trunc (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -275,7 +275,7 @@ package body GNATLLVM.Utils is
    ------------
 
    function FP_Ext
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (FP_Ext (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -285,7 +285,7 @@ package body GNATLLVM.Utils is
    --------------
 
    function FP_To_SI
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (FP_To_SI (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -295,7 +295,7 @@ package body GNATLLVM.Utils is
    --------------
 
    function FP_To_UI
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (FP_To_UI (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -305,7 +305,7 @@ package body GNATLLVM.Utils is
    --------------
 
    function UI_To_FP
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (UI_To_FP (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -315,7 +315,7 @@ package body GNATLLVM.Utils is
    --------------
 
    function SI_To_FP
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
      (G (SI_To_FP (Env.Bld, V.Value, Create_Type (Env, TE), Name), TE));
@@ -339,7 +339,7 @@ package body GNATLLVM.Utils is
      (Env       : Environ;
       GL_Values : GL_Value_Array;
       BBs       : Basic_Block_Array;
-      Name      : String) return GL_Value
+      Name      : String := "") return GL_Value
    is
       Values  : Value_Array (GL_Values'Range);
       Our_Phi : Value_T;
@@ -627,8 +627,10 @@ package body GNATLLVM.Utils is
    ---------
 
    function GEP
-     (Bld : Builder_T; Ptr : Value_T; Indices : Value_Array; Name : String)
-      return Value_T
+     (Bld     : Builder_T;
+      Ptr     : Value_T;
+      Indices : Value_Array;
+      Name    : String := "") return Value_T
    is
      (GEP (Bld, Ptr, Indices'Address, Indices'Length, Name));
 
@@ -641,7 +643,7 @@ package body GNATLLVM.Utils is
       Result_Type : Entity_Id;
       Ptr         : GL_Value;
       Indices     : GL_Value_Array;
-      Name        : String) return GL_Value
+      Name        : String := "") return GL_Value
    is
       Val_Idxs    : Value_Array (Indices'Range);
       Result      : Value_T;
@@ -679,9 +681,10 @@ package body GNATLLVM.Utils is
    -- Load_With_Type --
    --------------------
    function Load_With_Type
-     (Env : Environ; TE : Entity_Id; Ptr : Value_T) return Value_T
+     (Env : Environ; TE : Entity_Id; Ptr : Value_T; Name : String := "")
+     return Value_T
    is
-      Load_Inst : constant Value_T := Load (Env.Bld, Ptr, "");
+      Load_Inst : constant Value_T := Load (Env.Bld, Ptr, Name);
    begin
       Add_Type_Data_To_Instruction (Env, Load_Inst, TE);
       return Load_Inst;

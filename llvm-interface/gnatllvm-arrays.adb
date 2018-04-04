@@ -223,9 +223,8 @@ package body GNATLLVM.Arrays is
          C_Then => Const_Null (Env, Dim_Info.Bound_Type),
          C_Else =>
            (if Low_Bound = Const_1 then High_Bound
-            else NSW_Add
-              (Env, NSW_Sub (Env, High_Bound, Low_Bound, ""), Const_1, "")),
-         Name   => "");
+            else NSW_Add (Env,
+                          NSW_Sub (Env, High_Bound, Low_Bound), Const_1)));
    end Get_Array_Length;
 
    --------------------------------
@@ -448,8 +447,7 @@ package body GNATLLVM.Arrays is
                     Convert_To_Size_Type
                       (Env, Get_Array_Length
                          (Env, Array_Type, Dim, Array_Descr,
-                          For_Type)),
-                    "");
+                          For_Type)));
       end loop;
 
       return Size;
@@ -509,20 +507,18 @@ package body GNATLLVM.Arrays is
            (Env,
             Bounds,
             Get_Array_Bound (Env, Array_Type, Dim, True, Array_Data),
-            unsigned (Dim * 2),
-            "");
+            unsigned (Dim * 2));
 
          Bounds := Insert_Value
            (Env,
             Bounds,
             Get_Array_Bound (Env, Array_Type, Dim, False, Array_Data),
-            unsigned (Dim * 2 + 1),
-            "");
+            unsigned (Dim * 2 + 1));
       end loop;
 
       --  Then fill the fat pointer itself
-      Fat_Ptr := Insert_Value (Env, Fat_Ptr, Array_Data_Ptr, 0, "");
-      Fat_Ptr := Insert_Value (Env, Fat_Ptr, Bounds, 1, "");
+      Fat_Ptr := Insert_Value (Env, Fat_Ptr, Array_Data_Ptr, 0);
+      Fat_Ptr := Insert_Value (Env, Fat_Ptr, Bounds, 1);
 
       return Fat_Ptr;
    end Array_Fat_Pointer;
@@ -602,7 +598,7 @@ package body GNATLLVM.Arrays is
 
       declare
          Data          : constant GL_Value :=
-           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer, "");
+           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer);
          Comp_Size     : constant GL_Value :=
            Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
@@ -616,17 +612,14 @@ package body GNATLLVM.Arrays is
                                          (Env,
                                           Get_Array_Length
                                             (Env, Full_Etype (Value),
-                                             Dim, Value)),
-                                       ""),
-                              Convert_To_Size_Type (Env, Idxs (Dim + 2)),
-                              "");
+                                             Dim, Value))),
+                              Convert_To_Size_Type (Env, Idxs (Dim + 2)));
          end loop;
 
-         Index := NSW_Mul (Env, Index, Comp_Size, "");
+         Index := NSW_Mul (Env, Index, Comp_Size);
          return Ptr_To_Ref
            (Env, GEP (Env, Standard_Short_Short_Integer, Data,
-                      (1 => Index), "gen-index"),
-            Comp_Type, "");
+                      (1 => Index), "gen-index"), Comp_Type);
       end;
 
    end Get_Indexed_LValue;
@@ -667,26 +660,23 @@ package body GNATLLVM.Arrays is
                             GEP
                               (Env, Result_Type, Array_Data_Ptr,
                                (Size_Const_Int (Env, 0), Index_Shift),
-                               "array-shifted"),
-                            Result_Type, "");
+                               "array-shifted"), Result_Type);
       end if;
 
       declare
          Data          : constant GL_Value :=
-           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer, "");
+           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer);
          Comp_Type     : constant Entity_Id :=
            Get_Fullest_View (Component_Type (Designated_Type (Value)));
          Comp_Size     : constant GL_Value :=
            Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : constant GL_Value :=
            NSW_Mul (Env, Comp_Size,
-                    Convert_To_Size_Type (Env, Index_Shift),
-                    "");
+                    Convert_To_Size_Type (Env, Index_Shift));
       begin
          return Ptr_To_Ref
            (Env, GEP (Env, Designated_Type (Value),
-                      Data, (1 => Index), "gen-index"),
-            Result_Type, "");
+                      Data, (1 => Index), "gen-index"), Result_Type);
       end;
 
    end Get_Slice_LValue;

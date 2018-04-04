@@ -53,7 +53,7 @@ package body GNATLLVM.Compile is
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
 
    function Allocate_For_Type
-     (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
+     (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
      with Pre  => Env /= null and Is_Type (TE),
           Post => Present (Allocate_For_Type'Result)
                   and then Is_Access_Type (Allocate_For_Type'Result);
@@ -342,7 +342,7 @@ package body GNATLLVM.Compile is
    -----------------------
 
    function Allocate_For_Type
-     (Env : Environ; TE : Entity_Id; Name : String) return GL_Value
+     (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
    is
       Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
@@ -1586,7 +1586,7 @@ package body GNATLLVM.Compile is
 
                declare
                   Result : constant GL_Value :=
-                    Allocate_For_Type (Env, Full_Etype (Node), "");
+                    Allocate_For_Type (Env, Full_Etype (Node));
                begin
                   Emit_Assignment (Env, Full_Etype (Node), Full_Etype (Node),
                                    Result, Node, Emit_Expression (Env, Node),
@@ -1690,8 +1690,7 @@ package body GNATLLVM.Compile is
       begin
          return Build_Phi
            (Env, (Const_Int (Env, Right, LHS_Const), Right),
-            (Block_Left_Expr_End, Block_Right_Expr_End),
-            "");
+            (Block_Left_Expr_End, Block_Right_Expr_End));
       end;
    end Build_Short_Circuit_Op;
 
@@ -1723,7 +1722,7 @@ package body GNATLLVM.Compile is
 
          declare
             type Opf is access function
-              (Env : Environ; LHS, RHS : GL_Value; Name : String)
+              (Env : Environ; LHS, RHS : GL_Value; Name : String := "")
               return GL_Value;
 
             Left_Type  : constant Entity_Id := Full_Etype (Left_Opnd (Node));
@@ -1777,7 +1776,7 @@ package body GNATLLVM.Compile is
 
             end case;
 
-            Result := Subp (Env, LVal, RVal, "");
+            Result := Subp (Env, LVal, RVal);
 
             --  If this is a signed mod operation, we have to adjust the
             --  result, since what we did is a rem operation.  If the result
@@ -1807,8 +1806,7 @@ package body GNATLLVM.Compile is
                     Build_Select (Env, RHS_Neg, Result_Nonpos, Result_Nonneg,
                                   "signs-same");
                begin
-                  Result := Build_Select
-                    (Env, Signs_Same, Result, Add_Back, "");
+                  Result := Build_Select (Env, Signs_Same, Result, Add_Back);
                end;
 
             --  If this is a division operation with Round_Result set, we
@@ -1825,18 +1823,18 @@ package body GNATLLVM.Compile is
                   --  one to the result.
 
                   Remainder       : constant GL_Value :=
-                    U_Rem (Env, LVal, RVal, "");
+                    U_Rem (Env, LVal, RVal);
                   Half_RHS        : constant GL_Value :=
                     L_Shr (Env, NSW_Sub (Env, RVal,
-                                         Const_Int (Env, RVal, 1), ""),
-                           Const_Int (Env, RVal, 1), "");
+                                         Const_Int (Env, RVal, 1)),
+                           Const_Int (Env, RVal, 1));
                   Result_Plus_One : constant GL_Value :=
-                    NSW_Add (Env, Result, Const_Int (Env, RVal, 1), "");
+                    NSW_Add (Env, Result, Const_Int (Env, RVal, 1));
                   Need_Adjust     : constant GL_Value :=
-                    I_Cmp (Env, Int_UGT, Remainder, Half_RHS, "");
+                    I_Cmp (Env, Int_UGT, Remainder, Half_RHS);
                begin
                   Result := Build_Select (Env, Need_Adjust,
-                                          Result_Plus_One, Result, "");
+                                          Result_Plus_One, Result);
                end;
 
             elsif Nkind (Node) = N_Op_Divide
@@ -1853,34 +1851,32 @@ package body GNATLLVM.Compile is
                   --  negative.
 
                   Remainder        : constant GL_Value :=
-                    S_Rem (Env, LVal, RVal, "");
+                    S_Rem (Env, LVal, RVal);
                   Rem_Negative     : constant GL_Value :=
                     I_Cmp (Env, Int_SLT, Remainder,
-                           Const_Null (Env, Remainder), "");
+                           Const_Null (Env, Remainder));
                   Abs_Rem          : constant GL_Value :=
-                    Build_Select (Env, Rem_Negative,
-                                  NSW_Neg (Env, Remainder, ""),
-                                  Remainder, "");
+                    Build_Select (Env, Rem_Negative, NSW_Neg (Env, Remainder),
+                                  Remainder);
                   RHS_Negative     : constant GL_Value :=
-                    I_Cmp (Env, Int_SLT, RVal, Const_Null (Env, RVal), "");
+                    I_Cmp (Env, Int_SLT, RVal, Const_Null (Env, RVal));
                   Abs_RHS : constant GL_Value :=
-                    Build_Select (Env, RHS_Negative,
-                                  NSW_Neg (Env, RVal, ""),
-                                  RVal, "");
+                    Build_Select (Env, RHS_Negative, NSW_Neg (Env, RVal),
+                                  RVal);
                   Need_Adjust      : constant GL_Value :=
                     I_Cmp (Env, Int_UGE,
-                           Shl (Env, Abs_Rem, Const_Int (Env, RVal, 1), ""),
-                           Abs_RHS, "");
+                           Shl (Env, Abs_Rem, Const_Int (Env, RVal, 1)),
+                           Abs_RHS);
                   Result_Plus_One  : constant GL_Value :=
-                    NSW_Add (Env, Result, Const_Int (Env, RVal, 1), "");
+                    NSW_Add (Env, Result, Const_Int (Env, RVal, 1));
                   Result_Minus_One : constant GL_Value :=
-                    NSW_Sub (Env, Result, Const_Int (Env, RVal, 1), "");
+                    NSW_Sub (Env, Result, Const_Int (Env, RVal, 1));
                   Which_Adjust     : constant GL_Value :=
                     Build_Select (Env, RHS_Negative, Result_Minus_One,
-                                  Result_Plus_One, "");
+                                  Result_Plus_One);
                begin
                   Result := Build_Select (Env, Need_Adjust,
-                                          Which_Adjust, Result, "");
+                                          Which_Adjust, Result);
                end;
             end if;
 
@@ -1903,7 +1899,7 @@ package body GNATLLVM.Compile is
                No_GL_Value, No_GL_Value, Nkind (Node));
 
          when N_Op_Not =>
-            return Build_Not (Env, Emit_Expr (Right_Opnd (Node)), "");
+            return Build_Not (Env, Emit_Expr (Right_Opnd (Node)));
 
          when N_Op_Abs =>
 
@@ -1917,19 +1913,18 @@ package body GNATLLVM.Compile is
                if Is_Floating_Point_Type (Expr) then
                   return Build_Select
                     (Env,
-                     C_If   => F_Cmp
-                       (Env, Real_OGE, Expr, Zero, ""),
+                     C_If   => F_Cmp (Env, Real_OGE, Expr, Zero),
                      C_Then => Expr,
-                     C_Else => F_Neg (Env, Expr, ""),
+                     C_Else => F_Neg (Env, Expr),
                      Name   => "abs");
                elsif Is_Unsigned_Type (Expr) then
                   return Expr;
                else
                   return Build_Select
                     (Env,
-                     C_If   => I_Cmp (Env, Int_SGE, Expr, Zero, ""),
+                     C_If   => I_Cmp (Env, Int_SGE, Expr, Zero),
                      C_Then => Expr,
-                     C_Else => NSW_Neg (Env, Expr, ""),
+                     C_Else => NSW_Neg (Env, Expr),
                      Name   => "abs");
                end if;
             end;
@@ -1942,9 +1937,9 @@ package body GNATLLVM.Compile is
                Expr : constant GL_Value := Emit_Expr (Right_Opnd (Node));
             begin
                if Is_Floating_Point_Type (Expr) then
-                  return F_Neg (Env, Expr, "");
+                  return F_Neg (Env, Expr);
                else
-                  return NSW_Neg (Env, Expr, "");
+                  return NSW_Neg (Env, Expr);
                end if;
             end;
 
@@ -2168,7 +2163,7 @@ package body GNATLLVM.Compile is
                --  Convert to a pointer to the type that the thing is suppose
                --  to point to.
 
-               Result := Ptr_To_Ref (Env, Result, Typ, "");
+               Result := Ptr_To_Ref (Env, Result, Typ);
 
                --  Now copy the data, if there is any, into the value.
 
@@ -2188,7 +2183,7 @@ package body GNATLLVM.Compile is
                   Result.Typ := Result_Type;
                   Result.Is_Reference := False;
                else
-                  Result := Pointer_Cast (Env, Result, Result_Type, "");
+                  Result := Pointer_Cast (Env, Result, Result_Type);
                end if;
 
                return Result;
@@ -2503,7 +2498,7 @@ package body GNATLLVM.Compile is
          --  If the pointer type of Src is not the same as the type of
          --  Dest, convert it.
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            Dest := Ptr_To_Ref (Env, Dest, Full_Etype (Src), "");
+            Dest := Ptr_To_Ref (Env, Dest, Full_Etype (Src));
          end if;
 
          Store (Env, Src, Dest);
@@ -2840,7 +2835,7 @@ package body GNATLLVM.Compile is
      (Env : Environ; D_Type : Entity_Id; Expr : Node_Id) return GL_Value
    is
       type Cvtf is access function
-        (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String)
+        (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String := "")
         return GL_Value;
 
       Value       : GL_Value := Emit_Expression (Env, Expr);
@@ -2907,7 +2902,7 @@ package body GNATLLVM.Compile is
                then Long_Long_Float (Float'Pred (0.5))
                else Long_Long_Float (Short_Float'Pred (0.5)));
             Val_Neg    : constant GL_Value :=
-              F_Cmp (Env, Real_OLT, Value, Const_Real (Env, Value, 0.0), "");
+              F_Cmp (Env, Real_OLT, Value, Const_Real (Env, Value, 0.0));
             Adjust_Amt : constant GL_Value :=
                 Const_Real (Env, Value, double (PredHalf));
             --  ?? The conversion to "double" above may be problematic,
@@ -2919,7 +2914,7 @@ package body GNATLLVM.Compile is
                 F_Sub (Env, Value, Adjust_Amt, "round-sub");
 
          begin
-            Value := Build_Select (Env, Val_Neg, Sub_Amt, Add_Amt, "");
+            Value := Build_Select (Env, Val_Neg, Sub_Amt, Add_Amt);
          end;
 
       elsif not Src_FP and then Dest_FP then
@@ -2943,7 +2938,7 @@ package body GNATLLVM.Compile is
 
       --  Here all that's left to do is generate the IR instruction.
 
-      return Subp (Env, Value, D_Type, "");
+      return Subp (Env, Value, D_Type);
 
    end Convert_Scalar_Types;
 
@@ -2954,7 +2949,7 @@ package body GNATLLVM.Compile is
      (Env : Environ; Expr : GL_Value; TE : Entity_Id) return GL_Value
    is
       type Cvtf is access function
-        (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String)
+        (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String := "")
         return GL_Value;
 
       In_Width    : constant unsigned_long_long :=
@@ -2972,7 +2967,7 @@ package body GNATLLVM.Compile is
          Subp := (if Is_Unsigned then Z_Ext'Access else S_Ext'Access);
       end if;
 
-      return Subp (Env, Expr, TE, "");
+      return Subp (Env, Expr, TE);
    end Convert_To_Scalar_Type;
 
    --------------------------------
@@ -3293,8 +3288,7 @@ package body GNATLLVM.Compile is
                return Convert_To_Scalar_Type
                  (Env,
                   NSW_Mul (Env,
-                           Get_Type_Size (Env, Typ, Value, For_Type),
-                           Const_8, ""),
+                           Get_Type_Size (Env, Typ, Value, For_Type), Const_8),
                   Result_Typ);
             end;
 
@@ -3422,7 +3416,7 @@ package body GNATLLVM.Compile is
                Size          : constant GL_Value :=
                  NSW_Mul
                    (Env,
-                    Z_Ext (Env, Left_Length, Env.Size_Type, ""),
+                    Z_Ext (Env, Left_Length, Env.Size_Type),
                     Get_Type_Size (Env, Comp_Type, No_GL_Value),
                     "byte-size");
 
@@ -3453,7 +3447,7 @@ package body GNATLLVM.Compile is
             --  of the memory comparison.
 
             Position_Builder_At_End (Env.Bld, BB_Merge);
-            return Build_Phi (Env, Results, Basic_Blocks, "");
+            return Build_Phi (Env, Results, Basic_Blocks);
          end;
 
       else
@@ -3510,10 +3504,10 @@ package body GNATLLVM.Compile is
 
       if Is_Access_Unconstrained (LHS) then
          return I_Cmp (Env, Operation.Unsigned,
-                       Array_Data (Env, LHS), Array_Data (Env, RHS), "");
+                       Array_Data (Env, LHS), Array_Data (Env, RHS));
 
       elsif Is_Floating_Point_Type (LHS) then
-         return F_Cmp (Env, Operation.Real, LHS, RHS, "");
+         return F_Cmp (Env, Operation.Real, LHS, RHS);
 
       elsif Is_Discrete_Or_Fixed_Point_Type (LHS)
         or else Is_Access_Type (LHS)
@@ -3534,7 +3528,7 @@ package body GNATLLVM.Compile is
             (if Is_Unsigned_Type (LHS) or else Is_Access_Type (LHS)
              then Operation.Unsigned
              else Operation.Signed),
-            LHS, RHS, "");
+            LHS, RHS);
 
       else
          Error_Msg_N
@@ -4022,7 +4016,7 @@ package body GNATLLVM.Compile is
       --  statements/expressions and return a merged expression if needed.
 
       Position_Builder_At_End (Env.Bld, BB_Next);
-      return Build_Phi (Env, (Then_Value, Else_Value), (BB_Then, BB_Else), "");
+      return Build_Phi (Env, (Then_Value, Else_Value), (BB_Then, BB_Else));
    end Emit_If_Expression;
 
    ------------------
@@ -4217,10 +4211,10 @@ package body GNATLLVM.Compile is
          --  Now, compute the value using the underlying LLVM instruction
          Result :=
            (if To_Left
-            then Shl (Env, LHS, N, "")
+            then Shl (Env, LHS, N)
             else
               (if Arithmetic
-               then A_Shr (Env, LHS, N, "") else L_Shr (Env, LHS, N, "")));
+               then A_Shr (Env, LHS, N) else L_Shr (Env, LHS, N)));
 
          --  Now, we must decide at runtime if it is safe to rely on the
          --  underlying LLVM instruction. If so, use it, otherwise return

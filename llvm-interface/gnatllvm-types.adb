@@ -480,9 +480,9 @@ package body GNATLLVM.Types is
         unsigned_long_long (Get_Targ.Get_Pointer_Size);
    begin
       if Val_Width > Size_Width then
-         return Trunc (Env, V, Env.Size_Type, "");
+         return Trunc (Env, V, Env.Size_Type);
       elsif Val_Width < Size_Width then
-         return S_Ext (Env, V, Env.Size_Type, "");
+         return S_Ext (Env, V, Env.Size_Type);
       else
          return G (V.Value, Env.Size_Type);
       end if;

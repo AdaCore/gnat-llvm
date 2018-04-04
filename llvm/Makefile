@@ -21,7 +21,8 @@ binding: $(OUT_DIR)/llvm-core.adb
 
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(PWD)/install \
-  -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" ../$(LLVM_SRC_DIR)
+  -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
+  -DLLVM_TARGETS_TO_BUILD="X86" ../$(LLVM_SRC_DIR)
 
 setup: $(LLVM_SRC_DIR) llvm-obj
 

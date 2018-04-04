@@ -24,8 +24,9 @@ with Stand;      use Stand;
 with Table;
 with Uintp;      use Uintp;
 
-with GNATLLVM.Compile; use GNATLLVM.Compile;
-with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 ---------------------
 -- GNATLLVM.Arrays --

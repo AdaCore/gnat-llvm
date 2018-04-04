@@ -33,6 +33,9 @@ with System; use System;
 
 package GNATLLVM.Environment is
 
+   type Value_Array is array (Nat range <>) of Value_T;
+   type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
+
    No_Value_T : constant Value_T := Value_T (Null_Address);
    No_Type_T : constant Type_T := Type_T (Null_Address);
    No_BB_T : constant Basic_Block_T := Basic_Block_T (Null_Address);

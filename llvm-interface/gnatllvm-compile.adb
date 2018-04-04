@@ -42,6 +42,7 @@ with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Compile is
 

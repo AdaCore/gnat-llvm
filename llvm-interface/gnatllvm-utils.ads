@@ -53,6 +53,9 @@ package GNATLLVM.Utils is
      with Pre  => Is_Access_Type (E),
           Post => Present (Full_Designated_Type'Result);
 
+   procedure Build_Br (Env : Environ; BB : Basic_Block_T)
+     with Pre => Env /= null and then Present (BB);
+
    procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
      with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
    --  Helper for LLVM's Build_Store

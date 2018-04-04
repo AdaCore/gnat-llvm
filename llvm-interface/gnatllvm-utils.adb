@@ -363,6 +363,15 @@ package body GNATLLVM.Utils is
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
+   --------------
+   -- Build_Br --
+   --------------
+
+   procedure Build_Br (Env : Environ; BB : Basic_Block_T) is
+   begin
+      Discard (Build_Br (Env.Bld, BB));
+   end Build_Br;
+
    ---------
    -- GEP --
    ---------

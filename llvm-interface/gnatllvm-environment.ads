@@ -138,20 +138,28 @@ package GNATLLVM.Environment is
    --  further annotate with flags.  So we pass the following record:
 
    type GL_Value is record
-      Value        : Value_T;
+      Value                : Value_T;
       --  The LLVM value that was generated
 
-      Typ          : Entity_Id;
+      Typ                  : Entity_Id;
       --  The GNAT type of this value.
 
-      Is_Reference : Boolean;
+      Is_Reference         : Boolean;
       --  If True, this is actually a pointer to Typ, so Value's type is
       --  actually an E_Access_Type (not provided) whose Designated_Type
       --  is Typ.
 
-      Is_Raw_Array : Boolean;
-      --  If True, means that, even though the type here is unconstrained,
-      --  we've extracted the actual address of the array.
+      Is_Raw_Array         : Boolean;
+      --  If True, even though the type here is unconstrained, we've
+      --  extracted the actual address of the array and that's what's in
+      --  Value.
+
+      Is_Intermediate_Type : Boolean;
+      --  If True, Value doesn't correspond precisely to either Typ or a
+      --  pointer to Typ, but instead to some intermediate type (such as
+      --  when building an aggregate for a multi-dimensional array) for
+      --  which we don't have an actual GNAT type.
+
    end record
      with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
                                or else (Present (GL_Value.Value)
@@ -160,7 +168,7 @@ package GNATLLVM.Environment is
 
    type GL_Value_Array is array (Nat range <>) of GL_Value;
 
-   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False, False);
+   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False, False, False);
 
    function No (G : GL_Value) return Boolean      is (G = No_GL_Value);
    function Present (G : GL_Value) return Boolean is (G /= No_GL_Value);

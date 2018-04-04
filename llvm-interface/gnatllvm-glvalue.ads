@@ -31,19 +31,7 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.GLValue is
 
-   function G
-     (V            : Value_T;
-      TE           : Entity_Id;
-      Is_Reference : Boolean := False;
-      Is_Raw_Array : Boolean := False) return GL_Value
-   is
-     ((V, TE, Is_Reference, Is_Raw_Array))
-     with Pre => Present (V) and then Is_Type_Or_Void (TE);
-
-   --  Now define predicates on the GL_Value type to easily access
-   --  properties of the LLVM value and the effective type.  These have the
-   --  same names as those for types and Value_T's.  The first of these
-   --  represent abstractions that will be used in later predicates.
+   --  Define basic accesss predicates for components of GL_Value.
 
    function Etype (G : GL_Value) return Entity_Id is
      (G.Typ)
@@ -52,6 +40,38 @@ package GNATLLVM.GLValue is
    function LLVM_Value (G : GL_Value) return Value_T is
      (G.Value)
      with Pre => Present (G), Post => Present (LLVM_Value'Result);
+
+   --  Now we have constructors for a GL_Value.
+
+   function G
+     (V                    : Value_T;
+      TE                   : Entity_Id;
+      Is_Reference         : Boolean := False;
+      Is_Raw_Array         : Boolean := False;
+      Is_Intermediate_Type : Boolean := False) return GL_Value
+   is
+     ((V, TE, Is_Reference, Is_Raw_Array, Is_Intermediate_Type))
+     with Pre => Present (V) and then Is_Type_Or_Void (TE);
+   --  Raw constructor that allow full specification of all fields.
+
+   function G_From (V : Value_T; GV : GL_Value) return GL_Value is
+     (G (V, Etype (GV), GV.Is_Reference, GV.Is_Raw_Array))
+     with Pre  => Present (V) and then Present (GV),
+          Post => Present (G_From'Result);
+   --  Constructor for most common operation cases where we aren't changing
+   --  any typing information, so we just copy it from an existing value.
+
+   function G_Ref (V : Value_T; TE : Entity_Id) return GL_Value is
+     (G (V, TE, True))
+     with Pre  => Present (V) and then Present (TE),
+          Post => Present (G_Ref'Result);
+   --  Constructor for case were we've create a value that's a pointer to
+   --  type TE.
+
+   --  Now define predicates on the GL_Value type to easily access
+   --  properties of the LLVM value and the effective type.  These have the
+   --  same names as those for types and Value_T's.  The first of these
+   --  represent abstractions that will be used in later predicates.
 
    function Full_Etype (G : GL_Value) return Entity_Id is
      (Etype (G))
@@ -447,167 +467,168 @@ package GNATLLVM.GLValue is
    function NSW_Add
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-      (G (NSW_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-          Etype (LHS), Is_Reference => LHS.Is_Reference or RHS.Is_Reference))
+      (G_From (NSW_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+               LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (NSW_Add'Result);
 
    function NSW_Sub
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-      (G (NSW_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-          Etype (LHS), Is_Reference => LHS.Is_Reference or RHS.Is_Reference))
+     (G_From (NSW_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (NSW_Sub'Result);
 
    function NSW_Mul
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (NSW_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (NSW_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (NSW_Mul'Result);
 
    function S_Div
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (S_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (S_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (S_Div'Result);
 
    function U_Div
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (U_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (U_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (U_Div'Result);
 
    function S_Rem
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (S_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (S_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (S_Rem'Result);
 
    function U_Rem
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (U_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (U_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (U_Rem'Result);
 
    function Build_And
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (Build_And (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (Build_And (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (Build_And'Result);
 
    function Build_Or
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (Build_Or (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (Build_Or (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (Build_Or'Result);
 
    function Build_Xor
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (Build_Xor (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (Build_Xor (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (Build_Xor'Result);
 
    function F_Add
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (F_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (F_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (F_Add'Result);
 
    function F_Sub
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (F_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (F_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (F_Sub'Result);
 
    function F_Mul
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (F_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (F_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (F_Mul'Result);
 
    function F_Div
      (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G (F_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Etype (LHS)))
+     (G_From (F_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+              LHS))
       with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
            Post => Present (F_Div'Result);
 
    function Shl
      (Env : Environ; E, Count : GL_Value; Name : String := "") return GL_Value
    is
-      (G (Shl (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name), Etype (E)))
+     (G_From (Shl (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
+              E))
       with Pre  => Env /= null and then Present (E) and then Present (Count),
            Post => Present (Shl'Result);
 
    function L_Shr
      (Env : Environ; E, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G (L_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
-         Etype (E)))
+     (G_From (L_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
+              E))
       with Pre  => Env /= null and then Present (E) and then Present (Count),
            Post => Present (L_Shr'Result);
 
    function A_Shr
      (Env : Environ; E, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G (A_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
-         Etype (E)))
+     (G_From (A_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
+              E))
       with Pre  => Env /= null and then Present (E) and then Present (Count),
            Post => Present (A_Shr'Result);
 
    function Build_Not
      (Env : Environ; V : GL_Value; Name : String := "") return GL_Value
    is
-      (G (Build_Not (Env.Bld, LLVM_Value (V), Name), Etype (V)))
+      (G_From (Build_Not (Env.Bld, LLVM_Value (V), Name), V))
       with Pre  => Env /= null and then Present (V),
            Post => Present (Build_Not'Result);
 
    function NSW_Neg
      (Env : Environ; V : GL_Value; Name : String := "") return GL_Value
    is
-      (G (NSW_Neg (Env.Bld, LLVM_Value (V), Name), Etype (V)))
+     (G_From (NSW_Neg (Env.Bld, LLVM_Value (V), Name), V))
       with Pre  => Env /= null and then Present (V),
            Post => Present (NSW_Neg'Result);
 
    function F_Neg
      (Env : Environ; V : GL_Value; Name : String := "") return GL_Value
    is
-      (G (F_Neg (Env.Bld, LLVM_Value (V), Name), Etype (V)))
-      with Pre  => Env /= null and then Present (V),
+     (G_From (F_Neg (Env.Bld, LLVM_Value (V), Name), V))
+     with Pre  => Env /= null and then Present (V),
            Post => Present (F_Neg'Result);
 
    function Build_Select
      (Env : Environ; C_If, C_Then, C_Else : GL_Value; Name : String := "")
      return GL_Value
    is
-     (G (Build_Select (Env.Bld, C_If => LLVM_Value (C_If),
-                       C_Then => LLVM_Value (C_Then),
-                       C_Else => LLVM_Value (C_Else), Name => Name),
-         Etype (C_Then), Is_Reference => C_If.Is_Reference))
+     (G_From (Build_Select (Env.Bld, C_If => LLVM_Value (C_If),
+                            C_Then => LLVM_Value (C_Then),
+                            C_Else => LLVM_Value (C_Else), Name => Name),
+              C_Then))
      with Pre  => Env /= null and then Present (C_If)
                   and then Present (C_Then) and then Present (C_Else),
           Post => Present (Build_Select'Result);
@@ -641,9 +662,9 @@ package GNATLLVM.GLValue is
       Index    : unsigned;
       Name     : String := "") return GL_Value
    is
-     (G (Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
-                       Index, Name),
-         Etype (Arg), Is_Reference => Arg.Is_Reference))
+     (G_From (Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
+                            Index, Name),
+              Arg))
      with  Pre  => Env /= null and then Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 

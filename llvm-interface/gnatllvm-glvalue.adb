@@ -29,8 +29,7 @@ package body GNATLLVM.GLValue is
    function Alloca
       (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Alloca (Env.Bld, Create_Type (Env, TE), Name),
-         TE, Is_Reference => True));
+     (G_Ref (Alloca (Env.Bld, Create_Type (Env, TE), Name), TE));
 
    ------------------
    -- Array_Alloca --
@@ -42,9 +41,9 @@ package body GNATLLVM.GLValue is
       Num_Elts : GL_Value;
       Name     : String := "") return GL_Value
    is
-     (G (Array_Alloca (Env.Bld, Create_Type (Env, TE), LLVM_Value (Num_Elts),
-                       Name),
-         TE, Is_Reference => True));
+     (G_Ref (Array_Alloca (Env.Bld, Create_Type (Env, TE),
+                           LLVM_Value (Num_Elts), Name),
+             TE));
 
    ----------------
    --  Get_Undef --
@@ -110,10 +109,10 @@ package body GNATLLVM.GLValue is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
-      (G (Int_To_Ptr (Env.Bld, LLVM_Value (V),
-                    Pointer_Type (Create_Type (Env, TE), 0),
-                    Name),
-          TE, Is_Reference => True));
+      (G_Ref (Int_To_Ptr (Env.Bld, LLVM_Value (V),
+                          Pointer_Type (Create_Type (Env, TE), 0),
+                          Name),
+              TE));
 
    ----------------
    -- Ptr_To_Int --
@@ -155,10 +154,10 @@ package body GNATLLVM.GLValue is
      (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
    is
-      (G (Pointer_Cast (Env.Bld, LLVM_Value (V),
-                      Pointer_Type (Create_Type (Env, TE), 0),
-                      Name),
-          TE, Is_Reference => True));
+      (G_Ref (Pointer_Cast (Env.Bld, LLVM_Value (V),
+                            Pointer_Type (Create_Type (Env, TE), 0),
+                            Name),
+              TE));
 
    -----------
    -- Trunc --
@@ -280,8 +279,7 @@ package body GNATLLVM.GLValue is
 
       Our_Phi := Phi (Env.Bld, Type_Of (GL_Values (GL_Values'First)), Name);
       Add_Incoming (Our_Phi, Values'Address, BBs'Address, Values'Length);
-      return G (Our_Phi, Etype (GL_Values (GL_Values'First)),
-                Is_Reference => GL_Values (GL_Values'First).Is_Reference);
+      return G_From (Our_Phi, GL_Values (GL_Values'First));
    end Build_Phi;
 
    --------------------------
@@ -312,7 +310,7 @@ package body GNATLLVM.GLValue is
 
       Result := GEP (Env.Bld, LLVM_Value (Ptr), Val_Idxs'Address,
                      Val_Idxs'Length, Name);
-      return G (Result, Result_Type, Is_Reference => True);
+      return G_Ref (Result, Result_Type);
    end GEP;
 
    ----------

@@ -363,6 +363,15 @@ package body GNATLLVM.Utils is
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
+   -----------------------------
+   -- Position_Builder_At_End --
+   -----------------------------
+
+   procedure Position_Builder_At_End (Env : Environ; BB : Basic_Block_T) is
+   begin
+      Position_Builder_At_End (Env.Bld, BB);
+   end Position_Builder_At_End;
+
    --------------
    -- Build_Br --
    --------------

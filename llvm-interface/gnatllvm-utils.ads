@@ -53,6 +53,9 @@ package GNATLLVM.Utils is
      with Pre  => Is_Access_Type (E),
           Post => Present (Full_Designated_Type'Result);
 
+   procedure Position_Builder_At_End (Env : Environ; BB : Basic_Block_T)
+     with Pre => Env /= null and then Present (BB);
+
    procedure Build_Br (Env : Environ; BB : Basic_Block_T)
      with Pre => Env /= null and then Present (BB);
 

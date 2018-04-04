@@ -771,10 +771,10 @@ package body GNATLLVM.Compile is
                   Build_Cond_Br
                     (Env, Emit_Expression (Env, Condition (Node)),
                      BB_Then, BB_Next);
-                  Position_Builder_At_End (Env.Bld, BB_Then);
+                  Position_Builder_At_End (Env, BB_Then);
                   Emit_LCH_Call (Env, Node);
                   Build_Br (Env, BB_Next);
-                  Position_Builder_At_End (Env.Bld, BB_Next);
+                  Position_Builder_At_End (Env, BB_Next);
                end;
             else
                Emit_LCH_Call (Env, Node);
@@ -978,13 +978,13 @@ package body GNATLLVM.Compile is
                  Get_Label_BB (Env, Entity (Identifier (Node)));
             begin
                Build_Br (Env, BB);
-               Position_Builder_At_End (Env.Bld, BB);
+               Position_Builder_At_End (Env, BB);
             end;
 
          when N_Goto_Statement =>
             Build_Br (Env, Get_Label_BB (Env, Entity (Name (Node))));
             Position_Builder_At_End
-              (Env.Bld, Create_Basic_Block (Env, "after-goto"));
+              (Env, Create_Basic_Block (Env, "after-goto"));
 
          when N_Exit_Statement =>
             declare
@@ -1005,7 +1005,7 @@ package body GNATLLVM.Compile is
                   Build_Br (Env, Exit_Point);
                end if;
 
-               Position_Builder_At_End (Env.Bld, Next_BB);
+               Position_Builder_At_End (Env, Next_BB);
             end;
 
          when N_Simple_Return_Statement =>
@@ -1051,7 +1051,7 @@ package body GNATLLVM.Compile is
             end if;
 
             Position_Builder_At_End
-              (Env.Bld, Create_Basic_Block (Env, "unreachable"));
+              (Env, Create_Basic_Block (Env, "unreachable"));
 
          when N_If_Statement =>
             Emit_If (Env, Node);
@@ -1094,7 +1094,7 @@ package body GNATLLVM.Compile is
                   then Get_Basic_Block (Env, Entity (Identifier (Node)))
                   else Create_Basic_Block (Env, ""));
                Build_Br (Env, BB_Init);
-               Position_Builder_At_End (Env.Bld, BB_Init);
+               Position_Builder_At_End (Env, BB_Init);
 
                --  If this is not a FOR loop, there is no initialization: alias
                --  it with the COND block.
@@ -1137,7 +1137,7 @@ package body GNATLLVM.Compile is
                      --  condition evaluates to True, jump to the loop-exit
                      --  otherwise.
 
-                     Position_Builder_At_End (Env.Bld, BB_Cond);
+                     Position_Builder_At_End (Env, BB_Cond);
                      Cond := Emit_Expression (Env, Condition (Iter_Scheme));
                      Build_Cond_Br (Env, Cond, BB_Stmts, BB_Next);
 
@@ -1183,11 +1183,11 @@ package body GNATLLVM.Compile is
                         --  during the INIT step and right before the ITER
                         --  step, so there is nothing to check during the
                         --  COND step.
-                        Position_Builder_At_End (Env.Bld, BB_Cond);
+                        Position_Builder_At_End (Env, BB_Cond);
                         Build_Br (Env, BB_Stmts);
 
                         BB_Cond := Create_Basic_Block (Env, "loop-cond-iter");
-                        Position_Builder_At_End (Env.Bld, BB_Cond);
+                        Position_Builder_At_End (Env, BB_Cond);
                         Cond := I_Cmp
                           (Env, Int_EQ, Load (Env, LLVM_Var),
                            (if Reversed then Low else High),
@@ -1196,7 +1196,7 @@ package body GNATLLVM.Compile is
 
                         --  After STMTS, stop if the loop variable was equal to
                         --  the "exit" bound. Increment/decrement it otherwise.
-                        Position_Builder_At_End (Env.Bld, BB_Iter);
+                        Position_Builder_At_End (Env, BB_Iter);
 
                         declare
                            Iter_Prev_Value : constant GL_Value :=
@@ -1223,12 +1223,12 @@ package body GNATLLVM.Compile is
                   end if;
                end if;
 
-               Position_Builder_At_End (Env.Bld, BB_Stmts);
+               Position_Builder_At_End (Env, BB_Stmts);
                Emit_List (Env, Statements (Node));
                Build_Br (Env, BB_Iter);
                Pop_Loop;
 
-               Position_Builder_At_End (Env.Bld, BB_Next);
+               Position_Builder_At_End (Env, BB_Next);
             end;
 
          when N_Block_Statement =>
@@ -1256,7 +1256,7 @@ package body GNATLLVM.Compile is
                end if;
 
                Build_Br (Env, BB);
-               Position_Builder_At_End (Env.Bld, BB);
+               Position_Builder_At_End (Env, BB);
 
                Stack_State := Call
                  (Env.Bld,
@@ -1676,7 +1676,7 @@ package body GNATLLVM.Compile is
 
       --  Emit code for the evaluation of the right part expression
 
-      Position_Builder_At_End (Env.Bld, Block_Right_Expr);
+      Position_Builder_At_End (Env, Block_Right_Expr);
       if No (Right) then
          Right := Emit_Expression (Env, Node_Right);
       end if;
@@ -1684,7 +1684,7 @@ package body GNATLLVM.Compile is
       Block_Right_Expr_End := Get_Insert_Block (Env.Bld);
       Build_Br (Env, Block_Exit);
 
-      Position_Builder_At_End (Env.Bld, Block_Exit);
+      Position_Builder_At_End (Env, Block_Exit);
 
       --  If we exited the entry block, it means that for AND, the result
       --  is false and for OR, it's true.  Otherwise, the result is the right.
@@ -3403,7 +3403,7 @@ package body GNATLLVM.Compile is
 
             --  If we jump from here to BB_Merge, we are returning False
 
-            Position_Builder_At_End (Env.Bld, Basic_Blocks (2));
+            Position_Builder_At_End (Env, Basic_Blocks (2));
             Build_Cond_Br
               (Env,
                C_If   => I_Cmp
@@ -3414,7 +3414,7 @@ package body GNATLLVM.Compile is
 
             --  If we jump from here to BB_Merge, we are returning True
 
-            Position_Builder_At_End (Env.Bld, Basic_Blocks (3));
+            Position_Builder_At_End (Env, Basic_Blocks (3));
 
             declare
                Left          : constant GL_Value :=
@@ -3457,7 +3457,7 @@ package body GNATLLVM.Compile is
             --  If we jump from here to BB_Merge, we are returning the result
             --  of the memory comparison.
 
-            Position_Builder_At_End (Env.Bld, BB_Merge);
+            Position_Builder_At_End (Env, BB_Merge);
             return Build_Phi (Env, Results, Basic_Blocks);
          end;
 
@@ -3665,7 +3665,7 @@ package body GNATLLVM.Compile is
       while Present (Alt) loop
          First_Choice := Current_Choice;
          BB := Create_Basic_Block (Env, "case-alt");
-         Position_Builder_At_End (Env.Bld, BB);
+         Position_Builder_At_End (Env, BB);
          Emit_List (Env, Statements (Alt));
          Build_Br (Env, BB_End);
 
@@ -3727,7 +3727,7 @@ package body GNATLLVM.Compile is
       --  alternatives is low enough (we use 100).  If so, use that approach.
 
       Swap_Highest_Cost (True);
-      Position_Builder_At_End (Env.Bld, Start_BB);
+      Position_Builder_At_End (Env, Start_BB);
       Switch_Cost := 0;
       for I in Alts'First .. Alts'Last - 1 loop
          Switch_Cost := Switch_Cost + Alts (I).Switch_Cost;
@@ -3789,13 +3789,13 @@ package body GNATLLVM.Compile is
                   Emit_If_Range (Env, Node, LHS,
                                  Choices (J).Low, Choices (J).High,
                                  Alts (I).BB, BB);
-                  Position_Builder_At_End (Env.Bld, BB);
+                  Position_Builder_At_End (Env, BB);
                end if;
             end loop;
          end loop;
       end if;
 
-      Position_Builder_At_End (Env.Bld, BB_End);
+      Position_Builder_At_End (Env, BB_End);
    end Emit_Case;
 
    -------------
@@ -3855,17 +3855,17 @@ package body GNATLLVM.Compile is
 
       for Part of If_Parts loop
          Emit_If_Cond (Env, Part.Cond, Part.BB_True, Part.BB_False);
-         Position_Builder_At_End (Env.Bld, Part.BB_True);
+         Position_Builder_At_End (Env, Part.BB_True);
          Emit_List (Env, Part.Stmts);
          Build_Br (Env, BB_End);
-         Position_Builder_At_End (Env.Bld, Part.BB_False);
+         Position_Builder_At_End (Env, Part.BB_False);
       end loop;
 
       --  If there's an Else part, emit it and go into the "end" basic block.
       if Present (Else_Statements (Node)) then
          Emit_List (Env, Else_Statements (Node));
          Build_Br (Env, BB_End);
-         Position_Builder_At_End (Env.Bld, BB_End);
+         Position_Builder_At_End (Env, BB_End);
       end if;
 
    end Emit_If;
@@ -3902,7 +3902,7 @@ package body GNATLLVM.Compile is
                            then BB_New else BB_True),
                           (if Nkind (Cond) = N_And_Then
                            then BB_False else BB_New));
-            Position_Builder_At_End (Env.Bld, BB_New);
+            Position_Builder_At_End (Env, BB_New);
             Emit_If_Cond (Env, Right_Opnd (Cond), BB_True, BB_False);
             return;
 
@@ -3966,7 +3966,7 @@ package body GNATLLVM.Compile is
          Cond := Emit_Comparison (Env, N_Op_Ge, Node,
                                   LHS, Const_Int (Env, LHS, Low));
          Build_Cond_Br (Env, Cond, Inner_BB, BB_False);
-         Position_Builder_At_End (Env.Bld, Inner_BB);
+         Position_Builder_At_End (Env, Inner_BB);
          Cond := Emit_Comparison (Env, N_Op_Le, Node, LHS,
                                   Const_Int (Env, LHS, High));
          Build_Cond_Br (Env, Cond, BB_True, BB_False);
@@ -4000,7 +4000,7 @@ package body GNATLLVM.Compile is
 
       --  Emit code for the THEN part
 
-      Position_Builder_At_End (Env.Bld, BB_Then);
+      Position_Builder_At_End (Env, BB_Then);
       Then_Value := Emit_Expression (Env, Then_Expr);
 
       --  The THEN part may be composed of multiple basic blocks. We want
@@ -4012,7 +4012,7 @@ package body GNATLLVM.Compile is
 
       --  Emit code for the ELSE part
 
-      Position_Builder_At_End (Env.Bld, BB_Else);
+      Position_Builder_At_End (Env, BB_Else);
       Else_Value := Emit_Expression (Env, Else_Expr);
       Build_Br (Env, BB_Next);
 
@@ -4024,7 +4024,7 @@ package body GNATLLVM.Compile is
       --  Then prepare the instruction builder for the next
       --  statements/expressions and return a merged expression if needed.
 
-      Position_Builder_At_End (Env.Bld, BB_Next);
+      Position_Builder_At_End (Env, BB_Next);
       return Build_Phi (Env, (Then_Value, Else_Value), (BB_Then, BB_Else));
    end Emit_If_Expression;
 

@@ -33,9 +33,15 @@ package GNATLLVM.GLValue is
 
    --  Define basic accesss predicates for components of GL_Value.
 
+   function Has_Known_Etype (G : GL_Value) return Boolean is
+     (not G.Is_Reference and then not G.Is_Intermediate_Type)
+     with Pre => Present (G);
+   --  True is we know what G's Etype is.
+
    function Etype (G : GL_Value) return Entity_Id is
      (G.Typ)
-     with Pre => Present (G), Post => Present (Etype'Result);
+     with Pre => Present (G) and then Has_Known_Etype (G),
+          Post => Present (Etype'Result);
 
    function LLVM_Value (G : GL_Value) return Value_T is
      (G.Value)
@@ -55,7 +61,10 @@ package GNATLLVM.GLValue is
    --  Raw constructor that allow full specification of all fields.
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
-     (G (V, Etype (GV), GV.Is_Reference, GV.Is_Raw_Array))
+     (G (V, GV.Typ,
+         Is_Reference => GV.Is_Reference,
+         Is_Raw_Array => GV.Is_Raw_Array,
+         Is_Intermediate_Type => GV.Is_Intermediate_Type))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing
@@ -82,7 +91,7 @@ package GNATLLVM.GLValue is
      with Pre => Present (G), Post => Present (Type_Of'Result);
 
    function Ekind (G : GL_Value) return Entity_Kind is
-     (Ekind (Etype (G)))
+     ((if G.Is_Reference then E_Access_Type else Ekind (Etype (G))))
      with Pre => Present (G);
 
    function Is_Access_Type (G : GL_Value) return Boolean is

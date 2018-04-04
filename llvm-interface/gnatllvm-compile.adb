@@ -3079,10 +3079,13 @@ package body GNATLLVM.Compile is
       Array_Type    : Entity_Id;
       Typ, Comp_Typ : Type_T) return GL_Value
    is
-      Result     : GL_Value := G (Get_Undef (Typ), Array_Type);
-      --  ?? The type above is really only correct if Dims_Left is one, since
-      --  we don't have any type corresponding to the intermediate dimensions
-      --  of the array.
+      Result     : GL_Value :=
+        G (Get_Undef (Typ), Array_Type,
+           Is_Intermediate_Type =>
+             Dims_Left /= Number_Dimensions (Array_Type));
+      --  If the number of dimensions left isn't the same as the dimensionality
+      --  of the array, then we have an intermediate type.
+
       Cur_Expr   : GL_Value;
       Cur_Index  : Integer := 0;
       Expr       : Node_Id;

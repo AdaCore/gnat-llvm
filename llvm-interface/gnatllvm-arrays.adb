@@ -480,7 +480,8 @@ package body GNATLLVM.Arrays is
      (Env        : Environ;
       Array_Data : GL_Value) return GL_Value
    is
-      Array_Type        : constant Entity_Id := Full_Etype (Array_Data);
+      Array_Type        : constant Entity_Id :=
+        Full_Designated_Type (Array_Data);
       Fat_Ptr_Type      : constant Type_T :=
         Create_Array_Fat_Pointer_Type (Env, Array_Type);
       Fat_Ptr_Elt_Types : aliased Type_Array (1 .. 2);
@@ -553,8 +554,8 @@ package body GNATLLVM.Arrays is
       Indexes : List_Id;
       Value   : GL_Value) return GL_Value
    is
-      Comp_Type      : constant Entity_Id :=
-        Full_Component_Type (Full_Designated_Type (Value));
+      Array_Type     : constant Entity_Id := Full_Designated_Type (Value);
+      Comp_Type      : constant Entity_Id := Full_Component_Type (Array_Type);
       Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Size_Const_Int (Env, 0), others => <>);
@@ -571,8 +572,7 @@ package body GNATLLVM.Arrays is
          declare
             User_Index    : constant GL_Value := Emit_Expression (Env, N);
             Dim_Low_Bound : constant GL_Value :=
-              Get_Array_Bound (Env, Full_Designated_Type (Value),
-                               J - 2, True, Value);
+              Get_Array_Bound (Env, Array_Type, J - 2, True, Value);
             Converted_Index : constant GL_Value :=
               Convert_To_Scalar_Type (Env, User_Index, Dim_Low_Bound);
          begin
@@ -586,7 +586,7 @@ package body GNATLLVM.Arrays is
       --  There are two approaches we can take here.  If we haven't used
       --  an opaque type, we can just do a GEP with the values above.
 
-      if Type_Is_Sized (Create_Type (Env, Full_Designated_Type (Value))) then
+      if Type_Is_Sized (Create_Type (Env, Array_Type)) then
          return GEP (Env, Comp_Type, Array_Data_Ptr,
                      Idxs, "array-element-access");
       end if;
@@ -606,16 +606,14 @@ package body GNATLLVM.Arrays is
          Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
       begin
 
-         for Dim in 1 ..
-           Number_Dimensions (Full_Designated_Type (Value)) - 1 loop
+         for Dim in 1 .. Number_Dimensions (Array_Type) - 1 loop
             Index := NSW_Add (Env,
                               NSW_Mul (Env,
                                        Index,
                                        Convert_To_Size_Type
                                          (Env,
                                           Get_Array_Length
-                                            (Env, Full_Etype (Value),
-                                             Dim, Value))),
+                                            (Env, Array_Type, Dim, Value))),
                               Convert_To_Size_Type (Env, Idxs (Dim + 2)));
          end loop;
 

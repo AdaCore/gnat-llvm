@@ -287,7 +287,7 @@ package body GNATLLVM.GLValue is
    --------------------------
 
    function Full_Designated_Type (G : GL_Value) return Entity_Id is
-     ((if Is_Reference (G) then Get_Fullest_View (Etype (G))
+     ((if Is_Reference (G) then Get_Fullest_View (G.Typ)
        else Full_Designated_Type (Etype (G))));
 
    ---------
@@ -319,7 +319,8 @@ package body GNATLLVM.GLValue is
 
    function Load (Env : Environ; Ptr : GL_Value; Name : String := "")
                  return GL_Value is
-     (G (Load_With_Type (Env, Etype (Ptr), LLVM_Value (Ptr), Name),
+     (G (Load_With_Type (Env, Full_Designated_Type (Ptr),
+                         LLVM_Value (Ptr), Name),
          Full_Designated_Type (Ptr)));
 
    -----------
@@ -328,7 +329,12 @@ package body GNATLLVM.GLValue is
 
    procedure Store (Env : Environ; Expr : GL_Value; Ptr : GL_Value) is
    begin
-      Store_With_Type (Env, Etype (Expr), LLVM_Value (Expr), LLVM_Value (Ptr));
+      if Has_Known_Etype (Expr) then
+         Store_With_Type (Env, Etype (Expr), LLVM_Value (Expr),
+                          LLVM_Value (Ptr));
+      else
+         Discard (Build_Store (Env.Bld, LLVM_Value (Expr), LLVM_Value (Ptr)));
+      end if;
    end Store;
 
 end GNATLLVM.GLValue;

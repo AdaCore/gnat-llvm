@@ -81,14 +81,22 @@ package body GNATLLVM.Compile is
    --  Build and return the static link to pass to a call to Node
 
    function Compute_Size
-     (Env                 : Environ;
-      Left_Typ, Right_Typ : Entity_Id;
-      Right_Value         : GL_Value) return GL_Value
+     (Env                     : Environ;
+      Left_Typ, Right_Typ     : Entity_Id;
+      Left_Value, Right_Value : GL_Value) return GL_Value
      with Pre  => Env /= null and then Is_Type (Left_Typ)
                   and then Present (Right_Typ)
                   and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
-   --  Helper for assignments
+   --  Used for comparison and assignment: compute the size to be used in
+   --  the operation.  Right_Value must be specified.  Left_Value is
+   --  optional and will be specified in the comparison case, but not the
+   --  assignment case.  If Right_Value is a discriminated record, we
+   --  assume here that the last call to Emit_LValue was to compute
+   --  Right_Value so that we can use Get_Matching_Value to return the
+   --  proper object.  In the comparison case, where Left_Value is
+   --  specified, we can only be comparing arrays, so we won't need to
+   --  use Get_Matching_Value.
 
    function Convert_Scalar_Types
      (Env : Environ; D_Type : Entity_Id; Expr : Node_Id) return GL_Value
@@ -143,6 +151,17 @@ package body GNATLLVM.Compile is
      (Env : Environ; Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
           Post => Present (Emit_Comparison'Result);
+   --  Generate a result which is a comparison of two expressions
+
+   procedure Emit_Comparison_And_Branch
+     (Env               : Environ;
+      Kind              : Node_Kind;
+      LHS, RHS          : Node_Id;
+      BB_True, BB_False : Basic_Block_T)
+     with Pre => Env /= null and then Present (LHS) and then Present (RHS)
+                 and then Present (BB_True) and then Present (BB_False);
+   --  Similar, but generate comparison and branch to one of the basic
+   --  blocks depending on the result
 
    function Emit_Elementary_Comparison
      (Env                : Environ;
@@ -2494,7 +2513,8 @@ package body GNATLLVM.Compile is
             Args : constant Value_Array (1 .. 5) :=
               (Bit_Cast (Env.Bld, LLVM_Value (Dest), Void_Ptr_Type, ""),
                Bit_Cast (Env.Bld, LLVM_Value (Src), Void_Ptr_Type, ""),
-               LLVM_Value (Compute_Size (Env, Dest_Typ, Typ, Src)),
+               LLVM_Value (Compute_Size
+                             (Env, Dest_Typ, Typ, No_GL_Value, Src)),
                Const_Int (Int_Ty (32), 1, False),  --  Alignment
                Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
 
@@ -2782,9 +2802,9 @@ package body GNATLLVM.Compile is
    ------------------
 
    function Compute_Size
-     (Env                 : Environ;
-      Left_Typ, Right_Typ : Entity_Id;
-      Right_Value         : GL_Value) return GL_Value
+     (Env                     : Environ;
+      Left_Typ, Right_Typ     : Entity_Id;
+      Left_Value, Right_Value : GL_Value) return GL_Value
    is
    begin
 
@@ -2794,7 +2814,7 @@ package body GNATLLVM.Compile is
       if Get_Type_Size_Complexity (Env, Right_Typ) >
         Get_Type_Size_Complexity (Env, Left_Typ)
       then
-         return Get_Type_Size (Env, Left_Typ, No_GL_Value);
+         return Get_Type_Size (Env, Left_Typ, Left_Value);
       else
          return Get_Type_Size (Env, Right_Typ, Right_Value);
       end if;
@@ -3323,115 +3343,139 @@ package body GNATLLVM.Compile is
          pragma Assert (Is_Array_Type (Operand_Type)
                           and then Operation.Signed in Int_EQ | Int_NE);
 
-         --  ??? Handle multi-dimensional arrays
+         --  We handle this case by creating two basic blocks and doing
+         --  this as a test of the arrays, branching to each if true or false.
+         --  We then have a merge block which has a Phi selecting true
+         --  or false.
 
          declare
-            --  Because of runtime length checks, the comparison is made as
-            --  follows:
-            --     L_Length <- LHS'Length
-            --     R_Length <- RHS'Length
-            --     if L_Length /= R_Length then
-            --        return False;
-            --     elsif L_Length = 0 then
-            --        return True;
-            --     else
-            --        return memory comparison;
-            --     end if;
-            --  We are generating LLVM IR (SSA form), so the return mechanism
-            --  is implemented with control-flow and PHI nodes.
-
             False_Val    : constant GL_Value :=
               Const_Int (Env, Standard_Boolean, 0, False);
             True_Val     : constant GL_Value :=
               Const_Int (Env, Standard_Boolean, 1, False);
-
-            LHS_Descr    : constant GL_Value := Emit_LValue (Env, LHS);
-            LHS_Type     : constant Entity_Id := Full_Etype (LHS);
-            RHS_Descr    : constant GL_Value := Emit_LValue (Env, RHS);
-            RHS_Type     : constant Entity_Id := Full_Etype (RHS);
-
-            Left_Length  : constant GL_Value :=
-              Get_Array_Length (Env, LHS_Type, 0, LHS_Descr);
-            Right_Length : constant GL_Value :=
-              Get_Array_Length (Env, RHS_Type, 0, RHS_Descr);
-            Null_Length  : constant GL_Value := Const_Null (Env, Left_Length);
-            Same_Length  : constant GL_Value := I_Cmp
-              (Env, Int_NE, Left_Length, Right_Length, "test-same-length");
-
-            Basic_Blocks : constant Basic_Block_Array (1 .. 3) :=
-              (Get_Insert_Block (Env.Bld),
-               Create_Basic_Block (Env, "when-null-length"),
-               Create_Basic_Block (Env, "when-same-length"));
-            Results      : GL_Value_Array (1 .. 3);
+            BB_True      : constant Basic_Block_T :=
+              Create_Basic_Block (Env, "true");
+            BB_False     : constant Basic_Block_T :=
+              Create_Basic_Block (Env, "false");
             BB_Merge     : constant Basic_Block_T :=
-              Create_Basic_Block (Env, "array-cmp-merge");
+              Create_Basic_Block (Env, "merge");
+            Results      : constant GL_Value_Array (1 .. 2) :=
+              (1 => (if Kind = N_Op_Eq then True_Val  else False_Val),
+               2 => (if Kind = N_Op_Eq then False_Val else True_Val));
+            Basic_Blocks : constant Basic_Block_Array (1 .. 2) :=
+              (1 => BB_True, 2 => BB_False);
 
          begin
-            Build_Cond_Br (Env, Same_Length,  BB_Merge, Basic_Blocks (2));
-            Results (1) := (if Kind = N_Op_Eq then False_Val else True_Val);
 
-            --  If we jump from here to BB_Merge, we are returning False
+            --  First emit the comparison and branch to one of the two
+            --  blocks.
 
-            Position_Builder_At_End (Env, Basic_Blocks (2));
-            Build_Cond_Br
-              (Env,
-               C_If   => I_Cmp
-                 (Env, Int_EQ, Left_Length, Null_Length, "test-null-length"),
-               C_Then => BB_Merge,
-               C_Else => Basic_Blocks (3));
-            Results (2) := (if Kind = N_Op_Eq then True_Val else False_Val);
+            Emit_Comparison_And_Branch (Env, N_Op_Eq, LHS, RHS,
+                                        BB_True, BB_False);
 
-            --  If we jump from here to BB_Merge, we are returning True
+            --  Now have each block branch to the merge point and create the
+            --  Phi at the merge point.
 
-            Position_Builder_At_End (Env, Basic_Blocks (3));
-
-            declare
-               Left          : constant GL_Value :=
-                 Array_Data (Env, LHS_Descr);
-               Right         : constant GL_Value :=
-                 Array_Data (Env, RHS_Descr);
-               Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-               Comp_Type     : constant Entity_Id :=
-                 Full_Component_Type (Full_Etype (LHS));
-               Size          : constant GL_Value :=
-                 NSW_Mul
-                   (Env,
-                    Z_Ext (Env, Left_Length, Env.Size_Type),
-                    Get_Type_Size (Env, Comp_Type, No_GL_Value),
-                    "byte-size");
-
-               Memcmp_Args : constant Value_Array (1 .. 3) :=
-                 (Bit_Cast (Env.Bld, LLVM_Value (Left), Void_Ptr_Type, ""),
-                  Bit_Cast (Env.Bld, LLVM_Value (Right), Void_Ptr_Type, ""),
-                  LLVM_Value (Size));
-               Memcmp      : constant Value_T := Call
-                 (Env.Bld,
-                  Env.Memory_Cmp_Fn,
-                  Memcmp_Args'Address, Memcmp_Args'Length,
-                  "");
-            begin
-               --  The two arrays are equal iff. the call to memcmp returned 0
-
-               Results (3) := G (I_Cmp
-                                   (Env.Bld,
-                                    Operation.Signed,
-                                    Memcmp,
-                                    Const_Null (Type_Of (Memcmp)),
-                                    "array-comparison"),
-                                 Standard_Boolean);
-            end;
-
+            Position_Builder_At_End (Env, BB_True);
             Build_Br (Env, BB_Merge);
-
-            --  If we jump from here to BB_Merge, we are returning the result
-            --  of the memory comparison.
-
+            Position_Builder_At_End (Env, BB_False);
+            Build_Br (Env, BB_Merge);
             Position_Builder_At_End (Env, BB_Merge);
             return Build_Phi (Env, Results, Basic_Blocks);
          end;
 
       end if;
    end Emit_Comparison;
+
+   --------------------------------
+   -- Emit_Comparison_And_Branch --
+   --------------------------------
+
+   procedure Emit_Comparison_And_Branch
+     (Env               : Environ;
+      Kind              : Node_Kind;
+      LHS, RHS          : Node_Id;
+      BB_True, BB_False : Basic_Block_T)
+   is
+      Cond : GL_Value;
+   begin
+
+      --  Do the array case here, where we have labels, to simplify the
+      --  logic and take advantage of the reality that almost all array
+      --  comparisons are part of "if" statements.
+
+      if  Is_Array_Type (Full_Etype (LHS)) then
+         pragma Assert (Kind = N_Op_Eq or else Kind = N_Op_Ne);
+
+         declare
+            BB_T    : constant Basic_Block_T :=
+              (if Kind = N_Op_Eq then BB_True else BB_False);
+            BB_F    : constant Basic_Block_T :=
+              (if Kind = N_Op_Eq then BB_False else BB_True);
+            LHS_Val : constant GL_Value := Emit_LValue (Env, LHS);
+            RHS_Val : constant GL_Value := Emit_LValue (Env, RHS);
+            BB_Next : Basic_Block_T;
+         begin
+
+            --  For each dimension, see if the lengths of the two arrays
+            --  are different.  If so, the comparison is false.
+
+            --  We need to be careful with types here: LHS and RHS are
+            --  the actual array types, but, because we called Emit_LValue,
+            --  LHS_Val and RHS_Val are actually references to the array,
+            --  not the array.
+
+            for Dim in 0 .. Number_Dimensions (Full_Etype (LHS)) - 1 loop
+               BB_Next := Create_Basic_Block (Env, "");
+               Cond := Emit_Elementary_Comparison
+                 (Env, N_Op_Eq,
+                  Get_Array_Length (Env, Full_Designated_Type (LHS_Val),
+                                    Dim, LHS_Val),
+                  Get_Array_Length (Env, Full_Designated_Type (RHS_Val),
+                                    Dim, RHS_Val));
+               Build_Cond_Br (Env, Cond, BB_Next, BB_F);
+               Position_Builder_At_End (Env, BB_Next);
+            end loop;
+
+            declare
+
+               --  Now we need to get the size of the array (in bytes)
+               --  to do the memory comparison.  Memcmp is defined as
+               --  returning zero for a zero size, so we don't need to worry
+               --  about testing for that case.
+
+               Size : constant GL_Value :=
+                 Compute_Size (Env, Full_Designated_Type (LHS_Val),
+                               Full_Designated_Type (RHS_Val),
+                               LHS_Val, RHS_Val);
+               Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+               Memcmp_Args : constant Value_Array (1 .. 3) :=
+                 (1 => Bit_Cast (Env.Bld,
+                                 LLVM_Value (Array_Data (Env, LHS_Val)),
+                                 Void_Ptr_Type, ""),
+                  2 => Bit_Cast (Env.Bld,
+                                 LLVM_Value (Array_Data (Env, RHS_Val)),
+                                 Void_Ptr_Type, ""),
+                  3 => LLVM_Value (Size));
+               Memcmp      : constant Value_T := Call
+                 (Env.Bld, Env.Memory_Cmp_Fn,
+                  Memcmp_Args'Address, Memcmp_Args'Length, "");
+               Cond : constant GL_Value :=
+                 I_Cmp (Env, Int_EQ, G (Memcmp, Env.Size_Type),
+                        Const_Int (Env, Standard_Integer, 0));
+            begin
+               Build_Cond_Br (Env, Cond, BB_T, BB_F);
+            end;
+         end;
+
+      --  And now we have the other cases.  We do have to be careful in how
+      --  the tests work that we don't have infinite mutual recursion.
+
+      else
+         Cond := Emit_Comparison (Env, Kind, LHS, RHS);
+         Build_Cond_Br (Env, Cond, BB_True, BB_False);
+      end if;
+   end Emit_Comparison_And_Branch;
 
    --------------------------------
    -- Emit_Elementary_Comparison --
@@ -3866,6 +3910,12 @@ package body GNATLLVM.Compile is
                            then BB_False else BB_New));
             Position_Builder_At_End (Env, BB_New);
             Emit_If_Cond (Env, Right_Opnd (Cond), BB_True, BB_False);
+            return;
+
+         when N_Op_Compare =>
+            Emit_Comparison_And_Branch (Env, Nkind (Cond),
+                                        Left_Opnd (Cond), Right_Opnd (Cond),
+                                        BB_True, BB_False);
             return;
 
          when N_In | N_Not_In =>

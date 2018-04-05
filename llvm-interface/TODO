@@ -1,7 +1,5 @@
 Missing main features (identified so far):
 
-- multi-dimension arrays
-- comparison of fat pointers (and detecting they're fat pointers)
 - variant records only partly supported
 - cleanups/at end handlers
 - secondary stack support
@@ -9,6 +7,6 @@ Missing main features (identified so far):
 - expression renaming
 - tagged types
 - freeze nodes
-- overflow checks (consider enabling the front-end mechanism?)
+- overflow checks
 - representation clauses
 - debug info

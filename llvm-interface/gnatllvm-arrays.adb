@@ -90,6 +90,9 @@ package body GNATLLVM.Arrays is
                      Array_Type_Kind);
    --  Helper function to create type for string literals
 
+   function Bound_Complexity (B : One_Bound) return Integer is
+     (if B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1 else 2);
+
    function Get_Dim_Range (N : Node_Id) return Node_Id
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
    --  Return the N_Range for an array type
@@ -227,6 +230,32 @@ package body GNATLLVM.Arrays is
             else NSW_Add (Env,
                           NSW_Sub (Env, High_Bound, Low_Bound), Const_1)));
    end Get_Array_Length;
+
+   -------------------------------
+   -- Get_Array_Size_Complexity --
+   -------------------------------
+
+   function Get_Array_Size_Complexity
+     (Env      : Environ;
+      TE       : Entity_Id) return Natural
+   is
+      Complexity  : Natural :=
+        Get_Type_Size_Complexity (Env, Full_Component_Type (TE));
+      Info_Idx    : constant Nat := Get_Array_Info (Env, TE);
+
+   begin
+      for Dim in 0 .. Number_Dimensions (TE) - 1 loop
+         declare
+            Dim_Info : constant Index_Bounds
+              := Array_Info.Table (Info_Idx + Dim);
+         begin
+            Complexity := Complexity + Bound_Complexity (Dim_Info.Low) +
+              Bound_Complexity (Dim_Info.High);
+         end;
+      end loop;
+
+      return Complexity;
+   end Get_Array_Size_Complexity;
 
    --------------------------------
    -- Create_String_Literal_Type --

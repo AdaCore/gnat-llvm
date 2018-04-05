@@ -551,6 +551,35 @@ package body GNATLLVM.Types is
 
    end Get_Type_Size;
 
+   ------------------------------
+   -- Get_Type_Size_Complexity --
+   ------------------------------
+
+   function Get_Type_Size_Complexity
+     (Env      : Environ;
+      TE       : Entity_Id) return Natural
+   is
+   begin
+
+      if Is_Record_Type (TE) then
+
+         --  For now, just distinguish dynamic and constant size.
+
+         return (if Is_Dynamic_Size (Env, TE) then 10 else 0);
+
+      elsif Is_Array_Type (TE) then
+
+         return Get_Array_Size_Complexity (Env, TE);
+
+      else
+
+         --  All other types are constant size.
+
+         return 0;
+
+      end if;
+   end Get_Type_Size_Complexity;
+
    -------------------------
    -- Record_Field_Offset --
    -------------------------

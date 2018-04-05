@@ -2817,13 +2817,11 @@ package body GNATLLVM.Compile is
    is
    begin
 
-      --  If the left type is of constant size, return the size of that
-      --  one, otherwise return the size of the right one (for which we have
-      --  a value) unless that type is an unconstrained array.
+      --  Use the type of right side unless its complexity is more
+      --  than that of the size of the type on the left side.
 
-      if not Is_Dynamic_Size (Env, Left_Typ)
-        or else (Is_Array_Type (Right_Typ)
-                   and then not Is_Constrained (Right_Typ))
+      if Get_Type_Size_Complexity (Env, Right_Typ) >
+        Get_Type_Size_Complexity (Env, Left_Typ)
       then
          return Get_Type_Size (Env, Left_Typ, No_GL_Value);
       else

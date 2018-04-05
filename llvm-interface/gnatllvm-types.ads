@@ -161,6 +161,14 @@ package GNATLLVM.Types is
    --  Return the size of a type, in bytes, as a GL_Value.  If TE is
    --  an unconstrained array type, V must be the value of the array.
 
+   function Get_Type_Size_Complexity
+     (Env      : Environ;
+      TE       : Entity_Id) return Natural
+     with Pre  => Env /= null and then Is_Type (TE);
+   --  Return the complexity of computing the size of a type.  This roughly
+   --  gives the number of "things" needed to access to compute the size.
+   --  This returns zero iff the type is of a constant size.
+
    function Record_Field_Offset
      (Env          : Environ;
       Record_Ptr   : Value_T;

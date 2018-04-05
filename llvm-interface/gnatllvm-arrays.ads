@@ -90,6 +90,14 @@ package GNATLLVM.Arrays is
           Post => Present (Get_Array_Length'Result);
    --  Similar, but get the length of that dimension of the array.
 
+   function Get_Array_Size_Complexity
+     (Env      : Environ;
+      TE       : Entity_Id) return Natural
+     with Pre  => Env /= null and then Is_Array_Type (TE);
+   --  Return the complexity of computing the size of an array.  This roughly
+   --  gives the number of "things" needed to access to compute the size.
+   --  This returns zero iff the array type is of a constant size.
+
    function Get_Indexed_LValue
      (Env     : Environ;
       Indexes : List_Id;

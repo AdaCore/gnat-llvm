@@ -3406,16 +3406,94 @@ package body GNATLLVM.Compile is
 
       if  Is_Array_Type (Full_Etype (LHS)) then
          pragma Assert (Kind = N_Op_Eq or else Kind = N_Op_Ne);
+         pragma Assert (Number_Dimensions (Full_Etype (LHS)) =
+                          Number_Dimensions (Full_Etype (RHS)));
 
          declare
-            BB_T    : constant Basic_Block_T :=
+            Last_Dim       : constant Nat :=
+              Number_Dimensions (Full_Etype (LHS)) - 1;
+            LHS_Complexity : constant Natural :=
+              Get_Array_Size_Complexity (Env, Full_Etype (LHS));
+            RHS_Complexity : constant Natural :=
+              Get_Array_Size_Complexity (Env, Full_Etype (LHS));
+            Our_LHS        : constant Node_Id :=
+              (if LHS_Complexity > RHS_Complexity then LHS else RHS);
+            --  To simplify the code below, we arrange things so that the
+            --  array with the most complex size is on the LHS.
+
+            Our_RHS        : constant Node_Id :=
+              (if LHS_Complexity > RHS_Complexity then RHS else LHS);
+            BB_T           : constant Basic_Block_T :=
               (if Kind = N_Op_Eq then BB_True else BB_False);
-            BB_F    : constant Basic_Block_T :=
+            BB_F           : constant Basic_Block_T :=
               (if Kind = N_Op_Eq then BB_False else BB_True);
-            LHS_Val : constant GL_Value := Emit_LValue (Env, LHS);
-            RHS_Val : constant GL_Value := Emit_LValue (Env, RHS);
-            BB_Next : Basic_Block_T;
+            LHS_Val        : constant GL_Value := Emit_LValue (Env, Our_LHS);
+            RHS_Val        : constant GL_Value := Emit_LValue (Env, Our_RHS);
+            BB_Next        : Basic_Block_T;
+            LHS_Lengths    : GL_Value_Array (0 .. Last_Dim);
+            RHS_Lengths    : GL_Value_Array (0 .. Last_Dim);
          begin
+
+            --  There's an obscure case where if both arrays have a
+            --  dimension that's zero (whether or not it's the same
+            --  dimension in both), the arrays compare true.  This is
+            --  tested in C45264A.  If this is a single-dimensional array,
+            --  this falls through from the normal computation, but for
+            --  multi-dimensional arrays, we have to actually do the test.
+
+            --  Start by getting all the lengths.
+
+            for Dim in 0 .. Last_Dim loop
+               LHS_Lengths (Dim) :=
+                 Get_Array_Length (Env, Full_Designated_Type (LHS_Val),
+                                   Dim, LHS_Val);
+               RHS_Lengths (Dim) :=
+                 Get_Array_Length (Env, Full_Designated_Type (RHS_Val),
+                                   Dim, RHS_Val);
+            end loop;
+
+            if Last_Dim /= 1 then
+
+               --  RHS is the least complex.  So check its dimensions.
+               --  If any are zero, we need to check LHS.  If none are zero
+               --  (and hopefully we'll know this at compile-time), we
+               --  don't need to check LHS and can go to the next test.
+
+               declare
+                  BB_RHS_Has_Zero_Dim : constant Basic_Block_T :=
+                    Create_Basic_Block (Env, "rhs-has-0-dim");
+                  BB_Continue         : constant Basic_Block_T :=
+                    Create_Basic_Block (Env, "normal-tests");
+               begin
+                  for Dim in 0 .. Last_Dim loop
+                     BB_Next :=
+                       (if Dim = Last_Dim then BB_Continue
+                        else Create_Basic_Block (Env, ""));
+                     Cond := Emit_Elementary_Comparison
+                       (Env, N_Op_Eq, RHS_Lengths (Dim),
+                        Const_Null (Env, RHS_Lengths (Dim)));
+                     Build_Cond_Br (Env, Cond, BB_RHS_Has_Zero_Dim, BB_Next);
+                     Position_Builder_At_End (Env, BB_Next);
+                  end loop;
+
+                  --  Now go to where we know that RHS has a zero dimension
+                  --  and see if LHS does as well.
+
+                  Position_Builder_At_End (Env, BB_RHS_Has_Zero_Dim);
+                  for Dim in 0 .. Last_Dim loop
+                     BB_Next :=
+                       (if Dim = Last_Dim then BB_Continue
+                        else Create_Basic_Block (Env, ""));
+                     Cond := Emit_Elementary_Comparison
+                       (Env, N_Op_Eq, LHS_Lengths (Dim),
+                        Const_Null (Env, LHS_Lengths (Dim)));
+                     Build_Cond_Br (Env, Cond, BB_T, BB_Next);
+                     Position_Builder_At_End (Env, BB_Next);
+                  end loop;
+
+                  Position_Builder_At_End (Env, BB_Continue);
+               end;
+            end if;
 
             --  For each dimension, see if the lengths of the two arrays
             --  are different.  If so, the comparison is false.
@@ -3428,11 +3506,7 @@ package body GNATLLVM.Compile is
             for Dim in 0 .. Number_Dimensions (Full_Etype (LHS)) - 1 loop
                BB_Next := Create_Basic_Block (Env, "");
                Cond := Emit_Elementary_Comparison
-                 (Env, N_Op_Eq,
-                  Get_Array_Length (Env, Full_Designated_Type (LHS_Val),
-                                    Dim, LHS_Val),
-                  Get_Array_Length (Env, Full_Designated_Type (RHS_Val),
-                                    Dim, RHS_Val));
+                 (Env, N_Op_Eq, LHS_Lengths (Dim), RHS_Lengths (Dim));
                Build_Cond_Br (Env, Cond, BB_Next, BB_F);
                Position_Builder_At_End (Env, BB_Next);
             end loop;

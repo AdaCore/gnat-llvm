@@ -320,7 +320,7 @@ package body GNATLLVM.Environment is
    ------------------------
 
    function Create_Basic_Block
-     (Env : Environ; Name : String) return Basic_Block_T
+     (Env : Environ; Name : String := "") return Basic_Block_T
    is
    begin
       return Append_Basic_Block_In_Context (Env.Ctx, Env.Func, Name);

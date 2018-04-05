@@ -350,7 +350,7 @@ package GNATLLVM.Environment is
    --  Indicate that we're no longer compiling a subprogram.
 
    function Create_Basic_Block
-     (Env : Environ; Name : String) return Basic_Block_T
+     (Env : Environ; Name : String := "") return Basic_Block_T
      with Pre  => Env /= null,
           Post => Present (Create_Basic_Block'Result);
 

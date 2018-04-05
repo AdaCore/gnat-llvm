@@ -778,8 +778,8 @@ package body GNATLLVM.Compile is
                   BB_Then    : Basic_Block_T;
                   BB_Next    : Basic_Block_T;
                begin
-                  BB_Then := Create_Basic_Block (Env, "if-then");
-                  BB_Next := Create_Basic_Block (Env, "if-next");
+                  BB_Then := Create_Basic_Block (Env, "raise");
+                  BB_Next := Create_Basic_Block (Env);
                   Build_Cond_Br
                     (Env, Emit_Expression (Env, Condition (Node)),
                      BB_Then, BB_Next);
@@ -1104,7 +1104,7 @@ package body GNATLLVM.Compile is
                  (if Present (Identifier (Node))
                     and then Has_BB (Env, Entity (Identifier (Node)))
                   then Get_Basic_Block (Env, Entity (Identifier (Node)))
-                  else Create_Basic_Block (Env, ""));
+                  else Create_Basic_Block (Env));
                Build_Br (Env, BB_Init);
                Position_Builder_At_End (Env, BB_Init);
 
@@ -1260,7 +1260,7 @@ package body GNATLLVM.Compile is
                if Has_BB (Env, BE) then
                   BB := Get_Basic_Block (Env, BE);
                else
-                  BB := Create_Basic_Block (Env, "");
+                  BB := Create_Basic_Block (Env);
 
                   if Present (BE) then
                      Set_Basic_Block (Env, BE, BB);
@@ -3468,7 +3468,7 @@ package body GNATLLVM.Compile is
                   for Dim in 0 .. Last_Dim loop
                      BB_Next :=
                        (if Dim = Last_Dim then BB_Continue
-                        else Create_Basic_Block (Env, ""));
+                        else Create_Basic_Block (Env));
                      Cond := Emit_Elementary_Comparison
                        (Env, N_Op_Eq, RHS_Lengths (Dim),
                         Const_Null (Env, RHS_Lengths (Dim)));
@@ -3483,7 +3483,7 @@ package body GNATLLVM.Compile is
                   for Dim in 0 .. Last_Dim loop
                      BB_Next :=
                        (if Dim = Last_Dim then BB_Continue
-                        else Create_Basic_Block (Env, ""));
+                        else Create_Basic_Block (Env));
                      Cond := Emit_Elementary_Comparison
                        (Env, N_Op_Eq, LHS_Lengths (Dim),
                         Const_Null (Env, LHS_Lengths (Dim)));
@@ -3504,7 +3504,7 @@ package body GNATLLVM.Compile is
             --  not the array.
 
             for Dim in 0 .. Number_Dimensions (Full_Etype (LHS)) - 1 loop
-               BB_Next := Create_Basic_Block (Env, "");
+               BB_Next := Create_Basic_Block (Env);
                Cond := Emit_Elementary_Comparison
                  (Env, N_Op_Eq, LHS_Lengths (Dim), RHS_Lengths (Dim));
                Build_Cond_Br (Env, Cond, BB_Next, BB_F);
@@ -3912,10 +3912,10 @@ package body GNATLLVM.Compile is
          while Present (Elsif_Part) loop
             If_Parts (If_Parts_Pos) := (Cond => Condition (Elsif_Part),
                                         Stmts => Then_Statements (Elsif_Part),
-                                        BB_True => Create_Basic_Block
-                                          (Env, "true"),
-                                       BB_False => Create_Basic_Block
-                                         (Env, "false"));
+                                        BB_True =>
+                                          Create_Basic_Block (Env, "true"),
+                                        BB_False =>
+                                          Create_Basic_Block (Env, "false"));
             If_Parts_Pos := If_Parts_Pos + 1;
             Elsif_Part := Next (Elsif_Part);
          end loop;

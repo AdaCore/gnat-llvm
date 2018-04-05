@@ -98,19 +98,12 @@ package body GNATLLVM.Compile is
    --  Helper of Build_Type_Conversion if both types are scalar.
 
    function Build_Short_Circuit_Op
-     (Env                   : Environ;
-      Node_Left, Node_Right : Node_Id;
-      Orig_Left, Orig_Right : GL_Value;
-      Op                    : Node_Kind) return GL_Value
-     with Pre  => Env /= null
-                  and then (Present (Node_Left) or else Present (Orig_Left))
-                  and then (Present (Node_Right) or else Present (Orig_Right)),
+     (Env         : Environ;
+      Left, Right : Node_Id;
+      Op          : Node_Kind) return GL_Value
+     with Pre  => Env /= null and then Present (Left) and then Present (Right),
           Post => Present (Build_Short_Circuit_Op'Result);
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
-   --  If we've already computed one or more of the expressions, we
-   --  pass those as Orig_Left and Orig_Right; if not, Node_Left and
-   --  Node_Right will be the Node_Ids to be used for the computation.  This
-   --  allows sharing this code for multiple cases.
 
    function Emit_Attribute_Reference
      (Env    : Environ;
@@ -151,15 +144,15 @@ package body GNATLLVM.Compile is
      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
           Post => Present (Emit_Comparison'Result);
 
-   function Emit_Comparison
+   function Emit_Elementary_Comparison
      (Env                : Environ;
       Kind               : Node_Kind;
-      Node               : Node_Id;
       Orig_LHS, Orig_RHS : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Present (Node)
-                  and then Present (Orig_LHS) and then Present (Orig_RHS),
-          Post => Present (Emit_Comparison'Result);
-   --  Helpers for Emit_Expression: handle comparison operations.
+     with Pre  => Env /= null and then Is_Elementary_Type (Orig_LHS)
+                  and then Is_Elementary_Type (Orig_RHS),
+          Post => Present (Emit_Elementary_Comparison'Result);
+   --  Helpers for Emit_Expression: handle comparison operations for
+   --  elementary types.
    --  The second form only supports discrete or pointer types.
 
    procedure Emit_If (Env : Environ; Node : Node_Id)
@@ -1633,53 +1626,46 @@ package body GNATLLVM.Compile is
    ----------------------------
 
    function Build_Short_Circuit_Op
-     (Env                   : Environ;
-      Node_Left, Node_Right : Node_Id;
-      Orig_Left, Orig_Right : GL_Value;
-      Op                    : Node_Kind) return GL_Value
+     (Env         : Environ;
+      Left, Right : Node_Id;
+      Op          : Node_Kind) return GL_Value
    is
-      Left  : GL_Value := Orig_Left;
-      Right : GL_Value := Orig_Right;
+      LHS, RHS             : GL_Value;
 
       --  We start evaluating the LHS in the current block, but we need to
       --  record which block it completes in, since it may not be the
       --  same block.
 
-      Block_Left_Expr_End : Basic_Block_T;
+      Block_Left_Expr_End  : Basic_Block_T;
 
       --  Block which contains the evaluation of the right part
       --  expression of the operator and its end.
 
-      Block_Right_Expr : constant Basic_Block_T :=
+      Block_Right_Expr     : constant Basic_Block_T :=
         Create_Basic_Block (Env, "scl-right-expr");
       Block_Right_Expr_End : Basic_Block_T;
 
       --  Block containing the exit code (the phi that selects that value)
 
-      Block_Exit : constant Basic_Block_T :=
+      Block_Exit           : constant Basic_Block_T :=
         Create_Basic_Block (Env, "scl-exit");
 
    begin
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
-      if No (Left) then
-         Left := Emit_Expression (Env, Node_Left);
-      end if;
-
+      LHS := Emit_Expression (Env, Left);
       Block_Left_Expr_End := Get_Insert_Block (Env.Bld);
 
       if Op = N_And_Then then
-         Build_Cond_Br (Env, Left, Block_Right_Expr, Block_Exit);
+         Build_Cond_Br (Env, LHS, Block_Right_Expr, Block_Exit);
       else
-         Build_Cond_Br (Env, Left, Block_Exit, Block_Right_Expr);
+         Build_Cond_Br (Env, LHS, Block_Exit, Block_Right_Expr);
       end if;
 
       --  Emit code for the evaluation of the right part expression
 
       Position_Builder_At_End (Env, Block_Right_Expr);
-      if No (Right) then
-         Right := Emit_Expression (Env, Node_Right);
-      end if;
+      RHS := Emit_Expression (Env, Right);
 
       Block_Right_Expr_End := Get_Insert_Block (Env.Bld);
       Build_Br (Env, Block_Exit);
@@ -1694,8 +1680,8 @@ package body GNATLLVM.Compile is
            (if Op = N_And_Then then 0 else 1);
       begin
          return Build_Phi
-           (Env, (Const_Int (Env, Right, LHS_Const), Right),
-            (Block_Left_Expr_End, Block_Right_Expr_End));
+           (Env, (1 => Const_Int (Env, RHS, LHS_Const), 2 => RHS),
+            (1 => Block_Left_Expr_End, 2 => Block_Right_Expr_End));
       end;
    end Build_Short_Circuit_Op;
 
@@ -1900,8 +1886,7 @@ package body GNATLLVM.Compile is
 
          when N_And_Then | N_Or_Else =>
             return Build_Short_Circuit_Op
-              (Env, Left_Opnd (Node), Right_Opnd (Node),
-               No_GL_Value, No_GL_Value, Nkind (Node));
+              (Env, Left_Opnd (Node), Right_Opnd (Node), Nkind (Node));
 
          when N_Op_Not =>
             return Build_Not (Env, Emit_Expr (Right_Opnd (Node)));
@@ -1913,24 +1898,17 @@ package body GNATLLVM.Compile is
             declare
                Expr      : constant GL_Value := Emit_Expr (Right_Opnd (Node));
                Zero      : constant GL_Value := Const_Null (Env, Expr);
+               Compare   : constant GL_Value :=
+                 Emit_Elementary_Comparison (Env, N_Op_Ge, Expr, Zero);
+               Neg_Expr  : constant GL_Value :=
+                 (if Is_Floating_Point_Type (Expr)
+                  then F_Neg (Env, Expr) else NSW_Neg (Env, Expr));
 
             begin
-               if Is_Floating_Point_Type (Expr) then
-                  return Build_Select
-                    (Env,
-                     C_If   => F_Cmp (Env, Real_OGE, Expr, Zero),
-                     C_Then => Expr,
-                     C_Else => F_Neg (Env, Expr),
-                     Name   => "abs");
-               elsif Is_Unsigned_Type (Expr) then
+               if Is_Unsigned_Type (Expr) then
                   return Expr;
                else
-                  return Build_Select
-                    (Env,
-                     C_If   => I_Cmp (Env, Int_SGE, Expr, Zero),
-                     C_Then => Expr,
-                     C_Else => NSW_Neg (Env, Expr),
-                     Name   => "abs");
+                  return Build_Select (Env, Compare, Expr, Neg_Expr, "abs");
                end if;
             end;
 
@@ -2286,12 +2264,10 @@ package body GNATLLVM.Compile is
          when N_Defining_Identifier =>
             return G (Get_Value (Env, Node), Full_Etype (Node));
 
-         when N_In | N_Not_In =>
+         when N_In =>
             declare
                Rng   : Node_Id := Right_Opnd (Node);
                Left  : constant GL_Value := Emit_Expr (Left_Opnd (Node));
-               Comp1 : GL_Value;
-               Comp2 : GL_Value;
 
             begin
                pragma Assert (No (Alternatives (Node)));
@@ -2302,18 +2278,13 @@ package body GNATLLVM.Compile is
                   Rng := Scalar_Range (Full_Etype (Rng));
                end if;
 
-               Comp1 := Emit_Comparison
-                 (Env,
-                  (if Nkind (Node) = N_In then N_Op_Ge else N_Op_Lt),
-                  Node, Left, Emit_Expr (Low_Bound (Rng)));
-
-               Comp2 := Emit_Comparison
-                 (Env,
-                  (if Nkind (Node) = N_In then N_Op_Le else N_Op_Gt),
-                  Node, Left, Emit_Expr (High_Bound (Rng)));
-
-               return Build_Short_Circuit_Op
-                 (Env, Empty, Empty, Comp1, Comp2, N_And_Then);
+               return Build_And (Env,
+                                 Emit_Elementary_Comparison
+                                   (Env, N_Op_Ge, Left,
+                                    Emit_Expr (Low_Bound (Rng))),
+                                 Emit_Elementary_Comparison
+                                   (Env, N_Op_Le, Left,
+                                    Emit_Expr (High_Bound (Rng))));
             end;
 
          when N_Raise_Expression =>
@@ -3058,8 +3029,8 @@ package body GNATLLVM.Compile is
       Left      : constant GL_Value := Emit_Expression (Env, First (Exprs));
       Right     : constant GL_Value := Emit_Expression (Env, Last (Exprs));
       Choose    : constant GL_Value :=
-          Emit_Comparison (Env, (if Compute_Max then N_Op_Gt else N_Op_Lt),
-                           First (Exprs), Left, Right);
+        Emit_Elementary_Comparison
+        (Env, (if Compute_Max then N_Op_Gt else N_Op_Lt), Left, Right);
    begin
       return Build_Select (Env, Choose, Left, Right,
                            (if Compute_Max then "max" else "min"));
@@ -3341,16 +3312,16 @@ package body GNATLLVM.Compile is
                    Standard_Boolean);
 
       elsif Is_Elementary_Type (Operand_Type) then
-         return Emit_Comparison (Env, Kind, LHS,
-                                 Emit_Expression (Env, LHS),
-                                 Emit_Expression (Env, RHS));
+         return Emit_Elementary_Comparison (Env, Kind,
+                                            Emit_Expression (Env, LHS),
+                                            Emit_Expression (Env, RHS));
 
-      elsif Is_Record_Type (Operand_Type) then
-         Error_Msg_N ("unsupported record comparison", LHS);
-         return Get_Undef (Env, Standard_Boolean);
+      else
 
-      elsif Is_Array_Type (Operand_Type) then
-         pragma Assert (Operation.Signed in Int_EQ | Int_NE);
+         --  The front end expands record type comparisons and array
+         --  comparisons for other than equality.
+         pragma Assert (Is_Array_Type (Operand_Type)
+                          and then Operation.Signed in Int_EQ | Int_NE);
 
          --  ??? Handle multi-dimensional arrays
 
@@ -3459,22 +3430,16 @@ package body GNATLLVM.Compile is
             return Build_Phi (Env, Results, Basic_Blocks);
          end;
 
-      else
-         Error_Msg_N
-           ("unsupported operand type for comparison: `"
-            & Entity_Kind'Image (Ekind (Operand_Type)) & "`", LHS);
-         return Get_Undef (Env, Standard_Boolean);
       end if;
    end Emit_Comparison;
 
-   ---------------------
-   -- Emit_Comparison --
-   ---------------------
+   --------------------------------
+   -- Emit_Elementary_Comparison --
+   --------------------------------
 
-   function Emit_Comparison
+   function Emit_Elementary_Comparison
      (Env                : Environ;
       Kind               : Node_Kind;
-      Node               : Node_Id;
       Orig_LHS, Orig_RHS : GL_Value) return GL_Value
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
@@ -3518,9 +3483,13 @@ package body GNATLLVM.Compile is
       elsif Is_Floating_Point_Type (LHS) then
          return F_Cmp (Env, Operation.Real, LHS, RHS);
 
-      elsif Is_Discrete_Or_Fixed_Point_Type (LHS)
-        or else Is_Access_Type (LHS)
-      then
+      else
+
+         --  The only case left is integer or normal access type.
+
+         pragma Assert (Is_Discrete_Or_Fixed_Point_Type (LHS)
+                          or else Is_Access_Type (LHS));
+
          --  At this point, if LHS is an access type, then RHS is too and
          --  we know the aren't pointers to unconstrained arrays.  It's
          --  possible that the two pointer types aren't the same, however.
@@ -3540,13 +3509,8 @@ package body GNATLLVM.Compile is
              else Operation.Signed),
             LHS, RHS);
 
-      else
-         Error_Msg_N
-           ("unsupported operand type for comparison: `"
-            & Entity_Kind'Image (Ekind (Full_Etype (LHS))) & "`", Node);
-         return Get_Undef (Env, Standard_Boolean);
       end if;
-   end Emit_Comparison;
+   end Emit_Elementary_Comparison;
 
    ---------------
    -- Emit_Case --
@@ -3956,17 +3920,17 @@ package body GNATLLVM.Compile is
       --  a range of size one since that's only one comparison.
 
       if Low = High then
-         Cond := Emit_Comparison
-           (Env, N_Op_Eq, Node, LHS, Const_Int (Env, LHS, Low));
+         Cond := Emit_Elementary_Comparison
+           (Env, N_Op_Eq, LHS, Const_Int (Env, LHS, Low));
          Build_Cond_Br (Env, Cond, BB_True, BB_False);
       else
          Inner_BB := Create_Basic_Block (Env, "range-test");
-         Cond := Emit_Comparison (Env, N_Op_Ge, Node,
-                                  LHS, Const_Int (Env, LHS, Low));
+         Cond := Emit_Elementary_Comparison (Env, N_Op_Ge, LHS,
+                                             Const_Int (Env, LHS, Low));
          Build_Cond_Br (Env, Cond, Inner_BB, BB_False);
          Position_Builder_At_End (Env, Inner_BB);
-         Cond := Emit_Comparison (Env, N_Op_Le, Node, LHS,
-                                  Const_Int (Env, LHS, High));
+         Cond := Emit_Elementary_Comparison (Env, N_Op_Le, LHS,
+                                             Const_Int (Env, LHS, High));
          Build_Cond_Br (Env, Cond, BB_True, BB_False);
       end if;
    end Emit_If_Range;

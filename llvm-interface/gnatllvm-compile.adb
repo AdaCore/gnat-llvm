@@ -1472,7 +1472,7 @@ package body GNATLLVM.Compile is
    function Emit_LValue_Main (Env : Environ; Node : Node_Id) return GL_Value is
    begin
       case Nkind (Node) is
-         when N_Identifier | N_Expanded_Name =>
+         when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
             declare
                Def_Ident : constant Entity_Id := Entity (Node);
                Typ       : Entity_Id := Full_Etype (Def_Ident);
@@ -1489,8 +1489,7 @@ package body GNATLLVM.Compile is
                   end if;
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                     return G (Get_Value (Env, Def_Ident), Typ,
-                               Is_Reference => True);
+                     return G (Get_Value (Env, Def_Ident), Typ);
                   else
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
@@ -1529,7 +1528,7 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_Defining_Identifier =>
+         when N_Defining_Identifier | N_Defining_Operator_Symbol =>
             return G (Get_Value (Env, Node), Full_Etype (Node),
                       Is_Reference => True);
 
@@ -1962,7 +1961,7 @@ package body GNATLLVM.Compile is
             return Build_Type_Conversion
               (Env, Full_Etype (Node), Expression (Node));
 
-         when N_Identifier | N_Expanded_Name =>
+         when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
             --  What if Node is a formal parameter passed by reference???
             --  pragma Assert (not Is_Formal (Entity (Node)));
 
@@ -2102,9 +2101,6 @@ package body GNATLLVM.Compile is
                   end if;
                end;
             end;
-
-         when N_Defining_Operator_Symbol =>
-            return G (Get_Value (Env, Node), Full_Etype (Node));
 
          when N_Function_Call =>
             return G (Emit_Call (Env, Node),
@@ -2280,7 +2276,7 @@ package body GNATLLVM.Compile is
          when N_Null =>
             return Const_Null (Env, Full_Etype (Node));
 
-         when N_Defining_Identifier =>
+         when N_Defining_Identifier | N_Defining_Operator_Symbol =>
             return G (Get_Value (Env, Node), Full_Etype (Node));
 
          when N_In =>
@@ -4348,10 +4344,15 @@ package body GNATLLVM.Compile is
    begin
       while Present (N) loop
          if Nkind (N) = N_Subprogram_Body then
-            return Defining_Unit_Name (Specification (N));
+            N := Defining_Unit_Name (Specification (N));
+            if Nkind (N) = N_Defining_Program_Unit_Name then
+               N := Defining_Identifier (N);
+            end if;
+
+            return N;
          end if;
 
-         N := Atree.Parent (N);
+         N := Parent (N);
       end loop;
 
       return N;

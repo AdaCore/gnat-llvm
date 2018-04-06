@@ -59,6 +59,8 @@ package body GNATLLVM.Utils is
         and then Present (Underlying_Full_View (E))
       then
          return Get_Fullest_View (Underlying_Full_View (E));
+      elsif Ekind (E) in Private_Kind and then Present (Etype (E)) then
+         return Get_Fullest_View (Etype (E));
       elsif Is_Array_Type (E)
         and then Present (Packed_Array_Impl_Type (E))
       then

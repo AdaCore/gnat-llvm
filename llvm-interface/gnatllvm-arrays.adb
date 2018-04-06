@@ -314,10 +314,18 @@ package body GNATLLVM.Arrays is
       --  We loop through each dimension of the array creating the entries
       --  for Array_Info.  If the component type is of variable size or if
       --  either bound of an index is a dynamic size, this type is of
-      --  dynamic size.  We must an opaque type if this is of dynamic size
+      --  dynamic size.  We must use an opaque type if this is of dynamic size
       --  unless the only reason it's dynamic is because the first dimension
       --  is of variable-size: in that case, we can use an LLVM array with
       --  zero as the bound.
+
+      --  ?? There is one more case that we could try, which is in the
+      --  multi-dimensional case of dynamic bounds, but when the component
+      --  type is of fixed size.  In that case, we could flatten this to a
+      --  single-dimension array of zero size, and do the indexing
+      --  computation using the component size rather than by byte. However,
+      --  there doesn't appear to be a simple way of realizing that we've
+      --  done this, so don't try it just now.
 
       Index := First_Index (TE);
       while Present (Index) loop

@@ -22,6 +22,31 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
 
+   ----------------
+   -- Need_Value --
+   ----------------
+
+   function Need_Value
+     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
+   is
+   begin
+
+      --  If V is of dynamic size, the "value" we use is the
+      --  reference, so return it.  Similarly for subprograms.
+      --  Likewise if it's not a reference.  Otherwise, load the
+      --  value.
+
+      if Ekind (TE) = E_Subprogram_Type
+        or else not Is_Reference (V)
+        or else (Is_Reference (V)
+                   and then Is_Dynamic_Size (Env, Full_Designated_Type (V)))
+      then
+         return V;
+      else
+         return Load (Env, V);
+      end if;
+   end Need_Value;
+
    -------------
    -- Discard --
    -------------

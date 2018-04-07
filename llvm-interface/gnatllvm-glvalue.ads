@@ -195,6 +195,13 @@ package GNATLLVM.GLValue is
    --  Indicate that we want to consider G as a reference to its designated
    --  type.
 
+   function Need_Value
+     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Present (V) and then Present (TE),
+          Post => Present (Need_Value'Result);
+   --  Get the Value corresponding to V, dereferencing it when needed.
+   --  TE is the type of the value.
+
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
      with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Get_Undef'Result);

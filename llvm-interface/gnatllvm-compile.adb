@@ -1433,24 +1433,19 @@ package body GNATLLVM.Compile is
                --  Go levels up via the ARECnU field if needed
 
                for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-                  if Is_Reference (Result) then
-                     Result := Load (Env, Result);
-                  end if;
-
                   Result := G (Struct_GEP
-                                 (Env.Bld, LLVM_Value (Result),
+                                 (Env.Bld,
+                                  LLVM_Value (Need_Value (Env, Result,
+                                                          Env.Size_Type)),
                                   0, "ARECnF.all.ARECnU"),
                                Standard_Short_Short_Integer,
                                Is_Reference => True);
                end loop;
             end if;
 
-            if Is_Reference (Result) then
-               Result := Load (Env, Result);
-            end if;
-
             return Ptr_To_Ref
-              (Env, Result, Standard_Short_Short_Integer, "static-link");
+              (Env, Need_Value (Env, Result, Env.Size_Type),
+               Standard_Short_Short_Integer, "static-link");
          end;
       else
          return G (Const_Null (Result_Type),
@@ -2108,32 +2103,8 @@ package body GNATLLVM.Compile is
                   end;
                end if;
 
-               declare
-                  Kind          : constant Entity_Kind := Ekind (Def_Ident);
-                  Type_Kind     : constant Entity_Kind :=
-                    Ekind (Full_Etype (Def_Ident));
-                  Is_Subprogram : constant Boolean :=
-                    (Kind in Subprogram_Kind
-                     or else Type_Kind = E_Subprogram_Type);
-                  LValue        : constant GL_Value :=
-                    Get_Value (Env, Def_Ident);
-
-               begin
-                  --  LLVM functions are pointers that cannot be
-                  --  dereferenced. If Def_Ident is a subprogram, return it
-                  --  as-is, the caller expects a pointer to a function
-                  --  anyway.  For dynamic-sized types, we always return
-                  --  the address of the object, so leave it the way it is.
-
-                  if Is_Subprogram
-                    or else Is_Dynamic_Size (Env, Full_Etype (Def_Ident))
-                    or else not Is_Reference (LValue)
-                  then
-                     return LValue;
-                  else
-                     return Load (Env, LValue);
-                  end if;
-               end;
+               return Need_Value (Env, Get_Value (Env, Def_Ident),
+                                  Full_Etype (Def_Ident));
             end;
 
          when N_Function_Call =>
@@ -2143,17 +2114,9 @@ package body GNATLLVM.Compile is
                         (Env, Full_Etype (Node)));
 
          when N_Explicit_Dereference =>
-            --  Access to subprograms require special handling, see
-            --  N_Identifier.
-
-            declare
-               Access_Value : constant GL_Value := Emit_Expr (Prefix (Node));
-            begin
-               return
-                 (if Ekind (Full_Etype (Node)) = E_Subprogram_Type
-                  then Access_Value
-                  else Load (Env, Access_Value));
-            end;
+            return Need_Value
+              (Env, Make_Reference (Emit_Expr (Prefix (Node))),
+               Full_Etype (Node));
 
          when N_Allocator =>
             if Present (Storage_Pool (Node)) then
@@ -2230,17 +2193,8 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (Env, Node, LValue => False);
 
          when N_Selected_Component | N_Indexed_Component  | N_Slice =>
-            declare
-               LValue : constant GL_Value :=  Emit_LValue (Env, Node);
-            begin
-
-               --  If this is of dynamic size, we leave it as a reference to
-               --  the value since we can't do a simple load and all consumers
-               --  know what to do.
-
-               return (if Is_Dynamic_Size (Env, LValue) then LValue
-                       else Load (Env, LValue));
-            end;
+            return Need_Value
+              (Env, Emit_LValue (Env, Node), Full_Etype (Node));
 
          when N_Aggregate =>
             if Null_Record_Present (Node) then
@@ -3059,14 +3013,11 @@ package body GNATLLVM.Compile is
             Addr           : constant GL_Value :=
               (if Is_Dynamic_Size (Env, Value) then Value
                else Emit_LValue (Env, Expr));
-            Converted_Addr : constant GL_Value :=
-               Ptr_To_Ref (Env, Addr, Dest_Type, "unc-ptr-cvt");
          begin
-            if Is_Dynamic_Size (Env, Dest_Type) then
-               return Converted_Addr;
-            else
-               return Load (Env, Converted_Addr);
-            end if;
+            return Need_Value (Env,
+                               Ptr_To_Ref (Env, Addr, Dest_Type,
+                                           "unc-ptr-cvt"),
+                               Dest_Type);
          end;
       end if;
 
@@ -3198,10 +3149,10 @@ package body GNATLLVM.Compile is
                     Full_Etype (Node), "attr-deref");
 
             begin
-               if LValue or else Is_Dynamic_Size (Env, Val) then
+               if LValue then
                   return Val;
                else
-                  return Load (Env, Val);
+                  return Need_Value (Env, Val, Full_Etype (Node));
                end if;
             end;
 

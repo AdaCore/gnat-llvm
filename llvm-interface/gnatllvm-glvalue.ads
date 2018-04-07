@@ -77,6 +77,9 @@ package GNATLLVM.GLValue is
    --  Constructor for case were we've create a value that's a pointer to
    --  type TE.
 
+   procedure Discard (G : GL_Value);
+   --  Evaluate G and throw away the result.
+
    --  Now define predicates on the GL_Value type to easily access
    --  properties of the LLVM value and the effective type.  These have the
    --  same names as those for types and Value_T's.  The first of these
@@ -182,6 +185,15 @@ package GNATLLVM.GLValue is
    function Number_Dimensions (G : GL_Value) return Pos is
      (Number_Dimensions (Etype (G)))
      with Pre => Is_Array_Type (G);
+
+   function Make_Reference (V : GL_Value) return GL_Value is
+     (G (LLVM_Value (V), Full_Designated_Type (V), Is_Reference => True))
+     with Pre  => Is_Access_Type (V),
+          Post => Is_Reference (Make_Reference'Result)
+                  and then (Full_Designated_Type (Make_Reference'Result) =
+                              Full_Designated_Type (V));
+   --  Indicate that we want to consider G as a reference to its designated
+   --  type.
 
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
      with Pre  => Env /= null and then Is_Type (TE),
@@ -448,7 +460,7 @@ package GNATLLVM.GLValue is
    function Load (Env : Environ; Ptr : GL_Value; Name : String := "")
                  return GL_Value
      with Pre  => Env /= null and then Present (Ptr)
-                  and then  Is_Access_Type (Ptr),
+                  and then Is_Access_Type (Ptr),
           Post => Present (Load'Result);
 
    function I_Cmp

@@ -75,7 +75,17 @@ package body GNATLLVM.Compile is
           Post => Present (Build_Unchecked_Conversion'Result);
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
-   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T
+   function Access_Depth (TE : Entity_Id) return Natural
+     with Pre => Present (TE);
+   --  If TE is not an access type, return zero.  Otherwise, return how deep
+   --  we have to go down Full_Designated_Type to find something that's
+   --  not an access type.
+
+   function Access_Depth (G : GL_Value) return Natural
+     with Pre => Present (G);
+   --  Similarly, but for a GL_Value, which might be a reference.
+
+   function Get_Static_Link (Env : Environ; Node : Entity_Id) return GL_Value
      with Pre  => Env /= null and then Present (Node),
           Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Node
@@ -268,7 +278,7 @@ package body GNATLLVM.Compile is
    --  Helper for Emit_Expression: handle shift and rotate operations
 
    function Emit_Subprogram_Decl
-     (Env : Environ; Subp_Spec : Node_Id) return Value_T
+     (Env : Environ; Subp_Spec : Node_Id) return GL_Value
      with Pre  => Env /= null,
           Post => Present (Emit_Subprogram_Decl'Result);
    --  Compile a subprogram declaration, save the corresponding LLVM value to
@@ -392,54 +402,66 @@ package body GNATLLVM.Compile is
 
    end Allocate_For_Type;
 
+   ------------------
+   -- Access_Depth --
+   ------------------
+
+   function Access_Depth (TE : Entity_Id) return Natural is
+   begin
+      if not Is_Access_Type (TE) then
+         return 0;
+      else
+         return Access_Depth (Full_Designated_Type (TE)) + 1;
+      end if;
+   end Access_Depth;
+
+   ------------------
+   -- Access_Depth --
+   ------------------
+
+   function Access_Depth (G : GL_Value) return Natural is
+   begin
+      if not Is_Access_Type (G) then
+         return 0;
+      else
+         return Access_Depth (Full_Designated_Type (G)) + 1;
+      end if;
+   end Access_Depth;
+
    -------------------
    -- Emit_One_Body --
    -------------------
 
    procedure Emit_One_Body (Env : Environ; Node : Node_Id) is
       Spec       : constant Node_Id := Get_Acting_Spec (Node);
-      Func       : constant Value_T := Emit_Subprogram_Decl (Env, Spec);
+      Func       : constant GL_Value := Emit_Subprogram_Decl (Env, Spec);
       Def_Ident  : constant Entity_Id := Defining_Entity (Spec);
       Return_Typ : constant Entity_Id := Full_Etype (Def_Ident);
       Param      : Entity_Id;
-      LLVM_Param : Value_T;
-      LLVM_Var   : Value_T;
+      LLVM_Param : GL_Value;
       Param_Num  : Natural := 0;
 
    begin
       Enter_Subp (Env, Func);
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
-         LLVM_Param := Get_Param (Func, unsigned (Param_Num));
+         LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
+                          Full_Etype (Param),
+                          Is_Reference => Param_Needs_Ptr (Param));
 
          --  Define a name for the parameter Param (which is the
          --  Param_Num'th parameter), and associate the corresponding
          --  LLVM value to its entity.
 
-         --  Set the name of the llvm value
-
-         Set_Value_Name (LLVM_Param, Get_Name (Param));
+         Set_Value_Name (LLVM_Value (LLVM_Param), Get_Name (Param));
 
          --  Special case for structures passed by value, we want to
          --  store a pointer to them on the stack, so do an alloca,
          --  to be able to do GEP on them.
 
-         if Param_Needs_Ptr (Param)
-           and then not
-           (Ekind (Full_Etype (Param)) in Record_Kind
-              and (Get_Type_Kind (Type_Of (LLVM_Param)) = Struct_Type_Kind))
-         then
-            LLVM_Var := LLVM_Param;
-         else
-            LLVM_Var := Alloca
-              (Env.Bld,
-               Type_Of (LLVM_Param), Get_Name (Param));
-            Store (Env.Bld, LLVM_Param, LLVM_Var);
-         end if;
-
          --  Add the parameter to the environnment
 
-         Set_Value (Env, Param, LLVM_Var);
+         Set_Value (Env, Param, LLVM_Param);
 
          if Ekind (Param) = E_In_Parameter
            and then Is_Activation_Record (Param)
@@ -458,10 +480,10 @@ package body GNATLLVM.Compile is
       if Ekind (Return_Typ) /= E_Void
         and then Is_Dynamic_Size (Env, Return_Typ)
       then
-         LLVM_Param := Get_Param (Func, unsigned (Param_Num));
-         Set_Value_Name (LLVM_Param, "return");
-         Env.Return_Address_Param :=
-           G (LLVM_Param, Return_Typ, Is_Reference => True);
+         LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
+                          Return_Typ, Is_Reference => True);
+         Set_Value_Name (LLVM_Value (LLVM_Param), "return");
+         Env.Return_Address_Param := LLVM_Param;
       end if;
 
       Emit_List (Env, Declarations (Node));
@@ -474,7 +496,7 @@ package body GNATLLVM.Compile is
       Leave_Subp (Env);
 
       Verify_Function
-        (Env, Func, Node,
+        (Env, LLVM_Value (Func), Node,
          "the backend generated bad `LLVM` for this subprogram");
    end Emit_One_Body;
 
@@ -616,7 +638,10 @@ package body GNATLLVM.Compile is
                          (Env.Mdl,
                           Get_Name_String (Chars (Unit)) & "___elabs",
                           Elab_Type);
-                     Enter_Subp (Env, LLVM_Func);
+                     Enter_Subp (Env,
+                                 G (LLVM_Func, Standard_Void_Type,
+                                    Is_Reference => True,
+                                    Is_Intermediate_Type => True));
 
                      Env.Special_Elaboration_Code := True;
 
@@ -704,7 +729,10 @@ package body GNATLLVM.Compile is
                             (Env.Mdl,
                              Get_Name_String (Chars (Unit)) & "___elabb",
                              Elab_Type);
-                        Enter_Subp (Env, LLVM_Func);
+                        Enter_Subp (Env,
+                                    G (LLVM_Func, Standard_Void_Type,
+                                       Is_Reference => True,
+                                       Is_Intermediate_Type => True));
                         Env.Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop
@@ -829,7 +857,7 @@ package body GNATLLVM.Compile is
                     G (Add_Global (Env.Mdl, LLVM_Type,
                                    Get_Ext_Name (Def_Ident)),
                        T, Is_Reference => True);
-                  Set_Value (Env, Def_Ident, LLVM_Value (LLVM_Var));
+                  Set_Value (Env, Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
                      if Is_Statically_Allocated (Def_Ident) then
@@ -885,8 +913,7 @@ package body GNATLLVM.Compile is
 
                else
                   if Env.Special_Elaboration_Code then
-                     LLVM_Var := G (Get_Value (Env, Def_Ident), T,
-                                    Is_Reference => True);
+                     LLVM_Var := Get_Value (Env, Def_Ident);
 
                   elsif Present (Address_Clause (Def_Ident)) then
                         LLVM_Var := Int_To_Ref
@@ -900,7 +927,7 @@ package body GNATLLVM.Compile is
 
                   end if;
 
-                  Set_Value (Env, Def_Ident, LLVM_Value (LLVM_Var));
+                  Set_Value (Env, Def_Ident, LLVM_Var);
 
                   if Present (Expression (Node))
                     and then not
@@ -920,34 +947,27 @@ package body GNATLLVM.Compile is
          when N_Object_Renaming_Declaration =>
             declare
                Def_Ident : constant Node_Id := Defining_Identifier (Node);
-               LLVM_Var  : Value_T;
+               LLVM_Var  : GL_Value;
             begin
                if Library_Level (Env) then
-                  if Is_LValue (Name (Node)) then
-                     LLVM_Var := LLVM_Value (Emit_LValue (Env, Name (Node)));
-                     Set_Value (Env, Def_Ident, LLVM_Var);
-                  else
-                     --  ??? Handle top-level declarations
-                     Error_Msg_N
-                       ("library level object renaming not supported", Node);
-                  end if;
-
+                  Set_Value (Env, Def_Ident, Emit_LValue (Env, Name (Node)));
                   return;
                end if;
 
                --  If the renamed object is already an l-value, keep it as-is.
                --  Otherwise, create one for it.
 
-               if Is_LValue (Name (Node)) then
-                  LLVM_Var := LLVM_Value (Emit_LValue (Env, Name (Node)));
-               else
-                  LLVM_Var := Alloca
-                    (Env.Bld,
-                     Create_Type (Env, Full_Etype (Def_Ident)),
-                     Get_Name (Def_Ident));
-                  Store
-                    (Env.Bld, LLVM_Value (Emit_Expression (Env, Name (Node))),
-                     LLVM_Var);
+               LLVM_Var := Emit_LValue (Env, Name (Node));
+               if not Is_Reference (LLVM_Var) then
+                  declare
+                     Temp : constant GL_Value :=
+                       Allocate_For_Type
+                       (Env, Full_Etype (Def_Ident), Get_Name (Def_Ident));
+                  begin
+                     Store
+                       (Env, LLVM_Var, Temp);
+                     LLVM_Var := Temp;
+                  end;
                end if;
 
                Set_Value (Env, Def_Ident, LLVM_Var);
@@ -1175,9 +1195,9 @@ package body GNATLLVM.Compile is
                         --  initialize it.
                         Create_Discrete_Type
                           (Env, Var_Type, LLVM_Type, Low, High);
-                        LLVM_Var := Alloca
+                        LLVM_Var := Allocate_For_Type
                           (Env, Var_Type, Get_Name (Def_Ident));
-                        Set_Value (Env, Def_Ident, LLVM_Value (LLVM_Var));
+                        Set_Value (Env, Def_Ident, LLVM_Var);
                         Store
                           (Env,
                            (if Reversed then High else Low), LLVM_Var);
@@ -1383,21 +1403,24 @@ package body GNATLLVM.Compile is
    -- Get_Static_Link --
    ---------------------
 
-   function Get_Static_Link (Env : Environ; Node : Entity_Id) return Value_T is
+   function Get_Static_Link (Env : Environ; Node : Entity_Id) return GL_Value
+   is
       Subp        : constant Entity_Id := Entity (Node);
-      Result_Type : constant Type_T :=
-        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
-      Result      : Value_T;
-
+      Result      : GL_Value;
+      Result_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
       Parent : constant Entity_Id := Enclosing_Subprogram (Subp);
       Caller : Node_Id;
 
    begin
+
+      --  ?? This routine needs a major rewrite.
+
       if Present (Parent) then
          Caller := Node_Enclosing_Subprogram (Node);
 
          declare
-            Ent : constant Subp_Entry := Subps.Table (Subp_Index (Parent));
+            Ent        : constant Subp_Entry :=
+              Subps.Table (Subp_Index (Parent));
             Ent_Caller : constant Subp_Entry :=
               Subps.Table (Subp_Index (Caller));
 
@@ -1410,23 +1433,28 @@ package body GNATLLVM.Compile is
                --  Go levels up via the ARECnU field if needed
 
                for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-                  Result :=
-                    Struct_GEP
-                    (Env.Bld,
-                     Load (Env.Bld, Result, ""),
-                     0,
-                     "ARECnF.all.ARECnU");
+                  if Is_Reference (Result) then
+                     Result := Load (Env, Result);
+                  end if;
+
+                  Result := G (Struct_GEP
+                                 (Env.Bld, LLVM_Value (Result),
+                                  0, "ARECnF.all.ARECnU"),
+                               Standard_Short_Short_Integer,
+                               Is_Reference => True);
                end loop;
             end if;
 
-            return Bit_Cast
-              (Env.Bld,
-               Load (Env.Bld, Result, ""),
-               Result_Type,
-               "static-link");
+            if Is_Reference (Result) then
+               Result := Load (Env, Result);
+            end if;
+
+            return Ptr_To_Ref
+              (Env, Result, Standard_Short_Short_Integer, "static-link");
          end;
       else
-         return Const_Null (Result_Type);
+         return G (Const_Null (Result_Type),
+                   Standard_Short_Short_Integer, Is_Reference => True);
       end if;
    end Get_Static_Link;
 
@@ -1452,8 +1480,40 @@ package body GNATLLVM.Compile is
    function Emit_LValue_Internal
      (Env : Environ; Node : Node_Id) return GL_Value
    is
-      Value : constant GL_Value := Emit_LValue_Main (Env, Node);
+      Typ   : constant Entity_Id := Full_Etype (Node);
+      Value : GL_Value := Emit_LValue_Main (Env, Node);
    begin
+
+      --  We want the address of an object of type Full_Etype (Node), or,
+      --  more importantly and more accurately, the address of an object of
+      --  at least approximately that type.  But there's also a chance that
+      --  what we have is actually the object itself, in which case we need
+      --  to allocate memory, store the object into memory, and return a
+      --  pointer to it.
+
+      --  If Value is a reference and its designated type is that of our
+      --  type, we know we're OK.  If not, we may still if OK if access
+      --  types are involved, so check that the "access type" depth of
+      --  Value is one greater than that of our type.  That's also OK.
+      --  Otherwise, we allocate memory, store the data, and return the
+      --  address of the allocated memory.  Do nothing if the type is Void.
+
+      if Ekind (Typ) = E_Void
+        or else (Is_Reference (Value)
+                   and then Full_Designated_Type (Value) = Typ)
+        or else Access_Depth (Value) = Access_Depth (Typ) + 1
+      then
+         null;
+      else
+         pragma Assert (not Library_Level (Env));
+
+         declare
+            Temp : constant GL_Value := Allocate_For_Type (Env, Typ);
+         begin
+            Store (Env, Value, Temp);
+            Value := Temp;
+         end;
+      end if;
 
       --  If the object is not of void type, save the result in the
       --  pair table under the base type of the fullest view.
@@ -1472,7 +1532,8 @@ package body GNATLLVM.Compile is
    function Emit_LValue_Main (Env : Environ; Node : Node_Id) return GL_Value is
    begin
       case Nkind (Node) is
-         when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
+         when N_Identifier | N_Expanded_Name | N_Operator_Symbol |
+           N_Defining_Identifier | N_Defining_Operator_Symbol =>
             declare
                Def_Ident : constant Entity_Id := Entity (Node);
                Typ       : Entity_Id := Full_Etype (Def_Ident);
@@ -1489,20 +1550,19 @@ package body GNATLLVM.Compile is
                   end if;
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                     return G (Get_Value (Env, Def_Ident), Typ);
+                     return Get_Value (Env, Def_Ident);
                   else
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
 
                      declare
-                        Func   : constant Value_T :=
+                        Func   : constant GL_Value :=
                           Get_Value (Env, Def_Ident);
-                        S_Link : constant Value_T :=
+                        S_Link : constant GL_Value :=
                           Get_Static_Link (Env, Node);
 
                         Fields_Types  : constant array (1 .. 2) of Type_T :=
-                          (Type_Of (S_Link),
-                           Type_Of (S_Link));
+                          (Type_Of (S_Link), Type_Of (S_Link));
                         Callback_Type : constant Type_T :=
                           Struct_Type_In_Context
                           (Env.Ctx,
@@ -1515,42 +1575,29 @@ package body GNATLLVM.Compile is
                         Result := Insert_Value
                           (Env.Bld, Result,
                            Pointer_Cast
-                             (Env.Bld, Func, Fields_Types (1), ""), 0, "");
+                             (Env.Bld, LLVM_Value (Func),
+                              Fields_Types (1), ""), 0, "");
                         Result := Insert_Value
-                          (Env.Bld, Result, S_Link, 1, "callback");
+                          (Env.Bld, Result, LLVM_Value (S_Link),
+                           1, "callback");
                         return G (Result, Typ, Is_Reference => True);
                      end;
                   end if;
-
                else
-                  return G (Get_Value (Env, Def_Ident), Typ,
-                            Is_Reference => True);
+                  return Get_Value (Env, Def_Ident);
                end if;
             end;
-
-         when N_Defining_Identifier | N_Defining_Operator_Symbol =>
-            return G (Get_Value (Env, Node), Full_Etype (Node),
-                      Is_Reference => True);
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (Env, Node, LValue => True);
 
          when N_Explicit_Dereference =>
-            return Emit_Expression (Env, Prefix (Node));
+            --  The result of evaluating Emit_Eexpression is the
+            --  address of what we want and is an access type.  What
+            --  we want here is a reference to our type, which should
+            --  be the Designated_Type of Value.
 
-         when N_Aggregate =>
-            declare
-               --  The frontend can sometimes take a reference to an aggregate.
-               --  In such cases, we have to create an anonymous object and use
-               --  its value as the aggregate value.
-
-               V : constant GL_Value :=
-                 Allocate_For_Type (Env, Full_Etype (Node), "anon-obj");
-
-            begin
-               Store (Env, Emit_Expression (Env, Node), V);
-               return V;
-            end;
+            return Make_Reference (Emit_Expression (Env, Prefix (Node)));
 
          when N_String_Literal =>
             declare
@@ -1560,7 +1607,7 @@ package body GNATLLVM.Compile is
                     Is_Reference => True);
 
             begin
-               Set_Value (Env, Node, LLVM_Value (V));
+               Set_Value (Env, Node, V);
                Set_Initializer (LLVM_Value (V),
                                 LLVM_Value (Emit_Expression (Env, Node)));
                Set_Linkage (LLVM_Value (V), Private_Linkage);
@@ -1593,30 +1640,16 @@ package body GNATLLVM.Compile is
                Emit_LValue_Internal (Env, Prefix (Node)));
 
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
-
-            --  ??? Strip the type conversion, likely not always correct
             return Emit_LValue_Internal (Env, Expression (Node));
 
          when others =>
-            if not Library_Level (Env) then
-               --  Otherwise, create a temporary: is that always
-               --  adequate???
 
-               declare
-                  Result : constant GL_Value :=
-                    Allocate_For_Type (Env, Full_Etype (Node));
-               begin
-                  Emit_Assignment (Env, Full_Etype (Node), Full_Etype (Node),
-                                   Result, Node, Emit_Expression (Env, Node),
-                                   True, True);
-                  return Result;
-               end;
-            else
-               Error_Msg_N
-                 ("unhandled node kind: `" &
-                  Node_Kind'Image (Nkind (Node)) & "`", Node);
-               return Get_Undef (Env, Full_Etype (Node));
-            end if;
+            --  If we have an arbitrary expression, evaluate it.  If it
+            --  turns out to be a reference (e.g., if the size of our type
+            --  is dynamic, we have no more work to do.  Otherwise, our caller
+            --  will take care of storing it into a temporary.
+
+            return Emit_Expression (Env, Node);
       end case;
    end Emit_LValue_Main;
 
@@ -1992,10 +2025,12 @@ package body GNATLLVM.Compile is
                   declare
                      Component         : constant Entity_Id :=
                        Activation_Record_Component (Def_Ident);
-                     Activation_Record : constant Value_T :=
+                     Activation_Record : constant GL_Value :=
                        Env.Activation_Rec_Param;
                      Pointer           : constant Value_T :=
-                       Record_Field_Offset (Env, Activation_Record, Component);
+                       Record_Field_Offset (Env,
+                                            LLVM_Value (Activation_Record),
+                                            Component);
                      Value_Address     : constant Value_T :=
                        Load (Env.Bld, Pointer, "");
                      Typ               : constant Type_T :=
@@ -2080,7 +2115,7 @@ package body GNATLLVM.Compile is
                   Is_Subprogram : constant Boolean :=
                     (Kind in Subprogram_Kind
                      or else Type_Kind = E_Subprogram_Type);
-                  LValue        : constant Value_T :=
+                  LValue        : constant GL_Value :=
                     Get_Value (Env, Def_Ident);
 
                begin
@@ -2092,12 +2127,11 @@ package body GNATLLVM.Compile is
 
                   if Is_Subprogram
                     or else Is_Dynamic_Size (Env, Full_Etype (Def_Ident))
+                    or else not Is_Reference (LValue)
                   then
-                     return G (LValue, Full_Etype (Def_Ident),
-                               Is_Reference => True);
+                     return LValue;
                   else
-                     return G (Load (Env.Bld, LValue, ""),
-                               Full_Etype (Def_Ident));
+                     return Load (Env, LValue);
                   end if;
                end;
             end;
@@ -2277,7 +2311,7 @@ package body GNATLLVM.Compile is
             return Const_Null (Env, Full_Etype (Node));
 
          when N_Defining_Identifier | N_Defining_Operator_Symbol =>
-            return G (Get_Value (Env, Node), Full_Etype (Node));
+            return Get_Value (Env, Node);
 
          when N_In =>
             declare
@@ -2724,7 +2758,7 @@ package body GNATLLVM.Compile is
    --------------------------
 
    function Emit_Subprogram_Decl
-     (Env : Environ; Subp_Spec : Node_Id) return Value_T
+     (Env : Environ; Subp_Spec : Node_Id) return GL_Value
    is
       Def_Ident : constant Node_Id := Defining_Entity (Subp_Spec);
    begin
@@ -2739,28 +2773,37 @@ package body GNATLLVM.Compile is
               Create_Subprogram_Type_From_Spec (Env, Subp_Spec);
 
             Subp_Base_Name : constant String := Get_Ext_Name (Def_Ident);
-            LLVM_Func      : Value_T;
+            LLVM_Func      : GL_Value;
 
          begin
             --  ??? Special case __gnat_last_chance_handler which is
             --  already defined as Env.LCH_Fn
 
             if Subp_Base_Name = "__gnat_last_chance_handler" then
-               return Env.LCH_Fn;
+               return G (Env.LCH_Fn, Standard_Void_Type,
+                         Is_Reference => True, Is_Intermediate_Type => True);
             end if;
 
-            LLVM_Func :=
-              Add_Function
-                (Env.Mdl,
-                 (if Is_Compilation_Unit (Def_Ident)
-                  then "_ada_" & Subp_Base_Name
-                  else Subp_Base_Name),
-                 Subp_Type);
+            --  ?? We have a tricky issue here.  We need to indicate that this
+            --  object is a subprogram, but we don't have a GNAT type
+            --  corresponding to the subprogram type unless there's an access
+            --  type.  So we'll use the the return type and flag it as
+            --  both a reference and intermediate type.  There doesn't seem
+            --  to be better way to handle this right now.
 
+            LLVM_Func :=
+              G (Add_Function
+                   (Env.Mdl,
+                    (if Is_Compilation_Unit (Def_Ident)
+                       then "_ada_" & Subp_Base_Name
+                       else Subp_Base_Name),
+                         Subp_Type),
+                 Full_Etype (Def_Ident),
+                 Is_Reference => True, Is_Intermediate_Type => True);
             --  Define the appropriate linkage
 
             if not Is_Public (Def_Ident) then
-               Set_Linkage (LLVM_Func, Internal_Linkage);
+               Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
             end if;
 
             Set_Value (Env, Def_Ident, LLVM_Func);

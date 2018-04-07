@@ -163,10 +163,6 @@ package GNATLLVM.Utils is
    procedure Dump_GL_Value (G : GL_Value);
    --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
 
-   function Is_LValue (Node : Node_Id) return Boolean
-     with Pre => Present (Node);
-   --  Returns true if Node is an L value
-
    function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
      (Is_Access_Type (T) and then Is_Array_Type (Full_Designated_Type (T))
       and then not Is_Constrained (Full_Designated_Type (T)))

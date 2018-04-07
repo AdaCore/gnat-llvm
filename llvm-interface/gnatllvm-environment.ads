@@ -56,6 +56,55 @@ package GNATLLVM.Environment is
    function Present (M : Builder_T) return Boolean     is (M /= No_Builder_T);
    --  Test for presence and absence of field of LLVM types
 
+   function Is_Type_Or_Void (E : Entity_Id) return Boolean is
+     (Ekind (E) = E_Void or else Is_Type (E));
+   --  We can have Etype's that are E_Void for E_Procedure; needed for
+   --  aspect of below record.
+
+   --  It's not sufficient to just pass around an LLVM Value_T when
+   --  generating code because there's a lot of information lost about the
+   --  value and where it came from.  Contrast with Gigi, where we pass around
+   --  a GCC tree node, which already has a lot of information, and which we
+   --  further annotate with flags.  So we pass the following record:
+
+   type GL_Value is record
+      Value                : Value_T;
+      --  The LLVM value that was generated
+
+      Typ                  : Entity_Id;
+      --  The GNAT type of this value.
+
+      Is_Reference         : Boolean;
+      --  If True, this is actually a pointer to Typ, so Value's type is
+      --  actually an E_Access_Type (not provided) whose Designated_Type
+      --  is Typ.
+
+      Is_Raw_Array         : Boolean;
+      --  If True, even though the type here is unconstrained, we've
+      --  extracted the actual address of the array and that's what's in
+      --  Value.
+
+      Is_Intermediate_Type : Boolean;
+      --  If True, Value doesn't correspond precisely to either Typ or a
+      --  pointer to Typ, but instead to some intermediate type (such as
+      --  when building an aggregate for a multi-dimensional array) for
+      --  which we don't have an actual GNAT type.
+
+   end record
+     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
+                               or else (Present (GL_Value.Value)
+                                          and then Is_Type_Or_Void
+                                             (GL_Value.Typ));
+
+   type GL_Value_Array is array (Nat range <>) of GL_Value;
+
+   function Is_Reference (G : GL_Value) return Boolean is (G.Is_Reference);
+   function Is_Raw_Array (G : GL_Value) return Boolean is (G.Is_Raw_Array);
+
+   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False, False, False);
+   function No (G : GL_Value) return Boolean           is (G = No_GL_Value);
+   function Present (G : GL_Value) return Boolean      is (G /= No_GL_Value);
+
    type Field_Info is record
       Containing_Struct_Index : Nat;
       Index_In_Struct : Nat;
@@ -96,8 +145,8 @@ package GNATLLVM.Environment is
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
    type LLVM_Info is record
-      Value            : Value_T;
-      --  The LLVM Value corresponding to this entity, if a value
+      Value            : GL_Value;
+      --  The GL_Value corresponding to this entity, if a value
 
       Typ              : Type_T;
       --  The LLVM Type corresponding to this entity, if a type.  Set for
@@ -125,56 +174,6 @@ package GNATLLVM.Environment is
 
       Record_Inf  : Record_Info;
    end record;
-
-   function Is_Type_Or_Void (E : Entity_Id) return Boolean is
-     (Ekind (E) = E_Void or else Is_Type (E));
-     --  We can have Etype's that are E_Void for E_Procedure; needed for
-     --  aspect of below record.
-
-   --  It's not sufficient to just pass around an LLVM Value_T when
-   --  generating code because there's a lot of information lost about the
-   --  value and where it came from.  Contrast with Gigi, where we pass around
-   --  a GCC tree node, which already has a lot of information, and which we
-   --  further annotate with flags.  So we pass the following record:
-
-   type GL_Value is record
-      Value                : Value_T;
-      --  The LLVM value that was generated
-
-      Typ                  : Entity_Id;
-      --  The GNAT type of this value.
-
-      Is_Reference         : Boolean;
-      --  If True, this is actually a pointer to Typ, so Value's type is
-      --  actually an E_Access_Type (not provided) whose Designated_Type
-      --  is Typ.
-
-      Is_Raw_Array         : Boolean;
-      --  If True, even though the type here is unconstrained, we've
-      --  extracted the actual address of the array and that's what's in
-      --  Value.
-
-      Is_Intermediate_Type : Boolean;
-      --  If True, Value doesn't correspond precisely to either Typ or a
-      --  pointer to Typ, but instead to some intermediate type (such as
-      --  when building an aggregate for a multi-dimensional array) for
-      --  which we don't have an actual GNAT type.
-
-   end record
-     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
-                               or else (Present (GL_Value.Value)
-                                          and then Is_Type_Or_Void
-                                             (GL_Value.Typ));
-
-   type GL_Value_Array is array (Nat range <>) of GL_Value;
-
-   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False, False, False);
-
-   function No (G : GL_Value) return Boolean      is (G = No_GL_Value);
-   function Present (G : GL_Value) return Boolean is (G /= No_GL_Value);
-
-   function Is_Reference (G : GL_Value) return Boolean is (G.Is_Reference);
-   function Is_Raw_Array (G : GL_Value) return Boolean is (G.Is_Raw_Array);
 
    LLVM_Info_Low_Bound  : constant := 200_000_000;
    LLVM_Info_High_Bound : constant := 299_999_999;
@@ -219,10 +218,10 @@ package GNATLLVM.Environment is
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.
 
-      Func                      : Value_T;
+      Func                      : GL_Value;
       --  LLVM value for current function.
 
-      Activation_Rec_Param      : Value_T;
+      Activation_Rec_Param      : GL_Value;
       --  Parameter to this subprogram, if any, that represents an
       --  activtion record.
 
@@ -261,7 +260,7 @@ package GNATLLVM.Environment is
    function Get_TBAA         (Env : Environ; TE : Entity_Id) return Metadata_T
      with Pre => Env /= null and then Is_Type (TE);
 
-   function Get_Value       (Env : Environ; VE : Entity_Id) return Value_T
+   function Get_Value       (Env : Environ; VE : Entity_Id) return GL_Value
      with Pre => Env /= null and then Present (VE);
 
    function Get_Array_Info  (Env : Environ; TE : Entity_Id) return Nat
@@ -304,7 +303,7 @@ package GNATLLVM.Environment is
                   and then Present (TBAA) and then Has_Type (Env, TE),
           Post => Get_TBAA (Env, TE) = TBAA;
 
-   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T)
+   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : GL_Value)
      with Pre  => Env /= null and then Present (VE) and then Present (VL),
           Post => Get_Value (Env, VE) = VL;
 
@@ -336,7 +335,7 @@ package GNATLLVM.Environment is
    function Get_Exit_Point return Basic_Block_T
      with Post => Present (Get_Exit_Point'Result);
 
-   procedure Enter_Subp (Env : Environ; Func : Value_T)
+   procedure Enter_Subp (Env : Environ; Func : GL_Value)
      with Pre  => Env /= null and then Present (Func)
                   and then Library_Level (Env),
           Post => not Library_Level (Env);

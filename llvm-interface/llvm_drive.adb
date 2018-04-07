@@ -63,7 +63,7 @@ package body LLVM_Drive is
       Env : constant Environ :=
         new Environ_Record'(Max_Nodes => Last_Node_Id,
                             Ctx => Get_Global_Context,
-                            Func => No_Value_T,
+                            Func => No_GL_Value,
                             others => <>);
       Result : Integer;
 

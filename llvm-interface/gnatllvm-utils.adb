@@ -147,33 +147,6 @@ package body GNATLLVM.Utils is
       end case;
    end Get_Uint_Value;
 
-   ---------------
-   -- Is_LValue --
-   ---------------
-
-   function Is_LValue (Node : Node_Id) return Boolean is
-      N : Node_Id := Node;
-   begin
-      loop
-         case Nkind (N) is
-            when N_Explicit_Dereference =>
-               return True;
-            when N_Selected_Component | N_Indexed_Component | N_Slice =>
-               N := Prefix (N);
-            when N_Identifier =>
-               N := Entity (N);
-            when N_Defining_Identifier =>
-               if Present (Renamed_Object (N)) then
-                  N := Renamed_Object (N);
-               else
-                  return True;
-               end if;
-            when others =>
-               return False;
-         end case;
-      end loop;
-   end Is_LValue;
-
    ---------------------
    -- Param_Needs_Ptr --
    ---------------------

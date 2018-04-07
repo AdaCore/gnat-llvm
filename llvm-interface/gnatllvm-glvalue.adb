@@ -22,6 +22,16 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
 
+   -------------
+   -- Discard --
+   -------------
+
+   procedure Discard (G : GL_Value) is
+      pragma Unreferenced (G);
+   begin
+      null;
+   end Discard;
+
    ------------
    -- Alloca --
    ------------

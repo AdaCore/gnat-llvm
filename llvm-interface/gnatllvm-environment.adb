@@ -19,8 +19,9 @@ with Errout; use Errout;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Types; use GNATLLVM.Types;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
+with GNATLLVM.GLValue; use GNATLLVM.GLValue;
+with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 
@@ -72,10 +73,10 @@ package body GNATLLVM.Environment is
    -- Get_Value --
    ---------------
 
-   function Get_Value (Env : Environ; VE : Entity_Id) return Value_T is
+   function Get_Value (Env : Environ; VE : Entity_Id) return GL_Value is
    begin
       if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
-         return No_Value_T;
+         return No_GL_Value;
       else
          return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Value;
       end if;
@@ -139,7 +140,7 @@ package body GNATLLVM.Environment is
       if Id /= Empty_LLVM_Info_Id then
          return Id;
       else
-         LLVM_Info_Table.Append ((Value => No_Value_T, Typ => No_Type_T,
+         LLVM_Info_Table.Append ((Value => No_GL_Value, Typ => No_Type_T,
                                   TBAA => No_Metadata_T,
                                   Is_Dynamic_Size => False,
                                   Basic_Block => No_BB_T, others => <>));
@@ -199,7 +200,7 @@ package body GNATLLVM.Environment is
    -- Set_Value --
    ---------------
 
-   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : Value_T) is
+   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : GL_Value) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, VE);
    begin
       LLVM_Info_Table.Table (Id).Value :=  VL;
@@ -291,10 +292,10 @@ package body GNATLLVM.Environment is
    -- Enter_Subp --
    ----------------
 
-   procedure Enter_Subp (Env : Environ; Func : Value_T) is
+   procedure Enter_Subp (Env : Environ; Func : GL_Value) is
    begin
       Env.Func := Func;
-      Env.Activation_Rec_Param := No_Value_T;
+      Env.Activation_Rec_Param := No_GL_Value;
       Env.Return_Address_Param := No_GL_Value;
       Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));
    end Enter_Subp;
@@ -305,7 +306,7 @@ package body GNATLLVM.Environment is
 
    procedure Leave_Subp (Env  : Environ) is
    begin
-      Env.Func := No_Value_T;
+      Env.Func := No_GL_Value;
    end Leave_Subp;
 
    -------------------
@@ -313,7 +314,7 @@ package body GNATLLVM.Environment is
    -------------------
 
    function Library_Level (Env : Environ) return Boolean is
-     (Env.Func = No_Value_T);
+     (Env.Func = No_GL_Value);
 
    ------------------------
    -- Create_Basic_Block --
@@ -323,7 +324,8 @@ package body GNATLLVM.Environment is
      (Env : Environ; Name : String := "") return Basic_Block_T
    is
    begin
-      return Append_Basic_Block_In_Context (Env.Ctx, Env.Func, Name);
+      return Append_Basic_Block_In_Context
+        (Env.Ctx, LLVM_Value (Env.Func), Name);
    end Create_Basic_Block;
 
 end GNATLLVM.Environment;

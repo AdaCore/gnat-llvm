@@ -272,11 +272,10 @@ package body GNATLLVM.Subprograms is
       --  If it's not an identifier, it must be an access to a subprogram and
       --  in such a case, it must accept a static link.
 
-      Anonymous_Access : constant Boolean := not Direct_Call
+      This_Takes_S_Link : constant Boolean := not Direct_Call
         and then Present (Associated_Node_For_Itype (Etype (Subp)))
         and then Nkind (Associated_Node_For_Itype (Etype (Subp)))
           /= N_Full_Type_Declaration;
-      This_Takes_S_Link     : constant Boolean := Anonymous_Access;
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
@@ -298,14 +297,11 @@ package body GNATLLVM.Subprograms is
       if This_Takes_S_Link then
          S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
          LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
-
-         if Anonymous_Access then
-            LLVM_Func := Bit_Cast
-              (Env.Bld, LLVM_Func,
-               Create_Access_Type
-                 (Env, Full_Designated_Type (Full_Etype (Prefix (Subp)))),
-               "");
-         end if;
+         LLVM_Func := Bit_Cast
+           (Env.Bld, LLVM_Func,
+            Create_Access_Type
+              (Env, Full_Designated_Type (Full_Etype (Prefix (Subp)))),
+            "");
       end if;
 
       Param  := First_Formal_With_Extras (Subp_Typ);

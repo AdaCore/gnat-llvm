@@ -446,8 +446,8 @@ package body GNATLLVM.GLValue is
          Val_Idxs (I) := LLVM_Value (Indices (I));
       end loop;
 
-      Result := GEP (Env.Bld, LLVM_Value (Ptr), Val_Idxs'Address,
-                     Val_Idxs'Length, Name);
+      Result := In_Bounds_GEP (Env.Bld, LLVM_Value (Ptr), Val_Idxs'Address,
+                               Val_Idxs'Length, Name);
       return G_Ref (Result, Result_Type);
    end GEP;
 

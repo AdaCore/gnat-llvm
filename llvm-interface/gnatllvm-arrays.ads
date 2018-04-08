@@ -87,8 +87,9 @@ package GNATLLVM.Arrays is
                   and then (Present (Value)
                               or else Is_Constrained (Arr_Typ))
                   and then (not For_Type or else No (Value)),
-          Post => Present (Get_Array_Length'Result);
-   --  Similar, but get the length of that dimension of the array.
+          Post => Type_Of (Get_Array_Length'Result) = Env.LLVM_Size_Type;
+   --  Similar, but get the length of that dimension of the array.  This is
+   --  always Size_Type's width, but may actually be a different GNAT type.
 
    function Get_Array_Size_Complexity
      (Env      : Environ;

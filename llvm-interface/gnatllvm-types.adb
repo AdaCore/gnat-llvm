@@ -515,18 +515,8 @@ package body GNATLLVM.Types is
    function Convert_To_Size_Type
      (Env : Environ; V : GL_Value) return GL_Value
    is
-      Val_Width  : constant unsigned_long_long :=
-        Get_LLVM_Type_Size_In_Bits (Env, Type_Of (V));
-      Size_Width : constant unsigned_long_long :=
-        unsigned_long_long (Get_Targ.Get_Pointer_Size);
    begin
-      if Val_Width > Size_Width then
-         return Trunc (Env, V, Env.Size_Type);
-      elsif Val_Width < Size_Width then
-         return S_Ext (Env, V, Env.Size_Type);
-      else
-         return G (V.Value, Env.Size_Type);
-      end if;
+      return Convert_To_Elementary_Type (Env, V, Env.Size_Type);
    end Convert_To_Size_Type;
 
    -------------------

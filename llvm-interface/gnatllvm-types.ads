@@ -147,9 +147,9 @@ package GNATLLVM.Types is
 
    function Convert_To_Size_Type (Env : Environ; V : GL_Value) return GL_Value
      with Pre  => Env /= null and then Present (V),
-          Post => Type_Of (Convert_To_Size_Type'Result) = Env.LLVM_Size_Type
-                  and then Convert_To_Size_Type'Result.Typ = Env.Size_Type;
-   --  Convert V to Size_Type
+          Post => Type_Of (Convert_To_Size_Type'Result) = Env.LLVM_Size_Type;
+   --  Convert V to Size_Type.  This is always Size_Type's width, but may
+   --  actually be a different GNAT type.
 
    function Get_Type_Alignment
      (Env : Environ;

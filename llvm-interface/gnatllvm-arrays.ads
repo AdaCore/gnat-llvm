@@ -158,14 +158,4 @@ package GNATLLVM.Arrays is
           Post => Present (Array_Fat_Pointer'Result);
    --  Wrap a fat pointer around Array_Data and return the created fat pointer.
 
-   function Array_Address
-     (Env        : Environ;
-      Array_Data : Value_T;
-      Array_Type : Entity_Id) return Value_T
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
-                  and then Is_Constrained (Array_Type)
-                  and then Present (Array_Data),
-          Post => Present (Array_Address'Result);
-   --  Return the pointer to the first element of Array_Data
-
 end GNATLLVM.Arrays;

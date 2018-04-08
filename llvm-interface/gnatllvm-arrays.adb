@@ -563,25 +563,6 @@ package body GNATLLVM.Arrays is
       return Fat_Ptr;
    end Array_Fat_Pointer;
 
-   -------------------
-   -- Array_Address --
-   -------------------
-
-   function Array_Address
-     (Env        : Environ;
-      Array_Data : Value_T;
-      Array_Type : Entity_Id) return Value_T
-   is
-      Idx_Type : constant Type_T :=
-        Create_Type (Env, Full_Etype (First_Index (Array_Type)));
-      Zero     : constant Value_T := Const_Null (Idx_Type);
-      Idx      : constant Value_Array (0 .. Number_Dimensions (Array_Type)) :=
-        (0 => Const_Null (Env.LLVM_Size_Type), others => Zero);
-
-   begin
-      return GEP (Env.Bld, Array_Data, Idx, "array-addr");
-   end Array_Address;
-
    ------------------------
    -- Get_Indexed_LValue --
    ------------------------

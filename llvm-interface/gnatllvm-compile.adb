@@ -1594,12 +1594,6 @@ package body GNATLLVM.Compile is
 
    function Emit_Expression
      (Env : Environ; Node : Node_Id) return GL_Value is
-
-      function Emit_Expr (Node : Node_Id) return GL_Value is
-        (Emit_Expression (Env, Node));
-      --  Shortcut to Emit_Expression. Used to implicitely pass the
-      --  environment during recursion.
-
    begin
       if Nkind (Node) in N_Binary_Op then
 
@@ -1782,7 +1776,7 @@ package body GNATLLVM.Compile is
          case Nkind (Node) is
          when N_Expression_With_Actions =>
             Emit_List (Env, Actions (Node));
-            return Emit_Expr (Expression (Node));
+            return Emit_Expression (Env, Expression (Node));
 
          when N_Character_Literal | N_Numeric_Or_String_Literal =>
             return Emit_Literal (Env, Node);
@@ -1792,14 +1786,15 @@ package body GNATLLVM.Compile is
               (Env, Left_Opnd (Node), Right_Opnd (Node), Nkind (Node));
 
          when N_Op_Not =>
-            return Build_Not (Env, Emit_Expr (Right_Opnd (Node)));
+            return Build_Not (Env, Emit_Expression (Env, Right_Opnd (Node)));
 
          when N_Op_Abs =>
 
             --  Emit: X >= 0 ? X : -X;
 
             declare
-               Expr      : constant GL_Value := Emit_Expr (Right_Opnd (Node));
+               Expr      : constant GL_Value :=
+                 Emit_Expression (Env, Right_Opnd (Node));
                Zero      : constant GL_Value := Const_Null (Env, Expr);
                Compare   : constant GL_Value :=
                  Emit_Elementary_Comparison (Env, N_Op_Ge, Expr, Zero);
@@ -1816,11 +1811,12 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Op_Plus =>
-            return Emit_Expr (Right_Opnd (Node));
+            return Emit_Expression (Env, Right_Opnd (Node));
 
          when N_Op_Minus =>
             declare
-               Expr : constant GL_Value := Emit_Expr (Right_Opnd (Node));
+               Expr : constant GL_Value :=
+                 Emit_Expression (Env, Right_Opnd (Node));
             begin
                if Is_Floating_Point_Type (Expr) then
                   return F_Neg (Env, Expr);
@@ -1839,7 +1835,7 @@ package body GNATLLVM.Compile is
 
             --  We can simply strip the type qualifier
 
-            return Emit_Expr (Expression (Node));
+            return Emit_Expression (Env, Expression (Node));
 
          when N_Type_Conversion =>
 
@@ -1972,7 +1968,7 @@ package body GNATLLVM.Compile is
 
          when N_Explicit_Dereference =>
             return Need_Value
-              (Env, Make_Reference (Emit_Expr (Prefix (Node))),
+              (Env, Make_Reference (Emit_Expression (Env, Prefix (Node))),
                Full_Etype (Node));
 
          when N_Allocator =>
@@ -2001,7 +1997,7 @@ package body GNATLLVM.Compile is
                else
                   pragma Assert (Nkind (Expr) = N_Qualified_Expression);
                   Typ   := Full_Etype (Expression (Expr));
-                  Value := Emit_Expr (Expression (Expr));
+                  Value := Emit_Expression (Env, Expression (Expr));
                end if;
 
                Arg := (1 => LLVM_Value
@@ -2096,7 +2092,8 @@ package body GNATLLVM.Compile is
                         Result := Insert_Value
                           (Env.Bld,
                            Result,
-                           LLVM_Value (Emit_Expr (Expression (Expr))),
+                           LLVM_Value (Emit_Expression
+                                         (Env, Expression (Expr))),
                            unsigned (Cur_Index),
                            "");
                         Cur_Index := Cur_Index + 1;
@@ -2126,7 +2123,8 @@ package body GNATLLVM.Compile is
          when N_In =>
             declare
                Rng   : Node_Id := Right_Opnd (Node);
-               Left  : constant GL_Value := Emit_Expr (Left_Opnd (Node));
+               Left  : constant GL_Value :=
+                 Emit_Expression (Env, Left_Opnd (Node));
 
             begin
                pragma Assert (No (Alternatives (Node)));
@@ -2140,10 +2138,10 @@ package body GNATLLVM.Compile is
                return Build_And (Env,
                                  Emit_Elementary_Comparison
                                    (Env, N_Op_Ge, Left,
-                                    Emit_Expr (Low_Bound (Rng))),
+                                    Emit_Expression (Env, Low_Bound (Rng))),
                                  Emit_Elementary_Comparison
                                    (Env, N_Op_Le, Left,
-                                    Emit_Expr (High_Bound (Rng))));
+                                    Emit_Expression (Env, High_Bound (Rng))));
             end;
 
          when N_Raise_Expression =>

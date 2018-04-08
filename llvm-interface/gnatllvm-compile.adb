@@ -2871,6 +2871,21 @@ package body GNATLLVM.Compile is
       then
          return Convert_To_Elementary_Type (Env, Value, Dest_Type);
 
+      --  We can unchecked convert floating point of the same width
+      --  (the only way that UC is formally defined) with a "bitcast"
+      --  instruction.
+
+      elsif ((Is_Floating_Point_Type (Dest_Type)
+                and then Is_Discrete_Or_Fixed_Point_Type (Value))
+             or else (Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
+                        and then Is_Floating_Point_Type (Value)))
+        and then (unsigned_long_long'(Get_LLVM_Type_Size_In_Bits
+                                        (Env, Dest_Ty)) =
+                    unsigned_long_long'(Get_LLVM_Type_Size_In_Bits
+                                          (Env, Value)))
+      then
+         return Bit_Cast (Env, Value, Dest_Type);
+
       --  Otherwise, these must be cases where we have to convert by
       --  pointer punning.  If the source is a type of dynamic size, the
       --  value is already a pointer.  Otherwise, we have to make it a

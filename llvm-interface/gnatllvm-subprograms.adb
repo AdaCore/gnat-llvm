@@ -373,6 +373,7 @@ package body GNATLLVM.Subprograms is
          Idx := Idx + 1;
          Actual := Next_Actual (Actual);
          Param := Next_Formal_With_Extras (Param);
+         pragma Assert (No (Actual) = No (Param));
       end loop;
 
       --  Set the argument for the static link, if any

@@ -251,19 +251,6 @@ package body GNATLLVM.Utils is
       end;
    end Iterate_Entities;
 
-   ----------------
-   -- Get_Params --
-   ----------------
-
-   function Get_Params (Subp : Entity_Id) return Entity_Iterator is
-      function Iterate is new Iterate_Entities
-        (Get_First => First_Formal_With_Extras,
-         Get_Next  => Next_Formal_With_Extras);
-
-   begin
-      return Iterate (Subp);
-   end Get_Params;
-
    ------------------
    -- Get_Ext_Name --
    ------------------

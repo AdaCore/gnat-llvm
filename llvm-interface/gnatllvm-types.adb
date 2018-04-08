@@ -33,10 +33,11 @@ package body GNATLLVM.Types is
 
    function Create_Subprogram_Type
      (Env           : Environ;
-      Params        : Entity_Iterator;
+      Param_Ident   : Entity_Id;
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
-     with Pre  => Env /= null,
+     with Pre  => Env /= null and then Present (Param_Ident)
+                  and then Is_Type_Or_Void (Return_Type),
           Post => Present (Create_Subprogram_Type'Result);
    --  Helper for public Create_Subprogram_Type functions: the public
    --  ones harmonize input and this one actually creates the LLVM
@@ -340,6 +341,22 @@ package body GNATLLVM.Types is
       return Subp (Env, Value, Dest_Type, "unchecked-conv");
    end Build_Unchecked_Conversion;
 
+   ------------------
+   -- Count_Params --
+   ------------------
+
+   function Count_Params (E : Entity_Id) return Nat is
+      Cnt   : Nat := 0;
+      Param : Entity_Id := First_Formal_With_Extras (E);
+   begin
+      while Present (Param) loop
+         Cnt := Cnt + 1;
+         Param := Next_Formal_With_Extras (Param);
+      end loop;
+
+      return Cnt;
+   end Count_Params;
+
    --------------------------------
    -- Get_LLVM_Type_Size_In_Bits --
    --------------------------------
@@ -634,11 +651,9 @@ package body GNATLLVM.Types is
      (Env : Environ; Subp_Spec : Node_Id) return Type_T
    is
       Def_Ident : constant Entity_Id := Defining_Entity (Subp_Spec);
-      Params    : constant Entity_Iterator := Get_Params (Def_Ident);
-      Result    : constant Node_Id := Full_Etype (Def_Ident);
-
    begin
-      return Create_Subprogram_Type (Env, Params, Result, False);
+      return Create_Subprogram_Type
+        (Env, Def_Ident, Full_Etype (Def_Ident), False);
    end Create_Subprogram_Type_From_Spec;
 
    ----------------------------------------
@@ -651,7 +666,7 @@ package body GNATLLVM.Types is
       Takes_S_Link  : Boolean) return Type_T is
    begin
       return Create_Subprogram_Type
-        (Env, Get_Params (Subp_Type_Ent), Full_Etype (Subp_Type_Ent),
+        (Env, Subp_Type_Ent, Full_Etype (Subp_Type_Ent),
          Takes_S_Link);
    end Create_Subprogram_Type_From_Entity;
 
@@ -661,7 +676,7 @@ package body GNATLLVM.Types is
 
    function Create_Subprogram_Type
      (Env           : Environ;
-      Params        : Entity_Iterator;
+      Param_Ident   : Entity_Id;
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
    is
@@ -669,18 +684,20 @@ package body GNATLLVM.Types is
         (if Ekind (Return_Type) = E_Void
          then Void_Type_In_Context (Env.Ctx)
          else Create_Type (Env, Return_Type));
+      Orig_Arg_Count  : constant Nat := Count_Params (Param_Ident);
       Args_Count      : constant Nat :=
-        Params'Length + (if Takes_S_Link then 1 else 0) +
-                        (if Ekind (Return_Type) /= E_Void
-                           and then Is_Dynamic_Size (Env, Return_Type)
-                         then 1 else 0);
+        Orig_Arg_Count + (if Takes_S_Link then 1 else 0) +
+          (if Ekind (Return_Type) /= E_Void
+             and then Is_Dynamic_Size (Env, Return_Type)
+           then 1 else 0);
       Arg_Types       : Type_Array (1 .. Args_Count);
+      Param_Ent       : Entity_Id := First_Formal_With_Extras (Param_Ident);
+      J               : Nat := 1;
    begin
       --  First, Associate an LLVM type for each Ada subprogram parameter
 
-      for J in Params'Range loop
+      while Present (Param_Ent) loop
          declare
-            Param_Ent  : constant Entity_Id := Params (J);
             Param_Type : constant Node_Id := Full_Etype (Param_Ent);
          begin
             --  If this is an out parameter, or a parameter whose type is
@@ -691,12 +708,15 @@ package body GNATLLVM.Types is
                then Create_Access_Type (Env, Param_Type)
                else Create_Type (Env, Param_Type));
          end;
+
+         J := J + 1;
+         Param_Ent := Next_Formal_With_Extras (Param_Ent);
       end loop;
 
       --  Set the argument for the static link, if any
 
       if Takes_S_Link then
-         Arg_Types (Params'Length + 1) :=
+         Arg_Types (Orig_Arg_Count + 1) :=
            Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
       end if;
 

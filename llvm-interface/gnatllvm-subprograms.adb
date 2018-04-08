@@ -22,7 +22,6 @@ with Einfo;    use Einfo;
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Namet;    use Namet;
-with Nlists;   use Nlists;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
@@ -261,16 +260,13 @@ package body GNATLLVM.Subprograms is
       Subp        : Node_Id := Name (Call_Node);
       Return_Typ  : constant Entity_Id := Full_Etype (Call_Node);
       Void_Return : constant Boolean := Ekind (Return_Typ) = E_Void;
-      LLVM_Return_Typ : constant Type_T :=
-        (if Void_Return then No_Type_T else Create_Type (Env, Return_Typ));
       Dynamic_Return : constant Boolean :=
         not Void_Return and then Is_Dynamic_Size (Env, Return_Typ);
       Direct_Call : constant Boolean := Nkind (Subp) /= N_Explicit_Dereference;
       Subp_Typ    : constant Entity_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
-      Params      : constant Entity_Iterator := Get_Params (Subp_Typ);
-      Param_Assoc, Actual : Node_Id;
-      Actual_Type         : Entity_Id;
+      Param, Actual       : Node_Id;
+      Actual_Type, P_Type : Entity_Id;
       Current_Needs_Ptr   : Boolean;
 
       --  If it's not an identifier, it must be an access to a subprogram and
@@ -284,22 +280,14 @@ package body GNATLLVM.Subprograms is
 
       S_Link         : Value_T;
       LLVM_Func      : Value_T;
+      Orig_Arg_Count : constant Nat := Count_Params (Subp_Typ);
       Args_Count     : constant Nat :=
-        Params'Length + (if This_Takes_S_Link then 1 else 0) +
-                        (if Dynamic_Return then 1 else 0);
+        Orig_Arg_Count + (if This_Takes_S_Link then 1 else 0) +
+          (if Dynamic_Return then 1 else 0);
       Args           : Value_Array (1 .. Args_Count);
-      I, Idx         : Standard.Types.Int := 1;
-      P_Type         : Entity_Id;
-      Params_Offsets : Name_Maps.Map;
-      pragma Unreferenced (LLVM_Return_Typ);
+      Idx            : Nat := 1;
 
    begin
-      for Param of Params loop
-         Params_Offsets.Include (Chars (Param), I);
-         I := I + 1;
-      end loop;
-
-      I := 1;
 
       if Direct_Call then
          Subp := Entity (Subp);
@@ -320,25 +308,16 @@ package body GNATLLVM.Subprograms is
          end if;
       end if;
 
-      Param_Assoc := First (Parameter_Associations (Call_Node));
-
-      while Present (Param_Assoc) loop
-         if Nkind (Param_Assoc) = N_Parameter_Association then
-            Actual := Explicit_Actual_Parameter (Param_Assoc);
-            Idx := Params_Offsets (Chars (Selector_Name (Param_Assoc)));
-         else
-            Actual := Param_Assoc;
-            Idx := I;
-         end if;
-
+      Param  := First_Formal_With_Extras (Subp_Typ);
+      Actual := First_Actual (Call_Node);
+      while Present (Actual) loop
          Actual_Type := Full_Etype (Actual);
-         Current_Needs_Ptr := Param_Needs_Ptr (Params (Idx));
+         P_Type := Full_Etype (Param);
+         Current_Needs_Ptr := Param_Needs_Ptr (Param);
          Args (Idx) :=
            (if Current_Needs_Ptr
             then LLVM_Value (Emit_LValue (Env, Actual))
             else LLVM_Value (Emit_Expression (Env, Actual)));
-
-         P_Type := Full_Etype (Params (Idx));
 
          --  At this point we need to handle view conversions: from array
          --  thin pointer to array fat pointer, unconstrained array pointer
@@ -391,14 +370,15 @@ package body GNATLLVM.Subprograms is
                "param-bitcast");
          end if;
 
-         I := I + 1;
-         Param_Assoc := Next (Param_Assoc);
+         Idx := Idx + 1;
+         Actual := Next_Actual (Actual);
+         Param := Next_Formal_With_Extras (Param);
       end loop;
 
       --  Set the argument for the static link, if any
 
       if This_Takes_S_Link then
-         Args (Params'Length + 1) := S_Link;
+         Args (Orig_Arg_Count + 1) := S_Link;
       end if;
 
       --  Add a pointer to the location of the return value if the return
@@ -428,12 +408,6 @@ package body GNATLLVM.Subprograms is
             end if;
          end loop;
       end;
-
-      --  Set the argument for the static link, if any
-
-      if This_Takes_S_Link then
-         Args (Params'Length + 1) := S_Link;
-      end if;
 
       --  If the return type is of dynamic size, call as a procedure and
       --  return the address we set as the last parameter.

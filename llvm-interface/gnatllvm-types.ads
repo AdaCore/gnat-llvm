@@ -62,6 +62,11 @@ package GNATLLVM.Types is
           Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
                    Function_Type_Kind);
 
+   function Count_Params (E : Entity_Id) return Nat
+     with Pre => Present (E);
+   --  Return a count of the number of parameters of E, which is either
+   --  a subprogram or a subprogram type.
+
    function GNAT_To_LLVM_Type
      (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
      with Pre  => Env /= null and then Is_Type (TE),

@@ -20,7 +20,6 @@ with Ada.Containers.Vectors;
 
 with Atree; use Atree;
 with Einfo; use Einfo;
-with Namet; use Namet;
 with Table; use Table;
 with Types; use Types;
 
@@ -133,10 +132,6 @@ package GNATLLVM.Environment is
       Structs : Struct_Info_Vectors.Vector;
       Dynamic_Size : Boolean := False;
    end record;
-
-   package Name_Maps is new Ada.Containers.Ordered_Maps
-     (Key_Type     => Name_Id,
-      Element_Type => Nat);
 
    --  Expanded Ada-to-LLVM translation context: gathers global information
    type Environ_Record;

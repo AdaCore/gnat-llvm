@@ -176,7 +176,8 @@ package body LLVM_Drive is
          Env.LLVM_Size_Type := Size_Type;
 
          --  Find the integer type corresponding to the size of a pointer
-         --  and use that are our Size Type.
+         --  and use that for our Size Type.
+
          if Get_Pointer_Size = Get_Long_Long_Size then
             Env.Size_Type := Standard_Long_Long_Integer;
          elsif Get_Pointer_Size = Get_Long_Size then
@@ -187,8 +188,9 @@ package body LLVM_Drive is
 
          pragma Assert (Create_Type (Env, Env.Size_Type) = Env.LLVM_Size_Type);
 
-         --  Likewise for the 32-bit integer type.
-         if  Get_Long_Long_Size = 32 then
+         --  Likewise for the 32-bit integer type
+
+         if Get_Long_Long_Size = 32 then
             Env.Int_32_Type := Standard_Long_Long_Integer;
          elsif Get_Long_Size = 32 then
             Env.Int_32_Type := Standard_Long_Integer;

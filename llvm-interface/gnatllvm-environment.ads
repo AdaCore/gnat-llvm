@@ -233,6 +233,9 @@ package GNATLLVM.Environment is
       LLVM_Size_Type            : Type_T;
       --  Types to use for sizes.
 
+      Int_32_Type               : Entity_Id;
+      --  GNAT type for 32-bit integers (for GEP indexes).
+
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
       Memory_Copy_Fn            : Value_T;

@@ -187,6 +187,15 @@ package body LLVM_Drive is
 
          pragma Assert (Create_Type (Env, Env.Size_Type) = Env.LLVM_Size_Type);
 
+         --  Likewise for the 32-bit integer type.
+         if  Get_Long_Long_Size = 32 then
+            Env.Int_32_Type := Standard_Long_Long_Integer;
+         elsif Get_Long_Size = 32 then
+            Env.Int_32_Type := Standard_Long_Integer;
+         else
+            Env.Int_32_Type := Standard_Integer;
+         end if;
+
          --  Add malloc function to the env
 
          Env.Default_Alloc_Fn := Add_Function

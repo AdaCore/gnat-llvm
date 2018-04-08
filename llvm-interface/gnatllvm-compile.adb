@@ -1309,9 +1309,8 @@ package body GNATLLVM.Compile is
                for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
                   Result := Load (Env, GEP
                                     (Env, Env.Size_Type, Result,
-                                     (1 => Const_Null (Env, Standard_Integer),
-                                      --  ??  Assumes Integer'Size = 32
-                                      2 => Const_Null (Env, Standard_Integer)),
+                                     (1 => Const_Int_32 (Env, 0),
+                                      2 => Const_Int_32 (Env, 0)),
                                      "ARECnF.all.ARECnU"));
                end loop;
             end if;

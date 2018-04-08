@@ -302,6 +302,20 @@ package GNATLLVM.GLValue is
      (Const_Int (Env, Env.Size_Type, N, Sign_Extend))
      with Pre => Env /= null, Post => Present (Size_Const_Int'Result);
 
+   function Const_Int_32
+     (Env : Environ; N : Uint) return GL_Value is
+     (Const_Int (Env, Env.Int_32_Type, N))
+     with Pre  => Env /= null and then N /= No_Uint,
+          Post => Present (Const_Int_32'Result);
+
+   function Const_Int_32
+     (Env : Environ;
+      N : unsigned_long_long;
+      Sign_Extend : Boolean := False) return GL_Value
+   is
+     (Const_Int (Env, Env.Int_32_Type, N, Sign_Extend))
+     with Pre => Env /= null, Post => Present (Const_Int_32'Result);
+
    function Const_Real
      (Env : Environ; G : GL_Value; V : double) return GL_Value is
      (Const_Real (Env, Etype (G), V))

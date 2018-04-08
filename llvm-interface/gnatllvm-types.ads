@@ -87,6 +87,39 @@ package GNATLLVM.Types is
    function Int_Ptr_Type return Type_T is
       (Int_Type (unsigned (Get_Pointer_Size)));
 
+   function Convert_To_Elementary_Type
+     (Env : Environ; G : GL_Value; D_Type : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Elementary_Type (D_Type)
+                  and then Is_Elementary_Type (G),
+          Post => Present (Convert_To_Elementary_Type'Result);
+   --  Convert Expr to the type TE, with both the types of Expr and TE
+   --  being elementary.
+
+   function Build_Type_Conversion
+     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Type (Dest_Type)
+                  and then Present (Expr)
+                  and then Dest_Type = Get_Fullest_View (Dest_Type),
+          Post => Present (Build_Type_Conversion'Result);
+   --  Emit code to convert Expr to Dest_Type
+
+   function Build_Unchecked_Conversion
+     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Type (Dest_Type)
+                  and then Dest_Type = Get_Fullest_View (Dest_Type)
+                  and then Present (Expr),
+          Post => Present (Build_Unchecked_Conversion'Result);
+   --  Emit code to emit an unchecked conversion of Expr to Dest_Type
+
+   function Convert_To_Elementary_Type
+     (Env : Environ; Expr : GL_Value; G : GL_Value) return GL_Value
+   is
+     (Convert_To_Elementary_Type (Env, Expr, Full_Etype (G)))
+     with Pre  => Env /= null and then Is_Elementary_Type (Expr)
+                  and then Is_Elementary_Type (G),
+          Post => Present (Convert_To_Elementary_Type'Result);
+   --  Variant of above where the type is that of another value (G)
+
    function Get_LLVM_Type_Size
      (Env : Environ; T : Type_T) return unsigned_long_long
    is

@@ -611,7 +611,7 @@ package body GNATLLVM.Arrays is
             Dim_Low_Bound : constant GL_Value :=
               Get_Array_Bound (Env, Array_Type, J - 2, True, Value);
             Converted_Index : constant GL_Value :=
-              Convert_To_Scalar_Type (Env, User_Index, Dim_Low_Bound);
+              Convert_To_Elementary_Type (Env, User_Index, Dim_Low_Bound);
          begin
             Idxs (J) := NSW_Sub (Env, Converted_Index, Dim_Low_Bound, "index");
          end;
@@ -678,7 +678,7 @@ package body GNATLLVM.Arrays is
       Index_Val      : constant GL_Value :=
         Emit_Expression (Env, Low_Bound (Rng));
       Converted_Index : constant GL_Value :=
-        Convert_To_Scalar_Type (Env, Index_Val, Index_Val);
+        Convert_To_Elementary_Type (Env, Index_Val, Index_Val);
 
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays

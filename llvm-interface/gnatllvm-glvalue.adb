@@ -22,6 +22,64 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
 
+   function Access_Depth (TE : Entity_Id) return Natural
+     with Pre => Present (TE);
+   --  If TE is not an access type, return zero.  Otherwise, return how deep
+   --  we have to go down Full_Designated_Type to find something that's
+   --  not an access type.
+
+   function Access_Depth (G : GL_Value) return Natural
+     with Pre => Present (G);
+   --  Similarly, but for a GL_Value, which might be a reference.
+
+   function Is_LValue_Of (G : GL_Value; TE : Entity_Id) return Boolean
+     with Pre => Present (G) and then Is_Type_Or_Void (TE);
+   --  Return True if G is the LValue of an object of type TE.
+
+   ------------------
+   -- Access_Depth --
+   ------------------
+
+   function Access_Depth (TE : Entity_Id) return Natural is
+   begin
+      if not Is_Access_Type (TE) then
+         return 0;
+      else
+         return Access_Depth (Full_Designated_Type (TE)) + 1;
+      end if;
+   end Access_Depth;
+
+   ------------------
+   -- Access_Depth --
+   ------------------
+
+   function Access_Depth (G : GL_Value) return Natural is
+   begin
+      if not Is_Access_Type (G) then
+         return 0;
+      else
+         return Access_Depth (Full_Designated_Type (G)) + 1;
+      end if;
+   end Access_Depth;
+
+   ------------------
+   -- Is_LValue_Of --
+   ------------------
+
+   function Is_LValue_Of (G : GL_Value; TE : Entity_Id) return Boolean is
+   begin
+
+      --  If Value is a reference and its designated type is that of our
+      --  type, we know we're OK.  If not, we may still if OK if access
+      --  types are involved, so check that the "access type" depth of
+      --  Value is one greater than that of our type.  That's also OK.
+
+      return Ekind (TE) = E_Void
+        or else (Is_Reference (G)
+                   and then Full_Designated_Type (G) = TE)
+        or else Access_Depth (G) = Access_Depth (TE) + 1;
+   end Is_LValue_Of;
+
    ----------------
    -- Need_Value --
    ----------------
@@ -36,8 +94,7 @@ package body GNATLLVM.GLValue is
       --  Likewise if it's not a reference.  Otherwise, load the
       --  value.
 
-      if Ekind (TE) = E_Subprogram_Type
-        or else not Is_Reference (V)
+      if Ekind (TE) = E_Subprogram_Type or else not Is_LValue_Of (V, TE)
         or else (Is_Reference (V)
                    and then Is_Dynamic_Size (Env, Full_Designated_Type (V)))
       then
@@ -46,6 +103,34 @@ package body GNATLLVM.GLValue is
          return Load (Env, V);
       end if;
    end Need_Value;
+
+   ----------------
+   -- Need_LValue --
+   ----------------
+
+   function Need_LValue
+     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
+   is
+   begin
+
+      --  If we already have an LValue, return it.  Otherwise, allocate memory
+      --  for the value (which we know to be of fixed size or else we'd have
+      --  had a reference), store the data, and return the address of that
+      --  temporary.
+
+      if Is_LValue_Of (V, TE) then
+         return V;
+      else
+         pragma Assert (not Library_Level (Env));
+
+         declare
+            Temp : constant GL_Value := Allocate_For_Type (Env, TE, "lvalue");
+         begin
+            Store (Env, V, Temp);
+            return Temp;
+         end;
+      end if;
+   end Need_LValue;
 
    -------------
    -- Discard --
@@ -294,6 +379,24 @@ package body GNATLLVM.GLValue is
    begin
       Discard (Build_Cond_Br (Env.Bld, LLVM_Value (C_If), C_Then, C_Else));
    end Build_Cond_Br;
+
+   ---------------
+   -- Build_Ret --
+   ---------------
+
+   procedure Build_Ret (Env : Environ; G : GL_Value) is
+   begin
+      Discard (Build_Ret (Env.Bld, LLVM_Value (G)));
+   end Build_Ret;
+
+   --------------------
+   -- Build_Ret_Void --
+   --------------------
+
+   procedure Build_Ret_Void (Env : Environ) is
+   begin
+      Discard (Build_Ret_Void (Env.Bld));
+   end Build_Ret_Void;
 
    ---------------
    -- Build_Phi --

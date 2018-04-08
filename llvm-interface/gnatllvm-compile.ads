@@ -50,19 +50,21 @@ package GNATLLVM.Compile is
    --  Find a value that's being computed by the current Emit_LValue
    --  recursion that has the same base type as T
 
-   function Convert_To_Scalar_Type
-     (Env : Environ; Expr : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Convert_To_Scalar_Type'Result);
+   function Convert_To_Elementary_Type
+     (Env : Environ; G : GL_Value; D_Type : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Elementary_Type (D_Type)
+                  and then Is_Elementary_Type (G),
+          Post => Present (Convert_To_Elementary_Type'Result);
    --  Convert Expr to the type TE, with both the types of Expr and TE
-   --  being scalar.
+   --  being elementary.
 
-   function Convert_To_Scalar_Type
+   function Convert_To_Elementary_Type
      (Env : Environ; Expr : GL_Value; G : GL_Value) return GL_Value
    is
-     (Convert_To_Scalar_Type (Env, Expr, Full_Etype (G)))
-     with Pre  => Env /= null and then Present (G),
-          Post => Present (Convert_To_Scalar_Type'Result);
+     (Convert_To_Elementary_Type (Env, Expr, Full_Etype (G)))
+     with Pre  => Env /= null and then Is_Elementary_Type (Expr)
+                  and then Is_Elementary_Type (G),
+          Post => Present (Convert_To_Elementary_Type'Result);
    --  Variant of above where the type is that of another value (G)
 
 end GNATLLVM.Compile;

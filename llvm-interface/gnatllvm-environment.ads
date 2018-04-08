@@ -151,8 +151,8 @@ package GNATLLVM.Environment is
       Typ              : Type_T;
       --  The LLVM Type corresponding to this entity, if a type.  Set for
       --  all types.  If the GNAT type doesn't correspond directly to an
-      --  LLVM type (e.g., some variable size arrays and records), this is
-      --  an opaque type and we get the information from other fields of
+      --  LLVM type (e.g., some variable size arrays and records), this can
+      --  be an opaque type and we get the information from other fields of
       --  this record.
 
       Is_Dynamic_Size  : Boolean;

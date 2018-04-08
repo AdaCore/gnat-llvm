@@ -140,7 +140,8 @@ package GNATLLVM.Arrays is
    function Array_Data
      (Env         : Environ;
       Array_Descr : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Present (Array_Descr),
+     with Pre  => Env /= null and then Is_Access_Type (Array_Descr)
+                  and then Is_Array_Type (Full_Designated_Type (Array_Descr)),
           Post => Present (Array_Data'Result);
    --  Emit code to compute the address of the array data and return the
    --  corresponding value. Handle both constrained and unconstrained arrays,

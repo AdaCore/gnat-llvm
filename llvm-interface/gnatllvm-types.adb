@@ -17,7 +17,8 @@
 
 with Errout;   use Errout;
 with Sem_Util; use Sem_Util;
-with Sinfo; use Sinfo;
+with Sinfo;    use Sinfo;
+with Stand;    use Stand;
 with Uintp;    use Uintp;
 
 with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
@@ -466,6 +467,46 @@ package body GNATLLVM.Types is
          Couple'Address, Couple'Length,
          Packed => False);
    end Create_Subprogram_Access_Type;
+
+   -----------------------
+   -- Allocate_For_Type --
+   -----------------------
+
+   function Allocate_For_Type
+     (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
+   is
+      Element_Typ : Entity_Id;
+      Num_Elts    : GL_Value;
+   begin
+
+      --  We have three cases.  If the object is not of a dynamic size,
+      --  we just do the alloca and that's all.
+
+      if not Is_Dynamic_Size (Env, TE) then
+         return Alloca (Env, TE, Name);
+      end if;
+
+      --  Otherwise, we have to do some sort of dynamic allocation.  If
+      --  this is an array of a component that's not of dynamic size, then
+      --  we can allocate an array of the component type corresponding to
+      --  the array type and cast it to a pointer to the actual type.
+      --  If not, we have to allocate it as an array of bytes.
+
+      if Is_Array_Type (TE)
+        and then not Is_Dynamic_Size (Env, Full_Component_Type (TE))
+      then
+         Element_Typ := Full_Component_Type (TE);
+         Num_Elts    := Get_Array_Elements (Env, No_GL_Value, TE);
+      else
+         Element_Typ := Standard_Short_Short_Integer;
+         Num_Elts    := Get_Type_Size (Env, TE, No_GL_Value);
+      end if;
+
+      return Ptr_To_Ref
+        (Env,
+         Array_Alloca (Env, Element_Typ, Num_Elts, "dyn-array"), TE, Name);
+
+   end Allocate_For_Type;
 
    ---------------------------
    --  Convert_To_Size_Type --

@@ -72,7 +72,7 @@ package GNATLLVM.GLValue is
 
    function G_Ref (V : Value_T; TE : Entity_Id) return GL_Value is
      (G (V, TE, True))
-     with Pre  => Present (V) and then Present (TE),
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (G_Ref'Result);
    --  Constructor for case were we've create a value that's a pointer to
    --  type TE.
@@ -166,6 +166,10 @@ package GNATLLVM.GLValue is
      (not Is_Reference (G) and then Is_Unsigned_Type (Etype (G)))
      with Pre => Present (G);
 
+   function Is_Integer_Type (G : GL_Value) return Boolean is
+     (not Is_Reference (G) and then Is_Integer_Type (Etype (G)))
+     with Pre => Present (G);
+
    function Is_Modular_Integer_Type (G : GL_Value) return Boolean is
      (not Is_Reference (G) and then Is_Modular_Integer_Type (Etype (G)))
      with Pre => Present (G);
@@ -195,12 +199,31 @@ package GNATLLVM.GLValue is
    --  Indicate that we want to consider G as a reference to its designated
    --  type.
 
+   --  A GL_Value can either represent an LValue (the address of a value) or
+   --  the value itself.  It can only represent the value itself if the value
+   --  is representable as an LLVM object, so we can't represent function
+   --  values (we can only represent their address) or values representing
+   --  variable-sized objects.
+
+   --  When evaluating expressions, especially when they represent values saved
+   --  in the environment, we often create either an LValue or the actual
+   --  value.  However, we often need either an LValue or a value.  The
+   --  following two functions force a GL_Value into one of the two forms.
+
    function Need_Value
      (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Present (TE),
+     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
           Post => Present (Need_Value'Result);
    --  Get the Value corresponding to V, dereferencing it when needed.
    --  TE is the type of the value.
+
+   function Need_LValue
+     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Present (V)
+                  and then Is_Type_Or_Void (TE),
+          Post => Present (Need_LValue'Result);
+   --  Get the LValue corresponding to V, making a new temporary to which
+   --  we store the value, if needed.
 
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
      with Pre  => Env /= null and then Is_Type (TE),
@@ -262,7 +285,7 @@ package GNATLLVM.GLValue is
 
    function Const_Real
      (Env : Environ; TE : Entity_Id; V : double) return GL_Value
-     with Pre  => Env /= null and then Present (TE),
+     with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Const_Real'Result);
 
    function Size_Const_Int
@@ -289,7 +312,7 @@ package GNATLLVM.GLValue is
 
    function Alloca
       (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Env /= null and then Present (TE),
+     with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Alloca'Result)
                   and then Is_Access_Type (Alloca'Result);
 
@@ -298,7 +321,7 @@ package GNATLLVM.GLValue is
       TE       : Entity_Id;
       Num_Elts : GL_Value;
       Name     : String := "") return GL_Value
-     with Pre  => Env /= null and then Present (TE)
+     with Pre  => Env /= null and then Is_Type (TE)
                   and then Present (Num_Elts),
           Post => Present (Array_Alloca'Result)
                   and then Is_Access_Type (Array_Alloca'Result);
@@ -665,6 +688,12 @@ package GNATLLVM.GLValue is
      (Env : Environ; C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
      with Pre => Env /= null and then Present (C_If)
                  and then Present (C_Then) and then Present (C_Else);
+
+   procedure Build_Ret (Env : Environ; G : GL_Value)
+     with Pre => Env /= null and then Present (G);
+
+   procedure Build_Ret_Void (Env : Environ)
+     with Pre => Env /= null;
 
    function Build_Phi
      (Env       : Environ;

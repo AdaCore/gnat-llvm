@@ -137,6 +137,14 @@ package GNATLLVM.Types is
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
    --  Variant of above to get type from a GL_Value
 
+   function Allocate_For_Type
+     (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Env /= null and Is_Type (TE),
+          Post => Present (Allocate_For_Type'Result)
+                  and then Is_Access_Type (Allocate_For_Type'Result);
+   --  Allocate space on the stack for an object of type TE and return
+   --  a pointer to the space.  Name is the name to use for the LLVM value.
+
    function Convert_To_Size_Type (Env : Environ; V : GL_Value) return GL_Value
      with Pre  => Env /= null and then Present (V),
           Post => Type_Of (Convert_To_Size_Type'Result) = Env.LLVM_Size_Type

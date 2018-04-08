@@ -398,6 +398,15 @@ package body GNATLLVM.GLValue is
       Discard (Build_Ret_Void (Env.Bld));
    end Build_Ret_Void;
 
+   -----------------------
+   -- Build_Unreachable --
+   -----------------------
+
+   procedure Build_Unreachable (Env : Environ) is
+   begin
+      Discard (Build_Unreachable (Env.Bld));
+   end Build_Unreachable;
+
    ---------------
    -- Build_Phi --
    ---------------

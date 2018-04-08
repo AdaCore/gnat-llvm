@@ -385,7 +385,7 @@ package body GNATLLVM.Compile is
       --  This point should not be reached: a return must have
       --  already... returned!
 
-      Discard (Build_Unreachable (Env.Bld));
+      Build_Unreachable (Env);
       Leave_Subp (Env);
 
       Verify_Function
@@ -2903,6 +2903,7 @@ package body GNATLLVM.Compile is
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
       Operand_Type : constant Entity_Id := Full_Etype (LHS);
+
       function Subp_Ptr (Node : Node_Id) return Value_T is
         (if Nkind (Node) = N_Null
          then Const_Null (Pointer_Type (Int_Ty (8), 0))

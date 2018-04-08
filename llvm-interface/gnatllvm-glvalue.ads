@@ -709,6 +709,9 @@ package GNATLLVM.GLValue is
    procedure Build_Ret_Void (Env : Environ)
      with Pre => Env /= null;
 
+   procedure Build_Unreachable (Env : Environ)
+     with Pre => Env /= null;
+
    function Build_Phi
      (Env       : Environ;
       GL_Values : GL_Value_Array;
@@ -726,6 +729,17 @@ package GNATLLVM.GLValue is
                   and then Is_Access_Type (Int_To_Ref'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
+
+   function Extract_Value
+     (Env   : Environ;
+      Typ   : Entity_Id;
+      Arg   : GL_Value;
+      Index : unsigned;
+      Name  : String := "") return GL_Value
+   is
+     (G (Extract_Value (Env.Bld, LLVM_Value (Arg), Index, Name), Typ))
+     with  Pre  => Env /= null and then Present (Arg) and then Is_Type (Typ),
+           Post => Present (Extract_Value'Result);
 
    function Insert_Value
      (Env      : Environ;

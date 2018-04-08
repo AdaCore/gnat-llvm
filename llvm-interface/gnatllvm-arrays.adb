@@ -165,12 +165,11 @@ package body GNATLLVM.Arrays is
       elsif Present (Bound_Info.Value) then
          return Emit_Expression (Env, Bound_Info.Value);
       elsif not Is_Constrained (Arr_Typ) then
-         return G (Extract_Value
-                     (Env.Bld,
-                      Extract_Value (Env.Bld, LLVM_Value (Value), 1, "bounds"),
-                      unsigned (Bound_Idx),
-                      (if Is_Low then "low-bound" else "high-bound")),
-                   Dim_Info.Bound_Type);
+         return Extract_Value
+           (Env, Dim_Info.Bound_Type,
+            Extract_Value (Env, Arr_Typ, Value, 1, "bounds"),
+            unsigned (Bound_Idx),
+            (if Is_Low then "low-bound" else "high-bound"));
       end if;
 
       --  We now should have the discriminated case.  Make sure we do.

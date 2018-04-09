@@ -526,10 +526,12 @@ package body GNATLLVM.Arrays is
 
    function Array_Fat_Pointer
      (Env        : Environ;
+      Array_Type : Entity_Id;
       Array_Data : GL_Value) return GL_Value
    is
-      Array_Type        : constant Entity_Id :=
+      Src_Type          : constant Entity_Id :=
         Full_Designated_Type (Array_Data);
+      Info_Idx          : constant Nat := Get_Array_Info (Env, Array_Type);
       Fat_Ptr_Type      : constant Type_T :=
         Create_Array_Fat_Pointer_Type (Env, Array_Type);
       Fat_Ptr_Elt_Types : aliased Type_Array (1 .. 2);
@@ -554,17 +556,30 @@ package body GNATLLVM.Arrays is
       --  represent it with and it should do for out purposes.
 
       for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop
-         Bounds := Insert_Value
-           (Env,
-            Bounds,
-            Get_Array_Bound (Env, Array_Type, Dim, True, Array_Data),
-            unsigned (Dim * 2));
+         declare
 
-         Bounds := Insert_Value
-           (Env,
-            Bounds,
-            Get_Array_Bound (Env, Array_Type, Dim, False, Array_Data),
-            unsigned (Dim * 2 + 1));
+            --  The type of the bound of the array we're using for the bounds
+            --  may not be the same as the type of the bound in the
+            --  unconstrained array, so be sure to convert (C46042A).
+
+            Bound_Type     : constant Entity_Id :=
+              Array_Info.Table (Info_Idx + Dim).Bound_Type;
+            Low_Bound    : constant GL_Value :=
+              Get_Array_Bound (Env, Src_Type, Dim, True, Array_Data);
+            High_Bound   : constant GL_Value :=
+              Get_Array_Bound (Env, Src_Type, Dim, False, Array_Data);
+            Converted_Low_Bound : constant GL_Value :=
+              Convert_To_Elementary_Type (Env, Low_Bound, Bound_Type);
+            Converted_High_Bound : constant GL_Value :=
+              Convert_To_Elementary_Type (Env, High_Bound, Bound_Type);
+
+         begin
+            Bounds := Insert_Value
+              (Env, Bounds, Converted_Low_Bound, unsigned (Dim * 2));
+
+            Bounds := Insert_Value
+              (Env, Bounds, Converted_High_Bound, unsigned (Dim * 2 + 1));
+         end;
       end loop;
 
       --  Then fill the fat pointer itself

@@ -1271,7 +1271,12 @@ package body GNATLLVM.Compile is
                Emit_LValue_Internal (Env, Prefix (Node)));
 
          when N_Unchecked_Type_Conversion | N_Type_Conversion =>
-            return Emit_LValue_Internal (Env, Expression (Node));
+            --  We have to mark that this is now to be treated as a new type.
+            --  This matters if, e.g., the bounds of an array subtype change
+            --  (see C46042A).
+            return Convert_To_Access_To
+              (Env, Emit_LValue_Internal (Env, Expression (Node)),
+               Full_Etype (Node));
 
          when others =>
 
@@ -1740,10 +1745,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Function_Call =>
-            return G (Emit_Call (Env, Node),
-                      Full_Etype (Node),
-                      Is_Reference => Is_Dynamic_Size
-                        (Env, Full_Etype (Node)));
+            return Emit_Call (Env, Node);
 
          when N_Explicit_Dereference =>
             return Need_Value
@@ -1799,22 +1801,8 @@ package body GNATLLVM.Compile is
                   Emit_Assignment (Env, Result, Empty, Value, True, True);
                end if;
 
-               --  ??? This should be common code at some point.
-               --  If we need a fat pointer, make one.  Otherwise, just do
-               --  a bitwise conversion.
-
-               if Is_Array_Type (Full_Designated_Type (Result_Type))
-                 and then not Is_Constrained
-                 (Full_Designated_Type (Result_Type))
-               then
-                  Result := Array_Fat_Pointer (Env, Result);
-                  Result.Typ := Result_Type;
-                  Result.Is_Reference := False;
-               else
-                  Result := Pointer_Cast (Env, Result, Result_Type);
-               end if;
-
-               return Result;
+               return Convert_To_Access_To
+                 (Env, Result, Full_Designated_Type (Result_Type));
             end;
 
          when N_Reference =>

@@ -741,6 +741,18 @@ package GNATLLVM.GLValue is
      with  Pre  => Env /= null and then Present (Arg) and then Is_Type (Typ),
            Post => Present (Extract_Value'Result);
 
+   function Extract_Value_To_Ref
+     (Env   : Environ;
+      Typ   : Entity_Id;
+      Arg   : GL_Value;
+      Index : unsigned;
+      Name  : String := "") return GL_Value
+   is
+      (G (Extract_Value (Env.Bld, LLVM_Value (Arg), Index, Name), Typ,
+         Is_Reference => True))
+     with  Pre  => Env /= null and then Present (Arg) and then Is_Type (Typ),
+           Post => Present (Extract_Value_To_Ref'Result);
+
    function Insert_Value
      (Env      : Environ;
       Arg, Elt : GL_Value;
@@ -762,5 +774,15 @@ package GNATLLVM.GLValue is
      with Pre  => Env /= null and then Present (Ptr),
           Post => Present (GEP'Result);
    --  Helper for LLVM's Build_GEP
+
+   function Call
+     (Env         : Environ;
+      Func        : GL_Value;
+      Result_Type : Entity_Id;
+      Args        : GL_Value_Array;
+      Name        : String := "") return GL_Value
+     with Pre  => Env /= null and then Present (Func)
+                  and then Is_Type_Or_Void (Result_Type),
+          Post => Present (Call'Result);
 
 end GNATLLVM.GLValue;

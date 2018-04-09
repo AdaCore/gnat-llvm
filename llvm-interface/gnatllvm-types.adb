@@ -144,27 +144,11 @@ package body GNATLLVM.Types is
       elsif Is_Integer_Type (D_Type) and then Src_Access then
          Subp := Ptr_To_Int'Access;
 
-      --  For pointer to pointer, we have to deal with possibly converting
-      --  a fat pointer to a raw pointer and vice versa.  Note that the
-      --  fat pointer actually has to be of D_Type, so we need a recursive
-      --  call to do that.
+      --  For pointer to pointer, call our helper
 
       elsif Src_Access and then Dest_Access then
-         if not Is_Access_Unconstrained (Value)
-           and then not Is_Access_Unconstrained (D_Type)
-         then
-            Subp := Pointer_Cast'Access;
-
-         elsif Is_Access_Unconstrained (Value)
-           and then not Is_Access_Unconstrained (D_Type)
-         then
-            return Convert_To_Elementary_Type
-              (Env, Array_Data (Env, Value), D_Type);
-         elsif not Is_Access_Unconstrained (Value)
-           and then Is_Access_Unconstrained (D_Type)
-         then
-            return Array_Fat_Pointer (Env, Value);
-         end if;
+         return Convert_To_Access_To
+           (Env, Value, Full_Designated_Type (D_Type));
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int.  We already know that this isn't
@@ -241,6 +225,42 @@ package body GNATLLVM.Types is
       return Subp (Env, Value, D_Type);
 
    end Convert_To_Elementary_Type;
+
+   --------------------------
+   -- Convert_To_Access_Of --
+   --------------------------
+
+   function Convert_To_Access_To
+     (Env : Environ; Src : GL_Value; Desig_Type : Entity_Id) return GL_Value
+   is
+      Unc_Src  : constant Boolean := Is_Access_Unconstrained (Src);
+      Unc_Dest : constant Boolean :=
+        Is_Array_Type (Desig_Type) and then not Is_Constrained (Desig_Type);
+   begin
+
+      --  If neither is constrained, but they aren't the same type, just do
+      --  a pointer cast.  If both are constrained, we return the input
+      --  unchanged (the front end is responsible for this making sense).
+      --  Otherwise, we have to handle converting between fat and raw
+      --  pointers.
+
+      if not Unc_Src and not Unc_Dest then
+         if Full_Designated_Type (Src) = Desig_Type then
+            return Src;
+         else
+            return Ptr_To_Ref (Env, Src, Desig_Type);
+         end if;
+
+      elsif Unc_Src and then Unc_Dest then
+         return Src;
+
+      elsif Unc_Src and then not Unc_Dest then
+         return Convert_To_Access_To (Env, Array_Data (Env, Src), Desig_Type);
+      else
+         pragma Assert (not Unc_Src and then Unc_Dest);
+         return Array_Fat_Pointer (Env, Desig_Type, Src);
+      end if;
+   end Convert_To_Access_To;
 
    --------------------------------
    -- Build_Unchecked_Conversion --

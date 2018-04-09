@@ -19,18 +19,17 @@ with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Einfo;    use Einfo;
-with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Namet;    use Namet;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
 
-with LLVM.Core;     use LLVM.Core;
+with LLVM.Core;  use LLVM.Core;
+with LLVM.Types; use LLVM.Types;
 
-with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 
@@ -256,18 +255,19 @@ package body GNATLLVM.Subprograms is
    -- Emit_Call --
    ---------------
 
-   function Emit_Call (Env : Environ; Call_Node : Node_Id) return Value_T is
-      Subp        : Node_Id := Name (Call_Node);
-      Return_Typ  : constant Entity_Id := Full_Etype (Call_Node);
-      Void_Return : constant Boolean := Ekind (Return_Typ) = E_Void;
+   function Emit_Call (Env : Environ; Call_Node : Node_Id) return GL_Value is
+      Subp           : Node_Id := Name (Call_Node);
+      Return_Typ     : constant Entity_Id := Full_Etype (Call_Node);
+      Void_Return    : constant Boolean := Ekind (Return_Typ) = E_Void;
       Dynamic_Return : constant Boolean :=
         not Void_Return and then Is_Dynamic_Size (Env, Return_Typ);
-      Direct_Call : constant Boolean := Nkind (Subp) /= N_Explicit_Dereference;
-      Subp_Typ    : constant Entity_Id :=
+      Direct_Call    : constant Boolean :=
+        Nkind (Subp) /= N_Explicit_Dereference;
+      Subp_Typ       : constant Entity_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
-      Param, Actual       : Node_Id;
-      Actual_Type, P_Type : Entity_Id;
-      Current_Needs_Ptr   : Boolean;
+      Param          : Node_Id;
+      P_Type         : Entity_Id;
+      Actual         : Node_Id;
 
       --  If it's not an identifier, it must be an access to a subprogram and
       --  in such a case, it must accept a static link.
@@ -277,13 +277,13 @@ package body GNATLLVM.Subprograms is
         and then Nkind (Associated_Node_For_Itype (Etype (Subp)))
           /= N_Full_Type_Declaration;
 
-      S_Link         : Value_T;
-      LLVM_Func      : Value_T;
+      S_Link         : GL_Value;
+      LLVM_Func      : GL_Value;
       Orig_Arg_Count : constant Nat := Count_Params (Subp_Typ);
       Args_Count     : constant Nat :=
         Orig_Arg_Count + (if This_Takes_S_Link then 1 else 0) +
           (if Dynamic_Return then 1 else 0);
-      Args           : Value_Array (1 .. Args_Count);
+      Args           : GL_Value_Array (1 .. Args_Count);
       Idx            : Nat := 1;
 
    begin
@@ -292,78 +292,32 @@ package body GNATLLVM.Subprograms is
          Subp := Entity (Subp);
       end if;
 
-      LLVM_Func := LLVM_Value (Emit_Expression (Env, Subp));
-
+      LLVM_Func := Emit_Expression (Env, Subp);
       if This_Takes_S_Link then
-         S_Link := Extract_Value (Env.Bld, LLVM_Func, 1, "static-link");
-         LLVM_Func := Extract_Value (Env.Bld, LLVM_Func, 0, "callback");
-         LLVM_Func := Bit_Cast
-           (Env.Bld, LLVM_Func,
-            Create_Access_Type
-              (Env, Full_Designated_Type (Full_Etype (Prefix (Subp)))),
-            "");
+         S_Link := Extract_Value_To_Ref (Env, Standard_Short_Short_Integer,
+                                         LLVM_Func, 1, "static-link");
+         LLVM_Func := Ptr_To_Ref (Env,
+                                  Extract_Value_To_Ref
+                                    (Env, Standard_Short_Short_Integer,
+                                     LLVM_Func, 0, "callback"),
+                                  Full_Designated_Type
+                                    (Full_Etype (Prefix (Subp))));
       end if;
 
       Param  := First_Formal_With_Extras (Subp_Typ);
       Actual := First_Actual (Call_Node);
       while Present (Actual) loop
-         Actual_Type := Full_Etype (Actual);
          P_Type := Full_Etype (Param);
-         Current_Needs_Ptr := Param_Needs_Ptr (Param);
-         Args (Idx) :=
-           (if Current_Needs_Ptr
-            then LLVM_Value (Emit_LValue (Env, Actual))
-            else LLVM_Value (Emit_Expression (Env, Actual)));
 
-         --  At this point we need to handle view conversions: from array
-         --  thin pointer to array fat pointer, unconstrained array pointer
-         --  type conversion, ... For other parameters that needs to be
-         --  passed as pointers, we should also make sure the pointed type
-         --  fits the LLVM formal.  ??? Here, we replace an access type to
-         --  an aggregate by its designated type.  This probably is not
-         --  correct long-term.
+         --  We have two cases: if the param isn't passed indirectly, convert
+         --  the value to the parameter's type.  If it is, then convert the
+         --  pointer to being a pointer to the parameter's type.
 
-         if Is_Access_Type (Actual_Type)
-           and then Is_Array_Type (Full_Designated_Type (Actual_Type))
-         then
-            Actual_Type := Full_Designated_Type (Actual_Type);
-         end if;
-
-         if Is_Access_Type (P_Type)
-           and then Is_Array_Type (Full_Designated_Type (P_Type))
-         then
-            P_Type := Full_Designated_Type (P_Type);
-         end if;
-
-         if Is_Array_Type (P_Type)
-           and then not Is_Constrained (P_Type)
-           and then Is_Array_Type (Actual_Type)
-           and then Is_Constrained (Actual_Type)
-         then
-            --  Convert from raw to fat pointer
-
-            Args (Idx) :=
-              LLVM_Value (Array_Fat_Pointer (Env,
-                                             G (Args (Idx), Actual_Type,
-                                                Is_Reference => True)));
-
-         elsif Is_Array_Type (P_Type)
-           and then Is_Constrained (P_Type)
-           and then Is_Array_Type (Actual_Type)
-           and then not Is_Constrained (Actual_Type)
-         then
-
-               --  Convert from fat to thin pointer
-
-            Args (Idx) := LLVM_Value (Array_Data (Env,
-                                                  G (Args (Idx), Actual_Type,
-                                                     Is_Reference => True)));
-
-         elsif Current_Needs_Ptr then
-            Args (Idx) := Bit_Cast
-              (Env.Bld,
-               Args (Idx), Create_Access_Type (Env, P_Type),
-               "param-bitcast");
+         if Param_Needs_Ptr (Param) then
+            Args (Idx) := Convert_To_Access_To
+              (Env, Emit_LValue (Env, Actual), P_Type);
+         else
+            Args (Idx) := Build_Type_Conversion (Env, P_Type, Actual);
          end if;
 
          Idx := Idx + 1;
@@ -383,37 +337,17 @@ package body GNATLLVM.Subprograms is
 
       if Dynamic_Return then
          Args (Args'Last) :=
-           LLVM_Value (Allocate_For_Type (Env, Return_Typ, "call-return"));
+           Allocate_For_Type (Env, Return_Typ, "call-return");
       end if;
-
-      --  If there are any types mismatches for arguments passed by reference,
-      --  cast the pointer type.
-
-      declare
-         Args_Types : constant Type_Array :=
-           Get_Param_Types (Type_Of (LLVM_Func));
-      begin
-         pragma Assert (Args'Length = Args_Types'Length);
-
-         for J in Args'Range loop
-            if Type_Of (Args (J)) /= Args_Types (J)
-              and then Get_Type_Kind (Type_Of (Args (J))) = Pointer_Type_Kind
-              and then Get_Type_Kind (Args_Types (J)) = Pointer_Type_Kind
-            then
-               Args (J) := Bit_Cast
-                 (Env.Bld, Args (J), Args_Types (J), "param-bitcast");
-            end if;
-         end loop;
-      end;
 
       --  If the return type is of dynamic size, call as a procedure and
       --  return the address we set as the last parameter.
 
       if Dynamic_Return then
-         Discard (Call (Env.Bld, LLVM_Func, Args'Address, Args'Length, ""));
+         Discard (Call (Env, LLVM_Func, Standard_Void_Type, Args));
          return Args (Args'Last);
       else
-         return Call (Env.Bld, LLVM_Func, Args'Address, Args'Length, "");
+         return Call (Env, LLVM_Func, Return_Typ, Args);
       end if;
    end Emit_Call;
 

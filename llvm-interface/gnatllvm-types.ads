@@ -100,6 +100,13 @@ package GNATLLVM.Types is
    --  Convert Expr to the type TE, with both the types of Expr and TE
    --  being elementary.
 
+   function Convert_To_Access_To
+     (Env : Environ; Src : GL_Value; Desig_Type : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Present (Src)
+                  and then Is_Type (Desig_Type),
+          Post => Is_Access_Type (Convert_To_Access_To'Result);
+   --  Convert Src, which should be an access, into an access to Desig_Type
+
    function Build_Type_Conversion
      (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
      with Pre  => Env /= null and then Is_Type (Dest_Type)

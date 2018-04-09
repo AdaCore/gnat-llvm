@@ -20,8 +20,6 @@ with Sinfo;    use Sinfo;
 with Table;    use Table;
 with Types;    use Types;
 
-with LLVM.Types;    use LLVM.Types;
-
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Subprograms is
@@ -41,7 +39,7 @@ package GNATLLVM.Subprograms is
    --  Build and return the static link to pass to a call to Node
 
    function Emit_Call
-     (Env : Environ; Call_Node : Node_Id) return Value_T
+     (Env : Environ; Call_Node : Node_Id) return GL_Value
      with Pre  => Env /= null and then Nkind (Call_Node) in N_Subprogram_Call,
           Post => Present (Emit_Call'Result);
    --  Helper for Emit/Emit_Expression: compile a call statement/expression and

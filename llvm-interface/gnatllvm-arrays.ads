@@ -152,11 +152,16 @@ package GNATLLVM.Arrays is
 
    function Array_Fat_Pointer
      (Env        : Environ;
+      Array_Type : Entity_Id;
       Array_Data : GL_Value) return GL_Value
      with Pre  => Env /= null and then Is_Access_Type (Array_Data)
+                  and then Is_Array_Type (Array_Type)
+                  and then not Is_Constrained (Array_Type)
                   and then Is_Array_Type (Full_Designated_Type (Array_Data))
                   and then Is_Constrained (Full_Designated_Type (Array_Data)),
           Post => Present (Array_Fat_Pointer'Result);
    --  Wrap a fat pointer around Array_Data and return the created fat pointer.
+   --  Array_Type gives the destination array type, which is what specifies
+   --  the types of the bounds.
 
 end GNATLLVM.Arrays;

@@ -484,4 +484,24 @@ package body GNATLLVM.GLValue is
       end if;
    end Store;
 
+   function Call
+     (Env         : Environ;
+      Func        : GL_Value;
+      Result_Type : Entity_Id;
+      Args        : GL_Value_Array;
+      Name        : String := "") return GL_Value
+   is
+      Arg_Values  : Value_Array (Args'Range);
+      Result      : Value_T;
+
+   begin
+      for I in Args'Range loop
+         Arg_Values (I) := LLVM_Value (Args (I));
+      end loop;
+
+      Result := Call (Env.Bld, LLVM_Value (Func),
+                      Arg_Values'Address, Arg_Values'Length, Name);
+      return G (Result, Result_Type);
+   end Call;
+
 end GNATLLVM.GLValue;

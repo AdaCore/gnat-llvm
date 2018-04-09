@@ -172,6 +172,13 @@ package body GNATLLVM.GLValue is
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value is
      (G (Get_Undef (Create_Type (Env, TE)), TE));
 
+   --------------------
+   --  Get_Undef_Ref --
+   --------------------
+
+   function Get_Undef_Ref (Env : Environ; TE : Entity_Id) return GL_Value is
+     (G (Get_Undef (Create_Access_Type (Env, TE)), TE, Is_Reference => True));
+
    ----------------
    -- Const_Null --
    ----------------

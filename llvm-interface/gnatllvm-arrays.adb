@@ -529,18 +529,13 @@ package body GNATLLVM.Arrays is
       Array_Type : Entity_Id;
       Array_Data : GL_Value) return GL_Value
    is
-      Src_Type          : constant Entity_Id :=
-        Full_Designated_Type (Array_Data);
-      Info_Idx          : constant Nat := Get_Array_Info (Env, Array_Type);
-      Fat_Ptr_Type      : constant Type_T :=
-        Create_Array_Fat_Pointer_Type (Env, Array_Type);
-      Fat_Ptr           : GL_Value := G (Get_Undef (Fat_Ptr_Type),
-                                         Array_Type, Is_Reference => True);
-      Array_Data_Ptr    : constant GL_Value :=
+      Src_Type       : constant Entity_Id := Full_Designated_Type (Array_Data);
+      Info_Idx       : constant Nat := Get_Array_Info (Env, Array_Type);
+      Fat_Ptr        : GL_Value := Get_Undef_Ref (Env,  Array_Type);
+      Array_Data_Ptr : constant GL_Value :=
         G (Bit_Cast (Env.Bld, LLVM_Value (Array_Data),
                      Create_Array_Raw_Pointer_Type (Env, Array_Type), ""),
            Array_Type, Is_Reference => True, Is_Raw_Array => True);
-
    begin
 
       for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop

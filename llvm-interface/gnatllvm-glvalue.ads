@@ -230,6 +230,10 @@ package GNATLLVM.GLValue is
      with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Get_Undef'Result);
 
+   function Get_Undef_Ref (Env : Environ; TE : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => Is_Reference (Get_Undef_Ref'Result);
+
    function Const_Null (Env : Environ; TE : Entity_Id) return GL_Value
      with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Const_Null'Result);

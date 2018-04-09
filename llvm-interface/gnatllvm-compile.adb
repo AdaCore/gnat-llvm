@@ -192,18 +192,19 @@ package body GNATLLVM.Compile is
    --  maximum value and return the minimum otherwise.
 
    function Emit_Array_Aggregate
-     (Env           : Environ;
-      Node          : Node_Id;
-      Dims_Left     : Pos;
-      Array_Type    : Entity_Id;
-      Typ, Comp_Typ : Type_T) return GL_Value
+     (Env            : Environ;
+      Node           : Node_Id;
+      Dims_Left      : Pos;
+      Indices_So_Far : Index_Array;
+      Value_So_Far   : GL_Value) return GL_Value
      with Pre  => Env /= null and then Nkind (Node) = N_Aggregate
-                  and then Is_Array_Type (Array_Type)
-                  and then Present (Typ) and then Present (Comp_Typ),
+                  and then Present (Value_So_Far),
           Post => Present (Emit_Array_Aggregate'Result);
-   --  Emit an N_Aggregate of LLVM type Typ, which is an array, returning the
-   --  Value_T that contains the data.  Dims_Left says how many dimensions of
-   --  the outer array type we still can recurse into.
+   --  Emit an N_Aggregate which is an array, returning the GL_Value that
+   --  contains the data.  Value_So_Far is any of the array whose value
+   --  we've accumulated so far.  Dims_Left says how many dimensions of the
+   --  outer array type we still can recurse into.  Indices_So_Far are the
+   --  indexes of any outer N_Aggregate expressions we went through.
 
    function Emit_Shift
      (Env                 : Environ;
@@ -1845,6 +1846,7 @@ package body GNATLLVM.Compile is
                Cur_Index  : Integer := 0;
                Ent        : Entity_Id;
                Expr       : Node_Id;
+               Initial_Indices : Index_Array (1 .. 0);
 
             begin
                if Ekind (Agg_Type) in Record_Kind then
@@ -1887,9 +1889,8 @@ package body GNATLLVM.Compile is
                   end loop;
                else
                   return Emit_Array_Aggregate
-                    (Env, Node, Number_Dimensions (Agg_Type),
-                     Agg_Type, LLVM_Type,
-                     Create_Type (Env, Full_Component_Type (Agg_Type)));
+                    (Env, Node, Number_Dimensions (Agg_Type), Initial_Indices,
+                     Get_Undef (Env, Agg_Type));
                end if;
 
                return G (Result, Full_Etype (Node));
@@ -2136,32 +2137,25 @@ package body GNATLLVM.Compile is
                            (if Compute_Max then "max" else "min"));
    end Emit_Min_Max;
 
-   --------------------
-   -- Emit_Aggregate --
-   --------------------
+   --------------------------
+   -- Emit_Array_Aggregate --
+   --------------------------
 
    function Emit_Array_Aggregate
-     (Env           : Environ;
-      Node          : Node_Id;
-      Dims_Left     : Pos;
-      Array_Type    : Entity_Id;
-      Typ, Comp_Typ : Type_T) return GL_Value
+     (Env            : Environ;
+      Node           : Node_Id;
+      Dims_Left      : Pos;
+      Indices_So_Far : Index_Array;
+      Value_So_Far   : GL_Value) return GL_Value
    is
-      Result     : GL_Value :=
-        G (Get_Undef (Typ), Array_Type,
-           Is_Intermediate_Type =>
-             Dims_Left /= Number_Dimensions (Array_Type));
-      --  If the number of dimensions left isn't the same as the dimensionality
-      --  of the array, then we have an intermediate type.
-
-      Cur_Expr   : GL_Value;
       Cur_Index  : Integer := 0;
+      Cur_Value  : GL_Value := Value_So_Far;
       Expr       : Node_Id;
 
    begin
 
       pragma Assert (not Is_Dynamic_Size
-                       (Env, Full_Component_Type (Array_Type)));
+                       (Env, Full_Component_Type (Full_Etype (Node))));
       --  The code below, by using Insert_Value, restricts itself to
       --  Components of fixed sizes.  But that's OK because the front end
       --  handles those cases.
@@ -2170,33 +2164,24 @@ package body GNATLLVM.Compile is
       while Present (Expr) loop
 
          --  If this is a nested N_Aggregate and we have dimensions left
-         --  in the outer array, use recursion to fill in the aggregate
-         --  since we won't have the proper type for the inner aggregate.
+         --  in the outer array, use recursion to fill in the aggregate.
 
          if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
-            Cur_Expr := Emit_Array_Aggregate
-              (Env, Expr, Dims_Left - 1, Array_Type,
-               Get_Element_Type (Typ), Comp_Typ);
+            Cur_Value := Emit_Array_Aggregate
+              (Env, Expr, Dims_Left - 1, Indices_So_Far & (1 => Cur_Index),
+               Cur_Value);
 
-         --  If the expression is a conversion to an unconstrained
-         --  array type, skip it to avoid spilling to memory.
-
-         elsif Nkind (Expr) = N_Type_Conversion
-           and then Is_Array_Type (Full_Etype (Expr))
-           and then not Is_Constrained (Full_Etype (Expr))
-         then
-            Cur_Expr := Emit_Expression (Env, Expression (Expr));
          else
-            Cur_Expr := Emit_Expression (Env, Expr);
+            Cur_Value := Insert_Value
+              (Env, Cur_Value, Emit_Expression (Env, Expr),
+               Indices_So_Far & (1 => Cur_Index));
          end if;
 
-         Result := Insert_Value
-           (Env, Result, Cur_Expr, unsigned (Cur_Index));
          Cur_Index := Cur_Index + 1;
          Expr := Next (Expr);
       end loop;
 
-      return Result;
+      return Cur_Value;
    end Emit_Array_Aggregate;
 
    ------------------------------

@@ -68,7 +68,6 @@ package body GNATLLVM.GLValue is
 
    function Is_LValue_Of (G : GL_Value; TE : Entity_Id) return Boolean is
    begin
-
       --  If Value is a reference and its designated type is that of our
       --  type, we know we're OK.  If not, we may still if OK if access
       --  types are involved, so check that the "access type" depth of
@@ -85,10 +84,8 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Need_Value
-     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
-   is
+     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value is
    begin
-
       --  If V is of dynamic size, the "value" we use is the
       --  reference, so return it.  Similarly for subprograms.
       --  Likewise if it's not a reference.  Otherwise, load the
@@ -104,13 +101,12 @@ package body GNATLLVM.GLValue is
       end if;
    end Need_Value;
 
-   ----------------
+   -----------------
    -- Need_LValue --
-   ----------------
+   -----------------
 
    function Need_LValue
-     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
-   is
+     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value is
    begin
 
       --  If we already have an LValue, return it.  Otherwise, allocate memory
@@ -147,7 +143,7 @@ package body GNATLLVM.GLValue is
    ------------
 
    function Alloca
-      (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
+     (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
    is
      (G_Ref (Alloca (Env.Bld, Create_Type (Env, TE), Name), TE));
 
@@ -165,16 +161,16 @@ package body GNATLLVM.GLValue is
                            LLVM_Value (Num_Elts), Name),
              TE));
 
-   ----------------
-   --  Get_Undef --
-   ----------------
+   ---------------
+   -- Get_Undef --
+   ---------------
 
    function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value is
      (G (Get_Undef (Create_Type (Env, TE)), TE));
 
-   --------------------
-   --  Get_Undef_Ref --
-   --------------------
+   -------------------
+   -- Get_Undef_Ref --
+   -------------------
 
    function Get_Undef_Ref (Env : Environ; TE : Entity_Id) return GL_Value is
      (G (Get_Undef (Create_Access_Type (Env, TE)), TE, Is_Reference => True));
@@ -427,8 +423,8 @@ package body GNATLLVM.GLValue is
       Values  : Value_Array (GL_Values'Range);
       Our_Phi : Value_T;
    begin
-      for I in Values'Range loop
-         Values (I) := LLVM_Value (GL_Values (I));
+      for J in Values'Range loop
+         Values (J) := LLVM_Value (GL_Values (J));
       end loop;
 
       Our_Phi := Phi (Env.Bld, Type_Of (GL_Values (GL_Values'First)), Name);
@@ -458,8 +454,8 @@ package body GNATLLVM.GLValue is
       Val_Idxs    : Value_Array (Indices'Range);
       Result      : Value_T;
    begin
-      for I in Indices'Range loop
-         Val_Idxs (I) := LLVM_Value (Indices (I));
+      for J in Indices'Range loop
+         Val_Idxs (J) := LLVM_Value (Indices (J));
       end loop;
 
       Result := In_Bounds_GEP (Env.Bld, LLVM_Value (Ptr), Val_Idxs'Address,
@@ -491,6 +487,10 @@ package body GNATLLVM.GLValue is
       end if;
    end Store;
 
+   ----------
+   -- Call --
+   ----------
+
    function Call
      (Env         : Environ;
       Func        : GL_Value;
@@ -500,10 +500,9 @@ package body GNATLLVM.GLValue is
    is
       Arg_Values  : Value_Array (Args'Range);
       Result      : Value_T;
-
    begin
-      for I in Args'Range loop
-         Arg_Values (I) := LLVM_Value (Args (I));
+      for J in Args'Range loop
+         Arg_Values (J) := LLVM_Value (Args (J));
       end loop;
 
       Result := Call (Env.Bld, LLVM_Value (Func),

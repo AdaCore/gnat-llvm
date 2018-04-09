@@ -584,6 +584,22 @@ package body GNATLLVM.Compile is
                   return;
                end if;
 
+               --  Ignore deferred constant definitions without address
+               --  Clause Since They Are Processed Fully in The Front-end.
+               --  If No_Initialization is set, this is not a deferred
+               --  constant but a constant whose value is built manually.
+               --  And constants that are renamings are handled like
+               --  variables.
+
+               if Ekind (Def_Ident) = E_Constant
+                 and then Present (Full_View (Def_Ident))
+                 and then No (Address_Clause (Def_Ident))
+                 and then not No_Initialization (Node)
+                 and then No (Renamed_Object (Def_Ident))
+               then
+                  return;
+               end if;
+
                --  Handle top-level declarations
 
                if Library_Level (Env) then
@@ -1184,10 +1200,21 @@ package body GNATLLVM.Compile is
          when N_Identifier | N_Expanded_Name | N_Operator_Symbol |
            N_Defining_Identifier | N_Defining_Operator_Symbol =>
             declare
-               Def_Ident : constant Entity_Id := Entity (Node);
+               Def_Ident : Entity_Id := Entity (Node);
                Typ       : Entity_Id := Full_Etype (Def_Ident);
                N         : Node_Id;
+
             begin
+               --  If this is a deferred constant, look at the private
+               --  version.
+
+               if Ekind (Def_Ident) = E_Constant
+                 and then Present (Full_View (Def_Ident))
+                 and then No (Address_Clause (Def_Ident))
+               then
+                  Def_Ident := Full_View (Def_Ident);
+               end if;
+
                if Ekind (Def_Ident) in Subprogram_Kind then
                   N := Associated_Node_For_Itype (Full_Etype (Parent (Node)));
 
@@ -1652,9 +1679,19 @@ package body GNATLLVM.Compile is
             --  stored in the environment. Handle them here.
 
             declare
-               Def_Ident : constant Entity_Id := Entity (Node);
+               Def_Ident : Entity_Id := Entity (Node);
 
             begin
+               --  If this is a deferred constant, look at the private
+               --  version.
+
+               if Ekind (Def_Ident) = E_Constant
+                 and then Present (Full_View (Def_Ident))
+                 and then No (Address_Clause (Def_Ident))
+               then
+                  Def_Ident := Full_View (Def_Ident);
+               end if;
+
                if Ekind (Def_Ident) = E_Enumeration_Literal then
                   return Const_Int (Env, Full_Etype (Node),
                                     Enumeration_Rep (Def_Ident));

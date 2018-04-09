@@ -81,6 +81,7 @@ package body GNATLLVM.Utils is
          then Get_Element_Type (Fn_Ty)
          else Fn_Ty);
       Params_Types : Type_Array (1 .. Nat (Count_Param_Types (Fn_Ty_Real)));
+
    begin
       Get_Param_Types (Fn_Ty_Real, Params_Types'Address);
       return Params_Types;
@@ -103,10 +104,10 @@ package body GNATLLVM.Utils is
 
    function Get_Uint_Value (Node : Node_Id) return Uint is
       E : Entity_Id;
+
    begin
       case Nkind (Node) is
          when N_Character_Literal =>
-
             --  If a Entity is present, it means that this was one of the
             --  literals in a user-defined character type.
 
@@ -119,7 +120,6 @@ package body GNATLLVM.Utils is
             return Intval (Node);
 
          when N_Real_Literal =>
-
             --  We can only do something here if this is a fixed-point type.
 
             if Is_Fixed_Point_Type (Full_Etype (Node)) then
@@ -129,7 +129,6 @@ package body GNATLLVM.Utils is
             end if;
 
          when N_Identifier =>
-
             --  If an N_Identifier is static, its N_Defining_Identifier is
             --  either an E_Constant or an E_Enumeration_Literal.
 
@@ -185,6 +184,7 @@ package body GNATLLVM.Utils is
 
    function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean is
       pragma Unreferenced (Arg);
+
    begin
       return False;
    end Return_Needs_Sec_Stack;
@@ -195,6 +195,7 @@ package body GNATLLVM.Utils is
 
    procedure Discard (V : Value_T) is
       pragma Unreferenced (V);
+
    begin
       null;
    end Discard;
@@ -205,6 +206,7 @@ package body GNATLLVM.Utils is
 
    procedure Discard (T : Type_T) is
       pragma Unreferenced (T);
+
    begin
       null;
    end Discard;
@@ -229,6 +231,7 @@ package body GNATLLVM.Utils is
    function Iterate_Entities (Root : Entity_Id) return Entity_Iterator is
       Len : Nat := 0;
       Cur : Entity_Id := Get_First (Root);
+
    begin
       while Cur /= Empty loop
          Cur := Get_Next (Cur);
@@ -257,6 +260,7 @@ package body GNATLLVM.Utils is
 
    function Get_Ext_Name (E : Entity_Id) return String is
       Buf : Bounded_String;
+
    begin
       if (Is_Imported (E) or else Is_Exported (E))
         and then Present (Interface_Name (E))
@@ -384,6 +388,7 @@ package body GNATLLVM.Utils is
      return Value_T
    is
       Load_Inst : constant Value_T := Load (Env.Bld, Ptr, Name);
+
    begin
       Add_Type_Data_To_Instruction (Env, Load_Inst, TE);
       return Load_Inst;
@@ -393,9 +398,9 @@ package body GNATLLVM.Utils is
    -- Store --
    -----------
 
-   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
-   is
+   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T) is
       Dummy : Value_T;
+
    begin
       Dummy := Build_Store (Bld, Expr, Ptr);
    end Store;
@@ -407,6 +412,7 @@ package body GNATLLVM.Utils is
      (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
    is
       Store_Inst : constant Value_T := Build_Store (Env.Bld, Expr, Ptr);
+
    begin
       Add_Type_Data_To_Instruction (Env, Store_Inst, TE);
    end Store_With_Type;

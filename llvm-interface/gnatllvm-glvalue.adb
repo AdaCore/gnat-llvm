@@ -30,11 +30,11 @@ package body GNATLLVM.GLValue is
 
    function Access_Depth (G : GL_Value) return Natural
      with Pre => Present (G);
-   --  Similarly, but for a GL_Value, which might be a reference.
+   --  Similarly, but for a GL_Value, which might be a reference
 
    function Is_LValue_Of (G : GL_Value; TE : Entity_Id) return Boolean
      with Pre => Present (G) and then Is_Type_Or_Void (TE);
-   --  Return True if G is the LValue of an object of type TE.
+   --  Return True if G is the LValue of an object of type TE
 
    ------------------
    -- Access_Depth --
@@ -422,6 +422,7 @@ package body GNATLLVM.GLValue is
    is
       Values  : Value_Array (GL_Values'Range);
       Our_Phi : Value_T;
+
    begin
       for J in Values'Range loop
          Values (J) := LLVM_Value (GL_Values (J));
@@ -453,6 +454,7 @@ package body GNATLLVM.GLValue is
    is
       Val_Idxs    : Value_Array (Indices'Range);
       Result      : Value_T;
+
    begin
       for J in Indices'Range loop
          Val_Idxs (J) := LLVM_Value (Indices (J));
@@ -500,6 +502,7 @@ package body GNATLLVM.GLValue is
    is
       Arg_Values  : Value_Array (Args'Range);
       Result      : Value_T;
+
    begin
       for J in Args'Range loop
          Arg_Values (J) := LLVM_Value (Args (J));

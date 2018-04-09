@@ -27,7 +27,7 @@ package GNATLLVM.Compile is
 
    procedure Emit (Env : Environ; Node : Node_Id)
      with Pre => Env /= null and Present (Node);
-   --  General compilation routine, called at the top-level.
+   --  General compilation routine, called at the top-level
 
    procedure Emit_List (Env : Environ; List : List_Id)
      with Pre => Env /= null;
@@ -36,20 +36,20 @@ package GNATLLVM.Compile is
    function Emit_Expression (Env : Environ; Node : Node_Id) return GL_Value
      with Pre  => Env /= null and then Present (Node),
           Post => Present (Emit_Expression'Result);
-   --  Compile an expression node to an LLVM value.
+   --  Compile an expression node to an LLVM value
 
    function Emit_LValue (Env : Environ; Node : Node_Id) return GL_Value
      with Pre  => Env /= null and then Present (Node),
           Post => Present (Emit_LValue'Result);
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather
-   --  than the value itself (out parameters, simple accesses, etc.)
+   --  than the value itself (out parameters, simple accesses, etc).
 
    function Get_Matching_Value (T : Entity_Id) return GL_Value
      with Pre  => Is_Type (T),
           Post => Present (Get_Matching_Value'Result);
    --  Find a value that's being computed by the current Emit_LValue
-   --  recursion that has the same base type as T
+   --  recursion that has the same base type as T.
 
    procedure Verify_Function
      (Env : Environ; Func : Value_T; Node : Node_Id; Msg : String)

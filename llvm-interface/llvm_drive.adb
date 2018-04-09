@@ -158,7 +158,7 @@ package body LLVM_Drive is
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
 
       LLVM_Info_Table.Increment_Last;
-      --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id.
+      --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
 
       declare
          Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
@@ -303,6 +303,7 @@ package body LLVM_Drive is
    function Is_Back_End_Switch (Switch : String) return Boolean is
       First : constant Positive := Switch'First + 1;
       Last  : constant Natural  := Switch_Last (Switch);
+
    begin
       if Switch = "--dump-ir" then
          Code_Generation := Dump_IR;
@@ -342,7 +343,7 @@ package body LLVM_Drive is
 
       else
          --  Locate the last dot to remove the extension of native platforms
-         --  (for example, file.o)
+         --  (for example, file.o).
 
          declare
             S : constant String := Get_Output_Object_File_Name;

@@ -121,7 +121,7 @@ package GNATLLVM.Arrays is
                   and then Number_Dimensions
                     (Full_Designated_Type (Value)) = 1,
           Post => Present (Get_Slice_LValue'Result);
-   --  Similar, but Rng is the Discrete_Range for the slice.
+   --  Similar, but Rng is the Discrete_Range for the slice
 
    function Get_Array_Elements
      (Env         : Environ;

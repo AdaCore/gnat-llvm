@@ -113,10 +113,12 @@ package body GNATLLVM.Subprograms is
 
    procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
       Nest_Table_First : constant Nat := Nested_Functions_Table.Last + 1;
+
    begin
       --  If we're not at library level, this a nested function.  Defer it
       --  until we complete elaboration of the enclosing function.  But do
       --  ensure that the spec has been elaborated.
+
       if not Library_Level (Env) then
          Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
          Nested_Functions_Table.Append (Node);
@@ -148,8 +150,7 @@ package body GNATLLVM.Subprograms is
       Caller : Node_Id;
 
    begin
-
-      --  ?? This routine needs a major rewrite.
+      --  ?? This routine needs a major rewrite
 
       if Present (Parent) then
          Caller := Node_Enclosing_Subprogram (Node);
@@ -191,8 +192,7 @@ package body GNATLLVM.Subprograms is
    -- Emit_LCH_Call --
    -------------------
 
-   procedure Emit_LCH_Call (Env : Environ; Node : Node_Id)
-   is
+   procedure Emit_LCH_Call (Env : Environ; Node : Node_Id) is
       Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
       Int_Type      : constant Type_T := Create_Type (Env, Standard_Integer);
       Args          : Value_Array (1 .. 2);
@@ -359,6 +359,7 @@ package body GNATLLVM.Subprograms is
      (Env : Environ; Subp_Spec : Node_Id) return GL_Value
    is
       Def_Ident : constant Node_Id := Defining_Entity (Subp_Spec);
+
    begin
       --  If this subprogram specification has already been compiled, do
       --  nothing.
@@ -416,6 +417,7 @@ package body GNATLLVM.Subprograms is
 
    function Node_Enclosing_Subprogram (Node : Node_Id) return Node_Id is
       N : Node_Id := Node;
+
    begin
       while Present (N) loop
          if Nkind (N) = N_Subprogram_Body then

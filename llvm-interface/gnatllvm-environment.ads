@@ -71,7 +71,7 @@ package GNATLLVM.Environment is
       --  The LLVM value that was generated
 
       Typ                  : Entity_Id;
-      --  The GNAT type of this value.
+      --  The GNAT type of this value
 
       Is_Reference         : Boolean;
       --  If True, this is actually a pointer to Typ, so Value's type is
@@ -126,7 +126,7 @@ package GNATLLVM.Environment is
 
    --  Keep information about record types, to link their front-end
    --  representation to their LLVM representations
-   --  TODO: Document the LLVM representation of records here
+   --  TODO: Document the LLVM representation of records here.
    type Record_Info is record
       Fields : Field_Maps.Map;
       Structs : Struct_Info_Vectors.Vector;
@@ -139,6 +139,7 @@ package GNATLLVM.Environment is
 
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
+
    type LLVM_Info is record
       Value            : GL_Value;
       --  The GL_Value corresponding to this entity, if a value
@@ -214,7 +215,7 @@ package GNATLLVM.Environment is
       --  module, and current module data layout.
 
       Func                      : GL_Value;
-      --  LLVM value for current function.
+      --  Pointer to the current function
 
       Activation_Rec_Param      : GL_Value;
       --  Parameter to this subprogram, if any, that represents an
@@ -222,14 +223,14 @@ package GNATLLVM.Environment is
 
       Return_Address_Param      : GL_Value;
       --  Parameter to this subprogram, if any, that represent the address
-      --  to which we are to copy the return value.
+      --  to which we are to copy the return value
 
       Size_Type                 : Entity_Id;
       LLVM_Size_Type            : Type_T;
-      --  Types to use for sizes.
+      --  Types to use for sizes
 
       Int_32_Type               : Entity_Id;
-      --  GNAT type for 32-bit integers (for GEP indexes).
+      --  GNAT type for 32-bit integers (for GEP indexes)
 
       Default_Alloc_Fn          : Value_T;
       Memory_Cmp_Fn             : Value_T;
@@ -344,7 +345,7 @@ package GNATLLVM.Environment is
    procedure Leave_Subp (Env : Environ)
      with Pre  => Env /= null and not Library_Level (Env),
           Post => Library_Level (Env);
-   --  Indicate that we're no longer compiling a subprogram.
+   --  Indicate that we're no longer compiling a subprogram
 
    function Create_Basic_Block
      (Env : Environ; Name : String := "") return Basic_Block_T

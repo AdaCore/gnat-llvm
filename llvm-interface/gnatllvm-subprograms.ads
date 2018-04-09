@@ -67,6 +67,6 @@ package GNATLLVM.Subprograms is
    function Node_Enclosing_Subprogram (Node : Node_Id) return Node_Id
      with Pre  => Present (Node),
           Post => Present (Node_Enclosing_Subprogram'Result);
-   --  Return the enclosing subprogram containing Node.
+   --  Return the enclosing subprogram containing Node
 
 end GNATLLVM.Subprograms;

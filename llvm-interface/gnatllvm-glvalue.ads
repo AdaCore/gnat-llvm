@@ -32,12 +32,12 @@ with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is
 
-   --  Define basic accesss predicates for components of GL_Value.
+   --  Define basic accesss predicates for components of GL_Value
 
    function Has_Known_Etype (G : GL_Value) return Boolean is
      (not G.Is_Reference and then not G.Is_Intermediate_Type)
      with Pre => Present (G);
-   --  True is we know what G's Etype is.
+   --  True is we know what G's Etype is
 
    function Etype (G : GL_Value) return Entity_Id is
      (G.Typ)
@@ -48,7 +48,7 @@ package GNATLLVM.GLValue is
      (G.Value)
      with Pre => Present (G), Post => Present (LLVM_Value'Result);
 
-   --  Now we have constructors for a GL_Value.
+   --  Now we have constructors for a GL_Value
 
    function G
      (V                    : Value_T;
@@ -59,7 +59,7 @@ package GNATLLVM.GLValue is
    is
      ((V, TE, Is_Reference, Is_Raw_Array, Is_Intermediate_Type))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
-   --  Raw constructor that allow full specification of all fields.
+   --  Raw constructor that allow full specification of all fields
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
      (G (V, GV.Typ,
@@ -79,7 +79,7 @@ package GNATLLVM.GLValue is
    --  type TE.
 
    procedure Discard (G : GL_Value);
-   --  Evaluate G and throw away the result.
+   --  Evaluate G and throw away the result
 
    --  Now define predicates on the GL_Value type to easily access
    --  properties of the LLVM value and the effective type.  These have the
@@ -255,8 +255,8 @@ package GNATLLVM.GLValue is
      (Const_Int (Env, TE, unsigned_long_long'Last, Sign_Extend => True))
      with Pre  => Env /= null and then Is_Type (TE),
           Post => Present (Const_Ones'Result);
-
    --  Return an LLVM value for the given type where all bits are set
+
    function Get_Undef (Env : Environ; G : GL_Value) return GL_Value is
      (Get_Undef (Env, Etype (G)))
      with  Pre  => Env /= null and then Present (G),

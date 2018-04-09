@@ -101,7 +101,6 @@ package body Uintp.LLVM is
       end Push_Bits;
 
    begin
-
       --  There are a number of tricky things here.  First, we use the "**"
       --  operator and we're a child of Uintp, which defines that operator
       --  for Nat ** Nat.  So we need to be sure that we stay away from

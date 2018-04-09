@@ -44,11 +44,11 @@ package body GNATLLVM.Environment is
 
    function Is_Dynamic_Size (Env : Environ; TE : Entity_Id) return Boolean is
    begin
-
       --  ??? It would be better structuring if we could guarantee that this
       --  would only be called after the type has been elaborated, but
       --  we don't yet (and may never) have a good way of early lazy
       --  elaboration of those types.
+
       if not Has_Type (Env, TE) then
          Discard (Create_Type (Env, TE));
       end if;
@@ -87,8 +87,7 @@ package body GNATLLVM.Environment is
    ---------------------
 
    function Get_Basic_Block
-     (Env : Environ; BE : Entity_Id) return Basic_Block_T
-   is
+     (Env : Environ; BE : Entity_Id) return Basic_Block_T is
    begin
       if Env.LLVM_Info (BE) = Empty_LLVM_Info_Id then
          return No_BB_T;
@@ -115,8 +114,7 @@ package body GNATLLVM.Environment is
    ---------------------
 
    function Get_Record_Info
-     (Env : Environ; TE : Entity_Id) return Record_Info
-   is
+     (Env : Environ; TE : Entity_Id) return Record_Info is
    begin
       if not Has_Type (Env, TE) then
          Discard (Create_Type (Env, TE));
@@ -136,6 +134,7 @@ package body GNATLLVM.Environment is
      (Env : Environ; N : Node_Id) return LLVM_Info_Id
    is
       Id : LLVM_Info_Id := Env.LLVM_Info (N);
+
    begin
       if Id /= Empty_LLVM_Info_Id then
          return Id;
@@ -156,6 +155,7 @@ package body GNATLLVM.Environment is
 
    procedure Copy_Type_Info (Env : Environ; Old_T, New_T : Entity_Id) is
       Id : constant LLVM_Info_Id := Env.LLVM_Info (Old_T);
+
    begin
       pragma Assert (Id /= Empty_LLVM_Info_Id);
       pragma Assert (Env.LLVM_Info (New_T) = Empty_LLVM_Info_Id);
@@ -172,6 +172,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Type (Env : Environ; TE : Entity_Id; TL : Type_T) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+
    begin
       LLVM_Info_Table.Table (Id).Typ := TL;
    end Set_Type;
@@ -182,6 +183,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Dynamic_Size (Env : Environ; TE : Entity_Id; B : Boolean) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+
    begin
       LLVM_Info_Table.Table (Id).Is_Dynamic_Size := B;
    end Set_Dynamic_Size;
@@ -192,6 +194,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_TBAA (Env : Environ; TE : Entity_Id; TBAA : Metadata_T) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+
    begin
       LLVM_Info_Table.Table (Id).TBAA := TBAA;
    end Set_TBAA;
@@ -202,6 +205,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Value (Env : Environ; VE : Entity_Id; VL : GL_Value) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, VE);
+
    begin
       LLVM_Info_Table.Table (Id).Value :=  VL;
    end Set_Value;
@@ -214,6 +218,7 @@ package body GNATLLVM.Environment is
      (Env : Environ; BE : Entity_Id; BL : Basic_Block_T)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, BE);
+
    begin
       LLVM_Info_Table.Table (Id).Basic_Block := BL;
    end Set_Basic_Block;
@@ -226,6 +231,7 @@ package body GNATLLVM.Environment is
      (Env : Environ; TE : Entity_Id; AI : Nat)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+
    begin
       LLVM_Info_Table.Table (Id).Array_Bound_Info := AI;
    end Set_Array_Info;
@@ -238,6 +244,7 @@ package body GNATLLVM.Environment is
      (Env : Environ; TE : Entity_Id; RI : Record_Info)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+
    begin
       LLVM_Info_Table.Table (Id).Record_Inf := RI;
    end Set_Record_Info;
@@ -321,8 +328,7 @@ package body GNATLLVM.Environment is
    ------------------------
 
    function Create_Basic_Block
-     (Env : Environ; Name : String := "") return Basic_Block_T
-   is
+     (Env : Environ; Name : String := "") return Basic_Block_T is
    begin
       return Append_Basic_Block_In_Context
         (Env.Ctx, LLVM_Value (Env.Func), Name);

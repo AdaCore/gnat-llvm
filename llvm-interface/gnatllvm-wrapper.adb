@@ -52,6 +52,7 @@ package body GNATLLVM.Wrapper is
          Num_Idx  : unsigned;
          Name     : String) return Value_T;
       pragma Import (C, Build_Extract_Value_C, "Build_Extract_Value_C");
+
    begin
       return Build_Extract_Value_C (Bld, Aggr, Idx_List, Num_Idx,
                                     Name & ASCII.NUL);
@@ -77,6 +78,7 @@ package body GNATLLVM.Wrapper is
          Num_Idx  : unsigned;
          Name     : String) return Value_T;
       pragma Import (C, Build_Insert_Value_C, "Build_Insert_Value_C");
+
    begin
       return Build_Insert_Value_C (Bld, Aggr, Elt, Idx_List, Num_Idx,
                                    Name & ASCII.NUL);
@@ -94,6 +96,7 @@ package body GNATLLVM.Wrapper is
         (Module   : LLVM.Types.Module_T;
          Filename : String) return Integer;
       pragma Import (C, LLVM_Init_Module_C, "LLVM_Init_Module");
+
    begin
       return LLVM_Init_Module_C (Module, Filename & ASCII.NUL);
    end LLVM_Init_Module;

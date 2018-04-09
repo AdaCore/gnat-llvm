@@ -99,16 +99,16 @@ package GNATLLVM.Utils is
    function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean
      with Pre => Present (Arg);
    --  Returns true if given function needs to return its arg via the secondary
-   --  stack
+   --  stack.
 
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean
      with Pre => Present (Param);
    --  Returns true if Param needs to be passed by reference (pointer) rather
-   --  than by value
+   --  than by value.
 
    function Get_Uint_Value (Node : Node_Id) return Uint
      with Pre => Present (Node);
-   --  If Node has a static Uint value, return it.  Otherwise, return No_Uint.
+   --  If Node has a static Uint value, return it.  Otherwise, return No_Uint
 
    function Const_Int (T : Type_T; Value : Uint)
      return Value_T renames Uintp.LLVM.UI_To_LLVM;
@@ -174,7 +174,7 @@ package GNATLLVM.Utils is
 
    function Img (I : Nat) return String;
    --  Img function for Nat type that doesn't append a space in front of it
-   --  (since a Nat is always positive)
+   --  (since a Nat is always positive).
 
    function Get_Ext_Name (E : Entity_Id) return String
      with Pre => Present (E);
@@ -187,17 +187,18 @@ package GNATLLVM.Utils is
    procedure Dump_LLVM_Type (T : Type_T);
    --  Likewise, for LLVM.Core.Dump_Type
 
-   function LLVM_Type_Of (V : Value_T) return Type_T
-   is (Type_Of (V));
+   function LLVM_Type_Of (V : Value_T) return Type_T is
+     (Type_Of (V));
 
-   function LLVM_Count_Param_Types (T : Type_T) return Nat
-   is (Nat (Count_Param_Types (T)));
+   function LLVM_Count_Param_Types (T : Type_T) return Nat is
+     (Nat (Count_Param_Types (T)));
 
-   function LLVM_Get_El_Type (T : Type_T) return Type_T
-   is (Get_Element_Type (T));
+   function LLVM_Get_El_Type (T : Type_T) return Type_T is
+     (Get_Element_Type (T));
 
-   function LLVM_Size_Of (T_Data : Target_Data_T; Ty : Type_T) return Nat
-   is (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));
+   function LLVM_Size_Of (T_Data : Target_Data_T; Ty : Type_T) return Nat is
+     (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));
+
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

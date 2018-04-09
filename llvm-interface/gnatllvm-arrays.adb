@@ -75,7 +75,7 @@ package body GNATLLVM.Arrays is
       Table_Initial        => 1024,
       Table_Increment      => 100,
       Table_Name           => "Array_Info_Table");
-   --  Table of representation of arrays indexes.
+   --  Table of representation of arrays indexes
 
    function Build_One_Bound
      (N : Node_Id; Unconstrained : Boolean) return One_Bound
@@ -110,8 +110,7 @@ package body GNATLLVM.Arrays is
    ---------------------
 
    function Build_One_Bound
-     (N : Node_Id; Unconstrained : Boolean) return One_Bound
-   is
+     (N : Node_Id; Unconstrained : Boolean) return One_Bound is
    begin
       if Unconstrained then
          return (Cnst => No_Uint, Value => Empty, Discr => Empty,
@@ -153,7 +152,6 @@ package body GNATLLVM.Arrays is
       --  sequence of (lower bound, upper bound) pairs.
 
    begin
-
       --  There are four cases: a constant size, in which case we return
       --  that size, a saved value, in which case we return that value,
       --  an unconstrained array, in which case we have a fat pointer and
@@ -236,6 +234,7 @@ package body GNATLLVM.Arrays is
           Convert_To_Size_Type (Env, Low_Bound);
       Size_High_Bound : constant GL_Value :=
           Convert_To_Size_Type (Env, High_Bound);
+
    begin
       return Build_Select
         (Env,
@@ -294,8 +293,8 @@ package body GNATLLVM.Arrays is
                                              High => High_Bound);
       Result_Typ : constant Type_T :=
         Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
-   begin
 
+   begin
       --  It's redundant to set the type here, since our caller will set it,
       --  but we have to set it in order to set the array info.
 
@@ -367,7 +366,6 @@ package body GNATLLVM.Arrays is
             --  (see C37172C).
 
          begin
-
             --  Update whether or not this will be of dynamic size and
             --  whether we must use an opaque type based on this dimension.
             --  Then record it.  Note that LLVM only allows the range of an
@@ -432,6 +430,7 @@ package body GNATLLVM.Arrays is
       Fields     : aliased array (Nat range 0 .. 2 * Dims - 1) of Type_T;
       First_Info : constant Nat := Get_Array_Info (Env, Array_Type_Node);
       J          : Nat := 0;
+
    begin
       for I in Nat range 0 .. Dims - 1 loop
          Fields (J) :=
@@ -455,6 +454,7 @@ package body GNATLLVM.Arrays is
       Elt_Type : constant Type_T :=
         Create_Type (Env, Full_Component_Type (Array_Type_Node));
       Arr_Type : constant Type_T := Array_Type (Elt_Type, 0);
+
    begin
       return Pointer_Type (Arr_Type, 0);
    end Create_Array_Raw_Pointer_Type;
@@ -485,8 +485,8 @@ package body GNATLLVM.Arrays is
       For_Type    : Boolean := False) return GL_Value
    is
       Size : GL_Value := Size_Const_Int (Env, Uint_1);
-   begin
 
+   begin
       --  Go through every array dimension.  Get its size and multiply all
       --  of them together.
 
@@ -535,11 +535,12 @@ package body GNATLLVM.Arrays is
         G (Bit_Cast (Env.Bld, LLVM_Value (Array_Data),
                      Create_Array_Raw_Pointer_Type (Env, Array_Type), ""),
            Array_Type, Is_Reference => True, Is_Raw_Array => True);
+
    begin
 
       for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop
-         declare
 
+         declare
             --  The type of the bound of the array we're using for the bounds
             --  may not be the same as the type of the bound in the
             --  unconstrained array, so be sure to convert (C46042A).
@@ -580,8 +581,8 @@ package body GNATLLVM.Arrays is
         (Standard_Short_Short_Integer, Standard_Short_Integer,
          Standard_Integer, Standard_Long_Integer, Standard_Long_Long_Integer);
       Our_Type  : constant Entity_Id := Full_Etype (G);
-   begin
 
+   begin
       --  If we are of an unsigned type narrower than Size_Type, we must find
       --  a wider type to use.  We use the first, which will be the narrowest.
 
@@ -619,9 +620,11 @@ package body GNATLLVM.Arrays is
 
       J : Nat := 2;
       N : Node_Id;
+
    begin
       N := First (Indexes);
       while Present (N) loop
+
          --  Adjust the index according to the range lower bound
 
          declare
@@ -634,6 +637,7 @@ package body GNATLLVM.Arrays is
               Convert_To_Elementary_Type (Env, User_Index, Dim_Op_Type);
             Converted_Low_Bound : constant GL_Value :=
               Convert_To_Elementary_Type (Env, Dim_Low_Bound, Dim_Op_Type);
+
          begin
             Idxs (J) := NSW_Sub
               (Env, Converted_Index, Converted_Low_Bound, "index");
@@ -664,6 +668,7 @@ package body GNATLLVM.Arrays is
          Comp_Size     : constant GL_Value :=
            Get_Type_Size (Env, Comp_Type, No_GL_Value);
          Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
+
       begin
 
          for Dim in 1 .. Number_Dimensions (Array_Type) - 1 loop
@@ -692,7 +697,7 @@ package body GNATLLVM.Arrays is
       Result_Type : Entity_Id;
       Rng         : Node_Id;
       Value       : GL_Value) return GL_Value
-     is
+   is
       Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
       Low_Idx_Bound  : constant GL_Value :=
         Get_Array_Bound (Env, Full_Designated_Type (Value), 0, True, Value);
@@ -712,7 +717,6 @@ package body GNATLLVM.Arrays is
         NSW_Sub (Env, Converted_Index, Converted_Low_Bound, "offset");
 
    begin
-
       --  Like the above case, we have to hande both the opaque and non-opaque
       --  cases.  Luckily, we know we're only a single dimension.  However,
       --  GEP's result type is a pointer to the component type, so we need

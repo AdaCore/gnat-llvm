@@ -80,10 +80,8 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Build_Type_Conversion
-     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
-   is
+     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value is
    begin
-
       --  If both types are elementary, hand that off to our helper.
 
       if Is_Elementary_Type (Full_Etype (Expr))
@@ -129,8 +127,8 @@ package body GNATLLVM.Types is
         unsigned_long_long (UI_To_Int (Dest_Usize));
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
       Subp        : Cvtf := null;
-   begin
 
+   begin
       --  If the value is already of the desired LLVM type, we're done.
 
       if Type_Of (Value) = LLVM_Type then
@@ -212,7 +210,7 @@ package body GNATLLVM.Types is
       elsif not Src_FP and then Dest_FP then
          Subp := (if Src_Uns then UI_To_FP'Access else SI_To_FP'Access);
 
-      --  Remaining case is integer to integer.
+      --  Remaining case is integer to integer
 
       elsif Is_Trunc then
          Subp := Trunc'Access;
@@ -220,7 +218,7 @@ package body GNATLLVM.Types is
          Subp := (if Src_Uns then Z_Ext'Access else S_Ext'Access);
       end if;
 
-      --  Here all that's left to do is generate the IR instruction.
+      --  Here all that's left to do is generate the IR instruction
 
       return Subp (Env, Value, D_Type);
 
@@ -236,8 +234,8 @@ package body GNATLLVM.Types is
       Unc_Src  : constant Boolean := Is_Access_Unconstrained (Src);
       Unc_Dest : constant Boolean :=
         Is_Array_Type (Desig_Type) and then not Is_Constrained (Desig_Type);
-   begin
 
+   begin
       --  If neither is constrained, but they aren't the same type, just do
       --  a pointer cast.  If both are constrained, we return the input
       --  unchanged (the front end is responsible for this making sense).
@@ -276,8 +274,8 @@ package body GNATLLVM.Types is
       Dest_Ty   : constant Type_T := Create_Type (Env, Dest_Type);
       Value     : constant GL_Value := Emit_Expression (Env, Expr);
       Subp      : Opf := null;
-   begin
 
+   begin
       --  If the value is already of the desired LLVM type, we're done.
 
       if Type_Of (Value) = Dest_Ty then
@@ -368,6 +366,7 @@ package body GNATLLVM.Types is
    function Count_Params (E : Entity_Id) return Nat is
       Cnt   : Nat := 0;
       Param : Entity_Id := First_Formal_With_Extras (E);
+
    begin
       while Present (Param) loop
          Cnt := Cnt + 1;
@@ -385,6 +384,7 @@ package body GNATLLVM.Types is
      (Env : Environ; TE : Entity_Id) return GL_Value
    is
       LLVM_Type : constant Type_T := Create_Type (Env, TE);
+
    begin
       pragma Assert (not Is_Dynamic_Size (Env, TE));
       return Get_LLVM_Type_Size_In_Bits (Env, LLVM_Type);
@@ -398,6 +398,7 @@ package body GNATLLVM.Types is
      (Env : Environ; TE : Entity_Id) return Type_T
    is
       T : constant Type_T := Create_Type (Env, TE);
+
    begin
       if Is_Array_Type (TE) and then not Is_Constrained (TE) then
          return Create_Array_Fat_Pointer_Type (Env, TE);
@@ -419,13 +420,14 @@ package body GNATLLVM.Types is
       Discard   : Type_T;
       pragma Unreferenced (Discard);
       pragma Unreferenced (Definition);
+
    begin
       --  See if we already have a type.  If so, we must not be defining
       --  this type.  ??? But we can't add that test just yet.
 
       Typ := Get_Type (Env, TE);
       if Present (Typ) then
-         --  pragma Assert (not Definition);
+         --  ?? pragma Assert (not Definition);
          return Typ;
       end if;
 
@@ -433,6 +435,7 @@ package body GNATLLVM.Types is
       --  ??? This isn't quite right in the case where we're not
       --  defining the type, or where there's a Freeze_Node, but add this
       --  logic later.
+
       Def_Ident := Get_Fullest_View (TE);
       if Def_Ident /= TE then
          Typ := GNAT_To_LLVM_Type (Env, Def_Ident, False);
@@ -444,6 +447,7 @@ package body GNATLLVM.Types is
 
       --  ??? This probably needs to be cleaned up, but before we do anything,
       --  see if this isn't a base type and process that if so.
+
       if Base_Type (Def_Ident) /= Def_Ident then
          Discard := GNAT_To_LLVM_Type (Env, Base_Type (Def_Ident), False);
       end if;
@@ -571,7 +575,7 @@ package body GNATLLVM.Types is
             end;
 
          when Array_Kind =>
-            --  Handle packed arrays.
+            --  Handle packed arrays
             if Present (Packed_Array_Impl_Type (Def_Ident)) then
                Typ := Create_Type (Env, Packed_Array_Impl_Type (Def_Ident));
                Copy_Type_Info (Env, Packed_Array_Impl_Type (Def_Ident),
@@ -650,6 +654,7 @@ package body GNATLLVM.Types is
      (Env : Environ; TE : Entity_Id; TL : out Type_T; Low, High : out GL_Value)
    is
       SRange : constant Node_Id := Scalar_Range (TE);
+
    begin
       --  Delegate LLVM Type creation to Create_Type
 
@@ -671,6 +676,7 @@ package body GNATLLVM.Types is
      (Env : Environ; Subp_Spec : Node_Id) return Type_T
    is
       Def_Ident : constant Entity_Id := Defining_Entity (Subp_Spec);
+
    begin
       return Create_Subprogram_Type
         (Env, Def_Ident, Full_Etype (Def_Ident), False);
@@ -684,6 +690,7 @@ package body GNATLLVM.Types is
      (Env           : Environ;
       Subp_Type_Ent : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T is
+
    begin
       return Create_Subprogram_Type
         (Env, Subp_Type_Ent, Full_Etype (Subp_Type_Ent),
@@ -713,6 +720,7 @@ package body GNATLLVM.Types is
       Arg_Types       : Type_Array (1 .. Args_Count);
       Param_Ent       : Entity_Id := First_Formal_With_Extras (Param_Ident);
       J               : Nat := 1;
+
    begin
       --  First, Associate an LLVM type for each Ada subprogram parameter
 
@@ -783,8 +791,8 @@ package body GNATLLVM.Types is
    is
       Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
-   begin
 
+   begin
       --  We have three cases.  If the object is not of a dynamic size,
       --  we just do the alloca and that's all.
 
@@ -819,8 +827,7 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Convert_To_Size_Type
-     (Env : Environ; V : GL_Value) return GL_Value
-   is
+     (Env : Environ; V : GL_Value) return GL_Value is
    begin
       return Convert_To_Elementary_Type (Env, V, Env.Size_Type);
    end Convert_To_Size_Type;
@@ -838,8 +845,8 @@ package body GNATLLVM.Types is
       Size           : GL_Value;
       Dynamic_Fields : Boolean := False;
       T              : constant Type_T := Create_Type (Env, TE);
-   begin
 
+   begin
       --  ?? Record types still use the old mechanism, so keep the old code
       --  and check first.
 
@@ -894,23 +901,20 @@ package body GNATLLVM.Types is
 
    function Get_Type_Size_Complexity
      (Env      : Environ;
-      TE       : Entity_Id) return Natural
-   is
+      TE       : Entity_Id) return Natural is
    begin
 
       if Is_Record_Type (TE) then
 
-         --  For now, just distinguish dynamic and constant size.
+         --  For now, just distinguish dynamic and constant size
 
          return (if Is_Dynamic_Size (Env, TE) then 10 else 0);
 
       elsif Is_Array_Type (TE) then
-
          return Get_Array_Size_Complexity (Env, TE);
 
       else
-
-         --  All other types are constant size.
+         --  All other types are constant size
 
          return 0;
 
@@ -926,7 +930,6 @@ package body GNATLLVM.Types is
       Record_Ptr   : Value_T;
       Record_Field : Node_Id) return Value_T
    is
-
       Type_Id    : constant Entity_Id :=
         Get_Fullest_View (Scope (Record_Field));
       R_Info     : constant Record_Info := Get_Record_Info (Env, Type_Id);
@@ -944,6 +947,7 @@ package body GNATLLVM.Types is
 
          begin
             --  Accumulate the size of every field
+
             for Preceding_Field of S_Info.Preceding_Fields loop
                Int_Struct_Address := NSW_Add
                  (Env.Bld,
@@ -974,6 +978,7 @@ package body GNATLLVM.Types is
    is
       Full_View : constant Entity_Id := Get_Fullest_View (T);
       Unused    : Type_T;
+
    begin
       if Is_Record_Type (Full_View) then
          --  First ensure the type is created

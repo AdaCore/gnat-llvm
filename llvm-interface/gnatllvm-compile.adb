@@ -90,7 +90,7 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (Src_Node) = N_Aggregate
                  and then Is_Others_Aggregate (Src_Node);
    --  Helper for Emit_Assignment: say whether this is an aggregate of all
-   --  zeros
+   --  zeros.
 
    procedure Emit_Assignment
      (Env                       : Environ;
@@ -100,7 +100,7 @@ package body GNATLLVM.Compile is
       Forwards_OK, Backwards_OK : Boolean)
      with Pre => Env /= null and then (Present (LValue) or else Present (E));
    --  Helper for Emit: Copy the value of the expression E to LValue
-   --  with the specified destination and expression types
+   --  with the specified destination and expression types.
 
    function Emit_Comparison
      (Env : Environ; Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
@@ -126,8 +126,8 @@ package body GNATLLVM.Compile is
                   and then Is_Elementary_Type (Orig_RHS),
           Post => Present (Emit_Elementary_Comparison'Result);
    --  Helpers for Emit_Expression: handle comparison operations for
-   --  elementary types.
-   --  The second form only supports discrete or pointer types.
+   --  elementary types.  The second form only supports discrete or pointer
+   --  types.
 
    procedure Emit_If (Env : Environ; Node : Node_Id)
      with Pre => Env /= null and then Nkind (Node) = N_If_Statement;
@@ -524,6 +524,7 @@ package body GNATLLVM.Compile is
          when N_Subprogram_Declaration =>
             declare
                Subp : constant Entity_Id := Unique_Defining_Entity (Node);
+
             begin
                --  Do not print intrinsic subprogram as calls to those will be
                --  expanded.
@@ -576,7 +577,7 @@ package body GNATLLVM.Compile is
                Expr      : GL_Value;
 
             begin
-               --  Nothing to do if this is a debug renaming type.
+               --  Nothing to do if this is a debug renaming type
 
                if T = Standard_Debug_Renaming_Type then
                   return;
@@ -828,6 +829,7 @@ package body GNATLLVM.Compile is
                BB_Next           : Basic_Block_T;
                Cond              : GL_Value;
             begin
+
                --  The general format for a loop is:
                --    INIT;
                --    while COND loop
@@ -840,6 +842,7 @@ package body GNATLLVM.Compile is
 
                --  If this loop has an identifier, and it has already its own
                --  entry (INIT) basic block. Create one otherwise.
+
                BB_Init :=
                  (if Present (Identifier (Node))
                     and then Has_BB (Env, Entity (Identifier (Node)))
@@ -850,6 +853,7 @@ package body GNATLLVM.Compile is
 
                --  If this is not a FOR loop, there is no initialization: alias
                --  it with the COND block.
+
                BB_Cond :=
                  (if not Is_For_Loop
                   then BB_Init
@@ -857,6 +861,7 @@ package body GNATLLVM.Compile is
 
                --  If this is a mere loop, there is even no condition block:
                --  alias it with the STMTS block.
+
                BB_Stmts :=
                  (if Is_Mere_Loop
                   then BB_Cond
@@ -865,12 +870,14 @@ package body GNATLLVM.Compile is
                --  If this is not a FOR loop, there is no iteration: alias it
                --  with the COND block, so that at the end of every STMTS, jump
                --  on ITER or COND.
+
                BB_Iter :=
                  (if Is_For_Loop then Create_Basic_Block (Env, "loop-iter")
                   else BB_Cond);
 
                --  The NEXT step contains no statement that comes from the
                --  loop: it is the exit point.
+
                BB_Next := Create_Basic_Block (Env, "loop-exit");
 
                --  The front-end expansion can produce identifier-less loops,
@@ -895,6 +902,7 @@ package body GNATLLVM.Compile is
 
                   else
                      --  This is a FOR loop
+
                      declare
                         Loop_Param_Spec : constant Node_Id :=
                           Loop_Parameter_Specification (Iter_Scheme);
@@ -913,6 +921,7 @@ package body GNATLLVM.Compile is
                      begin
                         --  Initialization block: create the loop variable and
                         --  initialize it.
+
                         Create_Discrete_Type
                           (Env, Var_Type, LLVM_Type, Low, High);
                         LLVM_Var := Allocate_For_Type
@@ -924,6 +933,7 @@ package body GNATLLVM.Compile is
 
                         --  Then go to the condition block if the range isn't
                         --  empty.
+
                         Cond := I_Cmp
                           (Env,
                            (if Unsigned_Type then Int_ULE else Int_SLE),
@@ -935,6 +945,7 @@ package body GNATLLVM.Compile is
                         --  during the INIT step and right before the ITER
                         --  step, so there is nothing to check during the
                         --  COND step.
+
                         Position_Builder_At_End (Env, BB_Cond);
                         Build_Br (Env, BB_Stmts);
 
@@ -948,6 +959,7 @@ package body GNATLLVM.Compile is
 
                         --  After STMTS, stop if the loop variable was equal to
                         --  the "exit" bound. Increment/decrement it otherwise.
+
                         Position_Builder_At_End (Env, BB_Iter);
 
                         declare
@@ -970,6 +982,7 @@ package body GNATLLVM.Compile is
                         Build_Br (Env, BB_Stmts);
 
                         --  The ITER step starts at this special COND step
+
                         BB_Iter := BB_Cond;
                      end;
                   end if;
@@ -993,6 +1006,7 @@ package body GNATLLVM.Compile is
                Stack_State : Value_T;
 
             begin
+
                --  The frontend can generate basic blocks with identifiers
                --  that are not declared: try to get any existing basic block,
                --  create and register a new one if it does not exist yet.
@@ -1042,6 +1056,7 @@ package body GNATLLVM.Compile is
                --  there are some we should look at (see
                --  trans.c:Pragma_to_gnu). But still, the "others" case is
                --  necessary.
+
                when others => null;
             end case;
 
@@ -1062,6 +1077,7 @@ package body GNATLLVM.Compile is
             end if;
 
          --  Nodes we actually want to ignore
+
          when N_Call_Marker
             | N_Empty
             | N_Enumeration_Representation_Clause
@@ -1085,10 +1101,12 @@ package body GNATLLVM.Compile is
             end if;
 
          --  ??? Ignore for now
+
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
             null;
 
          --  ??? Ignore for now
+
          when N_Exception_Handler =>
             Error_Msg_N ("exception handler ignored??", Node);
 
@@ -1098,7 +1116,6 @@ package body GNATLLVM.Compile is
                (Get_Value (Env, Entity (Name (Node)))));
 
          when N_Attribute_Definition_Clause =>
-
             --  The only interesting case left after expansion is for Address
             --  clauses. We only deal with 'Address if the object has a Freeze
             --  node.
@@ -1124,10 +1141,10 @@ package body GNATLLVM.Compile is
    -----------------
 
    function Emit_LValue
-     (Env : Environ; Node : Node_Id) return GL_Value
-   is
+     (Env : Environ; Node : Node_Id) return GL_Value is
    begin
       LValue_Pair_Table.Set_Last (0);
+
       --  Each time we start a new recursive call, we free the entries
       --  from the last one.
 
@@ -1144,8 +1161,8 @@ package body GNATLLVM.Compile is
       Typ   : constant Entity_Id := Full_Etype (Node);
       Value : constant GL_Value :=
         Need_LValue (Env, Emit_LValue_Main (Env, Node), Typ);
-   begin
 
+   begin
       --  If the object is not of void type, save the result in the
       --  pair table under the base type of the fullest view.
 
@@ -1176,6 +1193,7 @@ package body GNATLLVM.Compile is
                   --  If we are elaborating this for 'Access, we want the
                   --  actual subprogram type here, not the type of the return
                   --  value, which is what Typ is set to.
+
                   if Nkind (Parent (Node)) = N_Attribute_Reference then
                      Typ := Full_Designated_Type (Full_Etype (Parent (Node)));
                   end if;
@@ -1274,12 +1292,12 @@ package body GNATLLVM.Compile is
             --  We have to mark that this is now to be treated as a new type.
             --  This matters if, e.g., the bounds of an array subtype change
             --  (see C46042A).
+
             return Convert_To_Access_To
               (Env, Emit_LValue_Internal (Env, Expression (Node)),
                Full_Etype (Node));
 
          when others =>
-
             --  If we have an arbitrary expression, evaluate it.  If it
             --  turns out to be a reference (e.g., if the size of our type
             --  is dynamic, we have no more work to do.  Otherwise, our caller
@@ -1303,7 +1321,7 @@ package body GNATLLVM.Compile is
          end if;
       end loop;
 
-      --  Should never get here and postcondition verifies.
+      --  Should never get here and postcondition verifies
 
       return No_GL_Value;
    end Get_Matching_Value;
@@ -1318,20 +1336,17 @@ package body GNATLLVM.Compile is
       Op          : Node_Kind) return GL_Value
    is
       LHS, RHS             : GL_Value;
-
       --  We start evaluating the LHS in the current block, but we need to
       --  record which block it completes in, since it may not be the
       --  same block.
 
       Block_Left_Expr_End  : Basic_Block_T;
-
       --  Block which contains the evaluation of the right part
       --  expression of the operator and its end.
 
       Block_Right_Expr     : constant Basic_Block_T :=
         Create_Basic_Block (Env, "scl-right-expr");
       Block_Right_Expr_End : Basic_Block_T;
-
       --  Block containing the exit code (the phi that selects that value)
 
       Block_Exit           : constant Basic_Block_T :=
@@ -1340,6 +1355,7 @@ package body GNATLLVM.Compile is
    begin
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
+
       LHS := Emit_Expression (Env, Left);
       Block_Left_Expr_End := Get_Insert_Block (Env.Bld);
 
@@ -1546,6 +1562,7 @@ package body GNATLLVM.Compile is
                   Which_Adjust     : constant GL_Value :=
                     Build_Select (Env, RHS_Negative, Result_Minus_One,
                                   Result_Plus_One);
+
                begin
                   Result := Build_Select (Env, Need_Adjust,
                                           Which_Adjust, Result);
@@ -1601,6 +1618,7 @@ package body GNATLLVM.Compile is
             declare
                Expr : constant GL_Value :=
                  Emit_Expression (Env, Right_Opnd (Node));
+
             begin
                if Is_Floating_Point_Type (Expr) then
                   return F_Neg (Env, Expr);
@@ -1616,7 +1634,6 @@ package body GNATLLVM.Compile is
                Expr      => Expression (Node));
 
          when N_Qualified_Expression =>
-
             --  We can simply strip the type qualifier
 
             return Emit_Expression (Env, Expression (Node));
@@ -1627,7 +1644,7 @@ package body GNATLLVM.Compile is
               (Env, Full_Etype (Node), Expression (Node));
 
          when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
-            --  What if Node is a formal parameter passed by reference???
+            --  ?? What if Node is a formal parameter passed by reference?
             --  pragma Assert (not Is_Formal (Entity (Node)));
 
             --  N_Defining_Identifier nodes for enumeration literals are not
@@ -1635,6 +1652,7 @@ package body GNATLLVM.Compile is
 
             declare
                Def_Ident : constant Entity_Id := Entity (Node);
+
             begin
                if Ekind (Def_Ident) = E_Enumeration_Literal then
                   return Const_Int (Env, Full_Etype (Node),
@@ -1795,7 +1813,7 @@ package body GNATLLVM.Compile is
 
                Result := Ptr_To_Ref (Env, Result, Typ);
 
-               --  Now copy the data, if there is any, into the value.
+               --  Now copy the data, if there is any, into the value
 
                if Nkind (Expr) = N_Qualified_Expression then
                   Emit_Assignment (Env, Result, Empty, Value, True, True);
@@ -1838,10 +1856,9 @@ package body GNATLLVM.Compile is
                   while Present (Expr) loop
                      Ent := Entity (First (Choices (Expr)));
 
-                     --  Ignore discriminants that have
+                     --  ?? Ignore discriminants that have
                      --  Corresponding_Discriminants in tagged types since
                      --  we'll be setting those fields in the parent subtype.
-                     --  ???
 
                      if Ekind (Ent) = E_Discriminant
                        and then Present (Corresponding_Discriminant (Ent))
@@ -1849,7 +1866,7 @@ package body GNATLLVM.Compile is
                      then
                         null;
 
-                     --  Also ignore discriminants of Unchecked_Unions.
+                     --  Also ignore discriminants of Unchecked_Unions
 
                      elsif Ekind (Ent) = E_Discriminant
                        and then Is_Unchecked_Union (Agg_Type)
@@ -1896,7 +1913,7 @@ package body GNATLLVM.Compile is
             begin
                pragma Assert (No (Alternatives (Node)));
                pragma Assert (Present (Rng));
-               --  The front end guarantees the above.
+               --  The front end guarantees the above
 
                if Nkind (Rng) = N_Identifier then
                   Rng := Scalar_Range (Full_Etype (Rng));
@@ -1935,6 +1952,7 @@ package body GNATLLVM.Compile is
 
    procedure Emit_List (Env : Environ; List : List_Id) is
       N : Node_Id;
+
    begin
       if Present (List) then
          N := First (List);
@@ -1952,6 +1970,7 @@ package body GNATLLVM.Compile is
    function Is_Zero_Aggregate (Src_Node : Node_Id) return Boolean is
       Inner    : Node_Id;
       Val      : Uint;
+
    begin
       Inner := Expression (First (Component_Associations (Src_Node)));
       while Nkind (Inner) = N_Aggregate and then Is_Others_Aggregate (Inner)
@@ -1977,6 +1996,7 @@ package body GNATLLVM.Compile is
       Dest      : GL_Value := LValue;
       Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);
       Src       : GL_Value;
+
    begin
 
       --  See if we have the special case where we're assigning all zeros.
@@ -2080,10 +2100,9 @@ package body GNATLLVM.Compile is
    function Compute_Size
      (Env                     : Environ;
       Left_Typ, Right_Typ     : Entity_Id;
-      Left_Value, Right_Value : GL_Value) return GL_Value
-   is
-   begin
+      Left_Value, Right_Value : GL_Value) return GL_Value is
 
+   begin
       --  Use the type of right side unless its complexity is more
       --  than that of the size of the type on the left side.
 
@@ -2111,6 +2130,7 @@ package body GNATLLVM.Compile is
       Choose    : constant GL_Value :=
         Emit_Elementary_Comparison
         (Env, (if Compute_Max then N_Op_Gt else N_Op_Lt), Left, Right);
+
    begin
       return Build_Select (Env, Choose, Left, Right,
                            (if Compute_Max then "max" else "min"));
@@ -2137,6 +2157,7 @@ package body GNATLLVM.Compile is
       Cur_Expr   : GL_Value;
       Cur_Index  : Integer := 0;
       Expr       : Node_Id;
+
    begin
 
       pragma Assert (not Is_Dynamic_Size
@@ -2147,9 +2168,11 @@ package body GNATLLVM.Compile is
 
       Expr := First (Expressions (Node));
       while Present (Expr) loop
+
          --  If this is a nested N_Aggregate and we have dimensions left
          --  in the outer array, use recursion to fill in the aggregate
          --  since we won't have the proper type for the inner aggregate.
+
          if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
             Cur_Expr := Emit_Array_Aggregate
               (Env, Expr, Dims_Left - 1, Array_Type,
@@ -2186,12 +2209,12 @@ package body GNATLLVM.Compile is
       LValue : Boolean) return GL_Value
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (Node));
+
    begin
       case Attr is
          when Attribute_Access
             | Attribute_Unchecked_Access
             | Attribute_Unrestricted_Access =>
-
             --  We store values as pointers, so, getting an access to an
             --  expression is the same thing as getting an LValue, and has
             --  the same constraints.
@@ -2313,6 +2336,7 @@ package body GNATLLVM.Compile is
             end;
 
          when Attribute_Machine =>
+
             --  ??? For now return the prefix itself. Would need to force a
             --  store in some cases.
 
@@ -2324,6 +2348,7 @@ package body GNATLLVM.Compile is
                Pre   : constant Node_Id := Full_Etype (Prefix (Node));
                Align : constant unsigned :=
                  Get_Type_Alignment (Env, Create_Type (Env, Pre));
+
             begin
                return Const_Int (Env, Typ,
                                  unsigned_long_long (Align),
@@ -2382,12 +2407,9 @@ package body GNATLLVM.Compile is
       --  Return the subprogram pointer associated with Node
 
    begin
-
       --  LLVM treats pointers as integers regarding comparison
 
       if Ekind (Operand_Type) = E_Anonymous_Access_Subprogram_Type then
-         --  ??? It's unclear why there's special handling here that's
-         --  not present in Gigi.
          return G (I_Cmp
                      (Env.Bld, Operation.Unsigned,
                       Subp_Ptr (LHS), Subp_Ptr (RHS), ""),
@@ -2399,11 +2421,10 @@ package body GNATLLVM.Compile is
                                             Emit_Expression (Env, RHS));
 
       else
-
-         --  The front end expands record type comparisons and array
-         --  comparisons for other than equality.
          pragma Assert (Is_Array_Type (Operand_Type)
                           and then Operation.Signed in Int_EQ | Int_NE);
+         --  The front end expands record type comparisons and array
+         --  comparisons for other than equality.
 
          --  We handle this case by creating two basic blocks and doing
          --  this as a test of the arrays, branching to each if true or false.
@@ -2428,7 +2449,6 @@ package body GNATLLVM.Compile is
               (1 => BB_True, 2 => BB_False);
 
          begin
-
             --  First emit the comparison and branch to one of the two
             --  blocks.
 
@@ -2460,8 +2480,8 @@ package body GNATLLVM.Compile is
       BB_True, BB_False : Basic_Block_T)
    is
       Cond : GL_Value;
-   begin
 
+   begin
       --  Do the array case here, where we have labels, to simplify the
       --  logic and take advantage of the reality that almost all array
       --  comparisons are part of "if" statements.
@@ -2494,8 +2514,8 @@ package body GNATLLVM.Compile is
             BB_Next        : Basic_Block_T;
             LHS_Lengths    : GL_Value_Array (0 .. Last_Dim);
             RHS_Lengths    : GL_Value_Array (0 .. Last_Dim);
-         begin
 
+         begin
             --  There's an obscure case where if both arrays have a
             --  dimension that's zero (whether or not it's the same
             --  dimension in both), the arrays compare true.  This is
@@ -2503,7 +2523,7 @@ package body GNATLLVM.Compile is
             --  this falls through from the normal computation, but for
             --  multi-dimensional arrays, we have to actually do the test.
 
-            --  Start by getting all the lengths.
+            --  Start by getting all the lengths
 
             for Dim in 0 .. Last_Dim loop
                LHS_Lengths (Dim) :=
@@ -2599,6 +2619,7 @@ package body GNATLLVM.Compile is
                Cond : constant GL_Value :=
                  I_Cmp (Env, Int_EQ, G (Memcmp, Env.Size_Type),
                         Const_Int (Env, Standard_Integer, 0));
+
             begin
                Build_Cond_Br (Env, Cond, BB_T, BB_F);
             end;
@@ -2625,8 +2646,8 @@ package body GNATLLVM.Compile is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
       LHS          : GL_Value := Orig_LHS;
       RHS          : GL_Value := Orig_RHS;
-   begin
 
+   begin
       --  If a scalar type (meaning both must be), convert each operand to
       --  its base type.
 
@@ -2798,7 +2819,6 @@ package body GNATLLVM.Compile is
       end Swap_Highest_Cost;
 
    begin
-
       --  First we scan all the alternatives and choices and fill in most
       --  of the data.  We emit the code for each alternative as part of
       --  that process.
@@ -2847,7 +2867,7 @@ package body GNATLLVM.Compile is
          If_Cost := 0;
          Switch_Cost := 0;
 
-         --  Sum up the costs of all the choices in this alternative.
+         --  Sum up the costs of all the choices in this alternative
 
          for I in First_Choice .. Current_Choice - 1 loop
             If_Cost := If_Cost + Choices (I).If_Cost;
@@ -2904,14 +2924,13 @@ package body GNATLLVM.Compile is
          end;
 
       else
-
-         --  Otherwise, we generate if/elsif/elsif/else.
+         --  Otherwise, we generate if/elsif/elsif/else
 
          Swap_Highest_Cost (False);
          for I in Alts'First .. Alts'Last - 1 loop
             for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
 
-               --  Only do something if this is not a null range.
+               --  Only do something if this is not a null range
 
                if Choices (J).If_Cost /= 0 then
 
@@ -2946,7 +2965,8 @@ package body GNATLLVM.Compile is
 
    procedure Emit_If (Env : Environ; Node : Node_Id) is
 
-      --  Record information about each part of an "if" statement.
+      --  Record information about each part of an "if" statement
+
       type If_Ent is record
          Cond     : Node_Id;         --  Expression to test.
          Stmts    : List_Id;         --  Statements to emit if true.
@@ -2961,9 +2981,9 @@ package body GNATLLVM.Compile is
       Elsif_Part   : Node_Id;
 
    begin
-
       --  First go through all the parts of the "if" statement recording
       --  the expressions and statements.
+
       If_Parts (0) := (Cond => Condition (Node),
                        Stmts => Then_Statements (Node),
                        BB_True => Create_Basic_Block (Env, "true"),
@@ -2986,6 +3006,7 @@ package body GNATLLVM.Compile is
       --  When done, each part goes to the end of the statement.  If there's
       --  an "else" clause, it's a new basic block and the end; otherwise,
       --  it's the last False block.
+
       BB_End := (if Present (Else_Statements (Node))
                  then Create_Basic_Block (Env, "end")
                  else If_Parts (If_Parts_Pos - 1).BB_False);
@@ -3003,7 +3024,8 @@ package body GNATLLVM.Compile is
          Position_Builder_At_End (Env, Part.BB_False);
       end loop;
 
-      --  If there's an Else part, emit it and go into the "end" basic block.
+      --  If there's an Else part, emit it and go into the "end" basic block
+
       if Present (Else_Statements (Node)) then
          Emit_List (Env, Else_Statements (Node));
          Build_Br (Env, BB_End);
@@ -3022,6 +3044,7 @@ package body GNATLLVM.Compile is
       BB_True, BB_False : Basic_Block_T)
    is
       BB_New : Basic_Block_T;
+
    begin
       case Nkind (Cond) is
 
@@ -3033,7 +3056,6 @@ package body GNATLLVM.Compile is
             return;
 
          when N_And_Then | N_Or_Else =>
-
             --  Depending on the result of the the test of the left operand,
             --  we either go to a final basic block or to a new intermediate
             --  one where we test the right operand.
@@ -3055,7 +3077,6 @@ package body GNATLLVM.Compile is
             return;
 
          when N_In | N_Not_In =>
-
             --  If we can decode the range into Uint's, we can just do
             --  simple comparisons.
 
@@ -3098,8 +3119,8 @@ package body GNATLLVM.Compile is
    is
       Cond              : GL_Value;
       Inner_BB          : Basic_Block_T;
-   begin
 
+   begin
       --  For discrete types (all we handle here), handle ranges by testing
       --  against the high and the low and branching as appropriate.  We
       --  must be sure to evaluate the LHS only once.  But first check for
@@ -3320,11 +3341,11 @@ package body GNATLLVM.Compile is
             --  There is no "rotate" instruction in LLVM, so we have to stick
             --  to shift instructions, just like in C. If we consider that we
             --  are rotating to the left:
-
+            --
             --     Result := (Operand << Bits) | (Operand >> (Size - Bits));
             --               -----------------   --------------------------
             --                    Upper                   Lower
-
+            --
             --  If we are rotating to the right, we switch the direction of the
             --  two shifts.
 
@@ -3367,6 +3388,7 @@ package body GNATLLVM.Compile is
             else Const_Null (Env, LHS));
 
          --  Now, compute the value using the underlying LLVM instruction
+
          Result :=
            (if To_Left
             then Shl (Env, LHS, N)
@@ -3393,6 +3415,7 @@ package body GNATLLVM.Compile is
 
    function Get_Label_BB (Env : Environ; E : Entity_Id) return Basic_Block_T is
       BB : Basic_Block_T := Get_Basic_Block (Env, E);
+
    begin
       if No (BB) then
          BB := Create_Basic_Block (Env, Get_Name (E));

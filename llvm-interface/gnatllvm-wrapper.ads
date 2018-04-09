@@ -25,7 +25,7 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 package GNATLLVM.Wrapper is
 
    type MD_Builder_T is new System.Address;
-   --  Metadata builder type: opaque for us.
+   --  Metadata builder type: opaque for us
 
    function Create_MDBuilder_In_Context
      (Ctx : LLVM.Types.Context_T) return MD_Builder_T;

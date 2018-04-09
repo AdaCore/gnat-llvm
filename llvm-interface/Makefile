@@ -171,8 +171,7 @@ rts-full: build
 	$(RMDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
 	$(MKDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
 	$(MAKE) -f $(GNAT_SRC)/Makefile.adalib -C $(FULL_ADALIB) \
-	  target=$(shell gcc -dumpmachine) version=$(shell gcc -dumpversion) \
-	  ROOT=$(GNAT_ROOT) CC=$(LLVM_GCC) \
+	  ROOT=$(GNAT_ROOT) ADAC=$(LLVM_GCC) \
 	  CFLAGS="-O2 -nostdinc -I$(NATIVE_ADAINCLUDE)"
 	cp -p $(NATIVE_ADAINCLUDE)/*.ad? $(FULL_ADAINCLUDE)
 

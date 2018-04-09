@@ -28,6 +28,7 @@ with Interfaces.C;             use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is
 
@@ -761,6 +762,20 @@ package GNATLLVM.GLValue is
    is
      (G_From (Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
                             Index, Name),
+              Arg))
+     with  Pre  => Env /= null and then Present (Arg) and then Present (Elt),
+           Post => Present (Insert_Value'Result);
+
+   type Index_Array is array (Integer range <>) of Natural;
+
+   function Insert_Value
+     (Env      : Environ;
+      Arg, Elt : GL_Value;
+      Idx_Arr  : Index_Array;
+      Name     : String := "") return GL_Value
+   is
+     (G_From (Build_Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
+                                  Idx_Arr'Address, Idx_Arr'Length, Name),
               Arg))
      with  Pre  => Env /= null and then Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);

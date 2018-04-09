@@ -1,6 +1,7 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/FileSystem.h"
@@ -59,6 +60,15 @@ void
 Add_TBAA_Access (Instruction *inst, MDNode *md)
 {
   inst->setMetadata (LLVMContext::MD_tbaa, md);
+}
+
+extern "C"
+Value *
+Build_Insert_Value_C (IRBuilder<> *bld, Value *aggr, Value *elt,
+		     unsigned *IdxList, unsigned NumIdx, char *name)
+{
+  return bld->CreateInsertValue (aggr, elt, makeArrayRef (IdxList, NumIdx),
+				 name);
 }
 
 extern "C"

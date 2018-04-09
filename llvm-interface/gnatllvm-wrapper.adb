@@ -34,6 +34,31 @@ package body GNATLLVM.Wrapper is
       return Create_TBAA_Scalar_Type_Node_C (MDBld, Name & ASCII.NUL, Parent);
    end Create_TBAA_Scalar_Type_Node;
 
+   ------------------------
+   -- Build_Insert_Value --
+   ------------------------
+
+   function Build_Insert_Value
+     (Bld      : Builder_T;
+      Aggr     : Value_T;
+      Elt      : Value_T;
+      Idx_List : System.Address;
+      Num_Idx  : unsigned;
+      Name     : String) return Value_T
+   is
+      function Build_Insert_Value_C
+        (Bld      : Builder_T;
+         Aggr     : Value_T;
+         Elt      : Value_T;
+         Idx_List : System.Address;
+         Num_Idx  : unsigned;
+         Name     : String) return Value_T;
+      pragma Import (C, Build_Insert_Value_C, "Build_Insert_Value_C");
+   begin
+      return Build_Insert_Value_C (Bld, Aggr, Elt, Idx_List, Num_Idx,
+                                   Name & ASCII.NUL);
+   end Build_Insert_Value;
+
    ----------------------
    -- LLVM_Init_Module --
    ----------------------

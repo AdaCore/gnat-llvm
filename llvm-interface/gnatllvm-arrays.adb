@@ -534,26 +534,14 @@ package body GNATLLVM.Arrays is
       Info_Idx          : constant Nat := Get_Array_Info (Env, Array_Type);
       Fat_Ptr_Type      : constant Type_T :=
         Create_Array_Fat_Pointer_Type (Env, Array_Type);
-      Fat_Ptr_Elt_Types : aliased Type_Array (1 .. 2);
-      Array_Data_Type   : Type_T renames Fat_Ptr_Elt_Types (1);
-      Array_Bounds_Type : Type_T renames Fat_Ptr_Elt_Types (2);
       Fat_Ptr           : GL_Value := G (Get_Undef (Fat_Ptr_Type),
                                          Array_Type, Is_Reference => True);
-      Array_Data_Ptr    : GL_Value;
-      Bounds            : GL_Value;
+      Array_Data_Ptr    : constant GL_Value :=
+        G (Bit_Cast (Env.Bld, LLVM_Value (Array_Data),
+                     Create_Array_Raw_Pointer_Type (Env, Array_Type), ""),
+           Array_Type, Is_Reference => True, Is_Raw_Array => True);
 
    begin
-      pragma Assert (Count_Struct_Element_Types (Fat_Ptr_Type) = 2);
-      Get_Struct_Element_Types (Fat_Ptr_Type, Fat_Ptr_Elt_Types'Address);
-
-      Array_Data_Ptr :=
-        G (Pointer_Cast (Env.Bld, LLVM_Value (Array_Data),
-                         Array_Data_Type, ""),
-           Array_Data.Typ, Is_Reference => Array_Data.Is_Reference);
-      Bounds := G (Get_Undef (Array_Bounds_Type),
-                   Array_Type);
-      --  The Above isn't the actual type, but we have no type to
-      --  represent it with and it should do for out purposes.
 
       for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop
          declare
@@ -574,17 +562,17 @@ package body GNATLLVM.Arrays is
               Convert_To_Elementary_Type (Env, High_Bound, Bound_Type);
 
          begin
-            Bounds := Insert_Value
-              (Env, Bounds, Converted_Low_Bound, unsigned (Dim * 2));
+            Fat_Ptr := Insert_Value
+              (Env, Fat_Ptr, Converted_Low_Bound,
+               (1 => 1, 2 => Integer (Dim * 2)));
 
-            Bounds := Insert_Value
-              (Env, Bounds, Converted_High_Bound, unsigned (Dim * 2 + 1));
+            Fat_Ptr := Insert_Value
+              (Env, Fat_Ptr, Converted_High_Bound,
+               (1 => 1, 2 => Integer (Dim * 2 + 1)));
          end;
       end loop;
 
-      --  Then fill the fat pointer itself
       Fat_Ptr := Insert_Value (Env, Fat_Ptr, Array_Data_Ptr, 0);
-      Fat_Ptr := Insert_Value (Env, Fat_Ptr, Bounds, 1);
 
       return Fat_Ptr;
    end Array_Fat_Pointer;

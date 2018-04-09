@@ -35,6 +35,29 @@ package body GNATLLVM.Wrapper is
    end Create_TBAA_Scalar_Type_Node;
 
    ------------------------
+   -- Build_Extract_Value --
+   ------------------------
+
+   function Build_Extract_Value
+     (Bld      : Builder_T;
+      Aggr     : Value_T;
+      Idx_List : System.Address;
+      Num_Idx  : unsigned;
+      Name     : String) return Value_T
+   is
+      function Build_Extract_Value_C
+        (Bld      : Builder_T;
+         Aggr     : Value_T;
+         Idx_List : System.Address;
+         Num_Idx  : unsigned;
+         Name     : String) return Value_T;
+      pragma Import (C, Build_Extract_Value_C, "Build_Extract_Value_C");
+   begin
+      return Build_Extract_Value_C (Bld, Aggr, Idx_List, Num_Idx,
+                                    Name & ASCII.NUL);
+   end Build_Extract_Value;
+
+   ------------------------
    -- Build_Insert_Value --
    ------------------------
 

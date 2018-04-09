@@ -772,6 +772,32 @@ package GNATLLVM.GLValue is
 
    type Index_Array is array (Integer range <>) of Natural;
 
+   function Extract_Value
+     (Env     : Environ;
+      Typ     : Entity_Id;
+      Arg     : GL_Value;
+      Idx_Arr : Index_Array;
+      Name    : String := "") return GL_Value
+   is
+     (G (Build_Extract_Value (Env.Bld, LLVM_Value (Arg),
+                              Idx_Arr'Address, Idx_Arr'Length, Name),
+         Typ))
+     with  Pre  => Env /= null and then Is_Type (Typ) and then Present (Arg),
+           Post => Present (Extract_Value'Result);
+
+   function Extract_Value_To_Ref
+     (Env     : Environ;
+      Typ     : Entity_Id;
+      Arg     : GL_Value;
+      Idx_Arr : Index_Array;
+      Name    : String := "") return GL_Value
+   is
+     (G (Build_Extract_Value (Env.Bld, LLVM_Value (Arg),
+                              Idx_Arr'Address, Idx_Arr'Length, Name),
+         Typ, Is_Reference => True))
+     with  Pre  => Env /= null and then Is_Type (Typ) and then Present (Arg),
+           Post => Present (Extract_Value_To_Ref'Result);
+
    function Insert_Value
      (Env      : Environ;
       Arg, Elt : GL_Value;

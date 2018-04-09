@@ -166,9 +166,8 @@ package body GNATLLVM.Arrays is
          return Emit_Expression (Env, Bound_Info.Value);
       elsif not Is_Constrained (Arr_Typ) then
          return Extract_Value
-           (Env, Dim_Info.Bound_Type,
-            Extract_Value (Env, Arr_Typ, Value, 1, "bounds"),
-            unsigned (Bound_Idx),
+           (Env, Dim_Info.Bound_Type, Value,
+            (1 => 1, 2 => Integer (Bound_Idx)),
             (if Is_Low then "low-bound" else "high-bound"));
       end if;
 

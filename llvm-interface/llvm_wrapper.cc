@@ -62,6 +62,17 @@ Add_TBAA_Access (Instruction *inst, MDNode *md)
   inst->setMetadata (LLVMContext::MD_tbaa, md);
 }
 
+/* The LLVM C interface only provide single-index forms of extractvalue
+   and insertvalue, so provide the multi-index forms here.  */
+
+extern "C"
+Value *
+Build_Extract_Value_C (IRBuilder<> *bld, Value *aggr,
+		       unsigned *IdxList, unsigned NumIdx, char *name)
+{
+  return bld->CreateExtractValue (aggr, makeArrayRef (IdxList, NumIdx), name);
+}
+
 extern "C"
 Value *
 Build_Insert_Value_C (IRBuilder<> *bld, Value *aggr, Value *elt,

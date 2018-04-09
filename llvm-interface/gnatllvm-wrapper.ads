@@ -55,6 +55,13 @@ package GNATLLVM.Wrapper is
    procedure Add_TBAA_Access (Value : Value_T; TBAA : Metadata_T);
    pragma Import (C, Add_TBAA_Access, "Add_TBAA_Access");
 
+   function Build_Extract_Value
+     (Bld      : Builder_T;
+      Aggr     : Value_T;
+      Idx_List : System.Address;
+      Num_Idx  : unsigned;
+      Name     : String) return Value_T;
+
    function Build_Insert_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;

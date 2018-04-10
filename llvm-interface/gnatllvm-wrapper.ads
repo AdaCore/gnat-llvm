@@ -24,9 +24,6 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 package GNATLLVM.Wrapper is
 
-   procedure Create_Debug_Info (Bld : Builder_T; Mdl : Module_T);
-   pragma Import (C, Create_Debug_Info, "Create_Debug_Info");
-
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us
 

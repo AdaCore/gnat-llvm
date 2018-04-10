@@ -20,7 +20,7 @@ extern "C"
 DIBuilder *
 Create_Debug_Builder (Module &Mdl)
 {
- return new DIBuilder (Mdl);
+  return new DIBuilder (Mdl);
 }
 
 extern "C"
@@ -54,23 +54,6 @@ void
 Set_Debug_Loc (IRBuilder<> *bld, DISubprogram *subp, int line, int col)
 {
   bld->SetCurrentDebugLocation (DebugLoc::get (line, col, subp));
-}
-
-extern "C"
-void
-Create_Debug_Info (IRBuilder<> *bld, Module &mod)
-{
-  DIBuilder *DBld = new DIBuilder (mod);
-  DIFile *file = DBld->createFile ("some.adb", "dir");
-  DICompileUnit *unit = DBld->createCompileUnit (dwarf::DW_LANG_Ada95,
-						 file, "GNAT", true, "", 0);
-  /*  DISubroutineType *type = DBld->createSubroutineType ([]); */
-  DISubprogram *subp = DBld->createFunction (unit, "foo", "foo_ext",
-					     file, 1, 0, false, true,
-					     22);
-  DBld->finalizeSubprogram (subp);
-  DILocation *loc = DebugLoc::get(22, 77, subp);
-  bld->SetCurrentDebugLocation (loc);
 }
 
 extern "C"
@@ -173,6 +156,8 @@ LLVM_Init_Module (Module *TheModule, const char *Filename)
     Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+  TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
+			   DEBUG_METADATA_VERSION);
   return 0;
 }
 

@@ -40,11 +40,15 @@ Create_Debug_Compile_Unit (DIBuilder *DBld, DIFile *file)
 
 extern "C"
 DISubprogram *
-Create_Debug_Subprogram_C (DIBuilder *DBld, DIFile *file,
+Create_Debug_Subprogram_C (DIBuilder *DBld, Function *func, DIFile *file,
 			   const char *name, int lineno)
 {
+  SmallVector<Metadata *, 0> EltTy;
+  DITypeRefArray TyArr = DBld->getOrCreateTypeArray (EltTy);
+  DISubroutineType *st = DBld->createSubroutineType (TyArr);
   DISubprogram *subp = DBld->createFunction (file, name, name, file,
-					     lineno, 0, false, true, lineno);
+					     lineno, st, false, true, lineno);
+  func->setSubprogram (subp);
   DBld->finalizeSubprogram (subp);
   return subp;
 }
@@ -158,6 +162,7 @@ LLVM_Init_Module (Module *TheModule, const char *Filename)
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
   TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
 			   DEBUG_METADATA_VERSION);
+  TheModule->addModuleFlag(Module::Warning, "Dwarf Version", 4);
   return 0;
 }
 

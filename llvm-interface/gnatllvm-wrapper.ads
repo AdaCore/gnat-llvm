@@ -91,8 +91,11 @@ package GNATLLVM.Wrapper is
    pragma Import (C, Create_Debug_Compile_Unit, "Create_Debug_Compile_Unit");
 
    function Create_Debug_Subprogram
-     (Bld : DI_Builder_T; File : Metadata_T; Name : String; Lineno : Integer)
-     return Metadata_T;
+     (Bld : DI_Builder_T;
+      Func : Value_T;
+      File : Metadata_T;
+      Name : String;
+      Lineno : Integer) return Metadata_T;
 
    procedure Set_Debug_Loc
      (Bld : Builder_T; Subp : Metadata_T; Line, Column : Integer);

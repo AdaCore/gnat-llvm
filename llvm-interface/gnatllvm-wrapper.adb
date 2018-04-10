@@ -132,18 +132,23 @@ package body GNATLLVM.Wrapper is
    end Create_Debug_File;
 
    function Create_Debug_Subprogram
-     (Bld : DI_Builder_T; File : Metadata_T; Name : String; Lineno : Integer)
-     return Metadata_T
+     (Bld : DI_Builder_T;
+      Func : Value_T;
+      File : Metadata_T;
+      Name : String;
+      Lineno : Integer) return Metadata_T
    is
       function Create_Debug_Subprogram_C
-        (Bld    : DI_Builder_T;
-         File   : Metadata_T;
-         Name   : String;
+        (Bld : DI_Builder_T;
+         Func : Value_T;
+         File : Metadata_T;
+         Name : String;
          Lineno : Integer) return Metadata_T;
       pragma Import (C, Create_Debug_Subprogram_C,
                      "Create_Debug_Subprogram_C");
    begin
-      return Create_Debug_Subprogram_C (Bld, File, Name & ASCII.NUL, Lineno);
+      return Create_Debug_Subprogram_C (Bld, Func, File,
+                                        Name & ASCII.NUL, Lineno);
    end Create_Debug_Subprogram;
 
 end GNATLLVM.Wrapper;

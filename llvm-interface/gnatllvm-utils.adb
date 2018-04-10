@@ -51,7 +51,9 @@ package body GNATLLVM.Utils is
       --  Strictly speaking, the recursion below isn't necessary, but
       --  it's both simplest and safest.
 
-      if Ekind (E) in Incomplete_Kind and then From_Limited_With (E) then
+      if Ekind (E) = E_Void then
+         return E;
+      elsif Ekind (E) in Incomplete_Kind and then From_Limited_With (E) then
          return Get_Fullest_View (Non_Limited_View (E));
       elsif Present (Full_View (E)) then
          return Get_Fullest_View (Full_View (E));

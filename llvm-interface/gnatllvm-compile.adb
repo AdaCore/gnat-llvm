@@ -1227,7 +1227,8 @@ package body GNATLLVM.Compile is
                   end if;
 
                   if No (N) or else Nkind (N) = N_Full_Type_Declaration then
-                     return Get_Value (Env, Def_Ident);
+                     return Convert_To_Access_To
+                       (Env, Get_Value (Env, Def_Ident), Typ);
                   else
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
@@ -2231,6 +2232,7 @@ package body GNATLLVM.Compile is
       LValue : Boolean) return GL_Value
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (Node));
+      Typ  : constant Entity_Id := Full_Etype (Node);
 
    begin
       case Attr is
@@ -2239,18 +2241,19 @@ package body GNATLLVM.Compile is
             | Attribute_Unrestricted_Access =>
             --  We store values as pointers, so, getting an access to an
             --  expression is the same thing as getting an LValue, and has
-            --  the same constraints.
+            --  the same constraints.  But we do have to be sure that it's
+            --  of the right type.
 
-            return Emit_LValue (Env, Prefix (Node));
+            return Convert_To_Access_To (Env,
+                                         Emit_LValue (Env, Prefix (Node)),
+                                         Full_Designated_Type (Typ));
 
          when Attribute_Address =>
             if LValue then
                return Emit_LValue (Env, Prefix (Node));
             else
                return Ptr_To_Int
-                 (Env,
-                  Emit_LValue (Env, Prefix (Node)), Full_Etype (Node),
-                  "attr-address");
+                 (Env, Emit_LValue (Env, Prefix (Node)), Typ, "attr-address");
             end if;
 
          when Attribute_Deref =>
@@ -2260,14 +2263,13 @@ package body GNATLLVM.Compile is
 
                Val : constant GL_Value :=
                  Int_To_Ref
-                   (Env, Emit_Expression (Env, Expr),
-                    Full_Etype (Node), "attr-deref");
+                   (Env, Emit_Expression (Env, Expr), Typ, "attr-deref");
 
             begin
                if LValue then
                   return Val;
                else
-                  return Need_Value (Env, Val, Full_Etype (Node));
+                  return Need_Value (Env, Val, Typ);
                end if;
             end;
 
@@ -2295,7 +2297,7 @@ package body GNATLLVM.Compile is
                   else
                      Error_Msg_N ("unsupported attribute", Node);
                      Result :=
-                       Get_Undef (Env, Full_Etype (Node));
+                       Get_Undef (Env, Typ);
                   end if;
 
                elsif Is_Array_Type (Prefix_Type) then
@@ -2322,11 +2324,10 @@ package body GNATLLVM.Compile is
                   end if;
                else
                   Error_Msg_N ("unsupported attribute", Node);
-                  Result := Get_Undef (Env, Full_Etype (Node));
+                  Result := Get_Undef (Env, Typ);
                end if;
 
-               return Convert_To_Elementary_Type
-                 (Env, Result, Full_Etype (Node));
+               return Convert_To_Elementary_Type (Env, Result, Typ);
             end;
 
          when Attribute_Max
@@ -2338,7 +2339,7 @@ package body GNATLLVM.Compile is
             | Attribute_Val =>
             pragma Assert (List_Length (Expressions (Node)) = 1);
             return Build_Type_Conversion
-              (Env, Full_Etype (Node), First (Expressions (Node)));
+              (Env, Typ, First (Expressions (Node)));
 
          when Attribute_Succ
             | Attribute_Pred =>
@@ -2366,7 +2367,6 @@ package body GNATLLVM.Compile is
 
          when Attribute_Alignment =>
             declare
-               Typ   : constant Node_Id := Full_Etype (Node);
                Pre   : constant Node_Id := Full_Etype (Prefix (Node));
                Align : constant unsigned :=
                  Get_Type_Alignment (Env, Create_Type (Env, Pre));
@@ -2377,11 +2377,14 @@ package body GNATLLVM.Compile is
                                  Sign_Extend => False);
             end;
 
-         when Attribute_Size =>
+         when Attribute_Size | Attribute_Object_Size | Attribute_Value_Size =>
+
+            --  ?? These aren't quite the same thing, but they're close
+            --  enough for quite a while.
+
             declare
 
-               Typ        : constant Entity_Id := Full_Etype (Prefix (Node));
-               Result_Typ : constant Entity_Id := Full_Etype (Node);
+               Pref_Typ   : constant Entity_Id := Full_Etype (Prefix (Node));
                Const_8    : constant GL_Value := Size_Const_Int (Env, 8);
                For_Type   : constant Boolean :=
                  (Is_Entity_Name (Prefix (Node))
@@ -2396,15 +2399,16 @@ package body GNATLLVM.Compile is
                return Convert_To_Elementary_Type
                  (Env,
                   NSW_Mul (Env,
-                           Get_Type_Size (Env, Typ, Value, For_Type), Const_8),
-                  Result_Typ);
+                           Get_Type_Size (Env, Pref_Typ, Value, For_Type),
+                           Const_8),
+                  Typ);
             end;
 
          when others =>
             Error_Msg_N
               ("unsupported attribute: `" &
                Attribute_Id'Image (Attr) & "`", Node);
-            return Get_Undef (Env, Full_Etype (Node));
+            return Get_Undef (Env, Typ);
       end case;
    end Emit_Attribute_Reference;
 

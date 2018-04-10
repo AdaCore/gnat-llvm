@@ -35,7 +35,8 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 package GNATLLVM.Utils is
 
    function Get_Fullest_View (E : Entity_Id) return Entity_Id
-     with Pre => Is_Type (E), Post => Is_Type (Get_Fullest_View'Result);
+     with Pre => Is_Type_Or_Void (E),
+          Post => Is_Type_Or_Void (Get_Fullest_View'Result);
    --  Get the fullest possible view of E, looking through private,
    --  limited, and packed array implementation types.
 

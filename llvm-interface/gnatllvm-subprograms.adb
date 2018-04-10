@@ -275,7 +275,7 @@ package body GNATLLVM.Subprograms is
       This_Takes_S_Link : constant Boolean := not Direct_Call
         and then Present (Associated_Node_For_Itype (Etype (Subp)))
         and then Nkind (Associated_Node_For_Itype (Etype (Subp)))
-          /= N_Full_Type_Declaration;
+          = N_Function_Specification;
 
       S_Link         : GL_Value;
       LLVM_Func      : GL_Value;

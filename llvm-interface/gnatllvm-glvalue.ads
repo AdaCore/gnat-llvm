@@ -78,6 +78,12 @@ package GNATLLVM.GLValue is
    --  Constructor for case were we've create a value that's a pointer to
    --  type TE.
 
+   function G_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
+     (G (LLVM_Value (V), TE, True))
+     with Pre  => Present (V) and then Is_Type (TE),
+          Post => Present (G_Ref'Result);
+   --  Likewise but when we already have a GL_Value
+
    procedure Discard (G : GL_Value);
    --  Evaluate G and throw away the result
 
@@ -88,7 +94,7 @@ package GNATLLVM.GLValue is
 
    function Full_Etype (G : GL_Value) return Entity_Id is
      (Etype (G))
-     with Pre => Present (G), Post => Present (Full_Etype'Result);
+     with Pre => Present (G), Post => Is_Type_Or_Void (Full_Etype'Result);
 
    function Type_Of (G : GL_Value) return Type_T is
      (Type_Of (LLVM_Value (G)))
@@ -104,7 +110,7 @@ package GNATLLVM.GLValue is
 
    function Full_Designated_Type (G : GL_Value) return Entity_Id
      with Pre  => Is_Access_Type (G),
-          Post => Is_Type (Full_Designated_Type'Result);
+          Post => Is_Type_Or_Void (Full_Designated_Type'Result);
 
    function Implementation_Base_Type (G : GL_Value) return Entity_Id is
      ((if Is_Reference (G) then Etype (G)
@@ -121,9 +127,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (G);
 
    function Is_Access_Unconstrained (G : GL_Value) return Boolean is
-     (Is_Access_Type (G) and then Is_Array_Type (Full_Designated_Type (G))
-                         and then not Is_Constrained (Full_Designated_Type (G))
-                         and then not Is_Raw_Array (G))
+     (Is_Access_Type (G) and then Ekind (G.Typ) /= E_Void
+        and then Is_Array_Type (Full_Designated_Type (G))
+        and then not Is_Constrained (Full_Designated_Type (G))
+        and then not Is_Raw_Array (G))
      with Pre => Present (G);
 
    function Is_Constrained (G : GL_Value) return Boolean is

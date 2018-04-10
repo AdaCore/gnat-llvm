@@ -591,7 +591,7 @@ package body GNATLLVM.Types is
             Typ := Create_Subprogram_Type_From_Entity
               (Env, Def_Ident,
                Takes_S_Link => (Nkind (Associated_Node_For_Itype (TE))
-                                  /= N_Full_Type_Declaration));
+                                  = N_Function_Specification));
 
          when Fixed_Point_Kind =>
             Typ := Int_Type_In_Context

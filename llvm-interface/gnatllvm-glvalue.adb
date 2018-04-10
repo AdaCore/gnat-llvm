@@ -72,10 +72,13 @@ package body GNATLLVM.GLValue is
       --  type, we know we're OK.  If not, we may still if OK if access
       --  types are involved, so check that the "access type" depth of
       --  Value is one greater than that of our type.  That's also OK.
+      --  And if what we have is a subprogram, we're also OK.
 
       return Ekind (TE) = E_Void
         or else (Is_Reference (G)
-                   and then Full_Designated_Type (G) = TE)
+                   and then (Full_Designated_Type (G) = TE
+                               or else (Ekind (Full_Designated_Type (G))
+                                          = E_Subprogram_Type)))
         or else Access_Depth (G) = Access_Depth (TE) + 1;
    end Is_LValue_Of;
 

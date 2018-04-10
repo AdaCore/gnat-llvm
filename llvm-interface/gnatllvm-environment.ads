@@ -208,14 +208,19 @@ package GNATLLVM.Environment is
       Ctx                       : LLVM.Types.Context_T;
       Bld                       : Builder_T;
       MDBld                     : MD_Builder_T;
-      Mdl                       : LLVM.Types.Module_T;
-      TBAA_Root                 : LLVM.Types.Metadata_T;
-      Module_Data_Layout        : LLVM.Target.Target_Data_T;
+      DIBld                     : DI_Builder_T;
+      Debug_Compile_Unit        : Metadata_T;
+      Mdl                       : Module_T;
+      TBAA_Root                 : Metadata_T;
+      Module_Data_Layout        : Target_Data_T;
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.
 
       Func                      : GL_Value;
       --  Pointer to the current function
+
+      Func_Debug_Info           : Metadata_T;
+      --  DISubprogram node when -g
 
       Activation_Rec_Param      : GL_Value;
       --  Parameter to this subprogram, if any, that represents an

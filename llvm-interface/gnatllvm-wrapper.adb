@@ -121,4 +121,29 @@ package body GNATLLVM.Wrapper is
         (Module, Boolean'Pos (Object), Filename & ASCII.NUL);
    end LLVM_Write_Module;
 
+   function Create_Debug_File
+     (Bld : DI_Builder_T; Name, Dir : String) return Metadata_T
+   is
+      function Create_Debug_File_C
+        (Bld : DI_Builder_T; Name, Dir : String) return Metadata_T;
+      pragma Import (C, Create_Debug_File_C, "Create_Debug_File_C");
+   begin
+      return Create_Debug_File_C (Bld, Name & ASCII.NUL, Dir & ASCII.NUL);
+   end Create_Debug_File;
+
+   function Create_Debug_Subprogram
+     (Bld : DI_Builder_T; File : Metadata_T; Name : String; Lineno : Integer)
+     return Metadata_T
+   is
+      function Create_Debug_Subprogram_C
+        (Bld    : DI_Builder_T;
+         File   : Metadata_T;
+         Name   : String;
+         Lineno : Integer) return Metadata_T;
+      pragma Import (C, Create_Debug_Subprogram_C,
+                     "Create_Debug_Subprogram_C");
+   begin
+      return Create_Debug_Subprogram_C (Bld, File, Name & ASCII.NUL, Lineno);
+   end Create_Debug_Subprogram;
+
 end GNATLLVM.Wrapper;

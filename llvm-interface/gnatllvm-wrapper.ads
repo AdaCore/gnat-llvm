@@ -24,16 +24,17 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 package GNATLLVM.Wrapper is
 
+   procedure Create_Debug_Info (Bld : Builder_T; Mdl : Module_T);
+   pragma Import (C, Create_Debug_Info, "Create_Debug_Info");
+
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us
 
-   function Create_MDBuilder_In_Context
-     (Ctx : LLVM.Types.Context_T) return MD_Builder_T;
+   function Create_MDBuilder_In_Context (Ctx : Context_T) return MD_Builder_T;
    pragma Import (C, Create_MDBuilder_In_Context,
                   "Create_MDBuilder_In_Context");
 
-   function Create_TBAA_Root (MDBld : MD_Builder_T)
-     return LLVM.Types.Metadata_T;
+   function Create_TBAA_Root (MDBld : MD_Builder_T) return Metadata_T;
    pragma Import (C, Create_TBAA_Root, "Create_TBAA_Root");
    --  Create the root of the TBAA metadata tree
 
@@ -71,13 +72,32 @@ package GNATLLVM.Wrapper is
       Name     : String) return Value_T;
 
    function LLVM_Init_Module
-     (Module   : LLVM.Types.Module_T;
-      Filename : String) return Integer;
+     (Module   : Module_T; Filename : String) return Integer;
    --  Initialize the LLVM module.  Returns 0 if it succeeds.
 
    function LLVM_Write_Module
-     (Module   : LLVM.Types.Module_T;
+     (Module   : Module_T;
       Object   : Boolean;
       Filename : String) return Integer;
 
+   --  Functions for creating debug information
+
+   function Create_Debug_Builder (Module : Module_T) return DI_Builder_T;
+   pragma Import (C, Create_Debug_Builder, "Create_Debug_Builder");
+   --  Create a DIBuilder and return it
+
+   function Create_Debug_File
+     (Bld : DI_Builder_T; Name, Dir : String) return Metadata_T;
+
+   function Create_Debug_Compile_Unit
+     (Bld : DI_Builder_T; File : Metadata_T) return Metadata_T;
+   pragma Import (C, Create_Debug_Compile_Unit, "Create_Debug_Compile_Unit");
+
+   function Create_Debug_Subprogram
+     (Bld : DI_Builder_T; File : Metadata_T; Name : String; Lineno : Integer)
+     return Metadata_T;
+
+   procedure Set_Debug_Loc
+     (Bld : Builder_T; Subp : Metadata_T; Line, Column : Integer);
+   pragma Import (C, Set_Debug_Loc, "Set_Debug_Loc");
 end GNATLLVM.Wrapper;

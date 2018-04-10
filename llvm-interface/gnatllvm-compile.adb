@@ -313,6 +313,7 @@ package body GNATLLVM.Compile is
 
    procedure Emit (Env : Environ; Node : Node_Id) is
    begin
+      Set_Debug_Pos_At_Node (Env, Node);
       if Library_Level (Env)
         and then (Nkind (Node) in N_Statement_Other_Than_Procedure_Call
                    or else Nkind (Node) in N_Subprogram_Call
@@ -1160,6 +1161,7 @@ package body GNATLLVM.Compile is
    function Emit_LValue
      (Env : Environ; Node : Node_Id) return GL_Value is
    begin
+      Set_Debug_Pos_At_Node (Env, Node);
       LValue_Pair_Table.Set_Last (0);
 
       --  Each time we start a new recursive call, we free the entries
@@ -1424,6 +1426,7 @@ package body GNATLLVM.Compile is
    function Emit_Expression
      (Env : Environ; Node : Node_Id) return GL_Value is
    begin
+      Set_Debug_Pos_At_Node (Env, Node);
       if Nkind (Node) in N_Binary_Op then
 
          --  Handle comparisons and shifts with helper functions, then

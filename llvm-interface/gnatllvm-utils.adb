@@ -19,11 +19,13 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
 with Sem_Mech; use Sem_Mech;
+with Sinput;   use Sinput;
 with Stringt;  use Stringt;
 with Treepr;   use Treepr;
 
 with GNATLLVM.Utils;      use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
+with LLVM_Drive;          use LLVM_Drive;
 
 package body GNATLLVM.Utils is
 
@@ -274,6 +276,50 @@ package body GNATLLVM.Utils is
          return Get_Name_String (Chars (E));
       end if;
    end Get_Ext_Name;
+
+   -------------------------
+   -- Get_Debug_File_Node --
+   -------------------------
+
+   function Get_Debug_File_Node
+     (Bld  : DI_Builder_T;
+      File : Source_File_Index) return Metadata_T is
+   begin
+      if DI_Cache = null then
+         DI_Cache :=
+           new DI_File_Cache'(1 .. Last_Source_File => No_Metadata_T);
+      end if;
+
+      if DI_Cache (File) /= No_Metadata_T then
+         return DI_Cache (File);
+      end if;
+
+      declare
+         Full_Name : constant String :=
+           Get_Name_String (Full_Debug_Name (File));
+         Name      : constant String :=
+           Get_Name_String (Debug_Source_Name (File));
+         DIFile    : constant Metadata_T :=
+           Create_Debug_File (Bld, Name,
+                              Full_Name (1 .. Full_Name'Length - Name'Length));
+      begin
+         DI_Cache (File) := DIFile;
+         return DIFile;
+      end;
+   end Get_Debug_File_Node;
+
+   ---------------------------
+   -- Set_Debug_Pos_At_Node --
+   ---------------------------
+
+   procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id) is
+   begin
+      if Emit_Debug_Info then
+         Set_Debug_Loc (Env.Bld, Env.Func_Debug_Info,
+                        Integer (Get_Logical_Line_Number (Sloc (N))),
+                        Integer (Get_Column_Number (Sloc (N))));
+      end if;
+   end Set_Debug_Pos_At_Node;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

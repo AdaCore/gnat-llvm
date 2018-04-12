@@ -1,0 +1,25 @@
+Why not DraggonEgg?
+-------------------
+
+If you know about the DraggonEgg project (https://dragonegg.llvm.org/) then a
+natural question is "why starting a GNAT LLVM project from scratch instead of
+building on top of DraggonEgg?"
+
+Here are some non exhaustive reasons:
+
+- We want a "pure" LLVM approach that is as easy to integrate and fit
+  into the LLVM ecosystem as possible;
+- DraggonEgg's goal and strength is the ability to support all GCC front-ends
+  and here we are focusing on good Ada support, so not really taking advantage
+  of this strength;
+- DraggonEgg makes the whole technology more fragile: any change in any part
+  may break things in a potentially hard to identify way
+  (GNAT+Gigi+GCC+DraggonEgg+LLVM vs GNAT+GNAT LLVM+LLVM)
+- The GCC tree works at a very different level than the LLVM bitcode,
+  so mapping the two is actually non natural and bound to introduce
+  inefficiencies or correctness issues
+- DraggonEgg has not been touched since 2014 and supports only
+  LLVM 3.3 and GCC 4.6 (it supports GCC 4.8 but poorly).
+- DraggonEgg only supports x86 and ARM processor families
+- Debug info support is poor
+

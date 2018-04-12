@@ -56,12 +56,12 @@ package body GNATLLVM.Subprograms is
       if Emit_Debug_Info then
          Env.Func_Debug_Info :=
            Create_Debug_Subprogram
-           (Env.DIBld,
-            LLVM_Value (Func),
-            Get_Debug_File_Node
-              (Env.DIBld, Get_Source_File_Index (Sloc (Def_Ident))),
-            Get_Ext_Name (Def_Ident),
-            Integer (Get_Logical_Line_Number (Sloc (Def_Ident))));
+             (Env.DIBld,
+              LLVM_Value (Func),
+              Get_Debug_File_Node
+                (Env.DIBld, Get_Source_File_Index (Sloc (Node))),
+              Get_Ext_Name (Def_Ident),
+              Integer (Get_Logical_Line_Number (Sloc (Node))));
       end if;
 
       Param := First_Formal_With_Extras (Def_Ident);

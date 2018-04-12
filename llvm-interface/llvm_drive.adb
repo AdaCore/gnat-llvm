@@ -316,7 +316,7 @@ package body LLVM_Drive is
       if Switch = "--dump-ir" then
          Code_Generation := Dump_IR;
          return True;
-      elsif Switch = "--dump-bc" then
+      elsif Switch = "--dump-bc" or else Switch = "-emit-llvm" then
          Code_Generation := Dump_BC;
          return True;
       elsif Switch = "-S" then

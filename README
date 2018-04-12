@@ -54,15 +54,15 @@ llvm-interface which you can put in your PATH:
 
   $ llvm-gnatmake main.adb
 
-- To dump LLVM byte code (will generate a .bc file):
+- To generate LLVM byte code (will generate a .bc file):
 
-  $ llvm-gcc -c --dump-bc file.adb
+  $ llvm-gcc -c -emit-llvm file.adb
 
-- To dump LLVM representation in textual form (will dump on stdout):
+- To dump LLVM representation in textual form (will dump on stderr):
 
   $ llvm-gcc -c --dump-ir file.adb
 
-- To dump native assembly file (Will generate a .s file):
+- To generate native assembly file (will generate a .s file):
 
   $ llvm-gcc -S file.adb
 

@@ -287,10 +287,7 @@ package body GNATLLVM.Subprograms is
       --  in such a case, it must accept a static link.
 
       This_Takes_S_Link : constant Boolean := not Direct_Call
-        and then Present (Associated_Node_For_Itype (Etype (Subp)))
-        and then Nkind (Associated_Node_For_Itype (Etype (Subp)))
-          = N_Function_Specification;
-
+          and then Needs_Activation_Record (Subp_Typ);
       S_Link         : GL_Value;
       LLVM_Func      : GL_Value;
       Orig_Arg_Count : constant Nat := Count_Params (Subp_Typ);

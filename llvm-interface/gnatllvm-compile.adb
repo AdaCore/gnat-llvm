@@ -1204,7 +1204,6 @@ package body GNATLLVM.Compile is
             declare
                Def_Ident : Entity_Id := Entity (Node);
                Typ       : Entity_Id := Full_Etype (Def_Ident);
-               N         : Node_Id;
 
             begin
                --  If this is a deferred constant, look at the private
@@ -1218,7 +1217,6 @@ package body GNATLLVM.Compile is
                end if;
 
                if Ekind (Def_Ident) in Subprogram_Kind then
-                  N := Associated_Node_For_Itype (Full_Etype (Parent (Node)));
 
                   --  If we are elaborating this for 'Access, we want the
                   --  actual subprogram type here, not the type of the return
@@ -1228,7 +1226,7 @@ package body GNATLLVM.Compile is
                      Typ := Full_Designated_Type (Full_Etype (Parent (Node)));
                   end if;
 
-                  if No (N) or else Nkind (N) = N_Full_Type_Declaration then
+                  if not Needs_Activation_Record (Typ) then
                      return Convert_To_Access_To
                        (Env, Get_Value (Env, Def_Ident), Typ);
                   else
@@ -2436,9 +2434,13 @@ package body GNATLLVM.Compile is
       --  Return the subprogram pointer associated with Node
 
    begin
-      --  LLVM treats pointers as integers regarding comparison
+      --  LLVM treats pointers as integers regarding comparison.  But we first
+      --  have to see if the pointer has an activation record.  If so,
+      --  we just compare the functions, not the activation record.
 
-      if Ekind (Operand_Type) = E_Anonymous_Access_Subprogram_Type then
+      if Is_Access_Type (Operand_Type)
+        and then Needs_Activation_Record (Full_Designated_Type (Operand_Type))
+      then
          return G (I_Cmp
                      (Env.Bld, Operation.Unsigned,
                       Subp_Ptr (LHS), Subp_Ptr (RHS), ""),

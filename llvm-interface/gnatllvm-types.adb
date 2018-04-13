@@ -506,13 +506,15 @@ package body GNATLLVM.Types is
             end;
 
          when E_Access_Type .. E_General_Access_Type
-            | E_Anonymous_Access_Type
-            | E_Access_Subprogram_Type =>
-            Typ := Create_Access_Type (Env, Full_Designated_Type (Def_Ident));
-
-         when E_Anonymous_Access_Subprogram_Type =>
-            Typ := Create_Subprogram_Access_Type
-              (Env, Create_Type (Env, Full_Designated_Type (Def_Ident)));
+           | E_Anonymous_Access_Type | E_Access_Subprogram_Type
+           | E_Anonymous_Access_Subprogram_Type =>
+            if Needs_Activation_Record (Full_Designated_Type (Def_Ident)) then
+               Typ := Create_Subprogram_Access_Type
+                 (Env, Create_Type (Env, Full_Designated_Type (Def_Ident)));
+            else
+               Typ := Create_Access_Type
+                 (Env, Full_Designated_Type (Def_Ident));
+            end if;
 
          when Record_Kind =>
             declare
@@ -590,8 +592,7 @@ package body GNATLLVM.Types is
 
             Typ := Create_Subprogram_Type_From_Entity
               (Env, Def_Ident,
-               Takes_S_Link => (Nkind (Associated_Node_For_Itype (TE))
-                                  = N_Function_Specification));
+               Takes_S_Link => Needs_Activation_Record (Def_Ident));
 
          when Fixed_Point_Kind =>
             Typ := Int_Type_In_Context

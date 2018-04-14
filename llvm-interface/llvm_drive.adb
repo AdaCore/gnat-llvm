@@ -16,7 +16,9 @@
 ------------------------------------------------------------------------------
 
 with Ada.Directories;
+
 with Interfaces.C; use Interfaces.C;
+
 with System;       use System;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -50,9 +52,17 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body LLVM_Drive is
 
-   type Code_Generation_Kind is (Dump_IR, Dump_BC, Dump_Assembly, Dump_Object);
+   Output_Assembly : Boolean := False;
+   --  True if -S was specified
 
-   Code_Generation : Code_Generation_Kind := Dump_Object;
+   Emit_LLVM       : Boolean := False;
+   --  True if -emit-llvm was specified
+
+   type Code_Generation_Kind is
+     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object);
+
+   Code_Generation : Code_Generation_Kind := Write_Object;
+   --  Type of code generation we're doing
 
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
@@ -143,6 +153,14 @@ package body LLVM_Drive is
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
+
+      --  Finalize our compilation mode now that all switches are parsed
+
+      if Emit_LLVM then
+         Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
+      elsif Output_Assembly then
+         Code_Generation := Write_Assembly;
+      end if;
 
       --  Initialize the translation environment
 
@@ -273,7 +291,7 @@ package body LLVM_Drive is
          case Code_Generation is
             when Dump_IR =>
                Dump_Module (Env.Mdl);
-            when Dump_BC =>
+            when Write_BC =>
                declare
                   S : constant String := Output_File_Name (".bc");
                begin
@@ -283,7 +301,30 @@ package body LLVM_Drive is
                   end if;
                end;
 
-            when Dump_Assembly =>
+            when Write_IR =>
+               declare
+                  subtype Err_Msg_Type is String (1 .. 1000);
+                  S              : constant String := Output_File_Name (".ll");
+                  Ptr_Err_Msg    : access Err_Msg_Type;
+                  Err_Msg_Length : Integer := Err_Msg_Type'Length;
+
+               begin
+                  if Print_Module_To_File (Env.Mdl, S, Ptr_Err_Msg'Address)
+                  then
+                     for I in Err_Msg_Type'Range loop
+                        if Ptr_Err_Msg.all (I) = ASCII.NUL then
+                           Err_Msg_Length := I - 1;
+                           exit;
+                        end if;
+                     end loop;
+
+                     Error_Msg_N
+                       ("could not write `" & S & "`: " &
+                          Ptr_Err_Msg.all (1 .. Err_Msg_Length), GNAT_Root);
+                  end if;
+               end;
+
+            when Write_Assembly =>
                declare
                   S : constant String := Output_File_Name (".s");
                begin
@@ -292,7 +333,7 @@ package body LLVM_Drive is
                   end if;
                end;
 
-            when Dump_Object =>
+            when Write_Object =>
                declare
                   S : constant String := Output_File_Name (".o");
                begin
@@ -321,11 +362,14 @@ package body LLVM_Drive is
       if Switch = "--dump-ir" then
          Code_Generation := Dump_IR;
          return True;
-      elsif Switch = "--dump-bc" or else Switch = "-emit-llvm" then
-         Code_Generation := Dump_BC;
+      elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
+         Code_Generation := Write_BC;
+         return True;
+      elsif Switch = "-emit-llvm" then
+         Emit_LLVM := True;
          return True;
       elsif Switch = "-S" then
-         Code_Generation := Dump_Assembly;
+         Output_Assembly := True;
          return True;
       elsif Switch = "-g" then
          Emit_Debug_Info := True;

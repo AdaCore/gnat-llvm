@@ -423,7 +423,7 @@ package body GNATLLVM.Compile is
                      Unit      : Node_Id := Defining_Unit_Name (Node);
                      Elab_Type : constant Type_T :=
                        Fn_Ty ((1 .. 0 => <>), Void_Type_In_Context (Env.Ctx));
-                     LLVM_Func : Value_T;
+                     LLVM_Func : GL_Value;
 
                   begin
                      if Nkind (Unit) = N_Defining_Program_Unit_Name then
@@ -431,15 +431,16 @@ package body GNATLLVM.Compile is
                      end if;
 
                      LLVM_Func :=
-                       Add_Function
-                         (Env.Mdl,
-                          Get_Name_String (Chars (Unit)) & "___elabs",
-                          Elab_Type);
-                     Enter_Subp (Env,
-                                 G (LLVM_Func, Standard_Void_Type,
-                                    Is_Reference => True,
-                                    Is_Intermediate_Type => True));
-
+                       G (Add_Function
+                            (Env.Mdl,
+                             Get_Name_String (Chars (Unit)) & "___elabs",
+                             Elab_Type),
+                          Standard_Void_Type, Is_Reference => True);
+                     Enter_Subp (Env, LLVM_Func);
+                     Env.Func_Debug_Info := Create_Subprogram_Debug_Info
+                       (Env, LLVM_Func, Unit, Node,
+                        Get_Name_String (Chars (Unit)),
+                        Get_Name_String (Chars (Unit)) & "___elabs");
                      Env.Special_Elaboration_Code := True;
 
                      for J in 1 .. Elaboration_Table.Last loop
@@ -482,7 +483,7 @@ package body GNATLLVM.Compile is
                                                 (Statements (Stmts));
 
                      Elab_Type : Type_T;
-                     LLVM_Func : Value_T;
+                     LLVM_Func : GL_Value;
                      Unit      : Node_Id;
 
                   begin
@@ -517,14 +518,16 @@ package body GNATLLVM.Compile is
                         Elab_Type := Fn_Ty
                           ((1 .. 0 => <>), Void_Type_In_Context (Env.Ctx));
                         LLVM_Func :=
-                          Add_Function
-                            (Env.Mdl,
-                             Get_Name_String (Chars (Unit)) & "___elabb",
-                             Elab_Type);
-                        Enter_Subp (Env,
-                                    G (LLVM_Func, Standard_Void_Type,
-                                       Is_Reference => True,
-                                       Is_Intermediate_Type => True));
+                          G (Add_Function
+                               (Env.Mdl,
+                                Get_Name_String (Chars (Unit)) & "___elabb",
+                                Elab_Type),
+                             Standard_Void_Type, Is_Reference => True);
+                        Enter_Subp (Env, LLVM_Func);
+                        Env.Func_Debug_Info := Create_Subprogram_Debug_Info
+                          (Env, LLVM_Func, Unit, Node,
+                           Get_Name_String (Chars (Unit)),
+                           Get_Name_String (Chars (Unit)) & "___elabs");
                         Env.Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop

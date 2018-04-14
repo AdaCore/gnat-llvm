@@ -23,6 +23,9 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Compile is
 
+   procedure Emit_Library_Item (Env : Environ; U : Node_Id);
+   --  Generate code for the given library item
+
    procedure Emit (Env : Environ; Node : Node_Id)
      with Pre => Env /= null and Present (Node);
    --  General compilation routine, called at the top-level

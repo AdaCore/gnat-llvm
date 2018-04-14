@@ -33,7 +33,6 @@ with Atree;    use Atree;
 with Errout;   use Errout;
 with Lib;      use Lib;
 with Namet;    use Namet;
-with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Osint.C;  use Osint.C;
 with Sem;
@@ -79,77 +78,15 @@ package body LLVM_Drive is
                             others => <>);
       Result : Integer;
 
-      procedure Emit_Library_Item (U : Node_Id);
-      --  Generate code for the given library item
-
-      -----------------------
-      -- Emit_Library_Item --
-      -----------------------
-
-      procedure Emit_Library_Item (U : Node_Id) is
-         procedure Emit_Aux (Compilation_Unit : Node_Id);
-         --  Process any pragmas and declarations preceding the unit
-
-         --------------
-         -- Emit_Aux --
-         --------------
-
-         procedure Emit_Aux (Compilation_Unit : Node_Id) is
-            Prag : Node_Id;
-         begin
-            Prag := First (Context_Items (Compilation_Unit));
-            while Present (Prag) loop
-               if Nkind (Prag) = N_Pragma then
-                  Emit (Env, Prag);
-               end if;
-
-               Prag := Next (Prag);
-            end loop;
-
-            Emit_List (Env, Declarations (Aux_Decls_Node (Compilation_Unit)));
-         end Emit_Aux;
-
+      procedure Emit_Lib_Item (N : Node_Id);
+      procedure Emit_Lib_Item (N : Node_Id) is
       begin
-         --  Ignore Standard and ASCII packages
-
-         if Sloc (U) <= Standard_Location then
-            return;
-         end if;
-
-         --  Current_Unit := Get_Cunit_Unit_Number (Parent (U));
-         --  Current_Source_File := Source_Index (Current_Unit);
-
-         if In_Extended_Main_Code_Unit (U) then
-            Env.In_Main_Unit := True;
-
-            --  ??? Has_No_Elaboration_Code is supposed to be set by default
-            --  on subprogram bodies, but this is apparently not the case,
-            --  so force the flag here. Ditto for subprogram decls.
-
-            if Nkind_In (U, N_Subprogram_Body, N_Subprogram_Declaration) then
-               Set_Has_No_Elaboration_Code (Parent (U), True);
-            end if;
-
-            --  Process any pragmas and declarations preceding the unit
-
-            Emit_Aux (Parent (U));
-
-            --  Process the unit itself
-
-            Emit (Env, U);
-
-         else
-            --  Should we instead skip these units completely, and generate
-            --  referenced items on the fly???
-
-            Env.In_Main_Unit := False;
-            Emit_Aux (Parent (U));
-            Emit (Env, U);
-         end if;
-      end Emit_Library_Item;
+         Emit_Library_Item (Env, N);
+      end Emit_Lib_Item;
+      --  Wrapper to encapsulate Env in call
 
       procedure Walk_All_Units is
-        new Sem.Walk_Library_Items (Action => Emit_Library_Item);
+        new Sem.Walk_Library_Items (Action => Emit_Lib_Item);
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);

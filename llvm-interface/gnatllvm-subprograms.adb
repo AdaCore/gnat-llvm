@@ -115,10 +115,6 @@ package body GNATLLVM.Subprograms is
 
       Build_Unreachable (Env);
       Leave_Subp (Env);
-
-      Verify_Function
-        (Env, LLVM_Value (Func), Node,
-         "the backend generated bad `LLVM` for this subprogram");
    end Emit_One_Body;
 
    --------------------------

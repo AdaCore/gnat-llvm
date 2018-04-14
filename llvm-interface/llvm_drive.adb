@@ -21,11 +21,11 @@ with System;       use System;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with LLVM.Analysis; use LLVM.Analysis;
-with LLVM.Target; use LLVM.Target;
-with LLVM.Types; use LLVM.Types;
-with LLVM.Bit_Writer;
-with LLVM.Core;     use LLVM.Core;
+with LLVM.Analysis;   use LLVM.Analysis;
+with LLVM.Target;     use LLVM.Target;
+with LLVM.Types;      use LLVM.Types;
+with LLVM.Bit_Writer; use LLVM.Bit_Writer;
+with LLVM.Core;       use LLVM.Core;
 
 with Atree;    use Atree;
 with Errout;   use Errout;
@@ -42,6 +42,7 @@ with Stand;    use Stand;
 with Switch;   use Switch;
 
 with Get_Targ; use Get_Targ;
+
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Types;        use GNATLLVM.Types;
@@ -261,6 +262,10 @@ package body LLVM_Drive is
 
       --  Output the translation
 
+      if Emit_Debug_Info then
+         Finalize_Debug_Info (Env.DIBld);
+      end if;
+
       if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
 
@@ -272,7 +277,7 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".bc");
                begin
-                  if LLVM.Bit_Writer.Write_Bitcode_To_File (Env.Mdl, S) /= 0
+                  if Write_Bitcode_To_File (Env.Mdl, S) /= 0
                   then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;

@@ -34,8 +34,8 @@ with Table;
 with Uintp;    use Uintp;
 with Urealp;   use Urealp;
 
-with LLVM.Analysis; use LLVM.Analysis;
 with LLVM.Core;     use LLVM.Core;
+with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
@@ -256,19 +256,6 @@ package body GNATLLVM.Compile is
       Table_Name           => "LValue_Pair_Table");
    --  Table of intermediate results for Emit_LValue
 
-   ---------------------
-   -- Verify_Function --
-   ---------------------
-
-   procedure Verify_Function
-     (Env : Environ; Func : Value_T; Node : Node_Id; Msg : String) is
-   begin
-      if Verify_Function (Func, Print_Message_Action) then
-         Error_Msg_N (Msg, Node);
-         Dump_LLVM_Module (Env.Mdl);
-      end if;
-   end Verify_Function;
-
    ------------------
    -- Decode_Range --
    ------------------
@@ -397,11 +384,6 @@ package body GNATLLVM.Compile is
                      Env.Special_Elaboration_Code := False;
                      Build_Ret_Void (Env);
                      Leave_Subp (Env);
-
-                     Verify_Function
-                       (Env, LLVM_Func, Node,
-                        "the backend generated bad `LLVM` for package " &
-                        "spec elaboration");
                   end;
                end if;
             end if;
@@ -493,11 +475,6 @@ package body GNATLLVM.Compile is
 
                         Build_Ret_Void (Env);
                         Leave_Subp (Env);
-
-                        Verify_Function
-                          (Env, LLVM_Func, Node,
-                           "the backend generated bad `LLVM` for package " &
-                           "body elaboration");
                      end if;
                   end;
                end if;

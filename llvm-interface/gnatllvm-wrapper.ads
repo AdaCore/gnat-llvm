@@ -97,6 +97,9 @@ package GNATLLVM.Wrapper is
       Name : String;
       Lineno : Integer) return Metadata_T;
 
+   procedure Finalize_Debug_Info (Bld : DI_Builder_T);
+   pragma Import (C, Finalize_Debug_Info, "Finalize_Debug_Info");
+
    procedure Set_Debug_Loc
      (Bld : Builder_T; Subp : Metadata_T; Line, Column : Integer);
    pragma Import (C, Set_Debug_Loc, "Set_Debug_Loc");

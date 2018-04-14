@@ -49,8 +49,14 @@ Create_Debug_Subprogram_C (DIBuilder *DBld, Function *func, DIFile *file,
   DISubprogram *subp = DBld->createFunction (file, name, name, file,
 					     lineno, st, false, true, lineno);
   func->setSubprogram (subp);
-  DBld->finalizeSubprogram (subp);
   return subp;
+}
+
+extern "C"
+void
+Finalize_Debug_Info (DIBuilder *DBld)
+{
+  DBld->finalize ();
 }
 
 extern "C"

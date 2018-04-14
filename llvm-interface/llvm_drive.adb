@@ -21,7 +21,8 @@ with Interfaces.C; use Interfaces.C;
 
 with System;       use System;
 
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.DebugInfo; use GNATLLVM.DebugInfo;
+with GNATLLVM.Wrapper;   use GNATLLVM.Wrapper;
 
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Target;     use LLVM.Target;

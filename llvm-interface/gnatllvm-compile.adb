@@ -39,6 +39,7 @@ with LLVM.Core;     use LLVM.Core;
 with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
+with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;

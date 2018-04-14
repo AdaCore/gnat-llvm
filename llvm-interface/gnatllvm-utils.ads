@@ -181,17 +181,6 @@ package GNATLLVM.Utils is
      with Pre => Present (E);
    --  Returns a string corresponding to the external name of E
 
-   type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
-   DI_Cache : access DI_File_Cache := null;
-
-   function Get_Debug_File_Node
-     (Bld  : DI_Builder_T;
-      File : Source_File_Index) return Metadata_T;
-   --  Produce and return a DIFile entry for the specified source file index
-
-   procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id);
-   --  Set builder position for debugging to the Sloc of N.
-
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_LLVM_Module (M : Module_T);
    --  Likewise, for LLVM.Core.Dump_Module

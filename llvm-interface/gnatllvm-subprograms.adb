@@ -28,12 +28,13 @@ with Stand;    use Stand;
 with LLVM.Core;  use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
-with GNATLLVM.Compile; use GNATLLVM.Compile;
-with GNATLLVM.GLValue; use GNATLLVM.GLValue;
-with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
-with LLVM_Drive;       use LLVM_Drive;
+with GNATLLVM.Compile;   use GNATLLVM.Compile;
+with GNATLLVM.DebugInfo; use GNATLLVM.DebugInfo;
+with GNATLLVM.GLValue;   use GNATLLVM.GLValue;
+with GNATLLVM.Types;     use GNATLLVM.Types;
+with GNATLLVM.Utils;     use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;   use GNATLLVM.Wrapper;
+with LLVM_Drive;         use LLVM_Drive;
 
 package body GNATLLVM.Subprograms is
 

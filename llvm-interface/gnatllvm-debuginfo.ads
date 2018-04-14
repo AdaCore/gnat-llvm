@@ -23,15 +23,31 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.DebugInfo is
 
+   Emit_Debug_Info : Boolean := False;
+   --  Whether or not to emit debugging information (-g)
+
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
    DI_Cache : access DI_File_Cache := null;
 
    procedure Initialize_Debugging (Env : Environ);
    --  Set up the environment for generating debugging information
 
+   procedure Finalize_Debugging (Env : Environ);
+   --  Finalize the debugging info at the end of the translation
+
    function Get_Debug_File_Node
      (Env : Environ; File : Source_File_Index) return Metadata_T;
    --  Produce and return a DIFile entry for the specified source file index
+
+   function Create_Subprogram_Debug_Info
+     (Env            : Environ;
+      Func           : GL_Value;
+      Def_Ident      : Entity_Id;
+      N              : Node_Id;
+      Name, Ext_Name : String) return Metadata_T;
+   --  Create debugging information for Func with entity Def_Ident using
+   --  the line number information in N for the location and with the
+   --  specified internal and external names.
 
    procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id);
    --  Set builder position for debugging to the Sloc of N.

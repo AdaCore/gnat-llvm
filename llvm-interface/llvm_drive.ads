@@ -19,9 +19,6 @@ with Types; use Types;
 
 package LLVM_Drive is
 
-   Emit_Debug_Info : Boolean := False;
-   --  Whether or not to emit debugging information (-g)
-
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id);
 
    function Is_Back_End_Switch (Switch : String) return Boolean;

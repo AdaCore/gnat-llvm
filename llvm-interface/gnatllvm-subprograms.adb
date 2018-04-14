@@ -33,8 +33,6 @@ with GNATLLVM.DebugInfo; use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;   use GNATLLVM.GLValue;
 with GNATLLVM.Types;     use GNATLLVM.Types;
 with GNATLLVM.Utils;     use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;   use GNATLLVM.Wrapper;
-with LLVM_Drive;         use LLVM_Drive;
 
 package body GNATLLVM.Subprograms is
 
@@ -53,16 +51,10 @@ package body GNATLLVM.Subprograms is
 
    begin
       Enter_Subp (Env, Func);
-
-      if Emit_Debug_Info then
-         Env.Func_Debug_Info :=
-           Create_Debug_Subprogram
-             (Env.DIBld,
-              LLVM_Value (Func),
-              Get_Debug_File_Node (Env, Get_Source_File_Index (Sloc (Node))),
-              Get_Ext_Name (Def_Ident),
-              Integer (Get_Logical_Line_Number (Sloc (Node))));
-      end if;
+      Env.Func_Debug_Info :=
+        Create_Subprogram_Debug_Info (Env, Func, Def_Ident, Node,
+                                      Get_Name_String (Chars (Def_Ident)),
+                                      Get_Ext_Name (Def_Ident));
 
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop

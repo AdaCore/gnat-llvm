@@ -113,10 +113,7 @@ package body LLVM_Drive is
       pragma Assert (Result = 0);
       Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
-
-      if Emit_Debug_Info then
-         Initialize_Debugging (Env);
-      end if;
+      Initialize_Debugging (Env);
 
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
@@ -214,10 +211,7 @@ package body LLVM_Drive is
 
       --  Output the translation
 
-      if Emit_Debug_Info then
-         Finalize_Debug_Info (Env.DIBld);
-      end if;
-
+      Finalize_Debugging (Env);
       if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
 

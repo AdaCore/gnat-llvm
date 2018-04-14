@@ -19,8 +19,8 @@ with Atree;    use Atree;
 with Namet;    use Namet;
 with Sinput;   use Sinput;
 
+with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
-with LLVM_Drive;       use LLVM_Drive;
 
 package body GNATLLVM.DebugInfo is
 
@@ -30,11 +30,24 @@ package body GNATLLVM.DebugInfo is
 
    procedure Initialize_Debugging (Env : Environ) is
    begin
-      Env.DIBld := Create_Debug_Builder (Env.Mdl);
-      Env.Debug_Compile_Unit :=
-        Create_Debug_Compile_Unit
-        (Env.DIBld, Get_Debug_File_Node (Env, Main_Source_File));
+      if Emit_Debug_Info then
+         Env.DIBld := Create_Debug_Builder (Env.Mdl);
+         Env.Debug_Compile_Unit :=
+           Create_Debug_Compile_Unit
+           (Env.DIBld, Get_Debug_File_Node (Env, Main_Source_File));
+      end if;
    end Initialize_Debugging;
+
+   ------------------------
+   -- Finalize_Debugging --
+   ------------------------
+
+   procedure Finalize_Debugging (Env : Environ) is
+   begin
+      if Emit_Debug_Info then
+         Finalize_Debug_Info (Env.DIBld);
+      end if;
+   end Finalize_Debugging;
 
    -------------------------
    -- Get_Debug_File_Node --
@@ -65,6 +78,30 @@ package body GNATLLVM.DebugInfo is
          return DIFile;
       end;
    end Get_Debug_File_Node;
+
+   ----------------------------------
+   -- Create_Subprogram_Debug_Info --
+   ----------------------------------
+
+   function Create_Subprogram_Debug_Info
+     (Env            : Environ;
+      Func           : GL_Value;
+      Def_Ident      : Entity_Id;
+      N              : Node_Id;
+      Name, Ext_Name : String) return Metadata_T
+   is
+      pragma Unreferenced (Def_Ident);
+   begin
+      if Emit_Debug_Info then
+         return Create_Debug_Subprogram
+           (Env.DIBld,
+            LLVM_Value (Func),
+            Get_Debug_File_Node (Env, Get_Source_File_Index (Sloc (N))),
+            Name, Ext_Name, Integer (Get_Logical_Line_Number (Sloc (N))));
+      else
+         return No_Metadata_T;
+      end if;
+   end Create_Subprogram_Debug_Info;
 
    ---------------------------
    -- Set_Debug_Pos_At_Node --

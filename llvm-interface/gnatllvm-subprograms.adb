@@ -59,8 +59,7 @@ package body GNATLLVM.Subprograms is
            Create_Debug_Subprogram
              (Env.DIBld,
               LLVM_Value (Func),
-              Get_Debug_File_Node
-                (Env.DIBld, Get_Source_File_Index (Sloc (Node))),
+              Get_Debug_File_Node (Env, Get_Source_File_Index (Sloc (Node))),
               Get_Ext_Name (Def_Ident),
               Integer (Get_Logical_Line_Number (Sloc (Node))));
       end if;

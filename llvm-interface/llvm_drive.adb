@@ -39,7 +39,6 @@ with Osint.C;  use Osint.C;
 with Sem;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
-with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Switch;   use Switch;
 
@@ -116,10 +115,7 @@ package body LLVM_Drive is
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
 
       if Emit_Debug_Info then
-         Env.DIBld := Create_Debug_Builder (Env.Mdl);
-         Env.Debug_Compile_Unit :=
-           Create_Debug_Compile_Unit
-           (Env.DIBld, Get_Debug_File_Node (Env.DIBld, Main_Source_File));
+         Initialize_Debugging (Env);
       end if;
 
       LLVM_Info_Table.Increment_Last;

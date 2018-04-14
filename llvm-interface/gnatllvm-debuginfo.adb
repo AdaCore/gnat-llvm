@@ -24,13 +24,24 @@ with LLVM_Drive;       use LLVM_Drive;
 
 package body GNATLLVM.DebugInfo is
 
+   --------------------------
+   -- Initialize_Debugging --
+   --------------------------
+
+   procedure Initialize_Debugging (Env : Environ) is
+   begin
+      Env.DIBld := Create_Debug_Builder (Env.Mdl);
+      Env.Debug_Compile_Unit :=
+        Create_Debug_Compile_Unit
+        (Env.DIBld, Get_Debug_File_Node (Env, Main_Source_File));
+   end Initialize_Debugging;
+
    -------------------------
    -- Get_Debug_File_Node --
    -------------------------
 
    function Get_Debug_File_Node
-     (Bld  : DI_Builder_T;
-      File : Source_File_Index) return Metadata_T is
+     (Env : Environ; File : Source_File_Index) return Metadata_T is
    begin
       if DI_Cache = null then
          DI_Cache :=
@@ -47,7 +58,7 @@ package body GNATLLVM.DebugInfo is
          Name      : constant String :=
            Get_Name_String (Debug_Source_Name (File));
          DIFile    : constant Metadata_T :=
-           Create_Debug_File (Bld, Name,
+           Create_Debug_File (Env.DIBld, Name,
                               Full_Name (1 .. Full_Name'Length - Name'Length));
       begin
          DI_Cache (File) := DIFile;

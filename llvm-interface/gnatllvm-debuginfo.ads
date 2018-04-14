@@ -26,9 +26,11 @@ package GNATLLVM.DebugInfo is
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
    DI_Cache : access DI_File_Cache := null;
 
+   procedure Initialize_Debugging (Env : Environ);
+   --  Set up the environment for generating debugging information
+
    function Get_Debug_File_Node
-     (Bld  : DI_Builder_T;
-      File : Source_File_Index) return Metadata_T;
+     (Env : Environ; File : Source_File_Index) return Metadata_T;
    --  Produce and return a DIFile entry for the specified source file index
 
    procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id);

@@ -274,6 +274,10 @@ package GNATLLVM.GLValue is
      with Pre  => Env /= null and then Present (G),
           Post => Present (Const_Null'Result);
 
+   function Const_Null_Ptr (Env : Environ; TE : Entity_Id) return GL_Value
+     with Pre  => Env /= null and then Is_Type (TE),
+          Post => Present (Const_Null_Ptr'Result);
+
    function Const_Int
      (Env : Environ; G : GL_Value; N : Uint) return GL_Value is
      (Const_Int (Env, Etype (G), N))
@@ -327,6 +331,12 @@ package GNATLLVM.GLValue is
    is
      (Const_Int (Env, Env.Int_32_Type, N, Sign_Extend))
      with Pre => Env /= null, Post => Present (Const_Int_32'Result);
+
+   function Const_Null_32
+     (Env : Environ) return GL_Value
+   is
+     (Const_Int_32 (Env, 0))
+     with Pre => Env /= null, Post => Present (Const_Null_32'Result);
 
    function Const_Real
      (Env : Environ; G : GL_Value; V : double) return GL_Value is

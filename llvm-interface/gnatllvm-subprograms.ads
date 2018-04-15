@@ -69,4 +69,9 @@ package GNATLLVM.Subprograms is
           Post => Present (Node_Enclosing_Subprogram'Result);
    --  Return the enclosing subprogram containing Node
 
+   function Subp_Ptr (Env : Environ; Node : Node_Id) return GL_Value
+     with Pre  => Env /= null and then Present (Node),
+     Post => Present (Subp_Ptr'Result);
+   --  Return the subprogram pointer associated with Node
+
 end GNATLLVM.Subprograms;

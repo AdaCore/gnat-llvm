@@ -2485,16 +2485,6 @@ package body GNATLLVM.Compile is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
       Operand_Type : constant Entity_Id := Full_Etype (LHS);
 
-      function Subp_Ptr (Node : Node_Id) return Value_T is
-        (if Nkind (Node) = N_Null
-         then Const_Null (Pointer_Type (Int_Ty (8), 0))
-         else Load
-           (Env.Bld,
-            Struct_GEP
-              (Env.Bld, LLVM_Value (Emit_LValue (Env, Node)), 0, "subp-addr"),
-            ""));
-      --  Return the subprogram pointer associated with Node
-
    begin
       --  LLVM treats pointers as integers regarding comparison.  But we first
       --  have to see if the pointer has an activation record.  If so,
@@ -2503,10 +2493,8 @@ package body GNATLLVM.Compile is
       if Is_Access_Type (Operand_Type)
         and then Needs_Activation_Record (Full_Designated_Type (Operand_Type))
       then
-         return G (I_Cmp
-                     (Env.Bld, Operation.Unsigned,
-                      Subp_Ptr (LHS), Subp_Ptr (RHS), ""),
-                   Standard_Boolean);
+         return I_Cmp
+           (Env, Operation.Unsigned, Subp_Ptr (Env, LHS), Subp_Ptr (Env, RHS));
 
       elsif Is_Elementary_Type (Operand_Type) then
          return Emit_Elementary_Comparison (Env, Kind,

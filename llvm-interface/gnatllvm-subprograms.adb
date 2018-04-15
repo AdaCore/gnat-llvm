@@ -435,4 +435,24 @@ package body GNATLLVM.Subprograms is
       return N;
    end Node_Enclosing_Subprogram;
 
+   --------------
+   -- Subp_Ptr --
+   --------------
+
+   function Subp_Ptr (Env : Environ; Node : Node_Id) return GL_Value is
+   begin
+      if Nkind (Node) = N_Null then
+         return Const_Null_Ptr (Env, Standard_Short_Short_Integer);
+      else
+         --  ??  We have a bit of a problem here since what the GEP below
+         --  returns is a really a pointer to a pointer to char, but w
+         --  don't have a GNAT type corresponding to the pointer to char
+         --  (see R415-005).  We'll lie for now
+         return Load
+           (Env,
+            GEP (Env, Standard_Short_Short_Integer, Emit_LValue (Env, Node),
+                 (1 => Const_Null_32 (Env), 2 => Const_Null_32 (Env))));
+      end if;
+   end Subp_Ptr;
+
 end GNATLLVM.Subprograms;

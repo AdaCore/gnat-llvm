@@ -185,6 +185,14 @@ package body GNATLLVM.GLValue is
    function Const_Null (Env : Environ; TE : Entity_Id) return GL_Value is
      (G (Const_Null (Create_Type (Env, TE)), TE));
 
+   --------------------
+   -- Const_Null_Ptr --
+   --------------------
+
+   function Const_Null_Ptr (Env : Environ; TE : Entity_Id) return GL_Value is
+     (G (Const_Null (Pointer_Type (Create_Type (Env, TE), 0)), TE,
+         Is_Reference => True));
+
    ---------------
    -- Const_Int --
    ---------------

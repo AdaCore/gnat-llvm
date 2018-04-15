@@ -1842,8 +1842,7 @@ package body GNATLLVM.Compile is
                Result := G (Call
                               (Env.Bld, Env.Default_Alloc_Fn,
                                Arg'Address, 1, "alloc"),
-                            Standard_Short_Short_Integer,
-                            Is_Reference => True);
+                            Standard_A_Char);
 
                --  Convert to a pointer to the type that the thing is suppose
                --  to point to.

@@ -636,7 +636,7 @@ package body GNATLLVM.Arrays is
 
       declare
          Data          : constant GL_Value :=
-           Ptr_To_Ref (Array_Data_Ptr, Standard_Short_Short_Integer);
+           Pointer_Cast (Array_Data_Ptr, Standard_A_Char);
          Comp_Size     : constant GL_Value :=
            Get_Type_Size (Comp_Type, No_GL_Value);
          Index         : GL_Value := Convert_To_Size_Type (Idxs (2));
@@ -699,7 +699,7 @@ package body GNATLLVM.Arrays is
 
       declare
          Data          : constant GL_Value :=
-           Ptr_To_Ref (Array_Data_Ptr, Standard_Short_Short_Integer);
+           Pointer_Cast (Array_Data_Ptr, Standard_A_Char);
          Comp_Type     : constant Entity_Id :=
            Full_Component_Type (Full_Designated_Type (Value));
          Comp_Size     : constant GL_Value :=

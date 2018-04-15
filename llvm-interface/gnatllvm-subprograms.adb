@@ -148,7 +148,6 @@ package body GNATLLVM.Subprograms is
    is
       Subp        : constant Entity_Id := Entity (Node);
       Result      : GL_Value;
-      Result_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
       Parent : constant Entity_Id := Enclosing_Subprogram (Subp);
       Caller : Node_Id;
 
@@ -180,12 +179,10 @@ package body GNATLLVM.Subprograms is
                end loop;
             end if;
 
-            return Ptr_To_Ref
-              (Result, Standard_Short_Short_Integer, "static-link");
+            return Pointer_Cast (Result, Standard_A_Char, "static-link");
          end;
       else
-         return G (Const_Null (Result_Type),
-                   Standard_Short_Short_Integer, Is_Reference => True);
+         return Const_Null (Standard_A_Char);
       end if;
    end Get_Static_Link;
 
@@ -292,10 +289,10 @@ package body GNATLLVM.Subprograms is
 
       LLVM_Func := Emit_Expression (Subp);
       if This_Takes_S_Link then
-         S_Link := Extract_Value_To_Ref (Standard_Short_Short_Integer,
-                                         LLVM_Func, 1, "static-link");
-         LLVM_Func := Ptr_To_Ref (Extract_Value_To_Ref
-                                    (Standard_Short_Short_Integer,
+         S_Link := Extract_Value (Standard_A_Char,
+                                  LLVM_Func, 1, "static-link");
+         LLVM_Func := Ptr_To_Ref (Extract_Value
+                                    (Standard_A_Char,
                                      LLVM_Func, 0, "callback"),
                                   Full_Designated_Type
                                     (Full_Etype (Prefix (Subp))));
@@ -437,14 +434,10 @@ package body GNATLLVM.Subprograms is
    function Subp_Ptr (Node : Node_Id) return GL_Value is
    begin
       if Nkind (Node) = N_Null then
-         return Const_Null_Ptr (Standard_Short_Short_Integer);
+         return Const_Null (Standard_A_Char);
       else
-         --  ??  We have a bit of a problem here since what the GEP below
-         --  returns is a really a pointer to a pointer to char, but w
-         --  don't have a GNAT type corresponding to the pointer to char
-         --  (see R415-005).  We'll lie for now
          return Load
-           (GEP (Standard_Short_Short_Integer, Emit_LValue (Node),
+           (GEP (Standard_A_Char, Emit_LValue (Node),
                  (1 => Const_Null_32, 2 => Const_Null_32)));
       end if;
    end Subp_Ptr;

@@ -23,24 +23,23 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Compile is
 
-   procedure Emit_Library_Item (Env : Environ; U : Node_Id);
+   procedure Emit_Library_Item (U : Node_Id);
    --  Generate code for the given library item
 
-   procedure Emit (Env : Environ; Node : Node_Id)
-     with Pre => Env /= null and Present (Node);
+   procedure Emit (Node : Node_Id)
+     with Pre => Present (Node);
    --  General compilation routine, called at the top-level
 
-   procedure Emit_List (Env : Environ; List : List_Id)
-     with Pre => Env /= null;
+   procedure Emit_List (List : List_Id);
    --  Call Emit on every element of List
 
-   function Emit_Expression (Env : Environ; Node : Node_Id) return GL_Value
-     with Pre  => Env /= null and then Present (Node),
+   function Emit_Expression (Node : Node_Id) return GL_Value
+     with Pre  => Present (Node),
           Post => Present (Emit_Expression'Result);
    --  Compile an expression node to an LLVM value
 
-   function Emit_LValue (Env : Environ; Node : Node_Id) return GL_Value
-     with Pre  => Env /= null and then Present (Node),
+   function Emit_LValue (Node : Node_Id) return GL_Value
+     with Pre  => Present (Node),
           Post => Present (Emit_LValue'Result);
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather

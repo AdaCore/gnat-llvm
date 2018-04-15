@@ -27,46 +27,40 @@ with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Arrays is
 
-   function Create_Array_Type
-     (Env : Environ;
-      TE  : Entity_Id) return Type_T
-     with Pre  => Env /= null and then  Is_Array_Type (TE),
+   function Create_Array_Type (TE  : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (TE),
           Post => Present (Create_Array_Type'Result);
    --  Return the type used to represent Array_Type_Node.  This will be
    --  an opaque type if LLVM can't represent it directly.
 
    function Create_Array_Raw_Pointer_Type
-     (Env             : Environ;
-      Array_Type_Node : Entity_Id) return Type_T
-     with Pre  => Env /= null and then  Is_Array_Type (Array_Type_Node),
+     (Array_Type_Node : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (Array_Type_Node),
           Post => (Get_Type_Kind (Create_Array_Raw_Pointer_Type'Result) =
                    Pointer_Type_Kind);
    --  Return the type used to store thin pointers to Array_Type
 
    function Create_Array_Fat_Pointer_Type
-     (Env        : Environ;
-      Array_Type : Entity_Id) return Type_T
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type),
+     (Array_Type : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (Array_Type),
           Post => Present (Create_Array_Fat_Pointer_Type'Result);
    --  Return the type used to store fat pointers to Array_Type
 
    function Create_Array_Bounds_Type
-     (Env             : Environ;
-      Array_Type_Node : Entity_Id) return Type_T
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type_Node),
+     (Array_Type_Node : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (Array_Type_Node),
           Post => Present (Create_Array_Bounds_Type'Result);
    --  Helper that returns the type used to store array bounds. This is a
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
    function Get_Array_Bound
-     (Env      : Environ;
-      Arr_Typ  : Entity_Id;
+     (Arr_Typ  : Entity_Id;
       Dim      : Nat;
       Is_Low   : Boolean;
       Value    : GL_Value;
       For_Type : Boolean := False) return GL_Value
-     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
+     with Pre  => Is_Array_Type (Arr_Typ)
                   and then Dim < Number_Dimensions (Arr_Typ)
                   and then (Present (Value)
                               or else Is_Constrained (Arr_Typ))
@@ -77,12 +71,11 @@ package GNATLLVM.Arrays is
    --  Arr_Typ.
 
    function Get_Array_Length
-     (Env     : Environ;
-      Arr_Typ : Entity_Id;
+     (Arr_Typ : Entity_Id;
       Dim     : Nat;
       Value   : GL_Value;
       For_Type : Boolean := False) return GL_Value
-     with Pre  => Env /= null and then Is_Array_Type (Arr_Typ)
+     with Pre  => Is_Array_Type (Arr_Typ)
                   and then Dim < Number_Dimensions (Arr_Typ)
                   and then (Present (Value)
                               or else Is_Constrained (Arr_Typ))
@@ -91,20 +84,15 @@ package GNATLLVM.Arrays is
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
 
-   function Get_Array_Size_Complexity
-     (Env      : Environ;
-      TE       : Entity_Id) return Natural
-     with Pre  => Env /= null and then Is_Array_Type (TE);
+   function Get_Array_Size_Complexity (TE : Entity_Id) return Natural
+     with Pre => Is_Array_Type (TE);
    --  Return the complexity of computing the size of an array.  This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the array type is of a constant size.
 
    function Get_Indexed_LValue
-     (Env     : Environ;
-      Indexes : List_Id;
-      Value   : GL_Value) return GL_Value
-     with Pre  => Env /= null
-                  and then Is_Array_Type (Full_Designated_Type (Value))
+     (Indexes : List_Id; Value : GL_Value) return GL_Value
+     with Pre  => Is_Array_Type (Full_Designated_Type (Value))
                   and then List_Length (Indexes) =
                     Number_Dimensions (Full_Designated_Type (Value)),
           Post => Present (Get_Indexed_LValue'Result);
@@ -112,23 +100,17 @@ package GNATLLVM.Arrays is
    --  is the array type.
 
    function Get_Slice_LValue
-     (Env         : Environ;
-      Result_Type : Entity_Id;
-      Rng         : Node_Id;
-      Value       : GL_Value) return GL_Value
-     with Pre  => Env /= null
-                  and then Is_Array_Type (Full_Designated_Type (Value))
+     (Result_Type : Entity_Id; Rng : Node_Id; Value : GL_Value) return GL_Value
+     with Pre  => Is_Array_Type (Full_Designated_Type (Value))
                   and then Number_Dimensions
                     (Full_Designated_Type (Value)) = 1,
           Post => Present (Get_Slice_LValue'Result);
    --  Similar, but Rng is the Discrete_Range for the slice
 
    function Get_Array_Elements
-     (Env         : Environ;
-      Array_Descr : GL_Value;
-      Array_Type  : Entity_Id;
+     (Array_Descr : GL_Value; Array_Type  : Entity_Id;
       For_Type    : Boolean := False) return GL_Value
-     with Pre  => Env /= null and then Is_Array_Type (Array_Type)
+     with Pre  => Is_Array_Type (Array_Type)
                   and then (Present (Array_Descr)
                               or else Is_Constrained (Array_Type))
                   and then (not For_Type or else No (Array_Descr)),
@@ -138,10 +120,8 @@ package GNATLLVM.Arrays is
    --  unconstrained array, Array_Descr must be an expression that evaluates
    --  to the array.
 
-   function Array_Data
-     (Env         : Environ;
-      Array_Descr : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Access_Type (Array_Descr)
+   function Array_Data (Array_Descr : GL_Value) return GL_Value
+     with Pre  => Is_Access_Type (Array_Descr)
                   and then Is_Array_Type (Full_Designated_Type (Array_Descr)),
           Post => Present (Array_Data'Result);
    --  Emit code to compute the address of the array data and return the
@@ -151,10 +131,8 @@ package GNATLLVM.Arrays is
    --  fat pointer.
 
    function Array_Fat_Pointer
-     (Env        : Environ;
-      Array_Type : Entity_Id;
-      Array_Data : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Access_Type (Array_Data)
+     (Array_Type : Entity_Id; Array_Data : GL_Value) return GL_Value
+     with Pre  => Is_Access_Type (Array_Data)
                   and then Is_Array_Type (Array_Type)
                   and then not Is_Constrained (Array_Type)
                   and then Is_Array_Type (Full_Designated_Type (Array_Data))

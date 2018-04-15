@@ -54,26 +54,24 @@ package GNATLLVM.Utils is
      with Pre  => Is_Access_Type (E),
           Post => Present (Full_Designated_Type'Result);
 
-   procedure Position_Builder_At_End (Env : Environ; BB : Basic_Block_T)
-     with Pre => Env /= null and then Present (BB);
+   procedure Position_Builder_At_End (BB : Basic_Block_T)
+     with Pre => Present (BB);
 
-   procedure Build_Br (Env : Environ; BB : Basic_Block_T)
-     with Pre => Env /= null and then Present (BB);
+   procedure Build_Br (BB : Basic_Block_T)
+     with Pre => Present (BB);
 
    procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
      with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
    --  Helper for LLVM's Build_Store
 
-   procedure Store_With_Type
-     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
-     with Pre => Env /= null and then Is_Type (TE)
+   procedure Store_With_Type (TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
+     with Pre => Is_Type (TE)
                  and then Present (Expr) and then Present (Ptr);
    --  Similar, but allows annotating store
 
-   function Load_With_Type
-     (Env : Environ; TE : Entity_Id; Ptr : Value_T; Name : String := "")
+   function Load_With_Type (TE : Entity_Id; Ptr : Value_T; Name : String := "")
      return Value_T
-     with Pre  => Env /= null and then Is_Type (TE) and then Present (Ptr),
+     with Pre  => Is_Type (TE) and then Present (Ptr),
           Post => Present (Load_With_Type'Result);
    --  Likewise for a load
 

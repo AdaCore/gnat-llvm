@@ -32,22 +32,18 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Create_Subprogram_Type
-     (Env           : Environ;
-      Param_Ident   : Entity_Id;
+     (Param_Ident   : Entity_Id;
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
-     with Pre  => Env /= null and then Present (Param_Ident)
-                  and then Is_Type_Or_Void (Return_Type),
+     with Pre  => Present (Param_Ident) and then Is_Type_Or_Void (Return_Type),
           Post => Present (Create_Subprogram_Type'Result);
    --  Helper for public Create_Subprogram_Type functions: the public
    --  ones harmonize input and this one actually creates the LLVM
    --  type for subprograms.  Return_Type will be of Ekind E_Void if
    --  this is a procedure.
 
-   function Create_Subprogram_Access_Type
-     (Env       : Environ;
-      Subp_Type : Type_T) return Type_T
-     with Pre  => Env /= null and then Present (Subp_Type),
+   function Create_Subprogram_Access_Type (Subp_Type : Type_T) return Type_T
+     with Pre  => Present (Subp_Type),
           Post => Present (Create_Subprogram_Access_Type'Result);
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
@@ -80,21 +76,19 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Build_Type_Conversion
-     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value is
+     (Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value is
    begin
       --  If both types are elementary, hand that off to our helper.
 
       if Is_Elementary_Type (Full_Etype (Expr))
         and then Is_Elementary_Type (Dest_Type)
       then
-         return Convert_To_Elementary_Type (Env,
-                                            Emit_Expression (Env, Expr),
-                                            Dest_Type);
+         return Convert_To_Elementary_Type (Emit_Expression (Expr), Dest_Type);
 
       --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         return Build_Unchecked_Conversion (Env, Dest_Type, Expr);
+         return Build_Unchecked_Conversion (Dest_Type, Expr);
 
       end if;
    end Build_Type_Conversion;
@@ -104,14 +98,14 @@ package body GNATLLVM.Types is
    ---------------------------------
 
    function Convert_To_Elementary_Type
-     (Env : Environ; G : GL_Value; D_Type : Entity_Id) return GL_Value
+     (G : GL_Value; D_Type : Entity_Id) return GL_Value
    is
       type Cvtf is access function
-        (Env : Environ; Value : GL_Value; TE : Entity_Id; Name : String := "")
+        (Value : GL_Value; TE : Entity_Id; Name : String := "")
         return GL_Value;
 
       Value       : GL_Value         := G;
-      LLVM_Type   : constant Type_T  := Create_Type (Env, D_Type);
+      LLVM_Type   : constant Type_T  := Create_Type (D_Type);
       Src_Access  : constant Boolean := Is_Access_Type (Value);
       Dest_Access : constant Boolean := Is_Access_Type (D_Type);
       Src_FP      : constant Boolean := Is_Floating_Point_Type (Value);
@@ -119,7 +113,7 @@ package body GNATLLVM.Types is
       Src_Uns     : constant Boolean := Is_Unsigned_Type (Value);
       Dest_Uns    : constant Boolean := Is_Unsigned_Type (Value);
       Src_Size    : constant unsigned_long_long :=
-        Get_LLVM_Type_Size_In_Bits (Env, Value);
+        Get_LLVM_Type_Size_In_Bits (Value);
       Dest_Usize  : constant Uint :=
         (if Is_Modular_Integer_Type (D_Type) then RM_Size (D_Type)
          else Esize (D_Type));
@@ -145,8 +139,7 @@ package body GNATLLVM.Types is
       --  For pointer to pointer, call our helper
 
       elsif Src_Access and then Dest_Access then
-         return Convert_To_Access_To
-           (Env, Value, Full_Designated_Type (D_Type));
+         return Convert_To_Access_To (Value, Full_Designated_Type (D_Type));
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int.  We already know that this isn't
@@ -182,7 +175,7 @@ package body GNATLLVM.Types is
 
          declare
             Size_In_Bits : constant unsigned_long_long :=
-              Get_LLVM_Type_Size_In_Bits (Env, Value);
+              Get_LLVM_Type_Size_In_Bits (Value);
             PredHalf     : constant Long_Long_Float :=
               (if Long_Long_Float'Size = Size_In_Bits
                then Long_Long_Float'Pred (0.5)
@@ -192,19 +185,19 @@ package body GNATLLVM.Types is
                then Long_Long_Float (Float'Pred (0.5))
                else Long_Long_Float (Short_Float'Pred (0.5)));
             Val_Neg    : constant GL_Value :=
-              F_Cmp (Env, Real_OLT, Value, Const_Real (Env, Value, 0.0));
+              F_Cmp (Real_OLT, Value, Const_Real (Value, 0.0));
             Adjust_Amt : constant GL_Value :=
-                Const_Real (Env, Value, double (PredHalf));
+                Const_Real (Value, double (PredHalf));
             --  ?? The conversion to "double" above may be problematic,
             --  but it's not clear how else to get the constant to LLVM.
 
             Add_Amt    : constant GL_Value :=
-                F_Add (Env, Value, Adjust_Amt, "round-add");
+                F_Add (Value, Adjust_Amt, "round-add");
             Sub_Amt    : constant GL_Value :=
-                F_Sub (Env, Value, Adjust_Amt, "round-sub");
+                F_Sub (Value, Adjust_Amt, "round-sub");
 
          begin
-            Value := Build_Select (Env, Val_Neg, Sub_Amt, Add_Amt);
+            Value := Build_Select (Val_Neg, Sub_Amt, Add_Amt);
          end;
 
       elsif not Src_FP and then Dest_FP then
@@ -220,7 +213,7 @@ package body GNATLLVM.Types is
 
       --  Here all that's left to do is generate the IR instruction
 
-      return Subp (Env, Value, D_Type);
+      return Subp (Value, D_Type);
 
    end Convert_To_Elementary_Type;
 
@@ -229,7 +222,7 @@ package body GNATLLVM.Types is
    --------------------------
 
    function Convert_To_Access_To
-     (Env : Environ; Src : GL_Value; Desig_Type : Entity_Id) return GL_Value
+     (Src : GL_Value; Desig_Type : Entity_Id) return GL_Value
    is
       Unc_Src  : constant Boolean := Is_Access_Unconstrained (Src);
       Unc_Dest : constant Boolean :=
@@ -246,17 +239,17 @@ package body GNATLLVM.Types is
          if Full_Designated_Type (Src) = Desig_Type then
             return Src;
          else
-            return Ptr_To_Ref (Env, Src, Desig_Type);
+            return Ptr_To_Ref (Src, Desig_Type);
          end if;
 
       elsif Unc_Src and then Unc_Dest then
          return Src;
 
       elsif Unc_Src and then not Unc_Dest then
-         return Convert_To_Access_To (Env, Array_Data (Env, Src), Desig_Type);
+         return Convert_To_Access_To (Array_Data (Src), Desig_Type);
       else
          pragma Assert (not Unc_Src and then Unc_Dest);
-         return Array_Fat_Pointer (Env, Desig_Type, Src);
+         return Array_Fat_Pointer (Desig_Type, Src);
       end if;
    end Convert_To_Access_To;
 
@@ -265,14 +258,13 @@ package body GNATLLVM.Types is
    --------------------------------
 
    function Build_Unchecked_Conversion
-     (Env : Environ; Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     (Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
    is
-      type Opf is access function
-        (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String)
+      type Opf is access function (V : GL_Value; TE : Entity_Id; Name : String)
         return GL_Value;
 
-      Dest_Ty   : constant Type_T := Create_Type (Env, Dest_Type);
-      Value     : constant GL_Value := Emit_Expression (Env, Expr);
+      Dest_Ty   : constant Type_T := Create_Type (Dest_Type);
+      Value     : constant GL_Value := Emit_Expression (Expr);
       Subp      : Opf := null;
 
    begin
@@ -316,7 +308,7 @@ package body GNATLLVM.Types is
       elsif Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
         and then Is_Discrete_Or_Fixed_Point_Type (Value)
       then
-         return Convert_To_Elementary_Type (Env, Value, Dest_Type);
+         return Convert_To_Elementary_Type (Value, Dest_Type);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
@@ -327,11 +319,10 @@ package body GNATLLVM.Types is
              or else (Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
                         and then Is_Floating_Point_Type (Value)))
         and then (unsigned_long_long'(Get_LLVM_Type_Size_In_Bits
-                                        (Env, Dest_Ty)) =
-                    unsigned_long_long'(Get_LLVM_Type_Size_In_Bits
-                                          (Env, Value)))
+                                        (Dest_Ty)) =
+                    unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (Value)))
       then
-         return Bit_Cast (Env, Value, Dest_Type);
+         return Bit_Cast (Value, Dest_Type);
 
       --  Otherwise, these must be cases where we have to convert by
       --  pointer punning.  If the source is a type of dynamic size, the
@@ -343,12 +334,9 @@ package body GNATLLVM.Types is
       else
          declare
             Addr           : constant GL_Value :=
-              (if Is_Dynamic_Size (Env, Value) then Value
-               else Emit_LValue (Env, Expr));
+              (if Is_Dynamic_Size (Value) then Value else Emit_LValue (Expr));
          begin
-            return Need_Value (Env,
-                               Ptr_To_Ref (Env, Addr, Dest_Type,
-                                           "unc-ptr-cvt"),
+            return Need_Value (Ptr_To_Ref (Addr, Dest_Type, "unc-ptr-cvt"),
                                Dest_Type);
          end;
       end if;
@@ -356,7 +344,7 @@ package body GNATLLVM.Types is
       --  If we get here, we should have set Subp to point to the function
       --  to call to do the conversion.
 
-      return Subp (Env, Value, Dest_Type, "unchecked-conv");
+      return Subp (Value, Dest_Type, "unchecked-conv");
    end Build_Unchecked_Conversion;
 
    ------------------
@@ -380,28 +368,26 @@ package body GNATLLVM.Types is
    -- Get_LLVM_Type_Size_In_Bits --
    --------------------------------
 
-   function Get_LLVM_Type_Size_In_Bits
-     (Env : Environ; TE : Entity_Id) return GL_Value
+   function Get_LLVM_Type_Size_In_Bits (TE : Entity_Id) return GL_Value
    is
-      LLVM_Type : constant Type_T := Create_Type (Env, TE);
+      LLVM_Type : constant Type_T := Create_Type (TE);
 
    begin
-      pragma Assert (not Is_Dynamic_Size (Env, TE));
-      return Get_LLVM_Type_Size_In_Bits (Env, LLVM_Type);
+      pragma Assert (not Is_Dynamic_Size (TE));
+      return Get_LLVM_Type_Size_In_Bits (LLVM_Type);
    end Get_LLVM_Type_Size_In_Bits;
 
    ------------------------
    -- Create_Access_Type --
    ------------------------
 
-   function Create_Access_Type
-     (Env : Environ; TE : Entity_Id) return Type_T
+   function Create_Access_Type (TE : Entity_Id) return Type_T
    is
-      T : constant Type_T := Create_Type (Env, TE);
+      T : constant Type_T := Create_Type (TE);
 
    begin
       if Is_Array_Type (TE) and then not Is_Constrained (TE) then
-         return Create_Array_Fat_Pointer_Type (Env, TE);
+         return Create_Array_Fat_Pointer_Type (TE);
       else
          return Pointer_Type (T, 0);
       end if;
@@ -412,7 +398,7 @@ package body GNATLLVM.Types is
    -----------------------
 
    function GNAT_To_LLVM_Type
-     (Env : Environ; TE : Entity_Id; Definition : Boolean) return Type_T
+     (TE : Entity_Id; Definition : Boolean) return Type_T
    is
       Def_Ident : Entity_Id;
       Typ       : Type_T := No_Type_T;
@@ -425,7 +411,7 @@ package body GNATLLVM.Types is
       --  See if we already have a type.  If so, we must not be defining
       --  this type.  ??? But we can't add that test just yet.
 
-      Typ := Get_Type (Env, TE);
+      Typ := Get_Type (TE);
       if Present (Typ) then
          --  ?? pragma Assert (not Definition);
          return Typ;
@@ -438,9 +424,9 @@ package body GNATLLVM.Types is
 
       Def_Ident := Get_Fullest_View (TE);
       if Def_Ident /= TE then
-         Typ := GNAT_To_LLVM_Type (Env, Def_Ident, False);
+         Typ := GNAT_To_LLVM_Type (Def_Ident, False);
          if Present (Typ) then
-            Copy_Type_Info (Env, Def_Ident, TE);
+            Copy_Type_Info (Def_Ident, TE);
             return Typ;
          end if;
       end if;
@@ -449,7 +435,7 @@ package body GNATLLVM.Types is
       --  see if this isn't a base type and process that if so.
 
       if Base_Type (Def_Ident) /= Def_Ident then
-         Discard := GNAT_To_LLVM_Type (Env, Base_Type (Def_Ident), False);
+         Discard := GNAT_To_LLVM_Type (Base_Type (Def_Ident), False);
       end if;
 
       case Ekind (Def_Ident) is
@@ -510,10 +496,9 @@ package body GNATLLVM.Types is
            | E_Anonymous_Access_Subprogram_Type =>
             if Needs_Activation_Record (Full_Designated_Type (Def_Ident)) then
                Typ := Create_Subprogram_Access_Type
-                 (Env, Create_Type (Env, Full_Designated_Type (Def_Ident)));
+                 (Create_Type (Full_Designated_Type (Def_Ident)));
             else
-               Typ := Create_Access_Type
-                 (Env, Full_Designated_Type (Def_Ident));
+               Typ := Create_Access_Type (Full_Designated_Type (Def_Ident));
             end if;
 
          when Record_Kind =>
@@ -541,10 +526,10 @@ package body GNATLLVM.Types is
                --  the environment so that there is no infinite recursion when
                --  nested components reference it.
 
-               Set_Type (Env, Def_Ident, Struct_Type);
+               Set_Type (Def_Ident, Struct_Type);
 
                for Comp of Comps loop
-                  LLVM_Comps (I) := Create_Type (Env, Full_Etype (Comp));
+                  LLVM_Comps (I) := Create_Type (Full_Etype (Comp));
                   Current_Field :=
                     (Struct_Num, Nat (I - 1), Comp, LLVM_Comps (I));
                   Fields.Append (Current_Field);
@@ -555,7 +540,7 @@ package body GNATLLVM.Types is
                   --  If we are on a component with a dynamic size,
                   --  we create a new struct type for the following components.
 
-                  if Is_Dynamic_Size (Env, Full_Etype (Comp)) then
+                  if Is_Dynamic_Size (Full_Etype (Comp)) then
                      Info.Dynamic_Size := True;
                      Struct_Set_Body
                        (Struct_Type, LLVM_Comps'Address,
@@ -571,19 +556,18 @@ package body GNATLLVM.Types is
 
                Struct_Set_Body
                  (Struct_Type, LLVM_Comps'Address, unsigned (I - 1), False);
-               Set_Record_Info (Env, Def_Ident, Info);
-               Set_Dynamic_Size (Env, Def_Ident, Info.Dynamic_Size);
-               Typ := Get_Type (Env, Def_Ident);
+               Set_Record_Info (Def_Ident, Info);
+               Set_Dynamic_Size (Def_Ident, Info.Dynamic_Size);
+               Typ := Get_Type (Def_Ident);
             end;
 
          when Array_Kind =>
             --  Handle packed arrays
             if Present (Packed_Array_Impl_Type (Def_Ident)) then
-               Typ := Create_Type (Env, Packed_Array_Impl_Type (Def_Ident));
-               Copy_Type_Info (Env, Packed_Array_Impl_Type (Def_Ident),
-                               Def_Ident);
+               Typ := Create_Type (Packed_Array_Impl_Type (Def_Ident));
+               Copy_Type_Info (Packed_Array_Impl_Type (Def_Ident), Def_Ident);
             else
-               Typ := Create_Array_Type (Env, Def_Ident);
+               Typ := Create_Array_Type (Def_Ident);
             end if;
 
          when E_Subprogram_Type =>
@@ -591,8 +575,7 @@ package body GNATLLVM.Types is
             --  (nested or not), so it must accept a static link.
 
             Typ := Create_Subprogram_Type_From_Entity
-              (Env, Def_Ident,
-               Takes_S_Link => Needs_Activation_Record (Def_Ident));
+              (Def_Ident, Takes_S_Link => Needs_Activation_Record (Def_Ident));
 
          when Fixed_Point_Kind =>
             Typ := Int_Type_In_Context
@@ -608,7 +591,7 @@ package body GNATLLVM.Types is
             | E_Limited_Private_Type
             | E_Limited_Private_Subtype
          =>
-            Typ := Create_Type (Env, Full_Etype (Def_Ident));
+            Typ := Create_Type (Full_Etype (Def_Ident));
 
          when others =>
             Error_Msg_N
@@ -620,10 +603,10 @@ package body GNATLLVM.Types is
       --  Now save the result, if we have one, and compute any TBAA
       --  information.
       if Present (Typ) then
-         Set_Type (Env, TE, Typ);
-         TBAA := Create_TBAA (Env, TE);
+         Set_Type (TE, Typ);
+         TBAA := Create_TBAA (TE);
          if Present (TBAA) then
-            Set_TBAA (Env, TE, TBAA);
+            Set_TBAA (TE, TBAA);
          end if;
       end if;
 
@@ -634,7 +617,7 @@ package body GNATLLVM.Types is
    -- Create_TBAA --
    -----------------
 
-   function Create_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
+   function Create_TBAA (TE : Entity_Id) return Metadata_T is
    begin
       if Ekind (TE) in E_Signed_Integer_Type  |
                        E_Modular_Integer_Type |
@@ -652,20 +635,20 @@ package body GNATLLVM.Types is
    --------------------------
 
    procedure Create_Discrete_Type
-     (Env : Environ; TE : Entity_Id; TL : out Type_T; Low, High : out GL_Value)
+     (TE : Entity_Id; TL : out Type_T; Low, High : out GL_Value)
    is
       SRange : constant Node_Id := Scalar_Range (TE);
 
    begin
       --  Delegate LLVM Type creation to Create_Type
 
-      TL := Create_Type (Env, TE);
+      TL := Create_Type (TE);
 
       --  Compute the bounds
 
       pragma Assert (Nkind (SRange) = N_Range);
-      Low := Emit_Expression (Env, Low_Bound (SRange));
-      High := Emit_Expression (Env, High_Bound (SRange));
+      Low := Emit_Expression (Low_Bound (SRange));
+      High := Emit_Expression (High_Bound (SRange));
 
    end Create_Discrete_Type;
 
@@ -674,13 +657,12 @@ package body GNATLLVM.Types is
    --------------------------------------
 
    function Create_Subprogram_Type_From_Spec
-     (Env : Environ; Subp_Spec : Node_Id) return Type_T
+     (Subp_Spec : Node_Id) return Type_T
    is
       Def_Ident : constant Entity_Id := Defining_Entity (Subp_Spec);
 
    begin
-      return Create_Subprogram_Type
-        (Env, Def_Ident, Full_Etype (Def_Ident), False);
+      return Create_Subprogram_Type (Def_Ident, Full_Etype (Def_Ident), False);
    end Create_Subprogram_Type_From_Spec;
 
    ----------------------------------------
@@ -688,14 +670,11 @@ package body GNATLLVM.Types is
    ----------------------------------------
 
    function Create_Subprogram_Type_From_Entity
-     (Env           : Environ;
-      Subp_Type_Ent : Entity_Id;
-      Takes_S_Link  : Boolean) return Type_T is
+     (Subp_Type_Ent : Entity_Id; Takes_S_Link  : Boolean) return Type_T is
 
    begin
       return Create_Subprogram_Type
-        (Env, Subp_Type_Ent, Full_Etype (Subp_Type_Ent),
-         Takes_S_Link);
+        (Subp_Type_Ent, Full_Etype (Subp_Type_Ent), Takes_S_Link);
    end Create_Subprogram_Type_From_Entity;
 
    ----------------------------
@@ -703,20 +682,19 @@ package body GNATLLVM.Types is
    ----------------------------
 
    function Create_Subprogram_Type
-     (Env           : Environ;
-      Param_Ident   : Entity_Id;
+     (Param_Ident   : Entity_Id;
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
    is
       LLVM_Return_Typ : Type_T :=
         (if Ekind (Return_Type) = E_Void
          then Void_Type_In_Context (Env.Ctx)
-         else Create_Type (Env, Return_Type));
+         else Create_Type (Return_Type));
       Orig_Arg_Count  : constant Nat := Count_Params (Param_Ident);
       Args_Count      : constant Nat :=
         Orig_Arg_Count + (if Takes_S_Link then 1 else 0) +
           (if Ekind (Return_Type) /= E_Void
-             and then Is_Dynamic_Size (Env, Return_Type)
+             and then Is_Dynamic_Size (Return_Type)
            then 1 else 0);
       Arg_Types       : Type_Array (1 .. Args_Count);
       Param_Ent       : Entity_Id := First_Formal_With_Extras (Param_Ident);
@@ -734,8 +712,8 @@ package body GNATLLVM.Types is
 
             Arg_Types (J) :=
               (if Param_Needs_Ptr (Param_Ent)
-               then Create_Access_Type (Env, Param_Type)
-               else Create_Type (Env, Param_Type));
+               then Create_Access_Type (Param_Type)
+               else Create_Type (Param_Type));
          end;
 
          J := J + 1;
@@ -753,9 +731,9 @@ package body GNATLLVM.Types is
       --  to which we pass the address for the return to be placed in.
 
       if Ekind (Return_Type) /= E_Void
-        and then Is_Dynamic_Size (Env, Return_Type)
+        and then Is_Dynamic_Size (Return_Type)
       then
-         Arg_Types (Arg_Types'Last) := Create_Access_Type (Env, Return_Type);
+         Arg_Types (Arg_Types'Last) := Create_Access_Type (Return_Type);
          LLVM_Return_Typ := Void_Type_In_Context (Env.Ctx);
       end if;
 
@@ -766,9 +744,7 @@ package body GNATLLVM.Types is
    -- Create_Subprogram_Access_Type --
    -----------------------------------
 
-   function Create_Subprogram_Access_Type
-     (Env       : Environ;
-      Subp_Type : Type_T) return Type_T
+   function Create_Subprogram_Access_Type (Subp_Type : Type_T) return Type_T
    is
       pragma Unreferenced (Subp_Type);
 
@@ -788,7 +764,7 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Allocate_For_Type
-     (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
+     (TE : Entity_Id; Name : String := "") return GL_Value
    is
       Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
@@ -797,8 +773,8 @@ package body GNATLLVM.Types is
       --  We have three cases.  If the object is not of a dynamic size,
       --  we just do the alloca and that's all.
 
-      if not Is_Dynamic_Size (Env, TE) then
-         return Alloca (Env, TE, Name);
+      if not Is_Dynamic_Size (TE) then
+         return Alloca (TE, Name);
       end if;
 
       --  Otherwise, we have to do some sort of dynamic allocation.  If
@@ -808,18 +784,17 @@ package body GNATLLVM.Types is
       --  If not, we have to allocate it as an array of bytes.
 
       if Is_Array_Type (TE)
-        and then not Is_Dynamic_Size (Env, Full_Component_Type (TE))
+        and then not Is_Dynamic_Size (Full_Component_Type (TE))
       then
          Element_Typ := Full_Component_Type (TE);
-         Num_Elts    := Get_Array_Elements (Env, No_GL_Value, TE);
+         Num_Elts    := Get_Array_Elements (No_GL_Value, TE);
       else
          Element_Typ := Standard_Short_Short_Integer;
-         Num_Elts    := Get_Type_Size (Env, TE, No_GL_Value);
+         Num_Elts    := Get_Type_Size (TE, No_GL_Value);
       end if;
 
       return Ptr_To_Ref
-        (Env,
-         Array_Alloca (Env, Element_Typ, Num_Elts, "dyn-array"), TE, Name);
+        (Array_Alloca (Element_Typ, Num_Elts, "dyn-array"), TE, Name);
 
    end Allocate_For_Type;
 
@@ -827,10 +802,9 @@ package body GNATLLVM.Types is
    --  Convert_To_Size_Type --
    ---------------------------
 
-   function Convert_To_Size_Type
-     (Env : Environ; V : GL_Value) return GL_Value is
+   function Convert_To_Size_Type (V : GL_Value) return GL_Value is
    begin
-      return Convert_To_Elementary_Type (Env, V, Env.Size_Type);
+      return Convert_To_Elementary_Type (V, Env.Size_Type);
    end Convert_To_Size_Type;
 
    -------------------
@@ -838,25 +812,24 @@ package body GNATLLVM.Types is
    -------------------
 
    function Get_Type_Size
-     (Env      : Environ;
-      TE       : Entity_Id;
+     (TE       : Entity_Id;
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
       Size           : GL_Value;
       Dynamic_Fields : Boolean := False;
-      T              : constant Type_T := Create_Type (Env, TE);
+      T              : constant Type_T := Create_Type (TE);
 
    begin
       --  ?? Record types still use the old mechanism, so keep the old code
       --  and check first.
 
       if Is_Record_Type (TE) then
-         Size := Get_LLVM_Type_Size (Env, T);
+         Size := Get_LLVM_Type_Size (T);
 
-         if Record_With_Dynamic_Size (Env, TE) then
+         if Record_With_Dynamic_Size (TE) then
             for Comp of Iterate_Components (TE) loop
-               if Is_Dynamic_Size (Env, Full_Etype (Comp)) then
+               if Is_Dynamic_Size (Full_Etype (Comp)) then
                   Dynamic_Fields := True;
                end if;
 
@@ -865,31 +838,29 @@ package body GNATLLVM.Types is
 
                if Dynamic_Fields then
                   Size := NSW_Add
-                    (Env,
-                     Size,
-                     Get_Type_Size
-                       (Env, Full_Etype (Comp), No_GL_Value, For_Type),
+                    (Size,
+                     Get_Type_Size (Full_Etype (Comp), No_GL_Value, For_Type),
                      "record-size");
                end if;
             end loop;
          end if;
 
-      elsif Is_Array_Type (TE) and then Is_Dynamic_Size (Env, TE) then
+      elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
          declare
             Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
             Comp_Size     : constant GL_Value :=
-              Get_Type_Size (Env, Comp_Type, No_GL_Value, For_Type);
+              Get_Type_Size (Comp_Type, No_GL_Value, For_Type);
             Num_Elements  : constant GL_Value :=
-              Get_Array_Elements (Env, V, TE, For_Type);
+              Get_Array_Elements (V, TE, For_Type);
          begin
             Size := NSW_Mul
-              (Env, Convert_To_Size_Type (Env, Comp_Size),
-               Convert_To_Size_Type (Env, Num_Elements),
+              (Convert_To_Size_Type (Comp_Size),
+               Convert_To_Size_Type (Num_Elements),
                "size");
          end;
 
       else
-         Size := Get_LLVM_Type_Size (Env, T);
+         Size := Get_LLVM_Type_Size (T);
       end if;
 
       return Size;
@@ -900,19 +871,17 @@ package body GNATLLVM.Types is
    -- Get_Type_Size_Complexity --
    ------------------------------
 
-   function Get_Type_Size_Complexity
-     (Env      : Environ;
-      TE       : Entity_Id) return Natural is
+   function Get_Type_Size_Complexity (TE : Entity_Id) return Natural is
    begin
 
       if Is_Record_Type (TE) then
 
          --  For now, just distinguish dynamic and constant size
 
-         return (if Is_Dynamic_Size (Env, TE) then 10 else 0);
+         return (if Is_Dynamic_Size (TE) then 10 else 0);
 
       elsif Is_Array_Type (TE) then
-         return Get_Array_Size_Complexity (Env, TE);
+         return Get_Array_Size_Complexity (TE);
 
       else
          --  All other types are constant size
@@ -927,13 +896,12 @@ package body GNATLLVM.Types is
    -------------------------
 
    function Record_Field_Offset
-     (Env          : Environ;
-      Record_Ptr   : Value_T;
+     (Record_Ptr   : Value_T;
       Record_Field : Node_Id) return Value_T
    is
       Type_Id    : constant Entity_Id :=
         Get_Fullest_View (Scope (Record_Field));
-      R_Info     : constant Record_Info := Get_Record_Info (Env, Type_Id);
+      R_Info     : constant Record_Info := Get_Record_Info (Type_Id);
       F_Info     : constant Field_Info := R_Info.Fields.Element (Record_Field);
       Struct_Ptr : Value_T := Record_Ptr;
 
@@ -954,8 +922,7 @@ package body GNATLLVM.Types is
                  (Env.Bld,
                   Int_Struct_Address,
                   Get_Type_Size
-                    (Env,
-                     Full_Etype (Preceding_Field.Entity), No_GL_Value).Value,
+                    (Full_Etype (Preceding_Field.Entity), No_GL_Value).Value,
                   "offset-calc");
             end loop;
 
@@ -974,8 +941,7 @@ package body GNATLLVM.Types is
    -- Record_With_Dynamic_Size --
    ------------------------------
 
-   function Record_With_Dynamic_Size
-     (Env : Environ; T : Entity_Id) return Boolean
+   function Record_With_Dynamic_Size (T : Entity_Id) return Boolean
    is
       Full_View : constant Entity_Id := Get_Fullest_View (T);
       Unused    : Type_T;
@@ -983,8 +949,8 @@ package body GNATLLVM.Types is
    begin
       if Is_Record_Type (Full_View) then
          --  First ensure the type is created
-         Unused := Create_Type (Env, Full_View);
-         return Get_Record_Info (Env, Full_View).Dynamic_Size;
+         Unused := Create_Type (Full_View);
+         return Get_Record_Info (Full_View).Dynamic_Size;
       else
          return False;
       end if;

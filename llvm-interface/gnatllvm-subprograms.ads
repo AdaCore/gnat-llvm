@@ -33,35 +33,32 @@ package GNATLLVM.Subprograms is
       Table_Name           => "Nested_Function_Table");
    --  Table of nested functions to elaborate
 
-   function Get_Static_Link (Env : Environ; Node : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Present (Node),
+   function Get_Static_Link (Node : Entity_Id) return GL_Value
+     with Pre  => Present (Node),
           Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Node
 
-   function Emit_Call
-     (Env : Environ; Call_Node : Node_Id) return GL_Value
-     with Pre  => Env /= null and then Nkind (Call_Node) in N_Subprogram_Call,
+   function Emit_Call (Call_Node : Node_Id) return GL_Value
+     with Pre  => Nkind (Call_Node) in N_Subprogram_Call,
           Post => Present (Emit_Call'Result);
    --  Helper for Emit/Emit_Expression: compile a call statement/expression and
    --  return its result value.
 
-   procedure Emit_LCH_Call (Env : Environ; Node : Node_Id)
-     with Pre  => Env /= null and then Present (Node);
+   procedure Emit_LCH_Call (Node : Node_Id)
+     with Pre  => Present (Node);
    --  Generate a call to __gnat_last_chance_handler
 
-   procedure Emit_One_Body (Env : Environ; Node : Node_Id)
-     with Pre => Env /= null and then Present (Node);
+   procedure Emit_One_Body (Node : Node_Id)
+     with Pre => Present (Node);
    --  Generate code for one given subprogram body
 
-   function Emit_Subprogram_Decl
-     (Env : Environ; Subp_Spec : Node_Id) return GL_Value
-     with Pre  => Env /= null,
-          Post => Present (Emit_Subprogram_Decl'Result);
+   function Emit_Subprogram_Decl (Subp_Spec : Node_Id) return GL_Value
+     with Post => Present (Emit_Subprogram_Decl'Result);
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
-   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id)
-     with Pre => Env /= null and then Present (Node);
+   procedure Emit_Subprogram_Body (Node : Node_Id)
+     with Pre => Present (Node);
    --  Compile a subprogram body and save it in the environment
 
    function Node_Enclosing_Subprogram (Node : Node_Id) return Node_Id
@@ -69,9 +66,8 @@ package GNATLLVM.Subprograms is
           Post => Present (Node_Enclosing_Subprogram'Result);
    --  Return the enclosing subprogram containing Node
 
-   function Subp_Ptr (Env : Environ; Node : Node_Id) return GL_Value
-     with Pre  => Env /= null and then Present (Node),
-     Post => Present (Subp_Ptr'Result);
+   function Subp_Ptr (Node : Node_Id) return GL_Value
+     with Pre  => Present (Node), Post => Present (Subp_Ptr'Result);
    --  Return the subprogram pointer associated with Node
 
 end GNATLLVM.Subprograms;

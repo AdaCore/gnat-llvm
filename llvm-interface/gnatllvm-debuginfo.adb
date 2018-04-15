@@ -76,13 +76,13 @@ package body GNATLLVM.DebugInfo is
    -- Initialize_Debugging --
    --------------------------
 
-   procedure Initialize_Debugging (Env : Environ) is
+   procedure Initialize_Debugging is
    begin
       if Emit_Debug_Info then
          Env.DIBld := Create_Debug_Builder (Env.Mdl);
          Env.Debug_Compile_Unit :=
            Create_Debug_Compile_Unit
-           (Env.DIBld, Get_Debug_File_Node (Env, Main_Source_File));
+           (Env.DIBld, Get_Debug_File_Node (Main_Source_File));
       end if;
    end Initialize_Debugging;
 
@@ -90,7 +90,7 @@ package body GNATLLVM.DebugInfo is
    -- Finalize_Debugging --
    ------------------------
 
-   procedure Finalize_Debugging (Env : Environ) is
+   procedure Finalize_Debugging is
    begin
       if Emit_Debug_Info then
          Finalize_Debug_Info (Env.DIBld);
@@ -101,8 +101,7 @@ package body GNATLLVM.DebugInfo is
    -- Get_Debug_File_Node --
    -------------------------
 
-   function Get_Debug_File_Node
-     (Env : Environ; File : Source_File_Index) return Metadata_T is
+   function Get_Debug_File_Node (File : Source_File_Index) return Metadata_T is
    begin
       if DI_Cache = null then
          DI_Cache :=
@@ -132,8 +131,7 @@ package body GNATLLVM.DebugInfo is
    ----------------------------------
 
    function Create_Subprogram_Debug_Info
-     (Env            : Environ;
-      Func           : GL_Value;
+     (Func           : GL_Value;
       Def_Ident      : Entity_Id;
       N              : Node_Id;
       Name, Ext_Name : String) return Metadata_T
@@ -144,7 +142,7 @@ package body GNATLLVM.DebugInfo is
          return Create_Debug_Subprogram
            (Env.DIBld,
             LLVM_Value (Func),
-            Get_Debug_File_Node (Env, Get_Source_File_Index (Sloc (N))),
+            Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
             Name, Ext_Name, Integer (Get_Logical_Line_Number (Sloc (N))));
       else
          return No_Metadata_T;
@@ -155,13 +153,13 @@ package body GNATLLVM.DebugInfo is
    -- Push_Lexical_Debug_Scope --
    ------------------------------
 
-   procedure Push_Lexical_Debug_Scope (Env : Environ; N : Node_Id) is
+   procedure Push_Lexical_Debug_Scope (N : Node_Id) is
    begin
       if Emit_Debug_Info then
          Push_Debug_Scope
            (Create_Debug_Lexical_Block
               (Env.DIBld, Current_Debug_Scope,
-               Get_Debug_File_Node (Env, Get_Source_File_Index (Sloc (N))),
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
                Integer (Get_Logical_Line_Number (Sloc (N))),
                Integer (Get_Column_Number (Sloc (N)))));
       end if;
@@ -171,7 +169,7 @@ package body GNATLLVM.DebugInfo is
    -- Set_Debug_Pos_At_Node --
    ---------------------------
 
-   procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id) is
+   procedure Set_Debug_Pos_At_Node (N : Node_Id) is
    begin
       if Emit_Debug_Info and then Has_Debug_Scope then
          Set_Debug_Loc (Env.Bld, Current_Debug_Scope,

@@ -38,40 +38,35 @@ package GNATLLVM.DebugInfo is
    procedure Pop_Debug_Scope;
    --  Pop the debugging scope.  Does nothing if not debugging.
 
-   procedure Initialize_Debugging (Env : Environ)
-     with Pre => Env /= null;
+   procedure Initialize_Debugging;
    --  Set up the environment for generating debugging information
 
-   procedure Finalize_Debugging (Env : Environ)
-     with Pre => Env /= null;
+   procedure Finalize_Debugging;
    --  Finalize the debugging info at the end of the translation
 
-   function Get_Debug_File_Node
-     (Env : Environ; File : Source_File_Index) return Metadata_T
-     with Pre  => Env /= null,
-          Post => not Emit_Debug_Info
+   function Get_Debug_File_Node (File : Source_File_Index) return Metadata_T
+     with Post => not Emit_Debug_Info
                   or else Present (Get_Debug_File_Node'Result);
    --  Produce and return a DIFile entry for the specified source file index
 
    function Create_Subprogram_Debug_Info
-     (Env            : Environ;
-      Func           : GL_Value;
+     (Func           : GL_Value;
       Def_Ident      : Entity_Id;
       N              : Node_Id;
       Name, Ext_Name : String) return Metadata_T
-     with Pre  => Env /= null and then Present (Func)
-                  and then Present (Def_Ident) and then Present (N),
+     with Pre  => Present (Func) and then Present (Def_Ident)
+                  and then Present (N),
           Post => not Emit_Debug_Info
                   or else Present (Create_Subprogram_Debug_Info'Result);
    --  Create debugging information for Func with entity Def_Ident using
    --  the line number information in N for the location and with the
    --  specified internal and external names.
 
-   procedure Push_Lexical_Debug_Scope (Env : Environ; N : Node_Id)
-     with Pre => Env /= null and Present (N);
+   procedure Push_Lexical_Debug_Scope (N : Node_Id)
+     with Pre => Present (N);
    --  Push a lexical scope starting at N into the debug stack
 
-   procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id)
+   procedure Set_Debug_Pos_At_Node (N : Node_Id)
      with Pre => Env /= null and then Present (N);
    --  Set builder position for debugging to the Sloc of N.
 

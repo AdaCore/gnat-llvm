@@ -250,82 +250,77 @@ package GNATLLVM.Environment is
       LLVM_Info                 : LLVM_Info_Array (First_Node_Id .. Max_Nodes);
    end record;
 
-   function Library_Level (Env : Environ) return Boolean;
+   Env : Environ;
+   --  Pointer to above record
 
-   function Get_Type         (Env : Environ; TE : Entity_Id) return Type_T
+   function Library_Level return Boolean;
+
+   function Get_Type        (TE : Entity_Id) return Type_T
+     with Pre => Is_Type (TE);
+
+   function Is_Dynamic_Size (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+
+   function Get_TBAA        (TE : Entity_Id) return Metadata_T
      with Pre => Env /= null and then Is_Type (TE);
 
-   function Is_Dynamic_Size  (Env : Environ; TE : Entity_Id) return Boolean
-     with Pre => Env /= null and then Is_Type (TE);
+   function Get_Value       (VE : Entity_Id) return GL_Value
+     with Pre => Present (VE);
 
-   function Get_TBAA         (Env : Environ; TE : Entity_Id) return Metadata_T
-     with Pre => Env /= null and then Is_Type (TE);
+   function Get_Array_Info  (TE : Entity_Id) return Nat
+     with Pre => Is_Array_Type (TE);
 
-   function Get_Value       (Env : Environ; VE : Entity_Id) return GL_Value
-     with Pre => Env /= null and then Present (VE);
+   function Get_Record_Info (TE : Entity_Id) return Record_Info
+     with Pre => Is_Record_Type (TE);
 
-   function Get_Array_Info  (Env : Environ; TE : Entity_Id) return Nat
-     with Pre => Env /= null and then Is_Array_Type (TE);
+   function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T
+     with Pre => Present (BE);
 
-   function Get_Record_Info (Env : Environ; TE : Entity_Id) return Record_Info
-     with Pre => Env /= null and then Is_Record_Type (TE);
+   function Has_Type        (TE : Entity_Id) return Boolean is
+      (Present (Get_Type (TE)))
+     with Pre => Is_Type (TE);
 
-   function Get_Basic_Block
-     (Env : Environ; BE : Entity_Id) return Basic_Block_T
-     with Pre => Env /= null and then Present (BE);
+   function Has_TBAA        (TE : Entity_Id) return Boolean is
+      (Present (Get_TBAA (TE)))
+     with Pre => Is_Type (TE);
 
-   function Has_Type        (Env : Environ; TE : Entity_Id) return Boolean is
-      (Present (Get_Type (Env, TE)))
-     with Pre => Env /= null and then Is_Type (TE);
+   function Has_Value       (VE : Entity_Id) return Boolean is
+      (Present (Get_Value (VE)))
+     with Pre => Present (VE);
 
-   function Has_TBAA        (Env : Environ; TE : Entity_Id) return Boolean is
-      (Present (Get_TBAA (Env, TE)))
-     with Pre => Env /= null and then Is_Type (TE);
+   function Has_BB          (BE : Entity_Id) return Boolean is
+      (Present (Get_Basic_Block (BE)))
+     with Pre => Present (BE);
 
-   function Has_Value       (Env : Environ; VE : Entity_Id) return Boolean is
-      (Present (Get_Value (Env, VE)))
-     with Pre => Env /= null and then Present (VE);
+   procedure Set_Type       (TE : Entity_Id; TL : Type_T)
+     with Pre  => Is_Type (TE) and then Present (TL),
+          Post => Get_Type (TE) = TL;
 
-   function Has_BB           (Env : Environ; BE : Entity_Id) return Boolean is
-      (Present (Get_Basic_Block (Env, BE)))
-     with Pre => Env /= null and then Present (BE);
+   procedure Set_Dynamic_Size (TE : Entity_Id; B : Boolean)
+     with Pre  => Is_Type (TE) and then Has_Type (TE),
+          Post => Is_Dynamic_Size (TE) = B;
 
-   procedure Set_Type (Env : Environ; TE : Entity_Id; TL : Type_T)
-     with Pre  => Env /= null and then Is_Type (TE) and then Present (TL),
-          Post => Get_Type (Env, TE) = TL;
+   procedure Set_TBAA (TE : Entity_Id; TBAA : Metadata_T)
+     with Pre  => Is_Type (TE) and then Present (TBAA) and then Has_Type (TE),
+          Post => Get_TBAA (TE) = TBAA;
 
-   procedure Set_Dynamic_Size (Env : Environ; TE : Entity_Id; B : Boolean)
-     with Pre  => Env /= null and then Is_Type (TE)
-                  and then Has_Type (Env, TE),
-          Post => Is_Dynamic_Size (Env, TE) = B;
+   procedure Set_Value (VE : Entity_Id; VL : GL_Value)
+     with Pre  => Present (VE) and then Present (VL),
+          Post => Get_Value (VE) = VL;
 
-   procedure Set_TBAA (Env : Environ; TE : Entity_Id; TBAA : Metadata_T)
-     with Pre  => Env /= null and then Is_Type (TE)
-                  and then Present (TBAA) and then Has_Type (Env, TE),
-          Post => Get_TBAA (Env, TE) = TBAA;
+   procedure Set_Array_Info (TE : Entity_Id; AI : Nat)
+     with Pre  => Is_Array_Type (TE) and then Has_Type (TE),
+          Post => Get_Array_Info (TE) = AI;
 
-   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : GL_Value)
-     with Pre  => Env /= null and then Present (VE) and then Present (VL),
-          Post => Get_Value (Env, VE) = VL;
+   procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info)
+     with Pre  => Is_Record_Type (TE) and then Has_Type (TE),
+          Post => Get_Record_Info (TE) = RI;
 
-   procedure Set_Array_Info (Env : Environ; TE : Entity_Id; AI : Nat)
-     with Pre  => Env /= null and then Is_Array_Type (TE)
-                  and then Has_Type (Env, TE),
-          Post => Get_Array_Info (Env, TE) = AI;
+   procedure Set_Basic_Block (BE : Entity_Id; BL : Basic_Block_T)
+     with Pre  => Present (BE), Post => Get_Basic_Block (BE) = BL;
 
-   procedure Set_Record_Info (Env : Environ; TE : Entity_Id; RI : Record_Info)
-     with Pre  => Env /= null and then Is_Record_Type (TE)
-                  and then Has_Type (Env, TE),
-          Post => Get_Record_Info (Env, TE) = RI;
-
-   procedure Set_Basic_Block
-     (Env : Environ; BE : Entity_Id; BL : Basic_Block_T)
-     with Pre  => Env /= null and then Present (BE),
-          Post => Get_Basic_Block (Env, BE) = BL;
-
-   procedure Copy_Type_Info (Env : Environ; Old_T, New_T : Entity_Id)
-     with Pre  => Env /= null and then Has_Type (Env, Old_T),
-          Post => Has_Type (Env, New_T);
+   procedure Copy_Type_Info (Old_T, New_T : Entity_Id)
+     with Pre  => Has_Type (Old_T), Post => Has_Type (New_T);
    --  Copy type-related information from Old_T to New_T
 
    procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T)
@@ -336,22 +331,19 @@ package GNATLLVM.Environment is
    function Get_Exit_Point return Basic_Block_T
      with Post => Present (Get_Exit_Point'Result);
 
-   procedure Enter_Subp (Env : Environ; Func : GL_Value)
-     with Pre  => Env /= null and then Present (Func)
-                  and then Library_Level (Env),
-          Post => not Library_Level (Env);
+   procedure Enter_Subp (Func : GL_Value)
+     with Pre  => Present (Func) and then Library_Level,
+          Post => not Library_Level;
    --  Create an entry basic block for this subprogram and position
    --  the builder at its end. Mark that we're in a subprogram.  To be
    --  used when starting the compilation of a subprogram body.
 
-   procedure Leave_Subp (Env : Environ)
-     with Pre  => Env /= null and not Library_Level (Env),
-          Post => Library_Level (Env);
+   procedure Leave_Subp
+     with Pre  => not Library_Level,
+          Post => Library_Level;
    --  Indicate that we're no longer compiling a subprogram
 
-   function Create_Basic_Block
-     (Env : Environ; Name : String := "") return Basic_Block_T
-     with Pre  => Env /= null,
-          Post => Present (Create_Basic_Block'Result);
+   function Create_Basic_Block (Name : String := "") return Basic_Block_T
+     with Post => Present (Create_Basic_Block'Result);
 
 end GNATLLVM.Environment;

@@ -29,7 +29,7 @@ package body GNATLLVM.Environment is
    -- Get_Type --
    --------------
 
-   function Get_Type (Env : Environ; TE : Entity_Id) return Type_T is
+   function Get_Type (TE : Entity_Id) return Type_T is
    begin
       if Env.LLVM_Info (TE) = Empty_LLVM_Info_Id then
          return No_Type_T;
@@ -42,15 +42,15 @@ package body GNATLLVM.Environment is
    -- Is_Dynamic_Size --
    ---------------------
 
-   function Is_Dynamic_Size (Env : Environ; TE : Entity_Id) return Boolean is
+   function Is_Dynamic_Size (TE : Entity_Id) return Boolean is
    begin
       --  ??? It would be better structuring if we could guarantee that this
       --  would only be called after the type has been elaborated, but
       --  we don't yet (and may never) have a good way of early lazy
       --  elaboration of those types.
 
-      if not Has_Type (Env, TE) then
-         Discard (Create_Type (Env, TE));
+      if not Has_Type (TE) then
+         Discard (Create_Type (TE));
       end if;
 
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Is_Dynamic_Size;
@@ -60,10 +60,10 @@ package body GNATLLVM.Environment is
    -- Get_TBAA --
    --------------
 
-   function Get_TBAA (Env : Environ; TE : Entity_Id) return Metadata_T is
+   function Get_TBAA (TE : Entity_Id) return Metadata_T is
    begin
-      if not Has_Type (Env, TE) then
-         Discard (Create_Type (Env, TE));
+      if not Has_Type (TE) then
+         Discard (Create_Type (TE));
       end if;
 
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).TBAA;
@@ -73,7 +73,7 @@ package body GNATLLVM.Environment is
    -- Get_Value --
    ---------------
 
-   function Get_Value (Env : Environ; VE : Entity_Id) return GL_Value is
+   function Get_Value (VE : Entity_Id) return GL_Value is
    begin
       if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
          return No_GL_Value;
@@ -86,8 +86,7 @@ package body GNATLLVM.Environment is
    -- Get_Basic_Block --
    ---------------------
 
-   function Get_Basic_Block
-     (Env : Environ; BE : Entity_Id) return Basic_Block_T is
+   function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T is
    begin
       if Env.LLVM_Info (BE) = Empty_LLVM_Info_Id then
          return No_BB_T;
@@ -100,10 +99,10 @@ package body GNATLLVM.Environment is
    -- Get_Array_Info --
    ---------------------
 
-   function Get_Array_Info (Env : Environ; TE : Entity_Id) return Nat is
+   function Get_Array_Info (TE : Entity_Id) return Nat is
    begin
-      if not Has_Type (Env, TE) then
-         Discard (Create_Type (Env, TE));
+      if not Has_Type (TE) then
+         Discard (Create_Type (TE));
       end if;
 
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Array_Bound_Info;
@@ -113,25 +112,23 @@ package body GNATLLVM.Environment is
    -- Get_Record_Info --
    ---------------------
 
-   function Get_Record_Info
-     (Env : Environ; TE : Entity_Id) return Record_Info is
+   function Get_Record_Info (TE : Entity_Id) return Record_Info is
    begin
-      if not Has_Type (Env, TE) then
-         Discard (Create_Type (Env, TE));
+      if not Has_Type (TE) then
+         Discard (Create_Type (TE));
       end if;
 
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Record_Inf;
    end Get_Record_Info;
 
-   function Get_LLVM_Info_Id (Env : Environ; N : Node_Id) return LLVM_Info_Id;
+   function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id;
    --  Helper for below to allocate LLVM_Info_Table entry if needed.
 
    ----------------------
    -- Get_LLVM_Info_Id --
    ----------------------
 
-   function Get_LLVM_Info_Id
-     (Env : Environ; N : Node_Id) return LLVM_Info_Id
+   function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id
    is
       Id : LLVM_Info_Id := Env.LLVM_Info (N);
 
@@ -153,7 +150,7 @@ package body GNATLLVM.Environment is
    -- Copy_Type_Info --
    --------------------
 
-   procedure Copy_Type_Info (Env : Environ; Old_T, New_T : Entity_Id) is
+   procedure Copy_Type_Info (Old_T, New_T : Entity_Id) is
       Id : constant LLVM_Info_Id := Env.LLVM_Info (Old_T);
 
    begin
@@ -170,8 +167,8 @@ package body GNATLLVM.Environment is
    -- Set_Type --
    --------------
 
-   procedure Set_Type (Env : Environ; TE : Entity_Id; TL : Type_T) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+   procedure Set_Type (TE : Entity_Id; TL : Type_T) is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Typ := TL;
@@ -181,8 +178,8 @@ package body GNATLLVM.Environment is
    -- Set_Dynamic_Size --
    ----------------------
 
-   procedure Set_Dynamic_Size (Env : Environ; TE : Entity_Id; B : Boolean) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+   procedure Set_Dynamic_Size (TE : Entity_Id; B : Boolean) is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Is_Dynamic_Size := B;
@@ -192,8 +189,8 @@ package body GNATLLVM.Environment is
    -- Set_TBAA --
    --------------
 
-   procedure Set_TBAA (Env : Environ; TE : Entity_Id; TBAA : Metadata_T) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+   procedure Set_TBAA (TE : Entity_Id; TBAA : Metadata_T) is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
       LLVM_Info_Table.Table (Id).TBAA := TBAA;
@@ -203,8 +200,8 @@ package body GNATLLVM.Environment is
    -- Set_Value --
    ---------------
 
-   procedure Set_Value (Env : Environ; VE : Entity_Id; VL : GL_Value) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, VE);
+   procedure Set_Value (VE : Entity_Id; VL : GL_Value) is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (VE);
 
    begin
       LLVM_Info_Table.Table (Id).Value :=  VL;
@@ -214,10 +211,9 @@ package body GNATLLVM.Environment is
    -- Set_Basic_Block --
    ---------------------
 
-   procedure Set_Basic_Block
-     (Env : Environ; BE : Entity_Id; BL : Basic_Block_T)
+   procedure Set_Basic_Block (BE : Entity_Id; BL : Basic_Block_T)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, BE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (BE);
 
    begin
       LLVM_Info_Table.Table (Id).Basic_Block := BL;
@@ -227,10 +223,9 @@ package body GNATLLVM.Environment is
    -- Set_Record_Info --
    ---------------------
 
-   procedure Set_Array_Info
-     (Env : Environ; TE : Entity_Id; AI : Nat)
+   procedure Set_Array_Info (TE : Entity_Id; AI : Nat)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Array_Bound_Info := AI;
@@ -240,10 +235,9 @@ package body GNATLLVM.Environment is
    -- Set_Record_Info --
    ---------------------
 
-   procedure Set_Record_Info
-     (Env : Environ; TE : Entity_Id; RI : Record_Info)
+   procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (Env, TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Record_Inf := RI;
@@ -299,19 +293,19 @@ package body GNATLLVM.Environment is
    -- Enter_Subp --
    ----------------
 
-   procedure Enter_Subp (Env : Environ; Func : GL_Value) is
+   procedure Enter_Subp (Func : GL_Value) is
    begin
       Env.Func := Func;
       Env.Activation_Rec_Param := No_GL_Value;
       Env.Return_Address_Param := No_GL_Value;
-      Position_Builder_At_End (Env.Bld, Create_Basic_Block (Env, "entry"));
+      Position_Builder_At_End (Env.Bld, Create_Basic_Block ("entry"));
    end Enter_Subp;
 
    ----------------
    -- Leave_Subp --
    ----------------
 
-   procedure Leave_Subp (Env  : Environ) is
+   procedure Leave_Subp is
    begin
       Env.Func := No_GL_Value;
    end Leave_Subp;
@@ -320,15 +314,14 @@ package body GNATLLVM.Environment is
    -- Library_Level --
    -------------------
 
-   function Library_Level (Env : Environ) return Boolean is
+   function Library_Level return Boolean is
      (Env.Func = No_GL_Value);
 
    ------------------------
    -- Create_Basic_Block --
    ------------------------
 
-   function Create_Basic_Block
-     (Env : Environ; Name : String := "") return Basic_Block_T is
+   function Create_Basic_Block (Name : String := "") return Basic_Block_T is
    begin
       return Append_Basic_Block_In_Context
         (Env.Ctx, LLVM_Value (Env.Func), Name);

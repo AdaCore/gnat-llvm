@@ -83,8 +83,8 @@ package body GNATLLVM.Arrays is
    --  Helper function to build a One_Bound object from N
 
    function Create_String_Literal_Type
-     (Env : Environ; TE : Entity_Id; Comp_Typ : Type_T) return Type_T
-     with Pre  => Env /= null and then Ekind (TE) = E_String_Literal_Subtype
+     (TE : Entity_Id; Comp_Typ : Type_T) return Type_T
+     with Pre  => Ekind (TE) = E_String_Literal_Subtype
                   and then Present (Comp_Typ),
           Post => (Get_Type_Kind (Create_String_Literal_Type'Result) =
                      Array_Type_Kind);
@@ -97,8 +97,8 @@ package body GNATLLVM.Arrays is
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
    --  Return the N_Range for an array type
 
-   function Get_GEP_Safe_Type (Env : Environ; G : GL_Value) return Entity_Id
-     with Pre  => Env /= null and then not Is_Reference (G),
+   function Get_GEP_Safe_Type (G : GL_Value) return Entity_Id
+     with Pre  => not Is_Reference (G),
           Post => Is_Integer_Type (Get_GEP_Safe_Type'Result);
    --  GEP treats array indices as signed values.  If the type is unsigned
    --  (including Boolean; see C55C02B), it will sign-extend rather than
@@ -136,14 +136,13 @@ package body GNATLLVM.Arrays is
    ---------------------
 
    function Get_Array_Bound
-     (Env      : Environ;
-      Arr_Typ  : Entity_Id;
+     (Arr_Typ  : Entity_Id;
       Dim      : Nat;
       Is_Low   : Boolean;
       Value    : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
-      Info_Idx   : constant Nat := Get_Array_Info (Env, Arr_Typ);
+      Info_Idx   : constant Nat := Get_Array_Info (Arr_Typ);
       Dim_Info   : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
       Bound_Info : constant One_Bound :=
         (if Is_Low then Dim_Info.Low else Dim_Info.High);
@@ -159,13 +158,12 @@ package body GNATLLVM.Arrays is
       --  access that field of the enclosing record.
 
       if Bound_Info.Cnst /= No_Uint then
-         return Const_Int (Env, Dim_Info.Bound_Type, Bound_Info.Cnst);
+         return Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
-         return Emit_Expression (Env, Bound_Info.Value);
+         return Emit_Expression (Bound_Info.Value);
       elsif not Is_Constrained (Arr_Typ) then
          return Extract_Value
-           (Env, Dim_Info.Bound_Type, Value,
-            (1 => 1, 2 => Integer (Bound_Idx)),
+           (Dim_Info.Bound_Type, Value, (1 => 1, 2 => Integer (Bound_Idx)),
             (if Is_Low then "low-bound" else "high-bound"));
       end if;
 
@@ -182,17 +180,14 @@ package body GNATLLVM.Arrays is
             Disc_Type : constant Entity_Id := Full_Etype (Bound_Info.Discr);
          begin
             return Emit_Expression
-              (Env,
-               (if Is_Low then Type_Low_Bound (Disc_Type)
+              ((if Is_Low then Type_Low_Bound (Disc_Type)
                 else Type_High_Bound (Disc_Type)));
          end;
       else
          return
            Load
-           (Env,
-            (G (Record_Field_Offset
-                  (Env,
-                   LLVM_Value (Get_Matching_Value
+           ((G (Record_Field_Offset
+                  (LLVM_Value (Get_Matching_Value
                                  (Full_Etype (Scope (Bound_Info.Discr)))),
                    Bound_Info.Discr),
                 Dim_Info.Bound_Type, Is_Reference => True)));
@@ -205,24 +200,21 @@ package body GNATLLVM.Arrays is
    ----------------------
 
    function Get_Array_Length
-     (Env      : Environ;
-      Arr_Typ  : Entity_Id;
-      Dim      : Nat;
+     (Arr_Typ  : Entity_Id; Dim      : Nat;
       Value    : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
-      Info_Idx    : constant Nat := Get_Array_Info (Env, Arr_Typ);
+      Info_Idx    : constant Nat := Get_Array_Info (Arr_Typ);
       Dim_Info    : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
       Low_Bound   : constant GL_Value :=
-        Get_Array_Bound (Env, Arr_Typ, Dim, True, Value, For_Type);
+        Get_Array_Bound (Arr_Typ, Dim, True, Value, For_Type);
       High_Bound  : constant GL_Value :=
-        Get_Array_Bound (Env, Arr_Typ, Dim, False, Value, For_Type);
+        Get_Array_Bound (Arr_Typ, Dim, False, Value, For_Type);
       Const_1     : constant GL_Value :=
-        Const_Int (Env, Dim_Info.Bound_Type, Uint_1);
+        Const_Int (Dim_Info.Bound_Type, Uint_1);
       Is_Empty    : constant GL_Value :=
         I_Cmp
-        (Env,
-         (if Is_Unsigned_Type (Low_Bound) then Int_UGT else Int_SGT),
+        ((if Is_Unsigned_Type (Low_Bound) then Int_UGT else Int_SGT),
          Low_Bound, High_Bound, "is-empty");
 
       --  The length of an array that has the maximum range of its type is
@@ -230,34 +222,28 @@ package body GNATLLVM.Arrays is
       --  trying to find some suitable type, we use Size_Type, which will
       --  also make thing simpler for some of our callers.
 
-      Size_Low_Bound  : constant GL_Value :=
-          Convert_To_Size_Type (Env, Low_Bound);
-      Size_High_Bound : constant GL_Value :=
-          Convert_To_Size_Type (Env, High_Bound);
+      Size_Low_Bound  : constant GL_Value := Convert_To_Size_Type (Low_Bound);
+      Size_High_Bound : constant GL_Value := Convert_To_Size_Type (High_Bound);
 
    begin
       return Build_Select
-        (Env,
-         C_If   => Is_Empty,
-         C_Then => Size_Const_Int (Env, 0),
+        (C_If   => Is_Empty,
+         C_Then => Size_Const_Int (0),
          C_Else =>
            (if Low_Bound = Const_1 then Size_High_Bound
-            else NSW_Add (Env,
-                          NSW_Sub (Env, Size_High_Bound, Size_Low_Bound),
-                          Size_Const_Int (Env, 1))));
+            else NSW_Add (NSW_Sub (Size_High_Bound, Size_Low_Bound),
+                          Size_Const_Int (1))));
    end Get_Array_Length;
 
    -------------------------------
    -- Get_Array_Size_Complexity --
    -------------------------------
 
-   function Get_Array_Size_Complexity
-     (Env      : Environ;
-      TE       : Entity_Id) return Natural
+   function Get_Array_Size_Complexity (TE : Entity_Id) return Natural
    is
       Complexity  : Natural :=
-        Get_Type_Size_Complexity (Env, Full_Component_Type (TE));
-      Info_Idx    : constant Nat := Get_Array_Info (Env, TE);
+        Get_Type_Size_Complexity (Full_Component_Type (TE));
+      Info_Idx    : constant Nat := Get_Array_Info (TE);
 
    begin
       for Dim in 0 .. Number_Dimensions (TE) - 1 loop
@@ -278,7 +264,7 @@ package body GNATLLVM.Arrays is
    --------------------------------
 
    function Create_String_Literal_Type
-     (Env : Environ; TE : Entity_Id; Comp_Typ   : Type_T) return Type_T
+     (TE : Entity_Id; Comp_Typ   : Type_T) return Type_T
    is
       First      : constant Uint :=
         Get_Uint_Value (String_Literal_Low_Bound (TE));
@@ -298,9 +284,9 @@ package body GNATLLVM.Arrays is
       --  It's redundant to set the type here, since our caller will set it,
       --  but we have to set it in order to set the array info.
 
-      Set_Type (Env, TE, Result_Typ);
+      Set_Type (TE, Result_Typ);
       Array_Info.Append (Dim_Info);
-      Set_Array_Info (Env, TE, Array_Info.Last);
+      Set_Array_Info (TE, Array_Info.Last);
       return Result_Typ;
 
    end Create_String_Literal_Type;
@@ -309,14 +295,12 @@ package body GNATLLVM.Arrays is
    -- Create_Array_Type --
    -----------------------
 
-   function Create_Array_Type
-     (Env : Environ;
-      TE  : Entity_Id) return Type_T
+   function Create_Array_Type (TE : Entity_Id) return Type_T
    is
       Unconstrained     : constant Boolean := not Is_Constrained (TE);
       Comp_Type         : constant Entity_Id := Full_Component_Type (TE);
-      Typ               : Type_T := Create_Type (Env, Comp_Type);
-      Must_Use_Opaque   : Boolean := Is_Dynamic_Size (Env, Comp_Type);
+      Typ               : Type_T := Create_Type (Comp_Type);
+      Must_Use_Opaque   : Boolean := Is_Dynamic_Size (Comp_Type);
       This_Dynamic_Size : Boolean := Must_Use_Opaque or Unconstrained;
       Index             : Entity_Id;
       Dim               : Nat := 0;
@@ -324,7 +308,7 @@ package body GNATLLVM.Arrays is
 
    begin
       if Ekind (TE) = E_String_Literal_Subtype then
-         return Create_String_Literal_Type (Env, TE, Typ);
+         return Create_String_Literal_Type (TE, Typ);
       end if;
 
       --  We loop through each dimension of the array creating the entries
@@ -411,9 +395,9 @@ package body GNATLLVM.Arrays is
       --  It's redundant to set the type here, since our caller will set it,
       --  but we have to set it in order to set the array info.
 
-      Set_Type (Env, TE, Typ);
-      Set_Dynamic_Size (Env, TE, This_Dynamic_Size);
-      Set_Array_Info (Env, TE, First_Info);
+      Set_Type (TE, Typ);
+      Set_Dynamic_Size (TE, This_Dynamic_Size);
+      Set_Array_Info (TE, First_Info);
 
       return Typ;
    end Create_Array_Type;
@@ -423,18 +407,17 @@ package body GNATLLVM.Arrays is
    ------------------------------
 
    function Create_Array_Bounds_Type
-     (Env             : Environ;
-      Array_Type_Node : Entity_Id) return Type_T
+     (Array_Type_Node : Entity_Id) return Type_T
    is
       Dims       : constant Nat := Number_Dimensions (Array_Type_Node);
       Fields     : aliased array (Nat range 0 .. 2 * Dims - 1) of Type_T;
-      First_Info : constant Nat := Get_Array_Info (Env, Array_Type_Node);
+      First_Info : constant Nat := Get_Array_Info (Array_Type_Node);
       J          : Nat := 0;
 
    begin
       for I in Nat range 0 .. Dims - 1 loop
          Fields (J) :=
-           Create_Type (Env, Array_Info.Table (First_Info + I).Bound_Type);
+           Create_Type (Array_Info.Table (First_Info + I).Bound_Type);
          Fields (J + 1) := Fields (J);
          J := J + 2;
       end loop;
@@ -448,11 +431,10 @@ package body GNATLLVM.Arrays is
    -----------------------------------
 
    function Create_Array_Raw_Pointer_Type
-     (Env             : Environ;
-      Array_Type_Node : Entity_Id) return Type_T
+     (Array_Type_Node : Entity_Id) return Type_T
    is
       Elt_Type : constant Type_T :=
-        Create_Type (Env, Full_Component_Type (Array_Type_Node));
+        Create_Type (Full_Component_Type (Array_Type_Node));
       Arr_Type : constant Type_T := Array_Type (Elt_Type, 0);
 
    begin
@@ -464,12 +446,11 @@ package body GNATLLVM.Arrays is
    -----------------------------------
 
    function Create_Array_Fat_Pointer_Type
-     (Env        : Environ;
-      Array_Type : Entity_Id) return Type_T
+     (Array_Type : Entity_Id) return Type_T
    is
       St_Els : Type_Array (1 .. 2) :=
-        (Create_Array_Raw_Pointer_Type (Env, Array_Type),
-         Create_Array_Bounds_Type (Env, Array_Type));
+        (Create_Array_Raw_Pointer_Type (Array_Type),
+         Create_Array_Bounds_Type (Array_Type));
    begin
       return Struct_Type (St_Els'Address, St_Els'Length, False);
    end Create_Array_Fat_Pointer_Type;
@@ -479,12 +460,11 @@ package body GNATLLVM.Arrays is
    ------------------------
 
    function Get_Array_Elements
-     (Env         : Environ;
-      Array_Descr : GL_Value;
+     (Array_Descr : GL_Value;
       Array_Type  : Entity_Id;
       For_Type    : Boolean := False) return GL_Value
    is
-      Size : GL_Value := Size_Const_Int (Env, Uint_1);
+      Size : GL_Value := Size_Const_Int (Uint_1);
 
    begin
       --  Go through every array dimension.  Get its size and multiply all
@@ -492,9 +472,8 @@ package body GNATLLVM.Arrays is
 
       for Dim in Nat range 0 .. Number_Dimensions (Array_Type) - 1 loop
          Size :=
-           NSW_Mul (Env, Size,
-                    Get_Array_Length (Env, Array_Type, Dim, Array_Descr,
-                                      For_Type));
+           NSW_Mul (Size,
+                    Get_Array_Length (Array_Type, Dim, Array_Descr, For_Type));
       end loop;
 
       return Size;
@@ -504,8 +483,7 @@ package body GNATLLVM.Arrays is
    -- Array_Data --
    ----------------
 
-   function Array_Data
-     (Env : Environ; Array_Descr : GL_Value) return GL_Value is
+   function Array_Data (Array_Descr : GL_Value) return GL_Value is
    begin
       if Is_Raw_Array (Array_Descr)
         or else Is_Constrained (Full_Designated_Type (Array_Descr))
@@ -524,16 +502,14 @@ package body GNATLLVM.Arrays is
    -----------------------
 
    function Array_Fat_Pointer
-     (Env        : Environ;
-      Array_Type : Entity_Id;
-      Array_Data : GL_Value) return GL_Value
+     (Array_Type : Entity_Id; Array_Data : GL_Value) return GL_Value
    is
       Src_Type       : constant Entity_Id := Full_Designated_Type (Array_Data);
-      Info_Idx       : constant Nat := Get_Array_Info (Env, Array_Type);
-      Fat_Ptr        : GL_Value := Get_Undef_Ref (Env,  Array_Type);
+      Info_Idx       : constant Nat := Get_Array_Info (Array_Type);
+      Fat_Ptr        : GL_Value := Get_Undef_Ref (Array_Type);
       Array_Data_Ptr : constant GL_Value :=
         G (Bit_Cast (Env.Bld, LLVM_Value (Array_Data),
-                     Create_Array_Raw_Pointer_Type (Env, Array_Type), ""),
+                     Create_Array_Raw_Pointer_Type (Array_Type), ""),
            Array_Type, Is_Reference => True, Is_Raw_Array => True);
 
    begin
@@ -548,26 +524,25 @@ package body GNATLLVM.Arrays is
             Bound_Type     : constant Entity_Id :=
               Array_Info.Table (Info_Idx + Dim).Bound_Type;
             Low_Bound    : constant GL_Value :=
-              Get_Array_Bound (Env, Src_Type, Dim, True, Array_Data);
+              Get_Array_Bound (Src_Type, Dim, True, Array_Data);
             High_Bound   : constant GL_Value :=
-              Get_Array_Bound (Env, Src_Type, Dim, False, Array_Data);
+              Get_Array_Bound (Src_Type, Dim, False, Array_Data);
             Converted_Low_Bound : constant GL_Value :=
-              Convert_To_Elementary_Type (Env, Low_Bound, Bound_Type);
+              Convert_To_Elementary_Type (Low_Bound, Bound_Type);
             Converted_High_Bound : constant GL_Value :=
-              Convert_To_Elementary_Type (Env, High_Bound, Bound_Type);
+              Convert_To_Elementary_Type (High_Bound, Bound_Type);
 
          begin
             Fat_Ptr := Insert_Value
-              (Env, Fat_Ptr, Converted_Low_Bound,
-               (1 => 1, 2 => Integer (Dim * 2)));
+              (Fat_Ptr, Converted_Low_Bound, (1 => 1, 2 => Integer (Dim * 2)));
 
             Fat_Ptr := Insert_Value
-              (Env, Fat_Ptr, Converted_High_Bound,
+              (Fat_Ptr, Converted_High_Bound,
                (1 => 1, 2 => Integer (Dim * 2 + 1)));
          end;
       end loop;
 
-      Fat_Ptr := Insert_Value (Env, Fat_Ptr, Array_Data_Ptr, 0);
+      Fat_Ptr := Insert_Value (Fat_Ptr, Array_Data_Ptr, 0);
 
       return Fat_Ptr;
    end Array_Fat_Pointer;
@@ -576,7 +551,7 @@ package body GNATLLVM.Arrays is
    -- Get_GEP_Safe_Type --
    -----------------------
 
-   function Get_GEP_Safe_Type (Env : Environ; G : GL_Value) return Entity_Id is
+   function Get_GEP_Safe_Type (G : GL_Value) return Entity_Id is
       Int_Types : constant array (Integer range <>) of Entity_Id :=
         (Standard_Short_Short_Integer, Standard_Short_Integer,
          Standard_Integer, Standard_Long_Integer, Standard_Long_Long_Integer);
@@ -606,15 +581,13 @@ package body GNATLLVM.Arrays is
    ------------------------
 
    function Get_Indexed_LValue
-     (Env     : Environ;
-      Indexes : List_Id;
-      Value   : GL_Value) return GL_Value
+     (Indexes : List_Id; Value : GL_Value) return GL_Value
    is
       Array_Type     : constant Entity_Id := Full_Designated_Type (Value);
       Comp_Type      : constant Entity_Id := Full_Component_Type (Array_Type);
-      Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
+      Array_Data_Ptr : constant GL_Value := Array_Data (Value);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
-        (1 => Size_Const_Int (Env, 0), others => <>);
+        (1 => Size_Const_Int (0), others => <>);
       --  Operands for the GetElementPtr instruction: one for the
       --  pointer deference, and then one per array index.
 
@@ -628,19 +601,19 @@ package body GNATLLVM.Arrays is
          --  Adjust the index according to the range lower bound
 
          declare
-            User_Index    : constant GL_Value := Emit_Expression (Env, N);
+            User_Index    : constant GL_Value := Emit_Expression (N);
             Dim_Low_Bound : constant GL_Value :=
-              Get_Array_Bound (Env, Array_Type, J - 2, True, Value);
+              Get_Array_Bound (Array_Type, J - 2, True, Value);
             Dim_Op_Type   : constant Entity_Id :=
-              Get_GEP_Safe_Type (Env, Dim_Low_Bound);
+              Get_GEP_Safe_Type (Dim_Low_Bound);
             Converted_Index : constant GL_Value :=
-              Convert_To_Elementary_Type (Env, User_Index, Dim_Op_Type);
+              Convert_To_Elementary_Type (User_Index, Dim_Op_Type);
             Converted_Low_Bound : constant GL_Value :=
-              Convert_To_Elementary_Type (Env, Dim_Low_Bound, Dim_Op_Type);
+              Convert_To_Elementary_Type (Dim_Low_Bound, Dim_Op_Type);
 
          begin
             Idxs (J) := NSW_Sub
-              (Env, Converted_Index, Converted_Low_Bound, "index");
+              (Converted_Index, Converted_Low_Bound, "index");
          end;
 
          J := J + 1;
@@ -650,9 +623,8 @@ package body GNATLLVM.Arrays is
       --  There are two approaches we can take here.  If we haven't used
       --  an opaque type, we can just do a GEP with the values above.
 
-      if Type_Is_Sized (Create_Type (Env, Array_Type)) then
-         return GEP (Env, Comp_Type, Array_Data_Ptr,
-                     Idxs, "array-element-access");
+      if Type_Is_Sized (Create_Type (Array_Type)) then
+         return GEP (Comp_Type, Array_Data_Ptr, Idxs, "array-element-access");
       end if;
 
       --  Otherwise, we convert the array data type to an i8*, compute the
@@ -664,26 +636,25 @@ package body GNATLLVM.Arrays is
 
       declare
          Data          : constant GL_Value :=
-           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer);
+           Ptr_To_Ref (Array_Data_Ptr, Standard_Short_Short_Integer);
          Comp_Size     : constant GL_Value :=
-           Get_Type_Size (Env, Comp_Type, No_GL_Value);
-         Index         : GL_Value := Convert_To_Size_Type (Env, Idxs (2));
+           Get_Type_Size (Comp_Type, No_GL_Value);
+         Index         : GL_Value := Convert_To_Size_Type (Idxs (2));
 
       begin
 
          for Dim in 1 .. Number_Dimensions (Array_Type) - 1 loop
-            Index := NSW_Add (Env,
-                              NSW_Mul (Env,
-                                       Index,
+            Index := NSW_Add (NSW_Mul (Index,
                                        Get_Array_Length
-                                         (Env, Array_Type, Dim, Value)),
-                              Convert_To_Size_Type (Env, Idxs (Dim + 2)));
+                                         (Array_Type, Dim, Value)),
+                              Convert_To_Size_Type (Idxs (Dim + 2)));
          end loop;
 
-         Index := NSW_Mul (Env, Index, Comp_Size);
+         Index := NSW_Mul (Index, Comp_Size);
          return Ptr_To_Ref
-           (Env, GEP (Env, Standard_Short_Short_Integer, Data,
-                      (1 => Index), "gen-index"), Comp_Type);
+           (GEP (Standard_Short_Short_Integer, Data, (1 => Index),
+                 "gen-index"),
+            Comp_Type);
       end;
 
    end Get_Indexed_LValue;
@@ -693,28 +664,26 @@ package body GNATLLVM.Arrays is
    ----------------------
 
    function Get_Slice_LValue
-     (Env         : Environ;
-      Result_Type : Entity_Id;
+     (Result_Type : Entity_Id;
       Rng         : Node_Id;
       Value       : GL_Value) return GL_Value
    is
-      Array_Data_Ptr : constant GL_Value := Array_Data (Env, Value);
+      Array_Data_Ptr : constant GL_Value := Array_Data (Value);
       Low_Idx_Bound  : constant GL_Value :=
-        Get_Array_Bound (Env, Full_Designated_Type (Value), 0, True, Value);
+        Get_Array_Bound (Full_Designated_Type (Value), 0, True, Value);
       Index_Val      : constant GL_Value :=
-        Emit_Expression (Env, Low_Bound (Rng));
-      Dim_Op_Type   : constant Entity_Id :=
-        Get_GEP_Safe_Type (Env, Low_Idx_Bound);
+        Emit_Expression (Low_Bound (Rng));
+      Dim_Op_Type   : constant Entity_Id := Get_GEP_Safe_Type (Low_Idx_Bound);
       Converted_Index : constant GL_Value :=
-        Convert_To_Elementary_Type (Env, Index_Val, Dim_Op_Type);
+        Convert_To_Elementary_Type (Index_Val, Dim_Op_Type);
       Converted_Low_Bound : constant GL_Value :=
-        Convert_To_Elementary_Type (Env, Low_Idx_Bound, Dim_Op_Type);
+        Convert_To_Elementary_Type (Low_Idx_Bound, Dim_Op_Type);
 
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
       Index_Shift : constant GL_Value :=
-        NSW_Sub (Env, Converted_Index, Converted_Low_Bound, "offset");
+        NSW_Sub (Converted_Index, Converted_Low_Bound, "offset");
 
    begin
       --  Like the above case, we have to hande both the opaque and non-opaque
@@ -722,28 +691,25 @@ package body GNATLLVM.Arrays is
       --  GEP's result type is a pointer to the component type, so we need
       --  to cast to the result (array) type in both cases.
 
-      if Type_Is_Sized (Create_Type (Env, Full_Designated_Type (Value))) then
-         return Ptr_To_Ref (Env,
-                            GEP
-                              (Env, Result_Type, Array_Data_Ptr,
-                               (Size_Const_Int (Env, 0), Index_Shift),
-                               "array-shifted"), Result_Type);
+      if Type_Is_Sized (Create_Type (Full_Designated_Type (Value))) then
+         return Ptr_To_Ref (GEP (Result_Type, Array_Data_Ptr,
+                                 (Size_Const_Int (0), Index_Shift),
+                                 "array-shifted"), Result_Type);
       end if;
 
       declare
          Data          : constant GL_Value :=
-           Ptr_To_Ref (Env, Array_Data_Ptr, Standard_Short_Short_Integer);
+           Ptr_To_Ref (Array_Data_Ptr, Standard_Short_Short_Integer);
          Comp_Type     : constant Entity_Id :=
            Full_Component_Type (Full_Designated_Type (Value));
          Comp_Size     : constant GL_Value :=
-           Get_Type_Size (Env, Comp_Type, No_GL_Value);
+           Get_Type_Size (Comp_Type, No_GL_Value);
          Index         : constant GL_Value :=
-           NSW_Mul (Env, Comp_Size,
-                    Convert_To_Size_Type (Env, Index_Shift));
+           NSW_Mul (Comp_Size, Convert_To_Size_Type (Index_Shift));
       begin
          return Ptr_To_Ref
-           (Env, GEP (Env, Full_Designated_Type (Value),
-                      Data, (1 => Index), "gen-index"), Result_Type);
+           (GEP (Full_Designated_Type (Value),
+                 Data, (1 => Index), "gen-index"), Result_Type);
       end;
 
    end Get_Slice_LValue;

@@ -118,9 +118,9 @@ package GNATLLVM.GLValue is
      with Pre  => not Is_Reference (G),
             Post => Is_Type (Implementation_Base_Type'Result);
 
-   function Is_Dynamic_Size (Env : Environ; G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Dynamic_Size (Env, Etype (G)))
-     with Pre => Env /= null and then Present (G);
+   function Is_Dynamic_Size (G : GL_Value) return Boolean is
+     (not Is_Reference (G) and then Is_Dynamic_Size (Etype (G)))
+     with Pre => Present (G);
 
    function Is_Array_Type (G : GL_Value) return Boolean is
      (not Is_Reference (G) and then Is_Array_Type (Etype (G)))
@@ -218,580 +218,509 @@ package GNATLLVM.GLValue is
    --  value.  However, we often need either an LValue or a value.  The
    --  following two functions force a GL_Value into one of the two forms.
 
-   function Need_Value
-     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+   function Need_Value (V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Need_Value'Result);
    --  Get the Value corresponding to V, dereferencing it when needed.
    --  TE is the type of the value.
 
-   function Need_LValue
-     (Env : Environ; V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Present (V)
-                  and then Is_Type_Or_Void (TE),
+   function Need_LValue (V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Present (V) and then Is_Type_Or_Void (TE),
           Post => Present (Need_LValue'Result);
    --  Get the LValue corresponding to V, making a new temporary to which
    --  we store the value, if needed.
 
-   function Get_Undef (Env : Environ; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Get_Undef'Result);
+   function Get_Undef (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE), Post => Present (Get_Undef'Result);
 
-   function Get_Undef_Ref (Env : Environ; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Is_Reference (Get_Undef_Ref'Result);
+   function Get_Undef_Ref (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
 
-   function Const_Null (Env : Environ; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Const_Null'Result);
+   function Const_Null (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE), Post => Present (Const_Null'Result);
 
-   function Const_Int
-     (Env : Environ; TE : Entity_Id; N : Uint) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE) and then N /= No_Uint,
+   function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
+     with Pre  => Is_Type (TE) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
    function Const_Int
-     (Env         : Environ;
-      TE          : Entity_Id;
+     (TE          : Entity_Id;
       N           : unsigned_long_long;
       Sign_Extend : Boolean := False) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Const_Int'Result);
+     with Pre  => Is_Type (TE), Post => Present (Const_Int'Result);
 
-   function Const_Ones (Env : Environ; TE : Entity_Id) return GL_Value is
-     (Const_Int (Env, TE, unsigned_long_long'Last, Sign_Extend => True))
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Const_Ones'Result);
+   function Const_Ones (TE : Entity_Id) return GL_Value is
+     (Const_Int (TE, unsigned_long_long'Last, Sign_Extend => True))
+     with Pre  => Is_Type (TE), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
-   function Get_Undef (Env : Environ; G : GL_Value) return GL_Value is
-     (Get_Undef (Env, Etype (G)))
-     with  Pre  => Env /= null and then Present (G),
-           Post => Present (Get_Undef'Result);
+   function Get_Undef (G : GL_Value) return GL_Value is
+     (Get_Undef (Etype (G)))
+     with  Pre  => Present (G), Post => Present (Get_Undef'Result);
 
-   function Const_Null (Env : Environ; G : GL_Value) return GL_Value is
-     (Const_Null (Env, Etype (G)))
-     with Pre  => Env /= null and then Present (G),
-          Post => Present (Const_Null'Result);
+   function Const_Null (G : GL_Value) return GL_Value is
+     (Const_Null (Etype (G)))
+     with Pre  => Present (G), Post => Present (Const_Null'Result);
 
-   function Const_Null_Ptr (Env : Environ; TE : Entity_Id) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Const_Null_Ptr'Result);
+   function Const_Null_Ptr (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE), Post => Present (Const_Null_Ptr'Result);
 
-   function Const_Int
-     (Env : Environ; G : GL_Value; N : Uint) return GL_Value is
-     (Const_Int (Env, Etype (G), N))
-     with Pre  => Env /= null and then Present (G) and then N /= No_Uint,
+   function Const_Int (G : GL_Value; N : Uint) return GL_Value is
+     (Const_Int (Etype (G), N))
+     with Pre  => Present (G) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
    function Const_Int
-     (Env         : Environ;
-      G           : GL_Value;
+     (G           : GL_Value;
       N           : unsigned_long_long;
       Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Env, Etype (G), N, Sign_Extend))
-     with Pre  => Env /= null and then Present (G),
-          Post => Present (Const_Int'Result);
+     (Const_Int (Etype (G), N, Sign_Extend))
+     with Pre  => Present (G), Post => Present (Const_Int'Result);
 
-   function Const_Ones (Env : Environ; G : GL_Value) return GL_Value is
-     (Const_Ones (Env, Etype (G)))
+   function Const_Ones (G : GL_Value) return GL_Value is
+     (Const_Ones (Etype (G)))
      with Pre => Present (G), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
-   function Const_Real
-     (Env : Environ; TE : Entity_Id; V : double) return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
-          Post => Present (Const_Real'Result);
+   function Const_Real (TE : Entity_Id; V : double) return GL_Value
+     with Pre  => Is_Type (TE), Post => Present (Const_Real'Result);
+
+   function Size_Const_Int (N : Uint) return GL_Value is
+     (Const_Int (Env.Size_Type, N))
+     with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
-     (Env : Environ; N : Uint) return GL_Value is
-     (Const_Int (Env, Env.Size_Type, N))
-     with Pre  => Env /= null and then N /= No_Uint,
-          Post => Present (Size_Const_Int'Result);
-
-   function Size_Const_Int
-     (Env : Environ;
-      N : unsigned_long_long;
-      Sign_Extend : Boolean := False) return GL_Value
+     (N : unsigned_long_long; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Env, Env.Size_Type, N, Sign_Extend))
-     with Pre => Env /= null, Post => Present (Size_Const_Int'Result);
+     (Const_Int (Env.Size_Type, N, Sign_Extend))
+     with Post => Present (Size_Const_Int'Result);
+
+   function Const_Int_32 (N : Uint) return GL_Value is
+     (Const_Int (Env.Int_32_Type, N))
+     with Pre  => N /= No_Uint, Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
-     (Env : Environ; N : Uint) return GL_Value is
-     (Const_Int (Env, Env.Int_32_Type, N))
-     with Pre  => Env /= null and then N /= No_Uint,
-          Post => Present (Const_Int_32'Result);
-
-   function Const_Int_32
-     (Env : Environ;
-      N : unsigned_long_long;
-      Sign_Extend : Boolean := False) return GL_Value
+     (N : unsigned_long_long; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Env, Env.Int_32_Type, N, Sign_Extend))
-     with Pre => Env /= null, Post => Present (Const_Int_32'Result);
+     (Const_Int (Env.Int_32_Type, N, Sign_Extend))
+     with Post => Present (Const_Int_32'Result);
 
-   function Const_Null_32
-     (Env : Environ) return GL_Value
+   function Const_Null_32 return GL_Value
    is
-     (Const_Int_32 (Env, 0))
-     with Pre => Env /= null, Post => Present (Const_Null_32'Result);
+     (Const_Int_32 (0))
+     with Post => Present (Const_Null_32'Result);
 
-   function Const_Real
-     (Env : Environ; G : GL_Value; V : double) return GL_Value is
-     (Const_Real (Env, Etype (G), V))
-     with Pre  => Env /= null and then Present (G),
-          Post => Present (Const_Real'Result);
+   function Const_Real (G : GL_Value; V : double) return GL_Value is
+     (Const_Real (Etype (G), V))
+     with Pre  => Present (G), Post => Present (Const_Real'Result);
 
    --  Define IR builder variants which take and/or return GL_Value
 
-   function Alloca
-      (Env : Environ; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE),
+   function Alloca (TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Is_Type (TE),
           Post => Present (Alloca'Result)
                   and then Is_Access_Type (Alloca'Result);
 
    function Array_Alloca
-     (Env      : Environ;
-      TE       : Entity_Id;
-      Num_Elts : GL_Value;
-      Name     : String := "") return GL_Value
-     with Pre  => Env /= null and then Is_Type (TE)
-                  and then Present (Num_Elts),
+     (TE : Entity_Id; Num_Elts : GL_Value; Name : String := "") return GL_Value
+     with Pre  => Is_Type (TE) and then Present (Num_Elts),
           Post => Present (Array_Alloca'Result)
                   and then Is_Access_Type (Array_Alloca'Result);
 
-   function Int_To_Ptr
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
+   function Int_To_Ptr (V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Int_To_Ptr'Result);
 
    function Ptr_To_Int
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Ptr_To_Int'Result);
 
    function Bit_Cast
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Bit_Cast'Result);
 
    function Pointer_Cast
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Pointer_Cast'Result);
 
    function Ptr_To_Ref
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Ptr_To_Ref'Result);
 
    function Trunc
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Trunc'Result);
 
    function S_Ext
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (S_Ext'Result);
 
    function Z_Ext
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Z_Ext'Result);
 
    function FP_Trunc
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (FP_Trunc'Result);
 
    function FP_Ext
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (FP_Ext'Result);
 
    function FP_To_SI
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (FP_To_SI'Result);
 
    function FP_To_UI
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (FP_To_UI'Result);
 
    function UI_To_FP
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (UI_To_FP'Result);
 
    function SI_To_FP
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (SI_To_FP'Result);
 
    function Trunc
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (Trunc (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (Trunc (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (Trunc'Result);
 
    function S_Ext
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (S_Ext (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (S_Ext (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (S_Ext'Result);
 
    function Z_Ext
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (Z_Ext (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (Z_Ext (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (Z_Ext'Result);
 
    function FP_Trunc
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (FP_Trunc (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (FP_Trunc (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (FP_Trunc'Result);
 
    function FP_Ext
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (FP_Ext (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (FP_Ext (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (FP_Ext'Result);
 
    function FP_To_SI
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (FP_To_SI (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (FP_To_SI (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (FP_To_SI'Result);
 
    function FP_To_UI
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (FP_To_UI (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (FP_To_UI (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (FP_To_UI'Result);
 
    function UI_To_FP
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (UI_To_FP (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (UI_To_FP (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (UI_To_FP'Result);
 
    function SI_To_FP
-     (Env : Environ; V : GL_Value; T : GL_Value; Name : String := "")
-     return GL_Value
+     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
    is
-     (SI_To_FP (Env, V, Etype (T), Name))
-     with Pre  => Env /= null and then Present (V) and then Present (T),
+     (SI_To_FP (V, Etype (T), Name))
+     with Pre  => Present (V) and then Present (T),
           Post => Present (SI_To_FP'Result);
 
-   procedure Store
-     (Env : Environ; Expr : GL_Value; Ptr : GL_Value)
-     with Pre => Env /= null and then Present (Expr)
+   procedure Store (Expr : GL_Value; Ptr : GL_Value)
+     with Pre => Present (Expr)
                  and then Present (Ptr) and then Is_Access_Type (Ptr);
 
-   function Load (Env : Environ; Ptr : GL_Value; Name : String := "")
-                 return GL_Value
-     with Pre  => Env /= null and then Present (Ptr)
-                  and then Is_Access_Type (Ptr),
+   function Load (Ptr : GL_Value; Name : String := "") return GL_Value
+     with Pre  => Present (Ptr) and then Is_Access_Type (Ptr),
           Post => Present (Load'Result);
 
    function I_Cmp
-     (Env      : Environ;
-      Op       : Int_Predicate_T;
+     (Op       : Int_Predicate_T;
       LHS, RHS : GL_Value;
       Name     : String := "") return GL_Value
    is
      (G (I_Cmp (Env.Bld, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
          Standard_Boolean))
-     with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+     with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (I_Cmp'Result);
 
    function F_Cmp
-     (Env      : Environ;
-      Op       : Real_Predicate_T;
+     (Op       : Real_Predicate_T;
       LHS, RHS : GL_Value;
       Name     : String := "") return GL_Value
    is
      (G (F_Cmp (Env.Bld, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
          Standard_Boolean))
-     with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+     with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (F_Cmp'Result);
 
    function NSW_Add
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
       (G_From (NSW_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
                LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (NSW_Add'Result);
 
    function NSW_Sub
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (NSW_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (NSW_Sub'Result);
 
    function NSW_Mul
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (NSW_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (NSW_Mul'Result);
 
    function S_Div
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (S_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (S_Div'Result);
 
    function U_Div
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (U_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (U_Div'Result);
 
    function S_Rem
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (S_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (S_Rem'Result);
 
    function U_Rem
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (U_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (U_Rem'Result);
 
    function Build_And
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_And (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_And'Result);
 
    function Build_Or
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_Or (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Or'Result);
 
    function Build_Xor
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_Xor (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Xor'Result);
 
    function F_Add
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Add'Result);
 
    function F_Sub
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Sub'Result);
 
    function F_Mul
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Mul'Result);
 
    function F_Div
-     (Env : Environ; LHS, RHS : GL_Value; Name : String := "") return GL_Value
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Env /= null and then Present (LHS) and then Present (RHS),
+      with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Div'Result);
 
    function Shl
-     (Env : Environ; E, Count : GL_Value; Name : String := "") return GL_Value
+     (E, Count : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Shl (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
               E))
-      with Pre  => Env /= null and then Present (E) and then Present (Count),
+      with Pre  => Present (E) and then Present (Count),
            Post => Present (Shl'Result);
 
    function L_Shr
-     (Env : Environ; E, Count : GL_Value; Name : String := "") return GL_Value
+     (E, Count : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (L_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
               E))
-      with Pre  => Env /= null and then Present (E) and then Present (Count),
+      with Pre  => Present (E) and then Present (Count),
            Post => Present (L_Shr'Result);
 
    function A_Shr
-     (Env : Environ; E, Count : GL_Value; Name : String := "") return GL_Value
+     (E, Count : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (A_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
               E))
-      with Pre  => Env /= null and then Present (E) and then Present (Count),
+      with Pre  => Present (E) and then Present (Count),
            Post => Present (A_Shr'Result);
 
    function Build_Not
-     (Env : Environ; V : GL_Value; Name : String := "") return GL_Value
+     (V : GL_Value; Name : String := "") return GL_Value
    is
       (G_From (Build_Not (Env.Bld, LLVM_Value (V), Name), V))
-      with Pre  => Env /= null and then Present (V),
+      with Pre  => Present (V),
            Post => Present (Build_Not'Result);
 
    function NSW_Neg
-     (Env : Environ; V : GL_Value; Name : String := "") return GL_Value
+     (V : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (NSW_Neg (Env.Bld, LLVM_Value (V), Name), V))
-      with Pre  => Env /= null and then Present (V),
-           Post => Present (NSW_Neg'Result);
+      with Pre  => Present (V), Post => Present (NSW_Neg'Result);
 
    function F_Neg
-     (Env : Environ; V : GL_Value; Name : String := "") return GL_Value
+     (V : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Neg (Env.Bld, LLVM_Value (V), Name), V))
-     with Pre  => Env /= null and then Present (V),
-           Post => Present (F_Neg'Result);
+     with Pre  => Present (V), Post => Present (F_Neg'Result);
 
    function Build_Select
-     (Env : Environ; C_If, C_Then, C_Else : GL_Value; Name : String := "")
+     (C_If, C_Then, C_Else : GL_Value; Name : String := "")
      return GL_Value
    is
      (G_From (Build_Select (Env.Bld, C_If => LLVM_Value (C_If),
                             C_Then => LLVM_Value (C_Then),
                             C_Else => LLVM_Value (C_Else), Name => Name),
               C_Then))
-     with Pre  => Env /= null and then Present (C_If)
-                  and then Present (C_Then) and then Present (C_Else),
+     with Pre  => Present (C_If) and then Present (C_Then)
+                  and then Present (C_Else),
           Post => Present (Build_Select'Result);
 
    procedure Build_Cond_Br
-     (Env : Environ; C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
-     with Pre => Env /= null and then Present (C_If)
+     (C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
+     with Pre => Present (C_If)
                  and then Present (C_Then) and then Present (C_Else);
 
-   procedure Build_Ret (Env : Environ; G : GL_Value)
-     with Pre => Env /= null and then Present (G);
+   procedure Build_Ret (G : GL_Value)
+     with Pre => Present (G);
 
-   procedure Build_Ret_Void (Env : Environ)
-     with Pre => Env /= null;
+   procedure Build_Ret_Void;
 
-   procedure Build_Unreachable (Env : Environ)
-     with Pre => Env /= null;
+   procedure Build_Unreachable;
 
    function Build_Phi
-     (Env       : Environ;
-      GL_Values : GL_Value_Array;
+     (GL_Values : GL_Value_Array;
       BBs       : Basic_Block_Array;
       Name      : String := "") return GL_Value
-     with Pre  => Env /= null and then GL_Values'First = BBs'First
+     with Pre  => GL_Values'First = BBs'First
                   and then GL_Values'Last = BBs'Last,
           Post => Present (Build_Phi'Result);
 
    function Int_To_Ref
-     (Env : Environ; V : GL_Value; TE : Entity_Id; Name : String := "")
+     (V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
-     with Pre  => Env /= null and then Present (V) and then Is_Type (TE),
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (Int_To_Ref'Result)
                   and then Is_Access_Type (Int_To_Ref'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
 
    function Extract_Value
-     (Env   : Environ;
-      Typ   : Entity_Id;
+     (Typ   : Entity_Id;
       Arg   : GL_Value;
       Index : unsigned;
       Name  : String := "") return GL_Value
    is
      (G (Extract_Value (Env.Bld, LLVM_Value (Arg), Index, Name), Typ))
-     with  Pre  => Env /= null and then Present (Arg) and then Is_Type (Typ),
+     with  Pre  => Present (Arg) and then Is_Type (Typ),
            Post => Present (Extract_Value'Result);
 
    function Extract_Value_To_Ref
-     (Env   : Environ;
-      Typ   : Entity_Id;
+     (Typ   : Entity_Id;
       Arg   : GL_Value;
       Index : unsigned;
       Name  : String := "") return GL_Value
    is
       (G (Extract_Value (Env.Bld, LLVM_Value (Arg), Index, Name), Typ,
          Is_Reference => True))
-     with  Pre  => Env /= null and then Present (Arg) and then Is_Type (Typ),
+     with  Pre  => Present (Arg) and then Is_Type (Typ),
            Post => Present (Extract_Value_To_Ref'Result);
 
    function Insert_Value
-     (Env      : Environ;
-      Arg, Elt : GL_Value;
+     (Arg, Elt : GL_Value;
       Index    : unsigned;
       Name     : String := "") return GL_Value
    is
      (G_From (Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
                             Index, Name),
               Arg))
-     with  Pre  => Env /= null and then Present (Arg) and then Present (Elt),
+     with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 
    type Index_Array is array (Integer range <>) of Natural;
 
    function Extract_Value
-     (Env     : Environ;
-      Typ     : Entity_Id;
+     (Typ     : Entity_Id;
       Arg     : GL_Value;
       Idx_Arr : Index_Array;
       Name    : String := "") return GL_Value
@@ -799,12 +728,11 @@ package GNATLLVM.GLValue is
      (G (Build_Extract_Value (Env.Bld, LLVM_Value (Arg),
                               Idx_Arr'Address, Idx_Arr'Length, Name),
          Typ))
-     with  Pre  => Env /= null and then Is_Type (Typ) and then Present (Arg),
+     with  Pre  => Is_Type (Typ) and then Present (Arg),
            Post => Present (Extract_Value'Result);
 
    function Extract_Value_To_Ref
-     (Env     : Environ;
-      Typ     : Entity_Id;
+     (Typ     : Entity_Id;
       Arg     : GL_Value;
       Idx_Arr : Index_Array;
       Name    : String := "") return GL_Value
@@ -812,39 +740,35 @@ package GNATLLVM.GLValue is
      (G (Build_Extract_Value (Env.Bld, LLVM_Value (Arg),
                               Idx_Arr'Address, Idx_Arr'Length, Name),
          Typ, Is_Reference => True))
-     with  Pre  => Env /= null and then Is_Type (Typ) and then Present (Arg),
+     with  Pre  => Is_Type (Typ) and then Present (Arg),
            Post => Present (Extract_Value_To_Ref'Result);
 
    function Insert_Value
-     (Env      : Environ;
-      Arg, Elt : GL_Value;
+     (Arg, Elt : GL_Value;
       Idx_Arr  : Index_Array;
       Name     : String := "") return GL_Value
    is
      (G_From (Build_Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
                                   Idx_Arr'Address, Idx_Arr'Length, Name),
               Arg))
-     with  Pre  => Env /= null and then Present (Arg) and then Present (Elt),
+     with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 
    function GEP
-     (Env         : Environ;
-      Result_Type : Entity_Id;
+     (Result_Type : Entity_Id;
       Ptr         : GL_Value;
       Indices     : GL_Value_Array;
       Name        : String := "") return GL_Value
-     with Pre  => Env /= null and then Present (Ptr),
+     with Pre  => Present (Ptr),
           Post => Present (GEP'Result);
    --  Helper for LLVM's Build_GEP
 
    function Call
-     (Env         : Environ;
-      Func        : GL_Value;
+     (Func        : GL_Value;
       Result_Type : Entity_Id;
       Args        : GL_Value_Array;
       Name        : String := "") return GL_Value
-     with Pre  => Env /= null and then Present (Func)
-                  and then Is_Type_Or_Void (Result_Type),
+     with Pre  => Present (Func) and then Is_Type_Or_Void (Result_Type),
           Post => Present (Call'Result);
 
 end GNATLLVM.GLValue;

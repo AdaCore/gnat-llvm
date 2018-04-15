@@ -71,22 +71,10 @@ package body LLVM_Drive is
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
-      Env : constant Environ :=
-        new Environ_Record'(Max_Nodes => Last_Node_Id,
-                            Ctx => Get_Global_Context,
-                            Func => No_GL_Value,
-                            others => <>);
       Result : Integer;
 
-      procedure Emit_Lib_Item (N : Node_Id);
-      procedure Emit_Lib_Item (N : Node_Id) is
-      begin
-         Emit_Library_Item (Env, N);
-      end Emit_Lib_Item;
-      --  Wrapper to encapsulate Env in call
-
       procedure Walk_All_Units is
-        new Sem.Walk_Library_Items (Action => Emit_Lib_Item);
+        new Sem.Walk_Library_Items (Action => Emit_Library_Item);
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
@@ -101,6 +89,10 @@ package body LLVM_Drive is
 
       --  Initialize the translation environment
 
+      Env := new Environ_Record'(Max_Nodes => Last_Node_Id,
+                                 Ctx => Get_Global_Context,
+                                 Func => No_GL_Value,
+                                 others => <>);
       Env.Bld := Create_Builder_In_Context (Env.Ctx);
       Env.MDBld := Create_MDBuilder_In_Context (Env.Ctx);
       Env.TBAA_Root := Create_TBAA_Root (Env.MDBld);
@@ -113,7 +105,7 @@ package body LLVM_Drive is
       pragma Assert (Result = 0);
       Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
-      Initialize_Debugging (Env);
+      Initialize_Debugging;
 
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
@@ -144,7 +136,7 @@ package body LLVM_Drive is
             Env.Size_Type := Standard_Integer;
          end if;
 
-         pragma Assert (Create_Type (Env, Env.Size_Type) = Env.LLVM_Size_Type);
+         pragma Assert (Create_Type (Env.Size_Type) = Env.LLVM_Size_Type);
 
          --  Likewise for the 32-bit integer type
 
@@ -211,7 +203,7 @@ package body LLVM_Drive is
 
       --  Output the translation
 
-      Finalize_Debugging (Env);
+      Finalize_Debugging;
       if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
 

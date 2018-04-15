@@ -40,9 +40,9 @@ package body GNATLLVM.Subprograms is
    -- Emit_One_Body --
    -------------------
 
-   procedure Emit_One_Body (Env : Environ; Node : Node_Id) is
+   procedure Emit_One_Body (Node : Node_Id) is
       Spec       : constant Node_Id := Get_Acting_Spec (Node);
-      Func       : constant GL_Value := Emit_Subprogram_Decl (Env, Spec);
+      Func       : constant GL_Value := Emit_Subprogram_Decl (Spec);
       Def_Ident  : constant Entity_Id := Defining_Entity (Spec);
       Return_Typ : constant Entity_Id := Full_Etype (Def_Ident);
       Param      : Entity_Id;
@@ -50,9 +50,9 @@ package body GNATLLVM.Subprograms is
       Param_Num  : Natural := 0;
 
    begin
-      Enter_Subp (Env, Func);
+      Enter_Subp (Func);
       Push_Debug_Scope
-        (Create_Subprogram_Debug_Info (Env, Func, Def_Ident, Node,
+        (Create_Subprogram_Debug_Info (Func, Def_Ident, Node,
                                        Get_Name_String (Chars (Def_Ident)),
                                        Get_Ext_Name (Def_Ident)));
 
@@ -74,7 +74,7 @@ package body GNATLLVM.Subprograms is
 
          --  Add the parameter to the environnment
 
-         Set_Value (Env, Param, LLVM_Param);
+         Set_Value (Param, LLVM_Param);
 
          if Ekind (Param) = E_In_Parameter
            and then Is_Activation_Record (Param)
@@ -91,7 +91,7 @@ package body GNATLLVM.Subprograms is
       --  value.
 
       if Ekind (Return_Typ) /= E_Void
-        and then Is_Dynamic_Size (Env, Return_Typ)
+        and then Is_Dynamic_Size (Return_Typ)
       then
          LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
                           Return_Typ, Is_Reference => True);
@@ -99,22 +99,22 @@ package body GNATLLVM.Subprograms is
          Env.Return_Address_Param := LLVM_Param;
       end if;
 
-      Emit_List (Env, Declarations (Node));
-      Emit_List (Env, Statements (Handled_Statement_Sequence (Node)));
+      Emit_List (Declarations (Node));
+      Emit_List (Statements (Handled_Statement_Sequence (Node)));
 
       --  This point should not be reached: a return must have
       --  already... returned!
 
-      Build_Unreachable (Env);
+      Build_Unreachable;
       Pop_Debug_Scope;
-      Leave_Subp (Env);
+      Leave_Subp;
    end Emit_One_Body;
 
    --------------------------
    -- Emit_Subprogram_Body --
    --------------------------
 
-   procedure Emit_Subprogram_Body (Env : Environ; Node : Node_Id) is
+   procedure Emit_Subprogram_Body (Node : Node_Id) is
       Nest_Table_First : constant Nat := Nested_Functions_Table.Last + 1;
 
    begin
@@ -122,8 +122,8 @@ package body GNATLLVM.Subprograms is
       --  until we complete elaboration of the enclosing function.  But do
       --  ensure that the spec has been elaborated.
 
-      if not Library_Level (Env) then
-         Discard (Emit_Subprogram_Decl (Env, Get_Acting_Spec (Node)));
+      if not Library_Level then
+         Discard (Emit_Subprogram_Decl (Get_Acting_Spec (Node)));
          Nested_Functions_Table.Append (Node);
          return;
       end if;
@@ -131,10 +131,10 @@ package body GNATLLVM.Subprograms is
       --  Otherwise, elaborate this function and then any nested functions
       --  within in.
 
-      Emit_One_Body (Env, Node);
+      Emit_One_Body (Node);
 
       for I in Nest_Table_First .. Nested_Functions_Table.Last loop
-         Emit_Subprogram_Body (Env, Nested_Functions_Table.Table (I));
+         Emit_Subprogram_Body (Nested_Functions_Table.Table (I));
       end loop;
 
       Nested_Functions_Table.Set_Last (Nest_Table_First);
@@ -144,7 +144,7 @@ package body GNATLLVM.Subprograms is
    -- Get_Static_Link --
    ---------------------
 
-   function Get_Static_Link (Env : Environ; Node : Entity_Id) return GL_Value
+   function Get_Static_Link (Node : Entity_Id) return GL_Value
    is
       Subp        : constant Entity_Id := Entity (Node);
       Result      : GL_Value;
@@ -166,24 +166,22 @@ package body GNATLLVM.Subprograms is
 
          begin
             if Parent = Caller then
-               Result := Need_Value (Env, Get_Value (Env, Ent.ARECnP),
-                                     Ent.ARECnPT);
+               Result := Need_Value (Get_Value (Ent.ARECnP), Ent.ARECnPT);
             else
-               Result := Get_Value (Env, Ent_Caller.ARECnF);
+               Result := Get_Value (Ent_Caller.ARECnF);
 
                --  Go levels up via the ARECnU field if needed
 
                for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-                  Result := Load (Env, GEP
-                                    (Env, Env.Size_Type, Result,
-                                     (1 => Const_Int_32 (Env, 0),
-                                      2 => Const_Int_32 (Env, 0)),
-                                     "ARECnF.all.ARECnU"));
+                  Result := Load (GEP (Env.Size_Type, Result,
+                                       (1 => Const_Null_32,
+                                        2 => Const_Null_32),
+                                       "ARECnF.all.ARECnU"));
                end loop;
             end if;
 
             return Ptr_To_Ref
-              (Env, Result, Standard_Short_Short_Integer, "static-link");
+              (Result, Standard_Short_Short_Integer, "static-link");
          end;
       else
          return G (Const_Null (Result_Type),
@@ -195,9 +193,9 @@ package body GNATLLVM.Subprograms is
    -- Emit_LCH_Call --
    -------------------
 
-   procedure Emit_LCH_Call (Env : Environ; Node : Node_Id) is
+   procedure Emit_LCH_Call (Node : Node_Id) is
       Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-      Int_Type      : constant Type_T := Create_Type (Env, Standard_Integer);
+      Int_Type      : constant Type_T := Create_Type (Standard_Integer);
       Args          : Value_Array (1 .. 2);
 
       File : constant String :=
@@ -239,7 +237,7 @@ package body GNATLLVM.Subprograms is
            (Env.Bld,
             V,
             (Const_Int (Env.LLVM_Size_Type, 0, Sign_Extend => False),
-             Const_Int (Create_Type (Env, Standard_Positive),
+             Const_Int (Create_Type (Standard_Positive),
                         0, Sign_Extend => False)),
             ""),
          Void_Ptr_Type,
@@ -258,12 +256,12 @@ package body GNATLLVM.Subprograms is
    -- Emit_Call --
    ---------------
 
-   function Emit_Call (Env : Environ; Call_Node : Node_Id) return GL_Value is
+   function Emit_Call (Call_Node : Node_Id) return GL_Value is
       Subp           : Node_Id := Name (Call_Node);
       Return_Typ     : constant Entity_Id := Full_Etype (Call_Node);
       Void_Return    : constant Boolean := Ekind (Return_Typ) = E_Void;
       Dynamic_Return : constant Boolean :=
-        not Void_Return and then Is_Dynamic_Size (Env, Return_Typ);
+        not Void_Return and then Is_Dynamic_Size (Return_Typ);
       Direct_Call    : constant Boolean :=
         Nkind (Subp) /= N_Explicit_Dereference;
       Subp_Typ       : constant Entity_Id :=
@@ -292,13 +290,12 @@ package body GNATLLVM.Subprograms is
          Subp := Entity (Subp);
       end if;
 
-      LLVM_Func := Emit_Expression (Env, Subp);
+      LLVM_Func := Emit_Expression (Subp);
       if This_Takes_S_Link then
-         S_Link := Extract_Value_To_Ref (Env, Standard_Short_Short_Integer,
+         S_Link := Extract_Value_To_Ref (Standard_Short_Short_Integer,
                                          LLVM_Func, 1, "static-link");
-         LLVM_Func := Ptr_To_Ref (Env,
-                                  Extract_Value_To_Ref
-                                    (Env, Standard_Short_Short_Integer,
+         LLVM_Func := Ptr_To_Ref (Extract_Value_To_Ref
+                                    (Standard_Short_Short_Integer,
                                      LLVM_Func, 0, "callback"),
                                   Full_Designated_Type
                                     (Full_Etype (Prefix (Subp))));
@@ -314,10 +311,9 @@ package body GNATLLVM.Subprograms is
          --  pointer to being a pointer to the parameter's type.
 
          if Param_Needs_Ptr (Param) then
-            Args (Idx) := Convert_To_Access_To
-              (Env, Emit_LValue (Env, Actual), P_Type);
+            Args (Idx) := Convert_To_Access_To (Emit_LValue (Actual), P_Type);
          else
-            Args (Idx) := Build_Type_Conversion (Env, P_Type, Actual);
+            Args (Idx) := Build_Type_Conversion (P_Type, Actual);
          end if;
 
          Idx := Idx + 1;
@@ -337,17 +333,17 @@ package body GNATLLVM.Subprograms is
 
       if Dynamic_Return then
          Args (Args'Last) :=
-           Allocate_For_Type (Env, Return_Typ, "call-return");
+           Allocate_For_Type (Return_Typ, "call-return");
       end if;
 
       --  If the return type is of dynamic size, call as a procedure and
       --  return the address we set as the last parameter.
 
       if Dynamic_Return then
-         Discard (Call (Env, LLVM_Func, Standard_Void_Type, Args));
+         Discard (Call (LLVM_Func, Standard_Void_Type, Args));
          return Args (Args'Last);
       else
-         return Call (Env, LLVM_Func, Return_Typ, Args);
+         return Call (LLVM_Func, Return_Typ, Args);
       end if;
    end Emit_Call;
 
@@ -355,8 +351,7 @@ package body GNATLLVM.Subprograms is
    -- Emit_Subprogram_Decl --
    --------------------------
 
-   function Emit_Subprogram_Decl
-     (Env : Environ; Subp_Spec : Node_Id) return GL_Value
+   function Emit_Subprogram_Decl (Subp_Spec : Node_Id) return GL_Value
    is
       Def_Ident : constant Node_Id := Defining_Entity (Subp_Spec);
 
@@ -364,12 +359,12 @@ package body GNATLLVM.Subprograms is
       --  If this subprogram specification has already been compiled, do
       --  nothing.
 
-      if Has_Value (Env, Def_Ident) then
-         return Get_Value (Env, Def_Ident);
+      if Has_Value (Def_Ident) then
+         return Get_Value (Def_Ident);
       else
          declare
             Subp_Type : constant Type_T :=
-              Create_Subprogram_Type_From_Spec (Env, Subp_Spec);
+              Create_Subprogram_Type_From_Spec (Subp_Spec);
 
             Subp_Base_Name : constant String := Get_Ext_Name (Def_Ident);
             LLVM_Func      : GL_Value;
@@ -405,7 +400,7 @@ package body GNATLLVM.Subprograms is
                Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
             end if;
 
-            Set_Value (Env, Def_Ident, LLVM_Func);
+            Set_Value (Def_Ident, LLVM_Func);
             return LLVM_Func;
          end;
       end if;
@@ -439,19 +434,18 @@ package body GNATLLVM.Subprograms is
    -- Subp_Ptr --
    --------------
 
-   function Subp_Ptr (Env : Environ; Node : Node_Id) return GL_Value is
+   function Subp_Ptr (Node : Node_Id) return GL_Value is
    begin
       if Nkind (Node) = N_Null then
-         return Const_Null_Ptr (Env, Standard_Short_Short_Integer);
+         return Const_Null_Ptr (Standard_Short_Short_Integer);
       else
          --  ??  We have a bit of a problem here since what the GEP below
          --  returns is a really a pointer to a pointer to char, but w
          --  don't have a GNAT type corresponding to the pointer to char
          --  (see R415-005).  We'll lie for now
          return Load
-           (Env,
-            GEP (Env, Standard_Short_Short_Integer, Emit_LValue (Env, Node),
-                 (1 => Const_Null_32 (Env), 2 => Const_Null_32 (Env))));
+           (GEP (Standard_Short_Short_Integer, Emit_LValue (Node),
+                 (1 => Const_Null_32, 2 => Const_Null_32)));
       end if;
    end Subp_Ptr;
 

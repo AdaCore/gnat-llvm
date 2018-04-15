@@ -27,8 +27,7 @@ with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 
-   procedure Add_Type_Data_To_Instruction
-     (Env : Environ; Inst : Value_T; TE : Entity_Id);
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Helper to add type data (e.g., volatility and TBAA info) to
    --  an Instruction.
 
@@ -335,7 +334,7 @@ package body GNATLLVM.Utils is
    -- Position_Builder_At_End --
    -----------------------------
 
-   procedure Position_Builder_At_End (Env : Environ; BB : Basic_Block_T) is
+   procedure Position_Builder_At_End (BB : Basic_Block_T) is
    begin
       Position_Builder_At_End (Env.Bld, BB);
    end Position_Builder_At_End;
@@ -344,7 +343,7 @@ package body GNATLLVM.Utils is
    -- Build_Br --
    --------------
 
-   procedure Build_Br (Env : Environ; BB : Basic_Block_T) is
+   procedure Build_Br (BB : Basic_Block_T) is
    begin
       Discard (Build_Br (Env.Bld, BB));
    end Build_Br;
@@ -365,11 +364,9 @@ package body GNATLLVM.Utils is
    -- Add_Type_Data_To_Instruction --
    ----------------------------------
 
-   procedure Add_Type_Data_To_Instruction
-     (Env : Environ; Inst : Value_T; TE : Entity_Id)
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id)
    is
-      TBAA : constant Metadata_T :=
-        Get_TBAA (Env, Implementation_Base_Type (TE));
+      TBAA : constant Metadata_T := Get_TBAA (Implementation_Base_Type (TE));
    begin
       if Is_Volatile (TE) then
          Set_Volatile (Inst);
@@ -385,14 +382,13 @@ package body GNATLLVM.Utils is
    -- Load_With_Type --
    --------------------
 
-   function Load_With_Type
-     (Env : Environ; TE : Entity_Id; Ptr : Value_T; Name : String := "")
+   function Load_With_Type (TE : Entity_Id; Ptr : Value_T; Name : String := "")
      return Value_T
    is
       Load_Inst : constant Value_T := Load (Env.Bld, Ptr, Name);
 
    begin
-      Add_Type_Data_To_Instruction (Env, Load_Inst, TE);
+      Add_Type_Data_To_Instruction (Load_Inst, TE);
       return Load_Inst;
    end Load_With_Type;
 
@@ -410,13 +406,12 @@ package body GNATLLVM.Utils is
    ---------------------
    -- Store_With_Type --
    ---------------------
-   procedure Store_With_Type
-     (Env : Environ; TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
+   procedure Store_With_Type (TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
    is
       Store_Inst : constant Value_T := Build_Store (Env.Bld, Expr, Ptr);
 
    begin
-      Add_Type_Data_To_Instruction (Env, Store_Inst, TE);
+      Add_Type_Data_To_Instruction (Store_Inst, TE);
    end Store_With_Type;
 
 end GNATLLVM.Utils;

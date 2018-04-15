@@ -51,10 +51,10 @@ package body GNATLLVM.Subprograms is
 
    begin
       Enter_Subp (Env, Func);
-      Env.Func_Debug_Info :=
-        Create_Subprogram_Debug_Info (Env, Func, Def_Ident, Node,
-                                      Get_Name_String (Chars (Def_Ident)),
-                                      Get_Ext_Name (Def_Ident));
+      Push_Debug_Scope
+        (Create_Subprogram_Debug_Info (Env, Func, Def_Ident, Node,
+                                       Get_Name_String (Chars (Def_Ident)),
+                                       Get_Ext_Name (Def_Ident)));
 
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
@@ -106,6 +106,7 @@ package body GNATLLVM.Subprograms is
       --  already... returned!
 
       Build_Unreachable (Env);
+      Pop_Debug_Scope;
       Leave_Subp (Env);
    end Emit_One_Body;
 

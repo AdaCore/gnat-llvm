@@ -60,6 +60,14 @@ Finalize_Debug_Info (DIBuilder *DBld)
 }
 
 extern "C"
+DILexicalBlock *
+Create_Debug_Lexical_Block (DIBuilder *DBld, DIScope *scope, DIFile *file,
+			    int line, int col)
+{
+  return DBld->createLexicalBlock (scope, file, line, col);
+}
+
+extern "C"
 void
 Set_Debug_Loc (IRBuilder<> *bld, DISubprogram *subp, int line, int col)
 {

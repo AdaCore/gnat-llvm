@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Atree; use Atree;
 with Types; use Types;
 
 with LLVM.Types;      use LLVM.Types;
@@ -29,14 +30,27 @@ package GNATLLVM.DebugInfo is
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
    DI_Cache : access DI_File_Cache := null;
 
-   procedure Initialize_Debugging (Env : Environ);
+   procedure Push_Debug_Scope (Scope : Metadata_T)
+     with Pre => not Emit_Debug_Info or else Present (Scope);
+   --  Push the current debug scope and make Scope the present scope.  Does
+   --  nothing if not debugging.
+
+   procedure Pop_Debug_Scope;
+   --  Pop the debugging scope.  Does nothing if not debugging.
+
+   procedure Initialize_Debugging (Env : Environ)
+     with Pre => Env /= null;
    --  Set up the environment for generating debugging information
 
-   procedure Finalize_Debugging (Env : Environ);
+   procedure Finalize_Debugging (Env : Environ)
+     with Pre => Env /= null;
    --  Finalize the debugging info at the end of the translation
 
    function Get_Debug_File_Node
-     (Env : Environ; File : Source_File_Index) return Metadata_T;
+     (Env : Environ; File : Source_File_Index) return Metadata_T
+     with Pre  => Env /= null,
+          Post => not Emit_Debug_Info
+                  or else Present (Get_Debug_File_Node'Result);
    --  Produce and return a DIFile entry for the specified source file index
 
    function Create_Subprogram_Debug_Info
@@ -44,12 +58,21 @@ package GNATLLVM.DebugInfo is
       Func           : GL_Value;
       Def_Ident      : Entity_Id;
       N              : Node_Id;
-      Name, Ext_Name : String) return Metadata_T;
+      Name, Ext_Name : String) return Metadata_T
+     with Pre  => Env /= null and then Present (Func)
+                  and then Present (Def_Ident) and then Present (N),
+          Post => not Emit_Debug_Info
+                  or else Present (Create_Subprogram_Debug_Info'Result);
    --  Create debugging information for Func with entity Def_Ident using
    --  the line number information in N for the location and with the
    --  specified internal and external names.
 
-   procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id);
+   procedure Push_Lexical_Debug_Scope (Env : Environ; N : Node_Id)
+     with Pre => Env /= null and Present (N);
+   --  Push a lexical scope starting at N into the debug stack
+
+   procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id)
+     with Pre => Env /= null and then Present (N);
    --  Set builder position for debugging to the Sloc of N.
 
 end GNATLLVM.DebugInfo;

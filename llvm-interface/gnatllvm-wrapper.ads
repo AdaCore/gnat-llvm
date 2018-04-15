@@ -97,6 +97,11 @@ package GNATLLVM.Wrapper is
       Name, Ext_Name : String;
       Lineno         : Integer) return Metadata_T;
 
+   function Create_Debug_Lexical_Block
+     (Bld : DI_Builder_T; Scope, File : Metadata_T; Line, Column : Integer)
+     return Metadata_T;
+   pragma Import (C, Create_Debug_Lexical_Block, "Create_Debug_Lexical_Block");
+
    procedure Finalize_Debug_Info (Bld : DI_Builder_T);
    pragma Import (C, Finalize_Debug_Info, "Finalize_Debug_Info");
 

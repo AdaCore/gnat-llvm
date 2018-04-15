@@ -404,11 +404,15 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Package_Declaration =>
+            Push_Lexical_Debug_Scope (Env, Node);
             Emit (Env, Specification (Node));
+            Pop_Debug_Scope;
 
          when N_Package_Specification =>
+            Push_Lexical_Debug_Scope (Env, Node);
             Emit_List (Env, Visible_Declarations (Node));
             Emit_List (Env, Private_Declarations (Node));
+            Pop_Debug_Scope;
 
             --  Only generate elaboration procedures for library-level packages
             --  and when part of the main unit.
@@ -437,10 +441,11 @@ package body GNATLLVM.Compile is
                              Elab_Type),
                           Standard_Void_Type, Is_Reference => True);
                      Enter_Subp (Env, LLVM_Func);
-                     Env.Func_Debug_Info := Create_Subprogram_Debug_Info
-                       (Env, LLVM_Func, Unit, Node,
-                        Get_Name_String (Chars (Unit)),
-                        Get_Name_String (Chars (Unit)) & "___elabs");
+                     Push_Debug_Scope
+                       (Create_Subprogram_Debug_Info
+                          (Env, LLVM_Func, Unit, Node,
+                           Get_Name_String (Chars (Unit)),
+                           Get_Name_String (Chars (Unit)) & "___elabs"));
                      Env.Special_Elaboration_Code := True;
 
                      for J in 1 .. Elaboration_Table.Last loop
@@ -452,6 +457,7 @@ package body GNATLLVM.Compile is
                      Env.Current_Elab_Entity := Empty;
                      Env.Special_Elaboration_Code := False;
                      Build_Ret_Void (Env);
+                     Pop_Debug_Scope;
                      Leave_Subp (Env);
                   end;
                end if;
@@ -466,9 +472,11 @@ package body GNATLLVM.Compile is
                      Set_Has_No_Elaboration_Code (Parent (Node), True);
                   end if;
                else
+                  Push_Lexical_Debug_Scope (Env, Node);
                   Emit_List (Env, Declarations (Node));
 
                   if not Env.In_Main_Unit then
+                     Pop_Debug_Scope;
                      return;
                   end if;
 
@@ -524,10 +532,11 @@ package body GNATLLVM.Compile is
                                 Elab_Type),
                              Standard_Void_Type, Is_Reference => True);
                         Enter_Subp (Env, LLVM_Func);
-                        Env.Func_Debug_Info := Create_Subprogram_Debug_Info
-                          (Env, LLVM_Func, Unit, Node,
-                           Get_Name_String (Chars (Unit)),
-                           Get_Name_String (Chars (Unit)) & "___elabs");
+                        Push_Debug_Scope
+                          (Create_Subprogram_Debug_Info
+                             (Env, LLVM_Func, Unit, Node,
+                              Get_Name_String (Chars (Unit)),
+                              Get_Name_String (Chars (Unit)) & "___elabs"));
                         Env.Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop
@@ -545,9 +554,12 @@ package body GNATLLVM.Compile is
                         end if;
 
                         Build_Ret_Void (Env);
+                        Pop_Debug_Scope;
                         Leave_Subp (Env);
                      end if;
                   end;
+
+                  Pop_Debug_Scope;
                end if;
             end;
 
@@ -1089,6 +1101,7 @@ package body GNATLLVM.Compile is
 
                Build_Br (Env, BB);
                Position_Builder_At_End (Env, BB);
+               Push_Lexical_Debug_Scope (Env, Node);
 
                Stack_State := Call
                  (Env.Bld,
@@ -1102,6 +1115,7 @@ package body GNATLLVM.Compile is
                  (Call
                     (Env.Bld,
                      Env.Stack_Restore_Fn, Stack_State'Address, 1, ""));
+               Pop_Debug_Scope;
             end;
 
          when N_Full_Type_Declaration | N_Subtype_Declaration

@@ -219,9 +219,6 @@ package GNATLLVM.Environment is
       Func                      : GL_Value;
       --  Pointer to the current function
 
-      Func_Debug_Info           : Metadata_T;
-      --  DISubprogram node when -g
-
       Activation_Rec_Param      : GL_Value;
       --  Parameter to this subprogram, if any, that represents an
       --  activtion record.

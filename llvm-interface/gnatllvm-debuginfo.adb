@@ -15,14 +15,62 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;    use Atree;
 with Namet;    use Namet;
 with Sinput;   use Sinput;
+with Table;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.DebugInfo is
+
+   --  We maintain a stack of debug info contexts, with the outermost
+   --  context being global (?? not currently supported), then a subprogram,
+   --  and then lexical blocks.
+
+   Debug_Scope_Low_Bound : constant := 1;
+
+   package Debug_Scope_Table is new Table.Table
+     (Table_Component_Type => Metadata_T,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => Debug_Scope_Low_Bound,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Debug_Scope_Table");
+   --  Table of debugging scopes. The last inserted scope point corresponds
+   --  to the current scope.
+
+   function Has_Debug_Scope return Boolean is
+     (Debug_Scope_Table.Last >= Debug_Scope_Low_Bound);
+   --  Says whether we do or don't currently have a debug scope.
+   --  Won't be needed when we support a global scope.
+
+   function Current_Debug_Scope return Metadata_T is
+     (Debug_Scope_Table.Table (Debug_Scope_Table.Last))
+     with Post => Present (Current_Debug_Scope'Result);
+   --  Current debug info scope
+
+   ----------------------
+   -- Push_Debug_Scope --
+   ----------------------
+
+   procedure Push_Debug_Scope (Scope : Metadata_T) is
+   begin
+      if Emit_Debug_Info then
+         Debug_Scope_Table.Append (Scope);
+      end if;
+   end Push_Debug_Scope;
+
+   ---------------------
+   -- Pop_Debug_Scope --
+   ---------------------
+
+   procedure Pop_Debug_Scope is
+   begin
+      if Emit_Debug_Info then
+         Debug_Scope_Table.Decrement_Last;
+      end if;
+   end Pop_Debug_Scope;
 
    --------------------------
    -- Initialize_Debugging --
@@ -103,14 +151,30 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Create_Subprogram_Debug_Info;
 
+   ------------------------------
+   -- Push_Lexical_Debug_Scope --
+   ------------------------------
+
+   procedure Push_Lexical_Debug_Scope (Env : Environ; N : Node_Id) is
+   begin
+      if Emit_Debug_Info then
+         Push_Debug_Scope
+           (Create_Debug_Lexical_Block
+              (Env.DIBld, Current_Debug_Scope,
+               Get_Debug_File_Node (Env, Get_Source_File_Index (Sloc (N))),
+               Integer (Get_Logical_Line_Number (Sloc (N))),
+               Integer (Get_Column_Number (Sloc (N)))));
+      end if;
+   end Push_Lexical_Debug_Scope;
+
    ---------------------------
    -- Set_Debug_Pos_At_Node --
    ---------------------------
 
    procedure Set_Debug_Pos_At_Node (Env : Environ; N : Node_Id) is
    begin
-      if Emit_Debug_Info then
-         Set_Debug_Loc (Env.Bld, Env.Func_Debug_Info,
+      if Emit_Debug_Info and then Has_Debug_Scope then
+         Set_Debug_Loc (Env.Bld, Current_Debug_Scope,
                         Integer (Get_Logical_Line_Number (Sloc (N))),
                         Integer (Get_Column_Number (Sloc (N))));
       end if;

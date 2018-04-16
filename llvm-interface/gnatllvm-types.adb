@@ -56,21 +56,6 @@ package body GNATLLVM.Types is
       Filter    => Rec_Comp_Filter);
    --  Iterate over all components of a given record type
 
-   ------------
-   -- Int_Ty --
-   ------------
-
-   function Int_Ty (Num_Bits : Natural) return Type_T is
-      (Int_Type (unsigned (Num_Bits)));
-
-   -----------
-   -- Fn_Ty --
-   -----------
-
-   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T is
-     (Function_Type
-       (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False));
-
    -----------------------
    -- Build_Struct_Type --
    -----------------------

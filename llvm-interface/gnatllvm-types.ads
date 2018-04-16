@@ -76,9 +76,13 @@ package GNATLLVM.Types is
      with Pre  => Ekind (TE) in Discrete_Kind,
           Post => Present (TL) and then Present (Low) and then Present (High);
 
-   function Int_Ty (Num_Bits : Natural) return Type_T
+   function Int_Ty (Num_Bits : Natural) return Type_T is
+     (Int_Type (unsigned (Num_Bits)))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
-   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T
+
+   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T is
+     (Function_Type
+        (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False))
      with Pre  => Present (Ret_Ty),
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 

@@ -35,7 +35,7 @@ package GNATLLVM.GLValue is
    --  Define basic accesss predicates for components of GL_Value
 
    function Has_Known_Etype (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then not G.Is_Intermediate_Type)
+     (not G.Is_Reference and then not G.Is_Subprogram_Type)
      with Pre => Present (G);
    --  True is we know what G's Etype is
 
@@ -48,6 +48,10 @@ package GNATLLVM.GLValue is
      (G.Value)
      with Pre => Present (G), Post => Present (LLVM_Value'Result);
 
+   function Is_Subprogram_Type (G : GL_Value) return Boolean is
+     (G.Is_Subprogram_Type)
+     with Pre => Present (G);
+
    --  Now we have constructors for a GL_Value
 
    function G
@@ -55,17 +59,17 @@ package GNATLLVM.GLValue is
       TE                   : Entity_Id;
       Is_Reference         : Boolean := False;
       Is_Raw_Array         : Boolean := False;
-      Is_Intermediate_Type : Boolean := False) return GL_Value
+      Is_Subprogram_Type   : Boolean := False) return GL_Value
    is
-     ((V, TE, Is_Reference, Is_Raw_Array, Is_Intermediate_Type))
+     ((V, TE, Is_Reference, Is_Raw_Array, Is_Subprogram_Type))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
    --  Raw constructor that allow full specification of all fields
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
      (G (V, GV.Typ,
-         Is_Reference => GV.Is_Reference,
-         Is_Raw_Array => GV.Is_Raw_Array,
-         Is_Intermediate_Type => GV.Is_Intermediate_Type))
+         Is_Reference       => GV.Is_Reference,
+         Is_Raw_Array       => GV.Is_Raw_Array,
+         Is_Subprogram_Type => GV.Is_Subprogram_Type))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing

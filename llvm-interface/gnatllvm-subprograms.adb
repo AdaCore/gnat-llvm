@@ -372,7 +372,7 @@ package body GNATLLVM.Subprograms is
 
             if Subp_Base_Name = "__gnat_last_chance_handler" then
                return G (Env.LCH_Fn, Standard_Void_Type,
-                         Is_Reference => True, Is_Intermediate_Type => True);
+                         Is_Reference => True, Is_Subprogram_Type => True);
             end if;
 
             --  ?? We have a tricky issue here.  We need to indicate that this
@@ -390,7 +390,7 @@ package body GNATLLVM.Subprograms is
                        else Subp_Base_Name),
                          Subp_Type),
                  Full_Etype (Def_Ident),
-                 Is_Reference => True, Is_Intermediate_Type => True);
+                 Is_Reference => True, Is_Subprogram_Type => True);
             --  Define the appropriate linkage
 
             if not Is_Public (Def_Ident) then

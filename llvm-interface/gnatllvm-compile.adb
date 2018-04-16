@@ -1203,7 +1203,7 @@ package body GNATLLVM.Compile is
       --  If the object is not of void type, save the result in the
       --  pair table under the base type of the fullest view.
 
-      if Ekind (Value) /= E_Void then
+      if not Is_Subprogram_Type (Value) and then Ekind (Value) /= E_Void then
          LValue_Pair_Table.Append (Value);
       end if;
 

@@ -83,11 +83,9 @@ package GNATLLVM.Environment is
       --  extracted the actual address of the array and that's what's in
       --  Value.
 
-      Is_Intermediate_Type : Boolean;
-      --  If True, Value doesn't correspond precisely to either Typ or a
-      --  pointer to Typ, but instead to some intermediate type (such as
-      --  when building an aggregate for a multi-dimensional array) for
-      --  which we don't have an actual GNAT type.
+      Is_Subprogram_Type : Boolean;
+      --  If True, Value is a pointer to a subprogram type and Typ is
+      --  void or the return type of the function.
 
    end record
      with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))

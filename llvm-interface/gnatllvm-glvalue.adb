@@ -74,7 +74,7 @@ package body GNATLLVM.GLValue is
       --  Value is one greater than that of our type.  That's also OK.
       --  And if what we have is a subprogram, we're also OK.
 
-      return Ekind (TE) = E_Void
+      return Is_Subprogram_Type (G)
         or else (Is_Reference (G)
                    and then (Full_Designated_Type (G) = TE
                                or else (Ekind (Full_Designated_Type (G))

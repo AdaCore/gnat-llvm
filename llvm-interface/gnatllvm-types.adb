@@ -71,6 +71,17 @@ package body GNATLLVM.Types is
      (Function_Type
        (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False));
 
+   -----------------------
+   -- Build_Struct_Type --
+   -----------------------
+
+   function Build_Struct_Type
+     (Types : Type_Array; Packed : Boolean := False) return Type_T is
+   begin
+      return Struct_Type_In_Context
+        (Env.Ctx, Types'Address, Types'Length, Packed);
+   end Build_Struct_Type;
+
    ---------------------------
    -- Build_Type_Conversion --
    ---------------------------

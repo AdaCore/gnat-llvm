@@ -165,10 +165,6 @@ package GNATLLVM.Utils is
       and then not Is_Constrained (Full_Designated_Type (T)))
      with Pre => Is_Type (T);
 
-   function Build_Struct_Type
-     (Types : Type_Array; Packed : Boolean := False) return Type_T;
-   --  Build an LLVM struct type containing the specified types
-
    function Get_Param_Types (Fn_Ty : Type_T) return Type_Array
      with Pre => Present (Fn_Ty);
    --  Wrapper for equivalent LLVM function, returning a proper type array.

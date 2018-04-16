@@ -82,6 +82,10 @@ package GNATLLVM.Types is
      with Pre  => Present (Ret_Ty),
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
+   function Build_Struct_Type
+     (Types : Type_Array; Packed : Boolean := False) return Type_T;
+   --  Build an LLVM struct type containing the specified types
+
    function Int_Ptr_Type return Type_T is
       (Int_Type (unsigned (Get_Pointer_Size)));
 

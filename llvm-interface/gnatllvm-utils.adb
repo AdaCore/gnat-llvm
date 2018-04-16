@@ -72,17 +72,6 @@ package body GNATLLVM.Utils is
 
    end Get_Fullest_View;
 
-   -----------------------
-   -- Build_Struct_Type --
-   -----------------------
-
-   function Build_Struct_Type
-     (Types : Type_Array; Packed : Boolean := False) return Type_T is
-   begin
-      return Struct_Type_In_Context
-        (Env.Ctx, Types'Address, Types'Length, Packed);
-   end Build_Struct_Type;
-
    ---------------------
    -- Get_Param_Types --
    ---------------------

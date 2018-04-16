@@ -1253,27 +1253,16 @@ package body GNATLLVM.Compile is
                      declare
                         Func   : constant GL_Value := Get_Value (Def_Ident);
                         S_Link : constant GL_Value := Get_Static_Link (Node);
-
-                        Fields_Types  : constant array (1 .. 2) of Type_T :=
-                          (Type_Of (S_Link), Type_Of (S_Link));
                         Callback_Type : constant Type_T :=
-                          Struct_Type_In_Context
-                          (Env.Ctx,
-                           Fields_Types'Address, Fields_Types'Length,
-                           Packed => False);
-
-                        Result : Value_T := Get_Undef (Callback_Type);
+                          Build_Struct_Type
+                          ((1 => Type_Of (S_Link), 2 => Type_Of (S_Link)));
+                        Result : constant GL_Value :=
+                          Get_Undef_Ref (Callback_Type, Typ);
 
                      begin
-                        Result := Insert_Value
-                          (Env.Bld, Result,
-                           Pointer_Cast
-                             (Env.Bld, LLVM_Value (Func),
-                              Fields_Types (1), ""), 0, "");
-                        Result := Insert_Value
-                          (Env.Bld, Result, LLVM_Value (S_Link),
-                           1, "callback");
-                        return G (Result, Typ, Is_Reference => True);
+                        return Insert_Value
+                          (Insert_Value (Result, S_Link, 1),
+                           Pointer_Cast (Func, S_Link), 0);
                      end;
                   end if;
                else

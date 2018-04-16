@@ -410,7 +410,7 @@ package body GNATLLVM.Arrays is
      (Array_Type_Node : Entity_Id) return Type_T
    is
       Dims       : constant Nat := Number_Dimensions (Array_Type_Node);
-      Fields     : aliased array (Nat range 0 .. 2 * Dims - 1) of Type_T;
+      Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
       First_Info : constant Nat := Get_Array_Info (Array_Type_Node);
       J          : Nat := 0;
 
@@ -422,8 +422,7 @@ package body GNATLLVM.Arrays is
          J := J + 2;
       end loop;
 
-      return Struct_Type_In_Context
-        (Env.Ctx, Fields'Address, Fields'Length, Packed => False);
+      return Build_Struct_Type (Fields);
    end Create_Array_Bounds_Type;
 
    -----------------------------------
@@ -446,13 +445,11 @@ package body GNATLLVM.Arrays is
    -----------------------------------
 
    function Create_Array_Fat_Pointer_Type
-     (Array_Type : Entity_Id) return Type_T
-   is
-      St_Els : Type_Array (1 .. 2) :=
-        (Create_Array_Raw_Pointer_Type (Array_Type),
-         Create_Array_Bounds_Type (Array_Type));
+     (Array_Type : Entity_Id) return Type_T is
    begin
-      return Struct_Type (St_Els'Address, St_Els'Length, False);
+      return Build_Struct_Type
+        ((1 => Create_Array_Raw_Pointer_Type (Array_Type),
+          2 => Create_Array_Bounds_Type (Array_Type)));
    end Create_Array_Fat_Pointer_Type;
 
    ------------------------

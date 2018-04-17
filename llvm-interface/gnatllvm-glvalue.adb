@@ -494,4 +494,14 @@ package body GNATLLVM.GLValue is
       return G (Result, Result_Type);
    end Call;
 
+   ----------
+   -- Call --
+   ----------
+
+   procedure Call
+     (Func : GL_Value; Args : GL_Value_Array; Name : String := "") is
+   begin
+      Discard (Call (Func, Standard_Void_Type, Args, Name));
+   end Call;
+
 end GNATLLVM.GLValue;

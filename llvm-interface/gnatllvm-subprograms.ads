@@ -15,10 +15,12 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;    use Atree;
-with Sinfo;    use Sinfo;
-with Table;    use Table;
-with Types;    use Types;
+with Atree; use Atree;
+with Einfo; use Einfo;
+with Sinfo; use Sinfo;
+with Table; use Table;
+with Types; use Types;
+with Uintp; use Uintp;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
@@ -32,6 +34,21 @@ package GNATLLVM.Subprograms is
       Table_Increment      => 5,
       Table_Name           => "Nested_Function_Table");
    --  Table of nested functions to elaborate
+
+   --  When we want to create an overloaded intrinsic, we need to specify
+   --  what operand signature the intrinsic has.  The following are those
+   --  that we currently support.
+
+   type Overloaded_Intrinsic_Kind is
+     (Unary, Binary, Overflow, Memcpy, Memset);
+
+   function Build_Intrinsic
+     (Kind : Overloaded_Intrinsic_Kind;
+      Name : String;
+      TE   : Entity_Id) return GL_Value
+     with Pre => Is_Type (TE) and then RM_Size (TE) /= No_Uint,
+          Post => Present (Build_Intrinsic'Result);
+   --  Build an intrinsic function of the specified type, name, and kind
 
    function Get_Static_Link (Node : Entity_Id) return GL_Value
      with Pre  => Present (Node),

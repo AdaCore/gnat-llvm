@@ -2012,21 +2012,17 @@ package body GNATLLVM.Compile is
         and then Is_Others_Aggregate (E) and then Is_Zero_Aggregate (E)
       then
          declare
-            Void_Ptr_Type  : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-            Dest_LLVM_Type : constant Type_T := Create_Type (Dest_Type);
-            Align          : constant unsigned :=
-              Get_Type_Alignment (Dest_LLVM_Type);
-            Args : constant Value_Array (1 .. 5) :=
-              (Bit_Cast (Env.Bld, LLVM_Value (Dest), Void_Ptr_Type, ""),
-               Const_Null (Int_Ty (8)),
-               LLVM_Value (Get_Type_Size (Dest_Type, No_GL_Value)),
-               Const_Int (Int_Ty (32), unsigned_long_long (Align), False),
-               Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
+            Align : constant unsigned :=
+              Get_Type_Alignment (Create_Type (Dest_Type));
 
          begin
-            Discard
-              (Call (Env.Bld, Env.Memory_Set_Fn, Args'Address, Args'Length,
-                     ""));
+            Call (Build_Intrinsic
+                    (Memset, "llvm.memset.p0i8.i", Env.Size_Type),
+                  (1 => Bit_Cast (Dest, Standard_A_Char),
+                   2 => Const_Null (Standard_Short_Short_Integer),
+                   3 => Get_Type_Size (Dest_Type, No_GL_Value),
+                   4 => Const_Int_32 (unsigned_long_long (Align)),
+                   5 => Const_False));  --  Is_Volatile
          end;
 
       --  We now have three case: where we're copying an object of an
@@ -2039,8 +2035,7 @@ package body GNATLLVM.Compile is
          --  The easy case: convert the source to the destination type and
          --  store it.
 
-         Src := (if No (E_Value) then Emit_Expression (E)
-                 else E_Value);
+         Src := (if No (E_Value) then Emit_Expression (E) else E_Value);
          Store (Convert_To_Elementary_Type (Src, Dest_Type), Dest);
 
       elsif (Present (E) and then not Is_Dynamic_Size (Full_Etype (E)))
@@ -2063,34 +2058,36 @@ package body GNATLLVM.Compile is
       else
          Src := (if No (E_Value) then Emit_LValue (E) else E_Value);
 
-         --  Otherwise, we have to do a variable-sized copy.  Make sure we
-         --  operate on the raw array data is this is an array type.
-
-         if Is_Array_Type (Full_Designated_Type (Src)) then
-            Dest := Array_Data (Dest);
-            Src  := Array_Data (Src);
-         end if;
+         --  Otherwise, we have to do a variable-sized copy
 
          declare
-            Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-
-            Args : constant Value_Array (1 .. 5) :=
-              (Bit_Cast (Env.Bld, LLVM_Value (Dest), Void_Ptr_Type, ""),
-               Bit_Cast (Env.Bld, LLVM_Value (Src), Void_Ptr_Type, ""),
-               LLVM_Value (Compute_Size
-                             (Dest_Type, Full_Designated_Type (Src),
-                              No_GL_Value, Src)),
-               Const_Int (Int_Ty (32), 1, False),  --  Alignment
-               Const_Int (Int_Ty (1), 0, False));  --  Is_Volatile
+            Size : constant GL_Value := Compute_Size
+              (Dest_Type, Full_Designated_Type (Src), No_GL_Value, Src);
+            Align : constant unsigned := Compute_Alignment
+              (Dest_Type, Full_Designated_Type (Src));
+            Func_Name : constant String :=
+              (if Forwards_OK and then Backwards_OK
+               then "memcpy" else "memmove");
 
          begin
-            Discard (Call
-                       (Env.Bld,
-                        (if Forwards_OK and then Backwards_OK
-                         then Env.Memory_Copy_Fn
-                         else Env.Memory_Move_Fn),
-                        Args'Address, Args'Length,
-                        ""));
+
+            --  If this is an array type, we have to point the memcpy/memmove
+            --  to the underlying data.  But be sure we've done this after
+            --  we've used the fat pointer to compute the size above.
+
+            if Is_Array_Type (Full_Designated_Type (Src)) then
+               Dest := Array_Data (Dest);
+               Src  := Array_Data (Src);
+            end if;
+
+            Call (Build_Intrinsic
+                    (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i",
+                     Env.Size_Type),
+                  (1 => Bit_Cast (Dest, Standard_A_Char),
+                   2 => Bit_Cast (Src, Standard_A_Char),
+                   3 => Size,
+                   4 => Const_Int_32 (unsigned_long_long (Align)),
+                   5 => Const_False)); -- Is_Volatile
          end;
       end if;
    end Emit_Assignment;

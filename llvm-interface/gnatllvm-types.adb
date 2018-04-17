@@ -803,6 +803,13 @@ package body GNATLLVM.Types is
       return Convert_To_Elementary_Type (V, Env.Size_Type);
    end Convert_To_Size_Type;
 
+   ------------------------
+   -- Get_Type_Alignment --
+   ------------------------
+
+   function Get_Type_Alignment (TE : Entity_Id) return unsigned is
+     (Get_Type_Alignment (Create_Type (TE)));
+
    -------------------
    -- Get_Type_Size --
    -------------------
@@ -884,6 +891,23 @@ package body GNATLLVM.Types is
       end if;
 
    end Compute_Size;
+
+   -----------------------
+   -- Compute_Alignment --
+   -----------------------
+
+   function Compute_Alignment
+     (Left_Typ, Right_Typ     : Entity_Id) return unsigned
+   is
+      Left_Align  : constant unsigned :=
+        (if Is_Elementary_Type (Left_Typ) then Get_Type_Alignment (Left_Typ)
+         else 1);
+      Right_Align : constant unsigned :=
+        (if Is_Elementary_Type (Right_Typ) then Get_Type_Alignment (Right_Typ)
+         else 1);
+   begin
+      return unsigned'Max (Left_Align, Right_Align);
+   end Compute_Alignment;
 
    ------------------------------
    -- Get_Type_Size_Complexity --

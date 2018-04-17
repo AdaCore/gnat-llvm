@@ -323,6 +323,11 @@ package GNATLLVM.GLValue is
      (Const_Real (Etype (G), V))
      with Pre  => Present (G), Post => Present (Const_Real'Result);
 
+   function Const_True return GL_Value is
+     (Const_Int (Standard_Boolean, 1));
+   function Const_False return GL_Value is
+     (Const_Int (Standard_Boolean, 0));
+
    --  Define IR builder variants which take and/or return GL_Value
 
    function Alloca (TE : Entity_Id; Name : String := "") return GL_Value
@@ -802,5 +807,9 @@ package GNATLLVM.GLValue is
       Name        : String := "") return GL_Value
      with Pre  => Present (Func) and then Is_Type_Or_Void (Result_Type),
           Post => Present (Call'Result);
+
+   procedure Call
+     (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
+     with Pre  => Present (Func);
 
 end GNATLLVM.GLValue;

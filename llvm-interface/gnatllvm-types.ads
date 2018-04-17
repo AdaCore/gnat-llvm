@@ -190,6 +190,10 @@ package GNATLLVM.Types is
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
+   function Get_Type_Alignment (TE : Entity_Id) return unsigned
+     with Pre => Is_Type (TE);
+   --  Return the size of a GNAT type, in bits
+
    function Get_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
@@ -214,6 +218,11 @@ package GNATLLVM.Types is
    --  proper object.  In the comparison case, where Left_Value is
    --  specified, we can only be comparing arrays, so we won't need to
    --  use Get_Matching_Value.
+
+   function Compute_Alignment
+     (Left_Typ, Right_Typ     : Entity_Id) return unsigned
+     with Pre  => Is_Type (Left_Typ) and then Present (Right_Typ);
+   --  Likewise, but compute strictest alignment in bits
 
    function Get_Type_Size_Complexity (TE : Entity_Id) return Natural
      with Pre  => Is_Type (TE);

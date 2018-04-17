@@ -18,7 +18,6 @@
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with Einfo;    use Einfo;
 with Exp_Unst; use Exp_Unst;
 with Namet;    use Namet;
 with Sem_Util; use Sem_Util;
@@ -35,6 +34,85 @@ with GNATLLVM.Types;     use GNATLLVM.Types;
 with GNATLLVM.Utils;     use GNATLLVM.Utils;
 
 package body GNATLLVM.Subprograms is
+
+   type Intrinsic is record
+      Name  : access String;
+      Width : Uint;
+      Func  : GL_Value;
+   end record;
+   --  A description of an intrinsic function that we've created
+
+   --  Since we aren't going to be creating all that many different
+   --  intrinsic functions, a simple list that we search should be
+   --  fast enough.
+
+   package Intrinsic_Functions_Table is new Table.Table
+     (Table_Component_Type => Intrinsic,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 20,
+      Table_Increment      => 5,
+      Table_Name           => "Intrinsic_Function_Table");
+
+   ---------------------
+   -- Build_Intrinsic --
+   ---------------------
+
+   function Build_Intrinsic
+     (Kind : Overloaded_Intrinsic_Kind;
+      Name : String;
+      TE   : Entity_Id) return GL_Value
+   is
+      Width         : constant Uint := RM_Size (TE);
+      Full_Name     : constant String := Name & UI_Image (Width);
+      Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
+      Void_Type     : constant Type_T := Void_Type_In_Context (Env.Ctx);
+      LLVM_Typ      : constant Type_T := Create_Type (TE);
+      Return_TE     : Entity_Id := TE;
+      Fun_Ty        : Type_T;
+      Result        : GL_Value;
+
+   begin
+      for I in 1 .. Intrinsic_Functions_Table.Last loop
+         if Intrinsic_Functions_Table.Table (I).Name.all = Name
+           and then Intrinsic_Functions_Table.Table (I).Width = Width
+         then
+            return Intrinsic_Functions_Table.Table (I).Func;
+         end if;
+      end loop;
+
+      case Kind is
+         when Unary =>
+            Fun_Ty := Fn_Ty ((1 => LLVM_Typ), LLVM_Typ);
+
+         when Binary =>
+            Fun_Ty := Fn_Ty ((1 => LLVM_Typ, 2 => LLVM_Typ), LLVM_Typ);
+
+         when Overflow =>
+            Fun_Ty := Fn_Ty
+              ((1 => LLVM_Typ, 2 => LLVM_Typ),
+               Build_Struct_Type ((1 => LLVM_Typ, 2 => Int_Ty (1))));
+
+         when Memcpy =>
+            Return_TE := Standard_Void_Type;
+            Fun_Ty := Fn_Ty
+              ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
+                3 => Env.LLVM_Size_Type, 4 => Int_Ty (32), 5 => Int_Ty (1)),
+               Void_Type);
+
+         when Memset =>
+            Return_TE := Standard_Void_Type;
+            Fun_Ty := Fn_Ty
+              ((1 => Void_Ptr_Type, 2 => Int_Ty (8), 3 => Env.LLVM_Size_Type,
+                4 => Int_Ty (32), 5 => Int_Ty (1)),
+               Void_Type);
+      end case;
+
+      Result := G (Add_Function (Env.Mdl, Full_Name, Fun_Ty), Return_TE,
+                   Is_Subprogram_Type => True);
+      Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
+      return Result;
+   end Build_Intrinsic;
 
    -------------------
    -- Emit_One_Body --

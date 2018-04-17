@@ -202,8 +202,7 @@ package GNATLLVM.Types is
    function Compute_Size
      (Left_Typ, Right_Typ     : Entity_Id;
       Left_Value, Right_Value : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Type (Left_Typ)
-                  and then Present (Right_Typ)
+     with Pre  => Is_Type (Left_Typ) and then Present (Right_Typ)
                   and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
    --  Used for comparison and assignment: compute the size to be used in

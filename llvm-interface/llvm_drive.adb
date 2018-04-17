@@ -187,6 +187,9 @@ package body LLVM_Drive is
       Finalize_Debugging;
       if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
+         if Code_Generation = Dump_IR then
+            Dump_Module (Env.Mdl);
+         end if;
 
       else
          case Code_Generation is

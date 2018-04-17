@@ -232,10 +232,10 @@ package GNATLLVM.Environment is
       Int_32_Type               : Entity_Id;
       --  GNAT type for 32-bit integers (for GEP indexes)
 
-      Default_Alloc_Fn          : Value_T;
-      Memory_Cmp_Fn             : Value_T;
-      Stack_Save_Fn             : Value_T;
-      Stack_Restore_Fn          : Value_T;
+      Default_Alloc_Fn          : GL_Value;
+      Memory_Cmp_Fn             : GL_Value;
+      Stack_Save_Fn             : GL_Value;
+      Stack_Restore_Fn          : GL_Value;
       LCH_Fn                    : Value_T;
 
       In_Main_Unit              : Boolean := False;

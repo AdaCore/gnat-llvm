@@ -504,4 +504,30 @@ package body GNATLLVM.GLValue is
       Discard (Call (Func, Standard_Void_Type, Args, Name));
    end Call;
 
+   ----------------
+   -- Add_Global --
+   ----------------
+
+   function Add_Global (TE : Entity_Id; Name : String) return GL_Value is
+     (G (Add_Global (Env.Mdl, Create_Type (TE), Name), TE,
+         Is_Reference => True));
+
+   ---------------------
+   -- Set_Initializer --
+   ---------------------
+
+   procedure Set_Initializer (Var, Expr : GL_Value) is
+   begin
+      Set_Initializer (LLVM_Value (Var), LLVM_Value (Expr));
+   end Set_Initializer;
+
+   -----------------
+   -- Set_Linkage --
+   -----------------
+
+   procedure Set_Linkage (Var : GL_Value; Linkage : Linkage_T) is
+   begin
+      Set_Linkage (LLVM_Value (Var), Linkage);
+   end Set_Linkage;
+
 end GNATLLVM.GLValue;

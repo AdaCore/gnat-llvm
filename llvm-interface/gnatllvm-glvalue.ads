@@ -812,4 +812,31 @@ package GNATLLVM.GLValue is
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
      with Pre  => Present (Func);
 
+   function Build_Switch
+     (V : GL_Value; Default : Basic_Block_T; Blocks : Nat) return Value_T is
+     (Build_Switch (Env.Bld, LLVM_Value (V), Default, unsigned (Blocks)))
+     with Pre  => Present (V) and then Present (Default),
+          Post => Present (Build_Switch'Result);
+
+   function Add_Function
+     (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value is
+     (G (Add_Function (Env.Mdl, Name, T), Return_TE,
+         Is_Subprogram_Type => True))
+     with Pre  => Present (T) and then Is_Type_Or_Void (Return_TE),
+          Post => Present (Add_Function'Result);
+   --  Add a function to the environment
+
+   function Add_Global (TE : Entity_Id; Name : String) return GL_Value
+     with Pre  => Is_Type (TE), Post => Present (Add_Global'Result);
+     --  Add a global to the environment which is of type TE, so the global
+     --  itself represents the address of TE.
+
+   procedure Set_Initializer (Var, Expr : GL_Value)
+     with Pre => Present (Var) and then Present (Expr);
+   --  Set the initializer for a global variable
+
+   procedure Set_Linkage (Var : GL_Value; Linkage : Linkage_T)
+     with Pre => Present (Var);
+   --  Set the linkage type for a variable
+
 end GNATLLVM.GLValue;

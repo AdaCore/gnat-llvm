@@ -46,6 +46,7 @@ with Get_Targ; use Get_Targ;
 
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
@@ -144,25 +145,29 @@ package body LLVM_Drive is
 
          --  Add malloc function to the env
 
-         Env.Default_Alloc_Fn := Add_Function
-           (Env.Mdl, "malloc",
-            Fn_Ty ((1 => Size_Type), Void_Ptr_Type));
+         Env.Default_Alloc_Fn :=
+           Add_Function ("malloc", Fn_Ty ((1 => Size_Type), Void_Ptr_Type),
+                         Standard_A_Char);
 
          --  Likewise for memcmp
 
-         Env.Memory_Cmp_Fn := Add_Function
-           (Env.Mdl, "memcmp",
-            Fn_Ty ((Void_Ptr_Type, Void_Ptr_Type, Size_Type), C_Int_Type));
+         Env.Memory_Cmp_Fn :=
+           Add_Function
+           ("memcmp",
+            Fn_Ty ((Void_Ptr_Type, Void_Ptr_Type, Size_Type), C_Int_Type),
+            Standard_Integer);
 
          --  Likewise for stacksave/stackrestore
 
-         Env.Stack_Save_Fn := Add_Function
-           (Env.Mdl, "llvm.stacksave",
-            Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type));
+         Env.Stack_Save_Fn :=
+           Add_Function
+           ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type),
+            Standard_A_Char);
+
          Env.Stack_Restore_Fn := Add_Function
-           (Env.Mdl,
-            "llvm.stackrestore",
-            Fn_Ty ((1 => Void_Ptr_Type), Void_Type_In_Context (Env.Ctx)));
+           ("llvm.stackrestore",
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Type_In_Context (Env.Ctx)),
+            Standard_Void_Type);
 
          --  Likewise for __gnat_last_chance_handler
 

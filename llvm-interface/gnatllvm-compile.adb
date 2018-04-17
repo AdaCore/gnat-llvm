@@ -17,7 +17,6 @@
 
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
-with System;
 
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
@@ -397,12 +396,10 @@ package body GNATLLVM.Compile is
                         Unit := Defining_Identifier (Unit);
                      end if;
 
-                     LLVM_Func :=
-                       G (Add_Function
-                            (Env.Mdl,
-                             Get_Name_String (Chars (Unit)) & "___elabs",
-                             Elab_Type),
-                          Standard_Void_Type, Is_Reference => True);
+                     LLVM_Func := Add_Function
+                       (Get_Name_String (Chars (Unit)) & "___elabs",
+                        Elab_Type, Standard_Void_Type);
+
                      Enter_Subp (LLVM_Func);
                      Push_Debug_Scope
                        (Create_Subprogram_Debug_Info
@@ -453,7 +450,8 @@ package body GNATLLVM.Compile is
                                      and then Has_Non_Null_Statements
                                                 (Statements (Stmts));
 
-                     Elab_Type : Type_T;
+                     Elab_Type : constant Type_T :=
+                       Fn_Ty ((1 .. 0 => <>), Void_Type_In_Context (Env.Ctx));
                      LLVM_Func : GL_Value;
                      Unit      : Node_Id;
 
@@ -486,14 +484,11 @@ package body GNATLLVM.Compile is
                            Unit := Defining_Identifier (Unit);
                         end if;
 
-                        Elab_Type := Fn_Ty
-                          ((1 .. 0 => <>), Void_Type_In_Context (Env.Ctx));
                         LLVM_Func :=
-                          G (Add_Function
-                               (Env.Mdl,
-                                Get_Name_String (Chars (Unit)) & "___elabb",
-                                Elab_Type),
-                             Standard_Void_Type, Is_Reference => True);
+                          Add_Function
+                          (Get_Name_String (Chars (Unit)) & "___elabb",
+                           Elab_Type, Standard_Void_Type);
+
                         Enter_Subp (LLVM_Func);
                         Push_Debug_Scope
                           (Create_Subprogram_Debug_Info
@@ -598,7 +593,6 @@ package body GNATLLVM.Compile is
                T         : constant Entity_Id := Full_Etype (Def_Ident);
                LLVM_Type : Type_T;
                LLVM_Var  : GL_Value;
-               Expr      : GL_Value;
 
             begin
                --  Nothing to do if this is a debug renaming type
@@ -634,15 +628,12 @@ package body GNATLLVM.Compile is
                      LLVM_Type := Pointer_Type (LLVM_Type, 0);
                   end if;
 
-                  LLVM_Var :=
-                    G (Add_Global (Env.Mdl, LLVM_Type,
-                                   Get_Ext_Name (Def_Ident)),
-                       T, Is_Reference => True);
+                  LLVM_Var := Add_Global (T, Get_Ext_Name (Def_Ident));
                   Set_Value (Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
                      if Is_Statically_Allocated (Def_Ident) then
-                        Set_Linkage (LLVM_Value (LLVM_Var), Internal_Linkage);
+                        Set_Linkage (LLVM_Var, Internal_Linkage);
                      end if;
 
                      --  ??? This code is probably wrong, but is rare enough
@@ -650,16 +641,14 @@ package body GNATLLVM.Compile is
 
                      if Present (Address_Clause (Def_Ident)) then
                         Set_Initializer
-                          (LLVM_Value (LLVM_Var),
-                           LLVM_Value (Emit_Expression
-                                         (Expression
-                                            (Address_Clause (Def_Ident)))));
+                          (LLVM_Var,
+                           Emit_Expression
+                             (Expression (Address_Clause (Def_Ident))));
                         --  ??? Should also take Expression (Node) into account
 
                      else
                         if Is_Imported (Def_Ident) then
-                           Set_Linkage (LLVM_Value (LLVM_Var),
-                                        External_Linkage);
+                           Set_Linkage (LLVM_Var, External_Linkage);
                         end if;
 
                         --  Take Expression (Node) into account
@@ -670,25 +659,22 @@ package body GNATLLVM.Compile is
                              and then No_Initialization (Node))
                         then
                            if Compile_Time_Known_Value (Expression (Node)) then
-                              Expr := Emit_Expression (Expression (Node));
-                              Set_Initializer (LLVM_Value (LLVM_Var),
-                                               LLVM_Value (Expr));
+                              Set_Initializer
+                                (LLVM_Var,
+                                 Emit_Expression (Expression (Node)));
                            else
                               Elaboration_Table.Append (Node);
 
                               if not Is_Imported (Def_Ident) then
-                                 Set_Initializer
-                                   (LLVM_Value (LLVM_Var),
-                                    Const_Null (LLVM_Type));
+                                 Set_Initializer (LLVM_Var, Const_Null (T));
                               end if;
                            end if;
                         elsif not Is_Imported (Def_Ident) then
-                           Set_Initializer (LLVM_Value (LLVM_Var),
-                                            Const_Null (LLVM_Type));
+                           Set_Initializer (LLVM_Var, Const_Null (T));
                         end if;
                      end if;
                   else
-                     Set_Linkage (LLVM_Value (LLVM_Var), External_Linkage);
+                     Set_Linkage (LLVM_Var, External_Linkage);
                   end if;
 
                else
@@ -1025,7 +1011,7 @@ package body GNATLLVM.Compile is
                   then Entity (Identifier (Node))
                   else Empty);
                BB          : Basic_Block_T;
-               Stack_State : Value_T;
+               Stack_State : GL_Value;
 
             begin
 
@@ -1048,16 +1034,12 @@ package body GNATLLVM.Compile is
                Push_Lexical_Debug_Scope (Node);
 
                Stack_State := Call
-                 (Env.Bld,
-                  Env.Stack_Save_Fn, System.Null_Address, 0, "");
+                 (Env.Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>));
 
                Emit_List (Declarations (Node));
                Emit_List (Statements (Handled_Statement_Sequence (Node)));
 
-               Discard
-                 (Call
-                    (Env.Bld,
-                     Env.Stack_Restore_Fn, Stack_State'Address, 1, ""));
+               Call (Env.Stack_Restore_Fn, (1 => Stack_State));
                Pop_Debug_Scope;
             end;
 
@@ -1266,16 +1248,13 @@ package body GNATLLVM.Compile is
 
          when N_String_Literal =>
             declare
-               T : constant Type_T := Create_Type (Full_Etype (Node));
                V : constant GL_Value :=
-                 G (Add_Global (Env.Mdl, T, "str-lit"), Full_Etype (Node),
-                    Is_Reference => True);
+                 Add_Global (Full_Etype (Node), "str-lit");
 
             begin
                Set_Value (Node, V);
-               Set_Initializer (LLVM_Value (V),
-                                LLVM_Value (Emit_Expression (Node)));
-               Set_Linkage (LLVM_Value (V), Private_Linkage);
+               Set_Initializer (V, Emit_Expression (Node));
+               Set_Linkage (V, Private_Linkage);
                Set_Global_Constant (LLVM_Value (V), True);
                return V;
             end;
@@ -1789,7 +1768,6 @@ package body GNATLLVM.Compile is
             declare
                Expr             : constant Node_Id := Expression (Node);
                Typ              : Entity_Id;
-               Arg              : array (1 .. 1) of Value_T;
                Value            : GL_Value;
                Result_Type      : constant Entity_Id := Full_Etype (Node);
                Result           : GL_Value;
@@ -1809,12 +1787,9 @@ package body GNATLLVM.Compile is
                   Value := Emit_Expression (Expression (Expr));
                end if;
 
-               Arg := (1 => LLVM_Value
-                         (Get_Type_Size (Typ, Value, For_Type => No (Value))));
-               Result := G (Call
-                              (Env.Bld, Env.Default_Alloc_Fn,
-                               Arg'Address, 1, "alloc"),
-                            Standard_A_Char);
+               Result := Call (Env.Default_Alloc_Fn, Standard_A_Char,
+                               (1 => Get_Type_Size (Typ, Value,
+                                                    For_Type => No (Value))));
 
                --  Convert to a pointer to the type that the thing is suppose
                --  to point to.
@@ -1852,7 +1827,6 @@ package body GNATLLVM.Compile is
                Cur_Index  : Integer := 0;
                Ent        : Entity_Id;
                Expr       : Node_Id;
-               Initial_Indices : Index_Array (1 .. 0);
 
             begin
                if Ekind (Agg_Type) in Record_Kind then
@@ -1894,7 +1868,7 @@ package body GNATLLVM.Compile is
                   end loop;
                else
                   return Emit_Array_Aggregate
-                    (Node, Number_Dimensions (Agg_Type), Initial_Indices,
+                    (Node, Number_Dimensions (Agg_Type), (1 .. 0 => <>),
                      Get_Undef (Agg_Type));
                end if;
 
@@ -2540,21 +2514,13 @@ package body GNATLLVM.Compile is
                  Compute_Size (Full_Designated_Type (LHS_Val),
                                Full_Designated_Type (RHS_Val),
                                LHS_Val, RHS_Val);
-               Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-               Memcmp_Args : constant Value_Array (1 .. 3) :=
-                 (1 => Bit_Cast (Env.Bld,
-                                 LLVM_Value (Array_Data (LHS_Val)),
-                                 Void_Ptr_Type, ""),
-                  2 => Bit_Cast (Env.Bld,
-                                 LLVM_Value (Array_Data (RHS_Val)),
-                                 Void_Ptr_Type, ""),
-                  3 => LLVM_Value (Size));
-               Memcmp      : constant Value_T := Call
-                 (Env.Bld, Env.Memory_Cmp_Fn,
-                  Memcmp_Args'Address, Memcmp_Args'Length, "");
+               Memcmp      : constant GL_Value := Call
+                 (Env.Memory_Cmp_Fn, Standard_Integer,
+                  (1 => Bit_Cast (Array_Data (LHS_Val), Standard_A_Char),
+                   2 => Bit_Cast (Array_Data (RHS_Val), Standard_A_Char),
+                   3 => Size));
                Cond : constant GL_Value :=
-                 I_Cmp (Int_EQ, G (Memcmp, Env.Size_Type),
-                        Const_Int (Standard_Integer, 0));
+                 I_Cmp (Int_EQ, Memcmp, Const_Int (Standard_Integer, 0));
 
             begin
                Build_Cond_Br (Cond, BB_T, BB_F);
@@ -2629,18 +2595,14 @@ package body GNATLLVM.Compile is
          --  we know the aren't pointers to unconstrained arrays.  It's
          --  possible that the two pointer types aren't the same, however.
          --  So in that case, convert one to the pointer of the other.
-         --  ?? We do this at low-level since the pointer cast operations
-         --  on GL_Value don't quite do exactly the right thing yet.
 
          if Is_Access_Type (LHS) and then Type_Of (RHS) /= Type_Of (LHS) then
-            RHS.Value := Pointer_Cast (Env.Bld, LLVM_Value (RHS),
-                                       Type_Of (LHS), "");
+            RHS := Pointer_Cast (RHS, LHS);
          end if;
 
          return I_Cmp
            ((if Is_Unsigned_Type (LHS) or else Is_Access_Type (LHS)
-             then Operation.Unsigned
-             else Operation.Signed),
+             then Operation.Unsigned else Operation.Signed),
             LHS, RHS);
 
       end if;
@@ -2833,14 +2795,13 @@ package body GNATLLVM.Compile is
          --  the cases to it.  Here we collect all the basic blocks.
 
          declare
-            BBs : array (Alts'Range) of Basic_Block_T;
+            BBs : Basic_Block_Array (Alts'Range);
          begin
             for I in BBs'Range loop
                BBs (I) := Alts (I).BB;
             end loop;
 
-            Switch := Build_Switch (Env.Bld, LLVM_Value (LHS),
-                                    BBs (BBs'Last), BBs'Length);
+            Switch := Build_Switch (LHS, BBs (BBs'Last), BBs'Length);
             for I in Alts'First .. Alts'Last - 1 loop
                for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
                   for K in UI_To_Int (Choices (J).Low) ..

@@ -108,8 +108,7 @@ package body GNATLLVM.Subprograms is
                Void_Type);
       end case;
 
-      Result := G (Add_Function (Env.Mdl, Full_Name, Fun_Ty), Return_TE,
-                   Is_Subprogram_Type => True);
+      Result := Add_Function (Full_Name, Fun_Ty, Return_TE);
       Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
       return Result;
    end Build_Intrinsic;

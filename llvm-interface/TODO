@@ -7,6 +7,5 @@ Missing main features (identified so far):
 - expression renaming
 - freeze nodes
 - tagged types
-- overflow checks
 - representation clauses
-- debug info
+- debug info (for variables and types)

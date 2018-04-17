@@ -564,11 +564,11 @@ package body GNATLLVM.Compile is
          when N_Raise_xxx_Error =>
             if Present (Condition (Node)) then
                declare
-                  BB_Then    : Basic_Block_T;
-                  BB_Next    : Basic_Block_T;
+                  BB_Then : constant Basic_Block_T :=
+                    Create_Basic_Block ("raise");
+                  BB_Next : constant Basic_Block_T := Create_Basic_Block;
+
                begin
-                  BB_Then := Create_Basic_Block ("raise");
-                  BB_Next := Create_Basic_Block;
                   Build_Cond_Br (Emit_Expression (Condition (Node)),
                                  BB_Then, BB_Next);
                   Position_Builder_At_End (BB_Then);
@@ -1416,17 +1416,30 @@ package body GNATLLVM.Compile is
             Unsign     : constant Boolean := Is_Unsigned_Type (Left_BT);
             Subp       : Opf := null;
             Result     : GL_Value;
+            Ovfl_Name  : String (1 .. 4);
 
          begin
             case Nkind (Node) is
                when N_Op_Add =>
-                  Subp := (if FP then F_Add'Access else NSW_Add'Access);
+                  if Do_Overflow_Check (Node) then
+                     Ovfl_Name := (if Unsign then "uadd" else "sadd");
+                  else
+                     Subp := (if FP then F_Add'Access else NSW_Add'Access);
+                  end if;
 
                when N_Op_Subtract =>
-                  Subp := (if FP then F_Sub'Access else NSW_Sub'Access);
+                  if Do_Overflow_Check (Node) then
+                     Ovfl_Name := (if Unsign then "usub" else "ssub");
+                  else
+                     Subp := (if FP then F_Sub'Access else NSW_Sub'Access);
+                  end if;
 
                when N_Op_Multiply =>
-                  Subp := (if FP then F_Mul'Access else NSW_Mul'Access);
+                  if Do_Overflow_Check (Node) then
+                     Ovfl_Name := (if Unsign then "umul" else "smul");
+                  else
+                     Subp := (if FP then F_Mul'Access else NSW_Mul'Access);
+                  end if;
 
                when N_Op_Divide =>
                   Subp :=
@@ -1453,7 +1466,35 @@ package body GNATLLVM.Compile is
 
             end case;
 
-            Result := Subp (LVal, RVal);
+            --  We either do a normal operation if Subp is not null or an
+            --  overflow test.
+
+            if Subp /= null then
+               Result := Subp (LVal, RVal);
+            else
+               pragma Assert (Do_Overflow_Check (Node));
+
+               declare
+                  BB_Then  : constant Basic_Block_T :=
+                    Create_Basic_Block ("raise");
+                  BB_Next  : constant Basic_Block_T := Create_Basic_Block;
+                  Func     : constant GL_Value :=
+                    Build_Intrinsic
+                    (Overflow,
+                     "llvm." & Ovfl_Name & ".with.overflow.i", Left_BT);
+                  Fn_Ret   : constant GL_Value :=
+                    Call (Func, Left_BT, (1 => LVal, 2 => RVal));
+                  Overflow : constant GL_Value :=
+                    Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
+               begin
+                  Build_Cond_Br (Overflow, BB_Then, BB_Next);
+                  Position_Builder_At_End (BB_Then);
+                  Emit_LCH_Call (Node);
+                  Build_Br (BB_Next);
+                  Position_Builder_At_End (BB_Next);
+                  Result := Extract_Value (Left_BT, Fn_Ret, 0);
+               end;
+            end if;
 
             --  If this is a signed mod operation, we have to adjust the
             --  result, since what we did is a rem operation.  If the result

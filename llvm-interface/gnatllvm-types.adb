@@ -863,6 +863,28 @@ package body GNATLLVM.Types is
 
    end Get_Type_Size;
 
+   ------------------
+   -- Compute_Size --
+   ------------------
+
+   function Compute_Size
+     (Left_Typ, Right_Typ     : Entity_Id;
+      Left_Value, Right_Value : GL_Value) return GL_Value is
+
+   begin
+      --  Use the type of right side unless its complexity is more
+      --  than that of the size of the type on the left side.
+
+      if Get_Type_Size_Complexity (Right_Typ) >
+        Get_Type_Size_Complexity (Left_Typ)
+      then
+         return Get_Type_Size (Left_Typ, Left_Value);
+      else
+         return Get_Type_Size (Right_Typ, Right_Value);
+      end if;
+
+   end Compute_Size;
+
    ------------------------------
    -- Get_Type_Size_Complexity --
    ------------------------------

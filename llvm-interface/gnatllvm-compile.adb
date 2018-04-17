@@ -54,23 +54,6 @@ package body GNATLLVM.Compile is
    --  See also DragonEgg sources for comparison on how GCC nodes are converted
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
 
-   function Compute_Size
-     (Left_Typ, Right_Typ     : Entity_Id;
-      Left_Value, Right_Value : GL_Value) return GL_Value
-     with Pre  => Env /= null and then Is_Type (Left_Typ)
-                  and then Present (Right_Typ)
-                  and then Present (Right_Value),
-          Post =>  Present (Compute_Size'Result);
-   --  Used for comparison and assignment: compute the size to be used in
-   --  the operation.  Right_Value must be specified.  Left_Value is
-   --  optional and will be specified in the comparison case, but not the
-   --  assignment case.  If Right_Value is a discriminated record, we
-   --  assume here that the last call to Emit_LValue was to compute
-   --  Right_Value so that we can use Get_Matching_Value to return the
-   --  proper object.  In the comparison case, where Left_Value is
-   --  specified, we can only be comparing arrays, so we won't need to
-   --  use Get_Matching_Value.
-
    function Build_Short_Circuit_Op
      (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
      with Pre  => Present (Left) and then Present (Right),
@@ -2111,28 +2094,6 @@ package body GNATLLVM.Compile is
          end;
       end if;
    end Emit_Assignment;
-
-   ------------------
-   -- Compute_Size --
-   ------------------
-
-   function Compute_Size
-     (Left_Typ, Right_Typ     : Entity_Id;
-      Left_Value, Right_Value : GL_Value) return GL_Value is
-
-   begin
-      --  Use the type of right side unless its complexity is more
-      --  than that of the size of the type on the left side.
-
-      if Get_Type_Size_Complexity (Right_Typ) >
-        Get_Type_Size_Complexity (Left_Typ)
-      then
-         return Get_Type_Size (Left_Typ, Left_Value);
-      else
-         return Get_Type_Size (Right_Typ, Right_Value);
-      end if;
-
-   end Compute_Size;
 
    ------------------
    -- Emit_Min_Max --

@@ -159,19 +159,6 @@ package body GNATLLVM.Compile is
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
 
-   function Emit_Array_Aggregate
-     (Node           : Node_Id;
-      Dims_Left      : Pos;
-      Indices_So_Far : Index_Array;
-      Value_So_Far   : GL_Value) return GL_Value
-     with Pre  => Nkind (Node) = N_Aggregate and then Present (Value_So_Far),
-          Post => Present (Emit_Array_Aggregate'Result);
-   --  Emit an N_Aggregate which is an array, returning the GL_Value that
-   --  contains the data.  Value_So_Far is any of the array whose value
-   --  we've accumulated so far.  Dims_Left says how many dimensions of the
-   --  outer array type we still can recurse into.  Indices_So_Far are the
-   --  indexes of any outer N_Aggregate expressions we went through.
-
    function Emit_Shift
      (Node                : Node_Id;
       LHS_Node, RHS_Node  : Node_Id) return GL_Value
@@ -1384,6 +1371,8 @@ package body GNATLLVM.Compile is
    ---------------------
 
    function Emit_Expression (Node : Node_Id) return GL_Value is
+      TE : constant Entity_Id := Full_Etype (Node);
+
    begin
       Set_Debug_Pos_At_Node (Node);
       if Nkind (Node) in N_Binary_Op then
@@ -1652,8 +1641,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Unchecked_Type_Conversion =>
-            return Build_Unchecked_Conversion
-              (Full_Etype (Node), Expression (Node));
+            return Build_Unchecked_Conversion (TE, Expression (Node));
 
          when N_Qualified_Expression =>
             --  We can simply strip the type qualifier
@@ -1662,8 +1650,7 @@ package body GNATLLVM.Compile is
 
          when N_Type_Conversion =>
 
-            return Build_Type_Conversion
-              (Full_Etype (Node), Expression (Node));
+            return Build_Type_Conversion (TE, Expression (Node));
 
          when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
             --  ?? What if Node is a formal parameter passed by reference?
@@ -1687,8 +1674,7 @@ package body GNATLLVM.Compile is
                end if;
 
                if Ekind (Def_Ident) = E_Enumeration_Literal then
-                  return Const_Int (Full_Etype (Node),
-                                    Enumeration_Rep (Def_Ident));
+                  return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
                --  See if this is an entity that's present in our
                --  activation record.
@@ -1749,8 +1735,7 @@ package body GNATLLVM.Compile is
                        and then Nkind (Expr) = N_Identifier
                        and then Ekind (Entity (Expr)) = E_Enumeration_Literal
                      then
-                        return Const_Int (Full_Etype (Node),
-                                          Enumeration_Rep (Entity (Expr)));
+                        return Const_Int (TE, Enumeration_Rep (Entity (Expr)));
                      else
                         return Emit_Expression (N);
                      end if;
@@ -1798,20 +1783,18 @@ package body GNATLLVM.Compile is
 
          when N_Explicit_Dereference =>
             return Need_Value
-              (Make_Reference (Emit_Expression (Prefix (Node))),
-               Full_Etype (Node));
+              (Make_Reference (Emit_Expression (Prefix (Node))), TE);
 
          when N_Allocator =>
             if Present (Storage_Pool (Node)) then
                Error_Msg_N ("unsupported form of N_Allocator", Node);
-               return Get_Undef (Full_Etype (Node));
+               return Get_Undef (TE);
             end if;
 
             declare
                Expr             : constant Node_Id := Expression (Node);
                Typ              : Entity_Id;
                Value            : GL_Value;
-               Result_Type      : constant Entity_Id := Full_Etype (Node);
                Result           : GL_Value;
 
             begin
@@ -1844,8 +1827,7 @@ package body GNATLLVM.Compile is
                   Emit_Assignment (Result, Empty, Value, True, True);
                end if;
 
-               return Convert_To_Access_To
-                 (Result, Full_Designated_Type (Result_Type));
+               return Convert_To_Access_To (Result, Full_Designated_Type (TE));
             end;
 
          when N_Reference =>
@@ -1855,73 +1837,28 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (Node, LValue => False);
 
          when N_Selected_Component | N_Indexed_Component  | N_Slice =>
-            return Need_Value (Emit_LValue (Node), Full_Etype (Node));
+            return Need_Value (Emit_LValue (Node), TE);
 
          when N_Aggregate =>
-            if Null_Record_Present (Node) then
+
+            if Null_Record_Present (Node) and then not Is_Dynamic_Size (TE)
+            then
                return Const_Null (Full_Etype (Node));
+
+            elsif Ekind (TE) in Record_Kind then
+               return Emit_Record_Aggregate (Node);
+
+            else
+               return Emit_Array_Aggregate
+                 (Node, Number_Dimensions (TE), (1 .. 0 => <>),
+                  Get_Undef (TE));
             end if;
-
-            declare
-               Agg_Type   : constant Entity_Id := Full_Etype (Node);
-               LLVM_Type  : constant Type_T := Create_Type (Agg_Type);
-               Result     : Value_T := Get_Undef (LLVM_Type);
-               Cur_Index  : Integer := 0;
-               Ent        : Entity_Id;
-               Expr       : Node_Id;
-
-            begin
-               if Ekind (Agg_Type) in Record_Kind then
-
-                  --  The GNAT expander will always put fields in the right
-                  --  order, so we can ignore Choices (Expr).
-
-                  Expr := First (Component_Associations (Node));
-                  while Present (Expr) loop
-                     Ent := Entity (First (Choices (Expr)));
-
-                     --  ?? Ignore discriminants that have
-                     --  Corresponding_Discriminants in tagged types since
-                     --  we'll be setting those fields in the parent subtype.
-
-                     if Ekind (Ent) = E_Discriminant
-                       and then Present (Corresponding_Discriminant (Ent))
-                       and then Is_Tagged_Type (Scope (Ent))
-                     then
-                        null;
-
-                     --  Also ignore discriminants of Unchecked_Unions
-
-                     elsif Ekind (Ent) = E_Discriminant
-                       and then Is_Unchecked_Union (Agg_Type)
-                     then
-                        null;
-                     else
-                        Result := Insert_Value
-                          (Env.Bld,
-                           Result,
-                           LLVM_Value (Emit_Expression (Expression (Expr))),
-                           unsigned (Cur_Index),
-                           "");
-                        Cur_Index := Cur_Index + 1;
-                     end if;
-
-                     Expr := Next (Expr);
-                  end loop;
-               else
-                  return Emit_Array_Aggregate
-                    (Node, Number_Dimensions (Agg_Type), (1 .. 0 => <>),
-                     Get_Undef (Agg_Type));
-               end if;
-
-               return G (Result, Full_Etype (Node));
-            end;
 
          when N_If_Expression =>
             return Emit_If_Expression (Node);
 
          when N_Null =>
-            return Const_Null (Full_Etype (Node));
+            return Const_Null (TE);
 
          when N_Defining_Identifier | N_Defining_Operator_Symbol =>
             return Get_Value (Node);
@@ -1951,18 +1888,18 @@ package body GNATLLVM.Compile is
 
          when N_Raise_Expression =>
             Emit_LCH_Call (Node);
-            return Get_Undef (Full_Etype (Node));
+            return Get_Undef (TE);
 
          when N_Raise_xxx_Error =>
             pragma Assert (No (Condition (Node)));
             Emit_LCH_Call (Node);
-            return Get_Undef (Full_Etype (Node));
+            return Get_Undef (TE);
 
          when others =>
             Error_Msg_N
               ("unsupported node kind: `" &
                Node_Kind'Image (Nkind (Node)) & "`", Node);
-            return Get_Undef (Full_Etype (Node));
+            return Get_Undef (TE);
          end case;
       end if;
    end Emit_Expression;
@@ -2126,52 +2063,6 @@ package body GNATLLVM.Compile is
       return Build_Select (Choose, Left, Right,
                            (if Compute_Max then "max" else "min"));
    end Emit_Min_Max;
-
-   --------------------------
-   -- Emit_Array_Aggregate --
-   --------------------------
-
-   function Emit_Array_Aggregate
-     (Node           : Node_Id;
-      Dims_Left      : Pos;
-      Indices_So_Far : Index_Array;
-      Value_So_Far   : GL_Value) return GL_Value
-   is
-      Cur_Index  : Integer := 0;
-      Cur_Value  : GL_Value := Value_So_Far;
-      Expr       : Node_Id;
-
-   begin
-
-      pragma Assert (not Is_Dynamic_Size
-                       (Full_Component_Type (Full_Etype (Node))));
-      --  The code below, by using Insert_Value, restricts itself to
-      --  Components of fixed sizes.  But that's OK because the front end
-      --  handles those cases.
-
-      Expr := First (Expressions (Node));
-      while Present (Expr) loop
-
-         --  If this is a nested N_Aggregate and we have dimensions left
-         --  in the outer array, use recursion to fill in the aggregate.
-
-         if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
-            Cur_Value := Emit_Array_Aggregate
-              (Expr, Dims_Left - 1, Indices_So_Far & (1 => Cur_Index),
-               Cur_Value);
-
-         else
-            Cur_Value := Insert_Value
-              (Cur_Value, Emit_Expression (Expr),
-               Indices_So_Far & (1 => Cur_Index));
-         end if;
-
-         Cur_Index := Cur_Index + 1;
-         Expr := Next (Expr);
-      end loop;
-
-      return Cur_Value;
-   end Emit_Array_Aggregate;
 
    ------------------------------
    -- Emit_Attribute_Reference --

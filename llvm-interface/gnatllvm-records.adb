@@ -17,13 +17,13 @@
 
 with Interfaces.C; use Interfaces.C;
 
-with Sinfo;      use Sinfo;
+with Nlists; use Nlists;
 
 with LLVM.Core;  use LLVM.Core;
 
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Records is
 
@@ -193,5 +193,57 @@ package body GNATLLVM.Records is
 
       return Size;
    end Get_Record_Type_Size;
+
+   ---------------------------
+   -- Emit_Record_Aggregate --
+   ---------------------------
+
+   function Emit_Record_Aggregate (Node : Node_Id) return GL_Value is
+      Agg_Type   : constant Entity_Id := Full_Etype (Node);
+      LLVM_Type  : constant Type_T := Create_Type (Agg_Type);
+      Result     : Value_T := Get_Undef (LLVM_Type);
+      Cur_Index  : Integer := 0;
+      Ent        : Entity_Id;
+      Expr       : Node_Id;
+
+   begin
+      --  The GNAT expander will always put fields in the right order, so
+      --  we can ignore Choices (Expr).
+
+      Expr := First (Component_Associations (Node));
+      while Present (Expr) loop
+         Ent := Entity (First (Choices (Expr)));
+
+         --  ?? Ignore discriminants that have Corresponding_Discriminants
+         --  in tagged types since we'll be setting those fields in the
+         --  parent subtype.
+
+         if Ekind (Ent) = E_Discriminant
+           and then Present (Corresponding_Discriminant (Ent))
+           and then Is_Tagged_Type (Scope (Ent))
+         then
+            null;
+
+            --  Also ignore discriminants of Unchecked_Unions
+
+         elsif Ekind (Ent) = E_Discriminant
+           and then Is_Unchecked_Union (Agg_Type)
+         then
+            null;
+         else
+            Result := Insert_Value
+              (Env.Bld,
+               Result,
+               LLVM_Value (Emit_Expression (Expression (Expr))),
+               unsigned (Cur_Index),
+               "");
+            Cur_Index := Cur_Index + 1;
+         end if;
+
+         Expr := Next (Expr);
+      end loop;
+
+      return G (Result, Agg_Type);
+   end Emit_Record_Aggregate;
 
 end GNATLLVM.Records;

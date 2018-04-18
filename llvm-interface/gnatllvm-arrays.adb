@@ -18,7 +18,6 @@
 with Interfaces.C; use Interfaces.C;
 
 with Sem_Eval; use Sem_Eval;
-with Sinfo;    use Sinfo;
 with Stand;    use Stand;
 with Table;
 with Uintp;    use Uintp;
@@ -26,7 +25,6 @@ with Uintp;    use Uintp;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 ---------------------
 -- GNATLLVM.Arrays --
@@ -496,6 +494,52 @@ package body GNATLLVM.Arrays is
         (Convert_To_Size_Type (Comp_Size), Convert_To_Size_Type (Num_Elements),
          "size");
    end Get_Array_Type_Size;
+
+   --------------------------
+   -- Emit_Array_Aggregate --
+   --------------------------
+
+   function Emit_Array_Aggregate
+     (Node           : Node_Id;
+      Dims_Left      : Pos;
+      Indices_So_Far : Index_Array;
+      Value_So_Far   : GL_Value) return GL_Value
+   is
+      Cur_Index  : Integer := 0;
+      Cur_Value  : GL_Value := Value_So_Far;
+      Expr       : Node_Id;
+
+   begin
+
+      pragma Assert (not Is_Dynamic_Size
+                       (Full_Component_Type (Full_Etype (Node))));
+      --  The code below, by using Insert_Value, restricts itself to
+      --  Components of fixed sizes.  But that's OK because the front end
+      --  handles those cases.
+
+      Expr := First (Expressions (Node));
+      while Present (Expr) loop
+
+         --  If this is a nested N_Aggregate and we have dimensions left
+         --  in the outer array, use recursion to fill in the aggregate.
+
+         if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
+            Cur_Value := Emit_Array_Aggregate
+              (Expr, Dims_Left - 1, Indices_So_Far & (1 => Cur_Index),
+               Cur_Value);
+
+         else
+            Cur_Value := Insert_Value
+              (Cur_Value, Emit_Expression (Expr),
+               Indices_So_Far & (1 => Cur_Index));
+         end if;
+
+         Cur_Index := Cur_Index + 1;
+         Expr := Next (Expr);
+      end loop;
+
+      return Cur_Value;
+   end Emit_Array_Aggregate;
 
    ----------------
    -- Array_Data --

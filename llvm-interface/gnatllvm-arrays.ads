@@ -18,6 +18,7 @@
 with Atree;  use Atree;
 with Einfo;  use Einfo;
 with Nlists; use Nlists;
+with Sinfo;  use Sinfo;
 with Types;  use Types;
 
 with LLVM.Core;  use LLVM.Core;
@@ -25,6 +26,7 @@ with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Arrays is
 
@@ -127,6 +129,20 @@ package GNATLLVM.Arrays is
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
      with Pre  => Present (TE), Post => Present (Get_Array_Type_Size'Result);
+
+   function Emit_Array_Aggregate
+     (Node           : Node_Id;
+      Dims_Left      : Pos;
+      Indices_So_Far : Index_Array;
+      Value_So_Far   : GL_Value) return GL_Value
+     with Pre  => Nkind (Node) = N_Aggregate and then Present (Value_So_Far)
+                  and then Is_Array_Type (Full_Etype (Node)),
+               Post => Present (Emit_Array_Aggregate'Result);
+   --  Emit an N_Aggregate which is an array, returning the GL_Value that
+   --  contains the data.  Value_So_Far is any of the array whose value
+   --  we've accumulated so far.  Dims_Left says how many dimensions of the
+   --  outer array type we still can recurse into.  Indices_So_Far are the
+   --  indexes of any outer N_Aggregate expressions we went through.
 
    function Array_Data (Array_Descr : GL_Value) return GL_Value
      with Pre  => Is_Access_Type (Array_Descr)

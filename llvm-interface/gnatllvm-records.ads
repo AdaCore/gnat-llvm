@@ -17,11 +17,13 @@
 
 with Atree;  use Atree;
 with Einfo;  use Einfo;
+with Sinfo;  use Sinfo;
 with Types;  use Types;
 
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Records is
 
@@ -45,5 +47,10 @@ package GNATLLVM.Records is
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
      with Pre  => Present (TE), Post => Present (Get_Record_Type_Size'Result);
+
+   function Emit_Record_Aggregate (Node : Node_Id) return GL_Value
+     with Pre  => Nkind (Node) = N_Aggregate
+                  and then Is_Record_Type (Full_Etype (Node)),
+          Post => Present (Emit_Record_Aggregate'Result);
 
 end GNATLLVM.Records;

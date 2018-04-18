@@ -330,6 +330,21 @@ package body GNATLLVM.Utils is
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
+   ----------------------
+   -- Are_In_Dead_Code --
+   ----------------------
+
+   function Are_In_Dead_Code return Boolean is
+      Last_Inst : constant Value_T :=
+        Get_Last_Instruction (Get_Insert_Block (Env.Bld));
+   begin
+      --  We're in dead code if there is an instruction in this basic block
+      --  and the last is a terminator.
+
+      return Present (Last_Inst)
+        and then Present (Is_A_Terminator_Inst (Last_Inst));
+   end Are_In_Dead_Code;
+
    -----------------------------
    -- Position_Builder_At_End --
    -----------------------------
@@ -345,7 +360,9 @@ package body GNATLLVM.Utils is
 
    procedure Build_Br (BB : Basic_Block_T) is
    begin
-      Discard (Build_Br (Env.Bld, BB));
+      if not Are_In_Dead_Code then
+         Discard (Build_Br (Env.Bld, BB));
+      end if;
    end Build_Br;
 
    ---------

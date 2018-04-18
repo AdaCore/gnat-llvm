@@ -54,6 +54,9 @@ package GNATLLVM.Utils is
      with Pre  => Is_Access_Type (E),
           Post => Present (Full_Designated_Type'Result);
 
+   function Are_In_Dead_Code return Boolean;
+   --  True if we're in dead code (the last instruction is a terminator)
+
    procedure Position_Builder_At_End (BB : Basic_Block_T)
      with Pre => Present (BB);
 

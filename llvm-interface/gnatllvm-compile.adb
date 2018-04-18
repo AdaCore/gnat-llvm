@@ -336,6 +336,13 @@ package body GNATLLVM.Compile is
          return;
       end if;
 
+      --  If not at library level and in dead code, start a new basic block
+      --  for any code we emit.
+
+      if not Library_Level and then Are_In_Dead_Code then
+         Position_Builder_At_End (Create_Basic_Block ("dead-code"));
+      end if;
+
       case Nkind (Node) is
          when N_Abstract_Subprogram_Declaration =>
             null;
@@ -761,7 +768,6 @@ package body GNATLLVM.Compile is
 
          when N_Goto_Statement =>
             Build_Br (Get_Label_BB (Entity (Name (Node))));
-            Position_Builder_At_End (Create_Basic_Block ("after-goto"));
 
          when N_Exit_Statement =>
             declare
@@ -806,8 +812,6 @@ package body GNATLLVM.Compile is
             else
                Build_Ret_Void;
             end if;
-
-            Position_Builder_At_End (Create_Basic_Block ("unreachable"));
 
          when N_If_Statement =>
             Emit_If (Node);
@@ -1027,7 +1031,10 @@ package body GNATLLVM.Compile is
                Emit_List (Declarations (Node));
                Emit_List (Statements (Handled_Statement_Sequence (Node)));
 
-               Call (Get_Stack_Restore_Fn, (1 => Stack_State));
+               if not Are_In_Dead_Code then
+                  Call (Get_Stack_Restore_Fn, (1 => Stack_State));
+               end if;
+
                Pop_Debug_Scope;
             end;
 

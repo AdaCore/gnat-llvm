@@ -275,10 +275,16 @@ package body GNATLLVM.Subprograms is
       Emit_List (Declarations (Node));
       Emit_List (Statements (Handled_Statement_Sequence (Node)));
 
-      --  This point should not be reached: a return must have
-      --  already... returned!
+      --  If the last instrution isn't a terminator, add a return
 
-      Build_Unreachable;
+      if not Are_In_Dead_Code then
+         if Ekind (Return_Typ) = E_Void then
+            Build_Ret_Void;
+         else
+            Build_Ret (Get_Undef (Return_Typ));
+         end if;
+      end if;
+
       Pop_Debug_Scope;
       Leave_Subp;
    end Emit_One_Body;

@@ -17,12 +17,11 @@
 
 with Interfaces.C; use Interfaces.C;
 
-with Atree;      use Atree;
-with Sem_Eval;   use Sem_Eval;
-with Sinfo;      use Sinfo;
-with Stand;      use Stand;
+with Sem_Eval; use Sem_Eval;
+with Sinfo;    use Sinfo;
+with Stand;    use Stand;
 with Table;
-with Uintp;      use Uintp;
+with Uintp;    use Uintp;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Records;     use GNATLLVM.Records;
@@ -476,6 +475,27 @@ package body GNATLLVM.Arrays is
 
       return Size;
    end Get_Array_Elements;
+
+   -------------------------
+   -- Get_Array_Type_Size --
+   -------------------------
+
+   function Get_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      For_Type : Boolean := False) return GL_Value
+   is
+      Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
+      Comp_Size     : constant GL_Value :=
+        Get_Type_Size (Comp_Type, No_GL_Value, For_Type);
+      Num_Elements  : constant GL_Value :=
+        Get_Array_Elements (V, TE, For_Type);
+
+   begin
+      return NSW_Mul
+        (Convert_To_Size_Type (Comp_Size), Convert_To_Size_Type (Num_Elements),
+         "size");
+   end Get_Array_Type_Size;
 
    ----------------
    -- Array_Data --

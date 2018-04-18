@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Atree;  use Atree;
 with Einfo;  use Einfo;
 with Nlists; use Nlists;
 with Types;  use Types;
@@ -108,7 +109,8 @@ package GNATLLVM.Arrays is
    --  Similar, but Rng is the Discrete_Range for the slice
 
    function Get_Array_Elements
-     (Array_Descr : GL_Value; Array_Type  : Entity_Id;
+     (Array_Descr : GL_Value;
+      Array_Type  : Entity_Id;
       For_Type    : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (Array_Type)
                   and then (Present (Array_Descr)
@@ -119,6 +121,12 @@ package GNATLLVM.Arrays is
    --  integer as large as a pointer for the target architecture. If it is an
    --  unconstrained array, Array_Descr must be an expression that evaluates
    --  to the array.
+
+   function Get_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      For_Type : Boolean := False) return GL_Value
+     with Pre  => Present (TE), Post => Present (Get_Array_Type_Size'Result);
 
    function Array_Data (Array_Descr : GL_Value) return GL_Value
      with Pre  => Is_Access_Type (Array_Descr)

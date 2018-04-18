@@ -759,22 +759,12 @@ package body GNATLLVM.Types is
       T              : constant Type_T := Create_Type (TE);
 
    begin
+
       if Is_Record_Type (TE) then
-         return Get_Record_Type_Size (TE, V, For_Type);
+         Size := Get_Record_Type_Size (TE, V, For_Type);
 
       elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
-         declare
-            Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
-            Comp_Size     : constant GL_Value :=
-              Get_Type_Size (Comp_Type, No_GL_Value, For_Type);
-            Num_Elements  : constant GL_Value :=
-              Get_Array_Elements (V, TE, For_Type);
-         begin
-            Size := NSW_Mul
-              (Convert_To_Size_Type (Comp_Size),
-               Convert_To_Size_Type (Num_Elements),
-               "size");
-         end;
+         Size := Get_Array_Type_Size (TE, V, For_Type);
 
       else
          Size := Get_LLVM_Type_Size (T);

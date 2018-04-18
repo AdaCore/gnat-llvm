@@ -412,25 +412,33 @@ package GNATLLVM.GLValue is
           Post => Present (SI_To_FP'Result);
 
    function Int_To_Ptr
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+     (V           : GL_Value;
+      T           : GL_Value;
+      Unused_Name : String := "") return GL_Value is
      (Int_To_Ptr (V, Full_Etype (T)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Int_To_Ptr'Result);
 
    function Ptr_To_Int
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+     (V           : GL_Value;
+      T           : GL_Value;
+      Unused_Name : String := "") return GL_Value is
      (Ptr_To_Int (V, Full_Etype (T)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Ptr_To_Int'Result);
 
    function Bit_Cast
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+     (V           : GL_Value;
+      T           : GL_Value;
+      Unused_Name : String := "") return GL_Value is
      (Bit_Cast (V, Full_Etype (T)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast'Result);
 
    function Pointer_Cast
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+     (V           : GL_Value;
+      T           : GL_Value;
+      Unused_Name : String := "") return GL_Value is
      (Pointer_Cast (V, Full_Etype (T)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Pointer_Cast'Result);

@@ -73,11 +73,11 @@ package body GNATLLVM.Subprograms is
       Result        : GL_Value;
 
    begin
-      for I in 1 .. Intrinsic_Functions_Table.Last loop
-         if Intrinsic_Functions_Table.Table (I).Name.all = Name
-           and then Intrinsic_Functions_Table.Table (I).Width = Width
+      for J in 1 .. Intrinsic_Functions_Table.Last loop
+         if Intrinsic_Functions_Table.Table (J).Name.all = Name
+           and then Intrinsic_Functions_Table.Table (J).Width = Width
          then
-            return Intrinsic_Functions_Table.Table (I).Func;
+            return Intrinsic_Functions_Table.Table (J).Func;
          end if;
       end loop;
 

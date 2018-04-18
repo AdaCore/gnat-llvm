@@ -18,9 +18,12 @@ using namespace llvm::sys;
 
 extern "C"
 DIBuilder *
-Create_Debug_Builder (Module &Mdl)
+Create_Debug_Builder (Module *TheModule)
 {
-  return new DIBuilder (Mdl);
+  TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
+			   DEBUG_METADATA_VERSION);
+  TheModule->addModuleFlag(Module::Warning, "Dwarf Version", 4);
+  return new DIBuilder (*TheModule);
 }
 
 extern "C"
@@ -174,9 +177,6 @@ LLVM_Init_Module (Module *TheModule, const char *Filename)
     Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
-  TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
-			   DEBUG_METADATA_VERSION);
-  TheModule->addModuleFlag(Module::Warning, "Dwarf Version", 4);
   return 0;
 }
 

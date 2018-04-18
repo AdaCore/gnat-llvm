@@ -230,14 +230,4 @@ package GNATLLVM.Types is
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the type is of a constant size.
 
-   function Record_Field_Offset
-     (Record_Ptr : Value_T; Record_Field : Node_Id) return Value_T
-     with Pre  => Present (Record_Ptr) and then Present (Record_Field),
-          Post => Present (Record_Field_Offset'Result);
-   --  Compute the offset of a given record field
-
-   function Record_With_Dynamic_Size (T : Entity_Id) return Boolean
-     with Pre => Is_Type (T);
-   --  Return True is T denotes a record type with a dynamic size
-
 end GNATLLVM.Types;

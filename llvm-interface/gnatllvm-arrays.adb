@@ -25,6 +25,7 @@ with Table;
 with Uintp;      use Uintp;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 

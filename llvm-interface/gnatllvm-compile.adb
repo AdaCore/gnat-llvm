@@ -40,6 +40,7 @@ with LLVM.Types;    use LLVM.Types;
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;

@@ -412,88 +412,69 @@ package GNATLLVM.GLValue is
           Post => Present (SI_To_FP'Result);
 
    function Int_To_Ptr
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+     (V, T : GL_Value; Name : String := "") return GL_Value is
      (Int_To_Ptr (V, Full_Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Int_To_Ptr'Result);
 
    function Ptr_To_Int
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+     (V, T : GL_Value; Name : String := "") return GL_Value is
      (Ptr_To_Int (V, Full_Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Ptr_To_Int'Result);
 
-   function Bit_Cast
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+   function Bit_Cast (V, T : GL_Value; Name : String := "") return GL_Value is
      (Bit_Cast (V, Full_Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast'Result);
 
    function Pointer_Cast
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value is
+     (V, T : GL_Value; Name : String := "") return GL_Value is
      (Pointer_Cast (V, Full_Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Pointer_Cast'Result);
 
-   function Trunc
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
      (Trunc (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Trunc'Result);
 
-   function S_Ext
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function S_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
      (S_Ext (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (S_Ext'Result);
 
-   function Z_Ext
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function Z_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
      (Z_Ext (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Z_Ext'Result);
 
-   function FP_Trunc
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function FP_Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_Trunc (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (FP_Trunc'Result);
 
-   function FP_Ext
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function FP_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_Ext (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (FP_Ext'Result);
 
-   function FP_To_SI
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function FP_To_SI (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_To_SI (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (FP_To_SI'Result);
 
-   function FP_To_UI
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function FP_To_UI (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_To_UI (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (FP_To_UI'Result);
 
-   function UI_To_FP
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function UI_To_FP (V, T : GL_Value; Name : String := "") return GL_Value is
      (UI_To_FP (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (UI_To_FP'Result);
 
-   function SI_To_FP
-     (V : GL_Value; T : GL_Value; Name : String := "") return GL_Value
-   is
+   function SI_To_FP (V, T : GL_Value; Name : String := "") return GL_Value is
      (SI_To_FP (V, Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (SI_To_FP'Result);

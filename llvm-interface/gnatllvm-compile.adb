@@ -229,7 +229,7 @@ package body GNATLLVM.Compile is
                Emit (Prag);
             end if;
 
-            Prag := Next (Prag);
+            Next (Prag);
          end loop;
 
          Emit_List (Declarations (Aux_Decls_Node (Compilation_Unit)));
@@ -1923,7 +1923,7 @@ package body GNATLLVM.Compile is
          N := First (List);
          while Present (N) loop
             Emit (N);
-            N := Next (N);
+            Next (N);
          end loop;
       end if;
    end Emit_List;
@@ -2579,7 +2579,7 @@ package body GNATLLVM.Compile is
               (if Nkind (First_Choice) = N_Others_Choice
                then List_Length (Others_Discrete_Choices (First_Choice))
                else List_Length (Discrete_Choices (Alt)));
-            Alt := Next (Alt);
+            Next (Alt);
          end loop;
 
          return Num_Choices;
@@ -2695,7 +2695,7 @@ package body GNATLLVM.Compile is
                                          If_Cost => If_Cost,
                                          Switch_Cost => Switch_Cost);
             Current_Choice := Current_Choice + 1;
-            Choice := Next (Choice);
+            Next (Choice);
          end loop;
 
          If_Cost := 0;
@@ -2713,7 +2713,7 @@ package body GNATLLVM.Compile is
                                 If_Cost => If_Cost,
                                 Switch_Cost => Switch_Cost);
          Current_Alt := Current_Alt + 1;
-         Alt := Next (Alt);
+         Next (Alt);
       end loop;
 
       --  We have two strategies: we can use an LLVM switch instruction if
@@ -2830,7 +2830,7 @@ package body GNATLLVM.Compile is
                                         BB_False =>
                                           Create_Basic_Block ("false"));
             If_Parts_Pos := If_Parts_Pos + 1;
-            Elsif_Part := Next (Elsif_Part);
+            Next (Elsif_Part);
          end loop;
       end if;
 

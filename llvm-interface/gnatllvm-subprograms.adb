@@ -256,7 +256,7 @@ package body GNATLLVM.Subprograms is
          end if;
 
          Param_Num := Param_Num + 1;
-         Param := Next_Formal_With_Extras (Param);
+         Next_Formal_With_Extras (Param);
       end loop;
 
       --  If the return type has dynamic size, we've added a parameter
@@ -494,8 +494,8 @@ package body GNATLLVM.Subprograms is
          end if;
 
          Idx := Idx + 1;
-         Actual := Next_Actual (Actual);
-         Param := Next_Formal_With_Extras (Param);
+         Next_Actual (Actual);
+         Next_Formal_With_Extras (Param);
          pragma Assert (No (Actual) = No (Param));
       end loop;
 

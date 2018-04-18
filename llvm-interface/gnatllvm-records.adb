@@ -17,6 +17,7 @@
 
 with Interfaces.C; use Interfaces.C;
 
+with Namet;  use Namet;
 with Nlists; use Nlists;
 
 with LLVM.Core;  use LLVM.Core;
@@ -28,7 +29,8 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 package body GNATLLVM.Records is
 
    function Rec_Comp_Filter (E : Entity_Id) return Boolean is
-     (Ekind (E) in E_Component | E_Discriminant);
+     ((Ekind (E) in E_Component | E_Discriminant)
+      and then Get_Name_String (Chars (E)) /= "_parent");
 
    function Iterate_Components is new Iterate_Entities
      (Get_First => First_Entity,
@@ -104,10 +106,18 @@ package body GNATLLVM.Records is
       Type_Id    : constant Entity_Id :=
         Get_Fullest_View (Scope (Record_Field));
       R_Info     : constant Record_Info := Get_Record_Info (Type_Id);
-      F_Info     : constant Field_Info := R_Info.Fields.Element (Record_Field);
+      F_Info     : Field_Info;
       Struct_Ptr : Value_T := Record_Ptr;
 
    begin
+      if Get_Name_String (Chars (Record_Field)) = "_parent" then
+         return Pointer_Cast
+           (Env.Bld, Record_Ptr,
+            Pointer_Type (Create_Type (Full_Etype (Record_Field)), 0),
+            "parent-access");
+      end if;
+
+      F_Info := R_Info.Fields.Element (Record_Field);
       if F_Info.Containing_Struct_Index > 1 then
          declare
             Int_Struct_Address : Value_T := Ptr_To_Int

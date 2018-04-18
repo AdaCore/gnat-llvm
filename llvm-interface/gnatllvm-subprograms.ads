@@ -50,6 +50,26 @@ package GNATLLVM.Subprograms is
           Post => Present (Build_Intrinsic'Result);
    --  Build an intrinsic function of the specified type, name, and kind
 
+   function Get_Default_Alloc_Fn return GL_Value
+     with Post => Present (Get_Default_Alloc_Fn'Result);
+   --  Get default function to use for allocting memory
+
+   function Get_Memory_Compare_Fn return GL_Value
+     with Post => Present (Get_Memory_Compare_Fn'Result);
+   --  Get function to use to compare memory
+
+   function Get_Stack_Save_Fn return GL_Value
+     with Post => Present (Get_Stack_Save_Fn'Result);
+   --  Get function to save stack pointer
+
+   function Get_Stack_Restore_Fn return GL_Value
+     with Post => Present (Get_Stack_Restore_Fn'Result);
+   --  Get function to restore stack pointer
+
+   function Get_LCH_Fn return GL_Value
+     with Post => Present (Get_LCH_Fn'Result);
+   --  Get function for our last-chance handler
+
    function Get_Static_Link (Node : Entity_Id) return GL_Value
      with Pre  => Present (Node),
           Post => Present (Get_Static_Link'Result);

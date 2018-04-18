@@ -1022,12 +1022,12 @@ package body GNATLLVM.Compile is
                Push_Lexical_Debug_Scope (Node);
 
                Stack_State := Call
-                 (Env.Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>));
+                 (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>));
 
                Emit_List (Declarations (Node));
                Emit_List (Statements (Handled_Statement_Sequence (Node)));
 
-               Call (Env.Stack_Restore_Fn, (1 => Stack_State));
+               Call (Get_Stack_Restore_Fn, (1 => Stack_State));
                Pop_Debug_Scope;
             end;
 
@@ -1812,7 +1812,7 @@ package body GNATLLVM.Compile is
                   Value := Emit_Expression (Expression (Expr));
                end if;
 
-               Result := Call (Env.Default_Alloc_Fn, Standard_A_Char,
+               Result := Call (Get_Default_Alloc_Fn, Standard_A_Char,
                                (1 => Get_Type_Size (Typ, Value,
                                                     For_Type => No (Value))));
 
@@ -2448,7 +2448,7 @@ package body GNATLLVM.Compile is
                                Full_Designated_Type (RHS_Val),
                                LHS_Val, RHS_Val);
                Memcmp      : constant GL_Value := Call
-                 (Env.Memory_Cmp_Fn, Standard_Integer,
+                 (Get_Memory_Compare_Fn, Standard_Integer,
                   (1 => Bit_Cast (Array_Data (LHS_Val), Standard_A_Char),
                    2 => Bit_Cast (Array_Data (RHS_Val), Standard_A_Char),
                    3 => Size));

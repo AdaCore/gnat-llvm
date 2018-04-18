@@ -229,14 +229,12 @@ package GNATLLVM.Environment is
       LLVM_Size_Type            : Type_T;
       --  Types to use for sizes
 
+      Void_Ptr_Type             : Type_T;
+      --  Pointer to arbitrary memory (we use i8 *); equivalent of
+      --  Standard_A_Char.
+
       Int_32_Type               : Entity_Id;
       --  GNAT type for 32-bit integers (for GEP indexes)
-
-      Default_Alloc_Fn          : GL_Value;
-      Memory_Cmp_Fn             : GL_Value;
-      Stack_Save_Fn             : GL_Value;
-      Stack_Restore_Fn          : GL_Value;
-      LCH_Fn                    : Value_T;
 
       In_Main_Unit              : Boolean := False;
       Special_Elaboration_Code  : Boolean := False;

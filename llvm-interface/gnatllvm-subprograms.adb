@@ -54,6 +54,19 @@ package body GNATLLVM.Subprograms is
       Table_Increment      => 5,
       Table_Name           => "Intrinsic_Function_Table");
 
+   Default_Alloc_Fn  : GL_Value := No_GL_Value;
+   --  Default memory allocation function
+
+   Memory_Compare_Fn : GL_Value := No_GL_Value;
+   --  Function to compare memory
+
+   Stack_Save_Fn     : GL_Value := No_GL_Value;
+   Stack_Restore_Fn  : GL_Value := No_GL_Value;
+   --  Functions to save and restore the stack pointer
+
+   LCH_Fn            : GL_Value := No_GL_Value;
+   --  Last-chance handler
+
    ---------------------
    -- Build_Intrinsic --
    ---------------------
@@ -112,6 +125,89 @@ package body GNATLLVM.Subprograms is
       Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
       return Result;
    end Build_Intrinsic;
+
+   --------------------------
+   -- Get_Default_Alloc_Fn --
+   --------------------------
+
+   function Get_Default_Alloc_Fn return GL_Value is
+   begin
+      if No (Default_Alloc_Fn) then
+         Default_Alloc_Fn :=
+           Add_Function ("malloc", Fn_Ty ((1 => Env.LLVM_Size_Type),
+                                          Env.Void_Ptr_Type),
+                         Standard_A_Char);
+      end if;
+
+      return Default_Alloc_Fn;
+   end Get_Default_Alloc_Fn;
+
+   ---------------------------
+   -- Get_Memory_Compare_Fn --
+   ---------------------------
+
+   function Get_Memory_Compare_Fn return GL_Value is
+   begin
+      if No (Memory_Compare_Fn) then
+         Memory_Compare_Fn := Add_Function
+           ("memcmp",
+            Fn_Ty ((1 => Env.Void_Ptr_Type, 2 => Env.Void_Ptr_Type,
+                    3 => Env.LLVM_Size_Type),
+                   Create_Type (Standard_Integer)),
+            Standard_Integer);
+      end if;
+
+      return Memory_Compare_Fn;
+   end Get_Memory_Compare_Fn;
+
+   -----------------------
+   -- Get_Stack_Save_Fn --
+   -----------------------
+
+   function Get_Stack_Save_Fn return GL_Value is
+   begin
+      if No (Stack_Save_Fn) then
+         Stack_Save_Fn := Add_Function
+           ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Env.Void_Ptr_Type),
+            Standard_A_Char);
+      end if;
+
+      return Stack_Save_Fn;
+   end Get_Stack_Save_Fn;
+
+   --------------------------
+   -- Get_Stack_Restore_Fn --
+   --------------------------
+
+   function Get_Stack_Restore_Fn return GL_Value is
+   begin
+      if No (Stack_Restore_Fn) then
+         Stack_Restore_Fn := Add_Function
+           ("llvm.stackrestore",
+            Fn_Ty ((1 => Env.Void_Ptr_Type), Void_Type_In_Context (Env.Ctx)),
+            Standard_Void_Type);
+      end if;
+
+      return Stack_Restore_Fn;
+   end Get_Stack_Restore_Fn;
+
+   ----------------
+   -- Get_LCH_Fn --
+   ----------------
+
+   function Get_LCH_Fn return GL_Value is
+   begin
+      if No (LCH_Fn) then
+         LCH_Fn := Add_Function
+           ("__gnat_last_chance_handler",
+            Fn_Ty ((1 => Env.Void_Ptr_Type,
+                    2 => Create_Type (Standard_Integer)),
+                   Void_Type_In_Context (Env.Ctx)),
+            Standard_Void_Type);
+      end if;
+
+      return LCH_Fn;
+   end Get_LCH_Fn;
 
    -------------------
    -- Emit_One_Body --
@@ -323,7 +419,8 @@ package body GNATLLVM.Subprograms is
         (Int_Type,
          unsigned_long_long (Get_Logical_Line_Number (Sloc (Node))),
          Sign_Extend => False);
-      Discard (Call (Env.Bld, Env.LCH_Fn, Args'Address, Args'Length, ""));
+      Discard (Call (Env.Bld, LLVM_Value (Get_LCH_Fn),
+                     Args'Address, Args'Length, ""));
    end Emit_LCH_Call;
 
    ---------------
@@ -448,8 +545,7 @@ package body GNATLLVM.Subprograms is
             --  already defined as Env.LCH_Fn
 
             if Subp_Base_Name = "__gnat_last_chance_handler" then
-               return G (Env.LCH_Fn, Standard_Void_Type,
-                         Is_Reference => True, Is_Subprogram_Type => True);
+               return Get_LCH_Fn;
             end if;
 
             --  ?? We have a tricky issue here.  We need to indicate that this

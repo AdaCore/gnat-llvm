@@ -21,12 +21,8 @@ with Interfaces.C; use Interfaces.C;
 
 with System;       use System;
 
-with GNATLLVM.DebugInfo; use GNATLLVM.DebugInfo;
-with GNATLLVM.Wrapper;   use GNATLLVM.Wrapper;
-
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Target;     use LLVM.Target;
-with LLVM.Types;      use LLVM.Types;
 with LLVM.Bit_Writer; use LLVM.Bit_Writer;
 with LLVM.Core;       use LLVM.Core;
 
@@ -44,11 +40,12 @@ with Switch;   use Switch;
 
 with Get_Targ; use Get_Targ;
 
-with GNATLLVM.Compile;      use GNATLLVM.Compile;
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
-with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body LLVM_Drive is
 
@@ -111,72 +108,30 @@ package body LLVM_Drive is
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
 
-      declare
-         Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-         Size_Type     : constant Type_T :=
-           Int_Ty (Integer (Get_Pointer_Size));
-         C_Int_Type    : constant Type_T := Int_Ty (Integer (Get_Int_Size));
+      Env.Void_Ptr_Type  := Create_Type (Standard_A_Char);
 
-      begin
-         Env.LLVM_Size_Type := Size_Type;
+      --  Find the integer type corresponding to the size of a pointer
+      --  and use that for our Size Type.
 
-         --  Find the integer type corresponding to the size of a pointer
-         --  and use that for our Size Type.
+      if Get_Pointer_Size = Get_Long_Long_Size then
+         Env.Size_Type := Standard_Long_Long_Integer;
+      elsif Get_Pointer_Size = Get_Long_Size then
+         Env.Size_Type := Standard_Long_Integer;
+      else
+         Env.Size_Type := Standard_Integer;
+      end if;
 
-         if Get_Pointer_Size = Get_Long_Long_Size then
-            Env.Size_Type := Standard_Long_Long_Integer;
-         elsif Get_Pointer_Size = Get_Long_Size then
-            Env.Size_Type := Standard_Long_Integer;
-         else
-            Env.Size_Type := Standard_Integer;
-         end if;
+      Env.LLVM_Size_Type := Create_Type (Env.Size_Type);
 
-         pragma Assert (Create_Type (Env.Size_Type) = Env.LLVM_Size_Type);
+      --  Likewise for the 32-bit integer type
 
-         --  Likewise for the 32-bit integer type
-
-         if Get_Long_Long_Size = 32 then
-            Env.Int_32_Type := Standard_Long_Long_Integer;
-         elsif Get_Long_Size = 32 then
-            Env.Int_32_Type := Standard_Long_Integer;
-         else
-            Env.Int_32_Type := Standard_Integer;
-         end if;
-
-         --  Add malloc function to the env
-
-         Env.Default_Alloc_Fn :=
-           Add_Function ("malloc", Fn_Ty ((1 => Size_Type), Void_Ptr_Type),
-                         Standard_A_Char);
-
-         --  Likewise for memcmp
-
-         Env.Memory_Cmp_Fn :=
-           Add_Function
-           ("memcmp",
-            Fn_Ty ((Void_Ptr_Type, Void_Ptr_Type, Size_Type), C_Int_Type),
-            Standard_Integer);
-
-         --  Likewise for stacksave/stackrestore
-
-         Env.Stack_Save_Fn :=
-           Add_Function
-           ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type),
-            Standard_A_Char);
-
-         Env.Stack_Restore_Fn := Add_Function
-           ("llvm.stackrestore",
-            Fn_Ty ((1 => Void_Ptr_Type), Void_Type_In_Context (Env.Ctx)),
-            Standard_Void_Type);
-
-         --  Likewise for __gnat_last_chance_handler
-
-         Env.LCH_Fn := Add_Function
-           (Env.Mdl,
-            "__gnat_last_chance_handler",
-            Fn_Ty ((Void_Ptr_Type, C_Int_Type),
-                   Void_Type_In_Context (Env.Ctx)));
-      end;
+      if Get_Long_Long_Size = 32 then
+         Env.Int_32_Type := Standard_Long_Long_Integer;
+      elsif Get_Long_Size = 32 then
+         Env.Int_32_Type := Standard_Long_Integer;
+      else
+         Env.Int_32_Type := Standard_Integer;
+      end if;
 
       --  Actually translate
 

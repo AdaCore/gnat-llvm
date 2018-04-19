@@ -1471,9 +1471,6 @@ package body GNATLLVM.Compile is
                pragma Assert (Do_Overflow_Check (Node));
 
                declare
-                  BB_Then  : constant Basic_Block_T :=
-                    Create_Basic_Block ("raise");
-                  BB_Next  : constant Basic_Block_T := Create_Basic_Block;
                   Func     : constant GL_Value :=
                     Build_Intrinsic
                     (Overflow,
@@ -1483,11 +1480,7 @@ package body GNATLLVM.Compile is
                   Overflow : constant GL_Value :=
                     Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
                begin
-                  Build_Cond_Br (Overflow, BB_Then, BB_Next);
-                  Position_Builder_At_End (BB_Then);
-                  Emit_LCH_Call (Node);
-                  Build_Br (BB_Next);
-                  Position_Builder_At_End (BB_Next);
+                  Emit_LCH_Call_If (Overflow, Node);
                   Result := Extract_Value (Left_BT, Fn_Ret, 0);
                end;
             end if;
@@ -1637,10 +1630,26 @@ package body GNATLLVM.Compile is
          when N_Op_Minus =>
             declare
                Expr : constant GL_Value := Emit_Expression (Right_Opnd (Node));
+               Typ  : constant Entity_Id := Full_Etype (Expr);
 
             begin
                if Is_Floating_Point_Type (Expr) then
                   return F_Neg (Expr);
+               elsif Do_Overflow_Check (Node)
+                 and then not Is_Unsigned_Type (Expr)
+               then
+                  declare
+                     Func     : constant GL_Value :=
+                       Build_Intrinsic
+                       (Overflow, "llvm.ssub.with.overflow.i", Typ);
+                     Fn_Ret   : constant GL_Value :=
+                       Call (Func, Typ, (1 => Const_Null (Typ), 2 => Expr));
+                     Overflow : constant GL_Value :=
+                       Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
+                  begin
+                     Emit_LCH_Call_If (Overflow, Node);
+                     return Extract_Value (Typ, Fn_Ret, 0);
+                  end;
                else
                   return NSW_Neg (Expr);
                end if;

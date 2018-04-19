@@ -76,7 +76,7 @@ package body GNATLLVM.Subprograms is
       Name : String;
       TE   : Entity_Id) return GL_Value
    is
-      Width         : constant Uint := RM_Size (TE);
+      Width         : constant Uint   := Esize (TE);
       Full_Name     : constant String := Name & UI_Image (Width);
       Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
       Void_Type     : constant Type_T := Void_Type_In_Context (Env.Ctx);
@@ -364,6 +364,23 @@ package body GNATLLVM.Subprograms is
          return Const_Null (Standard_A_Char);
       end if;
    end Get_Static_Link;
+
+   ----------------------
+   -- Emit_LCH_Call_If --
+   ----------------------
+
+   procedure Emit_LCH_Call_If (V : GL_Value; Node : Node_Id) is
+      BB_Then  : constant Basic_Block_T :=
+        Create_Basic_Block ("raise");
+      BB_Next  : constant Basic_Block_T := Create_Basic_Block;
+
+   begin
+      Build_Cond_Br (V, BB_Then, BB_Next);
+      Position_Builder_At_End (BB_Then);
+      Emit_LCH_Call (Node);
+      Build_Br (BB_Next);
+      Position_Builder_At_End (BB_Next);
+   end Emit_LCH_Call_If;
 
    -------------------
    -- Emit_LCH_Call --

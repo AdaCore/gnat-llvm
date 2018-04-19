@@ -81,8 +81,12 @@ package GNATLLVM.Subprograms is
    --  Helper for Emit/Emit_Expression: compile a call statement/expression and
    --  return its result value.
 
+   procedure Emit_LCH_Call_If (V : GL_Value; Node : Node_Id)
+     with Pre => Present (V) and then Present (Node);
+   --  Call the last change helper if V evaluates to True
+
    procedure Emit_LCH_Call (Node : Node_Id)
-     with Pre  => Present (Node);
+     with Pre => Present (Node);
    --  Generate a call to __gnat_last_chance_handler
 
    procedure Emit_One_Body (Node : Node_Id)

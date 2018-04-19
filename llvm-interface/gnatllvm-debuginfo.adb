@@ -67,7 +67,7 @@ package body GNATLLVM.DebugInfo is
 
    procedure Pop_Debug_Scope is
    begin
-      if Emit_Debug_Info then
+      if Emit_Debug_Info and then not Library_Level then
          Debug_Scope_Table.Decrement_Last;
       end if;
    end Pop_Debug_Scope;
@@ -155,7 +155,7 @@ package body GNATLLVM.DebugInfo is
 
    procedure Push_Lexical_Debug_Scope (N : Node_Id) is
    begin
-      if Emit_Debug_Info then
+      if Emit_Debug_Info and then not Library_Level then
          Push_Debug_Scope
            (Create_Debug_Lexical_Block
               (Env.DIBld, Current_Debug_Scope,

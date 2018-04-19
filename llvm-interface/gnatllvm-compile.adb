@@ -612,7 +612,9 @@ package body GNATLLVM.Compile is
                   return;
                end if;
 
-               --  Handle top-level declarations
+               --  Handle top-level declarations or ones that need to be
+               --  treated that way. ?? Except that the latter causes issues
+               --  that will need to be debugged at some point.
 
                if Library_Level then
                   --  ??? Will only work for objects of static sizes
@@ -627,9 +629,6 @@ package body GNATLLVM.Compile is
                   Set_Value (Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then
-                     if Is_Statically_Allocated (Def_Ident) then
-                        Set_Linkage (LLVM_Var, Internal_Linkage);
-                     end if;
 
                      --  ??? This code is probably wrong, but is rare enough
                      --  that we'll worry about it later.

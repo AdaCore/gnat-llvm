@@ -1001,6 +1001,8 @@ package body GNATLLVM.Compile is
                  (if Present (Identifier (Node))
                   then Entity (Identifier (Node))
                   else Empty);
+               This_BB     : constant Basic_Block_T :=
+                  Get_Insert_Block (Env.Bld);
                BB          : Basic_Block_T;
                Stack_State : GL_Value;
 
@@ -1010,18 +1012,25 @@ package body GNATLLVM.Compile is
                --  that are not declared: try to get any existing basic block,
                --  create and register a new one if it does not exist yet.
 
-               if Has_BB (BE) then
+               if Present (BE) and then Has_BB (BE) then
                   BB := Get_Basic_Block (BE);
                else
-                  BB := Create_Basic_Block;
+                  --  If we've just started a basic block with no instructions
+                  --  in it, that basic block will do.
+
+                  BB := (if No (Get_Last_Instruction (This_BB))
+                         then This_BB else Create_Basic_Block);
 
                   if Present (BE) then
                      Set_Basic_Block (BE, BB);
                   end if;
                end if;
 
-               Build_Br (BB);
-               Position_Builder_At_End (BB);
+               if BB /= This_BB then
+                  Build_Br (BB);
+                  Position_Builder_At_End (BB);
+               end if;
+
                Push_Lexical_Debug_Scope (Node);
 
                Stack_State := Call

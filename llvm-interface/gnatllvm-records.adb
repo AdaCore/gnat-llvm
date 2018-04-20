@@ -284,17 +284,28 @@ package body GNATLLVM.Records is
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
       This_Size  : GL_Value;
+      This_Align : unsigned;
 
    begin
       while Present (Cur_Idx) and then Cur_Idx /= Idx loop
          RI := Record_Info_Table.Table (Cur_Idx);
          if Present (RI.LLVM_Type) then
-            This_Size := Get_LLVM_Type_Size (RI.LLVM_Type);
+            This_Size  := Get_LLVM_Type_Size (RI.LLVM_Type);
+            This_Align := Get_Type_Alignment (RI.LLVM_Type);
          else
-            This_Size := Get_Type_Size (RI.GNAT_Type, V, For_Type);
+            This_Size  := Get_Type_Size (RI.GNAT_Type, V, For_Type);
+            This_Align := Get_Type_Alignment (RI.GNAT_Type);
          end if;
 
-         --  ??  We need to hande alignment here!
+         --  We have to align the size so far to the alignment of
+         --  this type.
+
+         if This_Align /= 1 then
+            Total_Size := Build_And
+              (NSW_Add (Total_Size,
+                        Size_Const_Int (unsigned_long_long (This_Align) - 1)),
+               NSW_Neg (Size_Const_Int (unsigned_long_long (This_Align))));
+         end if;
 
          Total_Size := NSW_Add (Total_Size, This_Size);
          Cur_Idx := RI.Next;

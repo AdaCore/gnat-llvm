@@ -53,6 +53,9 @@ package GNATLLVM.Wrapper is
    procedure Add_TBAA_Access (Value : Value_T; TBAA : Metadata_T);
    pragma Import (C, Add_TBAA_Access, "Add_TBAA_Access");
 
+   procedure Set_Alloca_Align (Inst : Value_T; Align : unsigned);
+   pragma Import (C, Set_Alloca_Align, "Set_Alloca_Align");
+
    function Build_Extract_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;

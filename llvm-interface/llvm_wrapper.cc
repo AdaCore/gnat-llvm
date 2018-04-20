@@ -124,6 +124,13 @@ Add_TBAA_Access (Instruction *inst, MDNode *md)
   inst->setMetadata (LLVMContext::MD_tbaa, md);
 }
 
+extern "C"
+void
+Set_Alloca_Align (AllocaInst *inst, unsigned align)
+{
+    inst->setAlignment (align);
+}
+
 /* The LLVM C interface only provide single-index forms of extractvalue
    and insertvalue, so provide the multi-index forms here.  */
 

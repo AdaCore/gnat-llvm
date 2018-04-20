@@ -143,9 +143,12 @@ package body GNATLLVM.GLValue is
    -- Alloca --
    ------------
 
-   function Alloca (TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G_Ref (Alloca (Env.Bld, Create_Type (TE), Name), TE));
+   function Alloca (TE : Entity_Id; Name : String := "") return GL_Value is
+      Inst : constant Value_T := Alloca (Env.Bld, Create_Type (TE), Name);
+   begin
+      Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
+      return G_Ref (Inst, TE);
+   end Alloca;
 
    ------------------
    -- Array_Alloca --
@@ -156,9 +159,12 @@ package body GNATLLVM.GLValue is
       Num_Elts : GL_Value;
       Name     : String := "") return GL_Value
    is
-     (G_Ref (Array_Alloca (Env.Bld, Create_Type (TE),
-                           LLVM_Value (Num_Elts), Name),
-             TE));
+      Inst : constant Value_T :=
+        Array_Alloca (Env.Bld, Create_Type (TE), LLVM_Value (Num_Elts), Name);
+   begin
+      Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
+      return G_Ref (Inst, TE);
+   end Array_Alloca;
 
    ---------------
    -- Get_Undef --

@@ -112,7 +112,7 @@ package body GNATLLVM.Environment is
    -- Get_Record_Info --
    ---------------------
 
-   function Get_Record_Info (TE : Entity_Id) return Record_Info is
+   function Get_Record_Info (TE : Entity_Id) return Record_Info_Id is
    begin
       if not Has_Type (TE) then
          Discard (Create_Type (TE));
@@ -120,6 +120,15 @@ package body GNATLLVM.Environment is
 
       return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Record_Inf;
    end Get_Record_Info;
+
+   --------------------
+   -- Get_Field_Info --
+   --------------------
+
+   function Get_Field_Info (VE : Entity_Id) return Field_Info_Id is
+   begin
+      return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Field_Inf;
+   end Get_Field_Info;
 
    function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id;
    --  Helper for below to allocate LLVM_Info_Table entry if needed.
@@ -220,7 +229,7 @@ package body GNATLLVM.Environment is
    end Set_Basic_Block;
 
    ---------------------
-   -- Set_Record_Info --
+   -- Set_Array_Info --
    ---------------------
 
    procedure Set_Array_Info (TE : Entity_Id; AI : Nat)
@@ -235,13 +244,25 @@ package body GNATLLVM.Environment is
    -- Set_Record_Info --
    ---------------------
 
-   procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info)
+   procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info_Id)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Record_Inf := RI;
    end Set_Record_Info;
+
+   --------------------
+   -- Set_Field_Info --
+   --------------------
+
+   procedure Set_Field_Info (VE : Entity_Id; FI : Field_Info_Id)
+   is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (VE);
+
+   begin
+      LLVM_Info_Table.Table (Id).Field_Inf := FI;
+   end Set_Field_Info;
 
    ---------------
    -- Push_Loop --

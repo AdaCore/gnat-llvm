@@ -183,12 +183,9 @@ package body GNATLLVM.Arrays is
          end;
       else
          return
-           Load
-           ((G (Record_Field_Offset
-                  (LLVM_Value (Get_Matching_Value
-                                 (Full_Etype (Scope (Bound_Info.Discr)))),
-                   Bound_Info.Discr),
-                Dim_Info.Bound_Type, Is_Reference => True)));
+           Load (Record_Field_Offset
+                   (Get_Matching_Value (Full_Etype (Scope (Bound_Info.Discr))),
+                    Bound_Info.Discr));
       end if;
 
    end Get_Array_Bound;

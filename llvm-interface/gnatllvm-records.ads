@@ -28,19 +28,15 @@ with GNATLLVM.Utils;       use GNATLLVM.Utils;
 package GNATLLVM.Records is
 
    function Create_Record_Type (Def_Ident : Entity_Id) return Type_T
-     with Pre  => Present (Def_Ident),
+     with Pre => Is_Record_Type (Def_Ident),
           Post => Present (Create_Record_Type'Result);
    --  Create a type for the record denoted by Def_Ident
 
    function Record_Field_Offset
-     (Record_Ptr : Value_T; Record_Field : Node_Id) return Value_T
-     with Pre  => Present (Record_Ptr) and then Present (Record_Field),
+     (Ptr : GL_Value; Field : Entity_Id) return GL_Value
+     with Pre  => Present (Ptr) and then Present (Field),
           Post => Present (Record_Field_Offset'Result);
    --  Compute the offset of a given record field
-
-   function Record_With_Dynamic_Size (T : Entity_Id) return Boolean
-     with Pre => Is_Type (T);
-   --  Return True is T denotes a record type with a dynamic size
 
    function Get_Record_Type_Size
      (TE       : Entity_Id;

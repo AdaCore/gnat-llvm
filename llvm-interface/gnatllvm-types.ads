@@ -220,7 +220,9 @@ package GNATLLVM.Types is
    --  use Get_Matching_Value.
 
    function Compute_Alignment
-     (Left_Typ, Right_Typ     : Entity_Id) return unsigned
+     (Left_Typ, Right_Typ     : Entity_Id) return unsigned is
+     (unsigned'Max (Get_Type_Alignment (Left_Typ),
+                    Get_Type_Alignment (Right_Typ)))
      with Pre  => Is_Type (Left_Typ) and then Present (Right_Typ);
    --  Likewise, but compute strictest alignment in bits
 

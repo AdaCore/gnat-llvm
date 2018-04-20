@@ -15,9 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers.Ordered_Maps;
-with Ada.Containers.Vectors;
-
 with Atree; use Atree;
 with Einfo; use Einfo;
 with Table; use Table;
@@ -59,6 +56,30 @@ package GNATLLVM.Environment is
      (Ekind (E) = E_Void or else Is_Type (E));
    --  We can have Etype's that are E_Void for E_Procedure; needed for
    --  aspect of below record.
+
+   --  Define bounds and types for record and field information
+
+   Record_Info_Low_Bound  : constant := 300_000_000;
+   Record_Info_High_Bound : constant := 399_999_999;
+   type Record_Info_Id is
+     range Record_Info_Low_Bound .. Record_Info_High_Bound;
+   First_Record_Info_Id   : constant Record_Info_Id := Record_Info_Low_Bound;
+   Empty_Record_Info_Id   : constant Record_Info_Id := First_Record_Info_Id;
+
+   Field_Info_Low_Bound  : constant := 400_000_000;
+   Field_Info_High_Bound : constant := 499_999_999;
+   type Field_Info_Id is range Field_Info_Low_Bound .. Field_Info_High_Bound;
+   First_Field_Info_Id   : constant Field_Info_Id := Field_Info_Low_Bound;
+   Empty_Field_Info_Id   : constant Field_Info_Id := First_Field_Info_Id;
+
+   function No (R : Record_Info_Id)      return Boolean is
+      (R = Empty_Record_Info_Id);
+   function No (F : Field_Info_Id)       return Boolean is
+      (F = Empty_Field_Info_Id);
+   function Present (R : Record_Info_Id) return Boolean is
+      (R /= Empty_Record_Info_Id);
+   function Present (F : Field_Info_Id)  return Boolean is
+      (F /= Empty_Field_Info_Id);
 
    --  It's not sufficient to just pass around an LLVM Value_T when
    --  generating code because there's a lot of information lost about the
@@ -102,35 +123,6 @@ package GNATLLVM.Environment is
    function No (G : GL_Value) return Boolean           is (G = No_GL_Value);
    function Present (G : GL_Value) return Boolean      is (G /= No_GL_Value);
 
-   type Field_Info is record
-      Containing_Struct_Index : Nat;
-      Index_In_Struct : Nat;
-      Entity : Entity_Id;
-      LLVM_Type : Type_T;
-   end record;
-
-   package Field_Info_Vectors is new Ada.Containers.Vectors (Pos, Field_Info);
-
-   type Struct_Info is record
-      LLVM_Type : Type_T;
-      Preceding_Fields : Field_Info_Vectors.Vector;
-   end record;
-
-   package Struct_Info_Vectors is
-     new Ada.Containers.Vectors (Pos, Struct_Info);
-
-   package Field_Maps is new Ada.Containers.Ordered_Maps
-     (Key_Type => Entity_Id, Element_Type => Field_Info);
-
-   --  Keep information about record types, to link their front-end
-   --  representation to their LLVM representations
-   --  TODO: Document the LLVM representation of records here.
-   type Record_Info is record
-      Fields : Field_Maps.Map;
-      Structs : Struct_Info_Vectors.Vector;
-      Dynamic_Size : Boolean := False;
-   end record;
-
    --  Expanded Ada-to-LLVM translation context: gathers global information
    type Environ_Record;
    type Environ is access all Environ_Record;
@@ -166,7 +158,11 @@ package GNATLLVM.Environment is
       Basic_Block : Basic_Block_T;
       --  For labels and loop ids, records the corresponding basic block
 
-      Record_Inf  : Record_Info;
+      Record_Inf  : Record_Info_Id;
+      --  For records, gives the first index of the descriptor of the record
+
+      Field_Inf   : Field_Info_Id;
+      --  For fields, gives the index of the descriptor of the field
    end record;
 
    LLVM_Info_Low_Bound  : constant := 200_000_000;
@@ -263,8 +259,11 @@ package GNATLLVM.Environment is
    function Get_Array_Info  (TE : Entity_Id) return Nat
      with Pre => Is_Array_Type (TE);
 
-   function Get_Record_Info (TE : Entity_Id) return Record_Info
+   function Get_Record_Info (TE : Entity_Id) return Record_Info_Id
      with Pre => Is_Record_Type (TE);
+
+   function Get_Field_Info (VE : Entity_Id)  return Field_Info_Id
+     with Pre => Ekind_In (VE, E_Discriminant, E_Component);
 
    function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T
      with Pre => Present (BE);
@@ -305,9 +304,13 @@ package GNATLLVM.Environment is
      with Pre  => Is_Array_Type (TE) and then Has_Type (TE),
           Post => Get_Array_Info (TE) = AI;
 
-   procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info)
+   procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info_Id)
      with Pre  => Is_Record_Type (TE) and then Has_Type (TE),
           Post => Get_Record_Info (TE) = RI;
+
+   procedure Set_Field_Info (VE : Entity_Id; FI : Field_Info_Id)
+     with Pre  => Ekind_In (VE, E_Discriminant, E_Component),
+          Post => Get_Field_Info (VE) = FI;
 
    procedure Set_Basic_Block (BE : Entity_Id; BL : Basic_Block_T)
      with Pre  => Present (BE), Post => Get_Basic_Block (BE) = BL;

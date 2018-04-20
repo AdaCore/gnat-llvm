@@ -225,36 +225,6 @@ package body GNATLLVM.Utils is
       end if;
    end Get_Acting_Spec;
 
-   ----------------------
-   -- Iterate_Entities --
-   ----------------------
-
-   function Iterate_Entities (Root : Entity_Id) return Entity_Iterator is
-      Len : Nat := 0;
-      Cur : Entity_Id := Get_First (Root);
-
-   begin
-      while Cur /= Empty loop
-         Cur := Get_Next (Cur);
-         Len := Len + 1;
-      end loop;
-
-      declare
-         A : Entity_Iterator (1 .. Len);
-         I : Nat := 1;
-      begin
-         Cur := Get_First (Root);
-         while Cur /= Empty loop
-            if Filter (Cur) then
-               A (I) := Cur;
-               I := I + 1;
-            end if;
-            Cur := Get_Next (Cur);
-         end loop;
-         return A (1 .. I - 1);
-      end;
-   end Iterate_Entities;
-
    ------------------
    -- Get_Ext_Name --
    ------------------

@@ -1254,17 +1254,8 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Selected_Component =>
-            declare
-               Pfx_Ptr : constant GL_Value :=
-                 Emit_LValue_Internal (Prefix (Node));
-               Record_Component : constant Entity_Id :=
-                 Original_Record_Component (Entity (Selector_Name (Node)));
-
-            begin
-               return G (Record_Field_Offset (LLVM_Value (Pfx_Ptr),
-                                              Record_Component),
-                         Full_Etype (Node), Is_Reference => True);
-            end;
+            return Record_Field_Offset (Emit_LValue_Internal (Prefix (Node)),
+                                        Entity (Selector_Name (Node)));
 
          when N_Indexed_Component =>
             return Get_Indexed_LValue (Expressions (Node),
@@ -1710,19 +1701,13 @@ package body GNATLLVM.Compile is
                        Activation_Record_Component (Def_Ident);
                      Activation_Record : constant GL_Value :=
                        Env.Activation_Rec_Param;
-                     Pointer           : constant Value_T :=
-                       Record_Field_Offset (LLVM_Value (Activation_Record),
-                                            Component);
-                     Value_Address     : constant Value_T :=
-                       Load (Env.Bld, Pointer, "");
-                     Typ               : constant Type_T :=
-                       Pointer_Type (Create_Type
-                                       (Full_Etype (Def_Ident)), 0);
-                     Value_Ptr         : constant Value_T :=
-                       Int_To_Ptr (Env.Bld, Value_Address, Typ, "");
+                     Pointer           : constant GL_Value :=
+                       Record_Field_Offset (Activation_Record, Component);
+                     Value_Address     : constant GL_Value := Load (Pointer);
+                     Value_Ptr         : constant GL_Value :=
+                       Int_To_Ref (Value_Address, Full_Etype (Def_Ident));
                   begin
-                     return G (Load (Env.Bld, Value_Ptr, ""),
-                               Full_Etype (Def_Ident));
+                     return Load (Value_Ptr);
                   end;
 
                --  Handle entities in Standard and ASCII on the fly
@@ -1980,8 +1965,7 @@ package body GNATLLVM.Compile is
         and then Is_Others_Aggregate (E) and then Is_Zero_Aggregate (E)
       then
          declare
-            Align : constant unsigned :=
-              Get_Type_Alignment (Create_Type (Dest_Type));
+            Align : constant unsigned := Get_Type_Alignment (Dest_Type);
 
          begin
             Call (Build_Intrinsic
@@ -2215,8 +2199,7 @@ package body GNATLLVM.Compile is
          when Attribute_Alignment =>
             declare
                Pre   : constant Node_Id := Full_Etype (Prefix (Node));
-               Align : constant unsigned :=
-                 Get_Type_Alignment (Create_Type (Pre));
+               Align : constant unsigned := Get_Type_Alignment (Pre);
 
             begin
                return Const_Int (Typ, unsigned_long_long (Align),

@@ -132,17 +132,6 @@ package GNATLLVM.Utils is
         when N_Op_Ge => (Int_SGE, Int_UGE, Real_OGE),
         when others => (others => <>));
 
-   type Entity_Iterator is array (Nat range <>) of Entity_Id;
-
-   function Filter (Unused : Entity_Id) return Boolean is (True);
-
-   generic
-      with function Get_First (Root : Entity_Id) return Entity_Id is <>;
-      with function Get_Next (Elt : Entity_Id) return Entity_Id is <>;
-      with function Filter (Elt : Entity_Id) return Boolean is <>;
-   function Iterate_Entities (Root : Entity_Id) return Entity_Iterator;
-   --  Likewise for the linked list of entities starting at Get_First (Root)
-
    function Get_Name (E : Entity_Id) return String is
       (Get_Name_String (Chars (E)))
      with Pre => Present (E);

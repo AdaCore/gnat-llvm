@@ -744,7 +744,42 @@ package body GNATLLVM.Types is
    ------------------------
 
    function Get_Type_Alignment (TE : Entity_Id) return unsigned is
-     (Get_Type_Alignment (Create_Type (TE)));
+   begin
+
+      --  Easiest case is not dynamic size: then just LLVM type's alignment
+
+      if not Is_Dynamic_Size (TE) then
+         return Get_Type_Alignment (Create_Type (TE));
+
+      --  If it's an array, it's the alignment of the component type
+
+      elsif Is_Array_Type (TE) then
+         return Get_Type_Alignment (Component_Type (TE));
+
+      --  Otherwise, it must be a record.  Use the highest alignment of
+      --  any field.
+
+      else
+         pragma Assert (Is_Record_Type (TE));
+         declare
+            Field         : Entity_Id := First_Entity (TE);
+            Largest_Align : unsigned := 1;
+
+         begin
+            while Present (Field) loop
+               if Ekind_In (Field, E_Discriminant, E_Component) then
+                  Largest_Align
+                    := unsigned'Max (Largest_Align,
+                                     Get_Type_Alignment (Full_Etype (Field)));
+               end if;
+
+               Next_Entity (Field);
+            end loop;
+
+            return Largest_Align;
+         end;
+      end if;
+   end Get_Type_Alignment;
 
    -------------------
    -- Get_Type_Size --
@@ -795,23 +830,6 @@ package body GNATLLVM.Types is
       end if;
 
    end Compute_Size;
-
-   -----------------------
-   -- Compute_Alignment --
-   -----------------------
-
-   function Compute_Alignment
-     (Left_Typ, Right_Typ     : Entity_Id) return unsigned
-   is
-      Left_Align  : constant unsigned :=
-        (if Is_Elementary_Type (Left_Typ) then Get_Type_Alignment (Left_Typ)
-         else 1);
-      Right_Align : constant unsigned :=
-        (if Is_Elementary_Type (Right_Typ) then Get_Type_Alignment (Right_Typ)
-         else 1);
-   begin
-      return unsigned'Max (Left_Align, Right_Align);
-   end Compute_Alignment;
 
    ------------------------------
    -- Get_Type_Size_Complexity --

@@ -15,10 +15,14 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C; use Interfaces.C;
+with Interfaces.C;            use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Namet;  use Namet;
 with Nlists; use Nlists;
+with Snames; use Snames;
+with Stand;  use Stand;
+with Table;  use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -28,145 +32,340 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package body GNATLLVM.Records is
 
-   function Rec_Comp_Filter (E : Entity_Id) return Boolean is
-     ((Ekind (E) in E_Component | E_Discriminant)
-      and then Get_Name_String (Chars (E)) /= "_parent");
+   function Count_Entities (E : Entity_Id) return Nat
+     with Pre => Present (E);
+   --  Return the number of entities of E
 
-   function Iterate_Components is new Iterate_Entities
-     (Get_First => First_Entity,
-      Get_Next  => Next_Entity,
-      Filter    => Rec_Comp_Filter);
-   --  Iterate over all components of a given record type
+   function Get_Record_Size_So_Far
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Idx      : Record_Info_Id;
+      For_Type : Boolean) return GL_Value
+     with Pre  => Present (TE),
+          Post => Present (Get_Record_Size_So_Far'Result);
 
-   function Create_Record_Type (Def_Ident : Entity_Id) return Type_T is
-      Struct_Type   : Type_T;
-      Comps         : constant Entity_Iterator :=
-        Iterate_Components (Def_Ident);
-      LLVM_Comps    : array (1 .. Comps'Length) of Type_T;
-      I             : Natural := 1;
-      Struct_Num    : Nat := 1;
-      Num_Fields    : Natural := 0;
-      Info          : Record_Info;
-      Fields        : Field_Info_Vectors.Vector;
-      Current_Field : Field_Info;
+   --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
+   --  or the last segment, whichever comes first.
 
-      function New_Struct_Info return Struct_Info is
-         ((LLVM_Type => Struct_Type, Preceding_Fields => Fields));
+   --  We represent a record by one or more pieces of information
+   --  describing the record.  Each piece points to the next piece, if
+   --  any.  For non-variant records, each piece either contains an
+   --  LLVM type, which contains one or more fields or an GNAT type,
+   --  which is used when the field's type is of dynamic size.
+
+   type Record_Info is record
+      LLVM_Type : Type_T;
+      GNAT_Type : Entity_Id;
+      Next      : Record_Info_Id;
+   end record
+     with Dynamic_Predicate => (Present (LLVM_Type)
+                                  or else Present (GNAT_Type))
+                               and then not (Present (LLVM_Type)
+                                               and then Present (GNAT_Type));
+
+   package Record_Info_Table is new Table.Table
+     (Table_Component_Type => Record_Info,
+      Table_Index_Type     => Record_Info_Id'Base,
+      Table_Low_Bound      => Record_Info_Low_Bound,
+      Table_Initial        => 100,
+      Table_Increment      => 50,
+      Table_Name           => "Record_Info_Table");
+
+   --  The information for a field is the index of the piece in the
+   --  record information and optionally the index within the piece in the
+   --  case when its an LLVM_type.
+
+   type Field_Info is record
+      Rec_Info_Idx  : Record_Info_Id;
+      Field_Ordinal : Nat;
+   end record;
+
+   package Field_Info_Table is new Table.Table
+     (Table_Component_Type => Field_Info,
+      Table_Index_Type     => Field_Info_Id'Base,
+      Table_Low_Bound      => Field_Info_Low_Bound,
+      Table_Initial        => 1000,
+      Table_Increment      => 100,
+      Table_Name           => "Record_Info_Table");
+
+   ---------------------
+   --  Count_Entities --
+   ---------------------
+
+   function Count_Entities (E : Entity_Id) return Nat is
+      Count   : Nat := 0;
+      Elmt    : Entity_Id := First_Entity (E);
 
    begin
-      Struct_Type := Struct_Create_Named (Env.Ctx, Get_Name (Def_Ident));
-      Info.Structs.Append (New_Struct_Info);
-
-      --  Records enable some "type recursivity", so store this one in the
-      --  environment so that there is no infinite recursion when nested
-      --  components reference it.
-
-      Set_Type (Def_Ident, Struct_Type);
-
-      for Comp of Comps loop
-         LLVM_Comps (I) := Create_Type (Full_Etype (Comp));
-         Current_Field := (Struct_Num, Nat (I - 1), Comp, LLVM_Comps (I));
-         Fields.Append (Current_Field);
-         Info.Fields.Include (Comp, Current_Field);
-         I := I + 1;
-         Num_Fields := Num_Fields + 1;
-
-         --  If we are on a component with a dynamic size,
-         --  we create a new struct type for the following components.
-
-         if Is_Dynamic_Size (Full_Etype (Comp)) then
-            Info.Dynamic_Size := True;
-            Struct_Set_Body (Struct_Type, LLVM_Comps'Address,
-                             unsigned (I - 1), False);
-            I := 1;
-            Struct_Num := Struct_Num + 1;
-
-            Struct_Type := Struct_Create_Named
-              (Env.Ctx, Get_Name (Def_Ident) & Img (Struct_Num));
-            Info.Structs.Append (New_Struct_Info);
+      while Present (Elmt) loop
+         if Ekind_In (Elmt, E_Discriminant, E_Component) then
+            Count := Count + 1;
          end if;
+
+         Next_Entity (Elmt);
       end loop;
 
-      Struct_Set_Body
-        (Struct_Type, LLVM_Comps'Address, unsigned (I - 1), False);
-      Set_Record_Info (Def_Ident, Info);
-      Set_Dynamic_Size (Def_Ident, Info.Dynamic_Size);
-      return Get_Type (Def_Ident);
+      return Count;
+   end Count_Entities;
 
+   ------------------------
+   -- Create_Record_Type --
+   ------------------------
+
+   function Create_Record_Type (Def_Ident : Entity_Id) return Type_T is
+      Prev_Idx  : Record_Info_Id := Empty_Record_Info_Id;
+      --  The previous index of the record table entry, if any
+
+      Cur_Idx   : Record_Info_Id;
+      --  The index of the record table entry we're building
+
+      Types     : Type_Array (0 .. Count_Entities (Def_Ident));
+      --  Array of all field types that are going into the current piece
+
+      Next_Type : Nat := 0;
+      --  Ordinal of next entry in Types
+
+      Field     : Entity_Id;
+      LLVM_Type : Type_T;
+
+      procedure Add_RI (LLVM_Type : Type_T; GNAT_Type : Entity_Id)
+        with Pre => (Present (LLVM_Type) or else Present (GNAT_Type))
+                    and then not (Present (LLVM_Type)
+                                    and then Present (GNAT_Type));
+      --  Add a Record_Info into the table, chaining it as appropriate
+
+      procedure Add_FI (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat)
+        with Pre => Ekind_In (E, E_Discriminant, E_Component);
+      --  Add a Field_Info info the table, if appropriate, and set
+      --  the field to point to it.
+
+      procedure Add_Field (E : Entity_Id)
+        with Pre => Ekind_In (E, E_Discriminant, E_Component);
+      --  Add one field to the above data
+
+      ------------
+      -- Add_RI --
+      ------------
+
+      procedure Add_RI (LLVM_Type : Type_T; GNAT_Type : Entity_Id) is
+      begin
+         --  It's tempting to set Next to the next entry that we'll be using,
+         --  but we may not actually be using that one.
+
+         Record_Info_Table.Table (Cur_Idx) :=
+           (LLVM_Type => LLVM_Type, GNAT_Type => GNAT_Type,
+            Next      => Empty_Record_Info_Id);
+
+         if Present (Prev_Idx) then
+            Record_Info_Table.Table (Prev_Idx).Next := Cur_Idx;
+         end if;
+
+         Prev_Idx := Cur_Idx;
+         Record_Info_Table.Increment_Last;
+         Cur_Idx := Record_Info_Table.Last;
+      end Add_RI;
+
+      ------------
+      -- Add_FI --
+      ------------
+
+      procedure Add_FI
+        (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat) is
+      begin
+         --  If this field really isn't in the record we're working on,
+         --  it must be in a parent.  So it was correct to allocate
+         --  space for it, but let the record description be from the
+         --  type that it's actually in.
+
+         if Get_Fullest_View (Scope (E)) = Def_Ident then
+            Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
+                                      Field_Ordinal => Ordinal));
+            Set_Field_Info (E, Field_Info_Table.Last);
+         end if;
+      end Add_FI;
+
+      ---------------
+      -- Add_Field --
+      ---------------
+
+      procedure Add_Field (E : Entity_Id) is
+         Typ : constant Entity_Id := Full_Etype (E);
+
+      begin
+         --  If this is the '_parent' field, we make a dummy entry and handle
+         --  it specially later.
+
+         if Chars (E) = Name_uParent then
+            Add_FI (E, Cur_Idx, 0);
+            return;
+
+         --  If this field is dynamic size, we have to close out the last
+         --  record info entry we're making, if there's anything in it
+         --  and make a piece for this field.
+
+         elsif Is_Dynamic_Size (Typ) then
+            if Next_Type /= 0 then
+               Add_RI (Build_Struct_Type (Types (0 .. Next_Type - 1)), Empty);
+               Next_Type := 0;
+            end if;
+
+            Add_FI (E, Cur_Idx, 0);
+            Add_RI (No_Type_T, Typ);
+
+         --  If it's of fixed size, add it to the current set of fields
+         --  and make a field descriptor.
+
+         else
+
+            Add_FI (E, Cur_Idx, Next_Type);
+            Types (Next_Type) := Create_Type (Typ);
+            Next_Type := Next_Type + 1;
+         end if;
+
+      end Add_Field;
+
+   begin
+      --  Because of the potential recursion between record and access types,
+      --  make a dummy type for us and set it as our type right at the start.
+      --  Then initialize our first record info table entry, which we know
+      --  will be used.
+
+      LLVM_Type := Struct_Create_Named (Env.Ctx, Get_Name (Def_Ident));
+      Set_Type (Def_Ident, LLVM_Type);
+      Record_Info_Table.Increment_Last;
+      Cur_Idx := Record_Info_Table.Last;
+      Set_Record_Info (Def_Ident, Cur_Idx);
+
+      Field := First_Entity (Def_Ident);
+      while Present (Field) loop
+         if Ekind_In (Field, E_Discriminant, E_Component) then
+            Add_Field (Field);
+         end if;
+
+         Next_Entity (Field);
+      end loop;
+
+      --  If we haven't yet made any record info entries, it means that
+      --  this is a fixed-size record that can be just an LLVM type,
+      --  so use the one we made.
+
+      if No (Prev_Idx) then
+         Struct_Set_Body (LLVM_Type, Types'Address,
+                          unsigned (Next_Type), False);
+         Add_RI (LLVM_Type, Empty);
+
+      else
+         --  Otherwise, close out the last record info if we have any
+         --  fields and show this record is of dynamic size.  Note thast if
+         --  we don't have any fields, the entry we allocated will remain
+         --  unused, but trying to reclaim it is risky.
+
+         if Next_Type /= 0 then
+            Add_RI (Build_Struct_Type (Types (0 .. Next_Type - 1)), Empty);
+         end if;
+
+         Set_Dynamic_Size (Def_Ident, True);
+      end if;
+
+      return LLVM_Type;
    end Create_Record_Type;
+
+   ----------------------------
+   -- Get_Record_Size_So_Far --
+   ----------------------------
+
+   function Get_Record_Size_So_Far
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Idx      : Record_Info_Id;
+      For_Type : Boolean) return GL_Value
+   is
+      Total_Size : GL_Value := Size_Const_Int (0);
+      Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
+      RI         : Record_Info;
+      This_Size  : GL_Value;
+
+   begin
+      while Present (Cur_Idx) and then Cur_Idx /= Idx loop
+         RI := Record_Info_Table.Table (Cur_Idx);
+         if Present (RI.LLVM_Type) then
+            This_Size := Get_LLVM_Type_Size (RI.LLVM_Type);
+         else
+            This_Size := Get_Type_Size (RI.GNAT_Type, V, For_Type);
+         end if;
+
+         --  ??  We need to hande alignment here!
+
+         Total_Size := NSW_Add (Total_Size, This_Size);
+         Cur_Idx := RI.Next;
+      end loop;
+
+      return Total_Size;
+   end Get_Record_Size_So_Far;
 
    -------------------------
    -- Record_Field_Offset --
    -------------------------
 
    function Record_Field_Offset
-     (Record_Ptr   : Value_T;
-      Record_Field : Node_Id) return Value_T
+     (Ptr : GL_Value; Field : Entity_Id) return GL_Value
    is
-      Type_Id    : constant Entity_Id :=
-        Get_Fullest_View (Scope (Record_Field));
-      R_Info     : constant Record_Info := Get_Record_Info (Type_Id);
-      F_Info     : Field_Info;
-      Struct_Ptr : Value_T := Record_Ptr;
+      Rec_Type  : constant Entity_Id      := Get_Fullest_View (Scope (Field));
+      F_Type    : constant Entity_Id      := Full_Etype (Field);
+      First_Idx : constant Record_Info_Id := Get_Record_Info (Rec_Type);
+      FI        : constant Field_Info     :=
+        Field_Info_Table.Table (Get_Field_Info (Field));
+      Our_Idx   : constant Record_Info_Id := FI.Rec_Info_Idx;
+      Offset    : constant GL_Value       :=
+        Get_Record_Size_So_Far (Rec_Type, Ptr, Our_Idx, False);
+      RI        : constant Record_Info    := Record_Info_Table.Table (Our_Idx);
+      Result   : GL_Value;
 
    begin
-      if Get_Name_String (Chars (Record_Field)) = "_parent" then
-         return Pointer_Cast
-           (Env.Bld, Record_Ptr,
-            Pointer_Type (Create_Type (Full_Etype (Record_Field)), 0),
-            "parent-access");
+
+      --  If this is the "_parent" field, just do a conversion so we point
+      --  to that type.
+
+      if Chars (Field) = Name_uParent then
+         return Ptr_To_Ref (Ptr, F_Type);
+
+      --  If the current piece is for a variable-sized object, we offset
+      --  to that object and make a pointer to its type.
+
+      elsif Present (RI.GNAT_Type) then
+         return Ptr_To_Ref (GEP (Standard_Short_Short_Integer,
+                                 Pointer_Cast (Ptr, Standard_A_Char),
+                                 (1 => Offset)),
+                            F_Type);
       end if;
 
-      F_Info := R_Info.Fields.Element (Record_Field);
-      if F_Info.Containing_Struct_Index > 1 then
-         declare
-            Int_Struct_Address : Value_T := Ptr_To_Int
-              (Env.Bld,
-               Record_Ptr, Int_Ptr_Type, "offset-calc");
-            S_Info : constant Struct_Info :=
-              R_Info.Structs (F_Info.Containing_Struct_Index);
+      --  Otherwise, if this is not the first piece, we have to offset to
+      --  the field (in bytes).  Then, if the type is dynamic size, we have
+      --  to convert the pointer to the type of this piece (which has no
+      --  corresponding GNAT type.)
 
-         begin
-            --  Accumulate the size of every field
-
-            for Preceding_Field of S_Info.Preceding_Fields loop
-               Int_Struct_Address := NSW_Add
-                 (Env.Bld,
-                  Int_Struct_Address,
-                  Get_Type_Size
-                    (Full_Etype (Preceding_Field.Entity), No_GL_Value).Value,
-                  "offset-calc");
-            end loop;
-
-            Struct_Ptr := Int_To_Ptr
-              (Env.Bld,
-               Int_Struct_Address, Pointer_Type (S_Info.LLVM_Type, 0), "back");
-         end;
-      end if;
-
-      return Struct_GEP
-        (Env.Bld,
-         Struct_Ptr, unsigned (F_Info.Index_In_Struct), "field_access");
-   end Record_Field_Offset;
-
-   ------------------------------
-   -- Record_With_Dynamic_Size --
-   ------------------------------
-
-   function Record_With_Dynamic_Size (T : Entity_Id) return Boolean
-   is
-      Full_View : constant Entity_Id := Get_Fullest_View (T);
-      Unused    : Type_T;
-
-   begin
-      if Is_Record_Type (Full_View) then
-         --  First ensure the type is created
-         Unused := Create_Type (Full_View);
-         return Get_Record_Info (Full_View).Dynamic_Size;
+      if Our_Idx = First_Idx then
+         Result := Ptr;
       else
-         return False;
+         Result := GEP (Standard_Short_Short_Integer,
+                        Pointer_Cast (Ptr, Standard_A_Char),
+                        (1 => Offset));
       end if;
-   end Record_With_Dynamic_Size;
+
+      if Is_Dynamic_Size (Rec_Type) then
+         Result := G (Pointer_Cast (Env.Bld, LLVM_Value (Result),
+                                    Pointer_Type (RI.LLVM_Type, 0), ""),
+                      Rec_Type, Is_Reference => True);
+      end if;
+
+      --  Finally, do a regular GEP for the field and we're done
+
+      return GEP (F_Type, Result,
+                  (1 => Const_Null_32,
+                   2 => Const_Int_32
+                     (unsigned_long_long (FI.Field_Ordinal))));
+
+   end Record_Field_Offset;
 
    --------------------------
    -- Get_Record_Type_Size --
@@ -175,33 +374,9 @@ package body GNATLLVM.Records is
    function Get_Record_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
-   is
-      Dynamic_Fields : Boolean := False;
-      T              : constant Type_T := Create_Type (TE);
-      Size           : GL_Value := Get_LLVM_Type_Size (T);
-      pragma Unreferenced (V);
-
+      For_Type : Boolean := False) return GL_Value is
    begin
-      if Record_With_Dynamic_Size (TE) then
-         for Comp of Iterate_Components (TE) loop
-            if Is_Dynamic_Size (Full_Etype (Comp)) then
-               Dynamic_Fields := True;
-            end if;
-
-            --  Compute size of all fields once we've found a dynamic
-            --  component.
-
-            if Dynamic_Fields then
-               Size := NSW_Add
-                 (Size,
-                  Get_Type_Size (Full_Etype (Comp), No_GL_Value, For_Type),
-                  "record-size");
-            end if;
-         end loop;
-      end if;
-
-      return Size;
+      return Get_Record_Size_So_Far (TE, V, Empty_Record_Info_Id, For_Type);
    end Get_Record_Type_Size;
 
    ---------------------------
@@ -210,50 +385,80 @@ package body GNATLLVM.Records is
 
    function Emit_Record_Aggregate (Node : Node_Id) return GL_Value is
       Agg_Type   : constant Entity_Id := Full_Etype (Node);
-      LLVM_Type  : constant Type_T := Create_Type (Agg_Type);
-      Result     : Value_T := Get_Undef (LLVM_Type);
-      Cur_Index  : Integer := 0;
-      Ent        : Entity_Id;
+      Result     : GL_Value := Get_Undef (Agg_Type);
       Expr       : Node_Id;
 
+      function Find_Matching_Field
+        (TE : Entity_Id; Fld : Entity_Id) return Entity_Id
+      with Pre  => Is_Record_Type (TE)
+                   and then Ekind_In (Fld, E_Discriminant, E_Component),
+           Post => Original_Record_Component (Fld) =
+                     Original_Record_Component (Find_Matching_Field'Result);
+      --  Find a field corresponding to Fld in record type TE
+
+      -------------------------
+      -- Find_Matching_Field --
+      -------------------------
+
+      function Find_Matching_Field
+        (TE : Entity_Id; Fld : Entity_Id) return Entity_Id
+      is
+         Ent : Entity_Id := First_Entity (TE);
+
+      begin
+         while Present (Ent) loop
+            if Ekind_In (Ent, E_Discriminant, E_Component)
+              and then (Original_Record_Component (Ent) =
+                          Original_Record_Component (Fld))
+            then
+               return Ent;
+            end if;
+
+            Next_Entity (Ent);
+         end loop;
+
+         return Empty;
+      end Find_Matching_Field;
+
    begin
-      --  The GNAT expander will always put fields in the right order, so
-      --  we can ignore Choices (Expr).
+      pragma Assert (not Is_Dynamic_Size (Agg_Type));
+
+      --  The above assertion proved that Agg_Type is of fixed size.  This
+      --  means that each of its components must be just a simple component
+      --  into an LLVM structure, so we just go through each of the part of
+      --  the aggregate and use the offset for that field, skipping
+      --  a discriminant of an unchecked union.
 
       Expr := First (Component_Associations (Node));
       while Present (Expr) loop
-         Ent := Entity (First (Choices (Expr)));
+         declare
+            Ent    : constant Entity_Id :=
+              Find_Matching_Field (Agg_Type, Entity (First (Choices (Expr))));
+            F_Idx  : constant Field_Info_Id := Get_Field_Info (Ent);
+            F_Info : constant Field_Info := Field_Info_Table.Table (F_Idx);
 
-         --  ?? Ignore discriminants that have Corresponding_Discriminants
-         --  in tagged types since we'll be setting those fields in the
-         --  parent subtype.
+         begin
+            if Ekind (Ent) = E_Discriminant
+              and then Is_Unchecked_Union (Agg_Type)
+            then
+               null;
+            else
 
-         if Ekind (Ent) = E_Discriminant
-           and then Present (Corresponding_Discriminant (Ent))
-           and then Is_Tagged_Type (Scope (Ent))
-         then
-            null;
+               Result := Insert_Value
+                 (Result, Emit_Expression (Expression (Expr)),
+                  unsigned (F_Info.Field_Ordinal));
+            end if;
+         end;
 
-            --  Also ignore discriminants of Unchecked_Unions
-
-         elsif Ekind (Ent) = E_Discriminant
-           and then Is_Unchecked_Union (Agg_Type)
-         then
-            null;
-         else
-            Result := Insert_Value
-              (Env.Bld,
-               Result,
-               LLVM_Value (Emit_Expression (Expression (Expr))),
-               unsigned (Cur_Index),
-               "");
-            Cur_Index := Cur_Index + 1;
-         end if;
-
-         Expr := Next (Expr);
+         Next (Expr);
       end loop;
 
-      return G (Result, Agg_Type);
+      return Result;
    end Emit_Record_Aggregate;
 
+begin
+   --  Make a dummy entry in the record table, so the "Empty" entry is
+   --  never used.
+
+   Record_Info_Table.Increment_Last;
 end GNATLLVM.Records;

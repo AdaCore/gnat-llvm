@@ -39,7 +39,7 @@ pwd:=$(shell pwd)
 # LDFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --libs \
 #   $(LLVM_MODULES) --ldflags --system-libs) -lstdc++
 LDFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --libs all \
-  --ldflags --system-libs) -lstdc++
+  --ldflags --system-libs) -static-libstdc++
 CXXFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --cxxflags)
 
 ifeq ($(filter-out CYGWIN%,$(uname)),)

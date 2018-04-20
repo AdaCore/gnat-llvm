@@ -44,9 +44,11 @@ package GNATLLVM.Records is
       For_Type : Boolean := False) return GL_Value
      with Pre  => Present (TE), Post => Present (Get_Record_Type_Size'Result);
 
-   function Emit_Record_Aggregate (Node : Node_Id) return GL_Value
+   function Emit_Record_Aggregate
+     (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value
      with Pre  => Nkind (Node) = N_Aggregate
-                  and then Is_Record_Type (Full_Etype (Node)),
+                  and then Is_Record_Type (Full_Etype (Node))
+                  and then Present (Result_So_Far),
           Post => Present (Emit_Record_Aggregate'Result);
 
 end GNATLLVM.Records;

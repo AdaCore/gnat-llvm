@@ -1846,7 +1846,7 @@ package body GNATLLVM.Compile is
                return Const_Null (Full_Etype (Node));
 
             elsif Ekind (TE) in Record_Kind then
-               return Emit_Record_Aggregate (Node);
+               return Emit_Record_Aggregate (Node, Get_Undef (TE));
 
             else
                return Emit_Array_Aggregate

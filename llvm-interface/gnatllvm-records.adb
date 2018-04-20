@@ -383,9 +383,11 @@ package body GNATLLVM.Records is
    -- Emit_Record_Aggregate --
    ---------------------------
 
-   function Emit_Record_Aggregate (Node : Node_Id) return GL_Value is
+   function Emit_Record_Aggregate
+     (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value
+   is
+      Result     : GL_Value := Result_So_Far;
       Agg_Type   : constant Entity_Id := Full_Etype (Node);
-      Result     : GL_Value := Get_Undef (Agg_Type);
       Expr       : Node_Id;
 
       function Find_Matching_Field
@@ -442,8 +444,14 @@ package body GNATLLVM.Records is
               and then Is_Unchecked_Union (Agg_Type)
             then
                null;
-            else
+            elsif Chars (Ent) = Name_uParent then
 
+               --  If this is "_parent", its fields are our fields too.
+               --  Assume Expression is also an N_Aggregate.
+
+               pragma Assert (Nkind (Expression (Expr)) = N_Aggregate);
+               Result := Emit_Record_Aggregate (Expression (Expr), Result);
+            else
                Result := Insert_Value
                  (Result, Emit_Expression (Expression (Expr)),
                   unsigned (F_Info.Field_Ordinal));

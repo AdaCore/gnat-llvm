@@ -142,8 +142,9 @@ package GNATLLVM.Utils is
    --  If Subp_Body acts as a spec, return it. Return the corresponding
    --  subprogram declaration otherwise.
 
-   procedure Discard (V : Value_T) with Pre => Present (V);
-   procedure Discard (T : Type_T)  with Pre => Present (T);
+   procedure Discard (V  : Value_T)        with Pre => Present (V);
+   procedure Discard (T  : Type_T)         with Pre => Present (T);
+   procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);
 
    procedure Dump_LLVM_Value (V : Value_T);
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this

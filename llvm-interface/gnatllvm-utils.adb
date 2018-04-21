@@ -212,6 +212,17 @@ package body GNATLLVM.Utils is
       null;
    end Discard;
 
+   -------------
+   -- Discard --
+   -------------
+
+   procedure Discard (BB : Basic_Block_T) is
+      pragma Unreferenced (BB);
+
+   begin
+      null;
+   end Discard;
+
    ---------------------
    -- Get_Acting_Spec --
    ---------------------

@@ -196,7 +196,7 @@ package body GNATLLVM.Records is
          --  it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Cur_Idx, 0);
+            Add_FI (E, Get_Record_Info (Def_Ident), 0);
             return;
 
          --  If this field is dynamic size, we have to close out the last

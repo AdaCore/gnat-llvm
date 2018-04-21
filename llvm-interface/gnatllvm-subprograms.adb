@@ -527,14 +527,14 @@ package body GNATLLVM.Subprograms is
 
       if Dynamic_Return then
          Args (Args'Last) :=
-           Allocate_For_Type (Return_Typ, "call-return");
+           Allocate_For_Type (Return_Typ, Name => "call-return");
       end if;
 
       --  If the return type is of dynamic size, call as a procedure and
       --  return the address we set as the last parameter.
 
       if Dynamic_Return then
-         Discard (Call (LLVM_Func, Standard_Void_Type, Args));
+         Call (LLVM_Func, Args);
          return Args (Args'Last);
       else
          return Call (LLVM_Func, Return_Typ, Args);

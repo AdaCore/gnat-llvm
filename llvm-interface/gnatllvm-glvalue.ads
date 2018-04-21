@@ -227,7 +227,9 @@ package GNATLLVM.GLValue is
    --  Get the Value corresponding to V, dereferencing it when needed.
    --  TE is the type of the value.
 
-   function Need_LValue (V : GL_Value; TE : Entity_Id) return GL_Value
+   function Need_LValue
+     (V : GL_Value; TE : Entity_Id; Name : String := "lvalue")
+     return GL_Value
      with Pre  => Present (V) and then Is_Type_Or_Void (TE),
           Post => Present (Need_LValue'Result);
    --  Get the LValue corresponding to V, making a new temporary to which

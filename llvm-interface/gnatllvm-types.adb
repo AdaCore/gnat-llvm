@@ -743,7 +743,8 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Allocate_For_Type
-     (TE : Entity_Id; Name : String := "") return GL_Value
+     (TE : Entity_Id; Value : GL_Value := No_GL_Value; Name : String := "")
+     return GL_Value
    is
       Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
@@ -766,10 +767,10 @@ package body GNATLLVM.Types is
         and then not Is_Dynamic_Size (Full_Component_Type (TE))
       then
          Element_Typ := Full_Component_Type (TE);
-         Num_Elts    := Get_Array_Elements (No_GL_Value, TE);
+         Num_Elts    := Get_Array_Elements (Value, TE, For_Type => No (Value));
       else
          Element_Typ := Standard_Short_Short_Integer;
-         Num_Elts    := Get_Type_Size (TE, No_GL_Value);
+         Num_Elts    := Get_Type_Size (TE, Value, For_Type => No (Value));
       end if;
 
       return Ptr_To_Ref

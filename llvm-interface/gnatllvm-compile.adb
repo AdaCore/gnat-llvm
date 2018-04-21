@@ -601,6 +601,7 @@ package body GNATLLVM.Compile is
                T         : constant Entity_Id := Full_Etype (Def_Ident);
                LLVM_Type : Type_T;
                LLVM_Var  : GL_Value;
+               Value     : GL_Value := No_GL_Value;
 
             begin
                --  Nothing to do if this is a debug renaming type
@@ -694,6 +695,14 @@ package body GNATLLVM.Compile is
                   end if;
 
                else
+                  if Present (Expression (Node))
+                    and then not
+                      (Nkind (Node) = N_Object_Declaration
+                       and then No_Initialization (Node))
+                  then
+                     Value := Emit_Expression (Expression (Node));
+                  end if;
+
                   if Env.Special_Elaboration_Code then
                      LLVM_Var := Get_Value (Def_Ident);
 
@@ -703,18 +712,15 @@ package body GNATLLVM.Compile is
                              (Expression (Address_Clause (Def_Ident))),
                            T, Get_Name (Def_Ident));
                   else
-                     LLVM_Var := Allocate_For_Type (T, Get_Name (Def_Ident));
+                     LLVM_Var := Allocate_For_Type
+                       (T, Value => Value, Name => Get_Name (Def_Ident));
 
                   end if;
 
                   Set_Value (Def_Ident, LLVM_Var);
-                  if Present (Expression (Node))
-                    and then not
-                      (Nkind (Node) = N_Object_Declaration
-                       and then No_Initialization (Node))
-                  then
-                     Emit_Assignment (LLVM_Var, Expression (Node),
-                                      No_GL_Value, True, True);
+
+                  if Present (Value) then
+                     Emit_Assignment (LLVM_Var, Empty, Value, True, True);
                   end if;
                end if;
             end;
@@ -724,29 +730,13 @@ package body GNATLLVM.Compile is
 
          when N_Object_Renaming_Declaration =>
             declare
-               Def_Ident : constant Node_Id := Defining_Identifier (Node);
-               LLVM_Var  : GL_Value;
+               Def_Ident : constant Node_Id   := Defining_Identifier (Node);
+               TE        : constant Entity_Id := Full_Etype (Def_Ident);
+               Obj_Name  : constant String    := Get_Name (Def_Ident);
+               LLVM_Var  : constant GL_Value  :=
+                 Need_LValue (Emit_LValue (Name (Node)), TE, Name => Obj_Name);
+
             begin
-               if Library_Level then
-                  Set_Value (Def_Ident, Emit_LValue (Name (Node)));
-                  return;
-               end if;
-
-               --  If the renamed object is already an l-value, keep it as-is.
-               --  Otherwise, create one for it.
-
-               LLVM_Var := Emit_LValue (Name (Node));
-               if not Is_Reference (LLVM_Var) then
-                  declare
-                     Temp : constant GL_Value :=
-                       Allocate_For_Type
-                       (Full_Etype (Def_Ident), Get_Name (Def_Ident));
-                  begin
-                     Store (LLVM_Var, Temp);
-                     LLVM_Var := Temp;
-                  end;
-               end if;
-
                Set_Value (Def_Ident, LLVM_Var);
             end;
 
@@ -938,7 +928,7 @@ package body GNATLLVM.Compile is
 
                         Create_Discrete_Type (Var_Type, LLVM_Type, Low, High);
                         LLVM_Var := Allocate_For_Type
-                          (Var_Type, Get_Name (Def_Ident));
+                          (Var_Type, Name => Get_Name (Def_Ident));
                         Set_Value (Def_Ident, LLVM_Var);
                         Store
                           ((if Reversed then High else Low), LLVM_Var);
@@ -1298,9 +1288,9 @@ package body GNATLLVM.Compile is
       if T_Need = T_Have then
          return True;
       elsif Ekind (T_Have) = E_Record_Type
-        and then Etype (T_Have) /= T_Have
+        and then Full_Etype (T_Have) /= T_Have
       then
-         return Is_Parent_Of (T_Need, Etype (T_Have));
+         return Is_Parent_Of (T_Need, Full_Etype (T_Have));
       else
          return False;
       end if;

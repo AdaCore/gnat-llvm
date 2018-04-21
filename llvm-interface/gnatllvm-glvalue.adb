@@ -107,21 +107,24 @@ package body GNATLLVM.GLValue is
    -- Need_LValue --
    -----------------
 
-   function Need_LValue (V : GL_Value; TE : Entity_Id) return GL_Value is
+   function Need_LValue
+     (V : GL_Value; TE : Entity_Id; Name : String := "lvalue")
+     return GL_Value is
    begin
 
-      --  If we already have an LValue, return it.  Otherwise, allocate memory
-      --  for the value (which we know to be of fixed size or else we'd have
-      --  had a reference), store the data, and return the address of that
-      --  temporary.
+      --  If at top level or we already have an LValue, return it.
+      --  Otherwise, allocate memory for the value (which we know to be of
+      --  fixed size or else we'd have had a reference), store the data,
+      --  and return the address of that temporary.
 
-      if Is_LValue_Of (V, TE) then
+      if Library_Level or else Is_LValue_Of (V, TE) then
          return V;
       else
          pragma Assert (not Library_Level);
 
          declare
-            Temp : constant GL_Value := Allocate_For_Type (TE, "lvalue");
+            Temp : constant GL_Value :=
+              Allocate_For_Type (TE, Value => V, Name => Name);
          begin
             Store (V, Temp);
             return Temp;

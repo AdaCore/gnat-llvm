@@ -622,19 +622,28 @@ package body GNATLLVM.Compile is
                end if;
 
                --  Handle top-level declarations or ones that need to be
-               --  treated that way. ?? Except that the latter causes issues
-               --  that will need to be debugged at some point.
+               --  treated that way.  If we're processing elaboration
+               --  code, we've already made the item and need do nothing
+               --  special if it's to be statically allocated.
 
-               if Library_Level then
+               if Library_Level
+                 or else (Is_Statically_Allocated (Def_Ident)
+                            and then not Env.Special_Elaboration_Code)
+               then
                   --  ??? Will only work for objects of static sizes
 
                   LLVM_Type := Create_Type (T);
+                  pragma Assert (not Is_Dynamic_Size (T));
 
                   if Present (Address_Clause (Def_Ident)) then
                      LLVM_Type := Pointer_Type (LLVM_Type, 0);
                   end if;
 
                   LLVM_Var := Add_Global (T, Get_Ext_Name (Def_Ident));
+                  if not Library_Level then
+                     Set_Linkage (LLVM_Var, Internal_Linkage);
+                  end if;
+
                   Set_Value (Def_Ident, LLVM_Var);
 
                   if Env.In_Main_Unit then

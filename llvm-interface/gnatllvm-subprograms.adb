@@ -214,13 +214,17 @@ package body GNATLLVM.Subprograms is
    -------------------
 
    procedure Emit_One_Body (Node : Node_Id) is
-      Spec       : constant Node_Id := Get_Acting_Spec (Node);
-      Func       : constant GL_Value := Emit_Subprogram_Decl (Spec);
-      Def_Ident  : constant Entity_Id := Defining_Entity (Spec);
-      Return_Typ : constant Entity_Id := Full_Etype (Def_Ident);
-      Param      : Entity_Id;
-      LLVM_Param : GL_Value;
-      Param_Num  : Natural := 0;
+      Spec            : constant Node_Id   := Get_Acting_Spec (Node);
+      Func            : constant GL_Value  := Emit_Subprogram_Decl (Spec);
+      Def_Ident       : constant Entity_Id := Defining_Entity (Spec);
+      Return_Typ      : constant Entity_Id := Full_Etype (Def_Ident);
+      Void_Return_Typ : constant Boolean   := Ekind (Return_Typ) = E_Void;
+      Dyn_Return      : constant Boolean   :=
+        not Void_Return_Typ and then Is_Dynamic_Size (Return_Typ);
+      Void_Return     : constant Boolean   := Void_Return_Typ or Dyn_Return;
+      Param_Num       : Natural            := 0;
+      Param           : Entity_Id;
+      LLVM_Param      : GL_Value;
 
    begin
       Enter_Subp (Func);
@@ -263,9 +267,7 @@ package body GNATLLVM.Subprograms is
       --  that's passed the address to which we want to copy our return
       --  value.
 
-      if Ekind (Return_Typ) /= E_Void
-        and then Is_Dynamic_Size (Return_Typ)
-      then
+      if Dyn_Return then
          LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
                           Return_Typ, Is_Reference => True);
          Set_Value_Name (LLVM_Value (LLVM_Param), "return");
@@ -278,7 +280,7 @@ package body GNATLLVM.Subprograms is
       --  If the last instrution isn't a terminator, add a return
 
       if not Are_In_Dead_Code then
-         if Ekind (Return_Typ) = E_Void then
+         if Void_Return then
             Build_Ret_Void;
          else
             Build_Ret (Get_Undef (Return_Typ));
@@ -451,15 +453,16 @@ package body GNATLLVM.Subprograms is
    ---------------
 
    function Emit_Call (Call_Node : Node_Id) return GL_Value is
-      Subp           : Node_Id := Name (Call_Node);
-      Return_Typ     : constant Entity_Id := Full_Etype (Call_Node);
-      Void_Return    : constant Boolean := Ekind (Return_Typ) = E_Void;
-      Dynamic_Return : constant Boolean :=
-        not Void_Return and then Is_Dynamic_Size (Return_Typ);
-      Direct_Call    : constant Boolean :=
+      Subp           : Node_Id            := Name (Call_Node);
+      Our_Return_Typ : constant Entity_Id := Full_Etype (Call_Node);
+      Direct_Call    : constant Boolean   :=
         Nkind (Subp) /= N_Explicit_Dereference;
       Subp_Typ       : constant Entity_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
+      Return_Typ     : constant Entity_Id := Full_Etype (Subp_Typ);
+      Void_Return    : constant Boolean   := Ekind (Return_Typ) = E_Void;
+      Dynamic_Return : constant Boolean   :=
+        not Void_Return and then Is_Dynamic_Size (Return_Typ);
       Param          : Node_Id;
       P_Type         : Entity_Id;
       Actual         : Node_Id;
@@ -535,7 +538,7 @@ package body GNATLLVM.Subprograms is
 
       if Dynamic_Return then
          Call (LLVM_Func, Args);
-         return Args (Args'Last);
+         return Convert_To_Access_To (Args (Args'Last), Our_Return_Typ);
       else
          return Call (LLVM_Func, Return_Typ, Args);
       end if;

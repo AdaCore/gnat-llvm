@@ -1208,7 +1208,9 @@ package body GNATLLVM.Compile is
                   --  actual subprogram type here, not the type of the return
                   --  value, which is what Typ is set to.
 
-                  if Nkind (Parent (Node)) = N_Attribute_Reference then
+                  if Nkind (Parent (Node)) = N_Attribute_Reference
+                    and then Is_Access_Type (Full_Etype (Parent (Node)))
+                  then
                      Typ := Full_Designated_Type (Full_Etype (Parent (Node)));
                   end if;
 

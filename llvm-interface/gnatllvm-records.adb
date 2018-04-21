@@ -335,10 +335,13 @@ package body GNATLLVM.Records is
    begin
 
       --  If this is the "_parent" field, just do a conversion so we point
-      --  to that type.
+      --  to that type.  But add it to the LValue table in case there's
+      --  a reference to its discrminant.
 
       if Chars (Field) = Name_uParent then
-         return Ptr_To_Ref (Ptr, F_Type);
+         Result := Ptr_To_Ref (Ptr, F_Type);
+         Add_To_LValue_List (Result);
+         return Result;
 
       --  If the current piece is for a variable-sized object, we offset
       --  to that object and make a pointer to its type.

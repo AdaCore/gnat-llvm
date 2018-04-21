@@ -45,6 +45,10 @@ package GNATLLVM.Compile is
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc).
 
+   procedure Add_To_LValue_List (V : GL_Value)
+     with Pre => Present (V);
+   --  Add V to the list that's searched by Get_Matching_Value
+
    function Get_Matching_Value (T : Entity_Id) return GL_Value
      with Pre  => Is_Type (T),
           Post => Present (Get_Matching_Value'Result);

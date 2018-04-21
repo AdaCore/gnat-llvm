@@ -140,6 +140,10 @@ package body GNATLLVM.Compile is
      with Pre  => Present (Node),
           Post => Present (Emit_Literal'Result);
 
+   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
+     with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
+   --  True if T_Have is a parent type of T_Need
+
    function Emit_LValue_Internal (Node : Node_Id) return GL_Value
      with Pre  => Present (Node),
           Post => Present (Emit_LValue_Internal'Result);
@@ -1272,6 +1276,37 @@ package body GNATLLVM.Compile is
       end case;
    end Emit_LValue_Main;
 
+   -------------------------
+   --  Add_To_LValue_List --
+   -------------------------
+
+   procedure Add_To_LValue_List (V : GL_Value) is
+   begin
+      LValue_Pair_Table.Append (V);
+   end Add_To_LValue_List;
+
+   ------------------
+   -- Is_Parent_Of --
+   ------------------
+
+   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean is
+   begin
+      --  If the two types are the same return True.  Likewise if
+      --  T_Have has a parent different than itself and that and this
+      --  relation holds for that.
+
+      if T_Need = T_Have then
+         return True;
+      elsif Ekind (T_Have) = E_Record_Type
+        and then Etype (T_Have) /= T_Have
+      then
+         return Is_Parent_Of (T_Need, Etype (T_Have));
+      else
+         return False;
+      end if;
+
+   end Is_Parent_Of;
+
    ------------------------
    -- Get_Matching_Value --
    ------------------------
@@ -1279,10 +1314,11 @@ package body GNATLLVM.Compile is
    function Get_Matching_Value (T : Entity_Id) return GL_Value is
    begin
       for I in 1 .. LValue_Pair_Table.Last loop
-         if Implementation_Base_Type (T) =
-           Implementation_Base_Type (LValue_Pair_Table.Table (I).Typ)
+         if Is_Parent_Of (T_Need => Implementation_Base_Type (T),
+                          T_Have => Implementation_Base_Type
+                            (LValue_Pair_Table.Table (I).Typ))
          then
-            return LValue_Pair_Table.Table (I);
+            return Convert_To_Access_To (LValue_Pair_Table.Table (I), T);
          end if;
       end loop;
 

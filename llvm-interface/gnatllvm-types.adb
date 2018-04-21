@@ -335,6 +335,53 @@ package body GNATLLVM.Types is
       return Subp (Value, Dest_Type, "unchecked-conv");
    end Build_Unchecked_Conversion;
 
+   --------------------
+   -- Coerce_To_Type --
+   --------------------
+   function Coerce_To_Type (V : GL_Value; TE : Entity_Id) return GL_Value is
+      Value : GL_Value := V;
+      Temp  : GL_Value;
+
+   begin
+      --  Because V might be a reference, we have to test for that case first.
+      --  If TE is an access type, then we just have to convert it to that
+      --  type.
+
+      if Is_Access_Type (Value) then
+         if Is_Access_Type (TE) then
+            Value := Convert_To_Access_To (Value, Full_Designated_Type (TE));
+         else
+            --  If not, the only case where this should happen is if its
+            --  type is of dynamic size, making it a reference.  In that
+            --  case, we have to convert it to the type we need, then
+            --  de-reference to get a value, which will be of the proper
+            --  type.
+
+            pragma Assert (Is_Dynamic_Size (Full_Designated_Type (Value)));
+            Value := Load (Convert_To_Access_To (Value, TE));
+         end if;
+
+      elsif Full_Etype (Value) /= TE then
+
+         --  If both types are elementary, just convert.  If both are array
+         --  types, the LLVM type should be the same for both.
+         --  Unfortunately, that's not the case for records and the only
+         --  way to fix that is to essentially do an unchecked conversion
+         --  by writing the value to memory, converting the pointer, and
+         --  loading it again.
+
+         if Is_Elementary_Type (TE) then
+            Value := Convert_To_Elementary_Type (Value, TE);
+         elsif Is_Record_Type (TE) then
+            Temp := Alloca (Full_Etype (Value));
+            Store (Value, Temp);
+            Value := Load (Ptr_To_Ref (Temp, TE));
+         end if;
+      end if;
+
+      return Value;
+   end Coerce_To_Type;
+
    ------------------
    -- Count_Params --
    ------------------

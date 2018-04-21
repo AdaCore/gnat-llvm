@@ -450,8 +450,7 @@ package body GNATLLVM.Records is
             F_Type : constant Entity_Id     := Full_Etype (Ent);
             F_Idx  : constant Field_Info_Id := Get_Field_Info (Ent);
             F_Info : constant Field_Info    := Field_Info_Table.Table (F_Idx);
-            Value  : GL_Value;
-            Temp   : GL_Value;
+
          begin
             if Ekind (Ent) = E_Discriminant
               and then Is_Unchecked_Union (Agg_Type)
@@ -466,39 +465,10 @@ package body GNATLLVM.Records is
                                         N_Aggregate, N_Extension_Aggregate));
                Result := Emit_Record_Aggregate (Expression (Expr), Result);
             else
-               Value := Emit_Expression (Expression (Expr));
-
-               --  If Value and the field have different types, we may need
-               --  to do something.  If both types are elementary, just
-               --  convert.  If both are array types, the LLVM type should
-               --  be the same for both.  Unfortunately, that's not the
-               --  case for records and the only way to fix that is to
-               --  essentially do an unchecked conversion by writing the
-               --  value to memory, converting the pointer, and loading it
-               --  again.  But be careful to check access types first since
-               --  Value may be a reference.
-
-               if Is_Access_Type (Value)
-                 and then (Full_Designated_Type (Value)
-                             /= Full_Designated_Type (F_Type))
-               then
-                  Value := Convert_To_Access_To
-                    (Value, Full_Designated_Type (F_Type));
-
-               elsif not Is_Reference (Value)
-                 and then Full_Etype (Value) /= F_Type
-               then
-                  if Is_Elementary_Type (F_Type) then
-                     Value := Convert_To_Elementary_Type (Value, F_Type);
-                  elsif Is_Record_Type (F_Type) then
-                     Temp := Alloca (Full_Etype (Value));
-                     Store (Value, Temp);
-                     Value := Load (Ptr_To_Ref (Temp, F_Type));
-                  end if;
-               end if;
-
                Result := Insert_Value
-                 (Result, Value, unsigned (F_Info.Field_Ordinal));
+                 (Result,
+                  Coerce_To_Type (Emit_Expression (Expression (Expr)), F_Type),
+                  unsigned (F_Info.Field_Ordinal));
             end if;
          end;
 

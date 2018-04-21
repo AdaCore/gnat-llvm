@@ -81,9 +81,9 @@ package body GNATLLVM.Types is
       end if;
    end Build_Type_Conversion;
 
-   ---------------------------------
-   -- Convert_To_Elementary_Types --
-   ---------------------------------
+   --------------------------------
+   -- Convert_To_Elementary_Type --
+   --------------------------------
 
    function Convert_To_Elementary_Type
      (G : GL_Value; D_Type : Entity_Id) return GL_Value

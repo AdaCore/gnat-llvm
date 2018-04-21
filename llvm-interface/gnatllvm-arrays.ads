@@ -135,7 +135,8 @@ package GNATLLVM.Arrays is
       Dims_Left      : Pos;
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
-     with Pre  => Nkind (Node) = N_Aggregate and then Present (Value_So_Far)
+     with Pre  => Nkind_In (Node, N_Aggregate, N_Extension_Aggregate)
+                  and then Present (Value_So_Far)
                   and then Is_Array_Type (Full_Etype (Node)),
                Post => Present (Emit_Array_Aggregate'Result);
    --  Emit an N_Aggregate which is an array, returning the GL_Value that

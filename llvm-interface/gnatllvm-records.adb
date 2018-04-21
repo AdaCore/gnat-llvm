@@ -462,7 +462,8 @@ package body GNATLLVM.Records is
                --  If this is "_parent", its fields are our fields too.
                --  Assume Expression is also an N_Aggregate.
 
-               pragma Assert (Nkind (Expression (Expr)) = N_Aggregate);
+               pragma Assert (Nkind_In (Expression (Expr),
+                                        N_Aggregate, N_Extension_Aggregate));
                Result := Emit_Record_Aggregate (Expression (Expr), Result);
             else
                Value := Emit_Expression (Expression (Expr));

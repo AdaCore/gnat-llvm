@@ -46,7 +46,7 @@ package GNATLLVM.Records is
 
    function Emit_Record_Aggregate
      (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value
-     with Pre  => Nkind (Node) = N_Aggregate
+     with Pre  => Nkind_In (Node, N_Aggregate, N_Extension_Aggregate)
                   and then Is_Record_Type (Full_Etype (Node))
                   and then Present (Result_So_Far),
           Post => Present (Emit_Record_Aggregate'Result);

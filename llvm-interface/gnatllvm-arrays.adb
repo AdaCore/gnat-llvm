@@ -520,7 +520,9 @@ package body GNATLLVM.Arrays is
          --  If this is a nested N_Aggregate and we have dimensions left
          --  in the outer array, use recursion to fill in the aggregate.
 
-         if Nkind (Expr) = N_Aggregate and then Dims_Left > 1 then
+         if Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
+           and then Dims_Left > 1
+         then
             Cur_Value := Emit_Array_Aggregate
               (Expr, Dims_Left - 1, Indices_So_Far & (1 => Cur_Index),
                Cur_Value);

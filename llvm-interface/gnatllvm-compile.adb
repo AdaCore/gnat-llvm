@@ -67,7 +67,7 @@ package body GNATLLVM.Compile is
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
    function Is_Zero_Aggregate (Src_Node : Node_Id) return Boolean
-     with Pre => Nkind (Src_Node) = N_Aggregate
+     with Pre => Nkind_In (Src_Node, N_Aggregate, N_Extension_Aggregate)
                  and then Is_Others_Aggregate (Src_Node);
    --  Helper for Emit_Assignment: say whether this is an aggregate of all
    --  zeros.
@@ -1850,7 +1850,7 @@ package body GNATLLVM.Compile is
          when N_Selected_Component | N_Indexed_Component  | N_Slice =>
             return Need_Value (Emit_LValue (Node), TE);
 
-         when N_Aggregate =>
+         when N_Aggregate | N_Extension_Aggregate =>
 
             if Null_Record_Present (Node) and then not Is_Dynamic_Size (TE)
             then
@@ -1942,7 +1942,8 @@ package body GNATLLVM.Compile is
 
    begin
       Inner := Expression (First (Component_Associations (Src_Node)));
-      while Nkind (Inner) = N_Aggregate and then Is_Others_Aggregate (Inner)
+      while Nkind_In (Inner, N_Aggregate, N_Extension_Aggregate)
+        and then Is_Others_Aggregate (Inner)
       loop
          Inner := Expression (First (Component_Associations (Inner)));
       end loop;
@@ -1972,7 +1973,7 @@ package body GNATLLVM.Compile is
       --  an LHS.
 
       if Is_Array_Type (Full_Designated_Type (LValue)) and then Present (E)
-        and then Nkind (E) = N_Aggregate
+        and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
         and then Is_Others_Aggregate (E) and then Is_Zero_Aggregate (E)
       then
          declare

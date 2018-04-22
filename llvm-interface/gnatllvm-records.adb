@@ -18,11 +18,12 @@
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with Namet;  use Namet;
-with Nlists; use Nlists;
-with Snames; use Snames;
-with Stand;  use Stand;
-with Table;  use Table;
+with Namet;   use Namet;
+with Nlists;  use Nlists;
+with Sem_Aux; use Sem_Aux;
+with Snames;  use Snames;
+with Stand;   use Stand;
+with Table;   use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -34,7 +35,10 @@ package body GNATLLVM.Records is
 
    function Count_Entities (E : Entity_Id) return Nat
      with Pre => Present (E);
-   --  Return the number of entities of E
+   --  Return the number of entities of E.  This value will be used only
+   --  to allocate an array that we know is large enough to contain all
+   --  the fields, so we can overestimate the number of fields (even
+   --  greatly), but can't underestimate.
 
    function Get_Record_Size_So_Far
      (TE       : Entity_Id;
@@ -99,7 +103,8 @@ package body GNATLLVM.Records is
    begin
       while Present (Elmt) loop
          if Ekind_In (Elmt, E_Discriminant, E_Component) then
-            Count := Count + 1;
+            Count := Count + (if Chars (Elmt) = Name_uParent
+                              then Count_Entities (Full_Etype (Elmt)) else 1);
          end if;
 
          Next_Entity (Elmt);
@@ -125,7 +130,6 @@ package body GNATLLVM.Records is
       Next_Type : Nat := 0;
       --  Ordinal of next entry in Types
 
-      Field     : Entity_Id;
       LLVM_Type : Type_T;
 
       procedure Add_RI (LLVM_Type : Type_T; GNAT_Type : Entity_Id)
@@ -142,6 +146,11 @@ package body GNATLLVM.Records is
       procedure Add_Field (E : Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add one field to the above data
+
+      procedure Add_Fields (Def_Ident : Entity_Id)
+        with Pre => Is_Record_Type (Def_Ident);
+      --  Add all fields of Def_Ident to the above data, either the component
+      --  or the extension components, but recursively add parent components.
 
       ------------
       -- Add_RI --
@@ -171,18 +180,126 @@ package body GNATLLVM.Records is
 
       procedure Add_FI
         (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat) is
+         Field : Entity_Id;
       begin
          --  If this field really isn't in the record we're working on,
          --  it must be in a parent.  So it was correct to allocate
          --  space for it, but let the record description be from the
-         --  type that it's actually in.
+         --  type that it's actually in. ??  We search and see if we
+         --  have a field that is in our type with the same
+         --  Original_Record_Component and set this for that.  Yes, this
+         --  is quadratic and is a kludge, but the tree structure needs to
+         --  be better understood.
 
+         Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
+                                   Field_Ordinal => Ordinal));
          if Get_Fullest_View (Scope (E)) = Def_Ident then
-            Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
-                                      Field_Ordinal => Ordinal));
             Set_Field_Info (E, Field_Info_Table.Last);
+         else
+            Field := First_Entity (Def_Ident);
+            while Present (Field) loop
+               if Ekind_In (Field, E_Discriminant, E_Component)
+                 and then Get_Fullest_View (Scope (Field)) = Def_Ident
+                 and then (Original_Record_Component (Field) =
+                             Original_Record_Component (E))
+               then
+                  Set_Field_Info (Field, Field_Info_Table.Last);
+               end if;
+
+               Next_Entity (Field);
+            end loop;
          end if;
       end Add_FI;
+
+      ----------------
+      -- Add_Fields --
+      ----------------
+
+      procedure Add_Fields (Def_Ident : Entity_Id) is
+
+         procedure Add_Component_List (List : Node_Id)
+           with Pre => No (List) or else Nkind (List) = N_Component_List;
+         --  Add all fields in List
+
+         ------------------------
+         -- Add_Component_List --
+         ------------------------
+
+         procedure Add_Component_List (List : Node_Id) is
+            Component_Def : Node_Id;
+            Component_Ent : Entity_Id;
+            Variant       : Node_Id;
+
+         begin
+            if No (List) then
+               return;
+            end if;
+
+            Component_Def := First_Non_Pragma (Component_Items (List));
+            while Present (Component_Def) loop
+               Component_Ent := Defining_Identifier (Component_Def);
+               if Chars (Component_Ent) = Name_uParent then
+                  Add_Fields (Full_Etype (Component_Ent));
+               end if;
+
+               Add_Field (Component_Ent);
+               Next_Non_Pragma (Component_Def);
+            end loop;
+
+            --  Now process variants.  For now, just add them as
+            --  regular fields.
+
+            if Present (Variant_Part (List)) then
+               Variant := First (Variants (Variant_Part (List)));
+               while Present (Variant) loop
+                  Add_Component_List (Component_List (Variant));
+                  Next (Variant);
+               end loop;
+            end if;
+         end Add_Component_List;
+
+         Field             : Entity_Id;
+         Record_Definition : Node_Id;
+
+      begin
+
+         --  If this is a subtype, we make fields from the entity chain.
+         --  Otherwise, we walk the definition.  ?? This makes assumptions
+         --  about the tree that probably aren't documented anywhere and
+         --  which we may need to return to later.
+
+         if Ekind_In (Def_Ident, E_Record_Subtype, E_Class_Wide_Subtype) then
+            Field := First_Entity (Def_Ident);
+            while Present (Field) loop
+               if Ekind_In (Field, E_Discriminant, E_Component) then
+                  Add_Field (Field);
+               end if;
+
+               Next_Entity (Field);
+            end loop;
+
+         else
+            --  If there are discriminants, process them first
+
+            if Has_Discriminants (Def_Ident) then
+               Field := First_Stored_Discriminant (Def_Ident);
+               while Present (Field) loop
+                  Add_Field (Field);
+                  Next_Stored_Discriminant (Field);
+               end loop;
+            end if;
+
+               --  Now get the record definition and add the components there
+
+            Record_Definition := Type_Definition (Parent (Def_Ident));
+            if Nkind (Record_Definition) = N_Derived_Type_Definition then
+               Record_Definition := Record_Extension_Part (Record_Definition);
+            end if;
+
+            Add_Component_List (Component_List (Record_Definition));
+         end if;
+
+      end Add_Fields;
 
       ---------------
       -- Add_Field --
@@ -235,15 +352,7 @@ package body GNATLLVM.Records is
       Record_Info_Table.Increment_Last;
       Cur_Idx := Record_Info_Table.Last;
       Set_Record_Info (Def_Ident, Cur_Idx);
-
-      Field := First_Entity (Def_Ident);
-      while Present (Field) loop
-         if Ekind_In (Field, E_Discriminant, E_Component) then
-            Add_Field (Field);
-         end if;
-
-         Next_Entity (Field);
-      end loop;
+      Add_Fields (Def_Ident);
 
       --  If we haven't yet made any record info entries, it means that
       --  this is a fixed-size record that can be just an LLVM type,
@@ -324,13 +433,14 @@ package body GNATLLVM.Records is
       Rec_Type  : constant Entity_Id      := Get_Fullest_View (Scope (Field));
       F_Type    : constant Entity_Id      := Full_Etype (Field);
       First_Idx : constant Record_Info_Id := Get_Record_Info (Rec_Type);
-      FI        : constant Field_Info     :=
+      FI         : constant Field_Info     :=
         Field_Info_Table.Table (Get_Field_Info (Field));
-      Our_Idx   : constant Record_Info_Id := FI.Rec_Info_Idx;
-      Offset    : constant GL_Value       :=
+      Our_Idx    : constant Record_Info_Id := FI.Rec_Info_Idx;
+      Offset     : constant GL_Value       :=
         Get_Record_Size_So_Far (Rec_Type, Ptr, Our_Idx, False);
-      RI        : constant Record_Info    := Record_Info_Table.Table (Our_Idx);
-      Result   : GL_Value;
+      RI         : constant Record_Info    :=
+        Record_Info_Table.Table (Our_Idx);
+      Result     : GL_Value;
 
    begin
 
@@ -344,7 +454,8 @@ package body GNATLLVM.Records is
          return Result;
 
       --  If the current piece is for a variable-sized object, we offset
-      --  to that object and make a pointer to its type.
+      --  to that object and make a pointer to its type.  Otherwise,
+      --  make sure we're pointing to Rec_Type.
 
       elsif Present (RI.GNAT_Type) then
          return Ptr_To_Ref (GEP (Standard_Short_Short_Integer,
@@ -354,9 +465,7 @@ package body GNATLLVM.Records is
       end if;
 
       --  Otherwise, if this is not the first piece, we have to offset to
-      --  the field (in bytes).  Then, if the type is dynamic size, we have
-      --  to convert the pointer to the type of this piece (which has no
-      --  corresponding GNAT type.)
+      --  the field (in bytes).
 
       if Our_Idx = First_Idx then
          Result := Ptr;
@@ -366,10 +475,15 @@ package body GNATLLVM.Records is
                         (1 => Offset));
       end if;
 
+      --  If the type is dynamic size, we have to convert the pointer to
+      --  the type of this piece (which has no corresponding GNAT type.)
+
       if Is_Dynamic_Size (Rec_Type) then
          Result := G (Pointer_Cast (Env.Bld, LLVM_Value (Result),
                                     Pointer_Type (RI.LLVM_Type, 0), ""),
                       Rec_Type, Is_Reference => True);
+      else
+         Result := Convert_To_Access_To (Result, Rec_Type);
       end if;
 
       --  Finally, do a regular GEP for the field and we're done

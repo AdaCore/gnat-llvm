@@ -127,7 +127,12 @@ package body GNATLLVM.Environment is
 
    function Get_Field_Info (VE : Entity_Id) return Field_Info_Id is
    begin
-      return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Field_Inf;
+      if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
+         return Empty_Field_Info_Id;
+      else
+         return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Field_Inf;
+      end if;
+
    end Get_Field_Info;
 
    function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id;
@@ -145,10 +150,14 @@ package body GNATLLVM.Environment is
       if Id /= Empty_LLVM_Info_Id then
          return Id;
       else
-         LLVM_Info_Table.Append ((Value => No_GL_Value, Typ => No_Type_T,
-                                  TBAA => No_Metadata_T,
+         LLVM_Info_Table.Append ((Value           => No_GL_Value,
+                                  Typ             => No_Type_T,
+                                  TBAA            => No_Metadata_T,
                                   Is_Dynamic_Size => False,
-                                  Basic_Block => No_BB_T, others => <>));
+                                  Basic_Block     => No_BB_T,
+                                  Record_Inf      => Empty_Record_Info_Id,
+                                  Field_Inf       => Empty_Field_Info_Id,
+                                  others          => <>));
          Id := LLVM_Info_Table.Last;
          Env.LLVM_Info (N) := Id;
          return Id;
@@ -168,8 +177,7 @@ package body GNATLLVM.Environment is
       --  We know this is a type and one for which we don't have any
       --  data, so we shouldn't have allocated anything for it.
 
-      LLVM_Info_Table.Append (LLVM_Info_Table.Table (Id));
-      Env.LLVM_Info (New_T) := LLVM_Info_Table.Last;
+      Env.LLVM_Info (New_T) := Id;
    end Copy_Type_Info;
 
    --------------

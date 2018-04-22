@@ -48,6 +48,11 @@ package body GNATLLVM.Types is
           Post => Present (Create_Subprogram_Access_Type'Result);
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
+   function GNAT_Equivalent_Type (TE : Entity_Id) return Entity_Id
+     with Pre => Is_Type (TE), Post => Is_Type (GNAT_Equivalent_Type'Result);
+   --  Returns a type that we consider equivalent to TE, which may be
+   --  TE itself if we are to use that type.
+
    -----------------------
    -- Build_Struct_Type --
    -----------------------
@@ -412,6 +417,40 @@ package body GNATLLVM.Types is
       return Get_LLVM_Type_Size_In_Bits (LLVM_Type);
    end Get_LLVM_Type_Size_In_Bits;
 
+   --------------------------
+   -- GNAT_Equivalent_Type --
+   --------------------------
+
+   function GNAT_Equivalent_Type (TE : Entity_Id) return Entity_Id is
+   begin
+      case Ekind (TE) is
+         when E_Class_Wide_Subtype =>
+            if Present (Equivalent_Type (TE)) then
+               return Equivalent_Type (TE);
+            end if;
+
+         when E_Access_Protected_Subprogram_Type |
+           E_Anonymous_Access_Protected_Subprogram_Type =>
+            if Present (Equivalent_Type (TE)) then
+               return Equivalent_Type (TE);
+            end if;
+
+         when E_Class_Wide_Type =>
+            return Root_Type (TE);
+
+         when E_Protected_Type | E_Protected_Subtype |
+           E_Task_Type |  E_Task_Subtype =>
+            if Present (Corresponding_Record_Type (TE)) then
+               return Corresponding_Record_Type (TE);
+            end if;
+
+         when others =>
+            null;
+      end case;
+
+      return TE;
+   end GNAT_Equivalent_Type;
+
    ------------------------
    -- Create_Access_Type --
    ------------------------
@@ -460,10 +499,17 @@ package body GNATLLVM.Types is
       Def_Ident := Get_Fullest_View (TE);
       if Def_Ident /= TE then
          Typ := GNAT_To_LLVM_Type (Def_Ident, False);
-         if Present (Typ) then
-            Copy_Type_Info (Def_Ident, TE);
-            return Typ;
-         end if;
+         Copy_Type_Info (Def_Ident, TE);
+         return Typ;
+      end if;
+
+      --  See if we can get this from the equivalent type
+
+      Def_Ident := GNAT_Equivalent_Type (TE);
+      if Def_Ident /= TE then
+         Typ := GNAT_To_LLVM_Type (Def_Ident, False);
+         Copy_Type_Info (Def_Ident, TE);
+         return Typ;
       end if;
 
       --  ??? This probably needs to be cleaned up, but before we do anything,

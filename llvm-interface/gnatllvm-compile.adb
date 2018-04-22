@@ -566,6 +566,15 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
+         when N_Handled_Sequence_Of_Statements =>
+            if Present (Exception_Handlers (Node))
+              or else Present (At_End_Proc (Node))
+            then
+               Error_Msg_N ("Exception handling not supported", Node);
+            end if;
+
+            Emit_List (Statements (Node));
+
          when N_Raise_Statement =>
             Emit_LCH_Call (Node);
 

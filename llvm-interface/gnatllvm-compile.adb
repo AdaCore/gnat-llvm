@@ -824,9 +824,10 @@ package body GNATLLVM.Compile is
                   Build_Ret_Void;
 
                else
-                  Build_Ret (Build_Type_Conversion
-                               (Full_Etype (Node_Enclosing_Subprogram (Node)),
-                                Expression (Node)));
+                  Build_Ret
+                    (Build_Type_Conversion
+                       (Expression (Node),
+                        Full_Etype (Node_Enclosing_Subprogram (Node))));
                end if;
 
             else
@@ -1420,9 +1421,9 @@ package body GNATLLVM.Compile is
             Right_BT   : constant Entity_Id :=
               Implementation_Base_Type (Right_Type);
             LVal       : constant GL_Value :=
-              Build_Type_Conversion (Left_BT, Left_Opnd (Node));
+              Build_Type_Conversion (Left_Opnd (Node), Left_BT);
             RVal       : constant GL_Value :=
-              Build_Type_Conversion (Right_BT, Right_Opnd (Node));
+              Build_Type_Conversion (Right_Opnd (Node), Right_BT);
             FP         : constant Boolean := Is_Floating_Point_Type (Left_BT);
             Unsign     : constant Boolean := Is_Unsigned_Type (Left_BT);
             Subp       : Opf := null;
@@ -1671,7 +1672,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Unchecked_Type_Conversion =>
-            return Build_Unchecked_Conversion (TE, Expression (Node));
+            return Build_Unchecked_Conversion (Expression (Node), TE);
 
          when N_Qualified_Expression =>
             --  We can simply strip the type qualifier
@@ -1680,7 +1681,7 @@ package body GNATLLVM.Compile is
 
          when N_Type_Conversion =>
 
-            return Build_Type_Conversion (TE, Expression (Node));
+            return Build_Type_Conversion (Expression (Node), TE);
 
          when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
             --  ?? What if Node is a formal parameter passed by reference?
@@ -2201,7 +2202,7 @@ package body GNATLLVM.Compile is
          when Attribute_Pos
             | Attribute_Val =>
             pragma Assert (List_Length (Expressions (Node)) = 1);
-            return Build_Type_Conversion (Typ, First (Expressions (Node)));
+            return Build_Type_Conversion (First (Expressions (Node)), Typ);
 
          when Attribute_Succ
             | Attribute_Pred =>

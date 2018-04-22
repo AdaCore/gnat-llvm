@@ -107,14 +107,14 @@ package GNATLLVM.Types is
    --  Convert Src, which should be an access, into an access to Desig_Type
 
    function Build_Type_Conversion
-     (Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value
      with Pre  => Is_Type (Dest_Type) and then Present (Expr)
                   and then Dest_Type = Get_Fullest_View (Dest_Type),
           Post => Present (Build_Type_Conversion'Result);
    --  Emit code to convert Expr to Dest_Type
 
    function Build_Unchecked_Conversion
-     (Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value
      with Pre  => Is_Type (Dest_Type)
                   and then Dest_Type = Get_Fullest_View (Dest_Type)
                   and then Present (Expr),

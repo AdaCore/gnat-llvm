@@ -158,7 +158,7 @@ package body GNATLLVM.Arrays is
       if Bound_Info.Cnst /= No_Uint then
          return Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
-         return Build_Type_Conversion (Dim_Info.Bound_Type, Bound_Info.Value);
+         return Build_Type_Conversion (Bound_Info.Value, Dim_Info.Bound_Type);
       elsif not Is_Constrained (Arr_Typ) then
          return Extract_Value
            (Dim_Info.Bound_Type, Value, (1 => 1, 2 => Integer (Bound_Idx)),
@@ -178,9 +178,8 @@ package body GNATLLVM.Arrays is
             Disc_Type : constant Entity_Id := Full_Etype (Bound_Info.Discr);
          begin
             return Build_Type_Conversion
-              (Dim_Info.Bound_Type,
-               (if Is_Low then Type_Low_Bound (Disc_Type)
-                else Type_High_Bound (Disc_Type)));
+              ((if Is_Low then Type_Low_Bound (Disc_Type)
+                else Type_High_Bound (Disc_Type)), Dim_Info.Bound_Type);
          end;
       else
          return Convert_To_Elementary_Type

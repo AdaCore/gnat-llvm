@@ -69,7 +69,7 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Build_Type_Conversion
-     (Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value is
+     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value is
    begin
       --  If both types are elementary, hand that off to our helper.
 
@@ -81,7 +81,7 @@ package body GNATLLVM.Types is
       --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         return Build_Unchecked_Conversion (Dest_Type, Expr);
+         return Build_Unchecked_Conversion (Expr, Dest_Type);
 
       end if;
    end Build_Type_Conversion;
@@ -251,7 +251,7 @@ package body GNATLLVM.Types is
    --------------------------------
 
    function Build_Unchecked_Conversion
-     (Dest_Type : Entity_Id; Expr : Node_Id) return GL_Value
+     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value
    is
       type Opf is access function (V : GL_Value; TE : Entity_Id; Name : String)
         return GL_Value;
@@ -695,8 +695,8 @@ package body GNATLLVM.Types is
       --  Compute the bounds
 
       pragma Assert (Nkind (SRange) = N_Range);
-      Low := Build_Type_Conversion (TE, Low_Bound (SRange));
-      High := Build_Type_Conversion (TE, High_Bound (SRange));
+      Low := Build_Type_Conversion (Low_Bound (SRange), TE);
+      High := Build_Type_Conversion (High_Bound (SRange), TE);
 
    end Create_Discrete_Type;
 

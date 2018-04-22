@@ -510,7 +510,7 @@ package body GNATLLVM.Subprograms is
          if Param_Needs_Ptr (Param) then
             Args (Idx) := Convert_To_Access_To (Emit_LValue (Actual), P_Type);
          else
-            Args (Idx) := Build_Type_Conversion (P_Type, Actual);
+            Args (Idx) := Build_Type_Conversion (Actual, P_Type);
          end if;
 
          Idx := Idx + 1;

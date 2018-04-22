@@ -530,24 +530,25 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Subprogram_Body =>
+
+            --  Skip generic subprograms
+
+            if Present (Corresponding_Spec (Node))
+              and then (Ekind (Corresponding_Spec (Node))
+                          in Generic_Subprogram_Kind)
+            then
+               null;
+
             --  If we are processing only declarations, do not emit a
             --  subprogram body: just declare this subprogram and add it to
             --  the environment.
 
-            if not Env.In_Main_Unit then
+            elsif not Env.In_Main_Unit then
                Discard (Emit_Subprogram_Decl (Get_Acting_Spec (Node)));
-               return;
 
-            --  Skip generic subprograms
-
-            elsif Present (Corresponding_Spec (Node))
-              and then Ekind (Corresponding_Spec (Node)) in
-                         Generic_Subprogram_Kind
-            then
-               return;
+            else
+               Emit_Subprogram_Body (Node);
             end if;
-
-            Emit_Subprogram_Body (Node);
 
          when N_Subprogram_Declaration =>
             declare
@@ -2025,9 +2026,15 @@ package body GNATLLVM.Compile is
          --  value, but the destiation may or may not be a variable-sized
          --  type.  In that case, since we know the size and know the object
          --  to store, we can convert Dest to the type of the pointer to
-         --  Src, which we know is fixed-size, and do the store.
+         --  Src, which we know is fixed-size, and do the store.  If Dest
+         --  is pointer to an array type, we need to get the actual array
+         --  data.
 
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
+            if Is_Array_Type (Full_Designated_Type (Dest)) then
+               Dest := Array_Data (Dest);
+            end if;
+
             Dest := Ptr_To_Ref (Dest, Full_Etype (Src));
          end if;
 

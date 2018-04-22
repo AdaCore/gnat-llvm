@@ -211,7 +211,7 @@ package body GNATLLVM.Types is
    end Convert_To_Elementary_Type;
 
    --------------------------
-   -- Convert_To_Access_Of --
+   -- Convert_To_Access_To --
    --------------------------
 
    function Convert_To_Access_To

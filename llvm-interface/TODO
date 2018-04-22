@@ -1,11 +1,9 @@
 Missing main features (identified so far):
 
-- variant records only partly supported
+- variant records
 - cleanups/at end handlers
 - secondary stack support
 - exception handlers
-- expression renaming
 - freeze nodes
-- tagged types
 - representation clauses
 - debug info (for variables and types)

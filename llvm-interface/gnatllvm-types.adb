@@ -695,8 +695,8 @@ package body GNATLLVM.Types is
       --  Compute the bounds
 
       pragma Assert (Nkind (SRange) = N_Range);
-      Low := Emit_Expression (Low_Bound (SRange));
-      High := Emit_Expression (High_Bound (SRange));
+      Low := Build_Type_Conversion (TE, Low_Bound (SRange));
+      High := Build_Type_Conversion (TE, High_Bound (SRange));
 
    end Create_Discrete_Type;
 

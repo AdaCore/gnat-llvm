@@ -173,9 +173,14 @@ package body GNATLLVM.Environment is
 
    begin
       pragma Assert (Id /= Empty_LLVM_Info_Id);
-      pragma Assert (Env.LLVM_Info (New_T) = Empty_LLVM_Info_Id);
+      pragma Assert (Env.LLVM_Info (New_T) = Empty_LLVM_Info_Id
+                       or else Env.LLVM_Info (New_T) = Id);
       --  We know this is a type and one for which we don't have any
       --  data, so we shouldn't have allocated anything for it.
+      --  However, we may have a recursive type situation where it
+      --  was defined as part of the code that calls us, so also allow
+      --  the data to have already been set.  But it's still an error
+      --  if it was set to something different.
 
       Env.LLVM_Info (New_T) := Id;
    end Copy_Type_Info;

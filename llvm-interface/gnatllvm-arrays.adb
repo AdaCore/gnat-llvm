@@ -487,14 +487,15 @@ package body GNATLLVM.Arrays is
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
    is
-      Cur_Index  : Integer := 0;
-      Cur_Value  : GL_Value := Value_So_Far;
-      Expr       : Node_Id;
+      Comp_Type : constant Entity_Id :=
+        Full_Component_Type (Full_Etype (Node));
+      Cur_Index : Integer  := 0;
+      Cur_Value : GL_Value := Value_So_Far;
+      Expr      : Node_Id;
 
    begin
 
-      pragma Assert (not Is_Dynamic_Size
-                       (Full_Component_Type (Full_Etype (Node))));
+      pragma Assert (not Is_Dynamic_Size (Comp_Type));
       --  The code below, by using Insert_Value, restricts itself to
       --  Components of fixed sizes.  But that's OK because the front end
       --  handles those cases.
@@ -514,7 +515,7 @@ package body GNATLLVM.Arrays is
 
          else
             Cur_Value := Insert_Value
-              (Cur_Value, Emit_Expression (Expr),
+              (Cur_Value, Build_Type_Conversion (Expr, Comp_Type),
                Indices_So_Far & (1 => Cur_Index));
          end if;
 

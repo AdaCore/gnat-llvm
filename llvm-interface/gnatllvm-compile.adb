@@ -688,7 +688,7 @@ package body GNATLLVM.Compile is
                            if Compile_Time_Known_Value (Expression (Node)) then
                               Set_Initializer
                                 (LLVM_Var,
-                                 Emit_Expression (Expression (Node)));
+                                 Build_Type_Conversion (Expression (Node), T));
                            else
                               Elaboration_Table.Append (Node);
 

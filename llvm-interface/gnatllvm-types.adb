@@ -254,25 +254,12 @@ package body GNATLLVM.Types is
 
       T        : constant Type_T    := Create_Type (TE);
       V        : constant GL_Value  := Emit_Expression (N);
-      Src_Type : constant Entity_Id := Full_Etype (N);
       Subp     : Opf                := null;
 
    begin
       --  If the value is already of the desired LLVM type, we're done.
 
       if Type_Of (V) = T then
-         return V;
-
-      --  Likewise if we're converting between two record types or two
-      --  array types and this doesn't come from the source since these are
-      --  UC's added by the front end for its type correctness, but which
-      --  don't affect how we generate code.
-
-      elsif not Comes_From_Source (Parent (N))
-        and then ((Is_Record_Type (TE) and then Is_Record_Type (Src_Type))
-                  or else (Is_Array_Type (TE)
-                             and then Is_Array_Type (Src_Type)))
-      then
          return V;
 
       --  If converting pointer to pointer or pointer to/from integer, we

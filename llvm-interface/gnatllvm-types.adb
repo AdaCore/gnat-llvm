@@ -91,13 +91,13 @@ package body GNATLLVM.Types is
    --------------------------------
 
    function Convert_To_Elementary_Type
-     (G : GL_Value; D_Type : Entity_Id) return GL_Value
+     (V : GL_Value; D_Type : Entity_Id) return GL_Value
    is
       type Cvtf is access function
         (Value : GL_Value; TE : Entity_Id; Name : String := "")
         return GL_Value;
 
-      Value       : GL_Value         := G;
+      Value       : GL_Value         := V;
       LLVM_Type   : constant Type_T  := Create_Type (D_Type);
       Src_Access  : constant Boolean := Is_Access_Type (Value);
       Dest_Access : constant Boolean := Is_Access_Type (D_Type);
@@ -108,8 +108,8 @@ package body GNATLLVM.Types is
       Src_Size    : constant unsigned_long_long :=
         Get_LLVM_Type_Size_In_Bits (Value);
       Dest_Usize  : constant Uint :=
-        (if Is_Modular_Integer_Type (D_Type) then RM_Size (D_Type)
-         else Esize (D_Type));
+        (if Is_Modular_Integer_Type (D_Type) or else D_Type = Standard_Boolean
+         then RM_Size (D_Type) else Esize (D_Type));
       Dest_Size   : constant unsigned_long_long :=
         unsigned_long_long (UI_To_Int (Dest_Usize));
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
@@ -119,7 +119,7 @@ package body GNATLLVM.Types is
       --  If the value is already of the desired LLVM type, we're done.
 
       if Type_Of (Value) = LLVM_Type then
-         return Value;
+         return G_Is (Value, D_Type);
 
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
@@ -403,6 +403,29 @@ package body GNATLLVM.Types is
 
       return Cnt;
    end Count_Params;
+
+   ----------------------
+   -- Bounds_To_Length --
+   ----------------------
+
+   function Bounds_To_Length
+     (Low, High : GL_Value; TE : Entity_Id) return GL_Value
+   is
+      Cmp_Kind : constant Int_Predicate_T :=
+        (if Is_Unsigned_Type (Low) then Int_UGT else Int_SGT);
+      Is_Empty : constant GL_Value :=
+      I_Cmp (Cmp_Kind, Low, High, "is-empty");
+      Out_Low  : constant GL_Value := Convert_To_Elementary_Type (Low, TE);
+      Out_High : constant GL_Value := Convert_To_Elementary_Type (High, TE);
+      Const_1  : constant GL_Value := Const_Int (TE, Uint_1);
+   begin
+      return Build_Select
+        (C_If   => Is_Empty,
+         C_Then => Const_Null (TE),
+         C_Else =>
+           (if Out_Low = Const_1 then Out_High
+            else NSW_Add (NSW_Sub (Out_High, Out_Low), Const_1)));
+   end Bounds_To_Length;
 
    --------------------------------
    -- Get_LLVM_Type_Size_In_Bits --

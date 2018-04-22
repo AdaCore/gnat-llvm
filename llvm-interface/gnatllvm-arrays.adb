@@ -158,7 +158,7 @@ package body GNATLLVM.Arrays is
       if Bound_Info.Cnst /= No_Uint then
          return Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
-         return Emit_Expression (Bound_Info.Value);
+         return Build_Type_Conversion (Dim_Info.Bound_Type, Bound_Info.Value);
       elsif not Is_Constrained (Arr_Typ) then
          return Extract_Value
            (Dim_Info.Bound_Type, Value, (1 => 1, 2 => Integer (Bound_Idx)),
@@ -177,15 +177,18 @@ package body GNATLLVM.Arrays is
          declare
             Disc_Type : constant Entity_Id := Full_Etype (Bound_Info.Discr);
          begin
-            return Emit_Expression
-              ((if Is_Low then Type_Low_Bound (Disc_Type)
+            return Build_Type_Conversion
+              (Dim_Info.Bound_Type,
+               (if Is_Low then Type_Low_Bound (Disc_Type)
                 else Type_High_Bound (Disc_Type)));
          end;
       else
-         return
-           Load (Record_Field_Offset
-                   (Get_Matching_Value (Full_Etype (Scope (Bound_Info.Discr))),
-                    Bound_Info.Discr));
+         return Convert_To_Elementary_Type
+           (Load (Record_Field_Offset
+                    (Get_Matching_Value (Full_Etype
+                                           (Scope (Bound_Info.Discr))),
+                     Bound_Info.Discr)),
+            Dim_Info.Bound_Type);
       end if;
 
    end Get_Array_Bound;
@@ -199,35 +202,18 @@ package body GNATLLVM.Arrays is
       Value    : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
-      Info_Idx    : constant Nat := Get_Array_Info (Arr_Typ);
-      Dim_Info    : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
       Low_Bound   : constant GL_Value :=
         Get_Array_Bound (Arr_Typ, Dim, True, Value, For_Type);
       High_Bound  : constant GL_Value :=
         Get_Array_Bound (Arr_Typ, Dim, False, Value, For_Type);
-      Const_1     : constant GL_Value :=
-        Const_Int (Dim_Info.Bound_Type, Uint_1);
-      Is_Empty    : constant GL_Value :=
-        I_Cmp
-        ((if Is_Unsigned_Type (Low_Bound) then Int_UGT else Int_SGT),
-         Low_Bound, High_Bound, "is-empty");
 
+   begin
       --  The length of an array that has the maximum range of its type is
       --  not representable in that type (it's one too high).  Rather than
       --  trying to find some suitable type, we use Size_Type, which will
       --  also make thing simpler for some of our callers.
 
-      Size_Low_Bound  : constant GL_Value := Convert_To_Size_Type (Low_Bound);
-      Size_High_Bound : constant GL_Value := Convert_To_Size_Type (High_Bound);
-
-   begin
-      return Build_Select
-        (C_If   => Is_Empty,
-         C_Then => Size_Const_Int (0),
-         C_Else =>
-           (if Low_Bound = Const_1 then Size_High_Bound
-            else NSW_Add (NSW_Sub (Size_High_Bound, Size_Low_Bound),
-                          Size_Const_Int (1))));
+      return Bounds_To_Length (Low_Bound, High_Bound, Env.Size_Type);
    end Get_Array_Length;
 
    -------------------------------

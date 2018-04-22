@@ -75,11 +75,17 @@ package GNATLLVM.GLValue is
    --  Constructor for most common operation cases where we aren't changing
    --  any typing information, so we just copy it from an existing value.
 
+   function G_Is (V : GL_Value; TE : Entity_Id) return GL_Value is
+     (G (LLVM_Value (V), TE))
+     with Pre  => Present (V) and then Is_Type (TE),
+          Post => Present (G_Is'Result);
+   --  Constructor for case where we want to show that V has a different type
+
    function G_Ref (V : Value_T; TE : Entity_Id) return GL_Value is
      (G (V, TE, True))
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (G_Ref'Result);
-   --  Constructor for case were we've create a value that's a pointer to
+   --  Constructor for case where we've create a value that's a pointer to
    --  type TE.
 
    function G_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is

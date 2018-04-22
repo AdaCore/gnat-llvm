@@ -2134,29 +2134,33 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when Attribute_First
-            | Attribute_Last
-            | Attribute_Length =>
+         when Attribute_First | Attribute_Last
+            | Attribute_Length | Attribute_Range_Length =>
 
             declare
                Prefix_Type : constant Entity_Id := Full_Etype (Prefix (Node));
-               Array_Descr : GL_Value;
-               Result      : GL_Value;
                Dim         : constant Nat :=
                  (if Present (Expressions (Node))
                   then UI_To_Int (Intval (First (Expressions (Node)))) - 1
                   else 0);
-
+               Array_Descr : GL_Value;
+               Result      : GL_Value;
+               Low, High   : GL_Value;
             begin
                if Is_Scalar_Type (Prefix_Type) then
+                  Low  := Emit_Expression (Type_Low_Bound (Prefix_Type));
+                  High := Emit_Expression (Type_High_Bound (Prefix_Type));
+
                   if Attr = Attribute_First then
-                     Result := Emit_Expression (Type_Low_Bound (Prefix_Type));
+                     Result := Low;
                   elsif Attr = Attribute_Last then
-                     Result := Emit_Expression (Type_High_Bound (Prefix_Type));
+                     Result := High;
+                  elsif Attr = Attribute_Range_Length then
+                     Result := Bounds_To_Length (Low, High, Typ);
                   else
-                     Error_Msg_N ("unsupported attribute", Node);
-                     Result :=
-                       Get_Undef (Typ);
+                     Error_Msg_N ("unsupported attribute: `" &
+                                    Attribute_Id'Image (Attr) & "`", Node);
+                     Result := Get_Undef (Typ);
                   end if;
 
                elsif Is_Array_Type (Prefix_Type) then
@@ -2181,7 +2185,8 @@ package body GNATLLVM.Compile is
                        (Prefix_Type, Dim, Attr = Attribute_First, Array_Descr);
                   end if;
                else
-                  Error_Msg_N ("unsupported attribute", Node);
+                  Error_Msg_N ("unsupported attribute: `" &
+                                 Attribute_Id'Image (Attr) & "`", Node);
                   Result := Get_Undef (Typ);
                end if;
 
@@ -2255,9 +2260,8 @@ package body GNATLLVM.Compile is
             end;
 
          when others =>
-            Error_Msg_N
-              ("unsupported attribute: `" &
-               Attribute_Id'Image (Attr) & "`", Node);
+            Error_Msg_N ("unsupported attribute: `" &
+                           Attribute_Id'Image (Attr) & "`", Node);
             return Get_Undef (Typ);
       end case;
    end Emit_Attribute_Reference;
@@ -2555,8 +2559,11 @@ package body GNATLLVM.Compile is
             RHS := Pointer_Cast (RHS, LHS);
          end if;
 
+         --  Now just do the normal comparison, but be sure to get the
+         --  signedness from the original type, not the base type.
+
          return I_Cmp
-           ((if Is_Unsigned_Type (LHS) or else Is_Access_Type (LHS)
+           ((if Is_Unsigned_Type (Orig_LHS) or else Is_Access_Type (LHS)
              then Operation.Unsigned else Operation.Signed),
             LHS, RHS);
 

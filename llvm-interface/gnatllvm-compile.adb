@@ -1257,7 +1257,8 @@ package body GNATLLVM.Compile is
               (Full_Etype (Node), Discrete_Range (Node),
                Emit_LValue_Internal (Prefix (Node)));
 
-         when N_Unchecked_Type_Conversion | N_Type_Conversion =>
+         when N_Unchecked_Type_Conversion | N_Type_Conversion |
+           N_Qualified_Expression =>
             --  We have to mark that this is now to be treated as a new type.
             --  This matters if, e.g., the bounds of an array subtype change
             --  (see C46042A).

@@ -19,7 +19,6 @@ with Errout;   use Errout;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
-with Uintp;    use Uintp;
 
 with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
@@ -33,9 +32,9 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Create_Subprogram_Type
-     (Param_Ident   : Entity_Id;
-      Return_Type   : Entity_Id;
-      Takes_S_Link  : Boolean) return Type_T
+     (Param_Ident  : Entity_Id;
+      Return_Type  : Entity_Id;
+      Takes_S_Link : Boolean) return Type_T
      with Pre  => Present (Param_Ident) and then Is_Type_Or_Void (Return_Type),
           Post => Present (Create_Subprogram_Type'Result);
    --  Helper for public Create_Subprogram_Type functions: the public
@@ -43,8 +42,8 @@ package body GNATLLVM.Types is
    --  type for subprograms.  Return_Type will be of Ekind E_Void if
    --  this is a procedure.
 
-   function Create_Subprogram_Access_Type (Subp_Type : Type_T) return Type_T
-     with Pre  => Present (Subp_Type),
+   function Create_Subprogram_Access_Type (T : Type_T) return Type_T
+     with Pre  => Present (T),
           Post => Present (Create_Subprogram_Access_Type'Result);
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
@@ -69,19 +68,19 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Build_Type_Conversion
-     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value is
+     (N : Node_Id; TE : Entity_Id) return GL_Value is
    begin
       --  If both types are elementary, hand that off to our helper.
 
-      if Is_Elementary_Type (Full_Etype (Expr))
-        and then Is_Elementary_Type (Dest_Type)
+      if Is_Elementary_Type (Full_Etype (N))
+        and then Is_Elementary_Type (TE)
       then
-         return Convert_To_Elementary_Type (Emit_Expression (Expr), Dest_Type);
+         return Convert_To_Elementary_Type (Emit_Expression (N), TE);
 
       --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         return Build_Unchecked_Conversion (Expr, Dest_Type);
+         return Build_Unchecked_Conversion (N, TE);
 
       end if;
    end Build_Type_Conversion;
@@ -91,25 +90,24 @@ package body GNATLLVM.Types is
    --------------------------------
 
    function Convert_To_Elementary_Type
-     (V : GL_Value; D_Type : Entity_Id) return GL_Value
+     (V : GL_Value; TE : Entity_Id) return GL_Value
    is
       type Cvtf is access function
-        (Value : GL_Value; TE : Entity_Id; Name : String := "")
-        return GL_Value;
+        (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value;
 
       Value       : GL_Value         := V;
-      LLVM_Type   : constant Type_T  := Create_Type (D_Type);
-      Src_Access  : constant Boolean := Is_Access_Type (Value);
-      Dest_Access : constant Boolean := Is_Access_Type (D_Type);
-      Src_FP      : constant Boolean := Is_Floating_Point_Type (Value);
-      Dest_FP     : constant Boolean := Is_Floating_Point_Type (D_Type);
-      Src_Uns     : constant Boolean := Is_Unsigned_Type (Value);
-      Dest_Uns    : constant Boolean := Is_Unsigned_Type (Value);
+      T           : constant Type_T  := Create_Type (TE);
+      Src_Access  : constant Boolean := Is_Access_Type (V);
+      Dest_Access : constant Boolean := Is_Access_Type (TE);
+      Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
+      Dest_FP     : constant Boolean := Is_Floating_Point_Type (TE);
+      Src_Uns     : constant Boolean := Is_Unsigned_Type (V);
+      Dest_Uns    : constant Boolean := Is_Unsigned_Type (V);
       Src_Size    : constant unsigned_long_long :=
-        Get_LLVM_Type_Size_In_Bits (Value);
+        Get_LLVM_Type_Size_In_Bits (V);
       Dest_Usize  : constant Uint :=
-        (if Is_Modular_Integer_Type (D_Type) or else D_Type = Standard_Boolean
-         then RM_Size (D_Type) else Esize (D_Type));
+        (if Is_Modular_Integer_Type (TE) or else TE = Standard_Boolean
+         then RM_Size (TE) else Esize (TE));
       Dest_Size   : constant unsigned_long_long :=
         unsigned_long_long (UI_To_Int (Dest_Usize));
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
@@ -118,21 +116,21 @@ package body GNATLLVM.Types is
    begin
       --  If the value is already of the desired LLVM type, we're done.
 
-      if Type_Of (Value) = LLVM_Type then
-         return G_Is (Value, D_Type);
+      if Type_Of (V) = T then
+         return G_Is (V, TE);
 
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
 
-      elsif Dest_Access and then Is_Integer_Type (Value) then
+      elsif Dest_Access and then Is_Integer_Type (V) then
          Subp := Int_To_Ptr'Access;
-      elsif Is_Integer_Type (D_Type) and then Src_Access then
+      elsif Is_Integer_Type (TE) and then Src_Access then
          Subp := Ptr_To_Int'Access;
 
       --  For pointer to pointer, call our helper
 
       elsif Src_Access and then Dest_Access then
-         return Convert_To_Access_To (Value, Full_Designated_Type (D_Type));
+         return Convert_To_Access_To (V, Full_Designated_Type (TE));
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int.  We already know that this isn't
@@ -168,7 +166,7 @@ package body GNATLLVM.Types is
 
          declare
             Size_In_Bits : constant unsigned_long_long :=
-              Get_LLVM_Type_Size_In_Bits (Value);
+              Get_LLVM_Type_Size_In_Bits (V);
             PredHalf     : constant Long_Long_Float :=
               (if Long_Long_Float'Size = Size_In_Bits
                then Long_Long_Float'Pred (0.5)
@@ -178,16 +176,14 @@ package body GNATLLVM.Types is
                then Long_Long_Float (Float'Pred (0.5))
                else Long_Long_Float (Short_Float'Pred (0.5)));
             Val_Neg    : constant GL_Value :=
-              F_Cmp (Real_OLT, Value, Const_Real (Value, 0.0));
+              F_Cmp (Real_OLT, V, Const_Real (V, 0.0));
             Adjust_Amt : constant GL_Value :=
-                Const_Real (Value, double (PredHalf));
+                Const_Real (V, double (PredHalf));
             --  ?? The conversion to "double" above may be problematic,
             --  but it's not clear how else to get the constant to LLVM.
 
-            Add_Amt    : constant GL_Value :=
-                F_Add (Value, Adjust_Amt, "round-add");
-            Sub_Amt    : constant GL_Value :=
-                F_Sub (Value, Adjust_Amt, "round-sub");
+            Add_Amt    : constant GL_Value := F_Add (V, Adjust_Amt, "round");
+            Sub_Amt    : constant GL_Value := F_Sub (V, Adjust_Amt, "round");
 
          begin
             Value := Build_Select (Val_Neg, Sub_Amt, Add_Amt);
@@ -206,7 +202,7 @@ package body GNATLLVM.Types is
 
       --  Here all that's left to do is generate the IR instruction
 
-      return Subp (Value, D_Type);
+      return Subp (Value, TE);
 
    end Convert_To_Elementary_Type;
 
@@ -215,11 +211,11 @@ package body GNATLLVM.Types is
    --------------------------
 
    function Convert_To_Access_To
-     (Src : GL_Value; Desig_Type : Entity_Id) return GL_Value
+     (V : GL_Value; TE : Entity_Id) return GL_Value
    is
-      Unc_Src  : constant Boolean := Is_Access_Unconstrained (Src);
+      Unc_Src  : constant Boolean := Is_Access_Unconstrained (V);
       Unc_Dest : constant Boolean :=
-        Is_Array_Type (Desig_Type) and then not Is_Constrained (Desig_Type);
+        Is_Array_Type (TE) and then not Is_Constrained (TE);
 
    begin
       --  If neither is constrained, but they aren't the same type, just do
@@ -229,20 +225,20 @@ package body GNATLLVM.Types is
       --  pointers.
 
       if not Unc_Src and not Unc_Dest then
-         if Full_Designated_Type (Src) = Desig_Type then
-            return Src;
+         if Full_Designated_Type (V) = TE then
+            return V;
          else
-            return Ptr_To_Ref (Src, Desig_Type);
+            return Ptr_To_Ref (V, TE);
          end if;
 
       elsif Unc_Src and then Unc_Dest then
-         return Src;
+         return V;
 
       elsif Unc_Src and then not Unc_Dest then
-         return Convert_To_Access_To (Array_Data (Src), Desig_Type);
+         return Convert_To_Access_To (Array_Data (V), TE);
       else
          pragma Assert (not Unc_Src and then Unc_Dest);
-         return Array_Fat_Pointer (Desig_Type, Src);
+         return Array_Fat_Pointer (TE, V);
       end if;
    end Convert_To_Access_To;
 
@@ -251,44 +247,44 @@ package body GNATLLVM.Types is
    --------------------------------
 
    function Build_Unchecked_Conversion
-     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value
+     (N : Node_Id; TE : Entity_Id) return GL_Value
    is
       type Opf is access function (V : GL_Value; TE : Entity_Id; Name : String)
         return GL_Value;
 
-      Dest_Ty   : constant Type_T := Create_Type (Dest_Type);
-      Value     : constant GL_Value := Emit_Expression (Expr);
-      Subp      : Opf := null;
+      T        : constant Type_T    := Create_Type (TE);
+      V        : constant GL_Value  := Emit_Expression (N);
+      Src_Type : constant Entity_Id := Full_Etype (N);
+      Subp     : Opf                := null;
 
    begin
       --  If the value is already of the desired LLVM type, we're done.
 
-      if Type_Of (Value) = Dest_Ty then
-         return Value;
+      if Type_Of (V) = T then
+         return V;
 
       --  Likewise if we're converting between two record types or two
       --  array types and this doesn't come from the source since these are
       --  UC's added by the front end for its type correctness, but which
       --  don't affect how we generate code.
 
-      elsif not Comes_From_Source (Parent (Expr))
-        and then ((Is_Record_Type (Dest_Type)
-                     and then Is_Record_Type (Full_Etype (Expr)))
-                  or else (Is_Array_Type (Dest_Type)
-                             and then Is_Array_Type (Full_Etype (Expr))))
+      elsif not Comes_From_Source (Parent (N))
+        and then ((Is_Record_Type (TE) and then Is_Record_Type (Src_Type))
+                  or else (Is_Array_Type (TE)
+                             and then Is_Array_Type (Src_Type)))
       then
-         return Value;
+         return V;
 
       --  If converting pointer to pointer or pointer to/from integer, we
       --  just copy the bits using the appropriate instruction.
 
-      elsif Is_Access_Type (Dest_Type) and then Is_Scalar_Type (Value) then
+      elsif Is_Access_Type (TE) and then Is_Scalar_Type (V) then
          Subp := Int_To_Ptr'Access;
-      elsif Is_Scalar_Type (Dest_Type) and then Is_Access_Type (Value) then
+      elsif Is_Scalar_Type (TE) and then Is_Access_Type (V) then
          Subp := Ptr_To_Int'Access;
-      elsif Is_Access_Type (Value) and then Is_Access_Type (Dest_Type)
-        and then not Is_Access_Unconstrained (Value)
-        and then not Is_Access_Unconstrained (Dest_Type)
+      elsif Is_Access_Type (TE) and then Is_Access_Type (V)
+        and then not Is_Access_Unconstrained (V)
+        and then not Is_Access_Unconstrained (TE)
       then
          Subp := Pointer_Cast'Access;
 
@@ -298,24 +294,23 @@ package body GNATLLVM.Types is
       --  LLVM type, but the front-end generates it, meaning to do
       --  a normal conversion.
 
-      elsif Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
-        and then Is_Discrete_Or_Fixed_Point_Type (Value)
+      elsif Is_Discrete_Or_Fixed_Point_Type (TE)
+        and then Is_Discrete_Or_Fixed_Point_Type (V)
       then
-         return Convert_To_Elementary_Type (Value, Dest_Type);
+         return Convert_To_Elementary_Type (V, TE);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
       --  instruction.
 
-      elsif ((Is_Floating_Point_Type (Dest_Type)
-                and then Is_Discrete_Or_Fixed_Point_Type (Value))
-             or else (Is_Discrete_Or_Fixed_Point_Type (Dest_Type)
-                        and then Is_Floating_Point_Type (Value)))
-        and then (unsigned_long_long'(Get_LLVM_Type_Size_In_Bits
-                                        (Dest_Ty)) =
-                    unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (Value)))
+      elsif ((Is_Floating_Point_Type (TE)
+                and then Is_Discrete_Or_Fixed_Point_Type (V))
+             or else (Is_Discrete_Or_Fixed_Point_Type (TE)
+                        and then Is_Floating_Point_Type (V)))
+        and then (unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (T)) =
+                    unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (V)))
       then
-         return Bit_Cast (Value, Dest_Type);
+         return Bit_Cast (V, TE);
 
       --  Otherwise, these must be cases where we have to convert by
       --  pointer punning.  If the source is a type of dynamic size, the
@@ -326,18 +321,17 @@ package body GNATLLVM.Types is
 
       else
          declare
-            Addr           : constant GL_Value :=
-              (if Is_Dynamic_Size (Value) then Value else Emit_LValue (Expr));
+            Addr : constant GL_Value :=
+              (if Is_Dynamic_Size (V) then V else Emit_LValue (N));
          begin
-            return Need_Value (Ptr_To_Ref (Addr, Dest_Type, "unc-ptr-cvt"),
-                               Dest_Type);
+            return Need_Value (Ptr_To_Ref (Addr, TE, "unc-ptr-cvt"), TE);
          end;
       end if;
 
       --  If we get here, we should have set Subp to point to the function
       --  to call to do the conversion.
 
-      return Subp (Value, Dest_Type, "unchecked-conv");
+      return Subp (V, TE, "unchecked-conv");
    end Build_Unchecked_Conversion;
 
    --------------------
@@ -497,9 +491,9 @@ package body GNATLLVM.Types is
    function GNAT_To_LLVM_Type
      (TE : Entity_Id; Definition : Boolean) return Type_T
    is
-      Def_Ident : Entity_Id;
-      Typ       : Type_T := No_Type_T;
+      T         : Type_T     := No_Type_T;
       TBAA      : Metadata_T := No_Metadata_T;
+      Def_Ident : Entity_Id;
       Discard   : Type_T;
       pragma Unreferenced (Discard);
       pragma Unreferenced (Definition);
@@ -508,10 +502,10 @@ package body GNATLLVM.Types is
       --  See if we already have a type.  If so, we must not be defining
       --  this type.  ??? But we can't add that test just yet.
 
-      Typ := Get_Type (TE);
-      if Present (Typ) then
+      T := Get_Type (TE);
+      if Present (T) then
          --  ?? pragma Assert (not Definition);
-         return Typ;
+         return T;
       end if;
 
       --  See if we can get the type from the fullest view.
@@ -521,18 +515,18 @@ package body GNATLLVM.Types is
 
       Def_Ident := Get_Fullest_View (TE);
       if Def_Ident /= TE then
-         Typ := GNAT_To_LLVM_Type (Def_Ident, False);
+         T := GNAT_To_LLVM_Type (Def_Ident, False);
          Copy_Type_Info (Def_Ident, TE);
-         return Typ;
+         return T;
       end if;
 
       --  See if we can get this from the equivalent type
 
       Def_Ident := GNAT_Equivalent_Type (TE);
       if Def_Ident /= TE then
-         Typ := GNAT_To_LLVM_Type (Def_Ident, False);
+         T := GNAT_To_LLVM_Type (Def_Ident, False);
          Copy_Type_Info (Def_Ident, TE);
-         return Typ;
+         return T;
       end if;
 
       --  ??? This probably needs to be cleaned up, but before we do anything,
@@ -548,16 +542,12 @@ package body GNATLLVM.Types is
             --  ??? will not work properly if there is a size clause
 
             if Is_Boolean_Type (Def_Ident) then
-               Typ := Int_Type_In_Context (Env.Ctx, 1);
+               T := Int_Ty (1);
             elsif Is_Modular_Integer_Type (Def_Ident) then
-               Typ := Int_Type_In_Context
-                 (Env.Ctx,
-                  unsigned (UI_To_Int (RM_Size (Def_Ident))));
+               T := Int_Ty (RM_Size (Def_Ident));
 
             else
-               Typ := Int_Type_In_Context
-                 (Env.Ctx,
-                  unsigned (UI_To_Int (Esize (Def_Ident))));
+               T := Int_Ty (Esize (Def_Ident));
             end if;
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
@@ -569,29 +559,26 @@ package body GNATLLVM.Types is
             begin
                case Float_Rep (Float_Type) is
                   when IEEE_Binary =>
-                     if Size = Uint_32 then
-                        Typ := Float_Type_In_Context (Env.Ctx);
-                     elsif Size = Uint_64 then
-                        Typ := Double_Type_In_Context (Env.Ctx);
-                     elsif Size = Uint_128 then
-                        --  Extended precision; not IEEE_128
-                        Typ := X86_F_P80_Type_In_Context (Env.Ctx);
-                     else
-                        pragma Assert (UI_Is_In_Int_Range (Size));
-
-                        case UI_To_Int (Size) is
-                           when 80 | 96 =>
-                              Typ := X86_F_P80_Type_In_Context (Env.Ctx);
-                           when others =>
-                              --  ??? Double check that
-                              Typ := F_P128_Type_In_Context (Env.Ctx);
-                        end case;
-                     end if;
+                     pragma Assert (UI_Is_In_Int_Range (Size));
+                     case UI_To_Int (Size) is
+                        when 32 =>
+                           T := Float_Type_In_Context (Env.Ctx);
+                        when 64 =>
+                           T := Double_Type_In_Context (Env.Ctx);
+                        when 128 =>
+                           --  Extended precision; not IEEE_128
+                           T := X86_F_P80_Type_In_Context (Env.Ctx);
+                        when 80 | 96 =>
+                           T := X86_F_P80_Type_In_Context (Env.Ctx);
+                        when others =>
+                           --  ??? Double check that
+                           T := F_P128_Type_In_Context (Env.Ctx);
+                     end case;
 
                   when AAMP =>
                      --  Not supported
                      Error_Msg_N ("unsupported floating point type", TE);
-                     Typ := Void_Type_In_Context (Env.Ctx);
+                     T := Void_Type_In_Context (Env.Ctx);
                end case;
             end;
 
@@ -599,47 +586,46 @@ package body GNATLLVM.Types is
            | E_Anonymous_Access_Type | E_Access_Subprogram_Type
            | E_Anonymous_Access_Subprogram_Type =>
             if Needs_Activation_Record (Full_Designated_Type (Def_Ident)) then
-               Typ := Create_Subprogram_Access_Type
+               T := Create_Subprogram_Access_Type
                  (Create_Type (Full_Designated_Type (Def_Ident)));
             else
-               Typ := Create_Access_Type (Full_Designated_Type (Def_Ident));
+               T := Create_Access_Type (Full_Designated_Type (Def_Ident));
             end if;
 
          when Record_Kind =>
-            Typ := Create_Record_Type (Def_Ident);
+            T := Create_Record_Type (Def_Ident);
 
          when Array_Kind =>
             --  Handle packed arrays
 
             if Present (Packed_Array_Impl_Type (Def_Ident)) then
-               Typ := Create_Type (Packed_Array_Impl_Type (Def_Ident));
+               T := Create_Type (Packed_Array_Impl_Type (Def_Ident));
                Copy_Type_Info (Packed_Array_Impl_Type (Def_Ident), Def_Ident);
             else
-               Typ := Create_Array_Type (Def_Ident);
+               T := Create_Array_Type (Def_Ident);
             end if;
 
          when E_Subprogram_Type =>
             --  An anonymous access to a subprogram can point to any subprogram
             --  (nested or not), so it must accept a static link.
 
-            Typ := Create_Subprogram_Type_From_Entity
+            T := Create_Subprogram_Type_From_Entity
               (Def_Ident, Takes_S_Link => Needs_Activation_Record (Def_Ident));
 
          when Fixed_Point_Kind =>
-            Typ := Int_Type_In_Context
-              (Env.Ctx, unsigned (UI_To_Int (Esize (Def_Ident))));
+            T := Int_Ty (Esize (Def_Ident));
 
          when E_Incomplete_Type =>
             --  This is a taft amendment type, return a dummy type
 
-            Typ := Void_Type_In_Context (Env.Ctx);
+            T := Void_Type_In_Context (Env.Ctx);
 
          when E_Private_Type
             | E_Private_Subtype
             | E_Limited_Private_Type
             | E_Limited_Private_Subtype
          =>
-            Typ := Create_Type (Full_Etype (Def_Ident));
+            T := Create_Type (Full_Etype (Def_Ident));
 
          when others =>
             Error_Msg_N
@@ -650,15 +636,15 @@ package body GNATLLVM.Types is
 
       --  Now save the result, if we have one, and compute any TBAA
       --  information.
-      if Present (Typ) then
-         Set_Type (TE, Typ);
+      if Present (T) then
+         Set_Type (TE, T);
          TBAA := Create_TBAA (TE);
          if Present (TBAA) then
             Set_TBAA (TE, TBAA);
          end if;
       end if;
 
-      return Typ;
+      return T;
    end GNAT_To_LLVM_Type;
 
    -----------------
@@ -683,14 +669,14 @@ package body GNATLLVM.Types is
    --------------------------
 
    procedure Create_Discrete_Type
-     (TE : Entity_Id; TL : out Type_T; Low, High : out GL_Value)
+     (TE : Entity_Id; T : out Type_T; Low, High : out GL_Value)
    is
       SRange : constant Node_Id := Scalar_Range (TE);
 
    begin
       --  Delegate LLVM Type creation to Create_Type
 
-      TL := Create_Type (TE);
+      T := Create_Type (TE);
 
       --  Compute the bounds
 
@@ -704,10 +690,9 @@ package body GNATLLVM.Types is
    -- Create_Subprogram_Type_From_Spec --
    --------------------------------------
 
-   function Create_Subprogram_Type_From_Spec
-     (Subp_Spec : Node_Id) return Type_T
+   function Create_Subprogram_Type_From_Spec (N : Node_Id) return Type_T
    is
-      Def_Ident : constant Entity_Id := Defining_Entity (Subp_Spec);
+      Def_Ident : constant Entity_Id := Defining_Entity (N);
 
    begin
       return Create_Subprogram_Type (Def_Ident, Full_Etype (Def_Ident), False);
@@ -718,11 +703,9 @@ package body GNATLLVM.Types is
    ----------------------------------------
 
    function Create_Subprogram_Type_From_Entity
-     (Subp_Type_Ent : Entity_Id; Takes_S_Link  : Boolean) return Type_T is
-
+     (TE : Entity_Id; Takes_S_Link  : Boolean) return Type_T is
    begin
-      return Create_Subprogram_Type
-        (Subp_Type_Ent, Full_Etype (Subp_Type_Ent), Takes_S_Link);
+      return Create_Subprogram_Type (TE, Full_Etype (TE), Takes_S_Link);
    end Create_Subprogram_Type_From_Entity;
 
    ----------------------------
@@ -792,19 +775,12 @@ package body GNATLLVM.Types is
    -- Create_Subprogram_Access_Type --
    -----------------------------------
 
-   function Create_Subprogram_Access_Type (Subp_Type : Type_T) return Type_T
-   is
-      pragma Unreferenced (Subp_Type);
-
-      Void_Ptr : constant Type_T :=
-        Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
-      Couple : constant Type_Array (1 .. 2) := (Void_Ptr, Void_Ptr);
+   function Create_Subprogram_Access_Type (T : Type_T) return Type_T is
+      pragma Unreferenced (T);
 
    begin
-      return Struct_Type_In_Context
-        (Env.Ctx,
-         Couple'Address, Couple'Length,
-         Packed => False);
+      return
+        Build_Struct_Type ((1 => Env.Void_Ptr_Type, 2 => Env.Void_Ptr_Type));
    end Create_Subprogram_Access_Type;
 
    -----------------------
@@ -812,8 +788,9 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Allocate_For_Type
-     (TE : Entity_Id; Value : GL_Value := No_GL_Value; Name : String := "")
-     return GL_Value
+     (TE   : Entity_Id;
+      V    : GL_Value := No_GL_Value;
+      Name : String := "") return GL_Value
    is
       Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
@@ -836,10 +813,10 @@ package body GNATLLVM.Types is
         and then not Is_Dynamic_Size (Full_Component_Type (TE))
       then
          Element_Typ := Full_Component_Type (TE);
-         Num_Elts    := Get_Array_Elements (Value, TE, For_Type => No (Value));
+         Num_Elts    := Get_Array_Elements (V, TE, For_Type => No (V));
       else
          Element_Typ := Standard_Short_Short_Integer;
-         Num_Elts    := Get_Type_Size (TE, Value, For_Type => No (Value));
+         Num_Elts    := Get_Type_Size (TE, V, For_Type => No (V));
       end if;
 
       return Ptr_To_Ref
@@ -907,22 +884,17 @@ package body GNATLLVM.Types is
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
-      Size           : GL_Value;
-      T              : constant Type_T := Create_Type (TE);
-
    begin
 
       if Is_Record_Type (TE) then
-         Size := Get_Record_Type_Size (TE, V, For_Type);
+         return Get_Record_Type_Size (TE, V, For_Type);
 
       elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
-         Size := Get_Array_Type_Size (TE, V, For_Type);
+         return Get_Array_Type_Size (TE, V, For_Type);
 
       else
-         Size := Get_LLVM_Type_Size (T);
+         return Get_LLVM_Type_Size (Create_Type (TE));
       end if;
-
-      return Size;
 
    end Get_Type_Size;
 
@@ -931,19 +903,19 @@ package body GNATLLVM.Types is
    ------------------
 
    function Compute_Size
-     (Left_Typ, Right_Typ     : Entity_Id;
+     (Left_Type, Right_Type   : Entity_Id;
       Left_Value, Right_Value : GL_Value) return GL_Value is
 
    begin
       --  Use the type of right side unless its complexity is more
       --  than that of the size of the type on the left side.
 
-      if Get_Type_Size_Complexity (Right_Typ) >
-        Get_Type_Size_Complexity (Left_Typ)
+      if Get_Type_Size_Complexity (Right_Type) >
+        Get_Type_Size_Complexity (Left_Type)
       then
-         return Get_Type_Size (Left_Typ, Left_Value);
+         return Get_Type_Size (Left_Type, Left_Value);
       else
-         return Get_Type_Size (Right_Typ, Right_Value);
+         return Get_Type_Size (Right_Type, Right_Value);
       end if;
 
    end Compute_Size;

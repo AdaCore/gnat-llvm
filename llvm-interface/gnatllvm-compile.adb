@@ -722,7 +722,7 @@ package body GNATLLVM.Compile is
                            T, Get_Name (Def_Ident));
                   else
                      LLVM_Var := Allocate_For_Type
-                       (T, Value => Value, Name => Get_Name (Def_Ident));
+                       (T, V => Value, Name => Get_Name (Def_Ident));
 
                   end if;
 

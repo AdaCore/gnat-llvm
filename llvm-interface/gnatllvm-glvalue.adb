@@ -124,7 +124,7 @@ package body GNATLLVM.GLValue is
 
          declare
             Temp : constant GL_Value :=
-              Allocate_For_Type (TE, Value => V, Name => Name);
+              Allocate_For_Type (TE, V => V, Name => Name);
          begin
             Store (V, Temp);
             return Temp;

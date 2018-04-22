@@ -21,6 +21,7 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Atree; use Atree;
 with Einfo; use Einfo;
 with Types; use Types;
+with Uintp; use Uintp;
 
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
@@ -44,15 +45,14 @@ package GNATLLVM.Types is
    --  between the two. For the moment, it handles array accesses and thin
    --  (normal) accesses.
 
-   function Create_Subprogram_Type_From_Spec
-     (Subp_Spec : Node_Id) return Type_T
-     with Pre  => Present (Subp_Spec),
+   function Create_Subprogram_Type_From_Spec (N : Node_Id) return Type_T
+     with Pre  => Present (N),
           Post => (Get_Type_Kind (Create_Subprogram_Type_From_Spec'Result) =
                    Function_Type_Kind);
 
    function Create_Subprogram_Type_From_Entity
-     (Subp_Type_Ent : Entity_Id; Takes_S_Link  : Boolean) return Type_T
-     with Pre  => Ekind (Subp_Type_Ent) = E_Subprogram_Type,
+     (TE : Entity_Id; Takes_S_Link  : Boolean) return Type_T
+     with Pre  => Ekind (TE) = E_Subprogram_Type,
           Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
                    Function_Type_Kind);
 
@@ -72,12 +72,16 @@ package GNATLLVM.Types is
      with Pre => Is_Type (TE);
 
    procedure Create_Discrete_Type
-     (TE : Entity_Id; TL : out Type_T; Low, High : out GL_Value)
+     (TE : Entity_Id; T : out Type_T; Low, High : out GL_Value)
      with Pre  => Ekind (TE) in Discrete_Kind,
-          Post => Present (TL) and then Present (Low) and then Present (High);
+          Post => Present (T) and then Present (Low) and then Present (High);
 
    function Int_Ty (Num_Bits : Natural) return Type_T is
      (Int_Type (unsigned (Num_Bits)))
+     with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
+
+   function Int_Ty (Num_Bits : Uint) return Type_T is
+     (Int_Type (unsigned (UI_To_Int (Num_Bits))))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
 
    function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T is
@@ -94,40 +98,37 @@ package GNATLLVM.Types is
       (Int_Type (unsigned (Get_Pointer_Size)));
 
    function Convert_To_Elementary_Type
-     (V : GL_Value; D_Type : Entity_Id) return GL_Value
-     with Pre  => Is_Elementary_Type (D_Type) and then Is_Elementary_Type (V),
+     (V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Is_Elementary_Type (TE) and then Is_Elementary_Type (V),
           Post => Present (Convert_To_Elementary_Type'Result);
    --  Convert Expr to the type TE, with both the types of Expr and TE
    --  being elementary.
 
-   function Convert_To_Access_To
-     (Src : GL_Value; Desig_Type : Entity_Id) return GL_Value
-     with Pre  => Present (Src) and then Is_Type (Desig_Type),
+   function Convert_To_Access_To (V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (Convert_To_Access_To'Result);
    --  Convert Src, which should be an access, into an access to Desig_Type
 
-   function Build_Type_Conversion
-     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value
-     with Pre  => Is_Type (Dest_Type) and then Present (Expr)
-                  and then Dest_Type = Get_Fullest_View (Dest_Type),
+   function Build_Type_Conversion (N : Node_Id; TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE) and then Present (N)
+                  and then TE = Get_Fullest_View (TE),
           Post => Present (Build_Type_Conversion'Result);
    --  Emit code to convert Expr to Dest_Type
 
    function Build_Unchecked_Conversion
-     (Expr : Node_Id; Dest_Type : Entity_Id) return GL_Value
-     with Pre  => Is_Type (Dest_Type)
-                  and then Dest_Type = Get_Fullest_View (Dest_Type)
-                  and then Present (Expr),
+     (N : Node_Id; TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE) and then TE = Get_Fullest_View (TE)
+                  and then Present (N),
           Post => Present (Build_Unchecked_Conversion'Result);
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
    function Convert_To_Elementary_Type
-     (Expr : GL_Value; G : GL_Value) return GL_Value
+     (V : GL_Value; T : GL_Value) return GL_Value
    is
-     (Convert_To_Elementary_Type (Expr, Full_Etype (G)))
-     with Pre  => Is_Elementary_Type (Expr) and then Is_Elementary_Type (G),
+     (Convert_To_Elementary_Type (V, Full_Etype (T)))
+     with Pre  => Is_Elementary_Type (V) and then Is_Elementary_Type (T),
           Post => Present (Convert_To_Elementary_Type'Result);
-   --  Variant of above where the type is that of another value (G)
+   --  Variant of above where the type is that of another value (T)
 
    function Coerce_To_Type (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (V) and then Is_Type (TE),
@@ -167,10 +168,10 @@ package GNATLLVM.Types is
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
-   function Get_LLVM_Type_Size_In_Bits (G : GL_Value) return unsigned_long_long
+   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return unsigned_long_long
    is
-     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, Type_Of (G.Value)))
-     with Pre => Present (G);
+     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, Type_Of (V.Value)))
+     with Pre => Present (V);
    --  Return the size of an LLVM type, in bits
 
    function Get_LLVM_Type_Size_In_Bits (T : Type_T) return GL_Value
@@ -185,16 +186,17 @@ package GNATLLVM.Types is
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
    --  Likewise, but convert from a GNAT type
 
-   function Get_LLVM_Type_Size_In_Bits (G : GL_Value) return GL_Value
+   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return GL_Value
    is
-     (Get_LLVM_Type_Size_In_Bits (G.Typ))
-     with Pre  => Present (G),
+     (Get_LLVM_Type_Size_In_Bits (V.Typ))
+     with Pre  => Present (V),
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
    --  Variant of above to get type from a GL_Value
 
    function Allocate_For_Type
-     (TE : Entity_Id; Value : GL_Value := No_GL_Value; Name : String := "")
-     return GL_Value
+     (TE   : Entity_Id;
+      V    : GL_Value := No_GL_Value;
+      Name : String := "") return GL_Value
      with Pre  => Is_Type (TE),
           Post => Present (Allocate_For_Type'Result)
                   and then Is_Access_Type (Allocate_For_Type'Result);
@@ -228,9 +230,9 @@ package GNATLLVM.Types is
    --  an unconstrained array type, V must be the value of the array.
 
    function Compute_Size
-     (Left_Typ, Right_Typ     : Entity_Id;
+     (Left_Type, Right_Type   : Entity_Id;
       Left_Value, Right_Value : GL_Value) return GL_Value
-     with Pre  => Is_Type (Left_Typ) and then Present (Right_Typ)
+     with Pre  => Is_Type (Left_Type) and then Present (Right_Type)
                   and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
    --  Used for comparison and assignment: compute the size to be used in
@@ -244,10 +246,10 @@ package GNATLLVM.Types is
    --  use Get_Matching_Value.
 
    function Compute_Alignment
-     (Left_Typ, Right_Typ     : Entity_Id) return unsigned is
-     (unsigned'Max (Get_Type_Alignment (Left_Typ),
-                    Get_Type_Alignment (Right_Typ)))
-     with Pre  => Is_Type (Left_Typ) and then Present (Right_Typ);
+     (Left_Type, Right_Type : Entity_Id) return unsigned is
+     (unsigned'Max (Get_Type_Alignment (Left_Type),
+                    Get_Type_Alignment (Right_Type)))
+     with Pre  => Is_Type (Left_Type) and then Is_Type (Right_Type);
    --  Likewise, but compute strictest alignment in bits
 
    function Get_Type_Size_Complexity (TE : Entity_Id) return Natural

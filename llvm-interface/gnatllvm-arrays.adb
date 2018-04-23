@@ -219,8 +219,7 @@ package body GNATLLVM.Arrays is
    -- Get_Array_Size_Complexity --
    -------------------------------
 
-   function Get_Array_Size_Complexity (TE : Entity_Id) return Natural
-   is
+   function Get_Array_Size_Complexity (TE : Entity_Id) return Natural is
       Complexity  : Natural :=
         Get_Type_Size_Complexity (Full_Component_Type (TE));
       Info_Idx    : constant Nat := Get_Array_Info (TE);

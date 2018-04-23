@@ -508,6 +508,28 @@ package body GNATLLVM.Records is
 
    end Record_Field_Offset;
 
+   --------------------------------
+   -- Get_Record_Size_Complexity --
+   --------------------------------
+
+   function Get_Record_Size_Complexity (TE : Entity_Id) return Natural is
+      Complexity : Natural        := 0;
+      Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
+      RI         : Record_Info;
+
+   begin
+      while Present (Cur_Idx) loop
+         RI := Record_Info_Table.Table (Cur_Idx);
+         if Present (RI.GNAT_Type) then
+            Complexity := Complexity + Get_Type_Size_Complexity (RI.GNAT_Type);
+         end if;
+
+         Cur_Idx := RI.Next;
+      end loop;
+
+      return Complexity;
+   end Get_Record_Size_Complexity;
+
    --------------------------
    -- Get_Record_Type_Size --
    --------------------------

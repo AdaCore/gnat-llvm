@@ -915,11 +915,7 @@ package body GNATLLVM.Types is
    begin
 
       if Is_Record_Type (TE) then
-
-         --  For now, just distinguish dynamic and constant size
-
-         return (if Is_Dynamic_Size (TE) then 10 else 0);
-
+         return Get_Record_Size_Complexity (TE);
       elsif Is_Array_Type (TE) then
          return Get_Array_Size_Complexity (TE);
 

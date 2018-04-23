@@ -186,19 +186,6 @@ package body GNATLLVM.Compile is
    --  going to be using that basic block as a jump target, in which case
    --  it can't be the entry basic block.
 
-   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint)
-     with Pre => Present (Rng);
-   --  Decode the right operand of an N_In or N_Not_In or of a Choice in
-   --  a case statement into the low and high bounds.  If either Low or High
-   --  is No_Uint, it means that we have a nonstatic value, a non-discrete
-   --  value, or we can't find the value.  This should not happen in switch
-   --  statements.
-
-   function Is_Constant_Folded (E : Entity_Id) return Boolean
-   is (Ekind (E) = E_Constant
-       and then Is_Scalar_Type (Get_Full_View (Full_Etype (E))))
-     with Pre => Present (E);
-
    package Elaboration_Table is new Table.Table
      (Table_Component_Type => Node_Id,
       Table_Index_Type     => Nat,
@@ -292,44 +279,6 @@ package body GNATLLVM.Compile is
          Emit (U);
       end if;
    end Emit_Library_Item;
-
-   ------------------
-   -- Decode_Range --
-   ------------------
-
-   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint) is
-   begin
-      case Nkind (Rng) is
-         when N_Identifier =>
-
-            --  An N_Identifier can either be a type, in which case we look
-            --  at the range of the type, or a constant, in which case we
-            --  look at the initializing expression.
-
-            if Is_Type (Entity (Rng)) then
-               Decode_Range (Scalar_Range (Full_Etype (Rng)), Low, High);
-            else
-               Low := Get_Uint_Value (Rng);
-               High := Low;
-            end if;
-
-         when N_Subtype_Indication =>
-            Decode_Range (Range_Expression (Constraint (Rng)), Low, High);
-
-         when N_Range | N_Signed_Integer_Type_Definition =>
-            Low := Get_Uint_Value (Low_Bound (Rng));
-            High := Get_Uint_Value (High_Bound (Rng));
-
-         when N_Character_Literal | N_Integer_Literal =>
-            Low := Get_Uint_Value (Rng);
-            High := Low;
-
-         when others =>
-            Error_Msg_N ("unknown range operand", Rng);
-            Low := No_Uint;
-            High := No_Uint;
-      end case;
-   end Decode_Range;
 
    ----------
    -- Emit --

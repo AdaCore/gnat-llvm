@@ -34,6 +34,17 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Utils is
 
+   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint)
+     with Pre => Present (Rng);
+   --  Decode the right operand of an N_In or N_Not_In or of a Choice in
+   --  a case statement into the low and high bounds.  If either Low or High
+   --  is No_Uint, it means that we have a nonstatic value, a non-discrete
+   --  value, or we can't find the value.  This should not happen in switch
+   --  statements.
+
+   function Is_Constant_Folded (E : Entity_Id) return Boolean
+     with Pre => Present (E);
+
    function Get_Fullest_View (E : Entity_Id) return Entity_Id
      with Pre => Is_Type_Or_Void (E),
           Post => Is_Type_Or_Void (Get_Fullest_View'Result);

@@ -18,18 +18,64 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
+with Errout;   use Errout;
 with Sem_Mech; use Sem_Mech;
 with Stringt;  use Stringt;
 with Treepr;   use Treepr;
 
-with GNATLLVM.Utils;      use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;    use GNATLLVM.Wrapper;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Helper to add type data (e.g., volatility and TBAA info) to
    --  an Instruction.
+
+   ------------------------
+   -- Is_Constant_Folded --
+   ------------------------
+   function Is_Constant_Folded (E : Entity_Id) return Boolean is
+     (Ekind (E) = E_Constant
+        and then Is_Scalar_Type (Get_Full_View (Full_Etype (E))));
+
+   ------------------
+   -- Decode_Range --
+   ------------------
+
+   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint) is
+   begin
+      case Nkind (Rng) is
+         when N_Identifier =>
+
+            --  An N_Identifier can either be a type, in which case we look
+            --  at the range of the type, or a constant, in which case we
+            --  look at the initializing expression.
+
+            if Is_Type (Entity (Rng)) then
+               Decode_Range (Scalar_Range (Full_Etype (Rng)), Low, High);
+            else
+               Low := Get_Uint_Value (Rng);
+               High := Low;
+            end if;
+
+         when N_Subtype_Indication =>
+            Decode_Range (Range_Expression (Constraint (Rng)), Low, High);
+
+         when N_Range | N_Signed_Integer_Type_Definition =>
+            Low := Get_Uint_Value (Low_Bound (Rng));
+            High := Get_Uint_Value (High_Bound (Rng));
+
+         when N_Character_Literal | N_Integer_Literal =>
+            Low := Get_Uint_Value (Rng);
+            High := Low;
+
+         when others =>
+            Error_Msg_N ("unknown range operand", Rng);
+            Low := No_Uint;
+            High := No_Uint;
+      end case;
+   end Decode_Range;
 
    ---------
    -- Img --

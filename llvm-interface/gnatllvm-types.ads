@@ -130,14 +130,6 @@ package GNATLLVM.Types is
           Post => Present (Convert_To_Elementary_Type'Result);
    --  Variant of above where the type is that of another value (T)
 
-   function Coerce_To_Type (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Coerce_To_Type'Result);
-   --  We want to have Value be of type TE (for example because we're putting
-   --  it into a field of that type.  The front-end considers it an equivalent
-   --  type, but it may not be close enough (e.g., it may be a different
-   --  record subtype), so do what's needed to get it into the proper type.
-
    function Bounds_To_Length
      (Low, High : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (Low) and then Present (High) and then Is_Type (TE)

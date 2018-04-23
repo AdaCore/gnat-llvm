@@ -619,7 +619,7 @@ package body GNATLLVM.Records is
             else
                Result := Insert_Value
                  (Result,
-                  Coerce_To_Type (Emit_Expression (Expression (Expr)), F_Type),
+                  Build_Type_Conversion (Expression (Expr), F_Type),
                   unsigned (F_Info.Field_Ordinal));
             end if;
          end;

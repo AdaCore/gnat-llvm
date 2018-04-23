@@ -518,7 +518,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Add_Global (TE : Entity_Id; Name : String) return GL_Value is
-     (G (Add_Global (Env.Mdl, Create_Type (TE), Name), TE,
+     (G (Add_Global (LLVM_Module, Create_Type (TE), Name), TE,
          Is_Reference => True));
 
    ---------------------

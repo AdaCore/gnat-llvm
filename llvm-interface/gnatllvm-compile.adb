@@ -259,7 +259,7 @@ package body GNATLLVM.Compile is
       --  Current_Source_File := Source_Index (Current_Unit);
 
       if In_Extended_Main_Code_Unit (U) then
-         Env.In_Main_Unit := True;
+         In_Main_Unit := True;
 
          --  ??? Has_No_Elaboration_Code is supposed to be set by default
          --  on subprogram bodies, but this is apparently not the case,
@@ -281,7 +281,7 @@ package body GNATLLVM.Compile is
          --  Should we instead skip these units completely, and generate
          --  referenced items on the fly???
 
-         Env.In_Main_Unit := False;
+         In_Main_Unit := False;
          Emit_Aux (Parent (U));
          Emit (U);
       end if;
@@ -342,7 +342,7 @@ package body GNATLLVM.Compile is
          --  Append to list of statements to put in the elaboration procedure
          --  if in main unit, otherwise simply ignore the statement.
 
-         if Env.In_Main_Unit then
+         if In_Main_Unit then
             Elaboration_Table.Append (Node);
          end if;
 
@@ -387,7 +387,7 @@ package body GNATLLVM.Compile is
             --  Only generate elaboration procedures for library-level packages
             --  and when part of the main unit.
 
-            if Env.In_Main_Unit
+            if In_Main_Unit
               and then Nkind (Parent (Parent (Node))) = N_Compilation_Unit
             then
                if Elaboration_Table.Last = 0 then
@@ -396,7 +396,7 @@ package body GNATLLVM.Compile is
                   declare
                      Unit      : Node_Id := Defining_Unit_Name (Node);
                      Elab_Type : constant Type_T :=
-                       Fn_Ty ((1 .. 0 => <>), Void_Type_In_Context (Env.Ctx));
+                       Fn_Ty ((1 .. 0 => <>), Void_Type);
                      LLVM_Func : GL_Value;
 
                   begin
@@ -414,16 +414,16 @@ package body GNATLLVM.Compile is
                           (LLVM_Func, Unit, Node,
                            Get_Name_String (Chars (Unit)),
                            Get_Name_String (Chars (Unit)) & "___elabs"));
-                     Env.Special_Elaboration_Code := True;
+                     Special_Elaboration_Code := True;
 
                      for J in 1 .. Elaboration_Table.Last loop
-                        Env.Current_Elab_Entity := Elaboration_Table.Table (J);
+                        Current_Elab_Entity := Elaboration_Table.Table (J);
                         Emit (Elaboration_Table.Table (J));
                      end loop;
 
                      Elaboration_Table.Set_Last (0);
-                     Env.Current_Elab_Entity := Empty;
-                     Env.Special_Elaboration_Code := False;
+                     Current_Elab_Entity := Empty;
+                     Special_Elaboration_Code := False;
                      Build_Ret_Void;
                      Pop_Debug_Scope;
                      Leave_Subp;
@@ -443,7 +443,7 @@ package body GNATLLVM.Compile is
                   Push_Lexical_Debug_Scope (Node);
                   Emit_List (Declarations (Node));
 
-                  if not Env.In_Main_Unit then
+                  if not In_Main_Unit then
                      Pop_Debug_Scope;
                      return;
                   end if;
@@ -459,7 +459,7 @@ package body GNATLLVM.Compile is
                                                 (Statements (Stmts));
 
                      Elab_Type : constant Type_T :=
-                       Fn_Ty ((1 .. 0 => <>), Void_Type_In_Context (Env.Ctx));
+                       Fn_Ty ((1 .. 0 => <>), Void_Type);
                      LLVM_Func : GL_Value;
                      Unit      : Node_Id;
 
@@ -503,17 +503,16 @@ package body GNATLLVM.Compile is
                              (LLVM_Func, Unit, Node,
                               Get_Name_String (Chars (Unit)),
                               Get_Name_String (Chars (Unit)) & "___elabs"));
-                        Env.Special_Elaboration_Code := True;
+                        Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop
-                           Env.Current_Elab_Entity :=
-                             Elaboration_Table.Table (J);
+                           Current_Elab_Entity := Elaboration_Table.Table (J);
                            Emit (Elaboration_Table.Table (J));
                         end loop;
 
                         Elaboration_Table.Set_Last (0);
-                        Env.Current_Elab_Entity := Empty;
-                        Env.Special_Elaboration_Code := False;
+                        Current_Elab_Entity := Empty;
+                        Special_Elaboration_Code := False;
 
                         if Has_Stmts then
                            Emit_List (Statements (Stmts));
@@ -543,7 +542,7 @@ package body GNATLLVM.Compile is
             --  subprogram body: just declare this subprogram and add it to
             --  the environment.
 
-            elsif not Env.In_Main_Unit then
+            elsif not In_Main_Unit then
                Discard (Emit_Subprogram_Decl (Get_Acting_Spec (Node)));
 
             else
@@ -643,7 +642,7 @@ package body GNATLLVM.Compile is
 
                if Library_Level
                  or else (Is_Statically_Allocated (Def_Ident)
-                            and then not Env.Special_Elaboration_Code)
+                            and then not Special_Elaboration_Code)
                then
                   --  ??? Will only work for objects of static sizes
 
@@ -661,7 +660,7 @@ package body GNATLLVM.Compile is
 
                   Set_Value (Def_Ident, LLVM_Var);
 
-                  if Env.In_Main_Unit then
+                  if In_Main_Unit then
 
                      --  ??? This code is probably wrong, but is rare enough
                      --  that we'll worry about it later.
@@ -713,7 +712,7 @@ package body GNATLLVM.Compile is
                      Value := Emit_Expression (Expression (Node));
                   end if;
 
-                  if Env.Special_Elaboration_Code then
+                  if Special_Elaboration_Code then
                      LLVM_Var := Get_Value (Def_Ident);
 
                   elsif Present (Address_Clause (Def_Ident)) then
@@ -818,8 +817,8 @@ package body GNATLLVM.Compile is
                --  copy the return value, do that copy instead of returning
                --  it.
 
-               if Present (Env.Return_Address_Param) then
-                  Emit_Assignment (Env.Return_Address_Param, Expression (Node),
+               if Present (Return_Address_Param) then
+                  Emit_Assignment (Return_Address_Param, Expression (Node),
                                    No_GL_Value, True, True);
 
                   Build_Ret_Void;
@@ -1712,7 +1711,7 @@ package body GNATLLVM.Compile is
                   return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
                --  See if this is an entity that's present in our
-               --  activation record.
+               --  activation record. ?? This only handles one level.
 
                elsif Ekind_In (Def_Ident, E_Constant,
                                E_Discriminant,
@@ -1722,14 +1721,14 @@ package body GNATLLVM.Compile is
                                E_Out_Parameter,
                                E_Variable)
                  and then Present (Activation_Record_Component (Def_Ident))
-                 and then Present (Env.Activation_Rec_Param)
-                 and then Get_Value (Scope (Def_Ident)) /= Env.Func
+                 and then Present (Activation_Rec_Param)
+                 and then Get_Value (Scope (Def_Ident)) /= Current_Func
                then
                   declare
                      Component         : constant Entity_Id :=
                        Activation_Record_Component (Def_Ident);
                      Activation_Record : constant GL_Value :=
-                       Env.Activation_Rec_Param;
+                       Activation_Rec_Param;
                      Pointer           : constant GL_Value :=
                        Record_Field_Offset (Activation_Record, Component);
                      Value_Address     : constant GL_Value := Load (Pointer);
@@ -1999,7 +1998,7 @@ package body GNATLLVM.Compile is
 
          begin
             Call (Build_Intrinsic
-                    (Memset, "llvm.memset.p0i8.i", Env.Size_Type),
+                    (Memset, "llvm.memset.p0i8.i", Size_Type),
                   (1 => Bit_Cast (Dest, Standard_A_Char),
                    2 => Const_Null (Standard_Short_Short_Integer),
                    3 => Get_Type_Size (Dest_Type, No_GL_Value),
@@ -2070,8 +2069,7 @@ package body GNATLLVM.Compile is
             end if;
 
             Call (Build_Intrinsic
-                    (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i",
-                     Env.Size_Type),
+                    (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
                   (1 => Bit_Cast (Dest, Standard_A_Char),
                    2 => Bit_Cast (Src, Standard_A_Char),
                    3 => Size,
@@ -3294,7 +3292,7 @@ package body GNATLLVM.Compile is
          then Entity (Identifier (Node)) else Empty);
       This_BB  : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
       Entry_BB : constant Basic_Block_T :=
-        Get_Entry_Basic_Block (LLVM_Value (Env.Func));
+        Get_Entry_Basic_Block (LLVM_Value (Current_Func));
       BB       : Basic_Block_T;
    begin
 

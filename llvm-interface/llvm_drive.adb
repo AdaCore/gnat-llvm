@@ -88,49 +88,47 @@ package body LLVM_Drive is
       --  Initialize the translation environment
 
       Env := new Environ_Record'(Max_Nodes => Last_Node_Id,
-                                 Ctx => Get_Global_Context,
-                                 Func => No_GL_Value,
                                  others => <>);
-      Env.Bld := Create_Builder_In_Context (Env.Ctx);
-      Env.MDBld := Create_MDBuilder_In_Context (Env.Ctx);
-      Env.TBAA_Root := Create_TBAA_Root (Env.MDBld);
-      Env.Mdl := Module_Create_With_Name_In_Context
-        (Get_Name (Defining_Entity (Unit (GNAT_Root))),
-         Env.Ctx);
+      LLVM_Context := Get_Global_Context;
+      Env.Bld := Create_Builder_In_Context (LLVM_Context);
+      MD_Builder := Create_MDBuilder_In_Context (LLVM_Context);
+      LLVM_Module := Module_Create_With_Name_In_Context
+        (Get_Name (Defining_Entity (Unit (GNAT_Root))), LLVM_Context);
       Result := LLVM_Init_Module
-        (Env.Mdl,
+        (LLVM_Module,
          Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))));
       pragma Assert (Result = 0);
-      Env.Module_Data_Layout := Get_Module_Data_Layout (Env.Mdl);
+      TBAA_Root := Create_TBAA_Root (MD_Builder);
+      Module_Data_Layout := Get_Module_Data_Layout (LLVM_Module);
       Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
       Initialize_Debugging;
 
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
 
-      Env.Void_Ptr_Type  := Create_Type (Standard_A_Char);
+      Void_Ptr_Type  := Create_Type (Standard_A_Char);
 
       --  Find the integer type corresponding to the size of a pointer
       --  and use that for our Size Type.
 
       if Get_Pointer_Size = Get_Long_Long_Size then
-         Env.Size_Type := Standard_Long_Long_Integer;
+         Size_Type := Standard_Long_Long_Integer;
       elsif Get_Pointer_Size = Get_Long_Size then
-         Env.Size_Type := Standard_Long_Integer;
+         Size_Type := Standard_Long_Integer;
       else
-         Env.Size_Type := Standard_Integer;
+         Size_Type := Standard_Integer;
       end if;
 
-      Env.LLVM_Size_Type := Create_Type (Env.Size_Type);
+      LLVM_Size_Type := Create_Type (Size_Type);
 
       --  Likewise for the 32-bit integer type
 
       if Get_Long_Long_Size = 32 then
-         Env.Int_32_Type := Standard_Long_Long_Integer;
+         Int_32_Type := Standard_Long_Long_Integer;
       elsif Get_Long_Size = 32 then
-         Env.Int_32_Type := Standard_Long_Integer;
+         Int_32_Type := Standard_Long_Integer;
       else
-         Env.Int_32_Type := Standard_Integer;
+         Int_32_Type := Standard_Integer;
       end if;
 
       --  Actually translate
@@ -140,21 +138,21 @@ package body LLVM_Drive is
       --  Output the translation
 
       Finalize_Debugging;
-      if Verify_Module (Env.Mdl, Print_Message_Action, Null_Address) then
+      if Verify_Module (LLVM_Module, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad `LLVM` code", GNAT_Root);
          if Code_Generation = Dump_IR then
-            Dump_Module (Env.Mdl);
+            Dump_Module (LLVM_Module);
          end if;
 
       else
          case Code_Generation is
             when Dump_IR =>
-               Dump_Module (Env.Mdl);
+               Dump_Module (LLVM_Module);
             when Write_BC =>
                declare
                   S : constant String := Output_File_Name (".bc");
                begin
-                  if Write_Bitcode_To_File (Env.Mdl, S) /= 0
+                  if Write_Bitcode_To_File (LLVM_Module, S) /= 0
                   then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
@@ -168,7 +166,7 @@ package body LLVM_Drive is
                   Err_Msg_Length : Integer := Err_Msg_Type'Length;
 
                begin
-                  if Print_Module_To_File (Env.Mdl, S, Ptr_Err_Msg'Address)
+                  if Print_Module_To_File (LLVM_Module, S, Ptr_Err_Msg'Address)
                   then
                      for I in Err_Msg_Type'Range loop
                         if Ptr_Err_Msg.all (I) = ASCII.NUL then
@@ -187,7 +185,7 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".s");
                begin
-                  if LLVM_Write_Module (Env.Mdl, False, S) /= 0 then
+                  if LLVM_Write_Module (LLVM_Module, False, S) /= 0 then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
                end;
@@ -196,7 +194,7 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".o");
                begin
-                  if LLVM_Write_Module (Env.Mdl, True, S) /= 0 then
+                  if LLVM_Write_Module (LLVM_Module, True, S) /= 0 then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
                end;
@@ -206,7 +204,7 @@ package body LLVM_Drive is
       --  Release the environment
 
       Dispose_Builder (Env.Bld);
-      Dispose_Module (Env.Mdl);
+      Dispose_Module (LLVM_Module);
    end GNAT_To_LLVM;
 
    ------------------------

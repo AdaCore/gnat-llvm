@@ -212,7 +212,7 @@ package body GNATLLVM.Arrays is
       --  trying to find some suitable type, we use Size_Type, which will
       --  also make thing simpler for some of our callers.
 
-      return Bounds_To_Length (Low_Bound, High_Bound, Env.Size_Type);
+      return Bounds_To_Length (Low_Bound, High_Bound, Size_Type);
    end Get_Array_Length;
 
    -------------------------------
@@ -352,7 +352,7 @@ package body GNATLLVM.Arrays is
       --  the types making the LLVM type.
 
       if Must_Use_Opaque then
-         Typ := Struct_Create_Named (Env.Ctx, "");
+         Typ := Struct_Create_Named (LLVM_Context, "");
       else
          for I in reverse First_Info .. Array_Info.Last loop
             declare
@@ -608,7 +608,7 @@ package body GNATLLVM.Arrays is
       --  a wider type to use.  We use the first, which will be the narrowest.
 
       if not Is_Unsigned_Type (Our_Type)
-        or else RM_Size (Our_Type) >= RM_Size (Env.Size_Type)
+        or else RM_Size (Our_Type) >= RM_Size (Size_Type)
       then
          return Our_Type;
       end if;

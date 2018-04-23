@@ -78,8 +78,6 @@ package body GNATLLVM.Subprograms is
    is
       Width         : constant Uint   := Esize (TE);
       Full_Name     : constant String := Name & UI_Image (Width);
-      Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
-      Void_Type     : constant Type_T := Void_Type_In_Context (Env.Ctx);
       LLVM_Typ      : constant Type_T := Create_Type (TE);
       Return_TE     : Entity_Id := TE;
       Fun_Ty        : Type_T;
@@ -110,13 +108,13 @@ package body GNATLLVM.Subprograms is
             Return_TE := Standard_Void_Type;
             Fun_Ty := Fn_Ty
               ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
-                3 => Env.LLVM_Size_Type, 4 => Int_Ty (32), 5 => Int_Ty (1)),
+                3 => LLVM_Size_Type, 4 => Int_Ty (32), 5 => Int_Ty (1)),
                Void_Type);
 
          when Memset =>
             Return_TE := Standard_Void_Type;
             Fun_Ty := Fn_Ty
-              ((1 => Void_Ptr_Type, 2 => Int_Ty (8), 3 => Env.LLVM_Size_Type,
+              ((1 => Void_Ptr_Type, 2 => Int_Ty (8), 3 => LLVM_Size_Type,
                 4 => Int_Ty (32), 5 => Int_Ty (1)),
                Void_Type);
       end case;
@@ -134,8 +132,8 @@ package body GNATLLVM.Subprograms is
    begin
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
-           Add_Function ("malloc", Fn_Ty ((1 => Env.LLVM_Size_Type),
-                                          Env.Void_Ptr_Type),
+           Add_Function ("malloc", Fn_Ty ((1 => LLVM_Size_Type),
+                                          Void_Ptr_Type),
                          Standard_A_Char);
       end if;
 
@@ -151,8 +149,8 @@ package body GNATLLVM.Subprograms is
       if No (Memory_Compare_Fn) then
          Memory_Compare_Fn := Add_Function
            ("memcmp",
-            Fn_Ty ((1 => Env.Void_Ptr_Type, 2 => Env.Void_Ptr_Type,
-                    3 => Env.LLVM_Size_Type),
+            Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
+                    3 => LLVM_Size_Type),
                    Create_Type (Standard_Integer)),
             Standard_Integer);
       end if;
@@ -168,7 +166,7 @@ package body GNATLLVM.Subprograms is
    begin
       if No (Stack_Save_Fn) then
          Stack_Save_Fn := Add_Function
-           ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Env.Void_Ptr_Type),
+           ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type),
             Standard_A_Char);
       end if;
 
@@ -184,8 +182,7 @@ package body GNATLLVM.Subprograms is
       if No (Stack_Restore_Fn) then
          Stack_Restore_Fn := Add_Function
            ("llvm.stackrestore",
-            Fn_Ty ((1 => Env.Void_Ptr_Type), Void_Type_In_Context (Env.Ctx)),
-            Standard_Void_Type);
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Type), Standard_Void_Type);
       end if;
 
       return Stack_Restore_Fn;
@@ -200,10 +197,9 @@ package body GNATLLVM.Subprograms is
       if No (LCH_Fn) then
          LCH_Fn := Add_Function
            ("__gnat_last_chance_handler",
-            Fn_Ty ((1 => Env.Void_Ptr_Type,
+            Fn_Ty ((1 => Void_Ptr_Type,
                     2 => Create_Type (Standard_Integer)),
-                   Void_Type_In_Context (Env.Ctx)),
-            Standard_Void_Type);
+                   Void_Type), Standard_Void_Type);
       end if;
 
       return LCH_Fn;
@@ -256,7 +252,7 @@ package body GNATLLVM.Subprograms is
          if Ekind (Param) = E_In_Parameter
            and then Is_Activation_Record (Param)
          then
-            Env.Activation_Rec_Param := LLVM_Param;
+            Activation_Rec_Param := LLVM_Param;
          end if;
 
          Param_Num := Param_Num + 1;
@@ -271,7 +267,7 @@ package body GNATLLVM.Subprograms is
          LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
                           Return_Typ, Is_Reference => True);
          Set_Value_Name (LLVM_Value (LLVM_Param), "return");
-         Env.Return_Address_Param := LLVM_Param;
+         Return_Address_Param := LLVM_Param;
       end if;
 
       Emit_List (Declarations (Node));
@@ -353,7 +349,7 @@ package body GNATLLVM.Subprograms is
                --  Go levels up via the ARECnU field if needed
 
                for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-                  Result := Load (GEP (Env.Size_Type, Result,
+                  Result := Load (GEP (Size_Type, Result,
                                        (1 => Const_Null_32,
                                         2 => Const_Null_32),
                                        "ARECnF.all.ARECnU"));
@@ -389,20 +385,18 @@ package body GNATLLVM.Subprograms is
    -------------------
 
    procedure Emit_LCH_Call (Node : Node_Id) is
-      Void_Ptr_Type : constant Type_T := Pointer_Type (Int_Ty (8), 0);
       Int_Type      : constant Type_T := Create_Type (Standard_Integer);
       Args          : Value_Array (1 .. 2);
 
       File : constant String :=
         Get_Name_String (Reference_Name (Get_Source_File_Index (Sloc (Node))));
 
-      Element_Type : constant Type_T :=
-        Int_Type_In_Context (Env.Ctx, 8);
+      Element_Type : constant Type_T := Int_Ty (8);
       Array_Type   : constant Type_T :=
         LLVM.Core.Array_Type (Element_Type, File'Length + 1);
       Elements     : array (1 .. File'Length + 1) of Value_T;
       V            : constant Value_T :=
-                       Add_Global (Env.Mdl, Array_Type, "str-lit");
+                       Add_Global (LLVM_Module, Array_Type, "str-lit");
 
    begin
       --  Build a call to __gnat_last_chance_handler (FILE, LINE)
@@ -431,7 +425,7 @@ package body GNATLLVM.Subprograms is
          GEP
            (Env.Bld,
             V,
-            (Const_Int (Env.LLVM_Size_Type, 0, Sign_Extend => False),
+            (Const_Int (LLVM_Size_Type, 0, Sign_Extend => False),
              Const_Int (Create_Type (Standard_Positive),
                         0, Sign_Extend => False)),
             ""),
@@ -583,7 +577,7 @@ package body GNATLLVM.Subprograms is
 
             LLVM_Func :=
               G (Add_Function
-                   (Env.Mdl,
+                   (LLVM_Module,
                     (if Is_Compilation_Unit (Def_Ident)
                        then "_ada_" & Subp_Base_Name
                        else Subp_Base_Name),

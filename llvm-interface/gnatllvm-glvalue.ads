@@ -302,23 +302,23 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Type (TE), Post => Present (Const_Real'Result);
 
    function Size_Const_Int (N : Uint) return GL_Value is
-     (Const_Int (Env.Size_Type, N))
+     (Const_Int (Size_Type, N))
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
      (N : unsigned_long_long; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Env.Size_Type, N, Sign_Extend))
+     (Const_Int (Size_Type, N, Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
 
    function Const_Int_32 (N : Uint) return GL_Value is
-     (Const_Int (Env.Int_32_Type, N))
+     (Const_Int (Int_32_Type, N))
      with Pre  => N /= No_Uint, Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
      (N : unsigned_long_long; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Env.Int_32_Type, N, Sign_Extend))
+     (Const_Int (Int_32_Type, N, Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
    function Const_Null_32 return GL_Value
@@ -808,7 +808,7 @@ package GNATLLVM.GLValue is
 
    function Add_Function
      (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value is
-     (G (Add_Function (Env.Mdl, Name, T), Return_TE,
+     (G (Add_Function (LLVM_Module, Name, T), Return_TE,
          Is_Subprogram_Type => True))
      with Pre  => Present (T) and then Is_Type_Or_Void (Return_TE),
           Post => Present (Add_Function'Result);

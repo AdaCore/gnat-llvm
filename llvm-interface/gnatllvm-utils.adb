@@ -372,7 +372,7 @@ package body GNATLLVM.Utils is
 
       if Present (TBAA) then
          Add_TBAA_Access
-           (Inst, Create_TBAA_Access_Tag (Env.MDBld, TBAA, TBAA, 0));
+           (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
       end if;
    end Add_Type_Data_To_Instruction;
 

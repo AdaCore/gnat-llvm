@@ -153,30 +153,30 @@ package GNATLLVM.Types is
 
    function Get_LLVM_Type_Size (T : Type_T) return unsigned_long_long
    is
-     ((Size_Of_Type_In_Bits (Env.Module_Data_Layout, T) + 7) / 8)
+     ((Size_Of_Type_In_Bits (Module_Data_Layout, T) + 7) / 8)
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bytes
 
    function Get_LLVM_Type_Size (T : Type_T) return GL_Value
    is
-     (Const_Int (Env.Size_Type, Get_LLVM_Type_Size (T), False));
+     (Const_Int (Size_Type, Get_LLVM_Type_Size (T), False));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
    function Get_LLVM_Type_Size_In_Bits (T : Type_T) return unsigned_long_long
    is
-     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, T))
+     (Size_Of_Type_In_Bits (Module_Data_Layout, T))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
    function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return unsigned_long_long
    is
-     (Size_Of_Type_In_Bits (Env.Module_Data_Layout, Type_Of (V.Value)))
+     (Size_Of_Type_In_Bits (Module_Data_Layout, Type_Of (V.Value)))
      with Pre => Present (V);
    --  Return the size of an LLVM type, in bits
 
    function Get_LLVM_Type_Size_In_Bits (T : Type_T) return GL_Value
    is
-     (Const_Int (Env.Size_Type, Get_LLVM_Type_Size_In_Bits (T), False))
+     (Const_Int (Size_Type, Get_LLVM_Type_Size_In_Bits (T), False))
      with Pre  => Present (T),
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
    --  Return the size of an LLVM type, in bits, as an LLVM constant
@@ -207,12 +207,12 @@ package GNATLLVM.Types is
 
    function Convert_To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),
-          Post => Type_Of (Convert_To_Size_Type'Result) = Env.LLVM_Size_Type;
+          Post => Type_Of (Convert_To_Size_Type'Result) = LLVM_Size_Type;
    --  Convert V to Size_Type.  This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 
    function Get_Type_Alignment (T : Type_T) return unsigned is
-     (ABI_Alignment_Of_Type (Env.Module_Data_Layout, T))
+     (ABI_Alignment_Of_Type (Module_Data_Layout, T))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 

@@ -199,48 +199,62 @@ package GNATLLVM.Environment is
    --  to the innermost loop.
 
    type Environ_Record (Max_Nodes : Node_Id) is record
-      Ctx                       : LLVM.Types.Context_T;
       Bld                       : Builder_T;
-      MDBld                     : MD_Builder_T;
-      DIBld                     : DI_Builder_T;
-      Debug_Compile_Unit        : Metadata_T;
-      Mdl                       : Module_T;
-      TBAA_Root                 : Metadata_T;
-      Module_Data_Layout        : Target_Data_T;
+      LLVM_Info                 : LLVM_Info_Array (First_Node_Id .. Max_Nodes);
       --  Pure-LLVM environment : LLVM context, instruction builder, current
       --  module, and current module data layout.
-
-      Func                      : GL_Value;
-      --  Pointer to the current function
-
-      Activation_Rec_Param      : GL_Value;
-      --  Parameter to this subprogram, if any, that represents an
-      --  activtion record.
-
-      Return_Address_Param      : GL_Value;
-      --  Parameter to this subprogram, if any, that represent the address
-      --  to which we are to copy the return value
-
-      Size_Type                 : Entity_Id;
-      LLVM_Size_Type            : Type_T;
-      --  Types to use for sizes
-
-      Void_Ptr_Type             : Type_T;
-      --  Pointer to arbitrary memory (we use i8 *); equivalent of
-      --  Standard_A_Char.
-
-      Int_32_Type               : Entity_Id;
-      --  GNAT type for 32-bit integers (for GEP indexes)
-
-      In_Main_Unit              : Boolean := False;
-      Special_Elaboration_Code  : Boolean := False;
-      Current_Elab_Entity       : Node_Id := Empty;
-
-      LLVM_Info                 : LLVM_Info_Array (First_Node_Id .. Max_Nodes);
    end record;
 
    Env : Environ;
    --  Pointer to above record
+
+   LLVM_Context             : Context_T;
+   --  The current LLVM Context
+
+   LLVM_Module              : Module_T;
+   --  The LLVM Module being compiled
+
+   MD_Builder               : MD_Builder_T;
+   --  Metadata builder
+
+   DI_Builder               : DI_Builder_T;
+   --  Debug Info builder
+
+   Current_Func             : GL_Value := No_GL_Value;
+   --  Pointer to the current function
+
+   TBAA_Root                : Metadata_T;
+   --  Root of tree for Type-Based alias Analysis (TBAA) metadata
+
+   Debug_Compile_Unit       : Metadata_T;
+   --  DICompilleUnit metadata for the main compile unit
+
+   Module_Data_Layout       : Target_Data_T;
+   --  LLVM current module data layout.
+
+   Activation_Rec_Param     : GL_Value;
+   --  Parameter to this subprogram, if any, that represents an
+   --  activtion record.
+
+   Return_Address_Param     : GL_Value;
+   --  Parameter to this subprogram, if any, that represent the address
+   --  to which we are to copy the return value
+
+   Size_Type                : Entity_Id;
+   LLVM_Size_Type           : Type_T;
+   --  Types to use for sizes
+
+   Void_Ptr_Type            : Type_T;
+   --  Pointer to arbitrary memory (we use i8 *); equivalent of
+   --  Standard_A_Char.
+
+   Int_32_Type              : Entity_Id;
+   --  GNAT type for 32-bit integers (for GEP indexes)
+
+   In_Main_Unit             : Boolean := False;
+   Special_Elaboration_Code : Boolean := False;
+   Current_Elab_Entity      : Node_Id := Empty;
+   --  Variables to identify what we're compiling
 
    function Library_Level return Boolean;
 

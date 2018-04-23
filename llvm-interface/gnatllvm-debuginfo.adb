@@ -79,10 +79,10 @@ package body GNATLLVM.DebugInfo is
    procedure Initialize_Debugging is
    begin
       if Emit_Debug_Info then
-         Env.DIBld := Create_Debug_Builder (Env.Mdl);
-         Env.Debug_Compile_Unit :=
+         DI_Builder := Create_Debug_Builder (LLVM_Module);
+         Debug_Compile_Unit :=
            Create_Debug_Compile_Unit
-           (Env.DIBld, Get_Debug_File_Node (Main_Source_File));
+           (DI_Builder, Get_Debug_File_Node (Main_Source_File));
       end if;
    end Initialize_Debugging;
 
@@ -93,7 +93,7 @@ package body GNATLLVM.DebugInfo is
    procedure Finalize_Debugging is
    begin
       if Emit_Debug_Info then
-         Finalize_Debug_Info (Env.DIBld);
+         Finalize_Debug_Info (DI_Builder);
       end if;
    end Finalize_Debugging;
 
@@ -118,7 +118,7 @@ package body GNATLLVM.DebugInfo is
          Name      : constant String :=
            Get_Name_String (Debug_Source_Name (File));
          DIFile    : constant Metadata_T :=
-           Create_Debug_File (Env.DIBld, Name,
+           Create_Debug_File (DI_Builder, Name,
                               Full_Name (1 .. Full_Name'Length - Name'Length));
       begin
          DI_Cache (File) := DIFile;
@@ -140,8 +140,7 @@ package body GNATLLVM.DebugInfo is
    begin
       if Emit_Debug_Info then
          return Create_Debug_Subprogram
-           (Env.DIBld,
-            LLVM_Value (Func),
+           (DI_Builder, LLVM_Value (Func),
             Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
             Name, Ext_Name, Integer (Get_Logical_Line_Number (Sloc (N))));
       else
@@ -158,7 +157,7 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info and then not Library_Level then
          Push_Debug_Scope
            (Create_Debug_Lexical_Block
-              (Env.DIBld, Current_Debug_Scope,
+              (DI_Builder, Current_Debug_Scope,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
                Integer (Get_Logical_Line_Number (Sloc (N))),
                Integer (Get_Column_Number (Sloc (N)))));

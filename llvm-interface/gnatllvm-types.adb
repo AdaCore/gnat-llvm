@@ -60,7 +60,7 @@ package body GNATLLVM.Types is
      (Types : Type_Array; Packed : Boolean := False) return Type_T is
    begin
       return Struct_Type_In_Context
-        (Env.Ctx, Types'Address, Types'Length, Packed);
+        (LLVM_Context, Types'Address, Types'Length, Packed);
    end Build_Struct_Type;
 
    ---------------------------
@@ -549,23 +549,23 @@ package body GNATLLVM.Types is
                      pragma Assert (UI_Is_In_Int_Range (Size));
                      case UI_To_Int (Size) is
                         when 32 =>
-                           T := Float_Type_In_Context (Env.Ctx);
+                           T := Float_Type_In_Context (LLVM_Context);
                         when 64 =>
-                           T := Double_Type_In_Context (Env.Ctx);
+                           T := Double_Type_In_Context (LLVM_Context);
                         when 128 =>
                            --  Extended precision; not IEEE_128
-                           T := X86_F_P80_Type_In_Context (Env.Ctx);
+                           T := X86_F_P80_Type_In_Context (LLVM_Context);
                         when 80 | 96 =>
-                           T := X86_F_P80_Type_In_Context (Env.Ctx);
+                           T := X86_F_P80_Type_In_Context (LLVM_Context);
                         when others =>
                            --  ??? Double check that
-                           T := F_P128_Type_In_Context (Env.Ctx);
+                           T := F_P128_Type_In_Context (LLVM_Context);
                      end case;
 
                   when AAMP =>
                      --  Not supported
                      Error_Msg_N ("unsupported floating point type", TE);
-                     T := Void_Type_In_Context (Env.Ctx);
+                     T := Void_Type;
                end case;
             end;
 
@@ -605,7 +605,7 @@ package body GNATLLVM.Types is
          when E_Incomplete_Type =>
             --  This is a taft amendment type, return a dummy type
 
-            T := Void_Type_In_Context (Env.Ctx);
+            T := Void_Type;
 
          when E_Private_Type
             | E_Private_Subtype
@@ -645,7 +645,7 @@ package body GNATLLVM.Types is
                        E_Floating_Point_Type
       then
          return Create_TBAA_Scalar_Type_Node
-           (Env.MDBld, Get_Name (TE), Env.TBAA_Root);
+           (MD_Builder, Get_Name (TE), TBAA_Root);
       else
          return No_Metadata_T;
       end if;
@@ -706,8 +706,7 @@ package body GNATLLVM.Types is
    is
       LLVM_Return_Typ : Type_T :=
         (if Ekind (Return_Type) = E_Void
-         then Void_Type_In_Context (Env.Ctx)
-         else Create_Type (Return_Type));
+         then Void_Type else Create_Type (Return_Type));
       Orig_Arg_Count  : constant Nat := Count_Params (Param_Ident);
       Args_Count      : constant Nat :=
         Orig_Arg_Count + (if Takes_S_Link then 1 else 0) +
@@ -741,8 +740,7 @@ package body GNATLLVM.Types is
       --  Set the argument for the static link, if any
 
       if Takes_S_Link then
-         Arg_Types (Orig_Arg_Count + 1) :=
-           Pointer_Type (Int8_Type_In_Context (Env.Ctx), 0);
+         Arg_Types (Orig_Arg_Count + 1) := Void_Ptr_Type;
       end if;
 
       --  If the return type has dynamic size, we need to add a parameter
@@ -752,7 +750,7 @@ package body GNATLLVM.Types is
         and then Is_Dynamic_Size (Return_Type)
       then
          Arg_Types (Arg_Types'Last) := Create_Access_Type (Return_Type);
-         LLVM_Return_Typ := Void_Type_In_Context (Env.Ctx);
+         LLVM_Return_Typ := Void_Type;
       end if;
 
       return Fn_Ty (Arg_Types, LLVM_Return_Typ);
@@ -767,7 +765,7 @@ package body GNATLLVM.Types is
 
    begin
       return
-        Build_Struct_Type ((1 => Env.Void_Ptr_Type, 2 => Env.Void_Ptr_Type));
+        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
    end Create_Subprogram_Access_Type;
 
    -----------------------
@@ -817,7 +815,7 @@ package body GNATLLVM.Types is
 
    function Convert_To_Size_Type (V : GL_Value) return GL_Value is
    begin
-      return Convert_To_Elementary_Type (V, Env.Size_Type);
+      return Convert_To_Elementary_Type (V, Size_Type);
    end Convert_To_Size_Type;
 
    ------------------------

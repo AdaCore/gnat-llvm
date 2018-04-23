@@ -348,7 +348,7 @@ package body GNATLLVM.Records is
       --  Then initialize our first record info table entry, which we know
       --  will be used.
 
-      LLVM_Type := Struct_Create_Named (Env.Ctx, Get_Name (Def_Ident));
+      LLVM_Type := Struct_Create_Named (LLVM_Context, Get_Name (Def_Ident));
       Set_Type (Def_Ident, LLVM_Type);
       Record_Info_Table.Increment_Last;
       Cur_Idx := Record_Info_Table.Last;

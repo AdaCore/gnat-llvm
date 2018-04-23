@@ -245,11 +245,6 @@ package GNATLLVM.Environment is
    Int_32_Type              : Entity_Id;
    --  GNAT type for 32-bit integers (for GEP indexes)
 
-   In_Main_Unit             : Boolean := False;
-   Special_Elaboration_Code : Boolean := False;
-   Current_Elab_Entity      : Node_Id := Empty;
-   --  Variables to identify what we're compiling
-
    function Library_Level return Boolean;
 
    function Get_Type        (TE : Entity_Id) return Type_T

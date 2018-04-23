@@ -221,6 +221,12 @@ package body GNATLLVM.Compile is
       Table_Name           => "LValue_Pair_Table");
    --  Table of intermediate results for Emit_LValue
 
+   In_Main_Unit             : Boolean := False;
+   --  True if we're currently processing the main unit
+
+   Special_Elaboration_Code : Boolean := False;
+   --  True if we're compiling an elaboration procedure
+
    -----------------------
    -- Emit_Library_Item --
    -----------------------
@@ -417,12 +423,10 @@ package body GNATLLVM.Compile is
                      Special_Elaboration_Code := True;
 
                      for J in 1 .. Elaboration_Table.Last loop
-                        Current_Elab_Entity := Elaboration_Table.Table (J);
                         Emit (Elaboration_Table.Table (J));
                      end loop;
 
                      Elaboration_Table.Set_Last (0);
-                     Current_Elab_Entity := Empty;
                      Special_Elaboration_Code := False;
                      Build_Ret_Void;
                      Pop_Debug_Scope;
@@ -506,12 +510,10 @@ package body GNATLLVM.Compile is
                         Special_Elaboration_Code := True;
 
                         for J in 1 .. Elaboration_Table.Last loop
-                           Current_Elab_Entity := Elaboration_Table.Table (J);
                            Emit (Elaboration_Table.Table (J));
                         end loop;
 
                         Elaboration_Table.Set_Last (0);
-                        Current_Elab_Entity := Empty;
                         Special_Elaboration_Code := False;
 
                         if Has_Stmts then

@@ -1830,7 +1830,7 @@ package body GNATLLVM.Compile is
                --  the object type and an initial value for the object.
 
                if Is_Entity_Name (Expr) then
-                  Typ   := Entity (Expr);
+                  Typ   := Get_Fullest_View (Entity (Expr));
                   Value := No_GL_Value;
                else
                   pragma Assert (Nkind (Expr) = N_Qualified_Expression);

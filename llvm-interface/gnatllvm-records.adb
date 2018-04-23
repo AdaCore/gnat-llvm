@@ -396,6 +396,16 @@ package body GNATLLVM.Records is
       This_Align : unsigned;
 
    begin
+      --  If we're passed V, add it to the list that Get_Matching_Value
+      --  will search if we run into a discriminant in one of the computations
+      --  below.
+
+      if Present (V) then
+         Add_To_LValue_List (V);
+      end if;
+
+      --  Look at each piece of the record and find its value and alignment
+
       while Present (Cur_Idx) and then Cur_Idx /= Idx loop
          RI := Record_Info_Table.Table (Cur_Idx);
          if Present (RI.LLVM_Type) then

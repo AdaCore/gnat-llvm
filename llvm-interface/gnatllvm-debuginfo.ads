@@ -67,7 +67,7 @@ package GNATLLVM.DebugInfo is
    --  Push a lexical scope starting at N into the debug stack
 
    procedure Set_Debug_Pos_At_Node (N : Node_Id)
-     with Pre => Env /= null and then Present (N);
+     with Pre => Present (N);
    --  Set builder position for debugging to the Sloc of N.
 
 end GNATLLVM.DebugInfo;

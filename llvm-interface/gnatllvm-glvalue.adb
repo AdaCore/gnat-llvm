@@ -147,7 +147,7 @@ package body GNATLLVM.GLValue is
    ------------
 
    function Alloca (TE : Entity_Id; Name : String := "") return GL_Value is
-      Inst : constant Value_T := Alloca (Env.Bld, Create_Type (TE), Name);
+      Inst : constant Value_T := Alloca (IR_Builder, Create_Type (TE), Name);
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
       return G_Ref (Inst, TE);
@@ -163,7 +163,8 @@ package body GNATLLVM.GLValue is
       Name     : String := "") return GL_Value
    is
       Inst : constant Value_T :=
-        Array_Alloca (Env.Bld, Create_Type (TE), LLVM_Value (Num_Elts), Name);
+        Array_Alloca (IR_Builder, Create_Type (TE),
+                      LLVM_Value (Num_Elts), Name);
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
       return G_Ref (Inst, TE);
@@ -233,7 +234,7 @@ package body GNATLLVM.GLValue is
    function Int_To_Ptr
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Int_To_Ptr (Env.Bld, LLVM_Value (V), Create_Type (TE), Name),
+     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
          TE));
 
    ----------------
@@ -243,7 +244,7 @@ package body GNATLLVM.GLValue is
    function Int_To_Ref
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-      (G_Ref (Int_To_Ptr (Env.Bld, LLVM_Value (V),
+      (G_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
                           Pointer_Type (Create_Type (TE), 0),
                           Name),
               TE));
@@ -255,7 +256,7 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Int
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Ptr_To_Int (Env.Bld, LLVM_Value (V), Create_Type (TE), Name),
+     (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
          TE));
 
    --------------
@@ -265,7 +266,7 @@ package body GNATLLVM.GLValue is
    function Bit_Cast
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Bit_Cast (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (Bit_Cast (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    ------------------
    -- Pointer_Cast --
@@ -274,7 +275,7 @@ package body GNATLLVM.GLValue is
    function Pointer_Cast
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Pointer_Cast (Env.Bld, LLVM_Value (V), Create_Type (TE), Name),
+     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
          TE));
 
    ----------------
@@ -284,7 +285,7 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Ref
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-      (G_Ref (Pointer_Cast (Env.Bld, LLVM_Value (V),
+      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                             Pointer_Type (Create_Type (TE), 0), Name),
               TE));
 
@@ -295,7 +296,7 @@ package body GNATLLVM.GLValue is
    function Trunc
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Trunc (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (Trunc (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    -----------
    -- S_Ext --
@@ -304,7 +305,7 @@ package body GNATLLVM.GLValue is
    function S_Ext
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (S_Ext (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (S_Ext (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    -----------
    -- Z_Ext --
@@ -313,7 +314,7 @@ package body GNATLLVM.GLValue is
    function Z_Ext
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Z_Ext (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (Z_Ext (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
    -- FP_Trunc --
@@ -322,7 +323,7 @@ package body GNATLLVM.GLValue is
    function FP_Trunc
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (FP_Trunc (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (FP_Trunc (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    ------------
    -- FP_Ext --
@@ -331,7 +332,7 @@ package body GNATLLVM.GLValue is
    function FP_Ext
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (FP_Ext (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (FP_Ext (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
    -- FP_To_SI --
@@ -340,7 +341,7 @@ package body GNATLLVM.GLValue is
    function FP_To_SI
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (FP_To_SI (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (FP_To_SI (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
    -- FP_To_UI --
@@ -349,7 +350,7 @@ package body GNATLLVM.GLValue is
    function FP_To_UI
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (FP_To_UI (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (FP_To_UI (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
    -- UI_To_FP --
@@ -358,7 +359,7 @@ package body GNATLLVM.GLValue is
    function UI_To_FP
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (UI_To_FP (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (UI_To_FP (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
    -- SI_To_FP --
@@ -367,7 +368,7 @@ package body GNATLLVM.GLValue is
    function SI_To_FP
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (SI_To_FP (Env.Bld, LLVM_Value (V), Create_Type (TE), Name), TE));
+     (G (SI_To_FP (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    -------------------
    -- Build_Cond_Br --
@@ -376,7 +377,7 @@ package body GNATLLVM.GLValue is
    procedure Build_Cond_Br (C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
    is
    begin
-      Discard (Build_Cond_Br (Env.Bld, LLVM_Value (C_If), C_Then, C_Else));
+      Discard (Build_Cond_Br (IR_Builder, LLVM_Value (C_If), C_Then, C_Else));
    end Build_Cond_Br;
 
    ---------------
@@ -385,7 +386,7 @@ package body GNATLLVM.GLValue is
 
    procedure Build_Ret (G : GL_Value) is
    begin
-      Discard (Build_Ret (Env.Bld, LLVM_Value (G)));
+      Discard (Build_Ret (IR_Builder, LLVM_Value (G)));
    end Build_Ret;
 
    --------------------
@@ -394,7 +395,7 @@ package body GNATLLVM.GLValue is
 
    procedure Build_Ret_Void is
    begin
-      Discard (Build_Ret_Void (Env.Bld));
+      Discard (Build_Ret_Void (IR_Builder));
    end Build_Ret_Void;
 
    -----------------------
@@ -403,7 +404,7 @@ package body GNATLLVM.GLValue is
 
    procedure Build_Unreachable is
    begin
-      Discard (Build_Unreachable (Env.Bld));
+      Discard (Build_Unreachable (IR_Builder));
    end Build_Unreachable;
 
    ---------------
@@ -423,7 +424,7 @@ package body GNATLLVM.GLValue is
          Values (J) := LLVM_Value (GL_Values (J));
       end loop;
 
-      Our_Phi := Phi (Env.Bld, Type_Of (GL_Values (GL_Values'First)), Name);
+      Our_Phi := Phi (IR_Builder, Type_Of (GL_Values (GL_Values'First)), Name);
       Add_Incoming (Our_Phi, Values'Address, BBs'Address, Values'Length);
       return G_From (Our_Phi, GL_Values (GL_Values'First));
    end Build_Phi;
@@ -454,7 +455,7 @@ package body GNATLLVM.GLValue is
          Val_Idxs (J) := LLVM_Value (Indices (J));
       end loop;
 
-      Result := In_Bounds_GEP (Env.Bld, LLVM_Value (Ptr), Val_Idxs'Address,
+      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
       return G_Ref (Result, Result_Type);
    end GEP;
@@ -476,7 +477,8 @@ package body GNATLLVM.GLValue is
       if Has_Known_Etype (Expr) then
          Store_With_Type (Etype (Expr), LLVM_Value (Expr), LLVM_Value (Ptr));
       else
-         Discard (Build_Store (Env.Bld, LLVM_Value (Expr), LLVM_Value (Ptr)));
+         Discard (Build_Store (IR_Builder, LLVM_Value (Expr),
+                               LLVM_Value (Ptr)));
       end if;
    end Store;
 
@@ -498,7 +500,7 @@ package body GNATLLVM.GLValue is
          Arg_Values (J) := LLVM_Value (Args (J));
       end loop;
 
-      Result := Call (Env.Bld, LLVM_Value (Func),
+      Result := Call (IR_Builder, LLVM_Value (Func),
                       Arg_Values'Address, Arg_Values'Length, Name);
       return G (Result, Result_Type);
    end Call;

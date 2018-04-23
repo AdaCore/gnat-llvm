@@ -171,7 +171,7 @@ package body GNATLLVM.DebugInfo is
    procedure Set_Debug_Pos_At_Node (N : Node_Id) is
    begin
       if Emit_Debug_Info and then Has_Debug_Scope then
-         Set_Debug_Loc (Env.Bld, Current_Debug_Scope,
+         Set_Debug_Loc (IR_Builder, Current_Debug_Scope,
                         Integer (Get_Logical_Line_Number (Sloc (N))),
                         Integer (Get_Column_Number (Sloc (N))));
       end if;

@@ -421,9 +421,9 @@ package body GNATLLVM.Subprograms is
       Set_Global_Constant (V, True);
 
       Args (1) := Bit_Cast
-        (Env.Bld,
+        (IR_Builder,
          GEP
-           (Env.Bld,
+           (IR_Builder,
             V,
             (Const_Int (LLVM_Size_Type, 0, Sign_Extend => False),
              Const_Int (Create_Type (Standard_Positive),
@@ -438,7 +438,7 @@ package body GNATLLVM.Subprograms is
         (Int_Type,
          unsigned_long_long (Get_Logical_Line_Number (Sloc (Node))),
          Sign_Extend => False);
-      Discard (Call (Env.Bld, LLVM_Value (Get_LCH_Fn),
+      Discard (Call (IR_Builder, LLVM_Value (Get_LCH_Fn),
                      Args'Address, Args'Length, ""));
    end Emit_LCH_Call;
 

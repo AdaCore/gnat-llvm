@@ -1360,7 +1360,7 @@ package body GNATLLVM.Compile is
       --  true. In the case of Or, evaluate it when Left is false.
 
       LHS := Emit_Expression (Left);
-      Block_Left_Expr_End := Get_Insert_Block (Env.Bld);
+      Block_Left_Expr_End := Get_Insert_Block;
 
       if Op = N_And_Then then
          Build_Cond_Br (LHS, Block_Right_Expr, Block_Exit);
@@ -1373,7 +1373,7 @@ package body GNATLLVM.Compile is
       Position_Builder_At_End (Block_Right_Expr);
       RHS := Emit_Expression (Right);
 
-      Block_Right_Expr_End := Get_Insert_Block (Env.Bld);
+      Block_Right_Expr_End := Get_Insert_Block;
       Build_Br (Block_Exit);
 
       Position_Builder_At_End (Block_Exit);
@@ -2646,7 +2646,7 @@ package body GNATLLVM.Compile is
       LHS              : constant GL_Value :=
         Emit_Expression (Expression (Node));
       Typ              : constant Type_T := Create_Type (Full_Etype (LHS));
-      Start_BB         : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
+      Start_BB         : constant Basic_Block_T := Get_Insert_Block;
       Current_Alt      : Nat := 1;
       First_Choice     : Nat;
       Current_Choice   : Nat := 1;
@@ -3034,7 +3034,7 @@ package body GNATLLVM.Compile is
       --  to get the one that jumps to the merge point to get the PHI node
       --  predecessor.
 
-      BB_Then := Get_Insert_Block (Env.Bld);
+      BB_Then := Get_Insert_Block;
       Build_Br (BB_Next);
 
       --  Emit code for the ELSE part
@@ -3046,7 +3046,7 @@ package body GNATLLVM.Compile is
       --  We want to get the basic blocks that jumps to the merge point: see
       --  above.
 
-      BB_Else := Get_Insert_Block (Env.Bld);
+      BB_Else := Get_Insert_Block;
 
       --  Then prepare the instruction builder for the next
       --  statements/expressions and return a merged expression if needed.
@@ -3290,7 +3290,7 @@ package body GNATLLVM.Compile is
       E        : constant Entity_Id :=
         (if Present (Identifier (Node))
          then Entity (Identifier (Node)) else Empty);
-      This_BB  : constant Basic_Block_T := Get_Insert_Block (Env.Bld);
+      This_BB  : constant Basic_Block_T := Get_Insert_Block;
       Entry_BB : constant Basic_Block_T :=
         Get_Entry_Basic_Block (LLVM_Value (Current_Func));
       BB       : Basic_Block_T;

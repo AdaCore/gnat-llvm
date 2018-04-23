@@ -536,7 +536,7 @@ package body GNATLLVM.Arrays is
       then
          return Array_Descr;
       else
-         return G (Extract_Value (Env.Bld, LLVM_Value (Array_Descr),
+         return G (Extract_Value (IR_Builder, LLVM_Value (Array_Descr),
                                   0, "array-data"),
                    Full_Designated_Type (Array_Descr),
                    Is_Reference => True, Is_Raw_Array => True);
@@ -554,7 +554,7 @@ package body GNATLLVM.Arrays is
       Info_Idx       : constant Nat := Get_Array_Info (Array_Type);
       Fat_Ptr        : GL_Value := Get_Undef_Ref (Array_Type);
       Array_Data_Ptr : constant GL_Value :=
-        G (Bit_Cast (Env.Bld, LLVM_Value (Array_Data),
+        G (Bit_Cast (IR_Builder, LLVM_Value (Array_Data),
                      Create_Array_Raw_Pointer_Type (Array_Type), ""),
            Array_Type, Is_Reference => True, Is_Raw_Array => True);
 

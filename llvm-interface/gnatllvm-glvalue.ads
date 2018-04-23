@@ -499,7 +499,7 @@ package GNATLLVM.GLValue is
       LHS, RHS : GL_Value;
       Name     : String := "") return GL_Value
    is
-     (G (I_Cmp (Env.Bld, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G (I_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
          Standard_Boolean))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (I_Cmp'Result);
@@ -509,7 +509,7 @@ package GNATLLVM.GLValue is
       LHS, RHS : GL_Value;
       Name     : String := "") return GL_Value
    is
-     (G (F_Cmp (Env.Bld, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G (F_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
          Standard_Boolean))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (F_Cmp'Result);
@@ -517,7 +517,7 @@ package GNATLLVM.GLValue is
    function NSW_Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-      (G_From (NSW_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+      (G_From (NSW_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
                LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (NSW_Add'Result);
@@ -525,7 +525,7 @@ package GNATLLVM.GLValue is
    function NSW_Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (NSW_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (NSW_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (NSW_Sub'Result);
@@ -533,7 +533,7 @@ package GNATLLVM.GLValue is
    function NSW_Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (NSW_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (NSW_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (NSW_Mul'Result);
@@ -541,7 +541,7 @@ package GNATLLVM.GLValue is
    function S_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (S_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (S_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (S_Div'Result);
@@ -549,7 +549,7 @@ package GNATLLVM.GLValue is
    function U_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (U_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (U_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (U_Div'Result);
@@ -557,7 +557,7 @@ package GNATLLVM.GLValue is
    function S_Rem
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (S_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (S_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (S_Rem'Result);
@@ -565,7 +565,7 @@ package GNATLLVM.GLValue is
    function U_Rem
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (U_Rem (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (U_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (U_Rem'Result);
@@ -573,7 +573,7 @@ package GNATLLVM.GLValue is
    function Build_And
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Build_And (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (Build_And (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_And'Result);
@@ -581,7 +581,7 @@ package GNATLLVM.GLValue is
    function Build_Or
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Build_Or (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (Build_Or (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Or'Result);
@@ -589,7 +589,7 @@ package GNATLLVM.GLValue is
    function Build_Xor
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Build_Xor (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (Build_Xor (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Xor'Result);
@@ -597,7 +597,7 @@ package GNATLLVM.GLValue is
    function F_Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Add (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (F_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Add'Result);
@@ -605,7 +605,7 @@ package GNATLLVM.GLValue is
    function F_Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Sub (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (F_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Sub'Result);
@@ -613,7 +613,7 @@ package GNATLLVM.GLValue is
    function F_Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Mul (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (F_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Mul'Result);
@@ -621,7 +621,7 @@ package GNATLLVM.GLValue is
    function F_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Div (Env.Bld, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+     (G_From (F_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (F_Div'Result);
@@ -629,7 +629,7 @@ package GNATLLVM.GLValue is
    function Shl
      (E, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Shl (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
+     (G_From (Shl (IR_Builder, LLVM_Value (E), LLVM_Value (Count), Name),
               E))
       with Pre  => Present (E) and then Present (Count),
            Post => Present (Shl'Result);
@@ -637,7 +637,7 @@ package GNATLLVM.GLValue is
    function L_Shr
      (E, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (L_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
+     (G_From (L_Shr (IR_Builder, LLVM_Value (E), LLVM_Value (Count), Name),
               E))
       with Pre  => Present (E) and then Present (Count),
            Post => Present (L_Shr'Result);
@@ -645,7 +645,7 @@ package GNATLLVM.GLValue is
    function A_Shr
      (E, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (A_Shr (Env.Bld, LLVM_Value (E), LLVM_Value (Count), Name),
+     (G_From (A_Shr (IR_Builder, LLVM_Value (E), LLVM_Value (Count), Name),
               E))
       with Pre  => Present (E) and then Present (Count),
            Post => Present (A_Shr'Result);
@@ -653,27 +653,27 @@ package GNATLLVM.GLValue is
    function Build_Not
      (V : GL_Value; Name : String := "") return GL_Value
    is
-      (G_From (Build_Not (Env.Bld, LLVM_Value (V), Name), V))
+      (G_From (Build_Not (IR_Builder, LLVM_Value (V), Name), V))
       with Pre  => Present (V),
            Post => Present (Build_Not'Result);
 
    function NSW_Neg
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (NSW_Neg (Env.Bld, LLVM_Value (V), Name), V))
+     (G_From (NSW_Neg (IR_Builder, LLVM_Value (V), Name), V))
       with Pre  => Present (V), Post => Present (NSW_Neg'Result);
 
    function F_Neg
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Neg (Env.Bld, LLVM_Value (V), Name), V))
+     (G_From (F_Neg (IR_Builder, LLVM_Value (V), Name), V))
      with Pre  => Present (V), Post => Present (F_Neg'Result);
 
    function Build_Select
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")
      return GL_Value
    is
-     (G_From (Build_Select (Env.Bld, C_If => LLVM_Value (C_If),
+     (G_From (Build_Select (IR_Builder, C_If => LLVM_Value (C_If),
                             C_Then => LLVM_Value (C_Then),
                             C_Else => LLVM_Value (C_Else), Name => Name),
               C_Then))
@@ -716,7 +716,7 @@ package GNATLLVM.GLValue is
       Index : unsigned;
       Name  : String := "") return GL_Value
    is
-     (G (Extract_Value (Env.Bld, LLVM_Value (Arg), Index, Name), Typ))
+     (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), Typ))
      with  Pre  => Present (Arg) and then Is_Type (Typ),
            Post => Present (Extract_Value'Result);
 
@@ -726,7 +726,7 @@ package GNATLLVM.GLValue is
       Index : unsigned;
       Name  : String := "") return GL_Value
    is
-      (G (Extract_Value (Env.Bld, LLVM_Value (Arg), Index, Name), Typ,
+      (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), Typ,
          Is_Reference => True))
      with  Pre  => Present (Arg) and then Is_Type (Typ),
            Post => Present (Extract_Value_To_Ref'Result);
@@ -736,7 +736,7 @@ package GNATLLVM.GLValue is
       Index    : unsigned;
       Name     : String := "") return GL_Value
    is
-     (G_From (Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
+     (G_From (Insert_Value (IR_Builder, LLVM_Value (Arg), LLVM_Value (Elt),
                             Index, Name),
               Arg))
      with  Pre  => Present (Arg) and then Present (Elt),
@@ -750,7 +750,7 @@ package GNATLLVM.GLValue is
       Idx_Arr : Index_Array;
       Name    : String := "") return GL_Value
    is
-     (G (Build_Extract_Value (Env.Bld, LLVM_Value (Arg),
+     (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
                               Idx_Arr'Address, Idx_Arr'Length, Name),
          Typ))
      with  Pre  => Is_Type (Typ) and then Present (Arg),
@@ -762,7 +762,7 @@ package GNATLLVM.GLValue is
       Idx_Arr : Index_Array;
       Name    : String := "") return GL_Value
    is
-     (G (Build_Extract_Value (Env.Bld, LLVM_Value (Arg),
+     (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
                               Idx_Arr'Address, Idx_Arr'Length, Name),
          Typ, Is_Reference => True))
      with  Pre  => Is_Type (Typ) and then Present (Arg),
@@ -773,7 +773,8 @@ package GNATLLVM.GLValue is
       Idx_Arr  : Index_Array;
       Name     : String := "") return GL_Value
    is
-     (G_From (Build_Insert_Value (Env.Bld, LLVM_Value (Arg), LLVM_Value (Elt),
+     (G_From (Build_Insert_Value (IR_Builder, LLVM_Value (Arg),
+                                  LLVM_Value (Elt),
                                   Idx_Arr'Address, Idx_Arr'Length, Name),
               Arg))
      with  Pre  => Present (Arg) and then Present (Elt),
@@ -802,7 +803,7 @@ package GNATLLVM.GLValue is
 
    function Build_Switch
      (V : GL_Value; Default : Basic_Block_T; Blocks : Nat) return Value_T is
-     (Build_Switch (Env.Bld, LLVM_Value (V), Default, unsigned (Blocks)))
+     (Build_Switch (IR_Builder, LLVM_Value (V), Default, unsigned (Blocks)))
      with Pre  => Present (V) and then Present (Default),
           Post => Present (Build_Switch'Result);
 

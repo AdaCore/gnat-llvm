@@ -87,21 +87,21 @@ package body LLVM_Drive is
 
       --  Initialize the translation environment
 
-      Env := new Environ_Record'(Max_Nodes => Last_Node_Id,
-                                 others => <>);
       LLVM_Context := Get_Global_Context;
-      Env.Bld := Create_Builder_In_Context (LLVM_Context);
-      MD_Builder := Create_MDBuilder_In_Context (LLVM_Context);
-      LLVM_Module := Module_Create_With_Name_In_Context
+      IR_Builder   := Create_Builder_In_Context (LLVM_Context);
+      MD_Builder   := Create_MDBuilder_In_Context (LLVM_Context);
+      LLVM_Module  := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))), LLVM_Context);
+
       Result := LLVM_Init_Module
         (LLVM_Module,
          Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))));
       pragma Assert (Result = 0);
-      TBAA_Root := Create_TBAA_Root (MD_Builder);
+
+      TBAA_Root          := Create_TBAA_Root (MD_Builder);
       Module_Data_Layout := Get_Module_Data_Layout (LLVM_Module);
-      Env.LLVM_Info := (others => Empty_LLVM_Info_Id);
-      Initialize_Debugging;
+      LLVM_Info_Map := new LLVM_Info_Array'
+        (First_Node_Id .. Last_Node_Id => Empty_LLVM_Info_Id);
 
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
@@ -133,6 +133,7 @@ package body LLVM_Drive is
 
       --  Actually translate
 
+      Initialize_Debugging;
       Walk_All_Units;
 
       --  Output the translation
@@ -203,7 +204,7 @@ package body LLVM_Drive is
 
       --  Release the environment
 
-      Dispose_Builder (Env.Bld);
+      Dispose_Builder (IR_Builder);
       Dispose_Module (LLVM_Module);
    end GNAT_To_LLVM;
 

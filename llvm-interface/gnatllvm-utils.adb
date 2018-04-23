@@ -317,7 +317,7 @@ package body GNATLLVM.Utils is
 
    function Are_In_Dead_Code return Boolean is
       Last_Inst : constant Value_T :=
-        Get_Last_Instruction (Get_Insert_Block (Env.Bld));
+        Get_Last_Instruction (Get_Insert_Block (IR_Builder));
    begin
       --  We're in dead code if there is an instruction in this basic block
       --  and the last is a terminator.
@@ -332,7 +332,7 @@ package body GNATLLVM.Utils is
 
    procedure Position_Builder_At_End (BB : Basic_Block_T) is
    begin
-      Position_Builder_At_End (Env.Bld, BB);
+      Position_Builder_At_End (IR_Builder, BB);
    end Position_Builder_At_End;
 
    --------------
@@ -342,7 +342,7 @@ package body GNATLLVM.Utils is
    procedure Build_Br (BB : Basic_Block_T) is
    begin
       if not Are_In_Dead_Code then
-         Discard (Build_Br (Env.Bld, BB));
+         Discard (Build_Br (IR_Builder, BB));
       end if;
    end Build_Br;
 
@@ -383,7 +383,7 @@ package body GNATLLVM.Utils is
    function Load_With_Type (TE : Entity_Id; Ptr : Value_T; Name : String := "")
      return Value_T
    is
-      Load_Inst : constant Value_T := Load (Env.Bld, Ptr, Name);
+      Load_Inst : constant Value_T := Load (IR_Builder, Ptr, Name);
 
    begin
       Add_Type_Data_To_Instruction (Load_Inst, TE);
@@ -406,7 +406,7 @@ package body GNATLLVM.Utils is
    ---------------------
    procedure Store_With_Type (TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
    is
-      Store_Inst : constant Value_T := Build_Store (Env.Bld, Expr, Ptr);
+      Store_Inst : constant Value_T := Build_Store (IR_Builder, Expr, Ptr);
 
    begin
       Add_Type_Data_To_Instruction (Store_Inst, TE);

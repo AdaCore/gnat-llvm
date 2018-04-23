@@ -17,8 +17,6 @@
 
 with Errout; use Errout;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
@@ -31,10 +29,10 @@ package body GNATLLVM.Environment is
 
    function Get_Type (TE : Entity_Id) return Type_T is
    begin
-      if Env.LLVM_Info (TE) = Empty_LLVM_Info_Id then
+      if LLVM_Info_Map (TE) = Empty_LLVM_Info_Id then
          return No_Type_T;
       else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Typ;
+         return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Typ;
       end if;
    end Get_Type;
 
@@ -53,7 +51,7 @@ package body GNATLLVM.Environment is
          Discard (Create_Type (TE));
       end if;
 
-      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Is_Dynamic_Size;
+      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Is_Dynamic_Size;
    end Is_Dynamic_Size;
 
    --------------
@@ -66,7 +64,7 @@ package body GNATLLVM.Environment is
          Discard (Create_Type (TE));
       end if;
 
-      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).TBAA;
+      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).TBAA;
    end Get_TBAA;
 
    ---------------
@@ -75,10 +73,10 @@ package body GNATLLVM.Environment is
 
    function Get_Value (VE : Entity_Id) return GL_Value is
    begin
-      if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
+      if LLVM_Info_Map (VE) = Empty_LLVM_Info_Id then
          return No_GL_Value;
       else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Value;
+         return LLVM_Info_Table.Table (LLVM_Info_Map (VE)).Value;
       end if;
    end Get_Value;
 
@@ -88,10 +86,10 @@ package body GNATLLVM.Environment is
 
    function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T is
    begin
-      if Env.LLVM_Info (BE) = Empty_LLVM_Info_Id then
+      if LLVM_Info_Map (BE) = Empty_LLVM_Info_Id then
          return No_BB_T;
       else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (BE)).Basic_Block;
+         return LLVM_Info_Table.Table (LLVM_Info_Map (BE)).Basic_Block;
       end if;
    end Get_Basic_Block;
 
@@ -105,7 +103,7 @@ package body GNATLLVM.Environment is
          Discard (Create_Type (TE));
       end if;
 
-      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Array_Bound_Info;
+      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Array_Bound_Info;
    end Get_Array_Info;
 
    ---------------------
@@ -118,7 +116,7 @@ package body GNATLLVM.Environment is
          Discard (Create_Type (TE));
       end if;
 
-      return LLVM_Info_Table.Table (Env.LLVM_Info (TE)).Record_Inf;
+      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Record_Inf;
    end Get_Record_Info;
 
    --------------------
@@ -127,10 +125,10 @@ package body GNATLLVM.Environment is
 
    function Get_Field_Info (VE : Entity_Id) return Field_Info_Id is
    begin
-      if Env.LLVM_Info (VE) = Empty_LLVM_Info_Id then
+      if LLVM_Info_Map (VE) = Empty_LLVM_Info_Id then
          return Empty_Field_Info_Id;
       else
-         return LLVM_Info_Table.Table (Env.LLVM_Info (VE)).Field_Inf;
+         return LLVM_Info_Table.Table (LLVM_Info_Map (VE)).Field_Inf;
       end if;
 
    end Get_Field_Info;
@@ -144,7 +142,7 @@ package body GNATLLVM.Environment is
 
    function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id
    is
-      Id : LLVM_Info_Id := Env.LLVM_Info (N);
+      Id : LLVM_Info_Id := LLVM_Info_Map (N);
 
    begin
       if Id /= Empty_LLVM_Info_Id then
@@ -159,7 +157,7 @@ package body GNATLLVM.Environment is
                                   Field_Inf       => Empty_Field_Info_Id,
                                   others          => <>));
          Id := LLVM_Info_Table.Last;
-         Env.LLVM_Info (N) := Id;
+         LLVM_Info_Map (N) := Id;
          return Id;
       end if;
    end Get_LLVM_Info_Id;
@@ -169,12 +167,12 @@ package body GNATLLVM.Environment is
    --------------------
 
    procedure Copy_Type_Info (Old_T, New_T : Entity_Id) is
-      Id : constant LLVM_Info_Id := Env.LLVM_Info (Old_T);
+      Id : constant LLVM_Info_Id := LLVM_Info_Map (Old_T);
 
    begin
       pragma Assert (Id /= Empty_LLVM_Info_Id);
-      pragma Assert (Env.LLVM_Info (New_T) = Empty_LLVM_Info_Id
-                       or else Env.LLVM_Info (New_T) = Id);
+      pragma Assert (LLVM_Info_Map (New_T) = Empty_LLVM_Info_Id
+                       or else LLVM_Info_Map (New_T) = Id);
       --  We know this is a type and one for which we don't have any
       --  data, so we shouldn't have allocated anything for it.
       --  However, we may have a recursive type situation where it
@@ -182,7 +180,7 @@ package body GNATLLVM.Environment is
       --  the data to have already been set.  But it's still an error
       --  if it was set to something different.
 
-      Env.LLVM_Info (New_T) := Id;
+      LLVM_Info_Map (New_T) := Id;
    end Copy_Type_Info;
 
    --------------
@@ -332,7 +330,7 @@ package body GNATLLVM.Environment is
       Current_Func := Func;
       Activation_Rec_Param := No_GL_Value;
       Return_Address_Param := No_GL_Value;
-      Position_Builder_At_End (Env.Bld, Create_Basic_Block ("entry"));
+      Position_Builder_At_End (IR_Builder, Create_Basic_Block ("entry"));
    end Enter_Subp;
 
    ----------------

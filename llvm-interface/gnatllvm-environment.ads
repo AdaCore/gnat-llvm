@@ -20,8 +20,9 @@ with Einfo; use Einfo;
 with Table; use Table;
 with Types; use Types;
 
+with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
-with LLVM.Types; use LLVM.Types;
+with LLVM.Types;  use LLVM.Types;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -123,10 +124,6 @@ package GNATLLVM.Environment is
    function No (G : GL_Value) return Boolean           is (G = No_GL_Value);
    function Present (G : GL_Value) return Boolean      is (G /= No_GL_Value);
 
-   --  Expanded Ada-to-LLVM translation context: gathers global information
-   type Environ_Record;
-   type Environ is access all Environ_Record;
-
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
 
@@ -180,6 +177,7 @@ package GNATLLVM.Environment is
       Table_Name           => "LLVM_Info_Table");
 
    type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info_Id;
+   type Ptr_LLVM_Info_Array is access all LLVM_Info_Array;
 
    type Exit_Point is record
       Label_Entity : Entity_Id;
@@ -198,27 +196,23 @@ package GNATLLVM.Environment is
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
-   type Environ_Record (Max_Nodes : Node_Id) is record
-      Bld                       : Builder_T;
-      LLVM_Info                 : LLVM_Info_Array (First_Node_Id .. Max_Nodes);
-      --  Pure-LLVM environment : LLVM context, instruction builder, current
-      --  module, and current module data layout.
-   end record;
-
-   Env : Environ;
-   --  Pointer to above record
+   LLVM_Info_Map             : Ptr_LLVM_Info_Array;
+   --  The mapping between a GNAT tree object and the corresponding LLVM data
 
    LLVM_Context             : Context_T;
    --  The current LLVM Context
+
+   IR_Builder               : Builder_T;
+   --  The current LLVM Instruction builder
 
    LLVM_Module              : Module_T;
    --  The LLVM Module being compiled
 
    MD_Builder               : MD_Builder_T;
-   --  Metadata builder
+   --  The current LLVM Metadata builder
 
    DI_Builder               : DI_Builder_T;
-   --  Debug Info builder
+   --  The current LLVM Debug Info builder
 
    Current_Func             : GL_Value := No_GL_Value;
    --  Pointer to the current function
@@ -265,7 +259,7 @@ package GNATLLVM.Environment is
      with Pre => Is_Type (TE);
 
    function Get_TBAA        (TE : Entity_Id) return Metadata_T
-     with Pre => Env /= null and then Is_Type (TE);
+     with Pre => Is_Type (TE);
 
    function Get_Value       (VE : Entity_Id) return GL_Value
      with Pre => Present (VE);
@@ -356,4 +350,7 @@ package GNATLLVM.Environment is
    function Create_Basic_Block (Name : String := "") return Basic_Block_T
      with Post => Present (Create_Basic_Block'Result);
 
+   function Get_Insert_Block return Basic_Block_T is
+     (Get_Insert_Block (IR_Builder))
+     with Post => Present (Get_Insert_Block'Result);
 end GNATLLVM.Environment;

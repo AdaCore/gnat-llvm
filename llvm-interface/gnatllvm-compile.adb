@@ -219,27 +219,7 @@ package body GNATLLVM.Compile is
    -----------------------
 
    procedure Emit_Library_Item (U : Node_Id) is
-      procedure Emit_Aux (Compilation_Unit : Node_Id);
-      --  Process any pragmas and declarations preceding the unit
-
-      --------------
-      -- Emit_Aux --
-      --------------
-
-      procedure Emit_Aux (Compilation_Unit : Node_Id) is
-         Prag : Node_Id;
-      begin
-         Prag := First (Context_Items (Compilation_Unit));
-         while Present (Prag) loop
-            if Nkind (Prag) = N_Pragma then
-               Emit (Prag);
-            end if;
-
-            Next (Prag);
-         end loop;
-
-         Emit_List (Declarations (Aux_Decls_Node (Compilation_Unit)));
-      end Emit_Aux;
+      Prag : Node_Id;
 
    begin
       --  Ignore Standard and ASCII packages
@@ -248,36 +228,32 @@ package body GNATLLVM.Compile is
          return;
       end if;
 
-      --  Current_Unit := Get_Cunit_Unit_Number (Parent (U));
-      --  Current_Source_File := Source_Index (Current_Unit);
+      In_Main_Unit := In_Extended_Main_Code_Unit (U);
 
-      if In_Extended_Main_Code_Unit (U) then
-         In_Main_Unit := True;
+      --  ??? Has_No_Elaboration_Code is supposed to be set by default
+      --  on subprogram bodies, but this is apparently not the case,
+      --  so force the flag here. Ditto for subprogram decls.
 
-         --  ??? Has_No_Elaboration_Code is supposed to be set by default
-         --  on subprogram bodies, but this is apparently not the case,
-         --  so force the flag here. Ditto for subprogram decls.
+      if Nkind_In (U, N_Subprogram_Body, N_Subprogram_Declaration) then
+         Set_Has_No_Elaboration_Code (Parent (U), True);
+      end if;
 
-         if Nkind_In (U, N_Subprogram_Body, N_Subprogram_Declaration) then
-            Set_Has_No_Elaboration_Code (Parent (U), True);
+      --  Process any pragmas and declarations preceding the unit
+
+      Prag := First (Context_Items (Parent (U)));
+      while Present (Prag) loop
+         if Nkind (Prag) = N_Pragma then
+            Emit (Prag);
          end if;
 
-         --  Process any pragmas and declarations preceding the unit
+         Next (Prag);
+      end loop;
 
-         Emit_Aux (Parent (U));
+      Emit_List (Declarations (Aux_Decls_Node (Parent (U))));
 
-         --  Process the unit itself
+      --  Process the unit itself
 
-         Emit (U);
-
-      else
-         --  Should we instead skip these units completely, and generate
-         --  referenced items on the fly???
-
-         In_Main_Unit := False;
-         Emit_Aux (Parent (U));
-         Emit (U);
-      end if;
+      Emit (U);
    end Emit_Library_Item;
 
    ----------

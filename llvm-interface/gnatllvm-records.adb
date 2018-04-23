@@ -18,12 +18,13 @@
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with Namet;   use Namet;
-with Nlists;  use Nlists;
-with Sem_Aux; use Sem_Aux;
-with Snames;  use Snames;
-with Stand;   use Stand;
-with Table;   use Table;
+with Get_Targ; use Get_Targ;
+with Namet;    use Namet;
+with Nlists;   use Nlists;
+with Sem_Aux;  use Sem_Aux;
+with Snames;   use Snames;
+with Stand;    use Stand;
+with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -390,6 +391,7 @@ package body GNATLLVM.Records is
       For_Type : Boolean) return GL_Value
    is
       Total_Size : GL_Value := Size_Const_Int (0);
+      Cur_Align  : unsigned := unsigned (Get_Maximum_Alignment);
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
       This_Size  : GL_Value;
@@ -419,7 +421,7 @@ package body GNATLLVM.Records is
          --  We have to align the size so far to the alignment of
          --  this type.
 
-         if This_Align /= 1 then
+         if This_Align > Cur_Align then
             Total_Size := Build_And
               (NSW_Add (Total_Size,
                         Size_Const_Int (unsigned_long_long (This_Align) - 1)),
@@ -427,7 +429,8 @@ package body GNATLLVM.Records is
          end if;
 
          Total_Size := NSW_Add (Total_Size, This_Size);
-         Cur_Idx := RI.Next;
+         Cur_Align  := This_Align;
+         Cur_Idx    := RI.Next;
       end loop;
 
       return Total_Size;

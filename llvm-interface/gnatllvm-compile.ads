@@ -38,12 +38,14 @@ package GNATLLVM.Compile is
           Post => Present (Emit_Expression'Result);
    --  Compile an expression node to an LLVM value
 
-   function Emit_LValue (Node : Node_Id) return GL_Value
+   function Emit_LValue
+     (Node : Node_Id; Clear : Boolean := True) return GL_Value
      with Pre  => Present (Node),
           Post => Present (Emit_LValue'Result);
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather
-   --  than the value itself (out parameters, simple accesses, etc).
+   --  than the value itself (out parameters, simple accesses, etc).  If
+   --  Clear is False, we don't reset the list used by Get_Matching_Value.
 
    procedure Add_To_LValue_List (V : GL_Value)
      with Pre => Present (V);

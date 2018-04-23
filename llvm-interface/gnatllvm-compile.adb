@@ -1129,13 +1129,16 @@ package body GNATLLVM.Compile is
    -- Emit_LValue --
    -----------------
 
-   function Emit_LValue (Node : Node_Id) return GL_Value is
+   function Emit_LValue
+     (Node : Node_Id; Clear : Boolean := True) return GL_Value is
    begin
       Set_Debug_Pos_At_Node (Node);
-      LValue_Pair_Table.Set_Last (0);
 
-      --  Each time we start a new recursive call, we free the entries
+      --  When we start a new recursive call, we usualy free the entries
       --  from the last one.
+      if Clear then
+         LValue_Pair_Table.Set_Last (0);
+      end if;
 
       return Emit_LValue_Internal (Node);
    end Emit_LValue;
@@ -2041,13 +2044,14 @@ package body GNATLLVM.Compile is
          Store (Src, Dest);
 
       else
-         Src := (if No (E_Value) then Emit_LValue (E) else E_Value);
+         Src := (if No (E_Value) then Emit_LValue (E, Clear => False)
+                 else E_Value);
 
          --  Otherwise, we have to do a variable-sized copy
 
          declare
             Size : constant GL_Value := Compute_Size
-              (Dest_Type, Full_Designated_Type (Src), No_GL_Value, Src);
+              (Dest_Type, Full_Designated_Type (Src), Dest, Src);
             Align : constant unsigned := Compute_Alignment
               (Dest_Type, Full_Designated_Type (Src));
             Func_Name : constant String :=

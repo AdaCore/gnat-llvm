@@ -18,6 +18,8 @@
 with LLVM_Drive;
 with Adabkend;
 
+with Opt; use Opt;
+
 package body Back_End is
 
    package GNAT2LLVM is new Adabkend
@@ -47,5 +49,12 @@ package body Back_End is
    begin
       null;
    end Gen_Or_Update_Object_File;
+
+begin
+   --  Set the switches in Opt that we depend on
+
+   Building_Static_Dispatch_Tables := False;
+   Expand_Nonbinary_Modular_Ops    := True;
+   Unnest_Subprogram_Mode          := True;
 
 end Back_End;

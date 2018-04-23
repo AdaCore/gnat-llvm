@@ -52,10 +52,6 @@ all: setup build zfp
 
 setup:
 	mkdir -p obj obj-tools bin
-	sed -e "s^\(Expand_Nonbinary_Modular_Ops : Boolean :=\) False^\1 True^"\
-	    -e "s^\(Unnest_Subprogram_Mode : Boolean :=\) False^\1 True^"\
-	    -e "s^\(Building_Static_Dispatch_Tables : Boolean :=\) True^\1 False^"\
-	    $(GNAT_SRC)/opt.ads > obj/opt.ads
 	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \

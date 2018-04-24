@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Errout; use Errout;
+with Sinfo;  use Sinfo;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -297,10 +298,18 @@ package body GNATLLVM.Environment is
    -- Get_Exit_Point --
    --------------------
 
-   function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T is
+   function Get_Exit_Point (N : Node_Id) return Basic_Block_T is
    begin
+      --  If no exit label was specified, use the last one
+
+      if No (N) then
+         return Exit_Point_Table.Table (Exit_Point_Table.Last).Exit_BB;
+      end if;
+
+      --  Otherwise search for a match
+
       for I in Exit_Point_Low_Bound .. Exit_Point_Table.Last loop
-         if Exit_Point_Table.Table (I).Label_Entity = LE then
+         if Exit_Point_Table.Table (I).Label_Entity = Entity (N) then
             return Exit_Point_Table.Table (I).Exit_BB;
          end if;
       end loop;
@@ -308,17 +317,8 @@ package body GNATLLVM.Environment is
       --  If the loop label isn't registered, then we just met an exit
       --  statement with no corresponding loop: should not happen.
 
-      Error_Msg_N ("unknown loop identifier", LE);
+      Error_Msg_N ("unknown loop identifier", N);
       raise Program_Error;
-   end Get_Exit_Point;
-
-   --------------------
-   -- Get_Exit_Point --
-   --------------------
-
-   function Get_Exit_Point return Basic_Block_T is
-   begin
-      return Exit_Point_Table.Table (Exit_Point_Table.Last).Exit_BB;
    end Get_Exit_Point;
 
    ----------------

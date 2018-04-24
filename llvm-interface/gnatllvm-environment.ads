@@ -326,9 +326,10 @@ package GNATLLVM.Environment is
      with Pre => Present (Exit_Point);
    procedure Pop_Loop;
 
-   function Get_Exit_Point (LE : Entity_Id) return Basic_Block_T;
-   function Get_Exit_Point return Basic_Block_T
+   function Get_Exit_Point (N : Node_Id) return Basic_Block_T
      with Post => Present (Get_Exit_Point'Result);
+   --  If N is specied, find the exit point corresponding to its entity.
+   --  Otherwise, find the most recent (most inner) exit point.
 
    procedure Enter_Subp (Func : GL_Value)
      with Pre  => Present (Func) and then Library_Level,

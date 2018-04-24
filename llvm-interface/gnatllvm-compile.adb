@@ -187,14 +187,14 @@ package body GNATLLVM.Compile is
    --  Lazily get the basic block associated with label E, creating it
    --  if we don't have it already.
 
-   function Enter_Block_For_Node
-     (Node : Node_Id; Use_BB : Boolean) return Basic_Block_T
-     with Pre => Present (Node), Post => Present (Enter_Block_For_Node'Result);
-   --  Find a basic block for Node, looking at Identifier, and save the block
-   --  as pointing to the Identifier of Node and enter the block if not
-   --  already in it.  Return that basic block.  Use_BB is True if we're
-   --  going to be using that basic block as a jump target, in which case
-   --  it can't be the entry basic block.
+   function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
+     with Post => Present (Enter_Block_With_Node'Result);
+   --  We need a basic block at the present location to branch to.
+   --  This will normally be a new basic block, but may be the current
+   --  basic block it if's empty and not the entry block.  If Node is
+   --  Present and already points to a basic block, we have to use
+   --  that one.  If Present, but it doesn't point to a basic block,
+   --  set it to the one we made.
 
    package Elaboration_Table is new Table.Table
      (Table_Component_Type => Node_Id,
@@ -718,13 +718,7 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Label =>
-            declare
-               BB : constant Basic_Block_T :=
-                 Get_Label_BB (Entity (Identifier (Node)));
-            begin
-               Build_Br (BB);
-               Position_Builder_At_End (BB);
-            end;
+            Discard (Enter_Block_With_Node (Node));
 
          when N_Goto_Statement =>
             Build_Br (Get_Label_BB (Entity (Name (Node))));
@@ -749,9 +743,9 @@ package body GNATLLVM.Compile is
          when N_Simple_Return_Statement =>
             if Present (Expression (Node)) then
 
-               --  If we have a parameter giving the address to which to
-               --  copy the return value, do that copy instead of returning
-               --  it.
+               --  If there's a parameter for the address to which to copy
+               --  the return value, do the copy instead of returning the
+               --  value.
 
                if Present (Return_Address_Param) then
                   Emit_Assignment (Return_Address_Param, Expression (Node),
@@ -774,18 +768,14 @@ package body GNATLLVM.Compile is
 
          when N_Loop_Statement =>
             declare
-               Loop_Identifier   : constant Entity_Id :=
+               Loop_Identifier : constant Entity_Id :=
                  (if Present (Identifier (Node))
-                  then Entity (Identifier (Node))
-                  else Empty);
-               Iter_Scheme       : constant Node_Id :=
-                 Iteration_Scheme (Node);
-               Is_Mere_Loop      : constant Boolean :=
-                 not Present (Iter_Scheme);
-               Is_For_Loop       : constant Boolean :=
+                  then Entity (Identifier (Node)) else Empty);
+               Iter_Scheme     : constant Node_Id := Iteration_Scheme (Node);
+               Is_Mere_Loop    : constant Boolean := not Present (Iter_Scheme);
+               Is_For_Loop     : constant Boolean :=
                  not Is_Mere_Loop
-                 and then
-                   Present (Loop_Parameter_Specification (Iter_Scheme));
+                 and then Present (Loop_Parameter_Specification (Iter_Scheme));
 
                --  The general format for a loop is:
                --    INIT;
@@ -797,14 +787,10 @@ package body GNATLLVM.Compile is
                --  Each step has its own basic block. When a loop does not need
                --  one of these steps, just alias it with another one.
 
-               BB_Init           : constant Basic_Block_T :=
-                   Enter_Block_For_Node (Node, not Is_For_Loop);
-               --  If this loop has an identifier, and it has already its own
-               --  entry (INIT) basic block. Create one otherwise.
-
                BB_Cond           : Basic_Block_T :=
                  (if not Is_For_Loop
-                  then BB_Init else Create_Basic_Block ("loop-cond"));
+                  then Enter_Block_With_Node (Empty)
+                  else Create_Basic_Block ("loop-cond"));
                --  If this is a mere loop, there is even no condition block:
                --  alias it with the STMTS block.
 
@@ -826,12 +812,7 @@ package body GNATLLVM.Compile is
                --  The NEXT step contains no statement that comes from the
                --  loop: it is the exit point.
 
-               Cond             : GL_Value;
-
             begin
-               --  The front-end expansion can produce identifier-less loops,
-               --  but exit statements can target them anyway, so register such
-               --  loops.
 
                Push_Loop (Loop_Identifier, BB_Next);
 
@@ -880,11 +861,10 @@ package body GNATLLVM.Compile is
                         --  Then go to the condition block if the range isn't
                         --  empty.
 
-                        Cond := I_Cmp
+                        Build_Cond_Br (I_Cmp
                           ((if Unsigned_Type then Int_ULE else Int_SLE),
-                           Low, High,
-                           "loop-entry-cond");
-                        Build_Cond_Br (Cond, BB_Cond, BB_Next);
+                           Low, High, "loop-entry-cond"),
+                          BB_Cond, BB_Next);
 
                         --  The FOR loop is special: the condition is evaluated
                         --  during the INIT step and right before the ITER
@@ -896,11 +876,10 @@ package body GNATLLVM.Compile is
 
                         BB_Cond := Create_Basic_Block ("loop-cond-iter");
                         Position_Builder_At_End (BB_Cond);
-                        Cond := I_Cmp
+                        Build_Cond_Br (I_Cmp
                           (Int_EQ, Load (LLVM_Var),
-                           (if Reversed then Low else High),
-                           "loop-iter-cond");
-                        Build_Cond_Br (Cond, BB_Next, BB_Iter);
+                           (if Reversed then Low else High), "loop-iter-cond"),
+                          BB_Next, BB_Iter);
 
                         --  After STMTS, stop if the loop variable was equal to
                         --  the "exit" bound. Increment/decrement it otherwise.
@@ -945,7 +924,6 @@ package body GNATLLVM.Compile is
 
             begin
 
-               Discard (Enter_Block_For_Node (Node, False));
                Push_Lexical_Debug_Scope (Node);
 
                Stack_State := Call
@@ -3270,43 +3248,30 @@ package body GNATLLVM.Compile is
       return BB;
    end Get_Label_BB;
 
-   --------------------------
-   -- Enter_Block_For_Node --
-   --------------------------
+   ---------------------------
+   -- Enter_Block_With_Node --
+   ---------------------------
 
-   function Enter_Block_For_Node
-     (Node : Node_Id; Use_BB : Boolean) return Basic_Block_T
+   function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
    is
-      E        : constant Entity_Id     :=
-        (if Present (Identifier (Node))
+      E         : constant Entity_Id     :=
+        (if Present (Node) and then Present (Identifier (Node))
          then Entity (Identifier (Node)) else Empty);
-      This_BB  : constant Basic_Block_T := Get_Insert_Block;
-      Entry_BB : constant Basic_Block_T :=
+      This_BB   : constant Basic_Block_T := Get_Insert_Block;
+      Last_Inst : constant Value_T       := Get_Last_Instruction (This_BB);
+      Entry_BB  : constant Basic_Block_T :=
         Get_Entry_Basic_Block (LLVM_Value (Current_Func));
-      BB       : Basic_Block_T;
+      BB        : constant Basic_Block_T :=
+          (if Present (E) and then Has_BB (E) then Get_Basic_Block (E)
+           elsif No (Last_Inst) and then This_BB /= Entry_BB
+           then This_BB else Create_Basic_Block);
+      --  If we have an identifier and it has a basic block already set,
+      --  that's the one that we have to use.  If we've just started a
+      --  basic block with no instructions in it, that basic block will do,
+      --  unless it's the entry BB since we're going to branch to it.
+      --  Otherwise, get a new one.
+
    begin
-
-      --  The frontend can generate basic blocks with identifiers that are
-      --  not declared: try to get any existing basic block, create and
-      --  register a new one if it does not exist yet.
-
-      if Present (E) and then Has_BB (E) then
-         BB := Get_Basic_Block (E);
-      else
-         --  If we've just started a basic block with no instructions in
-         --  it, that basic block will do.  Otherwise, get a new one.
-         --  However, if we're going to use this BB as a branch target,
-         --  it can't be our entry BB.
-
-         BB := (if No (Get_Last_Instruction (This_BB))
-                  and then (not Use_BB or else This_BB /= Entry_BB)
-                then This_BB else Create_Basic_Block);
-
-         if Present (E) then
-            Set_Basic_Block (E, BB);
-         end if;
-      end if;
-
       --  Now, unless this is our basic block, jump to it and position there
 
       if BB /= This_BB then
@@ -3314,7 +3279,13 @@ package body GNATLLVM.Compile is
          Position_Builder_At_End (BB);
       end if;
 
+      --  If we have an entity to point to the block, make that linkage.
+
+      if Present (E) then
+         Set_Basic_Block (E, BB);
+      end if;
+
       return BB;
-   end Enter_Block_For_Node;
+   end Enter_Block_With_Node;
 
 end GNATLLVM.Compile;

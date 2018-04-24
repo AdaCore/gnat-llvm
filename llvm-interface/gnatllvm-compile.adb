@@ -205,6 +205,37 @@ package body GNATLLVM.Compile is
       Table_Name           => "Elaboration_Table");
    --  Table of statements part of the current elaboration procedure
 
+   package Constraint_Error_Stack is new Table.Table
+     (Table_Component_Type => Entity_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Constraint_Error_Stack");
+   --  Stack of labels for constraint error
+
+   package Storage_Error_Stack is new Table.Table
+     (Table_Component_Type => Entity_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Storage_Error_Stack");
+   --  Stack of labels for storage error
+
+   package Program_Error_Stack is new Table.Table
+     (Table_Component_Type => Entity_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Program_Error_Stack");
+   --  Stack of labels for program error
+
+   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id
+     with Pre => Kind in N_Raise_xxx_Error;
+   --  Get the last entry in the exception goto stack for Kind, if any
+
    --  We save pairs of GNAT type and LLVM Value_T for each level of
    --  processing of an Emit_LValue so we can find it if we have a
    --  self-referential item (a discriminated record).
@@ -465,6 +496,30 @@ package body GNATLLVM.Compile is
             Emit_LCH_Call (Node);
 
          when N_Raise_xxx_Error =>
+
+            --  See if this Raise is really a goto due to having a label on
+            --  the appropriate stack.
+
+            declare
+               Label_Ent : constant Entity_Id :=
+                 Get_Exception_Goto_Entry (Nkind (Node));
+               BB_Next   : Basic_Block_T;
+
+            begin
+               if Present (Label_Ent) then
+                  if Present (Condition (Node)) then
+                     BB_Next := Create_Basic_Block;
+                     Emit_If_Cond
+                       (Condition (Node), Get_Label_BB (Label_Ent), BB_Next);
+                     Position_Builder_At_End (BB_Next);
+                  else
+                     Build_Br (Get_Label_BB (Label_Ent));
+                  end if;
+
+                  return;
+               end if;
+            end;
+
             if Present (Condition (Node)) then
                declare
                   BB_Then : constant Basic_Block_T :=
@@ -472,8 +527,7 @@ package body GNATLLVM.Compile is
                   BB_Next : constant Basic_Block_T := Create_Basic_Block;
 
                begin
-                  Build_Cond_Br (Emit_Expression (Condition (Node)),
-                                 BB_Then, BB_Next);
+                  Emit_If_Cond (Condition (Node), BB_Then, BB_Next);
                   Position_Builder_At_End (BB_Then);
                   Emit_LCH_Call (Node);
                   Build_Br (BB_Next);
@@ -792,8 +846,7 @@ package body GNATLLVM.Compile is
                      --  otherwise.
 
                      Position_Builder_At_End (BB_Cond);
-                     Cond := Emit_Expression (Condition (Iter_Scheme));
-                     Build_Cond_Br (Cond, BB_Stmts, BB_Next);
+                     Emit_If_Cond (Condition (Iter_Scheme), BB_Stmts, BB_Next);
 
                   else
                      --  This is a FOR loop
@@ -969,10 +1022,23 @@ package body GNATLLVM.Compile is
             null;
          --  ??? Ignore for now
 
-         when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
-            null;
+         when N_Push_Constraint_Error_Label =>
+            Constraint_Error_Stack.Append (Exception_Label (Node));
 
-         --  ??? Ignore for now
+         when N_Push_Storage_Error_Label =>
+            Storage_Error_Stack.Append (Exception_Label (Node));
+
+         when N_Push_Program_Error_Label =>
+            Program_Error_Stack.Append (Exception_Label (Node));
+
+         when N_Pop_Constraint_Error_Label =>
+            Constraint_Error_Stack.Decrement_Last;
+
+         when N_Pop_Storage_Error_Label =>
+            Storage_Error_Stack.Decrement_Last;
+
+         when N_Pop_Program_Error_Label =>
+            Program_Error_Stack.Decrement_Last;
 
          when N_Exception_Handler =>
             Error_Msg_N ("exception handler ignored??", Node);
@@ -1373,16 +1439,28 @@ package body GNATLLVM.Compile is
                pragma Assert (Do_Overflow_Check (Node));
 
                declare
-                  Func     : constant GL_Value :=
+                  Func      : constant GL_Value  :=
                     Build_Intrinsic
                     (Overflow,
                      "llvm." & Ovfl_Name & ".with.overflow.i", Left_BT);
-                  Fn_Ret   : constant GL_Value :=
+                  Fn_Ret    : constant GL_Value  :=
                     Call (Func, Left_BT, (1 => LVal, 2 => RVal));
-                  Overflow : constant GL_Value :=
+                  Overflow  : constant GL_Value  :=
                     Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
+                  Label_Ent : constant Entity_Id :=
+                    Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
+                  BB_Next   : Basic_Block_T;
+
                begin
-                  Emit_LCH_Call_If (Overflow, Node);
+                  if Present (Label_Ent) then
+                     BB_Next := Create_Basic_Block;
+                     Build_Cond_Br
+                       (Overflow, Get_Label_BB (Label_Ent), BB_Next);
+                     Position_Builder_At_End (BB_Next);
+                  else
+                     Emit_LCH_Call_If (Overflow, Node);
+                  end if;
+
                   Result := Extract_Value (Left_BT, Fn_Ret, 0);
                end;
             end if;
@@ -1542,16 +1620,28 @@ package body GNATLLVM.Compile is
                     and then not Is_Unsigned_Type (Expr)
                   then
                      declare
-                        Func     : constant GL_Value :=
+                        Func      : constant GL_Value :=
                           Build_Intrinsic
                           (Overflow, "llvm.ssub.with.overflow.i", Typ);
-                        Fn_Ret   : constant GL_Value :=
+                        Fn_Ret    : constant GL_Value :=
                           Call (Func, Typ, (1 => Const_Null (Typ), 2 => Expr));
-                        Overflow : constant GL_Value :=
+                        Overflow  : constant GL_Value :=
                           Extract_Value
                           (Standard_Boolean, Fn_Ret, 1, "overflow");
+                        Label_Ent : constant Entity_Id :=
+                          Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
+                        BB_Next   : Basic_Block_T;
+
                      begin
-                        Emit_LCH_Call_If (Overflow, Node);
+                        if Present (Label_Ent) then
+                           BB_Next := Create_Basic_Block;
+                           Build_Cond_Br
+                             (Overflow, Get_Label_BB (Label_Ent), BB_Next);
+                           Position_Builder_At_End (BB_Next);
+                        else
+                           Emit_LCH_Call_If (Overflow, Node);
+                        end if;
+
                         return Extract_Value (Typ, Fn_Ret, 0);
                      end;
                   else
@@ -1815,6 +1905,37 @@ package body GNATLLVM.Compile is
          end case;
       end if;
    end Emit_Expression;
+
+   ------------------------------
+   -- Get_Exception_Goto_Entry --
+   ------------------------------
+
+   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id is
+   begin
+      if Kind = N_Raise_Constraint_Error
+        and then Constraint_Error_Stack.Last /= 0
+        and then Present (Constraint_Error_Stack.Table
+                            (Constraint_Error_Stack.Last))
+      then
+         return Constraint_Error_Stack.Table (Constraint_Error_Stack.Last);
+
+      elsif Kind = N_Raise_Program_Error
+        and then Program_Error_Stack.Last /= 0
+        and then Present (Program_Error_Stack.Table
+                            (Program_Error_Stack.Last))
+      then
+         return Program_Error_Stack.Table (Program_Error_Stack.Last);
+
+      elsif Kind = N_Raise_Storage_Error
+        and then Storage_Error_Stack.Last /= 0
+        and then Present (Storage_Error_Stack.Table
+                            (Storage_Error_Stack.Last))
+      then
+         return Storage_Error_Stack.Table (Storage_Error_Stack.Last);
+      else
+         return Empty;
+      end if;
+   end Get_Exception_Goto_Entry;
 
    ---------------
    -- Emit_List --

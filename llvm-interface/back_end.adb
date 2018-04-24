@@ -16,9 +16,10 @@
 ------------------------------------------------------------------------------
 
 with LLVM_Drive;
-with Adabkend;
 
-with Opt; use Opt;
+with Adabkend;
+with Debug;    use Debug;
+with Opt;      use Opt;
 
 package body Back_End is
 
@@ -54,6 +55,7 @@ begin
    --  Set the switches in Opt that we depend on
 
    Building_Static_Dispatch_Tables := False;
+   Debug_Flag_Dot_G                := True;
    Expand_Nonbinary_Modular_Ops    := True;
    Unnest_Subprogram_Mode          := True;
 

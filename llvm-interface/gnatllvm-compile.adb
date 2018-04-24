@@ -1198,7 +1198,11 @@ package body GNATLLVM.Compile is
 
    function Get_Matching_Value (T : Entity_Id) return GL_Value is
    begin
-      for I in 1 .. LValue_Pair_Table.Last loop
+      --  Check in the opposite order of what we push.  We may, for example
+      --  be finding the size of an object of that size, in which case the
+      --  object will have been added last.
+
+      for I in reverse 1 .. LValue_Pair_Table.Last loop
          if Is_Parent_Of (T_Need => Implementation_Base_Type (T),
                           T_Have => Implementation_Base_Type
                             (LValue_Pair_Table.Table (I).Typ))

@@ -686,9 +686,7 @@ package body GNATLLVM.Compile is
 
             begin
                if Present (Condition (Node)) then
-                  Build_Cond_Br (Emit_Expression (Condition (Node)),
-                                 Exit_Point, Next_BB);
-
+                  Emit_If_Cond (Condition (Node), Exit_Point, Next_BB);
                else
                   Build_Br (Exit_Point);
                end if;

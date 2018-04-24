@@ -1199,12 +1199,12 @@ package body GNATLLVM.Compile is
       --  be finding the size of an object of that size, in which case the
       --  object will have been added last.
 
-      for I in reverse 1 .. LValue_Pair_Table.Last loop
+      for J in reverse 1 .. LValue_Pair_Table.Last loop
          if Is_Parent_Of (T_Need => Implementation_Base_Type (T),
                           T_Have => Implementation_Base_Type
-                            (LValue_Pair_Table.Table (I).Typ))
+                            (LValue_Pair_Table.Table (J).Typ))
          then
-            return Convert_To_Access_To (LValue_Pair_Table.Table (I), T);
+            return Convert_To_Access_To (LValue_Pair_Table.Table (J), T);
          end if;
       end loop;
 
@@ -2541,12 +2541,14 @@ package body GNATLLVM.Compile is
       begin
          Worst_Alt := Alts'Last;
          Worst_Cost := 0;
-         for I in Alts'Range loop
-            Our_Cost := (if Is_Switch then Alts (I).Switch_Cost
-                         else Alts (I).If_Cost);
+
+         for J in Alts'Range loop
+            Our_Cost := (if Is_Switch then Alts (J).Switch_Cost
+                         else Alts (J).If_Cost);
+
             if Our_Cost > Worst_Cost then
                Worst_Cost := Our_Cost;
-               Worst_Alt  := I;
+               Worst_Alt  := J;
             end if;
          end loop;
 
@@ -2606,9 +2608,9 @@ package body GNATLLVM.Compile is
 
          --  Sum up the costs of all the choices in this alternative
 
-         for I in First_Choice .. Current_Choice - 1 loop
-            If_Cost := If_Cost + Choices (I).If_Cost;
-            Switch_Cost := Switch_Cost + Choices (I).Switch_Cost;
+         for J in First_Choice .. Current_Choice - 1 loop
+            If_Cost := If_Cost + Choices (J).If_Cost;
+            Switch_Cost := Switch_Cost + Choices (J).Switch_Cost;
          end loop;
 
          Alts (Current_Alt) := (BB => BB, First_Choice => First_Choice,
@@ -2628,8 +2630,9 @@ package body GNATLLVM.Compile is
       Swap_Highest_Cost (True);
       Position_Builder_At_End (Start_BB);
       Switch_Cost := 0;
-      for I in Alts'First .. Alts'Last - 1 loop
-         Switch_Cost := Switch_Cost + Alts (I).Switch_Cost;
+
+      for J in Alts'First .. Alts'Last - 1 loop
+         Switch_Cost := Switch_Cost + Alts (J).Switch_Cost;
       end loop;
 
       if Switch_Cost < 100 then
@@ -2640,20 +2643,21 @@ package body GNATLLVM.Compile is
          declare
             BBs : Basic_Block_Array (Alts'Range);
          begin
-            for I in BBs'Range loop
-               BBs (I) := Alts (I).BB;
+            for J in BBs'Range loop
+               BBs (J) := Alts (J).BB;
             end loop;
 
             Switch := Build_Switch (LHS, BBs (BBs'Last), BBs'Length);
-            for I in Alts'First .. Alts'Last - 1 loop
-               for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
-                  for K in UI_To_Int (Choices (J).Low) ..
-                    UI_To_Int (Choices (J).High) loop
+
+            for J in Alts'First .. Alts'Last - 1 loop
+               for K in Alts (J).First_Choice .. Alts (J).Last_Choice loop
+                  for L in UI_To_Int (Choices (K).Low) ..
+                    UI_To_Int (Choices (K).High) loop
                      Add_Case (Switch,
                                Const_Int (Typ,
-                                          unsigned_long_long (Integer (K)),
+                                          unsigned_long_long (Integer (L)),
                                           Sign_Extend => True),
-                               Alts (I).BB);
+                               Alts (J).BB);
                   end loop;
                end loop;
             end loop;
@@ -2663,12 +2667,12 @@ package body GNATLLVM.Compile is
          --  Otherwise, we generate if/elsif/elsif/else
 
          Swap_Highest_Cost (False);
-         for I in Alts'First .. Alts'Last - 1 loop
-            for J in Alts (I).First_Choice .. Alts (I).Last_Choice loop
+         for J in Alts'First .. Alts'Last - 1 loop
+            for K in Alts (J).First_Choice .. Alts (J).Last_Choice loop
 
                --  Only do something if this is not a null range
 
-               if Choices (J).If_Cost /= 0 then
+               if Choices (K).If_Cost /= 0 then
 
                   --  If we're processing the very last choice, then
                   --  if the choice is not a match, we go to "others".
@@ -2677,14 +2681,14 @@ package body GNATLLVM.Compile is
                   --  against Choices'Last because we may have swapped
                   --  some other alternative with Alts'Last.
 
-                  if I = Alts'Last - 1 and then J = Alts (I).Last_Choice then
+                  if J = Alts'Last - 1 and then K = Alts (J).Last_Choice then
                      BB := Alts (Alts'Last).BB;
                   else
                      BB := Create_Basic_Block ("case-when");
                   end if;
 
-                  Emit_If_Range (Node, LHS, Choices (J).Low, Choices (J).High,
-                                 Alts (I).BB, BB);
+                  Emit_If_Range (Node, LHS, Choices (K).Low, Choices (K).High,
+                                 Alts (J).BB, BB);
                   Position_Builder_At_End (BB);
                end if;
             end loop;

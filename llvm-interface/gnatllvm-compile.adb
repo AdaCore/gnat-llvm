@@ -54,6 +54,16 @@ package body GNATLLVM.Compile is
    --  See also DragonEgg sources for comparison on how GCC nodes are converted
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
 
+   procedure Emit_Elab_Proc
+     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
+     with Pre => Nkind_In (N, N_Package_Specification, N_Package_Body)
+                 and then Suffix'Length = 1;
+   --  Emit code for the elaboration procedure for N.  Suffix is either "s"
+   --  or "b".  CU is the corresponding N_Compilation_Unit on which we set
+   --  Has_No_Elaboration_Code if there isn't any.  Stmts, if Present, is
+   --  an N_Handled_Sequence_Of_Statements that also have to be in the
+   --  elaboration procedure.
+
    function Build_Short_Circuit_Op
      (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
      with Pre  => Present (Left) and then Present (Right),
@@ -228,13 +238,11 @@ package body GNATLLVM.Compile is
          return;
       end if;
 
+      --  We assume there won't be any elaboration code for any unit and
+      --  clear that flag if we're wrong.
+
       In_Main_Unit := In_Extended_Main_Code_Unit (U);
-
-      --  ??? Has_No_Elaboration_Code is supposed to be set by default
-      --  on subprogram bodies, but this is apparently not the case,
-      --  so force the flag here. Ditto for subprogram decls.
-
-      if Nkind_In (U, N_Subprogram_Body, N_Subprogram_Declaration) then
+      if In_Main_Unit and then Nkind (Parent (U)) = N_Compilation_Unit then
          Set_Has_No_Elaboration_Code (Parent (U), True);
       end if;
 
@@ -256,6 +264,64 @@ package body GNATLLVM.Compile is
       Emit (U);
    end Emit_Library_Item;
 
+   --------------------
+   -- Emit_Elab_Proc --
+   --------------------
+
+   procedure Emit_Elab_Proc
+     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String) is
+      U          : constant Node_Id  := Defining_Unit_Name (N);
+      Unit       : constant Node_Id  :=
+        (if Nkind (U) = N_Defining_Program_Unit_Name
+         then Defining_Identifier (U) else U);
+      S_List     : constant List_Id  :=
+        (if No (Stmts) then No_List else Statements (Stmts));
+      Name       : constant String   :=
+        Get_Name_String (Chars (Unit)) & "___elab" & Suffix;
+      Work_To_Do : constant Boolean  :=
+        Elaboration_Table.Last /= 0 or else Has_Non_Null_Statements (S_List);
+      Elab_Type  : constant Type_T   := Fn_Ty ((1 .. 0 => <>), Void_Type);
+      LLVM_Func  : GL_Value;
+
+   begin
+      --  If nothing to elaborate, do nothing
+
+      if not In_Main_Unit or else not Library_Level
+        or else Nkind (CU) /= N_Compilation_Unit or else not Work_To_Do
+      then
+         return;
+      end if;
+
+      --  Otherwise, show there will be elaboration code and emit it
+
+      if Nkind (CU) = N_Compilation_Unit then
+         Set_Has_No_Elaboration_Code (CU, False);
+      end if;
+
+      LLVM_Func := Add_Function (Name, Elab_Type, Standard_Void_Type);
+      Enter_Subp (LLVM_Func);
+      Push_Debug_Scope
+        (Create_Subprogram_Debug_Info
+           (LLVM_Func, Unit, N, Get_Name_String (Chars (Unit)), Name));
+      Special_Elaboration_Code := True;
+
+      for J in 1 .. Elaboration_Table.Last loop
+         Emit (Elaboration_Table.Table (J));
+      end loop;
+
+      --  Emit the statements after clearing the special code flag since
+      --  we want to handle them normally: this will be the first time we
+      --  see them, unlike any that were previously partially processed
+      --  as declarations.
+
+      Elaboration_Table.Set_Last (0);
+      Special_Elaboration_Code := False;
+      Emit_List (S_List);
+      Build_Ret_Void;
+      Pop_Debug_Scope;
+      Leave_Subp;
+   end Emit_Elab_Proc;
+
    ----------
    -- Emit --
    ----------
@@ -265,10 +331,10 @@ package body GNATLLVM.Compile is
       Set_Debug_Pos_At_Node (Node);
       if Library_Level
         and then (Nkind (Node) in N_Statement_Other_Than_Procedure_Call
-                   or else Nkind (Node) in N_Subprogram_Call
-                   or else Nkind (Node) = N_Handled_Sequence_Of_Statements
-                   or else Nkind (Node) in N_Raise_xxx_Error
-                   or else Nkind (Node) = N_Raise_Statement)
+                    or else Nkind (Node) in N_Subprogram_Call
+                    or else Nkind (Node) = N_Handled_Sequence_Of_Statements
+                    or else Nkind (Node) in N_Raise_xxx_Error
+                    or else Nkind (Node) = N_Raise_Statement)
       then
          --  Append to list of statements to put in the elaboration procedure
          --  if in main unit, otherwise simply ignore the statement.
@@ -315,145 +381,43 @@ package body GNATLLVM.Compile is
             Emit_List (Private_Declarations (Node));
             Pop_Debug_Scope;
 
-            --  Only generate elaboration procedures for library-level packages
-            --  and when part of the main unit.
-
-            if In_Main_Unit
-              and then Nkind (Parent (Parent (Node))) = N_Compilation_Unit
-            then
-               if Elaboration_Table.Last = 0 then
-                  Set_Has_No_Elaboration_Code (Parent (Parent (Node)), True);
-               else
-                  declare
-                     Unit      : Node_Id := Defining_Unit_Name (Node);
-                     Elab_Type : constant Type_T :=
-                       Fn_Ty ((1 .. 0 => <>), Void_Type);
-                     LLVM_Func : GL_Value;
-
-                  begin
-                     if Nkind (Unit) = N_Defining_Program_Unit_Name then
-                        Unit := Defining_Identifier (Unit);
-                     end if;
-
-                     LLVM_Func := Add_Function
-                       (Get_Name_String (Chars (Unit)) & "___elabs",
-                        Elab_Type, Standard_Void_Type);
-
-                     Enter_Subp (LLVM_Func);
-                     Push_Debug_Scope
-                       (Create_Subprogram_Debug_Info
-                          (LLVM_Func, Unit, Node,
-                           Get_Name_String (Chars (Unit)),
-                           Get_Name_String (Chars (Unit)) & "___elabs"));
-                     Special_Elaboration_Code := True;
-
-                     for J in 1 .. Elaboration_Table.Last loop
-                        Emit (Elaboration_Table.Table (J));
-                     end loop;
-
-                     Elaboration_Table.Set_Last (0);
-                     Special_Elaboration_Code := False;
-                     Build_Ret_Void;
-                     Pop_Debug_Scope;
-                     Leave_Subp;
-                  end;
-               end if;
+            if Library_Level then
+               Emit_Elab_Proc (Node, Empty, Parent (Parent (Node)), "s");
             end if;
 
          when N_Package_Body =>
-            declare
-               Def_Id : constant Entity_Id := Unique_Defining_Entity (Node);
-            begin
-               if Ekind (Def_Id) in Generic_Unit_Kind then
-                  if Nkind (Parent (Node)) = N_Compilation_Unit then
-                     Set_Has_No_Elaboration_Code (Parent (Node), True);
-                  end if;
-               else
-                  Push_Lexical_Debug_Scope (Node);
-                  Emit_List (Declarations (Node));
+            --  Skip generic packages
 
-                  if not In_Main_Unit then
-                     Pop_Debug_Scope;
-                     return;
-                  end if;
+            if Ekind (Unique_Defining_Entity (Node)) in Generic_Unit_Kind then
+               return;
+            end if;
 
-                  --  Handle statements
+            --  We always process declarations
 
-                  declare
-                     Stmts     : constant Node_Id :=
-                                   Handled_Statement_Sequence (Node);
-                     Has_Stmts : constant Boolean :=
-                                   Present (Stmts)
-                                     and then Has_Non_Null_Statements
-                                                (Statements (Stmts));
+            Push_Lexical_Debug_Scope (Node);
+            Emit_List (Declarations (Node));
 
-                     Elab_Type : constant Type_T :=
-                       Fn_Ty ((1 .. 0 => <>), Void_Type);
-                     LLVM_Func : GL_Value;
-                     Unit      : Node_Id;
+            --  If we're not at library level, we also process the
+            --  statements, but if we are, they're handled in the elab
+            --  proc, but if they're at an inner level, we have to add
+            --  them explicitly.
 
-                  begin
-                     --  For packages inside subprograms, generate elaboration
-                     --  code as standard code as part of the enclosing unit.
+            if not Library_Level
+              and then Present (Handled_Statement_Sequence (Node))
+            then
+               Emit (Handled_Statement_Sequence (Node));
+            elsif  Nkind (Parent (Node)) /= N_Compilation_Unit
+              and then Present (Handled_Statement_Sequence (Node))
+            then
+               Elaboration_Table.Append (Handled_Statement_Sequence (Node));
+            end if;
 
-                     if not Library_Level then
-                        if Has_Stmts then
-                           Emit_List (Statements (Stmts));
-                        end if;
+            if Library_Level then
+               Emit_Elab_Proc
+                 (Node, Handled_Statement_Sequence (Node), Parent (Node), "b");
+            end if;
 
-                     elsif Nkind (Parent (Node)) /= N_Compilation_Unit then
-                        if Has_Stmts then
-                           Elaboration_Table.Append (Stmts);
-                        end if;
-
-                     elsif Elaboration_Table.Last = 0
-                       and then not Has_Stmts
-                     then
-                        Set_Has_No_Elaboration_Code (Parent (Node), True);
-
-                     --  Generate the elaboration code for this library level
-                     --  package.
-
-                     else
-                        Unit := Defining_Unit_Name (Node);
-
-                        if Nkind (Unit) = N_Defining_Program_Unit_Name then
-                           Unit := Defining_Identifier (Unit);
-                        end if;
-
-                        LLVM_Func :=
-                          Add_Function
-                          (Get_Name_String (Chars (Unit)) & "___elabb",
-                           Elab_Type, Standard_Void_Type);
-
-                        Enter_Subp (LLVM_Func);
-                        Push_Debug_Scope
-                          (Create_Subprogram_Debug_Info
-                             (LLVM_Func, Unit, Node,
-                              Get_Name_String (Chars (Unit)),
-                              Get_Name_String (Chars (Unit)) & "___elabs"));
-                        Special_Elaboration_Code := True;
-
-                        for J in 1 .. Elaboration_Table.Last loop
-                           Emit (Elaboration_Table.Table (J));
-                        end loop;
-
-                        Elaboration_Table.Set_Last (0);
-                        Special_Elaboration_Code := False;
-
-                        if Has_Stmts then
-                           Emit_List (Statements (Stmts));
-                        end if;
-
-                        Build_Ret_Void;
-                        Pop_Debug_Scope;
-                        Leave_Subp;
-                     end if;
-                  end;
-
-                  Pop_Debug_Scope;
-               end if;
-            end;
+            Pop_Debug_Scope;
 
          when N_Subprogram_Body =>
 
@@ -481,8 +445,8 @@ package body GNATLLVM.Compile is
                Subp : constant Entity_Id := Unique_Defining_Entity (Node);
 
             begin
-               --  Do not print intrinsic subprogram as calls to those will be
-               --  expanded.
+               --  Ignore intrinsic subprogram as calls to those will
+               --  be expanded.
 
                if Convention (Subp) = Convention_Intrinsic
                  or else Is_Intrinsic_Subprogram (Subp)
@@ -494,12 +458,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Handled_Sequence_Of_Statements =>
-            if Present (Exception_Handlers (Node))
-              or else Present (At_End_Proc (Node))
-            then
-               Error_Msg_N ("Exception handling not supported", Node);
-            end if;
-
+            --  ?? Need to handle Exception_Handlers and At_End_Proc
             Emit_List (Statements (Node));
 
          when N_Raise_Statement =>
@@ -945,7 +904,7 @@ package body GNATLLVM.Compile is
                  (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>));
 
                Emit_List (Declarations (Node));
-               Emit_List (Statements (Handled_Statement_Sequence (Node)));
+               Emit (Handled_Statement_Sequence (Node));
 
                if not Are_In_Dead_Code then
                   Call (Get_Stack_Restore_Fn, (1 => Stack_State));
@@ -1012,10 +971,7 @@ package body GNATLLVM.Compile is
             | N_Generic_Package_Declaration
             | N_Generic_Subprogram_Declaration
          =>
-            if Nkind (Parent (Node)) = N_Compilation_Unit then
-               Set_Has_No_Elaboration_Code (Parent (Node), True);
-            end if;
-
+            null;
          --  ??? Ignore for now
 
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>

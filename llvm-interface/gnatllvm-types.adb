@@ -823,13 +823,15 @@ package body GNATLLVM.Types is
       For_Type : Boolean := False) return GL_Value
    is
    begin
+      --  If a value was specified and it's not a reference, then it
+      --  must be of a fixed size.  That's the size we're looking for.
 
-      if Is_Record_Type (TE) then
+      if Present (V) and then not Is_Access_Type (V) then
+         return Get_LLVM_Type_Size (Type_Of (V));
+      elsif Is_Record_Type (TE) then
          return Get_Record_Type_Size (TE, V, For_Type);
-
       elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
          return Get_Array_Type_Size (TE, V, For_Type);
-
       else
          return Get_LLVM_Type_Size (Create_Type (TE));
       end if;

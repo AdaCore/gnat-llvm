@@ -323,41 +323,34 @@ package body GNATLLVM.Subprograms is
 
    function Get_Static_Link (Node : Entity_Id) return GL_Value
    is
-      Subp        : constant Entity_Id := Entity (Node);
+      Subp        : constant Entity_Id  := Entity (Node);
+      Parent      : constant Entity_Id  := Enclosing_Subprogram (Subp);
+      Caller      : constant Node_Id    := Node_Enclosing_Subprogram (Node);
+      Ent_Caller  : constant Subp_Entry := Subps.Table (Subp_Index (Caller));
+      Ent         : Subp_Entry;
       Result      : GL_Value;
-      Parent : constant Entity_Id := Enclosing_Subprogram (Subp);
-      Caller : Node_Id;
 
    begin
-      --  ?? This routine needs a major rewrite
 
       if Present (Parent) then
-         Caller := Node_Enclosing_Subprogram (Node);
+         Ent := Subps.Table (Subp_Index (Parent));
+         if Parent = Caller then
+            Result := Need_Value (Get_Value (Ent.ARECnP), Ent.ARECnPT);
+         elsif No (Ent_Caller.ARECnF) then
+            return Const_Null (Standard_A_Char);
+         else
+            Result := Get_Value (Ent_Caller.ARECnF);
 
-         declare
-            Ent        : constant Subp_Entry :=
-              Subps.Table (Subp_Index (Parent));
-            Ent_Caller : constant Subp_Entry :=
-              Subps.Table (Subp_Index (Caller));
+            --  Go levels up via the ARECnU field if needed
 
-         begin
-            if Parent = Caller then
-               Result := Need_Value (Get_Value (Ent.ARECnP), Ent.ARECnPT);
-            else
-               Result := Get_Value (Ent_Caller.ARECnF);
+            for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
+               Result := Load (GEP (Size_Type, Result,
+                                    (1 => Const_Null_32, 2 => Const_Null_32),
+                                    "ARECnF.all.ARECnU"));
+            end loop;
+         end if;
 
-               --  Go levels up via the ARECnU field if needed
-
-               for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-                  Result := Load (GEP (Size_Type, Result,
-                                       (1 => Const_Null_32,
-                                        2 => Const_Null_32),
-                                       "ARECnF.all.ARECnU"));
-               end loop;
-            end if;
-
-            return Pointer_Cast (Result, Standard_A_Char, "static-link");
-         end;
+         return Pointer_Cast (Result, Standard_A_Char, "static-link");
       else
          return Const_Null (Standard_A_Char);
       end if;

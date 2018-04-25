@@ -50,6 +50,9 @@ package body GNATLLVM.DebugInfo is
      with Post => Present (Current_Debug_Scope'Result);
    --  Current debug info scope
 
+   Freeze_Pos_Level : Natural := 0;
+   --  Current level of pushes of requests to freeze debug position
+
    ----------------------
    -- Push_Debug_Scope --
    ----------------------
@@ -165,12 +168,32 @@ package body GNATLLVM.DebugInfo is
    end Push_Lexical_Debug_Scope;
 
    ---------------------------
+   -- Push_Debug_Freeze_Pos --
+   ---------------------------
+
+   procedure Push_Debug_Freeze_Pos is
+   begin
+      Freeze_Pos_Level := Freeze_Pos_Level + 1;
+   end Push_Debug_Freeze_Pos;
+
+   --------------------------
+   -- Pop_Debug_Freeze_Pos --
+   --------------------------
+
+   procedure Pop_Debug_Freeze_Pos is
+   begin
+      Freeze_Pos_Level := Freeze_Pos_Level - 1;
+   end Pop_Debug_Freeze_Pos;
+
+   ---------------------------
    -- Set_Debug_Pos_At_Node --
    ---------------------------
 
    procedure Set_Debug_Pos_At_Node (N : Node_Id) is
    begin
-      if Emit_Debug_Info and then Has_Debug_Scope then
+      if Emit_Debug_Info and then Has_Debug_Scope
+        and then Freeze_Pos_Level = 0
+      then
          Set_Debug_Loc (IR_Builder, Current_Debug_Scope,
                         Integer (Get_Logical_Line_Number (Sloc (N))),
                         Integer (Get_Column_Number (Sloc (N))));

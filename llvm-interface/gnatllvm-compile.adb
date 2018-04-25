@@ -918,6 +918,7 @@ package body GNATLLVM.Compile is
                --  have the same situation with N_Block_Statement.
 
                if not Are_In_Dead_Code then
+                  Set_Debug_Pos_At_Node (Node);
                   Call (Get_Stack_Restore_Fn, (1 => Stack_State));
                   Build_Br (BB_Iter);
                end if;
@@ -942,6 +943,7 @@ package body GNATLLVM.Compile is
                Emit (Handled_Statement_Sequence (Node));
 
                if not Are_In_Dead_Code then
+                  Set_Debug_Pos_At_Node (Node);
                   Call (Get_Stack_Restore_Fn, (1 => Stack_State));
                end if;
 

@@ -70,4 +70,13 @@ package GNATLLVM.DebugInfo is
      with Pre => Present (N);
    --  Set builder position for debugging to the Sloc of N.
 
+   procedure Push_Debug_Freeze_Pos;
+   procedure Pop_Debug_Freeze_Pos;
+   --  When we're doing expansion for computing sizes and/or field positions,
+   --  we'll sometimes be going into nodes whose Sloc is at the point of
+   --  definition of a type.  Jumping to that Sloc is not helpful so these
+   --  calls should be used to freeze the position.  Each "push" must be
+   --  cancelled with a "pop" and the position will be frozen until the
+   --  all pushes have been popped.
+
 end GNATLLVM.DebugInfo;

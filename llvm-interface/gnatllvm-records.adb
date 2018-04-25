@@ -29,6 +29,7 @@ with Table;    use Table;
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -398,6 +399,8 @@ package body GNATLLVM.Records is
       This_Align : unsigned;
 
    begin
+      Push_Debug_Freeze_Pos;
+
       --  If we're passed V, add it to the list that Get_Matching_Value
       --  will search if we run into a discriminant in one of the computations
       --  below.
@@ -433,6 +436,7 @@ package body GNATLLVM.Records is
          Cur_Idx    := RI.Next;
       end loop;
 
+      Pop_Debug_Freeze_Pos;
       return Total_Size;
    end Get_Record_Size_So_Far;
 

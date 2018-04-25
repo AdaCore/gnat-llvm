@@ -23,6 +23,7 @@ with Table;
 with Uintp;    use Uintp;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -147,8 +148,11 @@ package body GNATLLVM.Arrays is
       Bound_Idx    : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
       --  In the array fat pointer bounds structure, bounds are stored as a
       --  sequence of (lower bound, upper bound) pairs.
+      Result       : GL_Value;
 
    begin
+      Push_Debug_Freeze_Pos;
+
       --  There are four cases: a constant size, in which case we return
       --  that size, a saved value, in which case we return that value,
       --  an unconstrained array, in which case we have a fat pointer and
@@ -156,40 +160,44 @@ package body GNATLLVM.Arrays is
       --  access that field of the enclosing record.
 
       if Bound_Info.Cnst /= No_Uint then
-         return Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
+         Result := Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
-         return Build_Type_Conversion (Bound_Info.Value, Dim_Info.Bound_Type);
+         Result := Build_Type_Conversion
+           (Bound_Info.Value, Dim_Info.Bound_Type);
       elsif not Is_Constrained (Arr_Typ) then
-         return Extract_Value
+         Result := Extract_Value
            (Dim_Info.Bound_Type, Value, (1 => 1, 2 => Integer (Bound_Idx)),
             (if Is_Low then "low-bound" else "high-bound"));
-      end if;
 
-      --  We now should have the discriminated case.  Make sure we do.
-
-      pragma Assert (Ekind (Bound_Info.Discr) = E_Discriminant);
-
-      --  If we are getting the size of a type, as opposed to a value,
-      --  we have to use the first/last value of the range of the type
-      --  of the discriminant.
-
-      if For_Type then
-         declare
-            Disc_Type : constant Entity_Id := Full_Etype (Bound_Info.Discr);
-         begin
-            return Build_Type_Conversion
-              ((if Is_Low then Type_Low_Bound (Disc_Type)
-                else Type_High_Bound (Disc_Type)), Dim_Info.Bound_Type);
-         end;
       else
-         return Convert_To_Elementary_Type
-           (Load (Record_Field_Offset
-                    (Get_Matching_Value (Full_Etype
-                                           (Scope (Bound_Info.Discr))),
-                     Bound_Info.Discr)),
-            Dim_Info.Bound_Type);
+         --  We now should have the discriminated case.  Make sure we do.
+
+         pragma Assert (Ekind (Bound_Info.Discr) = E_Discriminant);
+
+         --  If we are getting the size of a type, as opposed to a value,
+         --  we have to use the first/last value of the range of the type
+         --  of the discriminant.
+
+         if For_Type then
+            declare
+               Disc_Type : constant Entity_Id := Full_Etype (Bound_Info.Discr);
+            begin
+               Result := Build_Type_Conversion
+                 ((if Is_Low then Type_Low_Bound (Disc_Type)
+                   else Type_High_Bound (Disc_Type)), Dim_Info.Bound_Type);
+            end;
+         else
+            Result := Convert_To_Elementary_Type
+              (Load (Record_Field_Offset
+                       (Get_Matching_Value (Full_Etype
+                                              (Scope (Bound_Info.Discr))),
+                        Bound_Info.Discr)),
+               Dim_Info.Bound_Type);
+         end if;
       end if;
 
+      Pop_Debug_Freeze_Pos;
+      return Result;
    end Get_Array_Bound;
 
    ----------------------

@@ -533,8 +533,11 @@ package GNATLLVM.GLValue is
    function NSW_Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (NSW_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     ((if RHS = Const_Int (RHS, Uint_1) then LHS
+       elsif LHS = Const_Int (LHS, Uint_1) then RHS
+       else G_From (NSW_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                             Name),
+                    LHS)))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (NSW_Mul'Result);
 

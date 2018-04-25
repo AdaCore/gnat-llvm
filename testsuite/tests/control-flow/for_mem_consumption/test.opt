@@ -1,1 +1,0 @@
-ALL XFAIL FOR loops are leaking stack memory: to be fixed!

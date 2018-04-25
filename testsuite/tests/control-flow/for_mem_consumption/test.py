@@ -10,4 +10,4 @@ from gnatllvm import build_and_load, Func
     Func('_ada_foo', argtypes=[c_uint], restype=c_bool),
 )
 
-assert Foo(10)
+assert Foo(100)

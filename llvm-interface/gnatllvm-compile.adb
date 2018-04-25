@@ -791,14 +791,14 @@ package body GNATLLVM.Compile is
                  (if not Is_For_Loop
                   then Enter_Block_With_Node (Empty)
                   else Create_Basic_Block ("loop-cond"));
-               --  If this is a mere loop, there is even no condition block:
-               --  alias it with the STMTS block.
-
-               BB_Stmts         : constant Basic_Block_T :=
-                 (if Is_Mere_Loop
-                  then BB_Cond else Create_Basic_Block ("loop-stmts"));
                --  If this is not a FOR loop, there is no initialization: alias
                --  it with the COND block.
+
+               BB_Stmts         : constant Basic_Block_T :=
+                 (if Is_Mere_Loop or else Is_For_Loop
+                  then BB_Cond else Create_Basic_Block ("loop-stmts"));
+               --  If this is a mere loop or a For loop, there is no condition
+               --  block: alias it with the STMTS block.
 
                BB_Iter          : Basic_Block_T :=
                  (if Is_For_Loop then Create_Basic_Block ("loop-iter")
@@ -811,6 +811,8 @@ package body GNATLLVM.Compile is
                    Create_Basic_Block ("loop-exit");
                --  The NEXT step contains no statement that comes from the
                --  loop: it is the exit point.
+
+               Stack_State      : GL_Value;
 
             begin
 
@@ -866,14 +868,6 @@ package body GNATLLVM.Compile is
                            Low, High, "loop-entry-cond"),
                           BB_Cond, BB_Next);
 
-                        --  The FOR loop is special: the condition is evaluated
-                        --  during the INIT step and right before the ITER
-                        --  step, so there is nothing to check during the
-                        --  COND step.
-
-                        Position_Builder_At_End (BB_Cond);
-                        Build_Br (BB_Stmts);
-
                         BB_Cond := Create_Basic_Block ("loop-cond-iter");
                         Position_Builder_At_End (BB_Cond);
                         Build_Cond_Br (I_Cmp
@@ -910,9 +904,24 @@ package body GNATLLVM.Compile is
                   end if;
                end if;
 
+               --  Finally, emit the body of the loop.  Save and restore
+               --  the stack around that code, so we free any variables
+               --  allocated each iteration.
+
                Position_Builder_At_End (BB_Stmts);
+               Stack_State := Call
+                 (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>));
                Emit_List (Statements (Node));
-               Build_Br (BB_Iter);
+
+               --  ?? This really should be an "at end" situation with
+               --  exit and branches out of the loop also protected.  We
+               --  have the same situation with N_Block_Statement.
+
+               if not Are_In_Dead_Code then
+                  Call (Get_Stack_Restore_Fn, (1 => Stack_State));
+                  Build_Br (BB_Iter);
+               end if;
+
                Pop_Loop;
 
                Position_Builder_At_End (BB_Next);

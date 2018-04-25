@@ -525,12 +525,19 @@ package body GNATLLVM.Types is
          when E_Access_Type .. E_General_Access_Type
            | E_Anonymous_Access_Type | E_Access_Subprogram_Type
            | E_Anonymous_Access_Subprogram_Type =>
-            if Needs_Activation_Record (Full_Designated_Type (Def_Ident)) then
-               T := Create_Subprogram_Access_Type
-                 (Create_Type (Full_Designated_Type (Def_Ident)));
-            else
-               T := Create_Access_Type (Full_Designated_Type (Def_Ident));
-            end if;
+            declare
+               Desig_Type : constant Entity_Id
+                 := Full_Designated_Type (Def_Ident);
+            begin
+               if Ekind (Desig_Type) = E_Subprogram_Type
+                 and then Needs_Activation_Record (Desig_Type)
+               then
+                  T := Create_Subprogram_Access_Type
+                    (Create_Type (Desig_Type));
+               else
+                  T := Create_Access_Type (Desig_Type);
+               end if;
+            end;
 
          when Record_Kind =>
             T := Create_Record_Type (Def_Ident);

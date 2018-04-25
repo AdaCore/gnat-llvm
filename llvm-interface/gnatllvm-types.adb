@@ -556,9 +556,10 @@ package body GNATLLVM.Types is
             T := Int_Ty (Esize (Def_Ident));
 
          when E_Incomplete_Type =>
-            --  This is a taft amendment type, return a dummy type
+            --  This is a Taft Amendment type, return a dummy type that
+            --  we can take a pointer to.
 
-            T := Void_Type;
+            T := Struct_Create_Named (LLVM_Context, Get_Name (Def_Ident));
 
          when E_Private_Type
             | E_Private_Subtype

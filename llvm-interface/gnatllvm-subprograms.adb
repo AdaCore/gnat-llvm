@@ -326,14 +326,16 @@ package body GNATLLVM.Subprograms is
       Subp        : constant Entity_Id  := Entity (Node);
       Parent      : constant Entity_Id  := Enclosing_Subprogram (Subp);
       Caller      : constant Node_Id    := Node_Enclosing_Subprogram (Node);
-      Ent_Caller  : constant Subp_Entry := Subps.Table (Subp_Index (Caller));
+      Ent_Caller  : Subp_Entry;
       Ent         : Subp_Entry;
       Result      : GL_Value;
 
    begin
 
       if Present (Parent) then
-         Ent := Subps.Table (Subp_Index (Parent));
+         Ent        := Subps.Table (Subp_Index (Parent));
+         Ent_Caller := Subps.Table (Subp_Index (Caller));
+
          if Parent = Caller then
             Result := Need_Value (Get_Value (Ent.ARECnP), Ent.ARECnPT);
          elsif No (Ent_Caller.ARECnF) then

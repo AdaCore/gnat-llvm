@@ -210,8 +210,8 @@ package body GNATLLVM.Subprograms is
    -- Emit_One_Body --
    -------------------
 
-   procedure Emit_One_Body (Node : Node_Id) is
-      Spec            : constant Node_Id   := Get_Acting_Spec (Node);
+   procedure Emit_One_Body (N : Node_Id) is
+      Spec            : constant Node_Id   := Get_Acting_Spec (N);
       Func            : constant GL_Value  := Emit_Subprogram_Decl (Spec);
       Def_Ident       : constant Entity_Id := Defining_Entity (Spec);
       Return_Typ      : constant Entity_Id := Full_Etype (Def_Ident);
@@ -226,7 +226,7 @@ package body GNATLLVM.Subprograms is
    begin
       Enter_Subp (Func);
       Push_Debug_Scope
-        (Create_Subprogram_Debug_Info (Func, Def_Ident, Node,
+        (Create_Subprogram_Debug_Info (Func, Def_Ident, N,
                                        Get_Name_String (Chars (Def_Ident)),
                                        Get_Ext_Name (Def_Ident)));
 
@@ -272,8 +272,8 @@ package body GNATLLVM.Subprograms is
          Return_Address_Param := LLVM_Param;
       end if;
 
-      Emit_List (Declarations (Node));
-      Emit_List (Statements (Handled_Statement_Sequence (Node)));
+      Emit_List (Declarations (N));
+      Emit_List (Statements (Handled_Statement_Sequence (N)));
 
       --  If the last instrution isn't a terminator, add a return
 
@@ -354,7 +354,7 @@ package body GNATLLVM.Subprograms is
    -- Emit_Subprogram_Body --
    --------------------------
 
-   procedure Emit_Subprogram_Body (Node : Node_Id) is
+   procedure Emit_Subprogram_Body (N : Node_Id) is
       Nest_Table_First : constant Nat := Nested_Functions_Table.Last + 1;
 
    begin
@@ -363,15 +363,15 @@ package body GNATLLVM.Subprograms is
       --  ensure that the spec has been elaborated.
 
       if not Library_Level then
-         Discard (Emit_Subprogram_Decl (Get_Acting_Spec (Node)));
-         Nested_Functions_Table.Append (Node);
+         Discard (Emit_Subprogram_Decl (Get_Acting_Spec (N)));
+         Nested_Functions_Table.Append (N);
          return;
       end if;
 
       --  Otherwise, elaborate this function and then any nested functions
       --  within in.
 
-      Emit_One_Body (Node);
+      Emit_One_Body (N);
 
       for I in Nest_Table_First .. Nested_Functions_Table.Last loop
          Emit_Subprogram_Body (Nested_Functions_Table.Table (I));
@@ -384,11 +384,10 @@ package body GNATLLVM.Subprograms is
    -- Get_Static_Link --
    ---------------------
 
-   function Get_Static_Link (Node : Entity_Id) return GL_Value
-   is
-      Subp        : constant Entity_Id  := Entity (Node);
+   function Get_Static_Link (N : Entity_Id) return GL_Value is
+      Subp        : constant Entity_Id  := Entity (N);
       Parent      : constant Entity_Id  := Enclosing_Subprogram (Subp);
-      Caller      : constant Node_Id    := Node_Enclosing_Subprogram (Node);
+      Caller      : constant Node_Id    := Node_Enclosing_Subprogram (N);
       Ent_Caller  : Subp_Entry;
       Ent         : Subp_Entry;
       Result      : GL_Value;
@@ -425,15 +424,14 @@ package body GNATLLVM.Subprograms is
    -- Emit_LCH_Call_If --
    ----------------------
 
-   procedure Emit_LCH_Call_If (V : GL_Value; Node : Node_Id) is
-      BB_Then  : constant Basic_Block_T :=
-        Create_Basic_Block ("raise");
+   procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id) is
+      BB_Then  : constant Basic_Block_T := Create_Basic_Block ("raise");
       BB_Next  : constant Basic_Block_T := Create_Basic_Block;
 
    begin
       Build_Cond_Br (V, BB_Then, BB_Next);
       Position_Builder_At_End (BB_Then);
-      Emit_LCH_Call (Node);
+      Emit_LCH_Call (N);
       Build_Br (BB_Next);
       Position_Builder_At_End (BB_Next);
    end Emit_LCH_Call_If;
@@ -442,12 +440,12 @@ package body GNATLLVM.Subprograms is
    -- Emit_LCH_Call --
    -------------------
 
-   procedure Emit_LCH_Call (Node : Node_Id) is
+   procedure Emit_LCH_Call (N : Node_Id) is
       Int_Type      : constant Type_T := Create_Type (Standard_Integer);
       Args          : Value_Array (1 .. 2);
 
       File : constant String :=
-        Get_Name_String (Reference_Name (Get_Source_File_Index (Sloc (Node))));
+        Get_Name_String (Reference_Name (Get_Source_File_Index (Sloc (N))));
 
       Element_Type : constant Type_T := Int_Ty (8);
       Array_Type   : constant Type_T :=
@@ -494,7 +492,7 @@ package body GNATLLVM.Subprograms is
 
       Args (2) := Const_Int
         (Int_Type,
-         unsigned_long_long (Get_Logical_Line_Number (Sloc (Node))),
+         unsigned_long_long (Get_Logical_Line_Number (Sloc (N))),
          Sign_Extend => False);
       Discard (Call (IR_Builder, LLVM_Value (Get_LCH_Fn),
                      Args'Address, Args'Length, ""));
@@ -504,9 +502,9 @@ package body GNATLLVM.Subprograms is
    -- Emit_Call --
    ---------------
 
-   function Emit_Call (Call_Node : Node_Id) return GL_Value is
-      Subp           : Node_Id            := Name (Call_Node);
-      Our_Return_Typ : constant Entity_Id := Full_Etype (Call_Node);
+   function Emit_Call (N : Node_Id) return GL_Value is
+      Subp           : Node_Id            := Name (N);
+      Our_Return_Typ : constant Entity_Id := Full_Etype (N);
       Direct_Call    : constant Boolean   :=
         Nkind (Subp) /= N_Explicit_Dereference;
       Subp_Typ       : constant Entity_Id :=
@@ -551,7 +549,7 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Param  := First_Formal_With_Extras (Subp_Typ);
-      Actual := First_Actual (Call_Node);
+      Actual := First_Actual (N);
       while Present (Actual) loop
          P_Type := Full_Etype (Param);
 
@@ -600,9 +598,9 @@ package body GNATLLVM.Subprograms is
    -- Emit_Subprogram_Decl --
    --------------------------
 
-   function Emit_Subprogram_Decl (Subp_Spec : Node_Id) return GL_Value
+   function Emit_Subprogram_Decl (N : Node_Id) return GL_Value
    is
-      Def_Ident : constant Node_Id := Defining_Entity (Subp_Spec);
+      Def_Ident : constant Node_Id := Defining_Entity (N);
 
    begin
       --  If this subprogram specification has already been compiled, do
@@ -612,14 +610,13 @@ package body GNATLLVM.Subprograms is
          return Get_Value (Def_Ident);
       else
          declare
-            Subp_Type : constant Type_T :=
-              Create_Subprogram_Type_From_Spec (Subp_Spec);
-
+            Subp_Type      : constant Type_T :=
+              Create_Subprogram_Type_From_Spec (N);
             Subp_Base_Name : constant String := Get_Ext_Name (Def_Ident);
             LLVM_Func      : GL_Value;
 
          begin
-            --  ??? Special case __gnat_last_chance_handler which is
+            --  Special case __gnat_last_chance_handler which is
             --  already defined as Env.LCH_Fn
 
             if Subp_Base_Name = "__gnat_last_chance_handler" then
@@ -658,37 +655,37 @@ package body GNATLLVM.Subprograms is
    -- Node_Enclosing_Subprogram --
    -------------------------------
 
-   function Node_Enclosing_Subprogram (Node : Node_Id) return Node_Id is
-      N : Node_Id := Node;
+   function Node_Enclosing_Subprogram (N : Node_Id) return Node_Id is
+      Node : Node_Id := N;
 
    begin
-      while Present (N) loop
-         if Nkind (N) = N_Subprogram_Body then
-            N := Defining_Unit_Name (Specification (N));
-            if Nkind (N) = N_Defining_Program_Unit_Name then
-               N := Defining_Identifier (N);
+      while Present (Node) loop
+         if Nkind (Node) = N_Subprogram_Body then
+            Node := Defining_Unit_Name (Specification (Node));
+            if Nkind (Node) = N_Defining_Program_Unit_Name then
+               Node := Defining_Identifier (Node);
             end if;
 
-            return N;
+            return Node;
          end if;
 
-         N := Parent (N);
+         Node := Parent (Node);
       end loop;
 
-      return N;
+      return Node;
    end Node_Enclosing_Subprogram;
 
    --------------
    -- Subp_Ptr --
    --------------
 
-   function Subp_Ptr (Node : Node_Id) return GL_Value is
+   function Subp_Ptr (N : Node_Id) return GL_Value is
    begin
-      if Nkind (Node) = N_Null then
+      if Nkind (N) = N_Null then
          return Const_Null (Standard_A_Char);
       else
          return Load
-           (GEP (Standard_A_Char, Emit_LValue (Node),
+           (GEP (Standard_A_Char, Emit_LValue (N),
                  (1 => Const_Null_32, 2 => Const_Null_32)));
       end if;
    end Subp_Ptr;

@@ -70,23 +70,23 @@ package GNATLLVM.Subprograms is
      with Post => Present (Get_LCH_Fn'Result);
    --  Get function for our last-chance handler
 
-   function Get_Static_Link (Node : Entity_Id) return GL_Value
-     with Pre  => Present (Node),
+   function Get_Static_Link (N : Entity_Id) return GL_Value
+     with Pre  => Present (N),
           Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Node
 
-   function Emit_Call (Call_Node : Node_Id) return GL_Value
-     with Pre  => Nkind (Call_Node) in N_Subprogram_Call,
+   function Emit_Call (N : Node_Id) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call,
           Post => Present (Emit_Call'Result);
    --  Helper for Emit/Emit_Expression: compile a call statement/expression and
    --  return its result value.
 
-   procedure Emit_LCH_Call_If (V : GL_Value; Node : Node_Id)
-     with Pre => Present (V) and then Present (Node);
+   procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id)
+     with Pre => Present (V) and then Present (N);
    --  Call the last change helper if V evaluates to True
 
-   procedure Emit_LCH_Call (Node : Node_Id)
-     with Pre => Present (Node);
+   procedure Emit_LCH_Call (N : Node_Id)
+     with Pre => Present (N);
    --  Generate a call to __gnat_last_chance_handler
 
    procedure Emit_Elab_Proc
@@ -99,26 +99,26 @@ package GNATLLVM.Subprograms is
    --  an N_Handled_Sequence_Of_Statements that also have to be in the
    --  elaboration procedure.
 
-   procedure Emit_One_Body (Node : Node_Id)
-     with Pre => Present (Node);
+   procedure Emit_One_Body (N : Node_Id)
+     with Pre => Present (N);
    --  Generate code for one given subprogram body
 
-   function Emit_Subprogram_Decl (Subp_Spec : Node_Id) return GL_Value
+   function Emit_Subprogram_Decl (N : Node_Id) return GL_Value
      with Post => Present (Emit_Subprogram_Decl'Result);
    --  Compile a subprogram declaration, save the corresponding LLVM value to
    --  the environment and return it.
 
-   procedure Emit_Subprogram_Body (Node : Node_Id)
-     with Pre => Present (Node);
+   procedure Emit_Subprogram_Body (N : Node_Id)
+     with Pre => Present (N);
    --  Compile a subprogram body and save it in the environment
 
-   function Node_Enclosing_Subprogram (Node : Node_Id) return Node_Id
-     with Pre  => Present (Node),
+   function Node_Enclosing_Subprogram (N : Node_Id) return Node_Id
+     with Pre  => Present (N),
           Post => Present (Node_Enclosing_Subprogram'Result);
    --  Return the enclosing subprogram containing Node
 
-   function Subp_Ptr (Node : Node_Id) return GL_Value
-     with Pre  => Present (Node), Post => Present (Subp_Ptr'Result);
+   function Subp_Ptr (N : Node_Id) return GL_Value
+     with Pre  => Present (N), Post => Present (Subp_Ptr'Result);
    --  Return the subprogram pointer associated with Node
 
 end GNATLLVM.Subprograms;

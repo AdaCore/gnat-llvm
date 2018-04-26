@@ -34,23 +34,23 @@ package GNATLLVM.GLValue is
 
    --  Define basic accesss predicates for components of GL_Value
 
-   function Has_Known_Etype (G : GL_Value) return Boolean is
-     (not G.Is_Reference and then not G.Is_Subprogram_Type)
-     with Pre => Present (G);
-   --  True is we know what G's Etype is
+   function Has_Known_Etype (V : GL_Value) return Boolean is
+     (not V.Is_Reference and then not V.Is_Subprogram_Type)
+     with Pre => Present (V);
+   --  True is we know what V's Etype is
 
-   function Etype (G : GL_Value) return Entity_Id is
-     (G.Typ)
-     with Pre => Present (G) and then Has_Known_Etype (G),
+   function Etype (V : GL_Value) return Entity_Id is
+     (V.Typ)
+     with Pre => Present (V) and then Has_Known_Etype (V),
           Post => Present (Etype'Result);
 
-   function LLVM_Value (G : GL_Value) return Value_T is
-     (G.Value)
-     with Pre => Present (G), Post => Present (LLVM_Value'Result);
+   function LLVM_Value (V : GL_Value) return Value_T is
+     (V.Value)
+     with Pre => Present (V), Post => Present (LLVM_Value'Result);
 
-   function Is_Subprogram_Type (G : GL_Value) return Boolean is
-     (G.Is_Subprogram_Type)
-     with Pre => Present (G);
+   function Is_Subprogram_Type (V : GL_Value) return Boolean is
+     (V.Is_Subprogram_Type)
+     with Pre => Present (V);
 
    --  Now we have constructors for a GL_Value
 
@@ -94,118 +94,118 @@ package GNATLLVM.GLValue is
           Post => Present (G_Ref'Result);
    --  Likewise but when we already have a GL_Value
 
-   procedure Discard (G : GL_Value);
-   --  Evaluate G and throw away the result
+   procedure Discard (V : GL_Value);
+   --  Evaluate V and throw away the result
 
    --  Now define predicates on the GL_Value type to easily access
    --  properties of the LLVM value and the effective type.  These have the
    --  same names as those for types and Value_T's.  The first of these
    --  represent abstractions that will be used in later predicates.
 
-   function Full_Etype (G : GL_Value) return Entity_Id is
-     (Etype (G))
-     with Pre => Present (G), Post => Is_Type_Or_Void (Full_Etype'Result);
+   function Full_Etype (V : GL_Value) return Entity_Id is
+     (Etype (V))
+     with Pre => Present (V), Post => Is_Type_Or_Void (Full_Etype'Result);
 
-   function Type_Of (G : GL_Value) return Type_T is
-     (Type_Of (LLVM_Value (G)))
-     with Pre => Present (G), Post => Present (Type_Of'Result);
+   function Type_Of (V : GL_Value) return Type_T is
+     (Type_Of (LLVM_Value (V)))
+     with Pre => Present (V), Post => Present (Type_Of'Result);
 
-   function Ekind (G : GL_Value) return Entity_Kind is
-     ((if G.Is_Reference then E_Access_Type else Ekind (Etype (G))))
-     with Pre => Present (G);
+   function Ekind (V : GL_Value) return Entity_Kind is
+     ((if V.Is_Reference then E_Access_Type else Ekind (Etype (V))))
+     with Pre => Present (V);
 
-   function Is_Access_Type (G : GL_Value) return Boolean is
-     (Is_Reference (G) or else Is_Access_Type (Etype (G)))
-     with Pre => Present (G);
+   function Is_Access_Type (V : GL_Value) return Boolean is
+     (Is_Reference (V) or else Is_Access_Type (Etype (V)))
+     with Pre => Present (V);
 
-   function Full_Designated_Type (G : GL_Value) return Entity_Id
-     with Pre  => Is_Access_Type (G),
+   function Full_Designated_Type (V : GL_Value) return Entity_Id
+     with Pre  => Is_Access_Type (V),
           Post => Is_Type_Or_Void (Full_Designated_Type'Result);
 
-   function Implementation_Base_Type (G : GL_Value) return Entity_Id is
-     (Implementation_Base_Type (Etype (G)))
-     with Pre  => not Is_Reference (G),
+   function Implementation_Base_Type (V : GL_Value) return Entity_Id is
+     (Implementation_Base_Type (Etype (V)))
+     with Pre  => not Is_Reference (V),
             Post => Is_Type (Implementation_Base_Type'Result);
 
-   function Is_Dynamic_Size (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Dynamic_Size (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Dynamic_Size (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Dynamic_Size (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Array_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Array_Type (Etype (G)))
-     with Pre => Present (G);
+   function Is_Array_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Array_Type (Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Access_Unconstrained (G : GL_Value) return Boolean is
-     (Is_Access_Type (G) and then Ekind (G.Typ) /= E_Void
-        and then Is_Array_Type (Full_Designated_Type (G))
-        and then not Is_Constrained (Full_Designated_Type (G))
-        and then not Is_Raw_Array (G))
-     with Pre => Present (G);
+   function Is_Access_Unconstrained (V : GL_Value) return Boolean is
+     (Is_Access_Type (V) and then Ekind (V.Typ) /= E_Void
+        and then Is_Array_Type (Full_Designated_Type (V))
+        and then not Is_Constrained (Full_Designated_Type (V))
+        and then not Is_Raw_Array (V))
+     with Pre => Present (V);
 
-   function Is_Constrained (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Constrained (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Constrained (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Constrained (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Record_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Record_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Record_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Record_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Composite_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Composite_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Composite_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Composite_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Elementary_Type (G : GL_Value) return Boolean is
-     (Is_Reference (G) or else Is_Elementary_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Elementary_Type (V : GL_Value) return Boolean is
+     (Is_Reference (V) or else Is_Elementary_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Scalar_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Scalar_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Scalar_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Scalar_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Discrete_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Discrete_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Discrete_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Discrete_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Discrete_Or_Fixed_Point_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G)
-        and then Is_Discrete_Or_Fixed_Point_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Discrete_Or_Fixed_Point_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V)
+        and then Is_Discrete_Or_Fixed_Point_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Fixed_Point_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Fixed_Point_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Fixed_Point_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Fixed_Point_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Floating_Point_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Floating_Point_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Floating_Point_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Floating_Point_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Unsigned_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Unsigned_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Unsigned_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Unsigned_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Integer_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Integer_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Integer_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Integer_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function Is_Modular_Integer_Type (G : GL_Value) return Boolean is
-     (not Is_Reference (G) and then Is_Modular_Integer_Type (Full_Etype (G)))
-     with Pre => Present (G);
+   function Is_Modular_Integer_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Modular_Integer_Type (Full_Etype (V)))
+     with Pre => Present (V);
 
-   function RM_Size (G : GL_Value) return Uint is
-     (RM_Size (Full_Etype (G)))
-     with Pre => not Is_Access_Type (G);
+   function RM_Size (V : GL_Value) return Uint is
+     (RM_Size (Full_Etype (V)))
+     with Pre => not Is_Access_Type (V);
 
-   function Esize (G : GL_Value) return Uint is
-     (Esize (Full_Etype (G)))
-     with Pre => not Is_Access_Type (G);
+   function Esize (V : GL_Value) return Uint is
+     (Esize (Full_Etype (V)))
+     with Pre => not Is_Access_Type (V);
 
-   function Component_Type (G : GL_Value) return Entity_Id is
-     (Component_Type (Full_Etype (G)))
-     with Pre => Is_Array_Type (G), Post => Present (Component_Type'Result);
+   function Component_Type (V : GL_Value) return Entity_Id is
+     (Component_Type (Full_Etype (V)))
+     with Pre => Is_Array_Type (V), Post => Present (Component_Type'Result);
 
-   function Number_Dimensions (G : GL_Value) return Pos is
-     (Number_Dimensions (Full_Etype (G)))
-     with Pre => Is_Array_Type (G);
+   function Number_Dimensions (V : GL_Value) return Pos is
+     (Number_Dimensions (Full_Etype (V)))
+     with Pre => Is_Array_Type (V);
 
    function Make_Reference (V : GL_Value) return GL_Value is
      (G (LLVM_Value (V), Full_Designated_Type (V), Is_Reference => True))
@@ -250,33 +250,33 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Type (TE), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
-   function Get_Undef (G : GL_Value) return GL_Value is
-     (Get_Undef (Etype (G)))
-     with  Pre  => Present (G), Post => Present (Get_Undef'Result);
+   function Get_Undef (V : GL_Value) return GL_Value is
+     (Get_Undef (Etype (V)))
+     with  Pre  => Present (V), Post => Present (Get_Undef'Result);
 
-   function Const_Null (G : GL_Value) return GL_Value is
-     (Const_Null (Etype (G)))
-     with Pre  => Present (G), Post => Present (Const_Null'Result);
+   function Const_Null (V : GL_Value) return GL_Value is
+     (Const_Null (Etype (V)))
+     with Pre  => Present (V), Post => Present (Const_Null'Result);
 
    function Const_Null_Ptr (TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE), Post => Present (Const_Null_Ptr'Result);
 
-   function Const_Int (G : GL_Value; N : Uint) return GL_Value is
-     (Const_Int (Etype (G), N))
-     with Pre  => Present (G) and then N /= No_Uint,
+   function Const_Int (V : GL_Value; N : Uint) return GL_Value is
+     (Const_Int (Etype (V), N))
+     with Pre  => Present (V) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
    function Const_Int
-     (G           : GL_Value;
+     (V           : GL_Value;
       N           : unsigned_long_long;
       Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Etype (G), N, Sign_Extend))
-     with Pre  => Present (G), Post => Present (Const_Int'Result);
+     (Const_Int (Etype (V), N, Sign_Extend))
+     with Pre  => Present (V), Post => Present (Const_Int'Result);
 
-   function Const_Ones (G : GL_Value) return GL_Value is
-     (Const_Ones (Etype (G)))
-     with Pre => Present (G), Post => Present (Const_Ones'Result);
+   function Const_Ones (V : GL_Value) return GL_Value is
+     (Const_Ones (Etype (V)))
+     with Pre => Present (V), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
    function Const_Real (TE : Entity_Id; V : double) return GL_Value
@@ -307,9 +307,9 @@ package GNATLLVM.GLValue is
      (Const_Int_32 (0))
      with Post => Present (Const_Null_32'Result);
 
-   function Const_Real (G : GL_Value; V : double) return GL_Value is
-     (Const_Real (Etype (G), V))
-     with Pre  => Present (G), Post => Present (Const_Real'Result);
+   function Const_Real (V : GL_Value; F : double) return GL_Value is
+     (Const_Real (Etype (V), F))
+     with Pre  => Present (V), Post => Present (Const_Real'Result);
 
    function Const_True return GL_Value is
      (Const_Int (Standard_Boolean, 1));
@@ -670,8 +670,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (C_If)
                  and then Present (C_Then) and then Present (C_Else);
 
-   procedure Build_Ret (G : GL_Value)
-     with Pre => Present (G);
+   procedure Build_Ret (V : GL_Value)
+     with Pre => Present (V);
 
    procedure Build_Ret_Void;
 

@@ -26,8 +26,8 @@ package body GNATLLVM.GLValue is
    -- Discard --
    -------------
 
-   procedure Discard (G : GL_Value) is
-      pragma Unreferenced (G);
+   procedure Discard (V : GL_Value) is
+      pragma Unreferenced (V);
    begin
       null;
    end Discard;
@@ -274,9 +274,9 @@ package body GNATLLVM.GLValue is
    -- Build_Ret --
    ---------------
 
-   procedure Build_Ret (G : GL_Value) is
+   procedure Build_Ret (V : GL_Value) is
    begin
-      Discard (Build_Ret (IR_Builder, LLVM_Value (G)));
+      Discard (Build_Ret (IR_Builder, LLVM_Value (V)));
    end Build_Ret;
 
    --------------------
@@ -323,9 +323,9 @@ package body GNATLLVM.GLValue is
    -- Full_Designated_Type --
    --------------------------
 
-   function Full_Designated_Type (G : GL_Value) return Entity_Id is
-     ((if Is_Reference (G) then Get_Fullest_View (G.Typ)
-       else Full_Designated_Type (Etype (G))));
+   function Full_Designated_Type (V : GL_Value) return Entity_Id is
+     ((if Is_Reference (V) then Get_Fullest_View (V.Typ)
+       else Full_Designated_Type (Etype (V))));
 
    ---------
    -- GEP --

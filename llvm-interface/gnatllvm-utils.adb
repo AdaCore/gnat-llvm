@@ -119,6 +119,51 @@ package body GNATLLVM.Utils is
 
    end Get_Fullest_View;
 
+   -----------------
+   -- First_Field --
+   -----------------
+
+   function First_Field
+     (E : Entity_Id; TE : Entity_Id := Empty) return Entity_Id is
+      Field : Entity_Id := First_Entity (E);
+   begin
+      while Present (Field)
+        and then (not Ekind_In (Field, E_Discriminant, E_Component)
+                    or else (Present (TE) and then Full_Scope (Field) /= TE))
+      loop
+         Next_Entity (Field);
+      end loop;
+
+      return Field;
+   end First_Field;
+
+   ----------------
+   -- Next_Field --
+   ----------------
+
+   function Next_Field
+     (E : Entity_Id; TE : Entity_Id := Empty) return Entity_Id is
+      Field : Entity_Id := Next_Entity (E);
+   begin
+      while Present (Field)
+        and then (not Ekind_In (Field, E_Discriminant, E_Component)
+                    or else (Present (TE) and then Full_Scope (Field) /= TE))
+      loop
+         Next_Entity (Field);
+      end loop;
+
+      return Field;
+   end Next_Field;
+
+   ----------------
+   -- Next_Field --
+   ----------------
+
+   procedure Next_Field (E : in out Entity_Id; TE : Entity_Id := Empty) is
+   begin
+      E := Next_Field (E, TE);
+   end Next_Field;
+
    ---------------------
    -- Get_Param_Types --
    ---------------------

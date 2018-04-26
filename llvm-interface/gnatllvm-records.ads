@@ -27,8 +27,8 @@ with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Records is
 
-   function Create_Record_Type (Def_Ident : Entity_Id) return Type_T
-     with Pre => Is_Record_Type (Def_Ident),
+   function Create_Record_Type (TE : Entity_Id) return Type_T
+     with Pre => Is_Record_Type (TE),
           Post => Present (Create_Record_Type'Result);
    --  Create a type for the record denoted by Def_Ident
 

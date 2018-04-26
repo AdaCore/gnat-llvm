@@ -100,16 +100,13 @@ package body GNATLLVM.Records is
 
    function Count_Entities (E : Entity_Id) return Nat is
       Count   : Nat := 0;
-      Elmt    : Entity_Id := First_Entity (E);
+      Elmt    : Entity_Id := First_Field (E);
 
    begin
       while Present (Elmt) loop
-         if Ekind_In (Elmt, E_Discriminant, E_Component) then
-            Count := Count + (if Chars (Elmt) = Name_uParent
+         Count := Count + (if Chars (Elmt) = Name_uParent
                               then Count_Entities (Full_Etype (Elmt)) else 1);
-         end if;
-
-         Next_Entity (Elmt);
+         Next_Field (Elmt);
       end loop;
 
       return Count;
@@ -119,18 +116,22 @@ package body GNATLLVM.Records is
    -- Create_Record_Type --
    ------------------------
 
-   function Create_Record_Type (Def_Ident : Entity_Id) return Type_T is
+   function Create_Record_Type (TE : Entity_Id) return Type_T is
       Prev_Idx  : Record_Info_Id := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
       Cur_Idx   : Record_Info_Id;
       --  The index of the record table entry we're building
 
-      Types     : Type_Array (0 .. Count_Entities (Def_Ident));
+      Types     : Type_Array (0 .. Count_Entities (TE));
       --  Array of all field types that are going into the current piece
 
       Next_Type : Nat := 0;
       --  Ordinal of next entry in Types
+
+      Cur_Field : Entity_Id := First_Field (TE, TE);
+      --  The current field on the entity chain that we're processing
+      --  to set the field info when we have a parent record.
 
       LLVM_Type : Type_T;
 
@@ -182,34 +183,31 @@ package body GNATLLVM.Records is
 
       procedure Add_FI
         (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat) is
-         Field : Entity_Id;
       begin
-         --  If this field really isn't in the record we're working on,
-         --  it must be in a parent.  So it was correct to allocate
-         --  space for it, but let the record description be from the
-         --  type that it's actually in. ??  We search and see if we
-         --  have a field that is in our type with the same
-         --  Original_Record_Component and set this for that.  Yes, this
-         --  is quadratic and is a kludge, but the tree structure needs to
-         --  be better understood.
+         --  If this field really isn't in the record we're working on, it
+         --  must be in a parent.  So it was correct to allocate space for
+         --  it, but let the record description be from the type that it's
+         --  actually in.  The fields in the entity list for this type are
+         --  in the same order as in the component list, with possibly some
+         --  entries missing, so if the next field in that list has the
+         --  same Original_Record_Component as this field, that field is
+         --  set to this field info and we step to the next field.  If
+         --  Cur_Field is what we're processing, skip it.
 
          Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
                                    Field_Ordinal => Ordinal));
-         if Get_Fullest_View (Scope (E)) = Def_Ident then
+         if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
-         else
-            Field := First_Entity (Def_Ident);
-            while Present (Field) loop
-               if Ekind_In (Field, E_Discriminant, E_Component)
-                 and then Get_Fullest_View (Scope (Field)) = Def_Ident
-                 and then (Original_Record_Component (Field) =
-                             Original_Record_Component (E))
-               then
-                  Set_Field_Info (Field, Field_Info_Table.Last);
-               end if;
+            if Cur_Field = E then
+               Next_Field (Cur_Field, TE);
+            end if;
 
-               Next_Entity (Field);
-            end loop;
+         elsif Present (Cur_Field)
+           and then (Original_Record_Component (Cur_Field) =
+                       Original_Record_Component (E))
+         then
+            Set_Field_Info (Cur_Field, Field_Info_Table.Last);
+            Next_Field (Cur_Field, TE);
          end if;
       end Add_FI;
 
@@ -263,21 +261,18 @@ package body GNATLLVM.Records is
          Field             : Entity_Id;
          Record_Definition : Node_Id;
 
+      --  Start of processing for Add_Fields
+
       begin
 
          --  If this is a subtype, we make fields from the entity chain.
-         --  Otherwise, we walk the definition.  ?? This makes assumptions
-         --  about the tree that probably aren't documented anywhere and
-         --  which we may need to return to later.
+         --  Otherwise, we walk the definition.
 
          if Ekind_In (Def_Ident, E_Record_Subtype, E_Class_Wide_Subtype) then
-            Field := First_Entity (Def_Ident);
+            Field := First_Field (Def_Ident);
             while Present (Field) loop
-               if Ekind_In (Field, E_Discriminant, E_Component) then
-                  Add_Field (Field);
-               end if;
-
-               Next_Entity (Field);
+               Add_Field (Field);
+               Next_Field (Field);
             end loop;
 
          else
@@ -315,7 +310,7 @@ package body GNATLLVM.Records is
          --  it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info (Def_Ident), 0);
+            Add_FI (E, Get_Record_Info (TE), 0);
             return;
 
          --  If this field is dynamic size, we have to close out the last
@@ -343,18 +338,23 @@ package body GNATLLVM.Records is
 
       end Add_Field;
 
+   --  Start of processing for Create_Record_Type
+
    begin
       --  Because of the potential recursion between record and access types,
       --  make a dummy type for us and set it as our type right at the start.
       --  Then initialize our first record info table entry, which we know
       --  will be used.
 
-      LLVM_Type := Struct_Create_Named (LLVM_Context, Get_Name (Def_Ident));
-      Set_Type (Def_Ident, LLVM_Type);
+      LLVM_Type := Struct_Create_Named (LLVM_Context, Get_Name (TE));
+      Set_Type (TE, LLVM_Type);
       Record_Info_Table.Increment_Last;
       Cur_Idx := Record_Info_Table.Last;
-      Set_Record_Info (Def_Ident, Cur_Idx);
-      Add_Fields (Def_Ident);
+      Set_Record_Info (TE, Cur_Idx);
+      Add_Fields (TE);
+
+      pragma Assert (No (Cur_Field));
+      --  We should have processed all fields in our entity list
 
       --  If we haven't yet made any record info entries, it means that
       --  this is a fixed-size record that can be just an LLVM type,
@@ -375,7 +375,7 @@ package body GNATLLVM.Records is
             Add_RI (Build_Struct_Type (Types (0 .. Next_Type - 1)), Empty);
          end if;
 
-         Set_Dynamic_Size (Def_Ident, True);
+         Set_Dynamic_Size (TE, True);
       end if;
 
       return LLVM_Type;
@@ -447,7 +447,7 @@ package body GNATLLVM.Records is
    function Record_Field_Offset
      (Ptr : GL_Value; Field : Entity_Id) return GL_Value
    is
-      Rec_Type  : constant Entity_Id      := Get_Fullest_View (Scope (Field));
+      Rec_Type  : constant Entity_Id      := Full_Scope (Field);
       F_Type    : constant Entity_Id      := Full_Etype (Field);
       First_Idx : constant Record_Info_Id := Get_Record_Info (Rec_Type);
       FI         : constant Field_Info     :=
@@ -572,18 +572,16 @@ package body GNATLLVM.Records is
       function Find_Matching_Field
         (TE : Entity_Id; Fld : Entity_Id) return Entity_Id
       is
-         Ent : Entity_Id := First_Entity (TE);
+         ORC : constant Entity_Id := Original_Record_Component (Fld);
+         Ent : Entity_Id := First_Field (TE);
 
       begin
          while Present (Ent) loop
-            if Ekind_In (Ent, E_Discriminant, E_Component)
-              and then (Original_Record_Component (Ent) =
-                          Original_Record_Component (Fld))
-            then
+            if Original_Record_Component (Ent) = ORC then
                return Ent;
             end if;
 
-            Next_Entity (Ent);
+            Next_Field (Ent);
          end loop;
 
          return Empty;

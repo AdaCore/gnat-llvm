@@ -858,10 +858,12 @@ package body GNATLLVM.Compile is
             Pop_Block;
             Pop_Debug_Scope;
 
-         when N_Full_Type_Declaration | N_Subtype_Declaration
-            | N_Incomplete_Type_Declaration | N_Private_Type_Declaration
+         when N_Full_Type_Declaration
+            | N_Subtype_Declaration
+            | N_Incomplete_Type_Declaration
+            | N_Private_Type_Declaration
             | N_Private_Extension_Declaration
-         =>
+           =>
             Discard
               (GNAT_To_LLVM_Type (Defining_Identifier (Node), True));
 
@@ -896,7 +898,9 @@ package body GNATLLVM.Compile is
                Emit (Get_Body_From_Stub (Node));
             end if;
 
-         --  Nodes we actually want to ignore
+         --  Nodes we actually want to ignore, in many cases because they
+         --  represent tings that are put elsewhere in the three (e.g,
+         --  rep clauses).
 
          when N_Call_Marker
             | N_Empty
@@ -908,16 +912,15 @@ package body GNATLLVM.Compile is
             | N_Number_Declaration
             | N_Procedure_Instantiation
             | N_Validate_Unchecked_Conversion
-            | N_Variable_Reference_Marker =>
-            null;
-
-         when N_Package_Instantiation
+            | N_Variable_Reference_Marker
+            | N_Package_Instantiation
             | N_Package_Renaming_Declaration
             | N_Generic_Package_Declaration
             | N_Generic_Subprogram_Declaration
-         =>
+            | N_Record_Representation_Clause
+            | N_At_Clause
+           =>
             null;
-         --  ??? Ignore for now
 
          when N_Push_Constraint_Error_Label =>
             Constraint_Error_Stack.Append (Exception_Label (Node));

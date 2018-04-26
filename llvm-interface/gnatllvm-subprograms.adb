@@ -27,6 +27,7 @@ with Stand;    use Stand;
 with LLVM.Core;  use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
+with GNATLLVM.Blocks;    use GNATLLVM.Blocks;
 with GNATLLVM.Compile;   use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo; use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;   use GNATLLVM.GLValue;
@@ -229,6 +230,7 @@ package body GNATLLVM.Subprograms is
                                        Get_Name_String (Chars (Def_Ident)),
                                        Get_Ext_Name (Def_Ident)));
 
+      Push_Block;
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
@@ -283,6 +285,7 @@ package body GNATLLVM.Subprograms is
          end if;
       end if;
 
+      Pop_Block;
       Pop_Debug_Scope;
       Leave_Subp;
    end Emit_One_Body;

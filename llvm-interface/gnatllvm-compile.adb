@@ -38,6 +38,7 @@ with LLVM.Core;     use LLVM.Core;
 with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
@@ -743,8 +744,6 @@ package body GNATLLVM.Compile is
                --  The NEXT step contains no statement that comes from the
                --  loop: it is the exit point.
 
-               Stack_State      : GL_Value;
-
             begin
 
                Push_Loop (Loop_Identifier, BB_Next);
@@ -840,46 +839,24 @@ package body GNATLLVM.Compile is
                --  allocated each iteration.
 
                Position_Builder_At_End (BB_Stmts);
-               Stack_State := Call
-                 (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>));
+               Push_Block;
                Emit_List (Statements (Node));
-
-               --  ?? This really should be an "at end" situation with
-               --  exit and branches out of the loop also protected.  We
-               --  have the same situation with N_Block_Statement.
-
-               if not Are_In_Dead_Code then
-                  Set_Debug_Pos_At_Node (Node);
-                  Call (Get_Stack_Restore_Fn, (1 => Stack_State));
-                  Build_Br (BB_Iter);
-               end if;
-
+               Set_Debug_Pos_At_Node (Node);
+               Pop_Block;
                Pop_Loop;
 
+               Build_Br (BB_Iter);
                Position_Builder_At_End (BB_Next);
             end;
 
          when N_Block_Statement =>
-            declare
-               Stack_State : GL_Value;
-
-            begin
-
-               Push_Lexical_Debug_Scope (Node);
-
-               Stack_State := Call
-                 (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>));
-
-               Emit_List (Declarations (Node));
-               Emit (Handled_Statement_Sequence (Node));
-
-               if not Are_In_Dead_Code then
-                  Set_Debug_Pos_At_Node (Node);
-                  Call (Get_Stack_Restore_Fn, (1 => Stack_State));
-               end if;
-
-               Pop_Debug_Scope;
-            end;
+            Push_Lexical_Debug_Scope (Node);
+            Push_Block;
+            Emit_List (Declarations (Node));
+            Emit (Handled_Statement_Sequence (Node));
+            Set_Debug_Pos_At_Node (Node);
+            Pop_Block;
+            Pop_Debug_Scope;
 
          when N_Full_Type_Declaration | N_Subtype_Declaration
             | N_Incomplete_Type_Declaration | N_Private_Type_Declaration

@@ -16,8 +16,12 @@
 ------------------------------------------------------------------------------
 
 with Atree;  use Atree;
+with Einfo; use Einfo;
 with Nlists; use Nlists;
+with Sinfo; use Sinfo;
 with Types;  use Types;
+
+with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
@@ -59,5 +63,31 @@ package GNATLLVM.Blocks is
 
    procedure Pop_Block
      with Pre => not Library_Level;
+   --  End the current block, generating code for any handlers, and
+   --  pop the block stack.
+
+   procedure Process_Push_Pop_xxx_Error_Label (N : Node_Id)
+     with Pre => Nkind (N) in N_Push_Constraint_Error_Label ..
+                              N_Pop_Storage_Error_Label;
+   --  Process the above nodes by pushing and popping entries in our tables
+
+   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id
+     with Pre => Kind in N_Raise_xxx_Error;
+   --  Get the last entry in the exception goto stack for Kind, if any
+
+   function Get_Label_BB (E : Entity_Id) return Basic_Block_T
+     with Pre  => Ekind (E) = E_Label,
+          Post => Present (Get_Label_BB'Result);
+   --  Lazily get the basic block associated with label E, creating it
+   --  if we don't have it already.
+
+   function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
+     with Post => Present (Enter_Block_With_Node'Result);
+   --  We need a basic block at the present location to branch to.
+   --  This will normally be a new basic block, but may be the current
+   --  basic block it if's empty and not the entry block.  If Node is
+   --  Present and already points to a basic block, we have to use
+   --  that one.  If Present, but it doesn't point to a basic block,
+   --  set it to the one we made.
 
 end GNATLLVM.Blocks;

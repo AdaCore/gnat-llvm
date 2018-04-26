@@ -113,21 +113,6 @@ package body GNATLLVM.Compile is
           Post => Present (Emit_Shift'Result);
    --  Helper for Emit_Expression: handle shift and rotate operations
 
-   function Get_Label_BB (E : Entity_Id) return Basic_Block_T
-     with Pre  => Ekind (E) = E_Label,
-          Post => Present (Get_Label_BB'Result);
-   --  Lazily get the basic block associated with label E, creating it
-   --  if we don't have it already.
-
-   function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
-     with Post => Present (Enter_Block_With_Node'Result);
-   --  We need a basic block at the present location to branch to.
-   --  This will normally be a new basic block, but may be the current
-   --  basic block it if's empty and not the entry block.  If Node is
-   --  Present and already points to a basic block, we have to use
-   --  that one.  If Present, but it doesn't point to a basic block,
-   --  set it to the one we made.
-
    package Elaboration_Table is new Table.Table
      (Table_Component_Type => Node_Id,
       Table_Index_Type     => Nat,
@@ -136,37 +121,6 @@ package body GNATLLVM.Compile is
       Table_Increment      => 100,
       Table_Name           => "Elaboration_Table");
    --  Table of statements part of the current elaboration procedure
-
-   package Constraint_Error_Stack is new Table.Table
-     (Table_Component_Type => Entity_Id,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Constraint_Error_Stack");
-   --  Stack of labels for constraint error
-
-   package Storage_Error_Stack is new Table.Table
-     (Table_Component_Type => Entity_Id,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Storage_Error_Stack");
-   --  Stack of labels for storage error
-
-   package Program_Error_Stack is new Table.Table
-     (Table_Component_Type => Entity_Id,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Program_Error_Stack");
-   --  Stack of labels for program error
-
-   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id
-     with Pre => Kind in N_Raise_xxx_Error;
-   --  Get the last entry in the exception goto stack for Kind, if any
 
    --  We save pairs of GNAT type and LLVM Value_T for each level of
    --  processing of an Emit_LValue so we can find it if we have a
@@ -922,26 +876,8 @@ package body GNATLLVM.Compile is
            =>
             null;
 
-         when N_Push_Constraint_Error_Label =>
-            Constraint_Error_Stack.Append (Exception_Label (Node));
-
-         when N_Push_Storage_Error_Label =>
-            Storage_Error_Stack.Append (Exception_Label (Node));
-
-         when N_Push_Program_Error_Label =>
-            Program_Error_Stack.Append (Exception_Label (Node));
-
-         when N_Pop_Constraint_Error_Label =>
-            Constraint_Error_Stack.Decrement_Last;
-
-         when N_Pop_Storage_Error_Label =>
-            Storage_Error_Stack.Decrement_Last;
-
-         when N_Pop_Program_Error_Label =>
-            Program_Error_Stack.Decrement_Last;
-
-         when N_Exception_Handler =>
-            Error_Msg_N ("exception handler ignored??", Node);
+         when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
+            Process_Push_Pop_xxx_Error_Label (Node);
 
          when N_Exception_Renaming_Declaration =>
             Set_Value
@@ -1746,37 +1682,6 @@ package body GNATLLVM.Compile is
       end if;
    end Emit_Expression;
 
-   ------------------------------
-   -- Get_Exception_Goto_Entry --
-   ------------------------------
-
-   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id is
-   begin
-      if Kind = N_Raise_Constraint_Error
-        and then Constraint_Error_Stack.Last /= 0
-        and then Present (Constraint_Error_Stack.Table
-                            (Constraint_Error_Stack.Last))
-      then
-         return Constraint_Error_Stack.Table (Constraint_Error_Stack.Last);
-
-      elsif Kind = N_Raise_Program_Error
-        and then Program_Error_Stack.Last /= 0
-        and then Present (Program_Error_Stack.Table
-                            (Program_Error_Stack.Last))
-      then
-         return Program_Error_Stack.Table (Program_Error_Stack.Last);
-
-      elsif Kind = N_Raise_Storage_Error
-        and then Storage_Error_Stack.Last /= 0
-        and then Present (Storage_Error_Stack.Table
-                            (Storage_Error_Stack.Last))
-      then
-         return Storage_Error_Stack.Table (Storage_Error_Stack.Last);
-      else
-         return Empty;
-      end if;
-   end Get_Exception_Goto_Entry;
-
    ---------------
    -- Emit_List --
    ---------------
@@ -2309,61 +2214,5 @@ package body GNATLLVM.Compile is
             Name   => "shift-rotate-result");
       end if;
    end Emit_Shift;
-
-   ------------------
-   -- Get_Label_BB --
-   ------------------
-
-   function Get_Label_BB (E : Entity_Id) return Basic_Block_T is
-      BB : Basic_Block_T := Get_Basic_Block (E);
-
-   begin
-      if No (BB) then
-         BB := Create_Basic_Block (Get_Name (E));
-         Set_Basic_Block (E, BB);
-      end if;
-
-      return BB;
-   end Get_Label_BB;
-
-   ---------------------------
-   -- Enter_Block_With_Node --
-   ---------------------------
-
-   function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
-   is
-      E         : constant Entity_Id     :=
-        (if Present (Node) and then Present (Identifier (Node))
-         then Entity (Identifier (Node)) else Empty);
-      This_BB   : constant Basic_Block_T := Get_Insert_Block;
-      Last_Inst : constant Value_T       := Get_Last_Instruction (This_BB);
-      Entry_BB  : constant Basic_Block_T :=
-        Get_Entry_Basic_Block (LLVM_Value (Current_Func));
-      BB        : constant Basic_Block_T :=
-          (if Present (E) and then Has_BB (E) then Get_Basic_Block (E)
-           elsif No (Last_Inst) and then This_BB /= Entry_BB
-           then This_BB else Create_Basic_Block);
-      --  If we have an identifier and it has a basic block already set,
-      --  that's the one that we have to use.  If we've just started a
-      --  basic block with no instructions in it, that basic block will do,
-      --  unless it's the entry BB since we're going to branch to it.
-      --  Otherwise, get a new one.
-
-   begin
-      --  Now, unless this is our basic block, jump to it and position there
-
-      if BB /= This_BB then
-         Build_Br (BB);
-         Position_Builder_At_End (BB);
-      end if;
-
-      --  If we have an entity to point to the block, make that linkage.
-
-      if Present (E) then
-         Set_Basic_Block (E, BB);
-      end if;
-
-      return BB;
-   end Enter_Block_With_Node;
 
 end GNATLLVM.Compile;

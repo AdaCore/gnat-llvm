@@ -70,18 +70,15 @@ package GNATLLVM.Utils is
    --  Get the fullest possible view of E, looking through private,
    --  limited, and packed array implementation types.
 
-   function First_Field
-     (E : Entity_Id; TE : Entity_Id := Empty) return Entity_Id
+   function First_Field (E : Entity_Id) return Entity_Id
      with Pre => Is_Record_Type (E);
-   --  Same as First_Entity, but skips all but E_Discriminant and E_Component.
-   --  If TE is Present, only returns field with that as their Scope.
+   --  Same as First_Entity, but skips all but E_Discriminant and E_Component
 
-   function Next_Field
-     (E : Entity_Id; TE : Entity_Id := Empty) return Entity_Id
+   function Next_Field (E : Entity_Id) return Entity_Id
      with Pre => Ekind_In (E, E_Discriminant, E_Component);
    --  Likewise, but like Next_Entity
 
-   procedure Next_Field (E : in out Entity_Id; TE : Entity_Id := Empty)
+   procedure Next_Field (E : in out Entity_Id)
      with Pre => Ekind_In (E, E_Discriminant, E_Component);
 
    function Full_Etype (N : Node_Id) return Entity_Id is

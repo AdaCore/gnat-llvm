@@ -129,7 +129,7 @@ package body GNATLLVM.Records is
       Next_Type : Nat := 0;
       --  Ordinal of next entry in Types
 
-      Cur_Field : Entity_Id := First_Field (TE, TE);
+      Cur_Field : Entity_Id := First_Field (TE);
       --  The current field on the entity chain that we're processing
       --  to set the field info when we have a parent record.
 
@@ -198,7 +198,7 @@ package body GNATLLVM.Records is
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
             if Cur_Field = E then
-               Next_Field (Cur_Field, TE);
+               Next_Field (Cur_Field);
             end if;
 
          elsif Present (Cur_Field)
@@ -206,7 +206,7 @@ package body GNATLLVM.Records is
                        Original_Record_Component (E))
          then
             Set_Field_Info (Cur_Field, Field_Info_Table.Last);
-            Next_Field (Cur_Field, TE);
+            Next_Field (Cur_Field);
          end if;
       end Add_FI;
 

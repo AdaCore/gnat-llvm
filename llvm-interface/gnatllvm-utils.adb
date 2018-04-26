@@ -127,13 +127,11 @@ package body GNATLLVM.Utils is
    -- First_Field --
    -----------------
 
-   function First_Field
-     (E : Entity_Id; TE : Entity_Id := Empty) return Entity_Id is
+   function First_Field (E : Entity_Id) return Entity_Id is
       Field : Entity_Id := First_Entity (E);
    begin
       while Present (Field)
-        and then (not Ekind_In (Field, E_Discriminant, E_Component)
-                    or else (Present (TE) and then Full_Scope (Field) /= TE))
+        and then not Ekind_In (Field, E_Discriminant, E_Component)
       loop
          Next_Entity (Field);
       end loop;
@@ -145,13 +143,11 @@ package body GNATLLVM.Utils is
    -- Next_Field --
    ----------------
 
-   function Next_Field
-     (E : Entity_Id; TE : Entity_Id := Empty) return Entity_Id is
+   function Next_Field (E : Entity_Id) return Entity_Id is
       Field : Entity_Id := Next_Entity (E);
    begin
       while Present (Field)
-        and then (not Ekind_In (Field, E_Discriminant, E_Component)
-                    or else (Present (TE) and then Full_Scope (Field) /= TE))
+        and then not Ekind_In (Field, E_Discriminant, E_Component)
       loop
          Next_Entity (Field);
       end loop;
@@ -162,10 +158,9 @@ package body GNATLLVM.Utils is
    ----------------
    -- Next_Field --
    ----------------
-
-   procedure Next_Field (E : in out Entity_Id; TE : Entity_Id := Empty) is
+   procedure Next_Field (E : in out Entity_Id) is
    begin
-      E := Next_Field (E, TE);
+      E := Next_Field (E);
    end Next_Field;
 
    ---------------------

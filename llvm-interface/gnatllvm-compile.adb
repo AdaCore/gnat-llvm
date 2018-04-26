@@ -220,6 +220,7 @@ package body GNATLLVM.Compile is
       Push_Debug_Scope
         (Create_Subprogram_Debug_Info
            (LLVM_Func, Unit, N, Get_Name_String (Chars (Unit)), Name));
+      Push_Block;
       Special_Elaboration_Code := True;
 
       for J in 1 .. Elaboration_Table.Last loop
@@ -235,6 +236,7 @@ package body GNATLLVM.Compile is
       Special_Elaboration_Code := False;
       Emit_List (S_List);
       Build_Ret_Void;
+      Pop_Block;
       Pop_Debug_Scope;
       Leave_Subp;
    end Emit_Elab_Proc;
@@ -375,7 +377,14 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Handled_Sequence_Of_Statements =>
-            --  ?? Need to handle Exception_Handlers and At_End_Proc
+            if Present (Exception_Handlers (Node)) then
+               Start_EH_Region (Exception_Handlers (Node));
+            end if;
+
+            if Present (At_End_Proc (Node)) then
+               Start_At_End_Region (At_End_Proc (Node));
+            end if;
+
             Emit_List (Statements (Node));
 
          when N_Raise_Statement =>

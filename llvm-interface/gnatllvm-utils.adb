@@ -113,6 +113,10 @@ package body GNATLLVM.Utils is
         and then Present (Packed_Array_Impl_Type (E))
       then
          return Get_Fullest_View (Packed_Array_Impl_Type (E));
+      elsif Ekind_In (E, E_Record_Subtype, E_Class_Wide_Subtype)
+        and then Present (Cloned_Subtype (E))
+      then
+         return Get_Fullest_View (Cloned_Subtype (E));
       else
          return E;
       end if;

@@ -89,6 +89,16 @@ package GNATLLVM.Subprograms is
      with Pre => Present (Node);
    --  Generate a call to __gnat_last_chance_handler
 
+   procedure Emit_Elab_Proc
+     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
+     with Pre => Nkind_In (N, N_Package_Specification, N_Package_Body)
+                 and then Suffix'Length = 1;
+   --  Emit code for the elaboration procedure for N.  Suffix is either "s"
+   --  or "b".  CU is the corresponding N_Compilation_Unit on which we set
+   --  Has_No_Elaboration_Code if there isn't any.  Stmts, if Present, is
+   --  an N_Handled_Sequence_Of_Statements that also have to be in the
+   --  elaboration procedure.
+
    procedure Emit_One_Body (Node : Node_Id)
      with Pre => Present (Node);
    --  Generate code for one given subprogram body

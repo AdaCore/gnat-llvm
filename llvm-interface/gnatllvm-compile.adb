@@ -21,7 +21,6 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
 with Lib;      use Lib;
-with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
 with Sem_Eval; use Sem_Eval;
@@ -30,7 +29,6 @@ with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
-with Table;
 with Uintp;    use Uintp;
 with Urealp;   use Urealp;
 
@@ -55,16 +53,6 @@ package body GNATLLVM.Compile is
 
    --  See also DragonEgg sources for comparison on how GCC nodes are converted
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
-
-   procedure Emit_Elab_Proc
-     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
-     with Pre => Nkind_In (N, N_Package_Specification, N_Package_Body)
-                 and then Suffix'Length = 1;
-   --  Emit code for the elaboration procedure for N.  Suffix is either "s"
-   --  or "b".  CU is the corresponding N_Compilation_Unit on which we set
-   --  Has_No_Elaboration_Code if there isn't any.  Stmts, if Present, is
-   --  an N_Handled_Sequence_Of_Statements that also have to be in the
-   --  elaboration procedure.
 
    function Emit_Attribute_Reference
      (Node : Node_Id; LValue : Boolean) return GL_Value
@@ -113,15 +101,6 @@ package body GNATLLVM.Compile is
           Post => Present (Emit_Shift'Result);
    --  Helper for Emit_Expression: handle shift and rotate operations
 
-   package Elaboration_Table is new Table.Table
-     (Table_Component_Type => Node_Id,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 1024,
-      Table_Increment      => 100,
-      Table_Name           => "Elaboration_Table");
-   --  Table of statements part of the current elaboration procedure
-
    --  We save pairs of GNAT type and LLVM Value_T for each level of
    --  processing of an Emit_LValue so we can find it if we have a
    --  self-referential item (a discriminated record).
@@ -134,12 +113,6 @@ package body GNATLLVM.Compile is
       Table_Increment      => 5,
       Table_Name           => "LValue_Pair_Table");
    --  Table of intermediate results for Emit_LValue
-
-   In_Main_Unit             : Boolean := False;
-   --  True if we're currently processing the main unit
-
-   Special_Elaboration_Code : Boolean := False;
-   --  True if we're compiling an elaboration procedure
 
    -----------------------
    -- Emit_Library_Item --
@@ -180,66 +153,6 @@ package body GNATLLVM.Compile is
 
       Emit (U);
    end Emit_Library_Item;
-
-   --------------------
-   -- Emit_Elab_Proc --
-   --------------------
-
-   procedure Emit_Elab_Proc
-     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String) is
-      U          : constant Node_Id  := Defining_Unit_Name (N);
-      Unit       : constant Node_Id  :=
-        (if Nkind (U) = N_Defining_Program_Unit_Name
-         then Defining_Identifier (U) else U);
-      S_List     : constant List_Id  :=
-        (if No (Stmts) then No_List else Statements (Stmts));
-      Name       : constant String   :=
-        Get_Name_String (Chars (Unit)) & "___elab" & Suffix;
-      Work_To_Do : constant Boolean  :=
-        Elaboration_Table.Last /= 0 or else Has_Non_Null_Statements (S_List);
-      Elab_Type  : constant Type_T   := Fn_Ty ((1 .. 0 => <>), Void_Type);
-      LLVM_Func  : GL_Value;
-
-   begin
-      --  If nothing to elaborate, do nothing
-
-      if not In_Main_Unit or else not Library_Level
-        or else Nkind (CU) /= N_Compilation_Unit or else not Work_To_Do
-      then
-         return;
-      end if;
-
-      --  Otherwise, show there will be elaboration code and emit it
-
-      if Nkind (CU) = N_Compilation_Unit then
-         Set_Has_No_Elaboration_Code (CU, False);
-      end if;
-
-      LLVM_Func := Add_Function (Name, Elab_Type, Standard_Void_Type);
-      Enter_Subp (LLVM_Func);
-      Push_Debug_Scope
-        (Create_Subprogram_Debug_Info
-           (LLVM_Func, Unit, N, Get_Name_String (Chars (Unit)), Name));
-      Push_Block;
-      Special_Elaboration_Code := True;
-
-      for J in 1 .. Elaboration_Table.Last loop
-         Emit (Elaboration_Table.Table (J));
-      end loop;
-
-      --  Emit the statements after clearing the special code flag since
-      --  we want to handle them normally: this will be the first time we
-      --  see them, unlike any that were previously partially processed
-      --  as declarations.
-
-      Elaboration_Table.Set_Last (0);
-      Special_Elaboration_Code := False;
-      Emit_List (S_List);
-      Build_Ret_Void;
-      Pop_Block;
-      Pop_Debug_Scope;
-      Leave_Subp;
-   end Emit_Elab_Proc;
 
    ----------
    -- Emit --

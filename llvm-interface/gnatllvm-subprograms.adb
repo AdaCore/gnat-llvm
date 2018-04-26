@@ -290,6 +290,66 @@ package body GNATLLVM.Subprograms is
       Leave_Subp;
    end Emit_One_Body;
 
+   --------------------
+   -- Emit_Elab_Proc --
+   --------------------
+
+   procedure Emit_Elab_Proc
+     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String) is
+      U          : constant Node_Id  := Defining_Unit_Name (N);
+      Unit       : constant Node_Id  :=
+        (if Nkind (U) = N_Defining_Program_Unit_Name
+         then Defining_Identifier (U) else U);
+      S_List     : constant List_Id  :=
+        (if No (Stmts) then No_List else Statements (Stmts));
+      Name       : constant String   :=
+        Get_Name_String (Chars (Unit)) & "___elab" & Suffix;
+      Work_To_Do : constant Boolean  :=
+        Elaboration_Table.Last /= 0 or else Has_Non_Null_Statements (S_List);
+      Elab_Type  : constant Type_T   := Fn_Ty ((1 .. 0 => <>), Void_Type);
+      LLVM_Func  : GL_Value;
+
+   begin
+      --  If nothing to elaborate, do nothing
+
+      if not In_Main_Unit or else not Library_Level
+        or else Nkind (CU) /= N_Compilation_Unit or else not Work_To_Do
+      then
+         return;
+      end if;
+
+      --  Otherwise, show there will be elaboration code and emit it
+
+      if Nkind (CU) = N_Compilation_Unit then
+         Set_Has_No_Elaboration_Code (CU, False);
+      end if;
+
+      LLVM_Func := Add_Function (Name, Elab_Type, Standard_Void_Type);
+      Enter_Subp (LLVM_Func);
+      Push_Debug_Scope
+        (Create_Subprogram_Debug_Info
+           (LLVM_Func, Unit, N, Get_Name_String (Chars (Unit)), Name));
+      Push_Block;
+      Special_Elaboration_Code := True;
+
+      for J in 1 .. Elaboration_Table.Last loop
+         Emit (Elaboration_Table.Table (J));
+      end loop;
+
+      --  Emit the statements after clearing the special code flag since
+      --  we want to handle them normally: this will be the first time we
+      --  see them, unlike any that were previously partially processed
+      --  as declarations.
+
+      Elaboration_Table.Set_Last (0);
+      Special_Elaboration_Code := False;
+      Emit_List (S_List);
+      Build_Ret_Void;
+      Pop_Block;
+      Pop_Debug_Scope;
+      Leave_Subp;
+   end Emit_Elab_Proc;
+
    --------------------------
    -- Emit_Subprogram_Body --
    --------------------------

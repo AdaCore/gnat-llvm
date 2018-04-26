@@ -135,10 +135,9 @@ package body GNATLLVM.Records is
 
       LLVM_Type : Type_T;
 
-      procedure Add_RI (LLVM_Type : Type_T; GNAT_Type : Entity_Id)
-        with Pre => (Present (LLVM_Type) or else Present (GNAT_Type))
-                    and then not (Present (LLVM_Type)
-                                    and then Present (GNAT_Type));
+      procedure Add_RI (T : Type_T; TE : Entity_Id)
+        with Pre => (Present (T) or else Present (TE))
+                    and then not (Present (T) and then Present (TE));
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat)
@@ -159,13 +158,13 @@ package body GNATLLVM.Records is
       -- Add_RI --
       ------------
 
-      procedure Add_RI (LLVM_Type : Type_T; GNAT_Type : Entity_Id) is
+      procedure Add_RI (T : Type_T; TE : Entity_Id) is
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
          --  but we may not actually be using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (LLVM_Type => LLVM_Type, GNAT_Type => GNAT_Type,
+           (LLVM_Type => T, GNAT_Type => TE,
             Next      => Empty_Record_Info_Id);
 
          if Present (Prev_Idx) then
@@ -445,16 +444,16 @@ package body GNATLLVM.Records is
    -------------------------
 
    function Record_Field_Offset
-     (Ptr : GL_Value; Field : Entity_Id) return GL_Value
+     (V : GL_Value; Field : Entity_Id) return GL_Value
    is
-      Rec_Type  : constant Entity_Id      := Full_Scope (Field);
-      F_Type    : constant Entity_Id      := Full_Etype (Field);
-      First_Idx : constant Record_Info_Id := Get_Record_Info (Rec_Type);
+      Rec_Type   : constant Entity_Id      := Full_Scope (Field);
+      F_Type     : constant Entity_Id      := Full_Etype (Field);
+      First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
       FI         : constant Field_Info     :=
         Field_Info_Table.Table (Get_Field_Info (Field));
       Our_Idx    : constant Record_Info_Id := FI.Rec_Info_Idx;
       Offset     : constant GL_Value       :=
-        Get_Record_Size_So_Far (Rec_Type, Ptr, Our_Idx, False);
+        Get_Record_Size_So_Far (Rec_Type, V, Our_Idx, False);
       RI         : constant Record_Info    :=
         Record_Info_Table.Table (Our_Idx);
       Result     : GL_Value;
@@ -466,7 +465,7 @@ package body GNATLLVM.Records is
       --  a reference to its discrminant.
 
       if Chars (Field) = Name_uParent then
-         Result := Ptr_To_Ref (Ptr, F_Type);
+         Result := Ptr_To_Ref (V, F_Type);
          Add_To_LValue_List (Result);
          return Result;
 
@@ -476,7 +475,7 @@ package body GNATLLVM.Records is
 
       elsif Present (RI.GNAT_Type) then
          return Ptr_To_Ref (GEP (Standard_Short_Short_Integer,
-                                 Pointer_Cast (Ptr, Standard_A_Char),
+                                 Pointer_Cast (V, Standard_A_Char),
                                  (1 => Offset)),
                             F_Type);
       end if;
@@ -485,10 +484,10 @@ package body GNATLLVM.Records is
       --  the field (in bytes).
 
       if Our_Idx = First_Idx then
-         Result := Ptr;
+         Result := V;
       else
          Result := GEP (Standard_Short_Short_Integer,
-                        Pointer_Cast (Ptr, Standard_A_Char),
+                        Pointer_Cast (V, Standard_A_Char),
                         (1 => Offset));
       end if;
 
@@ -558,10 +557,10 @@ package body GNATLLVM.Records is
       Expr       : Node_Id;
 
       function Find_Matching_Field
-        (TE : Entity_Id; Fld : Entity_Id) return Entity_Id
+        (TE : Entity_Id; Field : Entity_Id) return Entity_Id
       with Pre  => Is_Record_Type (TE)
-                   and then Ekind_In (Fld, E_Discriminant, E_Component),
-           Post => Original_Record_Component (Fld) =
+                   and then Ekind_In (Field, E_Discriminant, E_Component),
+           Post => Original_Record_Component (Field) =
                      Original_Record_Component (Find_Matching_Field'Result);
       --  Find a field corresponding to Fld in record type TE
 
@@ -570,9 +569,9 @@ package body GNATLLVM.Records is
       -------------------------
 
       function Find_Matching_Field
-        (TE : Entity_Id; Fld : Entity_Id) return Entity_Id
+        (TE : Entity_Id; Field : Entity_Id) return Entity_Id
       is
-         ORC : constant Entity_Id := Original_Record_Component (Fld);
+         ORC : constant Entity_Id := Original_Record_Component (Field);
          Ent : Entity_Id := First_Field (TE);
 
       begin

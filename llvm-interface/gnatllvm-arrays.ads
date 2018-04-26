@@ -36,53 +36,46 @@ package GNATLLVM.Arrays is
    --  Return the type used to represent Array_Type_Node.  This will be
    --  an opaque type if LLVM can't represent it directly.
 
-   function Create_Array_Raw_Pointer_Type
-     (Array_Type_Node : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (Array_Type_Node),
+   function Create_Array_Raw_Pointer_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (TE),
           Post => (Get_Type_Kind (Create_Array_Raw_Pointer_Type'Result) =
                    Pointer_Type_Kind);
    --  Return the type used to store thin pointers to Array_Type
 
-   function Create_Array_Fat_Pointer_Type
-     (Array_Type : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (Array_Type),
+   function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (TE),
           Post => Present (Create_Array_Fat_Pointer_Type'Result);
    --  Return the type used to store fat pointers to Array_Type
 
-   function Create_Array_Bounds_Type
-     (Array_Type_Node : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (Array_Type_Node),
+   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Array_Type (TE),
           Post => Present (Create_Array_Bounds_Type'Result);
    --  Helper that returns the type used to store array bounds. This is a
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
    function Get_Array_Bound
-     (Arr_Typ  : Entity_Id;
+     (TE       : Entity_Id;
       Dim      : Nat;
       Is_Low   : Boolean;
-      Value    : GL_Value;
+      V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Type (Arr_Typ)
-                  and then Dim < Number_Dimensions (Arr_Typ)
-                  and then (Present (Value)
-                              or else Is_Constrained (Arr_Typ))
-                  and then (not For_Type or else No (Value)),
+     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
+                  and then (Present (V) or else Is_Constrained (TE))
+                  and then (not For_Type or else No (V)),
           Post => Present (Get_Array_Bound'Result);
    --  Get the bound (lower if Is_Low, else upper) for dimension number
    --  Dim (0-origin) of an array whose LValue is Value and is of type
    --  Arr_Typ.
 
    function Get_Array_Length
-     (Arr_Typ : Entity_Id;
+     (TE      : Entity_Id;
       Dim     : Nat;
-      Value   : GL_Value;
+      V       : GL_Value;
       For_Type : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Type (Arr_Typ)
-                  and then Dim < Number_Dimensions (Arr_Typ)
-                  and then (Present (Value)
-                              or else Is_Constrained (Arr_Typ))
-                  and then (not For_Type or else No (Value)),
+     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
+                  and then (Present (V) or else Is_Constrained (TE))
+                  and then (not For_Type or else No (V)),
           Post => Type_Of (Get_Array_Length'Result) = LLVM_Size_Type;
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
@@ -94,30 +87,28 @@ package GNATLLVM.Arrays is
    --  This returns zero iff the array type is of a constant size.
 
    function Get_Indexed_LValue
-     (Indexes : List_Id; Value : GL_Value) return GL_Value
-     with Pre  => Is_Array_Type (Full_Designated_Type (Value))
+     (Indexes : List_Id; V : GL_Value) return GL_Value
+     with Pre  => Is_Array_Type (Full_Designated_Type (V))
                   and then List_Length (Indexes) =
-                    Number_Dimensions (Full_Designated_Type (Value)),
+                    Number_Dimensions (Full_Designated_Type (V)),
           Post => Present (Get_Indexed_LValue'Result);
    --  Get an LValue corresponding to indexing Value by Indexes.  Arr_Type
    --  is the array type.
 
    function Get_Slice_LValue
-     (Result_Type : Entity_Id; Rng : Node_Id; Value : GL_Value) return GL_Value
-     with Pre  => Is_Array_Type (Full_Designated_Type (Value))
-                  and then Number_Dimensions
-                    (Full_Designated_Type (Value)) = 1,
+     (TE : Entity_Id; Rng : Node_Id; V : GL_Value) return GL_Value
+     with Pre  => Is_Array_Type (Full_Designated_Type (V))
+                  and then Number_Dimensions (Full_Designated_Type (V)) = 1,
           Post => Present (Get_Slice_LValue'Result);
    --  Similar, but Rng is the Discrete_Range for the slice
 
    function Get_Array_Elements
-     (Array_Descr : GL_Value;
-      Array_Type  : Entity_Id;
-      For_Type    : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Type (Array_Type)
-                  and then (Present (Array_Descr)
-                              or else Is_Constrained (Array_Type))
-                  and then (not For_Type or else No (Array_Descr)),
+     (V        : GL_Value;
+      TE       : Entity_Id;
+      For_Type : Boolean := False) return GL_Value
+     with Pre  => Is_Array_Type (TE)
+                  and then (Present (V) or else Is_Constrained (TE))
+                  and then (not For_Type or else No (V)),
           Post => Present (Get_Array_Elements'Result);
    --  Return the number of elements contained in an Array_Type object as an
    --  integer as large as a pointer for the target architecture. If it is an
@@ -131,13 +122,13 @@ package GNATLLVM.Arrays is
      with Pre  => Present (TE), Post => Present (Get_Array_Type_Size'Result);
 
    function Emit_Array_Aggregate
-     (Node           : Node_Id;
+     (N              : Node_Id;
       Dims_Left      : Pos;
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
-     with Pre  => Nkind_In (Node, N_Aggregate, N_Extension_Aggregate)
+     with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
                   and then Present (Value_So_Far)
-                  and then Is_Array_Type (Full_Etype (Node)),
+                  and then Is_Array_Type (Full_Etype (N)),
                Post => Present (Emit_Array_Aggregate'Result);
    --  Emit an N_Aggregate which is an array, returning the GL_Value that
    --  contains the data.  Value_So_Far is any of the array whose value
@@ -145,26 +136,24 @@ package GNATLLVM.Arrays is
    --  outer array type we still can recurse into.  Indices_So_Far are the
    --  indexes of any outer N_Aggregate expressions we went through.
 
-   function Array_Data (Array_Descr : GL_Value) return GL_Value
-     with Pre  => Is_Access_Type (Array_Descr)
-                  and then Is_Array_Type (Full_Designated_Type (Array_Descr)),
+   function Array_Data (V : GL_Value) return GL_Value
+     with Pre  => Is_Access_Type (V)
+                  and then Is_Array_Type (Full_Designated_Type (V)),
           Post => Present (Array_Data'Result);
    --  Emit code to compute the address of the array data and return the
-   --  corresponding value. Handle both constrained and unconstrained arrays,
-   --  depending on Array_Type. If this is a constrained array, Array_Descr
+   --  corresponding value. Handle both constrained and unconstrained
+   --  arrays, depending on Array_Type. If this is a constrained array, V
    --  must already be a pointer to the array data, otherwise, it must be a
    --  fat pointer.
 
-   function Array_Fat_Pointer
-     (Array_Type : Entity_Id; Array_Data : GL_Value) return GL_Value
-     with Pre  => Is_Access_Type (Array_Data)
-                  and then Is_Array_Type (Array_Type)
-                  and then not Is_Constrained (Array_Type)
-                  and then Is_Array_Type (Full_Designated_Type (Array_Data))
-                  and then Is_Constrained (Full_Designated_Type (Array_Data)),
+   function Array_Fat_Pointer (TE : Entity_Id; V : GL_Value) return GL_Value
+     with Pre  => Is_Access_Type (V) and then Is_Array_Type (TE)
+                  and then not Is_Constrained (TE)
+                  and then Is_Array_Type (Full_Designated_Type (V))
+                  and then Is_Constrained (Full_Designated_Type (V)),
           Post => Present (Array_Fat_Pointer'Result);
-   --  Wrap a fat pointer around Array_Data and return the created fat pointer.
-   --  Array_Type gives the destination array type, which is what specifies
-   --  the types of the bounds.
+   --  Wrap a fat pointer around V and return the created fat pointer.  TE
+   --  is the destination array type, which is what specifies the types of
+   --  the bounds.
 
 end GNATLLVM.Arrays;

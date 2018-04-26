@@ -33,8 +33,8 @@ package GNATLLVM.Records is
    --  Create a type for the record denoted by Def_Ident
 
    function Record_Field_Offset
-     (Ptr : GL_Value; Field : Entity_Id) return GL_Value
-     with Pre  => Present (Ptr) and then Present (Field),
+     (V : GL_Value; Field : Entity_Id) return GL_Value
+     with Pre  => Present (V) and then Present (Field),
           Post => Present (Record_Field_Offset'Result);
    --  Compute the offset of a given record field
 

@@ -38,10 +38,8 @@ package GNATLLVM.Compile is
 
    procedure Emit (N : Node_Id)
      with Pre => Present (N);
-   --  General compilation routine, called at the top-level
-
-   procedure Emit_List (List : List_Id);
-   --  Call Emit on every element of List
+   procedure Emit (List : List_Id);
+   --  Emit a node and every element of a (possibly empty) List
 
    function Emit_Expression (Node : Node_Id) return GL_Value
      with Pre  => Present (Node),

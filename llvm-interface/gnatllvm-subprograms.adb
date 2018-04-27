@@ -400,8 +400,8 @@ package body GNATLLVM.Subprograms is
          Return_Address_Param := LLVM_Param;
       end if;
 
-      Emit_List (Declarations (N));
-      Emit_List (Statements (Handled_Statement_Sequence (N)));
+      Emit (Declarations (N));
+      Emit (Statements (Handled_Statement_Sequence (N)));
 
       --  If the last instrution isn't a terminator, add a return
 
@@ -472,7 +472,7 @@ package body GNATLLVM.Subprograms is
       Elaboration_Table.Set_Last (0);
       Special_Elaboration_Code := False;
       Start_Block_Statements (Empty, No_List);
-      Emit_List (S_List);
+      Emit (S_List);
       Build_Ret_Void;
       Pop_Block;
       Pop_Debug_Scope;

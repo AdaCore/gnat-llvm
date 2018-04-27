@@ -511,7 +511,7 @@ package body GNATLLVM.Conditionals is
          First_Choice := Current_Choice;
          BB           := Create_Basic_Block ("case-alt");
          Position_Builder_At_End (BB);
-         Emit_List (Statements (Alt));
+         Emit (Statements (Alt));
          Build_Br (BB_End);
 
          Choice := First (Discrete_Choices (Alt));
@@ -700,7 +700,7 @@ package body GNATLLVM.Conditionals is
       for Part of If_Parts loop
          Emit_If_Cond (Part.Cond, Part.BB_True, Part.BB_False);
          Position_Builder_At_End (Part.BB_True);
-         Emit_List (Part.Stmts);
+         Emit (Part.Stmts);
          Build_Br (BB_End);
          Position_Builder_At_End (Part.BB_False);
       end loop;
@@ -708,7 +708,7 @@ package body GNATLLVM.Conditionals is
       --  If there's an Else part, emit it and go into the "end" basic block
 
       if Present (Else_Statements (Node)) then
-         Emit_List (Else_Statements (Node));
+         Emit (Else_Statements (Node));
          Build_Br (BB_End);
          Position_Builder_At_End (BB_End);
       end if;
@@ -730,7 +730,7 @@ package body GNATLLVM.Conditionals is
          --  mechanisms, such as short-circuit operators.
 
          when N_Expression_With_Actions =>
-            Emit_List (Actions (Cond));
+            Emit (Actions (Cond));
             Emit_If_Cond (Expression (Cond), BB_True, BB_False);
 
          when N_Op_Not =>

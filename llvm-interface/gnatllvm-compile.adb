@@ -145,7 +145,7 @@ package body GNATLLVM.Compile is
          Next (Prag);
       end loop;
 
-      Emit_List (Declarations (Aux_Decls_Node (Parent (U))));
+      Emit (Declarations (Aux_Decls_Node (Parent (U))));
 
       --  Process the unit itself
 
@@ -188,11 +188,11 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Compilation_Unit =>
-            Emit_List (Context_Items (N));
-            Emit_List (Declarations (Aux_Decls_Node (N)));
+            Emit (Context_Items (N));
+            Emit (Declarations (Aux_Decls_Node (N)));
             Emit (Unit (N));
-            Emit_List (Actions (Aux_Decls_Node (N)));
-            Emit_List (Pragmas_After (Aux_Decls_Node (N)));
+            Emit (Actions (Aux_Decls_Node (N)));
+            Emit (Pragmas_After (Aux_Decls_Node (N)));
 
          when N_With_Clause =>
             null;
@@ -207,8 +207,8 @@ package body GNATLLVM.Compile is
 
          when N_Package_Specification =>
             Push_Lexical_Debug_Scope (N);
-            Emit_List (Visible_Declarations (N));
-            Emit_List (Private_Declarations (N));
+            Emit (Visible_Declarations (N));
+            Emit (Private_Declarations (N));
             Pop_Debug_Scope;
 
             if Library_Level then
@@ -230,7 +230,7 @@ package body GNATLLVM.Compile is
                --  Always process declarations
 
                Push_Lexical_Debug_Scope (N);
-               Emit_List (Declarations (N));
+               Emit (Declarations (N));
 
                --  If we're at library level and our parent is an
                --  N_Compilation_Unit, make an elab proc and put the
@@ -280,7 +280,7 @@ package body GNATLLVM.Compile is
 
          when N_Handled_Sequence_Of_Statements =>
             Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
-            Emit_List (Statements (N));
+            Emit (Statements (N));
 
          when N_Raise_Statement =>
             Emit_LCH_Call (N);
@@ -700,7 +700,7 @@ package body GNATLLVM.Compile is
                Push_Block;
                Start_Block_Statements (Empty, No_List);
                Push_Loop (Loop_Identifier, BB_Next);
-               Emit_List (Statements (N));
+               Emit (Statements (N));
                Set_Debug_Pos_At_Node (N);
                Pop_Block;
                Pop_Loop;
@@ -712,7 +712,7 @@ package body GNATLLVM.Compile is
          when N_Block_Statement =>
             Push_Lexical_Debug_Scope (N);
             Push_Block;
-            Emit_List (Declarations (N));
+            Emit (Declarations (N));
             Emit (Handled_Statement_Sequence (N));
             Set_Debug_Pos_At_Node (N);
             Pop_Block;
@@ -730,7 +730,7 @@ package body GNATLLVM.Compile is
          when N_Freeze_Entity =>
             --  ??? Need to process Node itself
 
-            Emit_List (Actions (N));
+            Emit (Actions (N));
 
          when N_Pragma =>
             case Get_Pragma_Id (N) is
@@ -1266,7 +1266,7 @@ package body GNATLLVM.Compile is
          case Nkind (Node) is
 
             when N_Expression_With_Actions =>
-               Emit_List (Actions (Node));
+               Emit (Actions (Node));
                return Emit_Expression (Expression (Node));
 
             when N_Character_Literal | N_Numeric_Or_String_Literal =>
@@ -1612,11 +1612,11 @@ package body GNATLLVM.Compile is
       end if;
    end Emit_Expression;
 
-   ---------------
-   -- Emit_List --
-   ---------------
+   ----------
+   -- Emit --
+   ----------
 
-   procedure Emit_List (List : List_Id) is
+   procedure Emit (List : List_Id) is
       N : Node_Id;
 
    begin
@@ -1627,7 +1627,7 @@ package body GNATLLVM.Compile is
             Next (N);
          end loop;
       end if;
-   end Emit_List;
+   end Emit;
 
    -----------------------
    -- Is_Zero_Aggregate --

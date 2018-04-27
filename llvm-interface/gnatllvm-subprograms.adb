@@ -617,13 +617,6 @@ package body GNATLLVM.Subprograms is
             LLVM_Func      : GL_Value;
 
          begin
-            --  Special case __gnat_last_chance_handler which is
-            --  already defined as Env.LCH_Fn
-
-            if Subp_Base_Name = "__gnat_last_chance_handler" then
-               return Get_LCH_Fn;
-            end if;
-
             --  ?? We have a tricky issue here.  We need to indicate that this
             --  object is a subprogram, but we don't have a GNAT type
             --  corresponding to the subprogram type unless there's an access

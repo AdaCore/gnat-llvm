@@ -117,12 +117,24 @@ package GNATLLVM.Environment is
 
    type GL_Value_Array is array (Nat range <>) of GL_Value;
 
-   function Is_Reference (G : GL_Value) return Boolean is (G.Is_Reference);
-   function Is_Raw_Array (G : GL_Value) return Boolean is (G.Is_Raw_Array);
+   function Is_Reference (V : GL_Value) return Boolean is (V.Is_Reference);
+   function Is_Raw_Array (V : GL_Value) return Boolean is (V.Is_Raw_Array);
 
    No_GL_Value : constant GL_Value := (No_Value_T, Empty, False, False, False);
-   function No (G : GL_Value) return Boolean           is (G = No_GL_Value);
-   function Present (G : GL_Value) return Boolean      is (G /= No_GL_Value);
+   function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
+   function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
+
+   --  Define information saying how deep we are in the block stack.  The
+   --  stack itself is in GNATLLVM.Blocks.
+
+   type Block_Info is record
+      Depth    : Integer;   --  Depth in the block stack
+      In_Stmts : Boolean;   --  True if in statement part.
+   end record;
+
+   No_Block_Info : Block_Info := (-1, False);
+   function No      (BI : Block_Info) return Boolean is (BI =  No_Block_Info);
+   function Present (BI : Block_Info) return Boolean is (BI /= No_Block_Info);
 
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
@@ -154,6 +166,9 @@ package GNATLLVM.Environment is
 
       Basic_Block : Basic_Block_T;
       --  For labels and loop ids, records the corresponding basic block
+
+      Block_Inf   : Block_Info;
+      --  For labeles, records the depth and "in statements" status
 
       Record_Inf  : Record_Info_Id;
       --  For records, gives the first index of the descriptor of the record
@@ -260,6 +275,9 @@ package GNATLLVM.Environment is
    function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T
      with Pre => Present (BE);
 
+   function Get_Block_Info  (BE : Entity_Id) return Block_Info
+     with Pre => Present (BE);
+
    function Has_Type        (TE : Entity_Id) return Boolean is
       (Present (Get_Type (TE)))
      with Pre => Is_Type (TE);
@@ -274,6 +292,10 @@ package GNATLLVM.Environment is
 
    function Has_BB          (BE : Entity_Id) return Boolean is
       (Present (Get_Basic_Block (BE)))
+     with Pre => Present (BE);
+
+   function Has_Block_Info  (BE : Entity_Id) return Boolean is
+      (Present (Get_Block_Info (BE)))
      with Pre => Present (BE);
 
    procedure Set_Type       (TE : Entity_Id; TL : Type_T)
@@ -305,7 +327,10 @@ package GNATLLVM.Environment is
           Post => Get_Field_Info (VE) = FI;
 
    procedure Set_Basic_Block (BE : Entity_Id; BL : Basic_Block_T)
-     with Pre  => Present (BE), Post => Get_Basic_Block (BE) = BL;
+     with Pre => Present (BE), Post => Get_Basic_Block (BE) = BL;
+
+   procedure Set_Block_Info  (BE : Entity_Id; BI : Block_Info)
+     with Pre => Present (BE), Post => Get_Block_Info (BE) = BI;
 
    procedure Copy_Type_Info (Old_T, New_T : Entity_Id)
      with Pre  => Has_Type (Old_T), Post => Has_Type (New_T);

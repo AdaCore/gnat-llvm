@@ -15,37 +15,21 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
-with Sem_Util; use Sem_Util;
-with Sinfo;    use Sinfo;
-with Stand;    use Stand;
+with Errout; use Errout;
+with Sinfo;  use Sinfo;
+with Stand;  use Stand;
 
-with GNATLLVM.Arrays;  use GNATLLVM.Arrays;
-with GNATLLVM.Compile; use GNATLLVM.Compile;
-with GNATLLVM.Records; use GNATLLVM.Records;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Records;     use GNATLLVM.Records;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
 
-   -----------------------
-   -- Local Subprograms --
-   -----------------------
-
-   function Create_Subprogram_Type
-     (Param_Ident  : Entity_Id;
-      Return_Type  : Entity_Id;
-      Takes_S_Link : Boolean) return Type_T
-     with Pre  => Present (Param_Ident) and then Is_Type_Or_Void (Return_Type),
-          Post => Present (Create_Subprogram_Type'Result);
-   --  Helper for public Create_Subprogram_Type functions: the public
-   --  ones harmonize input and this one actually creates the LLVM
-   --  type for subprograms.  Return_Type will be of Ekind E_Void if
-   --  this is a procedure.
-
-   function Create_Subprogram_Access_Type (T : Type_T) return Type_T
-     with Pre  => Present (T),
-          Post => Present (Create_Subprogram_Access_Type'Result);
-   --  Return a structure type that embeds Subp_Type and a static link pointer
+   --------------------------
+   -- GNAT_Equivalent_Type --
+   --------------------------
 
    function GNAT_Equivalent_Type (TE : Entity_Id) return Entity_Id
      with Pre => Is_Type (TE), Post => Is_Type (GNAT_Equivalent_Type'Result);
@@ -320,23 +304,6 @@ package body GNATLLVM.Types is
 
       return Subp (V, TE, "unchecked-conv");
    end Build_Unchecked_Conversion;
-
-   ------------------
-   -- Count_Params --
-   ------------------
-
-   function Count_Params (E : Entity_Id) return Nat is
-      Cnt   : Nat := 0;
-      Param : Entity_Id := First_Formal_With_Extras (E);
-
-   begin
-      while Present (Param) loop
-         Cnt := Cnt + 1;
-         Param := Next_Formal_With_Extras (Param);
-      end loop;
-
-      return Cnt;
-   end Count_Params;
 
    ----------------------
    -- Bounds_To_Length --
@@ -633,101 +600,6 @@ package body GNATLLVM.Types is
       High := Build_Type_Conversion (High_Bound (SRange), TE);
 
    end Create_Discrete_Type;
-
-   --------------------------------------
-   -- Create_Subprogram_Type_From_Spec --
-   --------------------------------------
-
-   function Create_Subprogram_Type_From_Spec (N : Node_Id) return Type_T
-   is
-      Def_Ident : constant Entity_Id := Defining_Entity (N);
-
-   begin
-      return Create_Subprogram_Type (Def_Ident, Full_Etype (Def_Ident), False);
-   end Create_Subprogram_Type_From_Spec;
-
-   ----------------------------------------
-   -- Create_Subprogram_Type_From_Entity --
-   ----------------------------------------
-
-   function Create_Subprogram_Type_From_Entity
-     (TE : Entity_Id; Takes_S_Link  : Boolean) return Type_T is
-   begin
-      return Create_Subprogram_Type (TE, Full_Etype (TE), Takes_S_Link);
-   end Create_Subprogram_Type_From_Entity;
-
-   ----------------------------
-   -- Create_Subprogram_Type --
-   ----------------------------
-
-   function Create_Subprogram_Type
-     (Param_Ident   : Entity_Id;
-      Return_Type   : Entity_Id;
-      Takes_S_Link  : Boolean) return Type_T
-   is
-      LLVM_Return_Typ : Type_T :=
-        (if Ekind (Return_Type) = E_Void
-         then Void_Type else Create_Type (Return_Type));
-      Orig_Arg_Count  : constant Nat := Count_Params (Param_Ident);
-      Args_Count      : constant Nat :=
-        Orig_Arg_Count + (if Takes_S_Link then 1 else 0) +
-          (if Ekind (Return_Type) /= E_Void
-             and then Is_Dynamic_Size (Return_Type)
-           then 1 else 0);
-      Arg_Types       : Type_Array (1 .. Args_Count);
-      Param_Ent       : Entity_Id := First_Formal_With_Extras (Param_Ident);
-      J               : Nat := 1;
-
-   begin
-      --  First, Associate an LLVM type for each Ada subprogram parameter
-
-      while Present (Param_Ent) loop
-         declare
-            Param_Type : constant Node_Id := Full_Etype (Param_Ent);
-         begin
-            --  If this is an out parameter, or a parameter whose type is
-            --  unconstrained, take a pointer to the actual parameter.
-
-            Arg_Types (J) :=
-              (if Param_Needs_Ptr (Param_Ent)
-               then Create_Access_Type (Param_Type)
-               else Create_Type (Param_Type));
-         end;
-
-         J := J + 1;
-         Param_Ent := Next_Formal_With_Extras (Param_Ent);
-      end loop;
-
-      --  Set the argument for the static link, if any
-
-      if Takes_S_Link then
-         Arg_Types (Orig_Arg_Count + 1) := Void_Ptr_Type;
-      end if;
-
-      --  If the return type has dynamic size, we need to add a parameter
-      --  to which we pass the address for the return to be placed in.
-
-      if Ekind (Return_Type) /= E_Void
-        and then Is_Dynamic_Size (Return_Type)
-      then
-         Arg_Types (Arg_Types'Last) := Create_Access_Type (Return_Type);
-         LLVM_Return_Typ := Void_Type;
-      end if;
-
-      return Fn_Ty (Arg_Types, LLVM_Return_Typ);
-   end Create_Subprogram_Type;
-
-   -----------------------------------
-   -- Create_Subprogram_Access_Type --
-   -----------------------------------
-
-   function Create_Subprogram_Access_Type (T : Type_T) return Type_T is
-      pragma Unreferenced (T);
-
-   begin
-      return
-        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
-   end Create_Subprogram_Access_Type;
 
    -----------------------
    -- Allocate_For_Type --

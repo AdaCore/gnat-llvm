@@ -39,27 +39,10 @@ package GNATLLVM.Types is
 
    function Create_Access_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Type (TE), Post => Present (Create_Access_Type'Result);
-
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
    --  between the two. For the moment, it handles array accesses and thin
    --  (normal) accesses.
-
-   function Create_Subprogram_Type_From_Spec (N : Node_Id) return Type_T
-     with Pre  => Present (N),
-          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Spec'Result) =
-                   Function_Type_Kind);
-
-   function Create_Subprogram_Type_From_Entity
-     (TE : Entity_Id; Takes_S_Link  : Boolean) return Type_T
-     with Pre  => Ekind (TE) = E_Subprogram_Type,
-          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
-                   Function_Type_Kind);
-
-   function Count_Params (E : Entity_Id) return Nat
-     with Pre => Present (E);
-   --  Return a count of the number of parameters of E, which is either
-   --  a subprogram or a subprogram type.
 
    function GNAT_To_LLVM_Type
      (TE : Entity_Id; Definition : Boolean) return Type_T

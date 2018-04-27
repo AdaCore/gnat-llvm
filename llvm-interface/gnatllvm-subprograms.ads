@@ -22,6 +22,9 @@ with Table; use Table;
 with Types; use Types;
 with Uintp; use Uintp;
 
+with LLVM.Core;  use LLVM.Core;
+with LLVM.Types; use LLVM.Types;
+
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Subprograms is
@@ -41,6 +44,27 @@ package GNATLLVM.Subprograms is
 
    type Overloaded_Intrinsic_Kind is
      (Unary, Binary, Overflow, Memcpy, Memset);
+
+   function Count_Params (E : Entity_Id) return Nat
+     with Pre => Present (E);
+   --  Return a count of the number of parameters of E, which is either
+   --  a subprogram or a subprogram type.
+
+   function Create_Subprogram_Type_From_Spec (N : Node_Id) return Type_T
+     with Pre  => Present (N),
+          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Spec'Result) =
+                   Function_Type_Kind);
+
+   function Create_Subprogram_Type_From_Entity
+     (TE : Entity_Id; Takes_S_Link  : Boolean) return Type_T
+     with Pre  => Ekind (TE) = E_Subprogram_Type,
+          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
+                   Function_Type_Kind);
+
+   function Create_Subprogram_Access_Type (T : Type_T) return Type_T
+     with Pre  => Present (T),
+          Post => Present (Create_Subprogram_Access_Type'Result);
+   --  Return a structure type that embeds Subp_Type and a static link pointer
 
    function Build_Intrinsic
      (Kind : Overloaded_Intrinsic_Kind;

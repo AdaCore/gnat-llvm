@@ -1827,7 +1827,7 @@ package body GNATLLVM.Compile is
                   elsif Attr = Attribute_Last then
                      Result := High;
                   elsif Attr = Attribute_Range_Length then
-                     Result := Bounds_To_Length (Low, High, Typ);
+                     Result := Bounds_To_Length (Low, High, TE);
                   else
                      Error_Msg_N ("unsupported attribute: `" &
                                     Attribute_Id'Image (Attr) & "`", N);
@@ -1973,7 +1973,7 @@ package body GNATLLVM.Compile is
 
                   if not Is_Machine_Number (N) then
                      Val := Machine
-                       (Implementation_Base_Type (TE), Val, Round_Even, Node);
+                       (Implementation_Base_Type (TE), Val, Round_Even, N);
                   end if;
 
                   pragma Assert (Rbase (Val) = 2);
@@ -1991,7 +1991,7 @@ package body GNATLLVM.Compile is
 
                   FP_Denom :=
                     2.0 ** (Integer (-UI_To_Int (Denominator (Val))));
-                  return Const_Real (Real_Type, FP_Num * FP_Denom);
+                  return Const_Real (TE, FP_Num * FP_Denom);
                end;
             end if;
 

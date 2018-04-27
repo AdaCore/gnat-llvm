@@ -545,23 +545,32 @@ package body GNATLLVM.Compile is
 
          when N_Simple_Return_Statement =>
             if Present (Expression (Node)) then
+               declare
+                  Ret_Value : constant Node_Id := Expression (Node);
+                  Ret_Type  : constant Entity_Id :=
+                    Full_Etype (Node_Enclosing_Subprogram (Node));
+               begin
+                  --  If there's a parameter for the address to which to copy
+                  --  the return value, do the copy instead of returning the
+                  --  value.
 
-               --  If there's a parameter for the address to which to copy
-               --  the return value, do the copy instead of returning the
-               --  value.
+                  if Present (Return_Address_Param) then
+                     Emit_Assignment (Return_Address_Param, Ret_Value,
+                                      No_GL_Value, True, True);
+                     Build_Ret_Void;
 
-               if Present (Return_Address_Param) then
-                  Emit_Assignment (Return_Address_Param, Expression (Node),
-                                   No_GL_Value, True, True);
-                  Build_Ret_Void;
+                  --  If this function returns unconstrained, create an
+                  --  access (fat pointer) to the return value.
 
-               else
-                  Build_Ret
-                    (Build_Type_Conversion
-                       (Expression (Node),
-                        Full_Etype (Node_Enclosing_Subprogram (Node))));
-               end if;
-
+                  elsif Is_Array_Type (Ret_Type)
+                    and then not Is_Constrained (Ret_Type)
+                  then
+                     Build_Ret (Convert_To_Access_To
+                                  (Emit_LValue (Ret_Value), Ret_Type));
+                  else
+                     Build_Ret (Build_Type_Conversion (Ret_Value, Ret_Type));
+                  end if;
+               end;
             else
                Build_Ret_Void;
             end if;

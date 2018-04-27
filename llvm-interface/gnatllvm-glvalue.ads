@@ -781,6 +781,14 @@ package GNATLLVM.GLValue is
      with Pre  => Present (Func) and then Is_Type_Or_Void (Result_Type),
           Post => Present (Call'Result);
 
+   function Call_Ref
+     (Func        : GL_Value;
+      Result_Type : Entity_Id;
+      Args        : GL_Value_Array;
+      Name        : String := "") return GL_Value
+     with Pre  => Present (Func) and then Is_Type (Result_Type),
+          Post => Is_Reference (Call_Ref'Result);
+
    procedure Call
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
      with Pre  => Present (Func);

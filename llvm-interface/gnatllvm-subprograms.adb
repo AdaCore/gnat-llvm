@@ -76,6 +76,15 @@ package body GNATLLVM.Subprograms is
    --  type for subprograms.  Return_Type will be of Ekind E_Void if
    --  this is a procedure.
 
+   function Is_Dynamic_Return (TE : Entity_Id) return Boolean is
+     (Ekind (TE) /= E_Void and then Is_Dynamic_Size (TE)
+        and then not (Is_Array_Type (TE) and then not Is_Constrained (TE)))
+     with Pre => Is_Type_Or_Void (TE);
+   --  TE is the return type of a function.  This predicate is true is the
+   --  function returns a dynamic sized type.  If TE is an unconstrained array,
+   --  the return type of the function will have been changed to an access
+   --  to that array, so this must return false.
+
    ------------------
    -- Count_Params --
    ------------------
@@ -124,15 +133,17 @@ package body GNATLLVM.Subprograms is
       Return_Type   : Entity_Id;
       Takes_S_Link  : Boolean) return Type_T
    is
+      Unc_Return      : constant Boolean :=
+        (Ekind (Return_Type) /= E_Void and then Is_Array_Type (Return_Type)
+           and then not Is_Constrained (Return_Type));
       LLVM_Return_Typ : Type_T :=
         (if Ekind (Return_Type) = E_Void
-         then Void_Type else Create_Type (Return_Type));
+         then Void_Type elsif Unc_Return then Create_Access_Type (Return_Type)
+         else Create_Type (Return_Type));
       Orig_Arg_Count  : constant Nat := Count_Params (Param_Ident);
       Args_Count      : constant Nat :=
         Orig_Arg_Count + (if Takes_S_Link then 1 else 0) +
-          (if Ekind (Return_Type) /= E_Void
-             and then Is_Dynamic_Size (Return_Type)
-           then 1 else 0);
+          (if Is_Dynamic_Return (Return_Type) then 1 else 0);
       Arg_Types       : Type_Array (1 .. Args_Count);
       Param_Ent       : Entity_Id := First_Formal_With_Extras (Param_Ident);
       J               : Nat := 1;
@@ -166,9 +177,7 @@ package body GNATLLVM.Subprograms is
       --  If the return type has dynamic size, we need to add a parameter
       --  to which we pass the address for the return to be placed in.
 
-      if Ekind (Return_Type) /= E_Void
-        and then Is_Dynamic_Size (Return_Type)
-      then
+      if Is_Dynamic_Return (Return_Type) then
          Arg_Types (Arg_Types'Last) := Create_Access_Type (Return_Type);
          LLVM_Return_Typ := Void_Type;
       end if;
@@ -336,8 +345,7 @@ package body GNATLLVM.Subprograms is
       Def_Ident       : constant Entity_Id := Defining_Entity (Spec);
       Return_Typ      : constant Entity_Id := Full_Etype (Def_Ident);
       Void_Return_Typ : constant Boolean   := Ekind (Return_Typ) = E_Void;
-      Dyn_Return      : constant Boolean   :=
-        not Void_Return_Typ and then Is_Dynamic_Size (Return_Typ);
+      Dyn_Return      : constant Boolean   := Is_Dynamic_Return (Return_Typ);
       Void_Return     : constant Boolean   := Void_Return_Typ or Dyn_Return;
       Param_Num       : Natural            := 0;
       Param           : Entity_Id;
@@ -631,9 +639,7 @@ package body GNATLLVM.Subprograms is
       Subp_Typ       : constant Entity_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
       Return_Typ     : constant Entity_Id := Full_Etype (Subp_Typ);
-      Void_Return    : constant Boolean   := Ekind (Return_Typ) = E_Void;
-      Dynamic_Return : constant Boolean   :=
-        not Void_Return and then Is_Dynamic_Size (Return_Typ);
+      Dynamic_Return : constant Boolean   := Is_Dynamic_Return (Return_Typ);
       Param          : Node_Id;
       P_Type         : Entity_Id;
       Actual         : Node_Id;
@@ -710,6 +716,10 @@ package body GNATLLVM.Subprograms is
       if Dynamic_Return then
          Call (LLVM_Func, Args);
          return Convert_To_Access_To (Args (Args'Last), Our_Return_Typ);
+      elsif Is_Array_Type (Return_Typ)
+        and then not Is_Constrained (Return_Typ)
+      then
+         return Call_Ref (LLVM_Func, Return_Typ, Args);
       else
          return Call (LLVM_Func, Return_Typ, Args);
       end if;

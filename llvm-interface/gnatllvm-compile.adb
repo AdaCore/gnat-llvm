@@ -1831,7 +1831,7 @@ package body GNATLLVM.Compile is
                   else
                      Error_Msg_N ("unsupported attribute: `" &
                                     Attribute_Id'Image (Attr) & "`", N);
-                     Result := Get_Undef (Typ);
+                     Result := Get_Undef (TE);
                   end if;
 
                elsif Is_Array_Type (Prefix_Type) then
@@ -1871,7 +1871,7 @@ package body GNATLLVM.Compile is
 
          when Attribute_Pos
             | Attribute_Val =>
-            return Build_Type_Conversion (First (Expressions (N)), Typ);
+            return Build_Type_Conversion (First (Expressions (N)), TE);
 
          when Attribute_Succ
             | Attribute_Pred =>
@@ -1901,7 +1901,7 @@ package body GNATLLVM.Compile is
                Align : constant unsigned := Get_Type_Alignment (Pre);
 
             begin
-               return Const_Int (Typ, unsigned_long_long (Align),
+               return Const_Int (TE, unsigned_long_long (Align),
                                  Sign_Extend => False);
             end;
 
@@ -1930,7 +1930,7 @@ package body GNATLLVM.Compile is
          when others =>
             Error_Msg_N ("unsupported attribute: `" &
                            Attribute_Id'Image (Attr) & "`", N);
-            return Get_Undef (Typ);
+            return Get_Undef (TE);
       end case;
    end Emit_Attribute_Reference;
 

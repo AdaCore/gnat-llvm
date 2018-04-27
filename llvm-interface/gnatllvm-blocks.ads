@@ -90,4 +90,13 @@ package GNATLLVM.Blocks is
    --  that one.  If Present, but it doesn't point to a basic block,
    --  set it to the one we made.
 
+   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T)
+     with Pre => Present (Exit_Point);
+   procedure Pop_Loop;
+
+   function Get_Exit_Point (N : Node_Id) return Basic_Block_T
+     with Post => Present (Get_Exit_Point'Result);
+   --  If N is specied, find the exit point corresponding to its entity.
+   --  Otherwise, find the most recent (most inner) exit point.
+
 end GNATLLVM.Blocks;

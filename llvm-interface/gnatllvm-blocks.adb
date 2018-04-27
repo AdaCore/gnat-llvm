@@ -15,7 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Stand; use Stand;
+with Errout; use Errout;
+with Stand;  use Stand;
 with Table;
 
 with LLVM.Core; use LLVM.Core;
@@ -80,6 +81,23 @@ package body GNATLLVM.Blocks is
       Table_Increment      => 1,
       Table_Name           => "Program_Error_Stack");
    --  Stack of labels for program error
+
+   type Exit_Point is record
+      Label_Entity : Entity_Id;
+      Exit_BB      : Basic_Block_T;
+   end record;
+
+   Exit_Point_Low_Bound : constant := 1;
+
+   package Exit_Point_Table is new Table.Table
+     (Table_Component_Type => Exit_Point,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => Exit_Point_Low_Bound,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Exit_Point_Table");
+   --  Table of scoped loop exit points. Last inserted exit point correspond
+   --  to the innermost loop.
 
    ----------------
    -- Push_Block --
@@ -259,5 +277,50 @@ package body GNATLLVM.Blocks is
 
       return BB;
    end Enter_Block_With_Node;
+
+   ---------------
+   -- Push_Loop --
+   ---------------
+
+   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T) is
+   begin
+      Exit_Point_Table.Append ((LE, Exit_Point));
+   end Push_Loop;
+
+   --------------
+   -- Pop_Loop --
+   --------------
+
+   procedure Pop_Loop is
+   begin
+      Exit_Point_Table.Decrement_Last;
+   end Pop_Loop;
+
+   --------------------
+   -- Get_Exit_Point --
+   --------------------
+
+   function Get_Exit_Point (N : Node_Id) return Basic_Block_T is
+   begin
+      --  If no exit label was specified, use the last one
+
+      if No (N) then
+         return Exit_Point_Table.Table (Exit_Point_Table.Last).Exit_BB;
+      end if;
+
+      --  Otherwise search for a match
+
+      for I in Exit_Point_Low_Bound .. Exit_Point_Table.Last loop
+         if Exit_Point_Table.Table (I).Label_Entity = Entity (N) then
+            return Exit_Point_Table.Table (I).Exit_BB;
+         end if;
+      end loop;
+
+      --  If the loop label isn't registered, then we just met an exit
+      --  statement with no corresponding loop: should not happen.
+
+      Error_Msg_N ("unknown loop identifier", N);
+      raise Program_Error;
+   end Get_Exit_Point;
 
 end GNATLLVM.Blocks;

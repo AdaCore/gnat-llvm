@@ -179,23 +179,6 @@ package GNATLLVM.Environment is
    type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info_Id;
    type Ptr_LLVM_Info_Array is access all LLVM_Info_Array;
 
-   type Exit_Point is record
-      Label_Entity : Entity_Id;
-      Exit_BB      : Basic_Block_T;
-   end record;
-
-   Exit_Point_Low_Bound : constant := 1;
-
-   package Exit_Point_Table is new Table.Table
-     (Table_Component_Type => Exit_Point,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => Exit_Point_Low_Bound,
-      Table_Initial        => 10,
-      Table_Increment      => 5,
-      Table_Name           => "Exit_Point_Table");
-   --  Table of scoped loop exit points. Last inserted exit point correspond
-   --  to the innermost loop.
-
    LLVM_Info_Map             : Ptr_LLVM_Info_Array;
    --  The mapping between a GNAT tree object and the corresponding LLVM data
 
@@ -327,15 +310,6 @@ package GNATLLVM.Environment is
    procedure Copy_Type_Info (Old_T, New_T : Entity_Id)
      with Pre  => Has_Type (Old_T), Post => Has_Type (New_T);
    --  Copy type-related information from Old_T to New_T
-
-   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T)
-     with Pre => Present (Exit_Point);
-   procedure Pop_Loop;
-
-   function Get_Exit_Point (N : Node_Id) return Basic_Block_T
-     with Post => Present (Get_Exit_Point'Result);
-   --  If N is specied, find the exit point corresponding to its entity.
-   --  Otherwise, find the most recent (most inner) exit point.
 
    procedure Enter_Subp (Func : GL_Value)
      with Pre  => Present (Func) and then Library_Level,

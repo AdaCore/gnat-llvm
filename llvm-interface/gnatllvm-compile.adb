@@ -61,9 +61,9 @@ package body GNATLLVM.Compile is
           Post => Present (Emit_Attribute_Reference'Result);
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
-   function Is_Zero_Aggregate (Src_Node : Node_Id) return Boolean
-     with Pre => Nkind_In (Src_Node, N_Aggregate, N_Extension_Aggregate)
-                 and then Is_Others_Aggregate (Src_Node);
+   function Is_Zero_Aggregate (N : Node_Id) return Boolean
+     with Pre => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
+                 and then Is_Others_Aggregate (N);
    --  Helper for Emit_Assignment: say whether this is an aggregate of all
    --  zeros.
 
@@ -77,21 +77,18 @@ package body GNATLLVM.Compile is
    --  with the specified destination and expression types.
 
    function Emit_Literal (N : Node_Id) return GL_Value
-     with Pre  => Present (N),
-          Post => Present (Emit_Literal'Result);
+     with Pre => Present (N), Post => Present (Emit_Literal'Result);
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
      with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
    --  True if T_Have is a parent type of T_Need
 
-   function Emit_LValue_Internal (Node : Node_Id) return GL_Value
-     with Pre  => Present (Node),
-          Post => Present (Emit_LValue_Internal'Result);
+   function Emit_LValue_Internal (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit_LValue_Internal'Result);
    --  Called by Emit_LValue to walk the tree saving values
 
-   function Emit_LValue_Main (Node : Node_Id) return GL_Value
-     with Pre  => Present (Node),
-          Post => Present (Emit_LValue_Main'Result);
+   function Emit_LValue_Main (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit_LValue_Main'Result);
    --  Called by Emit_LValue_Internal to do the work at each level
 
    function Emit_Shift
@@ -159,21 +156,21 @@ package body GNATLLVM.Compile is
    -- Emit --
    ----------
 
-   procedure Emit (Node : Node_Id) is
+   procedure Emit (N : Node_Id) is
    begin
-      Set_Debug_Pos_At_Node (Node);
+      Set_Debug_Pos_At_Node (N);
       if Library_Level
-        and then (Nkind (Node) in N_Statement_Other_Than_Procedure_Call
-                    or else Nkind (Node) in N_Subprogram_Call
-                    or else Nkind (Node) = N_Handled_Sequence_Of_Statements
-                    or else Nkind (Node) in N_Raise_xxx_Error
-                    or else Nkind (Node) = N_Raise_Statement)
+        and then (Nkind (N) in N_Statement_Other_Than_Procedure_Call
+                    or else Nkind (N) in N_Subprogram_Call
+                    or else Nkind (N) = N_Handled_Sequence_Of_Statements
+                    or else Nkind (N) in N_Raise_xxx_Error
+                    or else Nkind (N) = N_Raise_Statement)
       then
          --  Append to list of statements to put in the elaboration procedure
          --  if in main unit, otherwise simply ignore the statement.
 
          if In_Main_Unit then
-            Elaboration_Table.Append (Node);
+            Elaboration_Table.Append (N);
          end if;
 
          return;
@@ -186,16 +183,16 @@ package body GNATLLVM.Compile is
          Position_Builder_At_End (Create_Basic_Block ("dead-code"));
       end if;
 
-      case Nkind (Node) is
+      case Nkind (N) is
          when N_Abstract_Subprogram_Declaration =>
             null;
 
          when N_Compilation_Unit =>
-            Emit_List (Context_Items (Node));
-            Emit_List (Declarations (Aux_Decls_Node (Node)));
-            Emit (Unit (Node));
-            Emit_List (Actions (Aux_Decls_Node (Node)));
-            Emit_List (Pragmas_After (Aux_Decls_Node (Node)));
+            Emit_List (Context_Items (N));
+            Emit_List (Declarations (Aux_Decls_Node (N)));
+            Emit (Unit (N));
+            Emit_List (Actions (Aux_Decls_Node (N)));
+            Emit_List (Pragmas_After (Aux_Decls_Node (N)));
 
          when N_With_Clause =>
             null;
@@ -204,36 +201,36 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Package_Declaration =>
-            Push_Lexical_Debug_Scope (Node);
-            Emit (Specification (Node));
+            Push_Lexical_Debug_Scope (N);
+            Emit (Specification (N));
             Pop_Debug_Scope;
 
          when N_Package_Specification =>
-            Push_Lexical_Debug_Scope (Node);
-            Emit_List (Visible_Declarations (Node));
-            Emit_List (Private_Declarations (Node));
+            Push_Lexical_Debug_Scope (N);
+            Emit_List (Visible_Declarations (N));
+            Emit_List (Private_Declarations (N));
             Pop_Debug_Scope;
 
             if Library_Level then
-               Emit_Elab_Proc (Node, Empty, Parent (Parent (Node)), "s");
+               Emit_Elab_Proc (N, Empty, Parent (Parent (N)), "s");
             end if;
 
          when N_Package_Body =>
 
             --  Skip generic packages
 
-            if Ekind (Unique_Defining_Entity (Node)) in Generic_Unit_Kind then
+            if Ekind (Unique_Defining_Entity (N)) in Generic_Unit_Kind then
                return;
             end if;
 
             declare
-               Stmts : constant Node_Id := Handled_Statement_Sequence (Node);
+               Stmts : constant Node_Id := Handled_Statement_Sequence (N);
 
             begin
                --  Always process declarations
 
-               Push_Lexical_Debug_Scope (Node);
-               Emit_List (Declarations (Node));
+               Push_Lexical_Debug_Scope (N);
+               Emit_List (Declarations (N));
 
                --  If we're at library level and our parent is an
                --  N_Compilation_Unit, make an elab proc and put the
@@ -242,9 +239,9 @@ package body GNATLLVM.Compile is
                --  level).
 
                if Library_Level
-                 and then Nkind (Parent (Node)) = N_Compilation_Unit
+                 and then Nkind (Parent (N)) = N_Compilation_Unit
                then
-                  Emit_Elab_Proc (Node, Stmts, Parent (Node), "b");
+                  Emit_Elab_Proc (N, Stmts, Parent (N), "b");
                elsif Present (Stmts) then
                   Emit (Stmts);
                end if;
@@ -256,8 +253,8 @@ package body GNATLLVM.Compile is
 
             --  Skip generic subprograms
 
-            if Present (Corresponding_Spec (Node))
-              and then (Ekind (Corresponding_Spec (Node))
+            if Present (Corresponding_Spec (N))
+              and then (Ekind (Corresponding_Spec (N))
                           in Generic_Subprogram_Kind)
             then
                null;
@@ -267,36 +264,26 @@ package body GNATLLVM.Compile is
             --  the environment.
 
             elsif not In_Main_Unit then
-               Discard (Emit_Subprogram_Decl (Get_Acting_Spec (Node)));
+               Discard (Emit_Subprogram_Decl (Get_Acting_Spec (N)));
 
             else
-               Emit_Subprogram_Body (Node);
+               Emit_Subprogram_Body (N);
             end if;
 
          when N_Subprogram_Declaration =>
-            declare
-               Subp : constant Entity_Id := Unique_Defining_Entity (Node);
+            --  Ignore intrinsic subprogram as calls to those will
+            --  be expanded.
 
-            begin
-               --  Ignore intrinsic subprogram as calls to those will
-               --  be expanded.
-
-               if Convention (Subp) = Convention_Intrinsic
-                 or else Is_Intrinsic_Subprogram (Subp)
-               then
-                  null;
-               else
-                  Discard (Emit_Subprogram_Decl (Specification (Node)));
-               end if;
-            end;
+            if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N)) then
+               Discard (Emit_Subprogram_Decl (Specification (N)));
+            end if;
 
          when N_Handled_Sequence_Of_Statements =>
-            Start_Block_Statements (At_End_Proc (Node),
-                                    Exception_Handlers (Node));
-            Emit_List (Statements (Node));
+            Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
+            Emit_List (Statements (N));
 
          when N_Raise_Statement =>
-            Emit_LCH_Call (Node);
+            Emit_LCH_Call (N);
 
          when N_Raise_xxx_Error =>
 
@@ -305,15 +292,15 @@ package body GNATLLVM.Compile is
 
             declare
                Label_Ent : constant Entity_Id :=
-                 Get_Exception_Goto_Entry (Nkind (Node));
+                 Get_Exception_Goto_Entry (Nkind (N));
                BB_Next   : Basic_Block_T;
 
             begin
                if Present (Label_Ent) then
-                  if Present (Condition (Node)) then
+                  if Present (Condition (N)) then
                      BB_Next := Create_Basic_Block;
                      Emit_If_Cond
-                       (Condition (Node), Get_Label_BB (Label_Ent), BB_Next);
+                       (Condition (N), Get_Label_BB (Label_Ent), BB_Next);
                      Position_Builder_At_End (BB_Next);
                   else
                      Build_Br (Get_Label_BB (Label_Ent));
@@ -323,21 +310,21 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-            if Present (Condition (Node)) then
+            if Present (Condition (N)) then
                declare
                   BB_Then : constant Basic_Block_T :=
                     Create_Basic_Block ("raise");
                   BB_Next : constant Basic_Block_T := Create_Basic_Block;
 
                begin
-                  Emit_If_Cond (Condition (Node), BB_Then, BB_Next);
+                  Emit_If_Cond (Condition (N), BB_Then, BB_Next);
                   Position_Builder_At_End (BB_Then);
-                  Emit_LCH_Call (Node);
+                  Emit_LCH_Call (N);
                   Build_Br (BB_Next);
                   Position_Builder_At_End (BB_Next);
                end;
             else
-               Emit_LCH_Call (Node);
+               Emit_LCH_Call (N);
             end if;
 
          when N_Object_Declaration | N_Exception_Declaration =>
@@ -349,8 +336,9 @@ package body GNATLLVM.Compile is
             --  environment.
 
             declare
-               Def_Ident : constant Node_Id := Defining_Identifier (Node);
-               T         : constant Entity_Id := Full_Etype (Def_Ident);
+               Def_Ident : constant Node_Id   := Defining_Identifier (N);
+               TE        : constant Entity_Id := Full_Etype (Def_Ident);
+               Expr      : constant Node_Id   := Expression (N);
                LLVM_Type : Type_T;
                LLVM_Var  : GL_Value;
                Value     : GL_Value := No_GL_Value;
@@ -358,7 +346,7 @@ package body GNATLLVM.Compile is
             begin
                --  Nothing to do if this is a debug renaming type
 
-               if T = Standard_Debug_Renaming_Type then
+               if TE = Standard_Debug_Renaming_Type then
                   return;
                end if;
 
@@ -372,7 +360,7 @@ package body GNATLLVM.Compile is
                if Ekind (Def_Ident) = E_Constant
                  and then Present (Full_View (Def_Ident))
                  and then No (Address_Clause (Def_Ident))
-                 and then not No_Initialization (Node)
+                 and then not No_Initialization (N)
                  and then No (Renamed_Object (Def_Ident))
                then
                   return;
@@ -389,14 +377,14 @@ package body GNATLLVM.Compile is
                then
                   --  ??? Will only work for objects of static sizes
 
-                  LLVM_Type := Create_Type (T);
-                  pragma Assert (not Is_Dynamic_Size (T));
+                  LLVM_Type := Create_Type (TE);
+                  pragma Assert (not Is_Dynamic_Size (TE));
 
                   if Present (Address_Clause (Def_Ident)) then
                      LLVM_Type := Pointer_Type (LLVM_Type, 0);
                   end if;
 
-                  LLVM_Var := Add_Global (T, Get_Ext_Name (Def_Ident));
+                  LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident));
                   if not Library_Level then
                      Set_Linkage (LLVM_Var, Internal_Linkage);
                   end if;
@@ -422,24 +410,23 @@ package body GNATLLVM.Compile is
 
                         --  Take Expression (Node) into account
 
-                        if Present (Expression (Node))
-                          and then not
-                            (Nkind (Node) = N_Object_Declaration
-                             and then No_Initialization (Node))
+                        if Present (Expr)
+                          and then not (Nkind (N) = N_Object_Declaration
+                                          and then No_Initialization (N))
                         then
-                           if Compile_Time_Known_Value (Expression (Node)) then
+                           if Compile_Time_Known_Value (Expr) then
                               Set_Initializer
                                 (LLVM_Var,
-                                 Build_Type_Conversion (Expression (Node), T));
+                                 Build_Type_Conversion (Expr, TE));
                            else
-                              Elaboration_Table.Append (Node);
+                              Elaboration_Table.Append (N);
 
                               if not Is_Imported (Def_Ident) then
-                                 Set_Initializer (LLVM_Var, Const_Null (T));
+                                 Set_Initializer (LLVM_Var, Const_Null (TE));
                               end if;
                            end if;
                         elsif not Is_Imported (Def_Ident) then
-                           Set_Initializer (LLVM_Var, Const_Null (T));
+                           Set_Initializer (LLVM_Var, Const_Null (TE));
                         end if;
                      end if;
                   else
@@ -447,12 +434,11 @@ package body GNATLLVM.Compile is
                   end if;
 
                else
-                  if Present (Expression (Node))
-                    and then not
-                      (Nkind (Node) = N_Object_Declaration
-                       and then No_Initialization (Node))
+                  if Present (Expr)
+                    and then not (Nkind (N) = N_Object_Declaration
+                                    and then No_Initialization (N))
                   then
-                     Value := Emit_Expression (Expression (Node));
+                     Value := Emit_Expression (Expr);
                   end if;
 
                   if Special_Elaboration_Code then
@@ -462,10 +448,10 @@ package body GNATLLVM.Compile is
                         LLVM_Var := Int_To_Ref
                           (Emit_Expression
                              (Expression (Address_Clause (Def_Ident))),
-                           T, Get_Name (Def_Ident));
+                           TE, Get_Name (Def_Ident));
                   else
                      LLVM_Var := Allocate_For_Type
-                       (T, V => Value, Name => Get_Name (Def_Ident));
+                       (TE, V => Value, Name => Get_Name (Def_Ident));
 
                   end if;
 
@@ -477,16 +463,13 @@ package body GNATLLVM.Compile is
                end if;
             end;
 
-         when N_Use_Type_Clause =>
-            null;
-
          when N_Object_Renaming_Declaration =>
             declare
-               Def_Ident : constant Node_Id   := Defining_Identifier (Node);
+               Def_Ident : constant Node_Id   := Defining_Identifier (N);
                TE        : constant Entity_Id := Full_Etype (Def_Ident);
                Obj_Name  : constant String    := Get_Name (Def_Ident);
                LLVM_Var  : constant GL_Value  :=
-                 Need_LValue (Emit_LValue (Name (Node)), TE, Name => Obj_Name);
+                 Need_LValue (Emit_LValue (Name (N)), TE, Name => Obj_Name);
 
             begin
                Set_Value (Def_Ident, LLVM_Var);
@@ -510,32 +493,30 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Assignment_Statement =>
-            Emit_Assignment (Emit_LValue (Name (Node)), Expression (Node),
-                             No_GL_Value, Forwards_OK (Node),
-                             Backwards_OK (Node));
+            Emit_Assignment (Emit_LValue (Name (N)), Expression (N),
+                             No_GL_Value, Forwards_OK (N), Backwards_OK (N));
 
          when N_Procedure_Call_Statement =>
-            Discard (Emit_Call (Node));
+            Discard (Emit_Call (N));
 
          when N_Null_Statement =>
             null;
 
          when N_Label =>
-            Discard (Enter_Block_With_Node (Node));
+            Discard (Enter_Block_With_Node (N));
 
          when N_Goto_Statement =>
-            Build_Br (Get_Label_BB (Entity (Name (Node))));
+            Build_Br (Get_Label_BB (Entity (Name (N))));
 
          when N_Exit_Statement =>
             declare
-               Exit_BB : constant Basic_Block_T :=
-                 Get_Exit_Point (Name (Node));
+               Exit_BB : constant Basic_Block_T := Get_Exit_Point (Name (N));
                Next_BB : Basic_Block_T;
 
             begin
-               if Present (Condition (Node)) then
+               if Present (Condition (N)) then
                   Next_BB := Create_Basic_Block ("loop-after-exit");
-                  Emit_If_Cond (Condition (Node), Exit_BB, Next_BB);
+                  Emit_If_Cond (Condition (N), Exit_BB, Next_BB);
                   Position_Builder_At_End (Next_BB);
                else
                   Build_Br (Exit_BB);
@@ -544,31 +525,30 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Simple_Return_Statement =>
-            if Present (Expression (Node)) then
+            if Present (Expression (N)) then
                declare
-                  Ret_Value : constant Node_Id := Expression (Node);
-                  Ret_Type  : constant Entity_Id :=
-                    Full_Etype (Node_Enclosing_Subprogram (Node));
+                  Expr : constant Node_Id := Expression (N);
+                  TE   : constant Entity_Id :=
+                    Full_Etype (Node_Enclosing_Subprogram (N));
+
                begin
                   --  If there's a parameter for the address to which to copy
                   --  the return value, do the copy instead of returning the
                   --  value.
 
                   if Present (Return_Address_Param) then
-                     Emit_Assignment (Return_Address_Param, Ret_Value,
+                     Emit_Assignment (Return_Address_Param, Expr,
                                       No_GL_Value, True, True);
                      Build_Ret_Void;
 
                   --  If this function returns unconstrained, create an
                   --  access (fat pointer) to the return value.
 
-                  elsif Is_Array_Type (Ret_Type)
-                    and then not Is_Constrained (Ret_Type)
+                  elsif Is_Array_Type (TE) and then not Is_Constrained (TE)
                   then
-                     Build_Ret (Convert_To_Access_To
-                                  (Emit_LValue (Ret_Value), Ret_Type));
+                     Build_Ret (Convert_To_Access_To (Emit_LValue (Expr), TE));
                   else
-                     Build_Ret (Build_Type_Conversion (Ret_Value, Ret_Type));
+                     Build_Ret (Build_Type_Conversion (Expr, TE));
                   end if;
                end;
             else
@@ -576,14 +556,14 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_If_Statement =>
-            Emit_If (Node);
+            Emit_If (N);
 
          when N_Loop_Statement =>
             declare
                Loop_Identifier : constant Entity_Id :=
-                 (if Present (Identifier (Node))
-                  then Entity (Identifier (Node)) else Empty);
-               Iter_Scheme     : constant Node_Id := Iteration_Scheme (Node);
+                 (if Present (Identifier (N))
+                  then Entity (Identifier (N)) else Empty);
+               Iter_Scheme     : constant Node_Id := Iteration_Scheme (N);
                Is_Mere_Loop    : constant Boolean := not Present (Iter_Scheme);
                Is_For_Loop     : constant Boolean :=
                  not Is_Mere_Loop
@@ -643,13 +623,13 @@ package body GNATLLVM.Compile is
                      --  This is a FOR loop
 
                      declare
-                        Loop_Param_Spec : constant Node_Id :=
+                        Loop_Param_Spec : constant Node_Id   :=
                           Loop_Parameter_Specification (Iter_Scheme);
-                        Def_Ident       : constant Node_Id :=
+                        Def_Ident       : constant Node_Id   :=
                           Defining_Identifier (Loop_Param_Spec);
-                        Reversed        : constant Boolean :=
+                        Reversed        : constant Boolean   :=
                           Reverse_Present (Loop_Param_Spec);
-                        Unsigned_Type   : constant Boolean :=
+                        Unsigned_Type   : constant Boolean   :=
                           Is_Unsigned_Type (Full_Etype (Def_Ident));
                         Var_Type        : constant Entity_Id :=
                           Full_Etype (Def_Ident);
@@ -720,8 +700,8 @@ package body GNATLLVM.Compile is
                Push_Block;
                Start_Block_Statements (Empty, No_List);
                Push_Loop (Loop_Identifier, BB_Next);
-               Emit_List (Statements (Node));
-               Set_Debug_Pos_At_Node (Node);
+               Emit_List (Statements (N));
+               Set_Debug_Pos_At_Node (N);
                Pop_Block;
                Pop_Loop;
 
@@ -730,11 +710,11 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Block_Statement =>
-            Push_Lexical_Debug_Scope (Node);
+            Push_Lexical_Debug_Scope (N);
             Push_Block;
-            Emit_List (Declarations (Node));
-            Emit (Handled_Statement_Sequence (Node));
-            Set_Debug_Pos_At_Node (Node);
+            Emit_List (Declarations (N));
+            Emit (Handled_Statement_Sequence (N));
+            Set_Debug_Pos_At_Node (N);
             Pop_Block;
             Pop_Debug_Scope;
 
@@ -745,15 +725,15 @@ package body GNATLLVM.Compile is
             | N_Private_Extension_Declaration
            =>
             Discard
-              (GNAT_To_LLVM_Type (Defining_Identifier (Node), True));
+              (GNAT_To_LLVM_Type (Defining_Identifier (N), True));
 
          when N_Freeze_Entity =>
             --  ??? Need to process Node itself
 
-            Emit_List (Actions (Node));
+            Emit_List (Actions (N));
 
          when N_Pragma =>
-            case Get_Pragma_Id (Node) is
+            case Get_Pragma_Id (N) is
                --  ??? While we aren't interested in most of the pragmas,
                --  there are some we should look at (see
                --  trans.c:Pragma_to_gnu). But still, the "others" case is
@@ -763,19 +743,16 @@ package body GNATLLVM.Compile is
             end case;
 
          when N_Case_Statement =>
-            Emit_Case (Node);
+            Emit_Case (N);
 
          when N_Body_Stub =>
-            if Nkind_In (Node, N_Protected_Body_Stub, N_Task_Body_Stub) then
-               raise Program_Error;
-            end if;
 
             --  No action if the separate unit is not available
 
-            if No (Library_Unit (Node)) then
-               Error_Msg_N ("separate unit not available", Node);
+            if No (Library_Unit (N)) then
+               Error_Msg_N ("separate unit not available", N);
             else
-               Emit (Get_Body_From_Stub (Node));
+               Emit (Get_Body_From_Stub (N));
             end if;
 
          --  Nodes we actually want to ignore, in many cases because they
@@ -799,15 +776,16 @@ package body GNATLLVM.Compile is
             | N_Generic_Subprogram_Declaration
             | N_Record_Representation_Clause
             | N_At_Clause
+            | N_Use_Type_Clause
            =>
             null;
 
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
-            Process_Push_Pop_xxx_Error_Label (Node);
+            Process_Push_Pop_xxx_Error_Label (N);
 
          when N_Exception_Renaming_Declaration =>
             Set_Value
-              (Defining_Identifier (Node), Get_Value (Entity (Name (Node))));
+              (Defining_Identifier (N), Get_Value (Entity (Name (N))));
 
          when N_Attribute_Definition_Clause =>
             --  The only interesting case left after expansion is for Address
@@ -817,8 +795,8 @@ package body GNATLLVM.Compile is
             --  ??? For now keep it simple and deal with this case in
             --  N_Object_Declaration.
 
-            if Get_Attribute_Id (Chars (Node)) = Attribute_Address
-              and then Present (Freeze_Node (Entity (Name (Node))))
+            if Get_Attribute_Id (Chars (N)) = Attribute_Address
+              and then Present (Freeze_Node (Entity (Name (N))))
             then
                null;
             end if;
@@ -826,7 +804,7 @@ package body GNATLLVM.Compile is
          when others =>
             Error_Msg_N
               ("unhandled statement kind: `" &
-               Node_Kind'Image (Nkind (Node)) & "`", Node);
+               Node_Kind'Image (Nkind (N)) & "`", N);
       end case;
    end Emit;
 
@@ -835,9 +813,9 @@ package body GNATLLVM.Compile is
    -----------------
 
    function Emit_LValue
-     (Node : Node_Id; Clear : Boolean := True) return GL_Value is
+     (N : Node_Id; Clear : Boolean := True) return GL_Value is
    begin
-      Set_Debug_Pos_At_Node (Node);
+      Set_Debug_Pos_At_Node (N);
 
       --  When we start a new recursive call, we usualy free the entries
       --  from the last one.
@@ -845,17 +823,17 @@ package body GNATLLVM.Compile is
          LValue_Pair_Table.Set_Last (0);
       end if;
 
-      return Emit_LValue_Internal (Node);
+      return Emit_LValue_Internal (N);
    end Emit_LValue;
 
    --------------------------
    -- Emit_LValue_Internal --
    --------------------------
 
-   function Emit_LValue_Internal (Node : Node_Id) return GL_Value
+   function Emit_LValue_Internal (N : Node_Id) return GL_Value
    is
-      Typ   : constant Entity_Id := Full_Etype (Node);
-      Value : constant GL_Value := Need_LValue (Emit_LValue_Main (Node), Typ);
+      Typ   : constant Entity_Id := Full_Etype (N);
+      Value : constant GL_Value := Need_LValue (Emit_LValue_Main (N), Typ);
 
    begin
       --  If the object is not of void type, save the result in the
@@ -872,14 +850,18 @@ package body GNATLLVM.Compile is
    -- Emit_LValue_Main --
    ----------------------
 
-   function Emit_LValue_Main (Node : Node_Id) return GL_Value is
+   function Emit_LValue_Main (N : Node_Id) return GL_Value is
    begin
-      case Nkind (Node) is
-         when N_Identifier | N_Expanded_Name | N_Operator_Symbol |
-           N_Defining_Identifier | N_Defining_Operator_Symbol =>
+      case Nkind (N) is
+         when N_Identifier
+            | N_Expanded_Name
+            | N_Operator_Symbol
+            | N_Defining_Identifier
+            | N_Defining_Operator_Symbol =>
             declare
-               Def_Ident : Entity_Id := Entity (Node);
-               Typ       : Entity_Id := Full_Etype (Def_Ident);
+               Def_Ident   : Entity_Id          := Entity (N);
+               TE          : Entity_Id          := Full_Etype (Def_Ident);
+               V           : GL_Value           := Get_Value (Def_Ident);
 
             begin
                --  If this is a deferred constant, look at the private
@@ -890,6 +872,7 @@ package body GNATLLVM.Compile is
                  and then No (Address_Clause (Def_Ident))
                then
                   Def_Ident := Full_View (Def_Ident);
+                  V         := Get_Value (Def_Ident);
                end if;
 
                if Ekind (Def_Ident) in Subprogram_Kind then
@@ -898,58 +881,51 @@ package body GNATLLVM.Compile is
                   --  actual subprogram type here, not the type of the return
                   --  value, which is what Typ is set to.
 
-                  if Nkind (Parent (Node)) = N_Attribute_Reference
-                    and then Is_Access_Type (Full_Etype (Parent (Node)))
+                  if Nkind (Parent (N)) = N_Attribute_Reference
+                    and then Is_Access_Type (Full_Etype (Parent (N)))
                   then
-                     Typ := Full_Designated_Type (Full_Etype (Parent (Node)));
+                     TE := Full_Designated_Type (Full_Etype (Parent (N)));
                   end if;
 
-                  if not Needs_Activation_Record (Typ) then
-                     if Typ = Standard_Void_Type then
-                        return Get_Value (Def_Ident);
+                  if not Needs_Activation_Record (TE) then
+                     if TE = Standard_Void_Type then
+                        return V;
                      else
-                        return Convert_To_Access_To
-                          (Get_Value (Def_Ident), Typ);
+                        return Convert_To_Access_To (V, TE);
                      end if;
                   else
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
 
                      declare
-                        Func   : constant GL_Value := Get_Value (Def_Ident);
-                        S_Link : constant GL_Value := Get_Static_Link (Node);
+                        S_Link : constant GL_Value := Get_Static_Link (N);
                         Callback_Type : constant Type_T :=
                           Build_Struct_Type
                           ((1 => Type_Of (S_Link), 2 => Type_Of (S_Link)));
                         Result : constant GL_Value :=
-                          Get_Undef_Ref (Callback_Type, Typ);
+                          Get_Undef_Ref (Callback_Type, TE);
 
                      begin
                         return Insert_Value
                           (Insert_Value (Result, S_Link, 1),
-                           Pointer_Cast (Func, S_Link), 0);
+                           Pointer_Cast (V, S_Link), 0);
                      end;
                   end if;
 
                --  Handle entities in Standard and ASCII on the fly
 
                elsif Sloc (Def_Ident) <= Standard_Location then
-                  declare
-                     Var : constant GL_Value :=
-                       Add_Global (Full_Etype (Def_Ident),
-                                   Get_Ext_Name (Def_Ident));
-                  begin
-                     Set_Linkage (Var, External_Linkage);
-                     Set_Value (Def_Ident, Var);
-                     return Var;
-                  end;
+                  V := Add_Global (TE, Get_Ext_Name (Def_Ident));
+                  Set_Linkage (V, External_Linkage);
+                  Set_Value (Def_Ident, V);
+                  return V;
                else
-                  return Get_Value (Def_Ident);
+                  return V;
                end if;
             end;
 
          when N_Attribute_Reference =>
-            return Emit_Attribute_Reference (Node, LValue => True);
+            return Emit_Attribute_Reference (N, LValue => True);
 
          when N_Explicit_Dereference =>
 
@@ -958,41 +934,42 @@ package body GNATLLVM.Compile is
             --  we want here is a reference to our type, which should
             --  be the Designated_Type of Value.
 
-            return Make_Reference (Emit_Expression (Prefix (Node)));
+            return Make_Reference (Emit_Expression (Prefix (N)));
 
          when N_String_Literal =>
             declare
-               V : constant GL_Value := Add_Global (Full_Etype (Node), "str");
-
+               V : constant GL_Value := Add_Global (Full_Etype (N), "str");
             begin
-               Set_Value (Node, V);
-               Set_Initializer (V, Emit_Expression (Node));
+               Set_Value (N, V);
+               Set_Initializer (V, Emit_Expression (N));
                Set_Linkage (V, Private_Linkage);
                Set_Global_Constant (LLVM_Value (V), True);
                return V;
             end;
 
          when N_Selected_Component =>
-            return Record_Field_Offset (Emit_LValue_Internal (Prefix (Node)),
-                                        Entity (Selector_Name (Node)));
+            return Record_Field_Offset (Emit_LValue_Internal (Prefix (N)),
+                                        Entity (Selector_Name (N)));
 
          when N_Indexed_Component =>
-            return Get_Indexed_LValue (Expressions (Node),
-                                       Emit_LValue_Internal (Prefix (Node)));
+            return Get_Indexed_LValue (Expressions (N),
+                                       Emit_LValue_Internal (Prefix (N)));
 
          when N_Slice =>
             return Get_Slice_LValue
-              (Full_Etype (Node), Discrete_Range (Node),
-               Emit_LValue_Internal (Prefix (Node)));
+              (Full_Etype (N), Discrete_Range (N),
+               Emit_LValue_Internal (Prefix (N)));
 
-         when N_Unchecked_Type_Conversion | N_Type_Conversion |
-           N_Qualified_Expression =>
+         when N_Unchecked_Type_Conversion
+            | N_Type_Conversion
+            | N_Qualified_Expression =>
+
             --  We have to mark that this is now to be treated as a new type.
             --  This matters if, e.g., the bounds of an array subtype change
             --  (see C46042A).
 
             return Convert_To_Access_To
-              (Emit_LValue_Internal (Expression (Node)), Full_Etype (Node));
+              (Emit_LValue_Internal (Expression (N)), Full_Etype (N));
 
          when others =>
             --  If we have an arbitrary expression, evaluate it.  If it
@@ -1000,7 +977,7 @@ package body GNATLLVM.Compile is
             --  is dynamic, we have no more work to do.  Otherwise, our caller
             --  will take care of storing it into a temporary.
 
-            return Emit_Expression (Node);
+            return Emit_Expression (N);
       end case;
    end Emit_LValue_Main;
 
@@ -1039,18 +1016,18 @@ package body GNATLLVM.Compile is
    -- Get_Matching_Value --
    ------------------------
 
-   function Get_Matching_Value (T : Entity_Id) return GL_Value is
+   function Get_Matching_Value (TE : Entity_Id) return GL_Value is
    begin
       --  Check in the opposite order of what we push.  We may, for example
       --  be finding the size of an object of that size, in which case the
       --  object will have been added last.
 
       for J in reverse 1 .. LValue_Pair_Table.Last loop
-         if Is_Parent_Of (T_Need => Implementation_Base_Type (T),
+         if Is_Parent_Of (T_Need => Implementation_Base_Type (TE),
                           T_Have => Implementation_Base_Type
                             (LValue_Pair_Table.Table (J).Typ))
          then
-            return Convert_To_Access_To (LValue_Pair_Table.Table (J), T);
+            return Convert_To_Access_To (LValue_Pair_Table.Table (J), TE);
          end if;
       end loop;
 
@@ -1656,20 +1633,17 @@ package body GNATLLVM.Compile is
    -- Is_Zero_Aggregate --
    -----------------------
 
-   function Is_Zero_Aggregate (Src_Node : Node_Id) return Boolean is
-      Inner    : Node_Id;
-      Val      : Uint;
+   function Is_Zero_Aggregate (N : Node_Id) return Boolean is
+      Inner    : Node_Id := Expression (First (Component_Associations (N)));
 
    begin
-      Inner := Expression (First (Component_Associations (Src_Node)));
       while Nkind_In (Inner, N_Aggregate, N_Extension_Aggregate)
         and then Is_Others_Aggregate (Inner)
       loop
          Inner := Expression (First (Component_Associations (Inner)));
       end loop;
 
-      Val := Get_Uint_Value (Inner);
-      return Val = Uint_0;
+      return Get_Uint_Value (Inner) = Uint_0;
    end Is_Zero_Aggregate;
 
    ---------------------
@@ -2060,8 +2034,8 @@ package body GNATLLVM.Compile is
    ----------------
 
    function Emit_Shift
-     (Operation           : Node_Kind;
-      LHS_Node, RHS_Node  : Node_Id) return GL_Value
+     (Operation          : Node_Kind;
+      LHS_Node, RHS_Node : Node_Id) return GL_Value
    is
       To_Left, Rotate, Arithmetic : Boolean := False;
 

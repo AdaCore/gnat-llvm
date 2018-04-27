@@ -36,8 +36,8 @@ package GNATLLVM.Compile is
    procedure Emit_Library_Item (U : Node_Id);
    --  Generate code for the given library item
 
-   procedure Emit (Node : Node_Id)
-     with Pre => Present (Node);
+   procedure Emit (N : Node_Id)
+     with Pre => Present (N);
    --  General compilation routine, called at the top-level
 
    procedure Emit_List (List : List_Id);
@@ -48,9 +48,8 @@ package GNATLLVM.Compile is
           Post => Present (Emit_Expression'Result);
    --  Compile an expression node to an LLVM value
 
-   function Emit_LValue
-     (Node : Node_Id; Clear : Boolean := True) return GL_Value
-     with Pre  => Present (Node),
+   function Emit_LValue (N : Node_Id; Clear : Boolean := True) return GL_Value
+     with Pre  => Present (N),
           Post => Present (Emit_LValue'Result);
    --  Compile an expression node to an LLVM value that can be used as an
    --  LValue. This function can be used to get a pointer to a value rather
@@ -61,8 +60,8 @@ package GNATLLVM.Compile is
      with Pre => Present (V);
    --  Add V to the list that's searched by Get_Matching_Value
 
-   function Get_Matching_Value (T : Entity_Id) return GL_Value
-     with Pre  => Is_Type (T),
+   function Get_Matching_Value (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE),
           Post => Present (Get_Matching_Value'Result);
    --  Find a value that's being computed by the current Emit_LValue
    --  recursion that has the same base type as T.

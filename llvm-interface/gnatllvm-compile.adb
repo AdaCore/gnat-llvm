@@ -1040,63 +1040,62 @@ package body GNATLLVM.Compile is
    -- Emit_Expression --
    ---------------------
 
-   function Emit_Expression (Node : Node_Id) return GL_Value is
-      TE : constant Entity_Id := Full_Etype (Node);
+   function Emit_Expression (N : Node_Id) return GL_Value is
+      TE : constant Entity_Id := Full_Etype (N);
 
    begin
-      Set_Debug_Pos_At_Node (Node);
-      if Nkind (Node) in N_Binary_Op then
+      Set_Debug_Pos_At_Node (N);
+      if Nkind (N) in N_Binary_Op then
 
          --  Use helper functions for comparisons and shifts; the rest by
          --  generating the appropriate LLVM IR directly.
 
-         if Nkind (Node) in N_Op_Compare then
-            return Emit_Comparison
-              (Nkind (Node), Left_Opnd (Node), Right_Opnd (Node));
-         elsif Nkind (Node) in N_Op_Shift then
-            return Emit_Shift
-              (Nkind (Node), Left_Opnd (Node), Right_Opnd (Node));
+         if Nkind (N) in N_Op_Compare then
+            return Emit_Comparison (Nkind (N), Left_Opnd (N), Right_Opnd (N));
+         elsif Nkind (N) in N_Op_Shift then
+            return Emit_Shift (Nkind (N), Left_Opnd (N), Right_Opnd (N));
          end if;
 
          declare
             type Opf is access function
               (LHS, RHS : GL_Value; Name : String := "") return GL_Value;
 
-            Left_Type  : constant Entity_Id := Full_Etype (Left_Opnd (Node));
-            Right_Type : constant Entity_Id := Full_Etype (Right_Opnd (Node));
+            Left_Type  : constant Entity_Id := Full_Etype (Left_Opnd (N));
+            Right_Type : constant Entity_Id := Full_Etype (Right_Opnd (N));
             Left_BT    : constant Entity_Id :=
               Implementation_Base_Type (Left_Type);
             Right_BT   : constant Entity_Id :=
               Implementation_Base_Type (Right_Type);
             LVal       : constant GL_Value  :=
-              Build_Type_Conversion (Left_Opnd (Node), Left_BT);
+              Build_Type_Conversion (Left_Opnd (N), Left_BT);
             RVal       : constant GL_Value  :=
-              Build_Type_Conversion (Right_Opnd (Node), Right_BT);
+              Build_Type_Conversion (Right_Opnd (N), Right_BT);
             FP         : constant Boolean   :=
               Is_Floating_Point_Type (Left_BT);
+            Ovfl_Check : constant Boolean   := Do_Overflow_Check (N);
             Unsign     : constant Boolean   := Is_Unsigned_Type (Left_BT);
             Subp       : Opf                := null;
             Result     : GL_Value;
             Ovfl_Name  : String (1 .. 4);
 
          begin
-            case Nkind (Node) is
+            case Nkind (N) is
                when N_Op_Add =>
-                  if Do_Overflow_Check (Node) then
+                  if Ovfl_Check then
                      Ovfl_Name := (if Unsign then "uadd" else "sadd");
                   else
                      Subp := (if FP then F_Add'Access else NSW_Add'Access);
                   end if;
 
                when N_Op_Subtract =>
-                  if Do_Overflow_Check (Node) then
+                  if Ovfl_Check then
                      Ovfl_Name := (if Unsign then "usub" else "ssub");
                   else
                      Subp := (if FP then F_Sub'Access else NSW_Sub'Access);
                   end if;
 
                when N_Op_Multiply =>
-                  if Do_Overflow_Check (Node) then
+                  if Ovfl_Check then
                      Ovfl_Name := (if Unsign then "umul" else "smul");
                   else
                      Subp := (if FP then F_Mul'Access else NSW_Mul'Access);
@@ -1133,7 +1132,7 @@ package body GNATLLVM.Compile is
             if Subp /= null then
                Result := Subp (LVal, RVal);
             else
-               pragma Assert (Do_Overflow_Check (Node));
+               pragma Assert (Do_Overflow_Check (N));
 
                declare
                   Func      : constant GL_Value  :=
@@ -1155,7 +1154,7 @@ package body GNATLLVM.Compile is
                        (Overflow, Get_Label_BB (Label_Ent), BB_Next);
                      Position_Builder_At_End (BB_Next);
                   else
-                     Emit_LCH_Call_If (Overflow, Node);
+                     Emit_LCH_Call_If (Overflow, N);
                   end if;
 
                   Result := Extract_Value (Left_BT, Fn_Ret, 0);
@@ -1173,7 +1172,7 @@ package body GNATLLVM.Compile is
             --  then general case that will get constant-folded in the
             --  constant case.
 
-            if not Unsign and Nkind (Node) = N_Op_Mod then
+            if not Unsign and Nkind (N) = N_Op_Mod then
                declare
                   Add_Back      : constant GL_Value :=
                     NSW_Add (Result, RVal, "addback");
@@ -1197,8 +1196,8 @@ package body GNATLLVM.Compile is
             --  have to do that rounding.  There are two different cases,
             --  one for signed and one for unsigned.
 
-            elsif Nkind (Node) = N_Op_Divide
-              and then Rounded_Result (Node) and then Unsign
+            elsif Nkind (N) = N_Op_Divide and then Rounded_Result (N)
+              and then Unsign
             then
                declare
 
@@ -1220,8 +1219,8 @@ package body GNATLLVM.Compile is
                     (Need_Adjust, Result_Plus_One, Result);
                end;
 
-            elsif Nkind (Node) = N_Op_Divide
-              and then Rounded_Result (Node) and then not Unsign
+            elsif Nkind (N) = N_Op_Divide and then Rounded_Result (N)
+              and then not Unsign
             then
                declare
 
@@ -1263,21 +1262,21 @@ package body GNATLLVM.Compile is
          end;
 
       else
-         case Nkind (Node) is
+         case Nkind (N) is
 
             when N_Expression_With_Actions =>
-               Emit (Actions (Node));
-               return Emit_Expression (Expression (Node));
+               Emit (Actions (N));
+               return Emit_Expression (Expression (N));
 
             when N_Character_Literal | N_Numeric_Or_String_Literal =>
-               return Emit_Literal (Node);
+               return Emit_Literal (N);
 
             when N_And_Then | N_Or_Else =>
                return Build_Short_Circuit_Op
-                 (Left_Opnd (Node), Right_Opnd (Node), Nkind (Node));
+                 (Left_Opnd (N), Right_Opnd (N), Nkind (N));
 
             when N_Op_Not =>
-               return Build_Not (Emit_Expression (Right_Opnd (Node)));
+               return Build_Not (Emit_Expression (Right_Opnd (N)));
 
             when N_Op_Abs =>
 
@@ -1285,7 +1284,7 @@ package body GNATLLVM.Compile is
 
                declare
                   Expr      : constant GL_Value :=
-                    Emit_Expression (Right_Opnd (Node));
+                    Emit_Expression (Right_Opnd (N));
                   Zero      : constant GL_Value := Const_Null (Expr);
                   Compare   : constant GL_Value :=
                     Emit_Elementary_Comparison (N_Op_Ge, Expr, Zero);
@@ -1302,18 +1301,18 @@ package body GNATLLVM.Compile is
                end;
 
             when N_Op_Plus =>
-               return Emit_Expression (Right_Opnd (Node));
+               return Emit_Expression (Right_Opnd (N));
 
             when N_Op_Minus =>
                declare
                   Expr : constant GL_Value  :=
-                    Emit_Expression (Right_Opnd (Node));
+                    Emit_Expression (Right_Opnd (N));
                   Typ  : constant Entity_Id := Full_Etype (Expr);
 
                begin
                   if Is_Floating_Point_Type (Expr) then
                      return F_Neg (Expr);
-                  elsif Do_Overflow_Check (Node)
+                  elsif Do_Overflow_Check (N)
                     and then not Is_Unsigned_Type (Expr)
                   then
                      declare
@@ -1336,7 +1335,7 @@ package body GNATLLVM.Compile is
                              (Overflow, Get_Label_BB (Label_Ent), BB_Next);
                            Position_Builder_At_End (BB_Next);
                         else
-                           Emit_LCH_Call_If (Overflow, Node);
+                           Emit_LCH_Call_If (Overflow, N);
                         end if;
 
                         return Extract_Value (Typ, Fn_Ret, 0);
@@ -1347,21 +1346,24 @@ package body GNATLLVM.Compile is
                end;
 
             when N_Unchecked_Type_Conversion =>
-               return Build_Unchecked_Conversion (Expression (Node), TE);
+               return Build_Unchecked_Conversion (Expression (N), TE);
 
-            when N_Type_Conversion | N_Qualified_Expression =>
-               return Build_Type_Conversion (Expression (Node), TE);
+            when N_Type_Conversion
+               | N_Qualified_Expression =>
+               return Build_Type_Conversion (Expression (N), TE);
 
-            when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
+            when N_Identifier
+               | N_Expanded_Name
+               | N_Operator_Symbol =>
 
                --  ?? What if Node is a formal parameter passed by reference?
-               --  pragma Assert (not Is_Formal (Entity (Node)));
+               --  pragma Assert (not Is_Formal (Entity (N)));
 
                --  N_Defining_Identifier nodes for enumeration literals are not
                --  stored in the environment. Handle them here.
 
                declare
-                  Def_Ident : Entity_Id := Entity (Node);
+                  Def_Ident : Entity_Id := Entity (N);
 
                begin
                   --  If this is a deferred constant, look at private version
@@ -1418,8 +1420,8 @@ package body GNATLLVM.Compile is
 
                   elsif Sloc (Def_Ident) <= Standard_Location then
                      declare
-                        N    : constant Node_Id := Get_Full_View (Def_Ident);
-                        Decl : constant Node_Id := Declaration_Node (N);
+                        Node : constant Node_Id := Get_Full_View (Def_Ident);
+                        Decl : constant Node_Id := Declaration_Node (Node);
                         Expr : Node_Id := Empty;
 
                      begin
@@ -1443,12 +1445,12 @@ package body GNATLLVM.Compile is
                            return
                              Const_Int (TE, Enumeration_Rep (Entity (Expr)));
                         else
-                           return Emit_Expression (N);
+                           return Emit_Expression (Node);
                         end if;
                      end;
 
-                  elsif Nkind (Node) in N_Subexpr
-                    and then Is_Constant_Folded (Entity (Node))
+                  elsif Nkind (N) in N_Subexpr
+                    and then Is_Constant_Folded (Entity (N))
                   then
                      --  Replace constant references by the direct values,
                      --  to avoid a level of indirection for e.g. private
@@ -1456,9 +1458,8 @@ package body GNATLLVM.Compile is
                      --  and static aggregates.
 
                      declare
-                        N    : constant Node_Id :=
-                          Get_Full_View (Entity (Node));
-                        Decl : constant Node_Id := Declaration_Node (N);
+                        Node : constant Node_Id := Get_Full_View (Entity (N));
+                        Decl : constant Node_Id := Declaration_Node (Node);
                         Expr : Node_Id := Empty;
 
                      begin
@@ -1486,23 +1487,23 @@ package body GNATLLVM.Compile is
                end;
 
             when N_Function_Call =>
-               return Emit_Call (Node);
+               return Emit_Call (N);
 
             when N_Explicit_Dereference =>
                return Need_Value
-                 (Make_Reference (Emit_Expression (Prefix (Node))), TE);
+                 (Make_Reference (Emit_Expression (Prefix (N))), TE);
 
             when N_Allocator =>
-               if Present (Storage_Pool (Node)) then
-                  Error_Msg_N ("unsupported form of N_Allocator", Node);
+               if Present (Storage_Pool (N)) then
+                  Error_Msg_N ("unsupported form of N_Allocator", N);
                   return Get_Undef (TE);
                end if;
 
                declare
-                  Expr             : constant Node_Id := Expression (Node);
-                  Typ              : Entity_Id;
-                  Value            : GL_Value;
-                  Result           : GL_Value;
+                  Expr   : constant Node_Id := Expression (N);
+                  Typ    : Entity_Id;
+                  Value  : GL_Value;
+                  Result : GL_Value;
 
                begin
                   --  There are two cases: the Expression operand can either be
@@ -1539,46 +1540,48 @@ package body GNATLLVM.Compile is
                end;
 
             when N_Reference =>
-               return Emit_LValue (Prefix (Node));
+               return Emit_LValue (Prefix (N));
 
             when N_Attribute_Reference =>
-               return Emit_Attribute_Reference (Node, LValue => False);
+               return Emit_Attribute_Reference (N, LValue => False);
 
             when N_Selected_Component | N_Indexed_Component  | N_Slice =>
-               return Need_Value (Emit_LValue (Node), TE);
+               return Need_Value (Emit_LValue (N), TE);
 
-            when N_Aggregate | N_Extension_Aggregate =>
+            when N_Aggregate
+               | N_Extension_Aggregate =>
 
-               if Null_Record_Present (Node) and then not Is_Dynamic_Size (TE)
+               if Null_Record_Present (N) and then not Is_Dynamic_Size (TE)
                then
-                  return Const_Null (Full_Etype (Node));
+                  return Const_Null (TE);
 
                elsif Ekind (TE) in Record_Kind then
-                  return Emit_Record_Aggregate (Node, Get_Undef (TE));
+                  return Emit_Record_Aggregate (N, Get_Undef (TE));
 
                else
                   return Emit_Array_Aggregate
-                    (Node, Number_Dimensions (TE), (1 .. 0 => <>),
+                    (N, Number_Dimensions (TE), (1 .. 0 => <>),
                      Get_Undef (TE));
                end if;
 
             when N_If_Expression =>
-               return Emit_If_Expression (Node);
+               return Emit_If_Expression (N);
 
             when N_Null =>
                return Const_Null (TE);
 
-            when N_Defining_Identifier | N_Defining_Operator_Symbol =>
-               return Get_Value (Node);
+            when N_Defining_Identifier
+               | N_Defining_Operator_Symbol =>
+               return Get_Value (N);
 
             when N_In =>
                declare
-                  Rng   : Node_Id := Right_Opnd (Node);
-                  Left  : constant GL_Value :=
-                    Emit_Expression (Left_Opnd (Node));
+                  Rng  : Node_Id := Right_Opnd (N);
+                  Left : constant GL_Value :=
+                    Emit_Expression (Left_Opnd (N));
 
                begin
-                  pragma Assert (No (Alternatives (Node)));
+                  pragma Assert (No (Alternatives (N)));
                   pragma Assert (Present (Rng));
                   --  The front end guarantees the above
 
@@ -1595,18 +1598,18 @@ package body GNATLLVM.Compile is
                end;
 
             when N_Raise_Expression =>
-               Emit_LCH_Call (Node);
+               Emit_LCH_Call (N);
                return Get_Undef (TE);
 
             when N_Raise_xxx_Error =>
-               pragma Assert (No (Condition (Node)));
-               Emit_LCH_Call (Node);
+               pragma Assert (No (Condition (N)));
+               Emit_LCH_Call (N);
                return Get_Undef (TE);
 
             when others =>
                Error_Msg_N
                  ("unsupported node kind: `" &
-                    Node_Kind'Image (Nkind (Node)) & "`", Node);
+                    Node_Kind'Image (Nkind (N)) & "`", N);
                return Get_Undef (TE);
          end case;
       end if;

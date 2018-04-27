@@ -41,9 +41,8 @@ package GNATLLVM.Compile is
    procedure Emit (List : List_Id);
    --  Emit a node and every element of a (possibly empty) List
 
-   function Emit_Expression (Node : Node_Id) return GL_Value
-     with Pre  => Present (Node),
-          Post => Present (Emit_Expression'Result);
+   function Emit_Expression (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit_Expression'Result);
    --  Compile an expression node to an LLVM value
 
    function Emit_LValue (N : Node_Id; Clear : Boolean := True) return GL_Value

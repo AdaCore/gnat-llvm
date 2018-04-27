@@ -25,6 +25,7 @@ with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
 with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
+with Sem_Aux;  use Sem_Aux;
 with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 with Stand;    use Stand;
@@ -895,7 +896,12 @@ package body GNATLLVM.Compile is
                   end if;
 
                   if not Needs_Activation_Record (Typ) then
-                     return Convert_To_Access_To (Get_Value (Def_Ident), Typ);
+                     if Typ = Standard_Void_Type then
+                        return Get_Value (Def_Ident);
+                     else
+                        return Convert_To_Access_To
+                          (Get_Value (Def_Ident), Typ);
+                     end if;
                   else
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
@@ -1384,8 +1390,17 @@ package body GNATLLVM.Compile is
                   if Ekind (Def_Ident) = E_Enumeration_Literal then
                      return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
-                     --  See if this is an entity that's present in our
-                     --  activation record. ?? This only handles one level.
+                  --  If this entity has a known constant value, use it
+
+                  elsif Ekind (Def_Ident) = E_Constant
+                    and then Present (Constant_Value (Def_Ident))
+                    and then Compile_Time_Known_Value
+                    (Constant_Value (Def_Ident))
+                  then
+                     return Emit_Expression (Constant_Value (Def_Ident));
+
+                  --  See if this is an entity that's present in our
+                  --  activation record. ?? This only handles one level.
 
                   elsif Ekind_In (Def_Ident, E_Constant,
                                   E_Discriminant,

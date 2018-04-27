@@ -729,6 +729,10 @@ package body GNATLLVM.Conditionals is
          --  Process operations that we can handle in terms of different branch
          --  mechanisms, such as short-circuit operators.
 
+         when N_Expression_With_Actions =>
+            Emit_List (Actions (Cond));
+            Emit_If_Cond (Expression (Cond), BB_True, BB_False);
+
          when N_Op_Not =>
             Emit_If_Cond (Right_Opnd (Cond), BB_False, BB_True);
             return;

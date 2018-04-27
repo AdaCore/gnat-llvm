@@ -180,12 +180,22 @@ package GNATLLVM.Types is
       V    : GL_Value := No_GL_Value;
       Name : String := "") return GL_Value
      with Pre  => Is_Type (TE),
-          Post => Present (Allocate_For_Type'Result)
-                  and then Is_Access_Type (Allocate_For_Type'Result);
+          Post => Is_Access_Type (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type TE and return
    --  a pointer to the space.  Name is the name to use for the LLVM value.
    --  If Value is Present, its a value that will be placed in the temporary
    --  and can be used to size the allocated space.
+
+   function Heap_Allocate_For_Type
+     (TE   : Entity_Id;
+      V    : GL_Value := No_GL_Value;
+      Proc : Entity_Id;
+      Pool : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE)
+                  and then (No (Proc) or else Present (Pool)),
+          Post => Is_Access_Type (Heap_Allocate_For_Type'Result);
+   --  Similarly, but allocate storage on the heap.  This will handle
+   --  default allocation, secondary stack, and storage pools.
 
    function Convert_To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),

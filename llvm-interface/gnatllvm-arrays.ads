@@ -150,7 +150,8 @@ package GNATLLVM.Arrays is
      with Pre  => Is_Access_Type (V) and then Is_Array_Type (TE)
                   and then not Is_Constrained (TE)
                   and then Is_Array_Type (Full_Designated_Type (V))
-                  and then Is_Constrained (Full_Designated_Type (V)),
+                  and then (Is_Constrained (Full_Designated_Type (V))
+                              or else Is_Raw_Array (V)),
           Post => Present (Array_Fat_Pointer'Result);
    --  Wrap a fat pointer around V and return the created fat pointer.  TE
    --  is the destination array type, which is what specifies the types of

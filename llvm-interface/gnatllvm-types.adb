@@ -637,10 +637,67 @@ package body GNATLLVM.Types is
          Num_Elts    := Get_Type_Size (TE, V, For_Type => No (V));
       end if;
 
+      --  ?? Why don't we have to worry about the Raw_Array case here?
+
       return Ptr_To_Ref
         (Array_Alloca (Element_Typ, Num_Elts, "dyn-array"), TE, Name);
 
    end Allocate_For_Type;
+
+   ----------------------------
+   -- Heap_Allocate_For_Type --
+   ----------------------------
+
+   function Heap_Allocate_For_Type
+     (TE   : Entity_Id;
+      V    : GL_Value := No_GL_Value;
+      Proc : Entity_Id;
+      Pool : Entity_Id) return GL_Value
+   is
+      Size    : constant GL_Value := Get_Type_Size (TE, V, For_Type => No (V));
+      Align   : constant unsigned := Get_Type_Alignment (TE);
+      Align_V : constant GL_Value :=
+        Size_Const_Int (unsigned_long_long (Align));
+      Ret_Loc : constant GL_Value :=
+        (if No (Proc) then No_GL_Value else Allocate_For_Type (Size_Type));
+
+   begin
+      --  If no function was specified, use the default memory allocation
+      --  function, where we pass just a size.
+
+      if No (Proc) then
+         return Ptr_To_Ref
+           (Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size)), TE);
+
+      --  If a procedure was specified (meaning that a pool must also
+      --  have been specified) and the pool is a record, then it's a
+      --  storage pool and we pass the pool, size, and alignment.
+      --  ?? This is a procedures whose first parameter is an OUT parameter
+      --  where it puts the address.  We should be converting procedures
+      --  with a single OUT parameter to a function, which would make the
+      --  below a lot easier, but we don't yet (because there's no good place
+      --  to indicate that we have).
+
+      elsif Is_Record_Type (Full_Etype (Pool)) then
+         Call (Get_Value (Proc),
+               (1 => Ret_Loc, 2 => Get_Value (Pool), 3 => Size, 4 => Align_V));
+
+      --  Otherwise, this is the secondary stack and we just call with size
+
+      else
+         Call (Get_Value (Proc), (1 => Ret_Loc, 2 => Size));
+      end if;
+
+      --  If we're doing this for an unconstrained array, we have the pointer
+      --  to the raw array, not a fat pointer.
+
+      if Is_Array_Type (TE) and then not Is_Constrained (TE) then
+         return Int_To_Raw_Array (Load (Ret_Loc), TE);
+      else
+         return Int_To_Ref (Load (Ret_Loc), TE);
+      end if;
+
+   end Heap_Allocate_For_Type;
 
    ---------------------------
    --  Convert_To_Size_Type --

@@ -17,8 +17,9 @@
 
 with Ada.Unchecked_Conversion;
 
-with GNATLLVM.Types; use GNATLLVM.Types;
-with GNATLLVM.Utils; use GNATLLVM.Utils;
+with GNATLLVM.Arrays; use GNATLLVM.Arrays;
+with GNATLLVM.Types;  use GNATLLVM.Types;
+with GNATLLVM.Utils;  use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
 
@@ -139,6 +140,17 @@ package body GNATLLVM.GLValue is
                           Name),
               TE));
 
+   ----------------------
+   -- Int_To_Raw_Array --
+   ----------------------
+
+   function Int_To_Raw_Array
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+   is
+      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                      Create_Array_Raw_Pointer_Type (TE), Name),
+          TE, Is_Reference => True, Is_Raw_Array => True));
+
    ----------------
    -- Ptr_To_Int --
    ----------------
@@ -178,6 +190,17 @@ package body GNATLLVM.GLValue is
       (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                             Pointer_Type (Create_Type (TE), 0), Name),
               TE));
+
+   ----------------------
+   -- Ptr_To_Raw_Array --
+   ----------------------
+
+   function Ptr_To_Raw_Array
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+   is
+      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                        Create_Array_Raw_Pointer_Type (TE), Name),
+          TE, Is_Reference => True, Is_Raw_Array => True));
 
    -----------
    -- Trunc --

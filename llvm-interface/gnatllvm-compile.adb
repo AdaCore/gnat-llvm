@@ -541,12 +541,28 @@ package body GNATLLVM.Compile is
                                       No_GL_Value, True, True);
                      Build_Ret_Void;
 
-                  --  If this function returns unconstrained, create an
-                  --  access (fat pointer) to the return value.
+                  --  If this function returns unconstrained, allocate
+                  --  memory for the return value, copy the data to be
+                  --  returned to there, and return an access (fat pointer)
+                  --  to the value.
 
                   elsif Is_Array_Type (TE) and then not Is_Constrained (TE)
                   then
-                     Build_Ret (Convert_To_Access_To (Emit_LValue (Expr), TE));
+                     declare
+                        Value : constant GL_Value := Emit_Expression (Expr);
+                        Temp  : constant GL_Value :=
+                          Heap_Allocate_For_Type
+                          (TE, Value, Procedure_To_Call (N), Storage_Pool (N));
+
+                     begin
+                        --  This is a bit tricky because the only place
+                        --  where we can get the bounds for the fat pointer
+                        --  are from the type of the orignal value.
+
+                        Emit_Assignment (Temp, Empty, Value, True, True);
+                        Build_Ret (Convert_To_Access_To
+                                     (G_Is_Ref (Temp, Value), TE));
+                     end;
                   else
                      Build_Ret (Build_Type_Conversion (Expr, TE));
                   end if;
@@ -1494,11 +1510,6 @@ package body GNATLLVM.Compile is
                  (Make_Reference (Emit_Expression (Prefix (N))), TE);
 
             when N_Allocator =>
-               if Present (Storage_Pool (N)) then
-                  Error_Msg_N ("unsupported form of N_Allocator", N);
-                  return Get_Undef (TE);
-               end if;
-
                declare
                   Expr   : constant Node_Id := Expression (N);
                   Typ    : Entity_Id;
@@ -1520,14 +1531,8 @@ package body GNATLLVM.Compile is
                      Value := Emit_Expression (Expression (Expr));
                   end if;
 
-                  Result := Call (Get_Default_Alloc_Fn, Standard_A_Char,
-                                  (1 => Get_Type_Size
-                                     (Typ, Value, For_Type => No (Value))));
-
-                  --  Convert to a pointer to the type that the thing is
-                  --  suppose to point to.
-
-                  Result := Ptr_To_Ref (Result, Typ);
+                  Result := Heap_Allocate_For_Type
+                    (Typ, Value, Procedure_To_Call (N), Storage_Pool (N));
 
                   --  Now copy the data, if there is any, into the value
 
@@ -1693,7 +1698,7 @@ package body GNATLLVM.Compile is
          begin
             Call (Build_Intrinsic
                     (Memset, "llvm.memset.p0i8.i", Size_Type),
-                  (1 => Bit_Cast (Dest, Standard_A_Char),
+                  (1 => Pointer_Cast (Dest, Standard_A_Char),
                    2 => Const_Null (Standard_Short_Short_Integer),
                    3 => Get_Type_Size (Dest_Type, No_GL_Value),
                    4 => Const_Int_32 (unsigned_long_long (Align)),
@@ -1764,8 +1769,8 @@ package body GNATLLVM.Compile is
 
             Call (Build_Intrinsic
                     (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
-                  (1 => Bit_Cast (Dest, Standard_A_Char),
-                   2 => Bit_Cast (Src, Standard_A_Char),
+                  (1 => Pointer_Cast (Dest, Standard_A_Char),
+                   2 => Pointer_Cast (Src, Standard_A_Char),
                    3 => Size,
                    4 => Const_Int_32 (unsigned_long_long (Align)),
                    5 => Const_False)); -- Is_Volatile

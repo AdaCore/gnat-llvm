@@ -534,12 +534,16 @@ package body GNATLLVM.Subprograms is
          else
             Result := Get_Value (Ent_Caller.ARECnF);
 
-            --  Go levels up via the ARECnU field if needed
+            --  Go levels up via the ARECnU field if needed.  Each time,
+            --  get the new type from the first field of the record that
+            --  it points to.
 
             for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-               Result := Load (GEP (Size_Type, Result,
-                                    (1 => Const_Null_32, 2 => Const_Null_32),
-                                    "ARECnF.all.ARECnU"));
+               Result :=
+                 Load (GEP (Full_Etype (First_Field
+                                          (Full_Designated_Type (Result))),
+                            Result, (1 => Const_Null_32, 2 => Const_Null_32),
+                            "ARECnF.all.ARECnU"));
             end loop;
          end if;
 

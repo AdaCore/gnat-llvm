@@ -81,6 +81,22 @@ package GNATLLVM.GLValue is
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
+   function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
+     (G (LLVM_Value (V), Etype (T)))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (G_Is'Result);
+
+   function G_Is_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
+     (G (LLVM_Value (V), TE, Is_Reference => True))
+     with Pre  => Present (V) and then Is_Type (TE),
+          Post => Present (G_Is_Ref'Result);
+   --  Constructor for case where we want to show that V has a different type
+
+   function G_Is_Ref (V : GL_Value; T : GL_Value) return GL_Value is
+     (G (LLVM_Value (V), Etype (T), Is_Reference => True))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (G_Is_Ref'Result);
+
    function G_Ref (V : Value_T; TE : Entity_Id) return GL_Value is
      (G (V, TE, True))
      with Pre  => Present (V) and then Is_Type (TE),
@@ -166,9 +182,9 @@ package GNATLLVM.GLValue is
      (not Is_Reference (V) and then Is_Discrete_Type (Full_Etype (V)))
      with Pre => Present (V);
 
-   function Is_Discrete_Or_Fixed_Point_Type (V : GL_Value) return Boolean is
+   function Is_Integer_Type (V : GL_Value) return Boolean is
      (not Is_Reference (V)
-        and then Is_Discrete_Or_Fixed_Point_Type (Full_Etype (V)))
+        and then Is_Integer_Type (Full_Etype (V)))
      with Pre => Present (V);
 
    function Is_Fixed_Point_Type (V : GL_Value) return Boolean is
@@ -183,8 +199,9 @@ package GNATLLVM.GLValue is
      (not Is_Reference (V) and then Is_Unsigned_Type (Full_Etype (V)))
      with Pre => Present (V);
 
-   function Is_Integer_Type (V : GL_Value) return Boolean is
-     (not Is_Reference (V) and then Is_Integer_Type (Full_Etype (V)))
+   function Is_Discrete_Or_Fixed_Point_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V)
+        and then Is_Discrete_Or_Fixed_Point_Type (Full_Etype (V)))
      with Pre => Present (V);
 
    function Is_Modular_Integer_Type (V : GL_Value) return Boolean is
@@ -236,18 +253,20 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Type (TE), Post => Present (Const_Null'Result);
 
    function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
-     with Pre  => Is_Type (TE) and then N /= No_Uint,
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
    function Const_Int
      (TE          : Entity_Id;
       N           : unsigned_long_long;
       Sign_Extend : Boolean := False) return GL_Value
-     with Pre  => Is_Type (TE), Post => Present (Const_Int'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Present (Const_Int'Result);
 
    function Const_Ones (TE : Entity_Id) return GL_Value is
      (Const_Int (TE, unsigned_long_long'Last, Sign_Extend => True))
-     with Pre  => Is_Type (TE), Post => Present (Const_Ones'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
    function Get_Undef (V : GL_Value) return GL_Value is
@@ -263,7 +282,7 @@ package GNATLLVM.GLValue is
 
    function Const_Int (V : GL_Value; N : Uint) return GL_Value is
      (Const_Int (Etype (V), N))
-     with Pre  => Present (V) and then N /= No_Uint,
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
    function Const_Int
@@ -272,15 +291,18 @@ package GNATLLVM.GLValue is
       Sign_Extend : Boolean := False) return GL_Value
    is
      (Const_Int (Etype (V), N, Sign_Extend))
-     with Pre  => Present (V), Post => Present (Const_Int'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
+          Post => Present (Const_Int'Result);
 
    function Const_Ones (V : GL_Value) return GL_Value is
      (Const_Ones (Etype (V)))
-     with Pre => Present (V), Post => Present (Const_Ones'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
+          Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
    function Const_Real (TE : Entity_Id; V : double) return GL_Value
-     with Pre  => Is_Type (TE), Post => Present (Const_Real'Result);
+     with Pre  => Is_Floating_Point_Type (TE),
+          Post => Present (Const_Real'Result);
 
    function Size_Const_Int (N : Uint) return GL_Value is
      (Const_Int (Size_Type, N))
@@ -309,7 +331,8 @@ package GNATLLVM.GLValue is
 
    function Const_Real (V : GL_Value; F : double) return GL_Value is
      (Const_Real (Etype (V), F))
-     with Pre  => Present (V), Post => Present (Const_Real'Result);
+     with Pre  => Is_Floating_Point_Type (V),
+           Post => Present (Const_Real'Result);
 
    function Const_True return GL_Value is
      (Const_Int (Standard_Boolean, 1));
@@ -320,96 +343,113 @@ package GNATLLVM.GLValue is
 
    function Alloca (TE : Entity_Id; Name : String := "") return GL_Value
      with Pre  => Is_Type (TE),
-          Post => Present (Alloca'Result)
-                  and then Is_Access_Type (Alloca'Result);
+          Post => Is_Access_Type (Alloca'Result);
 
    function Array_Alloca
      (TE : Entity_Id; Num_Elts : GL_Value; Name : String := "") return GL_Value
      with Pre  => Is_Type (TE) and then Present (Num_Elts),
-          Post => Present (Array_Alloca'Result)
-                  and then Is_Access_Type (Array_Alloca'Result);
+          Post => Is_Access_Type (Array_Alloca'Result);
 
    function Int_To_Ptr (V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Int_To_Ptr'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Access_Type (TE),
+          Post => Is_Access_Type (Int_To_Ptr'Result);
 
    function Ptr_To_Int
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Ptr_To_Int'Result);
+     with Pre  => Is_Access_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
 
    function Bit_Cast
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
+     with Pre  => Present (V) and then not Is_Access_Type (V)
+                  and then Is_Type (TE) and then not Is_Access_Type (TE),
           Post => Present (Bit_Cast'Result);
 
    function Pointer_Cast
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Pointer_Cast'Result);
+     with Pre  => Is_Access_Type (V) and then Is_Access_Type (TE),
+          Post => Is_Access_Type (Pointer_Cast'Result);
 
    function Ptr_To_Ref
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Ptr_To_Ref'Result);
+     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
+          Post => Is_Access_Type (Ptr_To_Ref'Result);
+
+   function Ptr_To_Raw_Array
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
+          Post => Is_Access_Type (Ptr_To_Raw_Array'Result);
 
    function Trunc
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Trunc'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Trunc'Result);
 
    function S_Ext
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (S_Ext'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Is_Discrete_Or_Fixed_Point_Type (S_Ext'Result);
 
    function Z_Ext
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Z_Ext'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+          and then Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Z_Ext'Result);
 
    function FP_Trunc
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (FP_Trunc'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Floating_Point_Type (TE),
+          Post => Is_Floating_Point_Type (FP_Trunc'Result);
 
    function FP_Ext
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (FP_Ext'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Floating_Point_Type (TE),
+          Post => Is_Floating_Point_Type (FP_Ext'Result);
 
    function FP_To_SI
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (FP_To_SI'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Is_Discrete_Or_Fixed_Point_Type (FP_To_SI'Result);
 
    function FP_To_UI
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (FP_To_UI'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Is_Discrete_Or_Fixed_Point_Type (FP_To_UI'Result);
 
    function UI_To_FP
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (UI_To_FP'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Floating_Point_Type (TE),
+          Post => Is_Floating_Point_Type (UI_To_FP'Result);
 
    function SI_To_FP
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (SI_To_FP'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Floating_Point_Type (TE),
+          Post => Is_Floating_Point_Type (SI_To_FP'Result);
 
    function Int_To_Ptr
      (V, T : GL_Value; Name : String := "") return GL_Value is
      (Int_To_Ptr (V, Full_Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (Int_To_Ptr'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Access_Type (T),
+          Post => Is_Access_Type (Int_To_Ptr'Result);
 
    function Ptr_To_Int
      (V, T : GL_Value; Name : String := "") return GL_Value is
      (Ptr_To_Int (V, Full_Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (Ptr_To_Int'Result);
+     with Pre  => Is_Access_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (T),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
 
    function Bit_Cast (V, T : GL_Value; Name : String := "") return GL_Value is
      (Bit_Cast (V, Full_Etype (T), Name))
@@ -424,18 +464,21 @@ package GNATLLVM.GLValue is
 
    function Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
      (Trunc (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (Trunc'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (T),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Trunc'Result);
 
    function S_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
      (S_Ext (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (S_Ext'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (T),
+          Post => Is_Discrete_Or_Fixed_Point_Type (S_Ext'Result);
 
    function Z_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
      (Z_Ext (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (Z_Ext'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (T),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Z_Ext'Result);
 
    function FP_Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_Trunc (V, Etype (T), Name))
@@ -689,8 +732,16 @@ package GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
      with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Int_To_Ref'Result)
-                  and then Is_Access_Type (Int_To_Ref'Result);
+          Post => Is_Access_Type (Int_To_Ref'Result);
+   --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
+   --  access type.
+
+   function Int_To_Raw_Array
+     (V : GL_Value; TE : Entity_Id; Name : String := "")
+     return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
+          Post => Is_Access_Type (Int_To_Raw_Array'Result)
+                  and then Is_Raw_Array (Int_To_Raw_Array'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
 

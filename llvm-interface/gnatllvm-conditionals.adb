@@ -300,8 +300,8 @@ package body GNATLLVM.Conditionals is
                                LHS_Val, RHS_Val);
                Memcmp : constant GL_Value := Call
                  (Get_Memory_Compare_Fn, Standard_Integer,
-                  (1 => Bit_Cast (Array_Data (LHS_Val), Standard_A_Char),
-                   2 => Bit_Cast (Array_Data (RHS_Val), Standard_A_Char),
+                  (1 => Pointer_Cast (Array_Data (LHS_Val), Standard_A_Char),
+                   2 => Pointer_Cast (Array_Data (RHS_Val), Standard_A_Char),
                    3 => Size));
                Cond   : constant GL_Value :=
                  I_Cmp (Int_EQ, Memcmp, Const_Int (Standard_Integer, 0));

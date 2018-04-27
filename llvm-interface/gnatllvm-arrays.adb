@@ -551,10 +551,7 @@ package body GNATLLVM.Arrays is
       Src_Type       : constant Entity_Id := Full_Designated_Type (V);
       Info_Idx       : constant Nat       := Get_Array_Info (TE);
       Fat_Ptr        : GL_Value           := Get_Undef_Ref (TE);
-      Array_Data_Ptr : constant GL_Value  :=
-        G (Bit_Cast (IR_Builder, LLVM_Value (V),
-                     Create_Array_Raw_Pointer_Type (TE), ""),
-           TE, Is_Reference => True, Is_Raw_Array => True);
+      Array_Data_Ptr : constant GL_Value  := Ptr_To_Raw_Array (V, TE);
 
    begin
 
@@ -586,9 +583,7 @@ package body GNATLLVM.Arrays is
          end;
       end loop;
 
-      Fat_Ptr := Insert_Value (Fat_Ptr, Array_Data_Ptr, 0);
-
-      return Fat_Ptr;
+      return Insert_Value (Fat_Ptr, Array_Data_Ptr, 0);
    end Array_Fat_Pointer;
 
    -----------------------

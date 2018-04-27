@@ -55,8 +55,8 @@ package body GNATLLVM.Compile is
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
 
    function Emit_Attribute_Reference
-     (Node : Node_Id; LValue : Boolean) return GL_Value
-     with Pre  => Nkind (Node) = N_Attribute_Reference,
+     (N : Node_Id; LValue : Boolean) return GL_Value
+     with Pre  => Nkind (N) = N_Attribute_Reference,
           Post => Present (Emit_Attribute_Reference'Result);
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
@@ -75,8 +75,8 @@ package body GNATLLVM.Compile is
    --  Helper for Emit: Copy the value of the expression E to LValue
    --  with the specified destination and expression types.
 
-   function Emit_Literal (Node : Node_Id) return GL_Value
-     with Pre  => Present (Node),
+   function Emit_Literal (N : Node_Id) return GL_Value
+     with Pre  => Present (N),
           Post => Present (Emit_Literal'Result);
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
@@ -1770,10 +1770,10 @@ package body GNATLLVM.Compile is
    ------------------------------
 
    function Emit_Attribute_Reference
-     (Node : Node_Id; LValue : Boolean) return GL_Value
+     (N : Node_Id; LValue : Boolean) return GL_Value
    is
-      Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (Node));
-      Typ  : constant Entity_Id := Full_Etype (Node);
+      Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
+      TE   : constant Entity_Id := Full_Etype (N);
       V    : GL_Value;
 
    begin
@@ -1786,31 +1786,33 @@ package body GNATLLVM.Compile is
             --  the same constraints.  But we do have to be sure that it's
             --  of the right type.
 
-            return Convert_To_Access_To (Emit_LValue (Prefix (Node)),
-                                         Full_Designated_Type (Typ));
+            return Convert_To_Access_To (Emit_LValue (Prefix (N)),
+                                         Full_Designated_Type (TE));
 
          when Attribute_Address =>
-            V := Emit_LValue (Prefix (Node));
-            return (if LValue then V else Ptr_To_Int (V, Typ, "attr-address"));
+            V := Emit_LValue (Prefix (N));
+            return (if LValue then V else Ptr_To_Int (V, TE, "attr-address"));
 
          when Attribute_Deref =>
             declare
-               Expr : constant Node_Id := First (Expressions (Node));
+               Expr : constant Node_Id := First (Expressions (N));
                pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
 
             begin
-               V := Int_To_Ref (Emit_Expression (Expr), Typ, "attr-deref");
-               return (if LValue then V else Need_Value (V, Typ));
+               V := Int_To_Ref (Emit_Expression (Expr), TE, "attr-deref");
+               return (if LValue then V else Need_Value (V, TE));
             end;
 
-         when Attribute_First | Attribute_Last
-            | Attribute_Length | Attribute_Range_Length =>
+         when Attribute_First
+            | Attribute_Last
+            | Attribute_Length
+            | Attribute_Range_Length =>
 
             declare
-               Prefix_Type : constant Entity_Id := Full_Etype (Prefix (Node));
+               Prefix_Type : constant Entity_Id := Full_Etype (Prefix (N));
                Dim         : constant Nat       :=
-                 (if Present (Expressions (Node))
-                  then UI_To_Int (Intval (First (Expressions (Node)))) - 1
+                 (if Present (Expressions (N))
+                  then UI_To_Int (Intval (First (Expressions (N)))) - 1
                   else 0);
                Array_Descr : GL_Value;
                Result      : GL_Value;
@@ -1828,7 +1830,7 @@ package body GNATLLVM.Compile is
                      Result := Bounds_To_Length (Low, High, Typ);
                   else
                      Error_Msg_N ("unsupported attribute: `" &
-                                    Attribute_Id'Image (Attr) & "`", Node);
+                                    Attribute_Id'Image (Attr) & "`", N);
                      Result := Get_Undef (Typ);
                   end if;
 
@@ -1837,12 +1839,12 @@ package body GNATLLVM.Compile is
                   --  If what we're taking the prefix of is a type, we can't
                   --  evaluate it as an expression.
 
-                  if Is_Entity_Name (Prefix (Node))
-                    and then Is_Type (Entity (Prefix (Node)))
+                  if Is_Entity_Name (Prefix (N))
+                    and then Is_Type (Entity (Prefix (N)))
                   then
                      Array_Descr := No_GL_Value;
                   else
-                     Array_Descr := Emit_LValue (Prefix (Node));
+                     Array_Descr := Emit_LValue (Prefix (N));
                   end if;
 
                   if Attr = Attribute_Length then
@@ -1855,26 +1857,26 @@ package body GNATLLVM.Compile is
                   end if;
                else
                   Error_Msg_N ("unsupported attribute: `" &
-                                 Attribute_Id'Image (Attr) & "`", Node);
-                  Result := Get_Undef (Typ);
+                                 Attribute_Id'Image (Attr) & "`", N);
+                  Result := Get_Undef (TE);
                end if;
 
-               return Convert_To_Elementary_Type (Result, Typ);
+               return Convert_To_Elementary_Type (Result, TE);
             end;
 
          when Attribute_Max
             | Attribute_Min =>
-            pragma Assert (List_Length (Expressions (Node)) = 2);
-            return Emit_Min_Max (Expressions (Node), Attr = Attribute_Max);
+            pragma Assert (List_Length (Expressions (N)) = 2);
+            return Emit_Min_Max (Expressions (N), Attr = Attribute_Max);
 
          when Attribute_Pos
             | Attribute_Val =>
-            return Build_Type_Conversion (First (Expressions (Node)), Typ);
+            return Build_Type_Conversion (First (Expressions (N)), Typ);
 
          when Attribute_Succ
             | Attribute_Pred =>
             declare
-               Exprs : constant List_Id  := Expressions (Node);
+               Exprs : constant List_Id  := Expressions (N);
                Base  : constant GL_Value := Emit_Expression (First (Exprs));
                One   : constant GL_Value := Const_Int (Base, Uint_1);
 
@@ -1891,11 +1893,11 @@ package body GNATLLVM.Compile is
             --  ??? For now return the prefix itself. Would need to force a
             --  store in some cases.
 
-            return Emit_Expression (First (Expressions (Node)));
+            return Emit_Expression (First (Expressions (N)));
 
          when Attribute_Alignment =>
             declare
-               Pre   : constant Node_Id  := Full_Etype (Prefix (Node));
+               Pre   : constant Node_Id  := Full_Etype (Prefix (N));
                Align : constant unsigned := Get_Type_Alignment (Pre);
 
             begin
@@ -1903,29 +1905,31 @@ package body GNATLLVM.Compile is
                                  Sign_Extend => False);
             end;
 
-         when Attribute_Size | Attribute_Object_Size | Attribute_Value_Size =>
+         when Attribute_Size
+            | Attribute_Object_Size
+            | Attribute_Value_Size =>
 
             --  ?? These aren't quite the same thing, but they're close
             --  enough for quite a while.
 
             declare
-               Prefix_Type : constant Entity_Id := Full_Etype (Prefix (Node));
+               Prefix_Type : constant Entity_Id := Full_Etype (Prefix (N));
                For_Type    : constant Boolean   :=
-                 (Is_Entity_Name (Prefix (Node))
-                    and then Is_Type (Entity (Prefix (Node))));
+                 (Is_Entity_Name (Prefix (N))
+                    and then Is_Type (Entity (Prefix (N))));
 
             begin
                V := (if For_Type then No_GL_Value
-                                 else Emit_LValue (Prefix (Node)));
+                                 else Emit_LValue (Prefix (N)));
                return Convert_To_Elementary_Type
                  (NSW_Mul (Get_Type_Size (Prefix_Type, V, For_Type),
                            Size_Const_Int (8)),
-                  Typ);
+                  TE);
             end;
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &
-                           Attribute_Id'Image (Attr) & "`", Node);
+                           Attribute_Id'Image (Attr) & "`", N);
             return Get_Undef (Typ);
       end case;
    end Emit_Attribute_Reference;
@@ -1934,45 +1938,42 @@ package body GNATLLVM.Compile is
    -- Emit_Literal --
    ------------------
 
-   function Emit_Literal (Node : Node_Id) return GL_Value is
+   function Emit_Literal (N : Node_Id) return GL_Value is
+      TE : constant Entity_Id := Full_Etype (N);
    begin
-      case Nkind (Node) is
+      case Nkind (N) is
          when N_Character_Literal =>
 
             --  If a Entity is present, it means that this was one of the
             --  literals in a user-defined character type.
 
-            return Const_Int (Full_Etype (Node),
-                              (if Present (Entity (Node))
-                               then Enumeration_Rep (Entity (Node))
-                               else Char_Literal_Value (Node)));
+            return Const_Int (TE, (if Present (Entity (N))
+                                   then Enumeration_Rep (Entity (N))
+                                   else Char_Literal_Value (N)));
 
          when N_Integer_Literal =>
-            return Const_Int (Full_Etype (Node), Intval (Node));
+            return Const_Int (TE, Intval (N));
 
          when N_Real_Literal =>
-            if Is_Fixed_Point_Type (Full_Etype (Node)) then
-               return Const_Int (Full_Etype (Node),
-                                 Corresponding_Integer_Value (Node));
+            if Is_Fixed_Point_Type (TE) then
+               return Const_Int (TE, Corresponding_Integer_Value (N));
             else
                declare
-                  Real_Type        : constant Entity_Id := Full_Etype (Node);
-                  Val              : Ureal := Realval (Node);
+                  Val              : Ureal := Realval (N);
                   FP_Num, FP_Denom : double;
 
                begin
                   if UR_Is_Zero (Val) then
-                     return Const_Real (Real_Type, 0.0);
+                     return Const_Real (TE, 0.0);
                   end if;
 
                   --  First convert the value to a machine number if it isn't
                   --  already. That will force the base to 2 for non-zero
                   --  values and simplify the rest of the logic.
 
-                  if not Is_Machine_Number (Node) then
+                  if not Is_Machine_Number (N) then
                      Val := Machine
-                       (Implementation_Base_Type (Full_Etype (Node)),
-                        Val, Round_Even, Node);
+                       (Implementation_Base_Type (TE), Val, Round_Even, Node);
                   end if;
 
                   pragma Assert (Rbase (Val) = 2);
@@ -1996,9 +1997,8 @@ package body GNATLLVM.Compile is
 
          when N_String_Literal =>
             declare
-               String       : constant String_Id := Strval (Node);
-               Array_Type   : constant Type_T :=
-                 Create_Type (Full_Etype (Node));
+               String       : constant String_Id := Strval (N);
+               Array_Type   : constant Type_T := Create_Type (TE);
                Element_Type : constant Type_T := Get_Element_Type (Array_Type);
                Length       : constant Interfaces.C.unsigned :=
                  Get_Array_Length (Array_Type);
@@ -2014,12 +2014,12 @@ package body GNATLLVM.Compile is
                end loop;
 
                return G (Const_Array (Element_Type, Elements'Address, Length),
-                         Full_Etype (Node));
+                         TE);
             end;
 
          when others =>
-            Error_Msg_N ("unhandled literal node", Node);
-            return Get_Undef (Full_Etype (Node));
+            Error_Msg_N ("unhandled literal node", N);
+            return Get_Undef (TE);
 
       end case;
    end Emit_Literal;

@@ -290,14 +290,8 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Handled_Sequence_Of_Statements =>
-            if Present (Exception_Handlers (Node)) then
-               Start_EH_Region (Exception_Handlers (Node));
-            end if;
-
-            if Present (At_End_Proc (Node)) then
-               Start_At_End_Region (At_End_Proc (Node));
-            end if;
-
+            Start_Block_Statements (At_End_Proc (Node),
+                                    Exception_Handlers (Node));
             Emit_List (Statements (Node));
 
          when N_Raise_Statement =>
@@ -622,8 +616,6 @@ package body GNATLLVM.Compile is
 
             begin
 
-               Push_Loop (Loop_Identifier, BB_Next);
-
                --  First compile the iterative part of the loop: evaluation of
                --  the exit condition, etc.
 
@@ -716,6 +708,8 @@ package body GNATLLVM.Compile is
 
                Position_Builder_At_End (BB_Stmts);
                Push_Block;
+               Start_Block_Statements (Empty, No_List);
+               Push_Loop (Loop_Identifier, BB_Next);
                Emit_List (Statements (Node));
                Set_Debug_Pos_At_Node (Node);
                Pop_Block;

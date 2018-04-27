@@ -40,6 +40,10 @@ package body GNATLLVM.Blocks is
 
       EH_List     : List_Id;
       --  List of exception handlers.  ?? We may not want to keep it this way
+
+      In_Stmts    : Boolean;
+      --  True if this block was entered from the statement section of its
+      --  parent block.
    end record;
 
    package Block_Stack is new Table.Table
@@ -50,6 +54,10 @@ package body GNATLLVM.Blocks is
       Table_Increment      => 5,
       Table_Name           => "Block_Stack");
    --  Stack of blocks that we're in.
+
+   In_Stmt_Part : Boolean := False;
+   --  True when we're in the statements part of a block (as opposed to
+   --  the declarative part.
 
    --  These tables implement local exception handling, where a
    --  language-defined check within a block jumps directly to a label
@@ -110,27 +118,31 @@ package body GNATLLVM.Blocks is
    begin
       Block_Stack.Append ((Stack_Save => Stack_Save,
                            At_End_Proc => No_GL_Value,
-                           EH_List => No_List));
+                           EH_List => No_List,
+                           In_Stmts => In_Stmt_Part));
+
+      In_Stmt_Part := False;
+
    end Push_Block;
 
-   ----------------------
-   --  Start_EH_Region --
-   ----------------------
+   -----------------------------
+   --  Start_Block_Statements --
+   -----------------------------
 
-   procedure Start_EH_Region (EH_List : List_Id) is
+   procedure Start_Block_Statements
+     (At_End_Proc : Entity_Id; EH_List : List_Id) is
+
    begin
       Block_Stack.Table (Block_Stack.Last).EH_List := EH_List;
-   end Start_EH_Region;
 
-   -------------------------
-   -- Start_At_End_Region --
-   -------------------------
+      if Present (At_End_Proc) then
+         Block_Stack.Table (Block_Stack.Last).At_End_Proc :=
+           Emit_LValue (At_End_Proc);
+      end if;
 
-   procedure Start_At_End_Region (At_End_Proc : Entity_Id) is
-   begin
-      Block_Stack.Table (Block_Stack.Last).At_End_Proc :=
-        Emit_LValue (At_End_Proc);
-   end Start_At_End_Region;
+      In_Stmt_Part := True;
+
+   end Start_Block_Statements;
 
    ---------------
    -- Pop_Block --
@@ -159,6 +171,7 @@ package body GNATLLVM.Blocks is
          end if;
       end if;
 
+      In_Stmt_Part := Block_Stack.Table (Block_Stack.Last).In_Stmts;
       Block_Stack.Decrement_Last;
    end Pop_Block;
 

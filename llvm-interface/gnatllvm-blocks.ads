@@ -15,11 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;  use Atree;
+with Atree; use Atree;
 with Einfo; use Einfo;
-with Nlists; use Nlists;
 with Sinfo; use Sinfo;
-with Types;  use Types;
+with Types; use Types;
 
 with LLVM.Types; use LLVM.Types;
 
@@ -51,15 +50,12 @@ package GNATLLVM.Blocks is
      with Pre => not Library_Level;
    --  Push a block onto the block stack and mark its start
 
-   procedure Start_EH_Region (EH_List : List_Id)
-     with Pre => not Library_Level and then Present (EH_List);
+   procedure Start_Block_Statements
+     (At_End_Proc : Entity_Id; EH_List : List_Id)
+     with Pre => not Library_Level;
    --  Indicate that this is the start of a region of the block to be
-   --  protected by the exception handlers.
-
-   procedure Start_At_End_Region (At_End_Proc : Entity_Id)
-     with Pre => not Library_Level and then Present (At_End_Proc);
-   --  Indicate that this is the start of a region of the block to be
-   --  protected by the "at end" procedure.
+   --  protected by the exception handlers and an At_End_Proc and provide
+   --  those, if present.
 
    procedure Pop_Block
      with Pre => not Library_Level;

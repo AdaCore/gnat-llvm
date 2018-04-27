@@ -343,6 +343,7 @@ package body GNATLLVM.Subprograms is
 
       Elaboration_Table.Set_Last (0);
       Special_Elaboration_Code := False;
+      Start_Block_Statements (Empty, No_List);
       Emit_List (S_List);
       Build_Ret_Void;
       Pop_Block;

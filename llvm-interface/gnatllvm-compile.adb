@@ -915,6 +915,19 @@ package body GNATLLVM.Compile is
                            Pointer_Cast (Func, S_Link), 0);
                      end;
                   end if;
+
+               --  Handle entities in Standard and ASCII on the fly
+
+               elsif Sloc (Def_Ident) <= Standard_Location then
+                  declare
+                     Var : constant GL_Value :=
+                       Add_Global (Full_Etype (Def_Ident),
+                                   Get_Ext_Name (Def_Ident));
+                  begin
+                     Set_Linkage (Var, External_Linkage);
+                     Set_Value (Def_Ident, Var);
+                     return Var;
+                  end;
                else
                   return Get_Value (Def_Ident);
                end if;

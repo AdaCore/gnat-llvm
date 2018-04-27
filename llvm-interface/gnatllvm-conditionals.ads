@@ -61,34 +61,34 @@ package GNATLLVM.Conditionals is
    --  elementary types.  The second form only supports discrete or pointer
    --  types.
 
-   procedure Emit_If (Node : Node_Id)
-     with Pre => Nkind (Node) = N_If_Statement;
+   procedure Emit_If (N : Node_Id)
+     with Pre => Nkind (N) = N_If_Statement;
    --  Helper for Emit: handle if statements
 
-   procedure Emit_If_Cond (Cond : Node_Id; BB_True, BB_False : Basic_Block_T)
-     with Pre => Present (Cond)
+   procedure Emit_If_Cond (N : Node_Id; BB_True, BB_False : Basic_Block_T)
+     with Pre => Present (N)
                  and then Present (BB_True) and then Present (BB_False);
    --  Helper for Emit_If to generate branch to BB_True or BB_False
    --  depending on whether Node is true or false.
 
-   function Emit_If_Expression (Node : Node_Id) return GL_Value
-     with Pre  => Nkind (Node) = N_If_Expression,
+   function Emit_If_Expression (N : Node_Id) return GL_Value
+     with Pre  => Nkind (N) = N_If_Expression,
           Post => Present (Emit_If_Expression'Result);
    --  Helper for Emit_Expression: handle if expressions
 
    procedure Emit_If_Range
-     (Node              : Node_Id;
+     (N                 : Node_Id;
       LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
-     with Pre => Present (Node) and then Present (LHS)
+     with Pre => Present (N) and then Present (LHS)
                  and then Present (BB_True) and then Present (BB_False);
    --  Emit code to branch to BB_True or BB_False depending on whether LHS,
    --  which is of type Operand_Type, is in the range from Low to High.  Node
    --  is used only for error messages.
 
-   procedure Emit_Case (Node : Node_Id)
-     with Pre => Nkind (Node) = N_Case_Statement;
+   procedure Emit_Case (N : Node_Id)
+     with Pre => Nkind (N) = N_Case_Statement;
    --  Handle case statements
 
    function Emit_Min_Max

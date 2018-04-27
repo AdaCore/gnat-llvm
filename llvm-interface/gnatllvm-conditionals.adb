@@ -399,21 +399,20 @@ package body GNATLLVM.Conditionals is
    -- Emit_Case --
    ---------------
 
-   procedure Emit_Case (Node : Node_Id) is
+   procedure Emit_Case (N : Node_Id) is
 
-      function Count_Choices (Node : Node_Id) return Nat;
+      function Count_Choices (N : Node_Id) return Nat;
       --  Count the total number of choices in this case statement.
 
       -------------------
       -- Count_Choices --
       -------------------
 
-      function Count_Choices (Node : Node_Id) return Nat is
-         Num_Choices  : Nat := 0;
-         Alt          : Node_Id;
+      function Count_Choices (N : Node_Id) return Nat is
+         Alt          : Node_Id := First (Alternatives (N));
+         Num_Choices  : Nat     := 0;
          First_Choice : Node_Id;
       begin
-         Alt := First (Alternatives (Node));
          while Present (Alt) loop
 
             --  We have a peculiarity in the "others" case of a case statement.
@@ -454,11 +453,10 @@ package body GNATLLVM.Conditionals is
          If_Cost, Switch_Cost      : Nat;
       end record;
 
-      Num_Alts         : constant Nat := List_Length (Alternatives (Node));
+      Num_Alts         : constant Nat := List_Length (Alternatives (N));
       Alts             : array (1 .. Num_Alts) of One_Alt;
-      Choices          : array (1 .. Count_Choices (Node)) of One_Choice;
-      LHS              : constant GL_Value :=
-        Emit_Expression (Expression (Node));
+      Choices          : array (1 .. Count_Choices (N)) of One_Choice;
+      LHS              : constant GL_Value := Emit_Expression (Expression (N));
       Typ              : constant Type_T   := Create_Type (Full_Etype (LHS));
       Start_BB         : constant Basic_Block_T := Get_Insert_Block;
       BB_End           : constant Basic_Block_T :=
@@ -506,7 +504,7 @@ package body GNATLLVM.Conditionals is
       --  of the data.  We emit the code for each alternative as part of
       --  that process.
 
-      Alt := First (Alternatives (Node));
+      Alt := First (Alternatives (N));
       while Present (Alt) loop
          First_Choice := Current_Choice;
          BB           := Create_Basic_Block ("case-alt");
@@ -631,7 +629,7 @@ package body GNATLLVM.Conditionals is
                      BB := Create_Basic_Block ("case-when");
                   end if;
 
-                  Emit_If_Range (Node, LHS, Choices (K).Low, Choices (K).High,
+                  Emit_If_Range (N, LHS, Choices (K).Low, Choices (K).High,
                                  Alts (J).BB, BB);
                   Position_Builder_At_End (BB);
                end if;
@@ -646,7 +644,7 @@ package body GNATLLVM.Conditionals is
    -- Emit_If --
    -------------
 
-   procedure Emit_If (Node : Node_Id) is
+   procedure Emit_If (N : Node_Id) is
 
       --  Record information about each part of an "if" statement
 
@@ -658,7 +656,7 @@ package body GNATLLVM.Conditionals is
       end record;
 
       If_Parts_Pos : Nat := 1;
-      If_Parts     : array (0 .. List_Length (Elsif_Parts (Node))) of If_Ent;
+      If_Parts     : array (0 .. List_Length (Elsif_Parts (N))) of If_Ent;
       BB_End       : Basic_Block_T;
       Elsif_Part   : Node_Id;
 
@@ -666,13 +664,13 @@ package body GNATLLVM.Conditionals is
       --  First go through all the parts of the "if" statement recording
       --  the expressions and statements.
 
-      If_Parts (0) := (Cond => Condition (Node),
-                       Stmts => Then_Statements (Node),
+      If_Parts (0) := (Cond => Condition (N),
+                       Stmts => Then_Statements (N),
                        BB_True => Create_Basic_Block ("true"),
                        BB_False => Create_Basic_Block ("false"));
 
-      if Present (Elsif_Parts (Node)) then
-         Elsif_Part := First (Elsif_Parts (Node));
+      if Present (Elsif_Parts (N)) then
+         Elsif_Part := First (Elsif_Parts (N));
          while Present (Elsif_Part) loop
             If_Parts (If_Parts_Pos) := (Cond => Condition (Elsif_Part),
                                         Stmts => Then_Statements (Elsif_Part),
@@ -688,7 +686,7 @@ package body GNATLLVM.Conditionals is
       --  an "else" clause, it's a new basic block and the end; otherwise,
       --  it's the last False block.
 
-      BB_End := (if Present (Else_Statements (Node))
+      BB_End := (if Present (Else_Statements (N))
                  then Create_Basic_Block ("end")
                  else If_Parts (If_Parts_Pos - 1).BB_False);
 
@@ -707,8 +705,8 @@ package body GNATLLVM.Conditionals is
 
       --  If there's an Else part, emit it and go into the "end" basic block
 
-      if Present (Else_Statements (Node)) then
-         Emit (Else_Statements (Node));
+      if Present (Else_Statements (N)) then
+         Emit (Else_Statements (N));
          Build_Br (BB_End);
          Position_Builder_At_End (BB_End);
       end if;
@@ -719,22 +717,22 @@ package body GNATLLVM.Conditionals is
    -- Emit_If_Cond --
    ------------------
 
-   procedure Emit_If_Cond (Cond : Node_Id; BB_True, BB_False : Basic_Block_T)
+   procedure Emit_If_Cond (N : Node_Id; BB_True, BB_False : Basic_Block_T)
    is
       BB_New : Basic_Block_T;
 
    begin
-      case Nkind (Cond) is
+      case Nkind (N) is
 
          --  Process operations that we can handle in terms of different branch
          --  mechanisms, such as short-circuit operators.
 
          when N_Expression_With_Actions =>
-            Emit (Actions (Cond));
-            Emit_If_Cond (Expression (Cond), BB_True, BB_False);
+            Emit (Actions (N));
+            Emit_If_Cond (Expression (N), BB_True, BB_False);
 
          when N_Op_Not =>
-            Emit_If_Cond (Right_Opnd (Cond), BB_False, BB_True);
+            Emit_If_Cond (Right_Opnd (N), BB_False, BB_True);
             return;
 
          when N_And_Then | N_Or_Else =>
@@ -744,19 +742,17 @@ package body GNATLLVM.Conditionals is
             --  one where we test the right operand.
 
             BB_New := Create_Basic_Block ("short-circuit");
-            Emit_If_Cond (Left_Opnd (Cond),
-                          (if Nkind (Cond) = N_And_Then
-                           then BB_New else BB_True),
-                          (if Nkind (Cond) = N_And_Then
+            Emit_If_Cond (Left_Opnd (N),
+                          (if Nkind (N) = N_And_Then then BB_New else BB_True),
+                          (if Nkind (N) = N_And_Then
                            then BB_False else BB_New));
             Position_Builder_At_End (BB_New);
-            Emit_If_Cond (Right_Opnd (Cond), BB_True, BB_False);
+            Emit_If_Cond (Right_Opnd (N), BB_True, BB_False);
             return;
 
          when N_Op_Compare =>
-            Emit_Comparison_And_Branch (Nkind (Cond),
-                                        Left_Opnd (Cond), Right_Opnd (Cond),
-                                        BB_True, BB_False);
+            Emit_Comparison_And_Branch (Nkind (N), Left_Opnd (N),
+                                        Right_Opnd (N), BB_True, BB_False);
             return;
 
          when N_In | N_Not_In =>
@@ -767,13 +763,13 @@ package body GNATLLVM.Conditionals is
             declare
                Low, High     : Uint;
             begin
-               Decode_Range (Right_Opnd (Cond), Low, High);
+               Decode_Range (Right_Opnd (N), Low, High);
                if Low /= No_Uint and then High /= No_Uint then
                   Emit_If_Range
-                    (Cond, Emit_Expression (Left_Opnd (Cond)),
+                    (N, Emit_Expression (Left_Opnd (N)),
                      Low, High,
-                     (if Nkind (Cond) = N_In then BB_True else BB_False),
-                     (if Nkind (Cond) = N_In then BB_False else BB_True));
+                     (if Nkind (N) = N_In then BB_True else BB_False),
+                     (if Nkind (N) = N_In then BB_False else BB_True));
                   return;
                end if;
             end;
@@ -786,7 +782,7 @@ package body GNATLLVM.Conditionals is
       --  If we haven't handled it via one of the special cases above,
       --  just evaluate the expression and do the branch.
 
-      Build_Cond_Br (Emit_Expression (Cond), BB_True, BB_False);
+      Build_Cond_Br (Emit_Expression (N), BB_True, BB_False);
 
    end Emit_If_Cond;
 
@@ -795,7 +791,7 @@ package body GNATLLVM.Conditionals is
    -------------------
 
    procedure Emit_If_Range
-     (Node              : Node_Id;
+     (N                 : Node_Id;
       LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
@@ -829,9 +825,9 @@ package body GNATLLVM.Conditionals is
    -- Emit_If_Expression --
    ------------------------
 
-   function Emit_If_Expression (Node : Node_Id) return GL_Value
+   function Emit_If_Expression (N : Node_Id) return GL_Value
    is
-      Condition  : constant Node_Id       := First (Expressions (Node));
+      Condition  : constant Node_Id       := First (Expressions (N));
       Then_Expr  : constant Node_Id       := Next (Condition);
       Else_Expr  : constant Node_Id       := Next (Then_Expr);
       BB_Then    : Basic_Block_T          := Create_Basic_Block ("if-then");

@@ -910,7 +910,14 @@ package body GNATLLVM.Compile is
                   V         := Get_Value (Def_Ident);
                end if;
 
-               if Ekind (Def_Ident) in Subprogram_Kind then
+               --  If this a label, we can use "blockaddress"
+
+               if Ekind (Def_Ident) = E_Label then
+                  return G (Block_Address (LLVM_Value (Current_Func),
+                                           Get_Label_BB (Def_Ident)),
+                            Standard_A_Char);
+
+               elsif Ekind (Def_Ident) in Subprogram_Kind then
 
                   --  If we are elaborating this for 'Access, we want the
                   --  actual subprogram type here, not the type of the return

@@ -663,7 +663,7 @@ package body GNATLLVM.Types is
 
    begin
       --  If no function was specified, use the default memory allocation
-      --  function, where we pass just a size.
+      --  function, where we just pass a size.
 
       if No (Proc) then
          return Ptr_To_Ref
@@ -698,6 +698,41 @@ package body GNATLLVM.Types is
       end if;
 
    end Heap_Allocate_For_Type;
+
+   ---------------------
+   -- Heap_Deallocate --
+   ---------------------
+
+   procedure Heap_Deallocate (V : GL_Value; Proc : Entity_Id; Pool : Entity_Id)
+   is
+      Converted_V : constant GL_Value := Pointer_Cast (V, Standard_A_Char);
+      Size        : constant GL_Value := Get_Type_Size (V);
+      Align       : constant unsigned := Get_Type_Alignment (V);
+      Align_V     : constant GL_Value :=
+        Size_Const_Int (unsigned_long_long (Align));
+
+   begin
+      --  If no subprogram was specified, use the default memory deallocation
+      --  procedure, where we just pass the object and a size a size.
+
+      if No (Proc) then
+         Call (Get_Default_Free_Fn, (1 => Converted_V, 2 => Size));
+
+      --  If a procedure was specified (meaning that a pool must also
+      --  have been specified) and the pool is a record, then it's a
+      --  storage pool and we pass the pool, size, and alignment.
+
+      elsif Is_Record_Type (Full_Etype (Pool)) then
+         Call (Get_Value (Proc),
+               (1 => Converted_V, 2 => Get_Value (Pool),
+                3 => Size, 4 => Align_V));
+
+      --  Otherwise, this is the secondary stack and we just call with size
+
+      else
+         Call (Get_Value (Proc), (1 => Converted_V, 2 => Size));
+      end if;
+   end Heap_Deallocate;
 
    ---------------------------
    --  Convert_To_Size_Type --

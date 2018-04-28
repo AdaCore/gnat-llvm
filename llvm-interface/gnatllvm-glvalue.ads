@@ -32,6 +32,12 @@ with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is
 
+   --  A GL_Value can either represent an LValue (the address of a value) or
+   --  the value itself.  It can only represent the value itself if the value
+   --  is representable as an LLVM object, so we can't represent function
+   --  values (we can only represent their address) or values representing
+   --  variable-sized objects.
+
    --  Define basic accesss predicates for components of GL_Value
 
    function Has_Known_Etype (V : GL_Value) return Boolean is
@@ -232,12 +238,6 @@ package GNATLLVM.GLValue is
                               Full_Designated_Type (V));
    --  Indicate that we want to consider G as a reference to its designated
    --  type.
-
-   --  A GL_Value can either represent an LValue (the address of a value) or
-   --  the value itself.  It can only represent the value itself if the value
-   --  is representable as an LLVM object, so we can't represent function
-   --  values (we can only represent their address) or values representing
-   --  variable-sized objects.
 
    function Get_Undef (TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE), Post => Present (Get_Undef'Result);
@@ -896,6 +896,12 @@ package GNATLLVM.GLValue is
      (Build_Switch (IR_Builder, LLVM_Value (V), Default, unsigned (Blocks)))
      with Pre  => Present (V) and then Present (Default),
           Post => Present (Build_Switch'Result);
+
+   function Get_Type_Size (V : GL_Value) return GL_Value
+     with Pre => Present (V), Post => Present (Get_Type_Size'Result);
+
+   function Get_Type_Alignment (V : GL_Value) return unsigned
+     with Pre => Present (V);
 
    function Add_Function
      (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value is

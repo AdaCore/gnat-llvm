@@ -278,6 +278,11 @@ package body GNATLLVM.Compile is
                Discard (Emit_Subprogram_Decl (Specification (N)));
             end if;
 
+         when N_Free_Statement =>
+            Heap_Deallocate
+              (Emit_Expression (Expression (N)),
+               Procedure_To_Call (N), Storage_Pool (N));
+
          when N_Handled_Sequence_Of_Statements =>
             Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
             Emit (Statements (N));
@@ -1540,8 +1545,7 @@ package body GNATLLVM.Compile is
                      Emit_Assignment (Result, Empty, Value, True, True);
                   end if;
 
-                  return
-                    Convert_To_Access_To (Result, Full_Designated_Type (TE));
+                  return Result;
                end;
 
             when N_Reference =>

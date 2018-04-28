@@ -444,6 +444,20 @@ package body GNATLLVM.GLValue is
       Discard (Call (Func, Standard_Void_Type, Args, Name));
    end Call;
 
+   -------------------
+   -- Get_Type_Size --
+   -------------------
+
+   function Get_Type_Size (V : GL_Value) return GL_Value is
+      (Get_Type_Size (Full_Etype (V), V));
+
+   ------------------------
+   -- Get_Type_Alignment --
+   ------------------------
+
+   function Get_Type_Alignment (V : GL_Value) return unsigned is
+      (Get_Type_Alignment (Full_Etype (V)));
+
    ----------------
    -- Add_Global --
    ----------------

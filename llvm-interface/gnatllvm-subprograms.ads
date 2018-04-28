@@ -76,7 +76,11 @@ package GNATLLVM.Subprograms is
 
    function Get_Default_Alloc_Fn return GL_Value
      with Post => Present (Get_Default_Alloc_Fn'Result);
-   --  Get default function to use for allocting memory
+   --  Get default function to use for allocating memory
+
+   function Get_Default_Free_Fn return GL_Value
+     with Post => Present (Get_Default_Free_Fn'Result);
+   --  Get default function to use for freeing memory
 
    function Get_Memory_Compare_Fn return GL_Value
      with Post => Present (Get_Memory_Compare_Fn'Result);

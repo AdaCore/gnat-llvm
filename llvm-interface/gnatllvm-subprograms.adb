@@ -55,6 +55,9 @@ package body GNATLLVM.Subprograms is
    Default_Alloc_Fn  : GL_Value := No_GL_Value;
    --  Default memory allocation function
 
+   Default_Free_Fn   : GL_Value := No_GL_Value;
+   --  Default memory deallocation function
+
    Memory_Compare_Fn : GL_Value := No_GL_Value;
    --  Function to compare memory
 
@@ -269,6 +272,23 @@ package body GNATLLVM.Subprograms is
 
       return Default_Alloc_Fn;
    end Get_Default_Alloc_Fn;
+
+   -------------------------
+   -- Get_Default_Free_Fn --
+   -------------------------
+
+   function Get_Default_Free_Fn return GL_Value is
+   begin
+      if No (Default_Free_Fn) then
+         Default_Free_Fn :=
+           Add_Function ("free",
+                         Fn_Ty ((1 => Void_Ptr_Type, 2 => LLVM_Size_Type),
+                                Void_Type),
+                         Standard_Void_Type);
+      end if;
+
+      return Default_Free_Fn;
+   end Get_Default_Free_Fn;
 
    ---------------------------
    -- Get_Memory_Compare_Fn --

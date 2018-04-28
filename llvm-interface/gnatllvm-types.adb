@@ -690,14 +690,20 @@ package body GNATLLVM.Types is
       Align_V : constant GL_Value := Size_Const_Int (Align);
       Ret_Loc : constant GL_Value :=
         (if No (Proc) then No_GL_Value else Allocate_For_Type (Size_Type));
+      Result  : GL_Value;
 
    begin
       --  If no function was specified, use the default memory allocation
       --  function, where we just pass a size.
 
       if No (Proc) then
-         return Ptr_To_Ref
-           (Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size)), TE);
+         Result := Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size));
+
+         if Is_Array_Type (TE) and then not Is_Constrained (TE) then
+            return Ptr_To_Raw_Array (Result, TE);
+         else
+            return Ptr_To_Ref (Result, TE);
+         end if;
 
       --  If a procedure was specified (meaning that a pool must also
       --  have been specified) and the pool is a record, then it's a

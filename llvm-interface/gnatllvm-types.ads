@@ -41,8 +41,7 @@ package GNATLLVM.Types is
      with Pre  => Is_Type (TE), Post => Present (Create_Access_Type'Result);
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
-   --  between the two. For the moment, it handles array accesses and thin
-   --  (normal) accesses.
+   --  between the two.
 
    function GNAT_To_LLVM_Type
      (TE : Entity_Id; Definition : Boolean) return Type_T

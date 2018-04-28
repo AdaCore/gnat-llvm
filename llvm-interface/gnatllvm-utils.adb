@@ -48,7 +48,7 @@ package body GNATLLVM.Utils is
    procedure Decode_Range (N : Node_Id; Low, High : out Uint) is
    begin
       case Nkind (N) is
-         when N_Identifier =>
+         when N_Identifier | N_Expanded_Name =>
 
             --  An N_Identifier can either be a type, in which case we look
             --  at the range of the type, or a constant, in which case we
@@ -220,7 +220,7 @@ package body GNATLLVM.Utils is
                return No_Uint;
             end if;
 
-         when N_Identifier =>
+         when N_Identifier | N_Expanded_Name =>
             --  If an N_Identifier is static, its N_Defining_Identifier is
             --  either an E_Constant or an E_Enumeration_Literal.
 

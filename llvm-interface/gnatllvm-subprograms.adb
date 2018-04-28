@@ -424,11 +424,14 @@ package body GNATLLVM.Subprograms is
       Emit (Declarations (N));
       Emit (Statements (Handled_Statement_Sequence (N)));
 
-      --  If the last instrution isn't a terminator, add a return
+      --  If the last instrution isn't a terminator, add a return, but
+      --  use an access type if this is a dynamic type.
 
       if not Are_In_Dead_Code then
          if Void_Return then
             Build_Ret_Void;
+         elsif Is_Dynamic_Size (Return_Typ) then
+            Build_Ret (Get_Undef_Ref (Return_Typ));
          else
             Build_Ret (Get_Undef (Return_Typ));
          end if;

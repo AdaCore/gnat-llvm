@@ -157,4 +157,13 @@ package GNATLLVM.Arrays is
    --  is the destination array type, which is what specifies the types of
    --  the bounds.
 
+   function Update_Fat_Pointer
+     (Fat_Ptr : GL_Value; Array_Data : GL_Value) return GL_Value
+     with Pre  => Is_Access_Unconstrained (Fat_Ptr)
+                  and then Is_Raw_Array (Array_Data),
+          Post => Is_Access_Unconstrained (Update_Fat_Pointer'Result);
+   --  We have a fat pointer and have copied the underlying data.  We
+   --  now want to make a fat pointer with the same bounds but with the
+   --  new data.
+
 end GNATLLVM.Arrays;

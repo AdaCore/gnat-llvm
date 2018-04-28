@@ -579,8 +579,20 @@ package body GNATLLVM.Compile is
                         --  are from the type of the original value.
 
                         Emit_Assignment (Temp, Empty, Value, True, True);
-                        Build_Ret (Convert_To_Access_To
-                                     (G_Is_Ref (Temp, Typ), TE));
+
+                        --  If the expression was a constrained array, show
+                        --  that what we have is of that type and then
+                        --  make a fat pointer to it.
+
+                        if Is_Constrained (Typ) then
+                           Build_Ret (Convert_To_Access_To
+                                        (G_Is_Ref (Temp, Typ), TE));
+                        else
+                           --  Otherwise, we have to update the old fat
+                           --  pointer with the new array data.
+
+                           Build_Ret (Update_Fat_Pointer (Value, Temp));
+                        end if;
                      end;
                   else
                      Build_Ret (Build_Type_Conversion (Expr, TE));

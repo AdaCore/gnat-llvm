@@ -120,6 +120,11 @@ package GNATLLVM.Types is
           Post => Present (Convert_To_Elementary_Type'Result);
    --  Variant of above where the type is that of another value (T)
 
+   function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
+   --  Remove any conversion from E, if Present, if they are record or array
+   --  conversions that increase the complexity of the size of the
+   --  type because the caller will be doing any needed conversions.
+
    function Bounds_To_Length
      (Low, High : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (Low) and then Present (High) and then Is_Type (TE)

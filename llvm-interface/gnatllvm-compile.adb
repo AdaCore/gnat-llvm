@@ -532,7 +532,8 @@ package body GNATLLVM.Compile is
          when N_Simple_Return_Statement =>
             if Present (Expression (N)) then
                declare
-                  Expr : constant Node_Id := Expression (N);
+                  Expr : constant Node_Id :=
+                    Strip_Complex_Conversions (Expression (N));
                   TE   : constant Entity_Id :=
                     Full_Etype (Node_Enclosing_Subprogram (N));
 
@@ -1671,25 +1672,11 @@ package body GNATLLVM.Compile is
       Forwards_OK, Backwards_OK : Boolean)
    is
       Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);
-      E         : Node_Id            := Orig_E;
+      E         : constant Node_Id   := Strip_Complex_Conversions (Orig_E);
       Dest      : GL_Value           := LValue;
       Src       : GL_Value;
 
    begin
-
-      --  Remove any conversion from E if they are record or array
-      --  conversions that increase the complexity of the size of the
-      --  type because we'll be doing any needed conversions below.
-
-      while Nkind_In (E, N_Type_Conversion, N_Unchecked_Type_Conversion,
-                      N_Qualified_Expression)
-        and then Is_Composite_Type (Full_Etype (E))
-        and then (Get_Type_Size_Complexity (Full_Etype (E))
-                    > Get_Type_Size_Complexity (Full_Etype (Expression (E))))
-      loop
-         E := Expression (E);
-      end loop;
-
       --  See if we have the special case where we're assigning all zeros.
       --  ?? This should really be in Emit_Array_Aggregate, which should take
       --  an LHS.

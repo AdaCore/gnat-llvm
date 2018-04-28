@@ -283,6 +283,16 @@ package body GNATLLVM.Types is
       then
          return Bit_Cast (V, TE);
 
+      --  If we have an unconstrained array that we're constraining,
+      --  convert to the an access to the result and then see if we can
+      --  get it as a value (which will only be the case for constant
+      --  size.
+
+      elsif Is_Access_Unconstrained (V)
+        and then Is_Array_Type (TE) and then Is_Constrained (TE)
+      then
+         return Need_Value (Convert_To_Access_To (V, TE), TE);
+
       --  Otherwise, these must be cases where we have to convert by
       --  pointer punning.  If the source is a type of dynamic size, the
       --  value is already a pointer.  Otherwise, we have to make it a
@@ -304,6 +314,27 @@ package body GNATLLVM.Types is
 
       return Subp (V, TE, "unchecked-conv");
    end Build_Unchecked_Conversion;
+
+   -------------------------------
+   -- Strip_Complex_Conversions --
+   -------------------------------
+
+   function Strip_Complex_Conversions (N : Node_Id) return Node_Id is
+      E : Node_Id := N;
+
+   begin
+      while Present (E)
+        and then Nkind_In (E, N_Type_Conversion, N_Unchecked_Type_Conversion,
+                           N_Qualified_Expression)
+        and then Is_Composite_Type (Full_Etype (E))
+        and then (Get_Type_Size_Complexity (Full_Etype (E))
+                    > Get_Type_Size_Complexity (Full_Etype (Expression (E))))
+      loop
+         E := Expression (E);
+      end loop;
+
+      return E;
+   end Strip_Complex_Conversions;
 
    ----------------------
    -- Bounds_To_Length --

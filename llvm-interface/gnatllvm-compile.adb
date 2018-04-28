@@ -49,7 +49,6 @@ with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Compile is
 
@@ -2304,10 +2303,10 @@ package body GNATLLVM.Compile is
 
          --  Now create the inline asm
 
-         Inline_Asm := Build_Inline_Asm (Fn_Ty (Arg_Tys, Output_Type),
+         Inline_Asm := Const_Inline_Asm (Fn_Ty (Arg_Tys, Output_Type),
                                          Template,
                                          Constraints (1 .. Constraint_Pos),
-                                         Is_Asm_Volatile (N));
+                                         Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the vall with an output and store
          --  the result.  Otherwise, just do the call.

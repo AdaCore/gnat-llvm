@@ -132,15 +132,6 @@ Set_Alloca_Align (AllocaInst *inst, unsigned align)
     inst->setAlignment (align);
 }
 
-extern "C"
-Value *
-Build_Inline_Asm_C (FunctionType *Ty, char *asmString,
-		    char *constraints, bool hasSideEffects)
-{
-    return InlineAsm::get (Ty, StringRef (asmString),
-			   StringRef (constraints), hasSideEffects);
-}
-
 /* The LLVM C interface only provide single-index forms of extractvalue
    and insertvalue, so provide the multi-index forms here.  */
 

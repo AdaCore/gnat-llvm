@@ -34,26 +34,6 @@ package body GNATLLVM.Wrapper is
       return Create_TBAA_Scalar_Type_Node_C (MDBld, Name & ASCII.NUL, Parent);
    end Create_TBAA_Scalar_Type_Node;
 
-   ----------------------
-   -- Build_Inline_Asm --
-   ----------------------
-
-   function Build_Inline_Asm
-     (Func_Typ                : Type_T;
-      Asm_String, Constraints : String;
-      Is_Volatile             : Boolean := False) return Value_T
-   is
-      function Build_Inline_Asm_C
-     (Func_Typ                : Type_T;
-      Asm_String, Constraints : String;
-      Is_Volatile             : Integer) return Value_T;
-      pragma Import (C, Build_Inline_Asm_C, "Build_Inline_Asm_C");
-   begin
-      return Build_Inline_Asm_C (Func_Typ, Asm_String & ASCII.NUL,
-                                 Constraints & ASCII.NUL,
-                                 (if Is_Volatile then 1 else 0));
-   end Build_Inline_Asm;
-
    ------------------------
    -- Build_Extract_Value --
    ------------------------

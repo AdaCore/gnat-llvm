@@ -913,9 +913,8 @@ package body GNATLLVM.Compile is
                --  If this a label, we can use "blockaddress"
 
                if Ekind (Def_Ident) = E_Label then
-                  return G (Block_Address (LLVM_Value (Current_Func),
-                                           Get_Label_BB (Def_Ident)),
-                            Standard_A_Char);
+                  return
+                    Block_Address (Current_Func, Get_Label_BB (Def_Ident));
 
                elsif Ekind (Def_Ident) in Subprogram_Kind then
 
@@ -2169,7 +2168,6 @@ package body GNATLLVM.Compile is
       Num_Inputs        : Integer            := 0;
       Constraint_Length : Integer            := 0;
       Output_Val        : GL_Value           := No_GL_Value;
-      Output_Type       : Type_T             := Void_Type;
       Output_Variable   : Node_Id;
       Output_Constraint : Node_Id;
       Input             : Node_Id;
@@ -2185,8 +2183,7 @@ package body GNATLLVM.Compile is
          Output_Constraint := Asm_Output_Constraint;
          Constraint_Length :=
            Integer (String_Length (Strval (Output_Constraint)));
-         Output_Val        := Emit_LValue (Output_Variable);
-         Output_Type       := Create_Type (Full_Designated_Type (Output_Val));
+         Output_Val := Emit_LValue (Output_Variable);
          Next_Asm_Output;
          if Present (Asm_Output_Variable) then
             Error_Msg_N ("LLVM only allows one output", N);
@@ -2221,12 +2218,11 @@ package body GNATLLVM.Compile is
 
       declare
          Args           : GL_Value_Array (1 .. Nat (Num_Inputs));
-         Arg_Tys        : Type_Array (1 .. Nat (Num_Inputs));
          Constraints    : String (1 .. Num_Inputs + Constraint_Length + 3);
          Constraint_Pos : Integer := 0;
          Input_Pos      : Nat := 0;
          Need_Comma     : Boolean := False;
-         Inline_Asm     : Value_T;
+         Asm            : GL_Value;
          Template       : String (1 .. Integer (String_Length
                                                   (Template_Strval)));
 
@@ -2276,7 +2272,6 @@ package body GNATLLVM.Compile is
             Args (Input_Pos) :=
               Need_Value (Emit_Expression (Entity (Input)),
                           Full_Etype (Input));
-            Arg_Tys (Input_Pos) := Type_Of (Args (Input_Pos));
             Add_Constraint (Asm_Input_Constraint);
             Next_Asm_Input;
             Input := Asm_Input_Value;
@@ -2310,20 +2305,17 @@ package body GNATLLVM.Compile is
 
          --  Now create the inline asm
 
-         Inline_Asm := Const_Inline_Asm (Fn_Ty (Arg_Tys, Output_Type),
-                                         Template,
-                                         Constraints (1 .. Constraint_Pos),
-                                         Is_Asm_Volatile (N), False);
+         Asm := Inline_Asm (Args, Output_Variable, Template,
+                            Constraints (1 .. Constraint_Pos),
+                            Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the vall with an output and store
          --  the result.  Otherwise, just do the call.
 
          if Present (Output_Variable) then
-            Store (Call (G (Inline_Asm, Full_Etype (Output_Variable)),
-                         Full_Etype (Output_Variable), Args),
-                   Output_Val);
+            Store (Call (Asm, Full_Etype (Asm), Args), Output_Val);
          else
-            Call (G (Inline_Asm, Standard_Void_Type), Args);
+            Call (Asm, Args);
          end if;
       end;
    end Emit_Code_Statement;

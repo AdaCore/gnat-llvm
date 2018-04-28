@@ -891,6 +891,20 @@ package GNATLLVM.GLValue is
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
      with Pre  => Present (Func);
 
+   function Inline_Asm
+     (Args           : GL_Value_Array;
+      Output_Value   : Entity_Id;
+      Template       : String;
+      Constraints    : String;
+      Is_Volatile    : Boolean := False;
+      Is_Stack_Align : Boolean := False) return GL_Value;
+
+   function Block_Address
+     (Func : GL_Value; BB : Basic_Block_T) return GL_Value is
+      (G (Block_Address (LLVM_Value (Func), BB), Standard_A_Char))
+     with Pre  => Present (Func) and then Present (BB),
+          Post => Present (Block_Address'Result);
+
    function Build_Switch
      (V : GL_Value; Default : Basic_Block_T; Blocks : Nat) return Value_T is
      (Build_Switch (IR_Builder, LLVM_Value (V), Default, unsigned (Blocks)))

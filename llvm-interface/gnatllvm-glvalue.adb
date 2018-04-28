@@ -444,6 +444,35 @@ package body GNATLLVM.GLValue is
       Discard (Call (Func, Standard_Void_Type, Args, Name));
    end Call;
 
+   ----------------
+   -- Inline_Asm --
+   ----------------
+
+   function Inline_Asm
+     (Args           : GL_Value_Array;
+      Output_Value   : Entity_Id;
+      Template       : String;
+      Constraints    : String;
+      Is_Volatile    : Boolean := False;
+      Is_Stack_Align : Boolean := False) return GL_Value
+   is
+      TE        : constant Entity_Id :=
+        (if Present (Output_Value) then Full_Etype (Output_Value)
+         else Standard_Void_Type);
+      T         : constant Type_T :=
+        (if Present (Output_Value) then Create_Type (TE) else Void_Type);
+      Arg_Types : Type_Array (Args'Range);
+
+   begin
+      for J in Args'Range loop
+         Arg_Types (J) := Type_Of (Args (J));
+      end loop;
+
+      return G (Const_Inline_Asm (Fn_Ty (Arg_Types, T), Template,
+                                  Constraints, Is_Volatile, Is_Stack_Align),
+                TE);
+   end Inline_Asm;
+
    -------------------
    -- Get_Type_Size --
    -------------------

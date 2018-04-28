@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Get_Targ; use Get_Targ;
 with Namet;    use Namet;
@@ -390,7 +389,7 @@ package body GNATLLVM.Records is
       Idx      : Record_Info_Id;
       For_Type : Boolean) return GL_Value
    is
-      Total_Size : GL_Value := Size_Const_Int (0);
+      Total_Size : GL_Value := Size_Const_Null;
       Cur_Align  : unsigned := unsigned (Get_Maximum_Alignment);
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
@@ -425,9 +424,8 @@ package body GNATLLVM.Records is
 
          if This_Align > Cur_Align then
             Total_Size := Build_And
-              (NSW_Add (Total_Size,
-                        Size_Const_Int (unsigned_long_long (This_Align) - 1)),
-               NSW_Neg (Size_Const_Int (unsigned_long_long (This_Align))));
+              (NSW_Add (Total_Size, Size_Const_Int (This_Align - 1)),
+               NSW_Neg (Size_Const_Int (This_Align)));
          end if;
 
          Total_Size := NSW_Add (Total_Size, This_Size);
@@ -506,8 +504,7 @@ package body GNATLLVM.Records is
 
       return GEP (F_Type, Result,
                   (1 => Const_Null_32,
-                   2 => Const_Int_32
-                     (unsigned_long_long (FI.Field_Ordinal))));
+                   2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
 
    end Record_Field_Offset;
 

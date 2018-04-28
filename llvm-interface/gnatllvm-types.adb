@@ -687,8 +687,7 @@ package body GNATLLVM.Types is
    is
       Size    : constant GL_Value := Get_Type_Size (TE, V, For_Type => No (V));
       Align   : constant unsigned := Get_Type_Alignment (TE);
-      Align_V : constant GL_Value :=
-        Size_Const_Int (unsigned_long_long (Align));
+      Align_V : constant GL_Value := Size_Const_Int (Align);
       Ret_Loc : constant GL_Value :=
         (if No (Proc) then No_GL_Value else Allocate_For_Type (Size_Type));
 
@@ -739,8 +738,7 @@ package body GNATLLVM.Types is
       Converted_V : constant GL_Value := Pointer_Cast (V, Standard_A_Char);
       Size        : constant GL_Value := Get_Type_Size (V);
       Align       : constant unsigned := Get_Type_Alignment (V);
-      Align_V     : constant GL_Value :=
-        Size_Const_Int (unsigned_long_long (Align));
+      Align_V     : constant GL_Value := Size_Const_Int (Align);
 
    begin
       --  If no subprogram was specified, use the default memory deallocation

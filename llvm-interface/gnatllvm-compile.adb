@@ -704,18 +704,15 @@ package body GNATLLVM.Compile is
                         Position_Builder_At_End (BB_Iter);
 
                         declare
-                           Iter_Prev_Value : constant GL_Value :=
-                             Load (LLVM_Var);
-                           One             : constant GL_Value :=
-                             Const_Int (Var_Type, 1, False);
-                           Iter_Next_Value : constant GL_Value :=
+                           Prev : constant GL_Value := Load (LLVM_Var);
+                           One  : constant GL_Value :=
+                             Const_Int (Var_Type, Uint_1);
+                           Next : constant GL_Value :=
                              (if Reversed
-                              then NSW_Sub
-                                (Iter_Prev_Value, One, "next-loop-var")
-                              else NSW_Add
-                                (Iter_Prev_Value, One, "next-loop-var"));
+                              then NSW_Sub (Prev, One, "next-loop-var")
+                              else NSW_Add (Prev, One, "next-loop-var"));
                         begin
-                           Store (Iter_Next_Value, LLVM_Var);
+                           Store (Next, LLVM_Var);
                         end;
 
                         Build_Br (BB_Stmts);
@@ -1246,18 +1243,15 @@ package body GNATLLVM.Compile is
                   --  then half of the RHS (e.g., > (RHS + 1) / 2), we add
                   --  one to the result.
 
-                  Remainder       : constant GL_Value :=
-                    U_Rem (LVal, RVal);
-                  Half_RHS        : constant GL_Value :=
-                    L_Shr (NSW_Sub (RVal, Const_Int (RVal, 1)),
-                           Const_Int (RVal, 1));
-                  Result_Plus_One : constant GL_Value :=
-                    NSW_Add (Result, Const_Int (RVal, 1));
-                  Need_Adjust     : constant GL_Value :=
+                  One         : constant GL_Value := Const_Int (RVal, Uint_1);
+                  Remainder   : constant GL_Value := U_Rem (LVal, RVal);
+                  Half_RHS    : constant GL_Value :=
+                    L_Shr (NSW_Sub (RVal, One), One);
+                  Plus_One    : constant GL_Value := NSW_Add (Result, One);
+                  Need_Adjust : constant GL_Value :=
                     I_Cmp (Int_UGT, Remainder, Half_RHS);
                begin
-                  Result := Build_Select
-                    (Need_Adjust, Result_Plus_One, Result);
+                  Result := Build_Select (Need_Adjust, Plus_One, Result);
                end;
 
             elsif Nkind (N) = N_Op_Divide and then Rounded_Result (N)
@@ -1272,26 +1266,22 @@ package body GNATLLVM.Compile is
                   --  to either add or subtract one from the result,
                   --  depending on whether RHS is positive or negative.
 
-                  Remainder        : constant GL_Value := S_Rem (LVal, RVal);
-                  Rem_Negative     : constant GL_Value :=
+                  One       : constant GL_Value := Const_Int (RVal, Uint_1);
+                  Remainder : constant GL_Value := S_Rem (LVal, RVal);
+                  Rem_Neg   : constant GL_Value :=
                     I_Cmp (Int_SLT, Remainder, Const_Null (Remainder));
-                  Abs_Rem          : constant GL_Value :=
-                    Build_Select (Rem_Negative, NSW_Neg (Remainder),
-                                  Remainder);
-                  RHS_Negative     : constant GL_Value :=
+                  Abs_Rem   : constant GL_Value :=
+                    Build_Select (Rem_Neg, NSW_Neg (Remainder), Remainder);
+                  RHS_Neg   : constant GL_Value :=
                     I_Cmp (Int_SLT, RVal, Const_Null (RVal));
-                  Abs_RHS : constant GL_Value :=
-                    Build_Select (RHS_Negative, NSW_Neg (RVal), RVal);
+                  Abs_RHS   : constant GL_Value :=
+                    Build_Select (RHS_Neg, NSW_Neg (RVal), RVal);
                   Need_Adjust      : constant GL_Value :=
-                    I_Cmp (Int_UGE, Shl (Abs_Rem, Const_Int (RVal, 1)),
-                           Abs_RHS);
-                  Result_Plus_One  : constant GL_Value :=
-                    NSW_Add (Result, Const_Int (RVal, 1));
-                  Result_Minus_One : constant GL_Value :=
-                    NSW_Sub (Result, Const_Int (RVal, 1));
+                    I_Cmp (Int_UGE, Shl (Abs_Rem, One), Abs_RHS);
+                  Plus_One  : constant GL_Value := NSW_Add (Result, One);
+                  Minus_One : constant GL_Value := NSW_Sub (Result, One);
                   Which_Adjust     : constant GL_Value :=
-                    Build_Select (RHS_Negative, Result_Minus_One,
-                                  Result_Plus_One);
+                    Build_Select (RHS_Neg, Minus_One, Plus_One);
 
                begin
                   Result := Build_Select (Need_Adjust, Which_Adjust, Result);
@@ -1711,7 +1701,7 @@ package body GNATLLVM.Compile is
                   (1 => Pointer_Cast (Dest, Standard_A_Char),
                    2 => Const_Null (Standard_Short_Short_Integer),
                    3 => Get_Type_Size (Dest_Type, No_GL_Value),
-                   4 => Const_Int_32 (unsigned_long_long (Align)),
+                   4 => Const_Int_32 (Align),
                    5 => Const_False));  --  Is_Volatile
          end;
 
@@ -1782,7 +1772,7 @@ package body GNATLLVM.Compile is
                   (1 => Pointer_Cast (Dest, Standard_A_Char),
                    2 => Pointer_Cast (Src, Standard_A_Char),
                    3 => Size,
-                   4 => Const_Int_32 (unsigned_long_long (Align)),
+                   4 => Const_Int_32 (Align),
                    5 => Const_False)); -- Is_Volatile
          end;
       end if;
@@ -1812,8 +1802,17 @@ package body GNATLLVM.Compile is
             return Convert_To_Access_To (Emit_LValue (Prefix (N)),
                                          Full_Designated_Type (TE));
 
-         when Attribute_Address =>
+         when Attribute_Address
+            | Attribute_Pool_Address =>
             V := Emit_LValue (Prefix (N));
+
+            --  If we are taking 'Address of an unconstrained object,
+            --  this is the pointer to the underlying array.
+
+            if Is_Access_Unconstrained (V) then
+               V := Array_Data (V);
+            end if;
+
             return (if LValue then V else Ptr_To_Int (V, TE, "attr-address"));
 
          when Attribute_Deref =>
@@ -1887,6 +1886,23 @@ package body GNATLLVM.Compile is
                return Convert_To_Elementary_Type (Result, TE);
             end;
 
+         when Attribute_First_Bit =>
+
+            --  We don't support packing, so this is always zero
+
+            return Const_Null (TE);
+
+         when Attribute_Last_Bit =>
+
+            --  We don't support packing, so this is always the size minus 1
+
+            return Convert_To_Elementary_Type
+              (NSW_Sub (NSW_Mul (Get_Type_Size (Full_Etype (Prefix (N)),
+                                                No_GL_Value),
+                                 Size_Const_Int (Uint_8)),
+                        Size_Const_Int (Uint_1)),
+               TE);
+
          when Attribute_Max
             | Attribute_Min =>
             pragma Assert (List_Length (Expressions (N)) = 2);
@@ -1911,7 +1927,8 @@ package body GNATLLVM.Compile is
                   else NSW_Sub (Base, One, "attr-pred"));
             end;
 
-         when Attribute_Machine =>
+         when Attribute_Machine
+            | Attribute_Model =>
 
             --  ??? For now return the prefix itself. Would need to force a
             --  store in some cases.
@@ -1924,13 +1941,13 @@ package body GNATLLVM.Compile is
                Align : constant unsigned := Get_Type_Alignment (Pre);
 
             begin
-               return Const_Int (TE, unsigned_long_long (Align),
-                                 Sign_Extend => False);
+               return Const_Int (TE, Align, Sign_Extend => False);
             end;
 
          when Attribute_Size
             | Attribute_Object_Size
-            | Attribute_Value_Size =>
+            | Attribute_Value_Size
+            | Attribute_Max_Size_In_Storage_Elements =>
 
             --  ?? These aren't quite the same thing, but they're close
             --  enough for quite a while.
@@ -1946,9 +1963,20 @@ package body GNATLLVM.Compile is
                                  else Emit_LValue (Prefix (N)));
                return Convert_To_Elementary_Type
                  (NSW_Mul (Get_Type_Size (Prefix_Type, V, For_Type),
-                           Size_Const_Int (8)),
+                           Size_Const_Int (Uint_8)),
                   TE);
             end;
+
+         when Attribute_Component_Size =>
+            return Convert_To_Elementary_Type
+              (NSW_Mul (Get_Type_Size
+                          (Full_Designated_Type (Full_Etype (Prefix (N))),
+                           No_GL_Value),
+                        Size_Const_Int (Uint_8)),
+               TE);
+
+         when Attribute_Null_Parameter =>
+            return Load (Const_Null_Ptr (Full_Etype (Prefix (N))));
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &

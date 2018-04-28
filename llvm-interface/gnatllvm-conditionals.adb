@@ -128,14 +128,10 @@ package body GNATLLVM.Conditionals is
          --  or false.
 
          declare
-            False_Val    : constant GL_Value      :=
-              Const_Int (Standard_Boolean, 0, False);
-            True_Val     : constant GL_Value      :=
-              Const_Int (Standard_Boolean, 1, False);
-            BB_True      : constant Basic_Block_T :=
-              Create_Basic_Block ("true");
-            BB_False     : constant Basic_Block_T :=
-              Create_Basic_Block ("false");
+            False_Val    : constant GL_Value      := Const_False;
+            True_Val     : constant GL_Value      := Const_True;
+            BB_True      : constant Basic_Block_T := Create_Basic_Block;
+            BB_False     : constant Basic_Block_T := Create_Basic_Block;
             BB_Merge     : constant Basic_Block_T :=
               Create_Basic_Block ("merge");
             Results      : constant GL_Value_Array (1 .. 2)    :=
@@ -304,7 +300,7 @@ package body GNATLLVM.Conditionals is
                    2 => Pointer_Cast (Array_Data (RHS_Val), Standard_A_Char),
                    3 => Size));
                Cond   : constant GL_Value :=
-                 I_Cmp (Int_EQ, Memcmp, Const_Int (Standard_Integer, 0));
+                 I_Cmp (Int_EQ, Memcmp, Const_Null (Standard_Integer));
 
             begin
                Build_Cond_Br (Cond, BB_T, BB_F);

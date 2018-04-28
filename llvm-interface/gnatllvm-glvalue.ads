@@ -263,6 +263,14 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Present (Const_Int'Result);
 
+   function Const_Int
+     (TE          : Entity_Id;
+      N           : unsigned;
+      Sign_Extend : Boolean := False) return GL_Value is
+     (Const_Int (TE, unsigned_long_long (N), Sign_Extend))
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Present (Const_Int'Result);
+
    function Const_Ones (TE : Entity_Id) return GL_Value is
      (Const_Int (TE, unsigned_long_long'Last, Sign_Extend => True))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
@@ -294,6 +302,15 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
           Post => Present (Const_Int'Result);
 
+   function Const_Int
+     (V           : GL_Value;
+      N           : unsigned;
+      Sign_Extend : Boolean := False) return GL_Value
+   is
+     (Const_Int (Etype (V), unsigned_long_long (N), Sign_Extend))
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
+          Post => Present (Const_Int'Result);
+
    function Const_Ones (V : GL_Value) return GL_Value is
      (Const_Ones (Etype (V)))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
@@ -309,10 +326,21 @@ package GNATLLVM.GLValue is
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
+     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
+   is
+     (Const_Int (Size_Type, unsigned_long_long (N), Sign_Extend))
+     with Post => Present (Size_Const_Int'Result);
+
+   function Size_Const_Int
      (N : unsigned_long_long; Sign_Extend : Boolean := False) return GL_Value
    is
      (Const_Int (Size_Type, N, Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
+
+   function Size_Const_Null return GL_Value
+   is
+     (Size_Const_Int (unsigned_long_long (0)))
+     with Post => Present (Size_Const_Null'Result);
 
    function Const_Int_32 (N : Uint) return GL_Value is
      (Const_Int (Int_32_Type, N))
@@ -324,9 +352,15 @@ package GNATLLVM.GLValue is
      (Const_Int (Int_32_Type, N, Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
+   function Const_Int_32
+     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
+   is
+     (Const_Int (Int_32_Type, unsigned_long_long (N), Sign_Extend))
+     with Post => Present (Const_Int_32'Result);
+
    function Const_Null_32 return GL_Value
    is
-     (Const_Int_32 (0))
+     (Const_Int_32 (unsigned_long_long (0)))
      with Post => Present (Const_Null_32'Result);
 
    function Const_Real (V : GL_Value; F : double) return GL_Value is
@@ -335,9 +369,9 @@ package GNATLLVM.GLValue is
            Post => Present (Const_Real'Result);
 
    function Const_True return GL_Value is
-     (Const_Int (Standard_Boolean, 1));
+     (Const_Int (Standard_Boolean, unsigned_long_long (1)));
    function Const_False return GL_Value is
-     (Const_Int (Standard_Boolean, 0));
+     (Const_Int (Standard_Boolean, unsigned_long_long (0)));
 
    --  Define IR builder variants which take and/or return GL_Value
 

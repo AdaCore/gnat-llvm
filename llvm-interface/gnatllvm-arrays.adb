@@ -624,7 +624,7 @@ package body GNATLLVM.Arrays is
       Comp_Type      : constant Entity_Id := Full_Component_Type (Array_Type);
       Array_Data_Ptr : constant GL_Value  := Array_Data (V);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
-        (1 => Size_Const_Int (0), others => <>);
+        (1 => Size_Const_Null, others => <>);
       --  Operands for the GetElementPtr instruction: one for the
       --  pointer deference, and then one per array index.
 
@@ -731,7 +731,7 @@ package body GNATLLVM.Arrays is
 
       if Type_Is_Sized (Create_Type (Arr_Type)) then
          return Ptr_To_Ref (GEP (TE, Array_Data_Ptr,
-                                 (Size_Const_Int (0), Index_Shift),
+                                 (Size_Const_Null, Index_Shift),
                                  "array-shifted"), TE);
       end if;
 

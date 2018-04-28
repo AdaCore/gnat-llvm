@@ -564,7 +564,7 @@ package body GNATLLVM.Compile is
                      begin
                         --  This is a bit tricky because the only place
                         --  where we can get the bounds for the fat pointer
-                        --  are from the type of the orignal value.
+                        --  are from the type of the original value.
 
                         Emit_Assignment (Temp, Empty, Value, True, True);
                         Build_Ret (Convert_To_Access_To

@@ -672,7 +672,7 @@ package body GNATLLVM.Types is
       --  If a procedure was specified (meaning that a pool must also
       --  have been specified) and the pool is a record, then it's a
       --  storage pool and we pass the pool, size, and alignment.
-      --  ?? This is a procedures whose first parameter is an OUT parameter
+      --  ?? This is a procedure whose first parameter is an OUT parameter
       --  where it puts the address.  We should be converting procedures
       --  with a single OUT parameter to a function, which would make the
       --  below a lot easier, but we don't yet (because there's no good place

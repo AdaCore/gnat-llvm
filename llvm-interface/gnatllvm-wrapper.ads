@@ -56,6 +56,11 @@ package GNATLLVM.Wrapper is
    procedure Set_Alloca_Align (Inst : Value_T; Align : unsigned);
    pragma Import (C, Set_Alloca_Align, "Set_Alloca_Align");
 
+   function Build_Inline_Asm
+     (Func_Typ                : Type_T;
+      Asm_String, Constraints : String;
+      Is_Volatile             : Boolean := False) return Value_T;
+
    function Build_Extract_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;

@@ -18,9 +18,13 @@
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
+with System;
+
 with Errout;   use Errout;
+with Exp_Code; use Exp_Code;
 with Eval_Fat; use Eval_Fat;
 with Lib;      use Lib;
+with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
 with Sem_Eval; use Sem_Eval;
@@ -45,6 +49,7 @@ with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Compile is
 
@@ -78,6 +83,11 @@ package body GNATLLVM.Compile is
 
    function Emit_Literal (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Literal'Result);
+   --  Generate code for a literal
+
+   procedure Emit_Code_Statement (N : Node_Id)
+     with Pre => Nkind (N) = N_Code_Statement;
+   --  Generate code for inline asm
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
      with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
@@ -282,6 +292,9 @@ package body GNATLLVM.Compile is
             Heap_Deallocate
               (Emit_Expression (Expression (N)),
                Procedure_To_Call (N), Storage_Pool (N));
+
+         when N_Code_Statement =>
+            Emit_Code_Statement (N);
 
          when N_Handled_Sequence_Of_Statements =>
             Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
@@ -2013,8 +2026,7 @@ package body GNATLLVM.Compile is
                for J in Elements'Range loop
                   Elements (J) := Const_Int
                     (Element_Type,
-                     unsigned_long_long
-                       (Get_String_Char (String, Standard.Types.Int (J))),
+                     unsigned_long_long (Get_String_Char (String, Nat (J))),
                      Sign_Extend => False);
                end loop;
 
@@ -2141,5 +2153,173 @@ package body GNATLLVM.Compile is
             Name   => "shift-rotate-result");
       end if;
    end Emit_Shift;
+
+   -------------------------
+   -- Emit_Code_Statement --
+   ------------------------
+
+   procedure Emit_Code_Statement (N : Node_Id) is
+      Template_Strval   : constant String_Id := Strval (Asm_Template (N));
+      Num_Inputs        : Integer            := 0;
+      Constraint_Length : Integer            := 0;
+      Output_Val        : GL_Value           := No_GL_Value;
+      Output_Type       : Type_T             := Void_Type;
+      Output_Variable   : Node_Id;
+      Output_Constraint : Node_Id;
+      Input             : Node_Id;
+      Clobber           : System.Address;
+
+   begin
+      --  LLVM only allows one output, so just get the information on
+      --  it, if any, and give an error if there's a second one.
+
+      Setup_Asm_Outputs (N);
+      Output_Variable   := Asm_Output_Variable;
+      if Present (Output_Variable) then
+         Output_Constraint := Asm_Output_Constraint;
+         Constraint_Length :=
+           Integer (String_Length (Strval (Output_Constraint)));
+         Output_Val        := Emit_LValue (Output_Variable);
+         Output_Type       := Create_Type (Full_Designated_Type (Output_Val));
+         Next_Asm_Output;
+         if Present (Asm_Output_Variable) then
+            Error_Msg_N ("LLVM only allows one output", N);
+         end if;
+      end if;
+
+      --  For inputs, just count the number of them and the total
+      --  constraint length so we can allocate what we need later.
+
+      Setup_Asm_Inputs (N);
+      Input := Asm_Input_Value;
+      while Present (Input) loop
+         Num_Inputs        := Num_Inputs + 1;
+         Constraint_Length :=
+           Constraint_Length + Integer (String_Length
+                                          (Strval (Asm_Input_Constraint)));
+         Next_Asm_Input;
+         Input := Asm_Input_Value;
+      end loop;
+
+      --  Likewise for clobbers, but we only need the length of the
+      --  constraints here.  Node that Clobber_Get_Next isn't very friendly
+      --  for an Ada called, so we'll use fact that it's set Name_Buffer
+      --  and Name_Len;
+
+      Clobber_Setup (N);
+      Clobber := Clobber_Get_Next;
+      while not System."=" (Clobber, System.Null_Address) loop
+         Constraint_Length := Constraint_Length + Name_Len + 4;
+         Clobber := Clobber_Get_Next;
+      end loop;
+
+      declare
+         Args           : GL_Value_Array (1 .. Nat (Num_Inputs));
+         Arg_Tys        : Type_Array (1 .. Nat (Num_Inputs));
+         Constraints    : String (1 .. Num_Inputs + Constraint_Length + 3);
+         Constraint_Pos : Integer := 0;
+         Input_Pos      : Nat := 0;
+         Need_Comma     : Boolean := False;
+         Inline_Asm     : Value_T;
+         Template       : String (1 .. Integer (String_Length
+                                                  (Template_Strval)));
+
+         procedure Add_Char (C : Character);
+         procedure Add_Constraint (N : Node_Id)
+           with Pre => Nkind (N) = N_String_Literal;
+
+         --------------
+         -- Add_Char --
+         --------------
+
+         procedure Add_Char (C : Character) is
+         begin
+            Constraint_Pos := Constraint_Pos + 1;
+            Constraints (Constraint_Pos) := C;
+            Need_Comma := C /= ',';
+         end Add_Char;
+
+         --------------------
+         -- Add_Constraint --
+         --------------------
+
+         procedure Add_Constraint (N : Node_Id) is
+         begin
+            if Need_Comma then
+               Add_Char (',');
+            end if;
+
+            for J in 1 .. String_Length (Strval (N)) loop
+               Add_Char (Get_Character (Get_String_Char (Strval (N), J)));
+            end loop;
+         end Add_Constraint;
+
+      begin
+         --  Output constraints come first
+
+         if Present (Output_Variable) then
+            Add_Constraint (Output_Constraint);
+         end if;
+
+         --  Now collect inputs and add their constraints
+
+         Setup_Asm_Inputs (N);
+         Input := Asm_Input_Value;
+         while Present (Input) loop
+            Input_Pos := Input_Pos + 1;
+            Args (Input_Pos) :=
+              Need_Value (Emit_Expression (Entity (Input)),
+                          Full_Etype (Input));
+            Arg_Tys (Input_Pos) := Type_Of (Args (Input_Pos));
+            Add_Constraint (Asm_Input_Constraint);
+            Next_Asm_Input;
+            Input := Asm_Input_Value;
+         end loop;
+
+         --  Now add clobber constraints
+
+         Clobber_Setup (N);
+         Clobber := Clobber_Get_Next;
+         while not System."=" (Clobber, System.Null_Address) loop
+            if Need_Comma then
+               Add_Char (',');
+            end if;
+
+            Add_Char ('~');
+            Add_Char ('{');
+            for J in 1 .. Name_Len loop
+               Add_Char (Name_Buffer (J));
+            end loop;
+
+            Add_Char ('}');
+            Clobber := Clobber_Get_Next;
+         end loop;
+
+         --  Finally, build the template
+
+         for J in 1 .. String_Length (Template_Strval) loop
+            Template (Integer (J)) :=
+              Get_Character (Get_String_Char (Template_Strval, J));
+         end loop;
+
+         --  Now create the inline asm
+
+         Inline_Asm := Build_Inline_Asm (Fn_Ty (Arg_Tys, Output_Type),
+                                         Template,
+                                         Constraints (1 .. Constraint_Pos),
+                                         Is_Asm_Volatile (N));
+
+         --  If we have an output, generate the vall with an output and store
+         --  the result.  Otherwise, just do the call.
+
+         if Present (Output_Variable) then
+            Store (Call (G (Inline_Asm, Full_Etype (Output_Variable)),
+                         Full_Etype (Output_Variable), Args),
+                   Output_Val);
+         else
+            Call (G (Inline_Asm, Standard_Void_Type), Args);
+         end if;
+      end;
+   end Emit_Code_Statement;
 
 end GNATLLVM.Compile;

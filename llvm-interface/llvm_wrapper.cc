@@ -1,6 +1,7 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Metadata.h"
@@ -129,6 +130,15 @@ void
 Set_Alloca_Align (AllocaInst *inst, unsigned align)
 {
     inst->setAlignment (align);
+}
+
+extern "C"
+Value *
+Build_Inline_Asm_C (FunctionType *Ty, char *asmString,
+		    char *constraints, bool hasSideEffects)
+{
+    return InlineAsm::get (Ty, StringRef (asmString),
+			   StringRef (constraints), hasSideEffects);
 }
 
 /* The LLVM C interface only provide single-index forms of extractvalue

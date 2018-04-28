@@ -110,6 +110,7 @@ s-imgllu.adb \
 s-imgllu.ads \
 s-imguns.adb \
 s-imguns.ads \
+s-maccod.ads \
 s-stoele.adb \
 s-stoele.ads \
 s-unstyp.ads \
@@ -131,6 +132,7 @@ s-fatflt.ads \
 s-fatsfl.ads \
 s-fatllf.ads \
 s-fatlfl.ads \
+s-maccod.ads \
 s-unstyp.ads \
 system.ads   \
 text_io.ads  \

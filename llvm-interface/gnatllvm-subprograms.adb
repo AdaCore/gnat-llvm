@@ -372,6 +372,7 @@ package body GNATLLVM.Subprograms is
       LLVM_Param      : GL_Value;
 
    begin
+      Current_Subp := Def_Ident;
       Enter_Subp (Func);
       Push_Debug_Scope
         (Create_Subprogram_Debug_Info (Func, Def_Ident, N,
@@ -436,6 +437,7 @@ package body GNATLLVM.Subprograms is
       Pop_Block;
       Pop_Debug_Scope;
       Leave_Subp;
+      Current_Subp := Empty;
    end Emit_One_Body;
 
    --------------------
@@ -536,7 +538,6 @@ package body GNATLLVM.Subprograms is
    function Get_Static_Link (N : Entity_Id) return GL_Value is
       Subp        : constant Entity_Id  := Entity (N);
       Parent      : constant Entity_Id  := Enclosing_Subprogram (Subp);
-      Caller      : constant Node_Id    := Node_Enclosing_Subprogram (N);
       Ent_Caller  : Subp_Entry;
       Ent         : Subp_Entry;
       Result      : GL_Value;
@@ -545,9 +546,9 @@ package body GNATLLVM.Subprograms is
 
       if Present (Parent) then
          Ent        := Subps.Table (Subp_Index (Parent));
-         Ent_Caller := Subps.Table (Subp_Index (Caller));
+         Ent_Caller := Subps.Table (Subp_Index (Current_Subp));
 
-         if Parent = Caller then
+         if Parent = Current_Subp then
             Result := Need_Value (Get_Value (Ent.ARECnP), Ent.ARECnPT);
          elsif No (Ent_Caller.ARECnF) then
             return Const_Null (Standard_A_Char);
@@ -798,30 +799,6 @@ package body GNATLLVM.Subprograms is
          end;
       end if;
    end Emit_Subprogram_Decl;
-
-   -------------------------------
-   -- Node_Enclosing_Subprogram --
-   -------------------------------
-
-   function Node_Enclosing_Subprogram (N : Node_Id) return Node_Id is
-      Node : Node_Id := N;
-
-   begin
-      while Present (Node) loop
-         if Nkind (Node) = N_Subprogram_Body then
-            Node := Defining_Unit_Name (Specification (Node));
-            if Nkind (Node) = N_Defining_Program_Unit_Name then
-               Node := Defining_Identifier (Node);
-            end if;
-
-            return Node;
-         end if;
-
-         Node := Parent (Node);
-      end loop;
-
-      return Node;
-   end Node_Enclosing_Subprogram;
 
    --------------
    -- Subp_Ptr --

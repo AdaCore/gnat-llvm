@@ -32,18 +32,22 @@ package body GNATLLVM.Blocks is
    --  we're in and we construct a table to act as a block stack.
 
    type Block_Info is record
-      Stack_Save  : GL_Value;
-      --  Value of the stack pointer at entry to the block
-
-      At_End_Proc : GL_Value;
-      --  Function to be called at normal or abnormal exit of the block
-
-      EH_List     : List_Id;
-      --  List of exception handlers.  ?? We may not want to keep it this way
-
-      In_Stmts    : Boolean;
+      In_Stmts           : Boolean;
       --  True if this block was entered from the statement section of its
       --  parent block.
+
+      Stack_Save         : GL_Value;
+      --  Value of the stack pointer at entry to the block
+
+      At_End_Proc        : GL_Value;
+      --  Procedure to be called at normal or abnormal exit of the block
+
+      At_End_Static_Link : GL_Value;
+      --  The activation record to pass to the At_End_Proc
+
+      EH_List            : List_Id;
+      --  List of exception handlers.  ?? We may not want to keep it this way
+
    end record;
 
    package Block_Stack is new Table.Table
@@ -116,10 +120,11 @@ package body GNATLLVM.Blocks is
         (if Block_Stack.Last < 1 then No_GL_Value
          else Call (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>)));
    begin
-      Block_Stack.Append ((Stack_Save => Stack_Save,
-                           At_End_Proc => No_GL_Value,
-                           EH_List => No_List,
-                           In_Stmts => In_Stmt_Part));
+      Block_Stack.Append ((Stack_Save         => Stack_Save,
+                           At_End_Proc        => No_GL_Value,
+                           At_End_Static_Link => No_GL_Value,
+                           EH_List            => No_List,
+                           In_Stmts           => In_Stmt_Part));
 
       In_Stmt_Part := False;
 
@@ -136,8 +141,18 @@ package body GNATLLVM.Blocks is
       Block_Stack.Table (Block_Stack.Last).EH_List := EH_List;
 
       if Present (At_End_Proc) then
+
+         --  Save both the end proc and the value of the static link.
+         --  Since we'll be generating the call directly, we have to convert
+         --  the static link to the proper pointer type for the activation
+         --  record.
+
          Block_Stack.Table (Block_Stack.Last).At_End_Proc :=
            Emit_LValue (At_End_Proc);
+         Block_Stack.Table (Block_Stack.Last).At_End_Static_Link :=
+           Pointer_Cast (Get_Static_Link (At_End_Proc),
+                         Full_Etype (First_Formal_With_Extras
+                                       (Entity (At_End_Proc))));
       end if;
 
       In_Stmt_Part := True;
@@ -149,10 +164,7 @@ package body GNATLLVM.Blocks is
    ---------------
 
    procedure Pop_Block is
-      At_End     : constant GL_Value :=
-        Block_Stack.Table (Block_Stack.Last).At_End_Proc;
-      Stack_Save : constant GL_Value :=
-        Block_Stack.Table (Block_Stack.Last).Stack_Save;
+      Block_Inf : constant Block_Info := Block_Stack.Table (Block_Stack.Last);
 
    begin
       if not Are_In_Dead_Code then
@@ -160,18 +172,18 @@ package body GNATLLVM.Blocks is
          --  First call the "at end" handler before any variables get
          --  deallocated.
 
-         if Present (At_End) then
-            Call (At_End, (1 .. 0 => <>));
+         if Present (Block_Inf.At_End_Proc) then
+            Call (Block_Inf.At_End_Proc, (1 => Block_Inf.At_End_Static_Link));
          end if;
 
          --  Then deallocate variables
 
-         if Present (Stack_Save) then
-            Call (Get_Stack_Restore_Fn, (1 => Stack_Save));
+         if Present (Block_Inf.Stack_Save) then
+            Call (Get_Stack_Restore_Fn, (1 => Block_Inf.Stack_Save));
          end if;
       end if;
 
-      In_Stmt_Part := Block_Stack.Table (Block_Stack.Last).In_Stmts;
+      In_Stmt_Part := Block_Inf.In_Stmts;
       Block_Stack.Decrement_Last;
    end Pop_Block;
 

@@ -140,13 +140,11 @@ package GNATLLVM.Subprograms is
      with Pre => Present (N);
    --  Compile a subprogram body and save it in the environment
 
-   function Node_Enclosing_Subprogram (N : Node_Id) return Node_Id
-     with Pre  => Present (N),
-          Post => Present (Node_Enclosing_Subprogram'Result);
-   --  Return the enclosing subprogram containing Node
-
    function Subp_Ptr (N : Node_Id) return GL_Value
      with Pre  => Present (N), Post => Present (Subp_Ptr'Result);
    --  Return the subprogram pointer associated with Node
+
+   Current_Subp : Entity_Id := Empty;
+   --  The spec entity for the subprogram currently being compiled
 
 end GNATLLVM.Subprograms;

@@ -534,8 +534,7 @@ package body GNATLLVM.Compile is
                declare
                   Expr : constant Node_Id :=
                     Strip_Complex_Conversions (Expression (N));
-                  TE   : constant Entity_Id :=
-                    Full_Etype (Node_Enclosing_Subprogram (N));
+                  TE   : constant Entity_Id := Full_Etype (Current_Subp);
 
                begin
                   --  If there's a parameter for the address to which to copy

@@ -482,33 +482,39 @@ package GNATLLVM.GLValue is
 
    function FP_Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_Trunc (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (FP_Trunc'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Floating_Point_Type (T),
+          Post => Is_Floating_Point_Type (FP_Trunc'Result);
 
    function FP_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_Ext (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (FP_Ext'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Floating_Point_Type (T),
+          Post => Is_Floating_Point_Type (FP_Ext'Result);
 
    function FP_To_SI (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_To_SI (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (FP_To_SI'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (T),
+          Post => Is_Discrete_Or_Fixed_Point_Type (FP_To_SI'Result);
 
    function FP_To_UI (V, T : GL_Value; Name : String := "") return GL_Value is
      (FP_To_UI (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (FP_To_UI'Result);
+     with Pre  => Is_Floating_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (T),
+          Post => Is_Discrete_Or_Fixed_Point_Type (FP_To_UI'Result);
 
    function UI_To_FP (V, T : GL_Value; Name : String := "") return GL_Value is
      (UI_To_FP (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (UI_To_FP'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Floating_Point_Type (T),
+          Post => Is_Floating_Point_Type (UI_To_FP'Result);
 
    function SI_To_FP (V, T : GL_Value; Name : String := "") return GL_Value is
      (SI_To_FP (V, Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (SI_To_FP'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Floating_Point_Type (T),
+          Post => Is_Floating_Point_Type (SI_To_FP'Result);
 
    procedure Store (Expr : GL_Value; Ptr : GL_Value)
      with Pre => Present (Expr)
@@ -535,7 +541,8 @@ package GNATLLVM.GLValue is
    is
      (G (F_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
          Standard_Boolean))
-     with Pre  => Present (LHS) and then Present (RHS),
+     with Pre  => Is_Floating_Point_Type (LHS)
+                  and then Is_Floating_Point_Type (RHS),
           Post => Present (F_Cmp'Result);
 
    function NSW_Add
@@ -543,16 +550,18 @@ package GNATLLVM.GLValue is
    is
       (G_From (NSW_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
                LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (NSW_Add'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Add'Result);
 
    function NSW_Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (NSW_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (NSW_Sub'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Sub'Result);
 
    function NSW_Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
@@ -562,139 +571,153 @@ package GNATLLVM.GLValue is
        else G_From (NSW_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
                              Name),
                     LHS)))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (NSW_Mul'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Mul'Result);
 
    function S_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (S_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (S_Div'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (S_Div'Result);
 
    function U_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (U_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (U_Div'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (U_Div'Result);
 
    function S_Rem
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (S_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (S_Rem'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (S_Rem'Result);
 
    function U_Rem
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (U_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (U_Rem'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (U_Rem'Result);
 
    function Build_And
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_And (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (Build_And'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (Build_And'Result);
 
    function Build_Or
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_Or (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (Build_Or'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (Build_Or'Result);
 
    function Build_Xor
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_Xor (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (Build_Xor'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (Build_Xor'Result);
 
    function F_Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (F_Add'Result);
+      with Pre  => Is_Floating_Point_Type (LHS)
+                   and then Is_Floating_Point_Type (RHS),
+           Post => Is_Floating_Point_Type (F_Add'Result);
 
    function F_Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (F_Sub'Result);
+      with Pre  => Is_Floating_Point_Type (LHS)
+                   and then Is_Floating_Point_Type (RHS),
+           Post => Is_Floating_Point_Type (F_Sub'Result);
 
    function F_Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (F_Mul'Result);
+      with Pre  => Is_Floating_Point_Type (LHS)
+                   and then Is_Floating_Point_Type (RHS),
+           Post => Is_Floating_Point_Type (F_Mul'Result);
 
    function F_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Present (LHS) and then Present (RHS),
-           Post => Present (F_Div'Result);
+      with Pre  => Is_Floating_Point_Type (LHS)
+                   and then Is_Floating_Point_Type (RHS),
+           Post => Is_Floating_Point_Type (F_Div'Result);
 
    function Shl
-     (E, Count : GL_Value; Name : String := "") return GL_Value
+     (V, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Shl (IR_Builder, LLVM_Value (E), LLVM_Value (Count), Name),
-              E))
-      with Pre  => Present (E) and then Present (Count),
-           Post => Present (Shl'Result);
+     (G_From (Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name), V))
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                   and then Is_Discrete_Or_Fixed_Point_Type (Count),
+           Post => Is_Discrete_Or_Fixed_Point_Type (Shl'Result);
 
    function L_Shr
-     (E, Count : GL_Value; Name : String := "") return GL_Value
+     (V, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (L_Shr (IR_Builder, LLVM_Value (E), LLVM_Value (Count), Name),
-              E))
-      with Pre  => Present (E) and then Present (Count),
-           Post => Present (L_Shr'Result);
+     (G_From (L_Shr (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name), V))
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                   and then Is_Discrete_Or_Fixed_Point_Type (Count),
+           Post => Is_Discrete_Or_Fixed_Point_Type (L_Shr'Result);
 
    function A_Shr
-     (E, Count : GL_Value; Name : String := "") return GL_Value
+     (V, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (A_Shr (IR_Builder, LLVM_Value (E), LLVM_Value (Count), Name),
-              E))
-      with Pre  => Present (E) and then Present (Count),
-           Post => Present (A_Shr'Result);
+     (G_From (A_Shr (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name), V))
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
+                   and then Is_Discrete_Or_Fixed_Point_Type (Count),
+           Post => Is_Discrete_Or_Fixed_Point_Type (A_Shr'Result);
 
    function Build_Not
      (V : GL_Value; Name : String := "") return GL_Value
    is
       (G_From (Build_Not (IR_Builder, LLVM_Value (V), Name), V))
-      with Pre  => Present (V),
-           Post => Present (Build_Not'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
+           Post => Is_Discrete_Or_Fixed_Point_Type (Build_Not'Result);
 
    function NSW_Neg
      (V : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (NSW_Neg (IR_Builder, LLVM_Value (V), Name), V))
-      with Pre  => Present (V), Post => Present (NSW_Neg'Result);
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
+           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Neg'Result);
 
    function F_Neg
      (V : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (F_Neg (IR_Builder, LLVM_Value (V), Name), V))
-     with Pre  => Present (V), Post => Present (F_Neg'Result);
+     with Pre  => Is_Floating_Point_Type (V),
+          Post => Is_Floating_Point_Type (F_Neg'Result);
 
    function Build_Select
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")
@@ -704,13 +727,14 @@ package GNATLLVM.GLValue is
                             C_Then => LLVM_Value (C_Then),
                             C_Else => LLVM_Value (C_Else), Name => Name),
               C_Then))
-     with Pre  => Present (C_If) and then Present (C_Then)
-                  and then Present (C_Else),
-          Post => Present (Build_Select'Result);
+     with Pre  => Ekind (Full_Etype (C_If)) in Enumeration_Kind
+                  and then Is_Elementary_Type (C_Then)
+                  and then Is_Elementary_Type (C_Else),
+          Post => Is_Elementary_Type (Build_Select'Result);
 
    procedure Build_Cond_Br
      (C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
-     with Pre => Present (C_If)
+     with Pre => Ekind (Full_Etype (C_If)) in Enumeration_Kind
                  and then Present (C_Then) and then Present (C_Else);
 
    procedure Build_Ret (V : GL_Value)
@@ -731,7 +755,7 @@ package GNATLLVM.GLValue is
    function Int_To_Ref
      (V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Int_To_Ref'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
@@ -739,7 +763,7 @@ package GNATLLVM.GLValue is
    function Int_To_Raw_Array
      (V : GL_Value; TE : Entity_Id; Name : String := "")
      return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Int_To_Raw_Array'Result)
                   and then Is_Raw_Array (Int_To_Raw_Array'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
@@ -764,7 +788,18 @@ package GNATLLVM.GLValue is
       (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), Typ,
          Is_Reference => True))
      with  Pre  => Present (Arg) and then Is_Type (Typ),
-           Post => Present (Extract_Value_To_Ref'Result);
+           Post => Is_Access_Type (Extract_Value_To_Ref'Result);
+
+   function Extract_Value_To_Raw_Array
+     (Typ   : Entity_Id;
+      Arg   : GL_Value;
+      Index : unsigned;
+      Name  : String := "") return GL_Value
+   is
+      (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), Typ,
+         Is_Reference => True, Is_Raw_Array => True))
+     with  Pre  => Present (Arg) and then Is_Type (Typ),
+           Post => Is_Access_Type (Extract_Value_To_Raw_Array'Result);
 
    function Insert_Value
      (Arg, Elt : GL_Value;
@@ -803,6 +838,18 @@ package GNATLLVM.GLValue is
      with  Pre  => Is_Type (Typ) and then Present (Arg),
            Post => Present (Extract_Value_To_Ref'Result);
 
+   function Extract_Value_To_Raw_Array
+     (Typ     : Entity_Id;
+      Arg     : GL_Value;
+      Idx_Arr : Index_Array;
+      Name    : String := "") return GL_Value
+   is
+     (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
+                              Idx_Arr'Address, Idx_Arr'Length, Name),
+         Typ, Is_Reference => True, Is_Raw_Array => True))
+     with  Pre  => Is_Type (Typ) and then Present (Arg),
+           Post => Present (Extract_Value_To_Raw_Array'Result);
+
    function Insert_Value
      (Arg, Elt : GL_Value;
       Idx_Arr  : Index_Array;
@@ -820,8 +867,8 @@ package GNATLLVM.GLValue is
       Ptr         : GL_Value;
       Indices     : GL_Value_Array;
       Name        : String := "") return GL_Value
-     with Pre  => Present (Ptr),
-          Post => Present (GEP'Result);
+     with Pre  => Is_Access_Type (Ptr),
+          Post => Is_Access_Type (GEP'Result);
    --  Helper for LLVM's Build_GEP
 
    function Call

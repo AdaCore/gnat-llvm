@@ -537,9 +537,7 @@ package body GNATLLVM.Arrays is
       then
          return V;
       else
-         return G (Extract_Value (IR_Builder, LLVM_Value (V),
-                                  0, "array-data"),
-                   Arr_Type, Is_Reference => True, Is_Raw_Array => True);
+         return Extract_Value_To_Raw_Array (Arr_Type, V, 0, "array-data");
       end if;
    end Array_Data;
 

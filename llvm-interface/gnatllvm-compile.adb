@@ -554,10 +554,12 @@ package body GNATLLVM.Compile is
                   elsif Is_Array_Type (TE) and then not Is_Constrained (TE)
                   then
                      declare
-                        Value : constant GL_Value := Emit_Expression (Expr);
-                        Temp  : constant GL_Value :=
+                        Value : constant GL_Value  := Emit_Expression (Expr);
+                        Typ   : constant Entity_Id := Full_Etype (Expr);
+                        Temp  : constant GL_Value  :=
                           Heap_Allocate_For_Type
-                          (TE, Value, Procedure_To_Call (N), Storage_Pool (N));
+                          (Typ, Value, Procedure_To_Call (N),
+                           Storage_Pool (N));
 
                      begin
                         --  This is a bit tricky because the only place
@@ -566,7 +568,7 @@ package body GNATLLVM.Compile is
 
                         Emit_Assignment (Temp, Empty, Value, True, True);
                         Build_Ret (Convert_To_Access_To
-                                     (G_Is_Ref (Temp, Value), TE));
+                                     (G_Is_Ref (Temp, Typ), TE));
                      end;
                   else
                      Build_Ret (Build_Type_Conversion (Expr, TE));

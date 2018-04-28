@@ -19,9 +19,10 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
 with Errout;   use Errout;
+with Output;   use Output;
 with Sem_Mech; use Sem_Mech;
+with Sprint;   use Sprint;
 with Stringt;  use Stringt;
-with Treepr;   use Treepr;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -44,35 +45,35 @@ package body GNATLLVM.Utils is
    -- Decode_Range --
    ------------------
 
-   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint) is
+   procedure Decode_Range (N : Node_Id; Low, High : out Uint) is
    begin
-      case Nkind (Rng) is
+      case Nkind (N) is
          when N_Identifier =>
 
             --  An N_Identifier can either be a type, in which case we look
             --  at the range of the type, or a constant, in which case we
             --  look at the initializing expression.
 
-            if Is_Type (Entity (Rng)) then
-               Decode_Range (Scalar_Range (Full_Etype (Rng)), Low, High);
+            if Is_Type (Entity (N)) then
+               Decode_Range (Scalar_Range (Full_Etype (N)), Low, High);
             else
-               Low := Get_Uint_Value (Rng);
+               Low := Get_Uint_Value (N);
                High := Low;
             end if;
 
          when N_Subtype_Indication =>
-            Decode_Range (Range_Expression (Constraint (Rng)), Low, High);
+            Decode_Range (Range_Expression (Constraint (N)), Low, High);
 
          when N_Range | N_Signed_Integer_Type_Definition =>
-            Low := Get_Uint_Value (Low_Bound (Rng));
-            High := Get_Uint_Value (High_Bound (Rng));
+            Low := Get_Uint_Value (Low_Bound (N));
+            High := Get_Uint_Value (High_Bound (N));
 
          when N_Character_Literal | N_Integer_Literal =>
-            Low := Get_Uint_Value (Rng);
+            Low := Get_Uint_Value (N);
             High := Low;
 
          when others =>
-            Error_Msg_N ("unknown range operand", Rng);
+            Error_Msg_N ("unknown range operand", N);
             Low := No_Uint;
             High := No_Uint;
       end case;
@@ -194,28 +195,27 @@ package body GNATLLVM.Utils is
    -- Get_Uint_Value --
    --------------------
 
-   function Get_Uint_Value (Node : Node_Id) return Uint is
+   function Get_Uint_Value (N : Node_Id) return Uint is
       E : Entity_Id;
 
    begin
-      case Nkind (Node) is
+      case Nkind (N) is
          when N_Character_Literal =>
             --  If a Entity is present, it means that this was one of the
             --  literals in a user-defined character type.
 
             return
-              (if Present (Entity (Node))
-               then Enumeration_Rep (Entity (Node))
-               else Char_Literal_Value (Node));
+              (if Present (Entity (N)) then Enumeration_Rep (Entity (N))
+               else Char_Literal_Value (N));
 
          when N_Integer_Literal =>
-            return Intval (Node);
+            return Intval (N);
 
          when N_Real_Literal =>
             --  We can only do something here if this is a fixed-point type.
 
-            if Is_Fixed_Point_Type (Full_Etype (Node)) then
-               return Corresponding_Integer_Value (Node);
+            if Is_Fixed_Point_Type (Full_Etype (N)) then
+               return Corresponding_Integer_Value (N);
             else
                return No_Uint;
             end if;
@@ -224,7 +224,7 @@ package body GNATLLVM.Utils is
             --  If an N_Identifier is static, its N_Defining_Identifier is
             --  either an E_Constant or an E_Enumeration_Literal.
 
-            E := Entity (Node);
+            E := Entity (N);
             if Ekind (E) = E_Constant then
                return Get_Uint_Value (Expression (Parent (E)));
             elsif Ekind (E) = E_Enumeration_Literal then
@@ -243,19 +243,19 @@ package body GNATLLVM.Utils is
    ---------------------
 
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
-      Typ : constant Entity_Id := Full_Etype (Param);
+      TE : constant Entity_Id := Full_Etype (Param);
 
    begin
       --  ??? Return True for all array types for now
 
-      if Is_Array_Type (Typ) then
+      if Is_Array_Type (TE) then
          return True;
 
       --  Pass records by reference when using the default mechanism, otherwise
       --  this will cause an inefficient pass C struct by copy which is not
       --  what users expect by default.
 
-      elsif Is_Record_Type (Typ)
+      elsif Is_Record_Type (TE)
         and then Mechanism (Param) = Default_Mechanism
       then
          return True;
@@ -270,29 +270,18 @@ package body GNATLLVM.Utils is
       end if;
    end Param_Needs_Ptr;
 
-   ----------------------------
-   -- Return_Needs_Sec_Stack --
-   ----------------------------
-
-   function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean is
-      pragma Unreferenced (Arg);
-
-   begin
-      return False;
-   end Return_Needs_Sec_Stack;
-
    function Access_Depth (TE : Entity_Id) return Natural
      with Pre => Present (TE);
    --  If TE is not an access type, return zero.  Otherwise, return how deep
    --  we have to go down Full_Designated_Type to find something that's
    --  not an access type.
 
-   function Access_Depth (G : GL_Value) return Natural
-     with Pre => Present (G);
+   function Access_Depth (V : GL_Value) return Natural
+     with Pre => Present (V);
    --  Similarly, but for a GL_Value, which might be a reference
 
-   function Is_LValue_Of (G : GL_Value; TE : Entity_Id) return Boolean
-     with Pre => Present (G) and then Is_Type_Or_Void (TE);
+   function Is_LValue_Of (V : GL_Value; TE : Entity_Id) return Boolean
+     with Pre => Present (V) and then Is_Type_Or_Void (TE);
    --  Return True if G is the LValue of an object of type TE
 
    ------------------
@@ -312,12 +301,12 @@ package body GNATLLVM.Utils is
    -- Access_Depth --
    ------------------
 
-   function Access_Depth (G : GL_Value) return Natural is
+   function Access_Depth (V : GL_Value) return Natural is
    begin
-      if not Is_Access_Type (G) then
+      if not Is_Access_Type (V) then
          return 0;
       else
-         return Access_Depth (Full_Designated_Type (G)) + 1;
+         return Access_Depth (Full_Designated_Type (V)) + 1;
       end if;
    end Access_Depth;
 
@@ -325,7 +314,7 @@ package body GNATLLVM.Utils is
    -- Is_LValue_Of --
    ------------------
 
-   function Is_LValue_Of (G : GL_Value; TE : Entity_Id) return Boolean is
+   function Is_LValue_Of (V : GL_Value; TE : Entity_Id) return Boolean is
    begin
       --  If Value is a reference and its designated type is that of our
       --  type, we know we're OK.  If not, we may still if OK if access
@@ -333,12 +322,12 @@ package body GNATLLVM.Utils is
       --  Value is one greater than that of our type.  That's also OK.
       --  And if what we have is a subprogram, we're also OK.
 
-      return Is_Subprogram_Type (G)
-        or else (Is_Reference (G)
-                   and then (Full_Designated_Type (G) = TE
-                               or else (Ekind (Full_Designated_Type (G))
+      return Is_Subprogram_Type (V)
+        or else (Is_Reference (V)
+                   and then (Full_Designated_Type (V) = TE
+                               or else (Ekind (Full_Designated_Type (V))
                                           = E_Subprogram_Type)))
-        or else Access_Depth (G) = Access_Depth (TE) + 1;
+        or else Access_Depth (V) = Access_Depth (TE) + 1;
    end Is_LValue_Of;
 
    ----------------
@@ -465,16 +454,27 @@ package body GNATLLVM.Utils is
    procedure Dump_LLVM_Value (V : Value_T) is
    begin
       Dump_Value (V);
+      New_Line (Current_Error);
    end Dump_LLVM_Value;
 
    -------------------
    -- Dump_GL_Value --
    -------------------
 
-   procedure Dump_GL_Value (G : GL_Value) is
+   procedure Dump_GL_Value (V : GL_Value) is
    begin
-      Dump_LLVM_Value (G.Value);
-      Print_Tree_Node (G.Typ);
+      Dump_LLVM_Value (V.Value);
+      Dump_LLVM_Type (Type_Of (V.Value));
+      if Is_Reference (V) then
+         Write_Str ("Is_Reference ");
+         if Is_Raw_Array (V) then
+            Write_Str ("Is_Raw_Array");
+         end if;
+
+         Write_Eol;
+      end if;
+
+      pg (Union_Id (V.Typ));
    end Dump_GL_Value;
 
    ----------------------
@@ -492,22 +492,11 @@ package body GNATLLVM.Utils is
 
    procedure Dump_LLVM_Type (T : Type_T) is
 
-      --  LLVM::Type::dump is not bound in the C API and thus is not available
-      --  in the Ada bindings. Hack instead.
-
-      type Type_Class is limited null record;
-      pragma Import (CPP, Type_Class);
-      type Type_Class_Ptr is access Type_Class;
-
-      procedure Dump (This : Type_Class_Ptr);
-      pragma Import (CPP, Dump, "_ZNK4llvm4Type4dumpEv");
-
-      function Unwrap is new Ada.Unchecked_Conversion
-        (Type_T, Type_Class_Ptr);
+      procedure Dump_LLVM_Type_C (T : Type_T);
+      pragma Import (C, Dump_LLVM_Type_C, "Dump_LLVM_Type_C");
 
    begin
-      Dump (Unwrap (T));
-      New_Line (Current_Error);
+      Dump_LLVM_Type_C (T);
    end Dump_LLVM_Type;
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");

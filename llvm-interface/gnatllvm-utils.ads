@@ -34,8 +34,8 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Utils is
 
-   procedure Decode_Range (Rng : Node_Id; Low, High : out Uint)
-     with Pre => Present (Rng);
+   procedure Decode_Range (N : Node_Id; Low, High : out Uint)
+     with Pre => Present (N);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in
    --  a case statement into the low and high bounds.  If either Low or High
    --  is No_Uint, it means that we have a nonstatic value, a non-discrete
@@ -144,18 +144,13 @@ package GNATLLVM.Utils is
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer
      with Pre => U /= No_Uint;
 
-   function Return_Needs_Sec_Stack (Arg : Node_Id) return Boolean
-     with Pre => Present (Arg);
-   --  Returns true if given function needs to return its arg via the secondary
-   --  stack.
-
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean
      with Pre => Present (Param);
    --  Returns true if Param needs to be passed by reference (pointer) rather
    --  than by value.
 
-   function Get_Uint_Value (Node : Node_Id) return Uint
-     with Pre => Present (Node);
+   function Get_Uint_Value (N : Node_Id) return Uint
+     with Pre => Present (N);
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint
 
    function Const_Int (T : Type_T; Value : Uint)
@@ -192,13 +187,6 @@ package GNATLLVM.Utils is
    procedure Discard (T  : Type_T)         with Pre => Present (T);
    procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);
 
-   procedure Dump_LLVM_Value (V : Value_T);
-   --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
-   --  function that is usable in debugging sessions.
-
-   procedure Dump_GL_Value (G : GL_Value);
-   --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
-
    function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
      (Is_Access_Type (T) and then Is_Array_Type (Full_Designated_Type (T))
       and then not Is_Constrained (Full_Designated_Type (T)))
@@ -219,11 +207,22 @@ package GNATLLVM.Utils is
    --  Returns a string corresponding to the external name of E
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
-   procedure Dump_LLVM_Module (M : Module_T);
-   --  Likewise, for LLVM.Core.Dump_Module
+   procedure Dump_LLVM_Value (V : Value_T);
+   pragma Export (Ada, Dump_LLVM_Value, "dllv");
+   --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
+   --  function that is usable in debugging sessions.
+
+   procedure Dump_GL_Value (V : GL_Value);
+   pragma Export (Ada, Dump_GL_Value, "dglv");
+
+   --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
 
    procedure Dump_LLVM_Type (T : Type_T);
+   pragma Export (Ada, Dump_LLVM_Type, "dllt");
    --  Likewise, for LLVM.Core.Dump_Type
+
+   procedure Dump_LLVM_Module (M : Module_T);
+   --  Likewise, for LLVM.Core.Dump_Module
 
    function LLVM_Type_Of (V : Value_T) return Type_T is
      (Type_Of (V));

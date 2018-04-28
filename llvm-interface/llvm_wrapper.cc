@@ -110,6 +110,13 @@ Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
 
 extern "C"
 void
+Dump_LLVM_Type_C (Type *type)
+{
+    type->dump ();
+}
+
+extern "C"
+void
 Set_Volatile (Instruction *inst)
 {
   if (StoreInst *SI = dyn_cast<StoreInst> (inst))

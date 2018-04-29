@@ -192,12 +192,11 @@ package body GNATLLVM.Subprograms is
    -- Create_Subprogram_Access_Type --
    -----------------------------------
 
-   function Create_Subprogram_Access_Type (T : Type_T) return Type_T is
-      pragma Unreferenced (T);
-
+   function Create_Subprogram_Access_Type return Type_T is
    begin
-      return
-        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
+      --  ?? Should we really always use char * for both of these?
+
+      return Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
    end Create_Subprogram_Access_Type;
 
    ---------------------

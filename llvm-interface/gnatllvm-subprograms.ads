@@ -61,9 +61,8 @@ package GNATLLVM.Subprograms is
           Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
                    Function_Type_Kind);
 
-   function Create_Subprogram_Access_Type (T : Type_T) return Type_T
-     with Pre  => Present (T),
-          Post => Present (Create_Subprogram_Access_Type'Result);
+   function Create_Subprogram_Access_Type return Type_T
+     with Post => Present (Create_Subprogram_Access_Type'Result);
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
    function Build_Intrinsic

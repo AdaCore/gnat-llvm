@@ -432,6 +432,8 @@ package body GNATLLVM.Types is
    begin
       if Is_Array_Type (TE) and then not Is_Constrained (TE) then
          return Create_Array_Fat_Pointer_Type (TE);
+      elsif Needs_Activation_Record (TE) then
+         return Create_Subprogram_Access_Type;
       else
          return Pointer_Type (T, 0);
       end if;
@@ -535,35 +537,14 @@ package body GNATLLVM.Types is
                end case;
             end;
 
-         when E_Access_Type .. E_General_Access_Type
-           | E_Anonymous_Access_Type | E_Access_Subprogram_Type
-           | E_Anonymous_Access_Subprogram_Type =>
-            declare
-               Desig_Type : constant Entity_Id
-                 := Full_Designated_Type (Def_Ident);
-            begin
-               if Ekind (Desig_Type) = E_Subprogram_Type
-                 and then Needs_Activation_Record (Desig_Type)
-               then
-                  T := Create_Subprogram_Access_Type
-                    (Create_Type (Desig_Type));
-               else
-                  T := Create_Access_Type (Desig_Type);
-               end if;
-            end;
+         when Access_Kind =>
+            T := Create_Access_Type (Full_Designated_Type (Def_Ident));
 
          when Record_Kind =>
             T := Create_Record_Type (Def_Ident);
 
          when Array_Kind =>
-            --  Handle packed arrays
-
-            if Present (Packed_Array_Impl_Type (Def_Ident)) then
-               T := Create_Type (Packed_Array_Impl_Type (Def_Ident));
-               Copy_Type_Info (Packed_Array_Impl_Type (Def_Ident), Def_Ident);
-            else
-               T := Create_Array_Type (Def_Ident);
-            end if;
+            T := Create_Array_Type (Def_Ident);
 
          when E_Subprogram_Type =>
             --  An anonymous access to a subprogram can point to any subprogram

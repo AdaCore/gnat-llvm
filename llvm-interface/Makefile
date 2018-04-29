@@ -15,6 +15,7 @@ MV=mv -f
 MKDIR=mkdir -p
 CHMOD=chmod
 AR=ar q
+LN_S=ln -s
 
 ifeq ($(AUTOMATED),1)
   GPRARGS=-XBuild=Production
@@ -52,11 +53,11 @@ all: setup build zfp
 
 setup:
 	mkdir -p obj obj-tools bin
-	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt`; \
+	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt xoscons.adb xutil.ads xutil.adb`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
 	done
-	cd obj-tools && gnatmake -q xtreeprs xnmake xsnamest && \
+	cd obj-tools && gnatmake -q xtreeprs xnmake xsnamest xoscons && \
 	./xtreeprs && ./xnmake && ./xsnamest && \
 	mv nmake.ads nmake.adb treeprs.ads ../obj && \
 	mv snames.ns ../obj/snames.ads && mv snames.nb ../obj/snames.adb
@@ -173,4 +174,66 @@ rts-full: build
 	  ROOT=$(GNAT_ROOT) ADAC=$(LLVM_GCC) \
 	  ADAFLAGS="-gnatpg -nostdinc -I$(NATIVE_ADAINCLUDE)"
 	cp -p $(NATIVE_ADAINCLUDE)/*.ad? $(FULL_ADAINCLUDE)
+
+target_cpu=x86_64
+target_os=linux-gnu
+target_vendor=pc
+target=$(target_cpu)-$(target_vendor)-$(target_os)
+objext=.o
+arext=.a
+AR_FOR_TARGET=ar
+AR_FLAGS=q
+RANLIB_FOR_TARGET=ranlib
+RTSDIR=$(pwd)/lib/rts-native/adainclude
+RTSLIB=$(pwd)/lib/rts-native/adalib
+ADAFLAGS=-gnatpg
+ADA_INCLUDES=-nostdinc -I../adainclude
+
+include $(GNAT_SRC)/Makefile.rtl
+
+.SUFFIXES: .adb .ads
+
+.c.o:
+	cd ../adalib && $(CC) -c $(ADA_CFLAGS) $(INCLUDES) ../adainclude/$<
+
+.adb.o:
+	cd ../adalib && $(ADAC) -c $(ADAFLAGS) $(ADA_INCLUDES) ../adainclude/$<
+
+.ads.o:
+	cd ../adalib && $(ADAC) -c $(ADAFLAGS) $(ADA_INCLUDES) ../adainclude/$<
+
+rts-native: build
+	$(RMDIR) $(RTSLIB)
+	$(MKDIR) $(RTSLIB)
+	$(MAKE) setup-rts
+	$(MAKE) $(RTSDIR)/s-oscons.ads
+# C files
+# ??? missing proper -I switches
+#	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSDIR) -f $(pwd)/Makefile \
+#	  CC=gcc $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+# Ada files
+	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSDIR) -f $(pwd)/Makefile \
+	  ADAC=$(LLVM_GCC) \
+	  $(GNATRTL_OBJS)
+	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)
+	$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnat$(arext) \
+	  $(addprefix $(RTSLIB)/,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS))
+	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnat$(arext)
+	$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnarl$(arext) \
+	  $(addprefix $(RTSLIB)/,$(GNATRTL_TASKING_OBJS))
+	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnarl$(arext)
+	$(CHMOD) a-wx $(RTSLIB)/*.ali
+	$(RM) $(RTSLIB)/*.o
+
+OSCONS_CC=gcc
+OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
+  $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
+OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
+
+oscons: setup $(RTSDIR)/s-oscons.ads
+
+$(RTSDIR)/s-oscons.ads: $(GNAT_SRC)/s-oscons-tmplt.c $(GNAT_SRC)/gsocket.h
+	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
+	  $(pwd)/obj-tools/xoscons s-oscons && \
+	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR)
 

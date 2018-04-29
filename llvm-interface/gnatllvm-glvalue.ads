@@ -161,7 +161,8 @@ package GNATLLVM.GLValue is
      (Is_Access_Type (V) and then Ekind (V.Typ) /= E_Void
         and then Is_Array_Type (Full_Designated_Type (V))
         and then not Is_Constrained (Full_Designated_Type (V))
-        and then not Is_Raw_Array (V))
+        and then not Is_Raw_Array (V)
+        and then not Is_Subprogram_Type (V))
      with Pre => Present (V);
 
    function Is_Constrained (V : GL_Value) return Boolean is
@@ -954,7 +955,7 @@ package GNATLLVM.GLValue is
    function Add_Function
      (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value is
      (G (Add_Function (LLVM_Module, Name, T), Return_TE,
-         Is_Subprogram_Type => True))
+         Is_Reference => True, Is_Subprogram_Type => True))
      with Pre  => Present (T) and then Is_Type_Or_Void (Return_TE),
           Post => Present (Add_Function'Result);
    --  Add a function to the environment

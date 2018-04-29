@@ -641,7 +641,9 @@ package body GNATLLVM.Types is
 
       --  Compute the bounds
 
-      pragma Assert (Nkind (SRange) = N_Range);
+      pragma Assert (Nkind_In (SRange, N_Range,
+                               N_Signed_Integer_Type_Definition));
+
       Low := Build_Type_Conversion (Low_Bound (SRange), TE);
       High := Build_Type_Conversion (High_Bound (SRange), TE);
 
@@ -787,7 +789,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call (Get_Value (Proc),
-               (1 => Ret_Loc, 2 => Get_Value (Pool), 3 => Size, 4 => Align_V));
+               (1 => Get_Value (Pool), 2 => Ret_Loc, 3 => Size, 4 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
@@ -807,12 +809,21 @@ package body GNATLLVM.Types is
 
    procedure Heap_Deallocate (V : GL_Value; Proc : Entity_Id; Pool : Entity_Id)
    is
-      Converted_V : constant GL_Value := Pointer_Cast (V, Standard_A_Char);
       Size        : constant GL_Value := Get_Type_Size (V);
       Align       : constant unsigned := Get_Type_Alignment (V);
       Align_V     : constant GL_Value := Size_Const_Int (Align);
+      Converted_V : GL_Value          := V;
 
    begin
+      --  If V is a fat pointer, get just the array data.  In any event,
+      --  convert it to a generic pointer.
+
+      if Is_Access_Unconstrained (Converted_V) then
+         Converted_V := Array_Data (Converted_V);
+      end if;
+
+      Converted_V := Pointer_Cast (Converted_V, Standard_A_Char);
+
       --  If no subprogram was specified, use the default memory deallocation
       --  procedure, where we just pass the object and a size a size.
 
@@ -825,7 +836,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call (Get_Value (Proc),
-               (1 => Converted_V, 2 => Get_Value (Pool),
+               (1 => Get_Value (Pool), 2 => Converted_V,
                 3 => Size, 4 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size

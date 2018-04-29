@@ -271,10 +271,14 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Subprogram_Declaration =>
-            --  Ignore intrinsic subprogram as calls to those will
-            --  be expanded.
 
-            if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N)) then
+            --  Ignore intrinsic subprograms in the main unit as calls
+            --  to those will be expanded.  But outside the main unit,
+            --  they may be builtins on one compiler and not another.
+
+            if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N))
+              or else not In_Main_Unit
+            then
                Discard (Emit_Subprogram_Decl (Specification (N)));
             end if;
 
@@ -731,10 +735,11 @@ package body GNATLLVM.Compile is
             Pop_Debug_Scope;
 
          when N_Full_Type_Declaration
-            | N_Subtype_Declaration
             | N_Incomplete_Type_Declaration
-            | N_Private_Type_Declaration
             | N_Private_Extension_Declaration
+            | N_Private_Type_Declaration
+            | N_Subtype_Declaration
+            | N_Task_Type_Declaration
            =>
             Discard
               (GNAT_To_LLVM_Type (Defining_Identifier (N), True));
@@ -771,23 +776,26 @@ package body GNATLLVM.Compile is
          --  represent tings that are put elsewhere in the three (e.g,
          --  rep clauses).
 
-         when N_Call_Marker
+         when N_At_Clause
+            | N_Call_Marker
             | N_Empty
             | N_Enumeration_Representation_Clause
             | N_Enumeration_Type_Definition
             | N_Function_Instantiation
             | N_Freeze_Generic_Entity
-            | N_Itype_Reference
-            | N_Number_Declaration
-            | N_Procedure_Instantiation
-            | N_Validate_Unchecked_Conversion
-            | N_Variable_Reference_Marker
-            | N_Package_Instantiation
-            | N_Package_Renaming_Declaration
+            | N_Generic_Function_Renaming_Declaration
+            | N_Generic_Package_Renaming_Declaration
+            | N_Generic_Procedure_Renaming_Declaration
             | N_Generic_Package_Declaration
             | N_Generic_Subprogram_Declaration
+            | N_Itype_Reference
+            | N_Number_Declaration
+            | N_Package_Instantiation
+            | N_Package_Renaming_Declaration
+            | N_Procedure_Instantiation
             | N_Record_Representation_Clause
-            | N_At_Clause
+            | N_Validate_Unchecked_Conversion
+            | N_Variable_Reference_Marker
             | N_Use_Type_Clause
            =>
             null;
@@ -2279,8 +2287,7 @@ package body GNATLLVM.Compile is
          while Present (Input) loop
             Input_Pos := Input_Pos + 1;
             Args (Input_Pos) :=
-              Need_Value (Emit_Expression (Entity (Input)),
-                          Full_Etype (Input));
+              Need_Value (Emit_Expression (Input), Full_Etype (Input));
             Add_Constraint (Asm_Input_Constraint);
             Next_Asm_Input;
             Input := Asm_Input_Value;

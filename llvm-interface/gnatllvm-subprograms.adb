@@ -783,17 +783,16 @@ package body GNATLLVM.Subprograms is
             --  to be better way to handle this right now.
 
             LLVM_Func :=
-              G (Add_Function
-                   (LLVM_Module,
-                    (if Is_Compilation_Unit (Def_Ident)
-                       then "_ada_" & Subp_Base_Name
-                       else Subp_Base_Name),
-                         Subp_Type),
-                 Full_Etype (Def_Ident),
-                 Is_Reference => True, Is_Subprogram_Type => True);
+              Add_Function
+                   ((if Is_Compilation_Unit (Def_Ident)
+                     then "_ada_" & Subp_Base_Name else Subp_Base_Name),
+                    Subp_Type, Full_Etype (Def_Ident));
+
             --  Define the appropriate linkage
 
-            if not Is_Public (Def_Ident) then
+            if not In_Main_Unit then
+               Set_Linkage (LLVM_Func, External_Linkage);
+            elsif not Is_Public (Def_Ident) then
                Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
             end if;
 

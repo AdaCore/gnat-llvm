@@ -773,7 +773,7 @@ package body GNATLLVM.Compile is
             end if;
 
          --  Nodes we actually want to ignore, in many cases because they
-         --  represent tings that are put elsewhere in the three (e.g,
+         --  represent things that are put elsewhere in the tree (e.g,
          --  rep clauses).
 
          when N_At_Clause

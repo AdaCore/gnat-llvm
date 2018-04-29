@@ -71,15 +71,6 @@ package body GNATLLVM.Compile is
    --  Helper for Emit_Assignment: say whether this is an aggregate of all
    --  zeros.
 
-   procedure Emit_Assignment
-     (LValue                    : GL_Value;
-      Orig_E                    : Node_Id;
-      E_Value                   : GL_Value;
-      Forwards_OK, Backwards_OK : Boolean)
-     with Pre => Present (LValue) or else Present (Orig_E);
-   --  Helper for Emit: Copy the value of the expression E to LValue
-   --  with the specified destination and expression types.
-
    function Emit_Literal (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Literal'Result);
    --  Generate code for a literal
@@ -356,9 +347,10 @@ package body GNATLLVM.Compile is
                Def_Ident : constant Node_Id   := Defining_Identifier (N);
                TE        : constant Entity_Id := Full_Etype (Def_Ident);
                Expr      : constant Node_Id   := Expression (N);
+               Value     : GL_Value           := No_GL_Value;
+               Copied    : Boolean            := False;
                LLVM_Type : Type_T;
                LLVM_Var  : GL_Value;
-               Value     : GL_Value := No_GL_Value;
 
             begin
                --  Nothing to do if this is a debug renaming type
@@ -468,13 +460,13 @@ package body GNATLLVM.Compile is
                            TE, Get_Name (Def_Ident));
                   else
                      LLVM_Var := Allocate_For_Type
-                       (TE, V => Value, Name => Get_Name (Def_Ident));
-
+                       (TE, TE, V => Value, Name => Get_Name (Def_Ident));
+                     Copied := True;
                   end if;
 
                   Set_Value (Def_Ident, LLVM_Var);
 
-                  if Present (Value) then
+                  if not Copied and then Present (Value) then
                      Emit_Assignment (LLVM_Var, Empty, Value, True, True);
                   end if;
                end if;
@@ -542,6 +534,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Simple_Return_Statement =>
+
             if Present (Expression (N)) then
                declare
                   Expr : constant Node_Id :=
@@ -565,35 +558,10 @@ package body GNATLLVM.Compile is
 
                   elsif Is_Array_Type (TE) and then not Is_Constrained (TE)
                   then
-                     declare
-                        Value : constant GL_Value  := Emit_Expression (Expr);
-                        Typ   : constant Entity_Id := Full_Etype (Expr);
-                        Temp  : constant GL_Value  :=
-                          Heap_Allocate_For_Type
-                          (Typ, Value, Procedure_To_Call (N),
-                           Storage_Pool (N));
-
-                     begin
-                        --  This is a bit tricky because the only place
-                        --  where we can get the bounds for the fat pointer
-                        --  are from the type of the original value.
-
-                        Emit_Assignment (Temp, Empty, Value, True, True);
-
-                        --  If the expression was a constrained array, show
-                        --  that what we have is of that type and then
-                        --  make a fat pointer to it.
-
-                        if Is_Constrained (Typ) then
-                           Build_Ret (Convert_To_Access_To
-                                        (G_Is_Ref (Temp, Typ), TE));
-                        else
-                           --  Otherwise, we have to update the old fat
-                           --  pointer with the new array data.
-
-                           Build_Ret (Update_Fat_Pointer (Value, Temp));
-                        end if;
-                     end;
+                     Build_Ret
+                       (Heap_Allocate_For_Type
+                          (TE, Full_Etype (Expr), Emit_Expression (Expr),
+                           Procedure_To_Call (N), Storage_Pool (N)));
                   else
                      Build_Ret (Build_Type_Conversion (Expr, TE));
                   end if;
@@ -690,10 +658,10 @@ package body GNATLLVM.Compile is
 
                         Create_Discrete_Type (Var_Type, LLVM_Type, Low, High);
                         LLVM_Var := Allocate_For_Type
-                          (Var_Type, Name => Get_Name (Def_Ident));
+                          (Var_Type, Var_Type,
+                           (if Reversed then High else Low),
+                           Name => Get_Name (Def_Ident));
                         Set_Value (Def_Ident, LLVM_Var);
-                        Store
-                          ((if Reversed then High else Low), LLVM_Var);
 
                         --  Then go to the condition block if the range isn't
                         --  empty.
@@ -1537,6 +1505,13 @@ package body GNATLLVM.Compile is
                  (Make_Reference (Emit_Expression (Prefix (N))), TE);
 
             when N_Allocator =>
+
+               --  There are two cases: the Expression operand can either
+               --  be an N_Identifier or Expanded_Name, which must
+               --  represent a type, or a N_Qualified_Expression, which
+               --  contains both the object type and an initial value for
+               --  the object.
+
                declare
                   Expr   : constant Node_Id := Expression (N);
                   Typ    : Entity_Id;
@@ -1559,19 +1534,14 @@ package body GNATLLVM.Compile is
                   end if;
 
                   Result := Heap_Allocate_For_Type
-                    (Typ, Value, Procedure_To_Call (N), Storage_Pool (N));
-
-                  --  Now copy the data, if there is any, into the value
-
-                  if Nkind (Expr) = N_Qualified_Expression then
-                     Emit_Assignment (Result, Empty, Value, True, True);
-                  end if;
-
-                  return Result;
+                    (Full_Designated_Type (TE), Typ, Value,
+                     Procedure_To_Call (N), Storage_Pool (N));
+                  return Convert_To_Elementary_Type (Result, TE);
                end;
 
             when N_Reference =>
-               return Emit_LValue (Prefix (N));
+               return
+                 Convert_To_Elementary_Type (Emit_LValue (Prefix (N)), TE);
 
             when N_Attribute_Reference =>
                return Emit_Attribute_Reference (N, LValue => False);
@@ -1811,8 +1781,7 @@ package body GNATLLVM.Compile is
             --  the same constraints.  But we do have to be sure that it's
             --  of the right type.
 
-            return Convert_To_Access_To (Emit_LValue (Prefix (N)),
-                                         Full_Designated_Type (TE));
+            return Convert_To_Elementary_Type (Emit_LValue (Prefix (N)), TE);
 
          when Attribute_Address
             | Attribute_Pool_Address =>

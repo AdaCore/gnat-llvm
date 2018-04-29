@@ -15,9 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout; use Errout;
-with Stand;  use Stand;
+with Errout;   use Errout;
+with Exp_Unst; use Exp_Unst;
+with Stand;    use Stand;
 with Table;
+with Uintp;    use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -111,6 +113,10 @@ package body GNATLLVM.Blocks is
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
+   procedure Emit_One_Fixup (Blk : Integer; Do_At_End, Do_Stack : Boolean);
+   --  Do one fixup when exiting Blk, saying whether to run "at end handler
+   --  and whether to restore the stack pointer.
+
    ----------------
    -- Push_Block --
    ----------------
@@ -145,45 +151,64 @@ package body GNATLLVM.Blocks is
          --  Save both the end proc and the value of the static link.
          --  Since we'll be generating the call directly, we have to convert
          --  the static link to the proper pointer type for the activation
-         --  record.
+         --  record.  There may not be a static link, however, if there re
+         --  no uplevel references.
 
          Block_Stack.Table (Block_Stack.Last).At_End_Proc :=
            Emit_LValue (At_End_Proc);
-         Block_Stack.Table (Block_Stack.Last).At_End_Static_Link :=
-           Pointer_Cast (Get_Static_Link (At_End_Proc),
-                         Full_Etype (First_Formal_With_Extras
-                                       (Entity (At_End_Proc))));
+         if Subps_Index (Entity (At_End_Proc)) /= Uint_0
+           and then Present (Subps.Table (Subp_Index
+                                            (Entity (At_End_Proc))).ARECnF)
+         then
+            Block_Stack.Table (Block_Stack.Last).At_End_Static_Link :=
+              Pointer_Cast (Get_Static_Link (At_End_Proc),
+                            Full_Etype (First_Formal_With_Extras
+                                          (Entity (At_End_Proc))));
+         end if;
       end if;
 
       In_Stmt_Part := True;
 
    end Start_Block_Statements;
 
+   --------------------
+   -- Emit_One_Fixup --
+   --------------------
+
+   procedure Emit_One_Fixup (Blk : Integer; Do_At_End, Do_Stack : Boolean) is
+      Block_Inf : constant Block_Info := Block_Stack.Table (Blk);
+
+   begin
+      --  First call the "at end" handler before any variables get
+      --  deallocated.
+
+      if Do_At_End and then Present (Block_Inf.At_End_Proc) then
+         if Present (Block_Inf.At_End_Static_Link) then
+            Call (Block_Inf.At_End_Proc, (1 => Block_Inf.At_End_Static_Link));
+         else
+            Call (Block_Inf.At_End_Proc, (1 .. 0 => <>));
+         end if;
+      end if;
+
+      --  Then deallocate variables
+
+      if Do_Stack and then Present (Block_Inf.Stack_Save) then
+         Call (Get_Stack_Restore_Fn, (1 => Block_Inf.Stack_Save));
+      end if;
+   end Emit_One_Fixup;
+
    ---------------
    -- Pop_Block --
    ---------------
 
    procedure Pop_Block is
-      Block_Inf : constant Block_Info := Block_Stack.Table (Block_Stack.Last);
-
    begin
       if not Are_In_Dead_Code then
-
-         --  First call the "at end" handler before any variables get
-         --  deallocated.
-
-         if Present (Block_Inf.At_End_Proc) then
-            Call (Block_Inf.At_End_Proc, (1 => Block_Inf.At_End_Static_Link));
-         end if;
-
-         --  Then deallocate variables
-
-         if Present (Block_Inf.Stack_Save) then
-            Call (Get_Stack_Restore_Fn, (1 => Block_Inf.Stack_Save));
-         end if;
+         Emit_One_Fixup (Block_Stack.Last,
+                         Do_At_End => True, Do_Stack => True);
       end if;
 
-      In_Stmt_Part := Block_Inf.In_Stmts;
+      In_Stmt_Part := Block_Stack.Table (Block_Stack.Last).In_Stmts;
       Block_Stack.Decrement_Last;
    end Pop_Block;
 

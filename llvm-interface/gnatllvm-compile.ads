@@ -45,6 +45,15 @@ package GNATLLVM.Compile is
      with Pre => Present (N), Post => Present (Emit_Expression'Result);
    --  Compile an expression node to an LLVM value
 
+   procedure Emit_Assignment
+     (LValue                    : GL_Value;
+      Orig_E                    : Node_Id;
+      E_Value                   : GL_Value;
+      Forwards_OK, Backwards_OK : Boolean)
+     with Pre => Present (LValue) or else Present (Orig_E);
+   --  Copy the value of the expression E to LValue with the specified
+   --  destination and expression types.
+
    function Emit_LValue (N : Node_Id; Clear : Boolean := True) return GL_Value
      with Pre  => Present (N),
           Post => Present (Emit_LValue'Result);

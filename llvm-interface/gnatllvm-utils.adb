@@ -362,21 +362,14 @@ package body GNATLLVM.Utils is
 
       --  If at top level or we already have an LValue, return it.
       --  Otherwise, allocate memory for the value (which we know to be of
-      --  fixed size or else we'd have had a reference), store the data,
-      --  and return the address of that temporary.
+      --  fixed size or else we'd have had a reference).
 
       if Library_Level or else Is_LValue_Of (V, TE) then
          return V;
       else
          pragma Assert (not Library_Level);
 
-         declare
-            Temp : constant GL_Value :=
-              Allocate_For_Type (TE, V => V, Name => Name);
-         begin
-            Store (V, Convert_To_Access_To (Temp, V));
-            return Temp;
-         end;
+         return Allocate_For_Type (TE, TE, V => V, Name => Name);
       end if;
    end Need_LValue;
 

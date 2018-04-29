@@ -27,6 +27,21 @@ with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
 
+   function Move_Into_Memory
+     (Temp       : GL_Value;
+      V          : GL_Value;
+      TE         : Entity_Id;
+      Alloc_Type : Entity_Id) return GL_Value
+     with Pre  => Present (Temp) and then Is_Type (TE)
+                  and then Is_Type (Alloc_Type),
+          Post => Is_Access_Type (Move_Into_Memory'Result);
+   --  Temp is memory that was recently allocated.  Move Value, if
+   --  present, into that allocated memory and return the allocated
+   --  memory as a reference to type TE.  This is used by both type of
+   --  memory allocators.  Temp can be of any type, either an integer
+   --  or pointer to anything.  Alloc_Type is the type that was used
+   --  to allocate the memory.
+
    --------------------------
    -- GNAT_Equivalent_Type --
    --------------------------
@@ -632,14 +647,71 @@ package body GNATLLVM.Types is
 
    end Create_Discrete_Type;
 
+   ----------------------
+   -- Move_Into_Memory --
+   ----------------------
+
+   function Move_Into_Memory
+     (Temp       : GL_Value;
+      V          : GL_Value;
+      TE         : Entity_Id;
+      Alloc_Type : Entity_Id) return GL_Value
+   is
+      Memory : GL_Value           := Temp;
+
+   begin
+      --  First, get Temp into something roughly looking like a
+      --  pointer to Alloc_Typ, but if it's unconstrained, we convert
+      --  into raw array data, since that's what we have.
+
+      if Is_Array_Type (Alloc_Type)
+        and then not Is_Constrained (Alloc_Type)
+      then
+         Memory :=
+           (if Is_Access_Type (Memory)
+            then Ptr_To_Raw_Array (Memory, Alloc_Type)
+            else Int_To_Raw_Array (Memory, Alloc_Type));
+      else
+         Memory :=
+           (if Is_Access_Type (Memory) then Ptr_To_Ref (Memory, Alloc_Type)
+            else Int_To_Ref (Memory, Alloc_Type));
+      end if;
+
+      --  If we have a value to move into memory, move it
+
+      if Present (V) then
+         Emit_Assignment (Memory, Empty, V, True, True);
+      end if;
+
+      --  Now we have to return a pointer to the allocated memory that's
+      --  a reference to TE.  If TE isn't an unconstrained array, just
+      --  possibly adjust the pointer type.  If it is unconstrained, but
+      --  what we have is constrained, then the conversion will properly
+      --  make the fat pointer from the constrained type.
+
+      if not Is_Array_Type (TE) or else Is_Constrained (TE)
+        or else (not Is_Access_Unconstrained (Memory)
+                   and then not Is_Raw_Array (Memory))
+      then
+         return Convert_To_Access_To (Memory, TE);
+
+      --  Otherwise, we have to update the old fat pointer with the
+      --  new array data.
+
+      else
+         return Update_Fat_Pointer (V, Memory);
+      end if;
+   end Move_Into_Memory;
+
    -----------------------
    -- Allocate_For_Type --
    -----------------------
 
    function Allocate_For_Type
-     (TE   : Entity_Id;
-      V    : GL_Value := No_GL_Value;
-      Name : String := "") return GL_Value
+     (TE         : Entity_Id;
+      Alloc_Type : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Name       : String := "") return GL_Value
    is
       Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
@@ -648,30 +720,31 @@ package body GNATLLVM.Types is
       --  We have three cases.  If the object is not of a dynamic size,
       --  we just do the alloca and that's all.
 
-      if not Is_Dynamic_Size (TE) then
-         return Alloca (TE, Name);
+      if not Is_Dynamic_Size (Alloc_Type) then
+         return
+           Move_Into_Memory (Alloca (Alloc_Type, Name), V, TE, Alloc_Type);
       end if;
 
-      --  Otherwise, we have to do some sort of dynamic allocation.  If
-      --  this is an array of a component that's not of dynamic size, then
-      --  we can allocate an array of the component type corresponding to
-      --  the array type and cast it to a pointer to the actual type.
-      --  If not, we have to allocate it as an array of bytes.
+      --  Otherwise, we probably have to do some sort of dynamic
+      --  allocation.  If this is an array of a component that's not of
+      --  dynamic size, then we can allocate an array of the component type
+      --  corresponding to the array type and cast it to a pointer to the
+      --  actual type.  If not, we have to allocate it as an array of
+      --  bytes.
 
-      if Is_Array_Type (TE)
-        and then not Is_Dynamic_Size (Full_Component_Type (TE))
+      if Is_Array_Type (Alloc_Type)
+        and then not Is_Dynamic_Size (Full_Component_Type (Alloc_Type))
       then
-         Element_Typ := Full_Component_Type (TE);
-         Num_Elts    := Get_Array_Elements (V, TE, For_Type => No (V));
+         Element_Typ := Full_Component_Type (Alloc_Type);
+         Num_Elts    := Get_Array_Elements (V, Alloc_Type, For_Type => No (V));
       else
          Element_Typ := Standard_Short_Short_Integer;
-         Num_Elts    := Get_Type_Size (TE, V, For_Type => No (V));
+         Num_Elts    := Get_Type_Size (Alloc_Type, V, For_Type => No (V));
       end if;
 
-      --  ?? Why don't we have to worry about the Raw_Array case here?
-
-      return Ptr_To_Ref
-        (Array_Alloca (Element_Typ, Num_Elts, "dyn-array"), TE, Name);
+      return Move_Into_Memory
+        (Array_Alloca (Element_Typ, Num_Elts, "dyn-array"),
+         V, TE, Alloc_Type);
 
    end Allocate_For_Type;
 
@@ -680,30 +753,28 @@ package body GNATLLVM.Types is
    ----------------------------
 
    function Heap_Allocate_For_Type
-     (TE   : Entity_Id;
-      V    : GL_Value := No_GL_Value;
-      Proc : Entity_Id;
-      Pool : Entity_Id) return GL_Value
+     (TE         : Entity_Id;
+      Alloc_Type : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Proc       : Entity_Id;
+      Pool       : Entity_Id) return GL_Value
    is
-      Size    : constant GL_Value := Get_Type_Size (TE, V, For_Type => No (V));
-      Align   : constant unsigned := Get_Type_Alignment (TE);
-      Align_V : constant GL_Value := Size_Const_Int (Align);
-      Ret_Loc : constant GL_Value :=
-        (if No (Proc) then No_GL_Value else Allocate_For_Type (Size_Type));
-      Result  : GL_Value;
+      Size       : constant GL_Value  :=
+        Get_Type_Size (Alloc_Type, V, For_Type => No (V));
+      Align      : constant unsigned  := Get_Type_Alignment (Alloc_Type);
+      Align_V    : constant GL_Value  := Size_Const_Int (Align);
+      Ret_Loc    : constant GL_Value  :=
+        (if No (Proc) then No_GL_Value
+         else Allocate_For_Type (Size_Type, Size_Type));
 
    begin
       --  If no function was specified, use the default memory allocation
       --  function, where we just pass a size.
 
       if No (Proc) then
-         Result := Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size));
-
-         if Is_Array_Type (TE) and then not Is_Constrained (TE) then
-            return Ptr_To_Raw_Array (Result, TE);
-         else
-            return Ptr_To_Ref (Result, TE);
-         end if;
+         return Move_Into_Memory
+           (Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size)),
+            V, TE, Alloc_Type);
 
       --  If a procedure was specified (meaning that a pool must also
       --  have been specified) and the pool is a record, then it's a
@@ -727,12 +798,7 @@ package body GNATLLVM.Types is
       --  If we're doing this for an unconstrained array, we have the pointer
       --  to the raw array, not a fat pointer.
 
-      if Is_Array_Type (TE) and then not Is_Constrained (TE) then
-         return Int_To_Raw_Array (Load (Ret_Loc), TE);
-      else
-         return Int_To_Ref (Load (Ret_Loc), TE);
-      end if;
-
+      return Move_Into_Memory (Load (Ret_Loc), V, TE, Alloc_Type);
    end Heap_Allocate_For_Type;
 
    ---------------------

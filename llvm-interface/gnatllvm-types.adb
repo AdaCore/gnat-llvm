@@ -248,12 +248,8 @@ package body GNATLLVM.Types is
    function Build_Unchecked_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value
    is
-      type Opf is access function (V : GL_Value; TE : Entity_Id; Name : String)
-        return GL_Value;
-
       T        : constant Type_T    := Create_Type (TE);
       V        : constant GL_Value  := Emit_Expression (N);
-      Subp     : Opf                := null;
 
    begin
       --  If the value is already of the desired LLVM type, we're done.
@@ -264,15 +260,19 @@ package body GNATLLVM.Types is
       --  If converting pointer to pointer or pointer to/from integer, we
       --  just copy the bits using the appropriate instruction.
 
-      elsif Is_Access_Type (TE) and then Is_Scalar_Type (V) then
-         Subp := Int_To_Ptr'Access;
-      elsif Is_Scalar_Type (TE) and then Is_Access_Type (V) then
-         Subp := Ptr_To_Int'Access;
+      elsif Is_Access_Type (TE) and then not Is_Access_Unconstrained (TE)
+        and then Is_Scalar_Type (V)
+      then
+         return Int_To_Ptr (V, TE);
+      elsif Is_Scalar_Type (TE) and then Is_Access_Type (V)
+        and then not Is_Access_Unconstrained (V)
+      then
+         return Ptr_To_Int (V, TE);
       elsif Is_Access_Type (TE) and then Is_Access_Type (V)
         and then not Is_Access_Unconstrained (V)
         and then not Is_Access_Unconstrained (TE)
       then
-         Subp := Pointer_Cast'Access;
+         return Pointer_Cast (V, TE);
 
       --  If these are both integral types, we handle this as a normal
       --  conversion.  Unchecked conversion is only defined if the sizes
@@ -323,11 +323,6 @@ package body GNATLLVM.Types is
             return Need_Value (Ptr_To_Ref (Addr, TE, "unc-ptr-cvt"), TE);
          end;
       end if;
-
-      --  If we get here, we should have set Subp to point to the function
-      --  to call to do the conversion.
-
-      return Subp (V, TE, "unchecked-conv");
    end Build_Unchecked_Conversion;
 
    -------------------------------

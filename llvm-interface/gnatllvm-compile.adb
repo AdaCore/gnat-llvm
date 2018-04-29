@@ -741,8 +741,21 @@ package body GNATLLVM.Compile is
             | N_Subtype_Declaration
             | N_Task_Type_Declaration
            =>
-            Discard
-              (GNAT_To_LLVM_Type (Defining_Identifier (N), True));
+            declare
+               TE  : constant Entity_Id := Defining_Identifier (N);
+               T   : constant Type_T    := GNAT_To_LLVM_Type (TE, True);
+
+            begin
+               if Esize (TE) /= Uint_0
+                 and then (Is_Dynamic_Size (TE)
+                             or else (Nat (unsigned_long_long'
+                                             (Get_LLVM_Type_Size_In_Bits (T)))
+                                        > Esize (TE)))
+               then
+                  Error_Msg_Uint_1 := Esize (TE);
+                  Error_Msg_NE ("?Type & does not fit into ^ bits", N, TE);
+               end if;
+            end;
 
          when N_Freeze_Entity =>
             --  ??? Need to process Node itself
@@ -1966,6 +1979,13 @@ package body GNATLLVM.Compile is
 
          when Attribute_Null_Parameter =>
             return Load (Const_Null_Ptr (Full_Etype (Prefix (N))));
+
+         when Attribute_Descriptor_Size =>
+
+            --  We don't use descriptors that are stored with the value,
+            --  so this is zero.
+
+            return Const_Null (TE);
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &

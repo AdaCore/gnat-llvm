@@ -103,7 +103,7 @@ package GNATLLVM.Environment is
       Is_Double_Reference  : Boolean;
       --  If True, this is a reference to a reference to the type.  This
       --  is assumed to only occur for globals and not supported in other
-      --  situtations.
+      --  situations.
 
       Is_Raw_Array         : Boolean;
       --  If True, even though the type here is unconstrained, we've

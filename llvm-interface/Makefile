@@ -178,7 +178,7 @@ AR_FLAGS=q
 RANLIB_FOR_TARGET=ranlib
 RTSDIR=$(pwd)/lib/rts-native/adainclude
 RTSLIB=$(pwd)/lib/rts-native/adalib
-ADAFLAGS=-gnatpgn
+ADAFLAGS=-gnatpg
 ADA_INCLUDES=-nostdinc -I../adainclude
 GCC_INCLUDE_PATH = $(word 2,$(shell gcc --print-search-dirs|grep install:))gcc-include
 CFLAGS = -O2
@@ -230,7 +230,7 @@ gnatlib: build
 	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) $(GNATRTL_OBJS)
+	  ADAC=$(ADAC) CC=$(ADAC) $(GNATRTL_OBJS)
 # C files
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
 	  CC=gcc $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
@@ -244,31 +244,6 @@ gnatlib: build
 	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnarl$(arext)
 	$(CHMOD) a-wx $(RTSLIB)/*.ali
 	$(RM) $(RTSLIB)/*.o
-
-# Special flags - see gcc-interface/Makefile.in for the template
-
-s-traceb.o: s-traceb.adb s-traceb.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) \
-	  $(NO_INLINE_ADAFLAGS) $(NO_SIBLING_ADAFLAGS) $(ADA_INCLUDES) $<
-
-s-tasdeb.o: s-tasdeb.adb  s-tasdeb.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) -O0 $<
-
-a-except.o: a-except.adb a-except.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) \
-	  $(NO_REORDER_ADAFLAGS) -O1 $(NO_INLINE_ADAFLAGS) $<
-
-s-excdeb.o: s-excdeb.adb s-excdeb.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) -O0 $<
-
-s-assert.o: s-assert.adb s-assert.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) $<
-
-a-tags.o: a-tags.adb a-tags.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) $<
-
-s-memory.o : s-memory.adb s-memory.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(NO_SIBLING_ADAFLAGS) $<
 
 tracebak.o: tracebak.c tb-gcc.c
 	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \

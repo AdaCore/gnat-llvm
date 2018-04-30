@@ -56,6 +56,7 @@ begin
 
    Building_Static_Dispatch_Tables := False;
    Debug_Flag_Dot_G                := True;
+   Debug_Flag_Dot_8                := True;
    Expand_Nonbinary_Modular_Ops    := True;
    Unnest_Subprogram_Mode          := True;
 

@@ -160,11 +160,12 @@ package body GNATLLVM.Compile is
    begin
       Set_Debug_Pos_At_Node (N);
       if Library_Level
-        and then (Nkind (N) in N_Statement_Other_Than_Procedure_Call
+        and then ((Nkind (N) in N_Statement_Other_Than_Procedure_Call
+                     and then Nkind (N) /= N_Null_Statement)
                     or else Nkind (N) in N_Subprogram_Call
-                    or else Nkind (N) = N_Handled_Sequence_Of_Statements
                     or else Nkind (N) in N_Raise_xxx_Error
-                    or else Nkind (N) = N_Raise_Statement)
+                    or else Nkind_In (N, N_Raise_Statement,
+                                      N_Handled_Sequence_Of_Statements))
       then
          --  Append to list of statements to put in the elaboration procedure
          --  if in main unit, otherwise simply ignore the statement.
@@ -353,7 +354,6 @@ package body GNATLLVM.Compile is
                Expr      : constant Node_Id   := Expression (N);
                Value     : GL_Value           := No_GL_Value;
                Copied    : Boolean            := False;
-               LLVM_Type : Type_T;
                LLVM_Var  : GL_Value;
 
             begin
@@ -388,16 +388,11 @@ package body GNATLLVM.Compile is
                  or else (Is_Statically_Allocated (Def_Ident)
                             and then not Special_Elaboration_Code)
                then
-                  --  ??? Will only work for objects of static sizes
+                  LLVM_Var := Add_Global
+                    (TE, Get_Ext_Name (Def_Ident),
+                     Need_Reference => Present (Address_Clause (Def_Ident))
+                       or else Is_Dynamic_Size (TE));
 
-                  LLVM_Type := Create_Type (TE);
-                  pragma Assert (not Is_Dynamic_Size (TE));
-
-                  if Present (Address_Clause (Def_Ident)) then
-                     LLVM_Type := Pointer_Type (LLVM_Type, 0);
-                  end if;
-
-                  LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident));
                   if not Library_Level then
                      Set_Linkage (LLVM_Var, Internal_Linkage);
                   end if;
@@ -419,11 +414,13 @@ package body GNATLLVM.Compile is
                      else
                         if Is_Imported (Def_Ident) then
                            Set_Linkage (LLVM_Var, External_Linkage);
-                        end if;
+
+                        elsif Is_Dynamic_Size (TE) then
+                           Elaboration_Table.Append (N);
 
                         --  Take Expression (Node) into account
 
-                        if Present (Expr)
+                        elsif Present (Expr)
                           and then not (Nkind (N) = N_Object_Declaration
                                           and then No_Initialization (N))
                         then
@@ -456,6 +453,12 @@ package body GNATLLVM.Compile is
 
                   if Special_Elaboration_Code then
                      LLVM_Var := Get_Value (Def_Ident);
+
+                     if Is_Dynamic_Size (TE) then
+                        Store (Heap_Allocate_For_Type (TE, TE, Value),
+                               LLVM_Var);
+                        Copied := True;
+                     end if;
 
                   elsif Present (Address_Clause (Def_Ident)) then
                         LLVM_Var := Int_To_Ref
@@ -958,6 +961,8 @@ package body GNATLLVM.Compile is
                   Set_Linkage (V, External_Linkage);
                   Set_Value (Def_Ident, V);
                   return V;
+               elsif Is_Double_Reference (V) then
+                  return Load (V);
                else
                   return V;
                end if;
@@ -1396,6 +1401,7 @@ package body GNATLLVM.Compile is
 
                declare
                   Def_Ident : Entity_Id := Entity (N);
+                  V         : GL_Value;
 
                begin
                   --  If this is a deferred constant, look at private version
@@ -1514,8 +1520,12 @@ package body GNATLLVM.Compile is
                      end;
                   end if;
 
-                  return Need_Value (Get_Value (Def_Ident),
-                                     Full_Etype (Def_Ident));
+                  V := Get_Value (Def_Ident);
+                  if Is_Double_Reference (V) then
+                     V := Load (V);
+                  end if;
+
+                  return Need_Value (V, Full_Etype (Def_Ident));
                end;
 
             when N_Function_Call =>

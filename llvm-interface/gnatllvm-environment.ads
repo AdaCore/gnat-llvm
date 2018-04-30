@@ -100,6 +100,11 @@ package GNATLLVM.Environment is
       --  actually an E_Access_Type (not provided) whose Designated_Type
       --  is Typ.
 
+      Is_Double_Reference  : Boolean;
+      --  If True, this is a reference to a reference to the type.  This
+      --  is assumed to only occur for globals and not supported in other
+      --  situtations.
+
       Is_Raw_Array         : Boolean;
       --  If True, even though the type here is unconstrained, we've
       --  extracted the actual address of the array and that's what's in
@@ -117,10 +122,8 @@ package GNATLLVM.Environment is
 
    type GL_Value_Array is array (Nat range <>) of GL_Value;
 
-   function Is_Reference (V : GL_Value) return Boolean is (V.Is_Reference);
-   function Is_Raw_Array (V : GL_Value) return Boolean is (V.Is_Raw_Array);
-
-   No_GL_Value : constant GL_Value := (No_Value_T, Empty, False, False, False);
+   No_GL_Value : constant GL_Value :=
+        (No_Value_T, Empty, False, False, False, False);
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 

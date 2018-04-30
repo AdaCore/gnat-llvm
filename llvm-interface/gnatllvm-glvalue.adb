@@ -378,8 +378,15 @@ package body GNATLLVM.GLValue is
    ----------
 
    function Load (Ptr : GL_Value; Name : String := "") return GL_Value is
-     (G (Load_With_Type (Full_Designated_Type (Ptr), LLVM_Value (Ptr), Name),
-         Full_Designated_Type (Ptr)));
+   begin
+      if Is_Double_Reference (Ptr) then
+         return G_Ref (Load (IR_Builder, LLVM_Value (Ptr), Name), Ptr.Typ);
+      else
+         return G (Load_With_Type (Full_Designated_Type (Ptr),
+                                   LLVM_Value (Ptr), Name),
+                   Full_Designated_Type (Ptr));
+      end if;
+   end Load;
 
    -----------
    -- Store --
@@ -491,9 +498,15 @@ package body GNATLLVM.GLValue is
    -- Add_Global --
    ----------------
 
-   function Add_Global (TE : Entity_Id; Name : String) return GL_Value is
-     (G (Add_Global (LLVM_Module, Create_Type (TE), Name), TE,
-         Is_Reference => True));
+   function Add_Global
+     (TE             : Entity_Id;
+      Name           : String;
+      Need_Reference : Boolean := False) return GL_Value is
+     (G (Add_Global (LLVM_Module,
+                     (if Need_Reference then Create_Access_Type (TE)
+                      else Create_Type (TE)),
+                     Name), TE,
+         Is_Reference => True, Is_Double_Reference => Need_Reference));
 
    ---------------------
    -- Set_Initializer --

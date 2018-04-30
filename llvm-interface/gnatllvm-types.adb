@@ -721,8 +721,7 @@ package body GNATLLVM.Types is
       end if;
 
       return Move_Into_Memory
-        (Array_Alloca (Element_Typ, Num_Elts, "dyn-array"),
-         V, TE, Alloc_Type);
+        (Array_Alloca (Element_Typ, Num_Elts, Name), V, TE, Alloc_Type);
 
    end Allocate_For_Type;
 
@@ -733,9 +732,9 @@ package body GNATLLVM.Types is
    function Heap_Allocate_For_Type
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
-      V          : GL_Value := No_GL_Value;
-      Proc       : Entity_Id;
-      Pool       : Entity_Id) return GL_Value
+      V          : GL_Value  := No_GL_Value;
+      Proc       : Entity_Id := Empty;
+      Pool       : Entity_Id := Empty) return GL_Value
    is
       Size       : constant GL_Value  :=
         Get_Type_Size (Alloc_Type, V, For_Type => No (V));

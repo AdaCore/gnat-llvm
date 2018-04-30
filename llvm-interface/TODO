@@ -1,9 +1,7 @@
 Missing main features (identified so far):
 
-- address clauses for and dynamic-sized globals (needs 2nd indirection level)
 - variant records
 - cleanups/at end handlers
-- secondary stack support
 - exception handlers
 - freeze nodes
 - representation clauses

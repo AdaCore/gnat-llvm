@@ -194,9 +194,9 @@ package GNATLLVM.Types is
    function Heap_Allocate_For_Type
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
-      V          : GL_Value := No_GL_Value;
-      Proc       : Entity_Id;
-      Pool       : Entity_Id) return GL_Value
+      V          : GL_Value  := No_GL_Value;
+      Proc       : Entity_Id := Empty;
+      Pool       : Entity_Id := Empty) return GL_Value
      with Pre  => Is_Type (TE)
                   and then (No (Proc) or else Present (Pool)),
           Post => Is_Access_Type (Heap_Allocate_For_Type'Result);

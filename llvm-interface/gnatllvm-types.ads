@@ -225,10 +225,9 @@ package GNATLLVM.Types is
 
    function Get_Type_Size
      (TE       : Entity_Id;
-      V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
-     with Pre  => Is_Type (TE) and then (not For_Type or else No (V)),
-          Post => Present (Get_Type_Size'Result);
+      V        : GL_Value := No_GL_Value;
+      For_Type : Boolean  := False) return GL_Value
+     with Pre => Is_Type (TE), Post => Present (Get_Type_Size'Result);
    --  Return the size of a type, in bytes, as a GL_Value.  If TE is
    --  an unconstrained array type, V must be the value of the array.
 
@@ -255,7 +254,8 @@ package GNATLLVM.Types is
      with Pre  => Is_Type (Left_Type) and then Is_Type (Right_Type);
    --  Likewise, but compute strictest alignment in bits
 
-   function Get_Type_Size_Complexity (TE : Entity_Id) return Natural
+   function Get_Type_Size_Complexity
+     (TE : Entity_Id; For_Type : Boolean := False) return Natural
      with Pre  => Is_Type (TE);
    --  Return the complexity of computing the size of a type.  This roughly
    --  gives the number of "things" needed to access to compute the size.

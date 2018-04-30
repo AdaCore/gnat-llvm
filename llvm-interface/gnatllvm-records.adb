@@ -57,11 +57,15 @@ package body GNATLLVM.Records is
    --  any.  For non-variant records, each piece either contains an
    --  LLVM type, which contains one or more fields or an GNAT type,
    --  which is used when the field's type is of dynamic size.
+   --  In the case where a record's type is a record type (as opposed to
+   --  a record subtype), it means that we are to use the maximum type of
+   --  that size for allocation purpose, so we need to flag that here.
 
    type Record_Info is record
-      LLVM_Type : Type_T;
-      GNAT_Type : Entity_Id;
-      Next      : Record_Info_Id;
+      LLVM_Type    : Type_T;
+      GNAT_Type    : Entity_Id;
+      Next         : Record_Info_Id;
+      Use_Max_Size : Boolean;
    end record
      with Dynamic_Predicate => (Present (LLVM_Type)
                                   or else Present (GNAT_Type))
@@ -134,7 +138,10 @@ package body GNATLLVM.Records is
 
       LLVM_Type : Type_T;
 
-      procedure Add_RI (T : Type_T; TE : Entity_Id)
+      procedure Add_RI
+        (T            : Type_T := No_Type_T;
+         TE           : Entity_Id := Empty;
+         Use_Max_Size : Boolean := False)
         with Pre => (Present (T) or else Present (TE))
                     and then not (Present (T) and then Present (TE));
       --  Add a Record_Info into the table, chaining it as appropriate
@@ -157,14 +164,18 @@ package body GNATLLVM.Records is
       -- Add_RI --
       ------------
 
-      procedure Add_RI (T : Type_T; TE : Entity_Id) is
+      procedure Add_RI
+        (T            : Type_T := No_Type_T;
+         TE           : Entity_Id := Empty;
+         Use_Max_Size : Boolean := False) is
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
          --  but we may not actually be using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (LLVM_Type => T, GNAT_Type => TE,
-            Next      => Empty_Record_Info_Id);
+           (LLVM_Type    => T, GNAT_Type => TE,
+            Next         => Empty_Record_Info_Id,
+            Use_Max_Size => Use_Max_Size);
 
          if Present (Prev_Idx) then
             Record_Info_Table.Table (Prev_Idx).Next := Cur_Idx;
@@ -318,12 +329,12 @@ package body GNATLLVM.Records is
 
          elsif Is_Dynamic_Size (Typ) then
             if Next_Type /= 0 then
-               Add_RI (Build_Struct_Type (Types (0 .. Next_Type - 1)), Empty);
+               Add_RI (T => Build_Struct_Type (Types (0 .. Next_Type - 1)));
                Next_Type := 0;
             end if;
 
             Add_FI (E, Cur_Idx, 0);
-            Add_RI (No_Type_T, Typ);
+            Add_RI (TE => Typ, Use_Max_Size => not Is_Constrained (Typ));
 
          --  If it's of fixed size, add it to the current set of fields
          --  and make a field descriptor.
@@ -362,7 +373,7 @@ package body GNATLLVM.Records is
       if No (Prev_Idx) then
          Struct_Set_Body (LLVM_Type, Types'Address,
                           unsigned (Next_Type), False);
-         Add_RI (LLVM_Type, Empty);
+         Add_RI (T => LLVM_Type);
 
       else
          --  Otherwise, close out the last record info if we have any
@@ -371,7 +382,7 @@ package body GNATLLVM.Records is
          --  unused, but trying to reclaim it is risky.
 
          if Next_Type /= 0 then
-            Add_RI (Build_Struct_Type (Types (0 .. Next_Type - 1)), Empty);
+            Add_RI (T => Build_Struct_Type (Types (0 .. Next_Type - 1)));
          end if;
 
          Set_Dynamic_Size (TE, True);
@@ -416,7 +427,8 @@ package body GNATLLVM.Records is
             This_Size  := Get_LLVM_Type_Size (RI.LLVM_Type);
             This_Align := Get_Type_Alignment (RI.LLVM_Type);
          else
-            This_Size  := Get_Type_Size (RI.GNAT_Type, V, For_Type);
+            This_Size  := Get_Type_Size (RI.GNAT_Type, V,
+                                         For_Type or RI.Use_Max_Size);
             This_Align := Get_Type_Alignment (RI.GNAT_Type);
          end if;
 
@@ -513,7 +525,9 @@ package body GNATLLVM.Records is
    -- Get_Record_Size_Complexity --
    --------------------------------
 
-   function Get_Record_Size_Complexity (TE : Entity_Id) return Natural is
+   function Get_Record_Size_Complexity
+     (TE : Entity_Id; For_Type : Boolean := False) return Natural
+   is
       Complexity : Natural        := 0;
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
@@ -522,7 +536,8 @@ package body GNATLLVM.Records is
       while Present (Cur_Idx) loop
          RI := Record_Info_Table.Table (Cur_Idx);
          if Present (RI.GNAT_Type) then
-            Complexity := Complexity + Get_Type_Size_Complexity (RI.GNAT_Type);
+            Complexity := Complexity + Get_Type_Size_Complexity
+              (RI.GNAT_Type, For_Type or RI.Use_Max_Size);
          end if;
 
          Cur_Idx := RI.Next;

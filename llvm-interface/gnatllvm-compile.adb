@@ -1703,7 +1703,7 @@ package body GNATLLVM.Compile is
                     (Memset, "llvm.memset.p0i8.i", Size_Type),
                   (1 => Pointer_Cast (Dest, Standard_A_Char),
                    2 => Const_Null (Standard_Short_Short_Integer),
-                   3 => Get_Type_Size (Dest_Type, No_GL_Value),
+                   3 => Get_Type_Size (Dest_Type),
                    4 => Const_Int_32 (Align),
                    5 => Const_False));  --  Is_Volatile
          end;
@@ -1899,8 +1899,7 @@ package body GNATLLVM.Compile is
             --  We don't support packing, so this is always the size minus 1
 
             return Convert_To_Elementary_Type
-              (NSW_Sub (NSW_Mul (Get_Type_Size (Full_Etype (Prefix (N)),
-                                                No_GL_Value),
+              (NSW_Sub (NSW_Mul (Get_Type_Size (Full_Etype (Prefix (N))),
                                  Size_Const_Int (Uint_8)),
                         Size_Const_Int (Uint_1)),
                TE);
@@ -1973,7 +1972,7 @@ package body GNATLLVM.Compile is
             return Convert_To_Elementary_Type
               (NSW_Mul (Get_Type_Size
                           (Full_Component_Type (Full_Etype (Prefix (N))),
-                           No_GL_Value),
+                           For_Type => True),
                         Size_Const_Int (Uint_8)),
                TE);
 

@@ -61,8 +61,8 @@ package GNATLLVM.Arrays is
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
-                  and then (Present (V) or else Is_Constrained (TE))
-                  and then (not For_Type or else No (V)),
+                  and then (Present (V) or else Is_Constrained (TE)
+                              or else For_Type),
           Post => Present (Get_Array_Bound'Result);
    --  Get the bound (lower if Is_Low, else upper) for dimension number
    --  Dim (0-origin) of an array whose LValue is Value and is of type
@@ -74,13 +74,14 @@ package GNATLLVM.Arrays is
       V       : GL_Value;
       For_Type : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
-                  and then (Present (V) or else Is_Constrained (TE))
-                  and then (not For_Type or else No (V)),
+                  and then (Present (V) or else Is_Constrained (TE)
+                              or else For_Type),
           Post => Type_Of (Get_Array_Length'Result) = LLVM_Size_Type;
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
 
-   function Get_Array_Size_Complexity (TE : Entity_Id) return Natural
+   function Get_Array_Size_Complexity
+     (TE : Entity_Id; For_Type : Boolean := False) return Natural
      with Pre => Is_Array_Type (TE);
    --  Return the complexity of computing the size of an array.  This roughly
    --  gives the number of "things" needed to access to compute the size.
@@ -107,8 +108,8 @@ package GNATLLVM.Arrays is
       TE       : Entity_Id;
       For_Type : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE)
-                  and then (Present (V) or else Is_Constrained (TE))
-                  and then (not For_Type or else No (V)),
+                  and then (Present (V) or else Is_Constrained (TE)
+                              or else For_Type),
           Post => Present (Get_Array_Elements'Result);
    --  Return the number of elements contained in an Array_Type object as an
    --  integer as large as a pointer for the target architecture. If it is an

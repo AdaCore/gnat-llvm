@@ -880,8 +880,8 @@ package body GNATLLVM.Types is
 
    function Get_Type_Size
      (TE       : Entity_Id;
-      V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
+      V        : GL_Value := No_GL_Value;
+      For_Type : Boolean  := False) return GL_Value
    is
    begin
       --  If a value was specified and it's not a reference, then it
@@ -925,13 +925,14 @@ package body GNATLLVM.Types is
    -- Get_Type_Size_Complexity --
    ------------------------------
 
-   function Get_Type_Size_Complexity (TE : Entity_Id) return Natural is
+   function Get_Type_Size_Complexity
+     (TE : Entity_Id; For_Type : Boolean := False) return Natural is
    begin
 
       if Is_Record_Type (TE) then
-         return Get_Record_Size_Complexity (TE);
+         return Get_Record_Size_Complexity (TE, For_Type);
       elsif Is_Array_Type (TE) then
-         return Get_Array_Size_Complexity (TE);
+         return Get_Array_Size_Complexity (TE, For_Type);
 
       else
          --  All other types are constant size

@@ -89,8 +89,10 @@ package body GNATLLVM.Arrays is
                      Array_Type_Kind);
    --  Helper function to create type for string literals
 
-   function Bound_Complexity (B : One_Bound) return Integer is
-     (if B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1 else 2);
+   function Bound_Complexity
+     (B : One_Bound; For_Type : Boolean) return Integer is
+      (if B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
+       elsif For_Type then 1 else 2);
 
    function Get_Dim_Range (N : Node_Id) return Node_Id
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
@@ -227,9 +229,11 @@ package body GNATLLVM.Arrays is
    -- Get_Array_Size_Complexity --
    -------------------------------
 
-   function Get_Array_Size_Complexity (TE : Entity_Id) return Natural is
+   function Get_Array_Size_Complexity
+     (TE : Entity_Id; For_Type : Boolean := False) return Natural
+   is
       Complexity  : Natural :=
-        Get_Type_Size_Complexity (Full_Component_Type (TE));
+        Get_Type_Size_Complexity (Full_Component_Type (TE), True);
       Info_Idx    : constant Nat := Get_Array_Info (TE);
 
    begin
@@ -238,8 +242,9 @@ package body GNATLLVM.Arrays is
             Dim_Info : constant Index_Bounds
               := Array_Info.Table (Info_Idx + Dim);
          begin
-            Complexity := Complexity + Bound_Complexity (Dim_Info.Low) +
-              Bound_Complexity (Dim_Info.High);
+            Complexity := (Complexity +
+                             Bound_Complexity (Dim_Info.Low, For_Type) +
+                             Bound_Complexity (Dim_Info.High, For_Type));
          end;
       end loop;
 
@@ -468,7 +473,7 @@ package body GNATLLVM.Arrays is
    is
       Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
       Comp_Size     : constant GL_Value  :=
-        Get_Type_Size (Comp_Type, No_GL_Value, For_Type);
+        Get_Type_Size (Comp_Type, For_Type => True);
       Num_Elements  : constant GL_Value  :=
         Get_Array_Elements (V, TE, For_Type);
 
@@ -685,7 +690,7 @@ package body GNATLLVM.Arrays is
          Data          : constant GL_Value :=
            Pointer_Cast (Array_Data_Ptr, Standard_A_Char);
          Comp_Size     : constant GL_Value :=
-           Get_Type_Size (Comp_Type, No_GL_Value);
+           Get_Type_Size (Comp_Type, For_Type => True);
          Index         : GL_Value          := Convert_To_Size_Type (Idxs (2));
 
       begin
@@ -750,7 +755,7 @@ package body GNATLLVM.Arrays is
            Pointer_Cast (Array_Data_Ptr, Standard_A_Char);
          Comp_Type     : constant Entity_Id := Full_Component_Type (Arr_Type);
          Comp_Size     : constant GL_Value  :=
-           Get_Type_Size (Comp_Type, No_GL_Value);
+           Get_Type_Size (Comp_Type, For_Type => True);
          Index         : constant GL_Value  :=
            NSW_Mul (Comp_Size, Convert_To_Size_Type (Index_Shift));
       begin

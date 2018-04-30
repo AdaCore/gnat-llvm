@@ -824,19 +824,45 @@ package body GNATLLVM.Conditionals is
       Condition  : constant Node_Id       := First (Expressions (N));
       Then_Expr  : constant Node_Id       := Next (Condition);
       Else_Expr  : constant Node_Id       := Next (Then_Expr);
+      Then_Type  : constant Entity_Id     := Full_Etype (Then_Expr);
+      Else_Type  : constant Entity_Id     := Full_Etype (Else_Expr);
       BB_Then    : Basic_Block_T          := Create_Basic_Block ("if-then");
       BB_Else    : Basic_Block_T          := Create_Basic_Block ("if-else");
       BB_Next    : constant Basic_Block_T := Create_Basic_Block ("if-next");
+      TE         : Entity_Id;
       Then_Value : GL_Value;
       Else_Value : GL_Value;
 
    begin
+      --  We need to be sure that both operands are the same LLVM type for
+      --  the Phi below.  The front end assures this in most case, we
+      --  do have potential issues if they're both different record or
+      --  arrays types.  Pick the best type to use here.  If one is an
+      --  unconstrained array, use that one.  Otherwise, if one is dynamic
+      --  size, use that one.  Otherwise, it doesn't matter.
+
+      if Is_Array_Type (Then_Type) and then not Is_Constrained (Then_Type) then
+         TE := Then_Type;
+      elsif Is_Array_Type (Else_Type)
+        and then not Is_Constrained (Else_Type)
+      then
+         TE := Else_Type;
+      elsif Is_Dynamic_Size (Else_Type) then
+         TE := Else_Type;
+      else
+         TE := Then_Type;
+      end if;
+
       Build_Cond_Br (Emit_Expression (Condition), BB_Then, BB_Else);
 
       --  Emit code for the THEN part
 
       Position_Builder_At_End (BB_Then);
       Then_Value := Emit_Expression (Then_Expr);
+
+      if Is_Dynamic_Size (TE) then
+         Then_Value := Convert_To_Access_To (Need_LValue (Then_Value, TE), TE);
+      end if;
 
       --  The THEN part may be composed of multiple basic blocks. We want
       --  to get the one that jumps to the merge point to get the PHI node
@@ -849,6 +875,11 @@ package body GNATLLVM.Conditionals is
 
       Position_Builder_At_End (BB_Else);
       Else_Value := Emit_Expression (Else_Expr);
+
+      if Is_Dynamic_Size (TE) then
+         Else_Value := Convert_To_Access_To (Need_LValue (Else_Value, TE), TE);
+      end if;
+
       Build_Br (BB_Next);
 
       --  We want to get the basic blocks that jumps to the merge point: see

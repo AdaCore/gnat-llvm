@@ -286,7 +286,8 @@ package body GNATLLVM.Records is
 
                --  Now get the record definition and add the components there
 
-            Record_Definition := Type_Definition (Parent (Def_Ident));
+            Record_Definition :=
+              Type_Definition (Declaration_Node (Def_Ident));
             if Nkind (Record_Definition) = N_Derived_Type_Definition then
                Record_Definition := Record_Extension_Part (Record_Definition);
             end if;

@@ -21,6 +21,7 @@ with Ada.Unchecked_Conversion;
 with Errout;   use Errout;
 with Output;   use Output;
 with Sem_Mech; use Sem_Mech;
+with Sem_Aux;  use Sem_Aux;
 with Sprint;   use Sprint;
 with Stringt;  use Stringt;
 
@@ -225,8 +226,10 @@ package body GNATLLVM.Utils is
             --  either an E_Constant or an E_Enumeration_Literal.
 
             E := Entity (N);
-            if Ekind (E) = E_Constant then
-               return Get_Uint_Value (Expression (Parent (E)));
+            if Ekind (E) = E_Constant
+              and then Present (Constant_Value (E))
+            then
+               return Get_Uint_Value (Constant_Value (E));
             elsif Ekind (E) = E_Enumeration_Literal then
                return Enumeration_Rep (E);
             else
@@ -357,8 +360,24 @@ package body GNATLLVM.Utils is
 
    function Need_LValue
      (V : GL_Value; TE : Entity_Id; Name : String := "lvalue")
-     return GL_Value is
+     return GL_Value
+   is
+      Alloc_Type : Entity_Id;
    begin
+
+      --  Compute the type to use for the allocation.  If V isn't
+      --  present, we have no options.  If it is, figure out what its
+      --  type is.
+
+      if No (V) then
+         Alloc_Type := TE;
+      elsif Has_Known_Etype (V) then
+         Alloc_Type := Full_Etype (V);
+      elsif Is_Reference (V) and not Is_Raw_Array (V) then
+         Alloc_Type := Full_Designated_Type (V);
+      else
+         Alloc_Type := TE;
+      end if;
 
       --  If at top level or we already have an LValue, return it.
       --  Otherwise, allocate memory for the value (which we know to be of
@@ -369,7 +388,7 @@ package body GNATLLVM.Utils is
       else
          pragma Assert (not Library_Level);
 
-         return Allocate_For_Type (TE, TE, V => V, Name => Name);
+         return Allocate_For_Type (TE, Alloc_Type, V => V, Name => Name);
       end if;
    end Need_LValue;
 

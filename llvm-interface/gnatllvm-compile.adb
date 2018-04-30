@@ -2224,13 +2224,15 @@ package body GNATLLVM.Compile is
       --  it, if any, and give an error if there's a second one.
 
       Setup_Asm_Outputs (N);
-      Output_Variable   := Asm_Output_Variable;
+      Output_Variable := Asm_Output_Variable;
+
       if Present (Output_Variable) then
          Output_Constraint := Asm_Output_Constraint;
          Constraint_Length :=
            Integer (String_Length (Strval (Output_Constraint)));
          Output_Val := Emit_LValue (Output_Variable);
          Next_Asm_Output;
+
          if Present (Asm_Output_Variable) then
             Error_Msg_N ("LLVM only allows one output", N);
          end if;
@@ -2241,11 +2243,11 @@ package body GNATLLVM.Compile is
 
       Setup_Asm_Inputs (N);
       Input := Asm_Input_Value;
+
       while Present (Input) loop
          Num_Inputs        := Num_Inputs + 1;
-         Constraint_Length :=
-           Constraint_Length + Integer (String_Length
-                                          (Strval (Asm_Input_Constraint)));
+         Constraint_Length := Constraint_Length +
+           Integer (String_Length (Strval (Asm_Input_Constraint)));
          Next_Asm_Input;
          Input := Asm_Input_Value;
       end loop;
@@ -2257,6 +2259,7 @@ package body GNATLLVM.Compile is
 
       Clobber_Setup (N);
       Clobber := Clobber_Get_Next;
+
       while not System."=" (Clobber, System.Null_Address) loop
          Constraint_Length := Constraint_Length + Name_Len + 4;
          Clobber := Clobber_Get_Next;

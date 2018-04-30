@@ -28,10 +28,6 @@ endif
 GNAT_SRC=$(pwd)/gnat_src
 ADAINCLUDE=lib/rts-llvm/adainclude
 ADALIB=lib/rts-llvm/adalib
-FULL_ADAINCLUDE=lib/rts-full/adainclude
-FULL_ADALIB=lib/rts-full/adalib
-GNAT_ROOT:=$(dir $(shell which gnatls))..
-NATIVE_ADAINCLUDE:=$(strip $(shell gnatls -v | grep adainclude))
 
 uname:=$(shell uname)
 pwd:=$(shell pwd)
@@ -140,8 +136,10 @@ text_io.ads  \
 unchconv.ads \
 unchdeal.ads
 
-LLVM_GCC=$(pwd)/bin/llvm-gcc
-COMPILE=$(LLVM_GCC) -c -gnatpg -nostdinc -I../adainclude
+ADAC=$(pwd)/bin/llvm-gcc
+COMPILE=$(ADAC) -c -gnatpg -nostdinc -I../adainclude
+
+# ZFP runtime
 
 zfp: build
 	$(RMDIR) $(ADAINCLUDE) $(ADALIB)
@@ -167,13 +165,7 @@ zfp: build
 	done
 	cd $(ADALIB) && $(CHMOD) a-wx *.ali && $(AR) libgnat.a *.o && $(RM) *.o
 
-rts-full: build
-	$(RMDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
-	$(MKDIR) $(FULL_ADAINCLUDE) $(FULL_ADALIB)
-	$(MAKE) -f $(GNAT_SRC)/Makefile.adalib -C $(FULL_ADALIB) \
-	  ROOT=$(GNAT_ROOT) ADAC=$(LLVM_GCC) \
-	  ADAFLAGS="-gnatpg -nostdinc -I$(NATIVE_ADAINCLUDE)"
-	cp -p $(NATIVE_ADAINCLUDE)/*.ad? $(FULL_ADAINCLUDE)
+# Full runtime
 
 target_cpu=x86_64
 target_os=linux-gnu
@@ -186,38 +178,63 @@ AR_FLAGS=q
 RANLIB_FOR_TARGET=ranlib
 RTSDIR=$(pwd)/lib/rts-native/adainclude
 RTSLIB=$(pwd)/lib/rts-native/adalib
-ADAFLAGS=-gnatpg
+ADAFLAGS=-gnatpgn
 ADA_INCLUDES=-nostdinc -I../adainclude
+GCC_INCLUDE_PATH = $(word 2,$(shell gcc --print-search-dirs|grep install:))gcc-include
+CFLAGS = -O2
+GNATLIBCFLAGS = -DIN_RTS=1 -DIN_GCC=1 -fexceptions
+ALL_ADAFLAGS = $(CFLAGS) $(ADAFLAGS) $(ADA_INCLUDES)
+INCLUDES = -I../adainclude -I$(GCC_INCLUDE_PATH)/include     \
+  -I$(GCC_INCLUDE_PATH)/gcc/config -I$(GCC_INCLUDE_PATH)/gcc \
+  -I$(GCC_INCLUDE_PATH)/gcc/ada    -I$(GCC_INCLUDE_PATH)     \
+  -I$(GCC_INCLUDE_PATH)/libgcc
+
+FORCE_DEBUG_ADAFLAGS = -g
+NO_INLINE_ADAFLAGS = -fno-inline
+NO_OMIT_ADAFLAGS = -fno-omit-frame-pointer
+NO_SIBLING_ADAFLAGS=-fno-optimize-sibling-calls
+NO_REORDER_ADAFLAGS=-fno-toplevel-reorder
+
+OSCONS_CC=gcc
+OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
+  $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
+OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
+
+vpath %.adb ../adainclude
+vpath %.ads ../adainclude
+vpath %.c   ../adainclude
+vpath %.h   ../adainclude
 
 include $(GNAT_SRC)/Makefile.rtl
 
 .SUFFIXES: .adb .ads
 
 .c.o:
-	cd ../adalib && $(CC) -c $(ADA_CFLAGS) $(INCLUDES) ../adainclude/$<
+	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) $(INCLUDES) $<
 
 .adb.o:
-	cd ../adalib && $(ADAC) -c $(ADAFLAGS) $(ADA_INCLUDES) ../adainclude/$<
+	$(ADAC) -c $(ALL_ADAFLAGS) $<
 
 .ads.o:
-	cd ../adalib && $(ADAC) -c $(ADAFLAGS) $(ADA_INCLUDES) ../adainclude/$<
+	$(ADAC) -c $(ALL_ADAFLAGS) $<
 
-rts-native: build
+gnatlib: build
 	$(RMDIR) $(RTSLIB)
 	$(MKDIR) $(RTSLIB)
 	$(MAKE) setup-rts
-	$(MAKE) $(RTSDIR)/s-oscons.ads
-# C files
-# ??? missing proper -I switches
-#	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSDIR) -f $(pwd)/Makefile \
-#	  CC=gcc $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
+	  $(pwd)/obj-tools/xoscons s-oscons && \
+	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR)
 # Ada files
 	mv $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
 	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
-	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSDIR) -f $(pwd)/Makefile \
-	  ADAC=$(LLVM_GCC) \
-	  $(GNATRTL_OBJS)
+	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
+	  ADAC=$(ADAC) $(GNATRTL_OBJS)
+# C files
+	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
+	  CC=gcc $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+# Create libgnat/libgnarl.a
 	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)
 	$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnat$(arext) \
 	  $(addprefix $(RTSLIB)/,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS))
@@ -228,15 +245,32 @@ rts-native: build
 	$(CHMOD) a-wx $(RTSLIB)/*.ali
 	$(RM) $(RTSLIB)/*.o
 
-OSCONS_CC=gcc
-OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
-  $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
-OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
+# Special flags - see gcc-interface/Makefile.in for the template
 
-oscons: setup $(RTSDIR)/s-oscons.ads
+s-traceb.o: s-traceb.adb s-traceb.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) \
+	  $(NO_INLINE_ADAFLAGS) $(NO_SIBLING_ADAFLAGS) $(ADA_INCLUDES) $<
 
-$(RTSDIR)/s-oscons.ads: $(GNAT_SRC)/s-oscons-tmplt.c $(GNAT_SRC)/gsocket.h
-	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
-	  $(pwd)/obj-tools/xoscons s-oscons && \
-	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR)
+s-tasdeb.o: s-tasdeb.adb  s-tasdeb.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) -O0 $<
+
+a-except.o: a-except.adb a-except.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) \
+	  $(NO_REORDER_ADAFLAGS) -O1 $(NO_INLINE_ADAFLAGS) $<
+
+s-excdeb.o: s-excdeb.adb s-excdeb.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) -O0 $<
+
+s-assert.o: s-assert.adb s-assert.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) $<
+
+a-tags.o: a-tags.adb a-tags.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(FORCE_DEBUG_ADAFLAGS) $<
+
+s-memory.o : s-memory.adb s-memory.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(NO_SIBLING_ADAFLAGS) $<
+
+tracebak.o: tracebak.c tb-gcc.c
+	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \
+	  $(ALL_CPPFLAGS) $(INCLUDES) $(NO_OMIT_ADAFLAGS) $<
 

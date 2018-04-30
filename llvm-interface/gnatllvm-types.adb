@@ -791,20 +791,19 @@ package body GNATLLVM.Types is
       Converted_V : GL_Value          := V;
 
    begin
-      --  If V is a fat pointer, get just the array data.  In any event,
-      --  convert it to a generic pointer.
+      --  If V is a fat pointer, get just the array data.  We'll then either
+      --  convert it to a generic pointer or to an integer (System.Address).
 
       if Is_Access_Unconstrained (Converted_V) then
          Converted_V := Array_Data (Converted_V);
       end if;
 
-      Converted_V := Pointer_Cast (Converted_V, Standard_A_Char);
-
       --  If no subprogram was specified, use the default memory deallocation
       --  procedure, where we just pass the object and a size a size.
 
       if No (Proc) then
-         Call (Get_Default_Free_Fn, (1 => Converted_V, 2 => Size));
+         Call (Get_Default_Free_Fn,
+               (1 => Pointer_Cast (Converted_V, Standard_A_Char), 2 => Size));
 
       --  If a procedure was specified (meaning that a pool must also
       --  have been specified) and the pool is a record, then it's a
@@ -812,13 +811,15 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call (Get_Value (Proc),
-               (1 => Get_Value (Pool), 2 => Converted_V,
+               (1 => Get_Value (Pool),
+                2 => Ptr_To_Int (Converted_V, Size_Type),
                 3 => Size, 4 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Call (Get_Value (Proc), (1 => Converted_V, 2 => Size));
+         Call (Get_Value (Proc),
+               (1 => Ptr_To_Int (Converted_V, Size_Type), 2 => Size));
       end if;
    end Heap_Deallocate;
 

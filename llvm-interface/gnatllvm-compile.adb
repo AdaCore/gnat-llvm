@@ -1972,7 +1972,7 @@ package body GNATLLVM.Compile is
          when Attribute_Component_Size =>
             return Convert_To_Elementary_Type
               (NSW_Mul (Get_Type_Size
-                          (Full_Designated_Type (Full_Etype (Prefix (N))),
+                          (Full_Component_Type (Full_Etype (Prefix (N))),
                            No_GL_Value),
                         Size_Const_Int (Uint_8)),
                TE);

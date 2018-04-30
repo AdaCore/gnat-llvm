@@ -76,6 +76,12 @@ package body GNATLLVM.Arrays is
       Table_Name           => "Array_Info_Table");
    --  Table of representation of arrays indexes
 
+   function Type_For_Get_Bound
+     (TE : Entity_Id; V : GL_Value) return Entity_Id
+     with Pre  => Is_Array_Type (TE),
+          Post => Is_Array_Type (Type_For_Get_Bound'Result);
+   --  Get the best type to use to search for a bound of an arrray
+
    function Build_One_Bound
      (N : Node_Id; Unconstrained : Boolean) return One_Bound
      with Pre => Present (N);
@@ -132,6 +138,34 @@ package body GNATLLVM.Arrays is
 
    end Build_One_Bound;
 
+   ------------------------
+   -- Type_For_Get_Bound --
+   ------------------------
+
+   function Type_For_Get_Bound
+     (TE : Entity_Id; V : GL_Value) return Entity_Id
+   is
+      V_Type : constant Entity_Id :=
+        (if No (V) then Empty elsif Is_Access_Type (V)
+         then Full_Designated_Type (V) else Full_Etype (V));
+
+   begin
+      --  If only TE is around, use it.  Likewise if V_Type is not an
+      --  array type or not related to TE.  Otherwise, use the type
+      --  that's constrained, preferring V's type.
+
+      if No (V_Type) or else not Is_Array_Type (V_Type)
+        or else (Implementation_Base_Type (V_Type) /=
+                   Implementation_Base_Type (TE))
+      then
+         return TE;
+      elsif not Is_Constrained (V_Type) and then Is_Constrained (TE) then
+         return TE;
+      else
+         return V_Type;
+      end if;
+   end Type_For_Get_Bound;
+
    ---------------------
    -- Get_Array_Bound --
    ---------------------
@@ -143,9 +177,10 @@ package body GNATLLVM.Arrays is
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
-      Info_Idx   : constant Nat := Get_Array_Info (TE);
+      Typ        : constant Entity_Id    := Type_For_Get_Bound (TE, V);
+      Info_Idx   : constant Nat          := Get_Array_Info (Typ);
       Dim_Info   : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
-      Bound_Info : constant One_Bound :=
+      Bound_Info : constant One_Bound    :=
         (if Is_Low then Dim_Info.Low else Dim_Info.High);
       Bound_Idx    : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
       --  In the array fat pointer bounds structure, bounds are stored as a

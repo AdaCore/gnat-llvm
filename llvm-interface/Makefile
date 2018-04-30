@@ -212,6 +212,9 @@ rts-native: build
 #	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSDIR) -f $(pwd)/Makefile \
 #	  CC=gcc $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 # Ada files
+	mv $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
+	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
+	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSDIR) -f $(pwd)/Makefile \
 	  ADAC=$(LLVM_GCC) \
 	  $(GNATRTL_OBJS)

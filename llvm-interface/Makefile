@@ -167,10 +167,13 @@ zfp: build
 
 # Full runtime
 
-target_cpu=x86_64
-target_os=linux-gnu
-target_vendor=pc
-target=$(target_cpu)-$(target_vendor)-$(target_os)
+target=x86_64-pc-linux-gnu
+
+target_list=$(subst -, ,$(target))
+target_cpu=$(word 1,$(target_list))
+target_vendor=$(word 2,$(target_list))
+target_os=$(word 3,$(target_list))
+
 objext=.o
 arext=.a
 AR_FOR_TARGET=ar

@@ -158,15 +158,13 @@ package GNATLLVM.Types is
    function Bounds_To_Length
      (Low, High : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (Low) and then Present (High) and then Is_Type (TE)
-                  and then Type_Of (Low) = Type_Of (High)
-                  and then Is_Unsigned_Type (Low) = Is_Unsigned_Type (High),
+                  and then Type_Of (Low) = Type_Of (High),
           Post => Full_Etype (Bounds_To_Length'Result) = TE;
    --  Low and High are bounds of a discrete type.  Compute the length of
    --  that type, taking into account the superflat case, and do that
    --  computation in TE.  We would like to have the above test be that the
    --  two types be identical, but that's too strict (for example, one
-   --  may be Integer and the other Integer'Base), so just check the width
-   --  and signedness.
+   --  may be Integer and the other Integer'Base), so just check the width.
 
    function Get_LLVM_Type_Size (T : Type_T) return unsigned_long_long
    is

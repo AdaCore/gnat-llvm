@@ -238,13 +238,13 @@ package body GNATLLVM.Types is
    function Build_Unchecked_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value
    is
-      T        : constant Type_T    := Create_Type (TE);
-      V        : constant GL_Value  := Emit_Expression (N);
+      T : constant Type_T := Create_Type (TE);
+      V :  GL_Value       := Emit_Expression (N);
 
    begin
       --  If the value is already of the desired LLVM type, we're done.
 
-      if Type_Of (V) = T then
+      if Type_Of (V) = Create_Type (TE) then
          return V;
 
       --  If converting pointer to pointer or pointer to/from integer, we
@@ -289,7 +289,7 @@ package body GNATLLVM.Types is
          return Bit_Cast (V, TE);
 
       --  If we have an unconstrained array that we're constraining,
-      --  convert to the an access to the result and then see if we can
+      --  convert to an access to the result and then see if we can
       --  get it as a value (which will only be the case for constant
       --  size.
 
@@ -299,19 +299,26 @@ package body GNATLLVM.Types is
          return Need_Value (Convert_To_Access_To (V, TE), TE);
 
       --  Otherwise, these must be cases where we have to convert by
-      --  pointer punning.  If the source is a type of dynamic size, the
-      --  value is already a pointer.  Otherwise, we have to make it a
-      --  pointer.  ??? This code has a problem in that it calls Emit_LValue
-      --  on an expression that's already been elaborated, but let's fix
-      --  that double-elaboration issue later.
+      --  pointer punning.  We need the LValue of the expression
+      --  first.  If the type is a dynamic size, we know that's what
+      --  we have already.  Otherwise, get it for an LValue (which
+      --  will throw away the previous conputation).  If we have an
+      --  unconstrained array, point to the array data.  Then
+      --  dereference in the proper type.
 
       else
-         declare
-            Addr : constant GL_Value :=
-              (if Is_Dynamic_Size (V) then V else Emit_LValue (N));
-         begin
-            return Need_Value (Ptr_To_Ref (Addr, TE, "unc-ptr-cvt"), TE);
-         end;
+         if not Is_Dynamic_Size (V)
+           and then (not Is_Reference (V)
+                       or else Full_Designated_Type (V) /= Full_Etype (N))
+         then
+            V := Emit_LValue (N);
+         end if;
+
+         if Is_Access_Unconstrained (V) then
+            V := Array_Data (V);
+         end if;
+
+         return Need_Value (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), TE);
       end if;
    end Build_Unchecked_Conversion;
 

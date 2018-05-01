@@ -918,6 +918,16 @@ package body GNATLLVM.Compile is
 
                elsif Ekind (Def_Ident) in Subprogram_Kind then
 
+                  --  If this has an Alias, use that.  However, it may
+                  --  be an Enumeration_Literal, in which case we can't
+                  --  get its LValue.
+
+                  if Present (Alias (Def_Ident)) then
+                     Def_Ident := Alias (Def_Ident);
+                     V         := Get_Value (Def_Ident);
+                     pragma Assert (Ekind (Def_Ident) in Subprogram_Kind);
+                  end if;
+
                   --  If we are elaborating this for 'Access, we want the
                   --  actual subprogram type here, not the type of the return
                   --  value, which is what Typ is set to.

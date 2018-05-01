@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Errout; use Errout;
-with Sinfo;  use Sinfo;
 with Stand;  use Stand;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
@@ -41,15 +40,6 @@ package body GNATLLVM.Types is
    --  memory allocators.  Temp can be of any type, either an integer
    --  or pointer to anything.  Alloc_Type is the type that was used
    --  to allocate the memory.
-
-   --------------------------
-   -- GNAT_Equivalent_Type --
-   --------------------------
-
-   function GNAT_Equivalent_Type (TE : Entity_Id) return Entity_Id
-     with Pre => Is_Type (TE), Post => Is_Type (GNAT_Equivalent_Type'Result);
-   --  Returns a type that we consider equivalent to TE, which may be
-   --  TE itself if we are to use that type.
 
    -----------------------
    -- Build_Struct_Type --
@@ -382,31 +372,62 @@ package body GNATLLVM.Types is
       return Get_LLVM_Type_Size_In_Bits (LLVM_Type);
    end Get_LLVM_Type_Size_In_Bits;
 
-   --------------------------
-   -- GNAT_Equivalent_Type --
-   --------------------------
+   ----------------------
+   -- Get_Fullest_View --
+   ----------------------
 
-   function GNAT_Equivalent_Type (TE : Entity_Id) return Entity_Id is
+   function Get_Fullest_View (TE : Entity_Id) return Entity_Id is
    begin
+      --  Strictly speaking, the recursion below isn't necessary, but
+      --  it's both simplest and safest.
+
       case Ekind (TE) is
-         when E_Class_Wide_Subtype =>
-            if Present (Equivalent_Type (TE)) then
-               return Equivalent_Type (TE);
+         when Incomplete_Kind =>
+            if From_Limited_With (TE) then
+               return Get_Fullest_View (Non_Limited_View (TE));
+            elsif Present (Full_View (TE)) then
+               return Get_Fullest_View (Full_View (TE));
             end if;
 
-         when E_Access_Protected_Subprogram_Type |
-           E_Anonymous_Access_Protected_Subprogram_Type =>
-            if Present (Equivalent_Type (TE)) then
-               return Equivalent_Type (TE);
+         when Private_Kind =>
+            if Present (Underlying_Full_View (TE)) then
+               return Get_Fullest_View (Underlying_Full_View (TE));
+            elsif Present (Full_View (TE)) then
+               return Get_Fullest_View (Full_View (TE));
+            else
+               return Get_Fullest_View (Etype (TE));
+            end if;
+
+         when Array_Kind =>
+            if Present (Packed_Array_Impl_Type (TE)) then
+               return Get_Fullest_View (Packed_Array_Impl_Type (TE));
+            end if;
+
+         when E_Record_Subtype =>
+            if Present (Cloned_Subtype (TE)) then
+               return Get_Fullest_View (Cloned_Subtype (TE));
             end if;
 
          when E_Class_Wide_Type =>
-            return Root_Type (TE);
+            return Get_Fullest_View (Root_Type (TE));
 
-         when E_Protected_Type | E_Protected_Subtype |
-           E_Task_Type |  E_Task_Subtype =>
+         when  E_Class_Wide_Subtype =>
+            if Present (Cloned_Subtype (TE)) then
+               return Get_Fullest_View (Cloned_Subtype (TE));
+            elsif Present (Equivalent_Type (TE)) then
+               return Get_Fullest_View (Equivalent_Type (TE));
+            end if;
+
+         when E_Protected_Type | E_Protected_Subtype
+            | E_Task_Type |  E_Task_Subtype =>
             if Present (Corresponding_Record_Type (TE)) then
-               return Corresponding_Record_Type (TE);
+               return Get_Fullest_View (Corresponding_Record_Type (TE));
+            end if;
+
+         when E_Access_Protected_Subprogram_Type
+            | E_Anonymous_Access_Protected_Subprogram_Type =>
+            if Present (Equivalent_Type (TE)) then
+               return Get_Fullest_View (Equivalent_Type (TE));
             end if;
 
          when others =>
@@ -414,7 +435,7 @@ package body GNATLLVM.Types is
       end case;
 
       return TE;
-   end GNAT_Equivalent_Type;
+   end Get_Fullest_View;
 
    ------------------------
    -- Create_Access_Type --
@@ -464,15 +485,6 @@ package body GNATLLVM.Types is
       --  logic later.
 
       Def_Ident := Get_Fullest_View (TE);
-      if Def_Ident /= TE then
-         T := GNAT_To_LLVM_Type (Def_Ident, False);
-         Copy_Type_Info (Def_Ident, TE);
-         return T;
-      end if;
-
-      --  See if we can get this from the equivalent type
-
-      Def_Ident := GNAT_Equivalent_Type (TE);
       if Def_Ident /= TE then
          T := GNAT_To_LLVM_Type (Def_Ident, False);
          Copy_Type_Info (Def_Ident, TE);

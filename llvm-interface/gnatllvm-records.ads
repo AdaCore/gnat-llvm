@@ -23,7 +23,7 @@ with Types;  use Types;
 with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Records is
 

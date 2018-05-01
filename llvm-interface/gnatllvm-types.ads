@@ -20,6 +20,7 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Atree; use Atree;
 with Einfo; use Einfo;
+with Sinfo; use Sinfo;
 with Types; use Types;
 with Uintp; use Uintp;
 
@@ -78,6 +79,36 @@ package GNATLLVM.Types is
 
    function Int_Ptr_Type return Type_T is
       (Int_Type (unsigned (Get_Pointer_Size)));
+
+   function Get_Fullest_View (TE : Entity_Id) return Entity_Id
+     with Pre => Is_Type_Or_Void (TE),
+          Post => Is_Type_Or_Void (Get_Fullest_View'Result);
+   --  Get the fullest possible view of E, looking through private,
+   --  limited, packed array and other implementation types.
+
+   function Full_Etype (N : Node_Id) return Entity_Id is
+     (if Ekind (Etype (N)) = E_Void then Etype (N)
+      else Get_Fullest_View (Etype (N)));
+
+   function Full_Component_Type (E : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Component_Type (E)))
+     with Pre  => Is_Array_Type (E),
+          Post => Present (Full_Component_Type'Result);
+
+   function Full_Designated_Type (E : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Designated_Type (E)))
+     with Pre  => Is_Access_Type (E),
+          Post => Present (Full_Designated_Type'Result);
+
+   function Full_Scope (E : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Scope (E)))
+     with Pre  => Present (E),
+          Post => Present (Full_Scope'Result);
+
+   function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
+     (Is_Access_Type (T) and then Is_Array_Type (Full_Designated_Type (T))
+      and then not Is_Constrained (Full_Designated_Type (T)))
+     with Pre => Is_Type (T);
 
    function Convert_To_Elementary_Type
      (V : GL_Value; TE : Entity_Id) return GL_Value

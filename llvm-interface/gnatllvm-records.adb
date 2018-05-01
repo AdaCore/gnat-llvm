@@ -30,7 +30,7 @@ with LLVM.Core;  use LLVM.Core;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
-with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Records is
 

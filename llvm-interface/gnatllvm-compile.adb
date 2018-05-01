@@ -474,18 +474,27 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Object_Renaming_Declaration =>
-            declare
-               Def_Ident : constant Node_Id   := Defining_Identifier (N);
-               TE        : constant Entity_Id := Full_Etype (Def_Ident);
-               Obj_Name  : constant String    := Get_Name (Def_Ident);
-               LLVM_Var  : constant GL_Value  :=
-                 Need_LValue (Emit_LValue (Name (N)), TE, Name => Obj_Name);
 
-            begin
-               Set_Value (Def_Ident, LLVM_Var);
-            end;
+            --  If this is a constant, just use the value of the expression
+            --  for this object.  Otherwise, get the LValue of the
+            --  expression, but don't try to force it into memory since
+            --  that would give us a copy, which isn't useful.  If this is
+            --  not a constant, the front end will have verified that the
+            --  renaming is an actual LValue.  Don't do this at library
+            --  level both because we want to materialize the value and
+            --  because it may need run-time computation.
+
+            if Is_True_Constant (Defining_Identifier (N))
+              and not Library_Level
+            then
+               Set_Value (Defining_Identifier (N),
+                          Emit_Expression  (Name (N)));
+            else
+               Set_Value (Defining_Identifier (N), Emit_LValue (Name (N)));
+            end if;
 
          when N_Subprogram_Renaming_Declaration =>
+
             --  Nothing is needed except for debugging information.
             --  Skip it for now???
             --  Note that in any case, we should skip Intrinsic subprograms
@@ -799,6 +808,7 @@ package body GNATLLVM.Compile is
             | N_Package_Instantiation
             | N_Package_Renaming_Declaration
             | N_Procedure_Instantiation
+            | N_Protected_Type_Declaration
             | N_Record_Representation_Clause
             | N_Validate_Unchecked_Conversion
             | N_Variable_Reference_Marker
@@ -889,7 +899,8 @@ package body GNATLLVM.Compile is
             declare
                Def_Ident   : Entity_Id          := Entity (N);
                TE          : Entity_Id          := Full_Etype (Def_Ident);
-               V, V1       : GL_Value           := Get_Value (Def_Ident);
+               V           : GL_Value           := Get_Value (Def_Ident);
+               V1          : GL_Value;
 
             begin
                --  If this is a deferred constant, look at the private
@@ -1578,6 +1589,7 @@ package body GNATLLVM.Compile is
                   return Emit_Record_Aggregate (N, Get_Undef (TE));
 
                else
+                  pragma Assert (Is_Array_Type (TE));
                   return Emit_Array_Aggregate
                     (N, Number_Dimensions (TE), (1 .. 0 => <>),
                      Get_Undef (TE));

@@ -18,6 +18,7 @@
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
+with Exp_Util; use Exp_Util;
 with Stand;    use Stand;
 
 with LLVM.Core;  use LLVM.Core;
@@ -25,7 +26,7 @@ with LLVM.Core;  use LLVM.Core;
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Conditionals is
 
@@ -713,6 +714,7 @@ package body GNATLLVM.Conditionals is
 
    procedure Emit_If_Cond (N : Node_Id; BB_True, BB_False : Basic_Block_T)
    is
+      And_Op : constant Boolean := Nkind_In (N, N_And_Then, N_Op_And);
       BB_New : Basic_Block_T;
 
    begin
@@ -729,20 +731,27 @@ package body GNATLLVM.Conditionals is
             Emit_If_Cond (Right_Opnd (N), BB_False, BB_True);
             return;
 
-         when N_And_Then | N_Or_Else =>
+         when N_And_Then | N_Or_Else | N_Op_And | N_Op_Or =>
 
-            --  Depending on the result of the the test of the left operand,
-            --  we either go to a final basic block or to a new intermediate
-            --  one where we test the right operand.
+            --  This is as not a short-circuit form, we can only do this
+            --  as a short-circuit if there are no side-effects.
 
-            BB_New := Create_Basic_Block ("short-circuit");
-            Emit_If_Cond (Left_Opnd (N),
-                          (if Nkind (N) = N_And_Then then BB_New else BB_True),
-                          (if Nkind (N) = N_And_Then
-                           then BB_False else BB_New));
-            Position_Builder_At_End (BB_New);
-            Emit_If_Cond (Right_Opnd (N), BB_True, BB_False);
-            return;
+            if Nkind_In (N, N_And_Then, N_Or_Else)
+              or else (Side_Effect_Free (Left_Opnd (N))
+                         and then Side_Effect_Free (Right_Opnd (N)))
+            then
+               --  Depending on the result of the the test of the left operand,
+               --  we either go to a final basic block or to a new intermediate
+               --  one where we test the right operand.
+
+               BB_New := Create_Basic_Block ("short-circuit");
+               Emit_If_Cond (Left_Opnd (N),
+                             (if And_Op then BB_New else BB_True),
+                             (if And_Op then BB_False else BB_New));
+               Position_Builder_At_End (BB_New);
+               Emit_If_Cond (Right_Opnd (N), BB_True, BB_False);
+               return;
+            end if;
 
          when N_Op_Compare =>
             Emit_Comparison_And_Branch (Nkind (N), Left_Opnd (N),

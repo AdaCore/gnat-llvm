@@ -378,13 +378,17 @@ package body GNATLLVM.Subprograms is
         and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func
       then
          declare
+            TE            : constant Entity_Id := Full_Etype (E);
             Component     : constant Entity_Id :=
               Activation_Record_Component (E);
             Pointer       : constant GL_Value  :=
               Record_Field_Offset (Activation_Rec_Param, Component);
 
          begin
-            return Int_To_Ref (Load (Pointer), Full_Etype (E));
+            pragma Assert (not Is_Array_Type (TE) or else Is_Constrained (TE));
+            --  This can't work for unconstrained types since we lose bounds
+
+            return Int_To_Ref (Load (Pointer), TE);
          end;
       else
          return No_GL_Value;

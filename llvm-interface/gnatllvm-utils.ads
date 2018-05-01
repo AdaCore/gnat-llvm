@@ -64,12 +64,6 @@ package GNATLLVM.Utils is
    function Is_Constant_Folded (E : Entity_Id) return Boolean
      with Pre => Present (E);
 
-   function Get_Fullest_View (E : Entity_Id) return Entity_Id
-     with Pre => Is_Type_Or_Void (E),
-          Post => Is_Type_Or_Void (Get_Fullest_View'Result);
-   --  Get the fullest possible view of E, looking through private,
-   --  limited, and packed array implementation types.
-
    function First_Field (E : Entity_Id) return Entity_Id
      with Pre => Is_Record_Type (E);
    --  Same as First_Entity, but skips all but E_Discriminant and E_Component
@@ -80,25 +74,6 @@ package GNATLLVM.Utils is
 
    procedure Next_Field (E : in out Entity_Id)
      with Pre => Ekind_In (E, E_Discriminant, E_Component);
-
-   function Full_Etype (N : Node_Id) return Entity_Id is
-     (if Ekind (Etype (N)) = E_Void then Etype (N)
-      else Get_Fullest_View (Etype (N)));
-
-   function Full_Component_Type (E : Entity_Id) return Entity_Id is
-     (Get_Fullest_View (Component_Type (E)))
-     with Pre  => Is_Array_Type (E),
-          Post => Present (Full_Component_Type'Result);
-
-   function Full_Designated_Type (E : Entity_Id) return Entity_Id is
-     (Get_Fullest_View (Designated_Type (E)))
-     with Pre  => Is_Access_Type (E),
-          Post => Present (Full_Designated_Type'Result);
-
-   function Full_Scope (E : Entity_Id) return Entity_Id is
-     (Get_Fullest_View (Scope (E)))
-     with Pre  => Present (E),
-          Post => Present (Full_Scope'Result);
 
    function Are_In_Dead_Code return Boolean;
    --  True if we're in dead code (the last instruction is a terminator)
@@ -186,11 +161,6 @@ package GNATLLVM.Utils is
    procedure Discard (V  : Value_T)        with Pre => Present (V);
    procedure Discard (T  : Type_T)         with Pre => Present (T);
    procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);
-
-   function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
-     (Is_Access_Type (T) and then Is_Array_Type (Full_Designated_Type (T))
-      and then not Is_Constrained (Full_Designated_Type (T)))
-     with Pre => Is_Type (T);
 
    function Get_Param_Types (Fn_Ty : Type_T) return Type_Array
      with Pre => Present (Fn_Ty);

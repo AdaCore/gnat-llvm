@@ -97,6 +97,11 @@ package GNATLLVM.Subprograms is
      with Post => Present (Get_LCH_Fn'Result);
    --  Get function for our last-chance handler
 
+   function Get_From_Activation_Record (E : Entity_Id) return GL_Value
+     with Pre => Present (E);
+   --  Checks whether E is present in the current activation record and
+   --  returns an LValue pointing to the value of the object if so.
+
    function Get_Static_Link (N : Entity_Id) return GL_Value
      with Pre  => Present (N),
           Post => Present (Get_Static_Link'Result);

@@ -28,6 +28,7 @@ with GNATLLVM.Blocks;    use GNATLLVM.Blocks;
 with GNATLLVM.Compile;   use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo; use GNATLLVM.DebugInfo;
 with GNATLLVM.GLValue;   use GNATLLVM.GLValue;
+with GNATLLVM.Records;   use GNATLLVM.Records;
 with GNATLLVM.Types;     use GNATLLVM.Types;
 with GNATLLVM.Utils;     use GNATLLVM.Utils;
 
@@ -353,6 +354,42 @@ package body GNATLLVM.Subprograms is
 
       return LCH_Fn;
    end Get_LCH_Fn;
+
+   --------------------------------
+   -- Get_From_Activation_Record --
+   --------------------------------
+
+   function Get_From_Activation_Record (E : Entity_Id) return GL_Value is
+   begin
+      --  See if this is a type of object that's passed in activation
+      --  records, if this object is allocated space in an activation
+      --  record, if we have an activation record as a parameter of this
+      --  subprogram, and if this isn't a reference to the variable
+      --  in its own subprogram.  If so, get the object from the activation
+      --  record.  We return the address from the record so we can either
+      --  give an LValue or an expression.  ??  Note that we only handle
+      --  one level: there's no code here to go up multiple levels or
+      --  even detect that we need to.
+
+      if Ekind_In (E, E_Constant, E_Variable, E_In_Parameter, E_Out_Parameter,
+                   E_In_Out_Parameter, E_Loop_Parameter)
+        and then Present (Activation_Record_Component (E))
+        and then Present (Activation_Rec_Param)
+        and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func
+      then
+         declare
+            Component     : constant Entity_Id :=
+              Activation_Record_Component (E);
+            Pointer       : constant GL_Value  :=
+              Record_Field_Offset (Activation_Rec_Param, Component);
+
+         begin
+            return Int_To_Ref (Load (Pointer), Full_Etype (E));
+         end;
+      else
+         return No_GL_Value;
+      end if;
+   end Get_From_Activation_Record;
 
    -------------------
    -- Emit_One_Body --

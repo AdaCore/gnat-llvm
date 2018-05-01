@@ -185,9 +185,6 @@ package body GNATLLVM.Compile is
       end if;
 
       case Nkind (N) is
-         when N_Abstract_Subprogram_Declaration =>
-            null;
-
          when N_Compilation_Unit =>
             Emit (Context_Items (N));
             Emit (Declarations (Aux_Decls_Node (N)));
@@ -195,11 +192,8 @@ package body GNATLLVM.Compile is
             Emit (Actions (Aux_Decls_Node (N)));
             Emit (Pragmas_After (Aux_Decls_Node (N)));
 
-         when N_With_Clause =>
-            null;
-
-         when N_Use_Package_Clause =>
-            null;
+         when N_Subunit =>
+            Emit (Proper_Body (N));
 
          when N_Package_Declaration =>
             Push_Lexical_Debug_Scope (N);
@@ -779,20 +773,16 @@ package body GNATLLVM.Compile is
             Emit_Case (N);
 
          when N_Body_Stub =>
-
-            --  No action if the separate unit is not available
-
-            if No (Library_Unit (N)) then
-               Error_Msg_N ("separate unit not available", N);
-            else
-               Emit (Get_Body_From_Stub (N));
+            if Present (Library_Unit (N)) then
+               Emit (Unit (Library_Unit (N)));
             end if;
 
          --  Nodes we actually want to ignore, in many cases because they
          --  represent things that are put elsewhere in the tree (e.g,
          --  rep clauses).
 
-         when N_At_Clause
+         when N_Abstract_Subprogram_Declaration
+            | N_At_Clause
             | N_Call_Marker
             | N_Empty
             | N_Enumeration_Representation_Clause
@@ -812,7 +802,9 @@ package body GNATLLVM.Compile is
             | N_Record_Representation_Clause
             | N_Validate_Unchecked_Conversion
             | N_Variable_Reference_Marker
+            | N_Use_Package_Clause
             | N_Use_Type_Clause
+            | N_With_Clause
            =>
             null;
 
@@ -897,7 +889,7 @@ package body GNATLLVM.Compile is
             declare
                Def_Ident   : Entity_Id          := Entity (N);
                TE          : Entity_Id          := Full_Etype (Def_Ident);
-               V           : GL_Value           := Get_Value (Def_Ident);
+               V, V1       : GL_Value           := Get_Value (Def_Ident);
 
             begin
                --  If this is a deferred constant, look at the private
@@ -911,9 +903,16 @@ package body GNATLLVM.Compile is
                   V         := Get_Value (Def_Ident);
                end if;
 
+               --  See if this is an entity that's present in our
+               --  activation record. Return it if so.
+
+               V1 := Get_From_Activation_Record (Def_Ident);
+               if Present (V1) then
+                  return V1;
+
                --  If this a label, we can use "blockaddress"
 
-               if Ekind (Def_Ident) = E_Label then
+               elsif Ekind (Def_Ident) = E_Label then
                   return
                     Block_Address (Current_Func, Get_Label_BB (Def_Ident));
 
@@ -1413,7 +1412,14 @@ package body GNATLLVM.Compile is
                      Def_Ident := Full_View (Def_Ident);
                   end if;
 
-                  if Ekind (Def_Ident) = E_Enumeration_Literal then
+                  --  See if this is an entity that's present in our
+                  --  activation record. Return it if so.
+
+                  V := Get_From_Activation_Record (Def_Ident);
+                  if Present (V) then
+                     return Need_Value (V, Full_Etype (Def_Ident));
+
+                  elsif Ekind (Def_Ident) = E_Enumeration_Literal then
                      return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
                   --  If this entity has a known constant value, use it
@@ -1425,36 +1431,7 @@ package body GNATLLVM.Compile is
                   then
                      return Emit_Expression (Constant_Value (Def_Ident));
 
-                  --  See if this is an entity that's present in our
-                  --  activation record. ?? This only handles one level.
-
-                  elsif Ekind_In (Def_Ident, E_Constant,
-                                  E_Discriminant,
-                                  E_In_Parameter,
-                                  E_In_Out_Parameter,
-                                  E_Loop_Parameter,
-                                  E_Out_Parameter,
-                                  E_Variable)
-                    and then Present (Activation_Record_Component (Def_Ident))
-                    and then Present (Activation_Rec_Param)
-                    and then Get_Value (Scope (Def_Ident)) /= Current_Func
-                  then
-                     declare
-                        Component         : constant Entity_Id :=
-                          Activation_Record_Component (Def_Ident);
-                        Activation_Record : constant GL_Value :=
-                          Activation_Rec_Param;
-                        Pointer           : constant GL_Value :=
-                          Record_Field_Offset (Activation_Record, Component);
-                        Value_Address     : constant GL_Value :=
-                          Load (Pointer);
-                        Value_Ptr         : constant GL_Value :=
-                          Int_To_Ref (Value_Address, Full_Etype (Def_Ident));
-                     begin
-                        return Load (Value_Ptr);
-                     end;
-
-                     --  Handle entities in Standard and ASCII on the fly
+                  --  Handle entities in Standard and ASCII on the fly
 
                   elsif Sloc (Def_Ident) <= Standard_Location then
                      declare

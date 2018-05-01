@@ -98,14 +98,14 @@ package GNATLLVM.Subprograms is
    --  Get function for our last-chance handler
 
    function Get_From_Activation_Record (E : Entity_Id) return GL_Value
-     with Pre => Present (E);
+     with Pre => not Is_Type (E);
    --  Checks whether E is present in the current activation record and
    --  returns an LValue pointing to the value of the object if so.
 
-   function Get_Static_Link (N : Entity_Id) return GL_Value
+   function Get_Static_Link (N : Node_Id) return GL_Value
      with Pre  => Present (N),
           Post => Present (Get_Static_Link'Result);
-   --  Build and return the static link to pass to a call to Node
+   --  Build and return the static link to pass to a call to N
 
    function Emit_Call (N : Node_Id) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call,
@@ -127,7 +127,7 @@ package GNATLLVM.Subprograms is
                  and then Suffix'Length = 1;
    --  Emit code for the elaboration procedure for N.  Suffix is either "s"
    --  or "b".  CU is the corresponding N_Compilation_Unit on which we set
-   --  Has_No_Elaboration_Code if there isn't any.  Stmts, if Present, is
+   --  Has_No_Elaboration_Code if there is any.  Stmts, if Present, is
    --  an N_Handled_Sequence_Of_Statements that also have to be in the
    --  elaboration procedure.
 

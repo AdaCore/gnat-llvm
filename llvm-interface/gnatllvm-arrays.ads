@@ -120,7 +120,8 @@ package GNATLLVM.Arrays is
      (TE       : Entity_Id;
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
-     with Pre  => Present (TE), Post => Present (Get_Array_Type_Size'Result);
+     with Pre  => Is_Array_Type (TE),
+          Post => Present (Get_Array_Type_Size'Result);
 
    function Emit_Array_Aggregate
      (N              : Node_Id;

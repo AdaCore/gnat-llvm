@@ -34,7 +34,8 @@ package GNATLLVM.Records is
 
    function Record_Field_Offset
      (V : GL_Value; Field : Entity_Id) return GL_Value
-     with Pre  => Present (V) and then Present (Field),
+     with Pre  => Present (V)
+                  and then Ekind_In (Field, E_Discriminant, E_Component),
           Post => Present (Record_Field_Offset'Result);
    --  Compute the offset of a given record field
 
@@ -49,7 +50,8 @@ package GNATLLVM.Records is
      (TE       : Entity_Id;
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
-     with Pre  => Present (TE), Post => Present (Get_Record_Type_Size'Result);
+     with Pre  => Is_Record_Type (TE),
+          Post => Present (Get_Record_Type_Size'Result);
 
    function Emit_Record_Aggregate
      (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value

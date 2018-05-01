@@ -578,7 +578,7 @@ package body GNATLLVM.Subprograms is
    -- Get_Static_Link --
    ---------------------
 
-   function Get_Static_Link (N : Entity_Id) return GL_Value is
+   function Get_Static_Link (N : Node_Id) return GL_Value is
       Subp        : constant Entity_Id  := Entity (N);
       Parent      : constant Entity_Id  := Enclosing_Subprogram (Subp);
       Ent_Caller  : Subp_Entry;

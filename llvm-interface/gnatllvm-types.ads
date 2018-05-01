@@ -32,14 +32,13 @@ with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
-with Get_Targ; use Get_Targ;
-
 package GNATLLVM.Types is
 
    pragma Annotate (Xcov, Exempt_On, "Defensive programming");
 
    function Create_Access_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Type (TE), Post => Present (Create_Access_Type'Result);
+     with Pre  => Is_Type (TE),
+          Post => Present (Create_Access_Type'Result);
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
    --  between the two.
@@ -49,7 +48,8 @@ package GNATLLVM.Types is
      with Pre  => Is_Type (TE), Post => Present (GNAT_To_LLVM_Type'Result);
 
    function Create_Type (TE : Entity_Id) return Type_T is
-      (GNAT_To_LLVM_Type (TE, False));
+      (GNAT_To_LLVM_Type (TE, False))
+     with Pre => Present (TE), Post => Present (Create_Type'Result);
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type (TE);
@@ -74,11 +74,9 @@ package GNATLLVM.Types is
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
    function Build_Struct_Type
-     (Types : Type_Array; Packed : Boolean := False) return Type_T;
+     (Types : Type_Array; Packed : Boolean := False) return Type_T
+     with Post => Present (Build_Struct_Type'Result);
    --  Build an LLVM struct type containing the specified types
-
-   function Int_Ptr_Type return Type_T is
-      (Int_Type (unsigned (Get_Pointer_Size)));
 
    function Get_Fullest_View (TE : Entity_Id) return Entity_Id
      with Pre => Is_Type_Or_Void (TE),
@@ -88,7 +86,8 @@ package GNATLLVM.Types is
 
    function Full_Etype (N : Node_Id) return Entity_Id is
      (if Ekind (Etype (N)) = E_Void then Etype (N)
-      else Get_Fullest_View (Etype (N)));
+      else Get_Fullest_View (Etype (N)))
+     with Pre => Present (N), Post => Is_Type_Or_Void (Full_Etype'Result);
 
    function Full_Component_Type (E : Entity_Id) return Entity_Id is
      (Get_Fullest_View (Component_Type (E)))
@@ -102,8 +101,7 @@ package GNATLLVM.Types is
 
    function Full_Scope (E : Entity_Id) return Entity_Id is
      (Get_Fullest_View (Scope (E)))
-     with Pre  => Present (E),
-          Post => Present (Full_Scope'Result);
+     with Pre  => Present (E), Post => Present (Full_Scope'Result);
 
    function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
      (Is_Access_Type (T) and then Is_Array_Type (Full_Designated_Type (T))
@@ -113,7 +111,7 @@ package GNATLLVM.Types is
    function Convert_To_Elementary_Type
      (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Elementary_Type (TE) and then Is_Elementary_Type (V),
-          Post => Present (Convert_To_Elementary_Type'Result);
+          Post => Is_Elementary_Type (Convert_To_Elementary_Type'Result);
    --  Convert Expr to the type TE, with both the types of Expr and TE
    --  being elementary.
 
@@ -147,11 +145,11 @@ package GNATLLVM.Types is
    is
      (Convert_To_Elementary_Type (V, Full_Etype (T)))
      with Pre  => Is_Elementary_Type (V) and then Is_Elementary_Type (T),
-          Post => Present (Convert_To_Elementary_Type'Result);
+          Post => Is_Elementary_Type (Convert_To_Elementary_Type'Result);
    --  Variant of above where the type is that of another value (T)
 
    function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
-   --  Remove any conversion from E, if Present, if they are record or array
+   --  Remove any conversion from N, if Present, if they are record or array
    --  conversions that increase the complexity of the size of the
    --  type because the caller will be doing any needed conversions.
 
@@ -166,14 +164,12 @@ package GNATLLVM.Types is
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
-   function Get_LLVM_Type_Size (T : Type_T) return unsigned_long_long
-   is
+   function Get_LLVM_Type_Size (T : Type_T) return unsigned_long_long is
      ((Size_Of_Type_In_Bits (Module_Data_Layout, T) + 7) / 8)
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bytes
 
-   function Get_LLVM_Type_Size (T : Type_T) return GL_Value
-   is
+   function Get_LLVM_Type_Size (T : Type_T) return GL_Value is
      (Const_Int (Size_Type, Get_LLVM_Type_Size (T), False));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
@@ -189,8 +185,7 @@ package GNATLLVM.Types is
      with Pre => Present (V);
    --  Return the size of an LLVM type, in bits
 
-   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return GL_Value
-   is
+   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return GL_Value is
      (Const_Int (Size_Type, Get_LLVM_Type_Size_In_Bits (T), False))
      with Pre  => Present (T),
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
@@ -201,8 +196,7 @@ package GNATLLVM.Types is
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
    --  Likewise, but convert from a GNAT type
 
-   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return GL_Value
-   is
+   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return GL_Value is
      (Get_LLVM_Type_Size_In_Bits (V.Typ))
      with Pre  => Present (V),
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
@@ -213,7 +207,7 @@ package GNATLLVM.Types is
       Alloc_Type : Entity_Id;
       V          : GL_Value := No_GL_Value;
       Name       : String := "") return GL_Value
-     with Pre  => Is_Type (TE),
+     with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type),
           Post => Is_Access_Type (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type TE and return
    --  a pointer to the space.  Name is the name to use for the LLVM
@@ -226,7 +220,7 @@ package GNATLLVM.Types is
       V          : GL_Value  := No_GL_Value;
       Proc       : Entity_Id := Empty;
       Pool       : Entity_Id := Empty) return GL_Value
-     with Pre  => Is_Type (TE)
+     with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type)
                   and then (No (Proc) or else Present (Pool)),
           Post => Is_Access_Type (Heap_Allocate_For_Type'Result);
    --  Similarly, but allocate storage on the heap.  This will handle

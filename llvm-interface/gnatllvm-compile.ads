@@ -33,7 +33,8 @@ package GNATLLVM.Compile is
       Table_Name           => "Elaboration_Table");
    --  Table of statements part of the current elaboration procedure
 
-   procedure Emit_Library_Item (U : Node_Id);
+   procedure Emit_Library_Item (U : Node_Id)
+     with Pre => Present (U);
    --  Generate code for the given library item
 
    procedure Emit (N : Node_Id)

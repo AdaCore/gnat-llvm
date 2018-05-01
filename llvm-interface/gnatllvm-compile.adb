@@ -22,6 +22,7 @@ with System;
 
 with Errout;   use Errout;
 with Exp_Code; use Exp_Code;
+with Exp_Util; use Exp_Util;
 with Eval_Fat; use Eval_Fat;
 with Lib;      use Lib;
 with Namet;    use Namet;
@@ -1329,8 +1330,25 @@ package body GNATLLVM.Compile is
                return Emit_Literal (N);
 
             when N_And_Then | N_Or_Else =>
-               return Build_Short_Circuit_Op
-                 (Left_Opnd (N), Right_Opnd (N), Nkind (N));
+               if Side_Effect_Free (Left_Opnd (N))
+                 and then Side_Effect_Free (Right_Opnd (N))
+                 and then Is_Simple_Conditional (N)
+               then
+                  declare
+                     LHS : constant GL_Value :=
+                       Emit_Expression (Left_Opnd (N));
+                     RHS : constant GL_Value :=
+                       Emit_Expression (Right_Opnd (N));
+
+                  begin
+                     return (if Nkind (N) = N_And_Then
+                             then Build_And (LHS, RHS)
+                             else Build_Or  (LHS, RHS));
+                  end;
+               else
+                  return Build_Short_Circuit_Op
+                    (Left_Opnd (N), Right_Opnd (N), Nkind (N));
+               end if;
 
             when N_Op_Not =>
                return Build_Not (Emit_Expression (Right_Opnd (N)));

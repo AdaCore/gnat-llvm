@@ -32,13 +32,15 @@ package GNATLLVM.Conditionals is
 
    function Build_Short_Circuit_Op
      (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
-     with Pre  => Present (Left) and then Present (Right),
+     with Pre  => Present (Left) and then Present (Right)
+                  and then (Op in N_Op_Boolean or else Op in N_Short_Circuit),
           Post => Present (Build_Short_Circuit_Op'Result);
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 
    function Emit_Comparison
      (Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
-     with Pre  => Present (LHS) and then Present (RHS),
+     with Pre  => Present (LHS) and then Present (RHS)
+                  and then Kind in N_Op_Compare,
           Post => Present (Emit_Comparison'Result);
    --  Generate a result which is a comparison of two expressions
 
@@ -47,7 +49,8 @@ package GNATLLVM.Conditionals is
       LHS, RHS          : Node_Id;
       BB_True, BB_False : Basic_Block_T)
      with Pre => Present (LHS) and then Present (RHS)
-                 and then Present (BB_True) and then Present (BB_False);
+                 and then Present (BB_True) and then Present (BB_False)
+                 and then Kind in N_Op_Compare;
    --  Similar, but generate comparison and branch to one of the basic
    --  blocks depending on the result
 
@@ -55,7 +58,8 @@ package GNATLLVM.Conditionals is
      (Kind               : Node_Kind;
       Orig_LHS, Orig_RHS : GL_Value) return GL_Value
      with Pre  => Is_Elementary_Type (Orig_LHS)
-                  and then Is_Elementary_Type (Orig_RHS),
+                  and then Is_Elementary_Type (Orig_RHS)
+                  and then Kind in N_Op_Compare,
           Post => Present (Emit_Elementary_Comparison'Result);
    --  Helpers for Emit_Expression: handle comparison operations for
    --  elementary types.  The second form only supports discrete or pointer
@@ -64,6 +68,11 @@ package GNATLLVM.Conditionals is
    procedure Emit_If (N : Node_Id)
      with Pre => Nkind (N) = N_If_Statement;
    --  Helper for Emit: handle if statements
+
+   function Is_Simple_Conditional (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N is a simple conditional expression, meaning no
+   --  comparisons of composite types.
 
    procedure Emit_If_Cond (N : Node_Id; BB_True, BB_False : Basic_Block_T)
      with Pre => Present (N)
@@ -77,15 +86,13 @@ package GNATLLVM.Conditionals is
    --  Helper for Emit_Expression: handle if expressions
 
    procedure Emit_If_Range
-     (N                 : Node_Id;
-      LHS               : GL_Value;
+     (LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
-     with Pre => Present (N) and then Present (LHS)
-                 and then Present (BB_True) and then Present (BB_False);
+     with Pre => Present (LHS) and then Present (BB_True)
+                 and then Present (BB_False);
    --  Emit code to branch to BB_True or BB_False depending on whether LHS,
-   --  which is of type Operand_Type, is in the range from Low to High.  Node
-   --  is used only for error messages.
+   --  which is of type Operand_Type, is in the range from Low to High.
 
    procedure Emit_Case (N : Node_Id)
      with Pre => Nkind (N) = N_Case_Statement;

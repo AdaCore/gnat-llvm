@@ -37,6 +37,10 @@ package body GNATLLVM.Conditionals is
    function Build_Short_Circuit_Op
      (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
    is
+      And_Op               : constant Boolean :=
+        Op = N_And_Then or else Op = N_Op_And;
+      --  Whether this is an AND or OR operation
+
       LHS, RHS             : GL_Value;
       --  We start evaluating the LHS in the current block, but we need to
       --  record which block it completes in, since it may not be the
@@ -61,11 +65,8 @@ package body GNATLLVM.Conditionals is
       LHS := Emit_Expression (Left);
       Block_Left_Expr_End := Get_Insert_Block;
 
-      if Op = N_And_Then then
-         Build_Cond_Br (LHS, Block_Right_Expr, Block_Exit);
-      else
-         Build_Cond_Br (LHS, Block_Exit, Block_Right_Expr);
-      end if;
+      Build_Cond_Br (LHS, (if And_Op then Block_Right_Expr else Block_Exit),
+                          (if And_Op then Block_Exit else Block_Right_Expr));
 
       --  Emit code for the evaluation of the right part expression
 
@@ -80,14 +81,9 @@ package body GNATLLVM.Conditionals is
       --  If we exited the entry block, it means that for AND, the result
       --  is false and for OR, it's true.  Otherwise, the result is the right.
 
-      declare
-         LHS_Const : constant unsigned_long_long :=
-           (if Op = N_And_Then then 0 else 1);
-      begin
-         return Build_Phi
-           ((1 => Const_Int (RHS, LHS_Const), 2 => RHS),
-            (1 => Block_Left_Expr_End, 2 => Block_Right_Expr_End));
-      end;
+      return Build_Phi
+        ((1 => Const_Int (RHS, (if And_Op then Uint_0 else Uint_1)), 2 => RHS),
+         (1 => Block_Left_Expr_End, 2 => Block_Right_Expr_End));
    end Build_Short_Circuit_Op;
 
    ---------------------
@@ -624,7 +620,7 @@ package body GNATLLVM.Conditionals is
                      BB := Create_Basic_Block ("case-when");
                   end if;
 
-                  Emit_If_Range (N, LHS, Choices (K).Low, Choices (K).High,
+                  Emit_If_Range (LHS, Choices (K).Low, Choices (K).High,
                                  Alts (J).BB, BB);
                   Position_Builder_At_End (BB);
                end if;
@@ -708,6 +704,36 @@ package body GNATLLVM.Conditionals is
 
    end Emit_If;
 
+   ---------------------------
+   -- Is_Simple_Conditional --
+   ---------------------------
+
+   function Is_Simple_Conditional (N : Node_Id) return Boolean is
+   begin
+      case Nkind (N) is
+         when N_Op_Compare =>
+            return Is_Elementary_Type (Full_Etype (Left_Opnd (N)));
+
+         when N_Op_And | N_Op_Or | N_And_Then | N_Or_Else =>
+            return (Is_Simple_Conditional (Left_Opnd (N))
+                      and then Is_Simple_Conditional (Right_Opnd (N)));
+
+         when N_Op_Xor | N_Op_Not =>
+            return Is_Simple_Conditional (Right_Opnd (N));
+
+         when N_In | N_Not_In =>
+
+            --  These could be done using the trick that maps signed
+            --  range comparisons to unsigned comparisons, but not worth
+            --  the trouble.
+
+            return False;
+
+         when others =>
+            return True;
+      end case;
+   end Is_Simple_Conditional;
+
    ------------------
    -- Emit_If_Cond --
    ------------------
@@ -769,8 +795,7 @@ package body GNATLLVM.Conditionals is
                Decode_Range (Right_Opnd (N), Low, High);
                if Low /= No_Uint and then High /= No_Uint then
                   Emit_If_Range
-                    (N, Emit_Expression (Left_Opnd (N)),
-                     Low, High,
+                    (Emit_Expression (Left_Opnd (N)), Low, High,
                      (if Nkind (N) = N_In then BB_True else BB_False),
                      (if Nkind (N) = N_In then BB_False else BB_True));
                   return;
@@ -794,8 +819,7 @@ package body GNATLLVM.Conditionals is
    -------------------
 
    procedure Emit_If_Range
-     (N                 : Node_Id;
-      LHS               : GL_Value;
+     (LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
    is

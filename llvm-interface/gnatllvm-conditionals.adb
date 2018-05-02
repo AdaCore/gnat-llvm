@@ -760,16 +760,16 @@ package body GNATLLVM.Conditionals is
 
          when N_And_Then | N_Or_Else | N_Op_And | N_Op_Or =>
 
-            --  This is as not a short-circuit form, we can only do this
+            --  If this is not a short-circuit form, we can only do this
             --  as a short-circuit if there are no side-effects.
 
             if Nkind_In (N, N_And_Then, N_Or_Else)
               or else (Side_Effect_Free (Left_Opnd (N))
                          and then Side_Effect_Free (Right_Opnd (N)))
             then
-               --  Depending on the result of the the test of the left operand,
-               --  we either go to a final basic block or to a new intermediate
-               --  one where we test the right operand.
+               --  Depending on the result of the test of the left operand,
+               --  we either go to a final basic block or to a new
+               --  intermediate one where we test the right operand.
 
                BB_New := Create_Basic_Block ("short-circuit");
                Emit_If_Cond (Left_Opnd (N),

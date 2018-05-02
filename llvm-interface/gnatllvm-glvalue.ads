@@ -27,10 +27,55 @@ with LLVM.Types;  use LLVM.Types;
 with Interfaces.C;             use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Core;        use GNATLLVM.Core;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is
+
+   --  It's not sufficient to just pass around an LLVM Value_T when
+   --  generating code because there's a lot of information lost about the
+   --  value and where it came from.  Contrast with Gigi, where we pass around
+   --  a GCC tree node, which already has a lot of information, and which we
+   --  further annotate with flags.  So we pass the following record:
+
+   type GL_Value is record
+      Value                : Value_T;
+      --  The LLVM value that was generated
+
+      Typ                  : Entity_Id;
+      --  The GNAT type of this value
+
+      Is_Reference         : Boolean;
+      --  If True, this is actually a pointer to Typ, so Value's type is
+      --  actually an E_Access_Type (not provided) whose Designated_Type
+      --  is Typ.
+
+      Is_Double_Reference  : Boolean;
+      --  If True, this is a reference to a reference to the type.  This
+      --  is assumed to only occur for globals and not supported in other
+      --  situations.
+
+      Is_Raw_Array         : Boolean;
+      --  If True, even though the type here is unconstrained, we've
+      --  extracted the actual address of the array and that's what's in
+      --  Value.
+
+      Is_Subprogram_Type : Boolean;
+      --  If True, Value is a pointer to a subprogram type and Typ is
+      --  void or the return type of the function.
+
+   end record
+     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
+                               or else (Present (GL_Value.Value)
+                                          and then Is_Type_Or_Void
+                                             (GL_Value.Typ));
+
+   type GL_Value_Array is array (Nat range <>) of GL_Value;
+
+   No_GL_Value : constant GL_Value :=
+        (No_Value_T, Empty, False, False, False, False);
+   function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
+   function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
    --  A GL_Value can either represent an LValue (the address of a value) or
    --  the value itself.  It can only represent the value itself if the value
@@ -165,8 +210,7 @@ package GNATLLVM.GLValue is
      with Pre  => not Is_Reference (V),
             Post => Is_Type (Implementation_Base_Type'Result);
 
-   function Is_Dynamic_Size (V : GL_Value) return Boolean is
-     (not Is_Reference (V) and then Is_Dynamic_Size (Full_Etype (V)))
+   function Is_Dynamic_Size (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function Is_Array_Type (V : GL_Value) return Boolean is

@@ -20,11 +20,18 @@ with Types; use Types;
 
 with LLVM.Types;      use LLVM.Types;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Core;        use GNATLLVM.Core;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.DebugInfo is
 
-   Emit_Debug_Info : Boolean := False;
+   DI_Builder          : DI_Builder_T;
+   --  The current LLVM Debug Info builder
+
+   Debug_Compile_Unit  : Metadata_T;
+   --  DICompilleUnit metadata for the main compile unit
+
+   Emit_Debug_Info     : Boolean := False;
    --  Whether or not to emit debugging information (-g)
 
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;

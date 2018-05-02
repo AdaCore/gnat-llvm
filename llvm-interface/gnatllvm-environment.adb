@@ -15,9 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM.GLValue; use GNATLLVM.GLValue;
-with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 

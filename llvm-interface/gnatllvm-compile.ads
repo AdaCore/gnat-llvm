@@ -20,7 +20,7 @@ with Einfo; use Einfo;
 with Table;
 with Types; use Types;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
 

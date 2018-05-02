@@ -19,7 +19,7 @@ with Namet;    use Namet;
 with Sinput;   use Sinput;
 with Table;
 
-with GNATLLVM.GLValue; use GNATLLVM.GLValue;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.DebugInfo is

@@ -17,11 +17,19 @@
 
 with Ada.Unchecked_Conversion;
 
-with GNATLLVM.Arrays; use GNATLLVM.Arrays;
+with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Types;  use GNATLLVM.Types;
 with GNATLLVM.Utils;  use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
+
+   ---------------------
+   -- Is_Dynamic_Size --
+   ---------------------
+
+   function Is_Dynamic_Size (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Dynamic_Size (Full_Etype (V)));
 
    -------------
    -- Discard --

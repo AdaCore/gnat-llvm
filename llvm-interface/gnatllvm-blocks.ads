@@ -22,6 +22,7 @@ with Types; use Types;
 
 with LLVM.Types; use LLVM.Types;
 
+with GNATLLVM.Core;        use GNATLLVM.Core;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 
 package GNATLLVM.Blocks is

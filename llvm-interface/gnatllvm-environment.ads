@@ -21,42 +21,14 @@ with Table; use Table;
 with Types; use Types;
 
 with LLVM.Core;   use LLVM.Core;
-with LLVM.Target; use LLVM.Target;
 with LLVM.Types;  use LLVM.Types;
 
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Core;    use GNATLLVM.Core;
+with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 with System; use System;
 
 package GNATLLVM.Environment is
-
-   type Value_Array is array (Nat range <>) of Value_T;
-   type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
-
-   No_Value_T : constant Value_T := Value_T (Null_Address);
-   No_Type_T : constant Type_T := Type_T (Null_Address);
-   No_BB_T : constant Basic_Block_T := Basic_Block_T (Null_Address);
-   No_Metadata_T : constant Metadata_T := Metadata_T (Null_Address);
-   No_Builder_T : constant Builder_T := Builder_T (Null_Address);
-   --  Constant for null objects of various LLVM types
-
-   function No (V : Value_T) return Boolean            is (V = No_Value_T);
-   function No (T : Type_T) return Boolean             is (T = No_Type_T);
-   function No (B : Basic_Block_T) return Boolean      is (B = No_BB_T);
-   function No (M : Metadata_T) return Boolean         is (M = No_Metadata_T);
-   function No (M : Builder_T) return Boolean          is (M = No_Builder_T);
-
-   function Present (V : Value_T) return Boolean       is (V /= No_Value_T);
-   function Present (T : Type_T) return Boolean        is (T /= No_Type_T);
-   function Present (B : Basic_Block_T) return Boolean is (B /= No_BB_T);
-   function Present (M : Metadata_T) return Boolean    is (M /= No_Metadata_T);
-   function Present (M : Builder_T) return Boolean     is (M /= No_Builder_T);
-   --  Test for presence and absence of field of LLVM types
-
-   function Is_Type_Or_Void (E : Entity_Id) return Boolean is
-     (Ekind (E) = E_Void or else Is_Type (E));
-   --  We can have Etype's that are E_Void for E_Procedure; needed for
-   --  aspect of below record.
 
    --  Define bounds and types for record and field information
 
@@ -81,51 +53,6 @@ package GNATLLVM.Environment is
       (R /= Empty_Record_Info_Id);
    function Present (F : Field_Info_Id)  return Boolean is
       (F /= Empty_Field_Info_Id);
-
-   --  It's not sufficient to just pass around an LLVM Value_T when
-   --  generating code because there's a lot of information lost about the
-   --  value and where it came from.  Contrast with Gigi, where we pass around
-   --  a GCC tree node, which already has a lot of information, and which we
-   --  further annotate with flags.  So we pass the following record:
-
-   type GL_Value is record
-      Value                : Value_T;
-      --  The LLVM value that was generated
-
-      Typ                  : Entity_Id;
-      --  The GNAT type of this value
-
-      Is_Reference         : Boolean;
-      --  If True, this is actually a pointer to Typ, so Value's type is
-      --  actually an E_Access_Type (not provided) whose Designated_Type
-      --  is Typ.
-
-      Is_Double_Reference  : Boolean;
-      --  If True, this is a reference to a reference to the type.  This
-      --  is assumed to only occur for globals and not supported in other
-      --  situations.
-
-      Is_Raw_Array         : Boolean;
-      --  If True, even though the type here is unconstrained, we've
-      --  extracted the actual address of the array and that's what's in
-      --  Value.
-
-      Is_Subprogram_Type : Boolean;
-      --  If True, Value is a pointer to a subprogram type and Typ is
-      --  void or the return type of the function.
-
-   end record
-     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
-                               or else (Present (GL_Value.Value)
-                                          and then Is_Type_Or_Void
-                                             (GL_Value.Typ));
-
-   type GL_Value_Array is array (Nat range <>) of GL_Value;
-
-   No_GL_Value : constant GL_Value :=
-        (No_Value_T, Empty, False, False, False, False);
-   function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
-   function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
    --  Define information saying how deep we are in the block stack.  The
    --  stack itself is in GNATLLVM.Blocks.
@@ -199,58 +126,6 @@ package GNATLLVM.Environment is
 
    LLVM_Info_Map             : Ptr_LLVM_Info_Array;
    --  The mapping between a GNAT tree object and the corresponding LLVM data
-
-   LLVM_Context             : Context_T;
-   --  The current LLVM Context
-
-   IR_Builder               : Builder_T;
-   --  The current LLVM Instruction builder
-
-   LLVM_Module              : Module_T;
-   --  The LLVM Module being compiled
-
-   MD_Builder               : MD_Builder_T;
-   --  The current LLVM Metadata builder
-
-   DI_Builder               : DI_Builder_T;
-   --  The current LLVM Debug Info builder
-
-   Current_Func             : GL_Value := No_GL_Value;
-   --  Pointer to the current function
-
-   TBAA_Root                : Metadata_T;
-   --  Root of tree for Type-Based alias Analysis (TBAA) metadata
-
-   Debug_Compile_Unit       : Metadata_T;
-   --  DICompilleUnit metadata for the main compile unit
-
-   Module_Data_Layout       : Target_Data_T;
-   --  LLVM current module data layout.
-
-   Activation_Rec_Param     : GL_Value;
-   --  Parameter to this subprogram, if any, that represents an
-   --  activtion record.
-
-   Return_Address_Param     : GL_Value;
-   --  Parameter to this subprogram, if any, that represent the address
-   --  to which we are to copy the return value
-
-   In_Main_Unit             : Boolean := False;
-   --  True if we're currently processing the main unit
-
-   Special_Elaboration_Code : Boolean := False;
-   --  True if we're compiling an elaboration procedure
-
-   Size_Type                : Entity_Id;
-   LLVM_Size_Type           : Type_T;
-   --  Types to use for sizes
-
-   Void_Ptr_Type            : Type_T;
-   --  Pointer to arbitrary memory (we use i8 *); equivalent of
-   --  Standard_A_Char.
-
-   Int_32_Type              : Entity_Id;
-   --  GNAT type for 32-bit integers (for GEP indexes)
 
    function Library_Level return Boolean;
 

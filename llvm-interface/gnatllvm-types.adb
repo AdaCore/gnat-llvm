@@ -20,6 +20,7 @@ with Stand;  use Stand;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;

@@ -25,9 +25,9 @@ with Sem_Aux;  use Sem_Aux;
 with Sprint;   use Sprint;
 with Stringt;  use Stringt;
 
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
-with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 

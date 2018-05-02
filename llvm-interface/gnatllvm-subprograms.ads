@@ -25,7 +25,8 @@ with Uintp; use Uintp;
 with LLVM.Core;  use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Core;        use GNATLLVM.Core;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Subprograms is
 
@@ -150,5 +151,16 @@ package GNATLLVM.Subprograms is
 
    Current_Subp : Entity_Id := Empty;
    --  The spec entity for the subprogram currently being compiled
+
+   Current_Func             : GL_Value := No_GL_Value;
+   --  Pointer to the current function
+
+   Activation_Rec_Param     : GL_Value;
+   --  Parameter to this subprogram, if any, that represents an
+   --  activtion record.
+
+   Return_Address_Param     : GL_Value;
+   --  Parameter to this subprogram, if any, that represent the address
+   --  to which we are to copy the return value
 
 end GNATLLVM.Subprograms;

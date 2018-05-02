@@ -28,7 +28,7 @@ with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 with LLVM.Types;  use LLVM.Types;
 
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Core;         use GNATLLVM.Core;
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 

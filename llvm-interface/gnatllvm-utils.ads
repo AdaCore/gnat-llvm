@@ -30,7 +30,8 @@ with LLVM.Types;  use LLVM.Types;
 with Interfaces.C;             use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Core;        use GNATLLVM.Core;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Utils is
 

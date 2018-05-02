@@ -22,10 +22,9 @@ with LLVM.Types; use LLVM.Types;
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-package GNATLLVM.Wrapper is
+with GNATLLVM.Core; use GNATLLVM.Core;
 
-   type MD_Builder_T is new System.Address;
-   --  Metadata builder type: opaque for us
+package GNATLLVM.Wrapper is
 
    function Create_MDBuilder_In_Context (Ctx : Context_T) return MD_Builder_T;
    pragma Import (C, Create_MDBuilder_In_Context,

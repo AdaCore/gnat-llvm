@@ -24,6 +24,7 @@ with Uintp;    use Uintp;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 

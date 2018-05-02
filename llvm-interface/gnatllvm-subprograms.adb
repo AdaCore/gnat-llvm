@@ -24,13 +24,13 @@ with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
 
-with GNATLLVM.Blocks;    use GNATLLVM.Blocks;
-with GNATLLVM.Compile;   use GNATLLVM.Compile;
-with GNATLLVM.DebugInfo; use GNATLLVM.DebugInfo;
-with GNATLLVM.GLValue;   use GNATLLVM.GLValue;
-with GNATLLVM.Records;   use GNATLLVM.Records;
-with GNATLLVM.Types;     use GNATLLVM.Types;
-with GNATLLVM.Utils;     use GNATLLVM.Utils;
+with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Records;     use GNATLLVM.Records;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Subprograms is
 

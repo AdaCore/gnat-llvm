@@ -33,10 +33,56 @@ with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 package GNATLLVM.GLValue is
 
    --  It's not sufficient to just pass around an LLVM Value_T when
-   --  generating code because there's a lot of information lost about the
-   --  value and where it came from.  Contrast with Gigi, where we pass around
-   --  a GCC tree node, which already has a lot of information, and which we
-   --  further annotate with flags.  So we pass the following record:
+   --  generating code because there's a lot of information lost about
+   --  the value and where it came from.  We contruct a record of type
+   --  GL_Value, which contains the LLVM Value_T (which, in turn
+   --  contains it's LLVM Type_T), a GNAT type to which it's related,
+   --  and a field indicating the relationship between the value and
+   --  the type.  For example, the value may contain bits of the type
+   --  or the value may be the address of the bits of the type.
+
+   type GL_Value_Relationship is
+     (Data,
+      --  Value is actual bits of type Typ.  This can never be set for
+      --  subprogram types or for types of variable size.  It can be set
+      --  for non-first-class types in the LLVM sense as long as LLVM can
+      --  represent a value of that object.  If Typ is an access type, this
+      --  is requivalent to a relationship of Reference to the
+      --  Designated_Type of Typ.
+
+      Reference,
+      --  Value contains the address of an object of type Typ.  This is
+      --  always the case for types of variable size or for names
+      --  corresponding to globals because those names represent the
+      --  address of the global, either for data or functions.
+
+      Double_Reference,
+      --  Value contains the address of memory that contains the address of
+      --  an object of type Typ.  This occurs for globals where either an
+      --  'Address attribute was specifed or where an object of dynamic
+      --  size was allocated because in both of those cases the global name
+      --  is a pointer to a location containing the address of the object.
+
+      Fat_Pointer,
+      --  Value contains a "fat pointer", an object containing information
+      --  about both the data and bounds of an unconstrained array object
+      --  of type Typ.
+
+      Bounds,
+      --  Value contains data representing the bounds of an object of type
+      --  Typ, which must be an unconstrained array type.
+
+      Array_Data,
+      --  Value contains the address of the first byte of memory that
+      --  contains the value of the array.  For constrained arrays, this
+      --  is the same as Reference.
+
+      Reference_To_Subprogram);
+      --  Value contains the address of a subprogram which is a procedure
+      --  if Typ is an E_Void or which is a function returning type Typ
+      --  if Typ is not a Void.  If Typ is a subprogram type, then
+      --  Reference should be used instead and if Typ is an access
+      --  to subprogram type, then Data is the appropriate relationship.
 
    type GL_Value is record
       Value                : Value_T;
@@ -44,6 +90,9 @@ package GNATLLVM.GLValue is
 
       Typ                  : Entity_Id;
       --  The GNAT type of this value
+
+      Relationship         : GL_Value_Relationship;
+      --  The relationship between Value and Typ.
 
       Is_Reference         : Boolean;
       --  If True, this is actually a pointer to Typ, so Value's type is
@@ -73,7 +122,7 @@ package GNATLLVM.GLValue is
    type GL_Value_Array is array (Nat range <>) of GL_Value;
 
    No_GL_Value : constant GL_Value :=
-        (No_Value_T, Empty, False, False, False, False);
+        (No_Value_T, Empty, Data, False, False, False, False);
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
@@ -120,7 +169,7 @@ package GNATLLVM.GLValue is
       Is_Raw_Array         : Boolean := False;
       Is_Subprogram_Type   : Boolean := False) return GL_Value
    is
-     ((V, TE, Is_Reference, Is_Double_Reference, Is_Raw_Array,
+     ((V, TE, Data, Is_Reference, Is_Double_Reference, Is_Raw_Array,
        Is_Subprogram_Type))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
    --  Raw constructor that allow full specification of all fields

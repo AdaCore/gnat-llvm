@@ -91,12 +91,11 @@ package body GNATLLVM.GLValue is
      (G (Const_Null (Create_Type (TE)), TE));
 
    --------------------
-   -- Const_Null_Ptr --
+   -- Const_Null_Ref --
    --------------------
 
-   function Const_Null_Ptr (TE : Entity_Id) return GL_Value is
-     (G (Const_Null (Pointer_Type (Create_Type (TE), 0)), TE,
-         Is_Reference => True));
+   function Const_Null_Ref (TE : Entity_Id) return GL_Value is
+     (G (Const_Null (Create_Access_Type (TE)), TE, Is_Reference => True));
 
    ---------------
    -- Const_Int --

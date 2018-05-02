@@ -395,8 +395,8 @@ package GNATLLVM.GLValue is
      (Const_Null (Etype (V)))
      with Pre  => Present (V), Post => Present (Const_Null'Result);
 
-   function Const_Null_Ptr (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE), Post => Present (Const_Null_Ptr'Result);
+   function Const_Null_Ref (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE), Post => Is_Reference (Const_Null_Ref'Result);
 
    function Const_Int (V : GL_Value; N : Uint) return GL_Value is
      (Const_Int (Etype (V), N))

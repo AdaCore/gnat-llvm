@@ -961,19 +961,10 @@ package body GNATLLVM.Compile is
                      --  Return a callback, which is a pair: subprogram
                      --  code pointer and static link argument.
 
-                     declare
-                        S_Link : constant GL_Value := Get_Static_Link (N);
-                        Callback_Type : constant Type_T :=
-                          Build_Struct_Type
-                          ((1 => Type_Of (S_Link), 2 => Type_Of (S_Link)));
-                        Result : constant GL_Value :=
-                          Get_Undef_Ref (Callback_Type, TE);
-
-                     begin
-                        return Insert_Value
-                          (Insert_Value (Result, S_Link, 1),
-                           Pointer_Cast (V, S_Link), 0);
-                     end;
+                     return Insert_Value
+                       (Insert_Value (Get_Undef_Ref (TE),
+                                      Get_Static_Link (N), 1),
+                        Pointer_Cast (V, Standard_A_Char), 0);
                   end if;
 
                --  Handle entities in Standard and ASCII on the fly
@@ -2005,7 +1996,7 @@ package body GNATLLVM.Compile is
                TE);
 
          when Attribute_Null_Parameter =>
-            return Load (Const_Null_Ptr (Full_Etype (Prefix (N))));
+            return Load (Const_Null_Ref (Full_Etype (Prefix (N))));
 
          when Attribute_Descriptor_Size =>
 

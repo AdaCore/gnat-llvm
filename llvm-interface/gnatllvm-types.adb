@@ -209,14 +209,26 @@ package body GNATLLVM.Types is
 
    begin
       --  If neither is constrained, but they aren't the same type, just do
-      --  a pointer cast.  If both are constrained, we return the input
-      --  unchanged (the front end is responsible for this making sense).
-      --  Otherwise, we have to handle converting between fat and raw
-      --  pointers.
+      --  a pointer cast unless we have to convert between function access
+      --  types that do and don't have static links.  If both are
+      --  constrained, we return the input unchanged (the front end is
+      --  responsible for this making sense).  Otherwise, we have to handle
+      --  converting between fat and raw pointers.
 
       if not Unc_Src and not Unc_Dest then
          if Full_Designated_Type (V) = TE then
             return V;
+         elsif Needs_Activation_Record (Full_Designated_Type (V))
+           and then not Needs_Activation_Record (TE)
+         then
+            return Ptr_To_Ref (Extract_Value (Standard_A_Char, V, 1), TE);
+         elsif not Needs_Activation_Record (Full_Designated_Type (V))
+           and then Needs_Activation_Record (TE)
+         then
+            return Insert_Value
+              (Insert_Value (Get_Undef_Ref (TE),
+                             Const_Null (Standard_A_Char), 1),
+               Pointer_Cast (V, Standard_A_Char), 0);
          else
             return Ptr_To_Ref (V, TE);
          end if;

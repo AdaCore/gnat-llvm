@@ -95,7 +95,7 @@ package body GNATLLVM.GLValue is
    --------------------
 
    function Const_Null_Ref (TE : Entity_Id) return GL_Value is
-     (G (Const_Null (Create_Access_Type (TE)), TE, Is_Reference => True));
+     (G_Ref (Const_Null (Create_Access_Type (TE)), TE));
 
    ---------------
    -- Const_Int --
@@ -114,8 +114,7 @@ package body GNATLLVM.GLValue is
       N           : unsigned_long_long;
       Sign_Extend : Boolean := False) return GL_Value
    is
-     (G (Const_Int (Create_Type (TE), N, Sign_Extend => Sign_Extend),
-         TE));
+     (G (Const_Int (Create_Type (TE), N, Sign_Extend => Sign_Extend), TE));
 
    ----------------
    -- Const_Real --
@@ -132,8 +131,7 @@ package body GNATLLVM.GLValue is
    function Int_To_Ptr
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
-         TE));
+     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    ----------------
    -- Int_To_Ref --
@@ -165,8 +163,7 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Int
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
-         TE));
+     (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
    -- Bit_Cast --
@@ -512,7 +509,8 @@ package body GNATLLVM.GLValue is
      (G (Add_Global (LLVM_Module,
                      (if Need_Reference then Create_Access_Type (TE)
                       else Create_Type (TE)),
-                     Name), TE,
+                      Name),
+         TE, (if Need_Reference then Double_Reference else Reference),
          Is_Reference => True, Is_Double_Reference => Need_Reference));
 
    ---------------------

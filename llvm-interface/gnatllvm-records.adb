@@ -506,9 +506,9 @@ package body GNATLLVM.Records is
       --  the type of this piece (which has no corresponding GNAT type.)
 
       if Is_Dynamic_Size (Rec_Type) then
-         Result := G (Pointer_Cast (IR_Builder, LLVM_Value (Result),
-                                    Pointer_Type (RI.LLVM_Type, 0), ""),
-                      Rec_Type, Is_Reference => True);
+         Result := G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (Result),
+                                        Pointer_Type (RI.LLVM_Type, 0), ""),
+                          Rec_Type);
       else
          Result := Convert_To_Access_To (Result, Rec_Type);
       end if;

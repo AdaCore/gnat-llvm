@@ -424,6 +424,8 @@ package body GNATLLVM.Subprograms is
       while Present (Param) loop
          LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
                           Full_Etype (Param),
+                          (if Param_Needs_Ptr (Param)
+                           then Reference else Data),
                           Is_Reference => Param_Needs_Ptr (Param));
 
          --  Define a name for the parameter Param (which is the
@@ -455,8 +457,9 @@ package body GNATLLVM.Subprograms is
       --  value.
 
       if Dyn_Return then
-         LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
-                          Return_Typ, Is_Reference => True);
+         LLVM_Param := G_Ref (Get_Param (LLVM_Value (Func),
+                                         unsigned (Param_Num)),
+                              Return_Typ);
          Set_Value_Name (LLVM_Value (LLVM_Param), "return");
          Return_Address_Param := LLVM_Param;
       end if;

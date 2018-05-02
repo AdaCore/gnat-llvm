@@ -303,7 +303,7 @@ package body GNATLLVM.Types is
       --  pointer punning.  We need the LValue of the expression
       --  first.  If the type is a dynamic size, we know that's what
       --  we have already.  Otherwise, get it for an LValue (which
-      --  will throw away the previous conputation).  If we have an
+      --  will throw away the previous computation).  If we have an
       --  unconstrained array, point to the array data.  Then
       --  dereference in the proper type.
 

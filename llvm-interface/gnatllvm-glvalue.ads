@@ -160,11 +160,7 @@ package GNATLLVM.GLValue is
    function G
      (V                    : Value_T;
       TE                   : Entity_Id;
-      Relationship         : GL_Value_Relationship := Data;
-      Is_Reference         : Boolean               := False;
-      Is_Double_Reference  : Boolean               := False;
-      Is_Raw_Array         : Boolean               := False;
-      Is_Subprogram_Type   : Boolean               := False) return GL_Value is
+      Relationship         : GL_Value_Relationship := Data) return GL_Value is
      ((V, TE, Relationship))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
    --  Raw constructor that allow full specification of all fields
@@ -188,32 +184,31 @@ package GNATLLVM.GLValue is
           Post => Present (G_Is'Result);
 
    function G_Is_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), TE, Reference, Is_Reference => True))
+     (G (LLVM_Value (V), TE, Reference))
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (G_Is_Ref'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is_Ref (V : GL_Value; T : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), Etype (T), Reference, Is_Reference => True))
+     (G (LLVM_Value (V), Etype (T), Reference))
      with Pre  => Present (V) and then Present (T),
           Post => Is_Access_Type (G_Is_Ref'Result);
 
    function G_Ref (V : Value_T; TE : Entity_Id) return GL_Value is
-     (G (V, TE, Reference, Is_Reference => True))
+     (G (V, TE, Reference))
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (G_Ref'Result);
    --  Constructor for case where we've create a value that's a pointer to
    --  type TE.
 
    function G_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), TE, Reference, Is_Reference => True))
+     (G (LLVM_Value (V), TE, Reference))
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (G_Ref'Result);
    --  Likewise but when we already have a GL_Value
 
    function G_Double_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), TE, Double_Reference, Is_Reference => True,
-         Is_Double_Reference => True))
+     (G (LLVM_Value (V), TE, Double_Reference))
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Double_Reference (G_Double_Ref'Result);
    --  Likewise but when we already have a GL_Value
@@ -933,8 +928,8 @@ package GNATLLVM.GLValue is
       Index : unsigned;
       Name  : String := "") return GL_Value
    is
-     (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), Typ,
-         Array_Data, Is_Reference => True, Is_Raw_Array => True))
+     (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
+         Typ, Array_Data))
      with  Pre  => Present (Arg) and then Is_Type (Typ),
            Post => Is_Access_Type (Extract_Value_To_Raw_Array'Result);
 
@@ -982,7 +977,7 @@ package GNATLLVM.GLValue is
    is
      (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
                               Idx_Arr'Address, Idx_Arr'Length, Name),
-         Typ, Array_Data, Is_Reference => True, Is_Raw_Array => True))
+         Typ, Array_Data))
      with  Pre  => Is_Type (Typ) and then Present (Arg),
            Post => Present (Extract_Value_To_Raw_Array'Result);
 
@@ -1055,9 +1050,8 @@ package GNATLLVM.GLValue is
 
    function Add_Function
      (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value is
-     (G (Add_Function (LLVM_Module, Name, T), Return_TE,
-         Reference_To_Subprogram, Is_Reference => True,
-         Is_Subprogram_Type => True))
+     (G (Add_Function (LLVM_Module, Name, T),
+         Return_TE, Reference_To_Subprogram))
      with Pre  => Present (T) and then Is_Type_Or_Void (Return_TE),
           Post => Present (Add_Function'Result);
    --  Add a function to the environment

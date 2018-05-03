@@ -215,7 +215,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
                       Create_Array_Raw_Pointer_Type (TE), Name),
-          TE, Array_Data, Is_Reference => True, Is_Raw_Array => True));
+          TE, Array_Data));
 
    ----------------
    -- Ptr_To_Int --
@@ -265,7 +265,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Create_Array_Raw_Pointer_Type (TE), Name),
-          TE, Array_Data, Is_Reference => True, Is_Raw_Array => True));
+          TE, Array_Data));
 
    -----------
    -- Trunc --
@@ -579,8 +579,7 @@ package body GNATLLVM.GLValue is
                      (if Need_Reference then Create_Access_Type (TE)
                       else Create_Type (TE)),
                       Name),
-         TE, (if Need_Reference then Double_Reference else Reference),
-         Is_Reference => True, Is_Double_Reference => Need_Reference));
+         TE, (if Need_Reference then Double_Reference else Reference)));
 
    ---------------------
    -- Set_Initializer --

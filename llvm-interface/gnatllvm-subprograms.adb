@@ -423,10 +423,8 @@ package body GNATLLVM.Subprograms is
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
-                          Full_Etype (Param),
-                          (if Param_Needs_Ptr (Param)
-                           then Reference else Data),
-                          Is_Reference => Param_Needs_Ptr (Param));
+                          Full_Etype (Param), (if Param_Needs_Ptr (Param)
+                                               then Reference else Data));
 
          --  Define a name for the parameter Param (which is the
          --  Param_Num'th parameter), and associate the corresponding

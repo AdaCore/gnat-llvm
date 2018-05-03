@@ -535,12 +535,6 @@ package body GNATLLVM.Arrays is
       Expr      : Node_Id;
 
    begin
-
-      pragma Assert (not Is_Dynamic_Size (Comp_Type));
-      --  The code below, by using Insert_Value, restricts itself to
-      --  Components of fixed sizes.  But that's OK because the front end
-      --  handles those cases.
-
       Expr := First (Expressions (N));
       while Present (Expr) loop
 

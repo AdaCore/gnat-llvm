@@ -84,7 +84,7 @@ package GNATLLVM.GLValue is
       --  Reference should be used instead and if Typ is an access
       --  to subprogram type, then Data is the appropriate relationship.
 
-   type GL_Value is record
+   type GL_Value_Base is record
       Value                : Value_T;
       --  The LLVM value that was generated
 
@@ -113,11 +113,16 @@ package GNATLLVM.GLValue is
       --  If True, Value is a pointer to a subprogram type and Typ is
       --  void or the return type of the function.
 
-   end record
-     with Dynamic_Predicate => (No (GL_Value.Value) and then No (Gl_Value.Typ))
-                               or else (Present (GL_Value.Value)
-                                          and then Is_Type_Or_Void
-                                             (GL_Value.Typ));
+   end record;
+   --  We want to put a Predicate on this, but can't, so we need to make
+   --  a subtype for that purpose.
+
+   function GL_Value_Is_Valid (V : GL_Value_Base) return Boolean;
+   --  Return whether V is a valid GL_Value or not
+
+   subtype GL_Value is GL_Value_Base
+     with Predicate => GL_Value_Is_Valid (GL_Value);
+   --  Subtype used by everybody except validation function
 
    type GL_Value_Array is array (Nat range <>) of GL_Value;
 
@@ -126,18 +131,7 @@ package GNATLLVM.GLValue is
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
-   --  A GL_Value can either represent an LValue (the address of a value) or
-   --  the value itself.  It can only represent the value itself if the value
-   --  is representable as an LLVM object, so we can't represent function
-   --  values (we can only represent their address) or values representing
-   --  variable-sized objects.
-
    --  Define basic accesss predicates for components of GL_Value
-
-   function Etype (V : GL_Value) return Entity_Id is
-     (V.Typ)
-     with Pre => Present (V) and then Has_Known_Etype (V),
-          Post => Present (Etype'Result);
 
    function LLVM_Value (V : GL_Value) return Value_T is
      (V.Value)
@@ -158,6 +152,17 @@ package GNATLLVM.GLValue is
       and then not Is_Subprogram_Type (V))
      with Pre => Present (V);
    --  True is we know what V's Etype is
+
+   function Etype (V : GL_Value) return Entity_Id is
+     (V.Typ)
+     with Pre => Present (V) and then Has_Known_Etype (V),
+          Post => Is_Type_Or_Void (Etype'Result);
+
+   function Related_Type (V : GL_Value) return Entity_Id is
+     (V.Typ)
+     with Pre => Present (V), Post => Is_Type_Or_Void (Related_Type'Result);
+   --  Return the type to which V is related, irrespective of the
+   --  relationship.
 
    --  Now we have constructors for a GL_Value
 

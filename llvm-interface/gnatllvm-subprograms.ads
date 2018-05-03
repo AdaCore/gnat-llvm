@@ -109,10 +109,9 @@ package GNATLLVM.Subprograms is
    --  Build and return the static link to pass to a call to N
 
    function Emit_Call (N : Node_Id) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call,
-          Post => Present (Emit_Call'Result);
-   --  Helper for Emit/Emit_Expression: compile a call statement/expression and
-   --  return its result value.
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  Compile a call statement/expression and return its result
+   --  value.  If this is calling a procedure, there will be no return value.
 
    procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id)
      with Pre => Present (V) and then Present (N);

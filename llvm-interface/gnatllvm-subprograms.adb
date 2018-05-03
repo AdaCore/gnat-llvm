@@ -791,6 +791,9 @@ package body GNATLLVM.Subprograms is
         and then not Is_Constrained (Return_Typ)
       then
          return Call_Ref (LLVM_Func, Return_Typ, Args);
+      elsif Ekind (Return_Typ) = E_Void then
+         Call (LLVM_Func, Args);
+         return No_GL_Value;
       else
          return Call (LLVM_Func, Return_Typ, Args);
       end if;

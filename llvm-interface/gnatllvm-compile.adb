@@ -1600,6 +1600,7 @@ package body GNATLLVM.Compile is
 
                else
                   pragma Assert (Is_Array_Type (TE));
+
                   return Emit_Array_Aggregate
                     (N, Number_Dimensions (TE), (1 .. 0 => <>),
                      Get_Undef (TE));

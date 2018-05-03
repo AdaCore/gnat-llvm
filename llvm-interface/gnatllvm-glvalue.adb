@@ -24,6 +24,67 @@ with GNATLLVM.Utils;  use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
 
+   function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean;
+   --  Internal version of GL_Value_Is_Valid
+
+   -----------------------
+   -- GL_Value_Is_Valid --
+   -----------------------
+
+   function GL_Value_Is_Valid (V : GL_Value_Base) return Boolean is
+      Valid : constant Boolean := GL_Value_Is_Valid_Int (V);
+   begin
+      --  This function exists so a conditional breakpoint can be set at
+      --  the following line to see the invalid value.  Otherwise, there
+      --  seems no other reasonable way to get to see it.
+
+      return Valid;
+   end GL_Value_Is_Valid;
+
+   ----------------------------
+   --  GL_Value_Is_Valid_Int --
+   ----------------------------
+
+   function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean is
+   begin
+      --  We have to be very careful in this function not to call any
+      --  functions that take a GL_Value as an operand to avoid infinite
+      --  recursion.  So we can't call "No" below, for example.
+
+      if V = No_GL_Value then
+         return True;
+      elsif No (V.Value) or else No (V.Typ) then
+         return False;
+      end if;
+
+      case V.Relationship is
+         when Data =>
+            return Is_Type (V.Typ) and then not Is_Dynamic_Size (V.Typ)
+              and then Ekind (V.Typ) /= E_Subprogram_Type;
+
+         when Reference =>
+            return Is_Type (V.Typ)
+              and then (Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
+                          or else (Is_Array_Type (V.Typ)
+                                     and then not Is_Constrained (V.Typ))
+            --  ?? Keep the above test until we see if we can use Fat_Pointer
+            --  consistently for this.
+                          or else (Ekind (V.Typ) = E_Subprogram_Type
+                                     and then Needs_Activation_Record
+                                     (V.Typ)));
+
+         when Double_Reference =>
+            return Is_Type (V.Typ)
+              and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+
+         when Fat_Pointer | Bounds | Array_Data =>
+            return Is_Array_Type (V.Typ) and then not Is_Constrained (V.Typ);
+
+         when Reference_To_Subprogram =>
+            return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+      end case;
+   end GL_Value_Is_Valid_Int;
+
    ---------------------
    -- Is_Dynamic_Size --
    ---------------------
@@ -81,7 +142,7 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Undef_Ref (TE : Entity_Id) return GL_Value is
-     (G (Get_Undef (Create_Access_Type (TE)), TE, Is_Reference => True));
+     (G_Ref (Get_Undef (Create_Access_Type (TE)), TE));
 
    ----------------
    -- Const_Null --
@@ -154,7 +215,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
                       Create_Array_Raw_Pointer_Type (TE), Name),
-          TE, Is_Reference => True, Is_Raw_Array => True));
+          TE, Array_Data, Is_Reference => True, Is_Raw_Array => True));
 
    ----------------
    -- Ptr_To_Int --
@@ -204,7 +265,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Create_Array_Raw_Pointer_Type (TE), Name),
-          TE, Is_Reference => True, Is_Raw_Array => True));
+          TE, Array_Data, Is_Reference => True, Is_Raw_Array => True));
 
    -----------
    -- Trunc --
@@ -450,9 +511,17 @@ package body GNATLLVM.GLValue is
    ----------
 
    procedure Call
-     (Func : GL_Value; Args : GL_Value_Array; Name : String := "") is
+     (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
+   is
+      Arg_Values  : Value_Array (Args'Range);
+
    begin
-      Discard (Call (Func, Standard_Void_Type, Args, Name));
+      for J in Args'Range loop
+         Arg_Values (J) := LLVM_Value (Args (J));
+      end loop;
+
+      Discard (Call (IR_Builder, LLVM_Value (Func),
+                     Arg_Values'Address, Arg_Values'Length, Name));
    end Call;
 
    ----------------

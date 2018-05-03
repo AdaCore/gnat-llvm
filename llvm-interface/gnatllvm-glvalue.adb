@@ -585,18 +585,27 @@ package body GNATLLVM.GLValue is
    -- Set_Initializer --
    ---------------------
 
-   procedure Set_Initializer (Var, Expr : GL_Value) is
+   procedure Set_Initializer (V, Expr : GL_Value) is
    begin
-      Set_Initializer (LLVM_Value (Var), LLVM_Value (Expr));
+      Set_Initializer (LLVM_Value (V), LLVM_Value (Expr));
    end Set_Initializer;
 
    -----------------
    -- Set_Linkage --
    -----------------
 
-   procedure Set_Linkage (Var : GL_Value; Linkage : Linkage_T) is
+   procedure Set_Linkage (V : GL_Value; Linkage : Linkage_T) is
    begin
-      Set_Linkage (LLVM_Value (Var), Linkage);
+      Set_Linkage (LLVM_Value (V), Linkage);
    end Set_Linkage;
+
+   ----------------------
+   -- Set_Thread_Local --
+   ----------------------
+
+   procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean) is
+   begin
+      Set_Thread_Local (LLVM_Value (V), Thread_Local);
+   end Set_Thread_Local;
 
 end GNATLLVM.GLValue;

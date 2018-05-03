@@ -1064,12 +1064,15 @@ package GNATLLVM.GLValue is
      --  Add a global to the environment which is of type TE, so the global
      --  itself represents the address of TE.
 
-   procedure Set_Initializer (Var, Expr : GL_Value)
-     with Pre => Present (Var) and then Present (Expr);
+   procedure Set_Initializer (V, Expr : GL_Value)
+     with Pre => Present (V) and then Present (Expr);
    --  Set the initializer for a global variable
 
-   procedure Set_Linkage (Var : GL_Value; Linkage : Linkage_T)
-     with Pre => Present (Var);
+   procedure Set_Linkage (V : GL_Value; Linkage : Linkage_T)
+     with Pre => Present (V);
    --  Set the linkage type for a variable
+
+   procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean)
+     with Pre => Present (V);
 
 end GNATLLVM.GLValue;

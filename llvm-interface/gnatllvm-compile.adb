@@ -382,6 +382,9 @@ package body GNATLLVM.Compile is
                     (TE, Get_Ext_Name (Def_Ident),
                      Need_Reference => Present (Address_Clause (Def_Ident))
                        or else Is_Dynamic_Size (TE));
+                  Set_Thread_Local (LLVM_Var,
+                                    Has_Pragma_Thread_Local_Storage
+                                      (Def_Ident));
 
                   if not Library_Level then
                      Set_Linkage (LLVM_Var, Internal_Linkage);

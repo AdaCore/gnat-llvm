@@ -208,6 +208,15 @@ package body GNATLLVM.Types is
         Is_Array_Type (TE) and then not Is_Constrained (TE);
 
    begin
+      --  First have the case where we previously had a reference to a
+      --  subprogram and all we knew was the return type and we're converting
+      --  it to an actual subprogram acess type.  We have little to do, but
+      --  it simplifies the tests below since Full_Designated_Type is
+      --  undefined on such objects.
+
+      if Is_Subprogram_Reference (V) then
+         return Ptr_To_Ref (V, TE);
+
       --  If neither is constrained, but they aren't the same type, just do
       --  a pointer cast unless we have to convert between function access
       --  types that do and don't have static links.  If both are
@@ -215,7 +224,7 @@ package body GNATLLVM.Types is
       --  responsible for this making sense).  Otherwise, we have to handle
       --  converting between fat and raw pointers.
 
-      if not Unc_Src and not Unc_Dest then
+      elsif not Unc_Src and not Unc_Dest then
          if Full_Designated_Type (V) = TE then
             return V;
          elsif Needs_Activation_Record (Full_Designated_Type (V))

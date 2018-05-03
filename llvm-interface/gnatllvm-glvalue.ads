@@ -93,26 +93,6 @@ package GNATLLVM.GLValue is
 
       Relationship         : GL_Value_Relationship;
       --  The relationship between Value and Typ.
-
-      Is_Reference         : Boolean;
-      --  If True, this is actually a pointer to Typ, so Value's type is
-      --  actually an E_Access_Type (not provided) whose Designated_Type
-      --  is Typ.
-
-      Is_Double_Reference  : Boolean;
-      --  If True, this is a reference to a reference to the type.  This
-      --  is assumed to only occur for globals and not supported in other
-      --  situations.
-
-      Is_Raw_Array         : Boolean;
-      --  If True, even though the type here is unconstrained, we've
-      --  extracted the actual address of the array and that's what's in
-      --  Value.
-
-      Is_Subprogram_Type : Boolean;
-      --  If True, Value is a pointer to a subprogram type and Typ is
-      --  void or the return type of the function.
-
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -126,43 +106,54 @@ package GNATLLVM.GLValue is
 
    type GL_Value_Array is array (Nat range <>) of GL_Value;
 
-   No_GL_Value : constant GL_Value :=
-        (No_Value_T, Empty, Data, False, False, False, False);
+   No_GL_Value : constant GL_Value := (No_Value_T, Empty, Data);
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
-   --  Define basic accesss predicates for components of GL_Value
+   --  Define basic accessors for components of GL_Value
 
    function LLVM_Value (V : GL_Value) return Value_T is
      (V.Value)
      with Pre => Present (V), Post => Present (LLVM_Value'Result);
-
-   function Is_Reference (V : GL_Value) return Boolean is (V.Is_Reference);
-   function Is_Raw_Array (V : GL_Value) return Boolean is (V.Is_Raw_Array);
-
-   function Is_Double_Reference (V : GL_Value) return Boolean is
-      (V.Is_Double_Reference);
-
-   function Is_Subprogram_Type (V : GL_Value) return Boolean is
-     (V.Is_Subprogram_Type)
-     with Pre => Present (V);
-
-   function Has_Known_Etype (V : GL_Value) return Boolean is
-     (not Is_Reference (V) and then not Is_Double_Reference (V)
-      and then not Is_Subprogram_Type (V))
-     with Pre => Present (V);
-   --  True is we know what V's Etype is
-
-   function Etype (V : GL_Value) return Entity_Id is
-     (V.Typ)
-     with Pre => Present (V) and then Has_Known_Etype (V),
-          Post => Is_Type_Or_Void (Etype'Result);
+   --  Return the LLVM value in the GL_Value
 
    function Related_Type (V : GL_Value) return Entity_Id is
      (V.Typ)
      with Pre => Present (V), Post => Is_Type_Or_Void (Related_Type'Result);
    --  Return the type to which V is related, irrespective of the
    --  relationship.
+
+   function Relationship (V : GL_Value) return GL_Value_Relationship is
+     (V.Relationship)
+     with Pre => Present (V);
+
+   --  Now some predicates derived from the above
+
+   function Is_Reference (V : GL_Value) return Boolean is
+     (Relationship (V) /= Data and then Relationship (V) /= Bounds)
+     with Pre => Present (V);
+
+   function Is_Raw_Array (V : GL_Value) return Boolean is
+     (Relationship (V) = Array_Data)
+     with Pre => Present (V);
+
+   function Is_Double_Reference (V : GL_Value) return Boolean is
+     (Relationship (V) = Double_Reference)
+     with Pre => Present (V);
+
+   function Is_Subprogram_Reference (V : GL_Value) return Boolean is
+     (Relationship (V) = Reference_To_Subprogram)
+     with Pre => Present (V);
+
+   function Has_Known_Etype (V : GL_Value) return Boolean is
+     (Relationship (V) = Data)
+     with Pre => Present (V);
+   --  True if we know what V's Etype is
+
+   function Etype (V : GL_Value) return Entity_Id is
+     (V.Typ)
+     with Pre => Present (V) and then Has_Known_Etype (V),
+          Post => Is_Type_Or_Void (Etype'Result);
 
    --  Now we have constructors for a GL_Value
 
@@ -174,16 +165,12 @@ package GNATLLVM.GLValue is
       Is_Double_Reference  : Boolean               := False;
       Is_Raw_Array         : Boolean               := False;
       Is_Subprogram_Type   : Boolean               := False) return GL_Value is
-     ((V, TE, Relationship, Is_Reference, Is_Double_Reference, Is_Raw_Array,
-       Is_Subprogram_Type))
+     ((V, TE, Relationship))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
    --  Raw constructor that allow full specification of all fields
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
-     (G (V, GV.Typ, GV.Relationship,
-         Is_Reference       => GV.Is_Reference,
-         Is_Raw_Array       => GV.Is_Raw_Array,
-         Is_Subprogram_Type => GV.Is_Subprogram_Type))
+     (G (V, GV.Typ, GV.Relationship))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing
@@ -248,7 +235,7 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Present (Type_Of'Result);
 
    function Ekind (V : GL_Value) return Entity_Kind is
-     ((if V.Is_Reference then E_Access_Type else Ekind (Etype (V))))
+     ((if Is_Reference (V) then E_Access_Type else Ekind (Etype (V))))
      with Pre => Present (V);
 
    function Is_Access_Type (V : GL_Value) return Boolean is
@@ -256,7 +243,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Full_Designated_Type (V : GL_Value) return Entity_Id
-     with Pre  => Is_Access_Type (V) and then not Is_Double_Reference (V),
+     with Pre  => Is_Access_Type (V) and then not Is_Double_Reference (V)
+                  and then not Is_Subprogram_Reference (V),
           Post => Is_Type_Or_Void (Full_Designated_Type'Result);
 
    function Implementation_Base_Type (V : GL_Value) return Entity_Id is
@@ -273,10 +261,11 @@ package GNATLLVM.GLValue is
 
    function Is_Access_Unconstrained (V : GL_Value) return Boolean is
      (Is_Access_Type (V) and then Ekind (V.Typ) /= E_Void
+        and then not Is_Subprogram_Reference (V)
         and then Is_Array_Type (Full_Designated_Type (V))
         and then not Is_Constrained (Full_Designated_Type (V))
         and then not Is_Raw_Array (V)
-        and then not Is_Subprogram_Type (V))
+        and then Relationship (V) /= Reference_To_Subprogram)
      with Pre => Present (V);
 
    function Is_Constrained (V : GL_Value) return Boolean is

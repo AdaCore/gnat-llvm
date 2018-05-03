@@ -290,7 +290,7 @@ package body GNATLLVM.Utils is
       --  Value is one greater than that of our type.  That's also OK.
       --  And if what we have is a subprogram, we're also OK.
 
-      return Is_Subprogram_Type (V)
+      return Is_Subprogram_Reference (V)
         or else (Is_Reference (V)
                    and then (Full_Designated_Type (V) = TE
                                or else (Ekind (Full_Designated_Type (V))
@@ -444,14 +444,6 @@ package body GNATLLVM.Utils is
       Dump_LLVM_Type (Type_Of (V.Value));
       Write_Str (GL_Value_Relationship'Image (V.Relationship) & ": ");
       pg (Union_Id (V.Typ));
-      if Is_Reference (V) then
-         Write_Str ("Is_Reference ");
-         if Is_Raw_Array (V) then
-            Write_Str ("Is_Raw_Array");
-         end if;
-
-         Write_Eol;
-      end if;
 
    end Dump_GL_Value;
 

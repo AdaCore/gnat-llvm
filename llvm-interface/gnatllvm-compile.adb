@@ -67,12 +67,6 @@ package body GNATLLVM.Compile is
           Post => Present (Emit_Attribute_Reference'Result);
    --  Helper for Emit_Expression: handle N_Attribute_Reference nodes
 
-   function Is_Zero_Aggregate (N : Node_Id) return Boolean
-     with Pre => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
-                 and then Is_Others_Aggregate (N);
-   --  Helper for Emit_Assignment: say whether this is an aggregate of all
-   --  zeros.
-
    function Emit_Literal (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Literal'Result);
    --  Generate code for a literal
@@ -1599,7 +1593,14 @@ package body GNATLLVM.Compile is
                   return Emit_Record_Aggregate (N, Get_Undef (TE));
 
                else
-                  pragma Assert (Is_Array_Type (TE));
+                  pragma Assert (Is_Array_Type (TE)
+                                   and then not Is_Dynamic_Size (TE));
+                  --  The back-end supports exactly two types of array
+                  --  aggregates.  One, which we handle here, is for a
+                  --  fixed-size aggregate of fixed-size components.  The
+                  --  other are very special cases of Others that are
+                  --  tested for in Aggr_Assignment_OK_For_Backend in
+                  --  Exp_Aggr.  We handle them in Emit_Assignment.
 
                   return Emit_Array_Aggregate
                     (N, Number_Dimensions (TE), (1 .. 0 => <>),
@@ -1674,23 +1675,6 @@ package body GNATLLVM.Compile is
       end if;
    end Emit;
 
-   -----------------------
-   -- Is_Zero_Aggregate --
-   -----------------------
-
-   function Is_Zero_Aggregate (N : Node_Id) return Boolean is
-      Inner    : Node_Id := Expression (First (Component_Associations (N)));
-
-   begin
-      while Nkind_In (Inner, N_Aggregate, N_Extension_Aggregate)
-        and then Is_Others_Aggregate (Inner)
-      loop
-         Inner := Expression (First (Component_Associations (Inner)));
-      end loop;
-
-      return Get_Uint_Value (Inner) = Uint_0;
-   end Is_Zero_Aggregate;
-
    ---------------------
    -- Emit_Assignment --
    ---------------------
@@ -1707,22 +1691,38 @@ package body GNATLLVM.Compile is
       Src       : GL_Value;
 
    begin
-      --  See if we have the special case where we're assigning all zeros.
-      --  ?? This should really be in Emit_Array_Aggregate, which should take
-      --  an LHS.
+      --  The back-end supports exactly two types of array aggregates.
+      --  One, handled in Emit_Array_Aggregate, is for a fixed-size
+      --  aggregate of fixed-size components.  The other are special cases
+      --  of Others that are tested for in Aggr_Assignment_OK_For_Backend
+      --  in Exp_Aggr.  We have to handle them here because we want to
+      --  store directly into the LHS.  The front end guarantees that any
+      --  Others aggregate will always be the RHS of an assignment, so
+      --  we'll see it here.
 
       if Is_Array_Type (Full_Designated_Type (LValue)) and then Present (E)
         and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
-        and then Is_Others_Aggregate (E) and then Is_Zero_Aggregate (E)
+        and then Is_Others_Aggregate (E)
       then
          declare
             Align : constant unsigned := Get_Type_Alignment (Dest_Type);
+            Inner : Node_Id           :=
+              Expression (First (Component_Associations (E)));
+            Byte  : Uint;
 
          begin
+            while Nkind (Inner) = N_Aggregate
+              and then Is_Others_Aggregate (Inner)
+            loop
+               Inner := Expression (First (Component_Associations (Inner)));
+            end loop;
+
+            Byte := UI_From_Int
+              (Nat (Word (UI_To_Int (Get_Uint_Value (Inner))) and 255));
             Call (Build_Intrinsic
                     (Memset, "llvm.memset.p0i8.i", Size_Type),
                   (1 => Pointer_Cast (Dest, Standard_A_Char),
-                   2 => Const_Null (Standard_Short_Short_Integer),
+                   2 => Const_Int (Standard_Short_Short_Integer, Byte),
                    3 => Get_Type_Size (Dest_Type),
                    4 => Const_Int_32 (Align),
                    5 => Const_False));  --  Is_Volatile

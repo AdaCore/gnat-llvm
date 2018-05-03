@@ -535,6 +535,12 @@ package body GNATLLVM.Arrays is
       Expr      : Node_Id;
 
    begin
+      --  The back-end supports exactly two types of array aggregates.
+      --  One, which we handle here, is for a fixed-size aggregate of
+      --  fixed-size components.  The other are very special cases of
+      --  Others that are tested for in Aggr_Assignment_OK_For_Backend
+      --  in Exp_Aggr.  We handle them in Emit_Assignment.
+
       Expr := First (Expressions (N));
       while Present (Expr) loop
 

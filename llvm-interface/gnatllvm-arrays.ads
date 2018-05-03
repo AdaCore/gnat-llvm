@@ -15,11 +15,12 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;  use Atree;
-with Einfo;  use Einfo;
-with Nlists; use Nlists;
-with Sinfo;  use Sinfo;
-with Types;  use Types;
+with Atree;    use Atree;
+with Einfo;    use Einfo;
+with Nlists;   use Nlists;
+with Sem_Aggr; use Sem_Aggr;
+with Sinfo;    use Sinfo;
+with Types;    use Types;
 
 with LLVM.Core;  use LLVM.Core;
 with LLVM.Types; use LLVM.Types;
@@ -122,6 +123,12 @@ package GNATLLVM.Arrays is
       For_Type : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE),
           Post => Present (Get_Array_Type_Size'Result);
+
+   procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)
+     with Pre => Present (LValue)
+                 and then Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
+                 and then Is_Others_Aggregate (N);
+   --  Use memset to do an aggregate assignment from N to LValue
 
    function Emit_Array_Aggregate
      (N              : Node_Id;

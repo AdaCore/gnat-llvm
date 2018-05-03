@@ -24,6 +24,12 @@ with GNATLLVM.Utils;  use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
 
+   function Call_Internal
+     (Func        : GL_Value;
+      Args        : GL_Value_Array;
+      Name        : String := "") return Value_T;
+   --  Internal version of Call and Call_Ref
+
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean;
    --  Internal version of GL_Value_Is_Valid
 
@@ -467,6 +473,26 @@ package body GNATLLVM.GLValue is
       end if;
    end Store;
 
+   -------------------
+   -- Call_Internal --
+   ------------------
+
+   function Call_Internal
+     (Func        : GL_Value;
+      Args        : GL_Value_Array;
+      Name        : String := "") return Value_T
+   is
+      Arg_Values  : Value_Array (Args'Range);
+
+   begin
+      for J in Args'Range loop
+         Arg_Values (J) := LLVM_Value (Args (J));
+      end loop;
+
+      return Call (IR_Builder, LLVM_Value (Func),
+                   Arg_Values'Address, Arg_Values'Length, Name);
+   end Call_Internal;
+
    ----------
    -- Call --
    ----------
@@ -475,19 +501,9 @@ package body GNATLLVM.GLValue is
      (Func        : GL_Value;
       Result_Type : Entity_Id;
       Args        : GL_Value_Array;
-      Name        : String := "") return GL_Value
-   is
-      Arg_Values  : Value_Array (Args'Range);
-      Result      : Value_T;
-
+      Name        : String := "") return GL_Value is
    begin
-      for J in Args'Range loop
-         Arg_Values (J) := LLVM_Value (Args (J));
-      end loop;
-
-      Result := Call (IR_Builder, LLVM_Value (Func),
-                      Arg_Values'Address, Arg_Values'Length, Name);
-      return G (Result, Result_Type);
+      return G (Call_Internal (Func, Args, Name), Result_Type);
    end Call;
 
    --------------
@@ -498,12 +514,9 @@ package body GNATLLVM.GLValue is
      (Func        : GL_Value;
       Result_Type : Entity_Id;
       Args        : GL_Value_Array;
-      Name        : String := "") return GL_Value
-   is
-      Result      : constant GL_Value := Call (Func, Result_Type, Args, Name);
-
+      Name        : String := "") return GL_Value is
    begin
-      return G_Ref (LLVM_Value (Result), Result_Type);
+      return G_Ref (Call_Internal (Func, Args, Name), Result_Type);
    end Call_Ref;
 
    ----------
@@ -511,17 +524,9 @@ package body GNATLLVM.GLValue is
    ----------
 
    procedure Call
-     (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
-   is
-      Arg_Values  : Value_Array (Args'Range);
-
+     (Func : GL_Value; Args : GL_Value_Array; Name : String := "") is
    begin
-      for J in Args'Range loop
-         Arg_Values (J) := LLVM_Value (Args (J));
-      end loop;
-
-      Discard (Call (IR_Builder, LLVM_Value (Func),
-                     Arg_Values'Address, Arg_Values'Length, Name));
+      Discard (Call_Internal (Func, Args, Name));
    end Call;
 
    ----------------

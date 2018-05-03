@@ -1703,33 +1703,11 @@ package body GNATLLVM.Compile is
       --  Others aggregate will always be the RHS of an assignment, so
       --  we'll see it here.
 
-      if Is_Array_Type (Full_Designated_Type (LValue)) and then Present (E)
+      if Is_Array_Type (Dest_Type) and then Present (E)
         and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
         and then Is_Others_Aggregate (E)
       then
-         declare
-            Align : constant unsigned := Get_Type_Alignment (Dest_Type);
-            Inner : Node_Id           :=
-              Expression (First (Component_Associations (E)));
-            Byte  : Uint;
-
-         begin
-            while Nkind (Inner) = N_Aggregate
-              and then Is_Others_Aggregate (Inner)
-            loop
-               Inner := Expression (First (Component_Associations (Inner)));
-            end loop;
-
-            Byte := UI_From_Int
-              (Nat (Word (UI_To_Int (Get_Uint_Value (Inner))) and 255));
-            Call (Build_Intrinsic
-                    (Memset, "llvm.memset.p0i8.i", Size_Type),
-                  (1 => Pointer_Cast (Dest, Standard_A_Char),
-                   2 => Const_Int (Standard_Short_Short_Integer, Byte),
-                   3 => Get_Type_Size (Dest_Type),
-                   4 => Const_Int_32 (Align),
-                   5 => Const_False));  --  Is_Volatile
-         end;
+         Emit_Others_Aggregate (Dest, E);
 
       --  We now have three case: where we're copying an object of an
       --  elementary type, where we're copying an object that's not

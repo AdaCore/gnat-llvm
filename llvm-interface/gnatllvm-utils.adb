@@ -330,20 +330,6 @@ package body GNATLLVM.Utils is
       Alloc_Type : Entity_Id;
    begin
 
-      --  Compute the type to use for the allocation.  If V isn't
-      --  present, we have no options.  If it is, figure out what its
-      --  type is.
-
-      if No (V) then
-         Alloc_Type := TE;
-      elsif Has_Known_Etype (V) then
-         Alloc_Type := Full_Etype (V);
-      elsif Is_Reference (V) and not Is_Raw_Array (V) then
-         Alloc_Type := Full_Designated_Type (V);
-      else
-         Alloc_Type := TE;
-      end if;
-
       --  If at top level or we already have an LValue, return it.
       --  Otherwise, allocate memory for the value (which we know to be of
       --  fixed size or else we'd have had a reference).
@@ -352,6 +338,14 @@ package body GNATLLVM.Utils is
          return V;
       else
          pragma Assert (not Library_Level);
+
+         if Has_Known_Etype (V) then
+            Alloc_Type := Full_Etype (V);
+         elsif Is_Reference (V) and not Is_Raw_Array (V) then
+            Alloc_Type := Full_Designated_Type (V);
+         else
+            Alloc_Type := TE;
+         end if;
 
          return Allocate_For_Type (TE, Alloc_Type, V => V, Name => Name);
       end if;

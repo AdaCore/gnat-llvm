@@ -26,6 +26,7 @@ with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Records;     use GNATLLVM.Records;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 ---------------------
@@ -518,6 +519,42 @@ package body GNATLLVM.Arrays is
         (Convert_To_Size_Type (Comp_Size), Convert_To_Size_Type (Num_Elements),
          "size");
    end Get_Array_Type_Size;
+
+   ---------------------------
+   -- Emit_Others_Aggregate --
+   ---------------------------
+
+   procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
+      TE    : constant Entity_Id := Full_Designated_Type (LValue);
+      Align : constant unsigned  := Get_Type_Alignment (TE);
+      E     : Node_Id            :=
+        Expression (First (Component_Associations (N)));
+      Value : GL_Value;
+
+   begin
+      --  Find the innermost N_Aggregate and get the value to use
+
+      while Nkind (E) = N_Aggregate and then Is_Others_Aggregate (E) loop
+         E := Expression (First (Component_Associations (E)));
+      end loop;
+
+      --  If the type is floating-point, the front-end has verified that
+      --  it's zero, so use that.  Otherwise, evaluate the value and
+      --  convert it to 8 bits.
+
+      if Is_Floating_Point_Type (Full_Etype (E)) then
+         Value := Const_Null (Standard_Short_Short_Integer);
+      else
+         Value := Build_Type_Conversion (E, Standard_Short_Short_Integer);
+      end if;
+
+      Call (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
+            (1 => Pointer_Cast (LValue, Standard_A_Char),
+             2 => Value,
+             3 => Get_Type_Size (TE),
+             4 => Const_Int_32 (Align),
+             5 => Const_False));  --  Is_Volatile
+   end Emit_Others_Aggregate;
 
    --------------------------
    -- Emit_Array_Aggregate --

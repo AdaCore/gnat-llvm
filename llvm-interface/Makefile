@@ -9,6 +9,8 @@ DEBUG=1
 # Set to 1 to enable automated (as opposed to manual) builds
 AUTOMATED=0
 
+uname=$(shell uname)
+
 RM=rm -f
 RMDIR=rm -rf
 MV=mv -f
@@ -16,6 +18,10 @@ MKDIR=mkdir -p
 CHMOD=chmod
 AR=ar q
 LN_S=ln -s
+
+ifeq ($(filter-out CYGWIN%,$(uname)),)
+  LN_S=cp -p
+endif
 
 ifeq ($(AUTOMATED),1)
   GPRARGS=-XBuild=Production

@@ -320,6 +320,12 @@ package body GNATLLVM.Types is
       then
          return Need_Value (Convert_To_Access_To (V, TE), TE);
 
+      --  If we're converting to an unconstrained array, keep things the
+      --  way they are so we preserve bounds.
+
+      elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+         return V;
+
       --  Otherwise, these must be cases where we have to convert by
       --  pointer punning.  We need the LValue of the expression
       --  first.  If the type is a dynamic size, we know that's what
@@ -400,6 +406,20 @@ package body GNATLLVM.Types is
       pragma Assert (not Is_Dynamic_Size (TE));
       return Get_LLVM_Type_Size_In_Bits (LLVM_Type);
    end Get_LLVM_Type_Size_In_Bits;
+
+   ------------------------
+   -- Ultimate_Base_Type --
+   ------------------------
+
+   function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id is
+      Typ : Entity_Id := TE;
+   begin
+      while Etype (Typ) /= Typ loop
+         Typ := Etype (Typ);
+      end loop;
+
+      return Typ;
+   end Ultimate_Base_Type;
 
    ----------------------
    -- Get_Fullest_View --

@@ -157,8 +157,7 @@ package body GNATLLVM.Arrays is
       --  that's constrained, preferring V's type.
 
       if No (V_Type) or else not Is_Array_Type (V_Type)
-        or else (Implementation_Base_Type (V_Type) /=
-                   Implementation_Base_Type (TE))
+        or else (Ultimate_Base_Type (V_Type) /= Ultimate_Base_Type (TE))
       then
          return TE;
       elsif not Is_Constrained (V_Type) and then Is_Constrained (TE) then

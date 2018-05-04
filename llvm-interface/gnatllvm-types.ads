@@ -84,6 +84,11 @@ package GNATLLVM.Types is
    --  Get the fullest possible view of E, looking through private,
    --  limited, packed array and other implementation types.
 
+   function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id
+     with Pre => Is_Type (TE), Post => Is_Type (Ultimate_Base_Type'Result);
+   --  Go up TE's Etype chain until it points to itself, which will
+   --  go up both base and parent types.
+
    function Full_Etype (N : Node_Id) return Entity_Id is
      (if Ekind (Etype (N)) = E_Void then Etype (N)
       else Get_Fullest_View (Etype (N)))

@@ -15,10 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree; use Atree;
-with Einfo; use Einfo;
 with Table;
-with Types; use Types;
 
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 

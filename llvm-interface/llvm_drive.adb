@@ -40,8 +40,8 @@ with Switch;   use Switch;
 
 with Get_Targ; use Get_Targ;
 
+with GNATLLVM;             use GNATLLVM;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Core;        use GNATLLVM.Core;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Types;       use GNATLLVM.Types;

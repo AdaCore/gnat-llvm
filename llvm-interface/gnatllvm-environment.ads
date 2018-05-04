@@ -15,18 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree; use Atree;
-with Einfo; use Einfo;
 with Table; use Table;
-with Types; use Types;
 
 with LLVM.Core;   use LLVM.Core;
-with LLVM.Types;  use LLVM.Types;
 
-with GNATLLVM.Core;    use GNATLLVM.Core;
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
-
-with System; use System;
 
 package GNATLLVM.Environment is
 

@@ -15,19 +15,14 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree; use Atree;
-with Einfo; use Einfo;
 with Stand; use Stand;
-with Types; use Types;
 with Uintp; use Uintp;
 
 with LLVM.Core;   use LLVM.Core;
-with LLVM.Types;  use LLVM.Types;
 
 with Interfaces.C;             use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with GNATLLVM.Core;        use GNATLLVM.Core;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is

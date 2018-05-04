@@ -15,22 +15,16 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree; use Atree;
-with Einfo; use Einfo;
 with Namet; use Namet;
 with Sinfo; use Sinfo;
-with Types; use Types;
 with Uintp; use Uintp;
 with Uintp.LLVM;
 
 with LLVM.Core;   use LLVM.Core;
-with LLVM.Target; use LLVM.Target;
-with LLVM.Types;  use LLVM.Types;
 
 with Interfaces.C;             use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with GNATLLVM.Core;        use GNATLLVM.Core;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Utils is

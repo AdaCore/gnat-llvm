@@ -15,17 +15,12 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree; use Atree;
-with Einfo; use Einfo;
 with Sinfo; use Sinfo;
 with Table; use Table;
-with Types; use Types;
 with Uintp; use Uintp;
 
-with LLVM.Core;  use LLVM.Core;
-with LLVM.Types; use LLVM.Types;
+with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Core;        use GNATLLVM.Core;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Subprograms is

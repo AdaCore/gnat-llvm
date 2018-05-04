@@ -15,14 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;  use Atree;
-with Einfo;  use Einfo;
 with Sinfo;  use Sinfo;
-with Types;  use Types;
 
-with LLVM.Types; use LLVM.Types;
-
-with GNATLLVM.Core;        use GNATLLVM.Core;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 

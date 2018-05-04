@@ -17,12 +17,8 @@
 
 with System;
 
-with LLVM.Types; use LLVM.Types;
-
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
-
-with GNATLLVM.Core; use GNATLLVM.Core;
 
 package GNATLLVM.Wrapper is
 

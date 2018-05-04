@@ -18,8 +18,6 @@
 with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
-with System;
-
 with Errout;   use Errout;
 with Exp_Code; use Exp_Code;
 with Exp_Util; use Exp_Util;
@@ -39,12 +37,10 @@ with Uintp;    use Uintp;
 with Urealp;   use Urealp;
 
 with LLVM.Core;     use LLVM.Core;
-with LLVM.Types;    use LLVM.Types;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
-with GNATLLVM.Core;         use GNATLLVM.Core;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Records;      use GNATLLVM.Records;

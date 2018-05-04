@@ -137,6 +137,7 @@ s-fatllf.ads \
 s-fatlfl.ads \
 s-maccod.ads \
 s-unstyp.ads \
+s-parame.ads \
 system.ads   \
 text_io.ads  \
 unchconv.ads \
@@ -162,7 +163,11 @@ zfp: build
 	cp -p $(GNAT_SRC)/hie/i-c__hie.ads $(ADAINCLUDE)/i-c.ads
 	cp -p $(GNAT_SRC)/hie/s-assert__c.ads $(ADAINCLUDE)/s-assert.ads
 	cp -p $(GNAT_SRC)/hie/s-assert__xi.adb $(ADAINCLUDE)/s-assert.adb
-	cp -p $(GNAT_SRC)/hie/system-c.ads $(ADAINCLUDE)/system.ads
+	cp -p $(GNAT_SRC)/hie/s-secsta__zfp.ads $(ADAINCLUDE)/s-secsta.ads
+	cp -p $(GNAT_SRC)/hie/s-secsta__zfp.adb $(ADAINCLUDE)/s-secsta.adb
+	cp -p $(GNAT_SRC)/hie/s-parame__zfp.ads $(ADAINCLUDE)/s-parame.ads
+	cp -p $(GNAT_SRC)/hie/system-llvm.ads $(ADAINCLUDE)/system.ads
+	cp -p $(GNAT_SRC)/hie/s-sssita.ad[sb] $(ADAINCLUDE)/
 	cd $(ADALIB) && for f in $(COMPILABLE_SPECS); do \
 	  $(COMPILE) ../adainclude/$$f || exit 1; \
 	done

@@ -27,7 +27,6 @@ with Stand;    use Stand;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -506,9 +505,7 @@ package body GNATLLVM.Subprograms is
    begin
       --  If nothing to elaborate, do nothing
 
-      if not In_Main_Unit or else not Library_Level
-        or else Nkind (CU) /= N_Compilation_Unit or else not Work_To_Do
-      then
+      if Nkind (CU) /= N_Compilation_Unit or else not Work_To_Do then
          return;
       end if;
 

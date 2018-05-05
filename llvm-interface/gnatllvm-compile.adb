@@ -180,7 +180,7 @@ package body GNATLLVM.Compile is
             Emit (Private_Declarations (N));
             Pop_Debug_Scope;
 
-            if Library_Level then
+            if Library_Level and then In_Main_Unit then
                Emit_Elab_Proc (N, Empty, Parent (Parent (N)), "s");
             end if;
 
@@ -207,7 +207,7 @@ package body GNATLLVM.Compile is
                --  them to the elaboration table (if we're not at library
                --  level).
 
-               if Library_Level
+               if Library_Level and then In_Main_Unit
                  and then Nkind (Parent (N)) = N_Compilation_Unit
                then
                   Emit_Elab_Proc (N, Stmts, Parent (N), "b");

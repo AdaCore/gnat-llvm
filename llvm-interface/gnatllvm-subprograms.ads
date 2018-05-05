@@ -21,6 +21,7 @@ with Uintp; use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Subprograms is
@@ -127,7 +128,8 @@ package GNATLLVM.Subprograms is
 
    procedure Emit_Elab_Proc
      (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
-     with Pre => Nkind_In (N, N_Package_Specification, N_Package_Body)
+     with Pre => Library_Level and then In_Main_Unit
+                 and then Nkind_In (N, N_Package_Specification, N_Package_Body)
                  and then Suffix'Length = 1;
    --  Emit code for the elaboration procedure for N.  Suffix is either "s"
    --  or "b".  CU is the corresponding N_Compilation_Unit on which we set

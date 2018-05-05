@@ -29,10 +29,6 @@ with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
----------------------
--- GNATLLVM.Arrays --
----------------------
-
 package body GNATLLVM.Arrays is
 
    --  A bound of a constrained array can either be a compile-time

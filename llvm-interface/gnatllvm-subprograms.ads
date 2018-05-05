@@ -148,6 +148,10 @@ package GNATLLVM.Subprograms is
      with Pre => Present (N);
    --  Compile a subprogram body and save it in the environment
 
+   procedure Emit_Return_Statement (N : Node_Id)
+     with Pre => Nkind (N) = N_Simple_Return_Statement;
+   --  Emit code for a return statement
+
    function Subp_Ptr (N : Node_Id) return GL_Value
      with Pre  => Present (N), Post => Present (Subp_Ptr'Result);
    --  Return the subprogram pointer associated with Node

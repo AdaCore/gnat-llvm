@@ -53,6 +53,19 @@ package GNATLLVM.Types is
      with Pre  => Ekind (TE) in Discrete_Kind,
           Post => Present (T) and then Present (Low) and then Present (High);
 
+   procedure Clear_LValue_List;
+   --  Remove all entries previously added to the LValue list
+
+   procedure Add_To_LValue_List (V : GL_Value)
+     with Pre => Present (V);
+   --  Add V to the list that's searched by Get_Matching_Value
+
+   function Get_Matching_Value (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE),
+          Post => Present (Get_Matching_Value'Result);
+   --  Find a value that's being computed by the current Emit_LValue
+   --  recursion that has the same base type as T.
+
    function Int_Ty (Num_Bits : Natural) return Type_T is
      (Int_Type (unsigned (Num_Bits)))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;

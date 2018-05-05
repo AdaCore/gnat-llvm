@@ -31,7 +31,6 @@ with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
-with Table;
 with Uintp;    use Uintp;
 with Urealp;   use Urealp;
 
@@ -71,10 +70,6 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (N) = N_Code_Statement;
    --  Generate code for inline asm
 
-   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
-     with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
-   --  True if T_Have is a parent type of T_Need
-
    function Emit_LValue_Internal (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_LValue_Internal'Result);
    --  Called by Emit_LValue to walk the tree saving values
@@ -90,19 +85,6 @@ package body GNATLLVM.Compile is
                   and then Present (RHS_Node),
           Post => Present (Emit_Shift'Result);
    --  Helper for Emit_Expression: handle shift and rotate operations
-
-   --  We save pairs of GNAT type and LLVM Value_T for each level of
-   --  processing of an Emit_LValue so we can find it if we have a
-   --  self-referential item (a discriminated record).
-
-   package LValue_Pair_Table is new Table.Table
-     (Table_Component_Type => GL_Value,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 10,
-      Table_Increment      => 5,
-      Table_Name           => "LValue_Pair_Table");
-   --  Table of intermediate results for Emit_LValue
 
    -----------------------
    -- Emit_Library_Item --
@@ -383,41 +365,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Simple_Return_Statement =>
-
-            if Present (Expression (N)) then
-               declare
-                  Expr : constant Node_Id :=
-                    Strip_Complex_Conversions (Expression (N));
-                  TE   : constant Entity_Id := Full_Etype (Current_Subp);
-
-               begin
-                  --  If there's a parameter for the address to which to copy
-                  --  the return value, do the copy instead of returning the
-                  --  value.
-
-                  if Present (Return_Address_Param) then
-                     Emit_Assignment (Return_Address_Param, Expr,
-                                      No_GL_Value, True, True);
-                     Build_Ret_Void;
-
-                  --  If this function returns unconstrained, allocate
-                  --  memory for the return value, copy the data to be
-                  --  returned to there, and return an access (fat pointer)
-                  --  to the value.
-
-                  elsif Is_Array_Type (TE) and then not Is_Constrained (TE)
-                  then
-                     Build_Ret
-                       (Heap_Allocate_For_Type
-                          (TE, Full_Etype (Expr), Emit_Expression (Expr),
-                           Procedure_To_Call (N), Storage_Pool (N)));
-                  else
-                     Build_Ret (Build_Type_Conversion (Expr, TE));
-                  end if;
-               end;
-            else
-               Build_Ret_Void;
-            end if;
+            Emit_Return_Statement (N);
 
          when N_If_Statement =>
             Emit_If (N);
@@ -697,7 +645,7 @@ package body GNATLLVM.Compile is
       --  When we start a new recursive call, we usualy free the entries
       --  from the last one.
       if Clear then
-         LValue_Pair_Table.Set_Last (0);
+         Clear_LValue_List;
       end if;
 
       return Emit_LValue_Internal (N);
@@ -717,7 +665,7 @@ package body GNATLLVM.Compile is
       --  pair table under the base type of the fullest view.
 
       if Ekind (Value) /= E_Void then
-         LValue_Pair_Table.Append (Value);
+         Add_To_LValue_List (Value);
       end if;
 
       return Value;
@@ -801,61 +749,6 @@ package body GNATLLVM.Compile is
             return Emit_Expression (N);
       end case;
    end Emit_LValue_Main;
-
-   -------------------------
-   --  Add_To_LValue_List --
-   -------------------------
-
-   procedure Add_To_LValue_List (V : GL_Value) is
-   begin
-      LValue_Pair_Table.Append (V);
-   end Add_To_LValue_List;
-
-   ------------------
-   -- Is_Parent_Of --
-   ------------------
-
-   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean is
-   begin
-      --  If the two types are the same return True.  Likewise if
-      --  T_Have has a parent different than itself and that and this
-      --  relation holds for that.
-
-      if T_Need = T_Have then
-         return True;
-      elsif Ekind (T_Have) = E_Record_Type
-        and then Full_Etype (T_Have) /= T_Have
-      then
-         return Is_Parent_Of (T_Need, Full_Etype (T_Have));
-      else
-         return False;
-      end if;
-
-   end Is_Parent_Of;
-
-   ------------------------
-   -- Get_Matching_Value --
-   ------------------------
-
-   function Get_Matching_Value (TE : Entity_Id) return GL_Value is
-   begin
-      --  Check in the opposite order of what we push.  We may, for example
-      --  be finding the size of an object of that size, in which case the
-      --  object will have been added last.
-
-      for J in reverse 1 .. LValue_Pair_Table.Last loop
-         if Is_Parent_Of (T_Need => Implementation_Base_Type (TE),
-                          T_Have => Implementation_Base_Type
-                            (LValue_Pair_Table.Table (J).Typ))
-         then
-            return Convert_To_Access_To (LValue_Pair_Table.Table (J), TE);
-         end if;
-      end loop;
-
-      --  Should never get here and postcondition verifies
-
-      return No_GL_Value;
-   end Get_Matching_Value;
 
    ---------------------
    -- Emit_Expression --

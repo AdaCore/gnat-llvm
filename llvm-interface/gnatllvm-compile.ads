@@ -49,14 +49,4 @@ package GNATLLVM.Compile is
    --  than the value itself (out parameters, simple accesses, etc).  If
    --  Clear is False, we don't reset the list used by Get_Matching_Value.
 
-   procedure Add_To_LValue_List (V : GL_Value)
-     with Pre => Present (V);
-   --  Add V to the list that's searched by Get_Matching_Value
-
-   function Get_Matching_Value (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE),
-          Post => Present (Get_Matching_Value'Result);
-   --  Find a value that's being computed by the current Emit_LValue
-   --  recursion that has the same base type as T.
-
 end GNATLLVM.Compile;

@@ -575,6 +575,45 @@ package body GNATLLVM.Subprograms is
       Nested_Functions_Table.Set_Last (Nest_Table_First);
    end Emit_Subprogram_Body;
 
+   ---------------------------
+   -- Emit_Return_Statement --
+   ---------------------------
+
+   procedure Emit_Return_Statement (N : Node_Id) is
+   begin
+      if Present (Expression (N)) then
+         declare
+            Expr : constant Node_Id :=
+              Strip_Complex_Conversions (Expression (N));
+            TE   : constant Entity_Id := Full_Etype (Current_Subp);
+
+         begin
+            --  If there's a parameter for the address to which to copy the
+            --  return value, do the copy instead of returning the value.
+
+            if Present (Return_Address_Param) then
+               Emit_Assignment (Return_Address_Param, Expr,
+                                No_GL_Value, True, True);
+               Build_Ret_Void;
+
+               --  If this function returns unconstrained, allocate memory
+               --  for the return value, copy the data to be returned to
+               --  there, and return an access (fat pointer) to the value.
+
+            elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+               Build_Ret
+                 (Heap_Allocate_For_Type
+                    (TE, Full_Etype (Expr), Emit_Expression (Expr),
+                     Procedure_To_Call (N), Storage_Pool (N)));
+            else
+               Build_Ret (Build_Type_Conversion (Expr, TE));
+            end if;
+         end;
+      else
+         Build_Ret_Void;
+      end if;
+   end Emit_Return_Statement;
+
    ---------------------
    -- Get_Static_Link --
    ---------------------

@@ -17,6 +17,7 @@
 
 with Errout; use Errout;
 with Stand;  use Stand;
+with Table;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
@@ -26,6 +27,23 @@ with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
+
+   --  We save pairs of GNAT type and LLVM Value_T for each level of
+   --  processing of an Emit_LValue so we can find it if we have a
+   --  self-referential item (a discriminated record).
+
+   package LValue_Pair_Table is new Table.Table
+     (Table_Component_Type => GL_Value,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "LValue_Pair_Table");
+   --  Table of intermediate results for Emit_LValue
+
+   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
+     with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
+   --  True if T_Have is a parent type of T_Need
 
    function Move_Into_Memory
      (Temp       : GL_Value;
@@ -349,6 +367,70 @@ package body GNATLLVM.Types is
          return Need_Value (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), TE);
       end if;
    end Build_Unchecked_Conversion;
+
+   ------------------------
+   --  Clear_LValue_List --
+   ------------------------
+
+   procedure Clear_LValue_List is
+   begin
+      LValue_Pair_Table.Set_Last (0);
+   end Clear_LValue_List;
+
+   -------------------------
+   --  Add_To_LValue_List --
+   -------------------------
+
+   procedure Add_To_LValue_List (V : GL_Value) is
+   begin
+      LValue_Pair_Table.Append (V);
+   end Add_To_LValue_List;
+
+   ------------------
+   -- Is_Parent_Of --
+   ------------------
+
+   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean is
+   begin
+      --  If the two types are the same return True.  Likewise if
+      --  T_Have has a parent different than itself and that and this
+      --  relation holds for that.
+
+      if T_Need = T_Have then
+         return True;
+      elsif Ekind (T_Have) = E_Record_Type
+        and then Full_Etype (T_Have) /= T_Have
+      then
+         return Is_Parent_Of (T_Need, Full_Etype (T_Have));
+      else
+         return False;
+      end if;
+
+   end Is_Parent_Of;
+
+   ------------------------
+   -- Get_Matching_Value --
+   ------------------------
+
+   function Get_Matching_Value (TE : Entity_Id) return GL_Value is
+   begin
+      --  Check in the opposite order of what we push.  We may, for example
+      --  be finding the size of an object of that size, in which case the
+      --  object will have been added last.
+
+      for J in reverse 1 .. LValue_Pair_Table.Last loop
+         if Is_Parent_Of (T_Need => Implementation_Base_Type (TE),
+                          T_Have => Implementation_Base_Type
+                            (LValue_Pair_Table.Table (J).Typ))
+         then
+            return Convert_To_Access_To (LValue_Pair_Table.Table (J), TE);
+         end if;
+      end loop;
+
+      --  Should never get here and postcondition verifies
+
+      return No_GL_Value;
+   end Get_Matching_Value;
 
    -------------------------------
    -- Strip_Complex_Conversions --

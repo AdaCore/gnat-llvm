@@ -21,6 +21,11 @@ with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Variables is
 
+   procedure Detect_Duplicate_Global_Names;
+   --  Make a pass over all library units looking for the use of the same
+   --  global name in two different entities and keep a record of all such
+   --  duplications.
+
    procedure Emit_Declaration (N : Node_Id)
      with Pre => Nkind_In (N, N_Object_Declaration, N_Exception_Declaration);
    --  Emit a declaration

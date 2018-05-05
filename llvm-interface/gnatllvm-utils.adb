@@ -405,10 +405,7 @@ package body GNATLLVM.Utils is
       Buf : Bounded_String;
 
    begin
-      if (Is_Imported (E) or else Is_Exported (E))
-        and then Present (Interface_Name (E))
-        and then No (Address_Clause (E))
-      then
+      if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
          Append (Buf, Strval (Interface_Name (E)));
          return +Buf;
       else

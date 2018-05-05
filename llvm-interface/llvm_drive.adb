@@ -46,6 +46,7 @@ with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body LLVM_Drive is
@@ -72,7 +73,7 @@ package body LLVM_Drive is
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
       Result : Integer;
 
-      procedure Walk_All_Units is
+      procedure Emit_All_Units is
         new Sem.Walk_Library_Items (Action => Emit_Library_Item);
 
    begin
@@ -134,8 +135,9 @@ package body LLVM_Drive is
 
       --  Actually translate
 
+      Detect_Duplicate_Global_Names;
       Initialize_Debugging;
-      Walk_All_Units;
+      Emit_All_Units;
 
       --  Output the translation
 

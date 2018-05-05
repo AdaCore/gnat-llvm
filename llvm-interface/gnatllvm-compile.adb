@@ -31,6 +31,7 @@ with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
+with Table;
 with Uintp;    use Uintp;
 with Urealp;   use Urealp;
 

@@ -15,20 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Table;
-
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
-
-   package Elaboration_Table is new Table.Table
-     (Table_Component_Type => Node_Id,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 1024,
-      Table_Increment      => 100,
-      Table_Name           => "Elaboration_Table");
-   --  Table of statements part of the current elaboration procedure
 
    procedure Emit_Library_Item (U : Node_Id)
      with Pre => Present (U);

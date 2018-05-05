@@ -88,6 +88,11 @@ package body GNATLLVM.Subprograms is
    --  the return type of the function will have been changed to an access
    --  to that array, so this must return false.
 
+   Ada_Main_Elabb : GL_Value := No_GL_Value;
+   --  ??  This a kludge.  We sometimes need an elab proc for Ada_Main and
+   --  this can cause confusion with global names.  So if we made it as
+   --  part of the processing of a declaration, save it.
+
    ------------------
    -- Count_Params --
    ------------------
@@ -515,7 +520,12 @@ package body GNATLLVM.Subprograms is
          Set_Has_No_Elaboration_Code (CU, False);
       end if;
 
-      LLVM_Func := Add_Function (Name, Elab_Type, Standard_Void_Type);
+      if Name = "ada_main___elabb" and Present (Ada_Main_Elabb) then
+         LLVM_Func := Ada_Main_Elabb;
+      else
+         LLVM_Func := Add_Function (Name, Elab_Type, Standard_Void_Type);
+      end if;
+
       Enter_Subp (LLVM_Func);
       Push_Debug_Scope
         (Create_Subprogram_Debug_Info
@@ -855,18 +865,15 @@ package body GNATLLVM.Subprograms is
             LLVM_Func      : GL_Value;
 
          begin
-            --  ?? We have a tricky issue here.  We need to indicate that this
-            --  object is a subprogram, but we don't have a GNAT type
-            --  corresponding to the subprogram type unless there's an access
-            --  type.  So we'll use the the return type and flag it as
-            --  both a reference and intermediate type.  There doesn't seem
-            --  to be better way to handle this right now.
-
             LLVM_Func :=
               Add_Function
                    ((if Is_Compilation_Unit (Def_Ident)
                      then "_ada_" & Subp_Base_Name else Subp_Base_Name),
                     Subp_Type, Full_Etype (Def_Ident));
+
+            if Subp_Base_Name = "ada_main___elabb" then
+               Ada_Main_Elabb := LLVM_Func;
+            end if;
 
             --  Define the appropriate linkage
 

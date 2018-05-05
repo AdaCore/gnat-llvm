@@ -86,6 +86,10 @@ package body GNATLLVM.Compile is
           Post => Present (Emit_Shift'Result);
    --  Helper for Emit_Expression: handle shift and rotate operations
 
+   function Emit_Undef (TE : Entity_Id) return GL_Value
+     with Pre => Is_Type (TE), Post => Present (Emit_Undef'Result);
+   --  Emit an undef appropriate for a return value of type TE
+
    -----------------------
    -- Emit_Library_Item --
    -----------------------
@@ -750,6 +754,13 @@ package body GNATLLVM.Compile is
       end case;
    end Emit_LValue_Main;
 
+   ----------------
+   -- Emit_Undef --
+   ----------------
+
+   function Emit_Undef (TE : Entity_Id) return GL_Value is
+     ((if Is_Dynamic_Size (TE) then Get_Undef_Ref (TE) else Get_Undef (TE)));
+
    ---------------------
    -- Emit_Expression --
    ---------------------
@@ -1189,18 +1200,18 @@ package body GNATLLVM.Compile is
 
             when N_Raise_Expression =>
                Emit_LCH_Call (N);
-               return Get_Undef (TE);
+               return Emit_Undef (TE);
 
             when N_Raise_xxx_Error =>
                pragma Assert (No (Condition (N)));
                Emit_LCH_Call (N);
-               return Get_Undef (TE);
+               return Emit_Undef (TE);
 
             when others =>
                Error_Msg_N
                  ("unsupported node kind: `" &
                     Node_Kind'Image (Nkind (N)) & "`", N);
-               return Get_Undef (TE);
+               return Emit_Undef (TE);
          end case;
       end if;
    end Emit_Expression;

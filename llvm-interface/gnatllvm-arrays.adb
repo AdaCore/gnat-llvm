@@ -800,7 +800,7 @@ package body GNATLLVM.Arrays is
       Low_Idx_Bound  : constant GL_Value      :=
         Get_Array_Bound (Arr_Type, 0, True, V);
       Index_Val      : constant GL_Value      :=
-        Emit_Expression (Low_Bound (Rng));
+        Emit_Expression (Low_Bound (Get_Dim_Range (Rng)));
       Dim_Op_Type   : constant Entity_Id      :=
         Get_GEP_Safe_Type (Low_Idx_Bound);
       Converted_Index : constant GL_Value     :=
@@ -851,7 +851,7 @@ package body GNATLLVM.Arrays is
          when N_Range =>
             return N;
          when N_Identifier =>
-            return Scalar_Range (Entity (N));
+            return Get_Dim_Range (Scalar_Range (Entity (N)));
 
          when N_Subtype_Indication =>
             declare
@@ -859,10 +859,11 @@ package body GNATLLVM.Arrays is
             begin
                if Present (Constr) then
                   if Nkind (Constr) = N_Range_Constraint then
-                     return Range_Expression (Constr);
+                     return Get_Dim_Range (Range_Expression (Constr));
                   end if;
                else
-                  return Scalar_Range (Entity (Subtype_Mark (N)));
+                  return
+                    Get_Dim_Range (Scalar_Range (Entity (Subtype_Mark (N))));
                end if;
             end;
 

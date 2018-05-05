@@ -721,17 +721,9 @@ package body GNATLLVM.Compile is
                                        Emit_LValue_Internal (Prefix (N)));
 
          when N_Slice =>
-            declare
-               Rng : Node_Id := Discrete_Range (N);
-
-            begin
-               while Nkind (Rng) = N_Identifier loop
-                  Rng := Scalar_Range (Entity (Rng));
-               end loop;
-
-               return Get_Slice_LValue
-                 (Full_Etype (N), Rng, Emit_LValue_Internal (Prefix (N)));
-            end;
+            return Get_Slice_LValue
+              (Full_Etype (N), Discrete_Range (N),
+               Emit_LValue_Internal (Prefix (N)));
 
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion

@@ -388,7 +388,7 @@ package body GNATLLVM.Variables is
       end if;
 
       --  Handle top-level declarations or ones that need to be treated
-      --  that way unless if we've already made the item (e.g., if we
+      --  that way unless if we've already made the item (e.g., if we're
       --  in the elab proc).
 
       if (Library_Level or else Is_Statically_Allocated (Def_Ident))
@@ -434,14 +434,16 @@ package body GNATLLVM.Variables is
             Set_Dup_Global_Value (Def_Ident, LLVM_Var);
          end if;
 
+         --  Now save the value we've made for this variable
+
          Set_Value (Def_Ident, LLVM_Var);
 
          if In_Main_Unit then
 
-            --  If there is an Address clause and its of compile-time known
-            --  value, we can convert it to a pointer to us and make it a
-            --  static initializer.  Otherwise, we have to take care of
-            --  this in the elaboration proc if at library level.
+            --  If there's an Address clause with a static address, we can
+            --  convert it to a pointer to us and make it a static
+            --  initializer.  Otherwise, we have to take care of this in
+            --  the elaboration proc if at library level.
 
             if Present (Addr_Expr) then
                if Is_Static_Address (Addr_Expr) then
@@ -462,15 +464,12 @@ package body GNATLLVM.Variables is
                Add_To_Elab_Proc (N);
             end if;
 
-            --  Take Expression (Node) into account
+            --  If we have an initial value, we can set an initializer if
+            --  this is a compile-time known expression, we have the actual
+            --  global, not a type-converted value, and the variable is not
+            --  of a dynamic size or has an address clause.
 
             if Present (Expr) then
-
-               --  We can set an initializer if this is a compile-time
-               --  known expression, we have the actual global, not a
-               --  type-converted value, and its not of a dynamic size or
-               --  has an address clause.
-
                if Compile_Time_Known_Value (Expr)
                  and then (No (LLVM_Var_Dup) or else LLVM_Var = LLVM_Var_Dup)
                  and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
@@ -496,7 +495,7 @@ package body GNATLLVM.Variables is
       end if;
 
       --  If we're at library level and not in an elab proc, we can't do
-      --  anything else.
+      --  anything else now.
 
       if Library_Level and then not In_Elab_Proc then
          return;
@@ -516,7 +515,7 @@ package body GNATLLVM.Variables is
 
       --  If we've already gotten a value for the address of this entity,
       --  fetch it.  If a non-constant address was specified, set the the
-      --  address of the variable to that address.  Otherwise, if the
+      --  address of the entity to that address.  Otherwise, if the
       --  variable is of dynamic size, do the allocation here, copying any
       --  initializing expression.
 
@@ -528,7 +527,7 @@ package body GNATLLVM.Variables is
             Copied := True;
          end if;
 
-      --  Otherwise, if we have an address, that's our variable
+      --  Otherwise, if we have an address, that's what we use
 
       elsif Present (Addr) then
          LLVM_Var := Addr;

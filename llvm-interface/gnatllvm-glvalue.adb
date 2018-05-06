@@ -83,11 +83,20 @@ package body GNATLLVM.GLValue is
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
-         when Fat_Pointer | Bounds | Array_Data =>
+         when Fat_Pointer | Bounds =>
             return Is_Array_Type (V.Typ) and then not Is_Constrained (V.Typ);
+
+         when Array_Data | Reference_To_Bounds =>
+            return Is_Type (V.Typ)
+              and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
+              and then Is_Array_Type (V.Typ)
+              and then not Is_Constrained (V.Typ);
 
          when Reference_To_Subprogram =>
             return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+
+         when Invalid =>
+            return False;
       end case;
    end GL_Value_Is_Valid_Int;
 
@@ -449,13 +458,23 @@ package body GNATLLVM.GLValue is
    ----------
 
    function Load (Ptr : GL_Value; Name : String := "") return GL_Value is
+      New_Relationship : constant GL_Value_Relationship :=
+        Relation_Props (Relationship (Ptr)).Deref;
+
    begin
-      if Is_Double_Reference (Ptr) then
-         return G_Ref (Load (IR_Builder, LLVM_Value (Ptr), Name), Ptr.Typ);
-      else
+      --  If this is going to actually be pointing to data of the related
+      --  type, indicate that we're loading an object of that type.
+
+      if New_Relationship = Data then
          return G (Load_With_Type (Full_Designated_Type (Ptr),
                                    LLVM_Value (Ptr), Name),
                    Full_Designated_Type (Ptr));
+      else
+         --  Otherwise, do a load with no type indication.
+         --  ?? At some point, we need to deal with TBAA or similar for these.
+
+         return G (Load (IR_Builder, LLVM_Value (Ptr), Name),
+                   Related_Type (Ptr), New_Relationship);
       end if;
    end Load;
 

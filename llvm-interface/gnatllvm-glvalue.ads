@@ -38,7 +38,7 @@ package GNATLLVM.GLValue is
 
    type GL_Value_Relationship is
      (Data,
-      --  Value is actual bits of type Typ.  This can never be set for
+      --  Value is actual bits of Typ.  This can never be set for
       --  subprogram types or for types of variable size.  It can be set
       --  for non-first-class types in the LLVM sense as long as LLVM can
       --  represent a value of that object.  If Typ is an access type, this
@@ -46,14 +46,14 @@ package GNATLLVM.GLValue is
       --  Designated_Type of Typ.
 
       Reference,
-      --  Value contains the address of an object of type Typ.  This is
-      --  always the case for types of variable size or for names
-      --  corresponding to globals because those names represent the
-      --  address of the global, either for data or functions.
+      --  Value contains the address of an object of Typ.  This is always
+      --  the case for types of variable size or for names corresponding to
+      --  globals because those names represent the address of the global,
+      --  either for data or functions.
 
       Double_Reference,
       --  Value contains the address of memory that contains the address of
-      --  an object of type Typ.  This occurs for globals where either an
+      --  an object of Typ.  This occurs for globals where either an
       --  'Address attribute was specifed or where an object of dynamic
       --  size was allocated because in both of those cases the global name
       --  is a pointer to a location containing the address of the object.
@@ -61,23 +61,58 @@ package GNATLLVM.GLValue is
       Fat_Pointer,
       --  Value contains a "fat pointer", an object containing information
       --  about both the data and bounds of an unconstrained array object
-      --  of type Typ.
+      --  of Typ.
 
       Bounds,
-      --  Value contains data representing the bounds of an object of type
-      --  Typ, which must be an unconstrained array type.
+      --  Value contains data representing the bounds of an object of Typ,
+      --  which must be an unconstrained array type.
+
+      Reference_To_Bounds,
+      --  Value contains an address that points to the bounds of an object
+      --  of Typ, which must be an unconstrained type.
 
       Array_Data,
       --  Value contains the address of the first byte of memory that
       --  contains the value of the array.  For constrained arrays, this
       --  is the same as Reference.
 
-      Reference_To_Subprogram);
+      Reference_To_Subprogram,
       --  Value contains the address of a subprogram which is a procedure
       --  if Typ is an E_Void or which is a function returning type Typ
       --  if Typ is not a Void.  If Typ is a subprogram type, then
       --  Reference should be used instead and if Typ is an access
       --  to subprogram type, then Data is the appropriate relationship.
+
+      Invalid);
+      --  This is invalid relationship, which will result from, e.g.,
+      --  doing a dereference operation on something that isn't a reference.
+
+   --  We define some properties on each relationship type so we can
+   --  do some reasoning on them.  This record and array are used to express
+   --  those properties.
+
+   type Relationship_Property is record
+     Reference : Boolean;
+     --  True if this is a reference to something
+
+     Deref     : GL_Value_Relationship;
+     --  The relationship corresponding to a dereference (Load) from a
+     --  GL_Valule that has this relationship.
+   end record;
+
+   type Relationship_Array is
+     array (GL_Value_Relationship) of Relationship_Property;
+
+   Relation_Props : constant Relationship_Array :=
+     (Data                     => (Reference => False, Deref => Invalid),
+      Reference                => (Reference => True,  Deref => Data),
+      Double_Reference         => (Reference => True,  Deref => Reference),
+      Fat_Pointer              => (Reference => True,  Deref => Invalid),
+      Bounds                   => (Reference => False, Deref => Invalid),
+      Reference_To_Bounds      => (Reference => True,  Deref => Bounds),
+      Array_Data               => (Reference => True,  Deref => Invalid),
+      Reference_To_Subprogram  => (Reference => True,  Deref => Invalid),
+      Invalid                  => (Reference => False, Deref => Invalid));
 
    type GL_Value_Base is record
       Value                : Value_T;
@@ -125,7 +160,7 @@ package GNATLLVM.GLValue is
    --  Now some predicates derived from the above
 
    function Is_Reference (V : GL_Value) return Boolean is
-     (Relationship (V) /= Data and then Relationship (V) /= Bounds)
+     (Relation_Props (Relationship (V)).Reference)
      with Pre => Present (V);
 
    function Is_Raw_Array (V : GL_Value) return Boolean is

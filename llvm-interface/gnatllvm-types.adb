@@ -633,12 +633,14 @@ package body GNATLLVM.Types is
          when Discrete_Kind =>
             --  LLVM is expecting boolean expressions to be of size 1
             --  ??? will not work properly if there is a size clause
+            --  Also avoid using 0-sized type for "mod 1" type (c420001).
 
             if Is_Boolean_Type (Def_Ident) then
                T := Int_Ty (1);
-            elsif Is_Modular_Integer_Type (Def_Ident) then
+            elsif Is_Modular_Integer_Type (Def_Ident)
+              and then RM_Size (Def_Ident) /= Uint_0
+            then
                T := Int_Ty (RM_Size (Def_Ident));
-
             else
                T := Int_Ty (Esize (Def_Ident));
             end if;

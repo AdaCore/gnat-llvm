@@ -569,7 +569,7 @@ package body GNATLLVM.Variables is
 
          --  Handle entities in Standard and ASCII on the fly
 
-      elsif Sloc (Def_Ident) <= Standard_Location then
+      elsif No (V) and then Sloc (Def_Ident) <= Standard_Location then
          V := Add_Global (TE, Get_Ext_Name (Def_Ident));
          Set_Linkage (V, External_Linkage);
          Set_Value (Def_Ident, V);

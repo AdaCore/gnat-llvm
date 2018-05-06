@@ -17,6 +17,8 @@
 
 with Sinfo;  use Sinfo;
 
+with LLVM.Core;  use LLVM.Core;
+
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -47,6 +49,7 @@ package GNATLLVM.Records is
       For_Type : Boolean := False) return GL_Value
      with Pre  => Is_Record_Type (TE),
           Post => Present (Get_Record_Type_Size'Result);
+   --  Like Get_Type_Size, but only for record types
 
    function Emit_Record_Aggregate
      (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value
@@ -54,5 +57,23 @@ package GNATLLVM.Records is
                   and then Is_Record_Type (Full_Etype (Node))
                   and then Present (Result_So_Far),
           Post => Present (Emit_Record_Aggregate'Result);
+   --  Emit code for a record aggregate at Node.  Result_So_Far are any
+   --  fields already filled in for the record or undef if none have.
+
+   function Get_Field_Offset (T : Type_T; Idx : Nat) return GL_Value
+     with Pre  => Get_Type_Kind (T) = Struct_Type_Kind,
+          Post => Type_Of (Get_Field_Offset'Result) = LLVM_Size_Type
+                  and then Is_Constant (LLVM_Value (Get_Field_Offset'Result));
+   --  Given an LLVM record type T and an index Idx giving the ordinal of
+   --  the field in the record, return a constant of Size_Type representing
+   --  the position (in bytes) of that field in the record.
+
+   function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
+     with Pre  => Ekind_In (E, E_Discriminant, E_Component)
+                  and then Present (V),
+          Post => Type_Of (Emit_Field_Position'Result) = LLVM_Size_Type;
+   --  Compute and return the position in bytes of the field specified by E
+   --  from the start of its type as a value of Size_Type.  V is a value
+   --  of that type, which is used in the case of a discriminated record.
 
 end GNATLLVM.Records;

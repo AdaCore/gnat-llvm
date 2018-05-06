@@ -1435,7 +1435,12 @@ package body GNATLLVM.Compile is
                return Convert_To_Elementary_Type (Result, TE);
             end;
 
-         when Attribute_First_Bit =>
+         when Attribute_Position =>
+
+            return Emit_Field_Position (Entity (Selector_Name (Prefix (N))),
+                                      Emit_LValue (Prefix (Prefix (N))));
+
+         when Attribute_First_Bit | Attribute_Bit =>
 
             --  We don't support packing, so this is always zero
 

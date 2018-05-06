@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Get_Targ; use Get_Targ;
 with Namet;    use Namet;
@@ -24,8 +25,6 @@ with Sem_Aux;  use Sem_Aux;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Table;    use Table;
-
-with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
@@ -44,7 +43,7 @@ package body GNATLLVM.Records is
      (TE       : Entity_Id;
       V        : GL_Value;
       Idx      : Record_Info_Id;
-      For_Type : Boolean) return GL_Value
+      For_Type : Boolean := False) return GL_Value
      with Pre  => Present (TE),
           Post => Present (Get_Record_Size_So_Far'Result);
 
@@ -398,7 +397,7 @@ package body GNATLLVM.Records is
      (TE       : Entity_Id;
       V        : GL_Value;
       Idx      : Record_Info_Id;
-      For_Type : Boolean) return GL_Value
+      For_Type : Boolean := False) return GL_Value
    is
       Total_Size : GL_Value := Size_Const_Null;
       Cur_Align  : unsigned := unsigned (Get_Maximum_Alignment);
@@ -449,6 +448,59 @@ package body GNATLLVM.Records is
       return Total_Size;
    end Get_Record_Size_So_Far;
 
+   ----------------------
+   -- Get_Field_Offset --
+   ----------------------
+
+   function Get_Field_Offset (T : Type_T; Idx : Nat) return GL_Value is
+
+      --  We do this at a low level because we don't always have GNAT types
+      --  corresponding to the LLVM type T.  GEP on records is defined
+      --  as being passed 32-bit indices.
+
+      Int_32_T   : constant Type_T      := Int_Ty (32);
+      Const_0    : constant Value_T     := Const_Int (Int_32_T, 0, False);
+      Const_Idx  : constant Value_T     :=
+        Const_Int (Int_32_T, unsigned_long_long (Idx), False);
+      Idxs       : constant Value_Array := (1 => Const_0, 2 => Const_Idx);
+      Null_Val   : constant Value_T     := Const_Null (Pointer_Type (T, 0));
+      GEP_Result : constant Value_T     :=
+        In_Bounds_GEP (IR_Builder, Null_Val, Idxs'Address, 2, "");
+
+   begin
+      return G (Ptr_To_Int (IR_Builder, GEP_Result, LLVM_Size_Type, ""),
+                Size_Type);
+
+   end Get_Field_Offset;
+
+   -------------------------
+   -- Emit_Field_Position --
+   -------------------------
+
+   function Emit_Field_Position
+     (E : Entity_Id; V : GL_Value) return GL_Value
+   is
+      TE     : constant Entity_Id      := Full_Scope (E);
+      F_Idx  : constant Field_Info_Id  := Get_Field_Info (E);
+      FI     : constant Field_Info     := Field_Info_Table.Table (F_Idx);
+      Idx    : constant Record_Info_Id := FI.Rec_Info_Idx;
+      RI     : constant Record_Info    := Record_Info_Table.Table (Idx);
+      Offset : constant GL_Value       := Get_Record_Size_So_Far (TE, V, Idx);
+
+   begin
+      --  Offset now gives the offset from the start of the record to the
+      --  piece that this field is in.  If this piece has a GNAT type, then
+      --  the field is the entire piece and we have the offset.  If it's an
+      --  LLVM type, we need to compute the offset within that type.
+
+      if Present (RI.GNAT_Type) then
+         return Offset;
+      else
+         return NSW_Add (Offset,
+                         Get_Field_Offset (RI.LLVM_Type, FI.Field_Ordinal));
+      end if;
+   end Emit_Field_Position;
+
    -------------------------
    -- Record_Field_Offset --
    -------------------------
@@ -463,7 +515,7 @@ package body GNATLLVM.Records is
         Field_Info_Table.Table (Get_Field_Info (Field));
       Our_Idx    : constant Record_Info_Id := FI.Rec_Info_Idx;
       Offset     : constant GL_Value       :=
-        Get_Record_Size_So_Far (Rec_Type, V, Our_Idx, False);
+        Get_Record_Size_So_Far (Rec_Type, V, Our_Idx);
       RI         : constant Record_Info    :=
         Record_Info_Table.Table (Our_Idx);
       Result     : GL_Value;

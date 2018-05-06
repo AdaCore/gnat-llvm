@@ -613,8 +613,7 @@ package body GNATLLVM.Compile is
             Process_Push_Pop_xxx_Error_Label (N);
 
          when N_Exception_Renaming_Declaration =>
-            Set_Value
-              (Defining_Identifier (N), Get_Value (Entity (Name (N))));
+            Set_Value (Defining_Identifier (N), Emit_LValue (Name (N)));
 
          when N_Attribute_Definition_Clause =>
             --  The only interesting case left after expansion is for Address

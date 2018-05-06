@@ -15,9 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Namet;    use Namet;
-with Sinput;   use Sinput;
-with Table;
+with Namet;  use Namet;
+with Sinput; use Sinput;
+with Table;  use Table;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;

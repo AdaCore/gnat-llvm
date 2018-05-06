@@ -16,33 +16,15 @@
 ------------------------------------------------------------------------------
 
 with Sinfo; use Sinfo;
-with Table; use Table;
 with Uintp; use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Subprograms is
-
-   package Elaboration_Table is new Table.Table
-     (Table_Component_Type => Node_Id,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 1024,
-      Table_Increment      => 100,
-      Table_Name           => "Elaboration_Table");
-   --  Table of statements part of the current elaboration procedure
-
-   package Nested_Functions_Table is new Table.Table
-     (Table_Component_Type => Node_Id,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 10,
-      Table_Increment      => 5,
-      Table_Name           => "Nested_Function_Table");
-   --  Table of nested functions to elaborate
 
    --  When we want to create an overloaded intrinsic, we need to specify
    --  what operand signature the intrinsic has.  The following are those
@@ -126,6 +108,11 @@ package GNATLLVM.Subprograms is
      with Pre => Present (N);
    --  Generate a call to __gnat_last_chance_handler
 
+   procedure Add_To_Elab_Proc (N : Node_Id)
+     with Pre => Library_Level and then Present (N);
+   --  Add N to the elaboration table if it's not already there.  We assume
+   --  here that if it's already there, it was the last one added
+
    procedure Emit_Elab_Proc
      (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
      with Pre => Library_Level and then In_Main_Unit
@@ -171,5 +158,9 @@ package GNATLLVM.Subprograms is
    Return_Address_Param     : GL_Value;
    --  Parameter to this subprogram, if any, that represent the address
    --  to which we are to copy the return value
+
+   In_Elab_Proc             : Boolean := False;
+   --  True if we're in the process of emitting the code for an elaboration
+   --  procedure.
 
 end GNATLLVM.Subprograms;

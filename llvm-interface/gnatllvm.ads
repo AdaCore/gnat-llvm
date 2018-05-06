@@ -81,12 +81,6 @@ package GNATLLVM is
    Module_Data_Layout       : Target_Data_T;
    --  LLVM current module data layout.
 
-   In_Main_Unit             : Boolean := False;
-   --  True if we're currently processing the main unit
-
-   Special_Elaboration_Code : Boolean := False;
-   --  True if we're compiling an elaboration procedure
-
    Size_Type                : Entity_Id;
    LLVM_Size_Type           : Type_T;
    --  Types to use for sizes

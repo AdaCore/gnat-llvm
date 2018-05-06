@@ -149,7 +149,7 @@ package body GNATLLVM.Compile is
          --  if in main unit, otherwise simply ignore the statement.
 
          if In_Main_Unit then
-            Elaboration_Table.Append (N);
+            Add_To_Elab_Proc (N);
          end if;
 
          return;
@@ -380,7 +380,7 @@ package body GNATLLVM.Compile is
                  (if Present (Identifier (N))
                   then Entity (Identifier (N)) else Empty);
                Iter_Scheme     : constant Node_Id := Iteration_Scheme (N);
-               Is_Mere_Loop    : constant Boolean := not Present (Iter_Scheme);
+               Is_Mere_Loop    : constant Boolean := No (Iter_Scheme);
                Is_For_Loop     : constant Boolean :=
                  not Is_Mere_Loop
                  and then Present (Loop_Parameter_Specification (Iter_Scheme));
@@ -1089,12 +1089,6 @@ package body GNATLLVM.Compile is
 
             when N_Allocator =>
 
-               --  There are two cases: the Expression operand can either
-               --  be an N_Identifier or Expanded_Name, which must
-               --  represent a type, or a N_Qualified_Expression, which
-               --  contains both the object type and an initial value for
-               --  the object.
-
                declare
                   Expr   : constant Node_Id := Expression (N);
                   Typ    : Entity_Id;
@@ -1102,10 +1096,12 @@ package body GNATLLVM.Compile is
                   Result : GL_Value;
 
                begin
-                  --  There are two cases: the Expression operand can either be
-                  --  an N_Identifier or Expanded_Name, which must represent a
-                  --  type, or a N_Qualified_Expression, which contains both
-                  --  the object type and an initial value for the object.
+                  --  There are two cases: the Expression operand can
+                  --  either be an N_Identifier or Expanded_Name, which
+                  --  must represent a type, or a N_Qualified_Expression,
+                  --  which contains both the object type and an initial
+                  --  value for the object.  We ignore the initial value if
+                  --  No_Initialization is set.
 
                   if Is_Entity_Name (Expr) then
                      Typ   := Get_Fullest_View (Entity (Expr));
@@ -1113,7 +1109,10 @@ package body GNATLLVM.Compile is
                   else
                      pragma Assert (Nkind (Expr) = N_Qualified_Expression);
                      Typ   := Full_Etype (Expression (Expr));
-                     Value := Emit_Expression (Expression (Expr));
+
+                     if not No_Initialization (N) then
+                        Value := Emit_Expression (Expression (Expr));
+                     end if;
                   end if;
 
                   Result := Heap_Allocate_For_Type

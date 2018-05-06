@@ -18,12 +18,13 @@
 with Errout;   use Errout;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
-with Sem;
+with Sem;      use Sem;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
+with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
-with Table;
+with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -97,6 +98,10 @@ package body GNATLLVM.Variables is
      with Pre  => Present (E) and then not Is_Type (E);
    --  Return True if E corresponds to a duplicated interface name and one
    --  occurence of that name in the extended main unit is defining it.
+
+   function Is_Static_Address (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N represents an address that can computed statically
 
    --------------------
    -- Find_Dup_Entry --
@@ -299,6 +304,27 @@ package body GNATLLVM.Variables is
       Interface_Names.Free;
    end Detect_Duplicate_Global_Names;
 
+   -----------------------
+   -- Is_Static_Address --
+   -----------------------
+
+   function Is_Static_Address (N : Node_Id) return Boolean is
+   begin
+      case Nkind (N) is
+         when N_Unchecked_Type_Conversion
+            | N_Type_Conversion
+            | N_Qualified_Expression =>
+            return Is_Static_Address (Expression (N));
+
+         when N_Attribute_Reference =>
+            return Get_Attribute_Id (Attribute_Name (N)) = Attribute_Address
+              and then Nkind_In (Prefix (N), N_Identifier, N_Expanded_Name);
+
+         when others =>
+            return Compile_Time_Known_Value (N);
+      end case;
+   end Is_Static_Address;
+
    ----------------------
    -- Emit_Declaration --
    ----------------------
@@ -306,26 +332,46 @@ package body GNATLLVM.Variables is
    procedure Emit_Declaration (N : Node_Id) is
       Def_Ident    : constant Node_Id   := Defining_Identifier (N);
       TE           : constant Entity_Id := Full_Etype (Def_Ident);
-      Expr         : constant Node_Id   := Expression (N);
+      No_Init      : constant Boolean   :=
+        Nkind (N) = N_Object_Declaration and then No_Initialization (N);
+      Expr         : constant Node_Id   :=
+        (if No_Init then Empty else Expression (N));
+      Addr_Expr    : constant Node_Id   :=
+        (if Present (Address_Clause (Def_Ident))
+         then Expression (Address_Clause (Def_Ident)) else Empty);
+      Is_External  : constant Boolean   :=
+        not In_Main_Unit
+          or else (Is_Imported (Def_Ident)
+                     and then not Get_Dup_Global_Is_Defined (Def_Ident));
+      Is_Ref       : constant Boolean   :=
+        Present (Addr_Expr) or else Is_Dynamic_Size (TE);
       Value        : GL_Value           := No_GL_Value;
+      Addr         : GL_Value           := No_GL_Value;
       Copied       : Boolean            := False;
-      Is_External  : Boolean            := False;
+      Set_Init     : Boolean            := False;
       LLVM_Var_Dup : GL_Value           := No_GL_Value;
-      LLVM_Var     : GL_Value           := No_GL_Value;
+      LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
 
    begin
-      --  Object declarations are variables either allocated on the stack
-      --  (local) or global.
-
-      --  If we are processing only declarations, only declare the
-      --  corresponding symbol at the LLVM level and add it to the
-      --  environment.
-
       --  Nothing to do if this is a debug renaming type
 
       if TE = Standard_Debug_Renaming_Type then
          return;
       end if;
+
+      --  Object declarations are variables either allocated on the
+      --  stack (local) or global.  For globals, we operate in two phases:
+      --  first we allocate the global itself, which may include some static
+      --  initialization, and then do any required dynamic operations,
+      --  which may include setting an address, allocating memory from the
+      --  heap, and/or actually setting an initializing value.  If we're at
+      --  library level, we have to do the dynamic operations in an elab
+      --  proc, but, if not (if we have something to be statically allocated),
+      --  we do it inline.
+      --
+      --  If we are processing only declarations, only declare the
+      --  corresponding symbol at the LLVM level and add it to the
+      --  environment.
 
       --  Ignore deferred constant definitions without address Clause since
       --  they are processed fully in the front-end.  If No_Initialization
@@ -335,22 +381,21 @@ package body GNATLLVM.Variables is
 
       if Ekind (Def_Ident) = E_Constant
         and then Present (Full_View (Def_Ident))
-        and then No (Address_Clause (Def_Ident))
-        and then not No_Initialization (N)
+        and then No (Addr_Expr) and then not No_Init
         and then No (Renamed_Object (Def_Ident))
       then
          return;
       end if;
 
       --  Handle top-level declarations or ones that need to be treated
-      --  that way.  If we're processing elaboration code, we've already
-      --  made the item and need do nothing special if it's to be
-      --  statically allocated.
+      --  that way unless if we've already made the item (e.g., if we
+      --  in the elab proc).
 
-      if Library_Level
-        or else (Is_Statically_Allocated (Def_Ident)
-                   and then not Special_Elaboration_Code)
+      if (Library_Level or else Is_Statically_Allocated (Def_Ident))
+        and then No (LLVM_Var)
       then
+         pragma Assert (not In_Elab_Proc);
+
          --  If we have an Interface name, see if this is a duplicate of
          --  another entity for which we've already made a global.
 
@@ -373,24 +418,17 @@ package body GNATLLVM.Variables is
 
          --  If we haven't previously allocated a global above, or we couldn't
          --  use the one we allocated, make one here and properly set its
-         --  linkage information.
+         --  linkage information.  Note that we don't set External_Linkage
+         --  since that's the default if there's no initializer.
 
          if No (LLVM_Var) then
             LLVM_Var := Add_Global
-              (TE, Get_Ext_Name (Def_Ident),
-               Need_Reference => (Present (Address_Clause (Def_Ident))
-                                    or else Is_Dynamic_Size (TE)));
+              (TE, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref);
             Set_Thread_Local (LLVM_Var,
                               Has_Pragma_Thread_Local_Storage (Def_Ident));
 
             if not Library_Level and then No (Interface_Name (Def_Ident)) then
                Set_Linkage (LLVM_Var, Internal_Linkage);
-            elsif not In_Main_Unit
-              or else (Is_Imported (Def_Ident)
-                         and then not Get_Dup_Global_Is_Defined (Def_Ident))
-            then
-               Set_Linkage (LLVM_Var, External_Linkage);
-               Is_External := True;
             end if;
 
             Set_Dup_Global_Value (Def_Ident, LLVM_Var);
@@ -400,79 +438,119 @@ package body GNATLLVM.Variables is
 
          if In_Main_Unit then
 
-            --  ??? This code is probably wrong, but is rare enough that
-            --  we'll worry about it later.
+            --  If there is an Address clause and its of compile-time known
+            --  value, we can convert it to a pointer to us and make it a
+            --  static initializer.  Otherwise, we have to take care of
+            --  this in the elaboration proc if at library level.
 
-            if Present (Address_Clause (Def_Ident)) then
-               Set_Initializer
-                 (LLVM_Var,
-                  Emit_Expression (Expression (Address_Clause (Def_Ident))));
-               --  ??? Should also take Expression (Node) into account
-
-            elsif not Is_External then
-               if Is_Dynamic_Size (TE) then
-                  Elaboration_Table.Append (N);
-
-                  --  Take Expression (Node) into account
-
-               elsif Present (Expr)
-                 and then not (Nkind (N) = N_Object_Declaration
-                                 and then No_Initialization (N))
-               then
-                  --  We can set an initializer if this is a compile-time
-                  --  known expression and we have the actual global,
-                  --  not a type-converted value.
-
-                  if Compile_Time_Known_Value (Expr)
-                    and then (No (LLVM_Var_Dup)
-                                or else LLVM_Var = LLVM_Var_Dup)
-                  then
-                     Set_Initializer
-                       (LLVM_Var, Build_Type_Conversion (Expr, TE));
-                  else
-                     Elaboration_Table.Append (N);
-
-                     if not Is_Imported (Def_Ident) then
-                        Set_Initializer (LLVM_Var, Const_Null (TE));
-                     end if;
-                  end if;
-               elsif not Is_Imported (Def_Ident) then
-                  Set_Initializer (LLVM_Var, Const_Null (TE));
+            if Present (Addr_Expr) then
+               if Is_Static_Address (Addr_Expr) then
+                  Set_Initializer
+                    (LLVM_Var, Int_To_Ref (Emit_Expression (Addr_Expr),  TE));
+                  Set_Init := True;
+               elsif Library_Level then
+                  Add_To_Elab_Proc (N);
                end if;
             end if;
-         end if;
-      else
-         if Present (Expr)
-           and then not (Nkind (N) = N_Object_Declaration
-                           and then No_Initialization (N))
-         then
-            Value := Emit_Expression (Expr);
-         end if;
 
-         if Special_Elaboration_Code then
-            LLVM_Var := Get_Value (Def_Ident);
+            --  If this is an object of dynamic size, we have to take care
+            --  of the allocation in the elab proc if at library level.
 
-            if Is_Dynamic_Size (TE) then
-               Store (Heap_Allocate_For_Type (TE, TE, Value), LLVM_Var);
-               Copied := True;
+            if Library_Level and then not Is_External
+              and then Is_Dynamic_Size (TE)
+            then
+               Add_To_Elab_Proc (N);
             end if;
 
-         elsif Present (Address_Clause (Def_Ident)) then
-            LLVM_Var := Int_To_Ref
-              (Emit_Expression
-                 (Expression (Address_Clause (Def_Ident))), TE,
-               Get_Name (Def_Ident));
-         else
-            LLVM_Var :=
-              Allocate_For_Type (TE, TE, Value, Get_Name (Def_Ident));
+            --  Take Expression (Node) into account
+
+            if Present (Expr) then
+
+               --  We can set an initializer if this is a compile-time
+               --  known expression, we have the actual global, not a
+               --  type-converted value, and its not of a dynamic size or
+               --  has an address clause.
+
+               if Compile_Time_Known_Value (Expr)
+                 and then (No (LLVM_Var_Dup) or else LLVM_Var = LLVM_Var_Dup)
+                 and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
+               then
+                  Set_Initializer
+                    (LLVM_Var, Build_Type_Conversion (Expr, TE));
+                  Set_Init := True;
+                  Copied := True;
+               elsif Library_Level then
+                  Add_To_Elab_Proc (N);
+               end if;
+            end if;
+
+            --  If we haven't already set an initializing expression and
+            --  this is not an external or something we've already defined,
+            --  set one to null to indicate that this is being defined.
+
+            if not Set_Init and not Is_External and No (LLVM_Var_Dup) then
+               Set_Initializer (LLVM_Var, (if Is_Ref then Const_Null_Ref (TE)
+                                           else Const_Null (TE)));
+            end if;
+         end if;
+      end if;
+
+      --  If we're at library level and not in an elab proc, we can't do
+      --  anything else.
+
+      if Library_Level and then not In_Elab_Proc then
+         return;
+      end if;
+
+      --  If we have an initializing expression, get it
+
+      if Present (Expr) then
+         Value := Emit_Expression (Expr);
+      end if;
+
+      --  Likewise for the expression for the address clause
+
+      if Present (Addr_Expr) then
+         Addr := Int_To_Ref (Emit_Expression (Addr_Expr), TE);
+      end if;
+
+      --  If we've already gotten a value for the address of this entity,
+      --  fetch it.  If a non-constant address was specified, set the the
+      --  address of the variable to that address.  Otherwise, if the
+      --  variable is of dynamic size, do the allocation here, copying any
+      --  initializing expression.
+
+      if Present (LLVM_Var) then
+         if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
+            Store (Addr, LLVM_Var);
+         elsif Is_Dynamic_Size (TE) then
+            Store (Heap_Allocate_For_Type (TE, TE, Value), LLVM_Var);
             Copied := True;
          end if;
 
-         Set_Value (Def_Ident, LLVM_Var);
+      --  Otherwise, if we have an address, that's our variable
 
-         if not Copied and then Present (Value) then
-            Emit_Assignment (LLVM_Var, Empty, Value, True, True);
-         end if;
+      elsif Present (Addr) then
+         LLVM_Var := Addr;
+
+      else
+         --  Otherwise, allocate it on the stack, copying in any value
+
+         LLVM_Var := Allocate_For_Type (TE, TE, Value, Get_Name (Def_Ident));
+         Copied := True;
+      end if;
+
+      --  If we haven't already set the value, set it now
+
+      if not Has_Value (Def_Ident) then
+         Set_Value (Def_Ident, LLVM_Var);
+      end if;
+
+      --  If we haven't already copied in any initializing expression, do
+      --  that now.
+
+      if not Copied and then Present (Value) then
+         Emit_Assignment (LLVM_Var, Empty, Value, True, True);
       end if;
    end Emit_Declaration;
 

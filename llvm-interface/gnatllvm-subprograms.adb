@@ -23,15 +23,33 @@ with Namet;    use Namet;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
+with Table;    use Table;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Subprograms is
+
+   package Elaboration_Table is new Table.Table
+     (Table_Component_Type => Node_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 1024,
+      Table_Increment      => 100,
+      Table_Name           => "Elaboration_Table");
+   --  Table of statements part of the current elaboration procedure
+
+   package Nested_Functions_Table is new Table.Table
+     (Table_Component_Type => Node_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Nested_Function_Table");
+   --  Table of nested functions to elaborate
 
    type Intrinsic is record
       Name  : access String;
@@ -488,6 +506,19 @@ package body GNATLLVM.Subprograms is
       Current_Subp := Empty;
    end Emit_One_Body;
 
+   ----------------------
+   -- Add_To_Elab_Proc --
+   ----------------------
+
+   procedure Add_To_Elab_Proc (N : Node_Id) is
+   begin
+      if Elaboration_Table.Last = 0
+        or else Elaboration_Table.Table (Elaboration_Table.Last) /= N
+      then
+         Elaboration_Table.Append (N);
+      end if;
+   end Add_To_Elab_Proc;
+
    --------------------
    -- Emit_Elab_Proc --
    --------------------
@@ -531,7 +562,7 @@ package body GNATLLVM.Subprograms is
         (Create_Subprogram_Debug_Info
            (LLVM_Func, Unit, N, Get_Name_String (Chars (Unit)), Name));
       Push_Block;
-      Special_Elaboration_Code := True;
+      In_Elab_Proc := True;
 
       for J in 1 .. Elaboration_Table.Last loop
          Emit (Elaboration_Table.Table (J));
@@ -542,8 +573,8 @@ package body GNATLLVM.Subprograms is
       --  see them, unlike any that were previously partially processed
       --  as declarations.
 
+      In_Elab_Proc := False;
       Elaboration_Table.Set_Last (0);
-      Special_Elaboration_Code := False;
       Start_Block_Statements (Empty, No_List);
       Emit (S_List);
       Build_Ret_Void;

@@ -18,7 +18,7 @@
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Stand;    use Stand;
-with Table;
+with Table;    use Table;
 with Uintp;    use Uintp;
 
 with LLVM.Core; use LLVM.Core;

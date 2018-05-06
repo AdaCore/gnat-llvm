@@ -19,7 +19,7 @@ with Interfaces.C; use Interfaces.C;
 
 with Sem_Eval; use Sem_Eval;
 with Stand;    use Stand;
-with Table;
+with Table;    use Table;
 with Uintp;    use Uintp;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;

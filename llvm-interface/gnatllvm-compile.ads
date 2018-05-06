@@ -49,4 +49,7 @@ package GNATLLVM.Compile is
    --  than the value itself (out parameters, simple accesses, etc).  If
    --  Clear is False, we don't reset the list used by Get_Matching_Value.
 
+   In_Main_Unit             : Boolean := False;
+   --  True if we're currently processing the main unit
+
 end GNATLLVM.Compile;

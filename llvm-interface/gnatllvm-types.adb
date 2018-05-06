@@ -17,7 +17,7 @@
 
 with Errout; use Errout;
 with Stand;  use Stand;
-with Table;
+with Table;  use Table;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
@@ -641,8 +641,10 @@ package body GNATLLVM.Types is
               and then RM_Size (Def_Ident) /= Uint_0
             then
                T := Int_Ty (RM_Size (Def_Ident));
-            else
+            elsif Esize (Def_Ident) /= Uint_0 then
                T := Int_Ty (Esize (Def_Ident));
+            else
+               T := Int_Ty (8);
             end if;
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>

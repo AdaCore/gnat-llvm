@@ -105,6 +105,8 @@ s-expint.ads \
 s-expint.adb \
 s-explli.ads \
 s-explli.adb \
+s-expuns.ads \
+s-expuns.adb \
 s-fatflt.ads \
 s-fatgen.adb \
 s-fatgen.ads \
@@ -165,6 +167,7 @@ s-widenu.ads \
 s-widenu.adb \
 s-widlli.ads \
 s-widlli.adb \
+machcode.ads \
 text_io.ads  \
 unchconv.ads \
 unchdeal.ads
@@ -212,6 +215,7 @@ s-powtab.ads \
 s-unstyp.ads \
 s-parame.ads \
 system.ads   \
+machcode.ads \
 text_io.ads  \
 unchconv.ads \
 unchdeal.ads

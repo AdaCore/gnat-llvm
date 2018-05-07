@@ -106,6 +106,8 @@ s-fatlfl.ads \
 s-fatllf.ads \
 s-fatsfl.ads \
 s-flocon.ads \
+s-fore.ads   \
+s-fore.adb   \
 s-imenne.adb \
 s-imenne.ads \
 s-imgboo.adb \
@@ -151,6 +153,12 @@ s-wchcon.adb \
 s-wchcon.ads \
 s-wchjis.ads \
 s-wchjis.adb \
+s-widboo.ads \
+s-widboo.adb \
+s-widenu.ads \
+s-widenu.adb \
+s-widlli.ads \
+s-widlli.adb \
 text_io.ads  \
 unchconv.ads \
 unchdeal.ads

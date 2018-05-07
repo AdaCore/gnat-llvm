@@ -98,10 +98,6 @@ package body GNATLLVM.Arrays is
       (if B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
        elsif For_Type then 1 else 2);
 
-   function Get_Dim_Range (N : Node_Id) return Node_Id
-     with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
-   --  Return the N_Range for an array type
-
    function Get_GEP_Safe_Type (V : GL_Value) return Entity_Id
      with Pre  => not Is_Reference (V),
           Post => Is_Integer_Type (Get_GEP_Safe_Type'Result);
@@ -389,7 +385,7 @@ package body GNATLLVM.Arrays is
             end if;
 
             Array_Info.Append (Dim_Info);
-            Index := Next_Index (Index);
+            Next_Index (Index);
             Dim := Dim + 1;
          end;
       end loop;

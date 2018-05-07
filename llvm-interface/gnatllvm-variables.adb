@@ -28,6 +28,7 @@ with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
+with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
@@ -98,6 +99,10 @@ package body GNATLLVM.Variables is
      with Pre  => Present (E) and then not Is_Type (E);
    --  Return True if E corresponds to a duplicated interface name and one
    --  occurence of that name in the extended main unit is defining it.
+
+   function Is_Static_Location (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N represent an object with constant address
 
    function Is_Static_Address (N : Node_Id) return Boolean
      with Pre => Present (N);
@@ -304,6 +309,65 @@ package body GNATLLVM.Variables is
       Interface_Names.Free;
    end Detect_Duplicate_Global_Names;
 
+   ------------------------
+   -- Is_Static_Location --
+   ------------------------
+
+   function Is_Static_Location (N : Node_Id) return Boolean is
+      Index : Entity_Id;
+      Expr  : Node_Id;
+
+   begin
+      case Nkind (N) is
+         when N_Identifier | N_Expanded_Name =>
+            return No (Address_Clause (Entity (N)))
+              and then not Is_Dynamic_Size (Full_Etype (N));
+
+         when N_Selected_Component =>
+            return Is_Static_Location (Prefix (N));
+
+         when N_Indexed_Component =>
+
+            --  Not static if prefix not static, a lower bound isn't static,
+            --  or an expression isn't static.
+
+            if not Is_Static_Location (Prefix (N)) then
+               return False;
+            end if;
+
+            Index := First_Index (Full_Etype (Prefix (N)));
+            Expr  := First (Expressions (N));
+            while Present (Index) loop
+               if not Is_Static_Expression
+                 (Low_Bound (Get_Dim_Range (Index)))
+                 or else not Is_Static_Expression (Expr)
+               then
+                  return False;
+               end if;
+
+               Next_Index (Index);
+               Next (Expr);
+            end loop;
+
+            return True;
+
+         when N_Slice =>
+
+            --  Static if prefix is static and the lower bound and
+            --  expression are static.
+
+            return not Is_Static_Location (Prefix (N))
+              and then (Is_Static_Expression
+                          (Low_Bound (Get_Dim_Range (Discrete_Range (N)))))
+              and then (Is_Static_Expression
+                          (Low_Bound
+                             (Get_Dim_Range (First_Index
+                                               (Full_Etype (Prefix (N)))))));
+         when others =>
+            return False;
+      end case;
+   end Is_Static_Location;
+
    -----------------------
    -- Is_Static_Address --
    -----------------------
@@ -318,7 +382,7 @@ package body GNATLLVM.Variables is
 
          when N_Attribute_Reference =>
             return Get_Attribute_Id (Attribute_Name (N)) = Attribute_Address
-              and then Nkind_In (Prefix (N), N_Identifier, N_Expanded_Name);
+              and then Is_Static_Location (Prefix (N));
 
          when others =>
             return Compile_Time_Known_Value (N);
@@ -558,7 +622,19 @@ package body GNATLLVM.Variables is
    --------------------------------------
 
    procedure Emit_Object_Renaming_Declaration (N : Node_Id) is
+      Def_Ident : constant Entity_Id := Defining_Identifier (N);
+      LLVM_Var  : GL_Value;
+
    begin
+      --  If we've already defined this object, it means that we must be
+      --  in an elab proc seeing this for the second time, which means
+      --  that we have to set its address.
+
+      if Has_Value (Def_Ident) then
+         pragma Assert (In_Elab_Proc);
+
+         Store (Emit_LValue (Name (N)), Get_Value (Def_Ident));
+
       --  If this is a constant, just use the value of the expression for
       --  this object.  Otherwise, get the LValue of the expression, but
       --  don't try to force it into memory since that would give us a
@@ -568,10 +644,20 @@ package body GNATLLVM.Variables is
       --  materialize the value and because it may need run-time
       --  computation.
 
-      if Is_True_Constant (Defining_Identifier (N)) and not Library_Level then
-         Set_Value (Defining_Identifier (N), Emit_Expression  (Name (N)));
+      elsif Is_True_Constant (Def_Ident) and not Library_Level then
+         Set_Value (Def_Ident, Emit_Expression  (Name (N)));
+      elsif Is_Static_Location (Name (N)) or else not Library_Level then
+         Set_Value (Def_Ident, Emit_LValue (Name (N)));
       else
-         Set_Value (Defining_Identifier (N), Emit_LValue (Name (N)));
+         LLVM_Var := Add_Global (Full_Etype (Def_Ident),
+                                 Get_Ext_Name (Def_Ident),
+                                 Need_Reference => True);
+         Set_Value (Def_Ident, LLVM_Var);
+         if In_Main_Unit then
+            Set_Initializer (LLVM_Var,
+                             Const_Null_Ref (Full_Etype (Def_Ident)));
+            Add_To_Elab_Proc (N);
+         end if;
       end if;
    end Emit_Object_Renaming_Declaration;
 

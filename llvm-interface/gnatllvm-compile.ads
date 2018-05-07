@@ -25,8 +25,10 @@ package GNATLLVM.Compile is
 
    procedure Emit (N : Node_Id)
      with Pre => Present (N);
-   procedure Emit (List : List_Id);
-   --  Emit a node and every element of a (possibly empty) List
+   procedure Emit (List : List_Id; Starting_At : Node_Id := Empty);
+   --  Emit a node and every element of a (possibly empty) List.  In the
+   --  latter case, if Starting_At is Present, it indicates the starting
+   --  point of nodes to emit; otherwise the entire list is emitted.
 
    function Emit_Expression (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Expression'Result);

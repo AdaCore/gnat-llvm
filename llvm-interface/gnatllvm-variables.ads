@@ -26,6 +26,24 @@ package GNATLLVM.Variables is
    --  global name in two different entities and keep a record of all such
    --  duplications.
 
+   procedure Emit_Decl_Lists
+     (List1, List2 : List_Id;
+      End_List     : Node_Id := Empty;
+      Pass1        : Boolean := True;
+      Pass2        : Boolean := True);
+   --  Elaborate decls in the lists List1 and List2, if present.  We make
+   --  two passes, one to elaborate anything other than bodies (but we
+   --  declare a function if there was no spec).  The second pass
+   --  elaborates the bodies.
+   --
+   --  End_List gives the element in the list past the end.  Normally, this
+   --  is Empty, but can be First_Real_Statement for a
+   --  Handled_Sequence_Of_Statements.
+   --
+   --  We make a complete pass through both lists if Pass1 is true, then
+   --  make the second pass over both lists if Pass2 is true.  The lists
+   --  usually correspond to the public and private parts of a package.
+
    procedure Emit_Declaration (N : Node_Id)
      with Pre => Nkind_In (N, N_Object_Declaration, N_Exception_Declaration);
    --  Emit a declaration

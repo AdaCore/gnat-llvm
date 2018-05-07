@@ -21,6 +21,7 @@ with Nlists;   use Nlists;
 with Sem;      use Sem;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
+with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
@@ -388,6 +389,156 @@ package body GNATLLVM.Variables is
             return Compile_Time_Known_Value (N);
       end case;
    end Is_Static_Address;
+
+   ---------------------
+   -- Emit_Decl_Lists --
+   ---------------------
+
+   procedure Emit_Decl_Lists
+     (List1, List2 : List_Id;
+      End_List     : Node_Id := Empty;
+      Pass1        : Boolean := True;
+      Pass2        : Boolean := True)
+   is
+      type List_Array is array (1 .. 2) of List_Id;
+      Lists     : constant List_Array := (1 => List1, 2 => List2);
+      Def_Ident : Entity_Id;
+      N         : Node_Id;
+
+   begin
+      if Pass1 then
+         for J in 1 .. 2 loop
+            if Present (Lists (J)) then
+               N := First (Lists (J));
+               while Present (N) and then N /= End_List loop
+
+                  --  For package specs, we recurse inside the declarations
+                  --  thus taking the two pass approach inside the boundary.
+
+                  if Nkind (N) = N_Package_Declaration
+                    and then (Nkind (Specification (N)) =
+                                N_Package_Specification)
+                  then
+                     Emit_Decl_Lists (Visible_Declarations (Specification (N)),
+                                      Private_Declarations (Specification (N)),
+                                      Empty, True, False);
+
+                     --  Similarly for any declarations in the actions
+                     --  of a freeze node.  ??  We eventually have to
+                     --  process the freeze node itself.
+
+                  elsif Nkind (N) = N_Freeze_Entity then
+                     --  Emit (N);
+                     Emit_Decl_Lists (Actions (N), No_List, Empty,
+                                      True, False);
+
+                  --  Package bodies with freeze nodes get their
+                  --  elaboration deferred until the freeze node, but the
+                  --  code must be placed in the right place.  ?? We don't
+                  --  yet know how to do this, so don't try.
+
+                  --  elsif Nkind (N) = N_Package_Body
+                  --    and then Present (Freeze_Node (Corresponding_Spec (N)))
+                  --  then
+                  --  null;
+                  --
+                  --  elsif Nkind (N) = N_Package_Body_Stub
+                  --    and then Present (Library_Unit (N))
+                  --    and then Present (Freeze_Node
+                  --                        (Corresponding_Spec
+                  --                           (Proper_Body
+                  --                             (Unit (Library_Unit (N))))))
+                  --  then
+                  --     null;
+
+                  --  We defer most subprogram bodies to the second pass
+
+                  elsif Nkind (N) = N_Subprogram_Body then
+                     if Acts_As_Spec (N) then
+                        Def_Ident := Defining_Entity (N);
+
+                        if not Ekind_In (Def_Ident, E_Generic_Procedure,
+                                         E_Generic_Function)
+                        then
+                           Discard (Emit_Subprogram_Decl (N));
+                        end if;
+                     end if;
+
+                  --  For bodies and stubs that act as their own specs, the
+                  --  entity itself must be elaborated in the first pass,
+                  --  because it may be used in other declarations.
+
+                  elsif Nkind (N) = N_Subprogram_Body_Stub then
+                     Def_Ident := Defining_Entity (Specification (N));
+
+                     if not Ekind_In (Def_Ident, E_Subprogram_Body,
+                                     E_Generic_Procedure, E_Generic_Function)
+                     then
+                        Discard (Emit_Subprogram_Decl (Specification (N)));
+                     end if;
+
+                  --  Concurrent stubs stand for the corresponding
+                  --  subprogram bodies, which are deferred like other
+                  --  bodies.
+
+                  elsif Nkind_In (N, N_Task_Body_Stub, N_Protected_Body_Stub)
+                  then
+                     null;
+
+                  --  Renamed subprograms may not be elaborated yet at this
+                  --  point since renamings do not trigger freezing.  Wait
+                  --  for the second pass to take care of them.
+
+                  elsif Nkind (N) = N_Subprogram_Renaming_Declaration then
+                     null;
+
+                  else
+                     Emit (N);
+                  end if;
+
+                  Next (N);
+               end loop;
+            end if;
+         end loop;
+      end if;
+
+      --  Here we elaborate everything we deferred above except for package
+      --  bodies, which are elaborated at their freeze nodes.  Note that we
+      --  must also go inside things (package specs and freeze nodes) the
+      --  first pass did.  */
+
+      if Pass2 then
+         for J in 1 .. 2 loop
+            if Present (Lists (J)) then
+               N := First (Lists (J));
+               while Present (N) and then N /= End_List loop
+                  if Nkind_In (N, N_Subprogram_Body, N_Subprogram_Body_Stub,
+                               N_Task_Body_Stub, N_Protected_Body_Stub)
+                  then
+                     Emit (N);
+
+                  elsif Nkind (N) = N_Package_Declaration
+                    and then (Nkind (Specification (N))
+                                = N_Package_Specification)
+                  then
+                     Emit_Decl_Lists (Visible_Declarations (Specification (N)),
+                                      Private_Declarations (Specification (N)),
+                                      Empty, False, True);
+
+                  elsif Nkind (N) = N_Freeze_Entity then
+                     Emit_Decl_Lists (Actions (N), No_List, Empty,
+                                      False, True);
+
+                  elsif Nkind (N) = N_Subprogram_Renaming_Declaration then
+                     Emit (N);
+                  end if;
+
+                  Next (N);
+               end loop;
+            end if;
+         end loop;
+      end if;
+   end Emit_Decl_Lists;
 
    ----------------------
    -- Emit_Declaration --

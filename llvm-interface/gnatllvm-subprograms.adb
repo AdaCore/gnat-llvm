@@ -30,6 +30,7 @@ with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Subprograms is
 
@@ -484,8 +485,8 @@ package body GNATLLVM.Subprograms is
          Return_Address_Param := LLVM_Param;
       end if;
 
-      Emit (Declarations (N));
-      Emit (Statements (Handled_Statement_Sequence (N)));
+      Emit_Decl_Lists (Declarations (N), No_List);
+      Emit (Handled_Statement_Sequence (N));
 
       --  If the last instrution isn't a terminator, add a return, but
       --  use an access type if this is a dynamic type.

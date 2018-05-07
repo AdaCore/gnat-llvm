@@ -906,13 +906,13 @@ package body GNATLLVM.Types is
       --  to indicate that we have).
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
-         Call (Get_Value (Proc),
+         Call (Emit_LValue (Proc),
                (1 => Get_Value (Pool), 2 => Ret_Loc, 3 => Size, 4 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Call (Get_Value (Proc), (1 => Ret_Loc, 2 => Size));
+         Call (Emit_LValue (Proc), (1 => Ret_Loc, 2 => Size));
       end if;
 
       --  If we're doing this for an unconstrained array, we have the pointer
@@ -952,7 +952,7 @@ package body GNATLLVM.Types is
       --  storage pool and we pass the pool, size, and alignment.
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
-         Call (Get_Value (Proc),
+         Call (Emit_LValue (Proc),
                (1 => Get_Value (Pool),
                 2 => Ptr_To_Int (Converted_V, Size_Type),
                 3 => Size, 4 => Align_V));
@@ -960,7 +960,7 @@ package body GNATLLVM.Types is
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Call (Get_Value (Proc),
+         Call (Emit_LValue (Proc),
                (1 => Ptr_To_Int (Converted_V, Size_Type), 2 => Size));
       end if;
    end Heap_Deallocate;

@@ -459,6 +459,7 @@ package body GNATLLVM.Variables is
 
                         if not Ekind_In (Def_Ident, E_Generic_Procedure,
                                          E_Generic_Function)
+                          and then In_Main_Unit
                         then
                            Discard (Emit_Subprogram_Decl (N));
                         end if;
@@ -472,7 +473,8 @@ package body GNATLLVM.Variables is
                      Def_Ident := Defining_Entity (Specification (N));
 
                      if not Ekind_In (Def_Ident, E_Subprogram_Body,
-                                     E_Generic_Procedure, E_Generic_Function)
+                                      E_Generic_Procedure, E_Generic_Function)
+                       and then In_Main_Unit
                      then
                         Discard (Emit_Subprogram_Decl (Specification (N)));
                      end if;
@@ -817,7 +819,8 @@ package body GNATLLVM.Variables is
    -----------------------------
 
    function Emit_Identifier_LValue (N : Node_Id) return GL_Value is
-      Def_Ident : Entity_Id := Entity (N);
+      Def_Ident : Entity_Id :=
+        (if Nkind (N) in N_Entity then N else Entity (N));
       TE        : Entity_Id := Full_Etype (Def_Ident);
       V         : GL_Value  := Get_Value (Def_Ident);
       V1        : GL_Value;
@@ -856,6 +859,12 @@ package body GNATLLVM.Variables is
             pragma Assert (Ekind (Def_Ident) in Subprogram_Kind);
          end if;
 
+         --  If we haven't gotten one yet, make it
+
+         if No (V) then
+            V := Create_Subprogram (Def_Ident);
+         end if;
+
          --  If we are elaborating this for 'Access, we want the actual
          --  subprogram type here, not the type of the return value, which
          --  is what TE is set to.
@@ -864,24 +873,23 @@ package body GNATLLVM.Variables is
            and then Is_Access_Type (Full_Etype (Parent (N)))
          then
             TE := Full_Designated_Type (Full_Etype (Parent (N)));
-         end if;
+            if Needs_Activation_Record (TE) then
 
-         if not Needs_Activation_Record (TE) then
-            if TE = Standard_Void_Type then
-               return V;
-            else
-               return Convert_To_Access_To (V, TE);
+               --  Return a callback, which is a pair: subprogram
+               --  code pointer and static link argument.
+
+               V := Insert_Value
+                 (Insert_Value (Get_Undef_Ref (TE), Get_Static_Link (N), 1),
+                  Pointer_Cast (V, Standard_A_Char), 0);
+
+            elsif Ekind (TE) /= E_Void then
+               V := Convert_To_Access_To (V, TE);
             end if;
-         else
-            --  Return a callback, which is a pair: subprogram
-            --  code pointer and static link argument.
-
-            return Insert_Value
-              (Insert_Value (Get_Undef_Ref (TE), Get_Static_Link (N), 1),
-               Pointer_Cast (V, Standard_A_Char), 0);
          end if;
 
-         --  Handle entities in Standard and ASCII on the fly
+         return V;
+
+      --  Handle entities in Standard and ASCII on the fly
 
       elsif No (V) and then Sloc (Def_Ident) <= Standard_Location then
          V := Add_Global (TE, Get_Ext_Name (Def_Ident));
@@ -901,7 +909,8 @@ package body GNATLLVM.Variables is
 
    function Emit_Identifier_Value (N : Node_Id) return GL_Value is
       TE : constant Entity_Id := Full_Etype (N);
-      Def_Ident : Entity_Id := Entity (N);
+      Def_Ident : Entity_Id   :=
+        (if Nkind (N) in N_Entity then N else Entity (N));
       V         : GL_Value;
    begin
       --  N_Defining_Identifier nodes for enumeration literals are not

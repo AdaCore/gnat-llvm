@@ -780,7 +780,7 @@ package body GNATLLVM.Subprograms is
          Subp := Entity (Subp);
       end if;
 
-      LLVM_Func := Emit_Expression (Subp);
+      LLVM_Func := Emit_LValue (Subp);
       if This_Takes_S_Link then
          S_Link := Extract_Value (Standard_A_Char,
                                   LLVM_Func, 1, "static-link");

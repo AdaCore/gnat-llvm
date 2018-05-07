@@ -232,25 +232,20 @@ package body GNATLLVM.Compile is
             then
                null;
 
-            --  If we are processing only declarations, do not emit a
-            --  subprogram body: just declare this subprogram and add it to
-            --  the environment.
+            --  If we aren't in the main unit, nothing to this.  This will
+            --  be evaluated lazily if needed.
 
-            elsif not In_Main_Unit then
-               Discard (Emit_Subprogram_Decl (Get_Acting_Spec (N)));
-
-            else
+            elsif In_Main_Unit then
                Emit_Subprogram_Body (N);
             end if;
 
          when N_Subprogram_Declaration =>
 
             --  Ignore intrinsic subprograms in the main unit as calls
-            --  to those will be expanded.  But outside the main unit,
-            --  they may be builtins on one compiler and not another.
+            --  to those will be expanded.
 
             if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N))
-              or else not In_Main_Unit
+              and then In_Main_Unit
             then
                Discard (Emit_Subprogram_Decl (Specification (N)));
             end if;
@@ -1087,7 +1082,12 @@ package body GNATLLVM.Compile is
             when N_Type_Conversion | N_Qualified_Expression =>
                return Build_Type_Conversion (Expression (N), TE);
 
-            when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
+            when N_Identifier
+               | N_Expanded_Name
+               | N_Operator_Symbol
+               | N_Defining_Identifier
+               | N_Defining_Operator_Symbol
+               =>
                return Emit_Identifier_Value (N);
 
             when N_Function_Call =>
@@ -1171,9 +1171,6 @@ package body GNATLLVM.Compile is
 
             when N_Null =>
                return Const_Null (TE);
-
-            when N_Defining_Identifier | N_Defining_Operator_Symbol =>
-               return Get_Value (N);
 
             when N_In =>
                declare

@@ -91,6 +91,10 @@ i-cexten.ads \
 interfac.ads \
 s-atacco.adb \
 s-atacco.ads \
+s-arit64.ads \
+s-arit64.adb \
+s-boarop.ads \
+s-boarop.adb \
 s-casuti.ads \
 s-casuti.adb \
 s-exnint.ads \
@@ -99,6 +103,8 @@ s-exnllf.ads \
 s-exnllf.adb \
 s-expint.ads \
 s-expint.adb \
+s-explli.ads \
+s-explli.adb \
 s-fatflt.ads \
 s-fatgen.adb \
 s-fatgen.ads \

@@ -91,8 +91,12 @@ i-cexten.ads \
 interfac.ads \
 s-atacco.adb \
 s-atacco.ads \
+s-casuti.ads \
+s-casuti.adb \
 s-exnint.ads \
 s-exnint.adb \
+s-exnllf.ads \
+s-exnllf.adb \
 s-expint.ads \
 s-expint.adb \
 s-fatflt.ads \
@@ -101,10 +105,15 @@ s-fatgen.ads \
 s-fatlfl.ads \
 s-fatllf.ads \
 s-fatsfl.ads \
+s-flocon.ads \
+s-imenne.adb \
+s-imenne.ads \
 s-imgboo.adb \
 s-imgboo.ads \
-s-imenne.ads \
-s-imenne.adb \
+s-imgcha.adb \
+s-imgcha.ads \
+s-imgenu.adb \
+s-imgenu.ads \
 s-imgint.adb \
 s-imgint.ads \
 s-imglli.adb \
@@ -113,13 +122,62 @@ s-imgllu.adb \
 s-imgllu.ads \
 s-imguns.adb \
 s-imguns.ads \
+s-imgwch.adb \
+s-imgwch.ads \
 s-maccod.ads \
+s-powtab.ads \
 s-stoele.adb \
 s-stoele.ads \
 s-unstyp.ads \
+s-valboo.adb \
+s-valboo.ads \
+s-valcha.adb \
+s-valcha.ads \
+s-valenu.adb \
+s-valenu.ads \
+s-valint.adb \
+s-valint.ads \
+s-vallli.adb \
+s-vallli.ads \
+s-valllu.adb \
+s-valllu.ads \
+s-valuns.adb \
+s-valuns.ads \
+s-valuti.adb \
+s-valuti.ads \
+s-wchcnv.adb \
+s-wchcnv.ads \
+s-wchcon.adb \
+s-wchcon.ads \
+s-wchjis.ads \
+s-wchjis.adb \
 text_io.ads  \
 unchconv.ads \
 unchdeal.ads
+
+# ??? Would be good to enable the following units but they do not compile yet
+# s-imgbiu.adb \
+# s-imgbiu.ads \
+# s-imgdec.adb \
+# s-imgdec.ads \
+# s-imgllb.adb \
+# s-imgllb.ads \
+# s-imglld.adb \
+# s-imglld.ads \
+# s-imgllw.adb \
+# s-imgllw.ads \
+# s-imgrea.adb \
+# s-imgrea.ads \
+# s-imgwiu.adb \
+# s-imgwiu.ads \
+# s-valrea.adb \
+# s-valrea.ads \
+# s-valdec.adb \
+# s-valdec.ads \
+# s-vallld.adb \
+# s-vallld.ads \
+# s-valwch.adb \
+# s-valwch.ads \
 
 COMPILABLE_SPECS= \
 ada.ads      \
@@ -136,6 +194,7 @@ s-fatsfl.ads \
 s-fatllf.ads \
 s-fatlfl.ads \
 s-maccod.ads \
+s-powtab.ads \
 s-unstyp.ads \
 s-parame.ads \
 system.ads   \
@@ -168,6 +227,7 @@ zfp: build
 	cp -p $(GNAT_SRC)/hie/s-parame__zfp.ads $(ADAINCLUDE)/s-parame.ads
 	cp -p $(GNAT_SRC)/hie/system-llvm.ads $(ADAINCLUDE)/system.ads
 	cp -p $(GNAT_SRC)/hie/s-sssita.ad[sb] $(ADAINCLUDE)/
+	cp -p $(GNAT_SRC)/libgnat/s-flocon__none.adb $(ADAINCLUDE)/s-flocon.adb
 	cd $(ADALIB) && for f in $(COMPILABLE_SPECS); do \
 	  $(COMPILE) ../adainclude/$$f || exit 1; \
 	done

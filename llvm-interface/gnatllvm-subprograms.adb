@@ -25,6 +25,8 @@ with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Table;    use Table;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
@@ -87,17 +89,6 @@ package body GNATLLVM.Subprograms is
    LCH_Fn            : GL_Value := No_GL_Value;
    --  Last-chance handler
 
-   function Create_Subprogram_Type
-     (Param_Ident  : Entity_Id;
-      Return_Type  : Entity_Id;
-      Takes_S_Link : Boolean) return Type_T
-     with Pre  => Present (Param_Ident) and then Is_Type_Or_Void (Return_Type),
-          Post => Present (Create_Subprogram_Type'Result);
-   --  Helper for public Create_Subprogram_Type functions: the public
-   --  ones harmonize input and this one actually creates the LLVM
-   --  type for subprograms.  Return_Type will be of Ekind E_Void if
-   --  this is a procedure.
-
    function Is_Dynamic_Return (TE : Entity_Id) return Boolean is
      (Ekind (TE) /= E_Void and then Is_Dynamic_Size (TE)
         and then not (Is_Array_Type (TE) and then not Is_Constrained (TE)))
@@ -129,51 +120,29 @@ package body GNATLLVM.Subprograms is
       return Cnt;
    end Count_Params;
 
-   --------------------------------------
-   -- Create_Subprogram_Type_From_Spec --
-   --------------------------------------
-
-   function Create_Subprogram_Type_From_Spec (N : Node_Id) return Type_T
-   is
-      Def_Ident : constant Entity_Id := Defining_Entity (N);
-
-   begin
-      return Create_Subprogram_Type (Def_Ident, Full_Etype (Def_Ident), False);
-   end Create_Subprogram_Type_From_Spec;
-
-   ----------------------------------------
-   -- Create_Subprogram_Type_From_Entity --
-   ----------------------------------------
-
-   function Create_Subprogram_Type_From_Entity
-     (TE : Entity_Id; Takes_S_Link  : Boolean) return Type_T is
-   begin
-      return Create_Subprogram_Type (TE, Full_Etype (TE), Takes_S_Link);
-   end Create_Subprogram_Type_From_Entity;
-
    ----------------------------
    -- Create_Subprogram_Type --
    ----------------------------
 
-   function Create_Subprogram_Type
-     (Param_Ident   : Entity_Id;
-      Return_Type   : Entity_Id;
-      Takes_S_Link  : Boolean) return Type_T
-   is
-      Unc_Return      : constant Boolean :=
+   function Create_Subprogram_Type (Def_Ident   : Entity_Id) return Type_T is
+      Return_Type     : constant Entity_Id := Full_Etype (Def_Ident);
+      Takes_S_Link    : constant Boolean   :=
+        Needs_Activation_Record (Def_Ident);
+      Unc_Return      : constant Boolean   :=
         (Ekind (Return_Type) /= E_Void and then Is_Array_Type (Return_Type)
            and then not Is_Constrained (Return_Type));
-      LLVM_Return_Typ : Type_T :=
+      LLVM_Return_Typ : Type_T             :=
         (if Ekind (Return_Type) = E_Void
          then Void_Type elsif Unc_Return then Create_Access_Type (Return_Type)
          else Create_Type (Return_Type));
-      Orig_Arg_Count  : constant Nat := Count_Params (Param_Ident);
-      Args_Count      : constant Nat :=
+      Orig_Arg_Count  : constant Nat       := Count_Params (Def_Ident);
+      Args_Count      : constant Nat       :=
         Orig_Arg_Count + (if Takes_S_Link then 1 else 0) +
           (if Is_Dynamic_Return (Return_Type) then 1 else 0);
       Arg_Types       : Type_Array (1 .. Args_Count);
-      Param_Ent       : Entity_Id := First_Formal_With_Extras (Param_Ident);
-      J               : Nat := 1;
+      Param_Ent       : Entity_Id          :=
+          First_Formal_With_Extras (Def_Ident);
+      J               : Nat                := 1;
 
    begin
       --  First, Associate an LLVM type for each Ada subprogram parameter
@@ -192,7 +161,7 @@ package body GNATLLVM.Subprograms is
          end;
 
          J := J + 1;
-         Param_Ent := Next_Formal_With_Extras (Param_Ent);
+         Next_Formal_With_Extras (Param_Ent);
       end loop;
 
       --  Set the argument for the static link, if any
@@ -607,8 +576,8 @@ package body GNATLLVM.Subprograms is
 
       Emit_One_Body (N);
 
-      for I in Nest_Table_First .. Nested_Functions_Table.Last loop
-         Emit_Subprogram_Body (Nested_Functions_Table.Table (I));
+      for J in Nest_Table_First .. Nested_Functions_Table.Last loop
+         Emit_Subprogram_Body (Nested_Functions_Table.Table (J));
       end loop;
 
       Nested_Functions_Table.Set_Last (Nest_Table_First);
@@ -879,47 +848,44 @@ package body GNATLLVM.Subprograms is
    -- Emit_Subprogram_Decl --
    --------------------------
 
-   function Emit_Subprogram_Decl (N : Node_Id) return GL_Value
-   is
-      Def_Ident : constant Node_Id := Defining_Entity (N);
+   function Emit_Subprogram_Decl (N : Node_Id) return GL_Value is
+      Def_Ident : constant Entity_Id := Defining_Entity (N);
+   begin
+      if not Has_Value (Def_Ident) then
+         Set_Value (Def_Ident, Create_Subprogram (Def_Ident));
+      end if;
+
+      return Get_Value (Def_Ident);
+   end Emit_Subprogram_Decl;
+
+   ------------------------
+   --  Create_Subprogram --
+   ------------------------
+
+   function Create_Subprogram (Def_Ident : Entity_Id) return GL_Value is
+      Subp_Type : constant Type_T   := Create_Subprogram_Type (Def_Ident);
+      Subp_Name : constant String   := Get_Ext_Name (Def_Ident);
+      LLVM_Func : constant GL_Value :=
+        Add_Function ((if Is_Compilation_Unit (Def_Ident)
+                       then "_ada_" & Subp_Name else Subp_Name),
+                       Subp_Type, Full_Etype (Def_Ident));
 
    begin
-      --  If this subprogram specification has already been compiled, do
-      --  nothing.
-
-      if Has_Value (Def_Ident) then
-         return Get_Value (Def_Ident);
-      else
-         declare
-            Subp_Type      : constant Type_T :=
-              Create_Subprogram_Type_From_Spec (N);
-            Subp_Base_Name : constant String := Get_Ext_Name (Def_Ident);
-            LLVM_Func      : GL_Value;
-
-         begin
-            LLVM_Func :=
-              Add_Function
-                   ((if Is_Compilation_Unit (Def_Ident)
-                     then "_ada_" & Subp_Base_Name else Subp_Base_Name),
-                    Subp_Type, Full_Etype (Def_Ident));
-
-            if Subp_Base_Name = "ada_main___elabb" then
-               Ada_Main_Elabb := LLVM_Func;
-            end if;
-
-            --  Define the appropriate linkage
-
-            if not In_Main_Unit then
-               Set_Linkage (LLVM_Func, External_Linkage);
-            elsif not Is_Public (Def_Ident) then
-               Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
-            end if;
-
-            Set_Value (Def_Ident, LLVM_Func);
-            return LLVM_Func;
-         end;
+      if Subp_Name = "ada_main___elabb" then
+         Ada_Main_Elabb := LLVM_Func;
       end if;
-   end Emit_Subprogram_Decl;
+
+      --  Define the appropriate linkage
+
+      if not In_Main_Unit then
+         Set_Linkage (LLVM_Func, External_Linkage);
+      elsif not Is_Public (Def_Ident) then
+         Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
+      end if;
+
+      Set_Value (Def_Ident, LLVM_Func);
+      return LLVM_Func;
+   end Create_Subprogram;
 
    --------------
    -- Subp_Ptr --

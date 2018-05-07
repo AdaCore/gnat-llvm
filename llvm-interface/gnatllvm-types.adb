@@ -689,11 +689,7 @@ package body GNATLLVM.Types is
             T := Create_Array_Type (Def_Ident);
 
          when E_Subprogram_Type =>
-            --  An anonymous access to a subprogram can point to any subprogram
-            --  (nested or not), so it must accept a static link.
-
-            T := Create_Subprogram_Type_From_Entity
-              (Def_Ident, Takes_S_Link => Needs_Activation_Record (Def_Ident));
+            T := Create_Subprogram_Type (Def_Ident);
 
          when Fixed_Point_Kind =>
             T := Int_Ty (Esize (Def_Ident));

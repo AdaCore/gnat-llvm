@@ -18,8 +18,6 @@
 with Sinfo; use Sinfo;
 with Uintp; use Uintp;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
@@ -38,16 +36,12 @@ package GNATLLVM.Subprograms is
    --  Return a count of the number of parameters of E, which is either
    --  a subprogram or a subprogram type.
 
-   function Create_Subprogram_Type_From_Spec (N : Node_Id) return Type_T
-     with Pre  => Present (N),
-          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Spec'Result) =
-                   Function_Type_Kind);
-
-   function Create_Subprogram_Type_From_Entity
-     (TE : Entity_Id; Takes_S_Link  : Boolean) return Type_T
-     with Pre  => Ekind (TE) = E_Subprogram_Type,
-          Post => (Get_Type_Kind (Create_Subprogram_Type_From_Entity'Result) =
-                   Function_Type_Kind);
+   function Create_Subprogram_Type (Def_Ident  : Entity_Id) return Type_T
+     with Pre  => Present (Def_Ident),
+          Post => Present (Create_Subprogram_Type'Result);
+   --  Create subprogram type.  Def_Ident can either be a subprogram,
+   --  in which case a subprogram type will be created from it or a
+   --  subprogram type directly.
 
    function Create_Subprogram_Access_Type return Type_T
      with Post => Present (Create_Subprogram_Access_Type'Result);
@@ -128,10 +122,14 @@ package GNATLLVM.Subprograms is
      with Pre => Present (N);
    --  Generate code for one given subprogram body
 
+   function Create_Subprogram (Def_Ident : Entity_Id) return GL_Value
+     with Pre => Ekind (Def_Ident) in Subprogram_Kind;
+   --  Create and save an LLVM object for Def_Ident, a subprogram
+
    function Emit_Subprogram_Decl (N : Node_Id) return GL_Value
      with Post => Present (Emit_Subprogram_Decl'Result);
-   --  Compile a subprogram declaration, save the corresponding LLVM value to
-   --  the environment and return it.
+   --  Compile a subprogram declaration, creating the subprogram if not
+   --  already done.  Return the subprogram value.
 
    procedure Emit_Subprogram_Body (N : Node_Id)
      with Pre => Present (N);

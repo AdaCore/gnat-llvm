@@ -140,16 +140,17 @@ package body GNATLLVM.Arrays is
      (TE : Entity_Id; V : GL_Value) return Entity_Id
    is
       V_Type : constant Entity_Id :=
-        (if No (V) then Empty elsif Is_Access_Type (V)
-         then Full_Designated_Type (V) else Full_Etype (V));
+        (if No (V) then Empty else Related_Type (V));
 
    begin
       --  If only TE is around, use it.  Likewise if V_Type is not an
       --  array type or not related to TE.  Otherwise, use the type
-      --  that's constrained, preferring V's type.
+      --  that's constrained, preferring V's type, but only if
+      --  TE is unconstrained.
 
       if No (V_Type) or else not Is_Array_Type (V_Type)
         or else (Ultimate_Base_Type (V_Type) /= Ultimate_Base_Type (TE))
+        or else not Is_Unconstrained_Array (TE)
       then
          return TE;
       elsif not Is_Constrained (V_Type) and then Is_Constrained (TE) then

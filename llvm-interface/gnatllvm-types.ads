@@ -101,24 +101,28 @@ package GNATLLVM.Types is
       else Get_Fullest_View (Etype (N)))
      with Pre => Present (N), Post => Is_Type_Or_Void (Full_Etype'Result);
 
-   function Full_Component_Type (E : Entity_Id) return Entity_Id is
-     (Get_Fullest_View (Component_Type (E)))
-     with Pre  => Is_Array_Type (E),
+   function Full_Component_Type (TE : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Component_Type (TE)))
+     with Pre  => Is_Array_Type (TE),
           Post => Present (Full_Component_Type'Result);
 
-   function Full_Designated_Type (E : Entity_Id) return Entity_Id is
-     (Get_Fullest_View (Designated_Type (E)))
-     with Pre  => Is_Access_Type (E),
+   function Full_Designated_Type (TE : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Designated_Type (TE)))
+     with Pre  => Is_Access_Type (TE),
           Post => Present (Full_Designated_Type'Result);
 
    function Full_Scope (E : Entity_Id) return Entity_Id is
      (Get_Fullest_View (Scope (E)))
-     with Pre  => Present (E), Post => Present (Full_Scope'Result);
+     with Pre => Present (E), Post => Present (Full_Scope'Result);
 
-   function Is_Access_Unconstrained (T : Entity_Id) return Boolean is
-     (Is_Access_Type (T) and then Is_Array_Type (Full_Designated_Type (T))
-      and then not Is_Constrained (Full_Designated_Type (T)))
-     with Pre => Is_Type (T);
+   function Is_Unconstrained_Array (TE : Entity_Id) return Boolean is
+     (Is_Array_Type (TE) and then not Is_Constrained (TE))
+     with Pre => Is_Type (TE);
+
+   function Is_Access_Unconstrained (TE : Entity_Id) return Boolean is
+     (Is_Access_Type (TE)
+        and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
+     with Pre => Is_Type (TE);
 
    function Convert_To_Elementary_Type
      (V : GL_Value; TE : Entity_Id) return GL_Value

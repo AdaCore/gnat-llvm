@@ -844,7 +844,9 @@ package body GNATLLVM.Arrays is
    function Get_Dim_Range (N : Node_Id) return Node_Id is
    begin
       case Nkind (N) is
-         when N_Range =>
+         when N_Range
+            | N_Signed_Integer_Type_Definition
+            | N_Real_Range_Specification =>
             return N;
          when N_Identifier =>
             return Get_Dim_Range (Scalar_Range (Entity (N)));

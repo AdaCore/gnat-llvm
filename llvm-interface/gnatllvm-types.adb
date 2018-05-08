@@ -896,18 +896,22 @@ package body GNATLLVM.Types is
            (Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size)),
             V, TE, Alloc_Type);
 
-      --  If a procedure was specified (meaning that a pool must also
-      --  have been specified) and the pool is a record, then it's a
-      --  storage pool and we pass the pool, size, and alignment.
-      --  ?? This is a procedure whose first parameter is an OUT parameter
-      --  where it puts the address.  We should be converting procedures
-      --  with a single OUT parameter to a function, which would make the
-      --  below a lot easier, but we don't yet (because there's no good place
-      --  to indicate that we have).
+      --  If a procedure was specified (meaning that a pool must also have
+      --  been specified) and the pool is a record, then it's a storage
+      --  pool and we pass the pool, size, and alignment. Be sure that we
+      --  convert the pool to actual type of the formal of the deallocator
+      --  function: it may be a derived type.  ??  This is a procedure
+      --  whose first parameter is an OUT parameter where it puts the
+      --  address.  We should be converting procedures with a single OUT
+      --  parameter to a function, which would make the below a lot easier,
+      --  but we don't yet (because there's no good place to indicate that
+      --  we have).
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call (Emit_LValue (Proc),
-               (1 => Get_Value (Pool), 2 => Ret_Loc, 3 => Size, 4 => Align_V));
+               (1 => Ptr_To_Ref (Get_Value (Pool),
+                                 Full_Etype (First_Formal (Proc))),
+                2 => Ret_Loc, 3 => Size, 4 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
@@ -949,11 +953,14 @@ package body GNATLLVM.Types is
 
       --  If a procedure was specified (meaning that a pool must also
       --  have been specified) and the pool is a record, then it's a
-      --  storage pool and we pass the pool, size, and alignment.
+      --  storage pool and we pass the pool, size, and alignment.  Be
+      --  sure that we convert the pool to actual type of the formal of
+      --  the deallocator function: it may be a derived type.
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call (Emit_LValue (Proc),
-               (1 => Get_Value (Pool),
+               (1 => Ptr_To_Ref (Get_Value (Pool),
+                                 Full_Etype (First_Formal (Proc))),
                 2 => Ptr_To_Int (Converted_V, Size_Type),
                 3 => Size, 4 => Align_V));
 

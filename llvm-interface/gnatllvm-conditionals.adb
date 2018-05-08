@@ -753,6 +753,7 @@ package body GNATLLVM.Conditionals is
          when N_Expression_With_Actions =>
             Emit (Actions (N));
             Emit_If_Cond (Expression (N), BB_True, BB_False);
+            return;
 
          when N_Op_Not =>
             Emit_If_Cond (Right_Opnd (N), BB_False, BB_True);

@@ -163,8 +163,7 @@ package body GNATLLVM.Blocks is
          then
             Block_Stack.Table (Block_Stack.Last).At_End_Static_Link :=
               Pointer_Cast (Get_Static_Link (At_End_Proc),
-                            Full_Etype (First_Formal_With_Extras
-                                          (Entity (At_End_Proc))));
+                            Full_Etype (Extra_Formals (Entity (At_End_Proc))));
          end if;
       end if;
 

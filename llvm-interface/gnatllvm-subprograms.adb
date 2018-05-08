@@ -627,7 +627,8 @@ package body GNATLLVM.Subprograms is
    ---------------------
 
    function Get_Static_Link (N : Node_Id) return GL_Value is
-      Subp        : constant Entity_Id  := Entity (N);
+      Subp        : constant Entity_Id  :=
+        (if Nkind (N) in N_Entity then N else Entity (N));
       Parent      : constant Entity_Id  := Enclosing_Subprogram (Subp);
       Ent_Caller  : Subp_Entry;
       Ent         : Subp_Entry;
@@ -664,6 +665,31 @@ package body GNATLLVM.Subprograms is
          return Const_Null (Standard_A_Char);
       end if;
    end Get_Static_Link;
+
+   ------------------------
+   -- Call_Alloc_Dealloc --
+   ------------------------
+
+   procedure Call_Alloc_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
+      Func           : constant GL_Value := Emit_LValue (Proc);
+      Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
+      S_Link         : GL_Value;
+   begin
+      if Subps_Index (Proc) /= Uint_0
+        and then Present (Subps.Table (Subp_Index (Proc)).ARECnF)
+      then
+         --  This needs a static link.  Get it, convert it to the precise
+         --  needed type, and then create the new argument list.
+
+         S_Link := Pointer_Cast (Get_Static_Link (Proc),
+                                 Full_Etype (Extra_Formals (Proc)));
+         Args_With_Link (Args'Range) := Args;
+         Args_With_Link (Args_With_Link'Last) := S_Link;
+         Call (Func, Args_With_Link);
+      else
+         Call (Func, Args);
+      end if;
+   end Call_Alloc_Dealloc;
 
    ----------------------
    -- Emit_LCH_Call_If --

@@ -908,7 +908,7 @@ package body GNATLLVM.Types is
       --  we have).
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
-         Call (Emit_LValue (Proc),
+         Call_Alloc_Dealloc (Proc,
                (1 => Ptr_To_Ref (Get_Value (Pool),
                                  Full_Etype (First_Formal (Proc))),
                 2 => Ret_Loc, 3 => Size, 4 => Align_V));
@@ -916,7 +916,7 @@ package body GNATLLVM.Types is
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Call (Emit_LValue (Proc), (1 => Ret_Loc, 2 => Size));
+         Call_Alloc_Dealloc (Proc, (1 => Ret_Loc, 2 => Size));
       end if;
 
       --  If we're doing this for an unconstrained array, we have the pointer
@@ -958,7 +958,7 @@ package body GNATLLVM.Types is
       --  the deallocator function: it may be a derived type.
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
-         Call (Emit_LValue (Proc),
+         Call_Alloc_Dealloc (Proc,
                (1 => Ptr_To_Ref (Get_Value (Pool),
                                  Full_Etype (First_Formal (Proc))),
                 2 => Ptr_To_Int (Converted_V, Size_Type),
@@ -967,7 +967,7 @@ package body GNATLLVM.Types is
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Call (Emit_LValue (Proc),
+         Call_Alloc_Dealloc (Proc,
                (1 => Ptr_To_Int (Converted_V, Size_Type), 2 => Size));
       end if;
    end Heap_Deallocate;

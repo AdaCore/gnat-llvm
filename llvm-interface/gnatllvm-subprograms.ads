@@ -94,6 +94,11 @@ package GNATLLVM.Subprograms is
    --  Compile a call statement/expression and return its result
    --  value.  If this is calling a procedure, there will be no return value.
 
+   procedure Call_Alloc_Dealloc (Proc : Entity_Id; Args : GL_Value_Array)
+     with Pre => Ekind (Proc) = E_Procedure;
+   --  Proc is a Procedure_To_Call for an allocation or deallocation and Args
+   --  are its arguments.  See if Proc needs a static link and pass one, if so.
+
    procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id)
      with Pre => Present (V) and then Present (N);
    --  Call the last change helper if V evaluates to True

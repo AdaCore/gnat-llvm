@@ -1101,8 +1101,8 @@ package body GNATLLVM.Compile is
 
                declare
                   Expr   : constant Node_Id := Expression (N);
+                  Value  : GL_Value         := No_GL_Value;
                   Typ    : Entity_Id;
-                  Value  : GL_Value;
                   Result : GL_Value;
 
                begin

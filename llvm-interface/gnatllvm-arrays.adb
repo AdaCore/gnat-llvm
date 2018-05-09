@@ -32,32 +32,26 @@ with GNATLLVM.Utils;       use GNATLLVM.Utils;
 package body GNATLLVM.Arrays is
 
    --  A bound of a constrained array can either be a compile-time
-   --  constant, which we record as a Uint, the discriminant of an array,
-   --  which we record as the Entity_Id of the E_Discriminant, or some
-   --  dynamic value that was known at the declaration of the type.  We
-   --  use the structures and table below to indicate which.  The value
-   --  return by Get_Array_Info is the index into this table for the
-   --  first index of a constrained array whose size isn't known at
-   --  compile-time.  The remaining bounds are subsequent entries in the table.
-   --
-   --  For unconstrained arrays, we have an entry in the table for each
-   --  dimension to record the type information abut each bound.
+   --  constant, which we record as a Uint or some dynamic value that was
+   --  known at the declaration of the type, which can include a refdrence
+   --  to a discriminant.  We use the structures and table below to
+   --  indicate which.  The value return by Get_Array_Info is the index
+   --  into this table for the first index of a constrained array whose
+   --  size isn't known at compile-time.  The remaining bounds are
+   --  subsequent entries in the table.
 
    type One_Bound is record
       Cnst    : Uint;
       Value   : Node_Id;
-      Discr   : Entity_Id;
       Dynamic : Boolean;
    end record
-     --  Only one item can be specified and the specification of Value or
-     --  Discr means that Dynamic must be true.  We might think that exactly
-     --  one item must be specified, but that's not the case for an
+     --  Only one item can be specified and the specification of Value
+     --  means that Dynamic must be true.  We might think that exactly one
+     --  item must be specified, but that's not the case for an
      --  unconstrained array.
      with Dynamic_Predicate => ((if Cnst = No_Uint then 0 else 1) +
-                                (if No (Value) then 0 else 1) +
-                                (if No (Discr) then 0 else 1)) <= 1
-                                   and then ((No (Value) and then No (Discr))
-                                             or else Dynamic);
+                                (if No (Value) then 0 else 1)) <= 1
+                               and then (No (Value) or else Dynamic);
 
    type Index_Bounds is record
       Bound_Type        : Entity_Id;
@@ -73,6 +67,34 @@ package body GNATLLVM.Arrays is
       Table_Increment      => 100,
       Table_Name           => "Array_Info_Table");
    --  Table of representation of arrays indexes
+
+   --  A bound of an array type may be a computation involving a discriminant.
+   --  If we're evaluating a bound, we save here information that tells us
+   --  what we have to do with a discriminant we encounter, if indeed we
+   --  are expecting one.
+
+   type For_Discr_Info is record
+      For_Type  : Boolean;
+      --  True if we need the maximum size of the bound
+
+      Low_Bound : Boolean;
+      --  True if we're computing this expression for a low bound; False
+      --  for high.
+   end record;
+
+   package For_Discr_Stack is new Table.Table
+     (Table_Component_Type => For_Discr_Info,
+      Table_Index_Type     => Integer,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "For_Discr_Stack");
+   --  Stack of information for discriminant evaluation
+
+   procedure Push_Discriminant_Info (For_Type, Is_Low_Bound : Boolean);
+   procedure Pop_Discriminant_Info
+     with Pre => For_Discr_Stack.Last /= 0;
+   --  Push and pop information onto only above stack.
 
    function Type_For_Get_Bound
      (TE : Entity_Id; V : GL_Value) return Entity_Id
@@ -114,20 +136,12 @@ package body GNATLLVM.Arrays is
      (N : Node_Id; Unconstrained : Boolean) return One_Bound is
    begin
       if Unconstrained then
-         return (Cnst => No_Uint, Value => Empty, Discr => Empty,
-                 Dynamic => True);
+         return (Cnst => No_Uint, Value => Empty, Dynamic => True);
       elsif Compile_Time_Known_Value (N) then
-         return (Cnst => Expr_Value (N), Value => Empty, Discr => Empty,
+         return (Cnst => Expr_Value (N), Value => Empty,
                  Dynamic => not UI_Is_In_Int_Range (Expr_Value (N)));
-      elsif Is_Entity_Name (N)
-        and then Ekind (Entity (N)) = E_Discriminant
-      then
-         return (Cnst => No_Uint, Value => Empty,
-                 Discr => Original_Record_Component (Entity (N)),
-                 Dynamic => True);
       else
-         return (Cnst => No_Uint, Discr => Empty,
-                 Value => N, Dynamic => True);
+         return (Cnst => No_Uint, Value => N, Dynamic => True);
       end if;
 
    end Build_One_Bound;
@@ -160,6 +174,25 @@ package body GNATLLVM.Arrays is
       end if;
    end Type_For_Get_Bound;
 
+   ----------------------------
+   -- Push_Discriminant_Info --
+   ----------------------------
+
+   procedure Push_Discriminant_Info (For_Type, Is_Low_Bound : Boolean) is
+   begin
+      For_Discr_Stack.Append ((For_Type => For_Type,
+                               Low_Bound => Is_Low_Bound));
+   end Push_Discriminant_Info;
+
+   -------------------------------
+   -- Pop_Info_For_Discriminant --
+   -------------------------------
+
+   procedure Pop_Discriminant_Info is
+   begin
+      For_Discr_Stack.Decrement_Last;
+   end Pop_Discriminant_Info;
+
    ---------------------
    -- Get_Array_Bound --
    ---------------------
@@ -184,51 +217,61 @@ package body GNATLLVM.Arrays is
    begin
       Push_Debug_Freeze_Pos;
 
-      --  There are four cases: a constant size, in which case we return
-      --  that size, a saved value, in which case we return that value,
-      --  an unconstrained array, in which case we have a fat pointer and
-      --  extract the bounds from it, or a discriminant, in which case we
-      --  access that field of the enclosing record.
+      --  There are three cases: a constant size, in which case we return
+      --  that size, a value, in which case we compute that value, which
+      --  may involve a discriminant, and an unconstrained array, in which
+      --  case we have a fat pointer and extract the bounds from it.
 
       if Bound_Info.Cnst /= No_Uint then
          Result := Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
+
+         --  We set and clear information on the discrminant in case we
+         --  encounter one.  Hopefully, we don't need a stack.
+
+         Push_Discriminant_Info (For_Type => For_Type, Is_Low_Bound => Is_Low);
          Result := Build_Type_Conversion
            (Bound_Info.Value, Dim_Info.Bound_Type);
-      elsif not Is_Constrained (TE) then
+         Pop_Discriminant_Info;
+      else
+         --  We now should have the unconstrained case.  Make sure we do.
+         pragma Assert (Is_Unconstrained_Array (TE));
+
          Result := Extract_Value
            (Dim_Info.Bound_Type, V, (1 => 1, 2 => Integer (Bound_Idx)),
             (if Is_Low then "low-bound" else "high-bound"));
 
-      else
-         --  We now should have the discriminated case.  Make sure we do.
-
-         pragma Assert (Ekind (Bound_Info.Discr) = E_Discriminant);
-
-         --  If we are getting the size of a type, as opposed to a value,
-         --  we have to use the first/last value of the range of the type
-         --  of the discriminant.
-
-         if For_Type then
-            declare
-               Disc_Type : constant Entity_Id := Full_Etype (Bound_Info.Discr);
-            begin
-               Result := Build_Type_Conversion
-                 ((if Is_Low then Type_Low_Bound (Disc_Type)
-                   else Type_High_Bound (Disc_Type)), Dim_Info.Bound_Type);
-            end;
-         else
-            Result := Convert_To_Elementary_Type
-              (Load (Record_Field_Offset
-                       (Get_Matching_Value (Full_Scope (Bound_Info.Discr)),
-                        Bound_Info.Discr)),
-               Dim_Info.Bound_Type);
-         end if;
       end if;
 
       Pop_Debug_Freeze_Pos;
       return Result;
    end Get_Array_Bound;
+
+   ---------------------------------
+   --  Use_Discriminant_For_Bound --
+   ---------------------------------
+
+   function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value is
+      TE        : constant Entity_Id      := Full_Etype (E);
+      Eval_Info : constant For_Discr_Info :=
+        For_Discr_Stack.Table (For_Discr_Stack.Last);
+
+   begin
+      pragma Assert (For_Discr_Stack.Last /= 0);
+
+      --  If we are getting the size of a type, as opposed to a value, we
+      --  have to use the first/last value of the range of the type of the
+      --  discriminant.
+
+      if Eval_Info.For_Type then
+         return Emit_Expression ((if Eval_Info.Low_Bound
+                                  then Type_Low_Bound  (TE)
+                                  else Type_High_Bound (TE)));
+      else
+         return
+           Load (Record_Field_Offset (Get_Matching_Value (Full_Scope (E)), E));
+      end if;
+   end Use_Discriminant_For_Bound;
 
    ----------------------
    -- Get_Array_Length --
@@ -291,10 +334,10 @@ package body GNATLLVM.Arrays is
         Get_Uint_Value (String_Literal_Low_Bound (TE));
       Length     : constant Uint         := String_Literal_Length (TE);
       Last       : constant Uint         := First + Length - 1;
-      Low_Bound  : constant One_Bound    := (Cnst => First, Value => Empty,
-                                         Discr => Empty, Dynamic => False);
-      High_Bound : constant One_Bound    := (Cnst => Last, Value => Empty,
-                                          Discr => Empty, Dynamic => False);
+      Low_Bound  : constant One_Bound    :=
+        (Cnst => First, Value => Empty, Dynamic => False);
+      High_Bound : constant One_Bound    :=
+        (Cnst => Last, Value => Empty, Dynamic => False);
       Dim_Info   : constant Index_Bounds := (Bound_Type => Standard_Positive,
                                              Low => Low_Bound,
                                              High => High_Bound);

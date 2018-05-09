@@ -972,6 +972,9 @@ package body GNATLLVM.Variables is
             end if;
          end;
 
+      elsif Ekind (Entity (N)) = E_Discriminant then
+         return Use_Discriminant_For_Bound (Entity (N));
+
       elsif Nkind (N) in N_Subexpr
         and then Is_Constant_Folded (Entity (N))
       then

@@ -902,10 +902,10 @@ package body GNATLLVM.Types is
       --  convert the pool to actual type of the formal of the deallocator
       --  function: it may be a derived type.  ??  This is a procedure
       --  whose first parameter is an OUT parameter where it puts the
-      --  address.  We should be converting procedures with a single OUT
-      --  parameter to a function, which would make the below a lot easier,
-      --  but we don't yet (because there's no good place to indicate that
-      --  we have).
+      --  address.  We should be converting procedures with OUT parameters
+      --  to functions, which would make the below a lot easier, but we
+      --  don't yet (because there's no good place to indicate that we
+      --  have).
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call_Alloc_Dealloc (Proc,

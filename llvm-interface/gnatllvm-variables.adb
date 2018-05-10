@@ -322,6 +322,7 @@ package body GNATLLVM.Variables is
       case Nkind (N) is
          when N_Identifier | N_Expanded_Name =>
             return No (Address_Clause (Entity (N)))
+              and then Ekind (Entity (N)) /= E_Enumeration_Literal
               and then not Is_Dynamic_Size (Full_Etype (N));
 
          when N_Selected_Component =>
@@ -807,7 +808,10 @@ package body GNATLLVM.Variables is
       --  materialize the value and because it may need run-time
       --  computation.
 
-      elsif Is_True_Constant (Def_Ident) and not Library_Level then
+      elsif Is_True_Constant (Def_Ident)
+        and then (not Library_Level
+                    or else Compile_Time_Known_Value (Name (N)))
+      then
          Set_Value (Def_Ident, Emit_Expression  (Name (N)));
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
          Set_Value (Def_Ident, Emit_LValue (Name (N)));

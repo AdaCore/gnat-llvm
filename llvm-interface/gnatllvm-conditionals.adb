@@ -112,6 +112,31 @@ package body GNATLLVM.Conditionals is
          return Emit_Elementary_Comparison
            (Kind, Emit_Expression (LHS), Emit_Expression (RHS));
 
+      --  We'll see some simple record comparisons, typically if they're
+      --  Equivalent_Types of, e.g., an E_Access_Protected_Subprogram_Type.
+
+      elsif Is_Record_Type (Operand_Type) then
+         declare
+            --  Now we need to get the size of the record (in bytes) to do
+            --  the memory comparison.  Memcmp is defined as returning zero
+            --  for a zero size, so we don't need to worry about testing
+            --  for that case.
+
+            LHS_Val : constant GL_Value := Emit_LValue (LHS);
+            RHS_Val : constant GL_Value := Emit_LValue (RHS);
+            Size    : constant GL_Value :=
+              Compute_Size (Full_Designated_Type (LHS_Val),
+                            Full_Designated_Type (RHS_Val),
+                            LHS_Val, RHS_Val);
+            Memcmp  : constant GL_Value :=
+              Call (Get_Memory_Compare_Fn, Standard_Integer,
+                    (1 => Pointer_Cast (LHS_Val, Standard_A_Char),
+                     2 => Pointer_Cast (RHS_Val, Standard_A_Char),
+                     3 => Size));
+         begin
+            return I_Cmp (Operation.Signed, Memcmp,
+                          Const_Null (Standard_Integer));
+         end;
       else
          pragma Assert (Is_Array_Type (Operand_Type)
                           and then Operation.Signed in Int_EQ | Int_NE);

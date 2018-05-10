@@ -672,7 +672,7 @@ package body GNATLLVM.Compile is
       --  If the object is not of void type, save the result in the
       --  pair table under the base type of the fullest view.
 
-      if Ekind (Value) /= E_Void then
+      if Ekind (Related_Type (Value)) /= E_Void then
          Add_To_LValue_List (Value);
       end if;
 

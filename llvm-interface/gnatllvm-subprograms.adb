@@ -671,7 +671,7 @@ package body GNATLLVM.Subprograms is
    ------------------------
 
    procedure Call_Alloc_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
-      Func           : constant GL_Value := Emit_LValue (Proc);
+      Func           : constant GL_Value := Emit_LValue (Proc, Clear => False);
       Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
       S_Link         : GL_Value;
    begin

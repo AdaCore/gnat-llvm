@@ -6,3 +6,4 @@ Missing main features (identified so far):
 - freeze nodes
 - representation clauses
 - debug info (for variables and types)
+- restriction checks done by back end

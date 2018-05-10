@@ -224,6 +224,7 @@ unchconv.ads \
 unchdeal.ads
 
 ADAC=$(pwd)/bin/llvm-gcc
+CROSSC=gcc
 COMPILE=$(ADAC) -c -gnatpg -nostdinc -I../adainclude
 
 # ZFP runtime
@@ -290,7 +291,7 @@ NO_OMIT_ADAFLAGS = -fno-omit-frame-pointer
 NO_SIBLING_ADAFLAGS=-fno-optimize-sibling-calls
 NO_REORDER_ADAFLAGS=-fno-toplevel-reorder
 
-OSCONS_CC=gcc
+OSCONS_CC=$(CROSSC)
 OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
   $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
 OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
@@ -325,10 +326,10 @@ gnatlib: build
 	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=gcc $(GNATRTL_OBJS)
+	  ADAC=$(ADAC) CC=$(CROSSC) $(GNATRTL_OBJS)
 # C files
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  CC=gcc $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+	  CC=$(CROSSC) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 # Create libgnat/libgnarl.a
 	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)
 	$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnat$(arext) \

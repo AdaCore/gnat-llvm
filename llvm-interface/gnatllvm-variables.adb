@@ -685,6 +685,16 @@ package body GNATLLVM.Variables is
             --  this is a compile-time known expression, we have the actual
             --  global, not a type-converted value, and the variable is not
             --  of a dynamic size or has an address clause.
+            --
+            --  Note that the code below relies on the fact that if we exectute
+            --  this case, we won't be added to the elab proc for any other
+            --  reason because if we are, we may do both a static and
+            --  run-time initialization.
+            --
+            --  ?? We'd like to use Compile_Time_Known_Value_Or_Agg here,
+            --  but if we have a conversion between two identical record
+            --  subtypes of different names, we can't do that at library
+            --  level.
 
             if Present (Expr) then
                if Compile_Time_Known_Value (Expr)

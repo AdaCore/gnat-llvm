@@ -325,7 +325,7 @@ gnatlib: build
 	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=$(ADAC) $(GNATRTL_OBJS)
+	  ADAC=$(ADAC) CC=gcc $(GNATRTL_OBJS)
 # C files
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
 	  CC=gcc $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)

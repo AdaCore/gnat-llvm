@@ -901,11 +901,9 @@ package body GNATLLVM.Conditionals is
       --  unconstrained array, use that one.  Otherwise, if one is dynamic
       --  size, use that one.  Otherwise, it doesn't matter.
 
-      if Is_Array_Type (Then_Type) and then not Is_Constrained (Then_Type) then
+      if Is_Unconstrained_Array (Then_Type) then
          TE := Then_Type;
-      elsif Is_Array_Type (Else_Type)
-        and then not Is_Constrained (Else_Type)
-      then
+      elsif Is_Unconstrained_Array (Else_Type) then
          TE := Else_Type;
       elsif Is_Dynamic_Size (Else_Type) then
          TE := Else_Type;

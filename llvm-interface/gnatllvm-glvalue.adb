@@ -71,8 +71,7 @@ package body GNATLLVM.GLValue is
          when Reference =>
             return Is_Type (V.Typ)
               and then (Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
-                          or else (Is_Array_Type (V.Typ)
-                                     and then not Is_Constrained (V.Typ))
+                          or else Is_Unconstrained_Array (V.Typ)
             --  ?? Keep the above test until we see if we can use Fat_Pointer
             --  consistently for this.
                           or else (Ekind (V.Typ) = E_Subprogram_Type
@@ -84,13 +83,12 @@ package body GNATLLVM.GLValue is
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
          when Fat_Pointer | Bounds =>
-            return Is_Array_Type (V.Typ) and then not Is_Constrained (V.Typ);
+            return Is_Unconstrained_Array (V.Typ);
 
          when Array_Data | Reference_To_Bounds =>
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
-              and then Is_Array_Type (V.Typ)
-              and then not Is_Constrained (V.Typ);
+              and then Is_Unconstrained_Array (V.Typ);
 
          when Reference_To_Subprogram =>
             return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
@@ -99,6 +97,17 @@ package body GNATLLVM.GLValue is
             return False;
       end case;
    end GL_Value_Is_Valid_Int;
+
+   -----------------------------
+   -- Is_Access_Unconstrained --
+   -----------------------------
+
+   function Is_Access_Unconstrained (V : GL_Value) return Boolean is
+     (Is_Access_Type (V) and then Ekind (V.Typ) /= E_Void
+        and then not Is_Subprogram_Reference (V)
+        and then Is_Unconstrained_Array (Full_Designated_Type (V))
+        and then not Is_Raw_Array (V)
+        and then Relationship (V) /= Reference_To_Subprogram);
 
    ---------------------
    -- Is_Dynamic_Size --

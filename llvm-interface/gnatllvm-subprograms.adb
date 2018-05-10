@@ -91,7 +91,7 @@ package body GNATLLVM.Subprograms is
 
    function Is_Dynamic_Return (TE : Entity_Id) return Boolean is
      (Ekind (TE) /= E_Void and then Is_Dynamic_Size (TE)
-        and then not (Is_Array_Type (TE) and then not Is_Constrained (TE)))
+        and then not Is_Unconstrained_Array (TE))
      with Pre => Is_Type_Or_Void (TE);
    --  TE is the return type of a function.  This predicate is true is the
    --  function returns a dynamic sized type.  If TE is an unconstrained array,
@@ -129,8 +129,8 @@ package body GNATLLVM.Subprograms is
       Takes_S_Link    : constant Boolean   :=
         Needs_Activation_Record (Def_Ident);
       Unc_Return      : constant Boolean   :=
-        (Ekind (Return_Type) /= E_Void and then Is_Array_Type (Return_Type)
-           and then not Is_Constrained (Return_Type));
+        (Ekind (Return_Type) /= E_Void
+           and then Is_Unconstrained_Array (Return_Type));
       LLVM_Return_Typ : Type_T             :=
         (if Ekind (Return_Type) = E_Void
          then Void_Type elsif Unc_Return then Create_Access_Type (Return_Type)
@@ -377,7 +377,7 @@ package body GNATLLVM.Subprograms is
               Record_Field_Offset (Activation_Rec_Param, Component);
 
          begin
-            pragma Assert (not Is_Array_Type (TE) or else Is_Constrained (TE));
+            pragma Assert (not Is_Unconstrained_Array (TE));
             --  This can't work for unconstrained types since we lose bounds
 
             return Int_To_Ref (Load (Pointer), TE);
@@ -608,7 +608,7 @@ package body GNATLLVM.Subprograms is
                --  for the return value, copy the data to be returned to
                --  there, and return an access (fat pointer) to the value.
 
-            elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+            elsif Is_Unconstrained_Array (TE) then
                Build_Ret
                  (Heap_Allocate_For_Type
                     (TE, Full_Etype (Expr), Emit_Expression (Expr),
@@ -858,9 +858,7 @@ package body GNATLLVM.Subprograms is
       if Dynamic_Return then
          Call (LLVM_Func, Args);
          return Convert_To_Access_To (Args (Args'Last), Our_Return_Typ);
-      elsif Is_Array_Type (Return_Typ)
-        and then not Is_Constrained (Return_Typ)
-      then
+      elsif Is_Unconstrained_Array (Return_Typ) then
          return Call_Ref (LLVM_Func, Return_Typ, Args);
       elsif Ekind (Return_Typ) = E_Void then
          Call (LLVM_Func, Args);

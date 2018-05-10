@@ -222,8 +222,7 @@ package body GNATLLVM.Types is
      (V : GL_Value; TE : Entity_Id) return GL_Value
    is
       Unc_Src  : constant Boolean := Is_Access_Unconstrained (V);
-      Unc_Dest : constant Boolean :=
-        Is_Array_Type (TE) and then not Is_Constrained (TE);
+      Unc_Dest : constant Boolean := Is_Unconstrained_Array (TE);
 
    begin
       --  First have the case where we previously had a reference to a
@@ -341,7 +340,7 @@ package body GNATLLVM.Types is
       --  If we're converting to an unconstrained array, keep things the
       --  way they are so we preserve bounds.
 
-      elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+      elsif Is_Unconstrained_Array (TE) then
          return V;
 
       --  Otherwise, these must be cases where we have to convert by
@@ -577,7 +576,7 @@ package body GNATLLVM.Types is
       T : constant Type_T := Create_Type (TE);
 
    begin
-      if Is_Array_Type (TE) and then not Is_Constrained (TE) then
+      if Is_Unconstrained_Array (TE) then
          return Create_Array_Fat_Pointer_Type (TE);
       elsif Needs_Activation_Record (TE) then
          return Create_Subprogram_Access_Type;
@@ -785,9 +784,7 @@ package body GNATLLVM.Types is
       --  pointer to Alloc_Typ, but if it's unconstrained, we convert
       --  into raw array data, since that's what we have.
 
-      if Is_Array_Type (Alloc_Type)
-        and then not Is_Constrained (Alloc_Type)
-      then
+      if Is_Unconstrained_Array (Alloc_Type) then
          Memory :=
            (if Is_Access_Type (Memory)
             then Ptr_To_Raw_Array (Memory, Alloc_Type)
@@ -810,7 +807,7 @@ package body GNATLLVM.Types is
       --  what we have is constrained, then the conversion will properly
       --  make the fat pointer from the constrained type.
 
-      if not Is_Array_Type (TE) or else Is_Constrained (TE)
+      if not Is_Unconstrained_Array (TE)
         or else (not Is_Access_Unconstrained (Memory)
                    and then not Is_Raw_Array (Memory))
       then

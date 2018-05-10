@@ -38,12 +38,15 @@ ADALIB=lib/rts-llvm/adalib
 uname:=$(shell uname)
 pwd:=$(shell pwd)
 
-# LLVM_MODULES = Core Analysis BitWriter Target
-# LDFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --libs \
-#   $(LLVM_MODULES) --ldflags --system-libs) -lstdc++
-LDFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --libs all \
-  --ldflags --system-libs) -static-libstdc++
-CXXFLAGS=$(shell $(pwd)/../llvm/llvm-obj/bin/llvm-config --cxxflags)
+ifneq ($(wildcard $(pwd)/../llvm/llvm-obj/bin/llvm-config),)
+  LLVM_CONFIG=$(pwd)/../llvm/llvm-obj/bin/llvm-config
+else
+  LLVM_CONFIG=llvm-config
+endif
+
+LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs) \
+  -static-libstdc++
+CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags)
 
 ifeq ($(filter-out CYGWIN%,$(uname)),)
   LDFLAGS+=-Wl,--stack=0x2000000

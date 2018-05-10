@@ -92,12 +92,13 @@ gnat.ads     \
 g-souinf.ads \
 i-cexten.ads \
 interfac.ads \
+s-addope.ads \
+s-addope.adb \
 s-atacco.adb \
 s-atacco.ads \
 s-arit64.ads \
 s-arit64.adb \
 s-boarop.ads \
-s-boarop.adb \
 s-casuti.ads \
 s-casuti.adb \
 s-exnint.ads \
@@ -119,6 +120,8 @@ s-fatsfl.ads \
 s-flocon.ads \
 s-fore.ads   \
 s-fore.adb   \
+s-geveop.ads \
+s-geveop.adb \
 s-imenne.adb \
 s-imenne.ads \
 s-imgboo.adb \
@@ -158,6 +161,9 @@ s-valuns.adb \
 s-valuns.ads \
 s-valuti.adb \
 s-valuti.ads \
+s-veboop.ads \
+s-veboop.adb \
+s-vector.ads \
 s-wchcnv.adb \
 s-wchcnv.ads \
 s-wchcon.adb \
@@ -209,6 +215,7 @@ i-c.ads      \
 i-cexten.ads \
 interfac.ads \
 s-atacco.ads \
+s-boarop.ads \
 s-fatflt.ads \
 s-fatsfl.ads \
 s-fatllf.ads \
@@ -217,6 +224,7 @@ s-maccod.ads \
 s-powtab.ads \
 s-unstyp.ads \
 s-parame.ads \
+s-vector.ads \
 system.ads   \
 machcode.ads \
 text_io.ads  \

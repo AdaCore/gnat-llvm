@@ -687,7 +687,7 @@ package body GNATLLVM.Variables is
             --  global, not a type-converted value, and the variable is not
             --  of a dynamic size or has an address clause.
             --
-            --  Note that the code below relies on the fact that if we exectute
+            --  Note that the code below relies on the fact that if we execute
             --  this case, we won't be added to the elab proc for any other
             --  reason because if we are, we may do both a static and
             --  run-time initialization.

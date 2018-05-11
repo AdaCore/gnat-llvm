@@ -757,6 +757,19 @@ package body GNATLLVM.Compile is
    function Emit_Undef (TE : Entity_Id) return GL_Value is
      ((if Is_Dynamic_Size (TE) then Get_Undef_Ref (TE) else Get_Undef (TE)));
 
+   --------------------
+   -- Emit_Safe_Expr --
+   --------------------
+
+   function Emit_Safe_Expr (N : Node_Id) return GL_Value is
+      V : GL_Value;
+   begin
+      Push_LValue_List;
+      V := Emit_Expression (N);
+      Pop_LValue_List;
+      return V;
+   end Emit_Safe_Expr;
+
    ---------------------
    -- Emit_Expression --
    ---------------------

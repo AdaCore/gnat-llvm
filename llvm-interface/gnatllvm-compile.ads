@@ -34,6 +34,11 @@ package GNATLLVM.Compile is
      with Pre => Present (N), Post => Present (Emit_Expression'Result);
    --  Compile an expression node to an LLVM value
 
+   function Emit_Safe_Expr (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit_Safe_Expr'Result);
+   --  Likewise, but push the LValue pair table so we compute this as
+   --  a safe subexpression.
+
    procedure Emit_Assignment
      (LValue                    : GL_Value;
       Orig_E                    : Node_Id;

@@ -264,9 +264,9 @@ package body GNATLLVM.Arrays is
       --  discriminant.
 
       if Eval_Info.For_Type then
-         return Emit_Expression ((if Eval_Info.Low_Bound
-                                  then Type_Low_Bound  (TE)
-                                  else Type_High_Bound (TE)));
+         return Emit_Safe_Expr ((if Eval_Info.Low_Bound
+                                 then Type_Low_Bound  (TE)
+                                 else Type_High_Bound (TE)));
       else
          return
            Load (Record_Field_Offset (Get_Matching_Value (Full_Scope (E)), E));
@@ -769,7 +769,7 @@ package body GNATLLVM.Arrays is
          --  Adjust the index according to the range lower bound
 
          declare
-            User_Index    : constant GL_Value       := Emit_Expression (N);
+            User_Index    : constant GL_Value       := Emit_Safe_Expr (N);
             Dim_Low_Bound : constant GL_Value       :=
               Get_Array_Bound (Array_Type, J - 2, True, V);
             Dim_Op_Type   : constant Entity_Id      :=
@@ -840,7 +840,7 @@ package body GNATLLVM.Arrays is
       Low_Idx_Bound  : constant GL_Value      :=
         Get_Array_Bound (Arr_Type, 0, True, V);
       Index_Val      : constant GL_Value      :=
-        Emit_Expression (Low_Bound (Get_Dim_Range (Rng)));
+        Emit_Safe_Expr (Low_Bound (Get_Dim_Range (Rng)));
       Dim_Op_Type   : constant Entity_Id      :=
         Get_GEP_Safe_Type (Low_Idx_Bound);
       Converted_Index : constant GL_Value     :=

@@ -41,6 +41,22 @@ package body GNATLLVM.Types is
       Table_Name           => "LValue_Pair_Table");
    --  Table of intermediate results for Emit_LValue
 
+   LValue_Pair_First : Nat := 1;
+   --  The current first entry in the above table.  See the below table.
+
+   --  In the process of computing an LValue, we may need to compute
+   --  another expression, e.g., an index or a bound, which may, in turn,
+   --  compute another LValue.  So we need to have a stack to save and restore
+   --  a starting pointer to the above table.
+
+   package LValue_Stack is new Table.Table
+     (Table_Component_Type => Nat,
+      Table_Index_Type     => Integer,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 3,
+      Table_Increment      => 2,
+      Table_Name           => "LValue_Stack");
+
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
      with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
    --  True if T_Have is a parent type of T_Need
@@ -367,13 +383,34 @@ package body GNATLLVM.Types is
       end if;
    end Build_Unchecked_Conversion;
 
+   ----------------------
+   -- Push_LValue_List --
+   ----------------------
+
+   procedure Push_LValue_List is
+   begin
+      LValue_Stack.Append (LValue_Pair_First);
+      LValue_Pair_First := LValue_Pair_Table.Last + 1;
+   end Push_LValue_List;
+
+   ---------------------
+   -- Pop_LValue_List --
+   ---------------------
+
+   procedure Pop_LValue_List is
+   begin
+      LValue_Pair_Table.Set_Last (LValue_Pair_First - 1);
+      LValue_Pair_First := LValue_Stack.Table (LValue_Stack.Last);
+      LValue_Stack.Decrement_Last;
+   end Pop_LValue_List;
+
    ------------------------
    --  Clear_LValue_List --
    ------------------------
 
    procedure Clear_LValue_List is
    begin
-      LValue_Pair_Table.Set_Last (0);
+      LValue_Pair_Table.Set_Last (LValue_Pair_First - 1);
    end Clear_LValue_List;
 
    -------------------------
@@ -417,7 +454,7 @@ package body GNATLLVM.Types is
       --  be finding the size of an object of that size, in which case the
       --  object will have been added last.
 
-      for J in reverse 1 .. LValue_Pair_Table.Last loop
+      for J in reverse LValue_Pair_First .. LValue_Pair_Table.Last loop
          if Is_Parent_Of (T_Need => Implementation_Base_Type (TE),
                           T_Have => Implementation_Base_Type
                             (LValue_Pair_Table.Table (J).Typ))

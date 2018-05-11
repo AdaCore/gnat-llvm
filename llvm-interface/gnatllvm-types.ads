@@ -53,6 +53,10 @@ package GNATLLVM.Types is
      with Pre  => Ekind (TE) in Discrete_Kind,
           Post => Present (T) and then Present (Low) and then Present (High);
 
+   procedure Push_LValue_List;
+   procedure Pop_LValue_List;
+   --  Push and pop the active range of the LValue pair list
+
    procedure Clear_LValue_List;
    --  Remove all entries previously added to the LValue list
 

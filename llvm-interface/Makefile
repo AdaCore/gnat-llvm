@@ -62,7 +62,7 @@ setup:
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
 	done
-	cd obj-tools && gnatmake -q xtreeprs xnmake xsnamest xoscons && \
+	cd obj-tools && gnatmake -q -j0 xtreeprs xnmake xsnamest xoscons && \
 	./xtreeprs && ./xnmake && ./xsnamest && \
 	mv nmake.ads nmake.adb treeprs.ads ../obj && \
 	mv snames.ns ../obj/snames.ads && mv snames.nb ../obj/snames.adb

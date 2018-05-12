@@ -850,11 +850,12 @@ package body GNATLLVM.Types is
       then
          return Convert_To_Access_To (Memory, TE);
 
-      --  Otherwise, we have to update the old fat pointer with the
-      --  new array data.
+      --  Otherwise, we have to update the old fat pointer with the new
+      --  array data.  But it's possible that V isn't a fat pointer
+      --  already, so make sure it is one.
 
       else
-         return Update_Fat_Pointer (V, Memory);
+         return Update_Fat_Pointer (Convert_To_Access_To (V, TE), Memory);
       end if;
    end Move_Into_Memory;
 

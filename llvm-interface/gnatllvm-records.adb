@@ -190,31 +190,50 @@ package body GNATLLVM.Records is
 
       procedure Add_FI
         (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat) is
+         Initial_Cur_Field : constant Entity_Id := Cur_Field;
       begin
          --  If this field really isn't in the record we're working on, it
          --  must be in a parent.  So it was correct to allocate space for
          --  it, but let the record description be from the type that it's
          --  actually in.  The fields in the entity list for this type are
-         --  in the same order as in the component list, with possibly some
-         --  entries missing, so if the next field in that list has the
-         --  same Original_Record_Component as this field, that field is
-         --  set to this field info and we step to the next field.  If
-         --  Cur_Field is what we're processing, skip it.
+         --  almost, but not quite, win the same order as in the component
+         --  list, so we have to search for a field in that list with the
+         --  same Original_Record_Component as this field.  This is
+         --  potentially quadratic in the number of fields, but we can
+         --  optimize by caching where we last searched in Cur_Field
+         --  of Create_Record_Type.
 
          Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
                                    Field_Ordinal => Ordinal));
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
-            if Cur_Field = E then
-               Next_Field (Cur_Field);
-            end if;
 
-         elsif Present (Cur_Field)
-           and then (Original_Record_Component (Cur_Field) =
-                       Original_Record_Component (E))
-         then
-            Set_Field_Info (Cur_Field, Field_Info_Table.Last);
-            Next_Field (Cur_Field);
+         else
+            --  Look from Cur_Field until the end of the list.  Then look
+            --  from the beginning to its previous value.
+
+            while Present (Cur_Field) loop
+               if Original_Record_Component (Cur_Field) =
+                 Original_Record_Component (E)
+               then
+                  Set_Field_Info (Cur_Field, Field_Info_Table.Last);
+                  return;
+               end if;
+
+               Next_Field (Cur_Field);
+            end loop;
+
+            Cur_Field := First_Field (TE);
+            while Cur_Field /= Initial_Cur_Field loop
+               if Original_Record_Component (Cur_Field) =
+                 Original_Record_Component (E)
+               then
+                  Set_Field_Info (Cur_Field, Field_Info_Table.Last);
+                  return;
+               end if;
+
+               Next_Field (Cur_Field);
+            end loop;
          end if;
       end Add_FI;
 
@@ -360,9 +379,6 @@ package body GNATLLVM.Records is
       Cur_Idx := Record_Info_Table.Last;
       Set_Record_Info (TE, Cur_Idx);
       Add_Fields (TE);
-
-      pragma Assert (No (Cur_Field));
-      --  We should have processed all fields in our entity list
 
       --  If we haven't yet made any record info entries, it means that
       --  this is a fixed-size record that can be just an LLVM type,

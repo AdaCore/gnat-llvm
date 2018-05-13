@@ -583,7 +583,7 @@ package body GNATLLVM.GLValue is
 
       return G (Const_Inline_Asm (Fn_Ty (Arg_Types, T), Template,
                                   Constraints, Is_Volatile, Is_Stack_Align),
-                TE);
+                TE, Reference_To_Subprogram);
    end Inline_Asm;
 
    -------------------

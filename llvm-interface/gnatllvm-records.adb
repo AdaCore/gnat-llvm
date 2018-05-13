@@ -207,34 +207,33 @@ package body GNATLLVM.Records is
                                    Field_Ordinal => Ordinal));
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
-
-         else
-            --  Look from Cur_Field until the end of the list.  Then look
-            --  from the beginning to its previous value.
-
-            while Present (Cur_Field) loop
-               if Original_Record_Component (Cur_Field) =
-                 Original_Record_Component (E)
-               then
-                  Set_Field_Info (Cur_Field, Field_Info_Table.Last);
-                  return;
-               end if;
-
-               Next_Field (Cur_Field);
-            end loop;
-
-            Cur_Field := First_Field (TE);
-            while Cur_Field /= Initial_Cur_Field loop
-               if Original_Record_Component (Cur_Field) =
-                 Original_Record_Component (E)
-               then
-                  Set_Field_Info (Cur_Field, Field_Info_Table.Last);
-                  return;
-               end if;
-
-               Next_Field (Cur_Field);
-            end loop;
          end if;
+
+         --  Look from Cur_Field until the end of the list.  Then look from
+         --  the beginning to its previous value.
+
+         while Present (Cur_Field) loop
+            if Original_Record_Component (Cur_Field) =
+              Original_Record_Component (E)
+            then
+               Set_Field_Info (Cur_Field, Field_Info_Table.Last);
+               return;
+            end if;
+
+            Next_Field (Cur_Field);
+         end loop;
+
+         Cur_Field := First_Field (TE);
+         while Cur_Field /= Initial_Cur_Field loop
+            if Original_Record_Component (Cur_Field) =
+              Original_Record_Component (E)
+            then
+               Set_Field_Info (Cur_Field, Field_Info_Table.Last);
+               return;
+            end if;
+
+            Next_Field (Cur_Field);
+         end loop;
       end Add_FI;
 
       ----------------

@@ -684,6 +684,9 @@ package body GNATLLVM.Compile is
    ----------------------
 
    function Emit_LValue_Main (N : Node_Id) return GL_Value is
+      TE : constant Entity_Id := Full_Etype (N);
+      V  : GL_Value;
+
    begin
       case Nkind (N) is
          when N_Identifier
@@ -706,15 +709,12 @@ package body GNATLLVM.Compile is
             return Make_Reference (Emit_Expression (Prefix (N)));
 
          when N_String_Literal =>
-            declare
-               V : constant GL_Value := Add_Global (Full_Etype (N), "str");
-            begin
-               Set_Value (N, V);
-               Set_Initializer (V, Emit_Expression (N));
-               Set_Linkage (V, Private_Linkage);
-               Set_Global_Constant (LLVM_Value (V), True);
-               return V;
-            end;
+            V := Add_Global (TE, "str");
+            Set_Value (N, V);
+            Set_Initializer (V, Emit_Expression (N));
+            Set_Linkage (V, Private_Linkage);
+            Set_Global_Constant (LLVM_Value (V), True);
+            return V;
 
          when N_Selected_Component =>
             return Record_Field_Offset (Emit_LValue_Internal (Prefix (N)),
@@ -726,8 +726,7 @@ package body GNATLLVM.Compile is
 
          when N_Slice =>
             return Get_Slice_LValue
-              (Full_Etype (N), Discrete_Range (N),
-               Emit_LValue_Internal (Prefix (N)));
+              (TE, Discrete_Range (N), Emit_LValue_Internal (Prefix (N)));
 
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
@@ -737,8 +736,8 @@ package body GNATLLVM.Compile is
             --  This matters if, e.g., the bounds of an array subtype change
             --  (see C46042A).
 
-            return Convert_To_Access_To
-              (Emit_LValue_Internal (Expression (N)), Full_Etype (N));
+            return
+              Convert_To_Access_To (Emit_LValue_Internal (Expression (N)), TE);
 
          when others =>
             --  If we have an arbitrary expression, evaluate it.  If it

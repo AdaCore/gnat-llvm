@@ -384,9 +384,9 @@ package body GNATLLVM.Compile is
                Loop_Identifier : constant Entity_Id :=
                  (if Present (Identifier (N))
                   then Entity (Identifier (N)) else Empty);
-               Iter_Scheme     : constant Node_Id := Iteration_Scheme (N);
-               Is_Mere_Loop    : constant Boolean := No (Iter_Scheme);
-               Is_For_Loop     : constant Boolean :=
+               Iter_Scheme     : constant Node_Id   := Iteration_Scheme (N);
+               Is_Mere_Loop    : constant Boolean   := No (Iter_Scheme);
+               Is_For_Loop     : constant Boolean   :=
                  not Is_Mere_Loop
                  and then Present (Loop_Parameter_Specification (Iter_Scheme));
 
@@ -578,6 +578,10 @@ package body GNATLLVM.Compile is
             Emit_Case (N);
 
          when N_Body_Stub =>
+
+            --  If we have a "separate" (either subprogram or package), we
+            --  compile that as part of this unit, so go into it.
+
             if Present (Library_Unit (N)) then
                Emit (Unit (Library_Unit (N)));
             end if;
@@ -621,6 +625,7 @@ package body GNATLLVM.Compile is
             Set_Value (Defining_Identifier (N), Emit_LValue (Name (N)));
 
          when N_Attribute_Definition_Clause =>
+
             --  The only interesting case left after expansion is for Address
             --  clauses. We only deal with 'Address if the object has a Freeze
             --  node.
@@ -666,7 +671,7 @@ package body GNATLLVM.Compile is
    function Emit_LValue_Internal (N : Node_Id) return GL_Value
    is
       Typ   : constant Entity_Id := Full_Etype (N);
-      Value : constant GL_Value := Need_LValue (Emit_LValue_Main (N), Typ);
+      Value : constant GL_Value  := Need_LValue (Emit_LValue_Main (N), Typ);
 
    begin
       --  If the object is not of void type, save the result in the

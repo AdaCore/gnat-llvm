@@ -1,6 +1,6 @@
 This is an experimental LLVM backend to the GNAT front-end.
 
-In order to build GNAT-LLVM from sources, you need fo follow these steps:
+In order to build GNAT-LLVM from sources, you need to follow these steps:
 
 - Get a check out of the GNAT sources under the llvm-interface directory:
 

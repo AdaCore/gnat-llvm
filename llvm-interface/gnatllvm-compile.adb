@@ -520,6 +520,13 @@ package body GNATLLVM.Compile is
             | N_Subtype_Declaration
             | N_Task_Type_Declaration
            =>
+            --  Only elaborate types in main unit; the rest will be
+            --  lazily elaborated.
+
+            if not In_Main_Unit then
+               return;
+            end if;
+
             declare
                TE  : constant Entity_Id := Defining_Identifier (N);
                T   : constant Type_T    := GNAT_To_LLVM_Type (TE, True);
@@ -543,10 +550,22 @@ package body GNATLLVM.Compile is
 
          when N_Pragma =>
             case Get_Pragma_Id (N) is
-               --  ??? While we aren't interested in most of the pragmas,
-               --  there are some we should look at (see
-               --  trans.c:Pragma_to_gnu). But still, the "others" case is
-               --  necessary.
+
+               when Pragma_Reviewable =>
+                  if not Emit_Debug_Info then
+                     Error_Msg_N ("must specify -g", N);
+                  end if;
+
+               --  ??  These are the ones that Gigi supports and we
+               --  should support as well at some point.
+
+               when Pragma_Inspection_Point
+                  | Pragma_Loop_Optimize
+                  | Pragma_Optimize
+                  | Pragma_Warning_As_Error
+                  | Pragma_Warnings
+                  =>
+                  null;
 
                when others => null;
             end case;

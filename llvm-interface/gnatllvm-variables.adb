@@ -33,6 +33,7 @@ with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -87,19 +88,26 @@ package body GNATLLVM.Variables is
    --  for that entry or 0 if not present.
 
    function Get_Dup_Global_Value (E : Entity_Id) return GL_Value
-     with Pre  => Present (E) and then not Is_Type (E);
+     with Pre => Present (E) and then not Is_Type (E);
    --  If E corresponds to a duplicated interface name and we've aready
    --  created a global for it, return that global.
 
    procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value)
-     with Pre  => Present (E) and then not Is_Type (E) and then Present (V);
+     with Pre => Present (E) and then not Is_Type (E) and then Present (V);
    --  If E corresponds to a duplicated interface name, record that we've
    --  created a value for it.
 
    function Get_Dup_Global_Is_Defined (E : Entity_Id) return Boolean
-     with Pre  => Present (E) and then not Is_Type (E);
+     with Pre => Present (E) and then not Is_Type (E);
    --  Return True if E corresponds to a duplicated interface name and one
    --  occurence of that name in the extended main unit is defining it.
+
+   function Make_Global_Variable (Def_Ident : Entity_Id) return GL_Value
+     with Pre  => Present (Def_Ident) and then not Is_Type (Def_Ident)
+                  and then not In_Elab_Proc,
+          Post => Present (Make_Global_Variable'Result);
+   --  Create a global variable for Def_Ident.  Definition is true if we
+   --  are doing this for a declaration.
 
    function Is_Static_Location (N : Node_Id) return Boolean
      with Pre => Present (N);
@@ -543,6 +551,70 @@ package body GNATLLVM.Variables is
       end if;
    end Emit_Decl_Lists;
 
+   --------------------------
+   -- Make_Global_Variable --
+   --------------------------
+
+   function Make_Global_Variable (Def_Ident : Entity_Id) return GL_Value is
+      TE       : constant Entity_Id := Full_Etype (Def_Ident);
+      LLVM_Var : GL_Value           := Get_Dup_Global_Value (Def_Ident);
+      Addr_Expr    : constant Node_Id   :=
+        (if Present (Address_Clause (Def_Ident))
+         then Expression (Address_Clause (Def_Ident)) else Empty);
+      Is_Ref   : constant Boolean   :=
+        Present (Addr_Expr) or else Is_Dynamic_Size (TE);
+
+   begin
+
+      --  If we have an Interface name, see if this is a duplicate of
+      --  another entity for which we've already made a global.
+
+      if Present (LLVM_Var) then
+
+         --  We could do this if both the previous and our entities agree
+         --  on whether the type's size is dynamic, rather than requiring
+         --  that neither be, but it's not worth the trouble.
+
+         if Is_Double_Reference (LLVM_Var) or else Is_Dynamic_Size (TE) then
+            Error_Msg_N
+              ("All uses of same interface name must have static size",
+               Def_Ident);
+            LLVM_Var := Emit_Undef (TE);
+         else
+            LLVM_Var := Convert_To_Access_To (LLVM_Var, TE);
+         end if;
+
+      --  Otherwise, see if this is a simple renaming
+
+      elsif Present (Renamed_Object (Def_Ident))
+        and then Is_Static_Location (Renamed_Object (Def_Ident))
+      then
+         LLVM_Var := Emit_LValue (Renamed_Object (Def_Ident));
+
+      --  Otherwise, make one here and properly set its linkage
+      --  information.  Note that we don't set External_Linkage since
+      --  that's the default if there's no initializer.
+
+      else
+         LLVM_Var := Add_Global
+           (TE, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref);
+         Set_Thread_Local (LLVM_Var,
+                           Has_Pragma_Thread_Local_Storage (Def_Ident));
+
+         if not Is_Public (Def_Ident) then
+            Set_Linkage (LLVM_Var, Internal_Linkage);
+         end if;
+
+         Set_Dup_Global_Value (Def_Ident, LLVM_Var);
+      end if;
+
+      --  Now save the value we've made for this variable
+
+      Set_Value (Def_Ident, LLVM_Var);
+      return LLVM_Var;
+
+   end Make_Global_Variable;
+
    ----------------------
    -- Emit_Declaration --
    ----------------------
@@ -567,7 +639,6 @@ package body GNATLLVM.Variables is
       Addr         : GL_Value           := No_GL_Value;
       Copied       : Boolean            := False;
       Set_Init     : Boolean            := False;
-      LLVM_Var_Dup : GL_Value           := No_GL_Value;
       LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
 
    begin
@@ -598,49 +669,7 @@ package body GNATLLVM.Variables is
       if (Library_Level or else Is_Statically_Allocated (Def_Ident))
         and then No (LLVM_Var)
       then
-         pragma Assert (not In_Elab_Proc);
-
-         --  If we have an Interface name, see if this is a duplicate of
-         --  another entity for which we've already made a global.
-
-         LLVM_Var_Dup := Get_Dup_Global_Value (Def_Ident);
-         if Present (LLVM_Var_Dup) then
-
-            --  We could do this if both the previous and our entities
-            --  agree on whether the type's size is dynamic, rather than
-            --  requiring that neither be, but it's not worth the trouble.
-
-            if Is_Double_Reference (LLVM_Var_Dup)
-              or else Is_Dynamic_Size (TE)
-            then
-               Error_Msg_N
-                 ("All uses of same interface name must have static size", N);
-            else
-               LLVM_Var := Convert_To_Access_To (LLVM_Var_Dup, TE);
-            end if;
-         end if;
-
-         --  If we haven't previously allocated a global above, or we couldn't
-         --  use the one we allocated, make one here and properly set its
-         --  linkage information.  Note that we don't set External_Linkage
-         --  since that's the default if there's no initializer.
-
-         if No (LLVM_Var) then
-            LLVM_Var := Add_Global
-              (TE, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref);
-            Set_Thread_Local (LLVM_Var,
-                              Has_Pragma_Thread_Local_Storage (Def_Ident));
-
-            if not Library_Level and then No (Interface_Name (Def_Ident)) then
-               Set_Linkage (LLVM_Var, Internal_Linkage);
-            end if;
-
-            Set_Dup_Global_Value (Def_Ident, LLVM_Var);
-         end if;
-
-         --  Now save the value we've made for this variable
-
-         Set_Value (Def_Ident, LLVM_Var);
+         LLVM_Var := Make_Global_Variable (Def_Ident);
 
          if In_Main_Unit then
 
@@ -685,7 +714,7 @@ package body GNATLLVM.Variables is
 
             if Present (Expr) then
                if Compile_Time_Known_Value (Expr)
-                 and then (No (LLVM_Var_Dup) or else LLVM_Var = LLVM_Var_Dup)
+                 and then Is_A_Global_Variable (LLVM_Var)
                  and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
                then
                   Set_Initializer
@@ -701,7 +730,9 @@ package body GNATLLVM.Variables is
             --  this is not an external or something we've already defined,
             --  set one to null to indicate that this is being defined.
 
-            if not Set_Init and not Is_External and No (LLVM_Var_Dup) then
+            if not Set_Init and then not Is_External
+              and then Is_A_Global_Variable (LLVM_Var)
+            then
                Set_Initializer (LLVM_Var, (if Is_Ref then Const_Null_Ref (TE)
                                            else Const_Null (TE)));
             end if;
@@ -889,14 +920,14 @@ package body GNATLLVM.Variables is
 
          return V;
 
-      --  Handle entities in Standard and ASCII on the fly
+      --  If we haven't seen this variable and it's not in our code unit,
+      --  make a global for it.
 
-      elsif No (V) and then Sloc (Def_Ident) <= Standard_Location then
-         V := Add_Global (TE, Get_Ext_Name (Def_Ident));
-         Set_Linkage (V, External_Linkage);
-         Set_Value (Def_Ident, V);
-         return V;
-      elsif Is_Double_Reference (V) then
+      elsif No (V) and then not In_Extended_Main_Code_Unit (Def_Ident) then
+         V := Make_Global_Variable (Def_Ident);
+      end if;
+
+      if Is_Double_Reference (V) then
          return Load (V);
       else
          return V;
@@ -908,29 +939,29 @@ package body GNATLLVM.Variables is
    ---------------------------
 
    function Emit_Identifier_Value (N : Node_Id) return GL_Value is
-      TE : constant Entity_Id := Full_Etype (N);
-      Def_Ident : Entity_Id   :=
+      TE        : constant Entity_Id := Full_Etype (N);
+      E         : constant Entity_Id :=
         (if Nkind (N) in N_Entity then N else Entity (N));
+      Def_Ident : constant Entity_Id :=
+        (if Ekind (E) = E_Constant and then Present (Full_View (E))
+           and then No (Address_Clause (E)) then Full_View (E) else E);
+      Decl      : constant Node_Id   := Declaration_Node (Def_Ident);
+      Expr      : constant Node_Id   :=
+         (if Nkind (Decl) = N_Object_Declaration
+            and then not No_Initialization (Decl)
+          then Expression (Decl) else Empty);
       V         : GL_Value;
+
    begin
-      --  N_Defining_Identifier nodes for enumeration literals are not
-      --  stored in the environment. Handle them here.
-
-      --  If this is a deferred constant, look at private version
-
-      if Ekind (Def_Ident) = E_Constant
-        and then Present (Full_View (Def_Ident))
-        and then No (Address_Clause (Def_Ident))
-      then
-         Def_Ident := Full_View (Def_Ident);
-      end if;
-
       --  See if this is an entity that's present in our
       --  activation record. Return it if so.
 
       V := Get_From_Activation_Record (Def_Ident);
       if Present (V) then
          return Need_Value (V, Full_Etype (Def_Ident));
+
+      --  N_Defining_Identifier nodes for enumeration literals are not
+      --  stored in the environment. Handle them here.
 
       elsif Ekind (Def_Ident) = E_Enumeration_Literal then
          return Const_Int (TE, Enumeration_Rep (Def_Ident));
@@ -943,75 +974,41 @@ package body GNATLLVM.Variables is
       then
          return Emit_Expression (Constant_Value (Def_Ident));
 
-         --  Handle entities in Standard and ASCII on the fly
+      --  If this is a bare discriminant, it's a reference to the
+      --  discriminant of some record.
 
-      elsif Sloc (Def_Ident) <= Standard_Location then
-         declare
-            Node : constant Node_Id := Get_Full_View (Def_Ident);
-            Decl : constant Node_Id := Declaration_Node (Node);
-            Expr : Node_Id := Empty;
+      elsif Ekind (Def_Ident) = E_Discriminant then
+         return Use_Discriminant_For_Bound (Def_Ident);
 
-         begin
-            if Nkind (Decl) /= N_Object_Renaming_Declaration then
-               Expr := Expression (Decl);
-            end if;
+      --  Replace constant references by the direct values, to avoid a
+      --  level of indirection for e.g. private values and to allow
+      --  generation of static values and static aggregates.
 
-            if Present (Expr)
-              and then Nkind_In (Expr, N_Character_Literal, N_Expanded_Name,
-                                 N_Integer_Literal, N_Real_Literal)
-            then
-               return Emit_Expression (Expr);
-
-            elsif Present (Expr) and then Nkind (Expr) = N_Identifier
-              and then Ekind (Entity (Expr)) = E_Enumeration_Literal
-            then
-               return
-                 Const_Int (TE, Enumeration_Rep (Entity (Expr)));
-            else
-               return Emit_Expression (Node);
-            end if;
-         end;
-
-      elsif Ekind (Entity (N)) = E_Discriminant then
-         return Use_Discriminant_For_Bound (Entity (N));
-
-      elsif Nkind (N) in N_Subexpr
-        and then Is_Constant_Folded (Entity (N))
-      then
-
-         --  Replace constant references by the direct values, to avoid a
-         --  level of indirection for e.g. private values and to allow
-         --  generation of static values and static aggregates.
-
-         declare
-            Node : constant Node_Id := Get_Full_View (Entity (N));
-            Decl : constant Node_Id := Declaration_Node (Node);
-            Expr : Node_Id := Empty;
-
-         begin
-            if Nkind (Decl) /= N_Object_Renaming_Declaration then
-               Expr := Expression (Decl);
-            end if;
-
-            if Present (Expr) then
-               if Nkind_In (Expr, N_Character_Literal, N_Expanded_Name,
+      elsif Is_Constant_Folded (Def_Ident) and then Present (Expr)
+        and then (Nkind_In (Expr, N_Character_Literal,
                             N_Integer_Literal, N_Real_Literal)
-                 or else (Nkind (Expr) = N_Identifier
-                            and then (Ekind (Entity (Expr)) =
-                                        E_Enumeration_Literal))
-               then
-                  return Emit_Expression (Expr);
-               end if;
-            end if;
-         end;
+                    or else (Nkind (Expr) = N_Identifier
+                               and then (Ekind (Entity (Expr)) =
+                                           E_Enumeration_Literal)))
+      then
+         return Emit_Expression (Expr);
       end if;
 
       V := Get_Value (Def_Ident);
+
+      --  If we haven't seen this variable and it's not in our code unit,
+      --  make a global for it.
+
+      if No (V) and then not In_Extended_Main_Code_Unit (Def_Ident) then
+         V := Make_Global_Variable (Def_Ident);
+      end if;
+
       if Is_Double_Reference (V) then
          V := Load (V);
       end if;
 
       return Need_Value (V, Full_Etype (Def_Ident));
+
    end Emit_Identifier_Value;
 
 end GNATLLVM.Variables;

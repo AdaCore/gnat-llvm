@@ -1088,6 +1088,11 @@ package GNATLLVM.GLValue is
      --  Add a global to the environment which is of type TE, so the global
      --  itself represents the address of TE.
 
+   function Is_A_Global_Variable (V : GL_Value) return Boolean is
+     (Present (Is_A_Global_Variable (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a global variable
+
    procedure Set_Initializer (V, Expr : GL_Value)
      with Pre => Present (V) and then Present (Expr);
    --  Set the initializer for a global variable

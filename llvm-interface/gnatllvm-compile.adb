@@ -847,8 +847,10 @@ package body GNATLLVM.Compile is
                Reversed        : constant Boolean   :=
                  Reverse_Present (Loop_Param_Spec);
                Var_Type        : constant Entity_Id := Full_Etype (Def_Ident);
-               Unsigned_Type   : constant Boolean   :=
-                 Is_Unsigned_Type (Implementation_Base_Type (Var_Type));
+               Var_BT          : constant Entity_Id :=
+                 Implementation_Base_Type (Var_Type);
+               Unsigned_BT    : constant Boolean   :=
+                 Is_Unsigned_Type (Var_BT);
                LLVM_Var        : GL_Value;
                Low, High       : GL_Value;
 
@@ -862,12 +864,15 @@ package body GNATLLVM.Compile is
                   Name => Get_Name (Def_Ident));
                Set_Value (Def_Ident, LLVM_Var);
 
-               --  Then go to the condition block if the range isn't empty
+               --  Then go to the condition block if the range isn't empty.
+               --  Note that this comparison must be done in the base type.
 
                Build_Cond_Br
-                 (I_Cmp ((if Unsigned_Type then Int_ULE else Int_SLE),
-                   Low, High, "loop-entry-cond"),
-                 BB_Cond, BB_Next);
+                 (I_Cmp ((if Unsigned_BT then Int_ULE else Int_SLE),
+                         Convert_To_Elementary_Type (Low, Var_BT),
+                         Convert_To_Elementary_Type (High, Var_BT),
+                         "loop-entry-cond"),
+                  BB_Cond, BB_Next);
 
                BB_Cond := Create_Basic_Block ("loop-cond-iter");
                Position_Builder_At_End (BB_Cond);

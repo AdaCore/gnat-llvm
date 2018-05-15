@@ -48,10 +48,9 @@ package GNATLLVM.Types is
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type (TE);
 
-   procedure Create_Discrete_Type
-     (TE : Entity_Id; T : out Type_T; Low, High : out GL_Value)
+   procedure Bounds_From_Type (TE : Entity_Id; Low, High : out GL_Value)
      with Pre  => Ekind (TE) in Discrete_Kind,
-          Post => Present (T) and then Present (Low) and then Present (High);
+          Post => Present (Low) and then Present (High);
 
    procedure Push_LValue_List;
    procedure Pop_LValue_List;

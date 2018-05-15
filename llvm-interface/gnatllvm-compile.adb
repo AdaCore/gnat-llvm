@@ -846,11 +846,9 @@ package body GNATLLVM.Compile is
                  Defining_Identifier (Loop_Param_Spec);
                Reversed        : constant Boolean   :=
                  Reverse_Present (Loop_Param_Spec);
+               Var_Type        : constant Entity_Id := Full_Etype (Def_Ident);
                Unsigned_Type   : constant Boolean   :=
-                 Is_Unsigned_Type (Full_Etype (Def_Ident));
-               Var_Type        : constant Entity_Id :=
-                 Full_Etype (Def_Ident);
-               LLVM_Type       : Type_T;
+                 Is_Unsigned_Type (Implementation_Base_Type (Var_Type));
                LLVM_Var        : GL_Value;
                Low, High       : GL_Value;
 
@@ -858,7 +856,7 @@ package body GNATLLVM.Compile is
                --  Initialization block: create the loop variable and
                --  initialize it.
 
-               Create_Discrete_Type (Var_Type, LLVM_Type, Low, High);
+               Bounds_From_Type (Var_Type, Low, High);
                LLVM_Var := Allocate_For_Type
                  (Var_Type, Var_Type, (if Reversed then High else Low),
                   Name => Get_Name (Def_Ident));

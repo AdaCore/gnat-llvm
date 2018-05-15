@@ -779,29 +779,22 @@ package body GNATLLVM.Types is
       end if;
    end Create_TBAA;
 
-   --------------------------
-   -- Create_Discrete_Type --
-   --------------------------
+   ----------------------
+   -- Bounds_From_Type --
+   ----------------------
 
-   procedure Create_Discrete_Type
-     (TE : Entity_Id; T : out Type_T; Low, High : out GL_Value)
+   procedure Bounds_From_Type (TE : Entity_Id; Low, High : out GL_Value)
    is
       SRange : constant Node_Id := Scalar_Range (TE);
 
    begin
-      --  Delegate LLVM Type creation to Create_Type
-
-      T := Create_Type (TE);
-
-      --  Compute the bounds
-
       pragma Assert (Nkind_In (SRange, N_Range,
                                N_Signed_Integer_Type_Definition));
 
       Low := Build_Type_Conversion (Low_Bound (SRange), TE);
       High := Build_Type_Conversion (High_Bound (SRange), TE);
 
-   end Create_Discrete_Type;
+   end Bounds_From_Type;
 
    ----------------------
    -- Move_Into_Memory --

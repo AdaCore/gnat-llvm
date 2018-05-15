@@ -224,6 +224,7 @@ s-maccod.ads \
 s-powtab.ads \
 s-unstyp.ads \
 s-parame.ads \
+s-stalib.ads \
 s-vector.ads \
 system.ads   \
 machcode.ads \
@@ -257,6 +258,7 @@ zfp: build
 	cp -p $(GNAT_SRC)/hie/s-parame__zfp.ads $(ADAINCLUDE)/s-parame.ads
 	cp -p $(GNAT_SRC)/hie/system-llvm.ads $(ADAINCLUDE)/system.ads
 	cp -p $(GNAT_SRC)/hie/s-sssita.ad[sb] $(ADAINCLUDE)/
+	cp -p $(GNAT_SRC)/hie/s-stalib__zfp.ads $(ADAINCLUDE)/s-stalib.ads
 	cp -p $(GNAT_SRC)/libgnat/s-flocon__none.adb $(ADAINCLUDE)/s-flocon.adb
 	cd $(ADALIB) && for f in $(COMPILABLE_SPECS); do \
 	  $(COMPILE) ../adainclude/$$f || exit 1; \

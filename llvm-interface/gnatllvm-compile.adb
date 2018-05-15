@@ -89,12 +89,11 @@ package body GNATLLVM.Compile is
 
          Add_To_Elab_Proc (N);
          return;
-      end if;
 
       --  If not at library level and in dead code, start a new basic block
       --  for any code we emit.
 
-      if not Library_Level and then Are_In_Dead_Code then
+      elsif not Library_Level and then Are_In_Dead_Code then
          Position_Builder_At_End (Create_Basic_Block ("dead-code"));
       end if;
 
@@ -194,9 +193,8 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Free_Statement =>
-            Heap_Deallocate
-              (Emit_Expression (Expression (N)),
-               Procedure_To_Call (N), Storage_Pool (N));
+            Heap_Deallocate (Emit_Expression (Expression (N)),
+                             Procedure_To_Call (N), Storage_Pool (N));
 
          when N_Code_Statement =>
             Emit_Code_Statement (N);
@@ -269,12 +267,13 @@ package body GNATLLVM.Compile is
          when N_Subprogram_Renaming_Declaration =>
 
             --  Nothing is needed except for debugging information.
-            --  Skip it for now???
-            --  Note that in any case, we should skip Intrinsic subprograms
+            --  ??? Skip it for now.  Note that in any case, we should
+            --  skip Intrinsic subprograms
 
             null;
 
          when N_Implicit_Label_Declaration =>
+
             --  Don't do anything here in case this label isn't actually
             --  used as a label.  In that case, the basic block we create
             --  here will be empty, which LLVM doesn't allow.  This can't
@@ -358,6 +357,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Freeze_Entity =>
+
             --  ??? Need to process Node itself
 
             Emit_Decl_Lists (Actions (N), No_List);
@@ -467,6 +467,7 @@ package body GNATLLVM.Compile is
 
       --  When we start a new recursive call, we usualy free the entries
       --  from the last one.
+
       if Clear then
          Clear_LValue_List;
       end if;

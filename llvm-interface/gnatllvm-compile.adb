@@ -58,6 +58,10 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (N) = N_Code_Statement;
    --  Generate code for inline asm
 
+   procedure Emit_Loop_Statement (N : Node_Id)
+     with Pre => Nkind (N) = N_Loop_Statement;
+   --  Generate code for a loop
+
    function Emit_LValue_Internal (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_LValue_Internal'Result);
    --  Called by Emit_LValue to walk the tree saving values
@@ -319,152 +323,7 @@ package body GNATLLVM.Compile is
             Emit_If (N);
 
          when N_Loop_Statement =>
-            declare
-               Loop_Identifier : constant Entity_Id :=
-                 (if Present (Identifier (N))
-                  then Entity (Identifier (N)) else Empty);
-               Iter_Scheme     : constant Node_Id   := Iteration_Scheme (N);
-               Is_Mere_Loop    : constant Boolean   := No (Iter_Scheme);
-               Is_For_Loop     : constant Boolean   :=
-                 not Is_Mere_Loop
-                 and then Present (Loop_Parameter_Specification (Iter_Scheme));
-
-               --  The general format for a loop is:
-               --    INIT;
-               --    while COND loop
-               --       STMTS;
-               --       ITER;
-               --    end loop;
-               --    NEXT:
-               --  Each step has its own basic block. When a loop does not need
-               --  one of these steps, just alias it with another one.
-
-               BB_Cond           : Basic_Block_T :=
-                 (if not Is_For_Loop
-                  then Enter_Block_With_Node (Empty)
-                  else Create_Basic_Block ("loop-cond"));
-               --  If this is not a FOR loop, there is no initialization: alias
-               --  it with the COND block.
-
-               BB_Stmts         : constant Basic_Block_T :=
-                 (if Is_Mere_Loop or else Is_For_Loop
-                  then BB_Cond else Create_Basic_Block ("loop-stmts"));
-               --  If this is a mere loop or a For loop, there is no condition
-               --  block: alias it with the STMTS block.
-
-               BB_Iter          : Basic_Block_T :=
-                 (if Is_For_Loop then Create_Basic_Block ("loop-iter")
-                  else BB_Cond);
-               --  If this is not a FOR loop, there is no iteration: alias it
-               --  with the COND block, so that at the end of every STMTS, jump
-               --  on ITER or COND.
-
-               BB_Next          : constant Basic_Block_T :=
-                   Create_Basic_Block ("loop-exit");
-               --  The NEXT step contains no statement that comes from the
-               --  loop: it is the exit point.
-
-            begin
-
-               --  First compile the iterative part of the loop: evaluation of
-               --  the exit condition, etc.
-
-               if not Is_Mere_Loop then
-                  if not Is_For_Loop then
-
-                     --  This is a WHILE loop: jump to the loop-body if the
-                     --  condition evaluates to True, jump to the loop-exit
-                     --  otherwise.
-
-                     Position_Builder_At_End (BB_Cond);
-                     Emit_If_Cond (Condition (Iter_Scheme), BB_Stmts, BB_Next);
-
-                  else
-                     --  This is a FOR loop
-
-                     declare
-                        Loop_Param_Spec : constant Node_Id   :=
-                          Loop_Parameter_Specification (Iter_Scheme);
-                        Def_Ident       : constant Node_Id   :=
-                          Defining_Identifier (Loop_Param_Spec);
-                        Reversed        : constant Boolean   :=
-                          Reverse_Present (Loop_Param_Spec);
-                        Unsigned_Type   : constant Boolean   :=
-                          Is_Unsigned_Type (Full_Etype (Def_Ident));
-                        Var_Type        : constant Entity_Id :=
-                          Full_Etype (Def_Ident);
-                        LLVM_Type       : Type_T;
-                        LLVM_Var        : GL_Value;
-                        Low, High       : GL_Value;
-
-                     begin
-                        --  Initialization block: create the loop variable and
-                        --  initialize it.
-
-                        Create_Discrete_Type (Var_Type, LLVM_Type, Low, High);
-                        LLVM_Var := Allocate_For_Type
-                          (Var_Type, Var_Type,
-                           (if Reversed then High else Low),
-                           Name => Get_Name (Def_Ident));
-                        Set_Value (Def_Ident, LLVM_Var);
-
-                        --  Then go to the condition block if the range isn't
-                        --  empty.
-
-                        Build_Cond_Br (I_Cmp
-                          ((if Unsigned_Type then Int_ULE else Int_SLE),
-                           Low, High, "loop-entry-cond"),
-                          BB_Cond, BB_Next);
-
-                        BB_Cond := Create_Basic_Block ("loop-cond-iter");
-                        Position_Builder_At_End (BB_Cond);
-                        Build_Cond_Br (I_Cmp
-                          (Int_EQ, Load (LLVM_Var),
-                           (if Reversed then Low else High), "loop-iter-cond"),
-                          BB_Next, BB_Iter);
-
-                        --  After STMTS, stop if the loop variable was equal to
-                        --  the "exit" bound. Increment/decrement it otherwise.
-
-                        Position_Builder_At_End (BB_Iter);
-
-                        declare
-                           Prev : constant GL_Value := Load (LLVM_Var);
-                           One  : constant GL_Value :=
-                             Const_Int (Var_Type, Uint_1);
-                           Next : constant GL_Value :=
-                             (if Reversed
-                              then NSW_Sub (Prev, One, "next-loop-var")
-                              else NSW_Add (Prev, One, "next-loop-var"));
-                        begin
-                           Store (Next, LLVM_Var);
-                        end;
-
-                        Build_Br (BB_Stmts);
-
-                        --  The ITER step starts at this special COND step
-
-                        BB_Iter := BB_Cond;
-                     end;
-                  end if;
-               end if;
-
-               --  Finally, emit the body of the loop.  Save and restore
-               --  the stack around that code, so we free any variables
-               --  allocated each iteration.
-
-               Position_Builder_At_End (BB_Stmts);
-               Push_Block;
-               Start_Block_Statements (Empty, No_List);
-               Push_Loop (Loop_Identifier, BB_Next);
-               Emit (Statements (N));
-               Set_Debug_Pos_At_Node (N);
-               Pop_Block;
-               Pop_Loop;
-
-               Build_Br (BB_Iter);
-               Position_Builder_At_End (BB_Next);
-            end;
+            Emit_Loop_Statement (N);
 
          when N_Block_Statement =>
             Push_Lexical_Debug_Scope (N);
@@ -983,6 +842,150 @@ package body GNATLLVM.Compile is
          end loop;
       end if;
    end Emit;
+
+   -------------------------
+   -- Emit_Loop_Statement --
+   -------------------------
+
+   procedure Emit_Loop_Statement (N : Node_Id) is
+      Loop_Identifier : constant Entity_Id :=
+        (if Present (Identifier (N)) then Entity (Identifier (N)) else Empty);
+      Iter_Scheme     : constant Node_Id   := Iteration_Scheme (N);
+      Is_Mere_Loop    : constant Boolean   := No (Iter_Scheme);
+      Is_For_Loop     : constant Boolean   :=
+        not Is_Mere_Loop
+        and then Present (Loop_Parameter_Specification (Iter_Scheme));
+
+      --  The general format for a loop is:
+      --    INIT;
+      --    while COND loop
+      --       STMTS;
+      --       ITER;
+      --    end loop;
+      --    NEXT:
+      --
+      --  Each step has its own basic block. When a loop doesn't need one
+      --  of these steps, just alias it with another one.
+
+      BB_Cond : Basic_Block_T :=
+        (if not Is_For_Loop then Enter_Block_With_Node (Empty)
+         else Create_Basic_Block ("loop-cond"));
+      --  If this is not a FOR loop, there is no initialization: alias
+      --  it with the COND block.
+
+      BB_Stmts : constant Basic_Block_T :=
+        (if Is_Mere_Loop or else Is_For_Loop
+         then BB_Cond else Create_Basic_Block ("loop-stmts"));
+      --  If this is a mere loop or a For loop, there is no condition
+      --  block: alias it with the STMTS block.
+
+      BB_Iter : Basic_Block_T :=
+        (if Is_For_Loop then Create_Basic_Block ("loop-iter") else BB_Cond);
+      --  If this is not a FOR loop, there is no iteration: alias it with
+      --  the COND block, so that at the end of every STMTS, jump on ITER
+      --  or COND.
+
+      BB_Next : constant Basic_Block_T := Create_Basic_Block ("loop-exit");
+      --  The NEXT step contains no statement that comes from the loop: it
+      --  is the exit point.
+
+   begin
+      --  First compile the iterative part of the loop: evaluation of the
+      --  exit condition, etc.
+
+      if not Is_Mere_Loop then
+         if not Is_For_Loop then
+
+            --  This is a WHILE loop: jump to the loop-body if the
+            --  condition evaluates to True, jump to the loop-exit
+            --  otherwise.
+
+            Position_Builder_At_End (BB_Cond);
+            Emit_If_Cond (Condition (Iter_Scheme), BB_Stmts, BB_Next);
+
+         else
+            --  This is a FOR loop
+
+            declare
+               Loop_Param_Spec : constant Node_Id   :=
+                 Loop_Parameter_Specification (Iter_Scheme);
+               Def_Ident       : constant Node_Id   :=
+                 Defining_Identifier (Loop_Param_Spec);
+               Reversed        : constant Boolean   :=
+                 Reverse_Present (Loop_Param_Spec);
+               Unsigned_Type   : constant Boolean   :=
+                 Is_Unsigned_Type (Full_Etype (Def_Ident));
+               Var_Type        : constant Entity_Id :=
+                 Full_Etype (Def_Ident);
+               LLVM_Type       : Type_T;
+               LLVM_Var        : GL_Value;
+               Low, High       : GL_Value;
+
+            begin
+               --  Initialization block: create the loop variable and
+               --  initialize it.
+
+               Create_Discrete_Type (Var_Type, LLVM_Type, Low, High);
+               LLVM_Var := Allocate_For_Type
+                 (Var_Type, Var_Type, (if Reversed then High else Low),
+                  Name => Get_Name (Def_Ident));
+               Set_Value (Def_Ident, LLVM_Var);
+
+               --  Then go to the condition block if the range isn't empty
+
+               Build_Cond_Br
+                 (I_Cmp ((if Unsigned_Type then Int_ULE else Int_SLE),
+                   Low, High, "loop-entry-cond"),
+                 BB_Cond, BB_Next);
+
+               BB_Cond := Create_Basic_Block ("loop-cond-iter");
+               Position_Builder_At_End (BB_Cond);
+               Build_Cond_Br
+                 (I_Cmp (Int_EQ, Load (LLVM_Var),
+                         (if Reversed then Low else High), "loop-iter-cond"),
+                 BB_Next, BB_Iter);
+
+               --  After STMTS, stop if the loop variable was equal to the
+               --  "exit" bound. Increment/decrement it otherwise.
+
+               Position_Builder_At_End (BB_Iter);
+
+               declare
+                  Prev : constant GL_Value := Load (LLVM_Var);
+                  One  : constant GL_Value := Const_Int (Var_Type, Uint_1);
+                  Next : constant GL_Value :=
+                    (if Reversed then NSW_Sub (Prev, One, "next-loop-var")
+                     else NSW_Add (Prev, One, "next-loop-var"));
+
+               begin
+                  Store (Next, LLVM_Var);
+               end;
+
+               Build_Br (BB_Stmts);
+
+               --  The ITER step starts at this special COND step
+
+               BB_Iter := BB_Cond;
+            end;
+         end if;
+      end if;
+
+      --  Finally, emit the body of the loop.  Save and restore the stack
+      --  around that code, so we free any variables allocated each iteration.
+
+      Position_Builder_At_End (BB_Stmts);
+      Push_Block;
+      Start_Block_Statements (Empty, No_List);
+      Push_Loop (Loop_Identifier, BB_Next);
+      Emit (Statements (N));
+      Set_Debug_Pos_At_Node (N);
+      Pop_Block;
+      Pop_Loop;
+
+      Build_Br (BB_Iter);
+      Position_Builder_At_End (BB_Next);
+
+   end Emit_Loop_Statement;
 
    ---------------------
    -- Emit_Assignment --

@@ -17,6 +17,8 @@
 
 with System;
 
+with Interfaces.C.Extensions;
+
 with Atree; use Atree;
 with Einfo; use Einfo;
 with Types; use Types;
@@ -31,6 +33,23 @@ package GNATLLVM is
    --  dependencies between other specs.  The intent is that every child
    --  package of LLVM with's this child, but that this with no other
    --  children.
+
+   subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
+   function "+" (L, R : unsigned_long_long) return unsigned_long_long
+     renames Interfaces.C.Extensions."+";
+   function "-" (L, R : unsigned_long_long) return unsigned_long_long
+     renames Interfaces.C.Extensions."-";
+   function "*" (L, R : unsigned_long_long) return unsigned_long_long
+     renames Interfaces.C.Extensions."*";
+   function "/" (L, R : unsigned_long_long) return unsigned_long_long
+     renames Interfaces.C.Extensions."/";
+   function "=" (L, R : unsigned_long_long) return Boolean
+     renames Interfaces.C.Extensions."=";
+   function ">" (L, R : unsigned_long_long) return Boolean
+     renames Interfaces.C.Extensions.">";
+
+   --  Define these here instead of using Interfaces.C.Extensions because
+   --  the latter brings in a lot of junk that gets in the way.
 
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us

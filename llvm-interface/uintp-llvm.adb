@@ -16,10 +16,12 @@
 ------------------------------------------------------------------------------
 
 with Interfaces; use Interfaces;
-with Interfaces.C.Extensions;
+
 with LLVM.Core; use LLVM.Core;
 
 with stdint_h; use stdint_h;
+
+with GNATLLVM;  use GNATLLVM;
 
 package body Uintp.LLVM is
 
@@ -138,9 +140,7 @@ package body Uintp.LLVM is
    begin
       if UI_Is_In_Int_Range (U) then
          return Const_Int
-           (T,
-            Interfaces.C.Extensions.unsigned_long_long (UI_To_Int (U)), True);
-
+           (T, unsigned_long_long (UI_To_Int (U)), True);
       else
          return Big_UI_To_LLVM (T, U);
       end if;

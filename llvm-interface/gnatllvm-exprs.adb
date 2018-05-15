@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions;
 
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
@@ -112,13 +111,12 @@ package body GNATLLVM.Exprs is
          when N_String_Literal =>
             declare
                String       : constant String_Id := Strval (N);
-               Array_Type   : constant Type_T := Create_Type (TE);
-               Element_Type : constant Type_T := Get_Element_Type (Array_Type);
-               Length       : constant Interfaces.C.unsigned :=
+               Array_Type   : constant Type_T    := Create_Type (TE);
+               Element_Type : constant Type_T    :=
+                 Get_Element_Type (Array_Type);
+               Length       : constant unsigned  :=
                  Get_Array_Length (Array_Type);
                Elements     : array (1 .. Length) of Value_T;
-
-               use Interfaces.C.Extensions;
 
             begin
                for J in Elements'Range loop

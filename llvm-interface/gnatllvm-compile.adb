@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Errout;   use Errout;
 with Exp_Code; use Exp_Code;

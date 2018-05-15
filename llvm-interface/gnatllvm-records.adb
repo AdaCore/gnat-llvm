@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Get_Targ; use Get_Targ;
 with Namet;    use Namet;

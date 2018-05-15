@@ -15,13 +15,12 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C;             use Interfaces.C;
+
 with Stand; use Stand;
 with Uintp; use Uintp;
 
 with LLVM.Core;   use LLVM.Core;
-
-with Interfaces.C;             use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 

@@ -15,17 +15,14 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Namet; use Namet;
-with Sinfo; use Sinfo;
-with Uintp; use Uintp;
-with Uintp.LLVM;
+with Namet;      use Namet;
+with Sinfo;      use Sinfo;
+with Uintp;      use Uintp;
+with Uintp.LLVM; use Uintp.LLVM;
 
-with LLVM.Core;   use LLVM.Core;
+with LLVM.Core; use LLVM.Core;
 
-with Interfaces.C;             use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
-
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Utils is
 
@@ -124,7 +121,7 @@ package GNATLLVM.Utils is
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint
 
    function Const_Int (T : Type_T; Value : Uint)
-     return Value_T renames Uintp.LLVM.UI_To_LLVM;
+     return Value_T renames UI_To_LLVM;
    --  Return an LLVM value corresponding to the universal int Value
 
    type Pred_Mapping is record

@@ -346,9 +346,8 @@ package body GNATLLVM.Compile is
             begin
                if Esize (TE) /= Uint_0
                  and then (Is_Dynamic_Size (TE)
-                             or else (Nat (unsigned_long_long'
-                                             (Get_LLVM_Type_Size_In_Bits (T)))
-                                        > Esize (TE)))
+                            or else (Nat (ULL'(Get_LLVM_Type_Size_In_Bits (T)))
+                                       > Esize (TE)))
                then
                   Error_Msg_Uint_1 := Esize (TE);
                   Error_Msg_NE ("?Type & does not fit into ^ bits", N, TE);

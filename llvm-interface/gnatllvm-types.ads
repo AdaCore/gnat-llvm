@@ -182,7 +182,7 @@ package GNATLLVM.Types is
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
-   function Get_LLVM_Type_Size (T : Type_T) return unsigned_long_long is
+   function Get_LLVM_Type_Size (T : Type_T) return ULL is
      ((Size_Of_Type_In_Bits (Module_Data_Layout, T) + 7) / 8)
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bytes
@@ -191,13 +191,13 @@ package GNATLLVM.Types is
      (Const_Int (Size_Type, Get_LLVM_Type_Size (T), False));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
-   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return unsigned_long_long
+   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return ULL
    is
      (Size_Of_Type_In_Bits (Module_Data_Layout, T))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
-   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return unsigned_long_long
+   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return ULL
    is
      (Size_Of_Type_In_Bits (Module_Data_Layout, Type_Of (V.Value)))
      with Pre => Present (V);

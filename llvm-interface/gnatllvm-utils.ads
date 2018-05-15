@@ -102,7 +102,7 @@ package GNATLLVM.Utils is
    --  Helper for LLVM's Build_GEP
 
    function Const_Ones (T : Type_T) return Value_T is
-     (Const_Int (T, unsigned_long_long'Last, Sign_Extend => True))
+     (Const_Int (T, ULL'Last, Sign_Extend => True))
      with Pre => Present (T), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 

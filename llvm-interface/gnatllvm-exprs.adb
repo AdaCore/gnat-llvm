@@ -121,8 +121,7 @@ package body GNATLLVM.Exprs is
             begin
                for J in Elements'Range loop
                   Elements (J) := Const_Int
-                    (Element_Type,
-                     unsigned_long_long (Get_String_Char (String, Nat (J))),
+                    (Element_Type, ULL (Get_String_Char (String, Nat (J))),
                      Sign_Extend => False);
                end loop;
 

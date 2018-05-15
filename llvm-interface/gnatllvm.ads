@@ -34,6 +34,9 @@ package GNATLLVM is
    --  package of LLVM with's this child, but that this with no other
    --  children.
 
+   --  Define these here instead of using Interfaces.C.Extensions because
+   --  the latter brings in a lot of junk that gets in the way.
+
    subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
    function "+" (L, R : unsigned_long_long) return unsigned_long_long
      renames Interfaces.C.Extensions."+";
@@ -48,8 +51,8 @@ package GNATLLVM is
    function ">" (L, R : unsigned_long_long) return Boolean
      renames Interfaces.C.Extensions.">";
 
-   --  Define these here instead of using Interfaces.C.Extensions because
-   --  the latter brings in a lot of junk that gets in the way.
+   subtype ULL is unsigned_long_long;
+   --  Define shorter alias name for easier reading
 
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us

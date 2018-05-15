@@ -610,9 +610,7 @@ package body GNATLLVM.Conditionals is
                   for L in UI_To_Int (Choices (K).Low) ..
                     UI_To_Int (Choices (K).High) loop
                      Add_Case (Switch,
-                               Const_Int (Typ,
-                                          unsigned_long_long (Integer (L)),
-                                          Sign_Extend => True),
+                               Const_Int (Typ, ULL (L), Sign_Extend => True),
                                Alts (J).BB);
                   end loop;
                end loop;

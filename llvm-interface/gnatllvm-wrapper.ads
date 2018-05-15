@@ -38,7 +38,7 @@ package GNATLLVM.Wrapper is
    function Create_TBAA_Access_Tag
      (MDBld                  : MD_Builder_T;
       Base_Type, Access_Type : Metadata_T;
-      Offset                 : unsigned_long_long) return Metadata_T;
+      Offset                 : ULL) return Metadata_T;
    pragma Import (C, Create_TBAA_Access_Tag, "Create_TBAA_Access_Tag");
 
    procedure Set_Volatile (Value : Value_T);

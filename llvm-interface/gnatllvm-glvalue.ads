@@ -379,9 +379,7 @@ package GNATLLVM.GLValue is
           Post => Present (Const_Int'Result);
 
    function Const_Int
-     (TE          : Entity_Id;
-      N           : unsigned_long_long;
-      Sign_Extend : Boolean := False) return GL_Value
+     (TE : Entity_Id; N : ULL; Sign_Extend : Boolean := False) return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Present (Const_Int'Result);
 
@@ -389,12 +387,12 @@ package GNATLLVM.GLValue is
      (TE          : Entity_Id;
       N           : unsigned;
       Sign_Extend : Boolean := False) return GL_Value is
-     (Const_Int (TE, unsigned_long_long (N), Sign_Extend))
+     (Const_Int (TE, ULL (N), Sign_Extend))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Present (Const_Int'Result);
 
    function Const_Ones (TE : Entity_Id) return GL_Value is
-     (Const_Int (TE, unsigned_long_long'Last, Sign_Extend => True))
+     (Const_Int (TE, ULL'Last, Sign_Extend => True))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
@@ -416,9 +414,7 @@ package GNATLLVM.GLValue is
           Post => Present (Const_Int'Result);
 
    function Const_Int
-     (V           : GL_Value;
-      N           : unsigned_long_long;
-      Sign_Extend : Boolean := False) return GL_Value
+     (V : GL_Value; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
      (Const_Int (Etype (V), N, Sign_Extend))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
@@ -429,7 +425,7 @@ package GNATLLVM.GLValue is
       N           : unsigned;
       Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Etype (V), unsigned_long_long (N), Sign_Extend))
+     (Const_Int (Etype (V), ULL (N), Sign_Extend))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
           Post => Present (Const_Int'Result);
 
@@ -448,20 +444,17 @@ package GNATLLVM.GLValue is
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
-     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
-   is
-     (Const_Int (Size_Type, unsigned_long_long (N), Sign_Extend))
+     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value is
+     (Const_Int (Size_Type, ULL (N), Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
-     (N : unsigned_long_long; Sign_Extend : Boolean := False) return GL_Value
-   is
+     (N : ULL; Sign_Extend : Boolean := False) return GL_Value is
      (Const_Int (Size_Type, N, Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
 
-   function Size_Const_Null return GL_Value
-   is
-     (Size_Const_Int (unsigned_long_long (0)))
+   function Size_Const_Null return GL_Value is
+     (Size_Const_Int (ULL (0)))
      with Post => Present (Size_Const_Null'Result);
 
    function Const_Int_32 (N : Uint) return GL_Value is
@@ -469,20 +462,17 @@ package GNATLLVM.GLValue is
      with Pre  => N /= No_Uint, Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
-     (N : unsigned_long_long; Sign_Extend : Boolean := False) return GL_Value
-   is
+     (N : ULL; Sign_Extend : Boolean := False) return GL_Value is
      (Const_Int (Int_32_Type, N, Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
-     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
-   is
+     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value is
      (Const_Int (Int_32_Type, unsigned_long_long (N), Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
-   function Const_Null_32 return GL_Value
-   is
-     (Const_Int_32 (unsigned_long_long (0)))
+   function Const_Null_32 return GL_Value is
+     (Const_Int_32 (ULL (0)))
      with Post => Present (Const_Null_32'Result);
 
    function Const_Real (V : GL_Value; F : double) return GL_Value is
@@ -491,9 +481,9 @@ package GNATLLVM.GLValue is
            Post => Present (Const_Real'Result);
 
    function Const_True return GL_Value is
-     (Const_Int (Standard_Boolean, unsigned_long_long (1)));
+     (Const_Int (Standard_Boolean, ULL (1)));
    function Const_False return GL_Value is
-     (Const_Int (Standard_Boolean, unsigned_long_long (0)));
+     (Const_Int (Standard_Boolean, ULL (0)));
 
    --  Define IR builder variants which take and/or return GL_Value
 

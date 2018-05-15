@@ -195,9 +195,7 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function Const_Int
-     (TE          : Entity_Id;
-      N           : unsigned_long_long;
-      Sign_Extend : Boolean := False) return GL_Value
+     (TE : Entity_Id; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
      (G (Const_Int (Create_Type (TE), N, Sign_Extend => Sign_Extend), TE));
 

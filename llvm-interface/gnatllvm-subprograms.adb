@@ -733,8 +733,7 @@ package body GNATLLVM.Subprograms is
 
       for J in File'Range loop
          Elements (J) := Const_Int
-           (Element_Type,
-            unsigned_long_long (Character'Pos (File (J))),
+           (Element_Type, ULL (Character'Pos (File (J))),
             Sign_Extend => False);
       end loop;
 
@@ -763,8 +762,7 @@ package body GNATLLVM.Subprograms is
       --  Then provide the line number
 
       Args (2) := Const_Int
-        (Int_Type,
-         unsigned_long_long (Get_Logical_Line_Number (Sloc (N))),
+        (Int_Type, ULL (Get_Logical_Line_Number (Sloc (N))),
          Sign_Extend => False);
       Discard (Call (IR_Builder, LLVM_Value (Get_LCH_Fn),
                      Args'Address, Args'Length, ""));

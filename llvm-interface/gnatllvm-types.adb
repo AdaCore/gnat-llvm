@@ -128,7 +128,7 @@ package body GNATLLVM.Types is
       Src_Uns     : constant Boolean := Is_Unsigned_Type (V);
       Dest_Uns    : constant Boolean := Is_Unsigned_Type (V);
       Src_Size    : constant Nat     :=
-        Nat (unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (V)));
+        Nat (ULL'(Get_LLVM_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
         (if Is_Modular_Integer_Type (TE) or else TE = Standard_Boolean
          then RM_Size (TE) else Esize (TE));
@@ -188,8 +188,7 @@ package body GNATLLVM.Types is
          --  compile-time by finding the correct floating-point type to use.
 
          declare
-            Size_In_Bits : constant unsigned_long_long :=
-              Get_LLVM_Type_Size_In_Bits (V);
+            Size_In_Bits : constant ULL   := Get_LLVM_Type_Size_In_Bits (V);
             PredHalf     : constant Long_Long_Float :=
               (if Long_Long_Float'Size = Size_In_Bits
                then Long_Long_Float'Pred (0.5)
@@ -337,8 +336,8 @@ package body GNATLLVM.Types is
                 and then Is_Discrete_Or_Fixed_Point_Type (V))
              or else (Is_Discrete_Or_Fixed_Point_Type (TE)
                         and then Is_Floating_Point_Type (V)))
-        and then (unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (T)) =
-                    unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (V)))
+        and then (ULL'(Get_LLVM_Type_Size_In_Bits (T)) =
+                    ULL'(Get_LLVM_Type_Size_In_Bits (V)))
       then
          return Bit_Cast (V, TE);
 

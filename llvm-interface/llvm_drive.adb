@@ -32,7 +32,6 @@ with Lib;      use Lib;
 with Namet;    use Namet;
 with Opt;      use Opt;
 with Osint.C;  use Osint.C;
-with Sem;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
@@ -72,9 +71,6 @@ package body LLVM_Drive is
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
       Result : Integer;
-
-      procedure Emit_All_Units is
-        new Sem.Walk_Library_Items (Action => Emit_Library_Item);
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
@@ -137,7 +133,8 @@ package body LLVM_Drive is
 
       Detect_Duplicate_Global_Names;
       Initialize_Debugging;
-      Emit_All_Units;
+      In_Main_Unit := True;
+      Emit (GNAT_Root);
 
       --  Output the translation
 

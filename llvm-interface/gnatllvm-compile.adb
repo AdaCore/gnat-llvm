@@ -141,8 +141,23 @@ package body GNATLLVM.Compile is
 
       case Nkind (N) is
          when N_Compilation_Unit =>
+
+            --  We assume there won't be any elaboration code and
+            --  clear that flag if we're wrong.
+
+            Set_Has_No_Elaboration_Code (N, True);
+
+            --  For a body, first process the spec if there is one
+
+            if Nkind (Unit (N)) = N_Package_Body
+              or else (Nkind (Unit (N)) = N_Subprogram_Body
+                         and then not Acts_As_Spec (Unit (N)))
+            then
+               Emit (Library_Unit (N));
+            end if;
+
             Emit (Context_Items (N));
-            Emit (Declarations (Aux_Decls_Node (N)));
+            Emit_Decl_Lists (Declarations (Aux_Decls_Node (N)), No_List);
             Emit (Unit (N));
             Emit (Actions (Aux_Decls_Node (N)));
             Emit (Pragmas_After (Aux_Decls_Node (N)));

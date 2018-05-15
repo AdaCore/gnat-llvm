@@ -467,7 +467,6 @@ package body GNATLLVM.Variables is
 
                         if not Ekind_In (Def_Ident, E_Generic_Procedure,
                                          E_Generic_Function)
-                          and then In_Main_Unit
                         then
                            Discard (Emit_Subprogram_Decl (N));
                         end if;
@@ -482,7 +481,6 @@ package body GNATLLVM.Variables is
 
                      if not Ekind_In (Def_Ident, E_Subprogram_Body,
                                       E_Generic_Procedure, E_Generic_Function)
-                       and then In_Main_Unit
                      then
                         Discard (Emit_Subprogram_Decl (Specification (N)));
                      end if;
@@ -629,9 +627,8 @@ package body GNATLLVM.Variables is
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_External  : constant Boolean   :=
-        not In_Main_Unit
-          or else (Is_Imported (Def_Ident)
-                     and then not Get_Dup_Global_Is_Defined (Def_Ident));
+        Is_Imported (Def_Ident)
+          and then not Get_Dup_Global_Is_Defined (Def_Ident);
       Is_Ref       : constant Boolean   :=
         Present (Addr_Expr) or else Is_Dynamic_Size (TE);
       Value        : GL_Value           := No_GL_Value;
@@ -682,71 +679,66 @@ package body GNATLLVM.Variables is
 
          LLVM_Var := Make_Global_Variable (Def_Ident);
 
-         if In_Main_Unit then
+         --  If there's an Address clause with a static address, we can
+         --  convert it to a pointer to us and make it a static
+         --  initializer.  Otherwise, we have to take care of this in the
+         --  elaboration proc if at library level.
 
-            --  If there's an Address clause with a static address, we can
-            --  convert it to a pointer to us and make it a static
-            --  initializer.  Otherwise, we have to take care of this in
-            --  the elaboration proc if at library level.
-
-            if Present (Addr_Expr) then
-               if Is_Static_Address (Addr_Expr) then
-                  Set_Initializer
-                    (LLVM_Var, Int_To_Ref (Emit_Expression (Addr_Expr),  TE));
-                  Set_Init := True;
-               elsif Library_Level then
-                  Add_To_Elab_Proc (N);
-               end if;
-            end if;
-
-            --  If this is an object of dynamic size, we have to take care
-            --  of the allocation in the elab proc if at library level.
-
-            if Library_Level and then not Is_External
-              and then Is_Dynamic_Size (TE)
-            then
+         if Present (Addr_Expr) then
+            if Is_Static_Address (Addr_Expr) then
+               Set_Initializer
+                 (LLVM_Var, Int_To_Ref (Emit_Expression (Addr_Expr),  TE));
+               Set_Init := True;
+            elsif Library_Level then
                Add_To_Elab_Proc (N);
             end if;
+         end if;
 
-            --  If we have an initial value, we can set an initializer if
-            --  this is a compile-time known expression, we have the actual
-            --  global, not a type-converted value, and the variable is not
-            --  of a dynamic size or has an address clause.
-            --
-            --  Note that the code below relies on the fact that if we execute
-            --  this case, we won't be added to the elab proc for any other
-            --  reason because if we are, we may do both a static and
-            --  run-time initialization.
-            --
-            --  ?? We'd like to use Compile_Time_Known_Value_Or_Agg here,
-            --  but if we have a conversion between two identical record
-            --  subtypes of different names, we can't do that at library
-            --  level.
+         --  If this is an object of dynamic size, we have to take care
+         --  of the allocation in the elab proc if at library level.
 
-            if Present (Expr) then
-               if Compile_Time_Known_Value (Expr)
-                 and then Is_A_Global_Variable (LLVM_Var)
-                 and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
-               then
-                  Set_Initializer
-                    (LLVM_Var, Build_Type_Conversion (Expr, TE));
-                  Set_Init := True;
-                  Copied := True;
-               elsif Library_Level then
-                  Add_To_Elab_Proc (N);
-               end if;
-            end if;
+         if Library_Level and then not Is_External
+           and then Is_Dynamic_Size (TE)
+         then
+            Add_To_Elab_Proc (N);
+         end if;
 
-            --  If we haven't already set an initializing expression and
-            --  this is not an external or something we've already defined,
-            --  set one to null to indicate that this is being defined.
+         --  If we have an initial value, we can set an initializer if this
+         --  is a compile-time known expression, we have the actual global,
+         --  not a type-converted value, and the variable is not of a
+         --  dynamic size or has an address clause.
+         --
+         --  Note that the code below relies on the fact that if we execute
+         --  this case, we won't be added to the elab proc for any other
+         --  reason because if we are, we may do both a static and run-time
+         --  initialization.
+         --
+         --  ?? We'd like to use Compile_Time_Known_Value_Or_Agg here, but
+         --  if we have a conversion between two identical record subtypes
+         --  of different names, we can't do that at library level.
 
-            if not Set_Init and then not Is_External
+         if Present (Expr) then
+            if Compile_Time_Known_Value (Expr)
               and then Is_A_Global_Variable (LLVM_Var)
+              and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
             then
-               Set_Initializer (LLVM_Var, (if Is_Ref then Const_Null_Ref (TE)
-                                           else Const_Null (TE)));
+               Set_Initializer (LLVM_Var, Build_Type_Conversion (Expr, TE));
+               Set_Init := True;
+               Copied := True;
+            elsif Library_Level then
+               Add_To_Elab_Proc (N);
             end if;
+         end if;
+
+         --  If we haven't already set an initializing expression and
+         --  this is not an external or something we've already defined,
+         --  set one to null to indicate that this is being defined.
+
+         if not Set_Init and then not Is_External
+           and then Is_A_Global_Variable (LLVM_Var)
+         then
+            Set_Initializer (LLVM_Var, (if Is_Ref then Const_Null_Ref (TE)
+                                        else Const_Null (TE)));
          end if;
       end if;
 
@@ -848,11 +840,8 @@ package body GNATLLVM.Variables is
                                  Get_Ext_Name (Def_Ident),
                                  Need_Reference => True);
          Set_Value (Def_Ident, LLVM_Var);
-         if In_Main_Unit then
-            Set_Initializer (LLVM_Var,
-                             Const_Null_Ref (Full_Etype (Def_Ident)));
-            Add_To_Elab_Proc (N);
-         end if;
+         Set_Initializer (LLVM_Var, Const_Null_Ref (Full_Etype (Def_Ident)));
+         Add_To_Elab_Proc (N);
       end if;
    end Emit_Object_Renaming_Declaration;
 

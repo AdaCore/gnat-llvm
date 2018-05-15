@@ -19,10 +19,6 @@ with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
 
-   procedure Emit_Library_Item (U : Node_Id)
-     with Pre => Present (U);
-   --  Generate code for the given library item
-
    procedure Emit (N : Node_Id)
      with Pre => Present (N);
    procedure Emit (List : List_Id; Starting_At : Node_Id := Empty);
@@ -55,8 +51,5 @@ package GNATLLVM.Compile is
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc).  If
    --  Clear is False, we don't reset the list used by Get_Matching_Value.
-
-   In_Main_Unit             : Boolean := False;
-   --  True if we're currently processing the main unit
 
 end GNATLLVM.Compile;

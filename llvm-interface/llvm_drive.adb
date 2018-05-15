@@ -133,7 +133,6 @@ package body LLVM_Drive is
 
       Detect_Duplicate_Global_Names;
       Initialize_Debugging;
-      In_Main_Unit := True;
       Emit (GNAT_Root);
 
       --  Output the translation

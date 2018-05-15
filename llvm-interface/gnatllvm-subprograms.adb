@@ -19,6 +19,7 @@ with Interfaces.C;            use Interfaces.C;
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with Exp_Unst; use Exp_Unst;
+with Lib;      use Lib;
 with Namet;    use Namet;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
@@ -28,6 +29,7 @@ with Table;    use Table;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -901,7 +903,7 @@ package body GNATLLVM.Subprograms is
 
       --  Define the appropriate linkage
 
-      if not In_Main_Unit then
+      if not In_Extended_Main_Code_Unit (Def_Ident) then
          Set_Linkage (LLVM_Func, External_Linkage);
       elsif not Is_Public (Def_Ident) then
          Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);

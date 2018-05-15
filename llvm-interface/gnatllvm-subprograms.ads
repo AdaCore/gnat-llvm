@@ -18,7 +18,6 @@
 with Sinfo; use Sinfo;
 with Uintp; use Uintp;
 
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
@@ -114,7 +113,7 @@ package GNATLLVM.Subprograms is
 
    procedure Emit_Elab_Proc
      (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
-     with Pre => Library_Level and then In_Main_Unit
+     with Pre => Library_Level
                  and then Nkind_In (N, N_Package_Specification, N_Package_Body)
                  and then Suffix'Length = 1;
    --  Emit code for the elaboration procedure for N.  Suffix is either "s"

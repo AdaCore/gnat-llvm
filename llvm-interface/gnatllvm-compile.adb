@@ -21,7 +21,6 @@ with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 with Errout;   use Errout;
 with Exp_Code; use Exp_Code;
 with Exp_Util; use Exp_Util;
-with Lib;      use Lib;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
@@ -67,46 +66,6 @@ package body GNATLLVM.Compile is
      with Pre => Present (N), Post => Present (Emit_LValue_Main'Result);
    --  Called by Emit_LValue_Internal to do the work at each level
 
-   -----------------------
-   -- Emit_Library_Item --
-   -----------------------
-
-   procedure Emit_Library_Item (U : Node_Id) is
-      Prag : Node_Id;
-
-   begin
-      --  Ignore Standard and ASCII packages
-
-      if Sloc (U) <= Standard_Location then
-         return;
-      end if;
-
-      --  We assume there won't be any elaboration code for any unit and
-      --  clear that flag if we're wrong.
-
-      In_Main_Unit := In_Extended_Main_Code_Unit (U);
-      if In_Main_Unit and then Nkind (Parent (U)) = N_Compilation_Unit then
-         Set_Has_No_Elaboration_Code (Parent (U), True);
-      end if;
-
-      --  Process any pragmas and declarations preceding the unit
-
-      Prag := First (Context_Items (Parent (U)));
-      while Present (Prag) loop
-         if Nkind (Prag) = N_Pragma then
-            Emit (Prag);
-         end if;
-
-         Next (Prag);
-      end loop;
-
-      Emit_Decl_Lists (Declarations (Aux_Decls_Node (Parent (U))), No_List);
-
-      --  Process the unit itself
-
-      Emit (U);
-   end Emit_Library_Item;
-
    ----------
    -- Emit --
    ----------
@@ -123,12 +82,8 @@ package body GNATLLVM.Compile is
                                       N_Handled_Sequence_Of_Statements))
       then
          --  Append to list of statements to put in the elaboration procedure
-         --  if in main unit, otherwise simply ignore the statement.
 
-         if In_Main_Unit then
-            Add_To_Elab_Proc (N);
-         end if;
-
+         Add_To_Elab_Proc (N);
          return;
       end if;
 
@@ -176,7 +131,7 @@ package body GNATLLVM.Compile is
                              Private_Declarations (N));
             Pop_Debug_Scope;
 
-            if Library_Level and then In_Main_Unit then
+            if Library_Level then
                Emit_Elab_Proc (N, Empty, Parent (Parent (N)), "s");
             end if;
 
@@ -203,7 +158,7 @@ package body GNATLLVM.Compile is
                --  them to the elaboration table (if we're not at library
                --  level).
 
-               if Library_Level and then In_Main_Unit
+               if Library_Level
                  and then Nkind (Parent (N)) = N_Compilation_Unit
                then
                   Emit_Elab_Proc (N, Stmts, Parent (N), "b");
@@ -218,27 +173,19 @@ package body GNATLLVM.Compile is
 
             --  Skip generic subprograms
 
-            if Present (Corresponding_Spec (N))
-              and then (Ekind (Corresponding_Spec (N))
-                          in Generic_Subprogram_Kind)
+            if not Present (Corresponding_Spec (N))
+              or else not (Ekind (Corresponding_Spec (N))
+                         in Generic_Subprogram_Kind)
             then
-               null;
-
-            --  If we aren't in the main unit, nothing to this.  This will
-            --  be evaluated lazily if needed.
-
-            elsif In_Main_Unit then
                Emit_Subprogram_Body (N);
             end if;
 
          when N_Subprogram_Declaration =>
 
-            --  Ignore intrinsic subprograms in the main unit as calls
-            --  to those will be expanded.
+            --  Ignore intrinsic subprograms as calls to those will be
+            --  expanded.
 
-            if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N))
-              and then In_Main_Unit
-            then
+            if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N)) then
                Discard (Emit_Subprogram_Decl (Specification (N)));
             end if;
 
@@ -310,14 +257,10 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Object_Declaration | N_Exception_Declaration =>
-            if In_Main_Unit then
-               Emit_Declaration (N);
-            end if;
+            Emit_Declaration (N);
 
          when N_Object_Renaming_Declaration =>
-            if In_Main_Unit then
-               Emit_Object_Renaming_Declaration (N);
-            end if;
+            Emit_Object_Renaming_Declaration (N);
 
          when N_Subprogram_Renaming_Declaration =>
 
@@ -539,13 +482,6 @@ package body GNATLLVM.Compile is
             | N_Subtype_Declaration
             | N_Task_Type_Declaration
            =>
-            --  Only elaborate types in main unit; the rest will be
-            --  lazily elaborated.
-
-            if not In_Main_Unit then
-               return;
-            end if;
-
             declare
                TE  : constant Entity_Id := Defining_Identifier (N);
                T   : constant Type_T    := GNAT_To_LLVM_Type (TE, True);

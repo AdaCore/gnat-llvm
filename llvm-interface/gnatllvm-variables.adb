@@ -103,8 +103,7 @@ package body GNATLLVM.Variables is
    --  occurence of that name in the extended main unit is defining it.
 
    function Make_Global_Variable (Def_Ident : Entity_Id) return GL_Value
-     with Pre  => Present (Def_Ident) and then not Is_Type (Def_Ident)
-                  and then not In_Elab_Proc,
+     with Pre  => Present (Def_Ident) and then not Is_Type (Def_Ident),
           Post => Present (Make_Global_Variable'Result);
    --  Create a global variable for Def_Ident.  Definition is true if we
    --  are doing this for a declaration.
@@ -658,9 +657,19 @@ package body GNATLLVM.Variables is
       --  proc, but, if not (if we have something to be statically allocated),
       --  we do it inline.
       --
-      --  If we are processing only declarations, only declare the
-      --  corresponding symbol at the LLVM level and add it to the
-      --  environment.
+      --  Ignore deferred constant definitions without address Clause since
+      --  they are processed fully in the front-end.  If No_Initialization
+      --  is set, this is not a deferred constant but a constant whose
+      --  value is built manually.  And constants that are renamings are
+      --  handled like variables.
+
+      if Ekind (Def_Ident) = E_Constant
+        and then Present (Full_View (Def_Ident))
+        and then No (Addr_Expr) and then not No_Init
+        and then No (Renamed_Object (Def_Ident))
+      then
+         return;
+      end if;
 
       --  Handle top-level declarations or ones that need to be treated
       --  that way unless if we've already made the item (e.g., if we're
@@ -669,6 +678,8 @@ package body GNATLLVM.Variables is
       if (Library_Level or else Is_Statically_Allocated (Def_Ident))
         and then No (LLVM_Var)
       then
+         pragma Assert (not In_Elab_Proc);
+
          LLVM_Var := Make_Global_Variable (Def_Ident);
 
          if In_Main_Unit then

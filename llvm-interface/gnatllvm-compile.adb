@@ -295,10 +295,14 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Object_Declaration | N_Exception_Declaration =>
-            Emit_Declaration (N);
+            if In_Main_Unit then
+               Emit_Declaration (N);
+            end if;
 
          when N_Object_Renaming_Declaration =>
-            Emit_Object_Renaming_Declaration (N);
+            if In_Main_Unit then
+               Emit_Object_Renaming_Declaration (N);
+            end if;
 
          when N_Subprogram_Renaming_Declaration =>
 

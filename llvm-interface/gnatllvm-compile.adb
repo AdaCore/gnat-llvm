@@ -370,7 +370,7 @@ package body GNATLLVM.Compile is
                      Error_Msg_N ("must specify -g", N);
                   end if;
 
-               --  ??  These are the ones that Gigi supports and we
+               --  ??? These are the ones that Gigi supports and we
                --  should support as well at some point.
 
                when Pragma_Inspection_Point

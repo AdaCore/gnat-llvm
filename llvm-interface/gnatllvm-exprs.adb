@@ -16,7 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
+with Interfaces.C.Extensions;
 
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
@@ -117,6 +117,8 @@ package body GNATLLVM.Exprs is
                Length       : constant Interfaces.C.unsigned :=
                  Get_Array_Length (Array_Type);
                Elements     : array (1 .. Length) of Value_T;
+
+               use Interfaces.C.Extensions;
 
             begin
                for J in Elements'Range loop

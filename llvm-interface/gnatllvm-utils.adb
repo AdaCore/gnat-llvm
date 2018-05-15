@@ -408,6 +408,12 @@ package body GNATLLVM.Utils is
       if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
          Append (Buf, Strval (Interface_Name (E)));
          return +Buf;
+      elsif Ekind (E) = E_Exception and then not Is_Public (E) then
+
+         --  ??? Local exception names aren't qualified like all other local
+         --  names, so we have to distinguish them from globals.
+
+         return "__" & Get_Name_String (Chars (E));
       else
          return Get_Name_String (Chars (E));
       end if;

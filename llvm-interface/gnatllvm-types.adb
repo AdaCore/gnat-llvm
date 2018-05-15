@@ -127,15 +127,14 @@ package body GNATLLVM.Types is
       Dest_FP     : constant Boolean := Is_Floating_Point_Type (TE);
       Src_Uns     : constant Boolean := Is_Unsigned_Type (V);
       Dest_Uns    : constant Boolean := Is_Unsigned_Type (V);
-      Src_Size    : constant unsigned_long_long :=
-        Get_LLVM_Type_Size_In_Bits (V);
-      Dest_Usize  : constant Uint :=
+      Src_Size    : constant Nat     :=
+        Nat (unsigned_long_long'(Get_LLVM_Type_Size_In_Bits (V)));
+      Dest_Usize  : constant Uint    :=
         (if Is_Modular_Integer_Type (TE) or else TE = Standard_Boolean
          then RM_Size (TE) else Esize (TE));
-      Dest_Size   : constant unsigned_long_long :=
-        unsigned_long_long (UI_To_Int (Dest_Usize));
+      Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
-      Subp        : Cvtf := null;
+      Subp        : Cvtf             := null;
 
    begin
       --  If the value is already of the desired LLVM type, we're done.
@@ -752,6 +751,7 @@ package body GNATLLVM.Types is
 
       --  Now save the result, if we have one, and compute any TBAA
       --  information.
+
       if Present (T) then
          Set_Type (TE, T);
          TBAA := Create_TBAA (TE);
@@ -769,9 +769,8 @@ package body GNATLLVM.Types is
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T is
    begin
-      if Ekind (TE) in E_Signed_Integer_Type  |
-                       E_Modular_Integer_Type |
-                       E_Floating_Point_Type
+      if Ekind_In (TE, E_Signed_Integer_Type, E_Modular_Integer_Type,
+                   E_Floating_Point_Type)
       then
          return Create_TBAA_Scalar_Type_Node
            (MD_Builder, Get_Name (TE), TBAA_Root);
@@ -814,7 +813,7 @@ package body GNATLLVM.Types is
       TE         : Entity_Id;
       Alloc_Type : Entity_Id) return GL_Value
    is
-      Memory : GL_Value           := Temp;
+      Memory : GL_Value := Temp;
 
    begin
       --  First, get Temp into something roughly looking like a
@@ -1040,7 +1039,7 @@ package body GNATLLVM.Types is
          pragma Assert (Is_Record_Type (TE));
          declare
             Field         : Entity_Id := First_Entity (TE);
-            Largest_Align : unsigned := 1;
+            Largest_Align : unsigned  := 1;
 
          begin
             while Present (Field) loop

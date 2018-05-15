@@ -203,7 +203,7 @@ package body GNATLLVM.Types is
               F_Cmp (Real_OLT, V, Const_Real (V, 0.0));
             Adjust_Amt : constant GL_Value :=
                 Const_Real (V, double (PredHalf));
-            --  ?? The conversion to "double" above may be problematic,
+            --  ??? The conversion to "double" above may be problematic,
             --  but it's not clear how else to get the constant to LLVM.
 
             Add_Amt    : constant GL_Value := F_Add (V, Adjust_Amt, "round");
@@ -642,7 +642,7 @@ package body GNATLLVM.Types is
 
       T := Get_Type (TE);
       if Present (T) then
-         --  ?? pragma Assert (not Definition);
+         --  ??? pragma Assert (not Definition);
          return T;
       end if;
 
@@ -935,7 +935,7 @@ package body GNATLLVM.Types is
       --  been specified) and the pool is a record, then it's a storage
       --  pool and we pass the pool, size, and alignment. Be sure that we
       --  convert the pool to actual type of the formal of the deallocator
-      --  function: it may be a derived type.  ??  This is a procedure
+      --  function: it may be a derived type.  ???  This is a procedure
       --  whose first parameter is an OUT parameter where it puts the
       --  address.  We should be converting procedures with OUT parameters
       --  to functions, which would make the below a lot easier, but we

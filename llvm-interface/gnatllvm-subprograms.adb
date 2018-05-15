@@ -101,7 +101,7 @@ package body GNATLLVM.Subprograms is
    --  to that array, so this must return false.
 
    Ada_Main_Elabb : GL_Value := No_GL_Value;
-   --  ??  This a kludge.  We sometimes need an elab proc for Ada_Main and
+   --  ???  This a kludge.  We sometimes need an elab proc for Ada_Main and
    --  this can cause confusion with global names.  So if we made it as
    --  part of the processing of a declaration, save it.
 
@@ -189,7 +189,7 @@ package body GNATLLVM.Subprograms is
 
    function Create_Subprogram_Access_Type return Type_T is
    begin
-      --  ?? Should we really always use char * for both of these?
+      --  ??? Should we really always use char * for both of these?
 
       return Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
    end Create_Subprogram_Access_Type;
@@ -361,7 +361,7 @@ package body GNATLLVM.Subprograms is
       --  subprogram, and if this isn't a reference to the variable
       --  in its own subprogram.  If so, get the object from the activation
       --  record.  We return the address from the record so we can either
-      --  give an LValue or an expression.  ??  Note that we only handle
+      --  give an LValue or an expression.  ???  Note that we only handle
       --  one level: there's no code here to go up multiple levels or
       --  even detect that we need to.
 

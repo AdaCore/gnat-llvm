@@ -700,7 +700,7 @@ package body GNATLLVM.Exprs is
             | Attribute_Value_Size
             | Attribute_Max_Size_In_Storage_Elements =>
 
-            --  ?? These aren't quite the same thing, but they're close
+            --  ??? These aren't quite the same thing, but they're close
             --  enough for quite a while.
 
             declare

@@ -49,7 +49,7 @@ package body GNATLLVM.Blocks is
       --  The activation record to pass to the At_End_Proc
 
       EH_List            : List_Id;
-      --  List of exception handlers.  ?? We may not want to keep it this way
+      --  List of exception handlers.  ??? We may not want to keep it this way
 
    end record;
 

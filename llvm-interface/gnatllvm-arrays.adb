@@ -384,7 +384,7 @@ package body GNATLLVM.Arrays is
       --  is of variable-size: in that case, we can use an LLVM array with
       --  zero as the bound.
 
-      --  ?? There is one more case that we could try, which is in the
+      --  ??? There is one more case that we could try, which is in the
       --  multi-dimensional case of dynamic bounds, but when the component
       --  type is of fixed size.  In that case, we could flatten this to a
       --  single-dimension array of zero size, and do the indexing

@@ -25,7 +25,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 package body GNATLLVM.DebugInfo is
 
    --  We maintain a stack of debug info contexts, with the outermost
-   --  context being global (?? not currently supported), then a subprogram,
+   --  context being global (??? not currently supported), then a subprogram,
    --  and then lexical blocks.
 
    Debug_Scope_Low_Bound : constant := 1;

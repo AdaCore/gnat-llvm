@@ -72,7 +72,7 @@ package body GNATLLVM.GLValue is
             return Is_Type (V.Typ)
               and then (Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
                           or else Is_Unconstrained_Array (V.Typ)
-            --  ?? Keep the above test until we see if we can use Fat_Pointer
+            --  ??? Keep the above test until we see if we can use Fat_Pointer
             --  consistently for this.
                           or else (Ekind (V.Typ) = E_Subprogram_Type
                                      and then Needs_Activation_Record
@@ -480,7 +480,7 @@ package body GNATLLVM.GLValue is
                    Full_Designated_Type (Ptr));
       else
          --  Otherwise, do a load with no type indication.
-         --  ?? At some point, we need to deal with TBAA or similar for these.
+         --  ??? At some point, we need to deal with TBAA or similar for these.
 
          return G (Load (IR_Builder, LLVM_Value (Ptr), Name),
                    Related_Type (Ptr), New_Relationship);

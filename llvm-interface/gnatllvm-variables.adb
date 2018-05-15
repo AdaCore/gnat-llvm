@@ -432,7 +432,7 @@ package body GNATLLVM.Variables is
                                       Empty, True, False);
 
                      --  Similarly for any declarations in the actions
-                     --  of a freeze node.  ??  We eventually have to
+                     --  of a freeze node.  ???  We eventually have to
                      --  process the freeze node itself.
 
                   elsif Nkind (N) = N_Freeze_Entity then
@@ -442,7 +442,7 @@ package body GNATLLVM.Variables is
 
                   --  Package bodies with freeze nodes get their
                   --  elaboration deferred until the freeze node, but the
-                  --  code must be placed in the right place.  ?? We don't
+                  --  code must be placed in the right place.  ??? We don't
                   --  yet know how to do this, so don't try.
 
                   --  elsif Nkind (N) = N_Package_Body
@@ -713,7 +713,7 @@ package body GNATLLVM.Variables is
          --  reason because if we are, we may do both a static and run-time
          --  initialization.
          --
-         --  ?? We'd like to use Compile_Time_Known_Value_Or_Agg here, but
+         --  ??? We'd like to use Compile_Time_Known_Value_Or_Agg here, but
          --  if we have a conversion between two identical record subtypes
          --  of different names, we can't do that at library level.
 

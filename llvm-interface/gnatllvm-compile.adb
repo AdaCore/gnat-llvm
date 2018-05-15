@@ -586,21 +586,20 @@ package body GNATLLVM.Compile is
 
    begin
       Set_Debug_Pos_At_Node (N);
-      if Nkind (N) in N_Binary_Op then
-
-         --  Use helper functions for comparisons and shifts; the rest by
-         --  generating the appropriate LLVM IR directly.
-
-         if Nkind (N) in N_Op_Compare then
-            return Emit_Comparison (Nkind (N), Left_Opnd (N), Right_Opnd (N));
-         elsif Nkind (N) in N_Op_Shift then
-            return Emit_Shift (Nkind (N), Left_Opnd (N), Right_Opnd (N));
-         else
-            return Emit_Binop (N);
-         end if;
-      end if;
-
       case Nkind (N) is
+
+         when N_Binary_Op =>
+            if Nkind (N) in N_Op_Compare then
+               return Emit_Comparison (Nkind (N), Left_Opnd (N),
+                                       Right_Opnd (N));
+            elsif Nkind (N) in N_Op_Shift then
+               return Emit_Shift (Nkind (N), Left_Opnd (N), Right_Opnd (N));
+            else
+               return Emit_Binary_Operation (N);
+            end if;
+
+         when N_Unary_Op =>
+            return Emit_Unary_Operation (N);
 
          when N_Expression_With_Actions =>
             Emit (Actions (N));
@@ -626,73 +625,6 @@ package body GNATLLVM.Compile is
                return Build_Short_Circuit_Op (Left_Opnd (N), Right_Opnd (N),
                                               Nkind (N));
             end if;
-
-         when N_Op_Not =>
-            return Build_Not (Emit_Expression (Right_Opnd (N)));
-
-         when N_Op_Abs =>
-
-            --  Emit: X >= 0 ? X : -X;
-
-            declare
-               Expr      : constant GL_Value :=
-                 Emit_Expression (Right_Opnd (N));
-               Zero      : constant GL_Value := Const_Null (Expr);
-               Compare   : constant GL_Value :=
-                 Emit_Elementary_Comparison (N_Op_Ge, Expr, Zero);
-               Neg_Expr  : constant GL_Value :=
-                 (if Is_Floating_Point_Type (Expr)
-                  then F_Neg (Expr) else NSW_Neg (Expr));
-
-            begin
-               if Is_Unsigned_Type (Expr) then
-                  return Expr;
-               else
-                  return Build_Select (Compare, Expr, Neg_Expr, "abs");
-               end if;
-            end;
-
-         when N_Op_Plus =>
-            return Emit_Expression (Right_Opnd (N));
-
-         when N_Op_Minus =>
-            declare
-               Expr : constant GL_Value  := Emit_Expression (Right_Opnd (N));
-               Typ  : constant Entity_Id := Full_Etype (Expr);
-
-            begin
-               if Is_Floating_Point_Type (Expr) then
-                  return F_Neg (Expr);
-               elsif Do_Overflow_Check (N)
-                 and then not Is_Unsigned_Type (Expr)
-               then
-                  declare
-                     Func      : constant GL_Value := Build_Intrinsic
-                       (Overflow, "llvm.ssub.with.overflow.i", Typ);
-                     Fn_Ret    : constant GL_Value :=
-                       Call (Func, Typ, (1 => Const_Null (Typ), 2 => Expr));
-                     Overflow  : constant GL_Value :=
-                       Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
-                     Label_Ent : constant Entity_Id :=
-                       Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
-                     BB_Next   : Basic_Block_T;
-
-                  begin
-                     if Present (Label_Ent) then
-                        BB_Next := Create_Basic_Block;
-                        Build_Cond_Br
-                          (Overflow, Get_Label_BB (Label_Ent), BB_Next);
-                        Position_Builder_At_End (BB_Next);
-                     else
-                        Emit_LCH_Call_If (Overflow, N);
-                     end if;
-
-                     return Extract_Value (Typ, Fn_Ret, 0);
-                  end;
-               else
-                  return NSW_Neg (Expr);
-               end if;
-            end;
 
          when N_Unchecked_Type_Conversion =>
             return Build_Unchecked_Conversion (Expression (N), TE);

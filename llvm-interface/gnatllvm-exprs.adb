@@ -137,11 +137,11 @@ package body GNATLLVM.Exprs is
       end case;
    end Emit_Literal;
 
-   ----------------
-   -- Emit_Binop --
-   ----------------
+   ---------------------------
+   -- Emit_Binary_Operation --
+   ---------------------------
 
-   function Emit_Binop (N : Node_Id) return GL_Value is
+   function Emit_Binary_Operation (N : Node_Id) return GL_Value is
       type Opf is access function
         (LHS, RHS : GL_Value; Name : String := "") return GL_Value;
 
@@ -329,7 +329,89 @@ package body GNATLLVM.Exprs is
 
       return Result;
 
-   end Emit_Binop;
+   end Emit_Binary_Operation;
+
+   --------------------------
+   -- Emit_Unary_Operation --
+   --------------------------
+
+   function Emit_Unary_Operation (N : Node_Id) return GL_Value is
+   begin
+      case Nkind (N) is
+
+         when N_Op_Not =>
+            return Build_Not (Emit_Expression (Right_Opnd (N)));
+
+         when N_Op_Abs =>
+
+            --  Emit: X >= 0 ? X : -X;
+
+            declare
+               Expr      : constant GL_Value :=
+                 Emit_Expression (Right_Opnd (N));
+               Zero      : constant GL_Value := Const_Null (Expr);
+               Compare   : constant GL_Value :=
+                 Emit_Elementary_Comparison (N_Op_Ge, Expr, Zero);
+               Neg_Expr  : constant GL_Value :=
+                 (if Is_Floating_Point_Type (Expr)
+                  then F_Neg (Expr) else NSW_Neg (Expr));
+
+            begin
+               if Is_Unsigned_Type (Expr) then
+                  return Expr;
+               else
+                  return Build_Select (Compare, Expr, Neg_Expr, "abs");
+               end if;
+            end;
+
+         when N_Op_Plus =>
+            return Emit_Expression (Right_Opnd (N));
+
+         when N_Op_Minus =>
+            declare
+               Expr : constant GL_Value  := Emit_Expression (Right_Opnd (N));
+               Typ  : constant Entity_Id := Full_Etype (Expr);
+
+            begin
+               if Is_Floating_Point_Type (Expr) then
+                  return F_Neg (Expr);
+               elsif Do_Overflow_Check (N)
+                 and then not Is_Unsigned_Type (Expr)
+               then
+                  declare
+                     Func      : constant GL_Value := Build_Intrinsic
+                       (Overflow, "llvm.ssub.with.overflow.i", Typ);
+                     Fn_Ret    : constant GL_Value :=
+                       Call (Func, Typ, (1 => Const_Null (Typ), 2 => Expr));
+                     Overflow  : constant GL_Value :=
+                       Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
+                     Label_Ent : constant Entity_Id :=
+                       Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
+                     BB_Next   : Basic_Block_T;
+
+                  begin
+                     if Present (Label_Ent) then
+                        BB_Next := Create_Basic_Block;
+                        Build_Cond_Br
+                          (Overflow, Get_Label_BB (Label_Ent), BB_Next);
+                        Position_Builder_At_End (BB_Next);
+                     else
+                        Emit_LCH_Call_If (Overflow, N);
+                     end if;
+
+                     return Extract_Value (Typ, Fn_Ret, 0);
+                  end;
+               else
+                  return NSW_Neg (Expr);
+               end if;
+            end;
+
+         when others =>
+            pragma Assert (False);
+            return Emit_Undef (Full_Etype (N));
+      end case;
+
+   end Emit_Unary_Operation;
 
    ----------------
    -- Emit_Shift --

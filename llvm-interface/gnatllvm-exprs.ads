@@ -31,10 +31,15 @@ package GNATLLVM.Exprs is
           Post => Present (Emit_Shift'Result);
    --  Handle shift and rotate operations
 
-   function Emit_Binop (N : Node_Id) return GL_Value
+   function Emit_Binary_Operation (N : Node_Id) return GL_Value
      with Pre  => Nkind (N) in N_Binary_Op,
-          Post => Present (Emit_Binop'Result);
+          Post => Present (Emit_Binary_Operation'Result);
    --  Handle other binary operations
+
+   function Emit_Unary_Operation (N : Node_Id) return GL_Value
+     with Pre  => Nkind (N) in N_Unary_Op,
+          Post => Present (Emit_Unary_Operation'Result);
+   --  Handle unary operations
 
    function Emit_Literal (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Literal'Result);

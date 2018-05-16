@@ -639,7 +639,7 @@ package body GNATLLVM.Variables is
    begin
       pragma Assert (No (Freeze_Node (Def_Ident)) or else No (Expr));
       --  We don't have code to handle this case yet since we can't find
-      --  any occurence of it to test
+      --  any occurrence of it to test
 
       --  Nothing to do if this is a debug renaming type
 

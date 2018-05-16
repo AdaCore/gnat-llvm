@@ -126,7 +126,7 @@ package body GNATLLVM.Types is
       Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
       Dest_FP     : constant Boolean := Is_Floating_Point_Type (TE);
       Src_Uns     : constant Boolean := Is_Unsigned_Type (V);
-      Dest_Uns    : constant Boolean := Is_Unsigned_Type (V);
+      Dest_Uns    : constant Boolean := Is_Unsigned_Type (TE);
       Src_Size    : constant Nat     :=
         Nat (ULL'(Get_LLVM_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
@@ -492,22 +492,21 @@ package body GNATLLVM.Types is
    ----------------------
 
    function Bounds_To_Length
-     (Low, High : GL_Value; TE : Entity_Id) return GL_Value
+     (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
    is
+      Low      : constant GL_Value := Convert_To_Elementary_Type (In_Low, TE);
+      High     : constant GL_Value := Convert_To_Elementary_Type (In_High, TE);
       Cmp_Kind : constant Int_Predicate_T :=
-        (if Is_Unsigned_Type (Low) then Int_UGT else Int_SGT);
-      Is_Empty : constant GL_Value :=
-      I_Cmp (Cmp_Kind, Low, High, "is-empty");
-      Out_Low  : constant GL_Value := Convert_To_Elementary_Type (Low, TE);
-      Out_High : constant GL_Value := Convert_To_Elementary_Type (High, TE);
+        (if Is_Unsigned_Type (TE) then Int_UGT else Int_SGT);
+      Is_Empty : constant GL_Value := I_Cmp (Cmp_Kind, Low, High, "is-empty");
       Const_1  : constant GL_Value := Const_Int (TE, Uint_1);
    begin
       return Build_Select
         (C_If   => Is_Empty,
          C_Then => Const_Null (TE),
          C_Else =>
-           (if Out_Low = Const_1 then Out_High
-            else NSW_Add (NSW_Sub (Out_High, Out_Low), Const_1)));
+           (if Low = Const_1 then High
+            else NSW_Add (NSW_Sub (High, Low), Const_1)));
    end Bounds_To_Length;
 
    --------------------------------

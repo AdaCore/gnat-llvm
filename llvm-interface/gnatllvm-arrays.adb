@@ -338,7 +338,7 @@ package body GNATLLVM.Arrays is
         (Cnst => First, Value => Empty, Dynamic => False);
       High_Bound : constant One_Bound    :=
         (Cnst => Last, Value => Empty, Dynamic => False);
-      Dim_Info   : constant Index_Bounds := (Bound_Type => Standard_Positive,
+      Dim_Info   : constant Index_Bounds := (Bound_Type => Standard_Integer,
                                              Low => Low_Bound,
                                              High => High_Bound);
       Result_Typ : constant Type_T       :=

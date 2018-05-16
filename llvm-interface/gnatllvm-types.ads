@@ -172,9 +172,10 @@ package GNATLLVM.Types is
    --  type because the caller will be doing any needed conversions.
 
    function Bounds_To_Length
-     (Low, High : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Present (Low) and then Present (High) and then Is_Type (TE)
-                  and then Type_Of (Low) = Type_Of (High),
+     (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Present (In_Low) and then Present (In_High)
+                  and then Is_Type (TE)
+                  and then Type_Of (In_Low) = Type_Of (In_High),
           Post => Full_Etype (Bounds_To_Length'Result) = TE;
    --  Low and High are bounds of a discrete type.  Compute the length of
    --  that type, taking into account the superflat case, and do that

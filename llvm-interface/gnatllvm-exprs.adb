@@ -675,8 +675,8 @@ package body GNATLLVM.Exprs is
                      then NSW_Add (Base, One, "attr-succ")
                      else NSW_Sub (Base, One, "attr-pred"));
 
-               --  If this is a modular type, we have to check for
-               --  and adjust if we wrap.
+               --  If this is a modular type, we have to check for wrap
+               --  and adjust if so.
 
                if Non_Binary_Modulus (TE) then
                   declare

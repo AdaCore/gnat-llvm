@@ -432,11 +432,10 @@ package body GNATLLVM.Variables is
                                       Empty, True, False);
 
                      --  Similarly for any declarations in the actions
-                     --  of a freeze node.  ???  We eventually have to
-                     --  process the freeze node itself.
+                     --  of a freeze node.
 
                   elsif Nkind (N) = N_Freeze_Entity then
-                     --  Emit (N);
+                     Process_Freeze_Entity (N);
                      Emit_Decl_Lists (Actions (N), No_List, Empty,
                                       True, False);
 
@@ -638,6 +637,10 @@ package body GNATLLVM.Variables is
       LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
 
    begin
+      pragma Assert (No (Freeze_Node (Def_Ident)) or else No (Expr));
+      --  We don't have code to handle this case yet since we can't find
+      --  any occurence of it to test
+
       --  Nothing to do if this is a debug renaming type
 
       if TE = Standard_Debug_Renaming_Type then

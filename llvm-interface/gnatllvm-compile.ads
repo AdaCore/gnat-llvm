@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Sinfo; use Sinfo;
+
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
@@ -51,5 +53,9 @@ package GNATLLVM.Compile is
    --  LValue. This function can be used to get a pointer to a value rather
    --  than the value itself (out parameters, simple accesses, etc).  If
    --  Clear is False, we don't reset the list used by Get_Matching_Value.
+
+   procedure Process_Freeze_Entity (N : Node_Id)
+     with Pre => Nkind (N) = N_Freeze_Entity;
+   --  Process the actual freezing denoted by node N
 
 end GNATLLVM.Compile;

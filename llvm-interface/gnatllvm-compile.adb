@@ -24,7 +24,6 @@ with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
 with Sem_Util; use Sem_Util;
-with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
@@ -258,7 +257,11 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Object_Declaration | N_Exception_Declaration =>
-            Emit_Declaration (N);
+            if No (Freeze_Node (Defining_Identifier (N)))
+              or else In_Elab_Proc
+            then
+               Emit_Declaration (N);
+            end if;
 
          when N_Object_Renaming_Declaration =>
             Emit_Object_Renaming_Declaration (N);
@@ -356,8 +359,7 @@ package body GNATLLVM.Compile is
 
          when N_Freeze_Entity =>
 
-            --  ??? Need to process Node itself
-
+            Process_Freeze_Entity (N);
             Emit_Decl_Lists (Actions (N), No_List);
 
          when N_Pragma =>
@@ -773,6 +775,20 @@ package body GNATLLVM.Compile is
          end loop;
       end if;
    end Emit;
+
+   ---------------------------
+   -- Process_Freeze_Entity --
+   ---------------------------
+
+   procedure Process_Freeze_Entity (N : Node_Id) is
+      E    : constant Entity_Id := Entity (N);
+      Decl : constant Node_Id   := Declaration_Node (E);
+
+   begin
+      if Nkind_In (Decl, N_Object_Declaration, N_Exception_Declaration) then
+         Emit_Declaration (Decl);
+      end if;
+   end Process_Freeze_Entity;
 
    -------------------------
    -- Emit_Loop_Statement --

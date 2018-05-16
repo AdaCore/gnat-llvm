@@ -671,10 +671,29 @@ package body GNATLLVM.Exprs is
 
             begin
                pragma Assert (List_Length (Exprs) = 1);
-               return
-                 (if Attr = Attribute_Succ
-                  then NSW_Add (Base, One, "attr-succ")
-                  else NSW_Sub (Base, One, "attr-pred"));
+               V := (if Attr = Attribute_Succ
+                     then NSW_Add (Base, One, "attr-succ")
+                     else NSW_Sub (Base, One, "attr-pred"));
+
+               --  If this is a modular type, we have to check for
+               --  and adjust if we wrap.
+
+               if Non_Binary_Modulus (TE) then
+                  declare
+                     C_0  : constant GL_Value := Const_Null (Base);
+                     C_M1 : constant GL_Value :=
+                       Const_Int (Base, Modulus (TE) - 1);
+
+                  begin
+                     if Attr = Attribute_Succ then
+                        V := Build_Select (I_Cmp (Int_EQ, Base, C_M1), C_0, V);
+                     else --  Attr = Attribute_Pred
+                        V := Build_Select (I_Cmp (Int_EQ, Base, C_0), C_M1, V);
+                     end if;
+                  end;
+               end if;
+
+               return V;
             end;
 
          when Attribute_Machine

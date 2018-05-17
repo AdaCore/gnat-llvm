@@ -189,7 +189,7 @@ package GNATLLVM.Types is
    --  Return the size of an LLVM type, in bytes
 
    function Get_LLVM_Type_Size (T : Type_T) return GL_Value is
-     (Const_Int (Size_Type, Get_LLVM_Type_Size (T), False));
+     (Size_Const_Int (Get_LLVM_Type_Size (T)));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
    function Get_LLVM_Type_Size_In_Bits (T : Type_T) return ULL

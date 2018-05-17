@@ -50,6 +50,13 @@ package GNATLLVM.Arrays is
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
+   function Get_Bound_Part_Size (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Array_Type (TE),
+          Post => Present (Get_Bound_Part_Size'Result);
+   --  Get the size of the Bounds part of array and data of TE, taking into
+   --  account both the size of the bounds and the alignment of the bounds
+   --  and TE.
+
    function Get_Dim_Range (N : Node_Id) return Node_Id
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
    --  Return the N_Range for an array type

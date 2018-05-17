@@ -66,14 +66,31 @@ package GNATLLVM.GLValue is
       --  Value contains data representing the bounds of an object of Typ,
       --  which must be an unconstrained array type.
 
+      Bounds_And_Data,
+      --  Value contains data representing the bounds of an object of Typ,
+      --  which must be an unconstrained array type, followed by the actual
+      --  data, with only padding required by the alignment of the array
+      --  between the bounds and data.
+
       Reference_To_Bounds,
       --  Value contains an address that points to the bounds of an object
       --  of Typ, which must be an unconstrained type.
+
+      Reference_To_Bounds_And_Data,
+      --  Value contains an address that points to the bounds of an object
+      --  of Typ, which must be an unconstrained type, followed by the
+      --  data.
 
       Array_Data,
       --  Value contains the address of the first byte of memory that
       --  contains the value of the array.  For constrained arrays, this
       --  is the same as Reference.
+
+      Thin_Pointer,
+      --  Similar to Array_Data, except that the bounds are guaranteed to
+      --  be in memory in front of the data (with the minimal padding
+      --  between then).  Also similar to Reference_To_Bounds_And_Data,
+      --  except for exactly where the pointer references.q
 
       Reference_To_Subprogram,
       --  Value contains the address of a subprogram which is a procedure
@@ -81,6 +98,16 @@ package GNATLLVM.GLValue is
       --  if Typ is not a Void.  If Typ is a subprogram type, then
       --  Reference should be used instead and if Typ is an access
       --  to subprogram type, then Data is the appropriate relationship.
+
+      Activation_Record,
+      --  Value is an activation record for a subprogram of Typ
+
+      Reference_To_Activation_Record,
+      --  Value is a reference to an activation record for a subprogram of Typ
+
+      Fat_Reference_To_Subprogram,
+      --  Similar to Reference_To_Subprogram except that it contains both
+      --  a pointer to the subprogram and to the activation record.
 
       Invalid);
       --  This is invalid relationship, which will result from, e.g.,
@@ -91,27 +118,62 @@ package GNATLLVM.GLValue is
    --  those properties.
 
    type Relationship_Property is record
-     Reference : Boolean;
+     Is_Ref : Boolean;
      --  True if this is a reference to something
 
-     Deref     : GL_Value_Relationship;
-     --  The relationship corresponding to a dereference (Load) from a
-     --  GL_Valule that has this relationship.
+     Deref  : GL_Value_Relationship;
+     --  The relationship, if any, corresponding to a dereference (Load) from a
+     --  GL_Value that has this relationship.
+
+     Ref    : GL_Value_Relationship;
+     --  The relationship, if any, corresponding to a reference (taking the
+     --  address of) A GL_Value that has this relationship.
+
    end record;
 
    type Relationship_Array is
      array (GL_Value_Relationship) of Relationship_Property;
 
    Relation_Props : constant Relationship_Array :=
-     (Data                     => (Reference => False, Deref => Invalid),
-      Reference                => (Reference => True,  Deref => Data),
-      Double_Reference         => (Reference => True,  Deref => Reference),
-      Fat_Pointer              => (Reference => True,  Deref => Invalid),
-      Bounds                   => (Reference => False, Deref => Invalid),
-      Reference_To_Bounds      => (Reference => True,  Deref => Bounds),
-      Array_Data               => (Reference => True,  Deref => Invalid),
-      Reference_To_Subprogram  => (Reference => True,  Deref => Invalid),
-      Invalid                  => (Reference => False, Deref => Invalid));
+     (Data                         =>
+        (Is_Ref => False, Deref => Invalid,           Ref => Reference),
+      Reference                      =>
+        (Is_Ref => True,  Deref => Data,              Ref => Double_Reference),
+      Double_Reference               =>
+        (Is_Ref => True,  Deref => Reference,         Ref => Invalid),
+      Fat_Pointer                    =>
+        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+      Bounds                         =>
+        (Is_Ref => False, Deref => Invalid,
+         Ref => Reference_To_Bounds),
+      Bounds_And_Data                =>
+        (Is_Ref => False, Deref => Invalid,
+         Ref => Reference_To_Bounds_And_Data),
+      Reference_To_Bounds            =>
+        (Is_Ref => True,  Deref => Bounds,            Ref => Invalid),
+      Reference_To_Bounds_And_Data   =>
+        (Is_Ref => True,  Deref => Bounds_And_Data,   Ref => Invalid),
+      Array_Data                     =>
+        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+      Thin_Pointer                   =>
+        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+      Reference_To_Subprogram        =>
+        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+      Activation_Record              =>
+        (Is_Ref => False, Deref => Invalid,
+         Ref => Reference_To_Activation_Record),
+      Reference_To_Activation_Record =>
+        (Is_Ref => True,  Deref => Activation_Record, Ref => Invalid),
+      Fat_Reference_To_Subprogram    =>
+        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+      Invalid                        =>
+        (Is_Ref => False, Deref => Invalid,           Ref => Invalid));
+
+   function Relationship_For_Access_Type
+     (TE : Entity_Id) return GL_Value_Relationship
+     with Pre => Is_Access_Type (TE);
+   --  Given an access type, return the Relationship that a value of this
+   --  type would have with its Designated_Type.
 
    type GL_Value_Base is record
       Value                : Value_T;
@@ -159,7 +221,7 @@ package GNATLLVM.GLValue is
    --  Now some predicates derived from the above
 
    function Is_Reference (V : GL_Value) return Boolean is
-     (Relation_Props (Relationship (V)).Reference)
+     (Relation_Props (Relationship (V)).Is_Ref)
      with Pre => Present (V);
 
    function Is_Raw_Array (V : GL_Value) return Boolean is

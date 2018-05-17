@@ -17,10 +17,12 @@
 
 with Ada.Unchecked_Conversion;
 
+with Get_Targ; use Get_Targ;
+
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Types;  use GNATLLVM.Types;
-with GNATLLVM.Utils;  use GNATLLVM.Utils;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.GLValue is
 
@@ -82,13 +84,21 @@ package body GNATLLVM.GLValue is
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
-         when Fat_Pointer | Bounds =>
+         when Fat_Pointer | Bounds | Bounds_And_Data =>
             return Is_Unconstrained_Array (V.Typ);
 
-         when Array_Data | Reference_To_Bounds =>
+         when Array_Data | Thin_Pointer
+            | Reference_To_Bounds | Reference_To_Bounds_And_Data =>
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
               and then Is_Unconstrained_Array (V.Typ);
+
+         when Activation_Record  | Fat_Reference_To_Subprogram =>
+            return Ekind (V.Typ) = E_Subprogram_Type;
+
+         when Reference_To_Activation_Record =>
+            return Ekind (V.Typ) = E_Subprogram_Type
+              and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
          when Reference_To_Subprogram =>
             return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
@@ -125,6 +135,35 @@ package body GNATLLVM.GLValue is
    begin
       null;
    end Discard;
+
+   ----------------------------------
+   -- Relationship_For_Access_Type --
+   ----------------------------------
+
+   function Relationship_For_Access_Type
+     (TE : Entity_Id) return GL_Value_Relationship is
+   begin
+      --  If this points to an unconstrained array, this is either a
+      --  fat or thin pointer, depending on the size.
+
+      if Is_Access_Unconstrained (TE) then
+         return (if RM_Size (TE) = Get_Pointer_Size
+                 then Thin_Pointer else Fat_Pointer);
+
+      --  If this is an access to subprogram, this is either a pointer to
+      --  the subprogram or a pair of pointers that includes the activation
+      --  record.
+
+      elsif Ekind (Full_Designated_Type (TE)) = E_Subprogram_Type then
+         return (if Needs_Activation_Record (Full_Designated_Type (TE))
+                 then Fat_Reference_To_Subprogram else Reference);
+
+      --  Otherwise, it's a normal pointer and it just a Reference
+
+      else
+         return Reference;
+      end if;
+   end Relationship_For_Access_Type;
 
    ------------
    -- Alloca --

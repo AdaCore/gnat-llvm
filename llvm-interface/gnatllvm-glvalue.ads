@@ -414,6 +414,25 @@ package GNATLLVM.GLValue is
      (Number_Dimensions (Full_Etype (V)))
      with Pre => Is_Array_Type (V);
 
+   --  Next are useful functions to manipulate GL_Values
+
+   function To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
+     (G (LLVM_Value (V), TE, Data))
+     with Pre  => Is_Access_Type (TE) and then Is_Reference (V)
+                  and then Designated_Type (TE) = Full_Designated_Type (V),
+          Post => Relationship (To_Access'Result) = Data
+                  and then Full_Etype (To_Access'Result) = TE;
+   --  V is a reference to an object whose type is the designated type of
+   --  TE.  Convert it to being viewed as an object of type TE.
+
+   function From_Access (V : GL_Value) return GL_Value is
+      (G (LLVM_Value (V), Full_Designated_Type (V),
+          Relationship_For_Access_Type (Full_Etype (V))))
+     with Pre  => Is_Access_Type (Full_Etype (V)),
+          Post => Is_Reference (From_Access'Result);
+      --  V is a value of an access type.  Instead, represent it as a reference
+      --  to the designated type of that access type.
+
    function Make_Reference (V : GL_Value) return GL_Value is
      (G_Ref (LLVM_Value (V), Full_Designated_Type (V)))
      with Pre  => Is_Access_Type (V),

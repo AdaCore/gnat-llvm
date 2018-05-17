@@ -1193,7 +1193,7 @@ package body GNATLLVM.Compile is
          --  the result.  Otherwise, just do the call.
 
          if Present (Output_Variable) then
-            Store (Call (Asm, Full_Etype (Asm), Args), Output_Val);
+            Store (Call (Asm, Full_Etype (Output_Variable), Args), Output_Val);
          else
             Call (Asm, Args);
          end if;

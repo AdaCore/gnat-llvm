@@ -447,13 +447,8 @@ package body GNATLLVM.Records is
          --  We have to align the size so far to the alignment of
          --  this type.
 
-         if This_Align > Cur_Align then
-            Total_Size := Build_And
-              (NSW_Add (Total_Size, Size_Const_Int (This_Align - 1)),
-               NSW_Neg (Size_Const_Int (This_Align)));
-         end if;
-
-         Total_Size := NSW_Add (Total_Size, This_Size);
+         Total_Size :=
+           NSW_Add (Align_To (Total_Size, Cur_Align, This_Align), This_Size);
          Cur_Align  := This_Align;
          Cur_Idx    := RI.Next;
       end loop;

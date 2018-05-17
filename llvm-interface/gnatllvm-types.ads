@@ -256,6 +256,12 @@ package GNATLLVM.Types is
    --  Convert V to Size_Type.  This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 
+   function Align_To
+     (V : GL_Value; Cur_Align, Align : unsigned) return GL_Value
+     with Pre => Present (V), Post => Present (Align_To'Result);
+   --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
+   --  Align_To.
+
    function Get_Type_Alignment (T : Type_T) return unsigned is
      (ABI_Alignment_Of_Type (Module_Data_Layout, T))
      with Pre => Present (T);

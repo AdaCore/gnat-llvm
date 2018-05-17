@@ -1006,6 +1006,21 @@ package body GNATLLVM.Types is
       return Convert_To_Elementary_Type (V, Size_Type);
    end Convert_To_Size_Type;
 
+   --------------
+   -- Align_To --
+   --------------
+
+   function Align_To
+     (V : GL_Value; Cur_Align, Align : unsigned) return GL_Value is
+   begin
+      if Align > Cur_Align then
+         return Build_And (NSW_Add (V, Const_Int (V, Align - 1)),
+                           NSW_Neg (Const_Int (V, Align)));
+      else
+         return V;
+      end if;
+   end Align_To;
+
    ------------------------
    -- Get_Type_Alignment --
    ------------------------

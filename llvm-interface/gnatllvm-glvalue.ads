@@ -430,8 +430,8 @@ package GNATLLVM.GLValue is
           Relationship_For_Access_Type (Full_Etype (V))))
      with Pre  => Is_Access_Type (Full_Etype (V)),
           Post => Is_Reference (From_Access'Result);
-      --  V is a value of an access type.  Instead, represent it as a reference
-      --  to the designated type of that access type.
+   --  V is a value of an access type.  Instead, represent it as a reference
+   --  to the designated type of that access type.
 
    function Make_Reference (V : GL_Value) return GL_Value is
      (G_Ref (LLVM_Value (V), Full_Designated_Type (V)))

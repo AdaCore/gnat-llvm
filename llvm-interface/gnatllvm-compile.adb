@@ -257,11 +257,7 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Object_Declaration | N_Exception_Declaration =>
-            if No (Freeze_Node (Defining_Identifier (N)))
-              or else In_Elab_Proc
-            then
-               Emit_Declaration (N);
-            end if;
+            Emit_Declaration (N);
 
          when N_Object_Renaming_Declaration =>
             Emit_Object_Renaming_Declaration (N);
@@ -786,7 +782,7 @@ package body GNATLLVM.Compile is
 
    begin
       if Nkind_In (Decl, N_Object_Declaration, N_Exception_Declaration) then
-         Emit_Declaration (Decl);
+         Emit_Declaration (Decl, For_Freeze_Entity => True);
       end if;
    end Process_Freeze_Entity;
 

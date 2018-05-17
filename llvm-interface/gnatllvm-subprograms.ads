@@ -106,10 +106,13 @@ package GNATLLVM.Subprograms is
      with Pre => Present (N);
    --  Generate a call to __gnat_last_chance_handler
 
-   procedure Add_To_Elab_Proc (N : Node_Id)
-     with Pre => Library_Level and then Present (N);
+   procedure Add_To_Elab_Proc (N : Node_Id; For_Type : Entity_Id := Empty)
+     with Pre => Library_Level and then Present (N)
+                 and then (No (For_Type) or else Is_Type (For_Type));
    --  Add N to the elaboration table if it's not already there.  We assume
-   --  here that if it's already there, it was the last one added
+   --  here that if it's already there, it was the last one added.  If
+   --  For_Type is Present, elaborate N as an expression, convert to
+   --  For_Type, and save it as the value for N.
 
    procedure Emit_Elab_Proc
      (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)

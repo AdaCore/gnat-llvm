@@ -615,7 +615,9 @@ package body GNATLLVM.Variables is
    -- Emit_Declaration --
    ----------------------
 
-   procedure Emit_Declaration (N : Node_Id) is
+   procedure Emit_Declaration
+     (N : Node_Id; For_Freeze_Entity : Boolean := False)
+   is
       Def_Ident    : constant Node_Id   := Defining_Identifier (N);
       TE           : constant Entity_Id := Full_Etype (Def_Ident);
       No_Init      : constant Boolean   :=
@@ -637,9 +639,6 @@ package body GNATLLVM.Variables is
       LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
 
    begin
-      pragma Assert (No (Freeze_Node (Def_Ident)) or else No (Expr));
-      --  We don't have code to handle this case yet since we can't find
-      --  any occurrence of it to test
 
       --  Nothing to do if this is a debug renaming type
 
@@ -669,6 +668,27 @@ package body GNATLLVM.Variables is
         and then No (Renamed_Object (Def_Ident))
       then
          return;
+      end if;
+
+      --  If this entity has a freeze node and we're not currently
+      --  processing the freeze node, all we do is evaluate the initial
+      --  expression, if there is one and it's not a constant.  Otherwise,
+      --  see if we've already evaluated that expression and get the value.
+
+      if Present (Freeze_Node (Def_Ident))
+        and then not For_Freeze_Entity and then not In_Elab_Proc
+      then
+         if Present (Expr) and then not Compile_Time_Known_Value (Expr) then
+            if Library_Level then
+               Add_To_Elab_Proc (Expr, For_Type => TE);
+            else
+               Set_Value (Expr, Build_Type_Conversion (Expr, TE));
+            end if;
+         end if;
+
+         return;
+      elsif Present (Expr) and then Has_Value (Expr) then
+         Value := Get_Value (Expr);
       end if;
 
       --  Handle top-level declarations or ones that need to be treated
@@ -725,7 +745,9 @@ package body GNATLLVM.Variables is
               and then Is_A_Global_Variable (LLVM_Var)
               and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
             then
-               Set_Initializer (LLVM_Var, Build_Type_Conversion (Expr, TE));
+               Set_Initializer (LLVM_Var,
+                                (if Present (Value) then Value
+                                 else Build_Type_Conversion (Expr, TE)));
                Set_Init := True;
                Copied := True;
             elsif Library_Level then
@@ -754,7 +776,7 @@ package body GNATLLVM.Variables is
 
       --  If we have an initializing expression, get it
 
-      if Present (Expr) then
+      if Present (Expr) and then No (Value) then
          Value := Emit_Expression (Expr);
       end if;
 

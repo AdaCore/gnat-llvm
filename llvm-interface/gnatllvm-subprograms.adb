@@ -37,8 +37,20 @@ with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Subprograms is
 
+   --  Elaboration entries can be either nodes to be emitted as statements
+   --  or expressions to be saved.
+
+   type Elaboration_Entry is record
+      N         : Node_Id;
+      --  Note to elaborate, possibly as an exppression
+
+      For_Type  : Entity_Id;
+      --  If Present, compute N as a value, convert it to this type, and
+      --  save the result as the value corresponding to it.
+   end record;
+
    package Elaboration_Table is new Table.Table
-     (Table_Component_Type => Node_Id,
+     (Table_Component_Type => Elaboration_Entry,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 1024,
@@ -481,12 +493,12 @@ package body GNATLLVM.Subprograms is
    -- Add_To_Elab_Proc --
    ----------------------
 
-   procedure Add_To_Elab_Proc (N : Node_Id) is
+   procedure Add_To_Elab_Proc (N : Node_Id; For_Type : Entity_Id := Empty) is
    begin
       if Elaboration_Table.Last = 0
-        or else Elaboration_Table.Table (Elaboration_Table.Last) /= N
+        or else Elaboration_Table.Table (Elaboration_Table.Last).N /= N
       then
-         Elaboration_Table.Append (N);
+         Elaboration_Table.Append ((N => N, For_Type => For_Type));
       end if;
    end Add_To_Elab_Proc;
 
@@ -536,7 +548,17 @@ package body GNATLLVM.Subprograms is
       In_Elab_Proc := True;
 
       for J in 1 .. Elaboration_Table.Last loop
-         Emit (Elaboration_Table.Table (J));
+         declare
+            Stmt : constant Node_Id   := Elaboration_Table.Table (J).N;
+            Typ  : constant Entity_Id := Elaboration_Table.Table (J).For_Type;
+
+         begin
+            if Present (Typ) then
+               Set_Value (Stmt, Build_Type_Conversion (Stmt, Typ));
+            else
+               Emit (Stmt);
+            end if;
+         end;
       end loop;
 
       --  Emit the statements after clearing the special code flag since

@@ -44,9 +44,11 @@ package GNATLLVM.Variables is
    --  make the second pass over both lists if Pass2 is true.  The lists
    --  usually correspond to the public and private parts of a package.
 
-   procedure Emit_Declaration (N : Node_Id)
+   procedure Emit_Declaration
+     (N : Node_Id; For_Freeze_Entity : Boolean := False)
      with Pre => Nkind_In (N, N_Object_Declaration, N_Exception_Declaration);
-   --  Emit a declaration
+   --  Emit a declaration.  For_Freeze_Entity is True if we're processing
+   --  a Freeze_Entity.
 
    procedure Emit_Object_Renaming_Declaration (N : Node_Id)
      with Pre => Nkind (N) = N_Object_Renaming_Declaration;

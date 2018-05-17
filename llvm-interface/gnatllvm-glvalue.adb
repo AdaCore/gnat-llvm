@@ -158,12 +158,197 @@ package body GNATLLVM.GLValue is
          return (if Needs_Activation_Record (Full_Designated_Type (TE))
                  then Fat_Reference_To_Subprogram else Reference);
 
-      --  Otherwise, it's a normal pointer and it just a Reference
+      --  Otherwise, it's a normal pointer and it's just a Reference
 
       else
          return Reference;
       end if;
    end Relationship_For_Access_Type;
+
+   ---------
+   -- Get --
+   ---------
+
+   function Get (V : GL_Value; Rel : GL_Value_Relationship) return GL_Value is
+      Value  : constant Value_T   := LLVM_Value (V);
+      TE     : constant Entity_Id := Related_Type (V);
+      Result : GL_Value;
+      T      : Type_T;
+
+   begin
+      --  If it's already the desired relationship, done
+
+      if Relationship (V) = Rel then
+         return V;
+
+      --  If we just need a de-reference, do that
+
+      elsif Deref (Relationship (V)) = Rel then
+         return Load (V);
+
+      --  Likewise for a double de-reference
+
+      elsif Deref (Deref (Relationship (V))) = Rel then
+         return Load (Load (V));
+
+      --  If we just need to make this into a reference, we can store
+      --  it into memory since we only have those relationships if
+      --  this is a actual LLVM value.
+
+      elsif Ref (Relationship (V)) = Rel then
+         Result := G (Alloca (IR_Builder, Type_Of (V), ""),
+                      Related_Type (V), Rel);
+         Store (V, Result);
+         return Result;
+      end if;
+
+      --  Now we have specific rules for each relationship type
+
+      case Rel is
+         when Bounds =>
+
+            --  If we have something that we can use to get the address of
+            --  bounds, convert to that and then dereference.
+
+            if Relationship (V) = Fat_Pointer
+              or else Relationship (V) = Thin_Pointer
+              or else Relationship (V) = Reference_To_Bounds_And_Data
+            then
+               return Load (Get (V, Reference_To_Bounds));
+
+            --  If we have both bounds and data, extract the bounds
+
+            elsif Relationship (V) = Bounds_And_Data then
+               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, Rel);
+
+            --  Otherwise, compute the bounds from the type (pass in V
+            --  just in case, though we should have handled all the cases
+            --  where it's useful above).
+
+            else
+               return Get_Array_Bounds (TE, V);
+            end if;
+
+         when Reference_To_Bounds =>
+            T := Pointer_Type (Create_Array_Bounds_Type (TE), 0);
+
+            --  If we have a fat pointer, part of it is a pointer to the
+            --  bounds.
+
+            if Relationship (V) = Fat_Pointer then
+               return G (Extract_Value (IR_Builder, Value, 1, ""), TE, Rel);
+
+            --  A reference to bounds and data is a reference to bounds
+
+            elsif Relationship (V) = Reference_To_Bounds_And_Data then
+               return G (Pointer_Cast (IR_Builder, Value, T, ""), TE, Rel);
+
+            --  The bounds are in front of the data for a thin pointer
+
+            elsif Relationship (V) = Thin_Pointer then
+               Result := NSW_Sub (Ptr_To_Int (V, Size_Type),
+                                  Get_Bound_Part_Size (TE));
+               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result), T, ""),
+                         TE, Rel);
+
+            --  Otherwise get the bounds and force them into memory
+
+            else
+               return Get (Get (V, Bounds), Rel);
+            end if;
+
+         when Array_Data =>
+
+            --  For Reference and Thin_Pointer, we have the value we need,
+            --  possibly just converting it.  For FAT pointer, we can
+            --  extract it.
+
+            if Relationship (V) = Reference then
+               return G (Value, TE, Rel);
+            elsif Relationship (V) = Thin_Pointer then
+               return G (Pointer_Cast
+                           (IR_Builder, Value, Create_Type (TE), ""), TE, Rel);
+            elsif Relationship (V) = Fat_Pointer then
+               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, Rel);
+
+            --  If we have a reference to both bounds and data, we can
+            --  compute where the data starts.  If we have the actual
+            --  bounds and data, we can store them and proceed as above.
+
+            elsif Relationship (V) = Reference_To_Bounds_And_Data then
+               Result := NSW_Add (Ptr_To_Int (V, Size_Type),
+                                  Get_Bound_Part_Size (TE));
+               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result),
+                                     Create_Type (TE), ""),
+                         TE, Rel);
+            elsif Relationship (V) = Bounds_And_Data then
+               return Get (Get (V, Reference_To_Bounds_And_Data), Rel);
+            end if;
+
+         when Reference =>
+
+            --  If we have Array_Data, we have the value we need.  Otherwise,
+            --  try to convert to Array_Data and then to this.
+
+            if Relationship (V) = Array_Data then
+               return G (Value, TE, Rel);
+            else
+               return Get (Get (V, Array_Data), Rel);
+            end if;
+
+         when Thin_Pointer =>
+
+            --  There are only two cases where we can make a thin pointer.
+            --  One is where we have the address of bounds and data (or the
+            --  bounds and data themselves).  The other is if we have a fat
+            --  pointer.  In the latter case, we can't know directly that
+            --  the address in the fat pointer is actually suitable, but
+            --  Ada language rules guarantee that it will be.
+
+            if Relationship (V) = Reference_To_Bounds_And_Data then
+               Result := NSW_Add (Ptr_To_Int (V, Size_Type),
+                                  Get_Bound_Part_Size (TE));
+               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result),
+                                     Create_Type (TE), ""),
+                         TE, Rel);
+            elsif Relationship (V) = Bounds_And_Data then
+               return Get (Get (V, Reference_To_Bounds_And_Data), Rel);
+            elsif Relationship (V) = Fat_Pointer then
+               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, Rel);
+            end if;
+
+         when Fat_Pointer =>
+
+            --  To make a fat pointer, we make the address of the bounds
+            --  and the address of the data and put them together.
+
+            declare
+               Val     : constant GL_Value :=
+                 (if Is_Reference (V) then V
+                  else Get (V, Ref (Relationship (V))));
+               --  If we have something that isn't a reference, start by
+               --  getting a reference to it.
+
+               Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
+               Data    : constant GL_Value  := Get (Val, Array_Data);
+               Fat_Ptr : constant GL_Value  :=
+                 G (Get_Undef (Create_Array_Fat_Pointer_Type (TE)),
+                    TE, Fat_Pointer);
+
+            begin
+               return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),
+                                    Bounds,  1);
+            end;
+
+         when others =>
+            null;
+
+      end case;
+
+      --  If we reach here, this is case we can't handle.  Return null, which
+      --  will cause our postcondition to fail.
+      return No_GL_Value;
+   end Get;
 
    ------------
    -- Alloca --

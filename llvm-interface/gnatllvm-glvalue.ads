@@ -169,6 +169,13 @@ package GNATLLVM.GLValue is
       Invalid                        =>
         (Is_Ref => False, Deref => Invalid,           Ref => Invalid));
 
+   function Is_Reference (R : GL_Value_Relationship) return Boolean is
+     (Relation_Props (R).Is_Ref);
+   function Deref (R : GL_Value_Relationship) return GL_Value_Relationship is
+     (Relation_Props (R).Deref);
+   function Ref (R : GL_Value_Relationship) return GL_Value_Relationship is
+     (Relation_Props (R).Ref);
+
    function Relationship_For_Access_Type
      (TE : Entity_Id) return GL_Value_Relationship
      with Pre => Is_Access_Type (TE);
@@ -221,7 +228,7 @@ package GNATLLVM.GLValue is
    --  Now some predicates derived from the above
 
    function Is_Reference (V : GL_Value) return Boolean is
-     (Relation_Props (Relationship (V)).Is_Ref)
+     (Is_Reference (Relationship (V)))
      with Pre => Present (V);
 
    function Is_Raw_Array (V : GL_Value) return Boolean is
@@ -432,6 +439,11 @@ package GNATLLVM.GLValue is
           Post => Is_Reference (From_Access'Result);
    --  V is a value of an access type.  Instead, represent it as a reference
    --  to the designated type of that access type.
+
+   function Get (V : GL_Value; Rel : GL_Value_Relationship) return GL_Value
+     with Pre => Present (V), Post => Relationship (Get'Result) = Rel;
+   --  Produce a GL_Value from V whose relationship to its type is given
+   --  by Rel.
 
    function Make_Reference (V : GL_Value) return GL_Value is
      (G_Ref (LLVM_Value (V), Full_Designated_Type (V)))

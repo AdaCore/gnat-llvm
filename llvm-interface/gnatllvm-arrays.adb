@@ -716,6 +716,49 @@ package body GNATLLVM.Arrays is
       return Insert_Value (Fat_Ptr, Array_Data_Ptr, 0);
    end Array_Fat_Pointer;
 
+   ----------------------
+   -- Get_Array_Bounds --
+   ----------------------
+
+   function Get_Array_Bounds (TE : Entity_Id; V : GL_Value) return GL_Value is
+      Src_Type       : constant Entity_Id := Full_Designated_Type (V);
+      Bounds_Typ     : constant Type_T    := Create_Array_Bounds_Type (TE);
+      Info_Idx       : constant Nat       := Get_Array_Info (TE);
+      Bound_Val      : GL_Value           :=
+        G (Get_Undef (Bounds_Typ), TE, Bounds);
+
+   begin
+
+      for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
+
+         declare
+            --  The type of the bound of the array we're using for the bounds
+            --  may not be the same as the type of the bound in the
+            --  unconstrained array, so be sure to convert (C46042A).
+
+            Bound_Type           : constant Entity_Id :=
+              Array_Info.Table (Info_Idx + Dim).Bound_Type;
+            Low_Bound            : constant GL_Value  :=
+              Get_Array_Bound (Src_Type, Dim, True, V);
+            High_Bound           : constant GL_Value  :=
+              Get_Array_Bound (Src_Type, Dim, False, V);
+            Converted_Low_Bound  : constant GL_Value  :=
+              Convert_To_Elementary_Type (Low_Bound, Bound_Type);
+            Converted_High_Bound : constant GL_Value  :=
+              Convert_To_Elementary_Type (High_Bound, Bound_Type);
+
+         begin
+            Bound_Val := Insert_Value
+              (Bound_Val, Converted_Low_Bound, (1 => Integer (Dim * 2)));
+
+            Bound_Val := Insert_Value
+              (Bound_Val, Converted_High_Bound, (1 => Integer (Dim * 2 + 1)));
+         end;
+      end loop;
+
+      return Bound_Val;
+   end Get_Array_Bounds;
+
    ------------------------
    -- Update_Fat_Pointer --
    ------------------------

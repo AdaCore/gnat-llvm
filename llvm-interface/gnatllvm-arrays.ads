@@ -168,6 +168,11 @@ package GNATLLVM.Arrays is
    --  must already be a pointer to the array data, otherwise, it must be a
    --  fat pointer.
 
+   function Get_Array_Bounds (TE : Entity_Id; V : GL_Value) return GL_Value
+     with Pre  => Is_Array_Type (TE),
+          Post => Present (Get_Array_Bounds'Result);
+   --  Get the bounds of the array TE using V if necessary
+
    function Array_Fat_Pointer (TE : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Is_Access_Type (V) and then Is_Array_Type (TE)
                   and then not Is_Constrained (TE)

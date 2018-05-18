@@ -952,11 +952,8 @@ package body GNATLLVM.Variables is
          V := Make_Global_Variable (Def_Ident);
       end if;
 
-      if Is_Double_Reference (V) then
-         return Load (V);
-      else
-         return V;
-      end if;
+      return Get (V, Reference);
+
    end Emit_Identifier_LValue;
 
    ---------------------------
@@ -1028,12 +1025,7 @@ package body GNATLLVM.Variables is
          V := Make_Global_Variable (Def_Ident);
       end if;
 
-      if Is_Double_Reference (V) then
-         V := Load (V);
-      end if;
-
-      return Need_Value (V, Full_Etype (Def_Ident));
-
+      return Get (V, Object);
    end Emit_Identifier_Value;
 
 end GNATLLVM.Variables;

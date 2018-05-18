@@ -107,6 +107,17 @@ package GNATLLVM.GLValue is
       --  Similar to Reference_To_Subprogram except that it contains both
       --  a pointer to the subprogram and to the activation record.
 
+      Any_Reference,
+      --  Valid only as an operand to Get and indicates that a value with
+      --  any single-level reference can be returned.
+      --  ???  Perhaps this should only include valid references to
+      --  objects, e.g., things that are returned by
+      --  Relationship_For_Access_Type.
+
+      Object,
+      --  Valid only as an operand to Get and means Any_Reference if
+      --  the type of the value is of dynamic size and Data otherwise.
+
       Invalid);
       --  This is invalid relationship, which will result from, e.g.,
       --  doing a dereference operation on something that isn't a reference.
@@ -163,6 +174,10 @@ package GNATLLVM.GLValue is
       Reference_To_Activation_Record =>
         (Is_Ref => True,  Deref => Activation_Record, Ref => Invalid),
       Fat_Reference_To_Subprogram    =>
+        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+      Any_Reference                  =>
+        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+      Object                         =>
         (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
       Invalid                        =>
         (Is_Ref => False, Deref => Invalid,           Ref => Invalid));
@@ -235,6 +250,10 @@ package GNATLLVM.GLValue is
 
    function Is_Double_Reference (V : GL_Value) return Boolean is
      (Relationship (V) = Double_Reference)
+     with Pre => Present (V);
+
+   function Is_Single_Reference (V : GL_Value) return Boolean is
+     (Is_Reference (V) and then not Is_Double_Reference (V))
      with Pre => Present (V);
 
    function Is_Subprogram_Reference (V : GL_Value) return Boolean is
@@ -438,8 +457,14 @@ package GNATLLVM.GLValue is
    --  V is a value of an access type.  Instead, represent it as a reference
    --  to the designated type of that access type.
 
+   function Equiv_Relationship
+     (V : GL_Value; Rel : GL_Value_Relationship) return Boolean
+     with Pre => Present (V);
+   --  Return True if V has relationship Rel or one that can be returned
+   --  by a call to Get with Rel as an operand.
+
    function Get (V : GL_Value; Rel : GL_Value_Relationship) return GL_Value
-     with Pre => Present (V), Post => Relationship (Get'Result) = Rel;
+     with Pre => Present (V), Post => Equiv_Relationship (Get'Result, Rel);
    --  Produce a GL_Value from V whose relationship to its type is given
    --  by Rel.
 

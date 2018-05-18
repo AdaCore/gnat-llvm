@@ -109,10 +109,8 @@ package GNATLLVM.GLValue is
 
       Any_Reference,
       --  Valid only as an operand to Get and indicates that a value with
-      --  any single-level reference can be returned.
-      --  ???  Perhaps this should only include valid references to
-      --  objects, e.g., things that are returned by
-      --  Relationship_For_Access_Type.
+      --  any reference to data can be returned.  This includes fat and
+      --  thin pointers, but not such things as references to bounds.
 
       Object,
       --  Valid only as an operand to Get and means Any_Reference if
@@ -130,6 +128,9 @@ package GNATLLVM.GLValue is
      Is_Ref : Boolean;
      --  True if this is a reference to something
 
+     Is_Any_Ref : Boolean;
+     --  True if this can be returned for Any_Reference
+
      Deref  : GL_Value_Relationship;
      --  The relationship, if any, corresponding to a dereference (Load) from a
      --  GL_Value that has this relationship.
@@ -145,48 +146,65 @@ package GNATLLVM.GLValue is
 
    Relation_Props : constant Relationship_Array :=
      (Data                         =>
-        (Is_Ref => False, Deref => Invalid,           Ref => Reference),
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Reference),
       Reference                      =>
-        (Is_Ref => True,  Deref => Data,              Ref => Double_Reference),
+        (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Data,              Ref => Double_Reference),
       Double_Reference               =>
-        (Is_Ref => True,  Deref => Reference,         Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Reference,         Ref => Invalid),
       Fat_Pointer                    =>
-        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Invalid,           Ref => Invalid),
       Bounds                         =>
-        (Is_Ref => False, Deref => Invalid,
-         Ref => Reference_To_Bounds),
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Reference_To_Bounds),
       Bounds_And_Data                =>
-        (Is_Ref => False, Deref => Invalid,
-         Ref => Reference_To_Bounds_And_Data),
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Reference_To_Bounds_And_Data),
       Reference_To_Bounds            =>
-        (Is_Ref => True,  Deref => Bounds,            Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Bounds,            Ref => Invalid),
       Reference_To_Bounds_And_Data   =>
-        (Is_Ref => True,  Deref => Bounds_And_Data,   Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Bounds_And_Data,   Ref => Invalid),
       Array_Data                     =>
-        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Invalid,           Ref => Invalid),
       Thin_Pointer                   =>
-        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Invalid,           Ref => Invalid),
       Reference_To_Subprogram        =>
-        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Invalid,           Ref => Invalid),
       Activation_Record              =>
-        (Is_Ref => False, Deref => Invalid,
-         Ref => Reference_To_Activation_Record),
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Reference_To_Activation_Record),
       Reference_To_Activation_Record =>
-        (Is_Ref => True,  Deref => Activation_Record, Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Activation_Record, Ref => Invalid),
       Fat_Reference_To_Subprogram    =>
-        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Invalid,           Ref => Invalid),
       Any_Reference                  =>
-        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Invalid),
       Object                         =>
-        (Is_Ref => True,  Deref => Invalid,           Ref => Invalid),
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Invalid),
       Invalid                        =>
-        (Is_Ref => False, Deref => Invalid,           Ref => Invalid));
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Invalid));
 
-   function Is_Reference (R : GL_Value_Relationship) return Boolean is
+   function Is_Reference (R : GL_Value_Relationship)     return Boolean is
      (Relation_Props (R).Is_Ref);
+   function Is_Any_Reference (R : GL_Value_Relationship) return Boolean is
+     (Relation_Props (R).Is_Any_Ref);
+
    function Deref (R : GL_Value_Relationship) return GL_Value_Relationship is
      (Relation_Props (R).Deref);
-   function Ref (R : GL_Value_Relationship) return GL_Value_Relationship is
+   function Ref (R : GL_Value_Relationship)   return GL_Value_Relationship is
      (Relation_Props (R).Ref);
 
    function Relationship_For_Access_Type
@@ -238,10 +256,21 @@ package GNATLLVM.GLValue is
      (V.Relationship)
      with Pre => Present (V);
 
+   function Equiv_Relationship (R1, R2 : GL_Value_Relationship) return Boolean
+   is
+     (R1 = R2 or else (R1 = Any_Reference and then Is_Any_Reference (R2))
+      or else (R2 = Any_Reference and then Is_Any_Reference (R1)));
+   --  True if R1 and R2 are equivalent relationships in terms of the operand
+   --  passed to Get and the relationship in its return value.
+
    --  Now some predicates derived from the above
 
    function Is_Reference (V : GL_Value) return Boolean is
      (Is_Reference (Relationship (V)))
+     with Pre => Present (V);
+
+   function Is_Any_Reference (V : GL_Value) return Boolean is
+     (Is_Any_Reference (Relationship (V)))
      with Pre => Present (V);
 
    function Is_Raw_Array (V : GL_Value) return Boolean is
@@ -476,6 +505,9 @@ package GNATLLVM.GLValue is
                               Full_Designated_Type (V));
    --  Indicate that we want to consider G as a reference to its designated
    --  type.
+
+   --  Finally, we have versions of subprograms defined elsewhere that
+   --  accept and/or return GL_Value.
 
    function Get_Undef (TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE), Post => Present (Get_Undef'Result);

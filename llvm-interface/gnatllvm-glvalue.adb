@@ -141,7 +141,10 @@ package body GNATLLVM.GLValue is
    ----------------------------------
 
    function Relationship_For_Access_Type
-     (TE : Entity_Id) return GL_Value_Relationship is
+     (TE : Entity_Id) return GL_Value_Relationship
+   is
+      DT : constant Entity_Id := Full_Designated_Type (TE);
+
    begin
       --  If this points to an unconstrained array, this is either a
       --  fat or thin pointer, depending on the size.
@@ -150,12 +153,19 @@ package body GNATLLVM.GLValue is
          return (if RM_Size (TE) = Get_Pointer_Size
                  then Thin_Pointer else Fat_Pointer);
 
+      --  If this is an access type that points to a type created as a
+      --  a nominal subtype of an unconstrained type for an aliased
+      --  object, in order to point to the data, we need a thin pointer.
+
+      elsif Is_Constr_Subt_For_UN_Aliased (DT) then
+         return Thin_Pointer;
+
       --  If this is an access to subprogram, this is either a pointer to
       --  the subprogram or a pair of pointers that includes the activation
       --  record.
 
-      elsif Ekind (Full_Designated_Type (TE)) = E_Subprogram_Type then
-         return (if Needs_Activation_Record (Full_Designated_Type (TE))
+      elsif Ekind (DT) = E_Subprogram_Type then
+         return (if Needs_Activation_Record (DT)
                  then Fat_Reference_To_Subprogram else Reference);
 
       --  Otherwise, it's a normal pointer and it's just a Reference
@@ -181,7 +191,7 @@ package body GNATLLVM.GLValue is
       end if;
 
       return Relationship (V) = R
-        or else (R = Any_Reference and then Is_Single_Reference (V));
+        or else (R = Any_Reference and then Is_Any_Reference (V));
    end Equiv_Relationship;
 
    ---------
@@ -205,16 +215,12 @@ package body GNATLLVM.GLValue is
 
       --  If it's already the desired relationship, done
 
-      if Relationship (V) = R then
-         return V;
-      elsif R = Any_Reference and then Is_Single_Reference (V) then
+      if Equiv_Relationship (V, R) then
          return V;
 
       --  If we just need a dereference, do that
 
-      elsif Deref (Relationship (V)) = R
-        or else (R = Any_Reference and then Is_Double_Reference (V))
-      then
+      elsif Equiv_Relationship (Deref (Relationship (V)), R) then
          return Load (V);
 
       --  Likewise for a double dereference
@@ -226,9 +232,7 @@ package body GNATLLVM.GLValue is
       --  it into memory since we only have those relationships if
       --  this is a actual LLVM value.
 
-      elsif Ref (Relationship (V)) = R
-        or else (R = Any_Reference and then not Is_Reference (V))
-      then
+      elsif Equiv_Relationship (Ref (Relationship (V)), R) then
          Result := G (Alloca (IR_Builder, Type_Of (V), ""),
                       Related_Type (V), Ref (Relationship (V)));
          Store (V, Result);
@@ -260,6 +264,19 @@ package body GNATLLVM.GLValue is
 
             else
                return Get_Array_Bounds (TE, V);
+            end if;
+
+         when Bounds_And_Data =>
+
+            --  If we have data, we can add the bounds
+
+            if Relationship (V) = Data then
+               T := Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
+                                        2 => Type_Of (V)));
+               Result := G (Get_Undef (T), TE, R);
+               return Insert_Value (Insert_Value (Result,
+                                                  Get_Array_Bounds (TE, V), 0),
+                                    V, 1);
             end if;
 
          when Reference_To_Bounds =>
@@ -382,6 +399,15 @@ package body GNATLLVM.GLValue is
             if Relationship (V) = Fat_Reference_To_Subprogram then
                return G (Extract_Value (IR_Builder, Value, 0, ""), TE, Rel);
             end if;
+
+         when Any_Reference =>
+
+            --  The old case where we have some GL_Value that's not already
+            --  handled by one of the cases above the "case" statement is if
+            --  it's a Reference_To_Bounds_And_Data, in which case the most
+            --  general thing to convert it to is a thin pointer.
+
+            return Get (V, Thin_Pointer);
 
          when others =>
             null;

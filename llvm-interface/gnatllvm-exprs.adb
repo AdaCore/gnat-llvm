@@ -748,11 +748,9 @@ package body GNATLLVM.Exprs is
             return Load (Const_Null_Ref (Full_Etype (Prefix (N))));
 
          when Attribute_Descriptor_Size =>
+            pragma Assert (Is_Unconstrained_Array (Full_Etype (Prefix (N))));
 
-            --  We don't use descriptors that are stored with the value,
-            --  so this is zero.
-
-            return Const_Null (TE);
+            return Get_Bound_Part_Size (Full_Etype (Prefix (N)));
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &

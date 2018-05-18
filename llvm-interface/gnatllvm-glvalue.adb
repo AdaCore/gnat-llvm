@@ -85,13 +85,13 @@ package body GNATLLVM.GLValue is
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
          when Fat_Pointer | Bounds | Bounds_And_Data =>
-            return Is_Unconstrained_Array (V.Typ);
+            return Is_Array_Type (V.Typ);
 
          when Array_Data | Thin_Pointer
             | Reference_To_Bounds | Reference_To_Bounds_And_Data =>
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
-              and then Is_Unconstrained_Array (V.Typ);
+              and then Is_Array_Type (V.Typ);
 
          when Activation_Record  | Fat_Reference_To_Subprogram =>
             return Ekind (V.Typ) = E_Subprogram_Type;
@@ -339,6 +339,16 @@ package body GNATLLVM.GLValue is
                return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),
                                     Bounds,  1);
             end;
+
+         when Reference_To_Activation_Record =>
+            if Relationship (V) = Fat_Reference_To_Subprogram then
+               return G (Extract_Value (IR_Builder, Value, 1, ""), TE, Rel);
+            end if;
+
+         when Reference_To_Subprogram =>
+            if Relationship (V) = Fat_Reference_To_Subprogram then
+               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, Rel);
+            end if;
 
          when others =>
             null;

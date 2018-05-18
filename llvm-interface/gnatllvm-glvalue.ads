@@ -59,27 +59,25 @@ package GNATLLVM.GLValue is
 
       Fat_Pointer,
       --  Value contains a "fat pointer", an object containing information
-      --  about both the data and bounds of an unconstrained array object
-      --  of Typ.
+      --  about both the data and bounds of an array object of Typ.
 
       Bounds,
       --  Value contains data representing the bounds of an object of Typ,
-      --  which must be an unconstrained array type.
+      --  which must be an array type.
 
       Bounds_And_Data,
       --  Value contains data representing the bounds of an object of Typ,
-      --  which must be an unconstrained array type, followed by the actual
-      --  data, with only padding required by the alignment of the array
-      --  between the bounds and data.
+      --  which must be an array type, followed by the actual data, with
+      --  only padding required by the alignment of the array between the
+      --  bounds and data.
 
       Reference_To_Bounds,
       --  Value contains an address that points to the bounds of an object
-      --  of Typ, which must be an unconstrained type.
+      --  of Typ, which must be an array type.
 
       Reference_To_Bounds_And_Data,
       --  Value contains an address that points to the bounds of an object
-      --  of Typ, which must be an unconstrained type, followed by the
-      --  data.
+      --  of Typ, which must be an array type, followed by the data.
 
       Array_Data,
       --  Value contains the address of the first byte of memory that
@@ -90,7 +88,7 @@ package GNATLLVM.GLValue is
       --  Similar to Array_Data, except that the bounds are guaranteed to
       --  be in memory in front of the data (with the minimal padding
       --  between then).  Also similar to Reference_To_Bounds_And_Data,
-      --  except for exactly where the pointer references.q
+      --  except for exactly where the pointer references.
 
       Reference_To_Subprogram,
       --  Value contains the address of a subprogram which is a procedure

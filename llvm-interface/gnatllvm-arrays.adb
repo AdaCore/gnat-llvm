@@ -655,7 +655,7 @@ package body GNATLLVM.Arrays is
       then
          return V;
       else
-         return Extract_Value_To_Raw_Array (Arr_Type, V, 0, "array-data");
+         return Extract_Value_To_Relationship (Arr_Type, V, 0, Array_Data);
       end if;
    end Array_Data;
 
@@ -667,7 +667,8 @@ package body GNATLLVM.Arrays is
       Src_Type       : constant Entity_Id := Full_Designated_Type (V);
       Info_Idx       : constant Nat       := Get_Array_Info (TE);
       Fat_Ptr        : GL_Value           := Get_Undef_Ref (TE);
-      Array_Data_Ptr : constant GL_Value  := Ptr_To_Raw_Array (V, TE);
+      Array_Data_Ptr : constant GL_Value  :=
+        Ptr_To_Relationship (V, TE, Array_Data);
 
    begin
 

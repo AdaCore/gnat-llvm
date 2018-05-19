@@ -568,17 +568,6 @@ package body GNATLLVM.GLValue is
                           Name),
               TE));
 
-   ----------------------
-   -- Int_To_Raw_Array --
-   ----------------------
-
-   function Int_To_Raw_Array
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                      Pointer_Type (Create_Type (TE), 0), Name),
-          TE, Array_Data));
-
    -------------------------
    -- Int_To_Relationship --
    -------------------------
@@ -634,17 +623,6 @@ package body GNATLLVM.GLValue is
       (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                             Pointer_Type (Create_Type (TE), 0), Name),
               TE));
-
-   ----------------------
-   -- Ptr_To_Raw_Array --
-   ----------------------
-
-   function Ptr_To_Raw_Array
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        Pointer_Type (Create_Type (TE), 0), Name),
-          TE, Array_Data));
 
    -------------------------
    -- Ptr_To_Relationship --

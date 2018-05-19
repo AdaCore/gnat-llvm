@@ -690,11 +690,6 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Access_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Ptr_To_Ref'Result);
 
-   function Ptr_To_Raw_Array
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Ptr_To_Raw_Array'Result);
-
    function Ptr_To_Relationship
      (V    : GL_Value;
       TE   : Entity_Id;
@@ -1080,15 +1075,6 @@ package GNATLLVM.GLValue is
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
 
-   function Int_To_Raw_Array
-     (V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Int_To_Raw_Array'Result)
-                  and then Is_Raw_Array (Int_To_Raw_Array'Result);
-   --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
-   --  access type.
-
    function Int_To_Relationship
      (V    : GL_Value;
       TE   : Entity_Id;
@@ -1118,16 +1104,17 @@ package GNATLLVM.GLValue is
      with  Pre  => Present (Arg) and then Is_Type (Typ),
            Post => Is_Access_Type (Extract_Value_To_Ref'Result);
 
-   function Extract_Value_To_Raw_Array
+   function Extract_Value_To_Relationship
      (Typ   : Entity_Id;
       Arg   : GL_Value;
       Index : unsigned;
+      R     : GL_Value_Relationship;
       Name  : String := "") return GL_Value
    is
      (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
-         Typ, Array_Data))
+         Typ, R))
      with  Pre  => Present (Arg) and then Is_Type (Typ),
-           Post => Is_Access_Type (Extract_Value_To_Raw_Array'Result);
+           Post => Is_Access_Type (Extract_Value_To_Relationship'Result);
 
    function Insert_Value
      (Arg, Elt : GL_Value;
@@ -1165,17 +1152,18 @@ package GNATLLVM.GLValue is
      with  Pre  => Is_Type (Typ) and then Present (Arg),
            Post => Present (Extract_Value_To_Ref'Result);
 
-   function Extract_Value_To_Raw_Array
+   function Extract_Value_To_Relationship
      (Typ     : Entity_Id;
       Arg     : GL_Value;
       Idx_Arr : Index_Array;
+      R       : GL_Value_Relationship;
       Name    : String := "") return GL_Value
    is
      (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
                               Idx_Arr'Address, Idx_Arr'Length, Name),
-         Typ, Array_Data))
+         Typ, R))
      with  Pre  => Is_Type (Typ) and then Present (Arg),
-           Post => Present (Extract_Value_To_Raw_Array'Result);
+           Post => Present (Extract_Value_To_Relationship'Result);
 
    function Insert_Value
      (Arg, Elt : GL_Value;

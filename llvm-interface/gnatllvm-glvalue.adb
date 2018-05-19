@@ -187,6 +187,63 @@ package body GNATLLVM.GLValue is
       end if;
    end Relationship_For_Access_Type;
 
+   ---------------------------
+   -- Type_For_Relationship --
+   ---------------------------
+
+   function Type_For_Relationship
+     (TE : Entity_Id; R : GL_Value_Relationship) return Type_T
+   is
+      T  : constant Type_T := Create_Type (TE);
+      PT : constant Type_T := Pointer_Type (T, 0);
+
+   begin
+      case R is
+         when Data =>
+            pragma Assert (not Is_Dynamic_Size (TE));
+            return T;
+
+         when Reference | Reference_To_Array_Data | Thin_Pointer =>
+            return PT;
+
+         when Reference_To_Reference | Reference_To_Thin_Pointer =>
+            return Pointer_Type (PT, 0);
+
+         when Fat_Pointer =>
+            return Create_Array_Fat_Pointer_Type (TE);
+
+         when Bounds =>
+            return Create_Array_Bounds_Type (TE);
+
+         when Bounds_And_Data =>
+            pragma Assert (not Is_Dynamic_Size (TE));
+            return Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
+                                       2 => T));
+
+         when Reference_To_Bounds =>
+            return Pointer_Type (Create_Array_Bounds_Type (TE), 0);
+
+         when Reference_To_Bounds_And_Data =>
+
+            --  If this is a constant-size type, then this is a
+            --  pointer to the bounds-and-data structure, otherwise a
+            --  pointer to the bounds.
+
+            if Is_Dynamic_Size (TE) then
+               return Pointer_Type (Create_Array_Bounds_Type (TE), 0);
+            else
+               return Pointer_Type
+                 (Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
+                                      2 => T)),
+                  0);
+            end if;
+
+         when others =>
+            pragma Assert (False);
+            return T;
+      end case;
+   end Type_For_Relationship;
+
    ------------------------
    -- Equiv_Relationship --
    ------------------------
@@ -580,10 +637,7 @@ package body GNATLLVM.GLValue is
       Name : String := "") return GL_Value
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                      (if Is_Reference (R)
-                       then Pointer_Type (Create_Type (TE), 0)
-                       else Create_Type (TE)),
-                      Name),
+                      Type_For_Relationship (TE, R), Name),
           TE, R));
 
    ----------------
@@ -636,10 +690,7 @@ package body GNATLLVM.GLValue is
       Name : String := "") return GL_Value
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        (if Is_Reference (R)
-                         then Pointer_Type (Create_Type (TE), 0)
-                         else Create_Type (TE)),
-                        Name),
+                        Type_For_Relationship (TE, R), Name),
           TE, R));
 
    -----------

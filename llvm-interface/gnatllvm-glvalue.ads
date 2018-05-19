@@ -493,8 +493,7 @@ package GNATLLVM.GLValue is
 
    function To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
      (G (LLVM_Value (V), TE, Data))
-     with Pre  => Is_Access_Type (TE) and then Is_Reference (V)
-                  and then Designated_Type (TE) = Full_Designated_Type (V),
+     with Pre  => Is_Access_Type (TE) and then Is_Reference (V),
           Post => Relationship (To_Access'Result) = Data
                   and then Full_Etype (To_Access'Result) = TE;
    --  V is a reference to an object whose type is the designated type of

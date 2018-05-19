@@ -780,6 +780,31 @@ package body GNATLLVM.Exprs is
       Src       : GL_Value           := E_Value;
 
    begin
+      --  The back-end supports exactly two types of array aggregates.
+      --  One, handled in Emit_Array_Aggregate, is for a fixed-size
+      --  aggregate of fixed-size components.  The other are special cases
+      --  of Others that are tested for in Aggr_Assignment_OK_For_Backend
+      --  in Exp_Aggr.  We have to handle them here because we want to
+      --  store directly into the LHS.  The front end guarantees that any
+      --  Others aggregate will always be the RHS of an assignment, so
+      --  we'll see it here.
+
+      if Is_Array_Type (Dest_Type) and then Present (E)
+        and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
+        and then Is_Others_Aggregate (E)
+      then
+         --  ??? Need to deal with bounds
+         Emit_Others_Aggregate (Dest, E);
+         return;
+      end if;
+
+      --  If we haven't yet computed our source expression, do it now.
+
+      if No (Src) then
+         Src := (if Is_Elementary_Type (Src_Type) then Emit_Expression (E)
+                 else Emit_LValue (E, Clear => False));
+      end if;
+
       --  If we are assigning to a type that's the nominal constrained
       --  subtype of an unconstrained array for an aliased object, get a
       --  reference to the bounds, compute the bounds, and store them.
@@ -795,43 +820,21 @@ package body GNATLLVM.Exprs is
          end;
       end if;
 
-      --  The back-end supports exactly two types of array aggregates.
-      --  One, handled in Emit_Array_Aggregate, is for a fixed-size
-      --  aggregate of fixed-size components.  The other are special cases
-      --  of Others that are tested for in Aggr_Assignment_OK_For_Backend
-      --  in Exp_Aggr.  We have to handle them here because we want to
-      --  store directly into the LHS.  The front end guarantees that any
-      --  Others aggregate will always be the RHS of an assignment, so
-      --  we'll see it here.
-
-      if Is_Array_Type (Dest_Type) and then Present (E)
-        and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
-        and then Is_Others_Aggregate (E)
-      then
-         Emit_Others_Aggregate (Dest, E);
-
       --  We now have three case: where we're copying an object of an
       --  elementary type, where we're copying an object that's not
       --  elementary, but can be copied with a Store instruction, or where
       --  we're copying an object of variable size.
 
-      elsif Is_Elementary_Type (Dest_Type) then
+      if Is_Elementary_Type (Dest_Type) then
 
          --  The easy case: convert the source to the destination type and
          --  store it.
 
-         if No (Src) then
-            Src := Emit_Expression (E);
-         end if;
-
-         Store (Convert_To_Elementary_Type (Src, Dest_Type), Dest);
+         Store (Convert_To_Elementary_Type (Get (Src, Data), Dest_Type), Dest);
 
       elsif (Present (E) and then not Is_Dynamic_Size (Full_Etype (E)))
          or else (Present (E_Value) and then not Is_Reference (E_Value))
       then
-         if No (Src) then
-            Src := Emit_Expression (E);
-         end if;
 
          --  Here, we have the situation where the source is of an LLVM
          --  value, but the destiation may or may not be a variable-sized
@@ -841,6 +844,7 @@ package body GNATLLVM.Exprs is
          --  is pointer to an array type, we need to get the actual array
          --  data.
 
+         Src := Get (Src, Data);
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
             if Is_Array_Type (Full_Designated_Type (Dest)) then
                Dest := Array_Data (Dest);
@@ -852,9 +856,8 @@ package body GNATLLVM.Exprs is
          Store (Src, Dest);
 
       else
-         if No (Src) then
-            Src := Emit_LValue (E, Clear => False);
-         end if;
+
+         Src := Get (Src, Any_Reference);
 
          --  Otherwise, we have to do a variable-sized copy
 

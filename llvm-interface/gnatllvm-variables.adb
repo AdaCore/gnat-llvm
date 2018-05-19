@@ -924,15 +924,18 @@ package body GNATLLVM.Variables is
       elsif Ekind (Def_Ident) = E_Label then
          return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
 
+      --  N_Defining_Identifier nodes for enumeration literals are not
+      --  stored in the environment. Handle them here.
+
+      elsif Ekind (Def_Ident) = E_Enumeration_Literal then
+         return Const_Int (TE, Enumeration_Rep (Def_Ident));
+
       elsif Ekind (Def_Ident) in Subprogram_Kind then
 
-         --  If this has an Alias, use that.  However, it may be an
-         --  Enumeration_Literal, in which case we can't get its LValue.
+         --  If this has an Alias, use that
 
          if Present (Alias (Def_Ident)) then
-            Def_Ident := Alias (Def_Ident);
-            V         := Get_Value (Def_Ident);
-            pragma Assert (Ekind (Def_Ident) in Subprogram_Kind);
+            return Emit_Identifier_LValue (Alias (Def_Ident));
          end if;
 
          --  If we haven't gotten one yet, make it
@@ -1008,7 +1011,7 @@ package body GNATLLVM.Variables is
       elsif Ekind (Def_Ident) = E_Enumeration_Literal then
          return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
-         --  If this entity has a known constant value, use it
+      --  If this entity has a known constant value, use it
 
       elsif Ekind (Def_Ident) = E_Constant
         and then Present (Constant_Value (Def_Ident))

@@ -160,7 +160,7 @@ package body GNATLLVM.Types is
       --  For pointer to pointer, call our helper
 
       elsif Src_Access and then Dest_Access then
-         return Convert_To_Access_To (V, Full_Designated_Type (TE));
+         return Convert_To_Access (V, TE);
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int.  We already know that this isn't

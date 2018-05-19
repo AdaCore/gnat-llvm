@@ -364,10 +364,11 @@ package body GNATLLVM.Arrays is
    function Create_Array_Type (TE : Entity_Id) return Type_T is
       Unconstrained     : constant Boolean   := not Is_Constrained (TE);
       Comp_Type         : constant Entity_Id := Full_Component_Type (TE);
-      Must_Use_Opaque   : Boolean            := Is_Dynamic_Size (Comp_Type);
-      This_Dynamic_Size : Boolean            :=
-        Must_Use_Opaque or Unconstrained;
-      Typ               : Type_T             := Create_Type (Comp_Type);
+      Must_Use_Fake     : Boolean            := Is_Dynamic_Size (Comp_Type);
+      This_Dynamic_Size : Boolean            := Must_Use_Fake or Unconstrained;
+      CT_To_Use         : constant Entity_Id :=
+        (if Must_Use_Fake then Standard_Short_Short_Integer else Comp_Type);
+      Typ               : Type_T             := Create_Type (CT_To_Use);
       --  This must be before the next line because it may recurse
       First_Info        : constant Nat       := Array_Info.Last + 1;
       Dim               : Nat                := 0;
@@ -381,19 +382,13 @@ package body GNATLLVM.Arrays is
       --  We loop through each dimension of the array creating the entries
       --  for Array_Info.  If the component type is of variable size or if
       --  either bound of an index is a dynamic size, this type is of
-      --  dynamic size.  We must use an opaque type if this is of dynamic size
-      --  unless the only reason it's dynamic is because the first dimension
-      --  is of variable-size: in that case, we can use an LLVM array with
-      --  zero as the bound.  ??? We no longer actual make an "opaque"
-      --  type, so change the above and name soon.
-
-      --  ??? There is one more case that we could try, which is in the
-      --  multi-dimensional case of dynamic bounds, but when the component
-      --  type is of fixed size.  In that case, we could flatten this to a
-      --  single-dimension array of zero size, and do the indexing
-      --  computation using the component size rather than by byte. However,
-      --  there doesn't appear to be a simple way of realizing that we've
-      --  done this, so don't try it just now.
+      --  dynamic size.  We could use an opaque type in that case, but
+      --  we have numerous array subtypes that should be treated identically
+      --  but couldn't if we took that approach.  However, all of those
+      --  subtypes will have the same component type.  If that component
+      --  type is of fixed size, we can make an LLVM array [0 x CT] where
+      --  CT is the component type.  Otherwise, we have to use [0 x i8].
+      --  We refer to both of these cases as creating a "fake" type.
 
       Index := First_Index (TE);
       while Present (Index) loop
@@ -427,7 +422,7 @@ package body GNATLLVM.Arrays is
             if Dim_Info.Low.Dynamic or else Dim_Info.High.Dynamic then
                This_Dynamic_Size := True;
                if Dim /= 0 then
-                  Must_Use_Opaque := True;
+                  Must_Use_Fake := True;
                end if;
             end if;
 
@@ -440,7 +435,7 @@ package body GNATLLVM.Arrays is
       --  If we must use an opaque type, make one.  Otherwise loop through
       --  the types making the LLVM type.
 
-      if Must_Use_Opaque then
+      if Must_Use_Fake then
          Typ := Array_Type (Typ, 0);
       else
          for I in reverse First_Info .. Array_Info.Last loop
@@ -842,7 +837,7 @@ package body GNATLLVM.Arrays is
       end loop;
 
       --  There are two approaches we can take here.  If we haven't used
-      --  an opaque type, we can just do a GEP with the values above.
+      --  a fake type, we can just do a GEP with the values above.
 
       if not Is_Dynamic_Size (Array_Type) then
          return GEP (Comp_Type, Array_Data_Ptr, Idxs, "array-element-access");
@@ -854,6 +849,9 @@ package body GNATLLVM.Arrays is
       --  index then for each dimension after the first, multiply by the
       --  size of that dimension and add that index.  Finally, we multiply
       --  by the size of the component.  We do all of this in Size_Type.
+      --
+      --  ??? If the component type is of fixed size, we can do this
+      --  indexing by computing the net index from the component type.
 
       declare
          Data          : constant GL_Value :=
@@ -908,10 +906,13 @@ package body GNATLLVM.Arrays is
         NSW_Sub (Converted_Index, Converted_Low_Bound, "offset");
 
    begin
-      --  Like the above case, we have to hande both the opaque and non-opaque
-      --  cases.  Luckily, we know we're only a single dimension.  However,
-      --  GEP's result type is a pointer to the component type, so we need
-      --  to cast to the result (array) type in both cases.
+      --  Like in Get_Indexed_LValue, we have to hande both the fake and
+      --  non-fake cases.  Luckily, we know we're only a single dimension.
+      --  However, GEP's result type is a pointer to the component type, so
+      --  we need to cast to the result (array) type in both cases.
+      --
+      --  ??? If the component type is of fixed size, we can do this
+      --  indexing by computing the net index from the component type.
 
       if not Is_Dynamic_Size (Arr_Type) then
          return Ptr_To_Ref (GEP (TE, Array_Data_Ptr,

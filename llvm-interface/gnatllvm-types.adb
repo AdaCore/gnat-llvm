@@ -61,6 +61,12 @@ package body GNATLLVM.Types is
      with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
    --  True if T_Have is a parent type of T_Need
 
+   function Get_Alloc_Size
+     (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
+     with Pre => Is_Type (TE), Post => Present (Get_Alloc_Size'Result);
+   --  Like Get_Type_Size, but used for the size to be allocated, so we
+   --  include the size of the bounds in some array cases.
+
    function Move_Into_Memory
      (Temp       : GL_Value;
       V          : GL_Value;
@@ -620,6 +626,23 @@ package body GNATLLVM.Types is
    end Create_Access_Type;
 
    -----------------------
+   -- Create_Alloc_Type --
+   -----------------------
+
+   function Create_Alloc_Type (TE : Entity_Id) return Type_T is
+      T : Type_T := Create_Type (TE);
+
+   begin
+      if not Is_Dynamic_Size (TE) and then Is_Array_Type (TE)
+        and then Is_Constr_Subt_For_UN_Aliased (TE)
+      then
+         T := Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE), 2 => T));
+      end if;
+
+      return T;
+   end Create_Alloc_Type;
+
+   -----------------------
    -- GNAT_To_LLVM_Type --
    -----------------------
 
@@ -804,22 +827,21 @@ package body GNATLLVM.Types is
       TE         : Entity_Id;
       Alloc_Type : Entity_Id) return GL_Value
    is
-      Memory : GL_Value := Temp;
+      R      : constant GL_Value_Relationship :=
+        (if Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
+           and then Is_Array_Type (Alloc_Type)
+         then Reference_To_Bounds_And_Data
+         elsif Is_Array_Type (Alloc_Type) then Array_Data else Reference);
+      Memory : GL_Value                       :=
+        (if Is_Access_Type (Temp)
+         then Ptr_To_Relationship (Temp, Alloc_Type, R)
+         else Int_To_Relationship (Temp, Alloc_Type, R));
 
    begin
-      --  First, get Temp into something roughly looking like a
-      --  pointer to Alloc_Typ, but if it's unconstrained, we convert
-      --  into raw array data, since that's what we have.
+      --  Make sure we're pointing at the location of the data
 
-      if Is_Unconstrained_Array (Alloc_Type) then
-         Memory :=
-           (if Is_Access_Type (Memory)
-            then Ptr_To_Raw_Array (Memory, Alloc_Type)
-            else Int_To_Raw_Array (Memory, Alloc_Type));
-      else
-         Memory :=
-           (if Is_Access_Type (Memory) then Ptr_To_Ref (Memory, Alloc_Type)
-            else Int_To_Ref (Memory, Alloc_Type));
+      if Relationship (Memory) = Reference_To_Bounds_And_Data then
+         Memory := Get (Memory, Thin_Pointer);
       end if;
 
       --  If we have a value to move into memory, move it
@@ -835,8 +857,7 @@ package body GNATLLVM.Types is
       --  make the fat pointer from the constrained type.
 
       if not Is_Unconstrained_Array (TE)
-        or else (not Is_Access_Unconstrained (Memory)
-                   and then not Is_Raw_Array (Memory))
+        or else not Is_Unconstrained_Array (Memory)
       then
          return Convert_To_Access_To (Memory, TE);
 
@@ -876,16 +897,17 @@ package body GNATLLVM.Types is
       --  dynamic size, then we can allocate an array of the component type
       --  corresponding to the array type and cast it to a pointer to the
       --  actual type.  If not, we have to allocate it as an array of
-      --  bytes.
+      --  bytes.  We must use an array of bytes if we have to include bounds.
 
       if Is_Array_Type (Alloc_Type)
         and then not Is_Dynamic_Size (Full_Component_Type (Alloc_Type))
+        and then not Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
       then
          Element_Typ := Full_Component_Type (Alloc_Type);
          Num_Elts    := Get_Array_Elements (V, Alloc_Type, For_Type => No (V));
       else
          Element_Typ := Standard_Short_Short_Integer;
-         Num_Elts    := Get_Type_Size (Alloc_Type, V, For_Type => No (V));
+         Num_Elts    := Get_Alloc_Size (Alloc_Type, Alloc_Type, V);
       end if;
 
       return Move_Into_Memory
@@ -904,8 +926,7 @@ package body GNATLLVM.Types is
       Proc       : Entity_Id := Empty;
       Pool       : Entity_Id := Empty) return GL_Value
    is
-      Size       : constant GL_Value  :=
-        Get_Type_Size (Alloc_Type, V, For_Type => No (V));
+      Size       : constant GL_Value  := Get_Alloc_Size (TE, Alloc_Type, V);
       Align      : constant unsigned  := Get_Type_Alignment (Alloc_Type);
       Align_V    : constant GL_Value  := Size_Const_Int (Align);
       Ret_Loc    : constant GL_Value  :=
@@ -1087,6 +1108,29 @@ package body GNATLLVM.Types is
       end if;
 
    end Get_Type_Size;
+
+   --------------------
+   -- Get_Alloc_Size --
+   --------------------
+
+   function Get_Alloc_Size
+     (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
+   is
+      Size : GL_Value := Get_Type_Size (Alloc_Type, V, For_Type => No (V));
+
+   begin
+      --  Adjust size if constrained subtype for aliased unconstrained or
+      --  for unconstrained itself
+
+      if Is_Unconstrained_Array (TE)
+        or else (Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
+                   and then Is_Array_Type (Alloc_Type))
+      then
+         Size := NSW_Add (Size, Get_Bound_Part_Size (TE));
+      end if;
+
+      return Size;
+   end Get_Alloc_Size;
 
    ------------------
    -- Compute_Size --

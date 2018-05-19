@@ -436,13 +436,19 @@ package body GNATLLVM.Compile is
             --  clauses. We only deal with 'Address if the object has a Freeze
             --  node.
 
-            --  ??? For now keep it simple and deal with this case in
-            --  N_Object_Declaration.
-
             if Get_Attribute_Id (Chars (N)) = Attribute_Address
               and then Present (Freeze_Node (Entity (Name (N))))
             then
-               null;
+               declare
+                  Expr : constant Node_Id   := Expression (N);
+
+               begin
+                  if Library_Level then
+                     Add_To_Elab_Proc (Expr, For_Type => Full_Etype (Expr));
+                  else
+                     Set_Value (Expr, Emit_Expression (Expr));
+                  end if;
+               end;
             end if;
 
          when others =>
@@ -943,12 +949,29 @@ package body GNATLLVM.Compile is
       E_Value                   : GL_Value;
       Forwards_OK, Backwards_OK : Boolean)
    is
-      Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);
       E         : constant Node_Id   := Strip_Complex_Conversions (Orig_E);
+      Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);
+      Src_Type  : constant Entity_Id :=
+        (if Present (E_Value) then Related_Type (E_Value) else Full_Etype (E));
       Dest      : GL_Value           := LValue;
-      Src       : GL_Value;
+      Src       : GL_Value           := E_Value;
 
    begin
+      --  If we are assigning to a type that's the nominal constrained
+      --  subtype of an unconstrained array for an aliased object, get a
+      --  reference to the bounds, compute the bounds, and store them.
+      --  ???  We need to look into assigning data+bounds together.
+
+      if Is_Constr_Subt_For_UN_Aliased (LValue) and Is_Array_Type (LValue) then
+         declare
+            Bound_Ref : constant GL_Value := Get (LValue, Reference_To_Bounds);
+            Bound_Val : constant GL_Value := Get_Array_Bounds (Src_Type, Src);
+
+         begin
+            Store (Bound_Val, Bound_Ref);
+         end;
+      end if;
+
       --  The back-end supports exactly two types of array aggregates.
       --  One, handled in Emit_Array_Aggregate, is for a fixed-size
       --  aggregate of fixed-size components.  The other are special cases
@@ -974,13 +997,18 @@ package body GNATLLVM.Compile is
          --  The easy case: convert the source to the destination type and
          --  store it.
 
-         Src := (if No (E_Value) then Emit_Expression (E) else E_Value);
+         if No (Src) then
+            Src := Emit_Expression (E);
+         end if;
+
          Store (Convert_To_Elementary_Type (Src, Dest_Type), Dest);
 
       elsif (Present (E) and then not Is_Dynamic_Size (Full_Etype (E)))
          or else (Present (E_Value) and then not Is_Reference (E_Value))
       then
-         Src := (if No (E_Value) then Emit_Expression (E) else E_Value);
+         if No (Src) then
+            Src := Emit_Expression (E);
+         end if;
 
          --  Here, we have the situation where the source is of an LLVM
          --  value, but the destiation may or may not be a variable-sized
@@ -1001,8 +1029,9 @@ package body GNATLLVM.Compile is
          Store (Src, Dest);
 
       else
-         Src := (if No (E_Value) then Emit_LValue (E, Clear => False)
-                 else E_Value);
+         if No (Src) then
+            Src := Emit_LValue (E, Clear => False);
+         end if;
 
          --  Otherwise, we have to do a variable-sized copy
 

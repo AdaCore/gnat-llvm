@@ -533,7 +533,7 @@ package body GNATLLVM.Exprs is
      (N : Node_Id; LValue : Boolean) return GL_Value
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
-      TE   : constant Entity_Id := Full_Etype (N);
+      TE   : constant Entity_Id    := Full_Etype (N);
       V    : GL_Value;
 
    begin
@@ -559,7 +559,7 @@ package body GNATLLVM.Exprs is
                V := Array_Data (V);
             end if;
 
-            return (if LValue then V else Ptr_To_Int (V, TE, "attr-address"));
+            return Ptr_To_Int (V, TE, "attr-address");
 
          when Attribute_Deref =>
             declare

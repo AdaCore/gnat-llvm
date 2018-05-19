@@ -19,8 +19,6 @@ with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
 with Sinfo;    use Sinfo;
 
-with LLVM.Core;  use LLVM.Core;
-
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -34,8 +32,7 @@ package GNATLLVM.Arrays is
 
    function Create_Array_Raw_Pointer_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Array_Type (TE),
-          Post => (Get_Type_Kind (Create_Array_Raw_Pointer_Type'Result) =
-                   Pointer_Type_Kind);
+          Post => Present (Create_Array_Raw_Pointer_Type'Result);
    --  Return the type used to store thin pointers to Array_Type
 
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T

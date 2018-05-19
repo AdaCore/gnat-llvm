@@ -571,7 +571,10 @@ package body GNATLLVM.Variables is
          --  on whether the type's size is dynamic, rather than requiring
          --  that neither be, but it's not worth the trouble.
 
-         if Is_Double_Reference (LLVM_Var) or else Is_Dynamic_Size (TE) then
+         if Is_Double_Reference (LLVM_Var) or else Is_Dynamic_Size (TE)
+           or else (Is_Constr_Subt_For_UN_Aliased (TE)
+                      and then Is_Array_Type (TE))
+         then
             Error_Msg_N
               ("All uses of same interface name must have static size",
                Def_Ident);
@@ -633,7 +636,8 @@ package body GNATLLVM.Variables is
       Is_Ref       : constant Boolean   :=
         Present (Addr_Expr) or else Is_Dynamic_Size (TE);
       Value        : GL_Value           := No_GL_Value;
-      Addr         : GL_Value           := No_GL_Value;
+      Addr         : GL_Value           :=
+        (if Present (Addr_Expr) then Get_Value (Addr_Expr) else No_GL_Value);
       Copied       : Boolean            := False;
       Set_Init     : Boolean            := False;
       LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
@@ -709,8 +713,11 @@ package body GNATLLVM.Variables is
 
          if Present (Addr_Expr) then
             if Is_Static_Address (Addr_Expr) then
-               Set_Initializer
-                 (LLVM_Var, Int_To_Ref (Emit_Expression (Addr_Expr),  TE));
+               if No (Addr) then
+                  Addr := Emit_Expression (Addr_Expr);
+               end if;
+
+               Set_Initializer (LLVM_Var, Int_To_Ref (Addr,  TE));
                Set_Init := True;
             elsif Library_Level then
                Add_To_Elab_Proc (N);
@@ -745,9 +752,17 @@ package body GNATLLVM.Variables is
               and then Is_A_Global_Variable (LLVM_Var)
               and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
             then
-               Set_Initializer (LLVM_Var,
-                                (if Present (Value) then Value
-                                 else Build_Type_Conversion (Expr, TE)));
+               if No (Value) then
+                  Value := Build_Type_Conversion (Expr, TE);
+               end if;
+
+               if Is_Constr_Subt_For_UN_Aliased (TE)
+                 and then Is_Array_Type (TE)
+               then
+                  Value := Get (Value, Bounds_And_Data);
+               end if;
+
+               Set_Initializer (LLVM_Var, Value);
                Set_Init := True;
                Copied := True;
             elsif Library_Level then
@@ -762,8 +777,9 @@ package body GNATLLVM.Variables is
          if not Set_Init and then not Is_External
            and then Is_A_Global_Variable (LLVM_Var)
          then
-            Set_Initializer (LLVM_Var, (if Is_Ref then Const_Null_Ref (TE)
-                                        else Const_Null (TE)));
+            Set_Initializer (LLVM_Var,
+                             (if Is_Ref then Const_Null_Ref (TE)
+                              else Const_Null_Alloc (TE)));
          end if;
       end if;
 
@@ -783,7 +799,11 @@ package body GNATLLVM.Variables is
       --  Likewise for the expression for the address clause
 
       if Present (Addr_Expr) then
-         Addr := Int_To_Ref (Emit_Expression (Addr_Expr), TE);
+         if No (Addr) then
+            Addr := Emit_Expression (Addr_Expr);
+         end if;
+
+         Addr := Int_To_Ref (Addr, TE);
       end if;
 
       --  If we've already gotten a value for the address of this entity,

@@ -50,7 +50,7 @@ package GNATLLVM.GLValue is
       --  globals because those names represent the address of the global,
       --  either for data or functions.
 
-      Double_Reference,
+      Reference_To_Reference,
       --  Value contains the address of memory that contains the address of
       --  an object of Typ.  This occurs for globals where either an
       --  'Address attribute was specifed or where an object of dynamic
@@ -89,6 +89,10 @@ package GNATLLVM.GLValue is
       --  be in memory in front of the data (with the minimal padding
       --  between then).  Also similar to Reference_To_Bounds_And_Data,
       --  except for exactly where the pointer references.
+
+      Reference_To_Thin_Pointer,
+      --  Similar to Reference_To_Reference, except that the underlying
+      --  object is an aliased object with a nominal constrained type.
 
       Reference_To_Subprogram,
       --  Value contains the address of a subprogram which is a procedure
@@ -150,8 +154,8 @@ package GNATLLVM.GLValue is
          Deref => Invalid,           Ref => Reference),
       Reference                      =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Data,              Ref => Double_Reference),
-      Double_Reference               =>
+         Deref => Data,              Ref => Reference_To_Reference),
+      Reference_To_Reference         =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref => Reference,         Ref => Invalid),
       Fat_Pointer                    =>
@@ -172,9 +176,12 @@ package GNATLLVM.GLValue is
       Array_Data                     =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref => Invalid,           Ref => Invalid),
+      Reference_To_Thin_Pointer      =>
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Thin_Pointer,      Ref => Invalid),
       Thin_Pointer                   =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Invalid),
+         Deref => Invalid,           Ref => Reference_To_Thin_Pointer),
       Reference_To_Subprogram        =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref => Invalid,           Ref => Invalid),
@@ -197,15 +204,23 @@ package GNATLLVM.GLValue is
         (Is_Ref => False, Is_Any_Ref => False,
          Deref => Invalid,           Ref => Invalid));
 
-   function Is_Reference (R : GL_Value_Relationship)     return Boolean is
-     (Relation_Props (R).Is_Ref);
-   function Is_Any_Reference (R : GL_Value_Relationship) return Boolean is
-     (Relation_Props (R).Is_Any_Ref);
-
    function Deref (R : GL_Value_Relationship) return GL_Value_Relationship is
      (Relation_Props (R).Deref);
    function Ref (R : GL_Value_Relationship)   return GL_Value_Relationship is
      (Relation_Props (R).Ref);
+
+   function Is_Reference (R : GL_Value_Relationship)        return Boolean is
+     (Relation_Props (R).Is_Ref);
+   function Is_Any_Reference (R : GL_Value_Relationship)    return Boolean is
+     (Relation_Props (R).Is_Any_Ref);
+   function Is_Double_Reference (R : GL_Value_Relationship) return Boolean is
+     (Is_Reference (Deref (R)));
+   function Is_Single_Reference (R : GL_Value_Relationship) return Boolean is
+     (Is_Reference (R) and then not Is_Double_Reference (R));
+
+   function Is_Subprogram_Reference
+       (R : GL_Value_Relationship) return Boolean is
+     (R = Reference_To_Subprogram);
 
    function Relationship_For_Access_Type
      (TE : Entity_Id) return GL_Value_Relationship
@@ -274,19 +289,19 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Is_Raw_Array (V : GL_Value) return Boolean is
-     (Relationship (V) = Array_Data)
+     (Relationship (V) = Array_Data or else Relationship (V) = Thin_Pointer)
      with Pre => Present (V);
 
    function Is_Double_Reference (V : GL_Value) return Boolean is
-     (Relationship (V) = Double_Reference)
+     (Is_Double_Reference (Relationship (V)))
      with Pre => Present (V);
 
    function Is_Single_Reference (V : GL_Value) return Boolean is
-     (Is_Reference (V) and then not Is_Double_Reference (V))
+     (Is_Single_Reference (Relationship (V)))
      with Pre => Present (V);
 
    function Is_Subprogram_Reference (V : GL_Value) return Boolean is
-     (Relationship (V) = Reference_To_Subprogram)
+     (Is_Subprogram_Reference (Relationship (V)))
      with Pre => Present (V);
 
    function Has_Known_Etype (V : GL_Value) return Boolean is
@@ -295,7 +310,7 @@ package GNATLLVM.GLValue is
    --  True if we know what V's Etype is
 
    function Etype (V : GL_Value) return Entity_Id is
-     (V.Typ)
+     (Related_Type (V))
      with Pre => Present (V) and then Has_Known_Etype (V),
           Post => Is_Type_Or_Void (Etype'Result);
 
@@ -351,12 +366,6 @@ package GNATLLVM.GLValue is
           Post => Is_Access_Type (G_Ref'Result);
    --  Likewise but when we already have a GL_Value
 
-   function G_Double_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), TE, Double_Reference))
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Is_Double_Reference (G_Double_Ref'Result);
-   --  Likewise but when we already have a GL_Value
-
    procedure Discard (V : GL_Value);
    --  Evaluate V and throw away the result
 
@@ -378,12 +387,12 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Is_Access_Type (V : GL_Value) return Boolean is
-     (Is_Reference (V) or else Is_Access_Type (Etype (V)))
+     (Is_Single_Reference (V)
+      or else (not Is_Reference (V) and then Is_Access_Type (Etype (V))))
      with Pre => Present (V);
 
    function Full_Designated_Type (V : GL_Value) return Entity_Id
-     with Pre  => Is_Access_Type (V) and then not Is_Double_Reference (V)
-                  and then not Is_Subprogram_Reference (V),
+     with Pre  => Is_Access_Type (V) and then not Is_Subprogram_Reference (V),
           Post => Is_Type_Or_Void (Full_Designated_Type'Result);
 
    function Implementation_Base_Type (V : GL_Value) return Entity_Id is
@@ -449,6 +458,12 @@ package GNATLLVM.GLValue is
 
    function Is_Modular_Integer_Type (V : GL_Value) return Boolean is
      (not Is_Reference (V) and then Is_Modular_Integer_Type (Full_Etype (V)))
+     with Pre => Present (V);
+
+   function Is_Unconstrained_Array (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
+   function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function RM_Size (V : GL_Value) return Uint is
@@ -521,6 +536,9 @@ package GNATLLVM.GLValue is
 
    function Const_Null (TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE), Post => Present (Const_Null'Result);
+
+   function Const_Null_Alloc (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE), Post => Present (Const_Null_Alloc'Result);
 
    function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE) and then N /= No_Uint,
@@ -677,6 +695,14 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Access_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Ptr_To_Raw_Array'Result);
 
+   function Ptr_To_Relationship
+     (V    : GL_Value;
+      TE   : Entity_Id;
+      R    : GL_Value_Relationship;
+      Name : String := "") return GL_Value
+     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
+          Post => Is_Access_Type (Ptr_To_Relationship'Result);
+
    function Trunc
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
@@ -812,10 +838,10 @@ package GNATLLVM.GLValue is
 
    procedure Store (Expr : GL_Value; Ptr : GL_Value)
      with Pre => Present (Expr)
-                 and then Present (Ptr) and then Is_Access_Type (Ptr);
+                 and then Present (Ptr) and then Is_Reference (Ptr);
 
    function Load (Ptr : GL_Value; Name : String := "") return GL_Value
-     with Pre  => Present (Ptr) and then Is_Access_Type (Ptr),
+     with Pre  => Present (Ptr) and then Is_Reference (Ptr),
           Post => Present (Load'Result);
 
    function I_Cmp
@@ -1062,6 +1088,15 @@ package GNATLLVM.GLValue is
                   and then Is_Raw_Array (Int_To_Raw_Array'Result);
    --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
    --  access type.
+
+   function Int_To_Relationship
+     (V    : GL_Value;
+      TE   : Entity_Id;
+      R    : GL_Value_Relationship;
+      Name : String := "") return GL_Value
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
+          Post => Is_Access_Type (Int_To_Relationship'Result);
+   --  Similar to Int_To_Ptr, but specify the relationship to TE
 
    function Extract_Value
      (Typ   : Entity_Id;

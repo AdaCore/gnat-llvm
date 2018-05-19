@@ -80,7 +80,7 @@ package body GNATLLVM.GLValue is
                                      and then Needs_Activation_Record
                                      (V.Typ)));
 
-         when Double_Reference =>
+         when Reference_To_Reference | Reference_To_Thin_Pointer =>
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
@@ -113,11 +113,23 @@ package body GNATLLVM.GLValue is
    -----------------------------
 
    function Is_Access_Unconstrained (V : GL_Value) return Boolean is
-     (Is_Access_Type (V) and then Ekind (V.Typ) /= E_Void
-        and then not Is_Subprogram_Reference (V)
+     (Is_Access_Type (V) and then not Is_Subprogram_Reference (V)
         and then Is_Unconstrained_Array (Full_Designated_Type (V))
-        and then not Is_Raw_Array (V)
-        and then Relationship (V) /= Reference_To_Subprogram);
+        and then not Is_Raw_Array (V));
+
+   ----------------------------
+   -- Is_Unconstrained_Array --
+   ----------------------------
+
+   function Is_Unconstrained_Array (V : GL_Value) return Boolean is
+     (Is_Unconstrained_Array (Related_Type (V)));
+
+   -----------------------------------
+   -- Is_Constr_Subt_For_UN_Aliased --
+   -----------------------------------
+
+   function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean is
+     (Is_Constr_Subt_For_UN_Aliased (Related_Type (V)));
 
    ---------------------
    -- Is_Dynamic_Size --
@@ -157,7 +169,7 @@ package body GNATLLVM.GLValue is
       --  a nominal subtype of an unconstrained type for an aliased
       --  object, in order to point to the data, we need a thin pointer.
 
-      elsif Is_Constr_Subt_For_UN_Aliased (DT) then
+      elsif Is_Constr_Subt_For_UN_Aliased (DT) and then Is_Array_Type (DT) then
          return Thin_Pointer;
 
       --  If this is an access to subprogram, this is either a pointer to
@@ -242,6 +254,22 @@ package body GNATLLVM.GLValue is
       --  Now we have specific rules for each relationship type
 
       case R is
+         when Data =>
+            --  If we have bounds and data, extract the data
+
+            if Relationship (V) = Bounds_And_Data then
+               return G (Extract_Value (IR_Builder, Value, 1, ""), TE, R);
+
+               --  If we have a reference to something else, try to convert
+               --  to a normal reference and then get the data.  If this
+               --  was reference to bounds and data, we could also just
+               --  dereference and extract the data, but that involves
+               --  more memory accesses.
+
+            elsif Is_Reference (V) then
+               return Get (Get (V, Reference), R);
+            end if;
+
          when Bounds =>
 
             --  If we have something that we can use to get the address of
@@ -250,6 +278,7 @@ package body GNATLLVM.GLValue is
             if Relationship (V) = Fat_Pointer
               or else Relationship (V) = Thin_Pointer
               or else Relationship (V) = Reference_To_Bounds_And_Data
+              or else Relationship (V) = Reference_To_Thin_Pointer
             then
                return Load (Get (V, Reference_To_Bounds));
 
@@ -300,6 +329,8 @@ package body GNATLLVM.GLValue is
                                   Get_Bound_Part_Size (TE));
                return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result), T, ""),
                          TE, R);
+            elsif Relationship (V) = Reference_To_Thin_Pointer then
+               return Get (Get (V, Thin_Pointer), R);
 
             --  Otherwise get the bounds and force them into memory
 
@@ -308,6 +339,7 @@ package body GNATLLVM.GLValue is
             end if;
 
          when Array_Data =>
+            T := Pointer_Type (Create_Type (TE), 0);
 
             --  For Reference and Thin_Pointer, we have the value we need,
             --  possibly just converting it.  For FAT pointer, we can
@@ -317,7 +349,9 @@ package body GNATLLVM.GLValue is
                return G (Value, TE, R);
             elsif Relationship (V) = Thin_Pointer then
                return G (Pointer_Cast
-                           (IR_Builder, Value, Create_Type (TE), ""), TE, R);
+                           (IR_Builder, Value, T, ""), TE, R);
+            elsif Relationship (V) = Reference_To_Thin_Pointer then
+               return Get (Get (V, Thin_Pointer), R);
             elsif Relationship (V) = Fat_Pointer then
                return G (Extract_Value (IR_Builder, Value, 0, ""), TE, R);
 
@@ -328,8 +362,7 @@ package body GNATLLVM.GLValue is
             elsif Relationship (V) = Reference_To_Bounds_And_Data then
                Result := NSW_Add (Ptr_To_Int (V, Size_Type),
                                   Get_Bound_Part_Size (TE));
-               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result),
-                                     Create_Type (TE), ""),
+               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result), T, ""),
                          TE, R);
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
@@ -347,6 +380,7 @@ package body GNATLLVM.GLValue is
             end if;
 
          when Thin_Pointer =>
+            T := Pointer_Type (Create_Type (TE), 0);
 
             --  There are only two cases where we can make a thin pointer.
             --  One is where we have the address of bounds and data (or the
@@ -358,8 +392,7 @@ package body GNATLLVM.GLValue is
             if Relationship (V) = Reference_To_Bounds_And_Data then
                Result := NSW_Add (Ptr_To_Int (V, Size_Type),
                                   Get_Bound_Part_Size (TE));
-               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result),
-                                     Create_Type (TE), ""),
+               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result), T, ""),
                          TE, R);
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
@@ -402,7 +435,7 @@ package body GNATLLVM.GLValue is
 
          when Any_Reference =>
 
-            --  The old case where we have some GL_Value that's not already
+            --  The only case where we have some GL_Value that's not already
             --  handled by one of the cases above the "case" statement is if
             --  it's a Reference_To_Bounds_And_Data, in which case the most
             --  general thing to convert it to is a thin pointer.
@@ -424,10 +457,17 @@ package body GNATLLVM.GLValue is
    ------------
 
    function Alloca (TE : Entity_Id; Name : String := "") return GL_Value is
-      Inst : constant Value_T := Alloca (IR_Builder, Create_Type (TE), Name);
+      T    : constant Type_T                :=
+        (if Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE)
+         then Create_Alloc_Type (TE) else Create_Type (TE));
+      R    : constant GL_Value_Relationship :=
+         (if Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE)
+          then Reference_To_Bounds_And_Data else Reference);
+      Inst : constant Value_T               := Alloca (IR_Builder, T, Name);
+
    begin
-      Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
-      return G_Ref (Inst, TE);
+      Set_Alloca_Align (Inst, Get_Type_Alignment (T));
+      return G (Inst, TE, R);
    end Alloca;
 
    ------------------
@@ -467,6 +507,13 @@ package body GNATLLVM.GLValue is
 
    function Const_Null (TE : Entity_Id) return GL_Value is
      (G (Const_Null (Create_Type (TE)), TE));
+
+   ----------------------
+   -- Const_Null_Alloc --
+   ----------------------
+
+   function Const_Null_Alloc (TE : Entity_Id) return GL_Value is
+     (G (Const_Null (Create_Alloc_Type (TE)), TE));
 
    --------------------
    -- Const_Null_Ref --
@@ -532,6 +579,25 @@ package body GNATLLVM.GLValue is
                       Create_Array_Raw_Pointer_Type (TE), Name),
           TE, Array_Data));
 
+   -------------------------
+   -- Int_To_Relationship --
+   -------------------------
+
+   function Int_To_Relationship
+     (V    : GL_Value;
+      TE   : Entity_Id;
+      R    : GL_Value_Relationship;
+      Name : String := "") return GL_Value
+   is
+      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                      (if R = Array_Data and then Is_Dynamic_Size (TE)
+                       then Create_Array_Raw_Pointer_Type (TE)
+                       elsif Is_Reference (R)
+                       then Pointer_Type (Create_Type (TE), 0)
+                       else Create_Type (TE)),
+                      Name),
+          TE, R));
+
    ----------------
    -- Ptr_To_Int --
    ----------------
@@ -581,6 +647,25 @@ package body GNATLLVM.GLValue is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Create_Array_Raw_Pointer_Type (TE), Name),
           TE, Array_Data));
+
+   -------------------------
+   -- Ptr_To_Relationship --
+   -------------------------
+
+   function Ptr_To_Relationship
+     (V    : GL_Value;
+      TE   : Entity_Id;
+      R    : GL_Value_Relationship;
+      Name : String := "") return GL_Value
+   is
+      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                      (if R = Array_Data and then Is_Dynamic_Size (TE)
+                       then Create_Array_Raw_Pointer_Type (TE)
+                       elsif Is_Reference (R)
+                       then Pointer_Type (Create_Type (TE), 0)
+                       else Create_Type (TE)),
+                        Name),
+          TE, R));
 
    -----------
    -- Trunc --
@@ -727,7 +812,7 @@ package body GNATLLVM.GLValue is
    --------------------------
 
    function Full_Designated_Type (V : GL_Value) return Entity_Id is
-     ((if Is_Reference (V) then Get_Fullest_View (V.Typ)
+     ((if Is_Reference (V) then Get_Fullest_View (Related_Type (V))
        else Full_Designated_Type (Etype (V))));
 
    ---------
@@ -898,12 +983,31 @@ package body GNATLLVM.GLValue is
    function Add_Global
      (TE             : Entity_Id;
       Name           : String;
-      Need_Reference : Boolean := False) return GL_Value is
-     (G (Add_Global (LLVM_Module,
-                     (if Need_Reference then Create_Access_Type (TE)
-                      else Create_Type (TE)),
-                      Name),
-         TE, (if Need_Reference then Double_Reference else Reference)));
+      Need_Reference : Boolean := False) return GL_Value
+   is
+      T : Type_T;
+      R : GL_Value_Relationship;
+
+   begin
+      --  Get the type to use for this global.  If this is a subtype
+      --  created for an aliased variable whose nominal subtype is
+      --  unconstrained, allow for the needed bounds.
+
+      if Need_Reference then
+         T := Create_Access_Type (TE);
+         R := (if Is_Constr_Subt_For_UN_Aliased (TE)
+                 and then Is_Array_Type (TE)
+               then Reference_To_Thin_Pointer else Reference_To_Reference);
+      elsif Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE) then
+         T := Create_Alloc_Type (TE);
+         R := Reference_To_Bounds_And_Data;
+      else
+         T := Create_Type (TE);
+         R := Reference;
+      end if;
+
+      return G (Add_Global (LLVM_Module, T, Name), TE, R);
+   end Add_Global;
 
    ---------------------
    -- Set_Initializer --

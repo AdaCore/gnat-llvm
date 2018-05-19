@@ -22,6 +22,8 @@ with Stand;    use Stand;
 with Table;    use Table;
 with Uintp;    use Uintp;
 
+with LLVM.Core;  use LLVM.Core;
+
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
@@ -382,7 +384,8 @@ package body GNATLLVM.Arrays is
       --  dynamic size.  We must use an opaque type if this is of dynamic size
       --  unless the only reason it's dynamic is because the first dimension
       --  is of variable-size: in that case, we can use an LLVM array with
-      --  zero as the bound.
+      --  zero as the bound.  ??? We no longer actual make an "opaque"
+      --  type, so change the above and name soon.
 
       --  ??? There is one more case that we could try, which is in the
       --  multi-dimensional case of dynamic bounds, but when the component
@@ -438,7 +441,7 @@ package body GNATLLVM.Arrays is
       --  the types making the LLVM type.
 
       if Must_Use_Opaque then
-         Typ := Struct_Create_Named (LLVM_Context, "");
+         Typ := Array_Type (Typ, 0);
       else
          for I in reverse First_Info .. Array_Info.Last loop
             declare
@@ -505,11 +508,8 @@ package body GNATLLVM.Arrays is
    -----------------------------------
 
    function Create_Array_Raw_Pointer_Type (TE : Entity_Id) return Type_T is
-      Elt_Type : constant Type_T := Create_Type (Full_Component_Type (TE));
-      Arr_Type : constant Type_T := Array_Type (Elt_Type, 0);
-
    begin
-      return Pointer_Type (Arr_Type, 0);
+      return Pointer_Type (Create_Type (TE), 0);
    end Create_Array_Raw_Pointer_Type;
 
    -----------------------------------
@@ -721,7 +721,6 @@ package body GNATLLVM.Arrays is
    ----------------------
 
    function Get_Array_Bounds (TE : Entity_Id; V : GL_Value) return GL_Value is
-      Src_Type       : constant Entity_Id := Full_Designated_Type (V);
       Bounds_Typ     : constant Type_T    := Create_Array_Bounds_Type (TE);
       Info_Idx       : constant Nat       := Get_Array_Info (TE);
       Bound_Val      : GL_Value           :=
@@ -739,9 +738,9 @@ package body GNATLLVM.Arrays is
             Bound_Type           : constant Entity_Id :=
               Array_Info.Table (Info_Idx + Dim).Bound_Type;
             Low_Bound            : constant GL_Value  :=
-              Get_Array_Bound (Src_Type, Dim, True, V);
+              Get_Array_Bound (TE, Dim, True, V);
             High_Bound           : constant GL_Value  :=
-              Get_Array_Bound (Src_Type, Dim, False, V);
+              Get_Array_Bound (TE, Dim, False, V);
             Converted_Low_Bound  : constant GL_Value  :=
               Convert_To_Elementary_Type (Low_Bound, Bound_Type);
             Converted_High_Bound : constant GL_Value  :=
@@ -845,7 +844,7 @@ package body GNATLLVM.Arrays is
       --  There are two approaches we can take here.  If we haven't used
       --  an opaque type, we can just do a GEP with the values above.
 
-      if Type_Is_Sized (Create_Type (Array_Type)) then
+      if not Is_Dynamic_Size (Array_Type) then
          return GEP (Comp_Type, Array_Data_Ptr, Idxs, "array-element-access");
       end if;
 
@@ -914,7 +913,7 @@ package body GNATLLVM.Arrays is
       --  GEP's result type is a pointer to the component type, so we need
       --  to cast to the result (array) type in both cases.
 
-      if Type_Is_Sized (Create_Type (Arr_Type)) then
+      if not Is_Dynamic_Size (Arr_Type) then
          return Ptr_To_Ref (GEP (TE, Array_Data_Ptr,
                                  (Size_Const_Null, Index_Shift),
                                  "array-shifted"), TE);

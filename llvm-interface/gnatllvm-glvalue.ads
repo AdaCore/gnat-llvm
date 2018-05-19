@@ -540,7 +540,7 @@ package GNATLLVM.GLValue is
      (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value is
      (G (Get_Undef (Type_For_Relationship (TE, R)), TE, R))
      with Pre  => Is_Type (TE),
-          Post => Is_Reference (Get_Undef_Relationship'Result);
+          Post => Present (Get_Undef_Relationship'Result);
 
    function Get_Undef_Ref (T : Type_T; TE : Entity_Id) return GL_Value is
      (G_Ref (Get_Undef (T), TE))

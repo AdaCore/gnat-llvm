@@ -87,7 +87,7 @@ package body GNATLLVM.GLValue is
          when Fat_Pointer | Bounds | Bounds_And_Data =>
             return Is_Array_Type (V.Typ);
 
-         when Array_Data | Thin_Pointer
+         when Reference_To_Array_Data | Thin_Pointer
             | Reference_To_Bounds | Reference_To_Bounds_And_Data =>
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
@@ -338,7 +338,7 @@ package body GNATLLVM.GLValue is
                return Get (Get (V, Bounds), R);
             end if;
 
-         when Array_Data =>
+         when Reference_To_Array_Data =>
             T := Pointer_Type (Create_Type (TE), 0);
 
             --  For Reference and Thin_Pointer, we have the value we need,
@@ -370,13 +370,13 @@ package body GNATLLVM.GLValue is
 
          when Reference =>
 
-            --  If we have Array_Data, we have the value we need.  Otherwise,
-            --  try to convert to Array_Data and then to this.
+            --  If we have Reference_To_Array_Data, we have the value we
+            --  need.  Otherwise, try to convert to it and then to this.
 
-            if Relationship (V) = Array_Data then
+            if Relationship (V) = Reference_To_Array_Data then
                return G (Value, TE, R);
             else
-               return Get (Get (V, Array_Data), R);
+               return Get (Get (V, Reference_To_Array_Data), R);
             end if;
 
          when Thin_Pointer =>
@@ -413,7 +413,8 @@ package body GNATLLVM.GLValue is
                --  getting a reference to it.
 
                Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
-               Data    : constant GL_Value  := Get (Val, Array_Data);
+               Data    : constant GL_Value  :=
+                   Get (Val, Reference_To_Array_Data);
                Fat_Ptr : constant GL_Value  :=
                  G (Get_Undef (Create_Array_Fat_Pointer_Type (TE)),
                     TE, Fat_Pointer);

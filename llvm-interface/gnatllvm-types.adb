@@ -831,7 +831,8 @@ package body GNATLLVM.Types is
         (if Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
            and then Is_Array_Type (Alloc_Type)
          then Reference_To_Bounds_And_Data
-         elsif Is_Array_Type (Alloc_Type) then Array_Data else Reference);
+         elsif Is_Array_Type (Alloc_Type) then Reference_To_Array_Data
+         else Reference);
       Memory : GL_Value                       :=
         (if Is_Access_Type (Temp)
          then Ptr_To_Relationship (Temp, Alloc_Type, R)

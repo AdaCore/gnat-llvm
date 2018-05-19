@@ -499,22 +499,13 @@ package body GNATLLVM.Arrays is
    end Get_Bound_Part_Size;
 
    -----------------------------------
-   -- Create_Array_Raw_Pointer_Type --
-   -----------------------------------
-
-   function Create_Array_Raw_Pointer_Type (TE : Entity_Id) return Type_T is
-   begin
-      return Pointer_Type (Create_Type (TE), 0);
-   end Create_Array_Raw_Pointer_Type;
-
-   -----------------------------------
    -- Create_Array_Fat_Pointer_Type --
    -----------------------------------
 
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T is
    begin
       return Build_Struct_Type
-        ((1 => Create_Array_Raw_Pointer_Type (TE),
+        ((1 => Pointer_Type (Create_Type (TE), 0),
           2 => Create_Array_Bounds_Type (TE)));
    end Create_Array_Fat_Pointer_Type;
 

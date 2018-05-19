@@ -576,7 +576,7 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                      Create_Array_Raw_Pointer_Type (TE), Name),
+                      Pointer_Type (Create_Type (TE), 0), Name),
           TE, Array_Data));
 
    -------------------------
@@ -590,9 +590,7 @@ package body GNATLLVM.GLValue is
       Name : String := "") return GL_Value
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                      (if R = Array_Data and then Is_Dynamic_Size (TE)
-                       then Create_Array_Raw_Pointer_Type (TE)
-                       elsif Is_Reference (R)
+                      (if Is_Reference (R)
                        then Pointer_Type (Create_Type (TE), 0)
                        else Create_Type (TE)),
                       Name),
@@ -645,7 +643,7 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        Create_Array_Raw_Pointer_Type (TE), Name),
+                        Pointer_Type (Create_Type (TE), 0), Name),
           TE, Array_Data));
 
    -------------------------
@@ -659,11 +657,9 @@ package body GNATLLVM.GLValue is
       Name : String := "") return GL_Value
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                      (if R = Array_Data and then Is_Dynamic_Size (TE)
-                       then Create_Array_Raw_Pointer_Type (TE)
-                       elsif Is_Reference (R)
-                       then Pointer_Type (Create_Type (TE), 0)
-                       else Create_Type (TE)),
+                        (if Is_Reference (R)
+                         then Pointer_Type (Create_Type (TE), 0)
+                         else Create_Type (TE)),
                         Name),
           TE, R));
 

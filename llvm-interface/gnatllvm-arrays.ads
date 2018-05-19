@@ -30,11 +30,6 @@ package GNATLLVM.Arrays is
    --  Return the type used to represent Array_Type_Node.  This will be
    --  an opaque type if LLVM can't represent it directly.
 
-   function Create_Array_Raw_Pointer_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (Create_Array_Raw_Pointer_Type'Result);
-   --  Return the type used to store thin pointers to Array_Type
-
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Array_Type (TE),
           Post => Present (Create_Array_Fat_Pointer_Type'Result);

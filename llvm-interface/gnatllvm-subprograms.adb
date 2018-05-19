@@ -29,6 +29,7 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;

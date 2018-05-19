@@ -19,7 +19,10 @@ with Interfaces.C;            use Interfaces.C;
 
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
+with Exp_Code; use Exp_Code;
+with Namet;    use Namet;
 with Nlists;   use Nlists;
+with Sem_Aggr; use Sem_Aggr;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
@@ -758,5 +761,295 @@ package body GNATLLVM.Exprs is
             return Get_Undef (TE);
       end case;
    end Emit_Attribute_Reference;
+
+   ---------------------
+   -- Emit_Assignment --
+   ---------------------
+
+   procedure Emit_Assignment
+     (LValue                    : GL_Value;
+      Orig_E                    : Node_Id;
+      E_Value                   : GL_Value;
+      Forwards_OK, Backwards_OK : Boolean)
+   is
+      E         : constant Node_Id   := Strip_Complex_Conversions (Orig_E);
+      Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);
+      Src_Type  : constant Entity_Id :=
+        (if Present (E_Value) then Related_Type (E_Value) else Full_Etype (E));
+      Dest      : GL_Value           := LValue;
+      Src       : GL_Value           := E_Value;
+
+   begin
+      --  If we are assigning to a type that's the nominal constrained
+      --  subtype of an unconstrained array for an aliased object, get a
+      --  reference to the bounds, compute the bounds, and store them.
+      --  ???  We need to look into assigning data+bounds together.
+
+      if Is_Constr_Subt_For_UN_Aliased (LValue) and Is_Array_Type (LValue) then
+         declare
+            Bound_Ref : constant GL_Value := Get (LValue, Reference_To_Bounds);
+            Bound_Val : constant GL_Value := Get_Array_Bounds (Src_Type, Src);
+
+         begin
+            Store (Bound_Val, Bound_Ref);
+         end;
+      end if;
+
+      --  The back-end supports exactly two types of array aggregates.
+      --  One, handled in Emit_Array_Aggregate, is for a fixed-size
+      --  aggregate of fixed-size components.  The other are special cases
+      --  of Others that are tested for in Aggr_Assignment_OK_For_Backend
+      --  in Exp_Aggr.  We have to handle them here because we want to
+      --  store directly into the LHS.  The front end guarantees that any
+      --  Others aggregate will always be the RHS of an assignment, so
+      --  we'll see it here.
+
+      if Is_Array_Type (Dest_Type) and then Present (E)
+        and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
+        and then Is_Others_Aggregate (E)
+      then
+         Emit_Others_Aggregate (Dest, E);
+
+      --  We now have three case: where we're copying an object of an
+      --  elementary type, where we're copying an object that's not
+      --  elementary, but can be copied with a Store instruction, or where
+      --  we're copying an object of variable size.
+
+      elsif Is_Elementary_Type (Dest_Type) then
+
+         --  The easy case: convert the source to the destination type and
+         --  store it.
+
+         if No (Src) then
+            Src := Emit_Expression (E);
+         end if;
+
+         Store (Convert_To_Elementary_Type (Src, Dest_Type), Dest);
+
+      elsif (Present (E) and then not Is_Dynamic_Size (Full_Etype (E)))
+         or else (Present (E_Value) and then not Is_Reference (E_Value))
+      then
+         if No (Src) then
+            Src := Emit_Expression (E);
+         end if;
+
+         --  Here, we have the situation where the source is of an LLVM
+         --  value, but the destiation may or may not be a variable-sized
+         --  type.  In that case, since we know the size and know the object
+         --  to store, we can convert Dest to the type of the pointer to
+         --  Src, which we know is fixed-size, and do the store.  If Dest
+         --  is pointer to an array type, we need to get the actual array
+         --  data.
+
+         if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
+            if Is_Array_Type (Full_Designated_Type (Dest)) then
+               Dest := Array_Data (Dest);
+            end if;
+
+            Dest := Ptr_To_Ref (Dest, Full_Etype (Src));
+         end if;
+
+         Store (Src, Dest);
+
+      else
+         if No (Src) then
+            Src := Emit_LValue (E, Clear => False);
+         end if;
+
+         --  Otherwise, we have to do a variable-sized copy
+
+         declare
+            Size      : constant GL_Value := Compute_Size
+              (Dest_Type, Full_Designated_Type (Src), Dest, Src);
+            Align     : constant unsigned := Compute_Alignment
+              (Dest_Type, Full_Designated_Type (Src));
+            Func_Name : constant String   :=
+              (if Forwards_OK and then Backwards_OK
+               then "memcpy" else "memmove");
+
+         begin
+
+            --  If this is an array type, we have to point the memcpy/memmove
+            --  to the underlying data.  But be sure we've done this after
+            --  we've used the fat pointer to compute the size above.
+
+            if Is_Array_Type (Full_Designated_Type (Src)) then
+               Dest := Array_Data (Dest);
+               Src  := Array_Data (Src);
+            end if;
+
+            Call (Build_Intrinsic
+                    (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
+                  (1 => Pointer_Cast (Dest, Standard_A_Char),
+                   2 => Pointer_Cast (Src, Standard_A_Char),
+                   3 => Size,
+                   4 => Const_Int_32 (Align),
+                   5 => Const_False)); -- Is_Volatile
+         end;
+      end if;
+   end Emit_Assignment;
+
+   -------------------------
+   -- Emit_Code_Statement --
+   ------------------------
+
+   procedure Emit_Code_Statement (N : Node_Id) is
+      Template_Strval   : constant String_Id := Strval (Asm_Template (N));
+      Num_Inputs        : Integer            := 0;
+      Constraint_Length : Integer            := 0;
+      Output_Val        : GL_Value           := No_GL_Value;
+      Output_Variable   : Node_Id;
+      Output_Constraint : Node_Id;
+      Input             : Node_Id;
+      Clobber           : System.Address;
+
+   begin
+      --  LLVM only allows one output, so just get the information on
+      --  it, if any, and give an error if there's a second one.
+
+      Setup_Asm_Outputs (N);
+      Output_Variable := Asm_Output_Variable;
+
+      if Present (Output_Variable) then
+         Output_Constraint := Asm_Output_Constraint;
+         Constraint_Length :=
+           Integer (String_Length (Strval (Output_Constraint)));
+         Output_Val := Emit_LValue (Output_Variable);
+         Next_Asm_Output;
+
+         if Present (Asm_Output_Variable) then
+            Error_Msg_N ("LLVM only allows one output", N);
+         end if;
+      end if;
+
+      --  For inputs, just count the number of them and the total
+      --  constraint length so we can allocate what we need later.
+
+      Setup_Asm_Inputs (N);
+      Input := Asm_Input_Value;
+
+      while Present (Input) loop
+         Num_Inputs        := Num_Inputs + 1;
+         Constraint_Length := Constraint_Length +
+           Integer (String_Length (Strval (Asm_Input_Constraint)));
+         Next_Asm_Input;
+         Input := Asm_Input_Value;
+      end loop;
+
+      --  Likewise for clobbers, but we only need the length of the
+      --  constraints here.  Node that Clobber_Get_Next isn't very friendly
+      --  for an Ada called, so we'll use fact that it's set Name_Buffer
+      --  and Name_Len;
+
+      Clobber_Setup (N);
+      Clobber := Clobber_Get_Next;
+
+      while not System."=" (Clobber, System.Null_Address) loop
+         Constraint_Length := Constraint_Length + Name_Len + 4;
+         Clobber := Clobber_Get_Next;
+      end loop;
+
+      declare
+         Args           : GL_Value_Array (1 .. Nat (Num_Inputs));
+         Constraints    : String (1 .. Num_Inputs + Constraint_Length + 3);
+         Constraint_Pos : Integer := 0;
+         Input_Pos      : Nat := 0;
+         Need_Comma     : Boolean := False;
+         Asm            : GL_Value;
+         Template       : String (1 .. Integer (String_Length
+                                                  (Template_Strval)));
+
+         procedure Add_Char (C : Character);
+         procedure Add_Constraint (N : Node_Id)
+           with Pre => Nkind (N) = N_String_Literal;
+
+         --------------
+         -- Add_Char --
+         --------------
+
+         procedure Add_Char (C : Character) is
+         begin
+            Constraint_Pos := Constraint_Pos + 1;
+            Constraints (Constraint_Pos) := C;
+            Need_Comma := C /= ',';
+         end Add_Char;
+
+         --------------------
+         -- Add_Constraint --
+         --------------------
+
+         procedure Add_Constraint (N : Node_Id) is
+         begin
+            if Need_Comma then
+               Add_Char (',');
+            end if;
+
+            for J in 1 .. String_Length (Strval (N)) loop
+               Add_Char (Get_Character (Get_String_Char (Strval (N), J)));
+            end loop;
+         end Add_Constraint;
+
+      begin
+         --  Output constraints come first
+
+         if Present (Output_Variable) then
+            Add_Constraint (Output_Constraint);
+         end if;
+
+         --  Now collect inputs and add their constraints
+
+         Setup_Asm_Inputs (N);
+         Input := Asm_Input_Value;
+         while Present (Input) loop
+            Input_Pos := Input_Pos + 1;
+            Args (Input_Pos) :=
+              Need_Value (Emit_Expression (Input), Full_Etype (Input));
+            Add_Constraint (Asm_Input_Constraint);
+            Next_Asm_Input;
+            Input := Asm_Input_Value;
+         end loop;
+
+         --  Now add clobber constraints
+
+         Clobber_Setup (N);
+         Clobber := Clobber_Get_Next;
+         while not System."=" (Clobber, System.Null_Address) loop
+            if Need_Comma then
+               Add_Char (',');
+            end if;
+
+            Add_Char ('~');
+            Add_Char ('{');
+            for J in 1 .. Name_Len loop
+               Add_Char (Name_Buffer (J));
+            end loop;
+
+            Add_Char ('}');
+            Clobber := Clobber_Get_Next;
+         end loop;
+
+         --  Finally, build the template
+
+         for J in 1 .. String_Length (Template_Strval) loop
+            Template (Integer (J)) :=
+              Get_Character (Get_String_Char (Template_Strval, J));
+         end loop;
+
+         --  Now create the inline asm
+
+         Asm := Inline_Asm (Args, Output_Variable, Template,
+                            Constraints (1 .. Constraint_Pos),
+                            Is_Asm_Volatile (N), False);
+
+         --  If we have an output, generate the vall with an output and store
+         --  the result.  Otherwise, just do the call.
+
+         if Present (Output_Variable) then
+            Store (Call (Asm, Full_Etype (Output_Variable), Args), Output_Val);
+         else
+            Call (Asm, Args);
+         end if;
+      end;
+   end Emit_Code_Statement;
 
 end GNATLLVM.Exprs;

@@ -22,6 +22,7 @@ with Table;  use Table;
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;

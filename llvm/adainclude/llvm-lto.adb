@@ -122,7 +122,7 @@ package body LLVM.lto is
       path      : String;
       File_Size : stddef_h.size_t;
       Map_Size  : stddef_h.size_t;
-      offset    : x86_64_linux_gnu_sys_types_h.off_t)
+      offset    : off_t)
       return Module_T_T
    is
       path_Array  : aliased char_array := To_C (path);

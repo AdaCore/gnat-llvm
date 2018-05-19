@@ -6,9 +6,10 @@ with Interfaces.C.Extensions;
 with System;
 with Interfaces.C.Strings;
 with stddef_h;
-with x86_64_linux_gnu_sys_types_h;
 
 package LLVM.lto is
+
+   subtype off_t is Long_Integer;
 
    LTO_API_VERSION : constant := 21;  --  llvm-6.0.0.src/include/llvm-c/lto.h:47
 
@@ -316,14 +317,14 @@ function Module_Create_From_Fd_At_Offset
       path      : String;
       File_Size : stddef_h.size_t;
       Map_Size  : stddef_h.size_t;
-      offset    : x86_64_linux_gnu_sys_types_h.off_t)
+      offset    : off_t)
       return Module_T_T;
    function Module_Create_From_Fd_At_Offset_C
      (fd        : int;
       path      : Interfaces.C.Strings.chars_ptr;
       File_Size : stddef_h.size_t;
       Map_Size  : stddef_h.size_t;
-      offset    : x86_64_linux_gnu_sys_types_h.off_t)
+      offset    : off_t)
       return Module_T_T;
    pragma Import (C, Module_Create_From_Fd_At_Offset_C, "lto_module_create_from_fd_at_offset");
 

@@ -709,10 +709,8 @@ package body GNATLLVM.Arrays is
    ----------------------
 
    function Get_Array_Bounds (TE : Entity_Id; V : GL_Value) return GL_Value is
-      Bounds_Typ     : constant Type_T    := Create_Array_Bounds_Type (TE);
-      Info_Idx       : constant Nat       := Get_Array_Info (TE);
-      Bound_Val      : GL_Value           :=
-        G (Get_Undef (Bounds_Typ), TE, Bounds);
+      Info_Idx  : constant Nat := Get_Array_Info (TE);
+      Bound_Val : GL_Value     := Get_Undef_Relationship (TE, Bounds);
 
    begin
 

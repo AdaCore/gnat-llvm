@@ -268,11 +268,9 @@ package body GNATLLVM.GLValue is
    ---------
 
    function Get (V : GL_Value; Rel : GL_Value_Relationship) return GL_Value is
-      Value  : constant Value_T      := LLVM_Value (V);
       TE     : constant Entity_Id    := Related_Type (V);
       R      : GL_Value_Relationship := Rel;
       Result : GL_Value;
-      T      : Type_T;
 
    begin
       --  Handle relationship of Object by converting it to the appropriate
@@ -315,7 +313,7 @@ package body GNATLLVM.GLValue is
             --  If we have bounds and data, extract the data
 
             if Relationship (V) = Bounds_And_Data then
-               return G (Extract_Value (IR_Builder, Value, 1, ""), TE, R);
+               return Extract_Value (TE, V, 1);
 
                --  If we have a reference to something else, try to convert
                --  to a normal reference and then get the data.  If this
@@ -342,7 +340,7 @@ package body GNATLLVM.GLValue is
             --  If we have both bounds and data, extract the bounds
 
             elsif Relationship (V) = Bounds_And_Data then
-               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, R);
+               return Extract_Value_To_Relationship (TE, V, 0, R);
 
             --  Otherwise, compute the bounds from the type (pass in V
             --  just in case, though we should have handled all the cases
@@ -357,35 +355,31 @@ package body GNATLLVM.GLValue is
             --  If we have data, we can add the bounds
 
             if Relationship (V) = Data then
-               T := Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
-                                        2 => Type_Of (V)));
-               Result := G (Get_Undef (T), TE, R);
-               return Insert_Value (Insert_Value (Result,
-                                                  Get_Array_Bounds (TE, V), 0),
-                                    V, 1);
+               return Insert_Value
+                 (Insert_Value (Get_Undef_Relationship (TE, R),
+                                Get_Array_Bounds (TE, V), 0),
+                  V, 1);
             end if;
 
          when Reference_To_Bounds =>
-            T := Pointer_Type (Create_Array_Bounds_Type (TE), 0);
 
             --  If we have a fat pointer, part of it is a pointer to the
             --  bounds.
 
             if Relationship (V) = Fat_Pointer then
-               return G (Extract_Value (IR_Builder, Value, 1, ""), TE, R);
+               return Extract_Value_To_Relationship (TE, V, 1, R);
 
             --  A reference to bounds and data is a reference to bounds
 
             elsif Relationship (V) = Reference_To_Bounds_And_Data then
-               return G (Pointer_Cast (IR_Builder, Value, T, ""), TE, R);
+               return Ptr_To_Relationship (V, TE, R);
 
             --  The bounds are in front of the data for a thin pointer
 
             elsif Relationship (V) = Thin_Pointer then
                Result := NSW_Sub (Ptr_To_Int (V, Size_Type),
                                   Get_Bound_Part_Size (TE));
-               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result), T, ""),
-                         TE, R);
+               return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
 
@@ -396,21 +390,19 @@ package body GNATLLVM.GLValue is
             end if;
 
          when Reference_To_Array_Data =>
-            T := Pointer_Type (Create_Type (TE), 0);
 
             --  For Reference and Thin_Pointer, we have the value we need,
             --  possibly just converting it.  For FAT pointer, we can
             --  extract it.
 
             if Relationship (V) = Reference then
-               return G (Value, TE, R);
+               return G (LLVM_Value (V), TE, R);
             elsif Relationship (V) = Thin_Pointer then
-               return G (Pointer_Cast
-                           (IR_Builder, Value, T, ""), TE, R);
+               return Ptr_To_Relationship (V, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
             elsif Relationship (V) = Fat_Pointer then
-               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, R);
+               return Extract_Value_To_Relationship (TE, V, 0, R);
 
             --  If we have a reference to both bounds and data, we can
             --  compute where the data starts.  If we have the actual
@@ -419,8 +411,7 @@ package body GNATLLVM.GLValue is
             elsif Relationship (V) = Reference_To_Bounds_And_Data then
                Result := NSW_Add (Ptr_To_Int (V, Size_Type),
                                   Get_Bound_Part_Size (TE));
-               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result), T, ""),
-                         TE, R);
+               return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             end if;
@@ -431,13 +422,12 @@ package body GNATLLVM.GLValue is
             --  need.  Otherwise, try to convert to it and then to this.
 
             if Relationship (V) = Reference_To_Array_Data then
-               return G (Value, TE, R);
+               return G (LLVM_Value (V), TE, R);
             else
                return Get (Get (V, Reference_To_Array_Data), R);
             end if;
 
          when Thin_Pointer =>
-            T := Pointer_Type (Create_Type (TE), 0);
 
             --  There are only two cases where we can make a thin pointer.
             --  One is where we have the address of bounds and data (or the
@@ -449,12 +439,11 @@ package body GNATLLVM.GLValue is
             if Relationship (V) = Reference_To_Bounds_And_Data then
                Result := NSW_Add (Ptr_To_Int (V, Size_Type),
                                   Get_Bound_Part_Size (TE));
-               return G (Int_To_Ptr (IR_Builder, LLVM_Value (Result), T, ""),
-                         TE, R);
+               return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             elsif Relationship (V) = Fat_Pointer then
-               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, R);
+               return Extract_Value_To_Relationship (TE, V, 0, R);
             end if;
 
          when Fat_Pointer =>
@@ -473,8 +462,7 @@ package body GNATLLVM.GLValue is
                Data    : constant GL_Value  :=
                    Get (Val, Reference_To_Array_Data);
                Fat_Ptr : constant GL_Value  :=
-                 G (Get_Undef (Create_Array_Fat_Pointer_Type (TE)),
-                    TE, Fat_Pointer);
+                   Get_Undef_Relationship (TE, Fat_Pointer);
 
             begin
                return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),
@@ -483,12 +471,12 @@ package body GNATLLVM.GLValue is
 
          when Reference_To_Activation_Record =>
             if Relationship (V) = Fat_Reference_To_Subprogram then
-               return G (Extract_Value (IR_Builder, Value, 1, ""), TE, Rel);
+               return Extract_Value_To_Relationship (TE, V, 1, R);
             end if;
 
          when Reference_To_Subprogram =>
             if Relationship (V) = Fat_Reference_To_Subprogram then
-               return G (Extract_Value (IR_Builder, Value, 0, ""), TE, Rel);
+               return Extract_Value_To_Relationship (TE, V, 0, R);
             end if;
 
          when Any_Reference =>

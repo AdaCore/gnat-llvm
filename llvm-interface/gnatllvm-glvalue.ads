@@ -531,20 +531,32 @@ package GNATLLVM.GLValue is
    --  accept and/or return GL_Value.
 
    function Get_Undef (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE), Post => Present (Get_Undef'Result);
+     with Pre => Is_Type (TE), Post => Present (Get_Undef'Result);
 
    function Get_Undef_Ref (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
+     with Pre => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
+
+   function Get_Undef_Relationship
+     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value is
+     (G (Get_Undef (Type_For_Relationship (TE, R)), TE, R))
+     with Pre  => Is_Type (TE),
+          Post => Is_Reference (Get_Undef_Relationship'Result);
 
    function Get_Undef_Ref (T : Type_T; TE : Entity_Id) return GL_Value is
      (G_Ref (Get_Undef (T), TE))
-     with Pre  => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
+     with Pre => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
 
    function Const_Null (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE), Post => Present (Const_Null'Result);
+     with Pre => Is_Type (TE), Post => Present (Const_Null'Result);
+
+   function Const_Null_Relationship
+     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value is
+     (G (Const_Null (Type_For_Relationship (TE, R)), TE, R))
+     with Pre  => Is_Type (TE),
+          Post => Present (Const_Null_Relationship'Result);
 
    function Const_Null_Alloc (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE), Post => Present (Const_Null_Alloc'Result);
+     with Pre => Is_Type (TE), Post => Present (Const_Null_Alloc'Result);
 
    function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE) and then N /= No_Uint,

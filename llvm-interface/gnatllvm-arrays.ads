@@ -160,6 +160,14 @@ package GNATLLVM.Arrays is
    --  must already be a pointer to the array data, otherwise, it must be a
    --  fat pointer.
 
+   procedure Maybe_Store_Bounds
+     (Dest, Src : GL_Value; Src_Type : Entity_Id; For_Unconstrained : Boolean)
+     with Pre => Present (Dest) and then Is_Type (Src_Type);
+   --  If the type of Dest is a nominal constrained type for an aliased
+   --  unconstrained array or if For_Unconstrained is True and the type of
+   --  Dest is an unconstrained array, store bounds into Dest, taking them
+   --  from Src_Type and Src, if the latter is Present.
+
    function Get_Array_Bounds (TE : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Is_Array_Type (TE),
           Post => Present (Get_Array_Bounds'Result);

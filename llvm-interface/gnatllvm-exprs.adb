@@ -793,7 +793,7 @@ package body GNATLLVM.Exprs is
         and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
         and then Is_Others_Aggregate (E)
       then
-         --  ??? Need to deal with bounds
+         Maybe_Store_Bounds (Dest, No_GL_Value, Full_Etype (E), False);
          Emit_Others_Aggregate (Dest, E);
          return;
       end if;
@@ -809,18 +809,21 @@ package body GNATLLVM.Exprs is
       end if;
 
       --  If we are assigning to a type that's the nominal constrained
-      --  subtype of an unconstrained array for an aliased object, get a
-      --  reference to the bounds, compute the bounds, and store them.
-      --  ???  We need to look into assigning data+bounds together.
+      --  subtype of an unconstrained array for an aliased object see if
+      --  we can get the value and bounds together and store them.  If we
+      --  can, do so and we're done.  Otherwise, store the bounds.
 
-      if Is_Constr_Subt_For_UN_Aliased (LValue) and Is_Array_Type (LValue) then
-         declare
-            Bound_Ref : constant GL_Value := Get (LValue, Reference_To_Bounds);
-            Bound_Val : constant GL_Value := Get_Array_Bounds (Src_Type, Src);
+      if Is_Constr_Subt_For_UN_Aliased (Dest_Type)
+        and then Is_Array_Type (Dest_Type)
+      then
+         if not Is_Reference (Src) and then not Is_Dynamic_Size (Dest_Type)
+         then
+            Store (Get (Src, Bounds_And_Data),
+                   Get (LValue, Reference_To_Bounds_And_Data));
+            return;
+         end if;
 
-         begin
-            Store (Bound_Val, Bound_Ref);
-         end;
+         Maybe_Store_Bounds (LValue, Src, Src_Type, False);
       end if;
 
       --  We now have three case: where we're copying an object of an

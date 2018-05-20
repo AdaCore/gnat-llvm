@@ -829,20 +829,27 @@ package body GNATLLVM.Types is
       Alloc_Type : Entity_Id) return GL_Value
    is
       R      : constant GL_Value_Relationship :=
-        (if Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
-           and then Is_Array_Type (Alloc_Type)
-         then Reference_To_Bounds_And_Data
-         elsif Is_Array_Type (Alloc_Type) then Reference_To_Array_Data
-         else Reference);
+        Relationship_For_Alloc (Alloc_Type);
       Memory : GL_Value                       :=
         (if Is_Access_Type (Temp)
          then Ptr_To_Relationship (Temp, Alloc_Type, R)
          else Int_To_Relationship (Temp, Alloc_Type, R));
 
    begin
-      --  Make sure we're pointing at the location of the data
+      --  If this is to get bounds and data and we have a value to store
+      --  which contains data, convert it to bounds and data and store it.
+      --  Otherwise, we have two cases, depending on the reason that we
+      --  have bounds because Emit_Assignment only can handle the
+      --  nominal type for alias to unconstrained case.
 
-      if Relationship (Memory) = Reference_To_Bounds_And_Data then
+      if R = Reference_To_Bounds_And_Data then
+         if Present (V) and then not Is_Reference (V) then
+            Store (Get (V, Bounds_And_Data), Memory);
+            return Get (Memory, Thin_Pointer);
+         elsif not Is_Constrained (Alloc_Type) then
+            Maybe_Store_Bounds (Memory, V, Alloc_Type, True);
+         end if;
+
          Memory := Get (Memory, Thin_Pointer);
       end if;
 

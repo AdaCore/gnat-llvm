@@ -229,6 +229,11 @@ package GNATLLVM.GLValue is
    --  Given an access type, return the Relationship that a value of this
    --  type would have with its Designated_Type.
 
+   function Relationship_For_Alloc
+     (TE : Entity_Id) return GL_Value_Relationship
+     with Pre => Is_Type (TE);
+   --  Return the relationship to TE that allocating memory for TE produces
+
    function Type_For_Relationship
      (TE : Entity_Id; R : GL_Value_Relationship) return Type_T
      with Pre => Is_Type (TE), Post => Present (Type_For_Relationship'Result);

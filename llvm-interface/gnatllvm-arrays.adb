@@ -498,6 +498,28 @@ package body GNATLLVM.Arrays is
                        Get_Type_Alignment (TE));
    end Get_Bound_Part_Size;
 
+   ------------------------
+   -- Maybe_Store_Bounds --
+   ------------------------
+
+   procedure Maybe_Store_Bounds
+     (Dest, Src : GL_Value; Src_Type : Entity_Id; For_Unconstrained : Boolean)
+   is
+      Dest_Type : constant Entity_Id := Related_Type (Dest);
+   begin
+      --  Only do anything if the destination has a nominal constrained
+      --  subtype or (if we're asked) if it has an unconstrained type.
+
+      if Is_Array_Type (Dest_Type)
+        and then (Is_Constr_Subt_For_UN_Aliased (Dest_Type)
+                    or else (For_Unconstrained
+                               and then not Is_Constrained (Dest_Type)))
+      then
+         Store (Get_Array_Bounds (Src_Type, Src),
+                Get (Dest, Reference_To_Bounds));
+      end if;
+   end Maybe_Store_Bounds;
+
    -----------------------------------
    -- Create_Array_Fat_Pointer_Type --
    -----------------------------------

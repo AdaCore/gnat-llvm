@@ -803,7 +803,7 @@ package body GNATLLVM.Variables is
             Addr := Emit_Expression (Addr_Expr);
          end if;
 
-         Addr := Int_To_Ref (Addr, TE);
+         Addr := Int_To_Relationship (Addr, TE, Relationship_For_Alloc (TE));
       end if;
 
       --  If we've already gotten a value for the address of this entity,
@@ -975,7 +975,7 @@ package body GNATLLVM.Variables is
          V := Make_Global_Variable (Def_Ident);
       end if;
 
-      return Get (V, Reference);
+      return Get (V, Any_Reference);
 
    end Emit_Identifier_LValue;
 

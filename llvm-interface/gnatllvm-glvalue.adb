@@ -187,6 +187,29 @@ package body GNATLLVM.GLValue is
       end if;
    end Relationship_For_Access_Type;
 
+   ----------------------------
+   -- Relationship_For_Alloc --
+   ----------------------------
+
+   function Relationship_For_Alloc
+     (TE : Entity_Id) return GL_Value_Relationship is
+   begin
+      --  If we don't have an array type, this is just a Reference
+
+      if not Is_Array_Type (TE) then
+         return Reference;
+
+      --  Otherwise, see if this is an object where we have to allocate space
+      --  for both bounds and data.
+
+      elsif not Is_Constrained (TE) or else Is_Constr_Subt_For_UN_Aliased (TE)
+      then
+         return Reference_To_Bounds_And_Data;
+      else
+         return Reference_To_Array_Data;
+      end if;
+   end Relationship_For_Alloc;
+
    ---------------------------
    -- Type_For_Relationship --
    ---------------------------
@@ -389,6 +412,28 @@ package body GNATLLVM.GLValue is
                return Get (Get (V, Bounds), R);
             end if;
 
+         when Reference_To_Bounds_And_Data =>
+
+            --  If we have a fat pointer, part of it is a pointer to the
+            --  bounds, which should point to the data in any case where
+            --  the language allows such a reference.
+
+            if Relationship (V) = Fat_Pointer then
+               return Ptr_To_Relationship
+                 (Extract_Value_To_Relationship
+                    (TE, V, 1, Reference_To_Bounds),
+                  TE, R);
+
+            --  The bounds are in front of the data for a thin pointer
+
+            elsif Relationship (V) = Thin_Pointer then
+               Result := NSW_Sub (Ptr_To_Int (V, Size_Type),
+                                  Get_Bound_Part_Size (TE));
+               return Int_To_Relationship (Result, TE, R);
+            elsif Relationship (V) = Reference_To_Thin_Pointer then
+               return Get (Get (V, Thin_Pointer), R);
+            end if;
+
          when Reference_To_Array_Data =>
 
             --  For Reference and Thin_Pointer, we have the value we need,
@@ -503,12 +548,9 @@ package body GNATLLVM.GLValue is
    ------------
 
    function Alloca (TE : Entity_Id; Name : String := "") return GL_Value is
-      T    : constant Type_T                :=
-        (if Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE)
-         then Create_Alloc_Type (TE) else Create_Type (TE));
-      R    : constant GL_Value_Relationship :=
-         (if Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE)
-          then Reference_To_Bounds_And_Data else Reference);
+      R    : constant GL_Value_Relationship := Relationship_For_Alloc (TE);
+      PT   : constant Type_T                := Type_For_Relationship (TE, R);
+      T    : constant Type_T                := Get_Element_Type (PT);
       Inst : constant Value_T               := Alloca (IR_Builder, T, Name);
 
    begin

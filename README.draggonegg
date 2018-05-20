@@ -15,6 +15,9 @@ non-technical advantages of our approach:
   may break things in a potentially hard to identify way
   (GNAT+Gigi+GCC+DraggonEgg+LLVM vs GNAT+GNAT LLVM+LLVM)
 
+- The GNAT LLVM approach allows us to have code written in Ada instead of
+  C++ in the case of DraggonEgg.
+
 There are also limitations in the current state of DraggonEgg, which we'd
 have to remove as part of a project based on DragggonEgg:
 

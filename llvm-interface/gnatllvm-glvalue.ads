@@ -706,7 +706,7 @@ package GNATLLVM.GLValue is
    function Ptr_To_Size_Type
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (Ptr_To_Int (V, Size_Type))
+     (Ptr_To_Int (V, Size_Type, Name))
      with Pre  => Is_Access_Type (V),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Size_Type'Result);
 

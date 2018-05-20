@@ -1016,14 +1016,14 @@ package body GNATLLVM.Types is
          Call_Alloc_Dealloc (Proc,
                (1 => Ptr_To_Ref (Get_Value (Pool),
                                  Full_Etype (First_Formal (Proc))),
-                2 => Ptr_To_Int (Converted_V, Size_Type),
+                2 => Ptr_To_Size_Type (Converted_V),
                 3 => Size, 4 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
          Call_Alloc_Dealloc (Proc,
-               (1 => Ptr_To_Int (Converted_V, Size_Type), 2 => Size));
+               (1 => Ptr_To_Size_Type (Converted_V), 2 => Size));
       end if;
    end Heap_Deallocate;
 
@@ -1135,7 +1135,7 @@ package body GNATLLVM.Types is
         or else (Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
                    and then Is_Array_Type (Alloc_Type))
       then
-         Size := NSW_Add (Size, Get_Bound_Part_Size (TE));
+         Size := NSW_Add (Size, Get_Bound_Size (TE));
       end if;
 
       return Size;

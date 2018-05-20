@@ -542,7 +542,8 @@ package GNATLLVM.GLValue is
      with Pre => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
 
    function Get_Undef_Relationship
-     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value is
+     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value
+   is
      (G (Get_Undef (Type_For_Relationship (TE, R)), TE, R))
      with Pre  => Is_Type (TE),
           Post => Present (Get_Undef_Relationship'Result);
@@ -555,7 +556,8 @@ package GNATLLVM.GLValue is
      with Pre => Is_Type (TE), Post => Present (Const_Null'Result);
 
    function Const_Null_Relationship
-     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value is
+     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value
+   is
      (G (Const_Null (Type_For_Relationship (TE, R)), TE, R))
      with Pre  => Is_Type (TE),
           Post => Present (Const_Null_Relationship'Result);
@@ -633,12 +635,14 @@ package GNATLLVM.GLValue is
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
-     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value is
+     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
+   is
      (Const_Int (Size_Type, ULL (N), Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
-     (N : ULL; Sign_Extend : Boolean := False) return GL_Value is
+     (N : ULL; Sign_Extend : Boolean := False) return GL_Value
+   is
      (Const_Int (Size_Type, N, Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
 
@@ -651,12 +655,14 @@ package GNATLLVM.GLValue is
      with Pre  => N /= No_Uint, Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
-     (N : ULL; Sign_Extend : Boolean := False) return GL_Value is
+     (N : ULL; Sign_Extend : Boolean := False) return GL_Value
+   is
      (Const_Int (Int_32_Type, N, Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
-     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value is
+     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
+   is
      (Const_Int (Int_32_Type, unsigned_long_long (N), Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
@@ -696,6 +702,13 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Access_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
+
+   function Ptr_To_Size_Type
+     (V : GL_Value; Name : String := "") return GL_Value
+   is
+     (Ptr_To_Int (V, Size_Type))
+     with Pre  => Is_Access_Type (V),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Size_Type'Result);
 
    function Bit_Cast
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
@@ -776,14 +789,16 @@ package GNATLLVM.GLValue is
           Post => Is_Floating_Point_Type (SI_To_FP'Result);
 
    function Int_To_Ptr
-     (V, T : GL_Value; Name : String := "") return GL_Value is
+     (V, T : GL_Value; Name : String := "") return GL_Value
+   is
      (Int_To_Ptr (V, Full_Etype (T), Name))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Access_Type (T),
           Post => Is_Access_Type (Int_To_Ptr'Result);
 
    function Ptr_To_Int
-     (V, T : GL_Value; Name : String := "") return GL_Value is
+     (V, T : GL_Value; Name : String := "") return GL_Value
+   is
      (Ptr_To_Int (V, Full_Etype (T), Name))
      with Pre  => Is_Access_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
@@ -795,7 +810,8 @@ package GNATLLVM.GLValue is
           Post => Present (Bit_Cast'Result);
 
    function Pointer_Cast
-     (V, T : GL_Value; Name : String := "") return GL_Value is
+     (V, T : GL_Value; Name : String := "") return GL_Value
+   is
      (Pointer_Cast (V, Full_Etype (T), Name))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Pointer_Cast'Result);
@@ -1238,13 +1254,15 @@ package GNATLLVM.GLValue is
       Is_Stack_Align : Boolean := False) return GL_Value;
 
    function Block_Address
-     (Func : GL_Value; BB : Basic_Block_T) return GL_Value is
+     (Func : GL_Value; BB : Basic_Block_T) return GL_Value
+   is
       (G (Block_Address (LLVM_Value (Func), BB), Standard_A_Char))
      with Pre  => Present (Func) and then Present (BB),
           Post => Present (Block_Address'Result);
 
    function Build_Switch
-     (V : GL_Value; Default : Basic_Block_T; Blocks : Nat) return Value_T is
+     (V : GL_Value; Default : Basic_Block_T; Blocks : Nat) return Value_T
+   is
      (Build_Switch (IR_Builder, LLVM_Value (V), Default, unsigned (Blocks)))
      with Pre  => Present (V) and then Present (Default),
           Post => Present (Build_Switch'Result);
@@ -1256,7 +1274,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Add_Function
-     (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value is
+     (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value
+   is
      (G (Add_Function (LLVM_Module, Name, T),
          Return_TE, Reference_To_Subprogram))
      with Pre  => Present (T) and then Is_Type_Or_Void (Return_TE),

@@ -400,8 +400,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Relationship (V) = Thin_Pointer then
-               Result := NSW_Sub (Ptr_To_Int (V, Size_Type),
-                                  Get_Bound_Part_Size (TE));
+               Result := NSW_Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -427,8 +426,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Relationship (V) = Thin_Pointer then
-               Result := NSW_Sub (Ptr_To_Int (V, Size_Type),
-                                  Get_Bound_Part_Size (TE));
+               Result := NSW_Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -454,8 +452,7 @@ package body GNATLLVM.GLValue is
             --  bounds and data, we can store them and proceed as above.
 
             elsif Relationship (V) = Reference_To_Bounds_And_Data then
-               Result := NSW_Add (Ptr_To_Int (V, Size_Type),
-                                  Get_Bound_Part_Size (TE));
+               Result := NSW_Add (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
@@ -482,8 +479,7 @@ package body GNATLLVM.GLValue is
             --  Ada language rules guarantee that it will be.
 
             if Relationship (V) = Reference_To_Bounds_And_Data then
-               Result := NSW_Add (Ptr_To_Int (V, Size_Type),
-                                  Get_Bound_Part_Size (TE));
+               Result := NSW_Add (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);

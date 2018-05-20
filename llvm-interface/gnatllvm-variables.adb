@@ -803,7 +803,21 @@ package body GNATLLVM.Variables is
             Addr := Emit_Expression (Addr_Expr);
          end if;
 
-         Addr := Int_To_Relationship (Addr, TE, Relationship_For_Alloc (TE));
+         --  We have a special case here: if this would normally be
+         --  allocated with bounds, the address points to the actual data,
+         --  not the bounds, so the bounds get stored at an address below
+         --  the data.
+
+         declare
+            R : GL_Value_Relationship := Relationship_For_Alloc (TE);
+
+         begin
+            if R = Reference_To_Bounds_And_Data then
+               R := Thin_Pointer;
+            end if;
+
+            Addr := Int_To_Relationship (Addr, TE, R);
+         end;
       end if;
 
       --  If we've already gotten a value for the address of this entity,

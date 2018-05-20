@@ -3,7 +3,7 @@ Missing main features (identified so far):
 - variant records
 - cleanups/at end handlers
 - exception handlers
-- freeze nodes
+- freeze nodes for types and subprograms
 - representation clauses
 - debug info (for variables and types)
 - restriction checks done by back end

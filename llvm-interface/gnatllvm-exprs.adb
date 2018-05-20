@@ -801,8 +801,11 @@ package body GNATLLVM.Exprs is
       --  If we haven't yet computed our source expression, do it now.
 
       if No (Src) then
-         Src := (if Is_Elementary_Type (Src_Type) then Emit_Expression (E)
-                 else Emit_LValue (E, Clear => False));
+         if Is_Dynamic_Size (Src_Type) then
+            Src := Emit_LValue (E, Clear => False);
+         else
+            Src := Emit_Expression (E);
+         end if;
       end if;
 
       --  If we are assigning to a type that's the nominal constrained

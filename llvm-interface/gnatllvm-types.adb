@@ -1075,6 +1075,13 @@ package body GNATLLVM.Types is
       Converted_V : GL_Value          := V;
 
    begin
+      --  If V is an access type, convert it to a reference to the
+      --  underlying data.
+
+      if Is_Access_Type (V) and then Relationship (V) = Data then
+         Converted_V := From_Access (V);
+      end if;
+
       --  If V is a fat pointer, get just the array data.  We'll then either
       --  convert it to a generic pointer or to an integer (System.Address).
 

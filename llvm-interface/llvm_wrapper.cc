@@ -161,7 +161,7 @@ Build_Insert_Value_C (IRBuilder<> *bld, Value *aggr, Value *elt,
 
 extern "C"
 int
-LLVM_Init_Module (Module *TheModule, const char *Filename)
+LLVM_Init_Module (Module *TheModule, const char *Filename, const char *target)
 {
   // Initialize the target registry etc.
   InitializeAllTargetInfos();
@@ -170,7 +170,9 @@ LLVM_Init_Module (Module *TheModule, const char *Filename)
   InitializeAllAsmParsers();
   InitializeAllAsmPrinters();
 
-  auto TargetTriple = sys::getDefaultTargetTriple();
+  std::string TargetTriple =
+    target == NULL ? sys::getDefaultTargetTriple() : target;
+
   TheModule->setTargetTriple(TargetTriple);
   TheModule->setSourceFileName(Filename);
   std::string Error;

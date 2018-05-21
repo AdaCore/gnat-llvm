@@ -19,7 +19,8 @@ with Ada.Directories;
 
 with Interfaces.C; use Interfaces.C;
 
-with System;       use System;
+with System;         use System;
+with System.Strings; use System.Strings;
 
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Target;     use LLVM.Target;
@@ -62,6 +63,8 @@ package body LLVM_Drive is
    Code_Generation : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
 
+   Target : String_Access := new String'("");
+
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
 
@@ -93,8 +96,20 @@ package body LLVM_Drive is
 
       Result := LLVM_Init_Module
         (LLVM_Module,
-         Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))));
-      pragma Assert (Result = 0);
+         Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))),
+         Target.all);
+
+      if Result /= 0 then
+         if Target.all = "" then
+            Error_Msg_N ("error initializing LLVM module", GNAT_Root);
+         else
+            Error_Msg_N
+              ("error initializing LLVM module for target " & Target.all,
+               GNAT_Root);
+         end if;
+
+         return;
+      end if;
 
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
       Module_Data_Layout := Get_Module_Data_Layout (LLVM_Module);
@@ -221,6 +236,11 @@ package body LLVM_Drive is
          return True;
       elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
          Code_Generation := Write_BC;
+         return True;
+      elsif Switch'Length > 9
+        and then Switch (Switch'First .. Switch'First + 8) = "--target="
+      then
+         Target := new String'(Switch (First + 8 .. Last));
          return True;
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;

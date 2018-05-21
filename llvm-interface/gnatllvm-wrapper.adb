@@ -90,15 +90,27 @@ package body GNATLLVM.Wrapper is
 
    function LLVM_Init_Module
      (Module   : LLVM.Types.Module_T;
-      Filename : String) return Integer
+      Filename : String;
+      Target   : String := "") return Integer
    is
       function LLVM_Init_Module_C
         (Module   : LLVM.Types.Module_T;
-         Filename : String) return Integer;
+         Filename : String;
+         Target   : System.Address) return Integer;
       pragma Import (C, LLVM_Init_Module_C, "LLVM_Init_Module");
 
    begin
-      return LLVM_Init_Module_C (Module, Filename & ASCII.NUL);
+      if Target = "" then
+         return LLVM_Init_Module_C
+           (Module, Filename & ASCII.NUL, System.Null_Address);
+      else
+         declare
+            S : aliased constant String := Target & ASCII.NUL;
+         begin
+            return LLVM_Init_Module_C
+              (Module, Filename & ASCII.NUL, S'Address);
+         end;
+      end if;
    end LLVM_Init_Module;
 
    -----------------------

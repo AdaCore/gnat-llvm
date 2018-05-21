@@ -844,19 +844,18 @@ package body GNATLLVM.Compile is
             --  This is a FOR loop
 
             declare
-               Loop_Param_Spec : constant Node_Id   :=
+               Spec       : constant Node_Id   :=
                  Loop_Parameter_Specification (Iter_Scheme);
-               Def_Ident       : constant Node_Id   :=
-                 Defining_Identifier (Loop_Param_Spec);
-               Reversed        : constant Boolean   :=
-                 Reverse_Present (Loop_Param_Spec);
-               Var_Type        : constant Entity_Id := Full_Etype (Def_Ident);
-               Var_BT          : constant Entity_Id :=
+               Def_Ident  : constant Node_Id   := Defining_Identifier (Spec);
+               Reversed   : constant Boolean   := Reverse_Present (Spec);
+               Var_Type   : constant Entity_Id := Full_Etype (Def_Ident);
+               Var_BT     : constant Entity_Id :=
                  Implementation_Base_Type (Var_Type);
-               Unsigned_BT    : constant Boolean   :=
-                 Is_Unsigned_Type (Var_BT);
-               LLVM_Var        : GL_Value;
-               Low, High       : GL_Value;
+               Uns_BT     : constant Boolean   := Is_Unsigned_Type (Var_BT);
+               One        : constant GL_Value  := Const_Int (Var_Type, Uint_1);
+               LLVM_Var   : GL_Value;
+               Low, High  : GL_Value;
+               Prev       : GL_Value;
 
             begin
                --  Initialization block: create the loop variable and
@@ -872,35 +871,27 @@ package body GNATLLVM.Compile is
                --  Note that this comparison must be done in the base type.
 
                Build_Cond_Br
-                 (I_Cmp ((if Unsigned_BT then Int_ULE else Int_SLE),
+                 (I_Cmp ((if Uns_BT then Int_ULE else Int_SLE),
                          Convert_To_Elementary_Type (Low, Var_BT),
                          Convert_To_Elementary_Type (High, Var_BT),
                          "loop-entry-cond"),
                   BB_Cond, BB_Next);
 
+               --  Stop if the loop variable was equal to the "exit"
+               --  bound. Increment/decrement it otherwise.
+
                BB_Cond := Create_Basic_Block ("loop-cond-iter");
                Position_Builder_At_End (BB_Cond);
+               Prev := Load (LLVM_Var);
                Build_Cond_Br
-                 (I_Cmp (Int_EQ, Load (LLVM_Var),
+                 (I_Cmp (Int_EQ, Prev,
                          (if Reversed then Low else High), "loop-iter-cond"),
                  BB_Next, BB_Iter);
 
-               --  After STMTS, stop if the loop variable was equal to the
-               --  "exit" bound. Increment/decrement it otherwise.
-
                Position_Builder_At_End (BB_Iter);
-
-               declare
-                  Prev : constant GL_Value := Load (LLVM_Var);
-                  One  : constant GL_Value := Const_Int (Var_Type, Uint_1);
-                  Next : constant GL_Value :=
-                    (if Reversed then NSW_Sub (Prev, One, "next-loop-var")
-                     else NSW_Add (Prev, One, "next-loop-var"));
-
-               begin
-                  Store (Next, LLVM_Var);
-               end;
-
+               Store ((if Reversed then NSW_Sub (Prev, One, "next-loop-var")
+                       else NSW_Add (Prev, One, "next-loop-var")),
+                      LLVM_Var);
                Build_Br (BB_Stmts);
 
                --  The ITER step starts at this special COND step

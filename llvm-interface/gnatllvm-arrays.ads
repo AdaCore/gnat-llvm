@@ -165,9 +165,8 @@ package GNATLLVM.Arrays is
 
    function Update_Fat_Pointer
      (Fat_Ptr : GL_Value; Array_Data : GL_Value) return GL_Value
-     with Pre  => Is_Access_Unconstrained (Fat_Ptr)
-                  and then Is_Raw_Array (Array_Data),
-          Post => Is_Access_Unconstrained (Update_Fat_Pointer'Result);
+     with Pre  => Relationship (Fat_Ptr) = Fat_Pointer,
+          Post => Relationship (Update_Fat_Pointer'Result) = Fat_Pointer;
    --  We have a fat pointer and have copied the underlying data.  We
    --  now want to make a fat pointer with the same bounds but with the
    --  new data.

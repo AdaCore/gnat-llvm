@@ -429,9 +429,9 @@ package body GNATLLVM.Subprograms is
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          declare
-            Is_Ref : constant Boolean               := Param_Needs_Ptr (Param);
-            TE     : constant Entity_Id := Full_Etype (Param);
-            R      : constant GL_Value_Relationship :=
+            Is_Ref : constant Boolean         := Param_Needs_Ptr (Param);
+            TE     : constant Entity_Id       := Full_Etype (Param);
+            R      : constant GL_Relationship :=
               (if Is_Ref
                then (if Is_Unconstrained_Array (TE) then Fat_Pointer
                      else Reference)

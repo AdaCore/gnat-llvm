@@ -35,7 +35,7 @@ package GNATLLVM.GLValue is
    --  the type.  For example, the value may contain bits of the type
    --  or the value may be the address of the bits of the type.
 
-   type GL_Value_Relationship is
+   type GL_Relationship is
      (Data,
       --  Value is actual bits of Typ.  This can never be set for
       --  subprogram types or for types of variable size.  It can be set
@@ -136,18 +136,17 @@ package GNATLLVM.GLValue is
      Is_Any_Ref : Boolean;
      --  True if this can be returned for Any_Reference
 
-     Deref  : GL_Value_Relationship;
+     Deref  : GL_Relationship;
      --  The relationship, if any, corresponding to a dereference (Load) from a
      --  GL_Value that has this relationship.
 
-     Ref    : GL_Value_Relationship;
+     Ref    : GL_Relationship;
      --  The relationship, if any, corresponding to a reference (taking the
      --  address of) A GL_Value that has this relationship.
 
    end record;
 
-   type Relationship_Array is
-     array (GL_Value_Relationship) of Relationship_Property;
+   type Relationship_Array is array (GL_Relationship) of Relationship_Property;
 
    Relation_Props : constant Relationship_Array :=
      (Data                         =>
@@ -205,41 +204,39 @@ package GNATLLVM.GLValue is
         (Is_Ref => False, Is_Any_Ref => False,
          Deref => Invalid,           Ref => Invalid));
 
-   function Deref (R : GL_Value_Relationship) return GL_Value_Relationship is
+   function Deref (R : GL_Relationship) return GL_Relationship is
      (Relation_Props (R).Deref);
-   function Ref (R : GL_Value_Relationship)   return GL_Value_Relationship is
+   function Ref (R : GL_Relationship)   return GL_Relationship is
      (Relation_Props (R).Ref);
 
-   function Is_Reference (R : GL_Value_Relationship)        return Boolean is
+   function Is_Reference (R : GL_Relationship)        return Boolean is
      (Relation_Props (R).Is_Ref);
-   function Is_Any_Reference (R : GL_Value_Relationship)    return Boolean is
+   function Is_Any_Reference (R : GL_Relationship)    return Boolean is
      (Relation_Props (R).Is_Any_Ref);
-   function Is_Double_Reference (R : GL_Value_Relationship) return Boolean is
+   function Is_Double_Reference (R : GL_Relationship) return Boolean is
      (Is_Reference (Deref (R)));
-   function Is_Single_Reference (R : GL_Value_Relationship) return Boolean is
+   function Is_Single_Reference (R : GL_Relationship) return Boolean is
      (Is_Reference (R) and then not Is_Double_Reference (R));
 
-   function Is_Subprogram_Reference
-       (R : GL_Value_Relationship) return Boolean is
+   function Is_Subprogram_Reference (R : GL_Relationship) return Boolean is
      (R = Reference_To_Subprogram);
 
-   function Relationship_For_Ref (TE : Entity_Id) return GL_Value_Relationship
+   function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Type (TE);
    --  Return the relationship to use for a reference to TE
 
    function Relationship_For_Access_Type
-     (TE : Entity_Id) return GL_Value_Relationship
+     (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Access_Type (TE);
    --  Given an access type, return the Relationship that a value of this
    --  type would have with its Designated_Type.
 
-   function Relationship_For_Alloc
-     (TE : Entity_Id) return GL_Value_Relationship
+   function Relationship_For_Alloc (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Type (TE);
    --  Return the relationship to TE that allocating memory for TE produces
 
    function Type_For_Relationship
-     (TE : Entity_Id; R : GL_Value_Relationship) return Type_T
+     (TE : Entity_Id; R : GL_Relationship) return Type_T
      with Pre => Is_Type (TE), Post => Present (Type_For_Relationship'Result);
    --  Return the LLVM type corresponding to a value of relationship R to TE
 
@@ -250,7 +247,7 @@ package GNATLLVM.GLValue is
       Typ                  : Entity_Id;
       --  The GNAT type of this value
 
-      Relationship         : GL_Value_Relationship;
+      Relationship         : GL_Relationship;
       --  The relationship between Value and Typ.
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
@@ -282,12 +279,11 @@ package GNATLLVM.GLValue is
    --  Return the type to which V is related, irrespective of the
    --  relationship.
 
-   function Relationship (V : GL_Value) return GL_Value_Relationship is
+   function Relationship (V : GL_Value) return GL_Relationship is
      (V.Relationship)
      with Pre => Present (V);
 
-   function Equiv_Relationship (R1, R2 : GL_Value_Relationship) return Boolean
-   is
+   function Equiv_Relationship (R1, R2 : GL_Relationship) return Boolean is
      (R1 = R2 or else (R1 = Any_Reference and then Is_Any_Reference (R2))
       or else (R2 = Any_Reference and then Is_Any_Reference (R1)));
    --  True if R1 and R2 are equivalent relationships in terms of the operand
@@ -335,7 +331,7 @@ package GNATLLVM.GLValue is
    function G
      (V                    : Value_T;
       TE                   : Entity_Id;
-      Relationship         : GL_Value_Relationship := Data) return GL_Value is
+      Relationship         : GL_Relationship := Data) return GL_Value is
      ((V, TE, Relationship))
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
    --  Raw constructor that allow full specification of all fields
@@ -517,12 +513,12 @@ package GNATLLVM.GLValue is
    --  to the designated type of that access type.
 
    function Equiv_Relationship
-     (V : GL_Value; Rel : GL_Value_Relationship) return Boolean
+     (V : GL_Value; Rel : GL_Relationship) return Boolean
      with Pre => Present (V);
    --  Return True if V has relationship Rel or one that can be returned
    --  by a call to Get with Rel as an operand.
 
-   function Get (V : GL_Value; Rel : GL_Value_Relationship) return GL_Value
+   function Get (V : GL_Value; Rel : GL_Relationship) return GL_Value
      with Pre => Present (V), Post => Equiv_Relationship (Get'Result, Rel);
    --  Produce a GL_Value from V whose relationship to its type is given
    --  by Rel.
@@ -537,7 +533,7 @@ package GNATLLVM.GLValue is
      with Pre => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
 
    function Get_Undef_Relationship
-     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value
+     (TE : Entity_Id; R : GL_Relationship) return GL_Value
    is
      (G (Get_Undef (Type_For_Relationship (TE, R)), TE, R))
      with Pre  => Is_Type (TE),
@@ -551,7 +547,7 @@ package GNATLLVM.GLValue is
      with Pre => Is_Type (TE), Post => Present (Const_Null'Result);
 
    function Const_Null_Relationship
-     (TE : Entity_Id; R : GL_Value_Relationship) return GL_Value
+     (TE : Entity_Id; R : GL_Relationship) return GL_Value
    is
      (G (Const_Null (Type_For_Relationship (TE, R)), TE, R))
      with Pre  => Is_Type (TE),
@@ -724,7 +720,7 @@ package GNATLLVM.GLValue is
    function Ptr_To_Relationship
      (V    : GL_Value;
       TE   : Entity_Id;
-      R    : GL_Value_Relationship;
+      R    : GL_Relationship;
       Name : String := "") return GL_Value
      with Pre  => Is_Access_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Ptr_To_Relationship'Result);
@@ -1112,7 +1108,7 @@ package GNATLLVM.GLValue is
    function Int_To_Relationship
      (V    : GL_Value;
       TE   : Entity_Id;
-      R    : GL_Value_Relationship;
+      R    : GL_Relationship;
       Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Int_To_Relationship'Result);
@@ -1142,7 +1138,7 @@ package GNATLLVM.GLValue is
      (Typ   : Entity_Id;
       Arg   : GL_Value;
       Index : unsigned;
-      R     : GL_Value_Relationship;
+      R     : GL_Relationship;
       Name  : String := "") return GL_Value
    is
      (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
@@ -1190,7 +1186,7 @@ package GNATLLVM.GLValue is
      (Typ     : Entity_Id;
       Arg     : GL_Value;
       Idx_Arr : Index_Array;
-      R       : GL_Value_Relationship;
+      R       : GL_Relationship;
       Name    : String := "") return GL_Value
    is
      (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),

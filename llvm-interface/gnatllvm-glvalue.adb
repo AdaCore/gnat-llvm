@@ -154,18 +154,16 @@ package body GNATLLVM.GLValue is
    --  Relationship_For_Ref --
    ---------------------------
 
-   function Relationship_For_Ref
-     (TE : Entity_Id) return GL_Value_Relationship
-   is
-      ((if Is_Unconstrained_Array (TE) then Fat_Pointer
-        elsif Is_Array_Type (TE) then Reference_To_Array_Data else Reference));
+   function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship is
+     ((if Is_Unconstrained_Array (TE) then Fat_Pointer
+       elsif Is_Array_Type (TE) then Reference_To_Array_Data else Reference));
 
    ----------------------------------
    -- Relationship_For_Access_Type --
    ----------------------------------
 
    function Relationship_For_Access_Type
-     (TE : Entity_Id) return GL_Value_Relationship
+     (TE : Entity_Id) return GL_Relationship
    is
       DT : constant Entity_Id := Full_Designated_Type (TE);
 
@@ -209,8 +207,7 @@ package body GNATLLVM.GLValue is
    -- Relationship_For_Alloc --
    ----------------------------
 
-   function Relationship_For_Alloc
-     (TE : Entity_Id) return GL_Value_Relationship is
+   function Relationship_For_Alloc (TE : Entity_Id) return GL_Relationship is
    begin
       --  If we don't have an array type, this is just a Reference
 
@@ -233,7 +230,7 @@ package body GNATLLVM.GLValue is
    ---------------------------
 
    function Type_For_Relationship
-     (TE : Entity_Id; R : GL_Value_Relationship) return Type_T
+     (TE : Entity_Id; R : GL_Relationship) return Type_T
    is
       T  : constant Type_T := Create_Type (TE);
       PT : constant Type_T := Pointer_Type (T, 0);
@@ -296,10 +293,10 @@ package body GNATLLVM.GLValue is
    ------------------------
 
    function Equiv_Relationship
-     (V : GL_Value; Rel : GL_Value_Relationship) return Boolean
+     (V : GL_Value; Rel : GL_Relationship) return Boolean
    is
-      TE     : constant Entity_Id    := Related_Type (V);
-      R      : GL_Value_Relationship := Rel;
+      TE     : constant Entity_Id := Related_Type (V);
+      R      : GL_Relationship    := Rel;
 
    begin
       if R = Object then
@@ -314,9 +311,9 @@ package body GNATLLVM.GLValue is
    -- Get --
    ---------
 
-   function Get (V : GL_Value; Rel : GL_Value_Relationship) return GL_Value is
-      TE     : constant Entity_Id    := Related_Type (V);
-      R      : GL_Value_Relationship := Rel;
+   function Get (V : GL_Value; Rel : GL_Relationship) return GL_Value is
+      TE     : constant Entity_Id := Related_Type (V);
+      R      : GL_Relationship    := Rel;
       Result : GL_Value;
 
    begin
@@ -575,10 +572,10 @@ package body GNATLLVM.GLValue is
    ------------
 
    function Alloca (TE : Entity_Id; Name : String := "") return GL_Value is
-      R    : constant GL_Value_Relationship := Relationship_For_Alloc (TE);
-      PT   : constant Type_T                := Type_For_Relationship (TE, R);
-      T    : constant Type_T                := Get_Element_Type (PT);
-      Inst : constant Value_T               := Alloca (IR_Builder, T, Name);
+      R    : constant GL_Relationship := Relationship_For_Alloc (TE);
+      PT   : constant Type_T          := Type_For_Relationship (TE, R);
+      T    : constant Type_T          := Get_Element_Type (PT);
+      Inst : constant Value_T         := Alloca (IR_Builder, T, Name);
 
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (T));
@@ -688,9 +685,8 @@ package body GNATLLVM.GLValue is
    -------------------------
 
    function Int_To_Relationship
-     (V    : GL_Value;
-      TE   : Entity_Id;
-      R    : GL_Value_Relationship;
+     (V    : GL_Value; TE   : Entity_Id;
+      R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
@@ -743,7 +739,7 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Relationship
      (V    : GL_Value;
       TE   : Entity_Id;
-      R    : GL_Value_Relationship;
+      R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
@@ -926,7 +922,7 @@ package body GNATLLVM.GLValue is
    ----------
 
    function Load (Ptr : GL_Value; Name : String := "") return GL_Value is
-      New_Relationship : constant GL_Value_Relationship :=
+      New_Relationship : constant GL_Relationship :=
         Relation_Props (Relationship (Ptr)).Deref;
 
    begin
@@ -1069,7 +1065,7 @@ package body GNATLLVM.GLValue is
       Need_Reference : Boolean := False) return GL_Value
    is
       T : Type_T;
-      R : GL_Value_Relationship;
+      R : GL_Relationship;
 
    begin
       --  Get the type to use for this global.  If this is a subtype

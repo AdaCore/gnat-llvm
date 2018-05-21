@@ -240,10 +240,10 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
-      DT     : constant Entity_Id             := Full_Designated_Type (TE);
-      As_Ref : constant GL_Value              :=
+      DT     : constant Entity_Id       := Full_Designated_Type (TE);
+      As_Ref : constant GL_Value        :=
         (if Is_Access_Type (Related_Type (V)) then From_Access (V) else V);
-      R      : constant GL_Value_Relationship :=
+      R      : constant GL_Relationship :=
         Relationship_For_Access_Type (TE);
 
    begin
@@ -434,8 +434,8 @@ package body GNATLLVM.Types is
    ---------------------
 
    function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value is
-      R     : constant GL_Value_Relationship := Relationship (V);
-      T     : constant Type_T                := Type_For_Relationship (TE, R);
+      R     : constant GL_Relationship := Relationship (V);
+      T     : constant Type_T          := Type_For_Relationship (TE, R);
       Value : Value_T;
 
    begin
@@ -910,9 +910,9 @@ package body GNATLLVM.Types is
       TE         : Entity_Id;
       Alloc_Type : Entity_Id) return GL_Value
    is
-      R      : constant GL_Value_Relationship := Relationship_For_Alloc (TE);
-      Copied : Boolean                        := False;
-      Memory : GL_Value                       :=
+      R      : constant GL_Relationship := Relationship_For_Alloc (TE);
+      Copied : Boolean                  := False;
+      Memory : GL_Value                 :=
         (if Is_Access_Type (Temp)
          then Ptr_To_Relationship (Temp, Alloc_Type, R)
          else Int_To_Relationship (Temp, Alloc_Type, R));

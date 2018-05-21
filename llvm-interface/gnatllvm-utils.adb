@@ -439,7 +439,7 @@ package body GNATLLVM.Utils is
    begin
       Dump_LLVM_Value (V.Value);
       Dump_LLVM_Type (Type_Of (V.Value));
-      Write_Str (GL_Value_Relationship'Image (V.Relationship) & ": ");
+      Write_Str (GL_Relationship'Image (V.Relationship) & ": ");
       pg (Union_Id (V.Typ));
 
    end Dump_GL_Value;

@@ -809,7 +809,7 @@ package body GNATLLVM.Variables is
          --  the data.
 
          declare
-            R : GL_Value_Relationship := Relationship_For_Alloc (TE);
+            R : GL_Relationship := Relationship_For_Alloc (TE);
 
          begin
             if R = Reference_To_Bounds_And_Data then

@@ -817,7 +817,9 @@ package body GNATLLVM.Types is
             end;
 
          when Access_Kind =>
-            T := Create_Access_Type (Full_Designated_Type (Def_Ident));
+            T := Type_For_Relationship
+              (Full_Designated_Type (Def_Ident),
+               Relationship_For_Access_Type (Def_Ident));
 
          when Record_Kind =>
             T := Create_Record_Type (Def_Ident);

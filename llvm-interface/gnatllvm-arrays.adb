@@ -237,10 +237,11 @@ package body GNATLLVM.Arrays is
          Pop_Discriminant_Info;
       else
          --  We now should have the unconstrained case.  Make sure we do.
-         pragma Assert (Is_Unconstrained_Array (TE));
+         pragma Assert (Is_Unconstrained_Array (TE)
+                          and then Relationship (V) /= Reference);
 
          Result := Extract_Value
-           (Dim_Info.Bound_Type, V, (1 => 1, 2 => Integer (Bound_Idx)),
+           (Dim_Info.Bound_Type, Get (V, Bounds), (1 => Integer (Bound_Idx)),
             (if Is_Low then "low-bound" else "high-bound"));
 
       end if;
@@ -528,7 +529,7 @@ package body GNATLLVM.Arrays is
    begin
       return Build_Struct_Type
         ((1 => Pointer_Type (Create_Type (TE), 0),
-          2 => Create_Array_Bounds_Type (TE)));
+          2 => Pointer_Type (Create_Array_Bounds_Type (TE), 0)));
    end Create_Array_Fat_Pointer_Type;
 
    ------------------------
@@ -607,7 +608,7 @@ package body GNATLLVM.Arrays is
       --  actual array data) and then set up the call to memset.
 
       if Is_Access_Unconstrained (Dest) then
-         Dest := Array_Data (Dest);
+         Dest := Get (Dest, Reference_To_Array_Data);
       end if;
 
       Call (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
@@ -665,66 +666,6 @@ package body GNATLLVM.Arrays is
 
       return Cur_Value;
    end Emit_Array_Aggregate;
-
-   ----------------
-   -- Array_Data --
-   ----------------
-
-   function Array_Data (V : GL_Value) return GL_Value is
-      Arr_Type : constant Entity_Id := Full_Designated_Type (V);
-   begin
-      if Is_Raw_Array (V) or else Is_Constrained (Arr_Type)
-      then
-         return V;
-      else
-         return Extract_Value_To_Relationship (Arr_Type, V, 0,
-                                               Reference_To_Array_Data);
-      end if;
-   end Array_Data;
-
-   -----------------------
-   -- Array_Fat_Pointer --
-   -----------------------
-
-   function Array_Fat_Pointer (TE : Entity_Id; V : GL_Value) return GL_Value is
-      Src_Type       : constant Entity_Id := Full_Designated_Type (V);
-      Info_Idx       : constant Nat       := Get_Array_Info (TE);
-      Fat_Ptr        : GL_Value           := Get_Undef_Ref (TE);
-      Array_Data_Ptr : constant GL_Value  :=
-        Ptr_To_Relationship (V, TE, Reference_To_Array_Data);
-
-   begin
-
-      for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
-
-         declare
-            --  The type of the bound of the array we're using for the bounds
-            --  may not be the same as the type of the bound in the
-            --  unconstrained array, so be sure to convert (C46042A).
-
-            Bound_Type     : constant Entity_Id      :=
-              Array_Info.Table (Info_Idx + Dim).Bound_Type;
-            Low_Bound    : constant GL_Value         :=
-              Get_Array_Bound (Src_Type, Dim, True, V);
-            High_Bound   : constant GL_Value         :=
-              Get_Array_Bound (Src_Type, Dim, False, V);
-            Converted_Low_Bound : constant GL_Value  :=
-              Convert_To_Elementary_Type (Low_Bound, Bound_Type);
-            Converted_High_Bound : constant GL_Value :=
-              Convert_To_Elementary_Type (High_Bound, Bound_Type);
-
-         begin
-            Fat_Ptr := Insert_Value
-              (Fat_Ptr, Converted_Low_Bound, (1 => 1, 2 => Integer (Dim * 2)));
-
-            Fat_Ptr := Insert_Value
-              (Fat_Ptr, Converted_High_Bound,
-               (1 => 1, 2 => Integer (Dim * 2 + 1)));
-         end;
-      end loop;
-
-      return Insert_Value (Fat_Ptr, Array_Data_Ptr, 0);
-   end Array_Fat_Pointer;
 
    ----------------------
    -- Get_Array_Bounds --
@@ -814,7 +755,7 @@ package body GNATLLVM.Arrays is
    is
       Array_Type     : constant Entity_Id := Full_Designated_Type (V);
       Comp_Type      : constant Entity_Id := Full_Component_Type (Array_Type);
-      Array_Data_Ptr : constant GL_Value  := Array_Data (V);
+      Array_Data_Ptr : constant GL_Value  := Get (V, Reference_To_Array_Data);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Size_Const_Null, others => <>);
       --  Operands for the GetElementPtr instruction: one for the
@@ -899,24 +840,21 @@ package body GNATLLVM.Arrays is
       Rng : Node_Id;
       V   : GL_Value) return GL_Value
    is
-      Array_Data_Ptr : constant GL_Value      := Array_Data (V);
-      Arr_Type       : constant Entity_Id     := Full_Designated_Type (V);
-      Low_Idx_Bound  : constant GL_Value      :=
+      Array_Data_Ptr : constant GL_Value  := Get (V, Reference_To_Array_Data);
+      Arr_Type       : constant Entity_Id := Full_Designated_Type (V);
+      Low_Idx_Bound  : constant GL_Value  :=
         Get_Array_Bound (Arr_Type, 0, True, V);
-      Index_Val      : constant GL_Value      :=
+      Index_Val      : constant GL_Value  :=
         Emit_Safe_Expr (Low_Bound (Get_Dim_Range (Rng)));
-      Dim_Op_Type   : constant Entity_Id      :=
+      Dim_Op_Type    : constant Entity_Id :=
         Get_GEP_Safe_Type (Low_Idx_Bound);
-      Converted_Index : constant GL_Value     :=
+      Cvt_Index      : constant GL_Value  :=
         Convert_To_Elementary_Type (Index_Val, Dim_Op_Type);
-      Converted_Low_Bound : constant GL_Value :=
+      Cvt_Low_Bound  : constant GL_Value  :=
         Convert_To_Elementary_Type (Low_Idx_Bound, Dim_Op_Type);
-
+      Index_Shift : constant GL_Value := NSW_Sub (Cvt_Index, Cvt_Low_Bound);
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
-
-      Index_Shift : constant GL_Value :=
-        NSW_Sub (Converted_Index, Converted_Low_Bound, "offset");
 
    begin
       --  Like in Get_Indexed_LValue, we have to hande both the fake and

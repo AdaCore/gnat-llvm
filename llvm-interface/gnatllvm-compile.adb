@@ -513,7 +513,7 @@ package body GNATLLVM.Compile is
             --  we want here is a reference to our type, which should
             --  be the Designated_Type of Value.
 
-            return Make_Reference (Emit_Expression (Prefix (N)));
+            return From_Access (Emit_Expression (Prefix (N)));
 
          when N_String_Literal =>
             V := Add_Global (TE, "str");
@@ -636,8 +636,7 @@ package body GNATLLVM.Compile is
             return Emit_Call (N);
 
          when N_Explicit_Dereference =>
-            return Need_Value
-              (Make_Reference (Emit_Expression (Prefix (N))), TE);
+            return Need_Value (From_Access (Emit_Expression (Prefix (N))), TE);
 
          when N_Allocator =>
 

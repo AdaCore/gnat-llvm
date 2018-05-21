@@ -235,6 +235,39 @@ package body GNATLLVM.Types is
 
    end Convert_To_Elementary_Type;
 
+   -----------------------
+   -- Convert_To_Access --
+   -----------------------
+
+   function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
+      DT     : constant Entity_Id             := Full_Designated_Type (TE);
+      As_Ref : constant GL_Value              :=
+        (if Is_Access_Type (Related_Type (V)) then From_Access (V) else V);
+      R      : constant GL_Value_Relationship :=
+        Relationship_For_Access_Type (TE);
+
+   begin
+      --  The normal process is to convert the input from an access type,
+      --  if that's what it is, to a reference to the designated type.
+      --  Then we convert it to the relationship to that type that's reflected
+      --  by the result type and finally we actually convert the pointer
+      --  to the destination type.
+      --
+      --  One case that has to be handled specially is converting to an
+      --  access-to-subprogram type because if we have a
+      --  Reference_To_Subprogram, we can't convert to Reference if it's a
+      --  procedure because the type is Void, so we have to handle that
+      --  specially here.
+
+      if Relationship (As_Ref) = Reference_To_Subprogram
+        and then Ekind (TE) = E_Access_Subprogram_Type
+      then
+         return Ptr_To_Relationship (As_Ref, TE, Reference);
+      else
+         return To_Access (Convert_Pointer (Get (As_Ref, R), DT), TE);
+      end if;
+   end Convert_To_Access;
+
    --------------------------
    -- Convert_To_Access_To --
    --------------------------
@@ -248,7 +281,7 @@ package body GNATLLVM.Types is
    begin
       --  First have the case where we previously had a reference to a
       --  subprogram and all we knew was the return type and we're converting
-      --  it to an actual subprogram acess type.  We have little to do, but
+      --  it to an actual subprogram access type.  We have little to do, but
       --  it simplifies the tests below since Full_Designated_Type is
       --  undefined on such objects.
 
@@ -284,10 +317,18 @@ package body GNATLLVM.Types is
          return V;
 
       elsif Unc_Src and then not Unc_Dest then
-         return Convert_To_Access_To (Array_Data (V), TE);
+         return Convert_To_Access_To (Get (V, Reference_To_Array_Data), TE);
       else
          pragma Assert (not Unc_Src and then Unc_Dest);
-         return Array_Fat_Pointer (TE, V);
+
+         --  ???  The code here is wrong.  See, e.g., c46104a.  If we're
+         --  converting between arrays with different types for bounds,
+         --  we need to use the new bounds and not just UC the bound
+         --  reference, since that won't work.  But there doesn't seem
+         --  to be an obvious way to fix it at the moment and this
+         --  whole function needs to be rewritten anyway.
+
+         return Convert_Pointer (Get (V, Fat_Pointer), TE);
       end if;
    end Convert_To_Access_To;
 
@@ -381,12 +422,51 @@ package body GNATLLVM.Types is
          end if;
 
          if Is_Access_Unconstrained (V) then
-            V := Array_Data (V);
+            V := Get (V, Reference_To_Array_Data);
          end if;
 
          return Need_Value (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), TE);
       end if;
    end Build_Unchecked_Conversion;
+
+   ---------------------
+   -- Convert_Pointer --
+   ---------------------
+
+   function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value is
+      R     : constant GL_Value_Relationship := Relationship (V);
+      T     : constant Type_T                := Type_For_Relationship (TE, R);
+      Value : Value_T;
+
+   begin
+      if Type_Of (V) = T then
+         return V;
+
+      --  If the input is an actual pointer, convert it
+
+      elsif Get_Type_Kind (T) = Pointer_Type_Kind then
+         return Ptr_To_Relationship (V, TE, R);
+      end if;
+
+      --  Otherwise, we have a composite pointer and must make a new
+      --  structure corresponding to converting each pointer individually.
+
+      Value := Get_Undef (T);
+      for J in 0 .. Count_Struct_Element_Types (T) - 1 loop
+         declare
+            Out_Type : constant Type_T   := Struct_Get_Type_At_Index (T, J);
+            In_Value : constant Value_T  :=
+              Extract_Value (IR_Builder, LLVM_Value (V), J, "");
+            Cvt_Value : constant Value_T :=
+              Pointer_Cast (IR_Builder, In_Value, Out_Type, "");
+
+         begin
+            Value := Insert_Value (IR_Builder, Value, Cvt_Value, J, "");
+         end;
+      end loop;
+
+      return G (Value, TE, R);
+   end Convert_Pointer;
 
    ----------------------
    -- Push_LValue_List --
@@ -828,8 +908,8 @@ package body GNATLLVM.Types is
       TE         : Entity_Id;
       Alloc_Type : Entity_Id) return GL_Value
    is
-      R      : constant GL_Value_Relationship :=
-        Relationship_For_Alloc (Alloc_Type);
+      R      : constant GL_Value_Relationship := Relationship_For_Alloc (TE);
+      Copied : Boolean                        := False;
       Memory : GL_Value                       :=
         (if Is_Access_Type (Temp)
          then Ptr_To_Relationship (Temp, Alloc_Type, R)
@@ -845,9 +925,10 @@ package body GNATLLVM.Types is
       if R = Reference_To_Bounds_And_Data then
          if Present (V) and then not Is_Reference (V) then
             Store (Get (V, Bounds_And_Data), Memory);
-            return Get (Memory, Thin_Pointer);
-         elsif not Is_Constrained (Alloc_Type) then
-            Maybe_Store_Bounds (Memory, V, Alloc_Type, True);
+            Copied := True;
+         elsif not Is_Constrained (TE) then
+            Store (Get_Array_Bounds (Alloc_Type, V),
+                   Get (Memory, Reference_To_Bounds));
          end if;
 
          Memory := Get (Memory, Thin_Pointer);
@@ -855,7 +936,7 @@ package body GNATLLVM.Types is
 
       --  If we have a value to move into memory, move it
 
-      if Present (V) then
+      if Present (V) and then not Copied then
          Emit_Assignment (Memory, Empty, V, True, True);
       end if;
 
@@ -996,7 +1077,7 @@ package body GNATLLVM.Types is
       --  convert it to a generic pointer or to an integer (System.Address).
 
       if Is_Access_Unconstrained (Converted_V) then
-         Converted_V := Array_Data (Converted_V);
+         Converted_V := Get (Converted_V, Reference_To_Array_Data);
       end if;
 
       --  If no subprogram was specified, use the default memory deallocation

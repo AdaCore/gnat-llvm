@@ -150,16 +150,6 @@ package GNATLLVM.Arrays is
    --  outer array type we still can recurse into.  Indices_So_Far are the
    --  indexes of any outer N_Aggregate expressions we went through.
 
-   function Array_Data (V : GL_Value) return GL_Value
-     with Pre  => Is_Access_Type (V)
-                  and then Is_Array_Type (Full_Designated_Type (V)),
-          Post => Present (Array_Data'Result);
-   --  Emit code to compute the address of the array data and return the
-   --  corresponding value. Handle both constrained and unconstrained
-   --  arrays, depending on Array_Type. If this is a constrained array, V
-   --  must already be a pointer to the array data, otherwise, it must be a
-   --  fat pointer.
-
    procedure Maybe_Store_Bounds
      (Dest, Src : GL_Value; Src_Type : Entity_Id; For_Unconstrained : Boolean)
      with Pre => Present (Dest) and then Is_Type (Src_Type);
@@ -172,17 +162,6 @@ package GNATLLVM.Arrays is
      with Pre  => Is_Array_Type (TE),
           Post => Present (Get_Array_Bounds'Result);
    --  Get the bounds of the array TE using V if necessary
-
-   function Array_Fat_Pointer (TE : Entity_Id; V : GL_Value) return GL_Value
-     with Pre  => Is_Access_Type (V) and then Is_Array_Type (TE)
-                  and then not Is_Constrained (TE)
-                  and then Is_Array_Type (Full_Designated_Type (V))
-                  and then (Is_Constrained (Full_Designated_Type (V))
-                              or else Is_Raw_Array (V)),
-          Post => Present (Array_Fat_Pointer'Result);
-   --  Wrap a fat pointer around V and return the created fat pointer.  TE
-   --  is the destination array type, which is what specifies the types of
-   --  the bounds.
 
    function Update_Fat_Pointer
      (Fat_Ptr : GL_Value; Array_Data : GL_Value) return GL_Value

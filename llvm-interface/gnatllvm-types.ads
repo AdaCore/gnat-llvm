@@ -143,8 +143,7 @@ package GNATLLVM.Types is
           Post => Is_Access_Type (Convert_To_Access_To'Result);
    --  Convert Src, which should be an access, into an access to Desig_Type
 
-   function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (To_Access (Convert_To_Access_To (V, Full_Designated_Type (TE)), TE))
+   function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (Convert_To_Access'Result);
    --  Convert Src, which should be an access, into an access type TE
@@ -175,6 +174,12 @@ package GNATLLVM.Types is
                   and then Present (N),
           Post => Present (Build_Unchecked_Conversion'Result);
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
+
+   function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Is_Access_Type (V),
+          Post => Is_Access_Type (Convert_Pointer'Result);
+   --  V is a reference to some object.  Convert it to a reference to TE
+   --  with the same relationship.
 
    function Convert_To_Elementary_Type
      (V : GL_Value; T : GL_Value) return GL_Value

@@ -176,7 +176,7 @@ package GNATLLVM.GLValue is
          Deref => Bounds_And_Data,   Ref => Invalid),
       Reference_To_Array_Data        =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Invalid),
+         Deref => Data,              Ref => Invalid),
       Reference_To_Thin_Pointer      =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref => Thin_Pointer,      Ref => Invalid),
@@ -222,6 +222,10 @@ package GNATLLVM.GLValue is
    function Is_Subprogram_Reference
        (R : GL_Value_Relationship) return Boolean is
      (R = Reference_To_Subprogram);
+
+   function Relationship_For_Ref (TE : Entity_Id) return GL_Value_Relationship
+     with Pre => Is_Type (TE);
+   --  Return the relationship to use for a reference to TE
 
    function Relationship_For_Access_Type
      (TE : Entity_Id) return GL_Value_Relationship
@@ -366,7 +370,7 @@ package GNATLLVM.GLValue is
           Post => Is_Access_Type (G_Is_Ref'Result);
 
    function G_Ref (V : Value_T; TE : Entity_Id) return GL_Value is
-     (G (V, TE, Reference))
+     (G (V, TE, Relationship_For_Ref (TE)))
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (G_Ref'Result);
    --  Constructor for case where we've create a value that's a pointer to
@@ -522,15 +526,6 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Equiv_Relationship (Get'Result, Rel);
    --  Produce a GL_Value from V whose relationship to its type is given
    --  by Rel.
-
-   function Make_Reference (V : GL_Value) return GL_Value is
-     (G_Ref (LLVM_Value (V), Full_Designated_Type (V)))
-     with Pre  => Is_Access_Type (V),
-          Post => Is_Reference (Make_Reference'Result)
-                  and then (Full_Designated_Type (Make_Reference'Result) =
-                              Full_Designated_Type (V));
-   --  Indicate that we want to consider G as a reference to its designated
-   --  type.
 
    --  Finally, we have versions of subprograms defined elsewhere that
    --  accept and/or return GL_Value.

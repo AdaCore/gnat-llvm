@@ -559,7 +559,7 @@ package body GNATLLVM.Exprs is
             --  this is the pointer to the underlying array.
 
             if Is_Access_Unconstrained (V) then
-               V := Array_Data (V);
+               V := Get (V, Reference_To_Array_Data);
             end if;
 
             return Ptr_To_Int (V, TE, "attr-address");
@@ -853,7 +853,7 @@ package body GNATLLVM.Exprs is
          Src := Get (Src, Data);
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
             if Is_Array_Type (Full_Designated_Type (Dest)) then
-               Dest := Array_Data (Dest);
+               Dest := Get (Dest, Reference_To_Array_Data);
             end if;
 
             Dest := Ptr_To_Ref (Dest, Full_Etype (Src));
@@ -883,8 +883,8 @@ package body GNATLLVM.Exprs is
             --  we've used the fat pointer to compute the size above.
 
             if Is_Array_Type (Full_Designated_Type (Src)) then
-               Dest := Array_Data (Dest);
-               Src  := Array_Data (Src);
+               Dest := Get (Dest, Reference_To_Array_Data);
+               Src  := Get (Src,  Reference_To_Array_Data);
             end if;
 
             Call (Build_Intrinsic

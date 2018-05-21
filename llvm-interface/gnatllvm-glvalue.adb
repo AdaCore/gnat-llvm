@@ -21,6 +21,7 @@ with Get_Targ; use Get_Targ;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -71,6 +72,7 @@ package body GNATLLVM.GLValue is
               and then Ekind (V.Typ) /= E_Subprogram_Type;
 
          when Reference =>
+            --  ??? This should really only be non-array
             return Is_Type (V.Typ)
               and then (Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
                           or else Is_Unconstrained_Array (V.Typ)
@@ -148,6 +150,16 @@ package body GNATLLVM.GLValue is
       null;
    end Discard;
 
+   ---------------------------
+   --  Relationship_For_Ref --
+   ---------------------------
+
+   function Relationship_For_Ref
+     (TE : Entity_Id) return GL_Value_Relationship
+   is
+      ((if Is_Unconstrained_Array (TE) then Fat_Pointer
+        elsif Is_Array_Type (TE) then Reference_To_Array_Data else Reference));
+
    ----------------------------------
    -- Relationship_For_Access_Type --
    ----------------------------------
@@ -171,6 +183,12 @@ package body GNATLLVM.GLValue is
 
       elsif Is_Constr_Subt_For_UN_Aliased (DT) and then Is_Array_Type (DT) then
          return Thin_Pointer;
+
+      --  Otherwise, if we're pointing to an array (now known to be
+      --  constrained), this is a reference to array data.
+
+      elsif Is_Array_Type (DT) then
+         return Reference_To_Array_Data;
 
       --  If this is an access to subprogram, this is either a pointer to
       --  the subprogram or a pair of pointers that includes the activation
@@ -260,6 +278,12 @@ package body GNATLLVM.GLValue is
                                       2 => T)),
                   0);
             end if;
+
+         when Reference_To_Activation_Record =>
+            return Void_Ptr_Type;
+
+         when Fat_Reference_To_Subprogram =>
+            return Create_Subprogram_Access_Type;
 
          when others =>
             pragma Assert (False);
@@ -460,8 +484,8 @@ package body GNATLLVM.GLValue is
 
          when Reference =>
 
-            --  If we have Reference_To_Array_Data, we have the value we
-            --  need.  Otherwise, try to convert to it and then to this.
+            --  If we have Reference_To_Array_Data, we have the value
+            --  we need.  Otherwise, try to convert to it and then to this.
 
             if Relationship (V) = Reference_To_Array_Data then
                return G (LLVM_Value (V), TE, R);
@@ -502,8 +526,7 @@ package body GNATLLVM.GLValue is
                Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
                Data    : constant GL_Value  :=
                    Get (Val, Reference_To_Array_Data);
-               Fat_Ptr : constant GL_Value  :=
-                   Get_Undef_Relationship (TE, Fat_Pointer);
+               Fat_Ptr : constant GL_Value  := Get_Undef_Relationship (TE, R);
 
             begin
                return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),
@@ -518,6 +541,14 @@ package body GNATLLVM.GLValue is
          when Reference_To_Subprogram =>
             if Relationship (V) = Fat_Reference_To_Subprogram then
                return Extract_Value_To_Relationship (TE, V, 0, R);
+            end if;
+
+         when Fat_Reference_To_Subprogram =>
+            if Relationship (V) = Reference_To_Subprogram
+              or else Relationship (V) = Reference
+            then
+               return Insert_Value (Get_Undef_Relationship (TE, R),
+                                    Convert_To_Access (V, Standard_A_Char), 0);
             end if;
 
          when Any_Reference =>

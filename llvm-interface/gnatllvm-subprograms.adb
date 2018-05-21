@@ -428,32 +428,37 @@ package body GNATLLVM.Subprograms is
       Push_Block;
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
-         LLVM_Param := G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)),
-                          Full_Etype (Param), (if Param_Needs_Ptr (Param)
-                                               then Reference else Data));
+         declare
+            Is_Ref : constant Boolean               := Param_Needs_Ptr (Param);
+            TE     : constant Entity_Id := Full_Etype (Param);
+            R      : constant GL_Value_Relationship :=
+              (if Is_Ref
+               then (if Is_Unconstrained_Array (TE) then Fat_Pointer
+                     else Reference)
+               else Data);
+         begin
+            LLVM_Param :=
+              G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)), TE, R);
 
-         --  Define a name for the parameter Param (which is the
-         --  Param_Num'th parameter), and associate the corresponding
-         --  LLVM value to its entity.
+            --  Define a name for the parameter Param (which is the
+            --  Param_Num'th parameter), and associate the corresponding
+            --  LLVM value to its entity.
 
-         Set_Value_Name (LLVM_Value (LLVM_Param), Get_Name (Param));
+            Set_Value_Name (LLVM_Value (LLVM_Param), Get_Name (Param));
 
-         --  Special case for structures passed by value, we want to
-         --  store a pointer to them on the stack, so do an alloca,
-         --  to be able to do GEP on them.
+            --  Add the parameter to the environnment
 
-         --  Add the parameter to the environnment
+            Set_Value (Param, LLVM_Param);
 
-         Set_Value (Param, LLVM_Param);
+            if Ekind (Param) = E_In_Parameter
+              and then Is_Activation_Record (Param)
+            then
+               Activation_Rec_Param := LLVM_Param;
+            end if;
 
-         if Ekind (Param) = E_In_Parameter
-           and then Is_Activation_Record (Param)
-         then
-            Activation_Rec_Param := LLVM_Param;
-         end if;
-
-         Param_Num := Param_Num + 1;
-         Next_Formal_With_Extras (Param);
+            Param_Num := Param_Num + 1;
+            Next_Formal_With_Extras (Param);
+         end;
       end loop;
 
       --  If the return type has dynamic size, we've added a parameter
@@ -461,9 +466,11 @@ package body GNATLLVM.Subprograms is
       --  value.
 
       if Dyn_Return then
-         LLVM_Param := G_Ref (Get_Param (LLVM_Value (Func),
-                                         unsigned (Param_Num)),
-                              Return_Typ);
+         LLVM_Param := G (Get_Param (LLVM_Value (Func),
+                                     unsigned (Param_Num)),
+                          Return_Typ,
+                          (if Is_Unconstrained_Array (Return_Typ)
+                           then Fat_Pointer else Reference));
          Set_Value_Name (LLVM_Value (LLVM_Param), "return");
          Return_Address_Param := LLVM_Param;
       end if;

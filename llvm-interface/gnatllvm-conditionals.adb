@@ -359,28 +359,37 @@ package body GNATLLVM.Conditionals is
                                             Implementation_Base_Type (RHS));
       end if;
 
-      --  If one is a fat pointer and one isn't, get a raw pointer for the
-      --  one that isn't.
+      --  If we're comparing two access types, first get the values as
+      --  references to the designated types.
 
-      if Is_Access_Unconstrained (LHS)
-        and then not Is_Access_Unconstrained (RHS)
-      then
-         LHS := Get (From_Access (LHS), Reference);
-      elsif Is_Access_Unconstrained (RHS)
-        and then not Is_Access_Unconstrained (LHS)
-      then
-         RHS := Get (From_Access (RHS), Reference);
-      end if;
+      if Is_Access_Type (LHS) then
+         LHS := From_Access (LHS);
+         RHS := From_Access (RHS);
 
-      --  If these are fat pointers (because of the above, we know that if
-      --  one is, both must be), they are equal iff their addresses are
-      --  equal.  It's not possible for the addresses to be equal and not
-      --  the bounds. We can't make a recursive call here or we'll try to
-      --  do it again that time.
+         --  If either is a Reference_To_Subprogram, leave it alone.
+         --  Otherwise, convert it to a Rference.  This handles both
+         --  pointers to subprograms with static links and fat pointers
+         --  to unconstrained arrays.
 
-      if Is_Access_Unconstrained (LHS) then
-         return I_Cmp (Operation.Unsigned, Get (From_Access (LHS), Reference),
-                       Get (From_Access (RHS), Reference));
+         if Relationship (LHS) /= Reference_To_Subprogram then
+            LHS := Get (LHS, Reference);
+         end if;
+
+         if Relationship (RHS) /= Reference_To_Subprogram then
+            RHS := Get (RHS, Reference);
+         end if;
+
+         --  Now we have simple pointers, but they may not be the same
+         --  LLVM type.  If they aren't, convert the RHS to the type of
+         --  the LHS.  ???  Make this higher level at some point.
+
+         if Type_Of (LHS) /= Type_Of (RHS) then
+            RHS := G_From (Pointer_Cast (IR_Builder, LLVM_Value (RHS),
+                                         Type_Of (LHS), ""),
+                           LHS);
+         end if;
+
+         return I_Cmp (Operation.Unsigned, LHS, RHS);
 
       elsif Is_Floating_Point_Type (LHS) then
          return F_Cmp (Operation.Real, LHS, RHS);

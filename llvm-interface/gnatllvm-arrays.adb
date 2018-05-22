@@ -582,7 +582,6 @@ package body GNATLLVM.Arrays is
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
       TE    : constant Entity_Id := Full_Etype (N);
       Align : constant unsigned  := Get_Type_Alignment (TE);
-      Dest  : GL_Value           := LValue;
       E     : Node_Id            :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
@@ -604,15 +603,8 @@ package body GNATLLVM.Arrays is
          Value := Build_Type_Conversion (E, Standard_Short_Short_Integer);
       end if;
 
-      --  First check for unconstrained case (where we need to point to the
-      --  actual array data) and then set up the call to memset.
-
-      if Is_Access_Unconstrained (Dest) then
-         Dest := Get (Dest, Reference);
-      end if;
-
       Call (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
-            (1 => Pointer_Cast (Dest, Standard_A_Char),
+            (1 => Pointer_Cast (Get (LValue, Reference), Standard_A_Char),
              2 => Value,
              3 => Get_Type_Size (TE),
              4 => Const_Int_32 (Align),

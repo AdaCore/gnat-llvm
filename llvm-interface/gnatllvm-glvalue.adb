@@ -216,7 +216,9 @@ package body GNATLLVM.GLValue is
       --  The only difference here is when we need to allocate both bounds
       --  and data.
 
-      if Is_Unconstrained_Array (TE) or else Is_Constr_Subt_For_UN_Aliased (TE)
+      if Is_Unconstrained_Array (TE)
+        or else (Is_Constr_Subt_For_UN_Aliased (TE)
+                   and then Is_Array_Type (TE))
       then
          return Reference_To_Bounds_And_Data;
       else
@@ -479,6 +481,13 @@ package body GNATLLVM.GLValue is
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             end if;
 
+            --  A reference to a subprogram is inside a fat reference to a
+            --  subprogram.
+
+            if Relationship (V) = Fat_Reference_To_Subprogram then
+               return Extract_Value_To_Relationship (TE, V, 0, R);
+            end if;
+
          when Thin_Pointer =>
 
             --  There are only two cases where we can make a thin pointer.
@@ -519,19 +528,20 @@ package body GNATLLVM.GLValue is
             end;
 
          when Reference_To_Activation_Record =>
+
+            --  The activation record is inside a fat reference to a
+            --  subprogrm.
+
             if Relationship (V) = Fat_Reference_To_Subprogram then
                return Extract_Value_To_Relationship (TE, V, 1, R);
             end if;
 
-         when Reference_To_Subprogram =>
-            if Relationship (V) = Fat_Reference_To_Subprogram then
-               return Extract_Value_To_Relationship (TE, V, 0, R);
-            end if;
-
          when Fat_Reference_To_Subprogram =>
-            if Relationship (V) = Reference_To_Subprogram
-              or else Relationship (V) = Reference
-            then
+
+            --  If we want to fat reference to a subprogram, make one with
+            --  an undefined static link.
+
+            if Relationship (V) = Reference then
                return Insert_Value (Get_Undef_Relationship (TE, R),
                                     Convert_To_Access (V, Standard_A_Char), 0);
             end if;

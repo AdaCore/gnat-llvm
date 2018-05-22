@@ -553,12 +553,14 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Address
             | Attribute_Pool_Address =>
+
+            --  We have to be careful here because we want a Reference
+            --  relationship, but we can't get that for
+            --  Reference_To_Subprogram.
+            --  ??? This should be cleaned up at some point.
+
             V := Emit_LValue (Prefix (N));
-
-            --  If we are taking 'Address of an unconstrained object,
-            --  this is the pointer to the underlying array.
-
-            if Is_Access_Unconstrained (V) then
+            if Relationship (V) /= Reference_To_Subprogram then
                V := Get (V, Reference);
             end if;
 
@@ -852,11 +854,7 @@ package body GNATLLVM.Exprs is
 
          Src := Get (Src, Data);
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            if Is_Array_Type (Full_Designated_Type (Dest)) then
-               Dest := Get (Dest, Reference);
-            end if;
-
-            Dest := Ptr_To_Ref (Dest, Full_Etype (Src));
+            Dest := Ptr_To_Ref (Get (Dest, Reference), Full_Etype (Src));
          end if;
 
          Store (Src, Dest);
@@ -877,20 +875,10 @@ package body GNATLLVM.Exprs is
                then "memcpy" else "memmove");
 
          begin
-
-            --  If this is an array type, we have to point the memcpy/memmove
-            --  to the underlying data.  But be sure we've done this after
-            --  we've used the fat pointer to compute the size above.
-
-            if Is_Array_Type (Full_Designated_Type (Src)) then
-               Dest := Get (Dest, Reference);
-               Src  := Get (Src,  Reference);
-            end if;
-
             Call (Build_Intrinsic
                     (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
-                  (1 => Pointer_Cast (Dest, Standard_A_Char),
-                   2 => Pointer_Cast (Src, Standard_A_Char),
+                  (1 => Pointer_Cast (Get (Dest, Reference), Standard_A_Char),
+                   2 => Pointer_Cast (Get (Src,  Reference), Standard_A_Char),
                    3 => Size,
                    4 => Const_Int_32 (Align),
                    5 => Const_False)); -- Is_Volatile

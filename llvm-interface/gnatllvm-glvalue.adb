@@ -105,7 +105,7 @@ package body GNATLLVM.GLValue is
          when Reference_To_Subprogram =>
             return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
-         when Any_Reference | Object | Invalid =>
+         when others =>
             return False;
       end case;
    end GL_Value_Is_Valid_Int;
@@ -306,7 +306,11 @@ package body GNATLLVM.GLValue is
       end if;
 
       return Relationship (V) = R
-        or else (R = Any_Reference and then Is_Any_Reference (V));
+        or else (R = Any_Reference and then Is_Any_Reference (V))
+        or else (R = Reference_For_Integer and then Is_Any_Reference (V)
+                   and then Relationship (V) /= Fat_Pointer
+                   and then Relationship (V) /= Fat_Reference_To_Subprogram);
+
    end Equiv_Relationship;
 
    ---------
@@ -324,6 +328,14 @@ package body GNATLLVM.GLValue is
 
       if R = Object then
          R := (if Is_Dynamic_Size (TE) then Any_Reference else Data);
+      end if;
+
+      --  If we want any single-word relationship, we can convert everything
+      --  to Reference, except for Reference_To_Subprogrm, which is also OK.
+
+      if R = Reference_For_Integer then
+         R := (if Relationship (V) = Reference_To_Subprogram
+               then Reference_To_Subprogram else Reference);
       end if;
 
       --  If it's already the desired relationship, done

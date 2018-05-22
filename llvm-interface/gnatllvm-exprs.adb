@@ -544,6 +544,7 @@ package body GNATLLVM.Exprs is
          when Attribute_Access
             | Attribute_Unchecked_Access
             | Attribute_Unrestricted_Access =>
+
             --  We store values as pointers, so, getting an access to an
             --  expression is the same thing as getting an LValue, and has
             --  the same constraints.  But we do have to be sure that it's
@@ -554,17 +555,12 @@ package body GNATLLVM.Exprs is
          when Attribute_Address
             | Attribute_Pool_Address =>
 
-            --  We have to be careful here because we want a Reference
-            --  relationship, but we can't get that for
-            --  Reference_To_Subprogram.
-            --  ??? This should be cleaned up at some point.
+            --  We need a single-word pointer, then we convert it to the
+            --  desired integral type.
 
-            V := Emit_LValue (Prefix (N));
-            if Relationship (V) /= Reference_To_Subprogram then
-               V := Get (V, Reference);
-            end if;
-
-            return Ptr_To_Int (V, TE, "attr-address");
+            return Ptr_To_Int (Get (Emit_LValue (Prefix (N)),
+                                    Reference_For_Integer),
+                               TE, "attr-address");
 
          when Attribute_Deref =>
             declare

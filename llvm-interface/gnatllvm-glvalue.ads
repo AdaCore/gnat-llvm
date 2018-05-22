@@ -111,6 +111,13 @@ package GNATLLVM.GLValue is
       --  any reference to data can be returned.  This includes fat and
       --  thin pointers, but not such things as references to bounds.
 
+      Reference_For_Integer,
+      --  Valid only as an operand to Get and indicates that a value
+      --  with a single-word reference to data can be returned.  This
+      --  includes thin pointers, but not such things as references to
+      --  bounds or any fat structure.  This is used when we want to compare
+      --  two access types or convert an address to an integer.
+
       Object,
       --  Valid only as an operand to Get and means Any_Reference if
       --  the type of the value is of dynamic size and Data otherwise.
@@ -186,6 +193,9 @@ package GNATLLVM.GLValue is
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref => Invalid,           Ref => Invalid),
       Any_Reference                  =>
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Invalid,           Ref => Invalid),
+      Reference_For_Integer          =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref => Invalid,           Ref => Invalid),
       Object                         =>

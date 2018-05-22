@@ -360,24 +360,14 @@ package body GNATLLVM.Conditionals is
       end if;
 
       --  If we're comparing two access types, first get the values as
-      --  references to the designated types.
+      --  references to the designated types, then as a single-word
+      --  reference.  To be a valid comparion, they must be the same LLVM
+      --  type at that point.
 
       if Is_Access_Type (LHS) then
-         LHS := From_Access (LHS);
-         RHS := From_Access (RHS);
 
-         --  If either is a Reference_To_Subprogram, leave it alone.
-         --  Otherwise, convert it to a Rference.  This handles both
-         --  pointers to subprograms with static links and fat pointers
-         --  to unconstrained arrays.
-
-         if Relationship (LHS) /= Reference_To_Subprogram then
-            LHS := Get (LHS, Reference);
-         end if;
-
-         if Relationship (RHS) /= Reference_To_Subprogram then
-            RHS := Get (RHS, Reference);
-         end if;
+         LHS := Get (From_Access (LHS), Reference_For_Integer);
+         RHS := Get (From_Access (RHS), Reference_For_Integer);
 
          --  Now we have simple pointers, but they may not be the same
          --  LLVM type.  If they aren't, convert the RHS to the type of

@@ -52,6 +52,9 @@ package GNATLLVM.Blocks is
    --  protected by the exception handlers and an At_End_Proc and provide
    --  those, if present.
 
+   function Get_Landing_Pad return Basic_Block_T;
+   --  Get the basic block for the landingpad in the current block, if any
+
    procedure Pop_Block
      with Pre => not Library_Level;
    --  End the current block, generating code for any handlers, and

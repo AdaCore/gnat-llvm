@@ -20,6 +20,7 @@ with Ada.Unchecked_Conversion;
 with Get_Targ; use Get_Targ;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -977,15 +978,34 @@ package body GNATLLVM.GLValue is
       Args        : GL_Value_Array;
       Name        : String := "") return Value_T
    is
+      LLVM_Fn     : constant Value_T       := LLVM_Value (Func);
+      No_Raise    : constant Boolean       :=
+        Present (Is_A_Function (LLVM_Fn)) and then Does_Not_Throw (LLVM_Fn);
+      Lpad        : constant Basic_Block_T :=
+        (if No_Raise then No_BB_T else Get_Landing_Pad);
       Arg_Values  : Value_Array (Args'Range);
-
+      Next_BB     : Basic_Block_T;
+      Call_Inst   : Value_T;
    begin
       for J in Args'Range loop
          Arg_Values (J) := LLVM_Value (Args (J));
       end loop;
 
-      return Call (IR_Builder, LLVM_Value (Func),
-                   Arg_Values'Address, Arg_Values'Length, Name);
+      --  If we have a landing pad, use an invoke instruction, first creating
+      --  the basic block to branch to in the normal case.
+
+      if Present (Lpad) then
+         Next_BB := Create_Basic_Block;
+         Call_Inst := Invoke (IR_Builder, LLVM_Fn,
+                              Arg_Values'Address, Arg_Values'Length,
+                              Next_BB, Lpad, Name);
+         Position_Builder_At_End (Next_BB);
+         return Call_Inst;
+      else
+         return Call (IR_Builder, LLVM_Fn,
+                      Arg_Values'Address, Arg_Values'Length, Name);
+      end if;
+
    end Call_Internal;
 
    ----------

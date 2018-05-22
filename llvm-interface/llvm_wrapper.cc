@@ -160,6 +160,13 @@ Build_Insert_Value_C (IRBuilder<> *bld, Value *aggr, Value *elt,
 }
 
 extern "C"
+unsigned char
+Does_Not_Throw (Function *fn)
+{
+    return fn->doesNotThrow () ? 1 : 0;
+}
+
+extern "C"
 int
 LLVM_Init_Module (Module *TheModule, const char *Filename, const char *target)
 {

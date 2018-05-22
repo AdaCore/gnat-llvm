@@ -65,6 +65,10 @@ package GNATLLVM.Wrapper is
       Num_Idx  : unsigned;
       Name     : String) return Value_T;
 
+   function Does_Not_Throw (Fn : Value_T) return Boolean;
+   pragma Import (C, Does_Not_Throw, "Does_Not_Throw");
+   pragma Warnings (Off, Does_Not_Throw);
+
    function LLVM_Init_Module
      (Module   : Module_T;
       Filename : String;

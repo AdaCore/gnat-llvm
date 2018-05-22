@@ -17,6 +17,7 @@
 
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
+with Nlists;   use Nlists;
 with Stand;    use Stand;
 with Table;    use Table;
 with Uintp;    use Uintp;
@@ -36,8 +37,7 @@ package body GNATLLVM.Blocks is
 
    type Block_Info is record
       In_Stmts           : Boolean;
-      --  True if this block was entered from the statement section of its
-      --  parent block.
+      --  True if we are in the statement section of the current block
 
       Stack_Save         : GL_Value;
       --  Value of the stack pointer at entry to the block
@@ -47,6 +47,9 @@ package body GNATLLVM.Blocks is
 
       At_End_Static_Link : GL_Value;
       --  The activation record to pass to the At_End_Proc
+
+      Landing_Pad        : Basic_Block_T;
+      --  Basic block containing the landing pad for this block, if any.
 
       EH_List            : List_Id;
       --  List of exception handlers.  ??? We may not want to keep it this way
@@ -61,10 +64,6 @@ package body GNATLLVM.Blocks is
       Table_Increment      => 5,
       Table_Name           => "Block_Stack");
    --  Stack of blocks that we're in.
-
-   In_Stmt_Part : Boolean := False;
-   --  True when we're in the statements part of a block (as opposed to
-   --  the declarative part.
 
    --  These tables implement local exception handling, where a
    --  language-defined check within a block jumps directly to a label
@@ -118,6 +117,8 @@ package body GNATLLVM.Blocks is
    --  Do one fixup when exiting Blk, saying whether to run "at end handler
    --  and whether to restore the stack pointer.
 
+   Personality_Fn : Value_T := No_Value_T;
+
    ----------------
    -- Push_Block --
    ----------------
@@ -130,10 +131,9 @@ package body GNATLLVM.Blocks is
       Block_Stack.Append ((Stack_Save         => Stack_Save,
                            At_End_Proc        => No_GL_Value,
                            At_End_Static_Link => No_GL_Value,
+                           Landing_Pad        => No_BB_T,
                            EH_List            => No_List,
-                           In_Stmts           => In_Stmt_Part));
-
-      In_Stmt_Part := False;
+                           In_Stmts           => False));
 
    end Push_Block;
 
@@ -145,7 +145,8 @@ package body GNATLLVM.Blocks is
      (At_End_Proc : Entity_Id; EH_List : List_Id) is
 
    begin
-      Block_Stack.Table (Block_Stack.Last).EH_List := EH_List;
+      Block_Stack.Table (Block_Stack.Last).EH_List  := EH_List;
+      Block_Stack.Table (Block_Stack.Last).In_Stmts := True;
 
       if Present (At_End_Proc) then
 
@@ -167,9 +168,32 @@ package body GNATLLVM.Blocks is
          end if;
       end if;
 
-      In_Stmt_Part := True;
-
    end Start_Block_Statements;
+
+   ---------------------
+   -- Get_Landing_Pad --
+   ---------------------
+
+   function Get_Landing_Pad return Basic_Block_T is
+   begin
+      --  If we're in the Statements part of a block that has nexceptions,
+      --  see if we've made a block for the landing-pad.  If not, make one.
+
+      for J in reverse 1 .. Block_Stack.Last loop
+         if Present (Block_Stack.Table (J).EH_List)
+           and then Block_Stack.Table (J).In_Stmts
+         then
+            if No (Block_Stack.Table (J).Landing_Pad) then
+               Block_Stack.Table (J).Landing_Pad :=
+                 Create_Basic_Block ("Lpad");
+            end if;
+
+            return Block_Stack.Table (J).Landing_Pad;
+         end if;
+      end loop;
+
+      return No_BB_T;
+   end Get_Landing_Pad;
 
    --------------------
    -- Emit_One_Fixup --
@@ -202,13 +226,51 @@ package body GNATLLVM.Blocks is
    ---------------
 
    procedure Pop_Block is
+      Lpad     : constant Basic_Block_T :=
+        Block_Stack.Table (Block_Stack.Last).Landing_Pad;
+      Was_Dead : constant Boolean       := Are_In_Dead_Code;
+      Next_BB  : constant Basic_Block_T :=
+        (if Present (Lpad) and then not Was_Dead
+         then Create_Basic_Block else No_BB_T);
+      LP_Type  : constant Type_T        :=
+          Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
+      LP_Inst  : Value_T;
+
    begin
+      --  If we're not in dead code, we have to fixup the block and the branch
+      --  around any landingpad.  But that code is not protected by any
+      --  exception handlers in the block.
+
       if not Are_In_Dead_Code then
+         Block_Stack.Table (Block_Stack.Last).In_Stmts := False;
          Emit_One_Fixup (Block_Stack.Last,
                          Do_At_End => True, Do_Stack => True);
+         if Present (Next_BB) then
+            Build_Br (Next_BB);
+         end if;
       end if;
 
-      In_Stmt_Part := Block_Stack.Table (Block_Stack.Last).In_Stmts;
+      if No (Personality_Fn) then
+         Personality_Fn :=
+           Add_Function (LLVM_Module,
+                         "__gnat_personality_v0",
+                         Function_Type (Int_Ty (32),
+                                        System.Null_Address,
+                                        0, True));
+      end if;
+
+      --  Now output the landing pad block, which is junk for now
+
+      if Present (Lpad) then
+         Position_Builder_At_End (Lpad);
+         LP_Inst := Landing_Pad (IR_Builder, LP_Type, Personality_Fn, 0, "");
+         Set_Cleanup (LP_Inst, True);
+         Discard (Build_Resume (IR_Builder, Get_Undef (LP_Type)));
+         if Present (Next_BB) then
+            Position_Builder_At_End (Next_BB);
+         end if;
+      end if;
+
       Block_Stack.Decrement_Last;
    end Pop_Block;
 

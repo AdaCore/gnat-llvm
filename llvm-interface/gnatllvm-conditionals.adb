@@ -897,6 +897,7 @@ package body GNATLLVM.Conditionals is
       --  arrays types.  Pick the best type to use here.  If one is an
       --  unconstrained array, use that one.  Otherwise, if one is dynamic
       --  size, use that one.  Otherwise, it doesn't matter.
+      --  ??? Some of this code looks dubious and old.
 
       if Is_Unconstrained_Array (Then_Type) then
          TE := Then_Type;
@@ -916,7 +917,8 @@ package body GNATLLVM.Conditionals is
       Then_Value := Emit_Expression (Then_Expr);
 
       if Is_Dynamic_Size (TE) then
-         Then_Value := Convert_To_Access_To (Need_LValue (Then_Value, TE), TE);
+         Then_Value :=
+           Convert_To_Access_To (Get (Then_Value, Any_Reference), TE);
       end if;
 
       --  The THEN part may be composed of multiple basic blocks. We want
@@ -932,7 +934,8 @@ package body GNATLLVM.Conditionals is
       Else_Value := Emit_Expression (Else_Expr);
 
       if Is_Dynamic_Size (TE) then
-         Else_Value := Convert_To_Access_To (Need_LValue (Else_Value, TE), TE);
+         Else_Value :=
+           Convert_To_Access_To (Get (Else_Value, Any_Reference), TE);
       end if;
 
       Build_Br (BB_Next);

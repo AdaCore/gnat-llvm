@@ -472,8 +472,7 @@ package body GNATLLVM.Compile is
 
    function Emit_LValue_Internal (N : Node_Id) return GL_Value
    is
-      Typ   : constant Entity_Id := Full_Etype (N);
-      Value : constant GL_Value  := Need_LValue (Emit_LValue_Main (N), Typ);
+      Value : constant GL_Value  := Get (Emit_LValue_Main (N), Any_Reference);
 
    begin
       --  If the object is not of void type, save the result in the
@@ -636,7 +635,7 @@ package body GNATLLVM.Compile is
             return Emit_Call (N);
 
          when N_Explicit_Dereference =>
-            return Need_Value (From_Access (Emit_Expression (Prefix (N))), TE);
+            return Get (From_Access (Emit_Expression (Prefix (N))), Object);
 
          when N_Allocator =>
 
@@ -679,7 +678,7 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (N, LValue => False);
 
          when N_Selected_Component | N_Indexed_Component  | N_Slice =>
-            return Need_Value (Emit_LValue (N), TE);
+            return Get (Emit_LValue (N), Object);
 
          when N_Aggregate | N_Extension_Aggregate =>
 

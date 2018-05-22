@@ -1017,7 +1017,7 @@ package body GNATLLVM.Variables is
 
       V := Get_From_Activation_Record (Def_Ident);
       if Present (V) then
-         return Need_Value (V, Full_Etype (Def_Ident));
+         return Get (V, Object);
 
       --  N_Defining_Identifier nodes for enumeration literals are not
       --  stored in the environment. Handle them here.

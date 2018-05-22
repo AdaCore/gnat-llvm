@@ -34,25 +34,6 @@ package GNATLLVM.Utils is
    --  value, or we can't find the value.  This should not happen in switch
    --  statements.
 
-   --  When evaluating expressions, especially when they represent values saved
-   --  in the environment, we often create either an LValue or the actual
-   --  value.  However, we often need either an LValue or a value.  The
-   --  following two functions force a GL_Value into one of the two forms.
-
-   function Need_Value (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Present (Need_Value'Result);
-   --  Get the Value corresponding to V, dereferencing it when needed.
-   --  TE is the type of the value.
-
-   function Need_LValue
-     (V : GL_Value; TE : Entity_Id; Name : String := "lvalue")
-     return GL_Value
-     with Pre  => Present (V) and then Is_Type_Or_Void (TE),
-          Post => Present (Need_LValue'Result);
-   --  Get the LValue corresponding to V, making a new temporary to which
-   --  we store the value, if needed.
-
    function Is_Constant_Folded (E : Entity_Id) return Boolean
      with Pre => Present (E);
 

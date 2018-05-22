@@ -569,7 +569,7 @@ package body GNATLLVM.Exprs is
 
             begin
                V := Int_To_Ref (Emit_Expression (Expr), TE, "attr-deref");
-               return (if LValue then V else Need_Value (V, TE));
+               return (if LValue then V else Get (V, Object));
             end;
 
          when Attribute_First
@@ -995,8 +995,7 @@ package body GNATLLVM.Exprs is
          Input := Asm_Input_Value;
          while Present (Input) loop
             Input_Pos := Input_Pos + 1;
-            Args (Input_Pos) :=
-              Need_Value (Emit_Expression (Input), Full_Etype (Input));
+            Args (Input_Pos) := Get (Emit_Expression (Input), Object);
             Add_Constraint (Asm_Input_Constraint);
             Next_Asm_Input;
             Input := Asm_Input_Value;

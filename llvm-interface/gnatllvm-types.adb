@@ -392,12 +392,12 @@ package body GNATLLVM.Types is
       --  If we have an unconstrained array that we're constraining,
       --  convert to an access to the result and then see if we can
       --  get it as a value (which will only be the case for constant
-      --  size.
+      --  size. ??? Review this code.
 
       elsif Is_Access_Unconstrained (V)
         and then Is_Array_Type (TE) and then Is_Constrained (TE)
       then
-         return Need_Value (Convert_To_Access_To (V, TE), TE);
+         return Get (Convert_To_Access_To (V, TE), Object);
 
       --  If we're converting to an unconstrained array, keep things the
       --  way they are so we preserve bounds.
@@ -425,7 +425,7 @@ package body GNATLLVM.Types is
             V := Get (V, Reference);
          end if;
 
-         return Need_Value (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), TE);
+         return Get (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), Object);
       end if;
    end Build_Unchecked_Conversion;
 

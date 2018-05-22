@@ -672,7 +672,7 @@ package body GNATLLVM.Subprograms is
          Ent_Caller := Subps.Table (Subp_Index (Current_Subp));
 
          if Parent = Current_Subp then
-            Result := Need_Value (Get_Value (Ent.ARECnP), Ent.ARECnPT);
+            Result := Get (Get_Value (Ent.ARECnP), Data);
          elsif No (Ent_Caller.ARECnF) then
             return Const_Null (Standard_A_Char);
          else

@@ -707,23 +707,6 @@ package body GNATLLVM.Types is
    end Create_Access_Type;
 
    -----------------------
-   -- Create_Alloc_Type --
-   -----------------------
-
-   function Create_Alloc_Type (TE : Entity_Id) return Type_T is
-      T : Type_T := Create_Type (TE);
-
-   begin
-      if not Is_Dynamic_Size (TE) and then Is_Array_Type (TE)
-        and then Is_Constr_Subt_For_UN_Aliased (TE)
-      then
-         T := Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE), 2 => T));
-      end if;
-
-      return T;
-   end Create_Alloc_Type;
-
-   -----------------------
    -- GNAT_To_LLVM_Type --
    -----------------------
 

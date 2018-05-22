@@ -175,7 +175,7 @@ package GNATLLVM.GLValue is
          Deref => Bounds_And_Data,   Ref => Invalid),
       Reference_To_Array_Data        =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Data,              Ref => Invalid),
+         Deref => Data,              Ref => Reference_To_Reference),
       Reference_To_Thin_Pointer      =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref => Thin_Pointer,      Ref => Invalid),
@@ -229,11 +229,15 @@ package GNATLLVM.GLValue is
      (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Access_Type (TE);
    --  Given an access type, return the Relationship that a value of this
-   --  type would have with its Designated_Type.
+   --  type would have with its Designated_Type.  Similar to
+   --  Relationship_For_Ref on the Designated_Type of TE, but takes into
+   --  account anything special about TE, such as its size.
 
    function Relationship_For_Alloc (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Type (TE);
-   --  Return the relationship to TE that allocating memory for TE produces
+   --  Return the relationship to TE that allocating memory for TE produces.
+   --  Similar to Relationship_For_Ref, but take into account the need to
+   --  also allocate space for bounds in some situations.
 
    function Type_For_Relationship
      (TE : Entity_Id; R : GL_Relationship) return Type_T

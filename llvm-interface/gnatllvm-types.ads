@@ -44,11 +44,6 @@ package GNATLLVM.Types is
       (GNAT_To_LLVM_Type (TE, False))
      with Pre => Present (TE), Post => Present (Create_Type'Result);
 
-   function Create_Alloc_Type (TE : Entity_Id) return Type_T
-     with Pre => Present (TE), Post => Present (Create_Alloc_Type'Result);
-   --  Like Create_Type, but take the size of the bounds into account for
-   --  fixed-size types.
-
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type (TE);
 

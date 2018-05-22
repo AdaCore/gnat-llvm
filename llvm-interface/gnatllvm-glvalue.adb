@@ -155,8 +155,39 @@ package body GNATLLVM.GLValue is
    ---------------------------
 
    function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship is
-     ((if Is_Unconstrained_Array (TE) then Fat_Pointer
-       elsif Is_Array_Type (TE) then Reference_To_Array_Data else Reference));
+   begin
+      --  If this is an unconstrained array, this is a fat pointer
+
+      if Is_Array_Type (TE) and then not Is_Constrained (TE) then
+         return Fat_Pointer;
+
+      --  If this type is created as a a nominal subtype of an
+      --  unconstrained type for an aliased object, in order to point
+      --  to the data, we need a thin pointer.
+
+      elsif Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE) then
+         return Thin_Pointer;
+
+      --  Otherwise, if we're pointing to an array (now known to be
+      --  constrained), this is a reference to array data.
+
+      elsif Is_Array_Type (TE) then
+         return Reference_To_Array_Data;
+
+      --  If this is an access to subprogram, this is either a pointer to
+      --  the subprogram or a pair of pointers that includes the activation
+      --  record.
+
+      elsif Ekind (TE) = E_Subprogram_Type then
+         return (if Needs_Activation_Record (TE)
+                 then Fat_Reference_To_Subprogram else Reference);
+
+      --  Otherwise,  it's just a Reference
+
+      else
+         return Reference;
+      end if;
+   end Relationship_For_Ref;
 
    ----------------------------------
    -- Relationship_For_Access_Type --
@@ -165,42 +196,19 @@ package body GNATLLVM.GLValue is
    function Relationship_For_Access_Type
      (TE : Entity_Id) return GL_Relationship
    is
-      DT : constant Entity_Id := Full_Designated_Type (TE);
+      R : constant GL_Relationship :=
+        Relationship_For_Ref (Full_Designated_Type (TE));
 
    begin
-      --  If this points to an unconstrained array, this is either a
-      --  fat or thin pointer, depending on the size.
+      --  If we would use a fat pointer, but the access type is forced
+      --  to a single word, use a thin pointer.
 
-      if Is_Access_Unconstrained (TE) then
-         return (if RM_Size (TE) = Get_Pointer_Size
-                 then Thin_Pointer else Fat_Pointer);
-
-      --  If this is an access type that points to a type created as a
-      --  a nominal subtype of an unconstrained type for an aliased
-      --  object, in order to point to the data, we need a thin pointer.
-
-      elsif Is_Constr_Subt_For_UN_Aliased (DT) and then Is_Array_Type (DT) then
+      if R = Fat_Pointer and then RM_Size (TE) = Get_Pointer_Size then
          return Thin_Pointer;
-
-      --  Otherwise, if we're pointing to an array (now known to be
-      --  constrained), this is a reference to array data.
-
-      elsif Is_Array_Type (DT) then
-         return Reference_To_Array_Data;
-
-      --  If this is an access to subprogram, this is either a pointer to
-      --  the subprogram or a pair of pointers that includes the activation
-      --  record.
-
-      elsif Ekind (DT) = E_Subprogram_Type then
-         return (if Needs_Activation_Record (DT)
-                 then Fat_Reference_To_Subprogram else Reference);
-
-      --  Otherwise, it's a normal pointer and it's just a Reference
-
       else
-         return Reference;
+         return R;
       end if;
+
    end Relationship_For_Access_Type;
 
    ----------------------------
@@ -208,21 +216,19 @@ package body GNATLLVM.GLValue is
    ----------------------------
 
    function Relationship_For_Alloc (TE : Entity_Id) return GL_Relationship is
+      R : constant GL_Relationship := Relationship_For_Ref (TE);
+
    begin
-      --  If we don't have an array type, this is just a Reference
+      --  The only difference here is when we need to allocate both bounds
+      --  and data.
 
-      if not Is_Array_Type (TE) then
-         return Reference;
-
-      --  Otherwise, see if this is an object where we have to allocate space
-      --  for both bounds and data.
-
-      elsif not Is_Constrained (TE) or else Is_Constr_Subt_For_UN_Aliased (TE)
+      if Is_Unconstrained_Array (TE) or else Is_Constr_Subt_For_UN_Aliased (TE)
       then
          return Reference_To_Bounds_And_Data;
       else
-         return Reference_To_Array_Data;
+         return R;
       end if;
+
    end Relationship_For_Alloc;
 
    ---------------------------
@@ -336,7 +342,7 @@ package body GNATLLVM.GLValue is
 
       --  Likewise for a double dereference
 
-      elsif Deref (Deref (Relationship (V))) = R then
+      elsif Equiv_Relationship (Deref (Deref (Relationship (V))), R) then
          return Load (Load (V));
 
       --  If we just need to make this into a reference, we can store
@@ -350,7 +356,10 @@ package body GNATLLVM.GLValue is
          return Result;
       end if;
 
-      --  Now we have specific rules for each relationship type
+      --  Now we have specific rules for each relationship type.  It's tempting
+      --  to automate the cases where we do recursive calls by computing which
+      --  cases are possible here directly and searching for an intermediate
+      --  relationship, but that could easily make a bad choice.
 
       case R is
          when Data =>
@@ -376,8 +385,8 @@ package body GNATLLVM.GLValue is
 
             if Relationship (V) = Fat_Pointer
               or else Relationship (V) = Thin_Pointer
-              or else Relationship (V) = Reference_To_Bounds_And_Data
               or else Relationship (V) = Reference_To_Thin_Pointer
+              or else Relationship (V) = Reference_To_Bounds_And_Data
             then
                return Load (Get (V, Reference_To_Bounds));
 
@@ -625,7 +634,9 @@ package body GNATLLVM.GLValue is
    ----------------------
 
    function Const_Null_Alloc (TE : Entity_Id) return GL_Value is
-     (G (Const_Null (Create_Alloc_Type (TE)), TE));
+     (G (Const_Null (Type_For_Relationship
+                       (TE, Deref (Relationship_For_Alloc (TE)))),
+         TE));
 
    --------------------
    -- Const_Null_Ref --
@@ -1064,28 +1075,26 @@ package body GNATLLVM.GLValue is
       Name           : String;
       Need_Reference : Boolean := False) return GL_Value
    is
-      T : Type_T;
-      R : GL_Relationship;
+      R : GL_Relationship := Relationship_For_Alloc (TE);
 
    begin
-      --  Get the type to use for this global.  If this is a subtype
-      --  created for an aliased variable whose nominal subtype is
-      --  unconstrained, allow for the needed bounds.
+      --  The type we pass to Add_Global is the type of the actual data, but
+      --  since the global value in LLVM is a pointer, the relationship is
+      --  the reference.  So we compute the reference we want and then make the
+      --  type corresponding to a data of that reference.  But first handle
+      --  the case where we need an indirection (because of an address clause
+      --  or a dynamically-sized object).  In that case, if we would normally
+      --  have a pointer to the bounds and data, we actually store the thin
+      --  pointer (which points in the middle).
 
       if Need_Reference then
-         T := Create_Access_Type (TE);
-         R := (if Is_Constr_Subt_For_UN_Aliased (TE)
-                 and then Is_Array_Type (TE)
-               then Reference_To_Thin_Pointer else Reference_To_Reference);
-      elsif Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE) then
-         T := Create_Alloc_Type (TE);
-         R := Reference_To_Bounds_And_Data;
-      else
-         T := Create_Type (TE);
-         R := Reference;
+         R := Ref (if R = Reference_To_Bounds_And_Data
+                   then Thin_Pointer else R);
       end if;
 
-      return G (Add_Global (LLVM_Module, T, Name), TE, R);
+      return G (Add_Global (LLVM_Module,
+                            Type_For_Relationship (TE, Deref (R)), Name),
+                TE, R);
    end Add_Global;
 
    ---------------------

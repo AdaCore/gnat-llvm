@@ -314,9 +314,9 @@ package body GNATLLVM.Conditionals is
                                LHS_Val, RHS_Val);
                Memcmp : constant GL_Value := Call
                  (Get_Memory_Compare_Fn, Standard_Integer,
-                  (1 => Pointer_Cast (Get (LHS_Val, Reference_To_Array_Data),
+                  (1 => Pointer_Cast (Get (LHS_Val, Reference),
                                       Standard_A_Char),
-                   2 => Pointer_Cast (Get (RHS_Val, Reference_To_Array_Data),
+                   2 => Pointer_Cast (Get (RHS_Val, Reference),
                                       Standard_A_Char),
                    3 => Size));
                Cond   : constant GL_Value :=
@@ -365,11 +365,11 @@ package body GNATLLVM.Conditionals is
       if Is_Access_Unconstrained (LHS)
         and then not Is_Access_Unconstrained (RHS)
       then
-         LHS := Get (From_Access (LHS), Reference_To_Array_Data);
+         LHS := Get (From_Access (LHS), Reference);
       elsif Is_Access_Unconstrained (RHS)
         and then not Is_Access_Unconstrained (LHS)
       then
-         RHS := Get (From_Access (RHS), Reference_To_Array_Data);
+         RHS := Get (From_Access (RHS), Reference);
       end if;
 
       --  If these are fat pointers (because of the above, we know that if
@@ -379,9 +379,8 @@ package body GNATLLVM.Conditionals is
       --  do it again that time.
 
       if Is_Access_Unconstrained (LHS) then
-         return I_Cmp (Operation.Unsigned,
-                       Get (From_Access (LHS), Reference_To_Array_Data),
-                       Get (From_Access (RHS), Reference_To_Array_Data));
+         return I_Cmp (Operation.Unsigned, Get (From_Access (LHS), Reference),
+                       Get (From_Access (RHS), Reference));
 
       elsif Is_Floating_Point_Type (LHS) then
          return F_Cmp (Operation.Real, LHS, RHS);

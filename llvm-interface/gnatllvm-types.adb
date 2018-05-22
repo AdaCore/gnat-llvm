@@ -317,7 +317,7 @@ package body GNATLLVM.Types is
          return V;
 
       elsif Unc_Src and then not Unc_Dest then
-         return Convert_To_Access_To (Get (V, Reference_To_Array_Data), TE);
+         return Convert_To_Access_To (Get (V, Reference), TE);
       else
          pragma Assert (not Unc_Src and then Unc_Dest);
 
@@ -422,7 +422,7 @@ package body GNATLLVM.Types is
          end if;
 
          if Is_Access_Unconstrained (V) then
-            V := Get (V, Reference_To_Array_Data);
+            V := Get (V, Reference);
          end if;
 
          return Need_Value (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), TE);
@@ -1068,9 +1068,7 @@ package body GNATLLVM.Types is
       --  If V is a fat pointer, get just the array data.  We'll then either
       --  convert it to a generic pointer or to an integer (System.Address).
 
-      if Is_Access_Unconstrained (Converted_V) then
-         Converted_V := Get (Converted_V, Reference_To_Array_Data);
-      end if;
+      Converted_V := Get (Converted_V, Reference);
 
       --  If no subprogram was specified, use the default memory deallocation
       --  procedure, where we just pass the object and a size a size.

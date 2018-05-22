@@ -89,7 +89,7 @@ package body GNATLLVM.GLValue is
          when Fat_Pointer | Bounds | Bounds_And_Data =>
             return Is_Array_Type (V.Typ);
 
-         when Reference_To_Array_Data | Thin_Pointer
+         when  Thin_Pointer
             | Reference_To_Bounds | Reference_To_Bounds_And_Data =>
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
@@ -117,7 +117,7 @@ package body GNATLLVM.GLValue is
    function Is_Access_Unconstrained (V : GL_Value) return Boolean is
      (Is_Access_Type (V) and then not Is_Subprogram_Reference (V)
         and then Is_Unconstrained_Array (Full_Designated_Type (V))
-        and then not Is_Raw_Array (V));
+        and then Relationship (V) /= Reference);
 
    ----------------------------
    -- Is_Unconstrained_Array --
@@ -167,12 +167,6 @@ package body GNATLLVM.GLValue is
 
       elsif Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE) then
          return Thin_Pointer;
-
-      --  Otherwise, if we're pointing to an array (now known to be
-      --  constrained), this is a reference to array data.
-
-      elsif Is_Array_Type (TE) then
-         return Reference_To_Array_Data;
 
       --  If this is an access to subprogram, this is either a pointer to
       --  the subprogram or a pair of pointers that includes the activation
@@ -247,7 +241,7 @@ package body GNATLLVM.GLValue is
             pragma Assert (not Is_Dynamic_Size (TE));
             return T;
 
-         when Reference | Reference_To_Array_Data | Thin_Pointer =>
+         when Reference | Thin_Pointer =>
             return PT;
 
          when Reference_To_Reference | Reference_To_Thin_Pointer =>
@@ -462,15 +456,12 @@ package body GNATLLVM.GLValue is
                return Get (Get (V, Thin_Pointer), R);
             end if;
 
-         when Reference_To_Array_Data =>
+         when Reference =>
 
-            --  For Reference and Thin_Pointer, we have the value we need,
-            --  possibly just converting it.  For FAT pointer, we can
-            --  extract it.
+            --  For Thin_Pointer, we have the value we need, possibly just
+            --  converting it.  For Fat pointer, we can extract it.
 
-            if Relationship (V) = Reference then
-               return G (LLVM_Value (V), TE, R);
-            elsif Relationship (V) = Thin_Pointer then
+            if Relationship (V) = Thin_Pointer then
                return Ptr_To_Relationship (V, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -486,17 +477,6 @@ package body GNATLLVM.GLValue is
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
-            end if;
-
-         when Reference =>
-
-            --  If we have Reference_To_Array_Data, we have the value
-            --  we need.  Otherwise, try to convert to it and then to this.
-
-            if Relationship (V) = Reference_To_Array_Data then
-               return G (LLVM_Value (V), TE, R);
-            else
-               return Get (Get (V, Reference_To_Array_Data), R);
             end if;
 
          when Thin_Pointer =>
@@ -530,8 +510,7 @@ package body GNATLLVM.GLValue is
                --  getting a reference to it.
 
                Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
-               Data    : constant GL_Value  :=
-                   Get (Val, Reference_To_Array_Data);
+               Data    : constant GL_Value  := Get (Val, Reference);
                Fat_Ptr : constant GL_Value  := Get_Undef_Relationship (TE, R);
 
             begin

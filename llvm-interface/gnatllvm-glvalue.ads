@@ -79,17 +79,11 @@ package GNATLLVM.GLValue is
       --  Value contains an address that points to the bounds of an object
       --  of Typ, which must be an array type, followed by the data.
 
-      Reference_To_Array_Data,
-      --  Value contains the address of the first byte of memory that
-      --  contains the value of the array.  For constrained arrays, this
-      --  is the same as Reference.
-
       Thin_Pointer,
-      --  Similar to Reference_To_Array_Data, except that the bounds are
-      --  guaranteed to be in memory in front of the data (with the minimal
-      --  padding between then).  Also similar to
-      --  Reference_To_Bounds_And_Data, except for exactly where the
-      --  pointer references.
+      --  Similar to Reference, except that the bounds are guaranteed to be
+      --  in memory in front of the data (with the minimal padding between
+      --  then).  Also similar to Reference_To_Bounds_And_Data, except for
+      --  exactly where the pointer references.
 
       Reference_To_Thin_Pointer,
       --  Similar to Reference_To_Reference, except that the underlying
@@ -173,9 +167,6 @@ package GNATLLVM.GLValue is
       Reference_To_Bounds_And_Data   =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref => Bounds_And_Data,   Ref => Invalid),
-      Reference_To_Array_Data        =>
-        (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Data,              Ref => Reference_To_Reference),
       Reference_To_Thin_Pointer      =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref => Thin_Pointer,      Ref => Invalid),
@@ -301,11 +292,6 @@ package GNATLLVM.GLValue is
 
    function Is_Any_Reference (V : GL_Value) return Boolean is
      (Is_Any_Reference (Relationship (V)))
-     with Pre => Present (V);
-
-   function Is_Raw_Array (V : GL_Value) return Boolean is
-     (Relationship (V) = Reference_To_Array_Data
-        or else Relationship (V) = Thin_Pointer)
      with Pre => Present (V);
 
    function Is_Double_Reference (V : GL_Value) return Boolean is

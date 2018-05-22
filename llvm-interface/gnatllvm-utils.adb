@@ -341,7 +341,7 @@ package body GNATLLVM.Utils is
 
          if Has_Known_Etype (V) then
             Alloc_Type := Full_Etype (V);
-         elsif Is_Reference (V) and not Is_Raw_Array (V) then
+         elsif Is_Reference (V) and Relationship (V) /= Reference then
             Alloc_Type := Full_Designated_Type (V);
          else
             Alloc_Type := TE;

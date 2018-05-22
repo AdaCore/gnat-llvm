@@ -608,7 +608,7 @@ package body GNATLLVM.Arrays is
       --  actual array data) and then set up the call to memset.
 
       if Is_Access_Unconstrained (Dest) then
-         Dest := Get (Dest, Reference_To_Array_Data);
+         Dest := Get (Dest, Reference);
       end if;
 
       Call (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
@@ -755,7 +755,7 @@ package body GNATLLVM.Arrays is
    is
       Array_Type     : constant Entity_Id := Full_Designated_Type (V);
       Comp_Type      : constant Entity_Id := Full_Component_Type (Array_Type);
-      Array_Data_Ptr : constant GL_Value  := Get (V, Reference_To_Array_Data);
+      Array_Data_Ptr : constant GL_Value  := Get (V, Reference);
       Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Size_Const_Null, others => <>);
       --  Operands for the GetElementPtr instruction: one for the
@@ -840,7 +840,7 @@ package body GNATLLVM.Arrays is
       Rng : Node_Id;
       V   : GL_Value) return GL_Value
    is
-      Array_Data_Ptr : constant GL_Value  := Get (V, Reference_To_Array_Data);
+      Array_Data_Ptr : constant GL_Value  := Get (V, Reference);
       Arr_Type       : constant Entity_Id := Full_Designated_Type (V);
       Low_Idx_Bound  : constant GL_Value  :=
         Get_Array_Bound (Arr_Type, 0, True, V);

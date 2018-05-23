@@ -236,7 +236,7 @@ package body GNATLLVM.Blocks is
 
    procedure Make_Landing_Pad (Lpad : Basic_Block_T; EH_List : List_Id) is
       LP_Type           : constant Type_T        :=
-        Build_Struct_Type ((1 => Int_Ty (32), 2 => Void_Ptr_Type));
+        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
       Next_BB           : constant Basic_Block_T := Create_Basic_Block;
       Others_BB         : Basic_Block_T := No_BB_T;
       BB                : Basic_Block_T;
@@ -306,8 +306,8 @@ package body GNATLLVM.Blocks is
 
       --  Extract the selector and the exception pointer
 
-      Selector := Extract_Value (Standard_Integer, LP_Inst, 0);
-      Exc_Ptr := Extract_Value (Standard_A_Char, LP_Inst, 1);
+      Exc_Ptr := Extract_Value (Standard_A_Char, LP_Inst, 0);
+      Selector := Extract_Value (Standard_Integer, LP_Inst, 1);
 
       --  Make one pass over the EH list to generate code for the handlers
       --  and link each choice to a basic block.

@@ -121,12 +121,22 @@ package body GNATLLVM.Blocks is
      with Pre => Present (Lpad) and then Present (EH_List);
    --  Generate a landingpad instruction from the data in EH_List
 
-   Personality_Fn   : GL_Value := No_GL_Value;
+   procedure Initialize_Predefines;
+   --  Initialize the predefined functions and variables below
+
+   Predefines_Set   : Boolean  := False;
+   --  True when all of the below have been initialized
+
+   Personality_Fn   : GL_Value;
    --  The definition of the personality function
 
-   Begin_Handler_Fn : GL_Value := No_GL_Value;
-   End_Handler_Fn   : GL_Value := No_GL_Value;
+   Begin_Handler_Fn : GL_Value;
+   End_Handler_Fn   : GL_Value;
    --  Begin and end functions for handlers
+
+   Others_Value     : GL_Value;
+   All_Others_Value : GL_Value;
+   --  "Exception" address for "others" and special "all others"
 
    ----------------
    -- Push_Block --
@@ -230,6 +240,42 @@ package body GNATLLVM.Blocks is
       end if;
    end Emit_One_Fixup;
 
+   ---------------------------
+   -- Initialize_Predefines --
+   ---------------------------
+
+   procedure Initialize_Predefines is
+   begin
+      if Predefines_Set then
+         return;
+      end if;
+
+      Personality_Fn  :=
+        Add_Function ("__gnat_personality_v0",
+                      Fn_Ty ((1 .. 0 => <>), Int_Ty (32), True),
+                      Standard_Void_Type);
+      Set_Does_Not_Throw (Personality_Fn);
+
+      Begin_Handler_Fn :=
+        Add_Function ("__gnat_begin_handler",
+                      Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                      Standard_Void_Type);
+      Set_Does_Not_Throw (Begin_Handler_Fn);
+
+      End_Handler_Fn   :=
+        Add_Function ("__gnat_end_handler",
+                      Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                      Standard_Void_Type);
+      Set_Does_Not_Throw (End_Handler_Fn);
+
+      Others_Value     := Add_Global (Standard_Short_Short_Integer,
+                                      "__gnat_others_value");
+      All_Others_Value := Add_Global (Standard_Short_Short_Integer,
+                                      "__gnat_all_others_value");
+
+      Predefines_Set   := True;
+   end Initialize_Predefines;
+
    ----------------------
    -- Make_Landing_Pad --
    ----------------------
@@ -238,7 +284,6 @@ package body GNATLLVM.Blocks is
       LP_Type           : constant Type_T        :=
         Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
       Next_BB           : constant Basic_Block_T := Create_Basic_Block;
-      Others_BB         : Basic_Block_T := No_BB_T;
       BB                : Basic_Block_T;
       Handler, Choice   : Node_Id;
       LP_Inst           : GL_Value;
@@ -254,34 +299,7 @@ package body GNATLLVM.Blocks is
          Table_Name           => "Clauses");
 
    begin
-      --  If we haven't already built a personality function, build one.
-      --  Likewise for begin and end functions for the handler.
-
-      if No (Personality_Fn) then
-         Personality_Fn :=
-           Add_Function ("__gnat_personality_v0",
-                         Function_Type (Int_Ty (32),
-                                        System.Null_Address,
-                                        0, True),
-                         Standard_Void_Type);
-         Set_Does_Not_Throw (Personality_Fn);
-      end if;
-
-      if No (Begin_Handler_Fn) then
-         Begin_Handler_Fn :=
-           Add_Function ("__gnat_begin_handler",
-                         Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                         Standard_Void_Type);
-         Set_Does_Not_Throw (Begin_Handler_Fn);
-      end if;
-
-      if No (End_Handler_Fn) then
-         End_Handler_Fn :=
-           Add_Function ("__gnat_end_handler",
-                         Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                         Standard_Void_Type);
-         Set_Does_Not_Throw (End_Handler_Fn);
-      end if;
+      Initialize_Predefines;
 
       --  Emit the landing pad instruction, indicate that it's a
       --  cleanup, and add the clauses.
@@ -295,7 +313,9 @@ package body GNATLLVM.Blocks is
             if Nkind (Choice) = N_Identifier then
                Add_Clause (LP_Inst, Emit_LValue (Choice));
             elsif Nkind (Choice) = N_Others_Choice then
-               Set_Cleanup (LP_Inst);
+               Add_Clause (LP_Inst,
+                           (if All_Others (Choice) then All_Others_Value
+                            else Others_Value));
             end if;
 
             Next (Choice);
@@ -329,10 +349,8 @@ package body GNATLLVM.Blocks is
 
          Choice := First (Exception_Choices (Handler));
          while Present (Choice) loop
-            if Nkind (Choice) = N_Identifier then
+            if Nkind_In (Choice, N_Identifier, N_Others_Choice) then
                Clauses.Append (BB);
-            elsif Nkind (Choice) = N_Others_Choice then
-               Others_BB := BB;
             end if;
 
             Next (Choice);
@@ -346,18 +364,12 @@ package body GNATLLVM.Blocks is
       --  clauses in the landingpad.
 
       Position_Builder_At_End (Lpad);
-      BB := (if Present (Others_BB) then Others_BB else Create_Basic_Block);
-      Switch := Build_Switch (Selector, BB, Clauses.Last);
+      Switch := Build_Switch (Selector, Next_BB, Clauses.Last);
       for J in 1 .. Clauses.Last loop
          Add_Case (Switch, Const_Int (Int_Ty (32), ULL (Clauses.Last + 1 - J),
                                       False),
                    Clauses.Table (J));
       end loop;
-
-      if No (Others_BB) then
-         Position_Builder_At_End (BB);
-         Build_Resume (LP_Inst);
-      end if;
 
       Position_Builder_At_End (Next_BB);
 
@@ -389,7 +401,7 @@ package body GNATLLVM.Blocks is
          end if;
       end if;
 
-      --  Now output the landing pad block, which is junk for now
+      --  Now output the landing pad and handlers
 
       if Present (Lpad) then
          Make_Landing_Pad (Lpad, Block_Stack.Table (Block_Stack.Last).EH_List);

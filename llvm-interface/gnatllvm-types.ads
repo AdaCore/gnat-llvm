@@ -76,9 +76,12 @@ package GNATLLVM.Types is
      (Int_Type (unsigned (UI_To_Int (Num_Bits))))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
 
-   function Fn_Ty (Param_Ty : Type_Array; Ret_Ty : Type_T) return Type_T is
+   function Fn_Ty
+     (Param_Ty : Type_Array;
+      Ret_Ty   : Type_T;
+      Varargs  : Boolean := False) return Type_T is
      (Function_Type
-        (Ret_Ty, Param_Ty'Address, Param_Ty'Length, False))
+        (Ret_Ty, Param_Ty'Address, Param_Ty'Length, Varargs))
      with Pre  => Present (Ret_Ty),
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 

@@ -106,6 +106,9 @@ package body GNATLLVM.GLValue is
          when Reference_To_Subprogram =>
             return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
+         when Unknown =>
+            return True;
+
          when others =>
             return False;
       end case;
@@ -859,6 +862,15 @@ package body GNATLLVM.GLValue is
       Discard (Build_Ret (IR_Builder, LLVM_Value (V)));
    end Build_Ret;
 
+   ------------------------
+   -- Set_Does_Not_Throw --
+   ------------------------
+
+   procedure Set_Does_Not_Throw (V : GL_Value) is
+   begin
+      Set_Does_Not_Throw (LLVM_Value (V));
+   end Set_Does_Not_Throw;
+
    --------------------
    -- Build_Ret_Void --
    --------------------
@@ -978,9 +990,9 @@ package body GNATLLVM.GLValue is
       Args        : GL_Value_Array;
       Name        : String := "") return Value_T
    is
-      LLVM_Fn     : constant Value_T       := LLVM_Value (Func);
+      LLVM_Func   : constant Value_T       := LLVM_Value (Func);
       No_Raise    : constant Boolean       :=
-        Present (Is_A_Function (LLVM_Fn)) and then Does_Not_Throw (LLVM_Fn);
+        Is_A_Function (Func) and then Does_Not_Throw (Func);
       Lpad        : constant Basic_Block_T :=
         (if No_Raise then No_BB_T else Get_Landing_Pad);
       Arg_Values  : Value_Array (Args'Range);
@@ -996,13 +1008,13 @@ package body GNATLLVM.GLValue is
 
       if Present (Lpad) then
          Next_BB := Create_Basic_Block;
-         Call_Inst := Invoke (IR_Builder, LLVM_Fn,
+         Call_Inst := Invoke (IR_Builder, LLVM_Func,
                               Arg_Values'Address, Arg_Values'Length,
                               Next_BB, Lpad, Name);
          Position_Builder_At_End (Next_BB);
          return Call_Inst;
       else
-         return Call (IR_Builder, LLVM_Fn,
+         return Call (IR_Builder, LLVM_Func,
                       Arg_Values'Address, Arg_Values'Length, Name);
       end if;
 
@@ -1043,6 +1055,33 @@ package body GNATLLVM.GLValue is
    begin
       Discard (Call_Internal (Func, Args, Name));
    end Call;
+
+   ----------------
+   -- Add_Clause --
+   ----------------
+
+   procedure Add_Clause (V, Exc : GL_Value) is
+   begin
+      Add_Clause (LLVM_Value (V), LLVM_Value (Exc));
+   end Add_Clause;
+
+   -----------------
+   -- Set_Cleanup --
+   -----------------
+
+   procedure Set_Cleanup (V : GL_Value) is
+   begin
+      Set_Cleanup (LLVM_Value (V), True);
+   end Set_Cleanup;
+
+   ------------------
+   -- Build_Resume --
+   ------------------
+
+   procedure Build_Resume (V : GL_Value) is
+   begin
+      Discard (Build_Resume (IR_Builder, LLVM_Value (V)));
+   end Build_Resume;
 
    ----------------
    -- Inline_Asm --

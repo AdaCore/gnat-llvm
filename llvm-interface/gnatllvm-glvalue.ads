@@ -106,6 +106,10 @@ package GNATLLVM.GLValue is
       --  Similar to Reference_To_Subprogram except that it contains both
       --  a pointer to the subprogram and to the activation record.
 
+      Unknown,
+      --  Object is an unknown relation to the type.  Used for peculiar
+      --  LLVM objects such as landing pads.
+
       Any_Reference,
       --  Valid only as an operand to Get and indicates that a value with
       --  any reference to data can be returned.  This includes fat and
@@ -191,6 +195,9 @@ package GNATLLVM.GLValue is
          Deref => Activation_Record, Ref => Invalid),
       Fat_Reference_To_Subprogram    =>
         (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Invalid,           Ref => Invalid),
+      Unknown                        =>
+        (Is_Ref => False, Is_Any_Ref => False,
          Deref => Invalid,           Ref => Invalid),
       Any_Reference                  =>
         (Is_Ref => True,  Is_Any_Ref => False,
@@ -1236,6 +1243,24 @@ package GNATLLVM.GLValue is
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
      with Pre  => Present (Func);
 
+   function Landing_Pad
+     (T : Type_T; Personality_Func : GL_Value; Name : String := "")
+     return GL_Value
+   is
+     (G (Landing_Pad (IR_Builder, T, LLVM_Value (Personality_Func), 0, Name),
+         Standard_A_Char, Unknown))
+     with Pre  => Present (T) and then Present (Personality_Func),
+          Post => Present (Landing_Pad'Result);
+
+   procedure Add_Clause (V, Exc : GL_Value)
+     with Pre => Present (V) and then Present (Exc);
+
+   procedure Set_Cleanup (V : GL_Value)
+     with Pre => Present (V);
+
+   procedure Build_Resume (V : GL_Value)
+     with Pre => Present (V);
+
    function Inline_Asm
      (Args           : GL_Value_Array;
       Output_Value   : Entity_Id;
@@ -1252,7 +1277,7 @@ package GNATLLVM.GLValue is
           Post => Present (Block_Address'Result);
 
    function Build_Switch
-     (V : GL_Value; Default : Basic_Block_T; Blocks : Nat) return Value_T
+     (V : GL_Value; Default : Basic_Block_T; Blocks : Nat := 0) return Value_T
    is
      (Build_Switch (IR_Builder, LLVM_Value (V), Default, unsigned (Blocks)))
      with Pre  => Present (V) and then Present (Default),
@@ -1285,6 +1310,20 @@ package GNATLLVM.GLValue is
      (Present (Is_A_Global_Variable (LLVM_Value (V))))
      with Pre => Present (V);
    --  Return True if V is a global variable
+
+   function Is_A_Function (V : GL_Value) return Boolean is
+     (Present (Is_A_Function (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a function
+
+   function Does_Not_Throw (V : GL_Value) return Boolean is
+     (Does_Not_Throw (LLVM_Value (V)))
+     with Pre => Present (V);
+   --  Return True if V is a function
+
+   procedure Set_Does_Not_Throw (V : GL_Value)
+     with Pre => Present (V);
+   --  Indicate that V does not throw exceptions
 
    procedure Set_Initializer (V, Expr : GL_Value)
      with Pre => Present (V) and then Present (Expr);

@@ -259,6 +259,7 @@ package body GNATLLVM.Subprograms is
       end case;
 
       Result := Add_Function (Full_Name, Fun_Ty, Return_TE);
+      Set_Does_Not_Throw (Result);
       Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
       return Result;
    end Build_Intrinsic;
@@ -274,6 +275,7 @@ package body GNATLLVM.Subprograms is
            Add_Function ("malloc", Fn_Ty ((1 => LLVM_Size_Type),
                                           Void_Ptr_Type),
                          Standard_A_Char);
+         Set_Does_Not_Throw (Default_Alloc_Fn);
       end if;
 
       return Default_Alloc_Fn;
@@ -291,6 +293,7 @@ package body GNATLLVM.Subprograms is
                          Fn_Ty ((1 => Void_Ptr_Type, 2 => LLVM_Size_Type),
                                 Void_Type),
                          Standard_Void_Type);
+         Set_Does_Not_Throw (Default_Free_Fn);
       end if;
 
       return Default_Free_Fn;
@@ -309,6 +312,7 @@ package body GNATLLVM.Subprograms is
                     3 => LLVM_Size_Type),
                    Create_Type (Standard_Integer)),
             Standard_Integer);
+         Set_Does_Not_Throw (Memory_Compare_Fn);
       end if;
 
       return Memory_Compare_Fn;
@@ -324,6 +328,7 @@ package body GNATLLVM.Subprograms is
          Stack_Save_Fn := Add_Function
            ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type),
             Standard_A_Char);
+         Set_Does_Not_Throw (Stack_Save_Fn);
       end if;
 
       return Stack_Save_Fn;
@@ -339,6 +344,7 @@ package body GNATLLVM.Subprograms is
          Stack_Restore_Fn := Add_Function
            ("llvm.stackrestore",
             Fn_Ty ((1 => Void_Ptr_Type), Void_Type), Standard_Void_Type);
+         Set_Does_Not_Throw (Stack_Restore_Fn);
       end if;
 
       return Stack_Restore_Fn;

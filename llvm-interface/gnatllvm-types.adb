@@ -314,7 +314,7 @@ package body GNATLLVM.Types is
          end if;
 
       elsif Unc_Src and then Unc_Dest then
-         return V;
+         return Get (V, Fat_Pointer);
 
       elsif Unc_Src and then not Unc_Dest then
          return Convert_To_Access_To (Get (V, Reference), TE);
@@ -925,24 +925,7 @@ package body GNATLLVM.Types is
          Emit_Assignment (Memory, Empty, V, True, True);
       end if;
 
-      --  Now we have to return a pointer to the allocated memory that's
-      --  a reference to TE.  If TE isn't an unconstrained array, just
-      --  possibly adjust the pointer type.  If it is unconstrained, but
-      --  what we have is constrained, then the conversion will properly
-      --  make the fat pointer from the constrained type.
-
-      if not Is_Unconstrained_Array (TE)
-        or else not Is_Unconstrained_Array (Memory)
-      then
-         return Convert_To_Access_To (Memory, TE);
-
-      --  Otherwise, we have to update the old fat pointer with the new
-      --  array data.  But it's possible that V isn't a fat pointer
-      --  already, so make sure it is one.
-
-      else
-         return Update_Fat_Pointer (Convert_To_Access_To (V, TE), Memory);
-      end if;
+      return Convert_To_Access_To (Memory, TE);
    end Move_Into_Memory;
 
    -----------------------

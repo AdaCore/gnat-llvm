@@ -163,12 +163,4 @@ package GNATLLVM.Arrays is
           Post => Present (Get_Array_Bounds'Result);
    --  Get the bounds of the array TE using V if necessary
 
-   function Update_Fat_Pointer
-     (Fat_Ptr : GL_Value; Array_Data : GL_Value) return GL_Value
-     with Pre  => Relationship (Fat_Ptr) = Fat_Pointer,
-          Post => Relationship (Update_Fat_Pointer'Result) = Fat_Pointer;
-   --  We have a fat pointer and have copied the underlying data.  We
-   --  now want to make a fat pointer with the same bounds but with the
-   --  new data.
-
 end GNATLLVM.Arrays;

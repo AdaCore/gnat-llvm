@@ -699,16 +699,6 @@ package body GNATLLVM.Arrays is
       return Bound_Val;
    end Get_Array_Bounds;
 
-   ------------------------
-   -- Update_Fat_Pointer --
-   ------------------------
-
-   function Update_Fat_Pointer
-     (Fat_Ptr : GL_Value; Array_Data : GL_Value) return GL_Value is
-   begin
-      return Insert_Value (Fat_Ptr, Array_Data, 0);
-   end Update_Fat_Pointer;
-
    -----------------------
    -- Get_GEP_Safe_Type --
    -----------------------

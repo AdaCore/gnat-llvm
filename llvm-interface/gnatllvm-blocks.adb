@@ -341,13 +341,16 @@ package body GNATLLVM.Blocks is
          Next_Non_Pragma (Handler);
       end loop;
 
-      --  Now generate the code to branch to each exception handler
+      --  Now generate the code to branch to each exception handler.
+      --  The order of switch cases is backwards from the order of the
+      --  clauses in the landingpad.
 
       Position_Builder_At_End (Lpad);
       BB := (if Present (Others_BB) then Others_BB else Create_Basic_Block);
       Switch := Build_Switch (Selector, BB, Clauses.Last);
       for J in 1 .. Clauses.Last loop
-         Add_Case (Switch, Const_Int (Int_Ty (32), ULL (J), False),
+         Add_Case (Switch, Const_Int (Int_Ty (32), ULL (Clauses.Last + 1 - J),
+                                      False),
                    Clauses.Table (J));
       end loop;
 

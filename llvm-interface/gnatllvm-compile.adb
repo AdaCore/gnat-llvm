@@ -248,8 +248,9 @@ package body GNATLLVM.Compile is
          when N_Object_Declaration | N_Exception_Declaration =>
             Emit_Declaration (N);
 
-         when N_Object_Renaming_Declaration =>
-            Emit_Object_Renaming_Declaration (N);
+         when N_Object_Renaming_Declaration
+            | N_Exception_Renaming_Declaration =>
+            Emit_Renaming_Declaration (N);
 
          when N_Subprogram_Renaming_Declaration =>
 
@@ -415,9 +416,6 @@ package body GNATLLVM.Compile is
 
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
             Process_Push_Pop_xxx_Error_Label (N);
-
-         when N_Exception_Renaming_Declaration =>
-            Set_Value (Defining_Identifier (N), Emit_LValue (Name (N)));
 
          when N_Attribute_Definition_Clause =>
 

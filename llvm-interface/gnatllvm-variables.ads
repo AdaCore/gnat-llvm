@@ -50,9 +50,10 @@ package GNATLLVM.Variables is
    --  Emit a declaration.  For_Freeze_Entity is True if we're processing
    --  a Freeze_Entity.
 
-   procedure Emit_Object_Renaming_Declaration (N : Node_Id)
-     with Pre => Nkind (N) = N_Object_Renaming_Declaration;
-   --  Emit an object renaming declaration
+   procedure Emit_Renaming_Declaration (N : Node_Id)
+     with Pre => Nkind_In (N, N_Object_Renaming_Declaration,
+                           N_Exception_Renaming_Declaration);
+   --  Emit an object or exception renaming declaration
 
    function Emit_Identifier_LValue (N : Node_Id) return GL_Value
      with Pre => Nkind_In (N, N_Identifier, N_Expanded_Name, N_Operator_Symbol,

@@ -332,6 +332,11 @@ package body GNATLLVM.Variables is
               and then Ekind (Entity (N)) /= E_Enumeration_Literal
               and then not Is_Dynamic_Size (Full_Etype (N));
 
+         when N_Defining_Identifier =>
+            return No (Address_Clause (N))
+              and then Ekind (N) /= E_Enumeration_Literal
+              and then not Is_Dynamic_Size (Full_Etype (N));
+
          when N_Selected_Component =>
             return Is_Static_Location (Prefix (N));
 
@@ -860,11 +865,11 @@ package body GNATLLVM.Variables is
       end if;
    end Emit_Declaration;
 
-   --------------------------------------
-   -- Emit_Object_Renaming_Declaration --
-   --------------------------------------
+   -------------------------------
+   -- Emit_Renaming_Declaration --
+   -------------------------------
 
-   procedure Emit_Object_Renaming_Declaration (N : Node_Id) is
+   procedure Emit_Renaming_Declaration (N : Node_Id) is
       Def_Ident : constant Entity_Id := Defining_Identifier (N);
       LLVM_Var  : GL_Value;
 
@@ -902,7 +907,7 @@ package body GNATLLVM.Variables is
          Set_Initializer (LLVM_Var, Const_Null_Ref (Full_Etype (Def_Ident)));
          Add_To_Elab_Proc (N);
       end if;
-   end Emit_Object_Renaming_Declaration;
+   end Emit_Renaming_Declaration;
 
    -----------------------------
    --  Emit_Identifier_LValue --

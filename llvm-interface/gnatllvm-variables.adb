@@ -87,16 +87,6 @@ package body GNATLLVM.Variables is
    --  If E is present in the above table, returns the value of Index
    --  for that entry or 0 if not present.
 
-   function Get_Dup_Global_Value (E : Entity_Id) return GL_Value
-     with Pre => Present (E) and then not Is_Type (E);
-   --  If E corresponds to a duplicated interface name and we've aready
-   --  created a global for it, return that global.
-
-   procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value)
-     with Pre => Present (E) and then not Is_Type (E) and then Present (V);
-   --  If E corresponds to a duplicated interface name, record that we've
-   --  created a value for it.
-
    function Get_Dup_Global_Is_Defined (E : Entity_Id) return Boolean
      with Pre => Present (E) and then not Is_Type (E);
    --  Return True if E corresponds to a duplicated interface name and one

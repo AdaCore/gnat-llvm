@@ -17,6 +17,7 @@
 
 with Interfaces.C;            use Interfaces.C;
 
+with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Namet;    use Namet;
@@ -922,16 +923,29 @@ package body GNATLLVM.Subprograms is
    ------------------------
 
    function Create_Subprogram (Def_Ident : Entity_Id) return GL_Value is
-      Subp_Type : constant Type_T   := Create_Subprogram_Type (Def_Ident);
-      Subp_Name : constant String   := Get_Ext_Name (Def_Ident);
-      LLVM_Func : constant GL_Value :=
-        Add_Function ((if Is_Compilation_Unit (Def_Ident)
-                       then "_ada_" & Subp_Name else Subp_Name),
-                       Subp_Type, Full_Etype (Def_Ident));
+      Subp_Type   : constant Type_T   := Create_Subprogram_Type (Def_Ident);
+      Subp_Name   : constant String   := Get_Ext_Name (Def_Ident);
+      Actual_Name : constant String   :=
+        (if Is_Compilation_Unit (Def_Ident) then "_ada_" & Subp_Name
+         else Subp_Name);
+      LLVM_Func   : GL_Value          := Get_Dup_Global_Value (Def_Ident);
 
    begin
-      if Subp_Name = "ada_main___elabb" then
-         Ada_Main_Elabb := LLVM_Func;
+      --  If we've already seen this function name before, verify that we
+      --  have the same type.
+
+      if Present (LLVM_Func)
+        and then Type_Of (LLVM_Func) /= Pointer_Type (Subp_Type, 0)
+      then
+         Error_Msg_N
+           ("Function & has same external name but different signature",
+            Def_Ident);
+         LLVM_Func := No_GL_Value;
+      end if;
+
+      if No (LLVM_Func) then
+         LLVM_Func := Add_Function (Actual_Name,
+                                    Subp_Type, Full_Etype (Def_Ident));
       end if;
 
       --  Define the appropriate linkage
@@ -943,6 +957,12 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Set_Value (Def_Ident, LLVM_Func);
+      Set_Dup_Global_Value (Def_Ident, LLVM_Func);
+
+      if Subp_Name = "ada_main___elabb" then
+         Ada_Main_Elabb := LLVM_Func;
+      end if;
+
       return LLVM_Func;
    end Create_Subprogram;
 

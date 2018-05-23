@@ -26,6 +26,16 @@ package GNATLLVM.Variables is
    --  global name in two different entities and keep a record of all such
    --  duplications.
 
+   function Get_Dup_Global_Value (E : Entity_Id) return GL_Value
+     with Pre => Present (E) and then not Is_Type (E);
+   --  If E corresponds to a duplicated interface name and we've aready
+   --  created a global for it, return that global.
+
+   procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value)
+     with Pre => Present (E) and then not Is_Type (E) and then Present (V);
+   --  If E corresponds to a duplicated interface name, record that we've
+   --  created a value for it.
+
    procedure Emit_Decl_Lists
      (List1, List2 : List_Id;
       End_List     : Node_Id := Empty;

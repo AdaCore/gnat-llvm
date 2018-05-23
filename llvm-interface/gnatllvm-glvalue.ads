@@ -1244,10 +1244,13 @@ package GNATLLVM.GLValue is
      with Pre  => Present (Func);
 
    function Landing_Pad
-     (T : Type_T; Personality_Func : GL_Value; Name : String := "")
-     return GL_Value
+     (T                : Type_T;
+      Personality_Func : GL_Value;
+      Num_Clauses      : Integer := 5;
+      Name             : String  := "") return GL_Value
    is
-     (G (Landing_Pad (IR_Builder, T, LLVM_Value (Personality_Func), 0, Name),
+      (G (Landing_Pad (IR_Builder, T, LLVM_Value (Personality_Func),
+                       unsigned (Num_Clauses), Name),
          Standard_A_Char, Unknown))
      with Pre  => Present (T) and then Present (Personality_Func),
           Post => Present (Landing_Pad'Result);
@@ -1277,7 +1280,7 @@ package GNATLLVM.GLValue is
           Post => Present (Block_Address'Result);
 
    function Build_Switch
-     (V : GL_Value; Default : Basic_Block_T; Blocks : Nat := 0) return Value_T
+     (V : GL_Value; Default : Basic_Block_T; Blocks : Nat := 15) return Value_T
    is
      (Build_Switch (IR_Builder, LLVM_Value (V), Default, unsigned (Blocks)))
      with Pre  => Present (V) and then Present (Default),

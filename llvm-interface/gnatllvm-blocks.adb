@@ -117,7 +117,16 @@ package body GNATLLVM.Blocks is
    --  Do one fixup when exiting Blk, saying whether to run "at end handler
    --  and whether to restore the stack pointer.
 
-   Personality_Fn : Value_T := No_Value_T;
+   procedure Make_Landing_Pad (Lpad : Basic_Block_T; EH_List : List_Id)
+     with Pre => Present (Lpad) and then Present (EH_List);
+   --  Generate a landingpad instruction from the data in EH_List
+
+   Personality_Fn   : GL_Value := No_GL_Value;
+   --  The definition of the personality function
+
+   Begin_Handler_Fn : GL_Value := No_GL_Value;
+   End_Handler_Fn   : GL_Value := No_GL_Value;
+   --  Begin and end functions for handlers
 
    ----------------
    -- Push_Block --
@@ -221,6 +230,136 @@ package body GNATLLVM.Blocks is
       end if;
    end Emit_One_Fixup;
 
+   ----------------------
+   -- Make_Landing_Pad --
+   ----------------------
+
+   procedure Make_Landing_Pad (Lpad : Basic_Block_T; EH_List : List_Id) is
+      LP_Type           : constant Type_T        :=
+        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
+      Next_BB           : constant Basic_Block_T := Create_Basic_Block;
+      Others_BB         : Basic_Block_T := No_BB_T;
+      BB                : Basic_Block_T;
+      Handler, Choice   : Node_Id;
+      LP_Inst           : GL_Value;
+      Selector, Exc_Ptr : GL_Value;
+      Switch            : Value_T;
+
+      package Clauses is new Table.Table
+        (Table_Component_Type => Basic_Block_T,
+         Table_Index_Type     => Nat,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 15,
+         Table_Increment      => 5,
+         Table_Name           => "Clauses");
+
+   begin
+      --  If we haven't already built a personality function, build one.
+      --  Likewise for begin and end functions for the handler.
+
+      if No (Personality_Fn) then
+         Personality_Fn :=
+           Add_Function ("__gnat_personality_v0",
+                         Function_Type (Int_Ty (32),
+                                        System.Null_Address,
+                                        0, True),
+                         Standard_Void_Type);
+         Set_Does_Not_Throw (Personality_Fn);
+      end if;
+
+      if No (Begin_Handler_Fn) then
+         Begin_Handler_Fn :=
+           Add_Function ("__gnat_begin_handler",
+                         Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                         Standard_Void_Type);
+         Set_Does_Not_Throw (Begin_Handler_Fn);
+      end if;
+
+      if No (End_Handler_Fn) then
+         End_Handler_Fn :=
+           Add_Function ("__gnat_end_handler",
+                         Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                         Standard_Void_Type);
+         Set_Does_Not_Throw (End_Handler_Fn);
+      end if;
+
+      --  Emit the landing pad instruction, indicate that it's a
+      --  cleanup, and add the clauses.
+
+      Position_Builder_At_End (Lpad);
+      LP_Inst := Landing_Pad (LP_Type, Personality_Fn);
+      Handler := First_Non_Pragma (EH_List);
+      while Present (Handler) loop
+         Choice := First (Exception_Choices (Handler));
+         while Present (Choice) loop
+            if Nkind (Choice) = N_Identifier then
+               Add_Clause (LP_Inst, Emit_LValue (Choice));
+            elsif Nkind (Choice) = N_Others_Choice then
+               Set_Cleanup (LP_Inst);
+            end if;
+
+            Next (Choice);
+         end loop;
+
+         Next_Non_Pragma (Handler);
+      end loop;
+
+      --  Extract the selector and the exception pointer
+
+      Exc_Ptr := Extract_Value (Standard_A_Char, LP_Inst, 0);
+      Selector := Extract_Value (Standard_Integer, LP_Inst, 1);
+
+      --  Make one pass over the EH list to generate code for the handlers
+      --  and link each choice to a basic block.
+
+      Handler := First_Non_Pragma (EH_List);
+      while Present (Handler) loop
+         BB := Create_Basic_Block;
+         Position_Builder_At_End (BB);
+         Call (Begin_Handler_Fn, (1 => Exc_Ptr));
+         Emit (Statements (Handler));
+
+         --  If the above code branched out or returned, don't call the end
+         --  handler code.  ???  TBD to make a block and make that the fixup.
+
+         if not Are_In_Dead_Code then
+            Call (End_Handler_Fn, (1 => Exc_Ptr));
+            Build_Br (Next_BB);
+         end if;
+
+         Choice := First (Exception_Choices (Handler));
+         while Present (Choice) loop
+            if Nkind (Choice) = N_Identifier then
+               Clauses.Append (BB);
+            elsif Nkind (Choice) = N_Others_Choice then
+               Others_BB := BB;
+            end if;
+
+            Next (Choice);
+         end loop;
+
+         Next_Non_Pragma (Handler);
+      end loop;
+
+      --  Now generate the code to branch to each exception handler
+
+      Position_Builder_At_End (Lpad);
+      BB := (if Present (Others_BB) then Others_BB else Create_Basic_Block);
+      Switch := Build_Switch (Selector, BB, Clauses.Last);
+      for J in 1 .. Clauses.Last loop
+         Add_Case (Switch, Const_Int (Int_Ty (32), ULL (J), False),
+                   Clauses.Table (J));
+      end loop;
+
+      if No (Others_BB) then
+         Position_Builder_At_End (BB);
+         Build_Resume (LP_Inst);
+      end if;
+
+      Position_Builder_At_End (Next_BB);
+
+   end Make_Landing_Pad;
+
    ---------------
    -- Pop_Block --
    ---------------
@@ -232,9 +371,6 @@ package body GNATLLVM.Blocks is
       Next_BB  : constant Basic_Block_T :=
         (if Present (Lpad) and then not Was_Dead
          then Create_Basic_Block else No_BB_T);
-      LP_Type  : constant Type_T        :=
-          Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
-      LP_Inst  : Value_T;
 
    begin
       --  If we're not in dead code, we have to fixup the block and the branch
@@ -250,23 +386,15 @@ package body GNATLLVM.Blocks is
          end if;
       end if;
 
-      if No (Personality_Fn) then
-         Personality_Fn :=
-           Add_Function (LLVM_Module,
-                         "__gnat_personality_v0",
-                         Function_Type (Int_Ty (32),
-                                        System.Null_Address,
-                                        0, True));
-      end if;
-
       --  Now output the landing pad block, which is junk for now
 
       if Present (Lpad) then
-         Position_Builder_At_End (Lpad);
-         LP_Inst := Landing_Pad (IR_Builder, LP_Type, Personality_Fn, 0, "");
-         Set_Cleanup (LP_Inst, True);
-         Discard (Build_Resume (IR_Builder, Get_Undef (LP_Type)));
+         Make_Landing_Pad (Lpad, Block_Stack.Table (Block_Stack.Last).EH_List);
+         if Was_Dead then
+            Build_Unreachable;
+         end if;
          if Present (Next_BB) then
+            Build_Br (Next_BB);
             Position_Builder_At_End (Next_BB);
          end if;
       end if;

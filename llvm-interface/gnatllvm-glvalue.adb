@@ -218,11 +218,14 @@ package body GNATLLVM.GLValue is
 
    begin
       --  The only difference here is when we need to allocate both bounds
-      --  and data.
+      --  and data.  We do this for string literals because they are most
+      --  commonly used in situations where they're passed as parameters
+      --  where the formal is a String.
 
       if Is_Unconstrained_Array (TE)
         or else (Is_Constr_Subt_For_UN_Aliased (TE)
                    and then Is_Array_Type (TE))
+        or else Ekind (TE) = E_String_Literal_Subtype
       then
          return Reference_To_Bounds_And_Data;
       else

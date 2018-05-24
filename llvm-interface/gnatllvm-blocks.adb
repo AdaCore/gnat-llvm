@@ -130,6 +130,9 @@ package body GNATLLVM.Blocks is
    Personality_Fn   : GL_Value;
    --  The definition of the personality function
 
+   EH_Slot_Id_Fn    : GL_Value;
+   --  The LLVM builtin that converts an exception into a slot number
+
    Begin_Handler_Fn : GL_Value;
    End_Handler_Fn   : GL_Value;
    --  Begin and end functions for handlers
@@ -268,6 +271,11 @@ package body GNATLLVM.Blocks is
                       Standard_Void_Type);
       Set_Does_Not_Throw (End_Handler_Fn);
 
+      EH_Slot_Id_Fn    :=
+        Add_Function ("llvm.eh.typeid.for",
+                      Fn_Ty ((1 => Void_Ptr_Type), Int_Ty (32)), Int_32_Type);
+      Set_Does_Not_Throw (EH_Slot_Id_Fn);
+
       Others_Value     := Add_Global (Standard_Short_Short_Integer,
                                       "__gnat_others_value");
       All_Others_Value := Add_Global (Standard_Short_Short_Integer,
@@ -288,10 +296,21 @@ package body GNATLLVM.Blocks is
       Handler, Choice   : Node_Id;
       LP_Inst           : GL_Value;
       Selector, Exc_Ptr : GL_Value;
-      Switch            : Value_T;
+      Exc               : GL_Value;
+
+      type One_Clause is record
+         BB    : Basic_Block_T;
+         --  Basic block containing the actions for this exception
+
+         Exc   : GL_Value;
+         --  The address of the exception caught by this handler
+
+         Stmts : List_Id;
+         --  The statements in the handler
+      end record;
 
       package Clauses is new Table.Table
-        (Table_Component_Type => Basic_Block_T,
+        (Table_Component_Type => One_Clause,
          Table_Index_Type     => Nat,
          Table_Low_Bound      => 1,
          Table_Initial        => 15,
@@ -302,22 +321,26 @@ package body GNATLLVM.Blocks is
       Initialize_Predefines;
 
       --  Emit the landing pad instruction, indicate that it's a
-      --  cleanup, and add the clauses.
+      --  cleanup and add the clauses to the instruction and our table.
 
       Position_Builder_At_End (Lpad);
       LP_Inst := Landing_Pad (LP_Type, Personality_Fn);
       Handler := First_Non_Pragma (EH_List);
       while Present (Handler) loop
+         BB     := Create_Basic_Block;
          Choice := First (Exception_Choices (Handler));
          while Present (Choice) loop
-            if Nkind (Choice) = N_Identifier then
-               Add_Clause (LP_Inst, Emit_LValue (Choice));
-            elsif Nkind (Choice) = N_Others_Choice then
-               Add_Clause (LP_Inst,
-                           (if All_Others (Choice) then All_Others_Value
-                            else Others_Value));
+            if Nkind (Choice) = N_Others_Choice then
+               Exc := (if All_Others (Choice) then All_Others_Value
+                       else Others_Value);
+            else
+               Exc := Emit_LValue (Choice);
             end if;
 
+            Add_Clause (LP_Inst, Exc);
+            Clauses.Append ((BB => BB,
+                             Exc => Convert_To_Access (Exc, Standard_A_Char),
+                             Stmts => Statements (Handler)));
             Next (Choice);
          end loop;
 
@@ -329,48 +352,40 @@ package body GNATLLVM.Blocks is
       Exc_Ptr := Extract_Value (Standard_A_Char, LP_Inst, 0);
       Selector := Extract_Value (Standard_Integer, LP_Inst, 1);
 
-      --  Make one pass over the EH list to generate code for the handlers
-      --  and link each choice to a basic block.
+      --  Generate code for the handlers, taking into account that we
+      --  have duplicate BB's in the table.
 
-      Handler := First_Non_Pragma (EH_List);
-      while Present (Handler) loop
-         BB := Create_Basic_Block;
-         Position_Builder_At_End (BB);
-         Call (Begin_Handler_Fn, (1 => Exc_Ptr));
-         Emit (Statements (Handler));
-
-         --  If the above code branched out or returned, don't call the end
-         --  handler code.  ???  TBD to make a block and make that the fixup.
-
-         if not Are_In_Dead_Code then
-            Call (End_Handler_Fn, (1 => Exc_Ptr));
-            Build_Br (Next_BB);
-         end if;
-
-         Choice := First (Exception_Choices (Handler));
-         while Present (Choice) loop
-            if Nkind_In (Choice, N_Identifier, N_Others_Choice) then
-               Clauses.Append (BB);
-            end if;
-
-            Next (Choice);
-         end loop;
-
-         Next_Non_Pragma (Handler);
-      end loop;
-
-      --  Now generate the code to branch to each exception handler.
-      --  The order of switch cases is backwards from the order of the
-      --  clauses in the landingpad.
-
-      Position_Builder_At_End (Lpad);
-      Switch := Build_Switch (Selector, Next_BB, Clauses.Last);
       for J in 1 .. Clauses.Last loop
-         Add_Case (Switch, Const_Int (Int_Ty (32), ULL (Clauses.Last + 1 - J),
-                                      False),
-                   Clauses.Table (J));
+         if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
+            Position_Builder_At_End (Clauses.Table (J).BB);
+            Call (Begin_Handler_Fn, (1 => Exc_Ptr));
+            Emit (Clauses.Table (J). Stmts);
+
+            --  If the above code branched out or returned, don't call the
+            --  end handler code.  ???  TBD to make a block and make that
+            --  the fixup.
+
+            if not Are_In_Dead_Code then
+               Call (End_Handler_Fn, (1 => Exc_Ptr));
+               Build_Br (Next_BB);
+            end if;
+         end if;
       end loop;
 
+      --  Now generate the code to branch to each exception handler
+
+      BB := Lpad;
+      for J in 1 .. Clauses.Last loop
+         Position_Builder_At_End (BB);
+         BB := Create_Basic_Block;
+         Build_Cond_Br (I_Cmp (Int_EQ, Selector,
+                               Call (EH_Slot_Id_Fn, Int_32_Type,
+                                     (1 => Clauses.Table (J).Exc))),
+                        Clauses.Table (J).BB, BB);
+      end loop;
+
+      Position_Builder_At_End (BB);
+      Build_Resume (LP_Inst);
       Position_Builder_At_End (Next_BB);
 
    end Make_Landing_Pad;

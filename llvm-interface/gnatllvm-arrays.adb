@@ -516,7 +516,7 @@ package body GNATLLVM.Arrays is
                     or else (For_Unconstrained
                                and then not Is_Constrained (Dest_Type)))
       then
-         Store (Get_Array_Bounds (Src_Type, Src),
+         Store (Get_Array_Bounds (Src_Type, Src_Type, Src),
                 Get (Dest, Reference_To_Bounds));
       end if;
    end Maybe_Store_Bounds;
@@ -663,9 +663,11 @@ package body GNATLLVM.Arrays is
    -- Get_Array_Bounds --
    ----------------------
 
-   function Get_Array_Bounds (TE : Entity_Id; V : GL_Value) return GL_Value is
-      Info_Idx  : constant Nat := Get_Array_Info (TE);
-      Bound_Val : GL_Value     := Get_Undef_Relationship (TE, Bounds);
+   function Get_Array_Bounds
+     (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
+   is
+      Info_Idx   : constant Nat := Get_Array_Info (TE);
+      Bound_Val  : GL_Value     := Get_Undef_Relationship (TE, Bounds);
 
    begin
 
@@ -679,9 +681,9 @@ package body GNATLLVM.Arrays is
             Bound_Type           : constant Entity_Id :=
               Array_Info.Table (Info_Idx + Dim).Bound_Type;
             Low_Bound            : constant GL_Value  :=
-              Get_Array_Bound (TE, Dim, True, V);
+              Get_Array_Bound (V_Type, Dim, True, V);
             High_Bound           : constant GL_Value  :=
-              Get_Array_Bound (TE, Dim, False, V);
+              Get_Array_Bound (V_Type, Dim, False, V);
             Converted_Low_Bound  : constant GL_Value  :=
               Convert_To_Elementary_Type (Low_Bound, Bound_Type);
             Converted_High_Bound : constant GL_Value  :=

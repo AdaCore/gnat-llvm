@@ -160,6 +160,12 @@ package GNATLLVM.Types is
           Post => Is_Access_Type (Convert_To_Access'Result);
    --  Likewise, but get type from V
 
+   function Are_Arrays_With_Different_Index_Types
+     (T1, T2 : Entity_Id) return Boolean
+     with Pre => Is_Unconstrained_Array (T1) and then Is_Array_Type (T2);
+   --  Return True iff T1 and T2 are array types that have at least
+   --  one index for whose LLVM types are different.  T1 must be unconstrained.
+
    function Build_Type_Conversion (N : Node_Id; TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE),

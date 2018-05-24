@@ -158,9 +158,12 @@ package GNATLLVM.Arrays is
    --  Dest is an unconstrained array, store bounds into Dest, taking them
    --  from Src_Type and Src, if the latter is Present.
 
-   function Get_Array_Bounds (TE : Entity_Id; V : GL_Value) return GL_Value
-     with Pre  => Is_Array_Type (TE),
+   function Get_Array_Bounds
+     (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
+     with Pre  => Is_Array_Type (TE) and then Is_Array_Type (V_Type),
           Post => Present (Get_Array_Bounds'Result);
-   --  Get the bounds of the array TE using V if necessary
+   --  Get the bounds of the array type V_Type using V if necessary.  TE
+   --  is the type of the array we're getting the bounds for, in case they're
+   --  different.
 
 end GNATLLVM.Arrays;

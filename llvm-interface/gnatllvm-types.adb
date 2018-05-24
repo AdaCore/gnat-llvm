@@ -94,12 +94,54 @@ package body GNATLLVM.Types is
         (LLVM_Context, Types'Address, Types'Length, Packed);
    end Build_Struct_Type;
 
+   -----------------------------------------------
+   -- Are_Arrays_With_Different_Index_Types --
+   -----------------------------------------------
+
+   function Are_Arrays_With_Different_Index_Types
+     (T1, T2 : Entity_Id) return Boolean
+   is
+      Idx1, Idx2 : Entity_Id;
+
+   begin
+
+      --  The front end should not have gotten us here if the component
+      --  types or number of dimensions differ.
+
+      pragma Assert (Full_Component_Type (T1) = Full_Component_Type (T2)
+                       and then (Number_Dimensions (T1) =
+                                   Number_Dimensions (T2)));
+
+      --  We don't need to do anything if the index types differ unless the
+      --  corresponding LLVM types differ, so that's all we check.
+
+      if Ekind (T2) = E_String_Literal_Subtype then
+         return (Create_Type (Full_Etype (First_Index (T1)))
+                   /= Create_Type (Standard_Integer));
+      end if;
+
+      Idx1 := First_Index (T1);
+      Idx2 := First_Index (T2);
+      while Present (Idx1) loop
+         if Create_Type (Full_Etype (Idx1)) /= Create_Type (Full_Etype (Idx2))
+         then
+            return True;
+         end if;
+
+         Next_Index (Idx1);
+         Next_Index (Idx2);
+      end loop;
+
+      return False;
+   end Are_Arrays_With_Different_Index_Types;
+
    ---------------------------
    -- Build_Type_Conversion --
    ---------------------------
 
    function Build_Type_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value is
+
    begin
       --  If both types are elementary, hand that off to our helper.
 
@@ -275,11 +317,32 @@ package body GNATLLVM.Types is
    function Convert_To_Access_To
      (V : GL_Value; TE : Entity_Id) return GL_Value
    is
-      Unc_Src  : constant Boolean := Is_Access_Unconstrained (V);
-      Unc_Dest : constant Boolean := Is_Unconstrained_Array (TE);
+      V_Type   : constant Entity_Id := Related_Type (V);
+      Unc_Src  : constant Boolean   := Is_Access_Unconstrained (V);
+      Unc_Dest : constant Boolean   := Is_Unconstrained_Array (TE);
 
    begin
-      --  First have the case where we previously had a reference to a
+      --  First deal with the case where we're converting between two arrays
+      --  with different index types and TE is unconstrained.  In that case,
+      --  we have to materialize the bounds in the new index types.
+
+      if Unc_Dest and then Is_Array_Type (V_Type)
+        and then Are_Arrays_With_Different_Index_Types (TE, V_Type)
+      then
+         declare
+            New_FP : constant GL_Value :=
+              Get_Undef_Relationship (TE, Fat_Pointer);
+            Bounds : constant GL_Value := Get_Array_Bounds (TE, V_Type, V);
+            Data   : constant GL_Value :=
+              Ptr_To_Relationship (Get (V, Reference), TE, Reference);
+
+         begin
+            return Insert_Value (Insert_Value (New_FP, Data, 0),
+                                 Get (Bounds, Reference_To_Bounds), 1);
+         end;
+      end if;
+
+      --  Next have the case where we previously had a reference to a
       --  subprogram and all we knew was the return type and we're converting
       --  it to an actual subprogram access type.  We have little to do, but
       --  it simplifies the tests below since Full_Designated_Type is
@@ -912,7 +975,7 @@ package body GNATLLVM.Types is
             Store (Get (V, Bounds_And_Data), Memory);
             Copied := True;
          elsif not Is_Constrained (TE) then
-            Store (Get_Array_Bounds (Alloc_Type, V),
+            Store (Get_Array_Bounds (TE, Alloc_Type, V),
                    Get (Memory, Reference_To_Bounds));
          end if;
 

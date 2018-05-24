@@ -426,25 +426,27 @@ package body GNATLLVM.Conditionals is
 
       function Count_Choices (N : Node_Id) return Nat is
          Alt          : Node_Id := First (Alternatives (N));
-         Num_Choices  : Nat     := 0;
          First_Choice : Node_Id;
+
       begin
-         while Present (Alt) loop
+         return Num_Choices : Nat := 0 do
+            while Present (Alt) loop
 
-            --  We have a peculiarity in the "others" case of a case statement.
-            --  The Alternative points to a list of choices of which the
-            --  first choice is an N_Others_Choice.  So handle  that specially
-            --  both here and when we compute our Choices below.
+               --  We have a peculiarity in the "others" case of a case
+               --  statement.  The Alternative points to a list of choices
+               --  of which the first choice is an N_Others_Choice.  So
+               --  handle that specially both here and when we compute our
+               --  Choices below.
 
-            First_Choice := First (Discrete_Choices (Alt));
-            Num_Choices  := Num_Choices +
-              (if Nkind (First_Choice) = N_Others_Choice
-               then List_Length (Others_Discrete_Choices (First_Choice))
-               else List_Length (Discrete_Choices (Alt)));
-            Next (Alt);
-         end loop;
+               First_Choice := First (Discrete_Choices (Alt));
+               Num_Choices  := Num_Choices +
+                 (if Nkind (First_Choice) = N_Others_Choice
+                  then List_Length (Others_Discrete_Choices (First_Choice))
+                  else List_Length (Discrete_Choices (Alt)));
+                  Next (Alt);
+            end loop;
+         end return;
 
-         return Num_Choices;
       end Count_Choices;
 
       --  We have data structures to record information about each choice
@@ -496,6 +498,7 @@ package body GNATLLVM.Conditionals is
          Worst_Alt        : Nat;
          Worst_Cost       : Nat;
          Our_Cost         : Nat;
+
       begin
          Worst_Alt := Alts'Last;
          Worst_Cost := 0;

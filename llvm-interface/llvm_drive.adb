@@ -64,6 +64,7 @@ package body LLVM_Drive is
    --  Type of code generation we're doing
 
    Target : String_Access := new String'("");
+   --  Name of the target for this compilation
 
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
@@ -100,13 +101,10 @@ package body LLVM_Drive is
          Target.all);
 
       if Result /= 0 then
-         if Target.all = "" then
-            Error_Msg_N ("error initializing LLVM module", GNAT_Root);
-         else
-            Error_Msg_N
-              ("error initializing LLVM module for target " & Target.all,
-               GNAT_Root);
-         end if;
+         Error_Msg_N
+           ("error initializing LLVM module for " &
+              (if Target.all = "" then "default" else Target.all) & " target",
+            GNAT_Root);
 
          return;
       end if;
@@ -167,8 +165,7 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".bc");
                begin
-                  if Write_Bitcode_To_File (LLVM_Module, S) /= 0
-                  then
+                  if Write_Bitcode_To_File (LLVM_Module, S) /= 0 then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
                end;
@@ -218,6 +215,7 @@ package body LLVM_Drive is
 
       --  Release the environment
 
+      Dispose_Debugging;
       Dispose_Builder (IR_Builder);
       Dispose_Module (LLVM_Module);
    end GNAT_To_LLVM;
@@ -252,14 +250,14 @@ package body LLVM_Drive is
          Emit_Debug_Info := True;
       end if;
 
-      --  For now we allow the -g/-O/-f/-m/-W/-w and -pipe switches, even
+      --  For now we allow the -O/-f/-m/-W/-w and -pipe switches, even
       --  though they will have no effect.
       --  This permits compatibility with existing scripts.
-      --  ??? Should take into account -g and -O
+      --  ??? Should take into account -O
 
       return
         Is_Switch (Switch)
-          and then (Switch (First) in 'f' | 'g' | 'm' | 'O' | 'W' | 'w'
+          and then (Switch (First) in 'f' | 'm' | 'O' | 'W' | 'w'
                     or else Switch (First .. Last) = "pipe");
    end Is_Back_End_Switch;
 

@@ -19,6 +19,8 @@ with Namet;  use Namet;
 with Sinput; use Sinput;
 with Table;  use Table;
 
+with LLVM.Debug_Info;  use LLVM.Debug_Info;
+
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -199,5 +201,14 @@ package body GNATLLVM.DebugInfo is
                         Integer (Get_Column_Number (Sloc (N))));
       end if;
    end Set_Debug_Pos_At_Node;
+
+   -----------------------
+   --  Dispose_Debuging --
+   -----------------------
+
+   procedure Dispose_Debugging is
+   begin
+      Dispose_DI_Builder (DI_Builder);
+   end Dispose_Debugging;
 
 end GNATLLVM.DebugInfo;

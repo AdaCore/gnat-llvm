@@ -80,4 +80,7 @@ package GNATLLVM.DebugInfo is
    --  cancelled with a "pop" and the position will be frozen until the
    --  all pushes have been popped.
 
+   procedure Dispose_Debugging;
+   --  Free any resources used by the debugging module
+
 end GNATLLVM.DebugInfo;

@@ -77,7 +77,7 @@ package GNATLLVM.Wrapper is
       Filename : String;
       Target   : String := "") return Integer;
    --  Initialize the LLVM module. Returns 0 if it succeeds.
-   --  Target is the target trpile to generate code for. If empty, defaults
+   --  Target is the target triple to generate code for. If empty, defaults
    --  to the default target LLVM is configured for.
 
    function LLVM_Write_Module

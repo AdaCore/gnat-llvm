@@ -29,12 +29,12 @@ with LLVM.Types;  use LLVM.Types;
 package GNATLLVM is
 
    --  This package contains very low-level types, objects, and functions,
-   --  mostly corresponding to LLVM objects, and exists to avoid circular
+   --  mostly corresponding to LLVM objects and exists to avoid circular
    --  dependencies between other specs.  The intent is that every child
-   --  package of LLVM with's this child, but that this with no other
+   --  package of LLVM with's this child, but that this with's no other
    --  children.
 
-   --  Define these here instead of using Interfaces.C.Extensions because
+   --  Define these here instead of use'ing Interfaces.C.Extensions because
    --  the latter brings in a lot of junk that gets in the way.
 
    subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
@@ -57,7 +57,7 @@ package GNATLLVM is
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us
 
-   type Value_Array is array (Nat range <>) of Value_T;
+   type Value_Array       is array (Nat range <>) of Value_T;
    type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
 
    No_Value_T    : constant Value_T       := Value_T (System.Null_Address);
@@ -68,18 +68,18 @@ package GNATLLVM is
    No_Builder_T  : constant Builder_T     := Builder_T (System.Null_Address);
    --  Constant for null objects of various LLVM types
 
-   function No (V : Value_T) return Boolean            is (V = No_Value_T);
-   function No (T : Type_T) return Boolean             is (T = No_Type_T);
-   function No (B : Basic_Block_T) return Boolean      is (B = No_BB_T);
-   function No (M : Metadata_T) return Boolean         is (M = No_Metadata_T);
-   function No (M : Builder_T) return Boolean          is (M = No_Builder_T);
+   function No (V : Value_T)            return Boolean is (V = No_Value_T);
+   function No (T : Type_T)             return Boolean is (T = No_Type_T);
+   function No (B : Basic_Block_T)      return Boolean is (B = No_BB_T);
+   function No (M : Metadata_T)         return Boolean is (M = No_Metadata_T);
+   function No (M : Builder_T)          return Boolean is (M = No_Builder_T);
 
-   function Present (V : Value_T) return Boolean       is (V /= No_Value_T);
-   function Present (T : Type_T) return Boolean        is (T /= No_Type_T);
+   function Present (V : Value_T)       return Boolean is (V /= No_Value_T);
+   function Present (T : Type_T)        return Boolean is (T /= No_Type_T);
    function Present (B : Basic_Block_T) return Boolean is (B /= No_BB_T);
-   function Present (M : Metadata_T) return Boolean    is (M /= No_Metadata_T);
-   function Present (M : Builder_T) return Boolean     is (M /= No_Builder_T);
-   --  Test for presence and absence of field of LLVM types
+   function Present (M : Metadata_T)    return Boolean is (M /= No_Metadata_T);
+   function Present (M : Builder_T)     return Boolean is (M /= No_Builder_T);
+   --  Test for presence and absence of fields of LLVM types
 
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
      (Ekind (E) = E_Void or else Is_Type (E));

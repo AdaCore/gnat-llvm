@@ -106,12 +106,12 @@ package body Uintp.LLVM is
       --  There are a number of tricky things here.  First, we use the "**"
       --  operator and we're a child of Uintp, which defines that operator
       --  for Nat ** Nat.  So we need to be sure that we stay away from
-      --  Int/Nat and instead use standard Integer.  However, can safely
-      --  index into the Udigits table using Nat and that's actually easier.
-      --  Also, LLVM takes the first word passed to it as the low-order
-      --  part of the constant, not the high-order, as might be expected.
-      --  Finally, the absolute value of the constant is what's stored in
-      --  the Uint table and we later negate if it is negative.
+      --  Int/Nat and instead use standard Integer.  However, we can safely
+      --  index into the Udigits table using Nat and that's actually
+      --  easier.  Also, LLVM takes the first word passed to it as the
+      --  low-order part of the constant, not the high-order, as might be
+      --  expected.  Finally, the absolute value of the constant is what's
+      --  stored in the Uint table and we later negate if it's negative.
 
       Push_Bits (0, N_Padding_Bits);
 

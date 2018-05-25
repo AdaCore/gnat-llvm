@@ -304,7 +304,10 @@ package body GNATLLVM.Types is
       if Relationship (As_Ref) = Reference_To_Subprogram
         and then Ekind (TE) = E_Access_Subprogram_Type
       then
-         return Ptr_To_Relationship (As_Ref, TE, Reference);
+         return To_Access (Ptr_To_Relationship (As_Ref,
+                                                Full_Designated_Type (TE),
+                                                Reference),
+                           TE);
       else
          return To_Access (Convert_Pointer (Get (As_Ref, R), DT), TE);
       end if;

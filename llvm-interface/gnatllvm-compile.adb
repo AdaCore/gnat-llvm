@@ -63,7 +63,9 @@ package body GNATLLVM.Compile is
 
    procedure Emit (N : Node_Id) is
    begin
-      Set_Debug_Pos_At_Node (N);
+      --  If we're at library level and this node type generates code,
+      --  append it to the elab proc.
+
       if Library_Level
         and then ((Nkind (N) in N_Statement_Other_Than_Procedure_Call
                      and then Nkind (N) /= N_Null_Statement)
@@ -72,8 +74,6 @@ package body GNATLLVM.Compile is
                     or else Nkind_In (N, N_Raise_Statement,
                                       N_Handled_Sequence_Of_Statements))
       then
-         --  Append to list of statements to put in the elaboration procedure
-
          Add_To_Elab_Proc (N);
          return;
 
@@ -84,6 +84,7 @@ package body GNATLLVM.Compile is
          Position_Builder_At_End (Create_Basic_Block ("dead-code"));
       end if;
 
+      Set_Debug_Pos_At_Node (N);
       case Nkind (N) is
          when N_Compilation_Unit =>
 

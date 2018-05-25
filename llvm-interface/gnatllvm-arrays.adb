@@ -136,6 +136,7 @@ package body GNATLLVM.Arrays is
 
    function Build_One_Bound
      (N : Node_Id; Unconstrained : Boolean) return One_Bound is
+
    begin
       if Unconstrained then
          return (Cnst => No_Uint, Value => Empty, Dynamic => True);
@@ -229,7 +230,7 @@ package body GNATLLVM.Arrays is
       elsif Present (Bound_Info.Value) then
 
          --  We set and clear information on the discrminant in case we
-         --  encounter one.  Hopefully, we don't need a stack.
+         --  encounter one.
 
          Push_Discriminant_Info (For_Type => For_Type, Is_Low_Bound => Is_Low);
          Result := Build_Type_Conversion
@@ -256,6 +257,7 @@ package body GNATLLVM.Arrays is
 
    function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value is
       TE        : constant Entity_Id      := Full_Etype (E);
+      Rec_Type  : constant Entity_Id      := Full_Scope (E);
       Eval_Info : constant For_Discr_Info :=
         For_Discr_Stack.Table (For_Discr_Stack.Last);
 
@@ -272,7 +274,7 @@ package body GNATLLVM.Arrays is
                                  else Type_High_Bound (TE)));
       else
          return
-           Load (Record_Field_Offset (Get_Matching_Value (Full_Scope (E)), E));
+           Get (Record_Field_Offset (Get_Matching_Value (Rec_Type), E), Data);
       end if;
    end Use_Discriminant_For_Bound;
 
@@ -507,6 +509,7 @@ package body GNATLLVM.Arrays is
      (Dest, Src : GL_Value; Src_Type : Entity_Id; For_Unconstrained : Boolean)
    is
       Dest_Type : constant Entity_Id := Related_Type (Dest);
+
    begin
       --  Only do anything if the destination has a nominal constrained
       --  subtype or (if we're asked) if it has an unconstrained type.

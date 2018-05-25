@@ -778,7 +778,7 @@ package body GNATLLVM.Arrays is
       --  a fake type, we can just do a GEP with the values above.
 
       if not Is_Dynamic_Size (Array_Type) then
-         return GEP (Comp_Type, Array_Data_Ptr, Idxs, "array-element-access");
+         return GEP (Comp_Type, Array_Data_Ptr, Idxs);
       end if;
 
       --  Otherwise, we convert the array data type to an i8*, compute the

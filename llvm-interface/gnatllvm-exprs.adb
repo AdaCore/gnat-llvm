@@ -20,7 +20,6 @@ with Interfaces.C;            use Interfaces.C;
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
 with Exp_Code; use Exp_Code;
-with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
 with Snames;   use Snames;

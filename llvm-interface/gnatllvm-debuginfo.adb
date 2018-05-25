@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Namet;  use Namet;
 with Sinput; use Sinput;
 with Table;  use Table;
 

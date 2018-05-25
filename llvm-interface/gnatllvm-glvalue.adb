@@ -504,7 +504,8 @@ package body GNATLLVM.GLValue is
             --  subprogram.
 
             if Relationship (V) = Fat_Reference_To_Subprogram then
-               return Extract_Value_To_Relationship (TE, V, 0, R);
+               return
+                 Ptr_To_Relationship (Extract_Value_To_Ref (TE, V, 0), TE, R);
             end if;
 
          when Thin_Pointer =>

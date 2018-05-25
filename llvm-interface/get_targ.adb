@@ -117,7 +117,7 @@ package body Get_Targ is
 
    function Get_Maximum_Alignment return Pos is
    begin
-      return 4;
+      return 8;
    end Get_Maximum_Alignment;
 
    ------------------------------------

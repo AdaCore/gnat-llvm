@@ -21,6 +21,7 @@ with Interfaces.C.Extensions;
 
 with Atree; use Atree;
 with Einfo; use Einfo;
+with Namet; use Namet;
 with Types; use Types;
 
 with LLVM.Target; use LLVM.Target;
@@ -66,19 +67,21 @@ package GNATLLVM is
      Basic_Block_T (System.Null_Address);
    No_Metadata_T : constant Metadata_T    := Metadata_T (System.Null_Address);
    No_Builder_T  : constant Builder_T     := Builder_T (System.Null_Address);
-   --  Constant for null objects of various LLVM types
+   --  Constant for null objects of various types
 
    function No (V : Value_T)            return Boolean is (V = No_Value_T);
    function No (T : Type_T)             return Boolean is (T = No_Type_T);
    function No (B : Basic_Block_T)      return Boolean is (B = No_BB_T);
    function No (M : Metadata_T)         return Boolean is (M = No_Metadata_T);
    function No (M : Builder_T)          return Boolean is (M = No_Builder_T);
+   function No (N : Name_Id)            return Boolean is (N = No_Name);
 
    function Present (V : Value_T)       return Boolean is (V /= No_Value_T);
    function Present (T : Type_T)        return Boolean is (T /= No_Type_T);
    function Present (B : Basic_Block_T) return Boolean is (B /= No_BB_T);
    function Present (M : Metadata_T)    return Boolean is (M /= No_Metadata_T);
    function Present (M : Builder_T)     return Boolean is (M /= No_Builder_T);
+   function Present (N : Name_Id)       return Boolean is (N /= No_Name);
    --  Test for presence and absence of fields of LLVM types
 
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is

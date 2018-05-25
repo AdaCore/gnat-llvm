@@ -18,7 +18,6 @@
 with Interfaces.C;            use Interfaces.C;
 
 with Get_Targ; use Get_Targ;
-with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Aux;  use Sem_Aux;
 with Snames;   use Snames;
@@ -39,6 +38,21 @@ package body GNATLLVM.Records is
    --  to allocate an array that we know is large enough to contain all
    --  the fields, so we can overestimate the number of fields (even
    --  greatly), but can't underestimate.
+
+   procedure Get_RI_Info
+     (Idx         : Record_Info_Id;
+      V           : GL_Value;
+      For_Type    : Boolean;
+      Size        : out GL_Value;
+      Must_Align  : out unsigned;
+      Is_Align    : out unsigned;
+      Return_Size : Boolean := True)
+   with Pre  => Present (Idx),
+        Post => not Return_Size or else Present (Size);
+     --  Return information about a record fragment found at Idx.  This
+     --  includes is size, the amount to which this fragment must be
+     --  aligned, and the amout to which the resulting size is known to
+     --  be aligned.  If the size isn't wanted, don't compute it.
 
    function Get_Record_Size_So_Far
      (TE       : Entity_Id;
@@ -102,13 +116,13 @@ package body GNATLLVM.Records is
 
    function Count_Entities (E : Entity_Id) return Nat is
       Count   : Nat := 0;
-      Elmt    : Entity_Id := First_Field (E);
+      Elmt    : Entity_Id := First_Component_Or_Discriminant (E);
 
    begin
       while Present (Elmt) loop
          Count := Count + (if Chars (Elmt) = Name_uParent
                               then Count_Entities (Full_Etype (Elmt)) else 1);
-         Next_Field (Elmt);
+         Next_Component_Or_Discriminant (Elmt);
       end loop;
 
       return Count;
@@ -131,11 +145,23 @@ package body GNATLLVM.Records is
       Next_Type : Nat := 0;
       --  Ordinal of next entry in Types
 
-      Cur_Field : Entity_Id := First_Field (TE);
-      --  The current field on the entity chain that we're processing
-      --  to set the field info when we have a parent record.
+      Cur_Field : Entity_Id := Empty;
+      --  Used for a cache in Find_Matching_Field to avoid quadratic
+      --  behavior.
 
       LLVM_Type : Type_T;
+
+      function Find_Field_In_Entity_List
+        (F         : Entity_Id;
+         Rec_Type  : Entity_Id;
+         Cur_Field : in out Entity_Id) return Entity_Id
+        with Pre  => Ekind_In (F, E_Discriminant, E_Component)
+                     and then Is_Record_Type (Rec_Type);
+      --  Find a field in the entity list of Rec_Type that has the same
+      --  Original_Record_Component as F and return it if so.  Cur_Field
+      --  is used to cache the last field tested to avoid quadratic behavior
+      --  since we'll be requesting fields in roughly (but not exactly!)
+      --  the same order as they are in the list.
 
       procedure Add_RI
         (T            : Type_T := No_Type_T;
@@ -158,6 +184,65 @@ package body GNATLLVM.Records is
         with Pre => Is_Record_Type (Def_Ident);
       --  Add all fields of Def_Ident to the above data, either the component
       --  or the extension components, but recursively add parent components.
+
+      -------------------------------
+      -- Find_Field_In_Entity_List --
+      -------------------------------
+
+      function Find_Field_In_Entity_List
+        (F         : Entity_Id;
+         Rec_Type  : Entity_Id;
+         Cur_Field : in out Entity_Id) return Entity_Id
+      is
+
+         function ORC (F : Entity_Id) return Entity_Id
+           with Pre  => Ekind_In (F, E_Discriminant, E_Component),
+                Post => Ekind_In (ORC'Result, E_Discriminant, E_Component);
+         --  Get the Original_Record_Component, but also check
+         --  Corresponding_Discriminant first;
+
+         ---------
+         -- ORC --
+         ---------
+
+         function ORC (F : Entity_Id) return Entity_Id is
+            Field : Entity_Id := F;
+
+         begin
+            while Ekind (Field) = E_Discriminant
+              and then Present (Corresponding_Discriminant (Field))
+            loop
+               Field := Corresponding_Discriminant (Field);
+            end loop;
+
+            return Original_Record_Component (Field);
+         end ORC;
+
+         Initial_Cur_Field : constant Entity_Id := Cur_Field;
+
+      begin
+         --  Look from Cur_Field until the end of the list.  Then look from
+         --  the beginning to its previous value.
+
+         while Present (Cur_Field) loop
+            if ORC (Cur_Field) = ORC (F) then
+               return Cur_Field;
+            end if;
+
+            Next_Component_Or_Discriminant (Cur_Field);
+         end loop;
+
+         Cur_Field := First_Component_Or_Discriminant (Rec_Type);
+         while Cur_Field /= Initial_Cur_Field loop
+            if ORC (Cur_Field) = ORC (F) then
+               return Cur_Field;
+            end if;
+
+            Next_Component_Or_Discriminant (Cur_Field);
+         end loop;
+
+         return Empty;
+      end Find_Field_In_Entity_List;
 
       ------------
       -- Add_RI --
@@ -190,8 +275,10 @@ package body GNATLLVM.Records is
       ------------
 
       procedure Add_FI
-        (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat) is
-         Initial_Cur_Field : constant Entity_Id := Cur_Field;
+        (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat)
+      is
+         Matching_Field : Entity_Id;
+
       begin
          --  If this field really isn't in the record we're working on, it
          --  must be in a parent.  So it was correct to allocate space for
@@ -199,10 +286,7 @@ package body GNATLLVM.Records is
          --  actually in.  The fields in the entity list for this type are
          --  almost, but not quite, win the same order as in the component
          --  list, so we have to search for a field in that list with the
-         --  same Original_Record_Component as this field.  This is
-         --  potentially quadratic in the number of fields, but we can
-         --  optimize by caching where we last searched in Cur_Field
-         --  of Create_Record_Type.
+         --  same Original_Record_Component as this field.
 
          Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
                                    Field_Ordinal => Ordinal));
@@ -210,31 +294,10 @@ package body GNATLLVM.Records is
             Set_Field_Info (E, Field_Info_Table.Last);
          end if;
 
-         --  Look from Cur_Field until the end of the list.  Then look from
-         --  the beginning to its previous value.
-
-         while Present (Cur_Field) loop
-            if Original_Record_Component (Cur_Field) =
-              Original_Record_Component (E)
-            then
-               Set_Field_Info (Cur_Field, Field_Info_Table.Last);
-               return;
-            end if;
-
-            Next_Field (Cur_Field);
-         end loop;
-
-         Cur_Field := First_Field (TE);
-         while Cur_Field /= Initial_Cur_Field loop
-            if Original_Record_Component (Cur_Field) =
-              Original_Record_Component (E)
-            then
-               Set_Field_Info (Cur_Field, Field_Info_Table.Last);
-               return;
-            end if;
-
-            Next_Field (Cur_Field);
-         end loop;
+         Matching_Field := Find_Field_In_Entity_List (E, TE, Cur_Field);
+         if Present (Matching_Field) then
+            Set_Field_Info (Matching_Field, Field_Info_Table.Last);
+         end if;
       end Add_FI;
 
       ----------------
@@ -242,18 +305,60 @@ package body GNATLLVM.Records is
       ----------------
 
       procedure Add_Fields (Def_Ident : Entity_Id) is
+         Rec_Type     : constant Entity_Id :=
+           Implementation_Base_Type (Def_Ident);
+         --  The base type, which we use to get the record order from
 
-         procedure Add_Component_List (List : Node_Id)
-           with Pre => No (List) or else Nkind (List) = N_Component_List;
-         --  Add all fields in List
+         Sub_Rec_Type : constant Entity_Id :=
+           (if Rec_Type = Def_Ident then Empty else Def_Ident);
+         --  Present if we have to search the field list of a record subtype
+
+         Rec_Field : Entity_Id := Empty;
+         --  Cache used to limit quadratic behavior
+
+         function Matches_Name (F : Entity_Id; Name : Name_Id) return Boolean
+           with Pre => Ekind_In (F, E_Component, E_Discriminant);
+         --  See if the field F matches Name, either because Name is
+         --  specified and matches F or name is not specified and F is not
+         --  a special name.
+
+         procedure Add_Component_List
+           (List : Node_Id; From_Rec : Entity_Id; Name : Name_Id)
+           with Pre => (No (List) or else Nkind (List) = N_Component_List)
+                       and then (No (From_Rec)
+                                   or else Is_Record_Type (From_Rec));
+         --  Add all fields in List matching Name.  If From_Rec is Present,
+         --  instead of adding the actual field, add the field of the same
+         --  name from From_Rec.
+
+         ------------------
+         -- Matches_Name --
+         ------------------
+
+         function Matches_Name
+           (F : Entity_Id; Name : Name_Id) return Boolean is
+         begin
+
+            if Chars (F) = Name then
+               return True;
+
+            else
+               return (No (Name) and then Chars (F) /= Name_uTag
+                         and then Chars (F) /= Name_uParent
+                         and then Chars (F) /= Name_uController);
+            end if;
+         end Matches_Name;
 
          ------------------------
          -- Add_Component_List --
          ------------------------
 
-         procedure Add_Component_List (List : Node_Id) is
+         procedure Add_Component_List
+           (List : Node_Id; From_Rec : Entity_Id; Name : Name_Id)
+         is
             Component_Def : Node_Id;
-            Component_Ent : Entity_Id;
+            Field         : Entity_Id;
+            Field_To_Add  : Entity_Id;
             Variant       : Node_Id;
 
          begin
@@ -263,65 +368,87 @@ package body GNATLLVM.Records is
 
             Component_Def := First_Non_Pragma (Component_Items (List));
             while Present (Component_Def) loop
-               Component_Ent := Defining_Identifier (Component_Def);
-               if Chars (Component_Ent) = Name_uParent then
-                  Add_Fields (Full_Etype (Component_Ent));
+               Field := Defining_Identifier (Component_Def);
+               if Matches_Name (Field, Name) then
+                  Field_To_Add := Field;
+                  if Present (From_Rec) then
+                     Field_To_Add :=
+                       Find_Field_In_Entity_List (Field, From_Rec, Rec_Field);
+                  end if;
+
+                  if Present (Field_To_Add) then
+                     if Chars (Field_To_Add) = Name_uParent then
+                        Add_Fields (Full_Etype (Field_To_Add));
+                     end if;
+
+                     Add_Field (Field_To_Add);
+                  end if;
                end if;
 
-               Add_Field (Component_Ent);
                Next_Non_Pragma (Component_Def);
             end loop;
 
             --  Now process variants.  For now, just add them as
             --  regular fields.
 
-            if Present (Variant_Part (List)) then
+            if No (Name) and then Present (Variant_Part (List)) then
                Variant := First (Variants (Variant_Part (List)));
                while Present (Variant) loop
-                  Add_Component_List (Component_List (Variant));
+                  Add_Component_List (Component_List (Variant),
+                                      From_Rec, No_Name);
                   Next (Variant);
                end loop;
             end if;
          end Add_Component_List;
 
          Field             : Entity_Id;
+         Field_To_Add      : Entity_Id;
          Record_Definition : Node_Id;
+         Components        : Node_Id;
 
       --  Start of processing for Add_Fields
 
       begin
+         --  Get the record definition
 
-         --  If this is a subtype, we make fields from the entity chain.
-         --  Otherwise, we walk the definition.
-
-         if Ekind_In (Def_Ident, E_Record_Subtype, E_Class_Wide_Subtype) then
-            Field := First_Field (Def_Ident);
-            while Present (Field) loop
-               Add_Field (Field);
-               Next_Field (Field);
-            end loop;
-
-         else
-            --  If there are discriminants, process them first
-
-            if Has_Discriminants (Def_Ident) then
-               Field := First_Stored_Discriminant (Def_Ident);
-               while Present (Field) loop
-                  Add_Field (Field);
-                  Next_Stored_Discriminant (Field);
-               end loop;
-            end if;
-
-               --  Now get the record definition and add the components there
-
-            Record_Definition :=
-              Type_Definition (Declaration_Node (Def_Ident));
-            if Nkind (Record_Definition) = N_Derived_Type_Definition then
-               Record_Definition := Record_Extension_Part (Record_Definition);
-            end if;
-
-            Add_Component_List (Component_List (Record_Definition));
+         Record_Definition :=
+           Type_Definition (Declaration_Node (Rec_Type));
+         if Nkind (Record_Definition) = N_Derived_Type_Definition then
+            Record_Definition := Record_Extension_Part (Record_Definition);
          end if;
+
+         --  Add special components
+
+         Components := Component_List (Record_Definition);
+         Add_Component_List (Components, Sub_Rec_Type, Name_uTag);
+         Add_Component_List (Components, Sub_Rec_Type, Name_uParent);
+         Add_Component_List (Components, Sub_Rec_Type, Name_uController);
+
+         --  Next, if there are discriminants, process them.  But
+         --  ignore discriminants that are already in a parent type.
+
+         if Has_Discriminants (Rec_Type) then
+            Field := First_Discriminant (Rec_Type);
+            while Present (Field) loop
+               Field_To_Add := Field;
+               if Present (Sub_Rec_Type) then
+                  Field_To_Add :=
+                    Find_Field_In_Entity_List (Field, Sub_Rec_Type, Rec_Field);
+               end if;
+
+               if Present (Field_To_Add)
+                 and then not Has_Field_Info (Field_To_Add)
+               then
+                  Add_Field (Field);
+               end if;
+
+               Next_Discriminant (Field);
+            end loop;
+         end if;
+
+         --  Then add everything else
+
+         Add_Component_List (Components, Sub_Rec_Type, No_Name);
 
       end Add_Fields;
 
@@ -405,6 +532,99 @@ package body GNATLLVM.Records is
       return LLVM_Type;
    end Create_Record_Type;
 
+   -----------------
+   -- Get_RI_Info --
+   -----------------
+
+   procedure Get_RI_Info
+     (Idx         : Record_Info_Id;
+      V           : GL_Value;
+      For_Type    : Boolean;
+      Size        : out GL_Value;
+      Must_Align  : out unsigned;
+      Is_Align    : out unsigned;
+      Return_Size : Boolean := True)
+   is
+      RI : constant Record_Info := Record_Info_Table.Table (Idx);
+      T  : constant Type_T      := RI.LLVM_Type;
+      TE : constant Entity_Id   := RI.GNAT_Type;
+
+   begin
+      if Present (T) then
+
+         --  We have to be careful how we compute the size of this record
+         --  fragment because we don't want to count the padding at the end
+         --  in all cases.  If this is followed by a variable-sized
+         --  fragment, we may have a subtype where the following field is
+         --  fixed size and hence is part of the same LLVM struct in that
+         --  subtype.  In such a case, if the alignment of that type is
+         --  less than the alignment of our type, there'll be less padding.
+         --
+         --  For example, suppose we have:
+         --
+         --     type R (X : Integer) is record
+         --        A : Integer;
+         --        B : Short_Short_Integer;
+         --        C : String (1 .. X);
+         --     end record;
+         --
+         --  In the layout of the base type, which is of variable size, the
+         --  LLVM struct will be { i32, i32, i8 } and the next fragment
+         --  will be for field C.  The above struct has a size of 12
+         --  because the size is always a multiple of itsq alignment.
+         --  However, if we have a subtype of R with X = 10, the struct for
+         --  that subtype (now containing all the fields) will be
+         --
+         --      { i32, i32, i8, [10 x i8] }
+         --
+         --  but that last array will be at an offset of 9, not 12, which
+         --  is what we'd get by just positioning it from the size of the
+         --  fragment from the base type.
+         --
+         --  Therefore, we need to compute the size of this struct by
+         --  adding the position of the last field to its size.  If padding
+         --  is needed for any reason, our caller will take care of that.
+         --
+         --  In addition, unlike in the GNAT type (variable sized) case,
+         --  the alignment that we must receive and that we generate are
+         --  not the same.
+         --
+         --  But first check for zero length since the code below will
+         --  fail if we have no fields.
+
+         if Get_LLVM_Type_Size (T) = ULL (0) then
+            Size       := Size_Const_Null;
+            Must_Align := Get_Type_Alignment (T);
+            Is_Align   := Get_Type_Alignment (T);
+            return;
+         end if;
+
+         declare
+            Num_Types   : constant unsigned := Count_Struct_Element_Types (T);
+            Last_Type   : constant Type_T   :=
+              Struct_Get_Type_At_Index (T, Num_Types - 1);
+            Last_Size   : constant ULL      := Get_LLVM_Type_Size (Last_Type);
+            Last_Offset : constant ULL      :=
+              Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
+
+         begin
+            Must_Align := Get_Type_Alignment (T);
+            Is_Align   := Get_Type_Alignment (Last_Type);
+            if Return_Size then
+               Size    := Size_Const_Int (Last_Offset + Last_Size);
+            end if;
+         end;
+
+      else
+         Must_Align := Get_Type_Alignment (TE);
+         Is_Align   := Must_Align;
+         if Return_Size then
+            Size    := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
+         end if;
+      end if;
+
+   end Get_RI_Info;
+
    ----------------------------
    -- Get_Record_Size_So_Far --
    ----------------------------
@@ -418,9 +638,9 @@ package body GNATLLVM.Records is
       Total_Size : GL_Value := Size_Const_Null;
       Cur_Align  : unsigned := unsigned (Get_Maximum_Alignment);
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
-      RI         : Record_Info;
       This_Size  : GL_Value;
       This_Align : unsigned;
+      Must_Align : unsigned;
 
    begin
       Push_Debug_Freeze_Pos;
@@ -433,30 +653,31 @@ package body GNATLLVM.Records is
          Add_To_LValue_List (V);
       end if;
 
-      --  Look at each piece of the record and find its value and alignment
+      --  Look at each piece of the record and find its value and alignment.
+      --  Align to the needed alignment for this piece, add its size, and
+      --  show what alignment we now have.
 
       while Present (Cur_Idx) and then Cur_Idx /= Idx loop
-         RI := Record_Info_Table.Table (Cur_Idx);
-         if Present (RI.LLVM_Type) then
-            This_Size  := Get_LLVM_Type_Size (RI.LLVM_Type);
-            This_Align := Get_Type_Alignment (RI.LLVM_Type);
-         else
-            This_Size  := Get_Type_Size (RI.GNAT_Type, V,
-                                         For_Type or RI.Use_Max_Size);
-            This_Align := Get_Type_Alignment (RI.GNAT_Type);
-         end if;
-
-         --  We have to align the size so far to the alignment of
-         --  this type.
-
-         Total_Size :=
-           NSW_Add (Align_To (Total_Size, Cur_Align, This_Align), This_Size);
+         Get_RI_Info (Cur_Idx, V, For_Type, This_Size, Must_Align, This_Align);
+         Total_Size := NSW_Add (Align_To (Total_Size, Cur_Align, Must_Align),
+                                This_Size);
          Cur_Align  := This_Align;
-         Cur_Idx    := RI.Next;
+         Cur_Idx    := Record_Info_Table.Table (Cur_Idx).Next;
       end loop;
 
+      --  Now we may have to do a final alignment.  If Idx is specified,
+      --  use the alignment for that field.  Otherwise, use the alignment
+      --  for the type.
+
+      if Present (Idx) then
+         Get_RI_Info (Idx, No_GL_Value, False, This_Size, Must_Align,
+                      This_Align, Return_Size => False);
+      else
+         Must_Align := Get_Type_Alignment (TE);
+      end if;
+
       Pop_Debug_Freeze_Pos;
-      return Total_Size;
+      return Align_To (Total_Size, Cur_Align, Must_Align);
    end Get_Record_Size_So_Far;
 
    -------------------------
@@ -628,7 +849,7 @@ package body GNATLLVM.Records is
         (TE : Entity_Id; Field : Entity_Id) return Entity_Id
       is
          ORC : constant Entity_Id := Original_Record_Component (Field);
-         Ent : Entity_Id := First_Field (TE);
+         Ent : Entity_Id          := First_Component_Or_Discriminant (TE);
 
       begin
          while Present (Ent) loop
@@ -636,7 +857,7 @@ package body GNATLLVM.Records is
                return Ent;
             end if;
 
-            Next_Field (Ent);
+            Next_Component_Or_Discriminant (Ent);
          end loop;
 
          return Empty;

@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Namet;      use Namet;
 with Sinfo;      use Sinfo;
 with Uintp;      use Uintp;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -36,17 +35,6 @@ package GNATLLVM.Utils is
 
    function Is_Constant_Folded (E : Entity_Id) return Boolean
      with Pre => Present (E);
-
-   function First_Field (E : Entity_Id) return Entity_Id
-     with Pre => Is_Record_Type (E);
-   --  Same as First_Entity, but skips all but E_Discriminant and E_Component
-
-   function Next_Field (E : Entity_Id) return Entity_Id
-     with Pre => Ekind_In (E, E_Discriminant, E_Component);
-   --  Likewise, but like Next_Entity
-
-   procedure Next_Field (E : in out Entity_Id)
-     with Pre => Ekind_In (E, E_Discriminant, E_Component);
 
    function Are_In_Dead_Code return Boolean;
    --  True if we're in dead code (the last instruction is a terminator)

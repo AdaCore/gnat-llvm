@@ -20,7 +20,6 @@ with Interfaces.C;            use Interfaces.C;
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
-with Namet;    use Namet;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
@@ -691,7 +690,7 @@ package body GNATLLVM.Subprograms is
 
             for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
                Result :=
-                 Load (GEP (Full_Etype (First_Field
+                 Load (GEP (Full_Etype (First_Component_Or_Discriminant
                                           (Full_Designated_Type (Result))),
                             Result, (1 => Const_Null_32, 2 => Const_Null_32),
                             "ARECnF.all.ARECnU"));
@@ -844,13 +843,8 @@ package body GNATLLVM.Subprograms is
 
       LLVM_Func := Emit_LValue (Subp);
       if This_Takes_S_Link then
-         S_Link := Extract_Value (Standard_A_Char,
-                                  LLVM_Func, 1, "static-link");
-         LLVM_Func := Ptr_To_Ref (Extract_Value
-                                    (Standard_A_Char,
-                                     LLVM_Func, 0, "callback"),
-                                  Full_Designated_Type
-                                    (Full_Etype (Prefix (Subp))));
+         S_Link    := Get (LLVM_Func, Reference_To_Activation_Record);
+         LLVM_Func := Get (LLVM_Func, Reference);
       end if;
 
       Param  := First_Formal_With_Extras (Subp_Typ);

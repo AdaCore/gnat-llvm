@@ -169,6 +169,14 @@ package GNATLLVM.Environment is
       (Present (Get_Block_Info (BE)))
      with Pre => Present (BE);
 
+   function Has_Record_Info (TE : Entity_Id) return Boolean is
+      (Present (Get_Record_Info (TE)))
+     with Pre => Is_Record_Type (TE);
+
+   function Has_Field_Info (VE : Entity_Id)  return Boolean is
+      (Present (Get_Field_Info (VE)))
+     with Pre => Ekind_In (VE, E_Discriminant, E_Component);
+
    procedure Set_Type       (TE : Entity_Id; TL : Type_T)
      with Pre  => Is_Type (TE) and then Present (TL),
           Post => Get_Type (TE) = TL;

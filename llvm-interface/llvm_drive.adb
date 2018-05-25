@@ -248,6 +248,7 @@ package body LLVM_Drive is
          return True;
       elsif Switch = "-g" then
          Emit_Debug_Info := True;
+         return True;
       end if;
 
       --  For now we allow the -O/-f/-m/-W/-w and -pipe switches, even

@@ -141,6 +141,10 @@ package body GNATLLVM.Blocks is
    All_Others_Value : GL_Value;
    --  "Exception" address for "others" and special "all others"
 
+   Set_Exception_Param_Fn : GL_Value := No_GL_Value;
+   --  Declaration for __gnat_set_exception_parameter.  This can't be
+   --  initialized with the ones above since we need its type.
+
    ----------------
    -- Push_Block --
    ----------------
@@ -284,6 +288,7 @@ package body GNATLLVM.Blocks is
                                       "__gnat_all_others_value");
 
       Predefines_Set   := True;
+
    end Initialize_Predefines;
 
    ----------------------
@@ -306,6 +311,9 @@ package body GNATLLVM.Blocks is
 
          Exc   : GL_Value;
          --  The address of the exception caught by this handler
+
+         Param : Entity_Id;
+         --  The value of Choice_Parameter, if any
 
          Stmts : List_Id;
          --  The statements in the handler
@@ -340,8 +348,9 @@ package body GNATLLVM.Blocks is
             end if;
 
             Add_Clause (LP_Inst, Exc);
-            Clauses.Append ((BB => BB,
-                             Exc => Convert_To_Access (Exc, Standard_A_Char),
+            Clauses.Append ((BB    => BB,
+                             Exc   => Convert_To_Access (Exc, Standard_A_Char),
+                             Param => Choice_Parameter (Handler),
                              Stmts => Statements (Handler)));
             Next (Choice);
          end loop;
@@ -360,7 +369,36 @@ package body GNATLLVM.Blocks is
       for J in 1 .. Clauses.Last loop
          if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
             Position_Builder_At_End (Clauses.Table (J).BB);
+            Push_Block;
             Call (Begin_Handler_Fn, (1 => Exc_Ptr));
+            if Present (Clauses.Table (J).Param) then
+               declare
+                  Param   : constant Entity_Id := Clauses.Table (J).Param;
+                  P_Type  : constant Entity_Id := Full_Etype (Param);
+                  V       : constant GL_Value  :=
+                    Allocate_For_Type (P_Type, P_Type, No_GL_Value,
+                                       Get_Name (Param));
+                  Cvt_Ptr : constant GL_Value  :=
+                    Convert_To_Access (Exc_Ptr, Standard_A_Char);
+
+               begin
+                  --  If we haven't already made the function to set the
+                  --  choice parameter, make it now that we have the type.
+
+                  if No (Set_Exception_Param_Fn) then
+                     Set_Exception_Param_Fn :=
+                       Add_Function ("__gnatset_exception_parameter",
+                                     Fn_Ty ((1 => Create_Access_Type (P_Type),
+                                             2 => Void_Ptr_Type), Void_Type),
+                                     Standard_Void_Type);
+                     Set_Does_Not_Throw (Set_Exception_Param_Fn);
+                  end if;
+
+                  Call (Set_Exception_Param_Fn, (1 => V, 2 => Cvt_Ptr));
+                  Set_Value (Param, V);
+               end;
+            end if;
+
             Emit (Clauses.Table (J). Stmts);
 
             --  If the above code branched out or returned, don't call the
@@ -371,6 +409,8 @@ package body GNATLLVM.Blocks is
                Call (End_Handler_Fn, (1 => Exc_Ptr));
                Build_Br (Next_BB);
             end if;
+
+            Pop_Block;
          end if;
       end loop;
 

@@ -627,13 +627,13 @@ package body GNATLLVM.Types is
       E : Node_Id := N;
 
    begin
-      while Present (E)
-        and then Nkind_In (E, N_Type_Conversion, N_Unchecked_Type_Conversion,
-                           N_Qualified_Expression)
-        and then Is_Composite_Type (Full_Etype (E))
-        and then (Get_Type_Size_Complexity (Full_Etype (E))
-                    > Get_Type_Size_Complexity (Full_Etype (Expression (E))))
-      loop
+      while Present (E) loop
+         exit when not  Nkind_In (E, N_Type_Conversion,
+                                  N_Unchecked_Type_Conversion,
+                                  N_Qualified_Expression);
+         exit when Is_Elementary_Type (Full_Etype (E));
+         exit when Get_Type_Size_Complexity (Full_Etype (E))
+           <= Get_Type_Size_Complexity (Full_Etype (Expression (E)));
          E := Expression (E);
       end loop;
 

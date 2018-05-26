@@ -209,9 +209,8 @@ package body GNATLLVM.Records is
             Field : Entity_Id := F;
 
          begin
-            while Ekind (Field) = E_Discriminant
-              and then Present (Corresponding_Discriminant (Field))
-            loop
+            while Ekind (Field) = E_Discriminant loop
+               exit when No (Corresponding_Discriminant (Field));
                Field := Corresponding_Discriminant (Field);
             end loop;
 

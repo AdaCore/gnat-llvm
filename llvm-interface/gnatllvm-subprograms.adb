@@ -557,6 +557,7 @@ package body GNATLLVM.Subprograms is
       Push_Debug_Scope
         (Create_Subprogram_Debug_Info
            (LLVM_Func, Unit, N, Get_Name_String (Chars (Unit)), Name));
+      Set_Debug_Pos_At_Node (N);
       Push_Block;
       In_Elab_Proc := True;
 

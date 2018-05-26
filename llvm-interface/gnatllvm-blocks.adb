@@ -39,14 +39,20 @@ package body GNATLLVM.Blocks is
       In_Stmts           : Boolean;
       --  True if we are in the statement section of the current block
 
+      Unprotected        : Boolean;
+      --  True if we've reached the pop of the block (in the end handler
+      --  or its fixup) where calls aren't protected by exceptions or
+      --  At_End handlers in this block.
+
       Stack_Save         : GL_Value;
       --  Value of the stack pointer at entry to the block
 
       At_End_Proc        : GL_Value;
       --  Procedure to be called at normal or abnormal exit of the block
 
-      At_End_Static_Link : GL_Value;
-      --  The activation record to pass to the At_End_Proc
+      At_End_Parameter   : GL_Value;
+      --  A parameter to pass to the At_End_Proc, for example an
+      --  activation record.
 
       Landing_Pad        : Basic_Block_T;
       --  Basic block containing the landing pad for this block, if any.
@@ -117,9 +123,15 @@ package body GNATLLVM.Blocks is
    --  Do one fixup when exiting Blk, saying whether to run "at end handler
    --  and whether to restore the stack pointer.
 
-   procedure Make_Landing_Pad (Lpad : Basic_Block_T; EH_List : List_Id)
-     with Pre => Present (Lpad) and then Present (EH_List);
-   --  Generate a landingpad instruction from the data in EH_List
+   procedure Make_Landing_Pad
+     (Lpad             : Basic_Block_T;
+      EH_List          : List_Id;
+      At_End_Proc      : GL_Value;
+      At_End_Parameter : GL_Value)
+     with Pre => Present (Lpad)
+          and then (Present (EH_List) or else Present (At_End_Proc));
+   --  Generate a landingpad instruction from the data in EH_List and
+   --  At_End_Proc.
 
    procedure Initialize_Predefines;
    --  Initialize the predefined functions and variables below
@@ -154,12 +166,13 @@ package body GNATLLVM.Blocks is
         (if Block_Stack.Last < 1 then No_GL_Value
          else Call (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>)));
    begin
-      Block_Stack.Append ((Stack_Save         => Stack_Save,
-                           At_End_Proc        => No_GL_Value,
-                           At_End_Static_Link => No_GL_Value,
-                           Landing_Pad        => No_BB_T,
-                           EH_List            => No_List,
-                           In_Stmts           => False));
+      Block_Stack.Append ((Stack_Save       => Stack_Save,
+                           At_End_Proc      => No_GL_Value,
+                           At_End_Parameter => No_GL_Value,
+                           Landing_Pad      => No_BB_T,
+                           EH_List          => No_List,
+                           In_Stmts         => False,
+                           Unprotected      => False));
 
    end Push_Block;
 
@@ -190,7 +203,7 @@ package body GNATLLVM.Blocks is
            and then Present (Subps.Table (Subp_Index
                                             (Entity (At_End_Proc))).ARECnF)
          then
-            Block_Stack.Table (Block_Stack.Last).At_End_Static_Link :=
+            Block_Stack.Table (Block_Stack.Last).At_End_Parameter :=
               Pointer_Cast (Get_Static_Link (At_End_Proc),
                             Full_Etype (Extra_Formals (Entity (At_End_Proc))));
          end if;
@@ -203,15 +216,18 @@ package body GNATLLVM.Blocks is
    ---------------------
 
    function Get_Landing_Pad return Basic_Block_T is
+      BI : Block_Info;
+
    begin
       --  If we're in the Statements part of a block that has nexceptions,
       --  see if we've made a block for the landing-pad.  If not, make one.
 
       for J in reverse 1 .. Block_Stack.Last loop
-         if Present (Block_Stack.Table (J).EH_List)
-           and then Block_Stack.Table (J).In_Stmts
+         BI := Block_Stack.Table (J);
+         if (Present (BI.EH_List) and then BI.In_Stmts)
+           or else (Present (BI.At_End_Proc) and then not BI.Unprotected)
          then
-            if No (Block_Stack.Table (J).Landing_Pad) then
+            if No (BI.Landing_Pad) then
                Block_Stack.Table (J).Landing_Pad :=
                  Create_Basic_Block ("Lpad");
             end if;
@@ -235,8 +251,8 @@ package body GNATLLVM.Blocks is
       --  deallocated.
 
       if Do_At_End and then Present (Block_Inf.At_End_Proc) then
-         if Present (Block_Inf.At_End_Static_Link) then
-            Call (Block_Inf.At_End_Proc, (1 => Block_Inf.At_End_Static_Link));
+         if Present (Block_Inf.At_End_Parameter) then
+            Call (Block_Inf.At_End_Proc, (1 => Block_Inf.At_End_Parameter));
          else
             Call (Block_Inf.At_End_Proc, (1 .. 0 => <>));
          end if;
@@ -295,7 +311,12 @@ package body GNATLLVM.Blocks is
    -- Make_Landing_Pad --
    ----------------------
 
-   procedure Make_Landing_Pad (Lpad : Basic_Block_T; EH_List : List_Id) is
+   procedure Make_Landing_Pad
+     (Lpad             : Basic_Block_T;
+      EH_List          : List_Id;
+      At_End_Proc      : GL_Value;
+      At_End_Parameter : GL_Value)
+   is
       LP_Type           : constant Type_T        :=
         Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
       Next_BB           : constant Basic_Block_T := Create_Basic_Block;
@@ -330,103 +351,119 @@ package body GNATLLVM.Blocks is
    begin
       Initialize_Predefines;
 
-      --  Emit the landing pad instruction, indicate that it's a
-      --  cleanup and add the clauses to the instruction and our table.
+      --  Emit the landing pad instruction and either add the clauses to the
+      --  instruction and our table or indicate that the landing pad is
+      --  a cleanup.
 
       Position_Builder_At_End (Lpad);
       LP_Inst := Landing_Pad (LP_Type, Personality_Fn);
-      Handler := First_Non_Pragma (EH_List);
-      while Present (Handler) loop
-         BB     := Create_Basic_Block;
-         Choice := First (Exception_Choices (Handler));
-         while Present (Choice) loop
-            if Nkind (Choice) = N_Others_Choice then
-               Exc := (if All_Others (Choice) then All_Others_Value
-                       else Others_Value);
-            else
-               Exc := Emit_LValue (Choice);
-            end if;
 
-            Add_Clause (LP_Inst, Exc);
-            Clauses.Append ((BB    => BB,
-                             Exc   => Convert_To_Access (Exc, Standard_A_Char),
-                             Param => Choice_Parameter (Handler),
-                             Stmts => Statements (Handler)));
-            Next (Choice);
+      if Present (EH_List) then
+         Handler := First_Non_Pragma (EH_List);
+         while Present (Handler) loop
+            BB     := Create_Basic_Block;
+            Choice := First (Exception_Choices (Handler));
+            while Present (Choice) loop
+               if Nkind (Choice) = N_Others_Choice then
+                  Exc := (if All_Others (Choice) then All_Others_Value
+                          else Others_Value);
+               else
+                  Exc := Emit_LValue (Choice);
+               end if;
+
+               Add_Clause (LP_Inst, Exc);
+               Clauses.Append ((BB    => BB,
+                                Exc   => Convert_To_Access (Exc,
+                                                            Standard_A_Char),
+                                Param => Choice_Parameter (Handler),
+                                Stmts => Statements (Handler)));
+               Next (Choice);
+            end loop;
+
+            Next_Non_Pragma (Handler);
          end loop;
 
-         Next_Non_Pragma (Handler);
-      end loop;
+         --  Extract the selector and the exception pointer
 
-      --  Extract the selector and the exception pointer
+         Exc_Ptr := Extract_Value (Standard_A_Char, LP_Inst, 0);
+         Selector := Extract_Value (Standard_Integer, LP_Inst, 1);
 
-      Exc_Ptr := Extract_Value (Standard_A_Char, LP_Inst, 0);
-      Selector := Extract_Value (Standard_Integer, LP_Inst, 1);
+         --  Generate code for the handlers, taking into account that we
+         --  have duplicate BB's in the table.
 
-      --  Generate code for the handlers, taking into account that we
-      --  have duplicate BB's in the table.
+         for J in 1 .. Clauses.Last loop
+            if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
+               Position_Builder_At_End (Clauses.Table (J).BB);
+               Push_Block;
+               Call (Begin_Handler_Fn, (1 => Exc_Ptr));
+               if Present (Clauses.Table (J).Param) then
+                  declare
+                     Param   : constant Entity_Id := Clauses.Table (J).Param;
+                     P_Type  : constant Entity_Id := Full_Etype (Param);
+                     V       : constant GL_Value  :=
+                       Allocate_For_Type (P_Type, P_Type, No_GL_Value,
+                                          Get_Name (Param));
+                     Cvt_Ptr : constant GL_Value  :=
+                       Convert_To_Access (Exc_Ptr, Standard_A_Char);
 
-      for J in 1 .. Clauses.Last loop
-         if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
-            Position_Builder_At_End (Clauses.Table (J).BB);
-            Push_Block;
-            Call (Begin_Handler_Fn, (1 => Exc_Ptr));
-            if Present (Clauses.Table (J).Param) then
-               declare
-                  Param   : constant Entity_Id := Clauses.Table (J).Param;
-                  P_Type  : constant Entity_Id := Full_Etype (Param);
-                  V       : constant GL_Value  :=
-                    Allocate_For_Type (P_Type, P_Type, No_GL_Value,
-                                       Get_Name (Param));
-                  Cvt_Ptr : constant GL_Value  :=
-                    Convert_To_Access (Exc_Ptr, Standard_A_Char);
+                  begin
+                     --  If we haven't already made the function to set the
+                     --  choice parameter, make it now that we have the type.
 
-               begin
-                  --  If we haven't already made the function to set the
-                  --  choice parameter, make it now that we have the type.
+                     if No (Set_Exception_Param_Fn) then
+                        Set_Exception_Param_Fn :=
+                          Add_Function ("__gnatset_exception_parameter",
+                                        Fn_Ty ((1 =>
+                                                  Create_Access_Type (P_Type),
+                                                2 => Void_Ptr_Type),
+                                               Void_Type),
+                                        Standard_Void_Type);
+                        Set_Does_Not_Throw (Set_Exception_Param_Fn);
+                     end if;
 
-                  if No (Set_Exception_Param_Fn) then
-                     Set_Exception_Param_Fn :=
-                       Add_Function ("__gnatset_exception_parameter",
-                                     Fn_Ty ((1 => Create_Access_Type (P_Type),
-                                             2 => Void_Ptr_Type), Void_Type),
-                                     Standard_Void_Type);
-                     Set_Does_Not_Throw (Set_Exception_Param_Fn);
-                  end if;
+                     Call (Set_Exception_Param_Fn, (1 => V, 2 => Cvt_Ptr));
+                     Set_Value (Param, V);
+                  end;
+               end if;
 
-                  Call (Set_Exception_Param_Fn, (1 => V, 2 => Cvt_Ptr));
-                  Set_Value (Param, V);
-               end;
+               Emit (Clauses.Table (J). Stmts);
+
+               --  If the above code branched out or returned, don't call the
+               --  end handler code.  ???  TBD to make a block and make that
+               --  the fixup.
+
+               if not Are_In_Dead_Code then
+                  Call (End_Handler_Fn, (1 => Exc_Ptr));
+                  Build_Br (Next_BB);
+               end if;
+
+               Pop_Block;
             end if;
+         end loop;
 
-            Emit (Clauses.Table (J). Stmts);
+         --  Now generate the code to branch to each exception handler
 
-            --  If the above code branched out or returned, don't call the
-            --  end handler code.  ???  TBD to make a block and make that
-            --  the fixup.
+         BB := Lpad;
+         for J in 1 .. Clauses.Last loop
+            Position_Builder_At_End (BB);
+            BB := Create_Basic_Block;
+            Build_Cond_Br (I_Cmp (Int_EQ, Selector,
+                                  Call (EH_Slot_Id_Fn, Int_32_Type,
+                                        (1 => Clauses.Table (J).Exc))),
+                           Clauses.Table (J).BB, BB);
+         end loop;
 
-            if not Are_In_Dead_Code then
-               Call (End_Handler_Fn, (1 => Exc_Ptr));
-               Build_Br (Next_BB);
-            end if;
-
-            Pop_Block;
-         end if;
-      end loop;
-
-      --  Now generate the code to branch to each exception handler
-
-      BB := Lpad;
-      for J in 1 .. Clauses.Last loop
          Position_Builder_At_End (BB);
-         BB := Create_Basic_Block;
-         Build_Cond_Br (I_Cmp (Int_EQ, Selector,
-                               Call (EH_Slot_Id_Fn, Int_32_Type,
-                                     (1 => Clauses.Table (J).Exc))),
-                        Clauses.Table (J).BB, BB);
-      end loop;
 
-      Position_Builder_At_End (BB);
+      elsif Present (At_End_Proc) then
+         Set_Cleanup (LP_Inst);
+         if Present (At_End_Parameter) then
+            Call (At_End_Proc, (1 => At_End_Parameter));
+         else
+            Call (At_End_Proc, (1 .. 0 => <>));
+         end if;
+      end if;
+
       Build_Resume (LP_Inst);
       Position_Builder_At_End (Next_BB);
 
@@ -437,20 +474,23 @@ package body GNATLLVM.Blocks is
    ---------------
 
    procedure Pop_Block is
-      Lpad     : constant Basic_Block_T :=
-        Block_Stack.Table (Block_Stack.Last).Landing_Pad;
-      Was_Dead : constant Boolean       := Are_In_Dead_Code;
-      Next_BB  : constant Basic_Block_T :=
+      BI         : constant Block_Info    :=
+        Block_Stack.Table (Block_Stack.Last);
+      Lpad       : constant Basic_Block_T := BI.Landing_Pad;
+      Was_Dead   : constant Boolean       := Are_In_Dead_Code;
+      Next_BB    : constant Basic_Block_T :=
         (if Present (Lpad) and then not Was_Dead
          then Create_Basic_Block else No_BB_T);
 
    begin
       --  If we're not in dead code, we have to fixup the block and the branch
       --  around any landingpad.  But that code is not protected by any
-      --  exception handlers in the block.
+      --  exception handlers in the block and this code isn't protected by
+      --  any At_End handler.
 
+      Block_Stack.Table (Block_Stack.Last).In_Stmts    := False;
+      Block_Stack.Table (Block_Stack.Last).Unprotected := True;
       if not Are_In_Dead_Code then
-         Block_Stack.Table (Block_Stack.Last).In_Stmts := False;
          Emit_One_Fixup (Block_Stack.Last,
                          Do_At_End => True, Do_Stack => True);
          if Present (Next_BB) then
@@ -461,7 +501,8 @@ package body GNATLLVM.Blocks is
       --  Now output the landing pad and handlers
 
       if Present (Lpad) then
-         Make_Landing_Pad (Lpad, Block_Stack.Table (Block_Stack.Last).EH_List);
+         Make_Landing_Pad (Lpad, BI.EH_List, BI.At_End_Proc,
+                           BI.At_End_Parameter);
          if Was_Dead then
             Build_Unreachable;
          end if;

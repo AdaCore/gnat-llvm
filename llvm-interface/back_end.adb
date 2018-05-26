@@ -55,7 +55,6 @@ begin
    --  Set the switches in Opt that we depend on
 
    Debug_Flag_Dot_G                := True;
-   Debug_Flag_Dot_8                := True;
    Expand_Nonbinary_Modular_Ops    := True;
    Unnest_Subprogram_Mode          := True;
 

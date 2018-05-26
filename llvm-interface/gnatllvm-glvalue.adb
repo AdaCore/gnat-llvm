@@ -194,8 +194,11 @@ package body GNATLLVM.GLValue is
    function Relationship_For_Access_Type
      (TE : Entity_Id) return GL_Relationship
    is
-      R : constant GL_Relationship :=
-        Relationship_For_Ref (Full_Designated_Type (TE));
+      BT : constant Entity_Id       := Implementation_Base_Type (TE);
+      DT : constant Entity_Id       := Full_Designated_Type (BT);
+      R  : constant GL_Relationship := Relationship_For_Ref (DT);
+      --  A subtype always has the same representation as its base type.
+      --  This is true for access types as well.
 
    begin
       --  If we would use a fat pointer, but the access type is forced

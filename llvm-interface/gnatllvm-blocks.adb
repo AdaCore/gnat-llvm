@@ -167,6 +167,8 @@ package body GNATLLVM.Blocks is
      (At_End_Proc : Entity_Id; EH_List : List_Id) is
 
    begin
+      pragma Assert (not Block_Stack.Table (Block_Stack.Last).In_Stmts);
+
       Block_Stack.Table (Block_Stack.Last).EH_List  := EH_List;
       Block_Stack.Table (Block_Stack.Last).In_Stmts := True;
 

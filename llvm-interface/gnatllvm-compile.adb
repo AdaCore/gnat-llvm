@@ -135,12 +135,16 @@ package body GNATLLVM.Compile is
             end if;
 
             declare
-               Stmts : constant Node_Id := Handled_Statement_Sequence (N);
+               Stmts      : constant Node_Id := Handled_Statement_Sequence (N);
 
             begin
                --  Always process declarations
 
                Push_Lexical_Debug_Scope (N);
+               if not Library_Level then
+                  Push_Block;
+               end if;
+
                Emit_Decl_Lists (Declarations (N), No_List);
 
                --  If we're at library level and our parent is an
@@ -155,6 +159,10 @@ package body GNATLLVM.Compile is
                   Emit_Elab_Proc (N, Stmts, Parent (N), "b");
                elsif Present (Stmts) then
                   Emit (Stmts);
+               end if;
+
+               if not Library_Level then
+                  Pop_Block;
                end if;
 
                Pop_Debug_Scope;
@@ -758,7 +766,20 @@ package body GNATLLVM.Compile is
       if Present (List) then
          N := (if Present (Starting_At) then Starting_At else First (List));
          while Present (N) loop
-            Emit (N);
+
+            --  If N is an N_Handled_Sequence_Of_Statements here, we know
+            --  that it's not nested in a block.  It probably was from a
+            --  package body at library level and ended in in the elab
+            --  proc.  Make a block around it.
+
+            if Nkind (N) = N_Handled_Sequence_Of_Statements then
+               Push_Block;
+               Emit (N);
+               Pop_Block;
+            else
+               Emit (N);
+            end if;
+
             Next (N);
          end loop;
       end if;

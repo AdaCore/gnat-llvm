@@ -17,7 +17,6 @@
 
 with Interfaces.C;            use Interfaces.C;
 
-with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Sem_Util; use Sem_Util;
@@ -570,7 +569,17 @@ package body GNATLLVM.Subprograms is
             if Present (Typ) then
                Set_Value (Stmt, Build_Type_Conversion (Stmt, Typ));
             else
-               Emit (Stmt);
+               --  If Stmt is an N_Handled_Sequence_Of_Statements, it
+               --  must have come from a package body.  Make a block around
+               --  it so exceptions will work properly, if needed.
+
+               if Nkind (Stmt) = N_Handled_Sequence_Of_Statements then
+                  Push_Block;
+                  Emit (Stmt);
+                  Pop_Block;
+               else
+                  Emit (Stmt);
+               end if;
             end if;
          end;
       end loop;
@@ -926,32 +935,31 @@ package body GNATLLVM.Subprograms is
 
    begin
       --  If we've already seen this function name before, verify that we
-      --  have the same type.
+      --  have the same type.  Convert it to it if not.
 
       if Present (LLVM_Func)
         and then Type_Of (LLVM_Func) /= Pointer_Type (Subp_Type, 0)
       then
-         Error_Msg_N
-           ("Function & has same external name but different signature",
-            Def_Ident);
-         LLVM_Func := No_GL_Value;
-      end if;
-
-      if No (LLVM_Func) then
+         LLVM_Func := G_From (Pointer_Cast (IR_Builder,
+                                            LLVM_Value (LLVM_Func),
+                                            Pointer_Type (Subp_Type, 0),
+                                            Subp_Name),
+                              LLVM_Func);
+      elsif No (LLVM_Func) then
          LLVM_Func := Add_Function (Actual_Name,
                                     Subp_Type, Full_Etype (Def_Ident));
-      end if;
+         --  Define the appropriate linkage
 
-      --  Define the appropriate linkage
+         if not In_Extended_Main_Code_Unit (Def_Ident) then
+            Set_Linkage (LLVM_Func, External_Linkage);
+         elsif not Is_Public (Def_Ident) then
+            Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
+         end if;
 
-      if not In_Extended_Main_Code_Unit (Def_Ident) then
-         Set_Linkage (LLVM_Func, External_Linkage);
-      elsif not Is_Public (Def_Ident) then
-         Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
+         Set_Dup_Global_Value (Def_Ident, LLVM_Func);
       end if;
 
       Set_Value (Def_Ident, LLVM_Func);
-      Set_Dup_Global_Value (Def_Ident, LLVM_Func);
 
       if Subp_Name = "ada_main___elabb" then
          Ada_Main_Elabb := LLVM_Func;

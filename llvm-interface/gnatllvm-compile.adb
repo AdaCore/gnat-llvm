@@ -765,12 +765,13 @@ package body GNATLLVM.Compile is
    begin
       if Present (List) then
          N := (if Present (Starting_At) then Starting_At else First (List));
+
          while Present (N) loop
 
             --  If N is an N_Handled_Sequence_Of_Statements here, we know
             --  that it's not nested in a block.  It probably was from a
-            --  package body at library level and ended in in the elab
-            --  proc.  Make a block around it.
+            --  package body at library level and ended in the elab proc.
+            --  Make a block around it.
 
             if Nkind (N) = N_Handled_Sequence_Of_Statements then
                Push_Block;

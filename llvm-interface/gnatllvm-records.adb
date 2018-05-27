@@ -406,6 +406,7 @@ package body GNATLLVM.Records is
 
          Field             : Entity_Id;
          Field_To_Add      : Entity_Id;
+         Outer_Field       : Entity_Id;
          Record_Definition : Node_Id;
          Components        : Node_Id;
 
@@ -439,8 +440,12 @@ package body GNATLLVM.Records is
                     Find_Field_In_Entity_List (Field, Sub_Rec_Type, Rec_Field);
                end if;
 
+               Outer_Field
+                 := Find_Field_In_Entity_List (Field_To_Add, TE, Cur_Field);
                if Present (Field_To_Add)
                  and then not Has_Field_Info (Field_To_Add)
+                 and then (No (Outer_Field)
+                             or else not Has_Field_Info (Outer_Field))
                then
                   Add_Field (Field);
                end if;

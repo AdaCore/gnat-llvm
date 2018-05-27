@@ -736,11 +736,16 @@ package body GNATLLVM.Records is
    function Record_Field_Offset
      (V : GL_Value; Field : Entity_Id) return GL_Value
    is
-      Rec_Type   : constant Entity_Id      := Full_Scope (Field);
       F_Type     : constant Entity_Id      := Full_Etype (Field);
+      CRC        : constant Entity_Id      :=
+        Corresponding_Record_Component (Field);
+      Our_Field  : constant Entity_Id      :=
+        (if Present (CRC) and then Full_Etype (CRC) = F_Type
+         then CRC else Field);
+      Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
       First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
       FI         : constant Field_Info     :=
-        Field_Info_Table.Table (Get_Field_Info (Field));
+        Field_Info_Table.Table (Get_Field_Info (Our_Field));
       Our_Idx    : constant Record_Info_Id := FI.Rec_Info_Idx;
       Offset     : constant GL_Value       :=
         Get_Record_Size_So_Far (Rec_Type, V, Our_Idx);
@@ -754,7 +759,7 @@ package body GNATLLVM.Records is
       --  to that type.  But add it to the LValue table in case there's
       --  a reference to its discrminant.
 
-      if Chars (Field) = Name_uParent then
+      if Chars (Our_Field) = Name_uParent then
          Result := Ptr_To_Ref (V, F_Type);
          Add_To_LValue_List (Result);
          return Result;

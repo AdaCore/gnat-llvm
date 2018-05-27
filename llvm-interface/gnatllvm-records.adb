@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers.Generic_Constrained_Array_Sort;
+
 with Interfaces.C;            use Interfaces.C;
 
 with Get_Targ; use Get_Targ;
@@ -29,6 +31,7 @@ with Table;    use Table;
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Records is
@@ -910,37 +913,7 @@ package body GNATLLVM.Records is
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
-   ------------------
-   -- Print_One_RI --
-   ------------------
-
-   procedure Print_One_RI (Ridx : Record_Info_Id) is
-      RI : constant Record_Info := Record_Info_Table.Table (Ridx);
-
-   begin
-      Write_Str ("RI ");
-      Write_Int (Nat (Ridx));
-      Write_Eol;
-      if Present (RI.GNAT_Type) then
-         Write_Str ("GNAT Type = ");
-         Write_Int (Nat (RI.GNAT_Type));
-         Write_Eol;
-         pg (Union_Id (RI.GNAT_Type));
-      elsif Present (RI.LLVM_Type) then
-         Dump_LLVM_Type (RI.LLVM_Type);
-      end if;
-
-      if Present (RI.Next) then
-         Write_Str ("Next = ");
-         Write_Int (Nat (RI.Next));
-         Write_Eol;
-      end if;
-
-      if RI.Use_Max_Size then
-         Write_Line ("Use max size");
-      end if;
-
-   end Print_One_RI;
+   procedure Print_RI_Briefly (Ridx : Record_Info_Id);
 
    ----------------------
    -- Print_RI_Briefly --
@@ -953,7 +926,7 @@ package body GNATLLVM.Records is
       if Present (RI.GNAT_Type) then
          Write_Str ("GNAT Type = ");
          Write_Int (Nat (RI.GNAT_Type));
-         Write_Str (" : ");
+         Write_Str (": ");
          pg (Union_Id (RI.GNAT_Type));
       elsif Present (RI.LLVM_Type) then
          Dump_LLVM_Type (RI.LLVM_Type);
@@ -961,28 +934,13 @@ package body GNATLLVM.Records is
 
    end Print_RI_Briefly;
 
-   --------------------
-   -- Print_RI_Chain --
-   --------------------
-
-   procedure Print_RI_Chain (Start : Record_Info_Id) is
-      Idx : Record_Info_Id := Start;
-
-   begin
-      while Present (Idx) loop
-         Print_One_RI (Idx);
-         Write_Eol;
-         Idx := Record_Info_Table.Table (Idx).Next;
-      end loop;
-   end Print_RI_Chain;
-
    ----------------------
    -- Print_Field_Info --
    ----------------------
 
    procedure Print_Field_Info (E : Entity_Id) is
-      F_Idx  : constant Field_Info_Id  := Get_Field_Info (E);
-      FI     : constant Field_Info     := Field_Info_Table.Table (F_Idx);
+      F_Idx : constant Field_Info_Id  := Get_Field_Info (E);
+      FI    : constant Field_Info     := Field_Info_Table.Table (F_Idx);
 
    begin
       Write_Str ("Field ");
@@ -1006,15 +964,118 @@ package body GNATLLVM.Records is
    -----------------------
 
    procedure Print_Record_Info (TE : Entity_Id) is
-      Field : Entity_Id := First_Component_Or_Discriminant (TE);
+
+      procedure Print_One_RI   (Ridx : Record_Info_Id);
+      function  Compare_FI     (E1, E2 : Entity_Id) return Boolean;
+
+      ------------------
+      -- Print_One_RI --
+      ------------------
+
+      procedure Print_One_RI (Ridx : Record_Info_Id) is
+         RI : constant Record_Info := Record_Info_Table.Table (Ridx);
+
+      begin
+         Write_Str ("RI ");
+         Write_Int (Nat (Ridx));
+         Write_Eol;
+         if Present (RI.GNAT_Type) then
+            Write_Str ("GNAT Type = ");
+            Write_Int (Nat (RI.GNAT_Type));
+            Write_Eol;
+            pg (Union_Id (RI.GNAT_Type));
+         elsif Present (RI.LLVM_Type) then
+            Dump_LLVM_Type (RI.LLVM_Type);
+         end if;
+
+         if RI.Use_Max_Size then
+            Write_Line ("Use max size");
+         end if;
+
+      end Print_One_RI;
+
+      ----------------
+      -- Compare_FI --
+      ----------------
+
+      function Compare_FI (E1, E2 : Entity_Id) return Boolean is
+         F1_Idx : constant Field_Info_Id  := Get_Field_Info (E1);
+         FI1    : constant Field_Info     := Field_Info_Table.Table (F1_Idx);
+         F2_Idx : constant Field_Info_Id  := Get_Field_Info (E2);
+         FI2    : constant Field_Info     := Field_Info_Table.Table (F2_Idx);
+
+      begin
+         if  FI1.Rec_Info_Idx < FI2.Rec_Info_Idx then
+            return True;
+         elsif FI1.Rec_Info_Idx > FI2.Rec_Info_Idx then
+            return False;
+         else
+            return FI1.Field_Ordinal < FI2.Field_Ordinal;
+         end if;
+      end Compare_FI;
+
+      type Entity_Array is array (Nat range <>) of Entity_Id;
+      Fields         : Entity_Array (0 .. Count_Entities (TE));
+      Next_Field_Idx : Nat       := Fields'First;
+      Field          : Entity_Id := First_Component_Or_Discriminant (TE);
 
    begin
-      Print_RI_Chain (Get_Record_Info (TE));
       while Present (Field) loop
-         Print_Field_Info (Field);
-         Write_Eol;
+         Fields (Next_Field_Idx) := Field;
+         Next_Field_Idx          := Next_Field_Idx + 1;
          Next_Component_Or_Discriminant (Field);
       end loop;
+
+      declare
+         subtype Our_Index is Nat range 0 .. Next_Field_Idx - 1;
+         subtype Our_Fields_Type is Entity_Array (Our_Index);
+         Our_Fields : Our_Fields_Type := Fields (Our_Fields_Type'Range);
+
+         procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+           (Our_Index, Entity_Id, Our_Fields_Type, Compare_FI);
+         procedure Print_RI_Chain (Start : Record_Info_Id);
+
+         --------------------
+         -- Print_RI_Chain --
+         --------------------
+
+         procedure Print_RI_Chain (Start : Record_Info_Id) is
+            Idx   : Record_Info_Id := Start;
+            F_Idx : Field_Info_Id;
+            FI    : Field_Info;
+            RI    : Record_Info;
+
+         begin
+            while Present (Idx) loop
+               RI := Record_Info_Table.Table (Idx);
+               Print_One_RI (Idx);
+
+               for F of Our_Fields loop
+                  F_Idx := Get_Field_Info (F);
+                  FI := Field_Info_Table.Table (F_Idx);
+                  if Idx = FI.Rec_Info_Idx then
+                     Write_Str ("    Field");
+                     if Present (RI.LLVM_Type) then
+                        Write_Str ("@");
+                        Write_Int (FI.Field_Ordinal);
+                     end if;
+
+                     Write_Str (" ");
+                     Write_Int (Nat (F));
+                     Write_Str (": ");
+                     pg (Union_Id (F));
+                  end if;
+               end loop;
+
+               Write_Eol;
+               Idx := Record_Info_Table.Table (Idx).Next;
+            end loop;
+         end Print_RI_Chain;
+
+      begin
+         Sort (Our_Fields);
+         Print_RI_Chain (Get_Record_Info (TE));
+      end;
 
    end Print_Record_Info;
 

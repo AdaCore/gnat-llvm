@@ -19,15 +19,16 @@ with Interfaces.C;            use Interfaces.C;
 
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
+with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Snames;   use Snames;
+with Sprint;   use Sprint;
 with Stand;    use Stand;
 with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Records is
@@ -906,6 +907,116 @@ package body GNATLLVM.Records is
 
       return Result;
    end Emit_Record_Aggregate;
+
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
+   ------------------
+   -- Print_One_RI --
+   ------------------
+
+   procedure Print_One_RI (Ridx : Record_Info_Id) is
+      RI : constant Record_Info := Record_Info_Table.Table (Ridx);
+
+   begin
+      Write_Str ("RI ");
+      Write_Int (Nat (Ridx));
+      Write_Eol;
+      if Present (RI.GNAT_Type) then
+         Write_Str ("GNAT Type = ");
+         Write_Int (Nat (RI.GNAT_Type));
+         Write_Eol;
+         pg (Union_Id (RI.GNAT_Type));
+      elsif Present (RI.LLVM_Type) then
+         Dump_LLVM_Type (RI.LLVM_Type);
+      end if;
+
+      if Present (RI.Next) then
+         Write_Str ("Next = ");
+         Write_Int (Nat (RI.Next));
+         Write_Eol;
+      end if;
+
+      if RI.Use_Max_Size then
+         Write_Line ("Use max size");
+      end if;
+
+   end Print_One_RI;
+
+   ----------------------
+   -- Print_RI_Briefly --
+   ----------------------
+
+   procedure Print_RI_Briefly (Ridx : Record_Info_Id) is
+      RI : constant Record_Info := Record_Info_Table.Table (Ridx);
+
+   begin
+      if Present (RI.GNAT_Type) then
+         Write_Str ("GNAT Type = ");
+         Write_Int (Nat (RI.GNAT_Type));
+         Write_Str (" : ");
+         pg (Union_Id (RI.GNAT_Type));
+      elsif Present (RI.LLVM_Type) then
+         Dump_LLVM_Type (RI.LLVM_Type);
+      end if;
+
+   end Print_RI_Briefly;
+
+   --------------------
+   -- Print_RI_Chain --
+   --------------------
+
+   procedure Print_RI_Chain (Start : Record_Info_Id) is
+      Idx : Record_Info_Id := Start;
+
+   begin
+      while Present (Idx) loop
+         Print_One_RI (Idx);
+         Write_Eol;
+         Idx := Record_Info_Table.Table (Idx).Next;
+      end loop;
+   end Print_RI_Chain;
+
+   ----------------------
+   -- Print_Field_Info --
+   ----------------------
+
+   procedure Print_Field_Info (E : Entity_Id) is
+      F_Idx  : constant Field_Info_Id  := Get_Field_Info (E);
+      FI     : constant Field_Info     := Field_Info_Table.Table (F_Idx);
+
+   begin
+      Write_Str ("Field ");
+      Write_Int (Nat (E));
+      Write_Str (": ");
+      pg (Union_Id (E));
+      Write_Str ("Scope = ");
+      Write_Int (Nat (Full_Scope (E)));
+      Write_Eol;
+      Write_Str ("RI => ");
+      Write_Int (Nat (FI.Rec_Info_Idx));
+      Write_Eol;
+      Write_Str ("Ordinal = ");
+      Write_Int (FI.Field_Ordinal);
+      Write_Eol;
+      Print_RI_Briefly (FI.Rec_Info_Idx);
+   end Print_Field_Info;
+
+   -----------------------
+   -- Print_Record_Info --
+   -----------------------
+
+   procedure Print_Record_Info (TE : Entity_Id) is
+      Field : Entity_Id := First_Component_Or_Discriminant (TE);
+
+   begin
+      Print_RI_Chain (Get_Record_Info (TE));
+      while Present (Field) loop
+         Print_Field_Info (Field);
+         Write_Eol;
+         Next_Component_Or_Discriminant (Field);
+      end loop;
+
+   end Print_Record_Info;
 
 begin
    --  Make a dummy entry in the record table, so the "Empty" entry is

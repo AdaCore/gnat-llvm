@@ -17,6 +17,7 @@
 
 with Sinfo;  use Sinfo;
 
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -65,5 +66,16 @@ package GNATLLVM.Records is
    --  Compute and return the position in bytes of the field specified by E
    --  from the start of its type as a value of Size_Type.  V is a value
    --  of that type, which is used in the case of a discriminated record.
+
+   --  The following are debug procedures to print information about records
+   --  and fields.
+
+   procedure Print_One_RI (Ridx : Record_Info_Id);
+   procedure Print_RI_Briefly (Ridx : Record_Info_Id);
+   procedure Print_RI_Chain (Start : Record_Info_Id);
+   procedure Print_Field_Info (E : Entity_Id);
+   procedure Print_Record_Info (TE : Entity_Id);
+   pragma Export (Ada, Print_Field_Info,  "dfi");
+   pragma Export (Ada, Print_Record_Info, "dri");
 
 end GNATLLVM.Records;

@@ -673,6 +673,13 @@ package body GNATLLVM.Records is
          Cur_Idx    := Record_Info_Table.Table (Cur_Idx).Next;
       end loop;
 
+      --  At this point, either Idx is not Present, meaning we were supposed
+      --  to be at the end of the type, or it is, in which case we should
+      --  have hit it.  If either is the case, we have an error where we're
+      --  looking for a field in the wrong type.
+
+      pragma Assert (Cur_Idx = Idx);
+
       --  Now we may have to do a final alignment.  If Idx is specified,
       --  use the alignment for that field.  Otherwise, use the alignment
       --  for the type.

@@ -1021,34 +1021,7 @@ package body GNATLLVM.Records is
 
    procedure Print_Record_Info (TE : Entity_Id) is
 
-      procedure Print_One_RI   (Ridx : Record_Info_Id);
       function  Compare_FI     (E1, E2 : Entity_Id) return Boolean;
-
-      ------------------
-      -- Print_One_RI --
-      ------------------
-
-      procedure Print_One_RI (Ridx : Record_Info_Id) is
-         RI : constant Record_Info := Record_Info_Table.Table (Ridx);
-
-      begin
-         Write_Str ("RI ");
-         Write_Int (Nat (Ridx));
-         Write_Eol;
-         if Present (RI.GNAT_Type) then
-            Write_Str ("GNAT Type = ");
-            Write_Int (Nat (RI.GNAT_Type));
-            Write_Eol;
-            pg (Union_Id (RI.GNAT_Type));
-         elsif Present (RI.LLVM_Type) then
-            Dump_LLVM_Type (RI.LLVM_Type);
-         end if;
-
-         if RI.Use_Max_Size then
-            Write_Line ("Use max size");
-         end if;
-
-      end Print_One_RI;
 
       ----------------
       -- Compare_FI --
@@ -1089,27 +1062,77 @@ package body GNATLLVM.Records is
 
          procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort
            (Our_Index, Entity_Id, Our_Fields_Type, Compare_FI);
-         procedure Print_RI_Chain (Start : Record_Info_Id);
+         procedure Print_One_RI (Ridx : Record_Info_Id; Prefix : String := "");
+         procedure Print_RI_Chain
+           (Start : Record_Info_Id; Prefix : String := "");
+
+         ------------------
+         -- Print_One_RI --
+         ------------------
+
+         procedure Print_One_RI
+           (Ridx : Record_Info_Id; Prefix : String := "")
+         is
+            RI         : constant Record_Info
+              := Record_Info_Table.Table (Ridx);
+            New_Prefix : String (Prefix'First .. Prefix'Last + 4);
+            Next_Var   : Record_Info_Id;
+
+         begin
+            New_Prefix (Prefix'Range)   := Prefix;
+            New_Prefix (Prefix'Last + 1) := ' ';
+            New_Prefix (Prefix'Last + 2) := ' ';
+            New_Prefix (Prefix'Last + 3) := ' ';
+            New_Prefix (Prefix'Last + 41) := ' ';
+            Write_Str (Prefix);
+            Write_Str ("RI ");
+            Write_Int (Nat (Ridx));
+            Write_Eol;
+            if Present (RI.GNAT_Type) then
+               Write_Str (Prefix);
+               Write_Str ("GNAT Type = ");
+               Write_Int (Nat (RI.GNAT_Type));
+               Write_Eol;
+               Write_Str (Prefix);
+               Sprint_Node (RI.GNAT_Type);
+            elsif Present (RI.LLVM_Type) then
+               Dump_LLVM_Type (RI.LLVM_Type);
+            end if;
+
+            if RI.Use_Max_Size then
+               Write_Str  (Prefix);
+               Write_Line ("Use max size");
+            end if;
+
+            Next_Var := RI.Next_Variant;
+            while Present (Next_Var) loop
+               Print_RI_Chain (Next_Var, New_Prefix);
+               Next_Var := Record_Info_Table.Table (Next_Var).Next_Variant;
+            end loop;
+         end Print_One_RI;
 
          --------------------
          -- Print_RI_Chain --
          --------------------
 
-         procedure Print_RI_Chain (Start : Record_Info_Id) is
-            Idx   : Record_Info_Id := Start;
-            F_Idx : Field_Info_Id;
-            FI    : Field_Info;
-            RI    : Record_Info;
+         procedure Print_RI_Chain
+           (Start : Record_Info_Id; Prefix : String := "")
+         is
+            Idx        : Record_Info_Id := Start;
+            F_Idx      : Field_Info_Id;
+            FI         : Field_Info;
+            RI         : Record_Info;
 
          begin
             while Present (Idx) loop
                RI := Record_Info_Table.Table (Idx);
-               Print_One_RI (Idx);
+               Print_One_RI (Idx, Prefix);
 
                for F of Our_Fields loop
                   F_Idx := Get_Field_Info (F);
                   FI := Field_Info_Table.Table (F_Idx);
                   if Idx = FI.Rec_Info_Idx then
+                     Write_Str (Prefix);
                      Write_Str ("    Field");
                      if Present (RI.LLVM_Type) then
                         Write_Str ("@");
@@ -1119,11 +1142,12 @@ package body GNATLLVM.Records is
                      Write_Str (" ");
                      Write_Int (Nat (F));
                      Write_Str (": ");
-                     pg (Union_Id (F));
+                     Sprint_Node (F);
                   end if;
                end loop;
 
                Write_Eol;
+               exit when Present (RI.Next_Variant);
                Idx := Record_Info_Table.Table (Idx).Next;
             end loop;
          end Print_RI_Chain;

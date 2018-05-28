@@ -789,7 +789,8 @@ package body GNATLLVM.Variables is
       --  If we have an initializing expression, get it
 
       if Present (Expr) and then No (Value) then
-         Value := Emit_Expression (Expr);
+         Value := (if Is_Dynamic_Size (TE) then Emit_LValue (Expr)
+                   else Emit_Expression (Expr));
       end if;
 
       --  Likewise for the expression for the address clause

@@ -729,10 +729,10 @@ package body GNATLLVM.Types is
             return Get_Fullest_View (Root_Type (TE));
 
          when  E_Class_Wide_Subtype =>
-            if Present (Cloned_Subtype (TE)) then
-               return Get_Fullest_View (Cloned_Subtype (TE));
-            elsif Present (Equivalent_Type (TE)) then
+            if Present (Equivalent_Type (TE)) then
                return Get_Fullest_View (Equivalent_Type (TE));
+            elsif Present (Cloned_Subtype (TE)) then
+               return Get_Fullest_View (Cloned_Subtype (TE));
             end if;
 
          when E_Protected_Type | E_Protected_Subtype

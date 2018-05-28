@@ -20,7 +20,7 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  This is the LLVM versionn of this package
+--  This is the LLVM version of this package
 --  ??? Will need to replace hardcoded values by target specific information
 --  coming from the LLVM backend for the relevant target.
 

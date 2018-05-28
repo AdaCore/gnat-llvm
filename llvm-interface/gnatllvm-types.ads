@@ -284,7 +284,7 @@ package GNATLLVM.Types is
    --  actually be a different GNAT type.
 
    function Align_To
-     (V : GL_Value; Cur_Align, Align : unsigned) return GL_Value
+     (V : GL_Value; Cur_Align, Must_Align : unsigned) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);
    --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
    --  Align_To.

@@ -623,11 +623,18 @@ package body GNATLLVM.Records is
             end if;
          end;
 
-      else
+      elsif Present (TE) then
          Must_Align := Get_Type_Alignment (TE);
          Is_Align   := Must_Align;
          if Return_Size then
             Size    := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
+         end if;
+
+      else
+         Must_Align := 1;
+         Is_Align   := unsigned (Get_Maximum_Alignment);
+         if Return_Size then
+            Size    := Size_Const_Null;
          end if;
       end if;
 
@@ -669,7 +676,8 @@ package body GNATLLVM.Records is
          Get_RI_Info (Cur_Idx, V, For_Type, This_Size, Must_Align, This_Align);
          Total_Size := NSW_Add (Align_To (Total_Size, Cur_Align, Must_Align),
                                 This_Size);
-         Cur_Align  := This_Align;
+         Cur_Align  := unsigned'Min (This_Align,
+                                     unsigned'Max (Cur_Align, Must_Align));
          Cur_Idx    := Record_Info_Table.Table (Cur_Idx).Next;
       end loop;
 

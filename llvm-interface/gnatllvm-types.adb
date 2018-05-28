@@ -1161,11 +1161,11 @@ package body GNATLLVM.Types is
    --------------
 
    function Align_To
-     (V : GL_Value; Cur_Align, Align : unsigned) return GL_Value is
+     (V : GL_Value; Cur_Align, Must_Align : unsigned) return GL_Value is
    begin
-      if Align > Cur_Align then
-         return Build_And (NSW_Add (V, Const_Int (V, Align - 1)),
-                           NSW_Neg (Const_Int (V, Align)));
+      if Must_Align > Cur_Align then
+         return Build_And (NSW_Add (V, Const_Int (V, Must_Align - 1)),
+                           NSW_Neg (Const_Int (V, Must_Align)));
       else
          return V;
       end if;

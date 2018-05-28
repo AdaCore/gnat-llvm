@@ -205,16 +205,16 @@ package body GNATLLVM.Environment is
       LLVM_Info_Table.Table (Id).Typ := TL;
    end Set_Type;
 
-   ----------------------
-   -- Set_Dynamic_Size --
-   ----------------------
+   -------------------------
+   -- Set_Is_Dynamic_Size --
+   -------------------------
 
-   procedure Set_Dynamic_Size (TE : Entity_Id; B : Boolean) is
+   procedure Set_Is_Dynamic_Size (TE : Entity_Id; B : Boolean := True) is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Is_Dynamic_Size := B;
-   end Set_Dynamic_Size;
+   end Set_Is_Dynamic_Size;
 
    --------------
    -- Set_TBAA --

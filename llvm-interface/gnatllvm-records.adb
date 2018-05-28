@@ -190,10 +190,9 @@ package body GNATLLVM.Records is
 
       procedure Add_RI
         (T            : Type_T := No_Type_T;
-         TE           : Entity_Id := Empty;
+         Typ          : Entity_Id := Empty;
          Use_Max_Size : Boolean := False)
-        with Pre => (Present (T) or else Present (TE))
-                    and then not (Present (T) and then Present (TE));
+        with Pre => No (T) or else No (Typ);
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat)
@@ -209,6 +208,10 @@ package body GNATLLVM.Records is
         with Pre => Is_Record_Type (Def_Ident);
       --  Add all fields of Def_Ident to the above data, either the component
       --  or the extension components, but recursively add parent components.
+
+      procedure Flush_Current_Types;
+      --  If there are any types in the Types array, create a record
+      --  description for them.
 
       -------------------------------
       -- Find_Field_In_Entity_List --
@@ -274,14 +277,15 @@ package body GNATLLVM.Records is
 
       procedure Add_RI
         (T            : Type_T := No_Type_T;
-         TE           : Entity_Id := Empty;
+         Typ          : Entity_Id := Empty;
          Use_Max_Size : Boolean := False) is
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
-         --  but we may not actually be using that one.
+         --  but we may not actually end up using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (LLVM_Type    => T, GNAT_Type => TE,
+           (LLVM_Type    => T,
+            GNAT_Type    => Typ,
             Next         => Empty_Record_Info_Id,
             Next_Variant => Empty_Record_Info_Id,
             Use_Max_Size => Use_Max_Size);
@@ -413,8 +417,8 @@ package body GNATLLVM.Records is
                Next_Non_Pragma (Component_Def);
             end loop;
 
-            --  Now process variants.  For now, just add them as
-            --  regular fields.
+            --  Now process variants.  We create a set of empty Record_Info
+            --  fragments, one for each variant.
 
             if No (Name) and then Present (Variant_Part (List)) then
                Variant := First (Variants (Variant_Part (List)));
@@ -482,6 +486,18 @@ package body GNATLLVM.Records is
 
       end Add_Fields;
 
+      -------------------------
+      -- Flush_Current_Types --
+      -------------------------
+
+      procedure Flush_Current_Types is
+      begin
+         if Next_Type /= 0 then
+            Add_RI (T => Build_Struct_Type (Types (0 .. Next_Type - 1)));
+            Next_Type := 0;
+         end if;
+      end Flush_Current_Types;
+
       ---------------
       -- Add_Field --
       ---------------
@@ -502,13 +518,10 @@ package body GNATLLVM.Records is
          --  and make a piece for this field.
 
          elsif Is_Dynamic_Size (Typ) then
-            if Next_Type /= 0 then
-               Add_RI (T => Build_Struct_Type (Types (0 .. Next_Type - 1)));
-               Next_Type := 0;
-            end if;
-
+            Flush_Current_Types;
             Add_FI (E, Cur_Idx, 0);
-            Add_RI (TE => Typ, Use_Max_Size => not Is_Constrained (Typ));
+            Add_RI (Typ => Typ, Use_Max_Size => not Is_Constrained (Typ));
+            Set_Is_Dynamic_Size (TE);
 
          --  If it's of fixed size, add it to the current set of fields
          --  and make a field descriptor.
@@ -548,15 +561,11 @@ package body GNATLLVM.Records is
 
       else
          --  Otherwise, close out the last record info if we have any
-         --  fields and show this record is of dynamic size.  Note thast if
-         --  we don't have any fields, the entry we allocated will remain
-         --  unused, but trying to reclaim it is risky.
+         --  fields.  Note that if we don't have any fields, the entry we
+         --  allocated will remain unused, but trying to reclaim it is
+         --  risky.
 
-         if Next_Type /= 0 then
-            Add_RI (T => Build_Struct_Type (Types (0 .. Next_Type - 1)));
-         end if;
-
-         Set_Dynamic_Size (TE, True);
+         Flush_Current_Types;
       end if;
 
       return LLVM_Type;

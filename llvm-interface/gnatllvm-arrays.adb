@@ -462,7 +462,7 @@ package body GNATLLVM.Arrays is
       --  but we have to set it in order to set the array info.
 
       Set_Type (TE, Typ);
-      Set_Dynamic_Size (TE, This_Dynamic_Size);
+      Set_Is_Dynamic_Size (TE, This_Dynamic_Size);
       Set_Array_Info (TE, First_Info);
 
       return Typ;

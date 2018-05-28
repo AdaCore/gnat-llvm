@@ -181,7 +181,7 @@ package GNATLLVM.Environment is
      with Pre  => Is_Type (TE) and then Present (TL),
           Post => Get_Type (TE) = TL;
 
-   procedure Set_Dynamic_Size (TE : Entity_Id; B : Boolean)
+   procedure Set_Is_Dynamic_Size (TE : Entity_Id; B : Boolean := True)
      with Pre  => Is_Type (TE) and then Has_Type (TE),
           Post => Is_Dynamic_Size (TE) = B;
 

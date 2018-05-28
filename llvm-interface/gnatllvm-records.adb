@@ -65,29 +65,41 @@ package body GNATLLVM.Records is
       For_Type : Boolean := False) return GL_Value
      with Pre  => Present (TE),
           Post => Present (Get_Record_Size_So_Far'Result);
-
    --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
    --  or the last segment, whichever comes first.
 
-   --  We represent a record by one or more pieces of information
-   --  describing the record.  Each piece points to the next piece, if
-   --  any.  For non-variant records, each piece either contains an
-   --  LLVM type, which contains one or more fields or an GNAT type,
-   --  which is used when the field's type is of dynamic size.
-   --  In the case where a record's type is a record type (as opposed to
-   --  a record subtype), it means that we are to use the maximum type of
-   --  that size for allocation purpose, so we need to flag that here.
+   --  We represent a record by one or more fragments describing the
+   --  record.  Each piece points to the next piece, if any.  Each can
+   --  contain an LLVM type, which contains one or more fields or an GNAT
+   --  type, which is used when the field's type is of dynamic size.  If
+   --  neither is present, this fragment doesn't represent a component of
+   --  the record, but is used for chaining purposes, for example for
+   --  variant record.
 
    type Record_Info is record
       LLVM_Type    : Type_T;
+      --  The LLVM type corresponding to this fragment, if any
+
       GNAT_Type    : Entity_Id;
+      --  The GNAT type corresponding to this fragment, if any
+
       Next         : Record_Info_Id;
+      --  Link to the next Record_Info entry for this record or variant
+
+      Next_Variant : Record_Info_Id;
+      --  Link to next variant for this record.  If specified, this fragment
+      --  must be empty.
+
       Use_Max_Size : Boolean;
+      --  In the case where a record's type is a record type (as opposed to
+      --  a record subtype), True means that we are to use the maximum type
+      --  of that size for allocation purpose, so we need to flag that
+      --  here.
    end record
-     with Dynamic_Predicate => (Present (LLVM_Type)
-                                  or else Present (GNAT_Type))
-                               and then not (Present (LLVM_Type)
-                                               and then Present (GNAT_Type));
+     with Predicate => (No (LLVM_Type) or else No (GNAT_Type))
+                        and then (No (Next_Variant)
+                                    or else (No (LLVM_Type)
+                                               and then No (GNAT_Type)));
 
    package Record_Info_Table is new Table.Table
      (Table_Component_Type => Record_Info,
@@ -137,6 +149,15 @@ package body GNATLLVM.Records is
    ------------------------
 
    function Create_Record_Type (TE : Entity_Id) return Type_T is
+
+      --  This function creates a record type and the description of that
+      --  record.  Note that this function does not itself lay out the record.
+      --  We don't actually lay out record in that sense.  Instead, we create
+      --  Record_Info structures whose chaining describe the record structure
+      --  and Field_Info structures, one for each field, showing where each
+      --  field is located in the record.  We then compute any information
+      --  we need on the fly, mostly in Get_Record_Size_So_Far.
+
       Prev_Idx  : Record_Info_Id := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
@@ -262,6 +283,7 @@ package body GNATLLVM.Records is
          Record_Info_Table.Table (Cur_Idx) :=
            (LLVM_Type    => T, GNAT_Type => TE,
             Next         => Empty_Record_Info_Id,
+            Next_Variant => Empty_Record_Info_Id,
             Use_Max_Size => Use_Max_Size);
 
          if Present (Prev_Idx) then

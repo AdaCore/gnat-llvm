@@ -553,7 +553,8 @@ package body GNATLLVM.Variables is
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_Ref   : constant Boolean   :=
-        Present (Addr_Expr) or else Is_Dynamic_Size (TE);
+        Present (Addr_Expr) or else Is_Dynamic_Size (TE)
+          or else Present (Renamed_Object (Def_Ident));
 
    begin
 

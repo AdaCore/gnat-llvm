@@ -1271,10 +1271,12 @@ package body GNATLLVM.Types is
 
    begin
       --  Use the type of right side unless its complexity is more
-      --  than that of the size of the type on the left side.
+      --  than that of the size of the type on the left side.  If the
+      --  LHS is a class wide equivalent type, we must use it.
 
       if Get_Type_Size_Complexity (Right_Type) >
         Get_Type_Size_Complexity (Left_Type)
+        or else Is_Class_Wide_Equivalent_Type (Left_Type)
       then
          return Get_Type_Size (Left_Type, Left_Value);
       else

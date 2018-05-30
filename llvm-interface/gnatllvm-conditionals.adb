@@ -411,21 +411,55 @@ package body GNATLLVM.Conditionals is
       end if;
    end Emit_Elementary_Comparison;
 
-   ---------------
-   -- Emit_Case --
-   ---------------
+   -------------------------
+   -- Emit_Case_Statement --
+   -------------------------
 
-   procedure Emit_Case (N : Node_Id) is
+   procedure Emit_Case_Statement (N : Node_Id) is
 
-      function Count_Choices (N : Node_Id) return Nat;
-      --  Count the total number of choices in this case statement.
+      Alts        : constant List_Id       := Alternatives (N);
+      Start_BB    : constant Basic_Block_T := Get_Insert_Block;
+      BB_End      : constant Basic_Block_T := Create_Basic_Block ("case-end");
+      Alt         : Node_Id                := First (Alts);
+      Current_Alt : Nat                    := 1;
+      BBs         : Basic_Block_Array (1 .. List_Length (Alts));
+
+   begin
+      --  First emit the code for each alternative and add its BB
+
+      while Present (Alt) loop
+         BBs (Current_Alt) := Create_Basic_Block ("case-alt");
+         Position_Builder_At_End (BBs (Current_Alt));
+         Emit (Statements (Alt));
+         Build_Br (BB_End);
+         Current_Alt := Current_Alt + 1;
+         Next (Alt);
+      end loop;
+
+      --  Now go back into our block, generate the statements to make the
+      --  choice, and position at the exit point of the statement.
+
+      Position_Builder_At_End (Start_BB);
+      Emit_Case_Code (Alts, Emit_Expression (Expression (N)), BBs);
+      Position_Builder_At_End (BB_End);
+   end Emit_Case_Statement;
+
+   --------------------
+   -- Emit_Case_Code --
+   --------------------
+
+   procedure Emit_Case_Code
+     (In_Alts : List_Id; LHS : GL_Value; In_BBs : Basic_Block_Array)
+   is
+      function Count_Choices (Alts : List_Id) return Nat;
+      --  Count the total number of choices in this case part
 
       -------------------
       -- Count_Choices --
       -------------------
 
-      function Count_Choices (N : Node_Id) return Nat is
-         Alt          : Node_Id := First (Alternatives (N));
+      function Count_Choices (Alts : List_Id) return Nat is
+         Alt          : Node_Id := First (Alts);
          First_Choice : Node_Id;
 
       begin
@@ -471,17 +505,13 @@ package body GNATLLVM.Conditionals is
          If_Cost, Switch_Cost      : Nat;
       end record;
 
-      Num_Alts         : constant Nat := List_Length (Alternatives (N));
-      Alts             : array (1 .. Num_Alts) of One_Alt;
-      Choices          : array (1 .. Count_Choices (N)) of One_Choice;
-      LHS              : constant GL_Value := Emit_Expression (Expression (N));
+      Num_Alts         : constant Nat      := List_Length (In_Alts);
       Typ              : constant Type_T   := Create_Type (Full_Etype (LHS));
-      Start_BB         : constant Basic_Block_T := Get_Insert_Block;
-      BB_End           : constant Basic_Block_T :=
-        Create_Basic_Block ("switch-end");
+      Current_Alt      : Nat               := 1;
+      Current_Choice   : Nat               := 1;
+      Alts             : array (1 .. Num_Alts) of One_Alt;
+      Choices          : array (1 .. Count_Choices (In_Alts)) of One_Choice;
       BB               : Basic_Block_T;
-      Current_Alt      : Nat := 1;
-      Current_Choice   : Nat := 1;
       First_Choice     : Nat;
       Alt, Choice      : Node_Id;
       Low, High        : Uint;
@@ -520,17 +550,11 @@ package body GNATLLVM.Conditionals is
 
    begin
       --  First we scan all the alternatives and choices and fill in most
-      --  of the data.  We emit the code for each alternative as part of
-      --  that process.
+      --  of the data.
 
-      Alt := First (Alternatives (N));
+      Alt := First (In_Alts);
       while Present (Alt) loop
          First_Choice := Current_Choice;
-         BB           := Create_Basic_Block ("case-alt");
-         Position_Builder_At_End (BB);
-         Emit (Statements (Alt));
-         Build_Br (BB_End);
-
          Choice := First (Discrete_Choices (Alt));
          if Nkind (Choice) = N_Others_Choice then
             Choice := First (Others_Discrete_Choices (Choice));
@@ -573,10 +597,11 @@ package body GNATLLVM.Conditionals is
             Switch_Cost := Switch_Cost + Choices (J).Switch_Cost;
          end loop;
 
-         Alts (Current_Alt) := (BB => BB, First_Choice => First_Choice,
-                                Last_Choice => Current_Choice - 1,
-                                If_Cost => If_Cost,
-                                Switch_Cost => Switch_Cost);
+         Alts (Current_Alt) := (BB           => In_BBs (Current_Alt),
+                                First_Choice => First_Choice,
+                                Last_Choice  => Current_Choice - 1,
+                                If_Cost      => If_Cost,
+                                Switch_Cost  => Switch_Cost);
          Current_Alt := Current_Alt + 1;
          Next (Alt);
       end loop;
@@ -588,7 +613,6 @@ package body GNATLLVM.Conditionals is
       --  alternatives is low enough (we use 100).  If so, use that approach.
 
       Swap_Highest_Cost (True);
-      Position_Builder_At_End (Start_BB);
       Switch_Cost := 0;
 
       for J in Alts'First .. Alts'Last - 1 loop
@@ -652,9 +676,7 @@ package body GNATLLVM.Conditionals is
             end loop;
          end loop;
       end if;
-
-      Position_Builder_At_End (BB_End);
-   end Emit_Case;
+   end Emit_Case_Code;
 
    -------------
    -- Emit_If --

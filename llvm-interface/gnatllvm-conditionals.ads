@@ -88,9 +88,17 @@ package GNATLLVM.Conditionals is
    --  Emit code to branch to BB_True or BB_False depending on whether LHS,
    --  which is of type Operand_Type, is in the range from Low to High.
 
-   procedure Emit_Case (N : Node_Id)
+   procedure Emit_Case_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Case_Statement;
-   --  Handle case statements
+   --  Handle a case statement
+
+   procedure Emit_Case_Code
+     (In_Alts : List_Id; LHS : GL_Value; In_BBs : Basic_Block_Array)
+     with Pre => Present (In_Alts) and then Present (LHS);
+   --  Emit the code for a case-like part, which can be either a case
+   --  statement or a computation related to a variant part of a record.
+   --  Alts is a list of alternates whose values are to be compared with
+   --  LHS.  If alternative J has a matching choice, branch to In_BBs (J).
 
    function Emit_Min_Max
      (Exprs : List_Id; Compute_Max : Boolean) return GL_Value

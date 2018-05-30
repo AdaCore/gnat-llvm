@@ -380,7 +380,7 @@ package body GNATLLVM.Compile is
             end case;
 
          when N_Case_Statement =>
-            Emit_Case (N);
+            Emit_Case_Statement (N);
 
          when N_Body_Stub =>
 

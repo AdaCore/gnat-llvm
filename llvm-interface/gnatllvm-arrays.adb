@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C; use Interfaces.C;
-
 with Sem_Eval; use Sem_Eval;
 with Stand;    use Stand;
 with Table;    use Table;

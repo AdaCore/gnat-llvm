@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C;            use Interfaces.C;
-
 with Errout;   use Errout;
 with Eval_Fat; use Eval_Fat;
 with Exp_Code; use Exp_Code;
@@ -75,7 +73,7 @@ package body GNATLLVM.Exprs is
             else
                declare
                   Val              : Ureal := Realval (N);
-                  FP_Num, FP_Denom : double;
+                  FP_Num, FP_Denom : Long_Float;
 
                begin
                   if UR_Is_Zero (Val) then
@@ -99,14 +97,14 @@ package body GNATLLVM.Exprs is
                   --  cases for now.
 
                   FP_Num :=
-                    double (UI_To_Long_Long_Integer (Numerator (Val)));
+                    Long_Float (UI_To_Long_Long_Integer (Numerator (Val)));
                   if UR_Is_Negative (Val) then
                      FP_Num := -FP_Num;
                   end if;
 
-                  FP_Denom :=
-                    2.0 ** (Integer (-UI_To_Int (Denominator (Val))));
-                  return Const_Real (TE, FP_Num * FP_Denom);
+                  FP_Denom := 2.0 ** Integer (-UI_To_Int (Denominator (Val)));
+                  return Const_Real (TE,
+                                     Interfaces.C.double (FP_Num * FP_Denom));
                end;
             end if;
 

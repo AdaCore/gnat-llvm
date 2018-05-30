@@ -249,7 +249,7 @@ package body GNATLLVM.Types is
             Val_Neg    : constant GL_Value :=
               F_Cmp (Real_OLT, V, Const_Real (V, 0.0));
             Adjust_Amt : constant GL_Value :=
-                Const_Real (V, double (PredHalf));
+                Const_Real (V, Interfaces.C.double (PredHalf));
             --  ??? The conversion to "double" above may be problematic,
             --  but it's not clear how else to get the constant to LLVM.
 

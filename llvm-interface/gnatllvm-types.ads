@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C;            use Interfaces.C;
-
 with Sinfo; use Sinfo;
 with Uintp; use Uintp;
 

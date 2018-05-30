@@ -17,8 +17,6 @@
 
 with Ada.Directories;
 
-with Interfaces.C; use Interfaces.C;
-
 with System;         use System;
 with System.Strings; use System.Strings;
 
@@ -165,7 +163,7 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".bc");
                begin
-                  if Write_Bitcode_To_File (LLVM_Module, S) /= 0 then
+                  if Integer (Write_Bitcode_To_File (LLVM_Module, S)) /= 0 then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
                end;

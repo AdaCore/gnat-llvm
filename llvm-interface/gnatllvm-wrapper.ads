@@ -17,8 +17,6 @@
 
 with System;
 
-with Interfaces.C; use Interfaces.C;
-
 package GNATLLVM.Wrapper is
 
    function Create_MDBuilder_In_Context (Ctx : Context_T) return MD_Builder_T;

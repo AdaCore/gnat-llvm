@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C;             use Interfaces.C;
-
 with Stand; use Stand;
 with Uintp; use Uintp;
 
@@ -624,7 +622,8 @@ package GNATLLVM.GLValue is
           Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
-   function Const_Real (TE : Entity_Id; V : double) return GL_Value
+   function Const_Real
+     (TE : Entity_Id; V : Interfaces.C.double) return GL_Value
      with Pre  => Is_Floating_Point_Type (TE),
           Post => Present (Const_Real'Result);
 
@@ -668,7 +667,9 @@ package GNATLLVM.GLValue is
      (Const_Int_32 (ULL (0)))
      with Post => Present (Const_Null_32'Result);
 
-   function Const_Real (V : GL_Value; F : double) return GL_Value is
+   function Const_Real
+     (V : GL_Value; F : Interfaces.C.double) return GL_Value
+   is
      (Const_Real (Etype (V), F))
      with Pre  => Is_Floating_Point_Type (V),
            Post => Present (Const_Real'Result);

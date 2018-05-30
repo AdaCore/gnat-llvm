@@ -17,8 +17,6 @@
 
 with Ada.Containers.Generic_Constrained_Array_Sort;
 
-with Interfaces.C;            use Interfaces.C;
-
 with Elists;   use Elists;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;

@@ -678,7 +678,8 @@ package body GNATLLVM.GLValue is
    -- Const_Real --
    ----------------
 
-   function Const_Real (TE : Entity_Id; V : double) return GL_Value
+   function Const_Real
+       (TE : Entity_Id; V : Interfaces.C.double) return GL_Value
    is
      (G (Const_Real (Create_Type (TE), V), TE));
 

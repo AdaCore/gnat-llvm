@@ -17,6 +17,7 @@
 
 with System;
 
+with Interfaces.C;
 with Interfaces.C.Extensions;
 
 with Atree; use Atree;
@@ -35,8 +36,18 @@ package GNATLLVM is
    --  package of LLVM with's this child, but that this with's no other
    --  children.
 
-   --  Define these here instead of use'ing Interfaces.C.Extensions because
-   --  the latter brings in a lot of junk that gets in the way.
+   --  Define unsigned and unsigned_long_long here instead of use'ing
+   --  Interfaces.C and Interfaces.C.Extensions because the latter brings
+   --  in a lot of junk that gets in the way and the former conflicts with
+   --  Int from the front end.
+
+   subtype unsigned is Interfaces.C.unsigned;
+   function "+" (L, R : unsigned) return unsigned renames Interfaces.C."+";
+   function "-" (L, R : unsigned) return unsigned renames Interfaces.C."-";
+   function "*" (L, R : unsigned) return unsigned renames Interfaces.C."*";
+   function "/" (L, R : unsigned) return unsigned renames Interfaces.C."/";
+   function "=" (L, R : unsigned) return Boolean  renames Interfaces.C."=";
+   function ">" (L, R : unsigned) return Boolean  renames Interfaces.C.">";
 
    subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
    function "+" (L, R : unsigned_long_long) return unsigned_long_long

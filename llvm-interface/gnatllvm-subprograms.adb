@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C;            use Interfaces.C;
-
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Sem_Util; use Sem_Util;

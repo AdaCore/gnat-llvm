@@ -84,7 +84,7 @@ package body GNATLLVM.Arrays is
 
    package For_Discr_Stack is new Table.Table
      (Table_Component_Type => For_Discr_Info,
-      Table_Index_Type     => Integer,
+      Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 5,
       Table_Increment      => 1,
@@ -116,7 +116,7 @@ package body GNATLLVM.Arrays is
    --  Helper function to create type for string literals
 
    function Bound_Complexity
-     (B : One_Bound; For_Type : Boolean) return Integer is
+     (B : One_Bound; For_Type : Boolean) return Nat is
       (if B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
        elsif For_Type then 1 else 2);
 
@@ -240,7 +240,7 @@ package body GNATLLVM.Arrays is
                           and then Relationship (V) /= Reference);
 
          Result := Extract_Value
-           (Dim_Info.Bound_Type, Get (V, Bounds), (1 => Integer (Bound_Idx)),
+           (Dim_Info.Bound_Type, Get (V, Bounds), (1 => Bound_Idx),
             (if Is_Low then "low-bound" else "high-bound"));
 
       end if;
@@ -305,9 +305,9 @@ package body GNATLLVM.Arrays is
    -------------------------------
 
    function Get_Array_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Natural
+     (TE : Entity_Id; For_Type : Boolean := False) return Nat
    is
-      Complexity  : Natural :=
+      Complexity  : Nat :=
         Get_Type_Size_Complexity (Full_Component_Type (TE), True);
       Info_Idx    : constant Nat := Get_Array_Info (TE);
 
@@ -623,7 +623,7 @@ package body GNATLLVM.Arrays is
       Value_So_Far   : GL_Value) return GL_Value
    is
       Comp_Type : constant Entity_Id := Full_Component_Type (Full_Etype (N));
-      Cur_Index : Integer            := 0;
+      Cur_Index : Nat                := 0;
       Cur_Value : GL_Value           := Value_So_Far;
       Expr      : Node_Id;
 
@@ -692,10 +692,10 @@ package body GNATLLVM.Arrays is
 
          begin
             Bound_Val := Insert_Value
-              (Bound_Val, Converted_Low_Bound, (1 => Integer (Dim * 2)));
+              (Bound_Val, Converted_Low_Bound, (1 => Dim * 2));
 
             Bound_Val := Insert_Value
-              (Bound_Val, Converted_High_Bound, (1 => Integer (Dim * 2 + 1)));
+              (Bound_Val, Converted_High_Bound, (1 => Dim * 2 + 1));
          end;
       end loop;
 
@@ -707,7 +707,7 @@ package body GNATLLVM.Arrays is
    -----------------------
 
    function Get_GEP_Safe_Type (V : GL_Value) return Entity_Id is
-      Int_Types : constant array (Integer range <>) of Entity_Id :=
+      Int_Types : constant array (Nat range <>) of Entity_Id :=
         (Standard_Short_Short_Integer, Standard_Short_Integer,
          Standard_Integer, Standard_Long_Integer, Standard_Long_Long_Integer);
       Our_Type  : constant Entity_Id := Full_Etype (V);

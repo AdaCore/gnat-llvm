@@ -91,12 +91,12 @@ package body GNATLLVM.Wrapper is
    function LLVM_Init_Module
      (Module   : LLVM.Types.Module_T;
       Filename : String;
-      Target   : String := "") return Integer
+      Target   : String := "") return Nat
    is
       function LLVM_Init_Module_C
         (Module   : LLVM.Types.Module_T;
          Filename : String;
-         Target   : System.Address) return Integer;
+         Target   : System.Address) return Nat;
       pragma Import (C, LLVM_Init_Module_C, "LLVM_Init_Module");
 
    begin
@@ -120,12 +120,12 @@ package body GNATLLVM.Wrapper is
    function LLVM_Write_Module
      (Module   : LLVM.Types.Module_T;
       Object   : Boolean;
-      Filename : String) return Integer
+      Filename : String) return Nat
    is
       function LLVM_Write_Module_C
         (Module   : LLVM.Types.Module_T;
-         Object   : Integer;
-         Filename : String) return Integer;
+         Object   : Int;
+         Filename : String) return Nat;
       pragma Import (C, LLVM_Write_Module_C, "LLVM_Write_Module");
 
    begin
@@ -148,14 +148,14 @@ package body GNATLLVM.Wrapper is
       Func           : Value_T;
       File           : Metadata_T;
       Name, Ext_Name : String;
-      Lineno         : Integer) return Metadata_T
+      Lineno         : Logical_Line_Number) return Metadata_T
    is
       function Create_Debug_Subprogram_C
         (Bld            : DI_Builder_T;
          Func           : Value_T;
          File           : Metadata_T;
          Name, Ext_Name : String;
-         Lineno         : Integer) return Metadata_T;
+         Lineno         : Logical_Line_Number) return Metadata_T;
       pragma Import (C, Create_Debug_Subprogram_C,
                      "Create_Debug_Subprogram_C");
    begin

@@ -60,7 +60,7 @@ package body GNATLLVM.Variables is
       E     : Entity_Id;
       --  One entity that's part of a duplicate set
 
-      Index : Integer;
+      Index : Nat;
       --  Ordinal saying which duplicate this is; if two entries have this
       --  same index, they represent the same duplicated interface name.
       --  This is the index into the Global_Dup_Value table.
@@ -68,7 +68,7 @@ package body GNATLLVM.Variables is
 
    package Global_Dup is new Table.Table
      (Table_Component_Type => Global_Dup_Entry,
-      Table_Index_Type     => Integer,
+      Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 20,
       Table_Increment      => 4,
@@ -76,13 +76,13 @@ package body GNATLLVM.Variables is
 
    package Global_Dup_Value is new Table.Table
      (Table_Component_Type => GL_Value,
-      Table_Index_Type     => Integer,
+      Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 5,
       Table_Increment      => 1,
       Table_Name           => "Global_Dup_Value_Table");
 
-   function Find_Dup_Entry (E : Entity_Id) return Integer
+   function Find_Dup_Entry (E : Entity_Id) return Nat
      with Pre => Present (E) and then not Is_Type (E);
    --  If E is present in the above table, returns the value of Index
    --  for that entry or 0 if not present.
@@ -110,7 +110,7 @@ package body GNATLLVM.Variables is
    -- Find_Dup_Entry --
    --------------------
 
-   function Find_Dup_Entry (E : Entity_Id) return Integer is
+   function Find_Dup_Entry (E : Entity_Id) return Nat is
    begin
       --  Don't even to search if we don't have an Interface_Name or
       --  do have an address clause, because those can't be in the list.
@@ -133,7 +133,7 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Get_Dup_Global_Value (E : Entity_Id) return GL_Value is
-      Idx : constant Integer := Find_Dup_Entry (E);
+      Idx : constant Nat := Find_Dup_Entry (E);
    begin
       return (if Idx = 0 then No_GL_Value else Global_Dup_Value.Table (Idx));
    end Get_Dup_Global_Value;
@@ -143,7 +143,7 @@ package body GNATLLVM.Variables is
    --------------------------
 
    procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value) is
-      Idx : constant Integer := Find_Dup_Entry (E);
+      Idx : constant Nat := Find_Dup_Entry (E);
    begin
       if Idx /= 0 then
          Global_Dup_Value.Table (Idx) := V;
@@ -155,7 +155,7 @@ package body GNATLLVM.Variables is
    -------------------------------
 
    function Get_Dup_Global_Is_Defined (E : Entity_Id) return Boolean is
-      Idx : constant Integer := Find_Dup_Entry (E);
+      Idx : constant Nat := Find_Dup_Entry (E);
    begin
       --  If this is not in the table, we have no external definition
 
@@ -195,13 +195,13 @@ package body GNATLLVM.Variables is
          E     : Entity_Id;
          --  An entity we've seen (the first)
 
-         Index : Integer;
+         Index : Nat;
          --  Index into Global_Dup_Value or 0 if none yet.
       end record;
 
       package Interface_Names is new Table.Table
         (Table_Component_Type => One_Interface_Name,
-         Table_Index_Type     => Integer,
+         Table_Index_Type     => Nat,
          Table_Low_Bound      => 1,
          Table_Initial        => 100,
          Table_Increment      => 10,

@@ -146,7 +146,7 @@ package body GNATLLVM.DebugInfo is
          return Create_Debug_Subprogram
            (DI_Builder, LLVM_Value (Func),
             Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
-            Name, Ext_Name, Integer (Get_Logical_Line_Number (Sloc (N))));
+            Name, Ext_Name, Get_Logical_Line_Number (Sloc (N)));
       else
          return No_Metadata_T;
       end if;
@@ -163,8 +163,8 @@ package body GNATLLVM.DebugInfo is
            (Create_Debug_Lexical_Block
               (DI_Builder, Current_Debug_Scope,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
-               Integer (Get_Logical_Line_Number (Sloc (N))),
-               Integer (Get_Column_Number (Sloc (N)))));
+               Get_Logical_Line_Number (Sloc (N)),
+               Get_Column_Number (Sloc (N))));
       end if;
    end Push_Lexical_Debug_Scope;
 
@@ -196,8 +196,8 @@ package body GNATLLVM.DebugInfo is
         and then Freeze_Pos_Level = 0
       then
          Set_Debug_Loc (IR_Builder, Current_Debug_Scope,
-                        Integer (Get_Logical_Line_Number (Sloc (N))),
-                        Integer (Get_Column_Number (Sloc (N))));
+                        Get_Logical_Line_Number (Sloc (N)),
+                        Get_Column_Number (Sloc (N)));
       end if;
    end Set_Debug_Pos_At_Node;
 

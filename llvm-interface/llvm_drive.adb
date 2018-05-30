@@ -72,7 +72,7 @@ package body LLVM_Drive is
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
-      Result : Integer;
+      Result : Nat;
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
@@ -173,7 +173,7 @@ package body LLVM_Drive is
                   subtype Err_Msg_Type is String (1 .. 1000);
                   S              : constant String := Output_File_Name (".ll");
                   Ptr_Err_Msg    : access Err_Msg_Type;
-                  Err_Msg_Length : Integer := Err_Msg_Type'Length;
+                  Err_Msg_Length : Integer         := Err_Msg_Type'Length;
 
                begin
                   if Print_Module_To_File (LLVM_Module, S, Ptr_Err_Msg'Address)

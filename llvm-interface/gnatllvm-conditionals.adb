@@ -202,9 +202,9 @@ package body GNATLLVM.Conditionals is
          declare
             Last_Dim       : constant Nat     :=
               Number_Dimensions (Full_Etype (LHS)) - 1;
-            LHS_Complexity : constant Natural :=
+            LHS_Complexity : constant Nat     :=
               Get_Array_Size_Complexity (Full_Etype (LHS));
-            RHS_Complexity : constant Natural :=
+            RHS_Complexity : constant Nat     :=
               Get_Array_Size_Complexity (Full_Etype (LHS));
             Our_LHS        : constant Node_Id :=
               (if LHS_Complexity > RHS_Complexity then LHS else RHS);
@@ -550,9 +550,8 @@ package body GNATLLVM.Conditionals is
                               or else not UI_Is_In_Int_Range (High)
                             then 1000
                             elsif If_Cost <= 1 then If_Cost
-                            elsif Integer (UI_To_Int (Low)) /= Integer'First
-                              and then Integer (UI_To_Int (High)) /=
-                                         Integer'Last
+                            elsif UI_To_Int (Low) /= Int'First
+                              and then UI_To_Int (High) /= Int'Last
                               and then UI_To_Int (High) - UI_To_Int (Low) <
                                          1000
                             then UI_To_Int (High) - UI_To_Int (Low) + 1

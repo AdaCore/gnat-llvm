@@ -1089,9 +1089,9 @@ package body GNATLLVM.Records is
    --------------------------------
 
    function Get_Record_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Natural
+     (TE : Entity_Id; For_Type : Boolean := False) return Nat
    is
-      Complexity : Natural        := 0;
+      Complexity : Nat            := 0;
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
 

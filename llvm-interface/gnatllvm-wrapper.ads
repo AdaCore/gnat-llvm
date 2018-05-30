@@ -73,7 +73,7 @@ package GNATLLVM.Wrapper is
    function LLVM_Init_Module
      (Module   : Module_T;
       Filename : String;
-      Target   : String := "") return Integer;
+      Target   : String := "") return Nat;
    --  Initialize the LLVM module. Returns 0 if it succeeds.
    --  Target is the target triple to generate code for. If empty, defaults
    --  to the default target LLVM is configured for.
@@ -81,7 +81,7 @@ package GNATLLVM.Wrapper is
    function LLVM_Write_Module
      (Module   : Module_T;
       Object   : Boolean;
-      Filename : String) return Integer;
+      Filename : String) return Nat;
 
    --  Functions for creating debug information
 
@@ -101,17 +101,22 @@ package GNATLLVM.Wrapper is
       Func           : Value_T;
       File           : Metadata_T;
       Name, Ext_Name : String;
-      Lineno         : Integer) return Metadata_T;
+      Lineno         : Logical_Line_Number) return Metadata_T;
 
    function Create_Debug_Lexical_Block
-     (Bld : DI_Builder_T; Scope, File : Metadata_T; Line, Column : Integer)
-     return Metadata_T;
+     (Bld         : DI_Builder_T;
+      Scope, File : Metadata_T;
+      Line        : Logical_Line_Number;
+      Column      : Column_Number) return Metadata_T;
    pragma Import (C, Create_Debug_Lexical_Block, "Create_Debug_Lexical_Block");
 
    procedure Finalize_Debug_Info (Bld : DI_Builder_T);
    pragma Import (C, Finalize_Debug_Info, "Finalize_Debug_Info");
 
    procedure Set_Debug_Loc
-     (Bld : Builder_T; Subp : Metadata_T; Line, Column : Integer);
+     (Bld    : Builder_T;
+      Subp   : Metadata_T;
+      Line   : Logical_Line_Number;
+      Column : Column_Number);
    pragma Import (C, Set_Debug_Loc, "Set_Debug_Loc");
 end GNATLLVM.Wrapper;

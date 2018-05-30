@@ -1165,7 +1165,7 @@ package GNATLLVM.GLValue is
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 
-   type Index_Array is array (Integer range <>) of Natural;
+   type Index_Array is array (Nat range <>) of Nat;
 
    function Extract_Value
      (Typ     : Entity_Id;
@@ -1247,8 +1247,8 @@ package GNATLLVM.GLValue is
    function Landing_Pad
      (T                : Type_T;
       Personality_Func : GL_Value;
-      Num_Clauses      : Integer := 5;
-      Name             : String  := "") return GL_Value
+      Num_Clauses      : Nat    := 5;
+      Name             : String := "") return GL_Value
    is
       (G (Landing_Pad (IR_Builder, T, LLVM_Value (Personality_Func),
                        unsigned (Num_Clauses), Name),

@@ -51,7 +51,7 @@ package GNATLLVM.Environment is
    --  stack itself is in GNATLLVM.Blocks.
 
    type Block_Info is record
-      Depth    : Integer;   --  Depth in the block stack
+      Depth    : Int;       --  Depth in the block stack
       In_Stmts : Boolean;   --  True if in statement part.
    end record;
 

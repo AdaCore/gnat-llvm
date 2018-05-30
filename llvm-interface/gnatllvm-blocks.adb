@@ -64,7 +64,7 @@ package body GNATLLVM.Blocks is
 
    package Block_Stack is new Table.Table
      (Table_Component_Type => Block_Info,
-      Table_Index_Type     => Integer,
+      Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 15,
       Table_Increment      => 5,
@@ -119,7 +119,7 @@ package body GNATLLVM.Blocks is
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
-   procedure Emit_One_Fixup (Blk : Integer; Do_At_End, Do_Stack : Boolean);
+   procedure Emit_One_Fixup (Blk : Nat; Do_At_End, Do_Stack : Boolean);
    --  Do one fixup when exiting Blk, saying whether to run "at end handler
    --  and whether to restore the stack pointer.
 
@@ -243,7 +243,7 @@ package body GNATLLVM.Blocks is
    -- Emit_One_Fixup --
    --------------------
 
-   procedure Emit_One_Fixup (Blk : Integer; Do_At_End, Do_Stack : Boolean) is
+   procedure Emit_One_Fixup (Blk : Nat; Do_At_End, Do_Stack : Boolean) is
       Block_Inf : constant Block_Info := Block_Stack.Table (Blk);
 
    begin

@@ -87,7 +87,7 @@ package GNATLLVM.Arrays is
    --  always Size_Type's width, but may actually be a different GNAT type.
 
    function Get_Array_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Natural
+     (TE : Entity_Id; For_Type : Boolean := False) return Nat
      with Pre => Is_Array_Type (TE);
    --  Return the complexity of computing the size of an array.  This roughly
    --  gives the number of "things" needed to access to compute the size.

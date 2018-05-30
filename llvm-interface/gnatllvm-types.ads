@@ -66,7 +66,7 @@ package GNATLLVM.Types is
    --  Find a value that's being computed by the current Emit_LValue
    --  recursion that has the same base type as T.
 
-   function Int_Ty (Num_Bits : Natural) return Type_T is
+   function Int_Ty (Num_Bits : Nat) return Type_T is
      (Int_Type (unsigned (Num_Bits)))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
 
@@ -328,7 +328,7 @@ package GNATLLVM.Types is
    --  Likewise, but compute strictest alignment in bits
 
    function Get_Type_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Natural
+     (TE : Entity_Id; For_Type : Boolean := False) return Nat
      with Pre  => Is_Type (TE);
    --  Return the complexity of computing the size of a type.  This roughly
    --  gives the number of "things" needed to access to compute the size.

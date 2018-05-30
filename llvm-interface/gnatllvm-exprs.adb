@@ -885,8 +885,8 @@ package body GNATLLVM.Exprs is
 
    procedure Emit_Code_Statement (N : Node_Id) is
       Template_Strval   : constant String_Id := Strval (Asm_Template (N));
-      Num_Inputs        : Integer            := 0;
-      Constraint_Length : Integer            := 0;
+      Num_Inputs        : Nat                := 0;
+      Constraint_Length : Nat                := 0;
       Output_Val        : GL_Value           := No_GL_Value;
       Output_Variable   : Node_Id;
       Output_Constraint : Node_Id;
@@ -902,9 +902,8 @@ package body GNATLLVM.Exprs is
 
       if Present (Output_Variable) then
          Output_Constraint := Asm_Output_Constraint;
-         Constraint_Length :=
-           Integer (String_Length (Strval (Output_Constraint)));
-         Output_Val := Emit_LValue (Output_Variable);
+         Constraint_Length := String_Length (Strval (Output_Constraint));
+         Output_Val        := Emit_LValue (Output_Variable);
          Next_Asm_Output;
 
          if Present (Asm_Output_Variable) then
@@ -921,7 +920,7 @@ package body GNATLLVM.Exprs is
       while Present (Input) loop
          Num_Inputs        := Num_Inputs + 1;
          Constraint_Length := Constraint_Length +
-           Integer (String_Length (Strval (Asm_Input_Constraint)));
+           String_Length (Strval (Asm_Input_Constraint));
          Next_Asm_Input;
          Input := Asm_Input_Value;
       end loop;
@@ -935,19 +934,22 @@ package body GNATLLVM.Exprs is
       Clobber := Clobber_Get_Next;
 
       while not System."=" (Clobber, System.Null_Address) loop
-         Constraint_Length := Constraint_Length + Name_Len + 4;
+         Constraint_Length := Constraint_Length + Nat (Name_Len) + 4;
          Clobber := Clobber_Get_Next;
       end loop;
 
       declare
-         Args           : GL_Value_Array (1 .. Nat (Num_Inputs));
-         Constraints    : String (1 .. Num_Inputs + Constraint_Length + 3);
-         Constraint_Pos : Integer := 0;
-         Input_Pos      : Nat := 0;
-         Need_Comma     : Boolean := False;
+         Args           : GL_Value_Array (1 .. Num_Inputs);
+         Constraint_Pos : Integer          := 0;
+         Input_Pos      : Nat              := 0;
+         Need_Comma     : Boolean          := False;
+         Constraint_Len : constant Integer :=
+           Integer (Num_Inputs + Constraint_Length + 3);
+         Template_Len   : constant Integer :=
+           Integer (String_Length (Template_Strval));
+         Constraints    : String (1 .. Constraint_Len);
+         Template       : String (1 .. Template_Len);
          Asm            : GL_Value;
-         Template       : String (1 .. Integer (String_Length
-                                                  (Template_Strval)));
 
          procedure Add_Char (C : Character);
          procedure Add_Constraint (N : Node_Id)
@@ -1019,9 +1021,9 @@ package body GNATLLVM.Exprs is
 
          --  Finally, build the template
 
-         for J in 1 .. String_Length (Template_Strval) loop
-            Template (Integer (J)) :=
-              Get_Character (Get_String_Char (Template_Strval, J));
+         for J in 1 .. Integer (String_Length (Template_Strval)) loop
+            Template (J) :=
+              Get_Character (Get_String_Char (Template_Strval, Int (J)));
          end loop;
 
          --  Now create the inline asm

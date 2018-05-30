@@ -52,7 +52,7 @@ package body GNATLLVM.Types is
 
    package LValue_Stack is new Table.Table
      (Table_Component_Type => Nat,
-      Table_Index_Type     => Integer,
+      Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 3,
       Table_Increment      => 2,
@@ -1290,7 +1290,7 @@ package body GNATLLVM.Types is
    ------------------------------
 
    function Get_Type_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Natural is
+     (TE : Entity_Id; For_Type : Boolean := False) return Nat is
    begin
 
       if Is_Record_Type (TE) then

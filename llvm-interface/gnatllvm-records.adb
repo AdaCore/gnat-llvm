@@ -44,7 +44,7 @@ package body GNATLLVM.Records is
    --  the record, but is used for chaining purposes, for example for
    --  variant record.
 
-   type Record_Info is record
+   type Record_Info_Base is record
       LLVM_Type    : Type_T;
       --  The LLVM type corresponding to this fragment, if any
 
@@ -64,10 +64,14 @@ package body GNATLLVM.Records is
       --  of that size for allocation purpose, so we need to flag that
       --  here.
    end record;
---     with Predicate => (No (LLVM_Type) or else No (GNAT_Type))
---                        and then (No (Next_Variant)
---                                    or else (No (LLVM_Type)
---                                               and then No (GNAT_Type)));
+   --  We want to put a Predicate on this, but can't, so we need to make
+   --  a subtype for that purpose.
+
+   function RI_Value_Is_Valid (RI : Record_Info_Base) return Boolean;
+   --  Return whether a Record_Info value is valid or not
+
+   subtype Record_Info is Record_Info_Base
+     with Predicate => RI_Value_Is_Valid (Record_Info);
 
    package Record_Info_Table is new Table.Table
      (Table_Component_Type => Record_Info,
@@ -141,6 +145,28 @@ package body GNATLLVM.Records is
           Post => Present (Get_Record_Size_So_Far'Result);
    --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
    --  or the last segment, whichever comes first.
+
+   ------------------------
+   --  RI_Value_Is_Valid --
+   ------------------------
+
+   function RI_Value_Is_Valid (RI : Record_Info_Base) return Boolean is
+   begin
+      --  This must be an LLVM Type, which is a struct, a GNAT type, or a
+      --  variant and only one of those.
+
+      if Present (RI.LLVM_Type) then
+         return No (RI.GNAT_Type) and then No (RI.Next_Variant)
+           and then Get_Type_Kind (RI.LLVM_Type) = Struct_Type_Kind;
+      elsif Present (RI.GNAT_Type) then
+         --  We already know that LLVM_Type isn't Present
+         return No (RI.Next_Variant);
+      else
+         --  ??? For now, empty is OK.
+         return True;
+--         return Present (RI.Next_Variant);
+      end if;
+   end RI_Value_Is_Valid;
 
    ---------------------
    --  Count_Entities --

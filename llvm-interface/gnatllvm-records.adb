@@ -126,19 +126,21 @@ package body GNATLLVM.Records is
      --  amout to which the resulting size is known to be aligned.  If the
      --  size isn't wanted, don't compute it.
 
+   procedure Get_RI_Info_For_Max_Size_Variant
+     (In_RI    : Record_Info;
+      Size        : out GL_Value;
+      Must_Align  : out unsigned;
+      Is_Align    : out unsigned;
+      Return_Size : Boolean := True);
+   --  Get informaton correspondind to the maxium size of the variant
+   --  described by In_RI.
+
    function Get_Variant_For_RI
      (In_RI : Record_Info; Need_Idx : Record_Info_Id) return Record_Info_Id
      with Pre => Present (Need_Idx);
    --  We are at RI when walking the description for a record and
    --  it has variants.  We're looking for Need_Idx.  If Need_Idx is an
    --  index in one of the variants, return that variant.
-
-   function Get_Variant_Size
-     (In_RI    : Record_Info;
-      V        : GL_Value;
-      For_Type : Boolean) return GL_Value;
-   --  Get the size of the variant described by In_RI.  V and For_Type
-   --  are like for othe size functions.
 
    function Get_Record_Size_So_Far
      (TE        : Entity_Id;
@@ -897,9 +899,8 @@ package body GNATLLVM.Records is
          --  different ways of computing the size.  The alignments here
          --  are a bit bogus.
 
-         This_Size  := Get_Variant_Size (RI, V, For_Type);
-         Is_Align   := unsigned (Get_Maximum_Alignment);
-         Must_Align := 1;
+         Get_RI_Info_For_Max_Size_Variant (RI, This_Size, Must_Align, Is_Align,
+                                           Return_Size);
 
       else
          Must_Align := 1;
@@ -949,19 +950,18 @@ package body GNATLLVM.Records is
       return Empty_Record_Info_Id;
    end Get_Variant_For_RI;
 
-   ----------------------
-   -- Get_Variant_Size --
-   ----------------------
+   --------------------------------------
+   -- Get_RI_Info_For_Max_Size_Variant --
+   --------------------------------------
 
-   function Get_Variant_Size
+   procedure Get_RI_Info_For_Max_Size_Variant
      (In_RI    : Record_Info;
-      V        : GL_Value;
-      For_Type : Boolean) return GL_Value
+      Size        : out GL_Value;
+      Must_Align  : out unsigned;
+      Is_Align    : out unsigned;
+      Return_Size : Boolean := True)
    is
-      pragma Unreferenced (V);
-      pragma Unreferenced (For_Type);
-
-      First      : Boolean := True;
+      First      : Boolean      := True;
       End_BB     : Basic_Block_T;
       Next_BB    : Basic_Block_T;
       This_BB    : Basic_Block_T;
@@ -970,22 +970,22 @@ package body GNATLLVM.Records is
       Idx        : Record_Info_Id;
 
    begin
-      --  ??? For now, we use the maxium size of the record rather than looking
-      --  at the discriminant to get the actual size.
-
       --  We need to compute the maximum size of each discriminant.  We set
-      --  Max_So_Far to the size of the first variant and then see if any is
-      --  larger.  Handle the case where the variant is empty.
-      --  ?? Always get the max size here.  We need to better understand
-      --  the implications of the different ways of computing the size.
-
-      --  If there is only one variant, we just use its size.  We need to
+      --  Max_So_Far to the size of the first variant and then see if any
+      --  is larger.  Handle the case where the variant is empty.  If there
+      --  is only one variant, we just use its size.  We need to
       --  special-case this to avoid generating empty basic blocks.
 
       if In_RI.Variants'Length = 1 then
-         return Get_Record_Size_So_Far (Empty, No_GL_Value,
-                                        In_RI.Variants (In_RI.Variants'First),
-                                        Empty_Record_Info_Id, True);
+         if Return_Size then
+            Size := Get_Record_Size_So_Far
+              (Empty, No_GL_Value, In_RI.Variants (In_RI.Variants'First),
+               Empty_Record_Info_Id, True);
+         end if;
+
+         Must_Align := unsigned (Get_Maximum_Alignment);
+         Is_Align   := 1;
+         return;
       end if;
 
       End_BB := Create_Basic_Block;
@@ -1009,8 +1009,16 @@ package body GNATLLVM.Records is
          end if;
       end loop;
 
-      return Get (Max_So_Far, Data);
-   end Get_Variant_Size;
+      --  Get and return final results.  We might be able to do better with
+      --  alignments here, but that's not clear.
+
+      Must_Align := unsigned (Get_Maximum_Alignment);
+      Is_Align   := 1;
+      if Return_Size then
+         Size := Get (Max_So_Far, Data);
+      end if;
+
+   end Get_RI_Info_For_Max_Size_Variant;
 
    ----------------------------
    -- Get_Record_Size_So_Far --

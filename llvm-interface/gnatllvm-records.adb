@@ -117,21 +117,37 @@ package body GNATLLVM.Records is
       V           : GL_Value;
       For_Type    : Boolean;
       Size        : out GL_Value;
-      Must_Align  : out unsigned;
-      Is_Align    : out unsigned;
+      Must_Align  : out GL_Value;
+      Is_Align    : out GL_Value;
       Return_Size : Boolean := True)
-     with Post => not Return_Size or else Present (Size);
+     with Post => (not Return_Size or else Present (Size))
+                  and then Present (Must_Align) and then Present (Is_Align);
      --  Return information about a record fragment RI.  This includes is
      --  size, the amount to which this fragment must be aligned, and the
      --  amout to which the resulting size is known to be aligned.  If the
      --  size isn't wanted, don't compute it.
 
+--   procedure Get_RI_Info_For_Variant
+--     (RI          : Record_Info;
+--      V           : GL_Value;
+--      Size        : out GL_Value;
+--      Must_Align  : out GL_Value;
+--      Is_Align    : out GL_Value;
+--      Return_Size : Boolean := True)
+--     with Pre  => RI.Variants /= null,
+--          Post => not Return_Size or else Present (Size);
+   --  Like Get_RI_Info, but for a fragment known to be a variant and
+   --  where we're not getting the maximum size.
+
    procedure Get_RI_Info_For_Max_Size_Variant
-     (In_RI    : Record_Info;
+     (RI         : Record_Info;
       Size        : out GL_Value;
-      Must_Align  : out unsigned;
-      Is_Align    : out unsigned;
-      Return_Size : Boolean := True);
+      Must_Align  : out GL_Value;
+      Is_Align    : out GL_Value;
+      Return_Size : Boolean := True)
+     with Pre  => RI.Variants /= null,
+          Post => (not Return_Size or else Present (Size))
+                  and then Present (Must_Align) and then Present (Is_Align);
    --  Get informaton correspondind to the maxium size of the variant
    --  described by In_RI.
 
@@ -809,8 +825,8 @@ package body GNATLLVM.Records is
       V           : GL_Value;
       For_Type    : Boolean;
       Size        : out GL_Value;
-      Must_Align  : out unsigned;
-      Is_Align    : out unsigned;
+      Must_Align  : out GL_Value;
+      Is_Align    : out GL_Value;
       Return_Size : Boolean := True)
    is
       T         : constant Type_T      := RI.LLVM_Type;
@@ -823,8 +839,8 @@ package body GNATLLVM.Records is
 
       if Present (T) and then Get_LLVM_Type_Size (T) = ULL (0) then
             This_Size  := Size_Const_Null;
-            Must_Align := Get_Type_Alignment (T);
-            Is_Align   := Get_Type_Alignment (T);
+            Must_Align := Size_Const_Int (Get_Type_Alignment (T));
+            Is_Align   := Size_Const_Int (Get_Type_Alignment (T));
 
       elsif Present (T) then
 
@@ -874,15 +890,15 @@ package body GNATLLVM.Records is
               Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
 
          begin
-            Must_Align := Get_Type_Alignment (T);
-            Is_Align   := Get_Type_Alignment (Last_Type);
+            Must_Align := Size_Const_Int (Get_Type_Alignment (T));
+            Is_Align   := Size_Const_Int (Get_Type_Alignment (Last_Type));
             This_Size  := Size_Const_Int (Last_Offset + Last_Size);
          end;
 
       --  The GNAT type case is easy
 
       elsif Present (TE) then
-         Must_Align := Get_Type_Alignment (TE);
+         Must_Align := Size_Const_Int (Get_Type_Alignment (TE));
          Is_Align   := Must_Align;
          This_Size  := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
 
@@ -903,8 +919,8 @@ package body GNATLLVM.Records is
                                            Return_Size);
 
       else
-         Must_Align := 1;
-         Is_Align   := unsigned (Get_Maximum_Alignment);
+         Must_Align := Size_Const_Int (Uint_1);
+         Is_Align   := Size_Const_Int (ULL (Get_Maximum_Alignment));
          This_Size  := Size_Const_Null;
       end if;
 
@@ -950,15 +966,30 @@ package body GNATLLVM.Records is
       return Empty_Record_Info_Id;
    end Get_Variant_For_RI;
 
+   -----------------------------
+   -- Get_RI_Info_For_Variant --
+   -----------------------------
+
+--   procedure Get_RI_Info_For_Variant
+--     (RI          : Record_Info;
+--      V           : GL_Value;
+--      Size        : out GL_Value;
+--      Must_Align  : out unsigned;
+--      Is_Align    : out unsigned;
+--      Return_Size : Boolean := True)
+--   is
+--      Num_Alts : constant Nat := List_Length (RI.Variant_List
+--      BBs : Basic_Block_Array (1 .. Num_Alts));
+--      Must_Aligns :
    --------------------------------------
    -- Get_RI_Info_For_Max_Size_Variant --
    --------------------------------------
 
    procedure Get_RI_Info_For_Max_Size_Variant
-     (In_RI    : Record_Info;
+     (RI          : Record_Info;
       Size        : out GL_Value;
-      Must_Align  : out unsigned;
-      Is_Align    : out unsigned;
+      Must_Align  : out GL_Value;
+      Is_Align    : out GL_Value;
       Return_Size : Boolean := True)
    is
       First      : Boolean      := True;
@@ -976,28 +1007,28 @@ package body GNATLLVM.Records is
       --  is only one variant, we just use its size.  We need to
       --  special-case this to avoid generating empty basic blocks.
 
-      if In_RI.Variants'Length = 1 then
+      if RI.Variants'Length = 1 then
          if Return_Size then
             Size := Get_Record_Size_So_Far
-              (Empty, No_GL_Value, In_RI.Variants (In_RI.Variants'First),
+              (Empty, No_GL_Value, RI.Variants (RI.Variants'First),
                Empty_Record_Info_Id, True);
          end if;
 
-         Must_Align := unsigned (Get_Maximum_Alignment);
-         Is_Align   := 1;
+         Must_Align := Size_Const_Int (ULL (Get_Maximum_Alignment));
+         Is_Align   := Size_Const_Int (Uint_1);
          return;
       end if;
 
       End_BB := Create_Basic_Block;
-      for J in In_RI.Variants'Range loop
-         Idx := In_RI.Variants (J);
-         Var_Size   := Get_Record_Size_So_Far (Empty, No_GL_Value, Idx,
+      for J in RI.Variants'Range loop
+         Idx := RI.Variants (J);
+         Var_Size  := Get_Record_Size_So_Far (Empty, No_GL_Value, Idx,
                                                Empty_Record_Info_Id, True);
          if First then
             Max_So_Far := Allocate_For_Type (Size_Type, Size_Type, Var_Size);
             First      := False;
          else
-            Next_BB  := (if J = In_RI.Variants'Last
+            Next_BB  := (if J = RI.Variants'Last
                          then End_BB else Create_Basic_Block);
             This_BB  := Create_Basic_Block;
             Build_Cond_Br (I_Cmp (Int_SGT, Var_Size, Get (Max_So_Far, Data)),
@@ -1012,8 +1043,8 @@ package body GNATLLVM.Records is
       --  Get and return final results.  We might be able to do better with
       --  alignments here, but that's not clear.
 
-      Must_Align := unsigned (Get_Maximum_Alignment);
-      Is_Align   := 1;
+      Must_Align := Size_Const_Int (ULL (Get_Maximum_Alignment));
+      Is_Align   := Size_Const_Int (Uint_1);
       if Return_Size then
          Size := Get (Max_So_Far, Data);
       end if;
@@ -1032,13 +1063,14 @@ package body GNATLLVM.Records is
       For_Type  : Boolean := False) return GL_Value
    is
       Total_Size : GL_Value       := Size_Const_Null;
-      Cur_Align  : unsigned       := unsigned (Get_Maximum_Alignment);
+      Cur_Align  : GL_Value       :=
+        Size_Const_Int (ULL (Get_Maximum_Alignment));
       Cur_Idx    : Record_Info_Id :=
         (if Present (Start_Idx) then Start_Idx elsif Present (TE)
          then Get_Record_Info (TE) else Empty_Record_Info_Id);
       This_Size  : GL_Value       := No_GL_Value;
-      Must_Align : unsigned       := 1;
-      This_Align : unsigned;
+      Must_Align : GL_Value       := Size_Const_Int (Uint_1);
+      This_Align : GL_Value;
       New_Idx    : Record_Info_Id;
       RI         : Record_Info;
 
@@ -1058,7 +1090,7 @@ package body GNATLLVM.Records is
       --  show what alignment we now have.
 
       while Present (Cur_Idx) and then Cur_Idx /= Idx loop
-         RI         := Record_Info_Table.Table (Cur_Idx);
+         RI := Record_Info_Table.Table (Cur_Idx);
 
          --  If we're reached a variant point, we have two cases.  We could
          --  be looking for a specific RI index, in which case we see which
@@ -1073,9 +1105,25 @@ package body GNATLLVM.Records is
             Total_Size := NSW_Add (Align_To (Total_Size, Cur_Align,
                                              Must_Align),
                                    This_Size);
-            Cur_Align  := unsigned'Min (This_Align,
-                                        unsigned'Max (Cur_Align, Must_Align));
-            Cur_Idx    := RI.Next;
+
+            --  The resulting alignment is the minimum of this alignment
+            --  and the maximum of the current alignment and what we had
+            --  to align to.
+
+            declare
+               Cur_GT_Max : constant GL_Value :=
+                 I_Cmp (Int_SGT, Cur_Align, Must_Align);
+               Max_Cur_Must : constant GL_Value :=
+                 Build_Select (Cur_GT_Max, Cur_Align, Must_Align);
+               This_LT_Max : constant GL_Value :=
+                 I_Cmp (Int_SLT, This_Align, Max_Cur_Must);
+
+            begin
+               Cur_Align :=
+                 Build_Select (This_LT_Max, This_Align, Max_Cur_Must);
+            end;
+
+            Cur_Idx := RI.Next;
          end if;
       end loop;
 
@@ -1094,7 +1142,7 @@ package body GNATLLVM.Records is
          Get_RI_Info (Record_Info_Table.Table (Idx), No_GL_Value, False,
                       This_Size, Must_Align, This_Align, Return_Size => False);
       elsif Present (TE) then
-         Must_Align := Get_Type_Alignment (TE);
+         Must_Align := Size_Const_Int (ULL (Get_Type_Alignment (TE)));
       end if;
 
       Pop_Debug_Freeze_Pos;

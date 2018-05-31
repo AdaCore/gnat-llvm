@@ -495,8 +495,9 @@ package body GNATLLVM.Arrays is
    function Get_Bound_Size (TE : Entity_Id) return GL_Value is
       T : constant Type_T := Create_Array_Bounds_Type (TE);
    begin
-      return Align_To (Get_LLVM_Type_Size (T), Get_Type_Alignment (T),
-                       Get_Type_Alignment (TE));
+      return Align_To (Get_LLVM_Type_Size (T),
+                       Size_Const_Int (ULL (Get_Type_Alignment (T))),
+                       Size_Const_Int (ULL (Get_Type_Alignment (TE))));
    end Get_Bound_Size;
 
    ------------------------

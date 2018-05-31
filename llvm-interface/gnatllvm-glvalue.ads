@@ -1310,10 +1310,20 @@ package GNATLLVM.GLValue is
      --  Add a global to the environment which is of type TE, so the global
      --  itself represents the address of TE.
 
+   function Get_Const_Int_Value (V : GL_Value) return ULL is
+     (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
+      with Pre => Is_A_Const_Int (V);
+   --  V is a constant integer; get its value
+
    function Is_A_Global_Variable (V : GL_Value) return Boolean is
      (Present (Is_A_Global_Variable (LLVM_Value (V))))
      with Pre => Present (V);
    --  Return True if V is a global variable
+
+   function Is_A_Const_Int (V : GL_Value) return Boolean is
+     (Present (Is_A_Constant_Int (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a constant integer
 
    function Is_A_Function (V : GL_Value) return Boolean is
      (Present (Is_A_Function (LLVM_Value (V))))

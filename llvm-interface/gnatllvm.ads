@@ -42,26 +42,29 @@ package GNATLLVM is
    --  Int from the front end.
 
    subtype unsigned is Interfaces.C.unsigned;
-   function "+" (L, R : unsigned) return unsigned renames Interfaces.C."+";
-   function "-" (L, R : unsigned) return unsigned renames Interfaces.C."-";
-   function "*" (L, R : unsigned) return unsigned renames Interfaces.C."*";
-   function "/" (L, R : unsigned) return unsigned renames Interfaces.C."/";
-   function "=" (L, R : unsigned) return Boolean  renames Interfaces.C."=";
-   function ">" (L, R : unsigned) return Boolean  renames Interfaces.C.">";
+   function "+" (L, R : unsigned)  return unsigned renames Interfaces.C."+";
+   function "-" (L, R : unsigned)  return unsigned renames Interfaces.C."-";
+   function "*" (L, R : unsigned)  return unsigned renames Interfaces.C."*";
+   function "/" (L, R : unsigned)  return unsigned renames Interfaces.C."/";
+   function "=" (L, R : unsigned)  return Boolean  renames Interfaces.C."=";
+   function ">" (L, R : unsigned)  return Boolean  renames Interfaces.C.">";
+   function "<=" (L, R : unsigned) return Boolean  renames Interfaces.C."<=";
 
    subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
-   function "+" (L, R : unsigned_long_long) return unsigned_long_long
+   function "+" (L, R : unsigned_long_long)  return unsigned_long_long
      renames Interfaces.C.Extensions."+";
-   function "-" (L, R : unsigned_long_long) return unsigned_long_long
+   function "-" (L, R : unsigned_long_long)  return unsigned_long_long
      renames Interfaces.C.Extensions."-";
-   function "*" (L, R : unsigned_long_long) return unsigned_long_long
+   function "*" (L, R : unsigned_long_long)  return unsigned_long_long
      renames Interfaces.C.Extensions."*";
-   function "/" (L, R : unsigned_long_long) return unsigned_long_long
+   function "/" (L, R : unsigned_long_long)  return unsigned_long_long
      renames Interfaces.C.Extensions."/";
-   function "=" (L, R : unsigned_long_long) return Boolean
+   function "=" (L, R : unsigned_long_long)  return Boolean
      renames Interfaces.C.Extensions."=";
-   function ">" (L, R : unsigned_long_long) return Boolean
+   function ">" (L, R : unsigned_long_long)  return Boolean
      renames Interfaces.C.Extensions.">";
+   function "<=" (L, R : unsigned_long_long) return Boolean
+     renames Interfaces.C.Extensions."<=";
 
    subtype ULL is unsigned_long_long;
    --  Define shorter alias name for easier reading

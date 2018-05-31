@@ -1160,14 +1160,21 @@ package body GNATLLVM.Types is
    -- Align_To --
    --------------
 
-   function Align_To
-     (V : GL_Value; Cur_Align, Must_Align : unsigned) return GL_Value is
+   function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value is
    begin
-      if Must_Align > Cur_Align then
-         return Build_And (NSW_Add (V, Const_Int (V, Must_Align - 1)),
-                           NSW_Neg (Const_Int (V, Must_Align)));
-      else
+      --  If both alignments are constant and we can determine that we
+      --  needn't do any alignment, do nothing.  Otherwise, align.
+
+      if Is_A_Const_Int (Cur_Align) and then Is_A_Const_Int (Must_Align)
+        and then (Get_Const_Int_Value (Must_Align)
+                    <= Get_Const_Int_Value (Cur_Align))
+      then
          return V;
+      else
+         return Build_And (NSW_Add (V,
+                                    NSW_Sub (Must_Align,
+                                             Size_Const_Int (Uint_1))),
+                           NSW_Neg (Must_Align));
       end if;
    end Align_To;
 

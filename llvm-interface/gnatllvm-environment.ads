@@ -32,6 +32,8 @@ package GNATLLVM.Environment is
    First_Record_Info_Id   : constant Record_Info_Id := Record_Info_Low_Bound;
    Empty_Record_Info_Id   : constant Record_Info_Id := First_Record_Info_Id;
 
+   type Record_Info_Id_Array is array (Nat range <>) of Record_Info_Id;
+
    Field_Info_Low_Bound  : constant := 400_000_000;
    Field_Info_High_Bound : constant := 499_999_999;
    type Field_Info_Id is range Field_Info_Low_Bound .. Field_Info_High_Bound;

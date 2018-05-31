@@ -54,9 +54,15 @@ package body GNATLLVM.Records is
       Next         : Record_Info_Id;
       --  Link to the next Record_Info entry for this record or variant
 
-      Next_Variant : Record_Info_Id;
-      --  Link to next variant for this record.  If specified, this fragment
-      --  must be empty.
+      Variant_List : List_Id;
+      --  List in GNAT tree of the variants for this fragment
+
+      Variant_Expr : Node_Id;
+      --  Expression to evaluate to determine which variant is present
+
+      Variants     : access Record_Info_Id_Array;
+      --  Pointer to array of Record_Info_Ids representing the variants,
+      --  which must be in the same order as in Variant_List.
 
       Use_Max_Size : Boolean;
       --  In the case where a record's type is a record type (as opposed to
@@ -120,20 +126,18 @@ package body GNATLLVM.Records is
      --  size isn't wanted, don't compute it.
 
    function Get_Variant_For_RI
-     (Cur_Idx, Need_Idx : Record_Info_Id) return Record_Info_Id
-     with Pre => Present (Cur_Idx) and then Present (Need_Idx);
-   --  We are at Cur_Idx when walking the description for a record and
+     (In_RI : Record_Info; Need_Idx : Record_Info_Id) return Record_Info_Id
+     with Pre => Present (Need_Idx);
+   --  We are at RI when walking the description for a record and
    --  it has variants.  We're looking for Need_Idx.  If Need_Idx is an
    --  index in one of the variants, return that variant.
 
    function Get_Variant_Size
-     (TE       : Entity_Id;
-      Var_Idx  : Record_Info_Id;
+     (In_RI    : Record_Info;
       V        : GL_Value;
-      For_Type : Boolean) return GL_Value
-     with Pre => Is_Record_Type (TE);
-   --  Get the size of the variant of type TE starting at Var_Idx.  V and
-   --  For_Type are like for othe size functions.
+      For_Type : Boolean) return GL_Value;
+   --  Get the size of the variant described by In_RI.  V and For_Type
+   --  are like for othe size functions.
 
    function Get_Record_Size_So_Far
      (TE        : Entity_Id;
@@ -141,10 +145,11 @@ package body GNATLLVM.Records is
       Start_Idx : Record_Info_Id;
       Idx       : Record_Info_Id;
       For_Type  : Boolean := False) return GL_Value
-     with Pre  => Present (TE),
-          Post => Present (Get_Record_Size_So_Far'Result);
+     with Post => Present (Get_Record_Size_So_Far'Result);
    --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
-   --  or the last segment, whichever comes first.
+   --  or the last segment, whichever comes first.  If TE is Present, it
+   --  provides the default for Start_Idx and also requests alignment to
+   --  TE's alignment if we're looking for the size.
 
    ------------------------
    --  RI_Value_Is_Valid --
@@ -156,15 +161,17 @@ package body GNATLLVM.Records is
       --  variant and only one of those.
 
       if Present (RI.LLVM_Type) then
-         return No (RI.GNAT_Type) and then No (RI.Next_Variant)
+         return No (RI.GNAT_Type) and then RI.Variants = null
            and then Get_Type_Kind (RI.LLVM_Type) = Struct_Type_Kind;
       elsif Present (RI.GNAT_Type) then
          --  We already know that LLVM_Type isn't Present
-         return No (RI.Next_Variant);
+
+         return RI.Variants = null;
       else
-         --  ??? For now, empty is OK.
-         return True;
---         return Present (RI.Next_Variant);
+         --  Here we know that neither type is Present
+
+         return Present (RI.Variant_List) and then Present (RI.Variant_Expr)
+           and then RI.Variants /= null;
       end if;
    end RI_Value_Is_Valid;
 
@@ -203,6 +210,9 @@ package body GNATLLVM.Records is
       Prev_Idx    : Record_Info_Id := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
+      First_Idx   : Record_Info_Id := Empty_Record_Info_Id;
+      --  The first index used by the current call
+
       Cur_Idx     : Record_Info_Id;
       --  The index of the record table entry we're building
 
@@ -239,10 +249,12 @@ package body GNATLLVM.Records is
       --  the same order as they are in the list.
 
       procedure Add_RI
-        (T            : Type_T := No_Type_T;
-         Typ          : Entity_Id := Empty;
-         Use_Max_Size : Boolean := False)
-        with Pre => No (T) or else No (Typ);
+        (T            : Type_T                      := No_Type_T;
+         Typ          : Entity_Id                   := Empty;
+         Variant_List : List_Id                     := No_List;
+         Variant_Expr : Node_Id                     := Empty;
+         Variants     : access Record_Info_Id_Array := null;
+         Use_Max_Size : Boolean                     := False);
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat)
@@ -326,9 +338,12 @@ package body GNATLLVM.Records is
       ------------
 
       procedure Add_RI
-        (T            : Type_T := No_Type_T;
-         Typ          : Entity_Id := Empty;
-         Use_Max_Size : Boolean := False) is
+        (T            : Type_T                      := No_Type_T;
+         Typ          : Entity_Id                   := Empty;
+         Variant_List : List_Id                     := No_List;
+         Variant_Expr : Node_Id                     := Empty;
+         Variants     : access Record_Info_Id_Array := null;
+         Use_Max_Size : Boolean                     := False) is
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
          --  but we may not actually end up using that one.
@@ -337,11 +352,15 @@ package body GNATLLVM.Records is
            (LLVM_Type    => T,
             GNAT_Type    => Typ,
             Next         => Empty_Record_Info_Id,
-            Next_Variant => Empty_Record_Info_Id,
+            Variant_List => Variant_List,
+            Variant_Expr => Variant_Expr,
+            Variants     => Variants,
             Use_Max_Size => Use_Max_Size);
 
          if Present (Prev_Idx) then
             Record_Info_Table.Table (Prev_Idx).Next := Cur_Idx;
+         else
+            First_Idx := Cur_Idx;
          end if;
 
          Prev_Idx := Cur_Idx;
@@ -408,7 +427,7 @@ package body GNATLLVM.Records is
          --  True if TE statically constrains the discriminant of Part
 
          procedure Add_Component_List
-           (List : Node_Id; From_Rec : Entity_Id; Name : Name_Id)
+           (List : Node_Id; From_Rec : Entity_Id; F_Name : Name_Id)
            with Pre => (No (List) or else Nkind (List) = N_Component_List)
                        and then (No (From_Rec)
                                    or else Is_Record_Type (From_Rec));
@@ -461,21 +480,27 @@ package body GNATLLVM.Records is
          ------------------------
 
          procedure Add_Component_List
-           (List : Node_Id; From_Rec : Entity_Id; Name : Name_Id)
+           (List : Node_Id; From_Rec : Entity_Id; F_Name : Name_Id)
          is
-            Prev_Variant_Idx   : Record_Info_Id   := Empty_Record_Info_Id;
             Var_Part           : constant Node_Id :=
               (if Present (List) then Variant_Part (List) else Empty);
             Constrains_Variant : constant Boolean :=
               Present (From_Rec) and then Present (Var_Part)
               and then Statically_Constrains (From_Rec, Var_Part);
+            Var_Array          : access Record_Info_Id_Array;
+            Saved_Cur_Idx      : Record_Info_Id;
+            Saved_Prev_Idx     : Record_Info_Id;
+            Saved_Align        : unsigned;
             Component_Def      : Node_Id;
             Field              : Entity_Id;
             Field_To_Add       : Entity_Id;
             Variant            : Node_Id;
-            Save_Align         : unsigned;
+            J                  : Nat;
 
          begin
+            --  Return quickly if nothing to do.  Otherwise, walk the component
+            --  list looking for a field matching the name given to us.
+
             if No (List) then
                return;
             end if;
@@ -483,7 +508,7 @@ package body GNATLLVM.Records is
             Component_Def := First_Non_Pragma (Component_Items (List));
             while Present (Component_Def) loop
                Field := Defining_Identifier (Component_Def);
-               if Matches_Name (Field, Name) then
+               if Matches_Name (Field, F_Name) then
                   Field_To_Add := Field;
                   if Present (From_Rec) then
                      Field_To_Add :=
@@ -502,62 +527,81 @@ package body GNATLLVM.Records is
                Next_Non_Pragma (Component_Def);
             end loop;
 
-            --  Now process variants.  We create a set of empty Record_Info
-            --  fragments, one for each variant.  However, if this is a
-            --  subtype that statically constrains this discriminant, we
-            --  just take the fields from the subtype, so do nothing
-            --  special about te variant structure.
+            --  Done if either we're doing special names or there are no
+            --  variants in this record.
 
-            if No (Name) and then Present (Var_Part) then
-               Variant    := First (Variants (Var_Part));
-               Save_Align := Last_Align;
-               if not Constrains_Variant then
-                  Flush_Current_Types;
-                  Set_Is_Dynamic_Size (TE);
-               end if;
+            if Present (F_Name) or else No (Var_Part) then
+               return;
+            end if;
 
+            --  Otherwise process variants.  If we constrain the variant,
+            --  just output all the fields in the variant (??? we could
+            --  walk the proper variant here to verify that everything is
+            --  in the same order).  Otherwise, create an RI for the
+            --  variant and then make the entres for each variant.
+
+            Variant := First (Variants (Var_Part));
+            if Constrains_Variant then
                while Present (Variant) loop
-
-                  if Constrains_Variant then
-                     Add_Component_List (Component_List (Variant),
-                                         From_Rec, No_Name);
-                  else
-                     --  We create an RI for this variant.  The first one
-                     --  will be chained via the Prev_Idx setting (or be
-                     --  the initial in the record if this is an
-                     --  Unchecked_Union) and via Next_Variant if it's not
-                     --  the first variant.
-
-                     --  We have a potential alignment issue here.  Suppose
-                     --  the last fragment was { i32, i8 }.  And suppose we
-                     --  have a variant that starts with { i8, i32 }.  That
-                     --  type has an alignment of 4, so that fragment would
-                     --  as well.  But the subtype will be
-                     --
-                     --              { i32, i8, i8, i32 }
-                     --
-                     --  with the third field at and offset of 6, not 8. So
-                     --  we need to split that and make two fragments, one
-                     --  { i8 } and one { i32 }.  We do this via
-                     --  Split_Align.
-
-                     Split_Align := Save_Align;
-                     Add_RI;
-                     if Present (Prev_Variant_Idx) then
-                        Record_Info_Table.Table
-                          (Prev_Variant_Idx).Next_Variant := Prev_Idx;
-                     end if;
-                     Prev_Variant_Idx := Prev_Idx;
-
-                     Add_Component_List (Component_List (Variant),
-                                         Empty, No_Name);
-                     Flush_Current_Types;
-                     Prev_Idx := Empty_Record_Info_Id;
-                  end if;
-
+                  Add_Component_List (Component_List (Variant), From_Rec,
+                                      No_Name);
                   Next (Variant);
                end loop;
+
+               return;
             end if;
+
+            Flush_Current_Types;
+            Set_Is_Dynamic_Size (TE);
+            Saved_Cur_Idx  := Cur_Idx;
+            Saved_Prev_Idx := Prev_Idx;
+            Saved_Align    := Last_Align;
+            J              := 1;
+            Var_Array      := new
+              Record_Info_Id_Array'(1 .. List_Length (Variants (Var_Part))
+                                      => Empty_Record_Info_Id);
+
+            while Present (Variant) loop
+
+               --  Create the fields in each variant.
+               --
+               --  We have a potential alignment issue here.  Suppose the
+               --  last fragment was { i32, i8 }.  And suppose we have a
+               --  variant that starts with { i8, i32 }.  That type has an
+               --  alignment of 4, so that fragment would as well.  But the
+               --  subtype will be
+               --
+               --              { i32, i8, i8, i32 }
+               --
+               --  with the third field at and offset of 6, not 8. So we
+               --  need to split that and make two fragments, one { i8 }
+               --  and one { i32 }.  We do this via Split_Align.
+               --
+               --  If we have items in this variant, allocate a new
+               --  Record_Info entry for this variant and create the fields.
+
+               First_Idx := Empty_Record_Info_Id;
+               if Present (Component_Items (Component_List (Variant))) then
+                  Record_Info_Table.Increment_Last;
+                  Prev_Idx      := Empty_Record_Info_Id;
+                  Cur_Idx       := Record_Info_Table.Last;
+                  Split_Align   := Saved_Align;
+                  Add_Component_List (Component_List (Variant),
+                                      Empty, No_Name);
+                  Flush_Current_Types;
+               end if;
+
+               Var_Array (J) := First_Idx;
+               J             := J + 1;
+               Next (Variant);
+            end loop;
+
+            Prev_Idx := Saved_Prev_Idx;
+            Cur_Idx  := Saved_Cur_Idx;
+            Add_RI (Variant_List => Variants (Var_Part),
+                    Variant_Expr => Name (Var_Part),
+                    Variants     => Var_Array);
+
          end Add_Component_List;
 
          Field             : Entity_Id;
@@ -722,11 +766,20 @@ package body GNATLLVM.Records is
       Is_Align    : out unsigned;
       Return_Size : Boolean := True)
    is
-      T  : constant Type_T      := RI.LLVM_Type;
-      TE : constant Entity_Id   := RI.GNAT_Type;
+      T         : constant Type_T      := RI.LLVM_Type;
+      TE        : constant Entity_Id   := RI.GNAT_Type;
+      This_Size : GL_Value;
 
    begin
-      if Present (T) then
+         --  First check for zero length LLVM type since the code below will
+         --  fail if we have no fields.
+
+      if Present (T) and then Get_LLVM_Type_Size (T) = ULL (0) then
+            This_Size  := Size_Const_Null;
+            Must_Align := Get_Type_Alignment (T);
+            Is_Align   := Get_Type_Alignment (T);
+
+      elsif Present (T) then
 
          --  We have to be careful how we compute the size of this record
          --  fragment because we don't want to count the padding at the end
@@ -765,16 +818,6 @@ package body GNATLLVM.Records is
          --  the alignment that we must receive and that we generate are
          --  not the same.
          --
-         --  But first check for zero length since the code below will
-         --  fail if we have no fields.
-
-         if Get_LLVM_Type_Size (T) = ULL (0) then
-            Size       := Size_Const_Null;
-            Must_Align := Get_Type_Alignment (T);
-            Is_Align   := Get_Type_Alignment (T);
-            return;
-         end if;
-
          declare
             Num_Types   : constant unsigned := Count_Struct_Element_Types (T);
             Last_Type   : constant Type_T   :=
@@ -786,26 +829,42 @@ package body GNATLLVM.Records is
          begin
             Must_Align := Get_Type_Alignment (T);
             Is_Align   := Get_Type_Alignment (Last_Type);
-            if Return_Size then
-               Size    := Size_Const_Int (Last_Offset + Last_Size);
-            end if;
+            This_Size  := Size_Const_Int (Last_Offset + Last_Size);
          end;
+
+      --  The GNAT type case is easy
 
       elsif Present (TE) then
          Must_Align := Get_Type_Alignment (TE);
          Is_Align   := Must_Align;
-         if Return_Size then
-            Size    := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
-         end if;
+         This_Size  := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
+
+      elsif RI.Variants /= null then
+
+         --  ??? For now, we use the maxium size of the record rather
+         --  than looking at the discriminant to get the actual size.
+
+         --  We need to compute the maximum size of each discriminant.
+         --  We set Max_So_Far to the size of the first variant and
+         --  then see if any is larger.  Handle the case where the
+         --  variant is empty.  ?? Always get the max size here.  We
+         --  need to better understand the implications of the
+         --  different ways of computing the size.  The alignments here
+         --  are a bit bogus.
+
+         This_Size  := Get_Variant_Size (RI, V, For_Type);
+         Is_Align   := unsigned (Get_Maximum_Alignment);
+         Must_Align := 1;
 
       else
          Must_Align := 1;
          Is_Align   := unsigned (Get_Maximum_Alignment);
-         if Return_Size then
-            Size    := Size_Const_Null;
-         end if;
+         This_Size  := Size_Const_Null;
       end if;
 
+      if Return_Size then
+         Size := This_Size;
+      end if;
    end Get_RI_Info;
 
    ------------------------
@@ -813,36 +872,33 @@ package body GNATLLVM.Records is
    ------------------------
 
    function Get_Variant_For_RI
-     (Cur_Idx, Need_Idx : Record_Info_Id) return Record_Info_Id
+     (In_RI : Record_Info; Need_Idx : Record_Info_Id) return Record_Info_Id
    is
-      Variant_Idx, Idx : Record_Info_Id;
-      RI               : Record_Info;
+      Idx : Record_Info_Id;
+      RI  : Record_Info;
 
    begin
       --  Look through each variant
 
-      Variant_Idx := Cur_Idx;
-      while Present (Variant_Idx) loop
+      for Variant_Idx of In_RI.Variants.all loop
 
          --  Now look through each entry in the variant, looking into nested
-         --  variants if ncessary.  We start looking at the first chained
+         --  variants if necessary.  We start looking at the first chained
          --  entry of each variant, since that's where fields of that
          --  variant start.
 
-         Idx := Record_Info_Table.Table (Variant_Idx).Next;
+         Idx := Variant_Idx;
          while Present (Idx) loop
             RI := Record_Info_Table.Table (Idx);
             if Idx = Need_Idx then
                return Variant_Idx;
-            elsif Present (RI.Next_Variant) then
-               return (if Present (Get_Variant_For_RI (Idx, Need_Idx))
+            elsif RI.Variants /= null then
+               return (if Present (Get_Variant_For_RI (RI, Need_Idx))
                        then Variant_Idx else Empty_Record_Info_Id);
             else
                Idx := RI.Next;
             end if;
          end loop;
-
-         Variant_Idx := Record_Info_Table.Table (Variant_Idx).Next_Variant;
       end loop;
 
       return Empty_Record_Info_Id;
@@ -853,18 +909,17 @@ package body GNATLLVM.Records is
    ----------------------
 
    function Get_Variant_Size
-     (TE       : Entity_Id;
-      Var_Idx  : Record_Info_Id;
+     (In_RI    : Record_Info;
       V        : GL_Value;
       For_Type : Boolean) return GL_Value
    is
       pragma Unreferenced (V);
       pragma Unreferenced (For_Type);
 
-      End_BB     : constant Basic_Block_T := Create_Basic_Block;
+      First      : Boolean := True;
+      End_BB     : Basic_Block_T;
       Next_BB    : Basic_Block_T;
       This_BB    : Basic_Block_T;
-      RI         : Record_Info;
       Max_So_Far : GL_Value;
       Var_Size   : GL_Value;
       Idx        : Record_Info_Id;
@@ -879,19 +934,26 @@ package body GNATLLVM.Records is
       --  ?? Always get the max size here.  We need to better understand
       --  the implications of the different ways of computing the size.
 
-      Idx        := Var_Idx;
-      while Present (Idx) loop
-         RI         := Record_Info_Table.Table (Idx);
-         Var_Size   := (if Present (RI.Next)
-                        then Get_Record_Size_So_Far (TE, No_GL_Value, RI.Next,
-                                                     Empty_Record_Info_Id,
-                                                     True)
-                        else Size_Const_Null);
-         if Idx = Var_Idx then
+      --  If there is only one variant, we just use its size.  We need to
+      --  special-case this to avoid generating empty basic blocks.
+
+      if In_RI.Variants'Length = 1 then
+         return Get_Record_Size_So_Far (Empty, No_GL_Value,
+                                        In_RI.Variants (In_RI.Variants'First),
+                                        Empty_Record_Info_Id, True);
+      end if;
+
+      End_BB := Create_Basic_Block;
+      for J in In_RI.Variants'Range loop
+         Idx := In_RI.Variants (J);
+         Var_Size   := Get_Record_Size_So_Far (Empty, No_GL_Value, Idx,
+                                               Empty_Record_Info_Id, True);
+         if First then
             Max_So_Far := Allocate_For_Type (Size_Type, Size_Type, Var_Size);
+            First      := False;
          else
-            Next_BB  := (if Present (RI.Next_Variant) then Create_Basic_Block
-                         else End_BB);
+            Next_BB  := (if J = In_RI.Variants'Last
+                         then End_BB else Create_Basic_Block);
             This_BB  := Create_Basic_Block;
             Build_Cond_Br (I_Cmp (Int_SGT, Var_Size, Get (Max_So_Far, Data)),
                            This_BB, Next_BB);
@@ -900,8 +962,6 @@ package body GNATLLVM.Records is
             Build_Br (End_BB);
             Position_Builder_At_End (Next_BB);
          end if;
-
-         Idx := RI.Next_Variant;
       end loop;
 
       return Get (Max_So_Far, Data);
@@ -921,11 +981,13 @@ package body GNATLLVM.Records is
       Total_Size : GL_Value       := Size_Const_Null;
       Cur_Align  : unsigned       := unsigned (Get_Maximum_Alignment);
       Cur_Idx    : Record_Info_Id :=
-        (if Present (Start_Idx) then Start_Idx else Get_Record_Info (TE));
+        (if Present (Start_Idx) then Start_Idx elsif Present (TE)
+         then Get_Record_Info (TE) else Empty_Record_Info_Id);
       This_Size  : GL_Value       := No_GL_Value;
-      RI         : Record_Info;
+      Must_Align : unsigned       := 1;
       This_Align : unsigned;
-      Must_Align : unsigned;
+      New_Idx    : Record_Info_Id;
+      RI         : Record_Info;
 
    begin
       Push_Debug_Freeze_Pos;
@@ -948,23 +1010,11 @@ package body GNATLLVM.Records is
          --  If we're reached a variant point, we have two cases.  We could
          --  be looking for a specific RI index, in which case we see which
          --  variant has that index and set it as next, or we're looking
-         --  to compute the size of the record.  We know that this
-         --  fragment has no data of its own.
+         --  to compute the size of the record.
 
-         if Present (RI.Next_Variant) then
-            if Present (Idx) then
-               Cur_Idx := Get_Variant_For_RI (Cur_Idx, Idx);
-               pragma Assert (Present (Cur_Idx));
-               Cur_Idx := Record_Info_Table.Table (Cur_Idx).Next;
-            else
-               This_Size  := Get_Variant_Size (TE, Cur_Idx, V, For_Type);
-               This_Align := unsigned (Get_Maximum_Alignment);
-               Total_Size := NSW_Add (Align_To
-                                        (Total_Size, Cur_Align, This_Align),
-                                      This_Size);
-               Cur_Align  := This_Align;
-               Cur_Idx    := Empty_Record_Info_Id;
-            end if;
+         if RI.Variants /= null and then Present (Idx) then
+            New_Idx := Get_Variant_For_RI (RI, Idx);
+            Cur_Idx := (if Present (New_Idx) then New_Idx else RI.Next);
          else
             Get_RI_Info (RI, V, For_Type, This_Size, Must_Align, This_Align);
             Total_Size := NSW_Add (Align_To (Total_Size, Cur_Align,
@@ -990,7 +1040,7 @@ package body GNATLLVM.Records is
       if Present (Idx) then
          Get_RI_Info (Record_Info_Table.Table (Idx), No_GL_Value, False,
                       This_Size, Must_Align, This_Align, Return_Size => False);
-      else
+      elsif Present (TE) then
          Must_Align := Get_Type_Alignment (TE);
       end if;
 
@@ -1331,37 +1381,24 @@ package body GNATLLVM.Records is
            (Our_Index, Entity_Id, Our_Fields_Type, Compare_FI);
 
          procedure Print_One_RI
-           (Ridx             : Record_Info_Id;
-            Prefix           : String := "";
-            Display_Variants : Boolean := True);
-
+           (Ridx : Record_Info_Id; Prefix : String := "");
          procedure Print_RI_Chain
-           (Start            : Record_Info_Id;
-            Prefix           : String := "";
-            Display_Variants : Boolean := True);
+           (Start : Record_Info_Id; Prefix : String := "");
 
          ------------------
          -- Print_One_RI --
          ------------------
-
          procedure Print_One_RI
-           (Ridx             : Record_Info_Id;
-            Prefix           : String := "";
-            Display_Variants : Boolean := True)
+           (Ridx : Record_Info_Id; Prefix : String := "")
          is
-            RI         : constant Record_Info
-              := Record_Info_Table.Table (Ridx);
-            F_Idx      : Field_Info_Id;
-            FI         : Field_Info;
-            New_Prefix : String (Prefix'First .. Prefix'Last + 4);
-            Next_Var   : Record_Info_Id;
+            RI                 : constant Record_Info :=
+              Record_Info_Table.Table (Ridx);
+            F_Idx              : Field_Info_Id;
+            FI                 : Field_Info;
+            New_Prefix         : String (Prefix'First .. Prefix'Last + 4);
+            Var_Node, Choice   : Node_Id;
 
          begin
-            New_Prefix (Prefix'Range)   := Prefix;
-            New_Prefix (Prefix'Last + 1) := ' ';
-            New_Prefix (Prefix'Last + 2) := ' ';
-            New_Prefix (Prefix'Last + 3) := ' ';
-            New_Prefix (Prefix'Last + 4) := ' ';
             Write_Str (Prefix);
             Write_Str ("RI ");
             Write_Int (Nat (Ridx));
@@ -1402,20 +1439,37 @@ package body GNATLLVM.Records is
                end if;
             end loop;
 
-            Write_Eol;
-            Next_Var := RI.Next_Variant;
-            if Display_Variants and then Present (Next_Var) then
-               Write_Str  (Prefix);
-               Write_Line ("Variants: ");
-               if Present (RI.Next) then
-                  Print_RI_Chain (RI.Next, New_Prefix, False);
-               end if;
-               while Present (Next_Var) loop
-                  Write_Str  (Prefix);
-                  Write_Line ("-----------------");
+            if RI.Variants /= null then
+               Write_Eol;
+               Write_Str   (Prefix);
+               Write_Str   ("Variants for ");
+               Sprint_Node (RI.Variant_Expr);
+               Write_Eol;
+
+               New_Prefix (Prefix'Range)   := Prefix;
+               New_Prefix (Prefix'Last + 1) := ' ';
+               New_Prefix (Prefix'Last + 2) := ' ';
+               New_Prefix (Prefix'Last + 3) := ' ';
+               New_Prefix (Prefix'Last + 4) := ' ';
+
+               Var_Node := First (RI.Variant_List);
+               for Variant of RI.Variants.all loop
+                  Write_Str (New_Prefix);
+                  Write_Str ("when ");
+                  Choice := First (Discrete_Choices (Var_Node));
+                  loop
+                     Sprint_Node (Choice);
+                     Next (Choice);
+                     exit when No (Choice);
+                     Write_Str (" | ");
+                  end loop;
+
                   Write_Eol;
-                  Print_RI_Chain (Next_Var, New_Prefix, False);
-                  Next_Var := Record_Info_Table.Table (Next_Var).Next_Variant;
+                  if Present (Variant) then
+                     Print_RI_Chain (Variant, New_Prefix);
+                  end if;
+
+                  Next (Var_Node);
                end loop;
             end if;
          end Print_One_RI;
@@ -1425,18 +1479,13 @@ package body GNATLLVM.Records is
          --------------------
 
          procedure Print_RI_Chain
-           (Start            : Record_Info_Id;
-            Prefix           : String := "";
-            Display_Variants : Boolean := True)
+           (Start : Record_Info_Id; Prefix : String := "")
          is
             Idx : Record_Info_Id := Start;
-            RI  : Record_Info;
 
          begin
             while Present (Idx) loop
-               RI := Record_Info_Table.Table (Idx);
-               Print_One_RI (Idx, Prefix, Display_Variants);
-               exit when Display_Variants and then Present (RI.Next_Variant);
+               Print_One_RI (Idx, Prefix);
                Idx := Record_Info_Table.Table (Idx).Next;
             end loop;
          end Print_RI_Chain;

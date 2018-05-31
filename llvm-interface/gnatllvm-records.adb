@@ -22,6 +22,7 @@ with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
+with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
 with Sprint;   use Sprint;
 with Stand;    use Stand;
@@ -420,11 +421,19 @@ package body GNATLLVM.Records is
          --  specified and matches F or name is not specified and F is not
          --  a special name.
 
-         function Statically_Constrains
-           (TE : Entity_Id; Part : Node_Id) return Boolean
-           with Pre => Ekind (TE) = E_Record_Subtype
-                       and then Nkind (Part) = N_Variant_Part;
-         --  True if TE statically constrains the discriminant of Part
+         function Get_Discriminant_Constraint
+           (TE : Entity_Id; Part : Node_Id) return Node_Id
+           with Pre  => Ekind (TE) = E_Record_Subtype
+                       and then Nkind (Part) = N_Variant_Part,
+                Post => Present (Get_Discriminant_Constraint'Result);
+           --  Get the expression that constrains the discriminant of
+           --  type TE that's specified in Part.
+
+         function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
+           with Pre  => Is_Static_Expression (N) and then Present (Alts),
+           Post => Present (Find_Choice'Result);
+         --  N is a static expression and Alts is a list of alternatives.
+         --  Return which alternate has a Choice that covers N.
 
          procedure Add_Component_List
            (List : Node_Id; From_Rec : Entity_Id; F_Name : Name_Id)
@@ -453,12 +462,12 @@ package body GNATLLVM.Records is
             end if;
          end Matches_Name;
 
-         ---------------------------
-         -- Statically_Constrains --
-         ---------------------------
+         ---------------------------------
+         -- Get_Discriminant_Constraint --
+         ---------------------------------
 
-         function Statically_Constrains
-           (TE : Entity_Id; Part : Node_Id) return Boolean
+         function Get_Discriminant_Constraint
+           (TE : Entity_Id; Part : Node_Id) return Node_Id
          is
             Discrim     : constant Entity_Id := Entity (Name (Part));
             Discrim_Num : constant Uint      := Discriminant_Number (Discrim);
@@ -472,8 +481,40 @@ package body GNATLLVM.Records is
                Next_Elmt (Elmt);
             end loop;
 
-            return Is_Static_Expression (Node (Elmt));
-         end Statically_Constrains;
+            return Node (Elmt);
+         end Get_Discriminant_Constraint;
+
+         -----------------
+         -- Find_Choice --
+         -----------------
+
+         function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id is
+            Value       : constant Uint := Expr_Value (N);
+            Alt, Choice : Node_Id;
+            Low, High   : Uint;
+
+         begin
+            Alt := First (Alts);
+            while Present (Alt) loop
+               Choice := First (Discrete_Choices (Alt));
+               if Nkind (Choice) = N_Others_Choice then
+                  Choice := First (Others_Discrete_Choices (Choice));
+               end if;
+
+               while Present (Choice) loop
+                  Decode_Range (Choice, Low, High);
+                  if Value >= Low and then Value <= High then
+                     return Alt;
+                  end if;
+
+                  Next (Choice);
+               end loop;
+
+               Next (Alt);
+            end loop;
+
+            return Empty;
+         end Find_Choice;
 
          ------------------------
          -- Add_Component_List --
@@ -484,9 +525,13 @@ package body GNATLLVM.Records is
          is
             Var_Part           : constant Node_Id :=
               (if Present (List) then Variant_Part (List) else Empty);
-            Constrains_Variant : constant Boolean :=
-              Present (From_Rec) and then Present (Var_Part)
-              and then Statically_Constrains (From_Rec, Var_Part);
+            Constraining_Expr  : constant Node_Id :=
+              (if Present (From_Rec) and then Present (Var_Part)
+               then Get_Discriminant_Constraint (From_Rec, Var_Part)
+               else Empty);
+            Static_Constraint  : constant Boolean :=
+              Present (Constraining_Expr)
+                and then Is_Static_Expression (Constraining_Expr);
             Var_Array          : access Record_Info_Id_Array;
             Saved_Cur_Idx      : Record_Info_Id;
             Saved_Prev_Idx     : Record_Info_Id;
@@ -534,23 +579,21 @@ package body GNATLLVM.Records is
                return;
             end if;
 
-            --  Otherwise process variants.  If we constrain the variant,
-            --  just output all the fields in the variant (??? we could
-            --  walk the proper variant here to verify that everything is
-            --  in the same order).  Otherwise, create an RI for the
-            --  variant and then make the entres for each variant.
+            --  Otherwise process variants.  If we statically constrain the
+            --  variant, see which variant is being referenced and output
+            --  that one.  walk the proper variant here to verify that
+            --  ever.  Otherwise, set up for the variant, make the entres
+            --  for each variant, and then create the RI for the variant.
 
-            Variant := First (Variants (Var_Part));
-            if Constrains_Variant then
-               while Present (Variant) loop
-                  Add_Component_List (Component_List (Variant), From_Rec,
-                                      No_Name);
-                  Next (Variant);
-               end loop;
-
+            if Static_Constraint then
+               Add_Component_List (Component_List
+                                     (Find_Choice (Constraining_Expr,
+                                                   Variants (Var_Part))),
+                                   From_Rec, No_Name);
                return;
             end if;
 
+            Variant := First (Variants (Var_Part));
             Flush_Current_Types;
             Set_Is_Dynamic_Size (TE);
             Saved_Cur_Idx  := Cur_Idx;
@@ -599,8 +642,10 @@ package body GNATLLVM.Records is
             Prev_Idx := Saved_Prev_Idx;
             Cur_Idx  := Saved_Cur_Idx;
             Add_RI (Variant_List => Variants (Var_Part),
-                    Variant_Expr => Name (Var_Part),
-                    Variants     => Var_Array);
+                    Variants     => Var_Array,
+                    Variant_Expr =>
+                      (if Present (Constraining_Expr) then Constraining_Expr
+                       else Name (Var_Part)));
 
          end Add_Component_List;
 

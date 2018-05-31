@@ -1103,13 +1103,24 @@ package body GNATLLVM.Records is
       TE     : constant Entity_Id      := Full_Scope (E);
       R_Idx  : constant Record_Info_Id := Get_Record_Info (TE);
       F_Idx  : constant Field_Info_Id  := Get_Field_Info (E);
-      FI     : constant Field_Info     := Field_Info_Table.Table (F_Idx);
-      Idx    : constant Record_Info_Id := FI.Rec_Info_Idx;
-      RI     : constant Record_Info    := Record_Info_Table.Table (Idx);
-      Offset : constant GL_Value       :=
-        Get_Record_Size_So_Far (TE, V, R_Idx, Idx);
+      FI     : Field_Info;
+      Idx    : Record_Info_Id;
+      RI     : Record_Info;
+      Offset : GL_Value;
 
    begin
+      --  If there's no field information for this field, the field
+      --  position is undefined.
+
+      if No (F_Idx) then
+         return Get_Undef (Size_Type);
+      end if;
+
+      FI     := Field_Info_Table.Table (F_Idx);
+      Idx    := FI.Rec_Info_Idx;
+      RI     := Record_Info_Table.Table (Idx);
+      Offset := Get_Record_Size_So_Far (TE, V, R_Idx, Idx);
+
       --  Offset now gives the offset from the start of the record to the
       --  piece that this field is in.  If this piece has a GNAT type, then
       --  the field is the entire piece and we have the offset.  If it's an
@@ -1144,16 +1155,28 @@ package body GNATLLVM.Records is
          then CRC else Field);
       Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
       First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
-      FI         : constant Field_Info     :=
-        Field_Info_Table.Table (Get_Field_Info (Our_Field));
-      Our_Idx    : constant Record_Info_Id := FI.Rec_Info_Idx;
-      Offset     : constant GL_Value       :=
-        Get_Record_Size_So_Far (Rec_Type, V, First_Idx, Our_Idx);
-      RI         : constant Record_Info    :=
-        Record_Info_Table.Table (Our_Idx);
+      F_Idx      : constant Field_Info_Id  := Get_Field_Info (Our_Field);
+      FI         : Field_Info;
+      Our_Idx    : Record_Info_Id;
+      Offset     : GL_Value;
+      RI         : Record_Info;
       Result     : GL_Value;
 
    begin
+      --  If the field information isn't present, this must be because we're
+      --  referencing a field that's not in this variant and hence is a
+      --  constraint error.  So return undefined.
+
+      if No (F_Idx) then
+         pragma Assert (Ekind (Rec_Type) = E_Record_Subtype);
+         pragma Assert (Has_Discriminants (Rec_Type));
+         return Get_Undef_Ref (Rec_Type);
+      end if;
+
+      FI       := Field_Info_Table.Table (F_Idx);
+      Our_Idx  := FI.Rec_Info_Idx;
+      Offset   := Get_Record_Size_So_Far (Rec_Type, V, First_Idx, Our_Idx);
+      RI       := Record_Info_Table.Table (Our_Idx);
 
       --  If this is the "_parent" field, just do a conversion so we point
       --  to that type.  But add it to the LValue table in case there's
@@ -1300,7 +1323,6 @@ package body GNATLLVM.Records is
               Find_Matching_Field (Agg_Type, Entity (First (Choices (Expr))));
             F_Type : constant Entity_Id     := Full_Etype (Ent);
             F_Idx  : constant Field_Info_Id := Get_Field_Info (Ent);
-            F_Info : constant Field_Info    := Field_Info_Table.Table (F_Idx);
 
          begin
             if Ekind (Ent) = E_Discriminant
@@ -1316,10 +1338,22 @@ package body GNATLLVM.Records is
                                         N_Aggregate, N_Extension_Aggregate));
                Result := Emit_Record_Aggregate (Expression (Expr), Result);
             else
-               Result := Insert_Value
-                 (Result,
-                  Build_Type_Conversion (Expression (Expr), F_Type),
-                  unsigned (F_Info.Field_Ordinal));
+               --  We are to actually insert the field.  However, if we
+               --  haven't set any information for this field, it may be
+               --  a reference to a field that will cause Constraint_Error.
+               --  If so, just don't do anything with it.
+
+               if Present (F_Idx) then
+                  Result := Insert_Value
+                    (Result,
+                     Build_Type_Conversion (Expression (Expr), F_Type),
+                     unsigned (Field_Info_Table.Table (F_Idx).Field_Ordinal));
+               else
+                  --  Ensure we understand this case
+
+                  pragma Assert (Ekind (Agg_Type) = E_Record_Subtype);
+                  pragma Assert (Has_Discriminants (Agg_Type));
+               end if;
             end if;
          end;
 
@@ -1358,7 +1392,7 @@ package body GNATLLVM.Records is
 
    procedure Print_Field_Info (E : Entity_Id) is
       F_Idx : constant Field_Info_Id  := Get_Field_Info (E);
-      FI    : constant Field_Info     := Field_Info_Table.Table (F_Idx);
+      FI    : Field_Info;
 
    begin
       Write_Str ("Field ");
@@ -1368,13 +1402,15 @@ package body GNATLLVM.Records is
       Write_Str ("Scope = ");
       Write_Int (Nat (Full_Scope (E)));
       Write_Eol;
-      Write_Str ("RI => ");
-      Write_Int (Nat (FI.Rec_Info_Idx));
-      Write_Eol;
-      Write_Str ("Ordinal = ");
-      Write_Int (FI.Field_Ordinal);
-      Write_Eol;
-      Print_RI_Briefly (FI.Rec_Info_Idx);
+      if Present (F_Idx) then
+         FI := Field_Info_Table.Table (F_Idx);
+         Write_Str ("RI => ");
+         Write_Int (Nat (FI.Rec_Info_Idx));
+         Write_Str (", Ordinal = ");
+         Write_Int (FI.Field_Ordinal);
+         Write_Eol;
+         Print_RI_Briefly (FI.Rec_Info_Idx);
+      end if;
    end Print_Field_Info;
 
    -----------------------
@@ -1391,11 +1427,20 @@ package body GNATLLVM.Records is
 
       function Compare_FI (E1, E2 : Entity_Id) return Boolean is
          F1_Idx : constant Field_Info_Id  := Get_Field_Info (E1);
-         FI1    : constant Field_Info     := Field_Info_Table.Table (F1_Idx);
          F2_Idx : constant Field_Info_Id  := Get_Field_Info (E2);
-         FI2    : constant Field_Info     := Field_Info_Table.Table (F2_Idx);
+         FI1    : Field_Info;
+         FI2    : Field_Info;
 
       begin
+         if Present (F1_Idx) and then No (F2_Idx) then
+            return False;
+         elsif No (F1_Idx) then
+            return True;
+         end if;
+
+         FI1 := Field_Info_Table.Table (F1_Idx);
+         FI2 := Field_Info_Table.Table (F2_Idx);
+
          if  FI1.Rec_Info_Idx < FI2.Rec_Info_Idx then
             return True;
          elsif FI1.Rec_Info_Idx > FI2.Rec_Info_Idx then
@@ -1543,8 +1588,9 @@ package body GNATLLVM.Records is
    end Print_Record_Info;
 
 begin
-   --  Make a dummy entry in the record table, so the "Empty" entry is
-   --  never used.
+   --  Make a dummy entry in the record and field tables, so the
+   --  "Empty" entry is never used.
 
    Record_Info_Table.Increment_Last;
+   Field_Info_Table.Increment_Last;
 end GNATLLVM.Records;

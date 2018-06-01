@@ -903,7 +903,9 @@ package body GNATLLVM.Records is
       elsif Present (TE) then
          Must_Align := Size_Const_Int (Get_Type_Alignment (TE));
          Is_Align   := Must_Align;
-         This_Size  := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
+         if Return_Size then
+            This_Size  := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
+         end if;
 
       elsif RI.Variants /= null then
          if For_Type then
@@ -915,6 +917,7 @@ package body GNATLLVM.Records is
                                      Return_Size);
             Pop_Discriminant_Info;
          end if;
+
       else
          Must_Align := Size_Const_Int (Uint_1);
          Is_Align   := Size_Const_Int (ULL (Get_Maximum_Alignment));

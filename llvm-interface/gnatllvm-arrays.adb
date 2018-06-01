@@ -91,11 +91,6 @@ package body GNATLLVM.Arrays is
       Table_Name           => "For_Discr_Stack");
    --  Stack of information for discriminant evaluation
 
-   procedure Push_Discriminant_Info (For_Type, Is_Low_Bound : Boolean);
-   procedure Pop_Discriminant_Info
-     with Pre => For_Discr_Stack.Last /= 0;
-   --  Push and pop information onto only above stack.
-
    function Type_For_Get_Bound
      (TE : Entity_Id; V : GL_Value) return Entity_Id
      with Pre  => Is_Array_Type (TE),

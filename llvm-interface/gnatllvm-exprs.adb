@@ -721,13 +721,14 @@ package body GNATLLVM.Exprs is
 
             declare
                Prefix_Type : constant Entity_Id := Full_Etype (Prefix (N));
-               For_Type    : constant Boolean   :=
+               Is_A_Type   : constant Boolean   :=
                  (Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N))));
-
+               For_Type    : constant Boolean   :=
+                 Is_A_Type and then not Is_Constrained (Entity (Prefix (N)));
             begin
-               V := (if For_Type then No_GL_Value
-                                 else Emit_LValue (Prefix (N)));
+               V := (if Is_A_Type then No_GL_Value
+                                  else Emit_LValue (Prefix (N)));
                return Convert_To_Elementary_Type
                  (NSW_Mul (Get_Type_Size (Prefix_Type, V, For_Type),
                            Size_Const_Int (Uint_8)),

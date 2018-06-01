@@ -1252,7 +1252,9 @@ package body GNATLLVM.Types is
    function Get_Alloc_Size
      (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
    is
-      Size : GL_Value := Get_Type_Size (Alloc_Type, V, For_Type => No (V));
+      Size : GL_Value :=
+        Get_Type_Size (Alloc_Type, V,
+                       For_Type => No (V) and then not Is_Constrained (TE));
 
    begin
       --  Adjust size if constrained subtype for aliased unconstrained or

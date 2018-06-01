@@ -31,9 +31,12 @@ with Uintp;    use Uintp;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
+with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Records is
 
@@ -127,15 +130,15 @@ package body GNATLLVM.Records is
      --  amout to which the resulting size is known to be aligned.  If the
      --  size isn't wanted, don't compute it.
 
---   procedure Get_RI_Info_For_Variant
---     (RI          : Record_Info;
---      V           : GL_Value;
---      Size        : out GL_Value;
---      Must_Align  : out GL_Value;
---      Is_Align    : out GL_Value;
---      Return_Size : Boolean := True)
---     with Pre  => RI.Variants /= null,
---          Post => not Return_Size or else Present (Size);
+   procedure Get_RI_Info_For_Variant
+     (RI          : Record_Info;
+      V           : GL_Value;
+      Size        : out GL_Value;
+      Must_Align  : out GL_Value;
+      Is_Align    : out GL_Value;
+      Return_Size : Boolean := True)
+     with Pre  => RI.Variants /= null,
+          Post => not Return_Size or else Present (Size);
    --  Like Get_RI_Info, but for a fragment known to be a variant and
    --  where we're not getting the maximum size.
 
@@ -648,7 +651,7 @@ package body GNATLLVM.Records is
                   Cur_Idx       := Record_Info_Table.Last;
                   Split_Align   := Saved_Align;
                   Add_Component_List (Component_List (Variant),
-                                      Empty, No_Name);
+                                      From_Rec, No_Name);
                   Flush_Current_Types;
                end if;
 
@@ -903,21 +906,15 @@ package body GNATLLVM.Records is
          This_Size  := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
 
       elsif RI.Variants /= null then
-
-         --  ??? For now, we use the maxium size of the record rather
-         --  than looking at the discriminant to get the actual size.
-
-         --  We need to compute the maximum size of each discriminant.
-         --  We set Max_So_Far to the size of the first variant and
-         --  then see if any is larger.  Handle the case where the
-         --  variant is empty.  ?? Always get the max size here.  We
-         --  need to better understand the implications of the
-         --  different ways of computing the size.  The alignments here
-         --  are a bit bogus.
-
-         Get_RI_Info_For_Max_Size_Variant (RI, This_Size, Must_Align, Is_Align,
-                                           Return_Size);
-
+         if For_Type then
+            Get_RI_Info_For_Max_Size_Variant (RI, This_Size, Must_Align,
+                                              Is_Align, Return_Size);
+         else
+            Push_Discriminant_Info (For_Type => False, Is_Low_Bound => False);
+            Get_RI_Info_For_Variant (RI, V, This_Size, Must_Align, Is_Align,
+                                     Return_Size);
+            Pop_Discriminant_Info;
+         end if;
       else
          Must_Align := Size_Const_Int (Uint_1);
          Is_Align   := Size_Const_Int (ULL (Get_Maximum_Alignment));
@@ -970,17 +967,86 @@ package body GNATLLVM.Records is
    -- Get_RI_Info_For_Variant --
    -----------------------------
 
---   procedure Get_RI_Info_For_Variant
---     (RI          : Record_Info;
---      V           : GL_Value;
---      Size        : out GL_Value;
---      Must_Align  : out unsigned;
---      Is_Align    : out unsigned;
---      Return_Size : Boolean := True)
---   is
---      Num_Alts : constant Nat := List_Length (RI.Variant_List
---      BBs : Basic_Block_Array (1 .. Num_Alts));
---      Must_Aligns :
+   procedure Get_RI_Info_For_Variant
+     (RI          : Record_Info;
+      V           : GL_Value;
+      Size        : out GL_Value;
+      Must_Align  : out GL_Value;
+      Is_Align    : out GL_Value;
+      Return_Size : Boolean := True)
+   is
+      Our_BB      : constant Basic_Block_T             := Get_Insert_Block;
+      End_BB      : constant Basic_Block_T             := Create_Basic_Block;
+      Must_Aligns : GL_Value_Array (RI.Variants'Range) :=
+        (others => No_GL_Value);
+      Is_Aligns   : GL_Value_Array (RI.Variants'Range) :=
+        (others => No_GL_Value);
+      Sizes       : GL_Value_Array (RI.Variants'Range) :=
+        (others => No_GL_Value);
+      Junk1       : GL_Value                           := No_GL_Value;
+      Junk2       : GL_Value                           := No_GL_Value;
+      To_BBs      : Basic_Block_Array (RI.Variants'Range);
+      From_BBs    : Basic_Block_Array (RI.Variants'Range);
+      Idx         : Record_Info_Id;
+
+   begin
+      --  We first go through each variant and compute the alignments and
+      --  sizes of each.  We store the GL_value's where we've computed
+      --  those things along with the starting (for branching into the code)
+      --  and ending (for use with Phi) basic blocks for each.
+
+      for J in RI.Variants'Range loop
+         To_BBs (J) := Create_Basic_Block;
+         Position_Builder_At_End (To_BBs (J));
+
+         --  If this variant is empty, trivially get the values.  Otherwise,
+         --  compute each, computing the size only if needed.
+
+         if No (RI.Variants (J)) then
+            Must_Aligns (J) := Size_Const_Int (Uint_1);
+            Is_Aligns   (J) := Size_Const_Int (ULL (Get_Maximum_Alignment));
+            Sizes       (J) := Size_Const_Null;
+         else
+            --  Must_Align comes from the first fragment, Is_Align comes
+            --  from the last, and the size is computed from all of them.
+
+            Get_RI_Info (Record_Info_Table.Table (RI.Variants (J)),
+                         V, False, Junk1, Must_Aligns (J), Junk2, False);
+            Idx := RI.Variants (J);
+            while Present (Record_Info_Table.Table (Idx).Next) loop
+               Idx := Record_Info_Table.Table (Idx).Next;
+            end loop;
+
+            Get_RI_Info (Record_Info_Table.Table (RI.Variants (J)),
+                         V, False, Junk1, Junk2, Is_Aligns (J), False);
+
+            if Return_Size then
+               Sizes (J) :=
+                 Get_Record_Size_So_Far (Empty, V, RI.Variants (J),
+                                         Empty_Record_Info_Id);
+            end if;
+         end if;
+
+         From_BBs (J) := Get_Insert_Block;
+         Build_Br (End_BB);
+      end loop;
+
+      --  Now emit the code to branch to the fragments we made above
+
+      Position_Builder_At_End (Our_BB);
+      Emit_Case_Code (RI.Variant_List, Emit_Expression (RI.Variant_Expr),
+                      To_BBs);
+
+      --  Now make the Phi's that hold all the values and return them.
+
+      Position_Builder_At_End (End_BB);
+      Must_Align := Build_Phi (Must_Aligns, From_BBs);
+      Is_Align   := Build_Phi (Is_Aligns,    From_BBs);
+      if Return_Size then
+         Size    := Build_Phi (Sizes,       From_BBs);
+      end if;
+   end Get_RI_Info_For_Variant;
+
    --------------------------------------
    -- Get_RI_Info_For_Max_Size_Variant --
    --------------------------------------

@@ -531,6 +531,31 @@ package GNATLLVM.GLValue is
    --  Finally, we have versions of subprograms defined elsewhere that
    --  accept and/or return GL_Value.
 
+   function Is_A_Global_Variable (V : GL_Value) return Boolean is
+     (Present (Is_A_Global_Variable (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a global variable
+
+   function Is_A_Function (V : GL_Value) return Boolean is
+     (Present (Is_A_Function (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a function
+
+   function Is_A_Const_Int (V : GL_Value) return Boolean is
+     (Present (Is_A_Constant_Int (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a constant integer
+
+   function Get_Const_Int_Value (V : GL_Value) return ULL is
+     (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
+     with Pre => Is_A_Const_Int (V);
+   --  V is a constant integer; get its value
+
+   function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
+     (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = Val)
+     with Pre => Present (V);
+   --  Return True if V is a constant integer of value Val
+
    function Get_Undef (TE : Entity_Id) return GL_Value
      with Pre => Is_Type (TE), Post => Present (Get_Undef'Result);
 
@@ -901,8 +926,11 @@ package GNATLLVM.GLValue is
    function NSW_Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-      (G_From (NSW_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-               LHS))
+      ((if Is_Const_Int_Value (RHS, 0) then LHS
+        elsif Is_Const_Int_Value (LHS, 0) then RHS
+        else G_From (NSW_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                              Name),
+               LHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Add'Result);
@@ -910,8 +938,10 @@ package GNATLLVM.GLValue is
    function NSW_Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (NSW_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     ((if Is_Const_Int_Value (RHS, 0) then LHS
+       else G_From (NSW_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                             Name),
+              LHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Sub'Result);
@@ -919,8 +949,8 @@ package GNATLLVM.GLValue is
    function NSW_Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     ((if RHS = Const_Int (RHS, Uint_1) then LHS
-       elsif LHS = Const_Int (LHS, Uint_1) then RHS
+     ((if Is_Const_Int_Value (RHS, 1) then LHS
+       elsif Is_Const_Int_Value (LHS, 1) then RHS
        else G_From (NSW_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
                              Name),
                     LHS)))
@@ -1309,26 +1339,6 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Type (TE), Post => Present (Add_Global'Result);
      --  Add a global to the environment which is of type TE, so the global
      --  itself represents the address of TE.
-
-   function Get_Const_Int_Value (V : GL_Value) return ULL is
-     (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
-      with Pre => Is_A_Const_Int (V);
-   --  V is a constant integer; get its value
-
-   function Is_A_Global_Variable (V : GL_Value) return Boolean is
-     (Present (Is_A_Global_Variable (LLVM_Value (V))))
-     with Pre => Present (V);
-   --  Return True if V is a global variable
-
-   function Is_A_Const_Int (V : GL_Value) return Boolean is
-     (Present (Is_A_Constant_Int (LLVM_Value (V))))
-     with Pre => Present (V);
-   --  Return True if V is a constant integer
-
-   function Is_A_Function (V : GL_Value) return Boolean is
-     (Present (Is_A_Function (LLVM_Value (V))))
-     with Pre => Present (V);
-   --  Return True if V is a function
 
    function Does_Not_Throw (V : GL_Value) return Boolean is
      (Does_Not_Throw (LLVM_Value (V)))

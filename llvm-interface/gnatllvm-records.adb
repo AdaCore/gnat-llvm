@@ -1159,7 +1159,8 @@ package body GNATLLVM.Records is
       --  show what alignment we now have.
 
       while Present (Cur_Idx) and then Cur_Idx /= Idx loop
-         RI := Record_Info_Table.Table (Cur_Idx);
+         New_Idx := Empty_Record_Info_Id;
+         RI      := Record_Info_Table.Table (Cur_Idx);
 
          --  If we're reached a variant point, we have two cases.  We could
          --  be looking for a specific RI index, in which case we see which
@@ -1168,7 +1169,10 @@ package body GNATLLVM.Records is
 
          if RI.Variants /= null and then Present (Idx) then
             New_Idx := Get_Variant_For_RI (RI, Idx);
-            Cur_Idx := (if Present (New_Idx) then New_Idx else RI.Next);
+         end if;
+
+         if Present (New_Idx) then
+            Cur_Idx := New_Idx;
          else
             Get_RI_Info (RI, V, For_Type, This_Size, Must_Align, This_Align);
             Total_Size := NSW_Add (Align_To (Total_Size, Cur_Align,

@@ -17,6 +17,8 @@
 
 with Sinfo;    use Sinfo;
 
+with LLVM.Core;  use LLVM.Core;
+
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Exprs is
@@ -67,5 +69,14 @@ package GNATLLVM.Exprs is
    procedure Emit_Code_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Code_Statement;
    --  Generate code for inline asm
+
+   function Build_Max (LHS, RHS : GL_Value) return GL_Value is
+     (Build_Select (I_Cmp (Int_SGT, LHS, RHS), LHS, RHS))
+     with Pre  => Present (LHS) and then Present (RHS),
+          Post => Present (Build_Max'Result);
+   function Build_Min (LHS, RHS : GL_Value) return GL_Value is
+     (Build_Select (I_Cmp (Int_SLT, LHS, RHS), LHS, RHS))
+     with Pre  => Present (LHS) and then Present (RHS),
+          Post => Present (Build_Min'Result);
 
 end GNATLLVM.Exprs;

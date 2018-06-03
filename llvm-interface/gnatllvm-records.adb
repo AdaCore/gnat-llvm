@@ -36,6 +36,7 @@ with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Records is
@@ -125,10 +126,16 @@ package body GNATLLVM.Records is
       Return_Size : Boolean := True)
      with Post => (not Return_Size or else Present (Size))
                   and then Present (Must_Align) and then Present (Is_Align);
-     --  Return information about a record fragment RI.  This includes is
-     --  size, the amount to which this fragment must be aligned, and the
-     --  amout to which the resulting size is known to be aligned.  If the
-     --  size isn't wanted, don't compute it.
+   --  Return information about a record fragment RI.  This includes is
+   --  size, the amount to which this fragment must be aligned, and the
+   --  amout to which the resulting size is known to be aligned.  If the
+   --  size isn't wanted, don't compute it.
+
+   procedure Get_Variant_Aligns
+     (S_Idx : Record_Info_Id; Must_Align, Is_Align : out GL_Value)
+     with Post => Present (Must_Align) and then Present (Is_Align);
+   --  Compute the amount to which a variant must be align and the amount
+   --  to which the size of the variant is aligned.
 
    procedure Get_RI_Info_For_Variant
      (RI          : Record_Info;
@@ -930,6 +937,32 @@ package body GNATLLVM.Records is
    end Get_RI_Info;
 
    ------------------------
+   -- Get_Variant_Aligns --
+   ------------------------
+
+   procedure Get_Variant_Aligns
+     (S_Idx : Record_Info_Id; Must_Align, Is_Align : out GL_Value)
+   is
+      Junk1 : GL_Value := No_GL_Value;
+      Junk2 : GL_Value := No_GL_Value;
+      Idx : Record_Info_Id;
+
+   begin
+      --  Must_Align comes from the first fragment and Is_Align comes
+      --  from the last.
+
+      Get_RI_Info (Record_Info_Table.Table (S_Idx), No_GL_Value, False,
+                   Junk1, Must_Align, Junk2, False);
+      Idx := S_Idx;
+      while Present (Record_Info_Table.Table (Idx).Next) loop
+         Idx := Record_Info_Table.Table (Idx).Next;
+      end loop;
+
+      Get_RI_Info (Record_Info_Table.Table (Idx), No_GL_Value, False, Junk1,
+                   Junk2, Is_Align, False);
+   end Get_Variant_Aligns;
+
+   ------------------------
    -- Get_Variant_For_RI --
    ------------------------
 
@@ -986,11 +1019,8 @@ package body GNATLLVM.Records is
         (others => No_GL_Value);
       Sizes       : GL_Value_Array (RI.Variants'Range) :=
         (others => No_GL_Value);
-      Junk1       : GL_Value                           := No_GL_Value;
-      Junk2       : GL_Value                           := No_GL_Value;
       To_BBs      : Basic_Block_Array (RI.Variants'Range);
       From_BBs    : Basic_Block_Array (RI.Variants'Range);
-      Idx         : Record_Info_Id;
 
    begin
       --  We first go through each variant and compute the alignments and
@@ -1007,22 +1037,11 @@ package body GNATLLVM.Records is
 
          if No (RI.Variants (J)) then
             Must_Aligns (J) := Size_Const_Int (Uint_1);
-            Is_Aligns   (J) := Size_Const_Int (ULL (Get_Maximum_Alignment));
+            Is_Aligns   (J) := Size_Const_Int (Uint_1);
             Sizes       (J) := Size_Const_Null;
          else
-            --  Must_Align comes from the first fragment, Is_Align comes
-            --  from the last, and the size is computed from all of them.
-
-            Get_RI_Info (Record_Info_Table.Table (RI.Variants (J)),
-                         V, False, Junk1, Must_Aligns (J), Junk2, False);
-            Idx := RI.Variants (J);
-            while Present (Record_Info_Table.Table (Idx).Next) loop
-               Idx := Record_Info_Table.Table (Idx).Next;
-            end loop;
-
-            Get_RI_Info (Record_Info_Table.Table (RI.Variants (J)),
-                         V, False, Junk1, Junk2, Is_Aligns (J), False);
-
+            Get_Variant_Aligns (RI.Variants (J),
+                                Must_Aligns (J), Is_Aligns (J));
             if Return_Size then
                Sizes (J) :=
                  Get_Record_Size_So_Far (Empty, V, RI.Variants (J),
@@ -1063,51 +1082,56 @@ package body GNATLLVM.Records is
    is
       Max_Const_Size : ULL      := 0;
       Max_Var_Size   : GL_Value := No_GL_Value;
+      Max_Must_Align : GL_Value := Size_Const_Int (Uint_1);
+      Min_Is_Align   : GL_Value := Size_Const_Int (Uint_1);
       Our_Size       : GL_Value;
+      Our_Must_Align : GL_Value;
+      Our_Is_Align   : GL_Value;
 
    begin
-      --  We might be able to do better with alignments here, but that's
-      --  not clear.
-
-      Must_Align := Size_Const_Int (ULL (Get_Maximum_Alignment));
-      Is_Align   := Size_Const_Int (Uint_1);
-      if not Return_Size then
-         return;
-      end if;
-
       --  We need to compute the maximum size of each variant.  Most
       --  discriminant sizes are constant, so we use an algorithm that'll
       --  work best in that situation.  So we record the largest constant
       --  size and make a chain of Select instructions to compute the
-      --  largest non-constant.  Then we merge them.
+      --  largest non-constant.  Then we merge them.  Also return the
+      --  maximum "must align" and minimum "is_align".  Here we use an
+      --  algorithm that's most efficient when all alignments are constant
+      --  since that's almost always the case in the "max size" situation.
 
       for J in RI.Variants'Range loop
-         Our_Size := Get_Record_Size_So_Far (Empty, No_GL_Value,
-                                             RI.Variants (J),
-                                         Empty_Record_Info_Id, True);
-         if Is_A_Const_Int (Our_Size) then
-            if Get_Const_Int_Value (Our_Size) > Max_Const_Size then
-               Max_Const_Size := Get_Const_Int_Value (Our_Size);
+         if Present (RI.Variants (J)) then
+            Get_Variant_Aligns (RI.Variants (J), Our_Must_Align, Our_Is_Align);
+            Max_Must_Align := Build_Max (Our_Must_Align, Max_Must_Align);
+            Min_Is_Align   := Build_Min (Our_Is_Align, Min_Is_Align);
+
+            if Return_Size then
+               Our_Size := Get_Record_Size_So_Far (Empty, No_GL_Value,
+                                                   RI.Variants (J),
+                                                   Empty_Record_Info_Id, True);
+               if Is_A_Const_Int (Our_Size) then
+                  if Get_Const_Int_Value (Our_Size) > Max_Const_Size then
+                     Max_Const_Size := Get_Const_Int_Value (Our_Size);
+                  end if;
+               elsif No (Max_Var_Size) then
+                  Max_Var_Size := Our_Size;
+               else
+                  Max_Var_Size := Build_Max (Our_Size, Max_Var_Size);
+               end if;
             end if;
-         elsif No (Max_Var_Size) then
-            Max_Var_Size := Our_Size;
-         else
-            Max_Var_Size
-              := Build_Select (I_Cmp (Int_SGT, Our_Size, Max_Var_Size),
-                               Our_Size, Max_Var_Size);
          end if;
       end loop;
 
-      if No (Max_Var_Size) then
-         Size := Size_Const_Int (Max_Const_Size);
-      elsif Max_Const_Size = 0 then
-         Size := Max_Var_Size;
-      else
-         Size := Build_Select (I_Cmp (Int_SGT, Size_Const_Int (Max_Const_Size),
-                                      Max_Var_Size),
-                               Size_Const_Int (Max_Const_Size), Max_Var_Size);
+      Must_Align := Max_Must_Align;
+      Is_Align   := Min_Is_Align;
+      if Return_Size then
+         if No (Max_Var_Size) then
+            Size := Size_Const_Int (Max_Const_Size);
+         elsif Max_Const_Size = 0 then
+            Size := Max_Var_Size;
+         else
+            Size := Build_Max (Max_Var_Size, Size_Const_Int (Max_Const_Size));
+         end if;
       end if;
-
    end Get_RI_Info_For_Max_Size_Variant;
 
    ----------------------------

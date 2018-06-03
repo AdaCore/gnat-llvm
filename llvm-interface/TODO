@@ -1,6 +1,5 @@
 Missing main features (identified so far):
 
-- variant records
 - exception handlers
 - freeze nodes for types and subprograms
 - representation clauses

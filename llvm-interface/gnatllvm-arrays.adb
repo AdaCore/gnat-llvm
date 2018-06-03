@@ -734,16 +734,15 @@ package body GNATLLVM.Arrays is
    function Get_Indexed_LValue
      (Indexes : List_Id; V : GL_Value) return GL_Value
    is
-      Array_Type     : constant Entity_Id := Full_Designated_Type (V);
-      Comp_Type      : constant Entity_Id := Full_Component_Type (Array_Type);
-      Array_Data_Ptr : constant GL_Value  := Get (V, Reference);
-      Idxs : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
+      Array_Type : constant Entity_Id := Full_Designated_Type (V);
+      Comp_Type  : constant Entity_Id := Full_Component_Type (Array_Type);
+      Array_Data : constant GL_Value  := Get (V, Reference);
+      J          : Nat                := 2;
+      N          : Node_Id;
+      Idxs       : GL_Value_Array (1 .. List_Length (Indexes) + 1) :=
         (1 => Size_Const_Null, others => <>);
       --  Operands for the GetElementPtr instruction: one for the
       --  pointer deference, and then one per array index.
-
-      J : Nat := 2;
-      N : Node_Id;
 
    begin
       N := First (Indexes);
@@ -775,25 +774,29 @@ package body GNATLLVM.Arrays is
       --  a fake type, we can just do a GEP with the values above.
 
       if not Is_Dynamic_Size (Array_Type) then
-         return GEP (Comp_Type, Array_Data_Ptr, Idxs);
+         return GEP (Comp_Type, Array_Data, Idxs);
       end if;
 
-      --  Otherwise, we convert the array data type to an i8*, compute the
-      --  byte offset from the index and size information, index that, and
-      --  then convert back to the array type.  We start with the first
-      --  index then for each dimension after the first, multiply by the
-      --  size of that dimension and add that index.  Finally, we multiply
-      --  by the size of the component.  We do all of this in Size_Type.
-      --
-      --  ??? If the component type is of fixed size, we can do this
-      --  indexing by computing the net index from the component type.
+      --  Otherwise, we choose a type to use for the indexing.  If the
+      --  component type is of fixed size, the array type must be [0 x
+      --  CT], and we can count in units of CT.  If CT is of variable
+      --  size, we convert the array data type to an i8*, do the
+      --  indexing computation in units of bytes, and then convert
+      --  back to the array type.  We start with the first index then
+      --  for each dimension after the first, multiply by the size of
+      --  that dimension and add that index.  Finally, we multiply by
+      --  the size of the component type if it isn't the indexing
+      --  type.  We do all of this in Size_Type.
 
       declare
-         Data          : constant GL_Value :=
-           Pointer_Cast (Array_Data_Ptr, Standard_A_Char);
-         Comp_Size     : constant GL_Value :=
-           Get_Type_Size (Comp_Type, For_Type => True);
-         Index         : GL_Value          := Convert_To_Size_Type (Idxs (2));
+         Use_Comp  : constant Boolean   := not Is_Dynamic_Size (Comp_Type);
+         Unit_Type : constant Entity_Id :=
+           (if Use_Comp then Comp_Type else Standard_Short_Short_Integer);
+         Data      : constant GL_Value  := Ptr_To_Ref (Array_Data, Unit_Type);
+         Unit_Mult : constant GL_Value  :=
+           (if Use_Comp then Size_Const_Int (Uint_1)
+            else Get_Type_Size (Comp_Type, For_Type => True));
+         Index     : GL_Value           := Convert_To_Size_Type (Idxs (2));
 
       begin
 
@@ -803,11 +806,9 @@ package body GNATLLVM.Arrays is
                               Convert_To_Size_Type (Idxs (Dim + 2)));
          end loop;
 
-         Index := NSW_Mul (Index, Comp_Size);
+         Index := NSW_Mul (Index, Unit_Mult);
          return Ptr_To_Ref
-           (GEP (Standard_Short_Short_Integer, Data, (1 => Index),
-                 "gen-index"),
-            Comp_Type);
+           (GEP (Unit_Type, Data, (1 => Index), "arr-lvalue"), Comp_Type);
       end;
 
    end Get_Indexed_LValue;
@@ -821,19 +822,19 @@ package body GNATLLVM.Arrays is
       Rng : Node_Id;
       V   : GL_Value) return GL_Value
    is
-      Array_Data_Ptr : constant GL_Value  := Get (V, Reference);
-      Arr_Type       : constant Entity_Id := Full_Designated_Type (V);
-      Low_Idx_Bound  : constant GL_Value  :=
+      Array_Data    : constant GL_Value  := Get (V, Reference);
+      Arr_Type      : constant Entity_Id := Full_Designated_Type (V);
+      Low_Idx_Bound : constant GL_Value  :=
         Get_Array_Bound (Arr_Type, 0, True, V);
-      Index_Val      : constant GL_Value  :=
+      Index_Val     : constant GL_Value  :=
         Emit_Safe_Expr (Low_Bound (Get_Dim_Range (Rng)));
-      Dim_Op_Type    : constant Entity_Id :=
+      Dim_Op_Type   : constant Entity_Id :=
         Get_GEP_Safe_Type (Low_Idx_Bound);
-      Cvt_Index      : constant GL_Value  :=
+      Cvt_Index     : constant GL_Value  :=
         Convert_To_Elementary_Type (Index_Val, Dim_Op_Type);
-      Cvt_Low_Bound  : constant GL_Value  :=
+      Cvt_Low_Bound : constant GL_Value  :=
         Convert_To_Elementary_Type (Low_Idx_Bound, Dim_Op_Type);
-      Index_Shift : constant GL_Value := NSW_Sub (Cvt_Index, Cvt_Low_Bound);
+      Index_Shift   : constant GL_Value := NSW_Sub (Cvt_Index, Cvt_Low_Bound);
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
@@ -842,27 +843,28 @@ package body GNATLLVM.Arrays is
       --  non-fake cases.  Luckily, we know we're only a single dimension.
       --  However, GEP's result type is a pointer to the component type, so
       --  we need to cast to the result (array) type in both cases.
-      --
-      --  ??? If the component type is of fixed size, we can do this
-      --  indexing by computing the net index from the component type.
 
       if not Is_Dynamic_Size (Arr_Type) then
-         return Ptr_To_Ref (GEP (TE, Array_Data_Ptr,
+         return Ptr_To_Ref (GEP (TE, Array_Data,
                                  (Size_Const_Null, Index_Shift),
-                                 "array-shifted"), TE);
+                                 "arr-lvalue"), TE);
       end if;
 
       declare
-         Data          : constant GL_Value  :=
-           Pointer_Cast (Array_Data_Ptr, Standard_A_Char);
-         Comp_Type     : constant Entity_Id := Full_Component_Type (Arr_Type);
-         Comp_Size     : constant GL_Value  :=
-           Get_Type_Size (Comp_Type, For_Type => True);
+         Comp_Type : constant Entity_Id := Full_Component_Type (Arr_Type);
+         Use_Comp  : constant Boolean   := not Is_Dynamic_Size (Comp_Type);
+         Unit_Type : constant Entity_Id :=
+           (if Use_Comp then Comp_Type else Standard_Short_Short_Integer);
+         Data      : constant GL_Value  := Ptr_To_Ref (Array_Data, Unit_Type);
+         Unit_Mult : constant GL_Value  :=
+           (if Use_Comp then Size_Const_Int (Uint_1)
+            else Get_Type_Size (Comp_Type, For_Type => True));
          Index         : constant GL_Value  :=
-           NSW_Mul (Comp_Size, Convert_To_Size_Type (Index_Shift));
+           NSW_Mul (Convert_To_Size_Type (Index_Shift), Unit_Mult);
+
       begin
          return Ptr_To_Ref
-           (GEP (Arr_Type, Data, (1 => Index), "gen-index"), TE);
+           (GEP (Arr_Type, Data, (1 => Index), "arr-lvalue"), TE);
       end;
 
    end Get_Slice_LValue;

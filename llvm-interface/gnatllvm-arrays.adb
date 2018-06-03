@@ -410,7 +410,7 @@ package body GNATLLVM.Arrays is
 
          begin
             --  Update whether or not this will be of dynamic size and
-            --  whether we must use an opaque type based on this dimension.
+            --  whether we must use a fake type based on this dimension.
             --  Then record it.  Note that LLVM only allows the range of an
             --  array to be in the range of "unsigned".  So we have to treat
             --  a too-large constant as if it's of variable size.
@@ -428,7 +428,7 @@ package body GNATLLVM.Arrays is
          end;
       end loop;
 
-      --  If we must use an opaque type, make one.  Otherwise loop through
+      --  If we must use a fake type, make one.  Otherwise loop through
       --  the types making the LLVM type.
 
       if Must_Use_Fake then

@@ -1061,61 +1061,51 @@ package body GNATLLVM.Records is
       Is_Align    : out GL_Value;
       Return_Size : Boolean := True)
    is
-      First      : Boolean      := True;
-      End_BB     : Basic_Block_T;
-      Next_BB    : Basic_Block_T;
-      This_BB    : Basic_Block_T;
-      Max_So_Far : GL_Value;
-      Var_Size   : GL_Value;
-      Idx        : Record_Info_Id;
+      Max_Const_Size : ULL      := 0;
+      Max_Var_Size   : GL_Value := No_GL_Value;
+      Our_Size       : GL_Value;
 
    begin
-      --  We need to compute the maximum size of each discriminant.  We set
-      --  Max_So_Far to the size of the first variant and then see if any
-      --  is larger.  Handle the case where the variant is empty.  If there
-      --  is only one variant, we just use its size.  We need to
-      --  special-case this to avoid generating empty basic blocks.
-
-      if RI.Variants'Length = 1 then
-         if Return_Size then
-            Size := Get_Record_Size_So_Far
-              (Empty, No_GL_Value, RI.Variants (RI.Variants'First),
-               Empty_Record_Info_Id, True);
-         end if;
-
-         Must_Align := Size_Const_Int (ULL (Get_Maximum_Alignment));
-         Is_Align   := Size_Const_Int (Uint_1);
-         return;
-      end if;
-
-      End_BB := Create_Basic_Block;
-      for J in RI.Variants'Range loop
-         Idx := RI.Variants (J);
-         Var_Size  := Get_Record_Size_So_Far (Empty, No_GL_Value, Idx,
-                                               Empty_Record_Info_Id, True);
-         if First then
-            Max_So_Far := Allocate_For_Type (Size_Type, Size_Type, Var_Size);
-            First      := False;
-         else
-            Next_BB  := (if J = RI.Variants'Last
-                         then End_BB else Create_Basic_Block);
-            This_BB  := Create_Basic_Block;
-            Build_Cond_Br (I_Cmp (Int_SGT, Var_Size, Get (Max_So_Far, Data)),
-                           This_BB, Next_BB);
-            Position_Builder_At_End (This_BB);
-            Store (Var_Size, Max_So_Far);
-            Build_Br (End_BB);
-            Position_Builder_At_End (Next_BB);
-         end if;
-      end loop;
-
-      --  Get and return final results.  We might be able to do better with
-      --  alignments here, but that's not clear.
+      --  We might be able to do better with alignments here, but that's
+      --  not clear.
 
       Must_Align := Size_Const_Int (ULL (Get_Maximum_Alignment));
       Is_Align   := Size_Const_Int (Uint_1);
-      if Return_Size then
-         Size := Get (Max_So_Far, Data);
+      if not Return_Size then
+         return;
+      end if;
+
+      --  We need to compute the maximum size of each variant.  Most
+      --  discriminant sizes are constant, so we use an algorithm that'll
+      --  work best in that situation.  So we record the largest constant
+      --  size and make a chain of Select instructions to compute the
+      --  largest non-constant.  Then we merge them.
+
+      for J in RI.Variants'Range loop
+         Our_Size := Get_Record_Size_So_Far (Empty, No_GL_Value,
+                                             RI.Variants (J),
+                                         Empty_Record_Info_Id, True);
+         if Is_A_Const_Int (Our_Size) then
+            if Get_Const_Int_Value (Our_Size) > Max_Const_Size then
+               Max_Const_Size := Get_Const_Int_Value (Our_Size);
+            end if;
+         elsif No (Max_Var_Size) then
+            Max_Var_Size := Our_Size;
+         else
+            Max_Var_Size
+              := Build_Select (I_Cmp (Int_SGT, Our_Size, Max_Var_Size),
+                               Our_Size, Max_Var_Size);
+         end if;
+      end loop;
+
+      if No (Max_Var_Size) then
+         Size := Size_Const_Int (Max_Const_Size);
+      elsif Max_Const_Size = 0 then
+         Size := Max_Var_Size;
+      else
+         Size := Build_Select (I_Cmp (Int_SGT, Size_Const_Int (Max_Const_Size),
+                                      Max_Var_Size),
+                               Size_Const_Int (Max_Const_Size), Max_Var_Size);
       end if;
 
    end Get_RI_Info_For_Max_Size_Variant;

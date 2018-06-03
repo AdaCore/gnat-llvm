@@ -84,7 +84,8 @@ package body GNATLLVM.Variables is
       Index : Global_Dup_Value_Id;
       --  Ordinal saying which duplicate this is; if two entries have this
       --  same index, they represent the same duplicated interface name.
-   end record;
+   end record
+     with Predicate => Present (E) and then Present (Index);
 
    package Global_Dup is new Table.Table
      (Table_Component_Type => Global_Dup_Entry,

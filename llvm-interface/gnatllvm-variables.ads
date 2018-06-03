@@ -21,6 +21,22 @@ with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Variables is
 
+   type Interface_Name_Id   is new Nat;
+   type Global_Dup_Id       is new Nat;
+   type Global_Dup_Value_Id is new Nat;
+
+   Empty_Interface_Name_Id   : constant Interface_Name_Id   := 0;
+   Empty_Global_Dup_Id       : constant Global_Dup_Id       := 0;
+   Empty_Global_Dup_Value_Id : constant Global_Dup_Value_Id := 0;
+
+   function Present (Idx : Interface_Name_Id)   return Boolean is (Idx /= 0);
+   function Present (Idx : Global_Dup_Id)       return Boolean is (Idx /= 0);
+   function Present (Idx : Global_Dup_Value_Id) return Boolean is (Idx /= 0);
+
+   function No (Idx : Interface_Name_Id)        return Boolean is (Idx = 0);
+   function No (Idx : Global_Dup_Id)            return Boolean is (Idx = 0);
+   function No (Idx : Global_Dup_Value_Id)      return Boolean is (Idx = 0);
+
    procedure Detect_Duplicate_Global_Names;
    --  Make a pass over all library units looking for the use of the same
    --  global name in two different entities and keep a record of all such

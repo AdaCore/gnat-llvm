@@ -47,28 +47,48 @@ package body GNATLLVM.Variables is
    --  duplicate name and "disambiguate" it, which isn't what we want
    --  because they are, indeed, meant to refer to the same variable.  So
    --  we record here which entities correspond to the same external name.
+   --  We also have to record internally-defined names that are defined in
+   --  the library with matching external names.
    --
    --  Identifiers with interface names are relatively rare and duplications
    --  are rarer still, so we don't need to be overly concerned here with
    --  execution efficiency and trade that off against memory utilization
    --  and avoiding the complexity of hash tables.
-   --
-   --  All we record once we finish our computation is a table consisting of
-   --  the following record and a table that it indexes into.
+
+   --  Make a table to record each string used in an interface name.
+   --  Record the first entity we encountered it with and the index in
+   --  Global_Dup_Value, if we've made one.
+
+   type One_Interface_Name is record
+      S     : String_Id;
+      --  The identifier of the string representing the name
+
+      E     : Entity_Id;
+      --  An entity we've seen (the first)
+
+      Index : Global_Dup_Value_Id;
+   end record;
+
+   package Interface_Names is new Table.Table
+     (Table_Component_Type => One_Interface_Name,
+      Table_Index_Type     => Interface_Name_Id,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 100,
+      Table_Increment      => 10,
+      Table_Name           => "Interface_Names_Table");
 
    type Global_Dup_Entry is record
       E     : Entity_Id;
       --  One entity that's part of a duplicate set
 
-      Index : Nat;
+      Index : Global_Dup_Value_Id;
       --  Ordinal saying which duplicate this is; if two entries have this
       --  same index, they represent the same duplicated interface name.
-      --  This is the index into the Global_Dup_Value table.
    end record;
 
    package Global_Dup is new Table.Table
      (Table_Component_Type => Global_Dup_Entry,
-      Table_Index_Type     => Nat,
+      Table_Index_Type     => Global_Dup_Id,
       Table_Low_Bound      => 1,
       Table_Initial        => 20,
       Table_Increment      => 4,
@@ -76,13 +96,13 @@ package body GNATLLVM.Variables is
 
    package Global_Dup_Value is new Table.Table
      (Table_Component_Type => GL_Value,
-      Table_Index_Type     => Nat,
+      Table_Index_Type     => Global_Dup_Value_Id,
       Table_Low_Bound      => 1,
       Table_Initial        => 5,
       Table_Increment      => 1,
       Table_Name           => "Global_Dup_Value_Table");
 
-   function Find_Dup_Entry (E : Entity_Id) return Nat
+   function Find_Dup_Entry (E : Entity_Id) return Global_Dup_Value_Id
      with Pre => Present (E) and then not Is_Type (E);
    --  If E is present in the above table, returns the value of Index
    --  for that entry or 0 if not present.
@@ -110,7 +130,7 @@ package body GNATLLVM.Variables is
    -- Find_Dup_Entry --
    --------------------
 
-   function Find_Dup_Entry (E : Entity_Id) return Nat is
+   function Find_Dup_Entry (E : Entity_Id) return Global_Dup_Value_Id is
    begin
       --  Don't even to search if we don't have an Interface_Name or
       --  do have an address clause, because those can't be in the list.
@@ -119,13 +139,13 @@ package body GNATLLVM.Variables is
          return 0;
       end if;
 
-      for J in 1 .. Global_Dup.Last loop
+      for J in Global_Dup_Id range 1 .. Global_Dup.Last loop
          if Global_Dup.Table (J).E = E then
             return Global_Dup.Table (J).Index;
          end if;
       end loop;
 
-      return 0;
+      return Empty_Global_Dup_Value_Id;
    end Find_Dup_Entry;
 
    --------------------------
@@ -133,9 +153,10 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Get_Dup_Global_Value (E : Entity_Id) return GL_Value is
-      Idx : constant Nat := Find_Dup_Entry (E);
+      Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (E);
+
    begin
-      return (if Idx = 0 then No_GL_Value else Global_Dup_Value.Table (Idx));
+      return (if No (Idx) then No_GL_Value else Global_Dup_Value.Table (Idx));
    end Get_Dup_Global_Value;
 
    --------------------------
@@ -143,9 +164,10 @@ package body GNATLLVM.Variables is
    --------------------------
 
    procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value) is
-      Idx : constant Nat := Find_Dup_Entry (E);
+      Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (E);
+
    begin
-      if Idx /= 0 then
+      if Present (Idx) then
          Global_Dup_Value.Table (Idx) := V;
       end if;
    end Set_Dup_Global_Value;
@@ -155,18 +177,19 @@ package body GNATLLVM.Variables is
    -------------------------------
 
    function Get_Dup_Global_Is_Defined (E : Entity_Id) return Boolean is
-      Idx : constant Nat := Find_Dup_Entry (E);
+      Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (E);
+
    begin
       --  If this is not in the table, we have no external definition
 
-      if Idx = 0 then
+      if No (Idx) then
          return False;
       end if;
 
       --  Otherwise, search for an entity in our duplicate class that's in
       --  the extended main unit and are being exported.
 
-      for J in 1 .. Global_Dup.Last loop
+      for J in Global_Dup_Id range 1 .. Global_Dup.Last loop
          if Global_Dup.Table (J).Index = Idx
            and then In_Extended_Main_Code_Unit (Global_Dup.Table (J).E)
            and then Is_Exported (Global_Dup.Table (J).E)
@@ -183,29 +206,6 @@ package body GNATLLVM.Variables is
    -----------------------------------
 
    procedure Detect_Duplicate_Global_Names is
-
-      --  Make a table to record each string used in an interface name.
-      --  Record the first entity we encountered it with and the index in
-      --  Global_Dup_Value, if we've made one.
-
-      type One_Interface_Name is record
-         S     : String_Id;
-         --  The identifier of the string representing the name
-
-         E     : Entity_Id;
-         --  An entity we've seen (the first)
-
-         Index : Nat;
-         --  Index into Global_Dup_Value or 0 if none yet.
-      end record;
-
-      package Interface_Names is new Table.Table
-        (Table_Component_Type => One_Interface_Name,
-         Table_Index_Type     => Nat,
-         Table_Low_Bound      => 1,
-         Table_Initial        => 100,
-         Table_Increment      => 10,
-         Table_Name           => "Interface_Names_Table");
 
       procedure Scan_Library_Item (U : Node_Id);
       --  Scan one library item looking for pragma Import or Export
@@ -277,7 +277,7 @@ package body GNATLLVM.Variables is
                   --  already built a Global_Dup_Value entry, all we have to
                   --  do is make a new Global_Dup entry recording our entity.
 
-                  if Interface_Names.Table (J).Index /= 0 then
+                  if Present (Interface_Names.Table (J).Index) then
                      Global_Dup.Append ((N, Interface_Names.Table (J).Index));
                   else
                      --  Otherwise, make a new Global_Dup_Value entry, make
@@ -285,16 +285,20 @@ package body GNATLLVM.Variables is
                      --  entry, and indicate the Global_Dup_Value entry.
 
                      Global_Dup_Value.Append (No_GL_Value);
+                     Interface_Names.Table (J).Index := Global_Dup_Value.Last;
                      Global_Dup.Append ((N, Global_Dup_Value.Last));
-                     Global_Dup.Append ((Interface_Names.Table (J).E,
-                                         Global_Dup_Value.Last));
+                     if Present (Interface_Names.Table (J).E) then
+                        Global_Dup.Append ((Interface_Names.Table (J).E,
+                                            Global_Dup_Value.Last));
+                     end if;
                   end if;
 
                   return OK;
                end if;
             end loop;
 
-            Interface_Names.Append ((Strval (Interface_Name (N)), N, 0));
+            Interface_Names.Append ((Strval (Interface_Name (N)), N,
+                                     Empty_Global_Dup_Value_Id));
          end if;
 
          return OK;

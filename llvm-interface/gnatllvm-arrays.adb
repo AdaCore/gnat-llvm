@@ -49,15 +49,15 @@ package body GNATLLVM.Arrays is
      --  means that Dynamic must be true.  We might think that exactly one
      --  item must be specified, but that's not the case for an
      --  unconstrained array.
-     with Dynamic_Predicate => ((if Cnst = No_Uint then 0 else 1) +
-                                (if No (Value) then 0 else 1)) <= 1
-                               and then (No (Value) or else Dynamic);
+     with Predicate => ((if Cnst = No_Uint then 0 else 1) +
+                        (if No (Value) then 0 else 1)) <= 1
+                       and then (No (Value) or else Dynamic);
 
    type Index_Bounds is record
       Bound_Type        : Entity_Id;
       Low, High         : One_Bound;
    end record
-     with Dynamic_Predicate => Is_Discrete_Type (Bound_Type);
+     with Predicate => Is_Discrete_Type (Bound_Type);
 
    package Array_Info is new Table.Table
      (Table_Component_Type => Index_Bounds,

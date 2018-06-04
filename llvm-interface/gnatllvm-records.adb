@@ -563,6 +563,7 @@ package body GNATLLVM.Records is
             Var_Array          : access Record_Info_Id_Array;
             Saved_Cur_Idx      : Record_Info_Id;
             Saved_Prev_Idx     : Record_Info_Id;
+            Saved_First_Idx    : Record_Info_Id;
             Saved_Align        : unsigned;
             Component_Def      : Node_Id;
             Field              : Entity_Id;
@@ -624,8 +625,9 @@ package body GNATLLVM.Records is
             Variant := First (Variants (Var_Part));
             Flush_Current_Types;
             Set_Is_Dynamic_Size (TE);
-            Saved_Cur_Idx  := Cur_Idx;
-            Saved_Prev_Idx := Prev_Idx;
+            Saved_Cur_Idx   := Cur_Idx;
+            Saved_Prev_Idx  := Prev_Idx;
+            Saved_First_Idx := First_Idx;
             Saved_Align    := Last_Align;
             J              := 1;
             Var_Array      := new
@@ -667,8 +669,9 @@ package body GNATLLVM.Records is
                Next (Variant);
             end loop;
 
-            Prev_Idx := Saved_Prev_Idx;
-            Cur_Idx  := Saved_Cur_Idx;
+            Prev_Idx  := Saved_Prev_Idx;
+            Cur_Idx   := Saved_Cur_Idx;
+            First_Idx := Saved_First_Idx;
             Add_RI (Variant_List => Variants (Var_Part),
                     Variants     => Var_Array,
                     Variant_Expr =>
@@ -841,7 +844,7 @@ package body GNATLLVM.Records is
    is
       T         : constant Type_T      := RI.LLVM_Type;
       TE        : constant Entity_Id   := RI.GNAT_Type;
-      This_Size : GL_Value;
+      This_Size : GL_Value             := No_GL_Value;
 
    begin
          --  First check for zero length LLVM type since the code below will
@@ -969,8 +972,9 @@ package body GNATLLVM.Records is
    function Get_Variant_For_RI
      (In_RI : Record_Info; Need_Idx : Record_Info_Id) return Record_Info_Id
    is
-      Idx : Record_Info_Id;
-      RI  : Record_Info;
+      Idx     : Record_Info_Id;
+      RI      : Record_Info;
+      New_Idx : Record_Info_Id;
 
    begin
       --  Look through each variant
@@ -988,11 +992,13 @@ package body GNATLLVM.Records is
             if Idx = Need_Idx then
                return Variant_Idx;
             elsif RI.Variants /= null then
-               return (if Present (Get_Variant_For_RI (RI, Need_Idx))
-                       then Variant_Idx else Empty_Record_Info_Id);
-            else
-               Idx := RI.Next;
+               New_Idx := Get_Variant_For_RI (RI, Need_Idx);
+               if Present (New_Idx) then
+                  return Variant_Idx;
+               end if;
             end if;
+
+            Idx := RI.Next;
          end loop;
       end loop;
 

@@ -723,7 +723,7 @@ package body GNATLLVM.Exprs is
                  (Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N))));
                For_Type    : constant Boolean   :=
-                 Is_A_Type and then not Is_Constrained (Entity (Prefix (N)));
+                 Is_A_Type and then not Is_Constrained (Prefix_Type);
             begin
                V := (if Is_A_Type then No_GL_Value
                                   else Emit_LValue (Prefix (N)));

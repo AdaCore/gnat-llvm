@@ -777,7 +777,6 @@ package body GNATLLVM.Records is
          --  and make a field descriptor.
 
          else
-
             --  We need to flush the previous types if required by the
             --  alignment.
 

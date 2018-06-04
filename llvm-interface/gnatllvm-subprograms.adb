@@ -948,8 +948,9 @@ package body GNATLLVM.Subprograms is
       Subp_Type   : constant Type_T   := Create_Subprogram_Type (Def_Ident);
       Subp_Name   : constant String   := Get_Ext_Name (Def_Ident);
       Actual_Name : constant String   :=
-        (if Is_Compilation_Unit (Def_Ident) then "_ada_" & Subp_Name
-         else Subp_Name);
+        (if Is_Compilation_Unit (Def_Ident)
+           and then No (Interface_Name (Def_Ident))
+         then "_ada_" & Subp_Name else Subp_Name);
       LLVM_Func   : GL_Value          := Get_Dup_Global_Value (Def_Ident);
 
    begin

@@ -1183,40 +1183,37 @@ package body GNATLLVM.Types is
    ------------------------
 
    function Get_Type_Alignment (TE : Entity_Id) return unsigned is
+      Largest_Align : unsigned  := 1;
+      Field         : Entity_Id;
+
    begin
-
-      --  Easiest case is not dynamic size: then just LLVM type's alignment
-
-      if not Is_Dynamic_Size (TE) then
-         return Get_Type_Alignment (Create_Type (TE));
-
       --  If it's an array, it's the alignment of the component type
 
-      elsif Is_Array_Type (TE) then
+      if Is_Array_Type (TE) then
          return Get_Type_Alignment (Full_Component_Type (TE));
 
-      --  Otherwise, it must be a record.  Use the highest alignment of
-      --  any field.
+      --  Otherwise, if a record, use the highest alignment of any field
+
+      elsif Is_Record_Type (TE) then
+         Field := First_Entity (TE);
+         while Present (Field) loop
+            if Ekind_In (Field, E_Discriminant, E_Component) then
+               Largest_Align
+                 := unsigned'Max (Largest_Align,
+                                  Get_Type_Alignment (Full_Etype (Field)));
+            end if;
+
+            Next_Entity (Field);
+         end loop;
+
+         return Largest_Align;
+
+      --  Otherwise, it must be an elementary type, so get the LLVM type's
+      --  alignment
 
       else
-         pragma Assert (Is_Record_Type (TE));
-         declare
-            Field         : Entity_Id := First_Entity (TE);
-            Largest_Align : unsigned  := 1;
+         return Get_Type_Alignment (Create_Type (TE));
 
-         begin
-            while Present (Field) loop
-               if Ekind_In (Field, E_Discriminant, E_Component) then
-                  Largest_Align
-                    := unsigned'Max (Largest_Align,
-                                     Get_Type_Alignment (Full_Etype (Field)));
-               end if;
-
-               Next_Entity (Field);
-            end loop;
-
-            return Largest_Align;
-         end;
       end if;
    end Get_Type_Alignment;
 

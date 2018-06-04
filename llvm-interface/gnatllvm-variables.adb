@@ -868,6 +868,7 @@ package body GNATLLVM.Variables is
 
    procedure Emit_Renaming_Declaration (N : Node_Id) is
       Def_Ident : constant Entity_Id := Defining_Identifier (N);
+      TE        : constant Entity_Id := Full_Etype (Def_Ident);
       LLVM_Var  : GL_Value;
 
    begin
@@ -893,15 +894,16 @@ package body GNATLLVM.Variables is
         and then (not Library_Level
                     or else Compile_Time_Known_Value (Name (N)))
       then
-         Set_Value (Def_Ident, Emit_Expression  (Name (N)));
+         Set_Value (Def_Ident, Build_Type_Conversion (Name (N), TE));
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
-         Set_Value (Def_Ident, Emit_LValue (Name (N)));
+         Set_Value (Def_Ident,
+                    Convert_To_Access_To (Emit_LValue (Name (N)), TE));
+
       else
-         LLVM_Var := Add_Global (Full_Etype (Def_Ident),
-                                 Get_Ext_Name (Def_Ident),
+         LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident),
                                  Need_Reference => True);
          Set_Value (Def_Ident, LLVM_Var);
-         Set_Initializer (LLVM_Var, Const_Null_Ref (Full_Etype (Def_Ident)));
+         Set_Initializer (LLVM_Var, Const_Null_Ref (TE));
          Add_To_Elab_Proc (N);
       end if;
    end Emit_Renaming_Declaration;

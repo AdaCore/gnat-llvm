@@ -396,12 +396,19 @@ package body GNATLLVM.Subprograms is
               Activation_Record_Component (E);
             Pointer       : constant GL_Value  :=
               Record_Field_Offset (Activation_Rec_Param, Component);
+            Value         : constant GL_Value  := Load (Pointer);
 
          begin
-            pragma Assert (not Is_Unconstrained_Array (TE));
-            --  This can't work for unconstrained types since we lose bounds
+            --  If TE is unconstrained, we have an access type, which is a
+            --  fat pointer.  Convert it to a reference to the underlying
+            --  type.  Otherwise, this is a System.Address which needs to
+            --  be converted to a pointer.
 
-            return Int_To_Ref (Load (Pointer), TE);
+            if Is_Unconstrained_Array (TE) then
+               return From_Access (Value);
+            else
+               return Int_To_Ref (Value, TE);
+            end if;
          end;
       else
          return No_GL_Value;

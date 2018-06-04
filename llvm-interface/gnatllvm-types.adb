@@ -1193,7 +1193,7 @@ package body GNATLLVM.Types is
       --  If it's an array, it's the alignment of the component type
 
       elsif Is_Array_Type (TE) then
-         return Get_Type_Alignment (Component_Type (TE));
+         return Get_Type_Alignment (Full_Component_Type (TE));
 
       --  Otherwise, it must be a record.  Use the highest alignment of
       --  any field.

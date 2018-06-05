@@ -32,26 +32,24 @@ package body Uintp.LLVM is
    --------------------
 
    function Big_UI_To_LLVM (T : Type_T; U : Uint) return Value_T is
-      Loc     : constant Nat := Uints.Table (U).Loc;
-      Length  : constant Integer := Integer (Uints.Table (U).Length);
-      D_Table : Udigits.Table_Ptr renames Udigits.Table;
+      D_Table        : Udigits.Table_Ptr renames Udigits.Table;
+      Loc            : constant Int     := Uints.Table (U).Loc;
+      Length         : constant Pos     := Uints.Table (U).Length;
+      N_Bits         : constant Pos     := Base_Bits * Length;
+      N_Words        : constant Pos     := (N_Bits + 63) / 64;
+      N_Padding_Bits : constant Pos     := N_Words * 64 - N_Bits;
+      Is_Negative    : constant Boolean := D_Table (Loc) < Nat (0);
+      Words          : array (1 .. N_Words) of aliased uint64_t :=
+        (others => 0);
+      Cur_Word       : Nat              := N_Words;
+      Cur_Bit        : Nat              := 64;
+      Result         : Value_T;
 
-      N_Bits  : constant Integer := Base_Bits * Length;
-      N_Words : constant Integer := (N_Bits + 63) / 64;
-      N_Padding_Bits : constant Integer := N_Words * 64 - N_Bits;
-
-      Is_Negative : constant Boolean := Integer (D_Table (Loc)) < 0;
-      Words       : array (1 .. N_Words) of aliased uint64_t := (others => 0);
-
-      Cur_Word : Integer := N_Words;
-      Cur_Bit  : Integer := 64;
-      Result   : Value_T;
-
-      function Ones (Length : Integer) return uint64_t is
-         (uint64_t (2 ** Length - 1));
+      function Ones (Length : Nat) return uint64_t is
+         (uint64_t (2 ** Integer (Length) - 1));
       --  Return a bitfield with the Length least significant bits set to 1
 
-      procedure Push_Bits (Bits : uint64_t; Length : Integer);
+      procedure Push_Bits (Bits : uint64_t; Length : Nat);
       --  Push Bits (an integer Length bits arge) into the upper bits of Words
       --  right after the cursor. Update the cursor accordingly.
 
@@ -59,9 +57,9 @@ package body Uintp.LLVM is
       -- Push_Bits --
       ---------------
 
-      procedure Push_Bits (Bits : uint64_t; Length : Integer) is
+      procedure Push_Bits (Bits : uint64_t; Length : Nat) is
          Buffer        : Unsigned_64 := Unsigned_64 (Bits);
-         Buffer_Length : Integer := Length;
+         Buffer_Length : Nat         := Length;
 
       begin
          --  Cur_Bit is how many bits are left inside the current word
@@ -71,7 +69,7 @@ package body Uintp.LLVM is
             --  word: first store the upper ones.
 
             declare
-               Left_Over : constant Integer := Buffer_Length - Cur_Bit;
+               Left_Over : constant Nat := Buffer_Length - Cur_Bit;
                --  Number of bits left in the buffer after storing high-order
                --  bits.
 
@@ -80,50 +78,38 @@ package body Uintp.LLVM is
 
                Words (Cur_Word) := uint64_t
                  (Unsigned_64 (Words (Cur_Word))
-                  or Shift_Right (Buffer, Left_Over));
+                  or Shift_Right (Buffer, Integer (Left_Over)));
 
                --  Then go to the next one, updating both the cursor and the
                --  bits to store.
 
-               Cur_Word := Cur_Word - 1;
-               Cur_Bit := 64;
-               Buffer := Buffer and Unsigned_64 (Ones (Left_Over));
+               Cur_Word      := Cur_Word - 1;
+               Cur_Bit       := 64;
+               Buffer        := Buffer and Unsigned_64 (Ones (Left_Over));
                Buffer_Length := Left_Over;
             end;
          end if;
 
          Words (Cur_Word) := uint64_t
            (Unsigned_64 (Words (Cur_Word))
-            or Shift_Left (Buffer, Cur_Bit - Buffer_Length));
+            or Shift_Left (Buffer, Integer (Cur_Bit - Buffer_Length)));
          Cur_Bit := Cur_Bit - Buffer_Length;
-         if Cur_Bit = 0 then
+         if Cur_Bit = Nat (0) then
             Cur_Word := Cur_Word - 1;
-            Cur_Bit := 64;
+            Cur_Bit  := 64;
          end if;
       end Push_Bits;
 
    begin
-      --  There are a number of tricky things here.  First, we use the "**"
-      --  operator and we're a child of Uintp, which defines that operator
-      --  for Nat ** Nat.  So we need to be sure that we stay away from
-      --  Int/Nat and instead use standard Integer.  However, we can safely
-      --  index into the Udigits table using Nat and that's actually
-      --  easier.  Also, LLVM takes the first word passed to it as the
-      --  low-order part of the constant, not the high-order, as might be
-      --  expected.  Finally, the absolute value of the constant is what's
-      --  stored in the Uint table and we later negate if it's negative.
+      --  Note that LLVM takes the first word passed to it as the low-order
+      --  part of the constant, not the high-order, as might be expected.
+      --  Also, the absolute value of the constant is what's stored in the
+      --  Uint table and we later negate if it's negative.
 
       Push_Bits (0, N_Padding_Bits);
 
       for I in Nat range 1 .. Nat (Length) loop
-         declare
-            D_Digit : Int renames D_Table (Loc + I - Nat (1));
-            Digit   : constant Integer := Integer (D_Digit);
-            Bits    : constant uint64_t := uint64_t
-              (if Digit < 0 then 2 ** Base_Bits - Digit else Digit);
-         begin
-            Push_Bits (Bits, Base_Bits);
-         end;
+         Push_Bits (uint64_t (abs D_Table (Loc + I - 1)), Base_Bits);
       end loop;
 
       Result := Const_Int_Of_Arbitrary_Precision

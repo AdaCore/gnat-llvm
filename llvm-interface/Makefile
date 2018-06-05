@@ -180,30 +180,6 @@ text_io.ads  \
 unchconv.ads \
 unchdeal.ads
 
-# ??? Would be good to enable the following units but they do not compile yet
-# s-imgbiu.adb \
-# s-imgbiu.ads \
-# s-imgdec.adb \
-# s-imgdec.ads \
-# s-imgllb.adb \
-# s-imgllb.ads \
-# s-imglld.adb \
-# s-imglld.ads \
-# s-imgllw.adb \
-# s-imgllw.ads \
-# s-imgrea.adb \
-# s-imgrea.ads \
-# s-imgwiu.adb \
-# s-imgwiu.ads \
-# s-valrea.adb \
-# s-valrea.ads \
-# s-valdec.adb \
-# s-valdec.ads \
-# s-vallld.adb \
-# s-vallld.ads \
-# s-valwch.adb \
-# s-valwch.ads \
-
 COMPILABLE_SPECS= \
 ada.ads      \
 a-unccon.ads \

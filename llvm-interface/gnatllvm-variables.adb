@@ -103,6 +103,10 @@ package body GNATLLVM.Variables is
       Table_Increment      => 1,
       Table_Name           => "Global_Dup_Value_Table");
 
+   function Has_Global_Name (E : Entity_Id) return Boolean
+     with Pre => Present (E) and then not Is_Type (E);
+   --  Return True if E may have a global name that we need to check for dups
+
    function Find_Dup_Entry (E : Entity_Id) return Global_Dup_Value_Id
      with Pre => Present (E) and then not Is_Type (E);
    --  If E is present in the above table, returns the value of Index
@@ -127,17 +131,40 @@ package body GNATLLVM.Variables is
      with Pre => Present (N);
    --  Return True if N represents an address that can computed statically
 
+   ---------------------
+   -- Has_Global_Name --
+   ---------------------
+
+   function Has_Global_Name (E : Entity_Id) return Boolean is
+   begin
+      --  If there's an address clause, there's no global name
+
+      if Present (Address_Clause (E)) then
+         return False;
+
+      --  If there's an Interace_Name, that's a global name
+
+      elsif Present (Interface_Name (E)) then
+         return True;
+
+      --  The other case is an Exception in Standard
+
+      else
+         return Ekind (E) = E_Exception and then Sloc (E) <= Standard_Location;
+      end if;
+
+   end Has_Global_Name;
+
    --------------------
    -- Find_Dup_Entry --
    --------------------
 
    function Find_Dup_Entry (E : Entity_Id) return Global_Dup_Value_Id is
    begin
-      --  Don't even to search if we don't have an Interface_Name or
-      --  do have an address clause, because those can't be in the list.
+      --  Don't even to search if this doesn't have a global name
 
-      if No (Interface_Name (E)) or else Present (Address_Clause (E)) then
-         return 0;
+      if not Has_Global_Name (E) then
+         return Empty_Global_Dup_Value_Id;
       end if;
 
       for J in Global_Dup_Id range 1 .. Global_Dup.Last loop
@@ -228,19 +255,15 @@ package body GNATLLVM.Variables is
          N : Node_Id;
 
       begin
-         --  Ignore Standard and ASCII packages
+         --  Scan the declarations and then the unit itself
 
-         if Sloc (U) <= Standard_Location then
-            return;
+         if Present (Parent (U)) then
+            N := First (Declarations (Aux_Decls_Node (Parent (U))));
+            while Present (N) loop
+               Scan (N);
+               Next (N);
+            end loop;
          end if;
-
-         --  Otherwise, scan the declarations and then the unit itself
-
-         N := First (Declarations (Aux_Decls_Node (Parent (U))));
-         while Present (N) loop
-            Scan (N);
-            Next (N);
-         end loop;
 
          Scan (U);
       end Scan_Library_Item;
@@ -250,6 +273,8 @@ package body GNATLLVM.Variables is
       -------------------
 
       function Scan_One_Node (N : Node_Id) return Traverse_Result is
+         This_Str : String_Id;
+
       begin
          --  If we run into a stub, we have to search inside it because
          --  Library_Unit is a semantic, not syntactic, field.
@@ -263,17 +288,26 @@ package body GNATLLVM.Variables is
          elsif Nkind (N) = N_Defining_Identifier
            and then Ekind_In (N, E_Constant, E_Variable, E_Exception,
                               E_Function, E_Procedure, E_Package)
-           and then Present (Interface_Name (N))
-           and then No (Address_Clause (N)) -- see cd30005
+           and then Has_Global_Name (N)
          then
-            --  See if this Interface_Name is already in our table.  If it
-            --  isn't, add it and indicate which node it was from, but then
-            --  we're done since it's not a duplicate yet.
+            --  See if this name is already in our table.  If it
+            --  isn't, add it and indicate which node it was from, but
+            --  then we're done since it's not a duplicate yet.  Handle
+            --  both Interface_Name and exceptions in Standard.
+
+            if Present (Interface_Name (N)) then
+               This_Str := Strval (Interface_Name (N));
+            else
+               --  Must be exception in Standard
+
+               Start_String;
+               Store_String_Chars (Get_Name_String (Chars (N)));
+               This_Str := End_String;
+            end if;
 
             for J in 1 .. Interface_Names.Last loop
-               if String_Equal (Interface_Names.Table (J).S,
-                                Strval (Interface_Name (N)))
-               then
+               if String_Equal (Interface_Names.Table (J).S, This_Str) then
+
                   --  But if it is present, we do have a duplicate.  If we've
                   --  already built a Global_Dup_Value entry, all we have to
                   --  do is make a new Global_Dup entry recording our entity.
@@ -298,8 +332,7 @@ package body GNATLLVM.Variables is
                end if;
             end loop;
 
-            Interface_Names.Append ((Strval (Interface_Name (N)), N,
-                                     Empty_Global_Dup_Value_Id));
+            Interface_Names.Append ((This_Str, N, Empty_Global_Dup_Value_Id));
          end if;
 
          return OK;
@@ -308,8 +341,10 @@ package body GNATLLVM.Variables is
    begin
       --  Start of processing for Detect_Duplicate_Global_Names
 
+      Stringt.Unlock;
       Scan_All_Units;
       Interface_Names.Free;
+      Stringt.Lock;
    end Detect_Duplicate_Global_Names;
 
    ------------------------

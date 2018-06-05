@@ -1079,7 +1079,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call_Alloc_Dealloc (Proc,
-               (1 => Ptr_To_Ref (Get_Value (Pool),
+               (1 => Ptr_To_Ref (Emit_LValue (Pool, Clear => False),
                                  Full_Etype (First_Formal (Proc))),
                 2 => Ret_Loc, 3 => Size, 4 => Align_V));
 
@@ -1134,7 +1134,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call_Alloc_Dealloc (Proc,
-               (1 => Ptr_To_Ref (Get_Value (Pool),
+               (1 => Ptr_To_Ref (Emit_LValue (Pool, Clear => False),
                                  Full_Etype (First_Formal (Proc))),
                 2 => Ptr_To_Size_Type (Converted_V),
                 3 => Size, 4 => Align_V));

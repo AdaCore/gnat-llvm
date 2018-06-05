@@ -25,15 +25,9 @@ with Sem_Aux;  use Sem_Aux;
 with Sprint;   use Sprint;
 with Stringt;  use Stringt;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
-
-   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
-   --  Helper to add type data (e.g., volatility and TBAA info) to
-   --  an Instruction.
 
    ------------------------
    -- Is_Constant_Folded --
@@ -361,24 +355,6 @@ package body GNATLLVM.Utils is
       Name    : String := "") return Value_T
    is
      (GEP (Bld, Ptr, Indices'Address, Indices'Length, Name));
-
-   ----------------------------------
-   -- Add_Type_Data_To_Instruction --
-   ----------------------------------
-
-   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id)
-   is
-      TBAA : constant Metadata_T := Get_TBAA (Implementation_Base_Type (TE));
-   begin
-      if Is_Volatile (TE) then
-         Set_Volatile (Inst);
-      end if;
-
-      if Present (TBAA) then
-         Add_TBAA_Access
-           (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
-      end if;
-   end Add_Type_Data_To_Instruction;
 
    --------------------
    -- Load_With_Type --

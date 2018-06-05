@@ -1312,4 +1312,22 @@ package body GNATLLVM.Types is
       end if;
    end Get_Type_Size_Complexity;
 
+   ----------------------------------
+   -- Add_Type_Data_To_Instruction --
+   ----------------------------------
+
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id)
+   is
+      TBAA : constant Metadata_T := Get_TBAA (Implementation_Base_Type (TE));
+   begin
+      if Is_Volatile (TE) then
+         Set_Volatile (Inst);
+      end if;
+
+      if Present (TBAA) then
+         Add_TBAA_Access
+           (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
+      end if;
+   end Add_Type_Data_To_Instruction;
+
 end GNATLLVM.Types;

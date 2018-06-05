@@ -37,6 +37,7 @@ with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Records is

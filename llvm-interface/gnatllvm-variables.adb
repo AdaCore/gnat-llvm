@@ -71,7 +71,7 @@ package body GNATLLVM.Variables is
 
    package Interface_Names is new Table.Table
      (Table_Component_Type => One_Interface_Name,
-      Table_Index_Type     => Interface_Name_Id,
+      Table_Index_Type     => Interface_Names_Id,
       Table_Low_Bound      => 1,
       Table_Initial        => 100,
       Table_Increment      => 10,
@@ -103,19 +103,25 @@ package body GNATLLVM.Variables is
       Table_Increment      => 1,
       Table_Name           => "Global_Dup_Value_Table");
 
-   function Has_Global_Name (E : Entity_Id) return Boolean
-     with Pre => Present (E) and then not Is_Type (E);
-   --  Return True if E may have a global name that we need to check for dups
-
    function Find_Dup_Entry (E : Entity_Id) return Global_Dup_Value_Id
      with Pre => Present (E) and then not Is_Type (E);
    --  If E is present in the above table, returns the value of Index
    --  for that entry or 0 if not present.
 
+   function Find_Dup_Entry (S : String) return Global_Dup_Value_Id;
+   --  Similar, but by string (for builtins)
+
    function Get_Dup_Global_Is_Defined (E : Entity_Id) return Boolean
      with Pre => Present (E) and then not Is_Type (E);
    --  Return True if E corresponds to a duplicated interface name and one
    --  occurence of that name in the extended main unit is defining it.
+
+   function String_Equal (L : String_Id; R : String) return Boolean;
+   --  Compare a string with an entry in the string table
+
+   function Has_Global_Name (E : Entity_Id) return Boolean
+     with Pre => Present (E) and then not Is_Type (E);
+   --  Return True if E may have a global name that we need to check for dups
 
    function Make_Global_Variable (Def_Ident : Entity_Id) return GL_Value
      with Pre  => Present (Def_Ident) and then not Is_Type (Def_Ident),
@@ -130,6 +136,27 @@ package body GNATLLVM.Variables is
    function Is_Static_Address (N : Node_Id) return Boolean
      with Pre => Present (N);
    --  Return True if N represents an address that can computed statically
+
+   ------------------
+   -- String_Equal --
+   ------------------
+
+   function String_Equal (L : String_Id; R : String) return Boolean is
+      Len : constant Nat := String_Length (L);
+
+   begin
+      if Len /= R'Length then
+         return False;
+      else
+         for J in 1 .. Len loop
+            if Get_Character (Get_String_Char (L, J)) /= R (Integer (J)) then
+               return False;
+            end if;
+         end loop;
+
+         return True;
+      end if;
+   end String_Equal;
 
    ---------------------
    -- Has_Global_Name --
@@ -176,6 +203,21 @@ package body GNATLLVM.Variables is
       return Empty_Global_Dup_Value_Id;
    end Find_Dup_Entry;
 
+   --------------------
+   -- Find_Dup_Entry --
+   --------------------
+
+   function Find_Dup_Entry (S : String) return Global_Dup_Value_Id is
+   begin
+      for J in Interface_Names_Id range 1 .. Interface_Names.Last loop
+         if String_Equal (Interface_Names.Table (J).S, S) then
+            return Interface_Names.Table (J).Index;
+         end if;
+      end loop;
+
+      return Empty_Global_Dup_Value_Id;
+   end Find_Dup_Entry;
+
    --------------------------
    -- Get_Dup_Global_Value --
    --------------------------
@@ -193,6 +235,30 @@ package body GNATLLVM.Variables is
 
    procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value) is
       Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (E);
+
+   begin
+      if Present (Idx) then
+         Global_Dup_Value.Table (Idx) := V;
+      end if;
+   end Set_Dup_Global_Value;
+
+   --------------------------
+   -- Get_Dup_Global_Value --
+   --------------------------
+
+   function Get_Dup_Global_Value (S : String) return GL_Value is
+      Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (S);
+
+   begin
+      return (if No (Idx) then No_GL_Value else Global_Dup_Value.Table (Idx));
+   end Get_Dup_Global_Value;
+
+   --------------------------
+   -- Set_Dup_Global_Value --
+   --------------------------
+
+   procedure Set_Dup_Global_Value (S : String; V : GL_Value) is
+      Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (S);
 
    begin
       if Present (Idx) then
@@ -228,6 +294,17 @@ package body GNATLLVM.Variables is
 
       return False;
    end Get_Dup_Global_Is_Defined;
+
+   --------------------------
+   -- Register_Global_Name --
+   --------------------------
+
+   procedure Register_Global_Name (S : String) is
+   begin
+      Start_String;
+      Store_String_Chars (S);
+      Interface_Names.Append ((End_String, Empty, Empty_Global_Dup_Value_Id));
+   end Register_Global_Name;
 
    -----------------------------------
    -- Detect_Duplicate_Global_Names --
@@ -341,10 +418,8 @@ package body GNATLLVM.Variables is
    begin
       --  Start of processing for Detect_Duplicate_Global_Names
 
-      Stringt.Unlock;
       Scan_All_Units;
-      Interface_Names.Free;
-      Stringt.Lock;
+      Detected_Duplicates := True;
    end Detect_Duplicate_Global_Names;
 
    ------------------------

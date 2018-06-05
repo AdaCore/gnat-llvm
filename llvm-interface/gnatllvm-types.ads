@@ -333,4 +333,7 @@ package GNATLLVM.Types is
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the type is of a constant size.
 
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
+   --  Add type data (e.g., volatility and TBAA info) to an Instruction
+
 end GNATLLVM.Types;

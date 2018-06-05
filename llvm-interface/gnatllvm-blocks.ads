@@ -17,7 +17,7 @@
 
 with Sinfo; use Sinfo;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 
 package GNATLLVM.Blocks is
 
@@ -92,5 +92,8 @@ package GNATLLVM.Blocks is
      with Post => Present (Get_Exit_Point'Result);
    --  If N is specied, find the exit point corresponding to its entity.
    --  Otherwise, find the most recent (most inner) exit point.
+
+   procedure Initialize;
+   --  Initialize all global names
 
 end GNATLLVM.Blocks;

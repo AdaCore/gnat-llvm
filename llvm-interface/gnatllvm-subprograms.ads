@@ -18,7 +18,6 @@
 with Sinfo; use Sinfo;
 with Uintp; use Uintp;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Subprograms is
@@ -53,6 +52,16 @@ package GNATLLVM.Subprograms is
      with Pre => Is_Type (TE) and then RM_Size (TE) /= No_Uint,
           Post => Present (Build_Intrinsic'Result);
    --  Build an intrinsic function of the specified type, name, and kind
+
+   function Add_Global_Function
+     (S         : String;
+      Subp_Type : Type_T;
+      TE        : Entity_Id;
+      Can_Throw : Boolean := False) return GL_Value
+     with Pre => S'Length > 0 and then Present (Subp_Type)
+                 and then Present (TE);
+   --  Create a function with the give name and type, but handling the case
+   --  where we're also compiling a function with that name.
 
    function Get_Default_Alloc_Fn return GL_Value
      with Post => Present (Get_Default_Alloc_Fn'Result);
@@ -149,6 +158,28 @@ package GNATLLVM.Subprograms is
    function Subp_Ptr (N : Node_Id) return GL_Value
      with Pre  => Present (N), Post => Present (Subp_Ptr'Result);
    --  Return the subprogram pointer associated with Node
+
+   procedure Enter_Subp (Func : GL_Value)
+     with Pre  => Present (Func) and then Library_Level,
+          Post => not Library_Level;
+   --  Create an entry basic block for this subprogram and position
+   --  the builder at its end. Mark that we're in a subprogram.  To be
+   --  used when starting the compilation of a subprogram body.
+
+   procedure Leave_Subp
+     with Pre  => not Library_Level,
+          Post => Library_Level;
+   --  Indicate that we're no longer compiling a subprogram
+
+   function Library_Level return Boolean;
+   --  Return True if we're at library level
+
+   function Create_Basic_Block (Name : String := "") return Basic_Block_T
+     with Post => Present (Create_Basic_Block'Result);
+   --  Create a basic block in the current function
+
+   procedure Initialize;
+   --  Initialize module
 
    Current_Subp : Entity_Id := Empty;
    --  The spec entity for the subprogram currently being compiled

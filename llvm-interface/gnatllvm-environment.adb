@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -297,43 +296,5 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Field_Inf := FI;
    end Set_Field_Info;
-
-   ----------------
-   -- Enter_Subp --
-   ----------------
-
-   procedure Enter_Subp (Func : GL_Value) is
-   begin
-      Current_Func := Func;
-      Activation_Rec_Param := No_GL_Value;
-      Return_Address_Param := No_GL_Value;
-      Position_Builder_At_End (IR_Builder, Create_Basic_Block ("entry"));
-   end Enter_Subp;
-
-   ----------------
-   -- Leave_Subp --
-   ----------------
-
-   procedure Leave_Subp is
-   begin
-      Current_Func := No_GL_Value;
-   end Leave_Subp;
-
-   -------------------
-   -- Library_Level --
-   -------------------
-
-   function Library_Level return Boolean is
-     (Current_Func = No_GL_Value);
-
-   ------------------------
-   -- Create_Basic_Block --
-   ------------------------
-
-   function Create_Basic_Block (Name : String := "") return Basic_Block_T is
-   begin
-      return Append_Basic_Block_In_Context
-        (LLVM_Context, LLVM_Value (Current_Func), Name);
-   end Create_Basic_Block;
 
 end GNATLLVM.Environment;

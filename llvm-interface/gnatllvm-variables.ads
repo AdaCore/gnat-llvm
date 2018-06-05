@@ -21,21 +21,29 @@ with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Variables is
 
-   type Interface_Name_Id   is new Nat;
+   type Interface_Names_Id  is new Nat;
    type Global_Dup_Id       is new Nat;
    type Global_Dup_Value_Id is new Nat;
 
-   Empty_Interface_Name_Id   : constant Interface_Name_Id   := 0;
+   Empty_Interfaces_Name_Id  : constant Interface_Names_Id  := 0;
    Empty_Global_Dup_Id       : constant Global_Dup_Id       := 0;
    Empty_Global_Dup_Value_Id : constant Global_Dup_Value_Id := 0;
 
-   function Present (Idx : Interface_Name_Id)   return Boolean is (Idx /= 0);
+   function Present (Idx : Interface_Names_Id)  return Boolean is (Idx /= 0);
    function Present (Idx : Global_Dup_Id)       return Boolean is (Idx /= 0);
    function Present (Idx : Global_Dup_Value_Id) return Boolean is (Idx /= 0);
 
-   function No (Idx : Interface_Name_Id)        return Boolean is (Idx = 0);
+   function No (Idx : Interface_Names_Id)       return Boolean is (Idx = 0);
    function No (Idx : Global_Dup_Id)            return Boolean is (Idx = 0);
    function No (Idx : Global_Dup_Value_Id)      return Boolean is (Idx = 0);
+
+   Detected_Duplicates : Boolean := False;
+
+   procedure Register_Global_Name (S : String)
+     with Pre => not Detected_Duplicates;
+   --  Register that we may be generating a global (variable or subprogram)
+   --  of name S.  Must be called after we've looked for globals with
+   --  Interface_Names.  Must not be called twice with the same name.
 
    procedure Detect_Duplicate_Global_Names;
    --  Make a pass over all library units looking for the use of the same
@@ -51,6 +59,10 @@ package GNATLLVM.Variables is
      with Pre => Present (E) and then not Is_Type (E) and then Present (V);
    --  If E corresponds to a duplicated interface name, record that we've
    --  created a value for it.
+
+   function Get_Dup_Global_Value (S : String) return GL_Value;
+   procedure Set_Dup_Global_Value (S : String; V : GL_Value);
+   --  Similar, but for strings (for builtins)
 
    procedure Emit_Decl_Lists
      (List1, List2 : List_Id;

@@ -34,14 +34,17 @@ with Osint.C;  use Osint.C;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
+with Stringt;
 with Switch;   use Switch;
 
 with Get_Targ; use Get_Targ;
 
 with GNATLLVM;             use GNATLLVM;
+with GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
@@ -140,10 +143,17 @@ package body LLVM_Drive is
          Int_32_Type := Standard_Integer;
       end if;
 
+      --  Initialize modules and handle duplicate globals
+
+      Stringt.Unlock;
+      GNATLLVM.Blocks.Initialize;
+      GNATLLVM.DebugInfo.Initialize;
+      GNATLLVM.Subprograms.Initialize;
+      Detect_Duplicate_Global_Names;
+      Stringt.Lock;
+
       --  Actually translate
 
-      Detect_Duplicate_Global_Names;
-      Initialize_Debugging;
       Emit (GNAT_Root);
 
       --  Output the translation

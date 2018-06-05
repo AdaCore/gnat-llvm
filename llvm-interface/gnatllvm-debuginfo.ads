@@ -39,7 +39,7 @@ package GNATLLVM.DebugInfo is
    procedure Pop_Debug_Scope;
    --  Pop the debugging scope.  Does nothing if not debugging.
 
-   procedure Initialize_Debugging;
+   procedure Initialize;
    --  Set up the environment for generating debugging information
 
    procedure Finalize_Debugging;

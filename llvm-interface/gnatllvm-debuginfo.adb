@@ -20,8 +20,8 @@ with Table;  use Table;
 
 with LLVM.Debug_Info;  use LLVM.Debug_Info;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.DebugInfo is
 
@@ -80,7 +80,7 @@ package body GNATLLVM.DebugInfo is
    -- Initialize_Debugging --
    --------------------------
 
-   procedure Initialize_Debugging is
+   procedure Initialize is
    begin
       if Emit_Debug_Info then
          DI_Builder := Create_Debug_Builder (LLVM_Module);
@@ -88,7 +88,7 @@ package body GNATLLVM.DebugInfo is
            Create_Debug_Compile_Unit
            (DI_Builder, Get_Debug_File_Node (Main_Source_File));
       end if;
-   end Initialize_Debugging;
+   end Initialize;
 
    ------------------------
    -- Finalize_Debugging --

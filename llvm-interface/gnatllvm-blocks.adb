@@ -25,10 +25,11 @@ with Uintp;    use Uintp;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Blocks is
 
@@ -276,22 +277,19 @@ package body GNATLLVM.Blocks is
       end if;
 
       Personality_Fn  :=
-        Add_Function ("__gnat_personality_v0",
-                      Fn_Ty ((1 .. 0 => <>), Int_Ty (32), True),
-                      Standard_Void_Type);
-      Set_Does_Not_Throw (Personality_Fn);
+        Add_Global_Function ("__gnat_personality_v0",
+                             Fn_Ty ((1 .. 0 => <>), Int_Ty (32), True),
+                             Standard_Void_Type);
 
       Begin_Handler_Fn :=
-        Add_Function ("__gnat_begin_handler",
-                      Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                      Standard_Void_Type);
-      Set_Does_Not_Throw (Begin_Handler_Fn);
+        Add_Global_Function ("__gnat_begin_handler",
+                             Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                             Standard_Void_Type);
 
       End_Handler_Fn   :=
-        Add_Function ("__gnat_end_handler",
-                      Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                      Standard_Void_Type);
-      Set_Does_Not_Throw (End_Handler_Fn);
+        Add_Global_Function ("__gnat_end_handler",
+                             Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                             Standard_Void_Type);
 
       EH_Slot_Id_Fn    :=
         Add_Function ("llvm.eh.typeid.for",
@@ -412,13 +410,12 @@ package body GNATLLVM.Blocks is
 
                      if No (Set_Exception_Param_Fn) then
                         Set_Exception_Param_Fn :=
-                          Add_Function ("__gnat_set_exception_parameter",
-                                        Fn_Ty ((1 =>
-                                                  Create_Access_Type (P_Type),
-                                                2 => Void_Ptr_Type),
-                                               Void_Type),
-                                        Standard_Void_Type);
-                        Set_Does_Not_Throw (Set_Exception_Param_Fn);
+                          Add_Global_Function
+                          ("__gnat_set_exception_parameter",
+                           Fn_Ty ((1 => Create_Access_Type (P_Type),
+                                   2 => Void_Ptr_Type),
+                                  Void_Type),
+                           Standard_Void_Type);
                      end if;
 
                      Call (Set_Exception_Param_Fn, (1 => V, 2 => Cvt_Ptr));
@@ -675,5 +672,20 @@ package body GNATLLVM.Blocks is
       Error_Msg_N ("unknown loop identifier", N);
       raise Program_Error;
    end Get_Exit_Point;
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize is
+   begin
+      Register_Global_Name ("__gnat_personality_v0");
+      Register_Global_Name ("__gnat_begin_handler");
+      Register_Global_Name ("__gnat_end_handler");
+      Register_Global_Name ("__gnat_others_value");
+      Register_Global_Name ("__gnat_all_others_value");
+      Register_Global_Name ("__gnat_set_exception_parameter");
+
+   end Initialize;
 
 end GNATLLVM.Blocks;

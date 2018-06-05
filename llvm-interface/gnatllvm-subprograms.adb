@@ -26,6 +26,7 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
@@ -265,6 +266,39 @@ package body GNATLLVM.Subprograms is
       return Result;
    end Build_Intrinsic;
 
+   -------------------------
+   -- Add_Global_Function --
+   -------------------------
+
+   function Add_Global_Function
+     (S         : String;
+      Subp_Type : Type_T;
+      TE        : Entity_Id;
+      Can_Throw : Boolean := False) return GL_Value
+   is
+      Func : GL_Value := Get_Dup_Global_Value (S);
+
+   begin
+      --  If we've already built a function for this, return it, after
+      --  being sure it's in the same type that we need.
+
+      if Present (Func) then
+         return G_From (Pointer_Cast (IR_Builder,
+                                      LLVM_Value (Func),
+                                      Pointer_Type (Subp_Type, 0), S),
+                        Func);
+      else
+         Func := Add_Function (S, Subp_Type, TE);
+         if not Can_Throw then
+            Set_Does_Not_Throw (Func);
+         end if;
+
+         Set_Dup_Global_Value (S, Func);
+         return Func;
+      end if;
+
+   end Add_Global_Function;
+
    --------------------------
    -- Get_Default_Alloc_Fn --
    --------------------------
@@ -273,10 +307,9 @@ package body GNATLLVM.Subprograms is
    begin
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
-           Add_Function ("malloc", Fn_Ty ((1 => LLVM_Size_Type),
-                                          Void_Ptr_Type),
-                         Standard_A_Char);
-         Set_Does_Not_Throw (Default_Alloc_Fn);
+           Add_Global_Function ("malloc", Fn_Ty ((1 => LLVM_Size_Type),
+                                                 Void_Ptr_Type),
+                                Standard_A_Char);
       end if;
 
       return Default_Alloc_Fn;
@@ -290,11 +323,11 @@ package body GNATLLVM.Subprograms is
    begin
       if No (Default_Free_Fn) then
          Default_Free_Fn :=
-           Add_Function ("free",
-                         Fn_Ty ((1 => Void_Ptr_Type, 2 => LLVM_Size_Type),
-                                Void_Type),
-                         Standard_Void_Type);
-         Set_Does_Not_Throw (Default_Free_Fn);
+           Add_Global_Function ("free",
+                                Fn_Ty ((1 => Void_Ptr_Type,
+                                        2 => LLVM_Size_Type),
+                                       Void_Type),
+                                Standard_Void_Type);
       end if;
 
       return Default_Free_Fn;
@@ -307,13 +340,12 @@ package body GNATLLVM.Subprograms is
    function Get_Memory_Compare_Fn return GL_Value is
    begin
       if No (Memory_Compare_Fn) then
-         Memory_Compare_Fn := Add_Function
+         Memory_Compare_Fn := Add_Global_Function
            ("memcmp",
             Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
                     3 => LLVM_Size_Type),
                    Create_Type (Standard_Integer)),
             Standard_Integer);
-         Set_Does_Not_Throw (Memory_Compare_Fn);
       end if;
 
       return Memory_Compare_Fn;
@@ -358,11 +390,12 @@ package body GNATLLVM.Subprograms is
    function Get_LCH_Fn return GL_Value is
    begin
       if No (LCH_Fn) then
-         LCH_Fn := Add_Function
+         LCH_Fn := Add_Global_Function
            ("__gnat_last_chance_handler",
             Fn_Ty ((1 => Void_Ptr_Type,
                     2 => Create_Type (Standard_Integer)),
-                   Void_Type), Standard_Void_Type);
+                   Void_Type),
+            Standard_Void_Type, Can_Throw => True);
       end if;
 
       return LCH_Fn;
@@ -1002,5 +1035,55 @@ package body GNATLLVM.Subprograms is
                  (1 => Const_Null_32, 2 => Const_Null_32)));
       end if;
    end Subp_Ptr;
+
+   ----------------
+   -- Enter_Subp --
+   ----------------
+
+   procedure Enter_Subp (Func : GL_Value) is
+   begin
+      Current_Func := Func;
+      Activation_Rec_Param := No_GL_Value;
+      Return_Address_Param := No_GL_Value;
+      Position_Builder_At_End (IR_Builder, Create_Basic_Block ("entry"));
+   end Enter_Subp;
+
+   ----------------
+   -- Leave_Subp --
+   ----------------
+
+   procedure Leave_Subp is
+   begin
+      Current_Func := No_GL_Value;
+   end Leave_Subp;
+
+   -------------------
+   -- Library_Level --
+   -------------------
+
+   function Library_Level return Boolean is
+     (Current_Func = No_GL_Value);
+
+   ------------------------
+   -- Create_Basic_Block --
+   ------------------------
+
+   function Create_Basic_Block (Name : String := "") return Basic_Block_T is
+   begin
+      return Append_Basic_Block_In_Context
+        (LLVM_Context, LLVM_Value (Current_Func), Name);
+   end Create_Basic_Block;
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize is
+   begin
+      Register_Global_Name ("malloc");
+      Register_Global_Name ("free");
+      Register_Global_Name ("memcmp");
+      Register_Global_Name ("__gnat_last_chance_handler");
+   end Initialize;
 
 end GNATLLVM.Subprograms;

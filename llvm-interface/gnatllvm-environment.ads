@@ -122,8 +122,6 @@ package GNATLLVM.Environment is
    LLVM_Info_Map             : Ptr_LLVM_Info_Array;
    --  The mapping between a GNAT tree object and the corresponding LLVM data
 
-   function Library_Level return Boolean;
-
    function Get_Type        (TE : Entity_Id) return Type_T
      with Pre => Is_Type (TE);
 
@@ -216,21 +214,6 @@ package GNATLLVM.Environment is
    procedure Copy_Type_Info (Old_T, New_T : Entity_Id)
      with Pre  => Has_Type (Old_T), Post => Has_Type (New_T);
    --  Copy type-related information from Old_T to New_T
-
-   procedure Enter_Subp (Func : GL_Value)
-     with Pre  => Present (Func) and then Library_Level,
-          Post => not Library_Level;
-   --  Create an entry basic block for this subprogram and position
-   --  the builder at its end. Mark that we're in a subprogram.  To be
-   --  used when starting the compilation of a subprogram body.
-
-   procedure Leave_Subp
-     with Pre  => not Library_Level,
-          Post => Library_Level;
-   --  Indicate that we're no longer compiling a subprogram
-
-   function Create_Basic_Block (Name : String := "") return Basic_Block_T
-     with Post => Present (Create_Basic_Block'Result);
 
    function Get_Insert_Block return Basic_Block_T is
      (Get_Insert_Block (IR_Builder))

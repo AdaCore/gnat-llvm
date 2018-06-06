@@ -307,8 +307,8 @@ package body GNATLLVM.Subprograms is
    begin
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
-           Add_Global_Function ("malloc", Fn_Ty ((1 => LLVM_Size_Type),
-                                                 Void_Ptr_Type),
+           Add_Global_Function ("__gnat_malloc", Fn_Ty ((1 => LLVM_Size_Type),
+                                                        Void_Ptr_Type),
                                 Standard_A_Char);
       end if;
 
@@ -323,10 +323,8 @@ package body GNATLLVM.Subprograms is
    begin
       if No (Default_Free_Fn) then
          Default_Free_Fn :=
-           Add_Global_Function ("free",
-                                Fn_Ty ((1 => Void_Ptr_Type,
-                                        2 => LLVM_Size_Type),
-                                       Void_Type),
+           Add_Global_Function ("__gnat_free",
+                                Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
                                 Standard_Void_Type);
       end if;
 
@@ -1080,8 +1078,8 @@ package body GNATLLVM.Subprograms is
 
    procedure Initialize is
    begin
-      Register_Global_Name ("malloc");
-      Register_Global_Name ("free");
+      Register_Global_Name ("__gnat_malloc");
+      Register_Global_Name ("__gnat_free");
       Register_Global_Name ("memcmp");
       Register_Global_Name ("__gnat_last_chance_handler");
    end Initialize;

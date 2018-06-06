@@ -734,9 +734,11 @@ package body GNATLLVM.Subprograms is
          Ent_Caller := Subps.Table (Subp_Index (Current_Subp));
 
          if Parent = Current_Subp then
-            Result := Get (Get_Value (Ent.ARECnP), Data);
+            Result := (if Present (Ent.ARECnP)
+                       then Get (Get_Value (Ent.ARECnP), Data)
+                       else Get_Undef (Standard_A_Char));
          elsif No (Ent_Caller.ARECnF) then
-            return Const_Null (Standard_A_Char);
+            return Get_Undef (Standard_A_Char);
          else
             Result := Get_Value (Ent_Caller.ARECnF);
 
@@ -755,7 +757,7 @@ package body GNATLLVM.Subprograms is
 
          return Pointer_Cast (Result, Standard_A_Char, "static-link");
       else
-         return Const_Null (Standard_A_Char);
+         return Get_Undef (Standard_A_Char);
       end if;
    end Get_Static_Link;
 

@@ -747,6 +747,9 @@ package body GNATLLVM.Types is
                return Get_Fullest_View (Equivalent_Type (TE));
             end if;
 
+         when E_Access_Subtype =>
+            return Get_Fullest_View (Base_Type (TE));
+
          when others =>
             null;
       end case;
@@ -1114,17 +1117,19 @@ package body GNATLLVM.Types is
          Converted_V := From_Access (V);
       end if;
 
-      --  If V is a fat pointer, get just the array data.  We'll then either
-      --  convert it to a generic pointer or to an integer (System.Address).
+      --  If V is an unconstrained array, we want a pointer to the bounds
+      --  and data.  Otherwise just a Reference.  We'll then either convert
+      --  it to a generic pointer or to an integer (System.Address).
 
-      Converted_V := Get (Converted_V, Reference);
+      Converted_V := Get (Converted_V,
+                          Relationship_For_Alloc (Related_Type (Converted_V)));
 
       --  If no subprogram was specified, use the default memory deallocation
-      --  procedure, where we just pass the object and a size a size.
+      --  procedure, where we just pass the object.
 
       if No (Proc) then
          Call (Get_Default_Free_Fn,
-               (1 => Pointer_Cast (Converted_V, Standard_A_Char), 2 => Size));
+               (1 => Pointer_Cast (Converted_V, Standard_A_Char)));
 
       --  If a procedure was specified (meaning that a pool must also
       --  have been specified) and the pool is a record, then it's a

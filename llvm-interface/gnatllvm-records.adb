@@ -1319,7 +1319,7 @@ package body GNATLLVM.Records is
       if No (F_Idx) then
          pragma Assert (Ekind (Rec_Type) = E_Record_Subtype);
          pragma Assert (Has_Discriminants (Rec_Type));
-         return Get_Undef_Ref (Rec_Type);
+         return Get_Undef_Ref (F_Type);
       end if;
 
       FI       := Field_Info_Table.Table (F_Idx);

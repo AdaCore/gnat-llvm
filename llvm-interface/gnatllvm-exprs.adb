@@ -265,12 +265,12 @@ package body GNATLLVM.Exprs is
             Result := Build_Select (Signs_Same, Result, Add_Back);
          end;
 
-      --  If this is a division operation with Round_Result set, we
-      --  have to do that rounding.  There are two different cases,
-      --  one for signed and one for unsigned.
+      --  If this is an integer division operation with Round_Result set,
+      --  we have to do that rounding.  There are two different cases, one
+      --  for signed and one for unsigned.
 
       elsif Nkind (N) = N_Op_Divide and then Rounded_Result (N)
-        and then Unsign
+        and then Unsign and then not FP
       then
          declare
 
@@ -291,7 +291,7 @@ package body GNATLLVM.Exprs is
          end;
 
       elsif Nkind (N) = N_Op_Divide and then Rounded_Result (N)
-        and then not Unsign
+        and then not Unsign and then not FP
       then
          declare
 

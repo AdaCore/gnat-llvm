@@ -42,8 +42,8 @@ package body Sdefault is
 
    function Include_Dir_Default_Name return String_Ptr is
    begin
-      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-llvm/adainclude");
---      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-native/adainclude");
+--      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-llvm/adainclude");
+      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-native/adainclude");
    end Include_Dir_Default_Name;
 
    -----------------------------
@@ -52,8 +52,8 @@ package body Sdefault is
 
    function Object_Dir_Default_Name return String_Ptr is
    begin
-      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-llvm/adalib");
---      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-native/adalib");
+--      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-llvm/adalib");
+      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-native/adalib");
    end Object_Dir_Default_Name;
 
    -----------------------

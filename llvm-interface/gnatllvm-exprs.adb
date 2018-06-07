@@ -451,7 +451,7 @@ package body GNATLLVM.Exprs is
 
          --  LLVM instructions will return an undefined value for
          --  rotations with too many bits, so we must handle "multiple
-         --  turns".  However, the front-end has already computed the modulus.
+         --  turns".
 
          declare
             --  There is no "rotate" instruction in LLVM, so we have to stick
@@ -465,16 +465,17 @@ package body GNATLLVM.Exprs is
             --  If we are rotating to the right, we switch the direction of the
             --  two shifts.
 
-            Lower_Shift : constant GL_Value :=
-              NSW_Sub (LHS_Bits, N, "lower-shift");
+            Reduced_N   : constant GL_Value := U_Rem (N, LHS_Bits);
+            Lower_Shift : constant GL_Value := NSW_Sub (LHS_Bits, Reduced_N);
+            Reduced_Low : constant GL_Value := U_Rem (Lower_Shift, LHS_Bits);
             Upper       : constant GL_Value :=
               (if To_Left
-               then Shl   (LHS, N, "rotate-upper")
-               else L_Shr (LHS, N, "rotate-upper"));
+               then Shl   (LHS, Reduced_N,   "rotate-upper")
+               else L_Shr (LHS, Reduced_N,   "rotate-upper"));
             Lower       : constant GL_Value :=
               (if To_Left
-               then L_Shr (LHS, Lower_Shift, "rotate-lower")
-               else Shl   (LHS, Lower_Shift, "rotate-lower"));
+               then L_Shr (LHS, Reduced_Low, "rotate-lower")
+               else Shl   (LHS, Reduced_Low, "rotate-lower"));
 
          begin
             return Build_Or (Upper, Lower, "rotate-result");

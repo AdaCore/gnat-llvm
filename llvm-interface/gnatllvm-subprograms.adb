@@ -138,6 +138,8 @@ package body GNATLLVM.Subprograms is
 
    function Create_Subprogram_Type (Def_Ident   : Entity_Id) return Type_T is
       Return_Type     : constant Entity_Id := Full_Etype (Def_Ident);
+      Foreign         : constant Boolean   :=
+        Has_Foreign_Convention (Def_Ident);
       Ret_By_Ref      : constant Boolean   := Returns_By_Ref (Def_Ident);
       Takes_S_Link    : constant Boolean   :=
         Needs_Activation_Record (Def_Ident);
@@ -169,10 +171,14 @@ package body GNATLLVM.Subprograms is
          begin
             --  If this is an out parameter, or a parameter whose type is
             --  unconstrained, take a pointer to the actual parameter.
+            --  If it's a foreign convention, force to an actual pointer
+            --  to the type./
 
             Arg_Types (J) :=
               (if Param_Needs_Ptr (Param_Ent)
-               then Create_Access_Type (Param_Type)
+               then (if Foreign
+                     then Pointer_Type (Create_Type (Param_Type), 0)
+                     else Create_Access_Type (Param_Type))
                else Create_Type (Param_Type));
          end;
 
@@ -874,6 +880,7 @@ package body GNATLLVM.Subprograms is
       Subp_Typ       : constant Entity_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
       Return_Typ     : constant Entity_Id := Full_Etype (Subp_Typ);
+      Foreign        : constant Boolean   := Has_Foreign_Convention (Subp_Typ);
       Ret_By_Ref     : constant Boolean   :=
         Returns_By_Ref ((if Direct_Call then Entity (Subp) else Subp_Typ));
       Dynamic_Return : constant Boolean   :=
@@ -887,14 +894,15 @@ package body GNATLLVM.Subprograms is
 
       This_Takes_S_Link : constant Boolean := not Direct_Call
           and then Needs_Activation_Record (Subp_Typ);
-      S_Link         : GL_Value;
-      LLVM_Func      : GL_Value;
-      Orig_Arg_Count : constant Nat := Count_Params (Subp_Typ);
-      Args_Count     : constant Nat :=
+      Orig_Arg_Count : constant Nat        := Count_Params (Subp_Typ);
+      Args_Count     : constant Nat        :=
         Orig_Arg_Count + (if This_Takes_S_Link then 1 else 0) +
           (if Dynamic_Return then 1 else 0);
       Args           : GL_Value_Array (1 .. Args_Count);
-      Idx            : Nat := 1;
+      Idx            : Nat                 := 1;
+      S_Link         : GL_Value;
+      LLVM_Func      : GL_Value;
+      Arg            : GL_Value;
 
    begin
 
@@ -915,10 +923,19 @@ package body GNATLLVM.Subprograms is
 
          --  We have two cases: if the param isn't passed indirectly, convert
          --  the value to the parameter's type.  If it is, then convert the
-         --  pointer to being a pointer to the parameter's type.
+         --  pointer to being a pointer to the parameter's type.  The way we
+         --  do this depends on whether the subprogram has foreign convension
+         --  or not.
 
          if Param_Needs_Ptr (Param) then
-            Args (Idx) := Convert_To_Access_To (Emit_LValue (Actual), P_Type);
+            Arg := Emit_LValue (Actual);
+            if Foreign then
+               Arg := Ptr_To_Ref (Get (Arg, Reference), P_Type);
+            else
+               Arg := Convert_To_Access_To (Arg, P_Type);
+            end if;
+
+            Args (Idx) := Arg;
          else
             Args (Idx) := Build_Type_Conversion (Actual, P_Type);
          end if;

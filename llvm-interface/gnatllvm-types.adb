@@ -609,6 +609,9 @@ package body GNATLLVM.Types is
          if Is_Parent_Of (T_Need => Implementation_Base_Type (TE),
                           T_Have => Implementation_Base_Type
                             (LValue_Pair_Table.Table (J).Typ))
+           or else Is_Parent_Of (T_Have => Implementation_Base_Type (TE),
+                                 T_Need => Implementation_Base_Type
+                                   (LValue_Pair_Table.Table (J).Typ))
          then
             return Convert_To_Access_To (LValue_Pair_Table.Table (J), TE);
          end if;

@@ -110,10 +110,21 @@ package body GNATLLVM.Subprograms is
    --  the return type of the function will have been changed to an access
    --  to that array, so this must return false.
 
+   function Get_File_Name_Address
+       (Index : Source_File_Index) return GL_Value
+     with Post => Type_Of (Get_File_Name_Address'Result) = LLVM_Size_Type;
+   --  Return a GL_Value giving the address of a string corresponding to
+   --  the name of the file with the specified file index.
+
    Ada_Main_Elabb : GL_Value := No_GL_Value;
    --  ???  This a kludge.  We sometimes need an elab proc for Ada_Main and
    --  this can cause confusion with global names.  So if we made it as
    --  part of the processing of a declaration, save it.
+
+   type File_GL_Value_Array is array (Source_File_Index range <>) of GL_Value;
+   File_Name_Strings : access File_GL_Value_Array := null;
+   --  Array of GL_Values corresponding to 'Address of the string literal
+   --  representing the name of the file.
 
    ------------------
    -- Count_Params --
@@ -277,10 +288,11 @@ package body GNATLLVM.Subprograms is
    -------------------------
 
    function Add_Global_Function
-     (S         : String;
-      Subp_Type : Type_T;
-      TE        : Entity_Id;
-      Can_Throw : Boolean := False) return GL_Value
+     (S          : String;
+      Subp_Type  : Type_T;
+      TE         : Entity_Id;
+      Can_Throw  : Boolean := False;
+      Can_Return : Boolean := True) return GL_Value
    is
       Func : GL_Value := Get_Dup_Global_Value (S);
 
@@ -297,6 +309,10 @@ package body GNATLLVM.Subprograms is
          Func := Add_Function (S, Subp_Type, TE);
          if not Can_Throw then
             Set_Does_Not_Throw (Func);
+         end if;
+
+         if not Can_Return then
+            Set_Does_Not_Return (Func);
          end if;
 
          Set_Dup_Global_Value (S, Func);
@@ -396,10 +412,9 @@ package body GNATLLVM.Subprograms is
       if No (LCH_Fn) then
          LCH_Fn := Add_Global_Function
            ("__gnat_last_chance_handler",
-            Fn_Ty ((1 => Void_Ptr_Type,
-                    2 => Create_Type (Standard_Integer)),
+            Fn_Ty ((1 => LLVM_Size_Type, 2 => Create_Type (Standard_Integer)),
                    Void_Type),
-            Standard_Void_Type, Can_Throw => True);
+            Standard_Void_Type, Can_Throw => True, Can_Return => False);
       end if;
 
       return LCH_Fn;
@@ -808,64 +823,67 @@ package body GNATLLVM.Subprograms is
       Position_Builder_At_End (BB_Next);
    end Emit_LCH_Call_If;
 
+   ---------------------------
+   -- Get_File_Name_Address --
+   ---------------------------
+
+   function Get_File_Name_Address
+     (Index : Source_File_Index) return GL_Value is
+   begin
+      if File_Name_Strings = null then
+         File_Name_Strings :=
+           new File_GL_Value_Array'(1 .. Last_Source_File => No_GL_Value);
+      end if;
+
+      if No (File_Name_Strings (Index)) then
+         declare
+            File     : constant String
+              := Get_Name_String (Reference_Name (Index));
+            Elements : GL_Value_Array (1 .. File'Length + 1);
+            V        : GL_Value;
+            Str      : GL_Value;
+
+         begin
+            --  First build a string literal for FILE
+
+            for J in File'Range loop
+               Elements (Nat (J)) :=
+                 Const_Int (Standard_Short_Short_Integer,
+                            ULL (Character'Pos (File (J))));
+            end loop;
+
+            --  Append NUL character
+
+            Elements (Elements'Last)
+              := Const_Null (Standard_Short_Short_Integer);
+
+            Str := Const_Array (Elements, Any_Array);
+            V   := G_Ref (Add_Global (LLVM_Module, Type_Of (Str), "fname"),
+                          Any_Array);
+            Set_Initializer (V, Str);
+            Set_Linkage (V, Private_Linkage);
+            Set_Global_Constant (LLVM_Value (V), True);
+            File_Name_Strings (Index) := Ptr_To_Int (V, Size_Type);
+         end;
+      end if;
+
+      return File_Name_Strings (Index);
+   end Get_File_Name_Address;
+
    -------------------
    -- Emit_LCH_Call --
    -------------------
 
    procedure Emit_LCH_Call (N : Node_Id) is
-      Int_Type      : constant Type_T := Create_Type (Standard_Integer);
-      Args          : Value_Array (1 .. 2);
-
-      File : constant String :=
-        Get_Name_String (Reference_Name (Get_Source_File_Index (Sloc (N))));
-
-      Element_Type : constant Type_T := Int_Ty (8);
-      Array_Type   : constant Type_T :=
-        LLVM.Core.Array_Type (Element_Type, File'Length + 1);
-      Elements     : array (1 .. File'Length + 1) of Value_T;
-      V            : constant Value_T :=
-                       Add_Global (LLVM_Module, Array_Type, "str-lit");
+      File : constant GL_Value :=
+        Get_File_Name_Address (Get_Source_File_Index (Sloc (N)));
+      Line : constant GL_Value :=
+        Const_Int (Standard_Integer, ULL (Get_Logical_Line_Number (Sloc (N))));
 
    begin
       --  Build a call to __gnat_last_chance_handler (FILE, LINE)
 
-      --  First build a string literal for FILE
-
-      for J in File'Range loop
-         Elements (J) := Const_Int
-           (Element_Type, ULL (Character'Pos (File (J))),
-            Sign_Extend => False);
-      end loop;
-
-      --  Append NUL character
-
-      Elements (Elements'Last) :=
-        Const_Int (Element_Type, 0, Sign_Extend => False);
-
-      Set_Initializer
-        (V, Const_Array (Element_Type, Elements'Address, Elements'Length));
-      Set_Linkage (V, Private_Linkage);
-      Set_Global_Constant (V, True);
-
-      Args (1) := Bit_Cast
-        (IR_Builder,
-         GEP
-           (IR_Builder,
-            V,
-            (Const_Int (LLVM_Size_Type, 0, Sign_Extend => False),
-             Const_Int (Create_Type (Standard_Positive),
-                        0, Sign_Extend => False)),
-            ""),
-         Void_Ptr_Type,
-         "");
-
-      --  Then provide the line number
-
-      Args (2) := Const_Int
-        (Int_Type, ULL (Get_Logical_Line_Number (Sloc (N))),
-         Sign_Extend => False);
-      Discard (Call (IR_Builder, LLVM_Value (Get_LCH_Fn),
-                     Args'Address, Args'Length, ""));
+      Call (Get_LCH_Fn, (1 => File, 2 => Line));
    end Emit_LCH_Call;
 
    ---------------

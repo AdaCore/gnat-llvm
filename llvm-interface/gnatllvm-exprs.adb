@@ -109,22 +109,18 @@ package body GNATLLVM.Exprs is
          when N_String_Literal =>
             declare
                String       : constant String_Id := Strval (N);
-               Array_Type   : constant Type_T    := Create_Type (TE);
-               Element_Type : constant Type_T    :=
-                 Get_Element_Type (Array_Type);
-               Length       : constant unsigned  :=
-                 Get_Array_Length (Array_Type);
-               Elements     : array (1 .. Length) of Value_T;
+               Length       : constant Nat       := String_Length (String);
+               Element_Type : constant Entity_Id := Full_Component_Type (TE);
+               Elements     : GL_Value_Array (1 .. Length);
 
             begin
                for J in Elements'Range loop
-                  Elements (J) := Const_Int
-                    (Element_Type, ULL (Get_String_Char (String, Nat (J))),
-                     Sign_Extend => False);
+                  Elements (J) :=
+                    Const_Int (Element_Type,
+                               ULL (Get_String_Char (String, Nat (J))));
                end loop;
 
-               return G (Const_Array (Element_Type, Elements'Address, Length),
-                         TE);
+               return Const_Array (Elements, TE);
             end;
 
          when others =>

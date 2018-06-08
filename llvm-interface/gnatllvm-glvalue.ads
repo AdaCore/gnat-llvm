@@ -701,12 +701,16 @@ package GNATLLVM.GLValue is
    is
      (Const_Real (Etype (V), F))
      with Pre  => Is_Floating_Point_Type (V),
-           Post => Present (Const_Real'Result);
+          Post => Present (Const_Real'Result);
 
    function Const_True return GL_Value is
      (Const_Int (Standard_Boolean, ULL (1)));
    function Const_False return GL_Value is
      (Const_Int (Standard_Boolean, ULL (0)));
+
+   function Const_Array
+     (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
+     with Pre => Is_Array_Type (TE), Post => Present (Const_Array'Result);
 
    --  Define IR builder variants which take and/or return GL_Value
 

@@ -54,14 +54,17 @@ package GNATLLVM.Subprograms is
    --  Build an intrinsic function of the specified type, name, and kind
 
    function Add_Global_Function
-     (S         : String;
-      Subp_Type : Type_T;
-      TE        : Entity_Id;
-      Can_Throw : Boolean := False) return GL_Value
+     (S          : String;
+      Subp_Type  : Type_T;
+      TE         : Entity_Id;
+      Can_Throw  : Boolean := False;
+      Can_Return : Boolean := True) return GL_Value
      with Pre => S'Length > 0 and then Present (Subp_Type)
                  and then Present (TE);
    --  Create a function with the give name and type, but handling the case
-   --  where we're also compiling a function with that name.
+   --  where we're also compiling a function with that name.  By default,
+   --  these functions can return, but will not throw an exception, but
+   --  this can be changed.
 
    function Get_Default_Alloc_Fn return GL_Value
      with Post => Present (Get_Default_Alloc_Fn'Result);

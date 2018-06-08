@@ -686,6 +686,30 @@ package body GNATLLVM.GLValue is
    is
      (G (Const_Real (Create_Type (TE), V), TE));
 
+   -----------------
+   -- Const_Array --
+   -----------------
+
+   function Const_Array
+       (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
+   is
+      T           : constant Type_T := Create_Type (Full_Component_Type (TE));
+      Elmt_Values : Value_Array (Elmts'Range);
+
+   begin
+      for J in Elmts'Range loop
+         Elmt_Values (J) := LLVM_Value (Elmts (J));
+      end loop;
+
+      --  We have a kludge here in the case of making a string literal
+      --  that's not in the source (e.g., for a filename).  In that case,
+      --  we pass Any_Array for the type, but that's unconstrained, so we
+      --  want use relationship "Unknown".
+
+      return G (Const_Array (T, Elmt_Values'Address, Elmt_Values'Length),
+                TE, (if TE = Any_Array then Unknown else Data));
+   end Const_Array;
+
    ----------------
    -- Int_To_Ptr --
    ----------------

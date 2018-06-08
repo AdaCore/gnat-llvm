@@ -675,13 +675,12 @@ package body GNATLLVM.Types is
    ------------------------
 
    function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id is
-      Typ : Entity_Id := TE;
    begin
-      while Etype (Typ) /= Typ loop
-         Typ := Etype (Typ);
-      end loop;
-
-      return Typ;
+      return Typ : Entity_Id := TE do
+         while Etype (Typ) /= Typ loop
+            Typ := Etype (Typ);
+         end loop;
+      end return;
    end Ultimate_Base_Type;
 
    ----------------------

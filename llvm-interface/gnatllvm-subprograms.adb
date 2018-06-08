@@ -131,16 +131,15 @@ package body GNATLLVM.Subprograms is
    ------------------
 
    function Count_Params (E : Entity_Id) return Nat is
-      Cnt   : Nat := 0;
       Param : Entity_Id := First_Formal_With_Extras (E);
 
    begin
-      while Present (Param) loop
-         Cnt := Cnt + 1;
-         Param := Next_Formal_With_Extras (Param);
-      end loop;
-
-      return Cnt;
+      return Cnt : Nat := 0 do
+         while Present (Param) loop
+            Cnt := Cnt + 1;
+            Param := Next_Formal_With_Extras (Param);
+         end loop;
+      end return;
    end Count_Params;
 
    ----------------------------

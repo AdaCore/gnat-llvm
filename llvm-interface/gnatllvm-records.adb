@@ -210,17 +210,16 @@ package body GNATLLVM.Records is
    ---------------------
 
    function Count_Entities (E : Entity_Id) return Nat is
-      Count   : Nat := 0;
       Elmt    : Entity_Id := First_Component_Or_Discriminant (E);
 
    begin
-      while Present (Elmt) loop
-         Count := Count + (if Chars (Elmt) = Name_uParent
+      return Count : Nat := 0 do
+         while Present (Elmt) loop
+            Count := Count + (if Chars (Elmt) = Name_uParent
                               then Count_Entities (Full_Etype (Elmt)) else 1);
-         Next_Component_Or_Discriminant (Elmt);
-      end loop;
-
-      return Count;
+                              Next_Component_Or_Discriminant (Elmt);
+         end loop;
+      end return;
    end Count_Entities;
 
    ------------------------
@@ -1384,22 +1383,21 @@ package body GNATLLVM.Records is
    function Get_Record_Size_Complexity
      (TE : Entity_Id; For_Type : Boolean := False) return Nat
    is
-      Complexity : Nat            := 0;
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
 
    begin
-      while Present (Cur_Idx) loop
-         RI := Record_Info_Table.Table (Cur_Idx);
-         if Present (RI.GNAT_Type) then
-            Complexity := Complexity + Get_Type_Size_Complexity
-              (RI.GNAT_Type, For_Type or RI.Use_Max_Size);
-         end if;
+      return Complexity : Nat := 0 do
+         while Present (Cur_Idx) loop
+            RI := Record_Info_Table.Table (Cur_Idx);
+            if Present (RI.GNAT_Type) then
+               Complexity := Complexity + Get_Type_Size_Complexity
+                 (RI.GNAT_Type, For_Type or RI.Use_Max_Size);
+            end if;
 
-         Cur_Idx := RI.Next;
-      end loop;
-
-      return Complexity;
+            Cur_Idx := RI.Next;
+         end loop;
+      end return;
    end Get_Record_Size_Complexity;
 
    --------------------------
@@ -1422,7 +1420,6 @@ package body GNATLLVM.Records is
    function Emit_Record_Aggregate
      (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value
    is
-      Result     : GL_Value := Result_So_Far;
       Agg_Type   : constant Entity_Id := Full_Etype (Node);
       Expr       : Node_Id;
 
@@ -1466,50 +1463,54 @@ package body GNATLLVM.Records is
       --  a discriminant of an unchecked union.
 
       Expr := First (Component_Associations (Node));
-      while Present (Expr) loop
-         declare
-            Ent    : constant Entity_Id     :=
-              Find_Matching_Field (Agg_Type, Entity (First (Choices (Expr))));
-            F_Type : constant Entity_Id     := Full_Etype (Ent);
-            F_Idx  : constant Field_Info_Id := Get_Field_Info (Ent);
+      return Result     : GL_Value := Result_So_Far do
+         while Present (Expr) loop
+            declare
+               Ent    : constant Entity_Id     :=
+                 Find_Matching_Field
+                 (Agg_Type, Entity (First (Choices (Expr))));
+               F_Type : constant Entity_Id     := Full_Etype (Ent);
+               F_Idx  : constant Field_Info_Id := Get_Field_Info (Ent);
 
-         begin
-            if Ekind (Ent) = E_Discriminant
-              and then Is_Unchecked_Union (Agg_Type)
-            then
-               null;
-            elsif Chars (Ent) = Name_uParent then
+            begin
+               if Ekind (Ent) = E_Discriminant
+                 and then Is_Unchecked_Union (Agg_Type)
+               then
+                  null;
+               elsif Chars (Ent) = Name_uParent then
 
-               --  If this is "_parent", its fields are our fields too.
-               --  Assume Expression is also an N_Aggregate.
+                  --  If this is "_parent", its fields are our fields too.
+                  --  Assume Expression is also an N_Aggregate.
 
-               pragma Assert (Nkind_In (Expression (Expr),
-                                        N_Aggregate, N_Extension_Aggregate));
-               Result := Emit_Record_Aggregate (Expression (Expr), Result);
-            else
-               --  We are to actually insert the field.  However, if we
-               --  haven't set any information for this field, it may be
-               --  a reference to a field that will cause Constraint_Error.
-               --  If so, just don't do anything with it.
+                  pragma Assert (Nkind_In (Expression (Expr),
+                                           N_Aggregate,
+                                           N_Extension_Aggregate));
 
-               if Present (F_Idx) then
-                  Result := Insert_Value
-                    (Result,
-                     Build_Type_Conversion (Expression (Expr), F_Type),
-                     unsigned (Field_Info_Table.Table (F_Idx).Field_Ordinal));
+                  Result := Emit_Record_Aggregate (Expression (Expr), Result);
                else
-                  --  Ensure we understand this case
+                  --  We are to actually insert the field.  However, if we
+                  --  haven't set any information for this field, it may be
+                  --  a reference to a field that will cause Constraint_Error.
+                  --  If so, just don't do anything with it.
 
-                  pragma Assert (Ekind (Agg_Type) = E_Record_Subtype);
-                  pragma Assert (Has_Discriminants (Agg_Type));
+                  if Present (F_Idx) then
+                     Result := Insert_Value
+                       (Result,
+                        Build_Type_Conversion (Expression (Expr), F_Type),
+                        unsigned
+                          (Field_Info_Table.Table (F_Idx).Field_Ordinal));
+                  else
+                     --  Ensure we understand this case
+
+                     pragma Assert (Ekind (Agg_Type) = E_Record_Subtype);
+                     pragma Assert (Has_Discriminants (Agg_Type));
+                  end if;
                end if;
-            end if;
-         end;
+            end;
 
-         Next (Expr);
-      end loop;
-
-      return Result;
+            Next (Expr);
+         end loop;
+      end return;
    end Emit_Record_Aggregate;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

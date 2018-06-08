@@ -283,16 +283,10 @@ package body GNATLLVM.Variables is
       --  Otherwise, search for an entity in our duplicate class that's in
       --  the extended main unit and are being exported.
 
-      for J in Global_Dup_Id range 1 .. Global_Dup.Last loop
-         if Global_Dup.Table (J).Index = Idx
-           and then In_Extended_Main_Code_Unit (Global_Dup.Table (J).E)
-           and then Is_Exported (Global_Dup.Table (J).E)
-         then
-            return True;
-         end if;
-      end loop;
-
-      return False;
+      return (for some J in Global_Dup_Id range 1 .. Global_Dup.Last
+                => Global_Dup.Table (J).Index = Idx
+                   and then In_Extended_Main_Code_Unit (Global_Dup.Table (J).E)
+                   and then Is_Exported (Global_Dup.Table (J).E));
    end Get_Dup_Global_Is_Defined;
 
    --------------------------

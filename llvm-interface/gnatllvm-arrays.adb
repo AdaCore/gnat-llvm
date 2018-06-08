@@ -302,23 +302,23 @@ package body GNATLLVM.Arrays is
    function Get_Array_Size_Complexity
      (TE : Entity_Id; For_Type : Boolean := False) return Nat
    is
-      Complexity  : Nat :=
-        Get_Type_Size_Complexity (Full_Component_Type (TE), True);
       Info_Idx    : constant Nat := Get_Array_Info (TE);
 
    begin
-      for Dim in 0 .. Number_Dimensions (TE) - 1 loop
-         declare
-            Dim_Info : constant Index_Bounds
-              := Array_Info.Table (Info_Idx + Dim);
-         begin
-            Complexity := (Complexity +
-                             Bound_Complexity (Dim_Info.Low, For_Type) +
-                             Bound_Complexity (Dim_Info.High, For_Type));
-         end;
-      end loop;
-
-      return Complexity;
+      return Complexity : Nat :=
+        Get_Type_Size_Complexity (Full_Component_Type (TE), True)
+      do
+         for Dim in 0 .. Number_Dimensions (TE) - 1 loop
+            declare
+               Dim_Info : constant Index_Bounds
+                 := Array_Info.Table (Info_Idx + Dim);
+            begin
+               Complexity := (Complexity +
+                                Bound_Complexity (Dim_Info.Low, For_Type) +
+                                Bound_Complexity (Dim_Info.High, For_Type));
+            end;
+         end loop;
+      end return;
    end Get_Array_Size_Complexity;
 
    --------------------------------
@@ -536,19 +536,17 @@ package body GNATLLVM.Arrays is
    function Get_Array_Elements
      (V        : GL_Value;
       TE       : Entity_Id;
-      For_Type : Boolean := False) return GL_Value
-   is
-      Size : GL_Value := Size_Const_Int (Uint_1);
-
+      For_Type : Boolean := False) return GL_Value is
    begin
-      --  Go through every array dimension.  Get its size and multiply all
-      --  of them together.
+      return Size : GL_Value := Size_Const_Int (Uint_1) do
 
-      for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
-         Size := NSW_Mul (Size, Get_Array_Length (TE, Dim, V, For_Type));
-      end loop;
+        --  Go through every array dimension.  Get its size and
+        --  multiply all of them together.
 
-      return Size;
+         for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
+            Size := NSW_Mul (Size, Get_Array_Length (TE, Dim, V, For_Type));
+         end loop;
+      end return;
    end Get_Array_Elements;
 
    -------------------------
@@ -620,7 +618,6 @@ package body GNATLLVM.Arrays is
    is
       Comp_Type : constant Entity_Id := Full_Component_Type (Full_Etype (N));
       Cur_Index : Nat                := 0;
-      Cur_Value : GL_Value           := Value_So_Far;
       Expr      : Node_Id;
 
    begin
@@ -631,29 +628,29 @@ package body GNATLLVM.Arrays is
       --  in Exp_Aggr.  We handle them in Emit_Assignment.
 
       Expr := First (Expressions (N));
-      while Present (Expr) loop
+      return Cur_Value : GL_Value := Value_So_Far do
+         while Present (Expr) loop
 
-         --  If this is a nested N_Aggregate and we have dimensions left
-         --  in the outer array, use recursion to fill in the aggregate.
+            --  If this is a nested N_Aggregate and we have dimensions left
+            --  in the outer array, use recursion to fill in the aggregate.
 
-         if Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
-           and then Dims_Left > 1
-         then
-            Cur_Value := Emit_Array_Aggregate
-              (Expr, Dims_Left - 1, Indices_So_Far & (1 => Cur_Index),
-               Cur_Value);
+            if Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
+              and then Dims_Left > 1
+            then
+               Cur_Value := Emit_Array_Aggregate
+                 (Expr, Dims_Left - 1, Indices_So_Far & (1 => Cur_Index),
+                  Cur_Value);
 
-         else
-            Cur_Value := Insert_Value
-              (Cur_Value, Build_Type_Conversion (Expr, Comp_Type),
-               Indices_So_Far & (1 => Cur_Index));
-         end if;
+            else
+               Cur_Value := Insert_Value
+                 (Cur_Value, Build_Type_Conversion (Expr, Comp_Type),
+                  Indices_So_Far & (1 => Cur_Index));
+            end if;
 
-         Cur_Index := Cur_Index + 1;
-         Next (Expr);
-      end loop;
-
-      return Cur_Value;
+            Cur_Index := Cur_Index + 1;
+            Next (Expr);
+         end loop;
+      end return;
    end Emit_Array_Aggregate;
 
    ----------------------
@@ -664,38 +661,36 @@ package body GNATLLVM.Arrays is
      (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
    is
       Info_Idx   : constant Nat := Get_Array_Info (TE);
-      Bound_Val  : GL_Value     := Get_Undef_Relationship (TE, Bounds);
 
    begin
+      return Bound_Val : GL_Value := Get_Undef_Relationship (TE, Bounds) do
+         for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
+            declare
+               --  The type of the bound of the array we're using for the
+               --  bounds may not be the same as the type of the bound in
+               --  the unconstrained array, so be sure to convert
+               --  (C46042A).
 
-      for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
+               Bound_Type           : constant Entity_Id :=
+                 Array_Info.Table (Info_Idx + Dim).Bound_Type;
+               Low_Bound            : constant GL_Value  :=
+                 Get_Array_Bound (V_Type, Dim, True, V);
+               High_Bound           : constant GL_Value  :=
+                 Get_Array_Bound (V_Type, Dim, False, V);
+               Converted_Low_Bound  : constant GL_Value  :=
+                 Convert_To_Elementary_Type (Low_Bound, Bound_Type);
+               Converted_High_Bound : constant GL_Value  :=
+                 Convert_To_Elementary_Type (High_Bound, Bound_Type);
 
-         declare
-            --  The type of the bound of the array we're using for the bounds
-            --  may not be the same as the type of the bound in the
-            --  unconstrained array, so be sure to convert (C46042A).
+            begin
+               Bound_Val := Insert_Value
+                 (Bound_Val, Converted_Low_Bound, (1 => Dim * 2));
 
-            Bound_Type           : constant Entity_Id :=
-              Array_Info.Table (Info_Idx + Dim).Bound_Type;
-            Low_Bound            : constant GL_Value  :=
-              Get_Array_Bound (V_Type, Dim, True, V);
-            High_Bound           : constant GL_Value  :=
-              Get_Array_Bound (V_Type, Dim, False, V);
-            Converted_Low_Bound  : constant GL_Value  :=
-              Convert_To_Elementary_Type (Low_Bound, Bound_Type);
-            Converted_High_Bound : constant GL_Value  :=
-              Convert_To_Elementary_Type (High_Bound, Bound_Type);
-
-         begin
-            Bound_Val := Insert_Value
-              (Bound_Val, Converted_Low_Bound, (1 => Dim * 2));
-
-            Bound_Val := Insert_Value
-              (Bound_Val, Converted_High_Bound, (1 => Dim * 2 + 1));
-         end;
-      end loop;
-
-      return Bound_Val;
+               Bound_Val := Insert_Value
+                 (Bound_Val, Converted_High_Bound, (1 => Dim * 2 + 1));
+            end;
+         end loop;
+      end return;
    end Get_Array_Bounds;
 
    -----------------------

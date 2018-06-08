@@ -79,9 +79,7 @@ package body GNATLLVM.GLValue is
                           or else Is_Unconstrained_Array (V.Typ)
             --  ??? Keep the above test until we see if we can use Fat_Pointer
             --  consistently for this.
-                          or else (Ekind (V.Typ) = E_Subprogram_Type
-                                     and then Needs_Activation_Record
-                                     (V.Typ)));
+                          or else (Ekind (V.Typ) = E_Subprogram_Type));
 
          when Reference_To_Reference | Reference_To_Thin_Pointer =>
             return Is_Type (V.Typ)
@@ -172,13 +170,11 @@ package body GNATLLVM.GLValue is
       elsif Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE) then
          return Thin_Pointer;
 
-      --  If this is an access to subprogram, this is either a pointer to
-      --  the subprogram or a pair of pointers that includes the activation
-      --  record.
+      --  If this is an access to subprogram, this is a pair of pointers
+      --  that includes the activation record.
 
       elsif Ekind (TE) = E_Subprogram_Type then
-         return (if Needs_Activation_Record (TE)
-                 then Fat_Reference_To_Subprogram else Reference);
+         return Fat_Reference_To_Subprogram;
 
       --  Otherwise,  it's just a Reference
 
@@ -206,6 +202,13 @@ package body GNATLLVM.GLValue is
 
       if R = Fat_Pointer and then RM_Size (TE) = Get_Pointer_Size then
          return Thin_Pointer;
+
+      --  Similarly for foreign convention access to subprogram
+
+      elsif R = Fat_Reference_To_Subprogram
+        and then Has_Foreign_Convention (TE)
+      then
+         return Reference;
       else
          return R;
       end if;

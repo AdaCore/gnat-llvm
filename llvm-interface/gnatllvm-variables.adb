@@ -1080,18 +1080,13 @@ package body GNATLLVM.Variables is
            and then Is_Access_Type (Full_Etype (Parent (N)))
          then
             TE := Full_Designated_Type (Full_Etype (Parent (N)));
-            if Needs_Activation_Record (TE) then
 
-               --  Return a callback, which is a pair: subprogram
-               --  code pointer and static link argument.
+            --  Return a callback, which is a pair: subprogram code
+            --  pointer and static link argument.
 
-               V := Insert_Value
-                 (Insert_Value (Get_Undef_Ref (TE), Get_Static_Link (N), 1),
-                  Pointer_Cast (V, Standard_A_Char), 0);
-
-            elsif Ekind (TE) /= E_Void then
-               V := Convert_To_Access_To (V, TE);
-            end if;
+            V := Insert_Value
+              (Insert_Value (Get_Undef_Ref (TE), Get_Static_Link (N), 1),
+               Pointer_Cast (V, Standard_A_Char), 0);
          end if;
 
          return V;

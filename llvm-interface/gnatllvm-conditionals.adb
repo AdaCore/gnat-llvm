@@ -99,9 +99,7 @@ package body GNATLLVM.Conditionals is
       --  have to see if the pointer has an activation record.  If so,
       --  we just compare the functions, not the activation record.
 
-      if Is_Access_Type (Operand_Type)
-        and then Needs_Activation_Record (Full_Designated_Type (Operand_Type))
-      then
+      if Is_Access_Subprogram_Type (Operand_Type) then
          return I_Cmp
            (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
 

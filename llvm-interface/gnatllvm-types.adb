@@ -287,6 +287,7 @@ package body GNATLLVM.Types is
         (if Is_Access_Type (Related_Type (V)) then From_Access (V) else V);
       R      : constant GL_Relationship :=
         Relationship_For_Access_Type (TE);
+      Result : GL_Value;
 
    begin
       --  The normal process is to convert the input from an access type,
@@ -304,13 +305,12 @@ package body GNATLLVM.Types is
       if Relationship (As_Ref) = Reference_To_Subprogram
         and then Ekind (TE) = E_Access_Subprogram_Type
       then
-         return To_Access (Ptr_To_Relationship (As_Ref,
-                                                Full_Designated_Type (TE),
-                                                Reference),
-                           TE);
+         Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
       else
-         return To_Access (Convert_Pointer (Get (As_Ref, R), DT), TE);
+         Result := Convert_Pointer (Get (As_Ref, R), DT);
       end if;
+
+      return To_Access (Result, TE);
    end Convert_To_Access;
 
    --------------------------
@@ -364,17 +364,6 @@ package body GNATLLVM.Types is
       elsif not Unc_Src and not Unc_Dest then
          if Full_Designated_Type (V) = TE then
             return V;
-         elsif Needs_Activation_Record (Full_Designated_Type (V))
-           and then not Needs_Activation_Record (TE)
-         then
-            return Ptr_To_Ref (Extract_Value (Standard_A_Char, V, 1), TE);
-         elsif not Needs_Activation_Record (Full_Designated_Type (V))
-           and then Needs_Activation_Record (TE)
-         then
-            return Insert_Value
-              (Insert_Value (Get_Undef_Ref (TE),
-                             Const_Null (Standard_A_Char), 1),
-               Pointer_Cast (V, Standard_A_Char), 0);
          else
             return Ptr_To_Ref (V, TE);
          end if;
@@ -409,20 +398,23 @@ package body GNATLLVM.Types is
       V :  GL_Value       := Emit_Expression (N);
 
    begin
-      --  If the value is already of the desired LLVM type, we're done.
+      --  If the value is already of the desired LLVM type, we're done,
+      --  but show that the result is the new type.
 
       if Type_Of (V) = Create_Type (TE) then
-         return V;
+         return G_Is (V, TE);
 
       --  If converting pointer to pointer or pointer to/from integer, we
       --  just copy the bits using the appropriate instruction.
 
       elsif Is_Access_Type (TE) and then not Is_Access_Unconstrained (TE)
+        and then not Is_Access_Subprogram_Type (TE)
         and then Is_Scalar_Type (V)
       then
          return Int_To_Ptr (V, TE);
       elsif Is_Scalar_Type (TE) and then Is_Access_Type (V)
         and then not Is_Access_Unconstrained (V)
+        and then not Is_Access_Subprogram_Type (V)
       then
          return Ptr_To_Int (V, TE);
       elsif Is_Access_Type (TE) and then Is_Access_Type (V)
@@ -771,7 +763,7 @@ package body GNATLLVM.Types is
    begin
       if Is_Unconstrained_Array (TE) then
          return Create_Array_Fat_Pointer_Type (TE);
-      elsif Needs_Activation_Record (TE) then
+      elsif Ekind (TE) = E_Subprogram_Type then
          return Create_Subprogram_Access_Type;
       else
          return Pointer_Type (T, 0);

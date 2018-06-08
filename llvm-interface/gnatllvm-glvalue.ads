@@ -427,6 +427,10 @@ package GNATLLVM.GLValue is
    function Is_Access_Unconstrained (V : GL_Value) return Boolean
      with Pre => Present (V);
 
+   function Is_Access_Subprogram_Type (V : GL_Value) return Boolean is
+     (Is_Access_Subprogram_Type (Full_Etype (V)))
+     with Pre => Present (V);
+
    function Is_Constrained (V : GL_Value) return Boolean is
      (not Is_Reference (V) and then Is_Constrained (Full_Etype (V)))
      with Pre => Present (V);

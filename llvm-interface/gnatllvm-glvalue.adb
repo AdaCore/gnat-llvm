@@ -879,6 +879,15 @@ package body GNATLLVM.GLValue is
       Set_Does_Not_Throw (LLVM_Value (V));
    end Set_Does_Not_Throw;
 
+   -------------------------
+   -- Set_Does_Not_Return --
+   -------------------------
+
+   procedure Set_Does_Not_Return (V : GL_Value) is
+   begin
+      Set_Does_Not_Return (LLVM_Value (V));
+   end Set_Does_Not_Return;
+
    --------------------
    -- Build_Ret_Void --
    --------------------

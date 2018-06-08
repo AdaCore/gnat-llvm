@@ -1349,6 +1349,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Indicate that V does not throw exceptions
 
+   procedure Set_Does_Not_Return (V : GL_Value)
+     with Pre => Present (V);
+   --  Indicate that V does not return
+
    procedure Set_Initializer (V, Expr : GL_Value)
      with Pre => Present (V) and then Present (Expr);
    --  Set the initializer for a global variable

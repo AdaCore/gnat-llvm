@@ -174,6 +174,13 @@ Set_Does_Not_Throw (Function *fn)
 }
 
 extern "C"
+void
+Set_Does_Not_Return (Function *fn)
+{
+    return fn->setDoesNotReturn ();
+}
+
+extern "C"
 int
 LLVM_Init_Module (Module *TheModule, const char *Filename, const char *target)
 {

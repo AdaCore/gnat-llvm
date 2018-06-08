@@ -70,6 +70,9 @@ package GNATLLVM.Wrapper is
    procedure Set_Does_Not_Throw (Fn : Value_T);
    pragma Import (C, Set_Does_Not_Throw, "Set_Does_Not_Throw");
 
+   procedure Set_Does_Not_Return (Fn : Value_T);
+   pragma Import (C, Set_Does_Not_Return, "Set_Does_Not_Return");
+
    function LLVM_Init_Module
      (Module   : Module_T;
       Filename : String;

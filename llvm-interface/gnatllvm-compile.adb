@@ -657,8 +657,7 @@ package body GNATLLVM.Compile is
                --  either be an N_Identifier or Expanded_Name, which
                --  must represent a type, or a N_Qualified_Expression,
                --  which contains both the object type and an initial
-               --  value for the object.  We ignore the initial value
-               --  if No_Initialization is set.
+               --  value for the object.
 
                if Is_Entity_Name (Expr) then
                   Typ   := Get_Fullest_View (Entity (Expr));
@@ -666,10 +665,7 @@ package body GNATLLVM.Compile is
                else
                   pragma Assert (Nkind (Expr) = N_Qualified_Expression);
                   Typ   := Full_Etype (Expression (Expr));
-
-                  if not No_Initialization (N) then
-                     Value := Emit_Expression (Expression (Expr));
-                  end if;
+                  Value := Emit_Expression (Expression (Expr));
                end if;
 
                Result := Heap_Allocate_For_Type

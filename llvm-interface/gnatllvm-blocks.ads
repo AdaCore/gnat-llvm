@@ -106,6 +106,13 @@ package GNATLLVM.Blocks is
      with Pre => Present (N);
    --  Generate a call to __gnat_last_chance_handler
 
+   procedure Emit_Raise (N : Node_Id)
+     with Pre => Nkind (N) in N_Raise_xxx_Error;
+   --  Process an N_Raise_xxx_Error node
+
+   procedure Emit_Reraise;
+   --  Emit code for an N_Raise
+
    procedure Initialize;
    --  Initialize all global names
 

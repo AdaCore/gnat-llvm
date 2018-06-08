@@ -25,11 +25,12 @@ with Uintp;    use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
+with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Blocks is
 
@@ -59,8 +60,10 @@ package body GNATLLVM.Blocks is
       --  Basic block containing the landing pad for this block, if any.
 
       EH_List            : List_Id;
-      --  List of exception handlers.  ??? We may not want to keep it this way
+      --  List of exception handlers
 
+      LP_Inst            : GL_Value;
+      --  The actual landingpad instruction, for use with Resume
    end record;
 
    package Block_Stack is new Table.Table
@@ -124,15 +127,16 @@ package body GNATLLVM.Blocks is
    --  Do one fixup when exiting Blk, saying whether to run "at end handler
    --  and whether to restore the stack pointer.
 
-   procedure Make_Landing_Pad
+   function Make_Landing_Pad
      (Lpad             : Basic_Block_T;
       EH_List          : List_Id;
       At_End_Proc      : GL_Value;
-      At_End_Parameter : GL_Value)
-     with Pre => Present (Lpad)
-          and then (Present (EH_List) or else Present (At_End_Proc));
+      At_End_Parameter : GL_Value) return GL_Value
+     with Pre  => Present (Lpad)
+                  and then (Present (EH_List) or else Present (At_End_Proc)),
+          Post => Present (Make_Landing_Pad'Result);
    --  Generate a landingpad instruction from the data in EH_List and
-   --  At_End_Proc.
+   --  At_End_Proc.  Return the actual landing pad instruction.
 
    function Get_File_Name_Address
      (Index : Source_File_Index) return GL_Value
@@ -185,6 +189,7 @@ package body GNATLLVM.Blocks is
                            At_End_Proc      => No_GL_Value,
                            At_End_Parameter => No_GL_Value,
                            Landing_Pad      => No_BB_T,
+                           LP_Inst          => No_GL_Value,
                            EH_List          => No_List,
                            In_Stmts         => False,
                            Unprotected      => False));
@@ -419,11 +424,11 @@ package body GNATLLVM.Blocks is
    -- Make_Landing_Pad --
    ----------------------
 
-   procedure Make_Landing_Pad
+   function Make_Landing_Pad
      (Lpad             : Basic_Block_T;
       EH_List          : List_Id;
       At_End_Proc      : GL_Value;
-      At_End_Parameter : GL_Value)
+      At_End_Parameter : GL_Value) return GL_Value
    is
       LP_Type           : constant Type_T        :=
         Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
@@ -573,7 +578,7 @@ package body GNATLLVM.Blocks is
 
       Build_Resume (LP_Inst);
       Position_Builder_At_End (Next_BB);
-
+      return LP_Inst;
    end Make_Landing_Pad;
 
    ---------------
@@ -581,8 +586,7 @@ package body GNATLLVM.Blocks is
    ---------------
 
    procedure Pop_Block is
-      BI         : constant Block_Info    :=
-        Block_Stack.Table (Block_Stack.Last);
+      BI         : Block_Info    renames Block_Stack.Table (Block_Stack.Last);
       Lpad       : constant Basic_Block_T := BI.Landing_Pad;
       Was_Dead   : constant Boolean       := Are_In_Dead_Code;
       Next_BB    : constant Basic_Block_T :=
@@ -595,8 +599,8 @@ package body GNATLLVM.Blocks is
       --  exception handlers in the block and this code isn't protected by
       --  any At_End handler.
 
-      Block_Stack.Table (Block_Stack.Last).In_Stmts    := False;
-      Block_Stack.Table (Block_Stack.Last).Unprotected := True;
+      BI.In_Stmts    := False;
+      BI.Unprotected := True;
       if not Are_In_Dead_Code then
          Emit_One_Fixup (Block_Stack.Last,
                          Do_At_End => True, Do_Stack => True);
@@ -608,8 +612,8 @@ package body GNATLLVM.Blocks is
       --  Now output the landing pad and handlers
 
       if Present (Lpad) then
-         Make_Landing_Pad (Lpad, BI.EH_List, BI.At_End_Proc,
-                           BI.At_End_Parameter);
+         BI.LP_Inst := Make_Landing_Pad (Lpad, BI.EH_List, BI.At_End_Proc,
+                                         BI.At_End_Parameter);
          if Was_Dead then
             Build_Unreachable;
          end if;
@@ -621,6 +625,23 @@ package body GNATLLVM.Blocks is
 
       Block_Stack.Decrement_Last;
    end Pop_Block;
+
+   ------------------
+   -- Emit_Reraise --
+   ------------------
+
+   procedure Emit_Reraise is
+   begin
+      --  We could abort if there's no place to resume to, but it's not
+      --  worth the trouble.
+
+      for J in reverse 1 .. Block_Stack.Last loop
+         if Present (Block_Stack.Table (J).LP_Inst) then
+            Build_Resume (Block_Stack.Table (J).LP_Inst);
+            return;
+         end if;
+      end loop;
+   end Emit_Reraise;
 
    --------------------------------------
    -- Process_Push_Pop_xxx_Error_Label --
@@ -782,6 +803,50 @@ package body GNATLLVM.Blocks is
       Error_Msg_N ("unknown loop identifier", N);
       raise Program_Error;
    end Get_Exit_Point;
+
+   ----------------
+   -- Emit_Raise --
+   ----------------
+
+   procedure Emit_Raise (N : Node_Id) is
+      Label   : constant Entity_Id     := Get_Exception_Goto_Entry (Nkind (N));
+      Cond    : constant Node_Id       := Condition (N);
+      BB_Then : constant Basic_Block_T :=
+        (if Present (Label) then Get_Label_BB (Label)
+         elsif No (Cond) then No_BB_T else Create_Basic_Block ("raise"));
+      BB_Next : constant Basic_Block_T :=
+        (if Present (Cond) then Create_Basic_Block else No_BB_T);
+
+   begin
+      --  If there's a condition, test it.  If we have the label case,
+      --  that's all we have to do since it's one of two branches.
+
+      if Present (Cond) then
+         Emit_If_Cond (Cond, BB_Then, BB_Next);
+      elsif Present (Label) then
+         Build_Br (BB_Then);
+      end if;
+
+      --  If this isn't the branch case, we have to raise the exception,
+      --  possibly only if the condition above failed.
+
+      if No (Label) then
+         if Present (BB_Then) then
+            Position_Builder_At_End (BB_Then);
+         end if;
+
+         Emit_LCH_Call (N);
+         if Present (BB_Next) then
+            Build_Br (BB_Next);
+         end if;
+      end if;
+
+      --  If we've needed to make one, now define the label past the condition
+
+      if Present (BB_Next) then
+         Position_Builder_At_End (BB_Next);
+      end if;
+   end Emit_Raise;
 
    ----------------
    -- Initialize --

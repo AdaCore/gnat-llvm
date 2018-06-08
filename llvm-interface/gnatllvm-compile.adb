@@ -18,6 +18,7 @@
 with Errout;   use Errout;
 with Exp_Util; use Exp_Util;
 with Nlists;   use Nlists;
+with Opt;      use Opt;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Uintp;    use Uintp;
@@ -210,49 +211,11 @@ package body GNATLLVM.Compile is
             Emit (Statements (N), Starting_At => First_Real_Statement (N));
 
          when N_Raise_Statement =>
-            Emit_LCH_Call (N);
+            pragma Assert (Back_End_Exceptions);
+            Emit_Reraise;
 
          when N_Raise_xxx_Error =>
-
-            --  See if this Raise is really a goto due to having a label on
-            --  the appropriate stack.
-
-            declare
-               Label_Ent : constant Entity_Id :=
-                 Get_Exception_Goto_Entry (Nkind (N));
-               BB_Next   : Basic_Block_T;
-
-            begin
-               if Present (Label_Ent) then
-                  if Present (Condition (N)) then
-                     BB_Next := Create_Basic_Block;
-                     Emit_If_Cond
-                       (Condition (N), Get_Label_BB (Label_Ent), BB_Next);
-                     Position_Builder_At_End (BB_Next);
-                  else
-                     Build_Br (Get_Label_BB (Label_Ent));
-                  end if;
-
-                  return;
-               end if;
-            end;
-
-            if Present (Condition (N)) then
-               declare
-                  BB_Then : constant Basic_Block_T :=
-                    Create_Basic_Block ("raise");
-                  BB_Next : constant Basic_Block_T := Create_Basic_Block;
-
-               begin
-                  Emit_If_Cond (Condition (N), BB_Then, BB_Next);
-                  Position_Builder_At_End (BB_Then);
-                  Emit_LCH_Call (N);
-                  Build_Br (BB_Next);
-                  Position_Builder_At_End (BB_Next);
-               end;
-            else
-               Emit_LCH_Call (N);
-            end if;
+            Emit_Raise (N);
 
          when N_Object_Declaration | N_Exception_Declaration =>
             Emit_Declaration (N);

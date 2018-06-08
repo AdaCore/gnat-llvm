@@ -86,10 +86,6 @@ package GNATLLVM.Subprograms is
      with Post => Present (Get_Stack_Restore_Fn'Result);
    --  Get function to restore stack pointer
 
-   function Get_LCH_Fn return GL_Value
-     with Post => Present (Get_LCH_Fn'Result);
-   --  Get function for our last-chance handler
-
    function Get_From_Activation_Record (E : Entity_Id) return GL_Value
      with Pre => not Is_Type (E);
    --  Checks whether E is present in the current activation record and
@@ -109,14 +105,6 @@ package GNATLLVM.Subprograms is
      with Pre => Ekind (Proc) = E_Procedure;
    --  Proc is a Procedure_To_Call for an allocation or deallocation and Args
    --  are its arguments.  See if Proc needs a static link and pass one, if so.
-
-   procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id)
-     with Pre => Present (V) and then Present (N);
-   --  Call the last change helper if V evaluates to True
-
-   procedure Emit_LCH_Call (N : Node_Id)
-     with Pre => Present (N);
-   --  Generate a call to __gnat_last_chance_handler
 
    procedure Add_To_Elab_Proc (N : Node_Id; For_Type : Entity_Id := Empty)
      with Pre => Library_Level and then Present (N)

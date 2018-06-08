@@ -17,6 +17,7 @@
 
 with Sinfo; use Sinfo;
 
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 
 package GNATLLVM.Blocks is
@@ -92,6 +93,18 @@ package GNATLLVM.Blocks is
      with Post => Present (Get_Exit_Point'Result);
    --  If N is specied, find the exit point corresponding to its entity.
    --  Otherwise, find the most recent (most inner) exit point.
+
+   function Get_LCH_Fn return GL_Value
+     with Post => Present (Get_LCH_Fn'Result);
+   --  Get function for our last-chance handler
+
+   procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id)
+     with Pre => Present (V) and then Present (N);
+   --  Call the last change helper if V evaluates to True
+
+   procedure Emit_LCH_Call (N : Node_Id)
+     with Pre => Present (N);
+   --  Generate a call to __gnat_last_chance_handler
 
    procedure Initialize;
    --  Initialize all global names

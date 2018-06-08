@@ -18,6 +18,7 @@
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Nlists;   use Nlists;
+with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Table;    use Table;
 with Uintp;    use Uintp;
@@ -26,7 +27,6 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
@@ -134,6 +134,12 @@ package body GNATLLVM.Blocks is
    --  Generate a landingpad instruction from the data in EH_List and
    --  At_End_Proc.
 
+   function Get_File_Name_Address
+     (Index : Source_File_Index) return GL_Value
+     with Post => Type_Of (Get_File_Name_Address'Result) = LLVM_Size_Type;
+   --  Return a GL_Value giving the address of a string corresponding to
+   --  the name of the file with the specified file index.
+
    procedure Initialize_Predefines;
    --  Initialize the predefined functions and variables below
 
@@ -157,6 +163,14 @@ package body GNATLLVM.Blocks is
    Set_Exception_Param_Fn : GL_Value := No_GL_Value;
    --  Declaration for __gnat_set_exception_parameter.  This can't be
    --  initialized with the ones above since we need its type.
+
+   LCH_Fn            : GL_Value := No_GL_Value;
+   --  Last-chance handler.  We only initialize this if needed
+
+   type File_GL_Value_Array is array (Source_File_Index range <>) of GL_Value;
+   File_Name_Strings : access File_GL_Value_Array := null;
+   --  Array of GL_Values corresponding to 'Address of the string literal
+   --  representing the name of the file.
 
    ----------------
    -- Push_Block --
@@ -304,6 +318,102 @@ package body GNATLLVM.Blocks is
       Predefines_Set   := True;
 
    end Initialize_Predefines;
+
+   ----------------
+   -- Get_LCH_Fn --
+   ----------------
+
+   function Get_LCH_Fn return GL_Value is
+   begin
+      if No (LCH_Fn) then
+         LCH_Fn := Add_Global_Function
+           ("__gnat_last_chance_handler",
+            Fn_Ty ((1 => LLVM_Size_Type, 2 => Create_Type (Standard_Integer)),
+                   Void_Type),
+            Standard_Void_Type, Can_Throw => True, Can_Return => False);
+      end if;
+
+      return LCH_Fn;
+   end Get_LCH_Fn;
+
+   ----------------------
+   -- Emit_LCH_Call_If --
+   ----------------------
+
+   procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id) is
+      BB_Then  : constant Basic_Block_T := Create_Basic_Block ("raise");
+      BB_Next  : constant Basic_Block_T := Create_Basic_Block;
+
+   begin
+      Build_Cond_Br (V, BB_Then, BB_Next);
+      Position_Builder_At_End (BB_Then);
+      Emit_LCH_Call (N);
+      Build_Br (BB_Next);
+      Position_Builder_At_End (BB_Next);
+   end Emit_LCH_Call_If;
+
+   ---------------------------
+   -- Get_File_Name_Address --
+   ---------------------------
+
+   function Get_File_Name_Address
+     (Index : Source_File_Index) return GL_Value is
+   begin
+      if File_Name_Strings = null then
+         File_Name_Strings :=
+           new File_GL_Value_Array'(1 .. Last_Source_File => No_GL_Value);
+      end if;
+
+      if No (File_Name_Strings (Index)) then
+         declare
+            File     : constant String
+              := Get_Name_String (Reference_Name (Index));
+            Elements : GL_Value_Array (1 .. File'Length + 1);
+            V        : GL_Value;
+            Str      : GL_Value;
+
+         begin
+            --  First build a string literal for FILE
+
+            for J in File'Range loop
+               Elements (Nat (J)) :=
+                 Const_Int (Standard_Short_Short_Integer,
+                            ULL (Character'Pos (File (J))));
+            end loop;
+
+            --  Append NUL character
+
+            Elements (Elements'Last)
+              := Const_Null (Standard_Short_Short_Integer);
+
+            Str := Const_Array (Elements, Any_Array);
+            V   := G_Ref (Add_Global (LLVM_Module, Type_Of (Str), "fname"),
+                          Any_Array);
+            Set_Initializer (V, Str);
+            Set_Linkage (V, Private_Linkage);
+            Set_Global_Constant (LLVM_Value (V), True);
+            File_Name_Strings (Index) := Ptr_To_Int (V, Size_Type);
+         end;
+      end if;
+
+      return File_Name_Strings (Index);
+   end Get_File_Name_Address;
+
+   -------------------
+   -- Emit_LCH_Call --
+   -------------------
+
+   procedure Emit_LCH_Call (N : Node_Id) is
+      File : constant GL_Value :=
+        Get_File_Name_Address (Get_Source_File_Index (Sloc (N)));
+      Line : constant GL_Value :=
+        Const_Int (Standard_Integer, ULL (Get_Logical_Line_Number (Sloc (N))));
+
+   begin
+      --  Build a call to __gnat_last_chance_handler (FILE, LINE)
+
+      Call (Get_LCH_Fn, (1 => File, 2 => Line));
+   end Emit_LCH_Call;
 
    ----------------------
    -- Make_Landing_Pad --
@@ -679,11 +789,12 @@ package body GNATLLVM.Blocks is
 
    procedure Initialize is
    begin
-      Register_Global_Name ("__gnat_personality_v0");
+      Register_Global_Name ("__gnat_all_others_value");
       Register_Global_Name ("__gnat_begin_handler");
       Register_Global_Name ("__gnat_end_handler");
+      Register_Global_Name ("__gnat_last_chance_handler");
       Register_Global_Name ("__gnat_others_value");
-      Register_Global_Name ("__gnat_all_others_value");
+      Register_Global_Name ("__gnat_personality_v0");
       Register_Global_Name ("__gnat_set_exception_parameter");
 
    end Initialize;

@@ -923,7 +923,7 @@ package body GNATLLVM.Exprs is
 
       --  Likewise for clobbers, but we only need the length of the
       --  constraints here.  Node that Clobber_Get_Next isn't very friendly
-      --  for an Ada called, so we'll use fact that it's set Name_Buffer
+      --  for an Ada caller, so we'll use fact that it's set Name_Buffer
       --  and Name_Len;
 
       Clobber_Setup (N);

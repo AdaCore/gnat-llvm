@@ -697,13 +697,9 @@ package body GNATLLVM.Compile is
                                     Emit_Expression (High_Bound (Rng))));
             end;
 
-         when N_Raise_Expression =>
-            Emit_LCH_Call (N);
-            return Emit_Undef (TE);
-
          when N_Raise_xxx_Error =>
             pragma Assert (No (Condition (N)));
-            Emit_LCH_Call (N);
+            Emit_Raise (N);
             return Emit_Undef (TE);
 
          when others =>

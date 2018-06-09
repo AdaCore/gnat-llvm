@@ -16,8 +16,10 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
+with Exp_Ch11; use Exp_Ch11;
 with Exp_Unst; use Exp_Unst;
 with Nlists;   use Nlists;
+with Restrict; use Restrict;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Table;    use Table;
@@ -144,6 +146,14 @@ package body GNATLLVM.Blocks is
    --  Return a GL_Value giving the address of a string corresponding to
    --  the name of the file with the specified file index.
 
+   function Get_Raise_Fn (Kind : RT_Exception_Code) return GL_Value
+     with Post => Present (Get_Raise_Fn'Result);
+   --  Get function for raising a builtin exception of Kind
+
+   procedure Emit_Raise_Call (N : Node_Id; Kind : RT_Exception_Code)
+     with Pre => Present (N);
+   --  Generate a call to __gnat_last_chance_handler
+
    procedure Initialize_Predefines;
    --  Initialize the predefined functions and variables below
 
@@ -175,6 +185,15 @@ package body GNATLLVM.Blocks is
    File_Name_Strings : access File_GL_Value_Array := null;
    --  Array of GL_Values corresponding to 'Address of the string literal
    --  representing the name of the file.
+
+   Rcheck_Names      : array (RT_Exception_Code'Range) of access String;
+   --  Array of pointers to strings giving the names of the functions for
+   --  raising builtin exceptions of various kinds.
+
+   Rcheck_FNs        : array (RT_Exception_Code'Range) of GL_Value :=
+     (others => No_GL_Value);
+   --  Array of functions to call for raising builtin exceptions of
+   --  various kinds.
 
    ----------------
    -- Push_Block --
@@ -324,38 +343,50 @@ package body GNATLLVM.Blocks is
 
    end Initialize_Predefines;
 
-   ----------------
-   -- Get_LCH_Fn --
-   ----------------
+   ------------------
+   -- Get_Raise_Fn --
+   ------------------
 
-   function Get_LCH_Fn return GL_Value is
+   function Get_Raise_Fn (Kind : RT_Exception_Code) return GL_Value is
+      Fun_Type : constant Type_T :=
+        Fn_Ty ((1 => LLVM_Size_Type, 2 => Create_Type (Standard_Integer)),
+               Void_Type);
+
    begin
-      if No (LCH_Fn) then
-         LCH_Fn := Add_Global_Function
-           ("__gnat_last_chance_handler",
-            Fn_Ty ((1 => LLVM_Size_Type, 2 => Create_Type (Standard_Integer)),
-                   Void_Type),
-            Standard_Void_Type, Can_Throw => True, Can_Return => False);
+      if No_Exception_Handlers_Set then
+         if No (LCH_Fn) then
+            LCH_Fn := Add_Global_Function
+              ("__gnat_last_chance_handler", Fun_Type,
+               Standard_Void_Type, Can_Throw => True, Can_Return => False);
+         end if;
+
+         return LCH_Fn;
+      else
+         if No (Rcheck_FNs (Kind)) then
+            Rcheck_FNs (Kind) := Add_Global_Function
+              (Rcheck_Names (Kind).all, Fun_Type,
+               Standard_Void_Type, Can_Throw => True, Can_Return => False);
+         end if;
+
+         return Rcheck_FNs (Kind);
       end if;
+   end Get_Raise_Fn;
 
-      return LCH_Fn;
-   end Get_LCH_Fn;
+   ---------------------------
+   -- Emit_Overflow_Call_If --
+   ---------------------------
 
-   ----------------------
-   -- Emit_LCH_Call_If --
-   ----------------------
-
-   procedure Emit_LCH_Call_If (V : GL_Value; N : Node_Id) is
+   procedure Emit_Overflow_Call_If (V : GL_Value; N : Node_Id) is
       BB_Then  : constant Basic_Block_T := Create_Basic_Block ("raise");
       BB_Next  : constant Basic_Block_T := Create_Basic_Block;
 
    begin
       Build_Cond_Br (V, BB_Then, BB_Next);
       Position_Builder_At_End (BB_Then);
-      Emit_LCH_Call (N);
+      Emit_Raise_Call (N, CE_Overflow_Check_Failed);
       Build_Br (BB_Next);
       Position_Builder_At_End (BB_Next);
-   end Emit_LCH_Call_If;
+   end Emit_Overflow_Call_If;
 
    ---------------------------
    -- Get_File_Name_Address --
@@ -404,21 +435,21 @@ package body GNATLLVM.Blocks is
       return File_Name_Strings (Index);
    end Get_File_Name_Address;
 
-   -------------------
-   -- Emit_LCH_Call --
-   -------------------
+   ---------------------
+   -- Emit_Raise_Call --
+   ---------------------
 
-   procedure Emit_LCH_Call (N : Node_Id) is
+   procedure Emit_Raise_Call (N : Node_Id; Kind : RT_Exception_Code) is
       File : constant GL_Value :=
         Get_File_Name_Address (Get_Source_File_Index (Sloc (N)));
       Line : constant GL_Value :=
         Const_Int (Standard_Integer, ULL (Get_Logical_Line_Number (Sloc (N))));
 
    begin
-      --  Build a call to __gnat_last_chance_handler (FILE, LINE)
+      --  Build a call to __gnat_xx (FILE, LINE)
 
-      Call (Get_LCH_Fn, (1 => File, 2 => Line));
-   end Emit_LCH_Call;
+      Call (Get_Raise_Fn (Kind), (1 => File, 2 => Line));
+   end Emit_Raise_Call;
 
    ----------------------
    -- Make_Landing_Pad --
@@ -835,7 +866,7 @@ package body GNATLLVM.Blocks is
             Position_Builder_At_End (BB_Then);
          end if;
 
-         Emit_LCH_Call (N);
+         Emit_Raise_Call (N, RT_Exception_Code'Val (UI_To_Int (Reason (N))));
          if Present (BB_Next) then
             Build_Br (BB_Next);
          end if;
@@ -857,11 +888,26 @@ package body GNATLLVM.Blocks is
       Register_Global_Name ("__gnat_all_others_value");
       Register_Global_Name ("__gnat_begin_handler");
       Register_Global_Name ("__gnat_end_handler");
-      Register_Global_Name ("__gnat_last_chance_handler");
       Register_Global_Name ("__gnat_others_value");
       Register_Global_Name ("__gnat_personality_v0");
       Register_Global_Name ("__gnat_set_exception_parameter");
 
+      if No_Exception_Handlers_Set then
+         Register_Global_Name ("__gnat_last_chance_handler");
+      else
+         for Kind in RT_Exception_Code'Range loop
+            Name_Len := 0;
+            Add_Str_To_Name_Buffer ("__gnat_rcheck_");
+            Get_RT_Exception_Name (Kind);
+            Rcheck_Names (Kind) := new String'(Name_Buffer (1 .. Name_Len));
+            Register_Global_Name (Rcheck_Names (Kind).all);
+         end loop;
+
+         Register_Global_Name ("__gnat_rcheck_CE_Access_Check_ext");
+         Register_Global_Name ("__gnat_rcheck_CE_Index_Check_ext");
+         Register_Global_Name ("__gnat_rcheck_CE_Invalid_Data_ext");
+         Register_Global_Name ("__gnat_rcheck_CE_Range_Check_ext");
+      end if;
    end Initialize;
 
 end GNATLLVM.Blocks;

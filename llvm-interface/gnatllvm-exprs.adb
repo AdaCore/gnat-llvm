@@ -228,7 +228,7 @@ package body GNATLLVM.Exprs is
                  (Overflow, Get_Label_BB (Label_Ent), BB_Next);
                Position_Builder_At_End (BB_Next);
             else
-               Emit_LCH_Call_If (Overflow, N);
+               Emit_Overflow_Call_If (Overflow, N);
             end if;
 
             Result := Extract_Value (Left_BT, Fn_Ret, 0);
@@ -389,7 +389,7 @@ package body GNATLLVM.Exprs is
                           (Overflow, Get_Label_BB (Label_Ent), BB_Next);
                         Position_Builder_At_End (BB_Next);
                      else
-                        Emit_LCH_Call_If (Overflow, N);
+                        Emit_Overflow_Call_If (Overflow, N);
                      end if;
 
                      return Extract_Value (Typ, Fn_Ret, 0);

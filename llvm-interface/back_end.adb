@@ -18,8 +18,7 @@
 with LLVM_Drive;
 
 with Adabkend;
-with Debug;    use Debug;
-with Opt;      use Opt;
+with Opt; use Opt;
 
 package body Back_End is
 
@@ -54,7 +53,6 @@ package body Back_End is
 begin
    --  Set the switches in Opt that we depend on
 
-   Debug_Flag_Dot_G                := True;
    Expand_Nonbinary_Modular_Ops    := True;
    Unnest_Subprogram_Mode          := True;
 

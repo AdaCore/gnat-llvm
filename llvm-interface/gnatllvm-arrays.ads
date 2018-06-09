@@ -166,8 +166,4 @@ package GNATLLVM.Arrays is
    --  is the type of the array we're getting the bounds for, in case they're
    --  different.
 
-   procedure Push_Discriminant_Info (For_Type, Is_Low_Bound : Boolean);
-   procedure Pop_Discriminant_Info;
-   --  Push and pop information onto stack
-
 end GNATLLVM.Arrays;

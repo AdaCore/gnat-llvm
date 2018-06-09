@@ -54,10 +54,14 @@ package body GNATLLVM.Arrays is
                        and then (No (Value) or else Dynamic);
 
    type Index_Bounds is record
-      Bound_Type        : Entity_Id;
-      Low, High         : One_Bound;
+      Bound_Type    : Entity_Id;
+      Bound_Subtype : Entity_Id;
+      Low, High     : One_Bound;
    end record
-     with Predicate => Is_Discrete_Type (Bound_Type);
+     with Predicate => Is_Discrete_Type (Bound_Type)
+                       and then Is_Discrete_Type (Bound_Subtype)
+                       and then (Implementation_Base_Type (Bound_Type) =
+                                   Implementation_Base_Type (Bound_Subtype));
 
    package Array_Info is new Table.Table
      (Table_Component_Type => Index_Bounds,
@@ -68,34 +72,15 @@ package body GNATLLVM.Arrays is
       Table_Name           => "Array_Info_Table");
    --  Table of representation of arrays indexes
 
-   --  A bound of an array type may be a computation involving a discriminant.
-   --  If we're evaluating a bound, we save here information that tells us
-   --  what we have to do with a discriminant we encounter, if indeed we
-   --  are expecting one.
-
-   type For_Discr_Info is record
-      For_Type  : Boolean;
-      --  True if we need the maximum size of the bound
-
-      Low_Bound : Boolean;
-      --  True if we're computing this expression for a low bound; False
-      --  for high.
-   end record;
-
-   package For_Discr_Stack is new Table.Table
-     (Table_Component_Type => For_Discr_Info,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "For_Discr_Stack");
-   --  Stack of information for discriminant evaluation
-
    function Type_For_Get_Bound
      (TE : Entity_Id; V : GL_Value) return Entity_Id
      with Pre  => Is_Array_Type (TE),
           Post => Is_Array_Type (Type_For_Get_Bound'Result);
    --  Get the best type to use to search for a bound of an arrray
+
+   function Contains_Discriminant (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N contains a reference to a discriminant
 
    function Build_One_Bound
      (N : Node_Id; Unconstrained : Boolean) return One_Bound
@@ -170,25 +155,6 @@ package body GNATLLVM.Arrays is
       end if;
    end Type_For_Get_Bound;
 
-   ----------------------------
-   -- Push_Discriminant_Info --
-   ----------------------------
-
-   procedure Push_Discriminant_Info (For_Type, Is_Low_Bound : Boolean) is
-   begin
-      For_Discr_Stack.Append ((For_Type => For_Type,
-                               Low_Bound => Is_Low_Bound));
-   end Push_Discriminant_Info;
-
-   -------------------------------
-   -- Pop_Info_For_Discriminant --
-   -------------------------------
-
-   procedure Pop_Discriminant_Info is
-   begin
-      For_Discr_Stack.Decrement_Last;
-   end Pop_Discriminant_Info;
-
    ---------------------
    -- Get_Array_Bound --
    ---------------------
@@ -205,10 +171,11 @@ package body GNATLLVM.Arrays is
       Dim_Info   : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
       Bound_Info : constant One_Bound    :=
         (if Is_Low then Dim_Info.Low else Dim_Info.High);
-      Bound_Idx    : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
+      Bound_Idx  : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
       --  In the array fat pointer bounds structure, bounds are stored as a
       --  sequence of (lower bound, upper bound) pairs.
-      Result       : GL_Value;
+      Expr       : Node_Id;
+      Result     : GL_Value;
 
    begin
       Push_Debug_Freeze_Pos;
@@ -222,13 +189,19 @@ package body GNATLLVM.Arrays is
          Result := Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
       elsif Present (Bound_Info.Value) then
 
-         --  We set and clear information on the discrminant in case we
-         --  encounter one.
+         --  If we're looking for the size of a type (meaning the max size)
+         --  and this expression involves a discriminant, use the minimum
+         --  or maxium value of the subtype.  Otherwise, just evaluate
+         --  the expression.
 
-         Push_Discriminant_Info (For_Type => For_Type, Is_Low_Bound => Is_Low);
-         Result := Build_Type_Conversion
-           (Bound_Info.Value, Dim_Info.Bound_Type);
-         Pop_Discriminant_Info;
+         if For_Type and then Contains_Discriminant (Bound_Info.Value) then
+            Expr := (if Is_Low then Type_Low_Bound (Dim_Info.Bound_Subtype)
+                     else Type_High_Bound (Dim_Info.Bound_Subtype));
+         else
+            Expr := Bound_Info.Value;
+         end if;
+
+         Result := Build_Type_Conversion (Expr, Dim_Info.Bound_Type);
       else
          --  We now should have the unconstrained case.  Make sure we do.
          pragma Assert (Is_Unconstrained_Array (TE)
@@ -249,26 +222,12 @@ package body GNATLLVM.Arrays is
    ---------------------------------
 
    function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value is
-      TE        : constant Entity_Id      := Full_Etype (E);
-      Rec_Type  : constant Entity_Id      := Full_Scope (E);
-      Eval_Info : constant For_Discr_Info :=
-        For_Discr_Stack.Table (For_Discr_Stack.Last);
+      Rec_Type : constant Entity_Id := Full_Scope (E);
+      Match    : constant GL_Value  := Get_Matching_Value (Rec_Type);
 
    begin
-      pragma Assert (For_Discr_Stack.Last /= 0);
+      return Get (Record_Field_Offset (Match, E), Data);
 
-      --  If we are getting the size of a type, as opposed to a value, we
-      --  have to use the first/last value of the range of the type of the
-      --  discriminant.
-
-      if Eval_Info.For_Type then
-         return Emit_Safe_Expr ((if Eval_Info.Low_Bound
-                                 then Type_Low_Bound  (TE)
-                                 else Type_High_Bound (TE)));
-      else
-         return
-           Get (Record_Field_Offset (Get_Matching_Value (Rec_Type), E), Data);
-      end if;
    end Use_Discriminant_For_Bound;
 
    ----------------------
@@ -336,9 +295,11 @@ package body GNATLLVM.Arrays is
         (Cnst => First, Value => Empty, Dynamic => False);
       High_Bound : constant One_Bound    :=
         (Cnst => Last, Value => Empty, Dynamic => False);
-      Dim_Info   : constant Index_Bounds := (Bound_Type => Standard_Integer,
-                                             Low => Low_Bound,
-                                             High => High_Bound);
+      Dim_Info   : constant Index_Bounds
+        := (Bound_Type    => Standard_Integer,
+            Bound_Subtype => Standard_Integer,
+            Low           => Low_Bound,
+            High          => High_Bound);
       Result_Typ : constant Type_T       :=
         Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
 
@@ -360,6 +321,7 @@ package body GNATLLVM.Arrays is
    function Create_Array_Type (TE : Entity_Id) return Type_T is
       Unconstrained     : constant Boolean   := not Is_Constrained (TE);
       Comp_Type         : constant Entity_Id := Full_Component_Type (TE);
+      Base_Type         : constant Entity_Id := Implementation_Base_Type (TE);
       Must_Use_Fake     : Boolean            := Is_Dynamic_Size (Comp_Type);
       This_Dynamic_Size : Boolean            := Must_Use_Fake or Unconstrained;
       CT_To_Use         : constant Entity_Id :=
@@ -369,6 +331,7 @@ package body GNATLLVM.Arrays is
       First_Info        : constant Nat       := Array_Info.Last + 1;
       Dim               : Nat                := 0;
       Index             : Entity_Id;
+      Base_Index        : Entity_Id;
 
    begin
       if Ekind (TE) = E_String_Literal_Subtype then
@@ -386,7 +349,8 @@ package body GNATLLVM.Arrays is
       --  CT is the component type.  Otherwise, we have to use [0 x i8].
       --  We refer to both of these cases as creating a "fake" type.
 
-      Index := First_Index (TE);
+      Index      := First_Index (TE);
+      Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
             Idx_Range : constant Node_Id        := Get_Dim_Range (Index);
@@ -400,13 +364,16 @@ package body GNATLLVM.Arrays is
             LB          : constant Node_Id      := Low_Bound (Idx_Range);
             HB          : constant Node_Id      := High_Bound (Idx_Range);
             Dim_Info    : constant Index_Bounds :=
-              (Bound_Type => Index_Base,
-               Low => Build_One_Bound (LB, Unconstrained),
-               High => Build_One_Bound (HB, Unconstrained));
+              (Bound_Type    => Index_Base,
+               Bound_Subtype => Full_Etype (Base_Index),
+               Low           => Build_One_Bound (LB, Unconstrained),
+               High          => Build_One_Bound (HB, Unconstrained));
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges
             --  that are outside the base type if the subtype is superflat
-            --  (see C37172C).
+            --  (see C37172C).  We also need to record the subtype of the
+            --  index as it appears in the base array type since that's
+            --  what's used to compute the min/max sizes of objects.
 
          begin
             --  Update whether or not this will be of dynamic size and
@@ -424,6 +391,7 @@ package body GNATLLVM.Arrays is
 
             Array_Info.Append (Dim_Info);
             Next_Index (Index);
+            Next_Index (Base_Index);
             Dim := Dim + 1;
          end;
       end loop;
@@ -530,6 +498,40 @@ package body GNATLLVM.Arrays is
         ((1 => Pointer_Type (Create_Type (TE), 0),
           2 => Pointer_Type (Create_Array_Bounds_Type (TE), 0)));
    end Create_Array_Fat_Pointer_Type;
+
+   ---------------------------
+   -- Contains_Discriminant --
+   ---------------------------
+
+   function Contains_Discriminant (N : Node_Id) return Boolean is
+      Found_Discriminant : Boolean := False;
+
+      function See_If_Discriminant (N : Node_Id) return Traverse_Result;
+      --  Scan a single node looking for a discriminant, seeing above if so
+
+      procedure Scan is new Traverse_Proc (See_If_Discriminant);
+      --  Used to scan an expression looking for a discriminant
+
+      -------------------------
+      -- See_If_Discriminant --
+      -------------------------
+
+      function See_If_Discriminant (N : Node_Id) return Traverse_Result is
+      begin
+         if Nkind (N) = N_Identifier
+           and then Ekind (Entity (N)) = E_Discriminant
+         then
+            Found_Discriminant := True;
+            return Abandon;
+         else
+            return OK;
+         end if;
+      end See_If_Discriminant;
+
+   begin
+      Scan (N);
+      return Found_Discriminant;
+   end Contains_Discriminant;
 
    ------------------------
    -- Get_Array_Elements --

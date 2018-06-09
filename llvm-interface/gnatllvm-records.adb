@@ -31,7 +31,6 @@ with Uintp;    use Uintp;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
@@ -921,10 +920,8 @@ package body GNATLLVM.Records is
             Get_RI_Info_For_Max_Size_Variant (RI, This_Size, Must_Align,
                                               Is_Align, Return_Size);
          else
-            Push_Discriminant_Info (For_Type => False, Is_Low_Bound => False);
             Get_RI_Info_For_Variant (RI, V, This_Size, Must_Align, Is_Align,
                                      Return_Size);
-            Pop_Discriminant_Info;
          end if;
 
       else

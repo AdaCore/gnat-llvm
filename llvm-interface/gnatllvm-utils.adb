@@ -74,6 +74,32 @@ package body GNATLLVM.Utils is
       end case;
    end Decode_Range;
 
+   ------------------
+   -- Range_Length --
+   ------------------
+
+   function Range_Length
+     (Low, High : Uint; Max_Length : Int := Int'Last) return Nat
+   is
+      Length_M1 : constant Uint := High - Low;
+
+   begin
+      --  We compute the range as a Uint above so we can do it in infinite
+      --  precision.  We don't care whether the individual values are
+      --  within the range of Int (though our caller might), only if the
+      --  result is.  Since the second test is comparing Uint's, it tests
+      --  both for out of range of Int and being larger than the Max_Length.
+
+      if Length_M1 <= 0 then
+         return 0;
+      elsif Length_M1 > Max_Length - 1 then
+         return Max_Length;
+      else
+         return UI_To_Int (Length_M1) + 1;
+      end if;
+
+   end Range_Length;
+
    ---------
    -- Img --
    ---------

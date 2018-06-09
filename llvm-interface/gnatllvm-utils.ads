@@ -33,6 +33,11 @@ package GNATLLVM.Utils is
    --  value, or we can't find the value.  This should not happen in switch
    --  statements.
 
+   function Range_Length
+     (Low, High : Uint; Max_Length : Int := Int'Last) return Nat;
+   --  Given a decoded range, return the length of the range, or Max_Length,
+   --  whichever is less.
+
    function Is_Constant_Folded (E : Entity_Id) return Boolean
      with Pre => Present (E);
 

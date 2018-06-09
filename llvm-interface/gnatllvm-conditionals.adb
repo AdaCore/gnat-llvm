@@ -452,6 +452,10 @@ package body GNATLLVM.Conditionals is
       function Count_Choices (Alts : List_Id) return Nat;
       --  Count the total number of choices in this case part
 
+      procedure Swap_Highest_Cost (Is_Switch : Boolean);
+      --  Move the highest-cost alternative to the last entry.  Is_Switch
+      --  says whether we look at the switch cost or the if cost.
+
       -------------------
       -- Count_Choices --
       -------------------
@@ -503,32 +507,33 @@ package body GNATLLVM.Conditionals is
          If_Cost, Switch_Cost      : Nat;
       end record;
 
-      Num_Alts         : constant Nat      := List_Length (In_Alts);
-      Typ              : constant Type_T   := Create_Type (Full_Etype (LHS));
-      Current_Alt      : Nat               := 1;
-      Current_Choice   : Nat               := 1;
-      Alts             : array (1 .. Num_Alts) of One_Alt;
-      Choices          : array (1 .. Count_Choices (In_Alts)) of One_Choice;
-      BB               : Basic_Block_T;
-      First_Choice     : Nat;
-      Alt, Choice      : Node_Id;
-      Low, High        : Uint;
-      If_Cost          : Nat;
-      Switch_Cost      : Nat;
-      Switch           : Value_T;
+      Max_Cost       : constant Nat    := 10_000;
+      Num_Alts       : constant Nat    := List_Length (In_Alts);
+      Typ            : constant Type_T := Create_Type (Full_Etype (LHS));
+      Current_Alt    : Nat             := 1;
+      Current_Choice : Nat             := 1;
+      Alts           : array (1 .. Num_Alts) of One_Alt;
+      Choices        : array (1 .. Count_Choices (In_Alts)) of One_Choice;
+      BB             : Basic_Block_T;
+      First_Choice   : Nat;
+      Alt, Choice    : Node_Id;
+      Low, High      : Uint;
+      If_Cost        : Nat;
+      Switch_Cost    : Nat;
+      Switch         : Value_T;
 
-      procedure Swap_Highest_Cost (Is_Switch : Boolean);
-      --  Move the highest-cost alternative to the last entry.  Is_Switch
-      --  says whether we look at the switch cost or the if cost.
+      -----------------------
+      -- Swap_Highest_Cost --
+      -----------------------
 
       procedure Swap_Highest_Cost (Is_Switch : Boolean) is
-         Temp_Alt         : One_Alt;
-         Worst_Alt        : Nat;
-         Worst_Cost       : Nat;
-         Our_Cost         : Nat;
+         Temp_Alt   : One_Alt;
+         Worst_Alt  : Nat;
+         Worst_Cost : Nat;
+         Our_Cost   : Nat;
 
       begin
-         Worst_Alt := Alts'Last;
+         Worst_Alt  := Alts'Last;
          Worst_Cost := 0;
 
          for J in Alts'Range loop
@@ -567,17 +572,12 @@ package body GNATLLVM.Conditionals is
             --  switch at all.
 
             If_Cost := (if Low > High then 0 elsif Low = High then 1 else 2);
-
             Switch_Cost := (if not UI_Is_In_Int_Range (Low)
                               or else not UI_Is_In_Int_Range (High)
-                            then 1000
+                            then  Max_Cost
                             elsif If_Cost <= 1 then If_Cost
-                            elsif UI_To_Int (Low) /= Int'First
-                              and then UI_To_Int (High) /= Int'Last
-                              and then UI_To_Int (High) - UI_To_Int (Low) <
-                                         1000
-                            then UI_To_Int (High) - UI_To_Int (Low) + 1
-                            else 1000);
+                            else  Range_Length (Low, High, Max_Cost));
+
             Choices (Current_Choice) := (Low => Low, High => High,
                                          If_Cost => If_Cost,
                                          Switch_Cost => Switch_Cost);
@@ -594,6 +594,19 @@ package body GNATLLVM.Conditionals is
             If_Cost := If_Cost + Choices (J).If_Cost;
             Switch_Cost := Switch_Cost + Choices (J).Switch_Cost;
          end loop;
+
+         --  If this alternative has an N_Others_Choice, there is a
+         --  possibility it may not have any Others_Discrete_Choices (e.g.,
+         --  if it was added by the front end).  If so, it means we don't
+         --  have the list of its choices, so it must remain the default.
+
+         if Nkind (First (Discrete_Choices (Alt))) = N_Others_Choice
+           and then No (Others_Discrete_Choices
+                          (First (Discrete_Choices (Alt))))
+         then
+            If_Cost     := Max_Cost * Max_Cost;
+            Switch_Cost := Max_Cost * Max_Cost;
+         end if;
 
          Alts (Current_Alt) := (BB           => In_BBs (Current_Alt),
                                 First_Choice => First_Choice,

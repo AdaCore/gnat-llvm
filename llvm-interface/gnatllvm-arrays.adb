@@ -440,13 +440,15 @@ package body GNATLLVM.Arrays is
                Low      : constant One_Bound    := Dim_Info.Low;
                High     : constant One_Bound    := Dim_Info.High;
                Dynamic  : constant Boolean      := Low.Dynamic or High.Dynamic;
-               Rng      : Long_Long_Integer     := 0;
+               Rng      : unsigned              := 0;
             begin
-               if not Dynamic and then Low.Cnst <= High.Cnst then
-                  Rng := UI_To_Long_Long_Integer (High.Cnst - Low.Cnst + 1);
+               if not Dynamic and then Low.Cnst <= High.Cnst
+                 and then High.Cnst - Low.Cnst < Int'Last - 1
+               then
+                  Rng := unsigned (UI_To_Int (High.Cnst - Low.Cnst) + 1);
                end if;
 
-               Typ := Array_Type (Typ, unsigned (Rng));
+               Typ := Array_Type (Typ, Rng);
             end;
          end loop;
       end if;

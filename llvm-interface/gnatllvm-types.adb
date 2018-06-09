@@ -1098,10 +1098,11 @@ package body GNATLLVM.Types is
 
    procedure Heap_Deallocate (V : GL_Value; Proc : Entity_Id; Pool : Entity_Id)
    is
-      Size        : constant GL_Value := Get_Type_Size (V);
-      Align       : constant unsigned := Get_Type_Alignment (V);
-      Align_V     : constant GL_Value := Size_Const_Int (Align);
-      Converted_V : GL_Value          := V;
+      DT          : constant Entity_Id := Full_Designated_Type (V);
+      Size        : constant GL_Value  := Get_Type_Size (DT, From_Access (V));
+      Align       : constant unsigned  := Get_Type_Alignment (DT);
+      Align_V     : constant GL_Value  := Size_Const_Int (Align);
+      Converted_V : GL_Value           := V;
 
    begin
       --  If V is an access type, convert it to a reference to the

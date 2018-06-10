@@ -1,6 +1,7 @@
 Missing main features (identified so far):
 
-- exception handlers
+- call "_ext" version of raise routines
+- handle goto / return out of blocks
 - freeze nodes for types and subprograms
 - representation clauses
 - debug info (for variables and types)

@@ -1,4 +1,4 @@
-GPRBUILD=gprbuild -v -k
+GPRBUILD=gprbuild -v
 
 # number of processors
 PROCS=0
@@ -22,6 +22,8 @@ LN_S=ln -s
 ifeq ($(filter-out CYGWIN%,$(uname)),)
   LN_S=cp -p
 endif
+
+GNATMAKE=gnatmake
 
 ifeq ($(AUTOMATED),1)
   GPRARGS=-XBuild=Production
@@ -62,7 +64,7 @@ setup:
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
 	done
-	cd obj-tools && gnatmake -q -j0 xtreeprs xnmake xsnamest xoscons && \
+	cd obj-tools && $(GNATMAKE) -q -j0 xtreeprs xnmake xsnamest xoscons && \
 	./xtreeprs && ./xnmake && ./xsnamest && \
 	mv nmake.ads nmake.adb treeprs.ads ../obj && \
 	mv snames.ns ../obj/snames.ads && mv snames.nb ../obj/snames.adb
@@ -72,6 +74,23 @@ build: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
+
+stage1: build gnatlib
+	rm -rf stage1
+	mkdir -p stage1
+	mv obj obj-tools bin lib stage1
+
+stage2: stage1
+	PATH=$(pwd)/stage1/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib
+	rm -rf stage2
+	mkdir -p stage2
+	mv obj obj-tools bin lib stage2
+
+stage3: stage2
+	PATH=$(pwd)/stage2/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib
+	# compare stage2 and stage3 objects
+
+bootstrap: stage3
 
 fast:
 	$(MAKE) DEBUG=0

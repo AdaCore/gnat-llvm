@@ -72,9 +72,7 @@ package body GNATLLVM.Conditionals is
       RHS := Emit_Expression (Right);
 
       Block_Right_Expr_End := Get_Insert_Block;
-      Build_Br (Block_Exit);
-
-      Position_Builder_At_End (Block_Exit);
+      Move_To_BB (Block_Exit);
 
       --  If we exited the entry block, it means that for AND, the result
       --  is false and for OR, it's true.  Otherwise, the result is the right.
@@ -168,8 +166,7 @@ package body GNATLLVM.Conditionals is
             Position_Builder_At_End (BB_True);
             Build_Br (BB_Merge);
             Position_Builder_At_End (BB_False);
-            Build_Br (BB_Merge);
-            Position_Builder_At_End (BB_Merge);
+            Move_To_BB (BB_Merge);
             return Build_Phi (Results, Basic_Blocks);
          end;
 
@@ -756,8 +753,7 @@ package body GNATLLVM.Conditionals is
 
       if Present (Else_Statements (N)) then
          Emit (Else_Statements (N));
-         Build_Br (BB_End);
-         Position_Builder_At_End (BB_End);
+         Move_To_BB (BB_End);
       end if;
 
    end Emit_If;

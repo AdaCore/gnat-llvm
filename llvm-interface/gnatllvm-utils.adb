@@ -370,6 +370,29 @@ package body GNATLLVM.Utils is
       end if;
    end Build_Br;
 
+   --------------------
+   -- Maybe_Build_Br --
+   --------------------
+
+   procedure Maybe_Build_Br (BB : Basic_Block_T) is
+   begin
+      if Present (BB) then
+         Build_Br (BB);
+      end if;
+   end Maybe_Build_Br;
+
+   ----------------
+   -- Move_To_BB --
+   ----------------
+
+   procedure Move_To_BB (BB : Basic_Block_T) is
+   begin
+      if Present (BB) then
+         Build_Br (BB);
+         Position_Builder_At_End (BB);
+      end if;
+   end Move_To_BB;
+
    ---------
    -- GEP --
    ---------

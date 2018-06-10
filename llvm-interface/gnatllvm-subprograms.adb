@@ -527,6 +527,15 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Pop_Block;
+
+      --  If we're in dead code here, it means that we made a label for the
+      --  end of a block, but didn't do anything with it.  So mark it as
+      --  unreachable.  ??? We need to sort this out sometime.
+
+      if not Are_In_Dead_Code then
+         Build_Unreachable;
+      end if;
+
       Pop_Debug_Scope;
       Leave_Subp;
       Current_Subp := Empty;

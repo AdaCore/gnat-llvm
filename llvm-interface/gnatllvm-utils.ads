@@ -50,6 +50,12 @@ package GNATLLVM.Utils is
    procedure Build_Br (BB : Basic_Block_T)
      with Pre => Present (BB);
 
+   procedure Maybe_Build_Br (BB : Basic_Block_T);
+   --  Like Build_Br, but do nothing if No (BB)
+
+   procedure Move_To_BB (BB : Basic_Block_T);
+   --  If BB is Present, generate a branch to it and position there
+
    procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
      with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
    --  Helper for LLVM's Build_Store

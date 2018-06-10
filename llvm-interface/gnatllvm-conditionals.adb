@@ -878,14 +878,18 @@ package body GNATLLVM.Conditionals is
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
    is
-      Cond              : GL_Value;
-      Inner_BB          : Basic_Block_T;
+      LHS_BT   : constant Entity_Id := Implementation_Base_Type (LHS);
+      LHS_Base : GL_Value;
+      Cond     : GL_Value;
+      Inner_BB : Basic_Block_T;
 
    begin
       --  For discrete types (all we handle here), handle ranges by testing
       --  against the high and the low and branching as appropriate.  We
       --  must be sure to evaluate the LHS only once.  But first check for
-      --  a range of size one since that's only one comparison.
+      --  a range of size one since that's only one comparison.  If we are
+      --  comparing against a range, be sure to do the comparison in the
+      --  base type in case the subtype is unsigned and the base type isn't.
 
       if Low = High then
          Cond := Emit_Elementary_Comparison
@@ -893,12 +897,13 @@ package body GNATLLVM.Conditionals is
          Build_Cond_Br (Cond, BB_True, BB_False);
       else
          Inner_BB := Create_Basic_Block ("range-test");
-         Cond     := Emit_Elementary_Comparison (N_Op_Ge, LHS,
-                                             Const_Int (LHS, Low));
+         LHS_Base := Convert_To_Elementary_Type (LHS, LHS_BT);
+         Cond     := Emit_Elementary_Comparison (N_Op_Ge, LHS_Base,
+                                             Const_Int (LHS_BT, Low));
          Build_Cond_Br (Cond, Inner_BB, BB_False);
          Position_Builder_At_End (Inner_BB);
-         Cond := Emit_Elementary_Comparison (N_Op_Le, LHS,
-                                             Const_Int (LHS, High));
+         Cond := Emit_Elementary_Comparison (N_Op_Le, LHS_Base,
+                                             Const_Int (LHS_BT, High));
          Build_Cond_Br (Cond, BB_True, BB_False);
       end if;
    end Emit_If_Range;

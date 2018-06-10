@@ -429,7 +429,7 @@ package GNATLLVM.GLValue is
 
    function Is_Access_Subprogram_Type (V : GL_Value) return Boolean is
     (Is_Access_Type (V)
-       and then Ekind (Full_Designated_Type (V)) in Subprogram_Kind)
+       and then Ekind (Full_Designated_Type (V)) = E_Subprogram_Type)
      with Pre => Present (V);
 
    function Is_Constrained (V : GL_Value) return Boolean is

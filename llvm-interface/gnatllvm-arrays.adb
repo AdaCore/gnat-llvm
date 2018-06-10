@@ -532,7 +532,7 @@ package body GNATLLVM.Arrays is
 
       function See_If_Discriminant (N : Node_Id) return Traverse_Result is
       begin
-         if Nkind (N) = N_Identifier
+         if Nkind (N) = N_Identifier and then Present (Entity (N))
            and then Ekind (Entity (N)) = E_Discriminant
          then
             Found_Discriminant := Entity (N);

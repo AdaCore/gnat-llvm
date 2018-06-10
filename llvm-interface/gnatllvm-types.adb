@@ -108,7 +108,8 @@ package body GNATLLVM.Types is
       --  The front end should not have gotten us here if the component
       --  types or number of dimensions differ.
 
-      pragma Assert (Full_Component_Type (T1) = Full_Component_Type (T2)
+      pragma Assert (Implementation_Base_Type (Full_Component_Type (T1)) =
+                       Implementation_Base_Type (Full_Component_Type (T2))
                        and then (Number_Dimensions (T1) =
                                    Number_Dimensions (T2)));
 

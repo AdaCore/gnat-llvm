@@ -25,6 +25,7 @@ with LLVM.Core;  use LLVM.Core;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -59,9 +60,7 @@ package body GNATLLVM.Arrays is
       Low, High     : One_Bound;
    end record
      with Predicate => Is_Discrete_Type (Bound_Type)
-                       and then Is_Discrete_Type (Bound_Subtype)
-                       and then (Implementation_Base_Type (Bound_Type) =
-                                   Implementation_Base_Type (Bound_Subtype));
+                       and then Is_Discrete_Type (Bound_Subtype);
 
    package Array_Info is new Table.Table
      (Table_Component_Type => Index_Bounds,
@@ -78,9 +77,8 @@ package body GNATLLVM.Arrays is
           Post => Is_Array_Type (Type_For_Get_Bound'Result);
    --  Get the best type to use to search for a bound of an arrray
 
-   function Contains_Discriminant (N : Node_Id) return Boolean
-     with Pre => Present (N);
-   --  Return True if N contains a reference to a discriminant
+   function Contains_Discriminant (N : Node_Id) return Entity_Id;
+   --  Return the discrminant if N contains a reference to a discriminant
 
    function Build_One_Bound
      (N : Node_Id; Unconstrained : Boolean) return One_Bound
@@ -174,7 +172,8 @@ package body GNATLLVM.Arrays is
       Bound_Idx  : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
       --  In the array fat pointer bounds structure, bounds are stored as a
       --  sequence of (lower bound, upper bound) pairs.
-      Expr       : Node_Id;
+      Expr       : constant Node_Id      := Bound_Info.Value;
+      Discrim    : constant Entity_Id    := Contains_Discriminant (Expr);
       Result     : GL_Value;
 
    begin
@@ -187,21 +186,36 @@ package body GNATLLVM.Arrays is
 
       if Bound_Info.Cnst /= No_Uint then
          Result := Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
-      elsif Present (Bound_Info.Value) then
+      elsif Present (Expr) then
 
          --  If we're looking for the size of a type (meaning the max size)
          --  and this expression involves a discriminant, use the minimum
-         --  or maxium value of the subtype.  Otherwise, just evaluate
-         --  the expression.
+         --  or maxium value of the bound subtype or the discriminant's
+         --  subtype.  Otherwise, just evaluate the expression.
 
-         if For_Type and then Contains_Discriminant (Bound_Info.Value) then
-            Expr := (if Is_Low then Type_Low_Bound (Dim_Info.Bound_Subtype)
-                     else Type_High_Bound (Dim_Info.Bound_Subtype));
+         if For_Type and then Present (Discrim) then
+            declare
+               Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
+               Discr_Type  : constant Entity_Id := Full_Etype (Discrim);
+               Bound_Limit : constant Node_Id   :=
+                 (if Is_Low then Type_Low_Bound (Bound_Type)
+                  else Type_High_Bound (Bound_Type));
+               Discr_Limit : constant Node_Id   :=
+                 (if Is_Low then Type_Low_Bound (Discr_Type)
+                  else Type_High_Bound (Discr_Type));
+               Bound_Val   : constant GL_Value  :=
+                 Convert_To_Elementary_Type (Emit_Safe_Expr (Bound_Limit),
+                                             Dim_Info.Bound_Type);
+               Discr_Val   : constant GL_Value  :=
+                 Convert_To_Elementary_Type (Emit_Safe_Expr (Discr_Limit),
+                                             Dim_Info.Bound_Type);
+            begin
+               Result := (if Is_Low then Build_Max (Bound_Val, Discr_Val)
+                          else Build_Min (Bound_Val, Discr_Val));
+            end;
          else
-            Expr := Bound_Info.Value;
+            Result := Build_Type_Conversion (Expr, Dim_Info.Bound_Type);
          end if;
-
-         Result := Build_Type_Conversion (Expr, Dim_Info.Bound_Type);
       else
          --  We now should have the unconstrained case.  Make sure we do.
          pragma Assert (Is_Unconstrained_Array (TE)
@@ -503,11 +517,11 @@ package body GNATLLVM.Arrays is
    -- Contains_Discriminant --
    ---------------------------
 
-   function Contains_Discriminant (N : Node_Id) return Boolean is
-      Found_Discriminant : Boolean := False;
+   function Contains_Discriminant (N : Node_Id) return Entity_Id is
+      Found_Discriminant : Entity_Id := Empty;
 
       function See_If_Discriminant (N : Node_Id) return Traverse_Result;
-      --  Scan a single node looking for a discriminant, seeing above if so
+      --  Scan a single node looking for a discriminant, setting above if so
 
       procedure Scan is new Traverse_Proc (See_If_Discriminant);
       --  Used to scan an expression looking for a discriminant
@@ -521,7 +535,7 @@ package body GNATLLVM.Arrays is
          if Nkind (N) = N_Identifier
            and then Ekind (Entity (N)) = E_Discriminant
          then
-            Found_Discriminant := True;
+            Found_Discriminant := Entity (N);
             return Abandon;
          else
             return OK;

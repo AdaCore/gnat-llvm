@@ -556,10 +556,12 @@ package body GNATLLVM.GLValue is
          when Reference_To_Activation_Record =>
 
             --  The activation record is inside a fat reference to a
-            --  subprogrm.
+            --  subprogram.  Otherwise, we make an undefined one.
 
             if Relationship (V) = Fat_Reference_To_Subprogram then
                return Extract_Value_To_Relationship (TE, V, 1, R);
+            elsif Relationship (V) = Reference then
+               return Get_Undef_Relationship (TE, R);
             end if;
 
          when Fat_Reference_To_Subprogram =>

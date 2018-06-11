@@ -675,6 +675,10 @@ package body GNATLLVM.Subprograms is
 
    procedure Emit_Return_Statement (N : Node_Id) is
    begin
+      --  First, generate any neded fixups for this.  Then see what kind of
+      --  return we're doing.
+
+      Emit_Fixups_For_Return;
       if Present (Expression (N)) then
          declare
             Expr : constant Node_Id :=

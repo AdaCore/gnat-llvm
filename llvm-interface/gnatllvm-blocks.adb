@@ -160,10 +160,15 @@ package body GNATLLVM.Blocks is
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
-   procedure Emit_One_Fixup
-     (Blk : Block_Stack_Level; Do_At_End, Do_Stack : Boolean);
-   --  Do one fixup when exiting Blk, saying whether to run "at end handler
-   --  and whether to restore the stack pointer.
+   procedure Call_At_End (Block : Block_Stack_Level);
+   --  Call the At_End procedure of Block, if any
+
+   procedure Restore_Stack_From (Stack_Save : GL_Value);
+   --  Restore the stack from the value saved in Stack_Save
+
+   procedure Emit_Fixups_From_To (From, To : Block_Stack_Level);
+   --  We're currently in block From and going to block To.  Call any
+   --  "at end" procedures in between and restore the stack, if needed.
 
    procedure Emit_Handlers (Block : Block_Stack_Level);
    --  Generate the parts of a block at level Block used for exception
@@ -304,7 +309,7 @@ package body GNATLLVM.Blocks is
       BI : Block_Info;
 
    begin
-      --  If we're in the Statements part of a block that has nexceptions,
+      --  If we're in the Statements part of a block that has exceptions,
       --  see if we've made a block for the landing-pad.  If not, make one.
 
       for J in reverse 1 .. Block_Stack.Last loop
@@ -324,33 +329,70 @@ package body GNATLLVM.Blocks is
       return No_BB_T;
    end Get_Landing_Pad;
 
-   --------------------
-   -- Emit_One_Fixup --
-   --------------------
+   -----------------
+   -- Call_At_End --
+   -----------------
 
-   procedure Emit_One_Fixup
-     (Blk : Block_Stack_Level; Do_At_End, Do_Stack : Boolean)
-   is
-      Block_Inf : constant Block_Info := Block_Stack.Table (Blk);
-
+   procedure Call_At_End (Block : Block_Stack_Level) is
+      BI : constant Block_Info := Block_Stack.Table (Block);
    begin
-      --  First call the "at end" handler before any variables get
-      --  deallocated.
-
-      if Do_At_End and then Present (Block_Inf.At_End_Proc) then
-         if Present (Block_Inf.At_End_Parameter) then
-            Call (Block_Inf.At_End_Proc, (1 => Block_Inf.At_End_Parameter));
+      if Present (BI.At_End_Proc) then
+         if Present (BI.At_End_Parameter) then
+            Call (BI.At_End_Proc, (1 => BI.At_End_Parameter));
          else
-            Call (Block_Inf.At_End_Proc, (1 .. 0 => <>));
+            Call (BI.At_End_Proc, (1 .. 0 => <>));
          end if;
       end if;
+   end Call_At_End;
 
-      --  Then deallocate variables
+   ------------------------
+   -- Restore_Stack_From --
+   ------------------------
 
-      if Do_Stack and then Present (Block_Inf.Stack_Save) then
-         Call (Get_Stack_Restore_Fn, (1 => Block_Inf.Stack_Save));
+   procedure Restore_Stack_From (Stack_Save : GL_Value) is
+   begin
+      Call (Get_Stack_Restore_Fn, (1 => Stack_Save));
+   end Restore_Stack_From;
+
+   -------------------------
+   -- Emit_Fixups_From_To --
+   -------------------------
+
+   procedure Emit_Fixups_From_To (From, To : Block_Stack_Level)
+   is
+      Stack_Save : GL_Value := No_GL_Value;
+
+   begin
+      --  We're going from block From to block To.  Run fixups for any blocks
+      --  we pass end then restore the outermost stack pointer.
+
+      for J in reverse To + 1 .. From loop
+         Call_At_End (J);
+         if Present (Block_Stack.Table (J).Stack_Save) then
+            Stack_Save := Block_Stack.Table (J).Stack_Save;
+         end if;
+      end loop;
+
+      --  If we crossed a saved stack pointer and we aren't returning out of
+      --  the subprogram, restore the stack pointer.
+
+      if To /= 0 and then Present (Stack_Save) then
+         Restore_Stack_From (Stack_Save);
       end if;
-   end Emit_One_Fixup;
+
+   end Emit_Fixups_From_To;
+
+   ----------------------------
+   -- Emit_Fixups_For_Return --
+   ----------------------------
+
+   procedure Emit_Fixups_For_Return is
+   begin
+      --  We're going from our current position entirely out of the block
+      --  stack.
+
+      Emit_Fixups_From_To (Block_Stack.Last, 0);
+   end Emit_Fixups_For_Return;
 
    ---------------------------
    -- Initialize_Predefines --
@@ -526,8 +568,6 @@ package body GNATLLVM.Blocks is
       BI                : Block_Info renames Block_Stack.Table (Block);
       Lpad              : constant Basic_Block_T := BI.Landing_Pad;
       EH_List           : constant List_Id       := BI.EH_List;
-      At_End_Proc       : constant GL_Value      := BI.At_End_Proc;
-      At_End_Parameter  : constant GL_Value      := BI.At_End_Parameter;
       LP_Type           : constant Type_T        :=
         Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
       Have_Cleanup      : constant Boolean       :=
@@ -743,12 +783,25 @@ package body GNATLLVM.Blocks is
          Selector := Extract_Value (Standard_Integer, EH_Data, 1);
 
          --  Generate code for the handlers, taking into account that we
-         --  have duplicate BB's in the table.
+         --  have duplicate BB's in the table.  We make a block for the
+         --  handler to deal with allocated variables and to establish the
+         --  end handler procedure.  But that block does not produce an
+         --  EH context itself.
 
          for J in 1 .. Clauses.Last loop
             if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
                Position_Builder_At_End (Clauses.Table (J).BB);
                Push_Block;
+
+               declare
+                  BI : Block_Info renames Block_Stack.Table (Block_Stack.Last);
+
+               begin
+                  BI.At_End_Proc      := End_Handler_Fn;
+                  BI.At_End_Parameter := Exc_Ptr;
+                  BI.Unprotected      := True;
+               end;
+
                Call (Begin_Handler_Fn, (1 => Exc_Ptr));
                if Present (Clauses.Table (J).Param) then
                   declare
@@ -767,16 +820,7 @@ package body GNATLLVM.Blocks is
                end if;
 
                Emit (Clauses.Table (J). Stmts);
-
-               --  If the above code branched out or returned, don't call the
-               --  end handler code.  ???  TBD to make a block and make that
-               --  the fixup.
-
-               if not Are_In_Dead_Code then
-                  Call (End_Handler_Fn, (1 => Exc_Ptr));
-                  Build_Br (Next_BB);
-               end if;
-
+               Maybe_Build_Br (Next_BB);
                Pop_Block;
             end if;
          end loop;
@@ -801,14 +845,7 @@ package body GNATLLVM.Blocks is
       --  we call that proceduce
 
       Position_Builder_At_End (BB);
-      if Present (At_End_Proc) then
-         pragma Assert (No (BI.Reraise_BB));
-         if Present (At_End_Parameter) then
-            Call (At_End_Proc, (1 => At_End_Parameter));
-         else
-            Call (At_End_Proc, (1 .. 0 => <>));
-         end if;
-      end if;
+      Call_At_End (Block);
 
       --  Finally, see if there's an outer block that has an "at end" or
       --  exception handlers.  Ignore any block that's no longer
@@ -852,11 +889,12 @@ package body GNATLLVM.Blocks is
    ---------------
 
    procedure Pop_Block is
-      BI         : Block_Info renames Block_Stack.Table (Block_Stack.Last);
-      At_Dead    : constant Boolean       := Are_In_Dead_Code;
-      EH_Work    : constant Boolean       :=
+      Block      : constant Block_Stack_Level := Block_Stack.Last;
+      BI         : Block_Info renames Block_Stack.Table (Block);
+      At_Dead    : constant Boolean           := Are_In_Dead_Code;
+      EH_Work    : constant Boolean           :=
         Present (BI.Landing_Pad) or else Present (BI.Dispatch_BB);
-      Next_BB    : constant Basic_Block_T :=
+      Next_BB    : constant Basic_Block_T     :=
         (if EH_Work and then not At_Dead then Create_Basic_Block else No_BB_T);
 
    begin
@@ -868,8 +906,7 @@ package body GNATLLVM.Blocks is
       BI.In_Stmts    := False;
       BI.Unprotected := True;
       if not At_Dead then
-         Emit_One_Fixup (Block_Stack.Last,
-                         Do_At_End => True, Do_Stack => True);
+         Emit_Fixups_From_To (Block, Block - 1);
          Maybe_Build_Br (Next_BB);
       end if;
 
@@ -877,7 +914,7 @@ package body GNATLLVM.Blocks is
       --  code if we either have exception handlers or an "at end" proc.
 
       if EH_Work then
-         Emit_Handlers (Block_Stack.Last);
+         Emit_Handlers (Block);
       end if;
 
       --  ??? Clean this up later.  Too many branches here

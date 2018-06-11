@@ -51,7 +51,7 @@ package GNATLLVM.Utils is
      with Pre => Present (BB);
 
    procedure Maybe_Build_Br (BB : Basic_Block_T);
-   --  Like Build_Br, but do nothing if No (BB)
+   --  Like Build_Br, but do nothing if No (BB) or if we're in dead code
 
    procedure Move_To_BB (BB : Basic_Block_T);
    --  If BB is Present, generate a branch to it and position there

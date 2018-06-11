@@ -376,7 +376,7 @@ package body GNATLLVM.Utils is
 
    procedure Maybe_Build_Br (BB : Basic_Block_T) is
    begin
-      if Present (BB) then
+      if not Are_In_Dead_Code and then Present (BB) then
          Build_Br (BB);
       end if;
    end Maybe_Build_Br;

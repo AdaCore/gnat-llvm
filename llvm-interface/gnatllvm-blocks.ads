@@ -98,6 +98,10 @@ package GNATLLVM.Blocks is
      with Pre => Present (V) and then Present (N);
    --  Raise an oveflow exception if V evaluates to True
 
+   procedure Emit_Fixups_For_Return;
+   --  We're going to do a return.  Emit any needed fixups from the block
+   --  we're in all the way out of the subprogram.
+
    procedure Emit_Raise (N : Node_Id)
      with Pre => Nkind (N) in N_Raise_xxx_Error;
    --  Process an N_Raise_xxx_Error node

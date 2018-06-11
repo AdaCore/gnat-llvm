@@ -930,12 +930,12 @@ package body GNATLLVM.Conditionals is
 
    begin
       --  We need to be sure that both operands are the same LLVM type for
-      --  the Phi below.  The front end assures this in most case, we
+      --  the Phi below.  The front end assures this in most cases, but we
       --  do have potential issues if they're both different record or
       --  arrays types.  Pick the best type to use here.  If one is an
       --  unconstrained array, use that one.  Otherwise, if one is dynamic
-      --  size, use that one.  Otherwise, it doesn't matter.
-      --  ??? Some of this code looks dubious and old.
+      --  size, use that one.  Otherwise, it doesn't matter.  ??? Some of
+      --  this code looks dubious and old.
 
       if Is_Unconstrained_Array (Then_Type) then
          TE := Then_Type;

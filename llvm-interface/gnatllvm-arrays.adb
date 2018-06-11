@@ -893,7 +893,7 @@ package body GNATLLVM.Arrays is
             | N_Signed_Integer_Type_Definition
             | N_Real_Range_Specification =>
             return N;
-         when N_Identifier =>
+         when N_Identifier | N_Expanded_Name =>
             return Get_Dim_Range (Scalar_Range (Entity (N)));
 
          when N_Subtype_Indication =>

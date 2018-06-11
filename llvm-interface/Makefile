@@ -17,7 +17,7 @@ MV=mv -f
 MKDIR=mkdir -p
 CHMOD=chmod
 AR=ar q
-LN_S=ln -s
+LN_S=ln -sf
 
 ifeq ($(filter-out CYGWIN%,$(uname)),)
   LN_S=cp -p
@@ -59,16 +59,16 @@ endif
 all: setup build zfp
 
 setup:
-	mkdir -p obj obj-tools bin
+	$(MKDIR) obj obj-tools bin
 	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt xoscons.adb xutil.ads xutil.adb`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
 	done
 	cd obj-tools && $(GNATMAKE) -q -j0 xtreeprs xnmake xsnamest xoscons && \
 	./xtreeprs && ./xnmake && ./xsnamest && \
-	mv nmake.ads nmake.adb treeprs.ads ../obj && \
-	mv snames.ns ../obj/snames.ads && mv snames.nb ../obj/snames.adb
-	cp -p $(GNAT_SRC)/libgnat/s-rident.ads obj
+	$(MV) nmake.ads nmake.adb treeprs.ads ../obj && \
+	$(MV) snames.ns ../obj/snames.ads && $(MV) snames.nb ../obj/snames.adb
+	$(LN_S) $(GNAT_SRC)/libgnat/s-rident.ads obj
 
 build: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
@@ -76,15 +76,15 @@ build: setup force
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
 
 stage1: build gnatlib
-	rm -rf stage1
-	mkdir -p stage1
-	mv obj obj-tools bin lib stage1
+	$(RMDIR) stage1
+	$(MKDIR) stage1
+	$(MV) obj obj-tools bin lib stage1
 
 stage2: stage1
 	PATH=$(pwd)/stage1/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib
-	rm -rf stage2
-	mkdir -p stage2
-	mv obj obj-tools bin lib stage2
+	$(RMDIR) stage2
+	$(MKDIR) stage2
+	$(MV) obj obj-tools bin lib stage2
 
 stage3: stage2
 	PATH=$(pwd)/stage2/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib

@@ -217,6 +217,9 @@ package body GNATLLVM.Blocks is
    End_Handler_Fn   : GL_Value;
    --  Begin and end functions for handlers
 
+   Reraise_Fn       : GL_Value;
+   --  Function to reraise an exception
+
    Others_Value     : GL_Value;
    All_Others_Value : GL_Value;
    --  "Exception" address for "others" and special "all others"
@@ -418,6 +421,11 @@ package body GNATLLVM.Blocks is
         Add_Global_Function ("__gnat_end_handler",
                              Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
                              Standard_Void_Type);
+
+      Reraise_Fn       :=
+        Add_Global_Function ("__gnat_reraise_zcx",
+                             Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                             Standard_Void_Type, Can_Return => False);
 
       EH_Slot_Id_Fn    :=
         Add_Function ("llvm.eh.typeid.for",
@@ -825,13 +833,11 @@ package body GNATLLVM.Blocks is
             end if;
          end loop;
 
-         --  Now generate the dispatch table.  We left off in BB.  Handle
-         --  the end case where somebody needs a reraise branch point.
+         --  Now generate the dispatch table.  We left off in BB.
 
          for J in 1 .. Clauses.Last loop
             Position_Builder_At_End (BB);
-            BB := (if J /= Clauses.Last or else No (BI.Reraise_BB)
-                   then Create_Basic_Block else BI.Reraise_BB);
+            BB := Create_Basic_Block;
             Build_Cond_Br (I_Cmp (Int_EQ, Selector,
                                   Call (EH_Slot_Id_Fn, Int_32_Type,
                                         (1 => Clauses.Table (J).Exc))),
@@ -839,11 +845,14 @@ package body GNATLLVM.Blocks is
          end loop;
       end if;
 
-      --  At this point, we've fallen out of the dispatch code (if there was
-      --  any) and didn't find a matching exception.  That may be because
-      --  we're an "at end" block, not an exception block, in which case
-      --  we call that proceduce
+      --  If we need a reraise point, create one and call the appropriate
+      --  procedure.
 
+      if Present (BI.Reraise_BB) then
+         Position_Builder_At_End (BI.Reraise_BB);
+         Call (Reraise_Fn, (1 => Exc_Ptr));
+         Build_Unreachable;
+      end if;
       Position_Builder_At_End (BB);
       Call_At_End (Block);
 
@@ -940,7 +949,7 @@ package body GNATLLVM.Blocks is
             BI : Block_Info renames Block_Stack.Table (J);
 
          begin
-            if Present (BI.EH_List) then
+            if Present (BI.EH_List) and then BI.Unprotected then
                if No (BI.Reraise_BB) then
                   BI.Reraise_BB := Create_Basic_Block ("reraise");
                end if;
@@ -1169,6 +1178,7 @@ package body GNATLLVM.Blocks is
       Register_Global_Name ("__gnat_end_handler");
       Register_Global_Name ("__gnat_others_value");
       Register_Global_Name ("__gnat_personality_v0");
+      Register_Global_Name ("__gnat_reraise_zcx");
       Register_Global_Name ("__gnat_set_exception_parameter");
 
       if No_Exception_Handlers_Set then

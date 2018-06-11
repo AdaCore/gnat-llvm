@@ -1161,6 +1161,18 @@ package GNATLLVM.GLValue is
           Post => Is_Access_Type (Int_To_Relationship'Result);
    --  Similar to Int_To_Ptr, but specify the relationship to TE
 
+   function Atomic_RMW
+     (Op            : Atomic_RMW_Bin_Op_T;
+      Ptr           : GL_Value;
+      V             : GL_Value;
+      Order         : Atomic_Ordering_T := Atomic_Ordering_Monotonic;
+      Single_Thread : Boolean := False) return GL_Value is
+      (G_From (Atomic_RMW (IR_Builder, Op, LLVM_Value (Ptr), LLVM_Value (V),
+                           Order, Single_Thread),
+               V))
+      with Pre  => Is_Access_Type (Ptr) and then Present (V),
+           Post => Present (Atomic_RMW'Result);
+
    function Extract_Value
      (Typ   : Entity_Id;
       Arg   : GL_Value;

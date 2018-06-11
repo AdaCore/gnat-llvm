@@ -106,6 +106,25 @@ package body GNATLLVM.Subprograms is
    --  the return type of the function will have been changed to an access
    --  to that array, so this must return false.
 
+   function Name_To_RMW_Op
+     (S           : String;
+      Index       : Integer;
+      End_Index   : out Integer;
+      Op          : out Atomic_RMW_Bin_Op_T) return Boolean;
+   --  See if the string S starting at position Index is the name of
+   --  a supported LLVM atomicrmw instruction.  If so, set End_Index
+   --  to after the name and Op to the code for the operation and return True.
+
+   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  If S is a valid __sync name, emit the LLVM for it and return the
+   --  result.  Otherwise, return No_GL_Value.
+
+   function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  If Subp is an intrinsic that we know how to handle, emit the LLVM
+   --  for it and return the result.  Otherwise, No_GL_Value.
+
    Ada_Main_Elabb : GL_Value := No_GL_Value;
    --  ???  This a kludge.  We sometimes need an elab proc for Ada_Main and
    --  this can cause confusion with global names.  So if we made it as
@@ -787,6 +806,192 @@ package body GNATLLVM.Subprograms is
       end if;
    end Call_Alloc_Dealloc;
 
+   --------------------
+   -- Name_To_RMW_Op --
+   --------------------
+
+   function Name_To_RMW_Op
+     (S           : String;
+      Index       : Integer;
+      End_Index   : out Integer;
+      Op          : out Atomic_RMW_Bin_Op_T) return Boolean
+   is
+      type RMW_Op is record
+         Length : Integer;
+         Name   : String (1 .. 5);
+         Op     : Atomic_RMW_Bin_Op_T;
+      end record;
+      type RMW_Op_Array is array (Integer range <>) of RMW_Op;
+
+      Len : Integer;
+      Ops : constant RMW_Op_Array :=
+        ((4, "xchg ", Atomic_RMW_Bin_Op_Xchg),
+         (3, "add  ", Atomic_RMW_Bin_Op_Add),
+         (3, "sub  ", Atomic_RMW_Bin_Op_Sub),
+         (3, "and  ", Atomic_RMW_Bin_Op_And),
+         (4, "nand ", Atomic_RMW_Bin_Op_Nand),
+         (2, "or   ", Atomic_RMW_Bin_Op_Or),
+         (3, "xor  ", Atomic_RMW_Bin_Op_Xor),
+         (3, "max  ", Atomic_RMW_Bin_Op_Max),
+         (3, "min  ", Atomic_RMW_Bin_Op_Min),
+         (5, "u_max", Atomic_RMW_Bin_Op_U_Max),
+         (5, "u_min", Atomic_RMW_Bin_Op_U_Min));
+
+   begin
+      for J in Ops'Range loop
+         Len := Ops (J).Length;
+         if S'Last > Index + Len - 1
+           and then S (Index .. Index + Len - 1) = Ops (J).Name (1 .. Len)
+         then
+            End_Index := Index + Len;
+            Op        := Ops (J).Op;
+            return True;
+         end if;
+      end loop;
+
+      return False;
+   end Name_To_RMW_Op;
+
+   --------------------
+   -- Emit_Sync_Call --
+   --------------------
+
+   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value is
+      Ptr        : Node_Id;
+      Val        : Node_Id;
+      Op         : Atomic_RMW_Bin_Op_T;
+      Op_Back    : Boolean;
+      Index      : Integer := S'First + 7;
+      New_Index  : Integer;
+      TE, BT, PT : Entity_Id;
+      Type_Size  : ULL;
+      Value      : GL_Value;
+      Result     : GL_Value;
+
+   begin
+      --  This is supposedly a __sync builtin.  Parse it to see what it
+      --  tells us to do.  If anything is wrong with the builtin or its
+      --  operands, just return No_GL_Value and a normal call will result,
+      --  which will produce a link error.  ???  We could produce warnings
+      --  here.
+      --
+      --  We need to have "Op_and_fetch" or "fetch_and_Op".
+
+      if Name_To_RMW_Op (S, Index, New_Index, Op)
+        and then S'Last > New_Index + 9
+        and then S (New_Index .. New_Index + 9) = "_and_fetch"
+      then
+         Op_Back := True;
+         Index   := New_Index + 10;
+      elsif S'Last > Index + 9 and then S (Index .. Index + 9) = "fetch_and_"
+        and then Name_To_RMW_Op (S, Index + 10, New_Index, Op)
+      then
+         Op_Back := False;
+         Index   := New_Index;
+      else
+         return No_GL_Value;
+      end if;
+
+      --  There must be exactly two actuals with the second an elementary
+      --  type and the first an access type to it.
+
+      Ptr := First_Actual (N);
+      if No (Ptr) then
+         return No_GL_Value;
+      end if;
+
+      Val := Next_Actual (Ptr);
+      if No (Val) or else Present (Next_Actual (Val)) then
+         return No_GL_Value;
+      end if;
+
+      TE  := Full_Etype (Val);
+      PT  := Full_Etype (Ptr);
+      BT  := Implementation_Base_Type (TE);
+      if not Is_Elementary_Type (TE)
+        or else not Is_Access_Type (PT)
+        or else Implementation_Base_Type (Full_Designated_Type (PT)) /= BT
+      then
+         return No_GL_Value;
+      end if;
+
+      --  Finally, verify that the size of the type matches the builtin name
+      if S'Last < Index + 1 then
+         return No_GL_Value;
+      end if;
+
+      Type_Size := Get_LLVM_Type_Size (Create_Type (TE));
+      if not (S (Index .. Index + 1) = "_1" and then Type_Size = 1)
+        and then not (S (Index .. Index + 1) = "_2" and then Type_Size = 2)
+        and then not (S (Index .. Index + 1) = "_4" and then Type_Size = 4)
+        and then not (S (Index .. Index + 1) = "_8" and then Type_Size = 8)
+      then
+         return No_GL_Value;
+      end if;
+
+      --  Now we can emit the operation
+
+      Value  := Emit_Expression (Val);
+      Result := Atomic_RMW (Op, Emit_Expression (Ptr), Value);
+
+      --  If we want the value before the operation, we're done.  Otherwise,
+      --  we have to do the operation.
+
+      if not Op_Back then
+         return Result;
+      end if;
+
+      case Op is
+         when Atomic_RMW_Bin_Op_Xchg =>
+            return Result;
+
+         when Atomic_RMW_Bin_Op_Add =>
+            return NSW_Add (Result, Value);
+
+         when Atomic_RMW_Bin_Op_Sub =>
+            return NSW_Sub (Result, Value);
+
+         when Atomic_RMW_Bin_Op_And =>
+            return Build_And (Result, Value);
+
+         when Atomic_RMW_Bin_Op_Nand =>
+            return Build_Not (Build_And (Result, Value));
+
+         when Atomic_RMW_Bin_Op_Or =>
+            return Build_Or (Result, Value);
+
+         when Atomic_RMW_Bin_Op_Xor =>
+            return Build_Xor (Result, Value);
+
+         when Atomic_RMW_Bin_Op_Max | Atomic_RMW_Bin_Op_U_Max =>
+            return Build_Max (Result, Value);
+
+         when Atomic_RMW_Bin_Op_Min | Atomic_RMW_Bin_Op_U_Min =>
+            return Build_Min (Result, Value);
+      end case;
+
+   end Emit_Sync_Call;
+
+   -------------------------
+   -- Emit_Intrinsic_Call --
+   -------------------------
+
+   function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
+   is
+      Fn_Name : constant String := Get_Ext_Name (Subp);
+
+   begin
+      --  First see if this is a __sync class of subprogram
+
+      if Fn_Name'Length > 7 and then Fn_Name (1 .. 7) = "__sync_" then
+         return Emit_Sync_Call (N, Fn_Name);
+      end if;
+
+      --  ??? That's all we support for the moment
+
+      return No_GL_Value;
+   end Emit_Intrinsic_Call;
+
    ---------------
    -- Emit_Call --
    ---------------
@@ -821,11 +1026,22 @@ package body GNATLLVM.Subprograms is
       S_Link         : GL_Value;
       LLVM_Func      : GL_Value;
       Arg            : GL_Value;
+      Result         : GL_Value;
 
    begin
 
       if Direct_Call then
          Subp := Entity (Subp);
+      end if;
+
+      --  See if this is an instrinsic subprogram that we handle.  We're
+      --  done if so.
+
+      if Direct_Call and then Is_Intrinsic_Subprogram (Subp) then
+         Result := Emit_Intrinsic_Call (N, Subp);
+         if Present (Result) then
+            return Result;
+         end if;
       end if;
 
       LLVM_Func := Emit_LValue (Subp);

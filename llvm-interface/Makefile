@@ -281,7 +281,7 @@ RTSLIB=$(pwd)/lib/rts-native/adalib
 ADAFLAGS=-gnatpg
 ADA_INCLUDES=-nostdinc -I../adainclude
 GCC_INCLUDE_PATH = $(word 2,$(shell gcc --print-search-dirs|grep install:))gcc-include
-CFLAGS = -O2
+CFLAGS = -O2 -g
 GNATLIBCFLAGS = -DIN_RTS=1 -DIN_GCC=1 -fexceptions
 ALL_ADAFLAGS = $(CFLAGS) $(ADAFLAGS) $(ADA_INCLUDES)
 INCLUDES = -I../adainclude -I$(GCC_INCLUDE_PATH)/include     \

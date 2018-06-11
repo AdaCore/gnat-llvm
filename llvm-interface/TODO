@@ -4,7 +4,7 @@ Missing main features (identified so far):
 - out parameters for scalars passed by value
 - call "_ext" version of raise routines
 - handle goto / return out of blocks
-- freeze nodes for types and subprograms
+- freeze nodes for types and subprograms (see c38102a)
 - representation clauses
 - debug info (for variables and types)
 - restriction checks done by back end

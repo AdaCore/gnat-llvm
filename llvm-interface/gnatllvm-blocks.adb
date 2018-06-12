@@ -67,8 +67,8 @@ package body GNATLLVM.Blocks is
       Dispatch_BB        : Basic_Block_T;
       --  BB created by an inner handler to branch to our dispatch code
 
-      Reraise_BB         : Basic_Block_T;
-      --  BB created by a reraise for the fallthrough of our dispatch code
+      Exc_Ptr            : GL_Value;
+      --  The exception pointer for the block
 
    end record;
 
@@ -262,7 +262,7 @@ package body GNATLLVM.Blocks is
                            At_End_Parameter => No_GL_Value,
                            Landing_Pad      => No_BB_T,
                            Dispatch_BB      => No_BB_T,
-                           Reraise_BB       => No_BB_T,
+                           Exc_Ptr          => No_GL_Value,
                            EH_List          => No_List,
                            In_Stmts         => False,
                            Unprotected      => False));
@@ -425,7 +425,8 @@ package body GNATLLVM.Blocks is
       Reraise_Fn       :=
         Add_Global_Function ("__gnat_reraise_zcx",
                              Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                             Standard_Void_Type, Can_Return => False);
+                             Standard_Void_Type,
+                             Can_Return => False, Can_Throw => True);
 
       EH_Slot_Id_Fn    :=
         Add_Function ("llvm.eh.typeid.for",
@@ -580,7 +581,8 @@ package body GNATLLVM.Blocks is
         Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
       Have_Cleanup      : constant Boolean       :=
         (for some J in 1 .. Block =>
-           Present (Block_Stack.Table (J).At_End_Proc));
+           Present (Block_Stack.Table (J).At_End_Proc)
+           and then (not Block_Stack.Table (J).Unprotected or else J = Block));
       LP_Inst           : GL_Value               := No_GL_Value;
       N_Dispatch_Froms  : Nat                    :=
         (if Present (Lpad) then 1 else 0);
@@ -787,9 +789,9 @@ package body GNATLLVM.Blocks is
 
          --  Extract the selector and the exception pointer
 
-         Exc_Ptr  := Extract_Value (Standard_A_Char,  EH_Data, 0);
-         Selector := Extract_Value (Standard_Integer, EH_Data, 1);
-
+         Exc_Ptr    := Extract_Value (Standard_A_Char,  EH_Data, 0);
+         Selector   := Extract_Value (Standard_Integer, EH_Data, 1);
+         BI.Exc_Ptr := Exc_Ptr;
          --  Generate code for the handlers, taking into account that we
          --  have duplicate BB's in the table.  We make a block for the
          --  handler to deal with allocated variables and to establish the
@@ -802,12 +804,13 @@ package body GNATLLVM.Blocks is
                Push_Block;
 
                declare
-                  BI : Block_Info renames Block_Stack.Table (Block_Stack.Last);
+                  BI_Inner : Block_Info
+                    renames Block_Stack.Table (Block_Stack.Last);
 
                begin
-                  BI.At_End_Proc      := End_Handler_Fn;
-                  BI.At_End_Parameter := Exc_Ptr;
-                  BI.Unprotected      := True;
+                  BI_Inner.At_End_Proc      := End_Handler_Fn;
+                  BI_Inner.At_End_Parameter := Exc_Ptr;
+                  BI_Inner.Unprotected      := True;
                end;
 
                Call (Begin_Handler_Fn, (1 => Exc_Ptr));
@@ -845,14 +848,9 @@ package body GNATLLVM.Blocks is
          end loop;
       end if;
 
-      --  If we need a reraise point, create one and call the appropriate
-      --  procedure.
+      --  This is the code point where we've fallen through the dispatch
+      --  code, so no exception handler in this block is being entered.
 
-      if Present (BI.Reraise_BB) then
-         Position_Builder_At_End (BI.Reraise_BB);
-         Call (Reraise_Fn, (1 => Exc_Ptr));
-         Build_Unreachable;
-      end if;
       Position_Builder_At_End (BB);
       Call_At_End (Block);
 
@@ -938,23 +936,17 @@ package body GNATLLVM.Blocks is
 
    procedure Emit_Reraise is
    begin
-      --  Find the innermost block that has exception handlers.  If a
-      --  basic block has already been created for the reraise point,
-      --  use it, otherwise make one.  Jump to that basic block.  It will
-      --  be used when that block is popped.  ??? Handle fixups of the
-      --  outer blocks.
+      --  Find the innermost block that has exception data.  Call
+      --  reraise with that data.
 
       for J in reverse 1 .. Block_Stack.Last loop
          declare
             BI : Block_Info renames Block_Stack.Table (J);
 
          begin
-            if Present (BI.EH_List) and then BI.Unprotected then
-               if No (BI.Reraise_BB) then
-                  BI.Reraise_BB := Create_Basic_Block ("reraise");
-               end if;
-
-               Build_Br (BI.Reraise_BB);
+            if Present (BI.Exc_Ptr) then
+               Call (Reraise_Fn, (1 => BI.Exc_Ptr));
+               Build_Unreachable;
                return;
             end if;
          end;

@@ -1,8 +1,9 @@
 Missing main features (identified so far):
 
-- support calling builtins that generate LLVM IR
 - out parameters for scalars passed by value
+- more __sync builtins and other atomic and bswap builtins
 - call "_ext" version of raise routines
+- Do_Overflow_Check on conversions
 - handle goto / loop exits out of blocks
 - reduce generation of elaboration code on e.g. aggregates (see system.ads)
 - freeze nodes for types and subprograms (see c38102a)

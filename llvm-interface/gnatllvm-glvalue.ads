@@ -1165,7 +1165,8 @@ package GNATLLVM.GLValue is
      (Op            : Atomic_RMW_Bin_Op_T;
       Ptr           : GL_Value;
       V             : GL_Value;
-      Order         : Atomic_Ordering_T := Atomic_Ordering_Monotonic;
+      Order         : Atomic_Ordering_T :=
+        Atomic_Ordering_Sequentially_Consistent;
       Single_Thread : Boolean := False) return GL_Value is
       (G_From (Atomic_RMW (IR_Builder, Op, LLVM_Value (Ptr), LLVM_Value (V),
                            Order, Single_Thread),

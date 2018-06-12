@@ -97,6 +97,16 @@ package body GNATLLVM.Subprograms is
    Stack_Restore_Fn  : GL_Value := No_GL_Value;
    --  Functions to save and restore the stack pointer
 
+   function Get_Activation_Record_Ptr
+     (V : GL_Value; E : Entity_Id) return GL_Value
+     with Pre  => Is_Record_Type (Full_Designated_Type (V))
+                  and then Ekind (E) = E_Component,
+          Post => Is_Record_Type (Full_Designated_Type
+                                    (Get_Activation_Record_Ptr'Result));
+   --  We need field E from an activation record.  V is the activation record
+   --  pointer passed to the current subprogram.  Return a pointer to the
+   --  proper activation record, which is either V or an up-level pointer.
+
    function Is_Dynamic_Return (TE : Entity_Id) return Boolean is
      (Ekind (TE) /= E_Void and then Is_Dynamic_Size (TE)
         and then not Is_Unconstrained_Array (TE))
@@ -406,6 +416,33 @@ package body GNATLLVM.Subprograms is
       return Stack_Restore_Fn;
    end Get_Stack_Restore_Fn;
 
+   -------------------------------
+   -- Get_Activation_Record_Ptr --
+   -------------------------------
+
+   function Get_Activation_Record_Ptr
+     (V : GL_Value; E : Entity_Id) return GL_Value
+   is
+      Need_Type   : constant Entity_Id := Full_Scope (E);
+      Have_Type   : constant Entity_Id := Full_Designated_Type (V);
+      First_Field : constant Entity_Id :=
+        First_Component_Or_Discriminant (Have_Type);
+
+   begin
+      --  If V points to an object that E is a component of, return it.
+      --  Otherwise, go up the chain by getting the first field of V's
+      --  record and dereferencing it.
+
+      if Need_Type = Have_Type then
+         return V;
+      else
+         pragma Assert (Present (First_Field)
+                          and then Is_Access_Type (Full_Etype (First_Field)));
+         return Get_Activation_Record_Ptr
+           (Load (Record_Field_Offset (V, First_Field)), E);
+      end if;
+   end Get_Activation_Record_Ptr;
+
    --------------------------------
    -- Get_From_Activation_Record --
    --------------------------------
@@ -429,11 +466,13 @@ package body GNATLLVM.Subprograms is
         and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func
       then
          declare
-            TE            : constant Entity_Id := Full_Etype (E);
-            Component     : constant Entity_Id :=
+            TE             : constant Entity_Id := Full_Etype (E);
+            Component      : constant Entity_Id :=
               Activation_Record_Component (E);
+            Activation_Rec : constant GL_Value  :=
+              Get_Activation_Record_Ptr (Activation_Rec_Param, Component);
             Pointer       : constant GL_Value  :=
-              Record_Field_Offset (Activation_Rec_Param, Component);
+              Record_Field_Offset (Activation_Rec, Component);
             Value         : constant GL_Value  := Load (Pointer);
 
          begin

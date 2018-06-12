@@ -10,18 +10,18 @@ sanity-check:
 build: sanity-check build-be
 
 build-be:
-	make -C llvm-interface
+	$(MAKE) -C llvm-interface build
 
 llvm:
-	make -C llvm
+	$(MAKE) -C llvm
 
 tests:
-	make -C testsuite
+	$(MAKE) -C testsuite
 
 acats:
-	make -C acats
+	$(MAKE) -C acats
 
 clean:
-	make -C llvm-interface clean
+	$(MAKE) -C llvm-interface clean
 
 .PHONY: llvm

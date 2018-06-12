@@ -17,6 +17,7 @@
 
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
+with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
 with Stand;    use Stand;
 with Table;    use Table;
@@ -156,15 +157,26 @@ package body GNATLLVM.Subprograms is
       end return;
    end Count_Params;
 
+   ----------------------
+   -- Is_Return_By_Ref --
+   ----------------------
+
+   function Is_Return_By_Ref (E : Entity_Id) return Boolean is
+      (Returns_By_Ref (E) or else Is_By_Reference_Type (Full_Etype (E)))
+      with Pre => Ekind_In (E, E_Function, E_Procedure, E_Subprogram_Type);
+   --  True if the subprogram or subprogram type returns by reference,
+   --  either because it's marked that way or because it returns a type
+   --  that the language requires to be passed by reference.
+
    ----------------------------
    -- Create_Subprogram_Type --
    ----------------------------
 
-   function Create_Subprogram_Type (Def_Ident   : Entity_Id) return Type_T is
+   function Create_Subprogram_Type (Def_Ident : Entity_Id) return Type_T is
       Return_Type     : constant Entity_Id := Full_Etype (Def_Ident);
       Foreign         : constant Boolean   :=
         Has_Foreign_Convention (Def_Ident);
-      Ret_By_Ref      : constant Boolean   := Returns_By_Ref (Def_Ident);
+      Ret_By_Ref      : constant Boolean   := Is_Return_By_Ref (Def_Ident);
       Takes_S_Link    : constant Boolean   :=
         Needs_Activation_Record (Def_Ident) or else Is_Type (Def_Ident);
       Unc_Return      : constant Boolean   :=
@@ -502,7 +514,7 @@ package body GNATLLVM.Subprograms is
       Def_Ident       : constant Entity_Id := Defining_Entity (Spec);
       Return_Typ      : constant Entity_Id := Full_Etype (Def_Ident);
       Void_Return_Typ : constant Boolean   := Ekind (Return_Typ) = E_Void;
-      Ret_By_Ref      : constant Boolean   := Returns_By_Ref (Def_Ident);
+      Ret_By_Ref      : constant Boolean   := Is_Return_By_Ref (Def_Ident);
       Dyn_Return      : constant Boolean   :=
         not Ret_By_Ref and then Is_Dynamic_Return (Return_Typ);
       Void_Return     : constant Boolean   := Void_Return_Typ or Dyn_Return;
@@ -752,19 +764,25 @@ package body GNATLLVM.Subprograms is
                                 No_GL_Value, True, True);
                Build_Ret_Void;
 
-               --  If this function returns unconstrained, allocate memory
-               --  for the return value, copy the data to be returned to
-               --  there, and return an access (fat pointer) to the value.
-               --  Is this is a return-by-reference function, do that.
+            --  If this function returns unconstrained, allocate memory for
+            --  the return value, copy the data to be returned to there,
+            --  and return an access (fat pointer) to the value.  If this
+            --  is a return-by-reference function, return a reference to
+            --  this value.  However, if a return-by-reference function has
+            --  a Storage_Pool, that means we must allocate memory in that
+            --  pool, copy the return value to it, and return that address.
 
-            elsif Returns_By_Ref (Current_Subp) then
-               Build_Ret (Convert_To_Access_To (Emit_LValue (Expr), TE));
-
-            elsif Is_Unconstrained_Array (TE) then
+            elsif Is_Unconstrained_Array (TE)
+              or else (Is_Return_By_Ref (Current_Subp)
+                         and then Present (Storage_Pool (N)))
+            then
                Build_Ret
                  (Heap_Allocate_For_Type
                     (TE, Full_Etype (Expr), Emit_Expression (Expr),
                      Procedure_To_Call (N), Storage_Pool (N)));
+            elsif Is_Return_By_Ref (Current_Subp) then
+               Build_Ret (Convert_To_Access_To (Emit_LValue (Expr), TE));
+
             else
                Build_Ret (Build_Type_Conversion (Expr, TE));
             end if;
@@ -1045,7 +1063,7 @@ package body GNATLLVM.Subprograms is
       Return_Typ     : constant Entity_Id := Full_Etype (Subp_Typ);
       Foreign        : constant Boolean   := Has_Foreign_Convention (Subp_Typ);
       Ret_By_Ref     : constant Boolean   :=
-        Returns_By_Ref ((if Direct_Call then Entity (Subp) else Subp_Typ));
+        Is_Return_By_Ref ((if Direct_Call then Entity (Subp) else Subp_Typ));
       Dynamic_Return : constant Boolean   :=
         not Ret_By_Ref and then Is_Dynamic_Return (Return_Typ);
       Param          : Node_Id;

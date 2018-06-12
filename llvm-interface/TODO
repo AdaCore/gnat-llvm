@@ -1,4 +1,4 @@
-Missing main features (identified so far):
+Missing features (identified so far):
 
 - out parameters for scalars passed by value
 - more __sync builtins and other atomic and bswap builtins

@@ -818,24 +818,24 @@ package body GNATLLVM.Subprograms is
    is
       type RMW_Op is record
          Length : Integer;
-         Name   : String (1 .. 5);
+         Name   : String (1 .. 4);
          Op     : Atomic_RMW_Bin_Op_T;
       end record;
       type RMW_Op_Array is array (Integer range <>) of RMW_Op;
 
       Len : Integer;
       Ops : constant RMW_Op_Array :=
-        ((4, "xchg ", Atomic_RMW_Bin_Op_Xchg),
-         (3, "add  ", Atomic_RMW_Bin_Op_Add),
-         (3, "sub  ", Atomic_RMW_Bin_Op_Sub),
-         (3, "and  ", Atomic_RMW_Bin_Op_And),
-         (4, "nand ", Atomic_RMW_Bin_Op_Nand),
-         (2, "or   ", Atomic_RMW_Bin_Op_Or),
-         (3, "xor  ", Atomic_RMW_Bin_Op_Xor),
-         (3, "max  ", Atomic_RMW_Bin_Op_Max),
-         (3, "min  ", Atomic_RMW_Bin_Op_Min),
-         (5, "u_max", Atomic_RMW_Bin_Op_U_Max),
-         (5, "u_min", Atomic_RMW_Bin_Op_U_Min));
+        ((4, "xchg", Atomic_RMW_Bin_Op_Xchg),
+         (3, "add ", Atomic_RMW_Bin_Op_Add),
+         (3, "sub ", Atomic_RMW_Bin_Op_Sub),
+         (3, "and ", Atomic_RMW_Bin_Op_And),
+         (4, "nand", Atomic_RMW_Bin_Op_Nand),
+         (2, "or  ", Atomic_RMW_Bin_Op_Or),
+         (3, "xor ", Atomic_RMW_Bin_Op_Xor),
+         (3, "max ", Atomic_RMW_Bin_Op_Max),
+         (3, "min ", Atomic_RMW_Bin_Op_Min),
+         (4, "umax", Atomic_RMW_Bin_Op_U_Max),
+         (4, "umin", Atomic_RMW_Bin_Op_U_Min));
 
    begin
       for J in Ops'Range loop

@@ -4,7 +4,11 @@ Missing main features (identified so far):
 - out parameters for scalars passed by value
 - call "_ext" version of raise routines
 - handle goto / loop exits out of blocks
+- reduce generation of elaboration code on e.g. aggregates (see system.ads)
 - freeze nodes for types and subprograms (see c38102a)
 - representation clauses
-- debug info (for variables and types)
+- debug info (for variables, types and parameters)
 - restriction checks done by back end
+- support for code generation switches (in particular -Ox and possibly some
+  -fxxx switches)
+- support for stack checking (-fstack-check)

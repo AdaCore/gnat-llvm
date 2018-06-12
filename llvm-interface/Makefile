@@ -123,6 +123,7 @@ AR_FLAGS=q
 RANLIB_FOR_TARGET=ranlib
 RTSDIR=$(pwd)/lib/rts-native/adainclude
 RTSLIB=$(pwd)/lib/rts-native/adalib
+RTSOBJ=$(pwd)/lib/rts-native/obj
 ADAFLAGS=-gnatpg
 ADA_INCLUDES=-nostdinc -I../adainclude
 GCC_INCLUDE_PATH = $(word 2,$(shell gcc --print-search-dirs|grep install:))gcc-include
@@ -167,17 +168,11 @@ include $(GNAT_SRC)/Makefile.rtl
 .ads.o:
 	$(ADAC) -c $(ALL_ADAFLAGS) $<
 
-gnatlib: build
-	$(RMDIR) $(RTSLIB)
-	$(MKDIR) $(RTSLIB)
-	$(MAKE) setup-rts
-	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
-	  $(pwd)/obj-tools/xoscons s-oscons && \
-	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR)
+gnatlib: $(RTSDIR)
+	if [ -d $(RTSOBJ) ]; then \
+	  $(MV) $(RTSOBJ)/*.o $(RTSLIB); \
+	fi
 # Ada files
-	mv $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
-	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
-	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
 	  ADAC=$(ADAC) CC=$(CROSSC) $(GNATRTL_OBJS)
 # C files
@@ -185,14 +180,29 @@ gnatlib: build
 	  CC=$(CROSSC) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 # Create libgnat/libgnarl.a
 	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)
-	$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnat$(arext) \
+	@$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnat$(arext) \
 	  $(addprefix $(RTSLIB)/,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS))
 	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnat$(arext)
-	$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnarl$(arext) \
+	@$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnarl$(arext) \
 	  $(addprefix $(RTSLIB)/,$(GNATRTL_TASKING_OBJS))
 	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnarl$(arext)
 	$(CHMOD) a-wx $(RTSLIB)/*.ali
-	$(RM) $(RTSLIB)/*.o
+	$(RMDIR) $(RTSOBJ)
+	$(MKDIR) $(RTSOBJ)
+	$(MV) $(RTSLIB)/*.o $(RTSOBJ)
+
+$(RTSDIR): bin/llvm-gnat1
+	$(RMDIR) $(RTSLIB) $(RTSOBJ)
+	$(MKDIR) $(RTSLIB)
+	$(MAKE) setup-rts
+	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
+	  $(pwd)/obj-tools/xoscons s-oscons && \
+	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR)
+	mv $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
+	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
+	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
+
+bin/llvm-gnat1: build
 
 tracebak.o: tracebak.c tb-gcc.c
 	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \

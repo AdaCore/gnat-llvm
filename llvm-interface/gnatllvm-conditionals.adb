@@ -916,79 +916,104 @@ package body GNATLLVM.Conditionals is
 
    function Emit_If_Expression (N : Node_Id) return GL_Value
    is
+      TE         : constant Entity_Id     := Full_Etype (N);
       Condition  : constant Node_Id       := First (Expressions (N));
       Then_Expr  : constant Node_Id       := Next (Condition);
       Else_Expr  : constant Node_Id       := Next (Then_Expr);
-      Then_Type  : constant Entity_Id     := Full_Etype (Then_Expr);
-      Else_Type  : constant Entity_Id     := Full_Etype (Else_Expr);
+      Elementary : constant Boolean       := Is_Elementary_Type (TE);
+      BB_Next    : constant Basic_Block_T := Create_Basic_Block ("if-next");
       BB_Then    : Basic_Block_T          := Create_Basic_Block ("if-then");
       BB_Else    : Basic_Block_T          := Create_Basic_Block ("if-else");
-      BB_Next    : constant Basic_Block_T := Create_Basic_Block ("if-next");
-      TE         : Entity_Id;
       Then_Value : GL_Value;
       Else_Value : GL_Value;
+      Result     : GL_Value;
 
    begin
-      --  We need to be sure that both operands are the same LLVM type for
-      --  the Phi below.  The front end assures this in most cases, but we
-      --  do have potential issues if they're both different record or
-      --  arrays types.  Pick the best type to use here.  If one is an
-      --  unconstrained array, use that one.  Otherwise, if one is dynamic
-      --  size, use that one.  Otherwise, it doesn't matter.  ??? Some of
-      --  this code looks dubious and old.
-
-      if Is_Unconstrained_Array (Then_Type) then
-         TE := Then_Type;
-      elsif Is_Unconstrained_Array (Else_Type) then
-         TE := Else_Type;
-      elsif Is_Dynamic_Size (Else_Type) then
-         TE := Else_Type;
-      else
-         TE := Then_Type;
-      end if;
+      --  We have to decide whether to do this with values or
+      --  addresses.  We probably get the best overall code if we
+      --  choose a reference for composite types and data for
+      --  elementary types.
+      --
+      --  ??? This doesn't work well for e.g., (if C then (1, 2) else (3,
+      --  4)) we probably need an Emit_LValue_Or_Value which returns
+      --  whichever is easiest and we start from there.
+      --
+      --  We need to be sure that both operands are the same LLVM type
+      --  for the Phi below.  The front end assures this in most
+      --  cases, but we do have potential issues if they're both
+      --  different record or arrays types.
+      --
+      --  Start by generating the conditional branch and working on each
+      --  expression in its own BB.
 
       Build_Cond_Br (Emit_Expression (Condition), BB_Then, BB_Else);
+      Position_Builder_At_End (BB_Then);
+      Then_Value := (if Elementary then Emit_Expression (Then_Expr)
+                     else Emit_LValue (Then_Expr));
+      BB_Then    := Get_Insert_Block;
+      Position_Builder_At_End (BB_Else);
+      Else_Value := (if Elementary then Emit_Expression (Else_Expr)
+                     else Emit_LValue (Else_Expr));
+      BB_Else    := Get_Insert_Block;
 
-      --  Emit code for the THEN part
+      --  If these are elementary types, they should have the same LLVM
+      --  type, but if not, convert both to the result type.
+      --  be the same.
+
+      if Elementary then
+         if Type_Of (Then_Value) /= Type_Of (Else_Value) then
+            Position_Builder_At_End (BB_Then);
+            Then_Value := Convert_To_Elementary_Type (Then_Value, TE);
+            BB_Then    := Get_Insert_Block;
+            Position_Builder_At_End (BB_Else);
+            Else_Value := Convert_To_Elementary_Type (Else_Value, TE);
+            BB_Else    := Get_Insert_Block;
+         end if;
+
+      --  Otherwise, ensure both are references and convert each to an access
+      --  to the result type.  There are other possibilties for conversion,
+      --  but this is the safest since the bounds of the type may be local
+      --  to the expression.
+
+      else
+         --  If either is a thin pointer, convert to a fat pointer first
+         --  before doing anything else.  That avoid rematerializing bounds.
+         --  ??? Except that this breaks in Convert_To_Access_To
+
+         Position_Builder_At_End (BB_Then);
+         Then_Value := Get (Then_Value, Any_Reference);
+         --  if Relationship (Then_Value) = Thin_Pointer then
+         --      Then_Value := Get (Then_Value, Fat_Pointer);
+         --  end if;
+         Then_Value := Convert_To_Access_To (Then_Value, TE);
+         BB_Then    := Get_Insert_Block;
+         Position_Builder_At_End (BB_Else);
+         Else_Value := Get (Else_Value, Any_Reference);
+         --  if Relationship (Else_Value) = Thin_Pointer then
+         --     Else_Value := Get (Else_Value, Fat_Pointer);
+         --  bb/end if;
+         Else_Value := Convert_To_Access_To (Else_Value, TE);
+         BB_Else    := Get_Insert_Block;
+      end if;
+
+      --  Both sides then branch to the Phi block and we emit the Phi,
+      --  converting to either data or reference, depending on the type.
+      --  In the elementary case, convert to the result type, since we
+      --  may not already have done this.
 
       Position_Builder_At_End (BB_Then);
-      Then_Value := Emit_Expression (Then_Expr);
-
-      if Is_Dynamic_Size (TE) then
-         Then_Value :=
-           Convert_To_Access_To (Get (Then_Value, Any_Reference), TE);
-      end if;
-
-      --  The THEN part may be composed of multiple basic blocks. We want
-      --  to get the one that jumps to the merge point to get the PHI node
-      --  predecessor.
-
-      BB_Then := Get_Insert_Block;
       Build_Br (BB_Next);
-
-      --  Emit code for the ELSE part
-
       Position_Builder_At_End (BB_Else);
-      Else_Value := Emit_Expression (Else_Expr);
+      Move_To_BB (BB_Next);
 
-      if Is_Dynamic_Size (TE) then
-         Else_Value :=
-           Convert_To_Access_To (Get (Else_Value, Any_Reference), TE);
+      Result := Build_Phi ((1 => Then_Value, 2 => Else_Value),
+                           (1 => BB_Then, 2 => BB_Else));
+      if Elementary then
+         return Convert_To_Elementary_Type (Result, TE);
+      else
+         return Get (Result, Object);
       end if;
 
-      Build_Br (BB_Next);
-
-      --  We want to get the basic blocks that jumps to the merge point: see
-      --  above.
-
-      BB_Else := Get_Insert_Block;
-
-      --  Then prepare the instruction builder for the next
-      --  statements/expressions and return a merged expression if needed.
-
-      Position_Builder_At_End (BB_Next);
-      return Build_Phi ((1 => Then_Value, 2 => Else_Value),
-                        (1 => BB_Then, 2 => BB_Else));
    end Emit_If_Expression;
 
    ------------------

@@ -368,7 +368,9 @@ package body GNATLLVM.GLValue is
 
       --  If we just need to make this into a reference, we can store
       --  it into memory since we only have those relationships if
-      --  this is a actual LLVM value.
+      --  this is a actual LLVM value.  ???  We should check if V is
+      --  a load instruction and just take the operand of that as our
+      --  value if so.
 
       elsif Equiv_Relationship (Ref (Relationship (V)), R) then
          Result := G (Alloca (IR_Builder, Type_Of (V), ""),

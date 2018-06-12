@@ -326,6 +326,11 @@ package body GNATLLVM.Types is
       Unc_Dest : constant Boolean   := Is_Unconstrained_Array (TE);
 
    begin
+      --  ???  This function is a mess and doesn't take into account
+      --  that we might have a different relationship to a type than
+      --  the default, in which case we likely want to preserve that
+      --  relationship.
+
       --  First deal with the case where we're converting between two arrays
       --  with different index types and TE is unconstrained.  In that case,
       --  we have to materialize the bounds in the new index types.

@@ -543,7 +543,8 @@ package body GNATLLVM.Compile is
    ---------------------
 
    function Emit_Expression (N : Node_Id) return GL_Value is
-      TE : constant Entity_Id := Full_Etype (N);
+      TE     : constant Entity_Id := Full_Etype (N);
+      Result : GL_Value;
 
    begin
       Set_Debug_Pos_At_Node (N);
@@ -590,7 +591,16 @@ package body GNATLLVM.Compile is
          when N_Unchecked_Type_Conversion =>
             return Build_Unchecked_Conversion (Expression (N), TE);
 
-         when N_Type_Conversion | N_Qualified_Expression =>
+         when N_Type_Conversion =>
+            if Is_Elementary_Type (TE) and then Do_Overflow_Check (N) then
+               Result := Emit_Expression (Expression (N));
+               Emit_Overflow_Check (Result, N);
+               return Convert_To_Elementary_Type (Result, TE);
+            else
+               return Build_Type_Conversion (Expression (N), TE);
+            end if;
+
+         when N_Qualified_Expression =>
             return Build_Type_Conversion (Expression (N), TE);
 
          when N_Identifier
@@ -613,7 +623,6 @@ package body GNATLLVM.Compile is
                Expr   : constant Node_Id := Expression (N);
                Value  : GL_Value         := No_GL_Value;
                Typ    : Entity_Id;
-               Result : GL_Value;
 
             begin
                --  There are two cases: the Expression operand can

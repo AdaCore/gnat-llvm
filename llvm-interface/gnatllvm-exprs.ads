@@ -25,6 +25,11 @@ package GNATLLVM.Exprs is
    --  This can't be named GNATLLVM.Expressions because it conflicts
    --  with Expressions in Sinfo,
 
+   procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id)
+     with Pre => Nkind (N) = N_Type_Conversion and then Present (V)
+                 and then Is_Elementary_Type (V);
+   --  Check that V is within the bounds of N's type.
+
    function Emit_Shift
      (Operation           : Node_Kind;
       LHS_Node, RHS_Node  : Node_Id) return GL_Value

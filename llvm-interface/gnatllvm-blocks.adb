@@ -197,10 +197,6 @@ package body GNATLLVM.Blocks is
    --  parameter.  This can only be called once we have an exception parameter
    --  since we can't easily find the exception type before that.
 
-   procedure Emit_Raise_Call (N : Node_Id; Kind : RT_Exception_Code)
-     with Pre => Present (N);
-   --  Generate a call to __gnat_last_chance_handler
-
    procedure Initialize_Predefines;
    --  Initialize the predefined functions and variables below
 

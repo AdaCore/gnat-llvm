@@ -291,29 +291,33 @@ package body GNATLLVM.Exprs is
       then
          declare
 
-            --  We compute the remainder.  Then it gets more complicated.
+            --  We compute the quotient.  Then it gets more complicated.
             --  As in the mod case, we optimize for the case when RHS is a
             --  constant.  If twice the absolute value of the remainder is
             --  greater than RHS, we have to either add or subtract one
-            --  from the result, depending on whether RHS is positive or
-            --  negative.
+            --  from the result, depending on whether the remainder is the
+            --  same sign as the RHS not.  Again, we optimize for the case
+            --  where the RHS is a constant.
 
-            One          : constant GL_Value := Const_Int (RVal, Uint_1);
-            Remainder    : constant GL_Value := S_Rem (LVal, RVal);
-            Rem_Neg      : constant GL_Value :=
+            One          : constant GL_Value  := Const_Int (RVal, Uint_1);
+            Remainder    : constant GL_Value  := S_Rem (LVal, RVal);
+            Rem_Neg      : constant GL_Value  :=
               I_Cmp (Int_SLT, Remainder, Const_Null (Remainder));
-            Abs_Rem      : constant GL_Value :=
+            Rem_Nonneg   : constant GL_Value  := Build_Not (Rem_Neg);
+            Abs_Rem      : constant GL_Value  :=
               Build_Select (Rem_Neg, NSW_Neg (Remainder), Remainder);
-            RHS_Neg      : constant GL_Value :=
+            RHS_Neg      : constant GL_Value  :=
               I_Cmp (Int_SLT, RVal, Const_Null (RVal));
-            Abs_RHS      : constant GL_Value :=
+            Abs_RHS      : constant GL_Value  :=
               Build_Select (RHS_Neg, NSW_Neg (RVal), RVal);
-            Need_Adjust  : constant GL_Value :=
+            Need_Adjust  : constant GL_Value  :=
               I_Cmp (Int_UGE, Shl (Abs_Rem, One), Abs_RHS);
-            Plus_One     : constant GL_Value := NSW_Add (Result, One);
-            Minus_One    : constant GL_Value := NSW_Sub (Result, One);
-            Which_Adjust : constant GL_Value :=
-              Build_Select (RHS_Neg, Minus_One, Plus_One);
+            Signs_Same    : constant GL_Value :=
+              Build_Select (RHS_Neg, Rem_Neg, Rem_Nonneg, "signsame");
+            Plus_One     : constant GL_Value  := NSW_Add (Result, One);
+            Minus_One    : constant GL_Value  := NSW_Sub (Result, One);
+            Which_Adjust : constant GL_Value  :=
+              Build_Select (Signs_Same, Plus_One, Minus_One);
 
          begin
             Result := Build_Select (Need_Adjust, Which_Adjust, Result);
@@ -363,19 +367,22 @@ package body GNATLLVM.Exprs is
          when N_Op_Minus =>
             declare
                Expr : constant GL_Value  := Emit_Expression (Right_Opnd (N));
-               Typ  : constant Entity_Id := Full_Etype (Expr);
+               TE   : constant Entity_Id := Full_Etype (Expr);
+               BT   : constant Entity_Id := Implementation_Base_Type (TE);
+               V    : constant GL_Value  :=
+                 Convert_To_Elementary_Type (Expr, BT);
 
             begin
-               if Is_Floating_Point_Type (Expr) then
-                  return F_Neg (Expr);
+               if Is_Floating_Point_Type (BT) then
+                  return F_Neg (V);
                elsif Do_Overflow_Check (N)
-                 and then not Is_Unsigned_Type (Expr)
+                 and then not Is_Unsigned_Type (BT)
                then
                   declare
                      Func      : constant GL_Value := Build_Intrinsic
-                       (Overflow, "llvm.ssub.with.overflow.i", Typ);
+                       (Overflow, "llvm.ssub.with.overflow.i", BT);
                      Fn_Ret    : constant GL_Value :=
-                       Call (Func, Typ, (1 => Const_Null (Typ), 2 => Expr));
+                       Call (Func, TE, (1 => Const_Null (BT), 2 => V));
                      Overflow  : constant GL_Value :=
                        Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
                      Label_Ent : constant Entity_Id :=
@@ -392,10 +399,10 @@ package body GNATLLVM.Exprs is
                         Emit_Overflow_Call_If (Overflow, N);
                      end if;
 
-                     return Extract_Value (Typ, Fn_Ret, 0);
+                     return Extract_Value (BT, Fn_Ret, 0);
                   end;
                else
-                  return NSW_Neg (Expr);
+                  return NSW_Neg (V);
                end if;
             end;
 
@@ -405,6 +412,87 @@ package body GNATLLVM.Exprs is
       end case;
 
    end Emit_Unary_Operation;
+
+   -------------------------
+   -- Emit_Overflow_Check --
+   -------------------------
+
+   procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id) is
+      In_TE      : constant Entity_Id := Full_Etype (V);
+      Out_TE     : constant Entity_Id := Full_Etype (N);
+      In_BT      : constant Entity_Id := Implementation_Base_Type (In_TE);
+      Out_BT     : constant Entity_Id := Implementation_Base_Type (Out_TE);
+      In_FP      : constant Boolean   := Is_Floating_Point_Type (In_TE);
+      Out_FP     : constant Boolean   := Is_Floating_Point_Type (Out_TE);
+      In_LB      : constant Node_Id   := Type_Low_Bound  (In_BT);
+      In_UB      : constant Node_Id   := Type_High_Bound (In_BT);
+      Out_LB     : constant Node_Id   := Type_Low_Bound  (Out_BT);
+      Out_UB     : constant Node_Id   := Type_High_Bound (Out_BT);
+      Label_Ent  : constant Entity_Id :=
+        Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
+      Compare_LB : GL_Value           := No_GL_Value;
+      Compare_UB : GL_Value           := No_GL_Value;
+      BB_Raise   : Basic_Block_T;
+      BB_Next    : Basic_Block_T;
+
+   begin
+      --  In the case of both types being integers, we determine the need
+      --  for each check individually by seeing if the output bounds are
+      --  tighter than the input bounds.  But this isn't worth doing for FP
+      --  since the chances of having a difference here is very low.  Since
+      --  an FP NaN or Inf always compares false, do the comparison so
+      --  false is a failure.
+
+      if In_FP or else Out_FP
+        or else Get_Uint_Value (Out_LB) > Get_Uint_Value (In_LB)
+      then
+         Compare_LB := Emit_Elementary_Comparison
+           (N_Op_Ge, V, Build_Type_Conversion (Out_LB, In_TE));
+      end if;
+
+      if In_FP or else Out_FP
+        or else Get_Uint_Value (Out_UB) < Get_Uint_Value (In_UB)
+      then
+         Compare_UB := Emit_Elementary_Comparison
+           (N_Op_Le, V, Build_Type_Conversion (Out_UB, In_TE));
+      end if;
+
+      --  If neither comparison is needed, we're done
+
+      if No (Compare_LB) and then No (Compare_UB) then
+         return;
+      end if;
+
+      --  Otherwise, make the labels and branch to them depending on the
+      --  results of the tests.  If we're doing both comparison, we'll have
+      --  put both before the first test, but the optimizer can clean that up.
+
+      BB_Raise :=
+        (if Present (Label_Ent) then Get_Label_BB (Label_Ent)
+         else Create_Basic_Block);
+      BB_Next := Create_Basic_Block;
+
+      if Present (Compare_UB) then
+         Build_Cond_Br (Compare_UB, BB_Next, BB_Raise);
+         Position_Builder_At_End (BB_Next);
+         BB_Next := Create_Basic_Block;
+      end if;
+
+      if Present (Compare_LB) then
+         Build_Cond_Br (Compare_LB, BB_Next, BB_Raise);
+      end if;
+
+      --  If we were branching to a label for the exception, we're done.
+      --  Otherwise, generate a call to the raise statement.
+
+      if No (Label_Ent) then
+         Position_Builder_At_End (BB_Raise);
+         Emit_Raise_Call (N, CE_Overflow_Check_Failed);
+         Build_Br (BB_Next);
+      end if;
+
+      Position_Builder_At_End (BB_Next);
+   end Emit_Overflow_Check;
 
    ----------------
    -- Emit_Shift --

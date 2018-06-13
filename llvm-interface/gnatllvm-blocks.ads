@@ -102,6 +102,10 @@ package GNATLLVM.Blocks is
    --  We're going to do a return.  Emit any needed fixups from the block
    --  we're in all the way out of the subprogram.
 
+   procedure Emit_Raise_Call (N : Node_Id; Kind : RT_Exception_Code)
+     with Pre => Present (N);
+   --  Generate a call to a raise subprogram
+
    procedure Emit_Raise (N : Node_Id)
      with Pre => Nkind (N) in N_Raise_xxx_Error;
    --  Process an N_Raise_xxx_Error node

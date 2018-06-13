@@ -58,7 +58,8 @@ compare=cmp --ignore-initial=16
 
 .PHONY: setup force clean
 
-all: setup build gnatlib
+all: setup build
+	$(MAKE) quicklib
 
 setup:
 	$(MKDIR) obj obj-tools bin
@@ -168,7 +169,11 @@ include $(GNAT_SRC)/Makefile.rtl
 .ads.o:
 	$(ADAC) -c $(ALL_ADAFLAGS) $<
 
-gnatlib: $(RTSDIR)
+gnatlib: build
+	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
+	$(MAKE) quicklib
+
+quicklib: $(RTSDIR)
 	if [ -d $(RTSOBJ) ]; then \
 	  $(MV) $(RTSOBJ)/*.o $(RTSLIB); \
 	fi
@@ -201,8 +206,6 @@ $(RTSDIR): bin/llvm-gnat1
 	mv $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
 	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
-
-bin/llvm-gnat1: build
 
 tracebak.o: tracebak.c tb-gcc.c
 	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \

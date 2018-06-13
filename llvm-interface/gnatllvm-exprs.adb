@@ -724,10 +724,13 @@ package body GNATLLVM.Exprs is
             begin
                V := (if Is_A_Type then No_GL_Value
                                   else Emit_LValue (Prefix (N)));
-               return Convert_To_Elementary_Type
-                 (NSW_Mul (Get_Type_Size (Prefix_Type, V, For_Type),
-                           Size_Const_Int (Uint_8)),
-                  TE);
+               V := Get_Type_Size (Prefix_Type, V, For_Type);
+               if Attr = Attribute_Max_Size_In_Storage_Elements then
+                  return Convert_To_Elementary_Type (V, TE);
+               else
+                  return Convert_To_Elementary_Type
+                    (NSW_Mul (V, Size_Const_Int (Uint_8)), TE);
+               end if;
             end;
 
          when Attribute_Component_Size =>

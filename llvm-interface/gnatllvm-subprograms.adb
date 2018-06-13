@@ -126,6 +126,10 @@ package body GNATLLVM.Subprograms is
    --  a supported LLVM atomicrmw instruction.  If so, set End_Index
    --  to after the name and Op to the code for the operation and return True.
 
+   function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  If N is a valid call to builtin_bswap, generate it
+
    function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If S is a valid __sync name, emit the LLVM for it and return the
@@ -914,11 +918,11 @@ package body GNATLLVM.Subprograms is
    --------------------
 
    function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value is
-      Ptr        : Node_Id;
+      Ptr        : constant Node_Id := First_Actual (N);
+      Index      : Integer := S'First + 7;
       Val        : Node_Id;
       Op         : Atomic_RMW_Bin_Op_T;
       Op_Back    : Boolean;
-      Index      : Integer := S'First + 7;
       New_Index  : Integer;
       TE, BT, PT : Entity_Id;
       Type_Size  : ULL;
@@ -952,7 +956,6 @@ package body GNATLLVM.Subprograms is
       --  There must be exactly two actuals with the second an elementary
       --  type and the first an access type to it.
 
-      Ptr := First_Actual (N);
       if No (Ptr) then
          return No_GL_Value;
       end if;
@@ -1029,6 +1032,40 @@ package body GNATLLVM.Subprograms is
 
    end Emit_Sync_Call;
 
+   ---------------------
+   -- Emit_Bswap_Call --
+   ---------------------
+
+   function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value is
+      Val       : constant Node_Id := First_Actual (N);
+      TE        : Entity_Id;
+      Type_Size : ULL;
+
+   begin
+      --  This is supposedly a __builtin_bswap builtin.  Verify that it is.
+      --  There must be exactly one actual.
+
+      if No (Val) or else Present (Next_Actual (Val)) then
+         return No_GL_Value;
+      end if;
+
+      TE := Full_Etype (Val);
+      if not Is_Elementary_Type (TE) then
+         return No_GL_Value;
+      end if;
+
+      Type_Size := Get_LLVM_Type_Size_In_Bits (Create_Type (TE));
+      if not (S (S'Last - 1 .. S'Last) = "16" and then Type_Size = 16)
+        and then not (S (S'Last - 1 .. S'Last) = "32" and then Type_Size = 32)
+        and then not (S (S'Last - 1 .. S'Last) = "64" and then Type_Size = 64)
+      then
+         return No_GL_Value;
+      end if;
+
+      return Call (Build_Intrinsic (Unary, "llvm.bswap.i", TE), TE,
+                   (1 => Emit_Expression (Val)));
+   end Emit_Bswap_Call;
+
    -------------------------
    -- Emit_Intrinsic_Call --
    -------------------------
@@ -1042,6 +1079,12 @@ package body GNATLLVM.Subprograms is
 
       if Fn_Name'Length > 7 and then Fn_Name (1 .. 7) = "__sync_" then
          return Emit_Sync_Call (N, Fn_Name);
+
+      --  Next, check for __builtin_bswap
+
+      elsif Fn_Name'Length > 15 and then Fn_Name (1 .. 15) = "__builtin_bswap"
+      then
+         return Emit_Bswap_Call (N, Fn_Name);
       end if;
 
       --  ??? That's all we support for the moment

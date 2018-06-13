@@ -488,7 +488,7 @@ package body GNATLLVM.Compile is
             V := Add_Global (TE, "str");
             Set_Initializer (V, Get (Emit_Expression (N), Bounds_And_Data));
             Set_Linkage (V, Private_Linkage);
-            Set_Global_Constant (LLVM_Value (V), True);
+            Set_Global_Constant (V, True);
             Set_Value (N, Get (V, Thin_Pointer));
             return V;
 

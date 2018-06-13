@@ -366,16 +366,30 @@ package body GNATLLVM.GLValue is
       elsif Equiv_Relationship (Deref (Deref (Relationship (V))), R) then
          return Load (Load (V));
 
-      --  If we just need to make this into a reference, we can store
-      --  it into memory since we only have those relationships if
-      --  this is a actual LLVM value.  ???  We should check if V is
-      --  a load instruction and just take the operand of that as our
-      --  value if so.
+      --  If we just need to make this into a reference, we can store it
+      --  into memory since we only have those relationships if this is a
+      --  actual LLVM value.  If we have a constant, we should put it in
+      --  static memory.  Not only is it more efficient to do this at
+      --  compile-time, but if these are bounds of an array, we may be
+      --  passing them using 'Unrestricted_Access and will have problems if
+      --  it's on the stack of the calling subprogram since the called
+      --  subprogram may capture the address and store it for later (this
+      --  happens a lot with tasking).  ???  We should check if V is a load
+      --  instruction and just take the operand of that as our value if so.
 
       elsif Equiv_Relationship (Ref (Relationship (V)), R) then
-         Result := G (Alloca (IR_Builder, Type_Of (V), ""),
-                      Related_Type (V), Ref (Relationship (V)));
-         Store (V, Result);
+         if Is_Constant (V) then
+            Result := G (Add_Global (LLVM_Module, Type_Of (V), "for-ref"),
+                         TE, Ref (Relationship (V)));
+            Set_Initializer     (Result, V);
+            Set_Linkage         (Result, Private_Linkage);
+            Set_Global_Constant (Result, True);
+         else
+            Result := G (Alloca (IR_Builder, Type_Of (V), ""),
+                         Related_Type (V), Ref (Relationship (V)));
+            Store (V, Result);
+         end if;
+
          return Result;
       end if;
 
@@ -461,6 +475,7 @@ package body GNATLLVM.GLValue is
             --  Otherwise get the bounds and force them into memory
 
             else
+               Result := Get (V, Bounds);
                return Get (Get (V, Bounds), R);
             end if;
 
@@ -1222,6 +1237,15 @@ package body GNATLLVM.GLValue is
    begin
       Set_Linkage (LLVM_Value (V), Linkage);
    end Set_Linkage;
+
+   -------------------------
+   -- Set_Global_Constant --
+   -------------------------
+
+   procedure Set_Global_Constant (V : GL_Value; B : Boolean) is
+   begin
+      Set_Global_Constant (LLVM_Value (V), B);
+   end Set_Global_Constant;
 
    ----------------------
    -- Set_Thread_Local --

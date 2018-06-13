@@ -546,6 +546,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a function
 
+   function Is_Constant (V : GL_Value) return Boolean is
+     (Is_Constant (LLVM_Value (V)))
+     with Pre => Present (V);
+
    function Is_A_Const_Int (V : GL_Value) return Boolean is
      (Present (Is_A_Constant_Int (LLVM_Value (V))))
      with Pre => Present (V);
@@ -1382,6 +1386,9 @@ package GNATLLVM.GLValue is
    procedure Set_Linkage (V : GL_Value; Linkage : Linkage_T)
      with Pre => Present (V);
    --  Set the linkage type for a variable
+
+   procedure Set_Global_Constant (V : GL_Value; B : Boolean)
+     with Pre => Present (V);
 
    procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean)
      with Pre => Present (V);

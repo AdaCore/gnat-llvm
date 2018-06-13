@@ -104,7 +104,7 @@ fast:
 force:
 
 clean:
-	$(RMDIR) obj obj-tools
+	$(RMDIR) obj obj-tools lib
 
 # Full runtime
 
@@ -135,7 +135,8 @@ INCLUDES = -I../adainclude -I$(GCC_INCLUDE_PATH)/include     \
   -I$(GCC_INCLUDE_PATH)/libgcc
 
 ADAC=$(pwd)/bin/llvm-gcc
-CROSSC=gcc
+CROSSC=clang
+CROSSGCC=gcc
 COMPILE=$(ADAC) -c -gnatpg -nostdinc -I../adainclude
 
 FORCE_DEBUG_ADAFLAGS = -g
@@ -144,7 +145,7 @@ NO_OMIT_ADAFLAGS = -fno-omit-frame-pointer
 NO_SIBLING_ADAFLAGS=-fno-optimize-sibling-calls
 NO_REORDER_ADAFLAGS=-fno-toplevel-reorder
 
-OSCONS_CC=$(CROSSC)
+OSCONS_CC=$(CROSSGCC)
 OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
   $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
 OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i

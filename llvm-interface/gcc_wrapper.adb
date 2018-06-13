@@ -178,8 +178,8 @@ begin
          S := Locate_Exec_On_Path (Linker);
 
          if S = null then
-            --  If llvm-ld is not found, default to "gcc" for now
-            S := Locate_Exec_On_Path ("gcc");
+            --  If llvm-ld is not found, default to "clang" for now
+            S := Locate_Exec_On_Path ("clang");
          end if;
 
          if S = null then

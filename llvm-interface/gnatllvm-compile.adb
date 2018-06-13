@@ -311,7 +311,7 @@ package body GNATLLVM.Compile is
                                        > Esize (TE)))
                then
                   Error_Msg_Uint_1 := Esize (TE);
-                  Error_Msg_NE ("?Type & does not fit into ^ bits", N, TE);
+                  Error_Msg_NE ("??type & does not fit into ^ bits", N, TE);
                end if;
             end;
 
@@ -325,7 +325,7 @@ package body GNATLLVM.Compile is
 
                when Pragma_Reviewable =>
                   if not Emit_Debug_Info then
-                     Error_Msg_N ("must specify -g", N);
+                     Error_Msg_N ("??must specify -g", N);
                   end if;
 
                --  ??? These are the ones that Gigi supports and we

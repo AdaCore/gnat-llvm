@@ -90,7 +90,6 @@ stage2: stage1
 
 stage3: stage2
 	PATH=$(pwd)/stage2/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib
-	# compare stage2 and stage3 objects
 	@echo "Comparing stage2 and stage3 objects"
 	@for f in `cd stage2/obj && echo *.o`; do \
 	  $(compare) stage2/obj/$$f stage3/obj/$$f || exit 1; \

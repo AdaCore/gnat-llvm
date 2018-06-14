@@ -350,10 +350,8 @@ package body GNATLLVM.Conditionals is
       --  its base type.
 
       if Is_Scalar_Type (LHS) then
-         LHS := Convert_To_Elementary_Type (LHS,
-                                            Implementation_Base_Type (LHS));
-         RHS := Convert_To_Elementary_Type (RHS,
-                                            Implementation_Base_Type (RHS));
+         LHS := Convert (LHS, Implementation_Base_Type (LHS));
+         RHS := Convert (RHS, Implementation_Base_Type (RHS));
       end if;
 
       --  If we're comparing two access types, first get the values as
@@ -899,7 +897,7 @@ package body GNATLLVM.Conditionals is
          Build_Cond_Br (Cond, BB_True, BB_False);
       else
          Inner_BB := Create_Basic_Block ("range-test");
-         LHS_Base := Convert_To_Elementary_Type (LHS, LHS_BT);
+         LHS_Base := Convert (LHS, LHS_BT);
          Cond     := Emit_Elementary_Comparison (N_Op_Ge, LHS_Base,
                                              Const_Int (LHS_BT, Low));
          Build_Cond_Br (Cond, Inner_BB, BB_False);
@@ -963,10 +961,10 @@ package body GNATLLVM.Conditionals is
       if Elementary then
          if Type_Of (Then_Value) /= Type_Of (Else_Value) then
             Position_Builder_At_End (BB_Then);
-            Then_Value := Convert_To_Elementary_Type (Then_Value, TE);
+            Then_Value := Convert (Then_Value, TE);
             BB_Then    := Get_Insert_Block;
             Position_Builder_At_End (BB_Else);
-            Else_Value := Convert_To_Elementary_Type (Else_Value, TE);
+            Else_Value := Convert (Else_Value, TE);
             BB_Else    := Get_Insert_Block;
          end if;
 
@@ -978,21 +976,21 @@ package body GNATLLVM.Conditionals is
       else
          --  If either is a thin pointer, convert to a fat pointer first
          --  before doing anything else.  That avoid rematerializing bounds.
-         --  ??? Except that this breaks in Convert_To_Access_To
+         --  ??? Except that this breaks in Convert_Ref
 
          Position_Builder_At_End (BB_Then);
          Then_Value := Get (Then_Value, Any_Reference);
          --  if Relationship (Then_Value) = Thin_Pointer then
          --      Then_Value := Get (Then_Value, Fat_Pointer);
          --  end if;
-         Then_Value := Convert_To_Access_To (Then_Value, TE);
+         Then_Value := Convert_Ref (Then_Value, TE);
          BB_Then    := Get_Insert_Block;
          Position_Builder_At_End (BB_Else);
          Else_Value := Get (Else_Value, Any_Reference);
          --  if Relationship (Else_Value) = Thin_Pointer then
          --     Else_Value := Get (Else_Value, Fat_Pointer);
          --  bb/end if;
-         Else_Value := Convert_To_Access_To (Else_Value, TE);
+         Else_Value := Convert_Ref (Else_Value, TE);
          BB_Else    := Get_Insert_Block;
       end if;
 
@@ -1009,7 +1007,7 @@ package body GNATLLVM.Conditionals is
       Result := Build_Phi ((1 => Then_Value, 2 => Else_Value),
                            (1 => BB_Then, 2 => BB_Else));
       if Elementary then
-         return Convert_To_Elementary_Type (Result, TE);
+         return Convert (Result, TE);
       else
          return Get (Result, Object);
       end if;

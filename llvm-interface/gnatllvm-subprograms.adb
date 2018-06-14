@@ -785,7 +785,7 @@ package body GNATLLVM.Subprograms is
                     (TE, Full_Etype (Expr), Emit_Expression (Expr),
                      Procedure_To_Call (N), Storage_Pool (N)));
             elsif Is_Return_By_Ref (Current_Subp) then
-               Build_Ret (Convert_To_Access_To (Emit_LValue (Expr), TE));
+               Build_Ret (Convert_Ref (Emit_LValue (Expr), TE));
 
             else
                Build_Ret (Emit_Type_Conversion (Expr, TE));
@@ -1166,7 +1166,7 @@ package body GNATLLVM.Subprograms is
             if Foreign then
                Arg := Ptr_To_Ref (Get (Arg, Reference), P_Type);
             else
-               Arg := Convert_To_Access_To (Arg, P_Type);
+               Arg := Convert_Ref (Arg, P_Type);
             end if;
 
             Args (Idx) := Arg;
@@ -1199,7 +1199,7 @@ package body GNATLLVM.Subprograms is
 
       if Dynamic_Return then
          Call (LLVM_Func, Args);
-         return Convert_To_Access_To (Args (Args'Last), Our_Return_Typ);
+         return Convert_Ref (Args (Args'Last), Our_Return_Typ);
       elsif Ret_By_Ref or else Is_Unconstrained_Array (Return_Typ) then
          return Call_Ref (LLVM_Func, Return_Typ, Args);
       elsif Ekind (Return_Typ) = E_Void then

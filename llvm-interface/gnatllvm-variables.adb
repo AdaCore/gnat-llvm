@@ -685,7 +685,7 @@ package body GNATLLVM.Variables is
                Def_Ident);
             LLVM_Var := Emit_Undef (TE);
          else
-            LLVM_Var := Convert_To_Access_To (LLVM_Var, TE);
+            LLVM_Var := Convert_Ref (LLVM_Var, TE);
          end if;
 
       --  Otherwise, see if this is a simple renaming
@@ -1000,8 +1000,7 @@ package body GNATLLVM.Variables is
       then
          Set_Value (Def_Ident, Emit_Type_Conversion (Name (N), TE));
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
-         Set_Value (Def_Ident,
-                    Convert_To_Access_To (Emit_LValue (Name (N)), TE));
+         Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
 
       else
          LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident),

@@ -512,8 +512,7 @@ package body GNATLLVM.Compile is
             --  This matters if, e.g., the bounds of an array subtype change
             --  (see C46042A).
 
-            return
-              Convert_To_Access_To (Emit_LValue_Internal (Expression (N)), TE);
+            return Convert_Ref (Emit_LValue_Internal (Expression (N)), TE);
 
          when others =>
             --  If we have an arbitrary expression, evaluate it.  If it
@@ -595,7 +594,7 @@ package body GNATLLVM.Compile is
             if Is_Elementary_Type (TE) and then Do_Overflow_Check (N) then
                Result := Emit_Expression (Expression (N));
                Emit_Overflow_Check (Result, N);
-               return Convert_To_Elementary_Type (Result, TE);
+               return Convert (Result, TE);
             else
                return Emit_Type_Conversion (Expression (N), TE);
             end if;
@@ -643,11 +642,11 @@ package body GNATLLVM.Compile is
                Result := Heap_Allocate_For_Type
                  (Full_Designated_Type (TE), Typ, Value,
                   Procedure_To_Call (N), Storage_Pool (N));
-               return Convert_To_Elementary_Type (Result, TE);
+               return Convert (Result, TE);
             end;
 
          when N_Reference =>
-            return Convert_To_Elementary_Type (Emit_LValue (Prefix (N)), TE);
+            return Convert (Emit_LValue (Prefix (N)), TE);
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (N, LValue => False);
@@ -856,8 +855,7 @@ package body GNATLLVM.Compile is
 
                Build_Cond_Br
                  (I_Cmp ((if Uns_BT then Int_ULE else Int_SLE),
-                         Convert_To_Elementary_Type (Low, Var_BT),
-                         Convert_To_Elementary_Type (High, Var_BT),
+                         Convert (Low, Var_BT), Convert (High, Var_BT),
                          "loop-entry-cond"),
                   BB_Cond, BB_Next);
 

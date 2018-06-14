@@ -204,11 +204,9 @@ package body GNATLLVM.Arrays is
                  (if Is_Low then Type_Low_Bound (Discr_Type)
                   else Type_High_Bound (Discr_Type));
                Bound_Val   : constant GL_Value  :=
-                 Convert_To_Elementary_Type (Emit_Safe_Expr (Bound_Limit),
-                                             Dim_Info.Bound_Type);
+                 Convert (Emit_Safe_Expr (Bound_Limit), Dim_Info.Bound_Type);
                Discr_Val   : constant GL_Value  :=
-                 Convert_To_Elementary_Type (Emit_Safe_Expr (Discr_Limit),
-                                             Dim_Info.Bound_Type);
+                 Convert (Emit_Safe_Expr (Discr_Limit), Dim_Info.Bound_Type);
             begin
                Result := (if Is_Low then Build_Max (Bound_Val, Discr_Val)
                           else Build_Min (Bound_Val, Discr_Val));
@@ -584,8 +582,7 @@ package body GNATLLVM.Arrays is
 
    begin
       return NSW_Mul
-        (Convert_To_Size_Type (Comp_Size), Convert_To_Size_Type (Num_Elements),
-         "size");
+        (To_Size_Type (Comp_Size), To_Size_Type (Num_Elements), "size");
    end Get_Array_Type_Size;
 
    ---------------------------
@@ -696,9 +693,9 @@ package body GNATLLVM.Arrays is
                High_Bound           : constant GL_Value  :=
                  Get_Array_Bound (V_Type, Dim, False, V);
                Converted_Low_Bound  : constant GL_Value  :=
-                 Convert_To_Elementary_Type (Low_Bound, Bound_Type);
+                 Convert (Low_Bound, Bound_Type);
                Converted_High_Bound : constant GL_Value  :=
-                 Convert_To_Elementary_Type (High_Bound, Bound_Type);
+                 Convert (High_Bound, Bound_Type);
 
             begin
                Bound_Val := Insert_Value
@@ -770,9 +767,9 @@ package body GNATLLVM.Arrays is
             Dim_Op_Type   : constant Entity_Id      :=
               Get_GEP_Safe_Type (Dim_Low_Bound);
             Converted_Index : constant GL_Value     :=
-              Convert_To_Elementary_Type (User_Index, Dim_Op_Type);
+              Convert (User_Index, Dim_Op_Type);
             Converted_Low_Bound : constant GL_Value :=
-              Convert_To_Elementary_Type (Dim_Low_Bound, Dim_Op_Type);
+              Convert (Dim_Low_Bound, Dim_Op_Type);
 
          begin
             Idxs (J) := NSW_Sub
@@ -809,14 +806,14 @@ package body GNATLLVM.Arrays is
          Unit_Mult : constant GL_Value  :=
            (if Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_Type, For_Type => True));
-         Index     : GL_Value           := Convert_To_Size_Type (Idxs (2));
+         Index     : GL_Value           := To_Size_Type (Idxs (2));
 
       begin
 
          for Dim in 1 .. Number_Dimensions (Array_Type) - 1 loop
             Index := NSW_Add (NSW_Mul (Index,
                                        Get_Array_Length (Array_Type, Dim, V)),
-                              Convert_To_Size_Type (Idxs (Dim + 2)));
+                              To_Size_Type (Idxs (Dim + 2)));
          end loop;
 
          Index := NSW_Mul (Index, Unit_Mult);
@@ -835,19 +832,16 @@ package body GNATLLVM.Arrays is
       Rng : Node_Id;
       V   : GL_Value) return GL_Value
    is
-      Array_Data    : constant GL_Value  := Get (V, Reference);
-      Arr_Type      : constant Entity_Id := Full_Designated_Type (V);
-      Low_Idx_Bound : constant GL_Value  :=
+      Array_Data  : constant GL_Value  := Get (V, Reference);
+      Arr_Type    : constant Entity_Id := Full_Designated_Type (V);
+      Idx_LB      : constant GL_Value  :=
         Get_Array_Bound (Arr_Type, 0, True, V);
-      Index_Val     : constant GL_Value  :=
+      Index_Val   : constant GL_Value  :=
         Emit_Safe_Expr (Low_Bound (Get_Dim_Range (Rng)));
-      Dim_Op_Type   : constant Entity_Id :=
-        Get_GEP_Safe_Type (Low_Idx_Bound);
-      Cvt_Index     : constant GL_Value  :=
-        Convert_To_Elementary_Type (Index_Val, Dim_Op_Type);
-      Cvt_Low_Bound : constant GL_Value  :=
-        Convert_To_Elementary_Type (Low_Idx_Bound, Dim_Op_Type);
-      Index_Shift   : constant GL_Value := NSW_Sub (Cvt_Index, Cvt_Low_Bound);
+      Dim_Op_Type : constant Entity_Id := Get_GEP_Safe_Type (Idx_LB);
+      Cvt_Index   : constant GL_Value  := Convert (Index_Val, Dim_Op_Type);
+      Cvt_LB      : constant GL_Value  := Convert (Idx_LB, Dim_Op_Type);
+      Index_Shift : constant GL_Value  := NSW_Sub (Cvt_Index, Cvt_LB);
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
@@ -873,7 +867,7 @@ package body GNATLLVM.Arrays is
            (if Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_Type, For_Type => True));
          Index         : constant GL_Value  :=
-           NSW_Mul (Convert_To_Size_Type (Index_Shift), Unit_Mult);
+           NSW_Mul (To_Size_Type (Index_Shift), Unit_Mult);
 
       begin
          return Ptr_To_Ref

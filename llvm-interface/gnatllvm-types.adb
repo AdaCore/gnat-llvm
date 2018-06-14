@@ -149,7 +149,7 @@ package body GNATLLVM.Types is
       if Is_Elementary_Type (Full_Etype (N))
         and then Is_Elementary_Type (TE)
       then
-         return Convert_To_Elementary_Type (Emit_Expression (N), TE);
+         return Convert (Emit_Expression (N), TE);
 
       --  Otherwise, we do the same as an unchecked conversion.
 
@@ -159,12 +159,11 @@ package body GNATLLVM.Types is
       end if;
    end Emit_Type_Conversion;
 
-   --------------------------------
-   -- Convert_To_Elementary_Type --
-   --------------------------------
+   -------------
+   -- Convert --
+   -------------
 
-   function Convert_To_Elementary_Type
-     (V : GL_Value; TE : Entity_Id) return GL_Value
+   function Convert (V : GL_Value; TE : Entity_Id) return GL_Value
    is
       type Cvtf is access function
         (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value;
@@ -276,7 +275,7 @@ package body GNATLLVM.Types is
 
       return Subp (Value, TE);
 
-   end Convert_To_Elementary_Type;
+   end Convert;
 
    -----------------------
    -- Convert_To_Access --
@@ -314,13 +313,11 @@ package body GNATLLVM.Types is
       return To_Access (Result, TE);
    end Convert_To_Access;
 
-   --------------------------
-   -- Convert_To_Access_To --
-   --------------------------
+   -----------------
+   -- Convert_Ref --
+   -----------------
 
-   function Convert_To_Access_To
-     (V : GL_Value; TE : Entity_Id) return GL_Value
-   is
+   function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
       V_Type   : constant Entity_Id := Related_Type (V);
       Unc_Src  : constant Boolean   := Is_Access_Unconstrained (V);
       Unc_Dest : constant Boolean   := Is_Unconstrained_Array (TE);
@@ -378,7 +375,7 @@ package body GNATLLVM.Types is
          return Get (V, Fat_Pointer);
 
       elsif Unc_Src and then not Unc_Dest then
-         return Convert_To_Access_To (Get (V, Reference), TE);
+         return Convert_Ref (Get (V, Reference), TE);
       else
          pragma Assert (not Unc_Src and then Unc_Dest);
 
@@ -391,7 +388,7 @@ package body GNATLLVM.Types is
 
          return Convert_Pointer (Get (V, Fat_Pointer), TE);
       end if;
-   end Convert_To_Access_To;
+   end Convert_Ref;
 
    --------------------------------
    -- Emit_Unchecked_Conversion --
@@ -438,7 +435,7 @@ package body GNATLLVM.Types is
       elsif Is_Discrete_Or_Fixed_Point_Type (TE)
         and then Is_Discrete_Or_Fixed_Point_Type (V)
       then
-         return Convert_To_Elementary_Type (V, TE);
+         return Convert (V, TE);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
@@ -461,7 +458,7 @@ package body GNATLLVM.Types is
       elsif Is_Access_Unconstrained (V)
         and then Is_Array_Type (TE) and then Is_Constrained (TE)
       then
-         return Get (Convert_To_Access_To (V, TE), Object);
+         return Get (Convert_Ref (V, TE), Object);
 
       --  If we're converting to an unconstrained array, keep things the
       --  way they are so we preserve bounds.
@@ -611,7 +608,7 @@ package body GNATLLVM.Types is
                                  T_Need => Implementation_Base_Type
                                    (LValue_Pair_Table.Table (J).Typ))
          then
-            return Convert_To_Access_To (LValue_Pair_Table.Table (J), TE);
+            return Convert_Ref (LValue_Pair_Table.Table (J), TE);
          end if;
       end loop;
 
@@ -648,8 +645,8 @@ package body GNATLLVM.Types is
    function Bounds_To_Length
      (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
    is
-      Low      : constant GL_Value := Convert_To_Elementary_Type (In_Low, TE);
-      High     : constant GL_Value := Convert_To_Elementary_Type (In_High, TE);
+      Low      : constant GL_Value := Convert (In_Low, TE);
+      High     : constant GL_Value := Convert (In_High, TE);
       Cmp_Kind : constant Int_Predicate_T :=
         (if Is_Unsigned_Type (TE) then Int_UGT else Int_SGT);
       Is_Empty : constant GL_Value := I_Cmp (Cmp_Kind, Low, High, "is-empty");
@@ -994,7 +991,7 @@ package body GNATLLVM.Types is
          Emit_Assignment (Memory, Empty, V, True, True);
       end if;
 
-      return Convert_To_Access_To (Memory, TE);
+      return Convert_Ref (Memory, TE);
    end Move_Into_Memory;
 
    -----------------------
@@ -1152,15 +1149,6 @@ package body GNATLLVM.Types is
                (1 => Ptr_To_Size_Type (Converted_V), 2 => Size));
       end if;
    end Heap_Deallocate;
-
-   ---------------------------
-   --  Convert_To_Size_Type --
-   ---------------------------
-
-   function Convert_To_Size_Type (V : GL_Value) return GL_Value is
-   begin
-      return Convert_To_Elementary_Type (V, Size_Type);
-   end Convert_To_Size_Type;
 
    --------------
    -- Align_To --

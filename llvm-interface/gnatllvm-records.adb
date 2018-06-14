@@ -1362,7 +1362,7 @@ package body GNATLLVM.Records is
                                         Pointer_Type (RI.LLVM_Type, 0), ""),
                           Rec_Type);
       else
-         Result := Convert_To_Access_To (Result, Rec_Type);
+         Result := Convert_Ref (Result, Rec_Type);
       end if;
 
       --  Finally, do a regular GEP for the field and we're done

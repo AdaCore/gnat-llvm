@@ -369,8 +369,7 @@ package body GNATLLVM.Exprs is
                Expr : constant GL_Value  := Emit_Expression (Right_Opnd (N));
                TE   : constant Entity_Id := Full_Etype (Expr);
                BT   : constant Entity_Id := Implementation_Base_Type (TE);
-               V    : constant GL_Value  :=
-                 Convert_To_Elementary_Type (Expr, BT);
+               V    : constant GL_Value  := Convert (Expr, BT);
 
             begin
                if Is_Floating_Point_Type (BT) then
@@ -506,10 +505,9 @@ package body GNATLLVM.Exprs is
 
       LHS       : constant GL_Value := Emit_Expression (LHS_Node);
       RHS       : constant GL_Value := Emit_Expression (RHS_Node);
-      N         : constant GL_Value := Convert_To_Elementary_Type (RHS, LHS);
+      N         : constant GL_Value := Convert (RHS, LHS);
       LHS_Size  : constant GL_Value := Get_LLVM_Type_Size_In_Bits (LHS);
-      LHS_Bits  : constant GL_Value :=
-        Convert_To_Elementary_Type (LHS_Size, LHS);
+      LHS_Bits  : constant GL_Value := Convert (LHS_Size, LHS);
       Result    : GL_Value          := LHS;
       Saturated : GL_Value;
 
@@ -630,7 +628,7 @@ package body GNATLLVM.Exprs is
             --  the same constraints.  But we do have to be sure that it's
             --  of the right type.
 
-            return Convert_To_Elementary_Type (Emit_LValue (Prefix (N)), TE);
+            return Convert (Emit_LValue (Prefix (N)), TE);
 
          when Attribute_Address
             | Attribute_Pool_Address =>
@@ -710,7 +708,7 @@ package body GNATLLVM.Exprs is
                   Result := Get_Undef (TE);
                end if;
 
-               return Convert_To_Elementary_Type (Result, TE);
+               return Convert (Result, TE);
             end;
 
          when Attribute_Position =>
@@ -728,7 +726,7 @@ package body GNATLLVM.Exprs is
 
             --  We don't support packing, so this is always the size minus 1
 
-            return Convert_To_Elementary_Type
+            return Convert
               (NSW_Sub (NSW_Mul (Get_Type_Size (Full_Etype (Prefix (N))),
                                  Size_Const_Int (Uint_8)),
                         Size_Const_Int (Uint_1)),
@@ -814,15 +812,14 @@ package body GNATLLVM.Exprs is
                                   else Emit_LValue (Prefix (N)));
                V := Get_Type_Size (Prefix_Type, V, For_Type);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
-                  return Convert_To_Elementary_Type (V, TE);
+                  return Convert (V, TE);
                else
-                  return Convert_To_Elementary_Type
-                    (NSW_Mul (V, Size_Const_Int (Uint_8)), TE);
+                  return Convert (NSW_Mul (V, Size_Const_Int (Uint_8)), TE);
                end if;
             end;
 
          when Attribute_Component_Size =>
-            return Convert_To_Elementary_Type
+            return Convert
               (NSW_Mul (Get_Type_Size
                           (Full_Component_Type (Full_Etype (Prefix (N))),
                            For_Type => True),
@@ -918,7 +915,7 @@ package body GNATLLVM.Exprs is
          --  The easy case: convert the source to the destination type and
          --  store it.
 
-         Store (Convert_To_Elementary_Type (Get (Src, Data), Dest_Type), Dest);
+         Store (Convert (Get (Src, Data), Dest_Type), Dest);
 
       elsif (Present (E) and then not Is_Dynamic_Size (Full_Etype (E)))
          or else (Present (E_Value) and then not Is_Reference (E_Value))

@@ -127,16 +127,15 @@ package GNATLLVM.Types is
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
      with Pre => Is_Type (TE);
 
-   function Convert_To_Elementary_Type
-     (V : GL_Value; TE : Entity_Id) return GL_Value
+   function Convert (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Elementary_Type (TE) and then Is_Elementary_Type (V),
-          Post => Is_Elementary_Type (Convert_To_Elementary_Type'Result);
+          Post => Is_Elementary_Type (Convert'Result);
    --  Convert Expr to the type TE, with both the types of Expr and TE
    --  being elementary.
 
-   function Convert_To_Access_To (V : GL_Value; TE : Entity_Id) return GL_Value
+   function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Convert_To_Access_To'Result);
+          Post => Is_Access_Type (Convert_Ref'Result);
    --  Convert Src, which should be an access, into an access to Desig_Type
 
    function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value
@@ -144,11 +143,11 @@ package GNATLLVM.Types is
           Post => Is_Access_Type (Convert_To_Access'Result);
    --  Convert Src, which should be an access, into an access type TE
 
-   function Convert_To_Access_To
+   function Convert_Ref
      (V : GL_Value; T : GL_Value) return GL_Value is
-     (Convert_To_Access_To (V, Full_Etype (T)))
+     (Convert_Ref (V, Full_Etype (T)))
      with Pre  => Present (V) and then Present (T),
-          Post => Is_Access_Type (Convert_To_Access_To'Result);
+          Post => Is_Access_Type (Convert_Ref'Result);
    --  Likewise, but get type from V
 
    function Convert_To_Access
@@ -183,12 +182,10 @@ package GNATLLVM.Types is
    --  V is a reference to some object.  Convert it to a reference to TE
    --  with the same relationship.
 
-   function Convert_To_Elementary_Type
-     (V : GL_Value; T : GL_Value) return GL_Value
-   is
-     (Convert_To_Elementary_Type (V, Full_Etype (T)))
+   function Convert (V : GL_Value; T : GL_Value) return GL_Value is
+     (Convert (V, Full_Etype (T)))
      with Pre  => Is_Elementary_Type (V) and then Is_Elementary_Type (T),
-          Post => Is_Elementary_Type (Convert_To_Elementary_Type'Result);
+          Post => Is_Elementary_Type (Convert'Result);
    --  Variant of above where the type is that of another value (T)
 
    function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
@@ -275,9 +272,10 @@ package GNATLLVM.Types is
                   and then (No (Proc) or else Present (Pool));
    --  Free memory allocated by Heap_Allocate_For_Type
 
-   function Convert_To_Size_Type (V : GL_Value) return GL_Value
+   function To_Size_Type (V : GL_Value) return GL_Value is
+     (Convert (V, Size_Type))
      with Pre  => Present (V),
-          Post => Type_Of (Convert_To_Size_Type'Result) = LLVM_Size_Type;
+          Post => Type_Of (To_Size_Type'Result) = LLVM_Size_Type;
    --  Convert V to Size_Type.  This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 

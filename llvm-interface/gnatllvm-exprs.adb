@@ -145,9 +145,9 @@ package body GNATLLVM.Exprs is
       Left_BT    : constant Entity_Id := Implementation_Base_Type (Left_Type);
       Right_BT   : constant Entity_Id := Implementation_Base_Type (Right_Type);
       LVal       : constant GL_Value  :=
-        Build_Type_Conversion (LHS_Node, Left_BT);
+        Emit_Type_Conversion (LHS_Node, Left_BT);
       RVal       : constant GL_Value  :=
-        Build_Type_Conversion (RHS_Node, Right_BT);
+        Emit_Type_Conversion (RHS_Node, Right_BT);
       FP         : constant Boolean   := Is_Floating_Point_Type (Left_BT);
       Ovfl_Check : constant Boolean   := Do_Overflow_Check (N);
       Unsign     : constant Boolean   := Is_Unsigned_Type (Left_BT);
@@ -447,14 +447,14 @@ package body GNATLLVM.Exprs is
         or else Get_Uint_Value (Out_LB) > Get_Uint_Value (In_LB)
       then
          Compare_LB := Emit_Elementary_Comparison
-           (N_Op_Ge, V, Build_Type_Conversion (Out_LB, In_TE));
+           (N_Op_Ge, V, Emit_Type_Conversion (Out_LB, In_TE));
       end if;
 
       if In_FP or else Out_FP
         or else Get_Uint_Value (Out_UB) < Get_Uint_Value (In_UB)
       then
          Compare_UB := Emit_Elementary_Comparison
-           (N_Op_Le, V, Build_Type_Conversion (Out_UB, In_TE));
+           (N_Op_Le, V, Emit_Type_Conversion (Out_UB, In_TE));
       end if;
 
       --  If neither comparison is needed, we're done
@@ -741,7 +741,7 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Pos
             | Attribute_Val =>
-            return Build_Type_Conversion (First (Expressions (N)), TE);
+            return Emit_Type_Conversion (First (Expressions (N)), TE);
 
          when Attribute_Succ
             | Attribute_Pred =>

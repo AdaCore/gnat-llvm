@@ -589,7 +589,7 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Unchecked_Type_Conversion =>
-            return Build_Unchecked_Conversion (Expression (N), TE);
+            return Emit_Unchecked_Conversion (Expression (N), TE);
 
          when N_Type_Conversion =>
             if Is_Elementary_Type (TE) and then Do_Overflow_Check (N) then
@@ -597,11 +597,11 @@ package body GNATLLVM.Compile is
                Emit_Overflow_Check (Result, N);
                return Convert_To_Elementary_Type (Result, TE);
             else
-               return Build_Type_Conversion (Expression (N), TE);
+               return Emit_Type_Conversion (Expression (N), TE);
             end if;
 
          when N_Qualified_Expression =>
-            return Build_Type_Conversion (Expression (N), TE);
+            return Emit_Type_Conversion (Expression (N), TE);
 
          when N_Identifier
             | N_Expanded_Name

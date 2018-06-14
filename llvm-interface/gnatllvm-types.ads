@@ -164,17 +164,17 @@ package GNATLLVM.Types is
    --  Return True iff T1 and T2 are array types that have at least
    --  one index for whose LLVM types are different.  T1 must be unconstrained.
 
-   function Build_Type_Conversion (N : Node_Id; TE : Entity_Id) return GL_Value
+   function Emit_Type_Conversion (N : Node_Id; TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE),
-          Post => Present (Build_Type_Conversion'Result);
+          Post => Present (Emit_Type_Conversion'Result);
    --  Emit code to convert Expr to Dest_Type
 
-   function Build_Unchecked_Conversion
+   function Emit_Unchecked_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE) and then TE = Get_Fullest_View (TE)
                   and then Present (N),
-          Post => Present (Build_Unchecked_Conversion'Result);
+          Post => Present (Emit_Unchecked_Conversion'Result);
    --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
    function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value

@@ -681,7 +681,7 @@ package body GNATLLVM.Subprograms is
 
          begin
             if Present (Typ) then
-               Set_Value (Stmt, Build_Type_Conversion (Stmt, Typ));
+               Set_Value (Stmt, Emit_Type_Conversion (Stmt, Typ));
             else
                --  If Stmt is an N_Handled_Sequence_Of_Statements, it
                --  must have come from a package body.  Make a block around
@@ -788,7 +788,7 @@ package body GNATLLVM.Subprograms is
                Build_Ret (Convert_To_Access_To (Emit_LValue (Expr), TE));
 
             else
-               Build_Ret (Build_Type_Conversion (Expr, TE));
+               Build_Ret (Emit_Type_Conversion (Expr, TE));
             end if;
          end;
       else
@@ -1171,7 +1171,7 @@ package body GNATLLVM.Subprograms is
 
             Args (Idx) := Arg;
          else
-            Args (Idx) := Build_Type_Conversion (Actual, P_Type);
+            Args (Idx) := Emit_Type_Conversion (Actual, P_Type);
          end if;
 
          Idx := Idx + 1;

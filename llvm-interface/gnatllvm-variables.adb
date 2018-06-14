@@ -791,7 +791,7 @@ package body GNATLLVM.Variables is
             if Library_Level then
                Add_To_Elab_Proc (Expr, For_Type => TE);
             else
-               Set_Value (Expr, Build_Type_Conversion (Expr, TE));
+               Set_Value (Expr, Emit_Type_Conversion (Expr, TE));
             end if;
          end if;
 
@@ -858,7 +858,7 @@ package body GNATLLVM.Variables is
               and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
             then
                if No (Value) then
-                  Value := Build_Type_Conversion (Expr, TE);
+                  Value := Emit_Type_Conversion (Expr, TE);
                end if;
 
                if Is_Constr_Subt_For_UN_Aliased (TE)
@@ -998,7 +998,7 @@ package body GNATLLVM.Variables is
         and then (not Library_Level
                     or else Compile_Time_Known_Value (Name (N)))
       then
-         Set_Value (Def_Ident, Build_Type_Conversion (Name (N), TE));
+         Set_Value (Def_Ident, Emit_Type_Conversion (Name (N), TE));
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
          Set_Value (Def_Ident,
                     Convert_To_Access_To (Emit_LValue (Name (N)), TE));

@@ -136,11 +136,11 @@ package body GNATLLVM.Types is
       return False;
    end Are_Arrays_With_Different_Index_Types;
 
-   ---------------------------
-   -- Build_Type_Conversion --
-   ---------------------------
+   --------------------------
+   -- Emit_Type_Conversion --
+   --------------------------
 
-   function Build_Type_Conversion
+   function Emit_Type_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value is
 
    begin
@@ -154,10 +154,10 @@ package body GNATLLVM.Types is
       --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         return Build_Unchecked_Conversion (N, TE);
+         return Emit_Unchecked_Conversion (N, TE);
 
       end if;
-   end Build_Type_Conversion;
+   end Emit_Type_Conversion;
 
    --------------------------------
    -- Convert_To_Elementary_Type --
@@ -394,10 +394,10 @@ package body GNATLLVM.Types is
    end Convert_To_Access_To;
 
    --------------------------------
-   -- Build_Unchecked_Conversion --
+   -- Emit_Unchecked_Conversion --
    --------------------------------
 
-   function Build_Unchecked_Conversion
+   function Emit_Unchecked_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value
    is
       T : constant Type_T := Create_Type (TE);
@@ -491,7 +491,7 @@ package body GNATLLVM.Types is
 
          return Get (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), Object);
       end if;
-   end Build_Unchecked_Conversion;
+   end Emit_Unchecked_Conversion;
 
    ---------------------
    -- Convert_Pointer --
@@ -947,8 +947,8 @@ package body GNATLLVM.Types is
       pragma Assert (Nkind_In (SRange, N_Range,
                                N_Signed_Integer_Type_Definition));
 
-      Low := Build_Type_Conversion (Low_Bound (SRange), TE);
-      High := Build_Type_Conversion (High_Bound (SRange), TE);
+      Low  := Emit_Type_Conversion (Low_Bound (SRange), TE);
+      High := Emit_Type_Conversion (High_Bound (SRange), TE);
 
    end Bounds_From_Type;
 

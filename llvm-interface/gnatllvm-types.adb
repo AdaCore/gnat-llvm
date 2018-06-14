@@ -323,10 +323,36 @@ package body GNATLLVM.Types is
       Unc_Dest : constant Boolean   := Is_Unconstrained_Array (TE);
 
    begin
-      --  ???  This function is a mess and doesn't take into account
-      --  that we might have a different relationship to a type than
-      --  the default, in which case we likely want to preserve that
-      --  relationship.
+      --  V is some type of reference to some type.  We want to
+      --  convert it to be some type of reference to TE, which may be
+      --  some other type (if it's the same, we have no work to do).  The
+      --  relationship of the result to TE may or may not be the same as
+      --  the relationship of V to its type.
+      --
+      --  We want to do as little work here as possible because we don't
+      --  know what our caller will be doing with the result and want to
+      --  avoid a situation where what we do has to be undone by our caller.
+      --  However, the following must be true:
+      --
+      --  (1) The result must be SOME valid representation of TE
+      --  (2) We must not lose any information, especially information that
+      --      we can't recover, but should also not discard any information
+      --      that we might conceivable need later if we can keep it
+      --
+      --  These principles dictate our behavior in all cases.  For example,
+      --  if the input is a fat pointer, we should try to retain it as a
+      --  fat pointer even if TE is constrained because we may want those
+      --  bounds if we later convert to an unconstrained type.  However, if
+      --  we're converting to a constrained array with an index type that
+      --  has a different LLVM type, we discard the bounds rather than
+      --  recomputing them since we may NOT need them and hence may be
+      --  wasting that computation.  On the other hand, if the input is a a
+      --  constrained array type and the output is unconstrained, we MUST
+      --  materialize the bounds because they come from the bounds of the
+      --  constrained array and would be lost if we were to just return a
+      --  pointer to the data with an unconstrained type.
+      --
+      --  ??? Need to rewrite to implement the above
 
       --  First deal with the case where we're converting between two arrays
       --  with different index types and TE is unconstrained.  In that case,

@@ -111,7 +111,8 @@ package GNATLLVM.GLValue is
       Any_Reference,
       --  Valid only as an operand to Get and indicates that a value with
       --  any reference to data can be returned.  This includes fat and
-      --  thin pointers, but not such things as references to bounds.
+      --  thin pointers, but not such things as references to bounds
+      --  or references to references.
 
       Reference_For_Integer,
       --  Valid only as an operand to Get and indicates that a value

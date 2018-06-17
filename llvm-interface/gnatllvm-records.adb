@@ -1493,7 +1493,7 @@ package body GNATLLVM.Records is
                   if Present (F_Idx) then
                      Result := Insert_Value
                        (Result,
-                        Emit_Type_Conversion (Expression (Expr), F_Type),
+                        Emit_Convert_Value (Expression (Expr), F_Type),
                         unsigned
                           (Field_Info_Table.Table (F_Idx).Field_Ordinal));
                   else

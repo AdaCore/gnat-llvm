@@ -28,22 +28,35 @@ package GNATLLVM.Compile is
    --  latter case, if Starting_At is Present, it indicates the starting
    --  point of nodes to emit; otherwise the entire list is emitted.
 
-   function Emit_Expression (N : Node_Id) return GL_Value
-     with Pre => Present (N), Post => Present (Emit_Expression'Result);
-   --  Compile an expression node to an LLVM value
+   function Emit (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit'Result);
+   --  Compile an expression node to an LLVM value or a reference to the
+   --  value, whichever involves the least work
+
+   function Emit_LValue (N : Node_Id) return GL_Value is
+     (Get (Emit (N), Any_Reference))
+     with Pre  => Present (N),
+          Post => Present (Emit_LValue'Result);
+   --  Compile an expression node to an LLVM value that's a reference.
+   --  If N corresponds to an LValue in the language, then the result
+   --  will also be an LValue.
+
+   function Emit_Safe_LValue (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit_Safe_LValue'Result);
+   --  Likewise, but push the LValue pair table so we compute this as
+   --  a safe subexpression.
+
+   function Emit_Expression (N : Node_Id) return GL_Value is
+     (Get (Emit (N), Object))
+     with Pre  => Present (N),
+          Post => Present (Emit_Expression'Result);
+   --  Likewise, but return something that's to be used as a value (but
+   --  may nevertheless be a reference if its type is of variable size).
 
    function Emit_Safe_Expr (N : Node_Id) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Safe_Expr'Result);
    --  Likewise, but push the LValue pair table so we compute this as
    --  a safe subexpression.
-
-   function Emit_LValue (N : Node_Id; Clear : Boolean := True) return GL_Value
-     with Pre  => Present (N),
-          Post => Present (Emit_LValue'Result);
-   --  Compile an expression node to an LLVM value that can be used as an
-   --  LValue. This function can be used to get a pointer to a value rather
-   --  than the value itself (out parameters, simple accesses, etc).  If
-   --  Clear is False, we don't reset the list used by Get_Matching_Value.
 
    procedure Process_Freeze_Entity (N : Node_Id)
      with Pre => Nkind (N) = N_Freeze_Entity;

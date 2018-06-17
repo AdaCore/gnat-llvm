@@ -791,7 +791,7 @@ package body GNATLLVM.Variables is
             if Library_Level then
                Add_To_Elab_Proc (Expr, For_Type => TE);
             else
-               Set_Value (Expr, Emit_Type_Conversion (Expr, TE));
+               Set_Value (Expr, Emit_Convert_Value (Expr, TE));
             end if;
          end if;
 
@@ -858,7 +858,7 @@ package body GNATLLVM.Variables is
               and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
             then
                if No (Value) then
-                  Value := Emit_Type_Conversion (Expr, TE);
+                  Value := Emit_Convert_Value (Expr, TE);
                end if;
 
                if Is_Constr_Subt_For_UN_Aliased (TE)
@@ -998,7 +998,7 @@ package body GNATLLVM.Variables is
         and then (not Library_Level
                     or else Compile_Time_Known_Value (Name (N)))
       then
-         Set_Value (Def_Ident, Emit_Type_Conversion (Name (N), TE));
+         Set_Value (Def_Ident, Emit_Convert_Value (Name (N), TE));
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
          Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
 
@@ -1011,39 +1011,29 @@ package body GNATLLVM.Variables is
       end if;
    end Emit_Renaming_Declaration;
 
-   -----------------------------
-   --  Emit_Identifier_LValue --
-   -----------------------------
+   ---------------------
+   -- Emit_Identifier --
+   ---------------------
 
-   function Emit_Identifier_LValue (N : Node_Id) return GL_Value is
-      Def_Ident : Entity_Id :=
+   function Emit_Identifier (N : Node_Id) return GL_Value is
+      TE        : constant Entity_Id := Full_Etype (N);
+      E         : constant Entity_Id :=
         (if Nkind (N) in N_Entity then N else Entity (N));
-      TE        : Entity_Id := Full_Etype (Def_Ident);
-      V         : GL_Value  := Get_Value (Def_Ident);
-      V1        : GL_Value;
+      Def_Ident : constant Entity_Id :=
+        (if Ekind (E) = E_Constant and then Present (Full_View (E))
+           and then No (Address_Clause (E)) then Full_View (E) else E);
+      Expr      : constant Node_Id   :=
+        (if Ekind (Def_Ident) = E_Constant
+         then Constant_Value (Def_Ident) else Empty);
+      V_Act     : constant GL_Value  := Get_From_Activation_Record (Def_Ident);
+      V         : GL_Value           := Get_Value (Def_Ident);
 
    begin
-      --  If this is a deferred constant, look at the private version
+      --  See if this is an entity that's present in our
+      --  activation record. Return it if so.
 
-      if Ekind (Def_Ident) = E_Constant
-        and then Present (Full_View (Def_Ident))
-        and then No (Address_Clause (Def_Ident))
-      then
-         Def_Ident := Full_View (Def_Ident);
-         V         := Get_Value (Def_Ident);
-      end if;
-
-      --  See if this is an entity that's present in our activation
-      --  record. Return it if so.
-
-      V1 := Get_From_Activation_Record (Def_Ident);
-      if Present (V1) then
-         return V1;
-
-         --  If this a label, we can use "blockaddress"
-
-      elsif Ekind (Def_Ident) = E_Label then
-         return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
+      if Present (V_Act) then
+         return V_Act;
 
       --  N_Defining_Identifier nodes for enumeration literals are not
       --  stored in the environment. Handle them here.
@@ -1051,12 +1041,19 @@ package body GNATLLVM.Variables is
       elsif Ekind (Def_Ident) = E_Enumeration_Literal then
          return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
+      --  If this a label, we can use "blockaddress"
+
+      elsif Ekind (Def_Ident) = E_Label then
+         return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
+
+      --  If this is a subprogram, we have to check for a few extra things
+
       elsif Ekind (Def_Ident) in Subprogram_Kind then
 
          --  If this has an Alias, use that
 
          if Present (Alias (Def_Ident)) then
-            return Emit_Identifier_LValue (Alias (Def_Ident));
+            return Emit_Identifier (Alias (Def_Ident));
          end if;
 
          --  If we haven't gotten one yet, make it
@@ -1067,95 +1064,37 @@ package body GNATLLVM.Variables is
 
          --  If we are elaborating this for 'Access, we want the actual
          --  subprogram type here, not the type of the return value, which
-         --  is what TE is set to.
+         --  is what TE is set to.  We also have to make a
+         --  Fat_Reference_To_Subprogram here since it's too late to make
+         --  it in Get because we've lost what subprogram it was for.
 
          if Nkind (Parent (N)) = N_Attribute_Reference
            and then Is_Access_Type (Full_Etype (Parent (N)))
          then
-            TE := Full_Designated_Type (Full_Etype (Parent (N)));
+            declare
+               Typ : constant Entity_Id :=
+                 Full_Designated_Type (Full_Etype (Parent (N)));
 
-            --  Return a callback, which is a pair: subprogram code
-            --  pointer and static link argument.
-
-            V := Insert_Value
-              (Insert_Value (Get_Undef_Ref (TE), Get_Static_Link (N), 1),
-               Pointer_Cast (V, Standard_A_Char), 0);
+            begin
+               return Insert_Value
+                 (Insert_Value (Get_Undef_Ref (Typ), Get_Static_Link (N), 1),
+                  Pointer_Cast (V, Standard_A_Char), 0);
+            end;
+         else
+            return V;
          end if;
-
-         return V;
-
-      --  If we haven't seen this variable and it's not in our code unit,
-      --  make a global for it.
-
-      elsif No (V) and then not In_Extended_Main_Code_Unit (Def_Ident) then
-         V := Make_Global_Variable (Def_Ident);
-      end if;
-
-      return Get (V, Any_Reference);
-
-   end Emit_Identifier_LValue;
-
-   ---------------------------
-   -- Emit_Identifier_Value --
-   ---------------------------
-
-   function Emit_Identifier_Value (N : Node_Id) return GL_Value is
-      TE        : constant Entity_Id := Full_Etype (N);
-      E         : constant Entity_Id :=
-        (if Nkind (N) in N_Entity then N else Entity (N));
-      Def_Ident : constant Entity_Id :=
-        (if Ekind (E) = E_Constant and then Present (Full_View (E))
-           and then No (Address_Clause (E)) then Full_View (E) else E);
-      Decl      : constant Node_Id   := Declaration_Node (Def_Ident);
-      Expr      : constant Node_Id   :=
-         (if Nkind (Decl) = N_Object_Declaration
-            and then not No_Initialization (Decl)
-          then Expression (Decl) else Empty);
-      V         : GL_Value;
-
-   begin
-      --  See if this is an entity that's present in our
-      --  activation record. Return it if so.
-
-      V := Get_From_Activation_Record (Def_Ident);
-      if Present (V) then
-         return Get (V, Object);
-
-      --  N_Defining_Identifier nodes for enumeration literals are not
-      --  stored in the environment. Handle them here.
-
-      elsif Ekind (Def_Ident) = E_Enumeration_Literal then
-         return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
       --  If this entity has a known constant value, use it
 
-      elsif Ekind (Def_Ident) = E_Constant
-        and then Present (Constant_Value (Def_Ident))
-        and then Compile_Time_Known_Value (Constant_Value (Def_Ident))
-      then
-         return Emit_Expression (Constant_Value (Def_Ident));
+      elsif Present (Expr) and then Compile_Time_Known_Value (Expr) then
+         return Emit_Expression (Expr);
 
       --  If this is a bare discriminant, it's a reference to the
       --  discriminant of some record.
 
       elsif Ekind (Def_Ident) = E_Discriminant then
          return Use_Discriminant_For_Bound (Def_Ident);
-
-      --  Replace constant references by the direct values, to avoid a
-      --  level of indirection for e.g. private values and to allow
-      --  generation of static values and static aggregates.
-
-      elsif Is_Constant_Folded (Def_Ident) and then Present (Expr)
-        and then (Nkind_In (Expr, N_Character_Literal,
-                            N_Integer_Literal, N_Real_Literal)
-                    or else (Nkind (Expr) = N_Identifier
-                               and then (Ekind (Entity (Expr)) =
-                                           E_Enumeration_Literal)))
-      then
-         return Emit_Expression (Expr);
       end if;
-
-      V := Get_Value (Def_Ident);
 
       --  If we haven't seen this variable and it's not in our code unit,
       --  make a global for it.
@@ -1164,7 +1103,11 @@ package body GNATLLVM.Variables is
          V := Make_Global_Variable (Def_Ident);
       end if;
 
-      return Get (V, Object);
-   end Emit_Identifier_Value;
+      --  Now return what we got (if we didn't get anything by now,
+      --  we have an internal error).  But avoid returning a double reference.
+
+      return (if Is_Double_Reference (V) then  Get (V, Any_Reference) else V);
+
+   end Emit_Identifier;
 
 end GNATLLVM.Variables;

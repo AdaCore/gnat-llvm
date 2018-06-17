@@ -159,6 +159,26 @@ package body GNATLLVM.Types is
       end if;
    end Emit_Type_Conversion;
 
+   -----------------------
+   -- Is_Nop_Conversion --
+   -----------------------
+
+   function Is_Nop_Conversion (V : GL_Value; TE : Entity_Id) return Boolean is
+      Out_T : constant Type_T := Create_Type (TE);
+      In_T  : constant Type_T :=
+        (if Get_Type_Kind (Type_Of (V)) = Pointer_Type_Kind
+         then Get_Element_Type (Type_Of (V)) else No_Type_T);
+
+   begin
+      --  This is a no-op if the two LLVM types are the same or if both
+      --  GNAT types aren't scalar types.
+
+      return Out_T = In_T
+        or else (not Is_Scalar_Type (TE)
+                   and then not Is_Scalar_Type (Related_Type (V)));
+
+   end Is_Nop_Conversion;
+
    -------------
    -- Convert --
    -------------
@@ -381,7 +401,7 @@ package body GNATLLVM.Types is
       --  undefined on such objects.
 
       if Is_Subprogram_Reference (V) then
-         return Ptr_To_Ref (V, TE);
+         return Ptr_To_Relationship (V, TE, Reference);
 
       --  If neither is constrained, but they aren't the same type, just do
       --  a pointer cast unless we have to convert between function access
@@ -423,15 +443,40 @@ package body GNATLLVM.Types is
    function Emit_Unchecked_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value
    is
-      T : constant Type_T := Create_Type (TE);
-      V :  GL_Value       := Emit_Expression (N);
+      T      : constant Type_T    := Create_Type (TE);
+      V      :  GL_Value          := Emit (N);
+      V_Type : constant Entity_Id := Related_Type (V);
 
    begin
       --  If the value is already of the desired LLVM type, we're done,
-      --  but show that the result is the new type.
+      --  but show that the result is the new type and be sure that we're
+      --  not trying to have Data of a variable-sized type.
 
-      if Type_Of (V) = Create_Type (TE) then
-         return G_Is (V, TE);
+      if ((Is_Reference (V) and then Type_Of (V) = Pointer_Type (T, 0))
+          or else (not Is_Reference (V) and then Type_Of (V) = T))
+        and then (not Is_Dynamic_Size (TE) or else Is_Reference (V))
+      then
+         return G (LLVM_Value (V), TE, Relationship (V));
+
+      --  The front end uses unchecked conversions for scalar types as
+      --  if it's a normal type conversion, but only if it's not a
+      --  conversion between FP and integer.  So handle that case.
+
+      elsif Is_Scalar_Type (TE) and then not Is_Packed_Array_Impl_Type (TE)
+        and then Is_Scalar_Type (V_Type)
+        and then not Is_Packed_Array_Impl_Type (V_Type)
+        and then Is_Floating_Point_Type (TE) = Is_Floating_Point_Type (V_Type)
+        and then Nkind (Parent (N)) = N_Unchecked_Type_Conversion
+      then
+         return Convert (Get (V, Data), TE);
+
+      --  If we have a reference to a value, just convert that to a reference
+      --  to the new types.  This is not only more efficient, but required
+      --  since the front end may put an unchecked conversion on the LHS of
+      --  an assignment.
+
+      elsif Is_Reference (V) then
+         return Convert_Ref (V, TE);
 
       --  If converting pointer to pointer or pointer to/from integer, we
       --  just copy the bits using the appropriate instruction.
@@ -592,6 +637,16 @@ package body GNATLLVM.Types is
    procedure Add_To_LValue_List (V : GL_Value) is
    begin
       LValue_Pair_Table.Append (V);
+   end Add_To_LValue_List;
+
+   -------------------------
+   --  Add_To_LValue_List --
+   -------------------------
+
+   function Add_To_LValue_List (V : GL_Value) return GL_Value is
+   begin
+      Add_To_LValue_List (V);
+      return V;
    end Add_To_LValue_List;
 
    ------------------
@@ -970,8 +1025,8 @@ package body GNATLLVM.Types is
       pragma Assert (Nkind_In (SRange, N_Range,
                                N_Signed_Integer_Type_Definition));
 
-      Low  := Emit_Type_Conversion (Low_Bound (SRange), TE);
-      High := Emit_Type_Conversion (High_Bound (SRange), TE);
+      Low  := Emit_Convert_Value (Low_Bound (SRange), TE);
+      High := Emit_Convert_Value (High_Bound (SRange), TE);
 
    end Bounds_From_Type;
 
@@ -1105,7 +1160,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call_Alloc_Dealloc (Proc,
-               (1 => Ptr_To_Ref (Emit_LValue (Pool, Clear => False),
+               (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
                                  Full_Etype (First_Formal (Proc))),
                 2 => Ret_Loc, 3 => Size, 4 => Align_V));
 
@@ -1163,7 +1218,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Call_Alloc_Dealloc (Proc,
-               (1 => Ptr_To_Ref (Emit_LValue (Pool, Clear => False),
+               (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
                                  Full_Etype (First_Formal (Proc))),
                 2 => Ptr_To_Size_Type (Converted_V),
                 3 => Size, 4 => Align_V));

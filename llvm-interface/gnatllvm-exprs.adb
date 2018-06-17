@@ -142,15 +142,13 @@ package body GNATLLVM.Exprs is
       RHS_Node   : constant Node_Id   := Right_Opnd (N);
       Left_Type  : constant Entity_Id := Full_Etype (LHS_Node);
       Right_Type : constant Entity_Id := Full_Etype (RHS_Node);
-      Left_BT    : constant Entity_Id := Implementation_Base_Type (Left_Type);
-      Right_BT   : constant Entity_Id := Implementation_Base_Type (Right_Type);
-      LVal       : constant GL_Value  :=
-        Emit_Type_Conversion (LHS_Node, Left_BT);
-      RVal       : constant GL_Value  :=
-        Emit_Type_Conversion (RHS_Node, Right_BT);
-      FP         : constant Boolean   := Is_Floating_Point_Type (Left_BT);
+      LHS_BT     : constant Entity_Id := Implementation_Base_Type (Left_Type);
+      RHS_BT     : constant Entity_Id := Implementation_Base_Type (Right_Type);
+      LVal       : constant GL_Value  := Emit_Convert_Value (LHS_Node, LHS_BT);
+      RVal       : constant GL_Value  := Emit_Convert_Value (RHS_Node, RHS_BT);
+      FP         : constant Boolean   := Is_Floating_Point_Type (LHS_BT);
       Ovfl_Check : constant Boolean   := Do_Overflow_Check (N);
-      Unsign     : constant Boolean   := Is_Unsigned_Type (Left_BT);
+      Unsign     : constant Boolean   := Is_Unsigned_Type (LHS_BT);
       Subp       : Opf                := null;
       Result     : GL_Value;
       Ovfl_Name  : String (1 .. 4);
@@ -212,9 +210,9 @@ package body GNATLLVM.Exprs is
 
          declare
             Func      : constant GL_Value  := Build_Intrinsic
-              (Overflow, "llvm." & Ovfl_Name & ".with.overflow.i", Left_BT);
+              (Overflow, "llvm." & Ovfl_Name & ".with.overflow.i", LHS_BT);
             Fn_Ret    : constant GL_Value  :=
-              Call (Func, Left_BT, (1 => LVal, 2 => RVal));
+              Call (Func, LHS_BT, (1 => LVal, 2 => RVal));
             Overflow  : constant GL_Value  :=
               Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
             Label_Ent : constant Entity_Id :=
@@ -231,7 +229,7 @@ package body GNATLLVM.Exprs is
                Emit_Overflow_Call_If (Overflow, N);
             end if;
 
-            Result := Extract_Value (Left_BT, Fn_Ret, 0);
+            Result := Extract_Value (LHS_BT, Fn_Ret, 0);
          end;
       end if;
 
@@ -446,14 +444,14 @@ package body GNATLLVM.Exprs is
         or else Get_Uint_Value (Out_LB) > Get_Uint_Value (In_LB)
       then
          Compare_LB := Emit_Elementary_Comparison
-           (N_Op_Ge, V, Emit_Type_Conversion (Out_LB, In_TE));
+           (N_Op_Ge, V, Emit_Convert_Value (Out_LB, In_TE));
       end if;
 
       if In_FP or else Out_FP
         or else Get_Uint_Value (Out_UB) < Get_Uint_Value (In_UB)
       then
          Compare_UB := Emit_Elementary_Comparison
-           (N_Op_Le, V, Emit_Type_Conversion (Out_UB, In_TE));
+           (N_Op_Le, V, Emit_Convert_Value (Out_UB, In_TE));
       end if;
 
       --  If neither comparison is needed, we're done
@@ -610,8 +608,7 @@ package body GNATLLVM.Exprs is
    -- Emit_Attribute_Reference --
    ------------------------------
 
-   function Emit_Attribute_Reference
-     (N : Node_Id; LValue : Boolean) return GL_Value
+   function Emit_Attribute_Reference (N : Node_Id) return GL_Value
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
       TE   : constant Entity_Id    := Full_Etype (N);
@@ -646,8 +643,7 @@ package body GNATLLVM.Exprs is
                pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
 
             begin
-               V := Int_To_Ref (Emit_Expression (Expr), TE, "attr-deref");
-               return (if LValue then V else Get (V, Object));
+               return Int_To_Ref (Emit_Expression (Expr), TE, "attr-deref");
             end;
 
          when Attribute_First
@@ -656,8 +652,8 @@ package body GNATLLVM.Exprs is
             | Attribute_Range_Length =>
 
             declare
-               Prefix_Type : constant Entity_Id := Full_Etype (Prefix (N));
-               Dim         : constant Nat       :=
+               Prefix_Type : Entity_Id    := Full_Etype (Prefix (N));
+               Dim         : constant Nat :=
                  (if Present (Expressions (N))
                   then UI_To_Int (Intval (First (Expressions (N)))) - 1
                   else 0);
@@ -692,6 +688,7 @@ package body GNATLLVM.Exprs is
                      Array_Descr := No_GL_Value;
                   else
                      Array_Descr := Emit_LValue (Prefix (N));
+                     Prefix_Type := Related_Type (Array_Descr);
                   end if;
 
                   if Attr = Attribute_Length then
@@ -714,7 +711,7 @@ package body GNATLLVM.Exprs is
          when Attribute_Position =>
 
             return Emit_Field_Position (Entity (Selector_Name (Prefix (N))),
-                                      Emit_LValue (Prefix (Prefix (N))));
+                                        Emit_LValue (Prefix (Prefix (N))));
 
          when Attribute_First_Bit | Attribute_Bit =>
 
@@ -881,7 +878,7 @@ package body GNATLLVM.Exprs is
 
       if No (Src) then
          if Is_Dynamic_Size (Src_Type) then
-            Src := Emit_LValue (E, Clear => False);
+            Src := Emit_LValue (E);
          else
             Src := Emit_Expression (E);
          end if;

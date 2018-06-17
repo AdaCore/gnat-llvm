@@ -374,11 +374,20 @@ package body GNATLLVM.GLValue is
       --  passing them using 'Unrestricted_Access and will have problems if
       --  it's on the stack of the calling subprogram since the called
       --  subprogram may capture the address and store it for later (this
-      --  happens a lot with tasking).  ???  We should check if V is a load
-      --  instruction and just take the operand of that as our value if so.
+      --  happens a lot with tasking).  If we have a string literal, we
+      --  also materaialize the bounds if we can.
+      --  ??? We should use a hash table here to avoid making duplicate
+      --  constants.
 
       elsif Equiv_Relationship (Ref (Relationship (V)), R) then
          if Is_Constant (V) then
+            Result := V;
+            if Ekind (TE) = E_String_Literal_Subtype
+              and then Equiv_Relationship (R, Reference_To_Bounds_And_Data)
+            then
+               Result := Get (V, Bounds_And_Data);
+            end if;
+
             Result := G (Add_Global (LLVM_Module, Type_Of (V), "for-ref"),
                          TE, Ref (Relationship (V)));
             Set_Initializer     (Result, V);
@@ -498,6 +507,11 @@ package body GNATLLVM.GLValue is
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
+
+            --  If we have data, we can get the bounds and data from it
+
+            elsif Relationship (V) = Data then
+               return Get (Get (V, Bounds_And_Data), R);
             end if;
 
          when Reference =>
@@ -547,6 +561,8 @@ package body GNATLLVM.GLValue is
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             elsif Relationship (V) = Fat_Pointer then
                return Extract_Value_To_Relationship (TE, V, 0, R);
+            elsif Relationship (V) = Data then
+               return Get (Get (V, Bounds_And_Data), R);
             end if;
 
          when Fat_Pointer =>

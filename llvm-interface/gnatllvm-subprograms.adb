@@ -681,7 +681,7 @@ package body GNATLLVM.Subprograms is
 
          begin
             if Present (Typ) then
-               Set_Value (Stmt, Emit_Type_Conversion (Stmt, Typ));
+               Set_Value (Stmt, Emit_Convert_Value (Stmt, Typ));
             else
                --  If Stmt is an N_Handled_Sequence_Of_Statements, it
                --  must have come from a package body.  Make a block around
@@ -788,7 +788,7 @@ package body GNATLLVM.Subprograms is
                Build_Ret (Convert_Ref (Emit_LValue (Expr), TE));
 
             else
-               Build_Ret (Emit_Type_Conversion (Expr, TE));
+               Build_Ret (Emit_Convert_Value (Expr, TE));
             end if;
          end;
       else
@@ -847,7 +847,7 @@ package body GNATLLVM.Subprograms is
    ------------------------
 
    procedure Call_Alloc_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
-      Func           : constant GL_Value := Emit_LValue (Proc, Clear => False);
+      Func           : constant GL_Value := Emit_Safe_LValue (Proc);
       Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
       S_Link         : GL_Value;
    begin
@@ -1153,6 +1153,12 @@ package body GNATLLVM.Subprograms is
       Param  := First_Formal_With_Extras (Subp_Typ);
       Actual := First_Actual (N);
       while Present (Actual) loop
+
+         --  We don't want to get confused between LValues from a previous
+         --  parameter when getting positions and sizes of another, so clear
+         --  the list.
+
+         Clear_LValue_List;
          P_Type := Full_Etype (Param);
 
          --  We have two cases: if the param isn't passed indirectly, convert
@@ -1171,7 +1177,7 @@ package body GNATLLVM.Subprograms is
 
             Args (Idx) := Arg;
          else
-            Args (Idx) := Emit_Type_Conversion (Actual, P_Type);
+            Args (Idx) := Emit_Convert_Value (Actual, P_Type);
          end if;
 
          Idx := Idx + 1;

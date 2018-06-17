@@ -212,7 +212,7 @@ package body GNATLLVM.Arrays is
                           else Build_Min (Bound_Val, Discr_Val));
             end;
          else
-            Result := Emit_Type_Conversion (Expr, Dim_Info.Bound_Type);
+            Result := Emit_Convert_Value (Expr, Dim_Info.Bound_Type);
          end if;
       else
          --  We now should have the unconstrained case.  Make sure we do.
@@ -610,7 +610,7 @@ package body GNATLLVM.Arrays is
       if Is_Floating_Point_Type (Full_Etype (E)) then
          Value := Const_Null (Standard_Short_Short_Integer);
       else
-         Value := Emit_Type_Conversion (E, Standard_Short_Short_Integer);
+         Value := Emit_Convert_Value (E, Standard_Short_Short_Integer);
       end if;
 
       Call (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
@@ -658,7 +658,7 @@ package body GNATLLVM.Arrays is
 
             else
                Cur_Value := Insert_Value
-                 (Cur_Value, Emit_Type_Conversion (Expr, Comp_Type),
+                 (Cur_Value, Emit_Convert_Value (Expr, Comp_Type),
                   Indices_So_Far & (1 => Cur_Index));
             end if;
 

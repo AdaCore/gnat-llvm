@@ -25,8 +25,6 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package GNATLLVM.Types is
 
-   pragma Annotate (Xcov, Exempt_On, "Defensive programming");
-
    function Create_Access_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Type (TE),
           Post => Present (Create_Access_Type'Result);
@@ -59,6 +57,10 @@ package GNATLLVM.Types is
    procedure Add_To_LValue_List (V : GL_Value)
      with Pre => Present (V);
    --  Add V to the list that's searched by Get_Matching_Value
+
+   function Add_To_LValue_List (V : GL_Value) return GL_Value
+     with Pre => Present (V), Post => Add_To_LValue_List'Result = V;
+   --  Likewise, but return V
 
    function Get_Matching_Value (TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE),
@@ -127,6 +129,10 @@ package GNATLLVM.Types is
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
      with Pre => Is_Type (TE);
 
+   function Is_Nop_Conversion (V : GL_Value; TE : Entity_Id) return Boolean
+     with Pre => Is_Reference (V) and then Is_Type (TE);
+   --  Return True if converting V to type TE won't change any bits
+
    function Convert (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Elementary_Type (TE) and then Is_Elementary_Type (V),
           Post => Is_Elementary_Type (Convert'Result);
@@ -168,6 +174,13 @@ package GNATLLVM.Types is
                   and then TE = Get_Fullest_View (TE),
           Post => Present (Emit_Type_Conversion'Result);
    --  Emit code to convert Expr to Dest_Type
+
+   function Emit_Convert_Value (N : Node_Id; TE : Entity_Id) return GL_Value is
+     (Get (Emit_Type_Conversion (N, TE), Object))
+     with Pre  => Is_Type (TE) and then Present (N)
+                  and then TE = Get_Fullest_View (TE),
+          Post => Present (Emit_Convert_Value'Result);
+   --  Emit code to convert Expr to Dest_Type and get it as a value
 
    function Emit_Unchecked_Conversion
      (N : Node_Id; TE : Entity_Id) return GL_Value

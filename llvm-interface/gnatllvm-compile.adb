@@ -50,14 +50,6 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (N) = N_Loop_Statement;
    --  Generate code for a loop
 
-   function Emit_LValue_Internal (N : Node_Id) return GL_Value
-     with Pre => Present (N), Post => Present (Emit_LValue_Internal'Result);
-   --  Called by Emit_LValue to walk the tree saving values
-
-   function Emit_LValue_Main (N : Node_Id) return GL_Value
-     with Pre => Present (N), Post => Present (Emit_LValue_Main'Result);
-   --  Called by Emit_LValue_Internal to do the work at each level
-
    ----------
    -- Emit --
    ----------
@@ -86,6 +78,7 @@ package body GNATLLVM.Compile is
       end if;
 
       Set_Debug_Pos_At_Node (N);
+      Clear_LValue_List;
       case Nkind (N) is
          when N_Compilation_Unit =>
 
@@ -417,113 +410,6 @@ package body GNATLLVM.Compile is
       end case;
    end Emit;
 
-   -----------------
-   -- Emit_LValue --
-   -----------------
-
-   function Emit_LValue
-     (N : Node_Id; Clear : Boolean := True) return GL_Value is
-   begin
-      Set_Debug_Pos_At_Node (N);
-
-      --  When we start a new recursive call, we usualy free the entries
-      --  from the last one.
-
-      if Clear then
-         Clear_LValue_List;
-      end if;
-
-      return Emit_LValue_Internal (N);
-   end Emit_LValue;
-
-   --------------------------
-   -- Emit_LValue_Internal --
-   --------------------------
-
-   function Emit_LValue_Internal (N : Node_Id) return GL_Value
-   is
-      Value : constant GL_Value  := Get (Emit_LValue_Main (N), Any_Reference);
-
-   begin
-      --  If the object is not of void type, save the result in the
-      --  pair table under the base type of the fullest view.
-
-      if Ekind (Related_Type (Value)) /= E_Void then
-         Add_To_LValue_List (Value);
-      end if;
-
-      return Value;
-   end Emit_LValue_Internal;
-
-   ----------------------
-   -- Emit_LValue_Main --
-   ----------------------
-
-   function Emit_LValue_Main (N : Node_Id) return GL_Value is
-      TE : constant Entity_Id := Full_Etype (N);
-      V  : GL_Value;
-
-   begin
-      case Nkind (N) is
-         when N_Identifier
-            | N_Expanded_Name
-            | N_Operator_Symbol
-            | N_Defining_Identifier
-            | N_Defining_Operator_Symbol =>
-            return Emit_Identifier_LValue (N);
-
-         when N_Attribute_Reference =>
-            return Emit_Attribute_Reference (N, LValue => True);
-
-         when N_Explicit_Dereference =>
-
-            --  The result of evaluating Emit_Expression is the
-            --  address of what we want and is an access type.  What
-            --  we want here is a reference to our type, which should
-            --  be the Designated_Type of Value.
-
-            return From_Access (Emit_Expression (Prefix (N)));
-
-         when N_String_Literal =>
-            V := Add_Global (TE, "str");
-            Set_Initializer (V, Get (Emit_Expression (N), Bounds_And_Data));
-            Set_Linkage (V, Private_Linkage);
-            Set_Global_Constant (V, True);
-            Set_Value (N, Get (V, Thin_Pointer));
-            return V;
-
-         when N_Selected_Component =>
-            return Record_Field_Offset (Emit_LValue_Internal (Prefix (N)),
-                                        Entity (Selector_Name (N)));
-
-         when N_Indexed_Component =>
-            return Get_Indexed_LValue (Expressions (N),
-                                       Emit_LValue_Internal (Prefix (N)));
-
-         when N_Slice =>
-            return Get_Slice_LValue
-              (TE, Discrete_Range (N), Emit_LValue_Internal (Prefix (N)));
-
-         when N_Unchecked_Type_Conversion
-            | N_Type_Conversion
-            | N_Qualified_Expression =>
-
-            --  We have to mark that this is now to be treated as a new type.
-            --  This matters if, e.g., the bounds of an array subtype change
-            --  (see C46042A).
-
-            return Convert_Ref (Emit_LValue_Internal (Expression (N)), TE);
-
-         when others =>
-            --  If we have an arbitrary expression, evaluate it.  If it
-            --  turns out to be a reference (e.g., if the size of our type
-            --  is dynamic, we have no more work to do.  Otherwise, our caller
-            --  will take care of storing it into a temporary.
-
-            return Emit_Expression (N);
-      end case;
-   end Emit_LValue_Main;
-
    --------------------
    -- Emit_Safe_Expr --
    --------------------
@@ -537,11 +423,24 @@ package body GNATLLVM.Compile is
       return V;
    end Emit_Safe_Expr;
 
-   ---------------------
-   -- Emit_Expression --
-   ---------------------
+   ----------------------
+   -- Emit_Safe_LValue --
+   ----------------------
 
-   function Emit_Expression (N : Node_Id) return GL_Value is
+   function Emit_Safe_LValue (N : Node_Id) return GL_Value is
+      V : GL_Value;
+   begin
+      Push_LValue_List;
+      V := Emit_LValue (N);
+      Pop_LValue_List;
+      return V;
+   end Emit_Safe_LValue;
+
+   ----------
+   -- Emit --
+   ----------
+
+   function Emit (N : Node_Id) return GL_Value is
       TE     : constant Entity_Id := Full_Etype (N);
       Result : GL_Value;
 
@@ -563,7 +462,9 @@ package body GNATLLVM.Compile is
             return Emit_Unary_Operation (N);
 
          when N_Expression_With_Actions =>
+            Push_LValue_List;
             Emit (Actions (N));
+            Pop_LValue_List;
             return Emit_Expression (Expression (N));
 
          when N_Character_Literal | N_Numeric_Or_String_Literal =>
@@ -591,12 +492,34 @@ package body GNATLLVM.Compile is
             return Emit_Unchecked_Conversion (Expression (N), TE);
 
          when N_Type_Conversion =>
+
+            --  We have to be careful here.  Both the front-end and RTS
+            --  have code of the form "Type (LValue)'Unrestricted_Access"
+            --  and expect this to produce a reference to the address of
+            --  LValue.  Since this code is called in both the LValue and
+            --  value case, we need to check for a no-op conversion,
+            --  where the bits aren't changed.  But if an overflow check
+            --  is requested, we know that bits need to be changed.
+
+            Result := Emit (Expression (N));
             if Is_Elementary_Type (TE) and then Do_Overflow_Check (N) then
-               Result := Emit_Expression (Expression (N));
+               Result := Get (Result, Data);
                Emit_Overflow_Check (Result, N);
                return Convert (Result, TE);
+            elsif Is_Reference (Result)
+              and then Is_Nop_Conversion (Result, TE)
+            then
+               return Convert_Ref (Result, TE);
+
+            --  Otherwise, if this is an elementary type needing actual
+            --  conversion, get the data and convert it.  If not (meaning this
+            --  is a composite type), get a reference to the input and convert
+            --  that to a reference to TE.
+
+            elsif Is_Elementary_Type (TE) then
+               return Convert (Get (Result, Data), TE);
             else
-               return Emit_Type_Conversion (Expression (N), TE);
+               return Convert_Ref (Get (Result, Any_Reference), TE);
             end if;
 
          when N_Qualified_Expression =>
@@ -608,13 +531,14 @@ package body GNATLLVM.Compile is
             | N_Defining_Identifier
             | N_Defining_Operator_Symbol
             =>
-            return Emit_Identifier_Value (N);
+            return Emit_Identifier (N);
 
          when N_Function_Call =>
             return Emit_Call (N);
 
          when N_Explicit_Dereference =>
-            return Get (From_Access (Emit_Expression (Prefix (N))), Object);
+            return Add_To_LValue_List (From_Access
+                                         (Emit_Expression (Prefix (N))));
 
          when N_Allocator =>
 
@@ -649,10 +573,21 @@ package body GNATLLVM.Compile is
             return Convert (Emit_LValue (Prefix (N)), TE);
 
          when N_Attribute_Reference =>
-            return Emit_Attribute_Reference (N, LValue => False);
+            return Emit_Attribute_Reference (N);
 
-         when N_Selected_Component | N_Indexed_Component  | N_Slice =>
-            return Get (Emit_LValue (N), Object);
+         when N_Selected_Component =>
+            return Add_To_LValue_List
+              (Record_Field_Offset (Emit_LValue (Prefix (N)),
+                                    Entity (Selector_Name (N))));
+
+         when N_Indexed_Component =>
+            return Add_To_LValue_List
+              (Get_Indexed_LValue (Expressions (N), Emit_LValue (Prefix (N))));
+
+         when N_Slice =>
+            return Add_To_LValue_List
+              (Get_Slice_LValue (TE, Discrete_Range (N),
+                                 Emit_LValue (Prefix (N))));
 
          when N_Aggregate | N_Extension_Aggregate =>
 
@@ -716,7 +651,7 @@ package body GNATLLVM.Compile is
                  Node_Kind'Image (Nkind (N)) & "`", N);
             return Emit_Undef (TE);
       end case;
-   end Emit_Expression;
+   end Emit;
 
    ----------
    -- Emit --

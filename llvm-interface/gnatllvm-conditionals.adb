@@ -919,79 +919,79 @@ package body GNATLLVM.Conditionals is
       Then_Expr  : constant Node_Id       := Next (Condition);
       Else_Expr  : constant Node_Id       := Next (Then_Expr);
       Elementary : constant Boolean       := Is_Elementary_Type (TE);
-      BB_Next    : constant Basic_Block_T := Create_Basic_Block ("if-next");
-      BB_Then    : Basic_Block_T          := Create_Basic_Block ("if-then");
-      BB_Else    : Basic_Block_T          := Create_Basic_Block ("if-else");
+      Next_BB    : constant Basic_Block_T := Create_Basic_Block ("if-next");
+      Then_BB    : Basic_Block_T          := Create_Basic_Block ("if-then");
+      Else_BB    : Basic_Block_T          := Create_Basic_Block ("if-else");
       Then_Value : GL_Value;
       Else_Value : GL_Value;
+      Then_Type  : Entity_Id;
+      Else_Type  : Entity_Id;
+      R          : GL_Relationship;
       Result     : GL_Value;
 
    begin
-      --  We have to decide whether to do this with values or
-      --  addresses.  We probably get the best overall code if we
-      --  choose a reference for composite types and data for
-      --  elementary types.
-      --
-      --  ??? This doesn't work well for e.g., (if C then (1, 2) else (3,
-      --  4)) we probably need an Emit_LValue_Or_Value which returns
-      --  whichever is easiest and we start from there.
-      --
-      --  We need to be sure that both operands are the same LLVM type
-      --  for the Phi below.  The front end assures this in most
-      --  cases, but we do have potential issues if they're both
-      --  different record or arrays types.
-      --
       --  Start by generating the conditional branch and working on each
       --  expression in its own BB.
 
-      Build_Cond_Br (Emit_Expression (Condition), BB_Then, BB_Else);
-      Position_Builder_At_End (BB_Then);
-      Then_Value := (if Elementary then Emit_Expression (Then_Expr)
-                     else Emit_LValue (Then_Expr));
-      BB_Then    := Get_Insert_Block;
-      Position_Builder_At_End (BB_Else);
-      Else_Value := (if Elementary then Emit_Expression (Else_Expr)
-                     else Emit_LValue (Else_Expr));
-      BB_Else    := Get_Insert_Block;
+      Build_Cond_Br (Emit_Expression (Condition), Then_BB, Else_BB);
+      Position_Builder_At_End (Then_BB);
+      Then_Value := Emit (Then_Expr);
+      Then_Type  := Related_Type (Then_Value);
+      Then_BB    := Get_Insert_Block;
+      Position_Builder_At_End (Else_BB);
+      Else_Value := Emit (Else_Expr);
+      Else_Type  := Related_Type (Else_Value);
+      Else_BB    := Get_Insert_Block;
 
-      --  If these are elementary types, they should have the same LLVM
-      --  type, but if not, convert both to the result type.
-      --  be the same.
+      --  We need to be sure that the operands are either both data or both
+      --  references and that they are the same LLVM type for the Phi
+      --  below.  The front end assures they are the same base type, but we
+      --  do have potential issues if they're both different record or
+      --  arrays subtypes.
+      --
+      --  If these are elementary types, ensure both are data and, if they
+      --  aren't already the same type as each other, convert both to the
+      --  result type.
 
       if Elementary then
+         Position_Builder_At_End (Then_BB);
+         Then_Value := Get (Then_Value, Data);
          if Type_Of (Then_Value) /= Type_Of (Else_Value) then
-            Position_Builder_At_End (BB_Then);
             Then_Value := Convert (Then_Value, TE);
-            BB_Then    := Get_Insert_Block;
-            Position_Builder_At_End (BB_Else);
-            Else_Value := Convert (Else_Value, TE);
-            BB_Else    := Get_Insert_Block;
          end if;
+         Then_BB    := Get_Insert_Block;
 
-      --  Otherwise, ensure both are references and convert each to an access
-      --  to the result type.  There are other possibilties for conversion,
-      --  but this is the safest since the bounds of the type may be local
-      --  to the expression.
+         Position_Builder_At_End (Else_BB);
+         Else_Value := Get (Else_Value, Data);
+         if Type_Of (Then_Value) /= Type_Of (Else_Value) then
+            Else_Value := Convert (Else_Value, TE);
+         end if;
+         Else_BB    := Get_Insert_Block;
 
-      else
-         --  If either is a thin pointer, convert to a fat pointer first
-         --  before doing anything else.  That avoid rematerializing bounds.
-         --  ??? Except that this breaks in Convert_Ref
+      --  In the composite case, we may have one side as a reference
+      --  and the other as data.  We need to make them the same.  In
+      --  general, it's cheaper to change reference to data than vice
+      --  versa, but if the types are different, we have to have both as
+      --  references because that's the way we convert composite types.
 
-         Position_Builder_At_End (BB_Then);
-         Then_Value := Get (Then_Value, Any_Reference);
-         --  if Relationship (Then_Value) = Thin_Pointer then
-         --      Then_Value := Get (Then_Value, Fat_Pointer);
-         --  end if;
-         Then_Value := Convert_Ref (Then_Value, TE);
-         BB_Then    := Get_Insert_Block;
-         Position_Builder_At_End (BB_Else);
-         Else_Value := Get (Else_Value, Any_Reference);
-         --  if Relationship (Else_Value) = Thin_Pointer then
-         --     Else_Value := Get (Else_Value, Fat_Pointer);
-         --  bb/end if;
-         Else_Value := Convert_Ref (Else_Value, TE);
-         BB_Else    := Get_Insert_Block;
+      elsif Is_Reference (Then_Value) /= Is_Reference (Else_Value)
+        or else Then_Type /= Else_Type
+      then
+         R := (if Related_Type (Then_Value) = Related_Type (Else_Value)
+                 then Data else Any_Reference);
+         Position_Builder_At_End (Then_BB);
+         Then_Value := Get (Then_Value, R);
+         if R = Any_Reference then
+            Then_Value := Convert_Ref (Then_Value, TE);
+         end if;
+         Then_BB    := Get_Insert_Block;
+
+         Position_Builder_At_End (Else_BB);
+         Else_Value := Get (Else_Value, R);
+         if R = Any_Reference then
+            Else_Value := Convert_Ref (Else_Value, TE);
+         end if;
+         Else_BB    := Get_Insert_Block;
       end if;
 
       --  Both sides then branch to the Phi block and we emit the Phi,
@@ -999,13 +999,13 @@ package body GNATLLVM.Conditionals is
       --  In the elementary case, convert to the result type, since we
       --  may not already have done this.
 
-      Position_Builder_At_End (BB_Then);
-      Build_Br (BB_Next);
-      Position_Builder_At_End (BB_Else);
-      Move_To_BB (BB_Next);
+      Position_Builder_At_End (Then_BB);
+      Build_Br (Next_BB);
+      Position_Builder_At_End (Else_BB);
+      Move_To_BB (Next_BB);
 
       Result := Build_Phi ((1 => Then_Value, 2 => Else_Value),
-                           (1 => BB_Then, 2 => BB_Else));
+                           (1 => Then_BB,    2 => Else_BB));
       if Elementary then
          return Convert (Result, TE);
       else

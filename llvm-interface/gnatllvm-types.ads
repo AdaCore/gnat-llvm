@@ -165,29 +165,26 @@ package GNATLLVM.Types is
    --  Return True iff T1 and T2 are array types that have at least
    --  one index for whose LLVM types are different.  T1 must be unconstrained.
 
-   function Emit_Type_Conversion
+   function Emit_Conversion
      (N                   : Node_Id;
       TE                  : Entity_Id;
       From_N              : Node_Id;
+      Is_Unchecked        : Boolean;
       Need_Overflow_Check : Boolean) return GL_Value
      with Pre  => Is_Type (TE) and then Present (N)
-                  and then TE = Get_Fullest_View (TE),
-          Post => Present (Emit_Type_Conversion'Result);
-   --  Emit code to convert Expr to Dest_Type
+                  and then TE = Get_Fullest_View (TE)
+                  and then not (Is_Unchecked and Need_Overflow_Check),
+          Post => Present (Emit_Conversion'Result);
+   --  Emit code to convert Expr to Dest_Type, optionally in unchecked mode
+   --  and optionally with an overflow check.  From_N is the conversion node,
+   --  if there is a corresponding source node.
 
    function Emit_Convert_Value (N : Node_Id; TE : Entity_Id) return GL_Value is
-     (Get (Emit_Type_Conversion (N, TE, Empty, False), Object))
+     (Get (Emit_Conversion (N, TE, Empty, False, False), Object))
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE),
           Post => Present (Emit_Convert_Value'Result);
    --  Emit code to convert Expr to Dest_Type and get it as a value
-
-   function Emit_Unchecked_Conversion
-     (N : Node_Id; TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE) and then TE = Get_Fullest_View (TE)
-                  and then Present (N),
-          Post => Present (Emit_Unchecked_Conversion'Result);
-   --  Emit code to emit an unchecked conversion of Expr to Dest_Type
 
    function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Access_Type (V),

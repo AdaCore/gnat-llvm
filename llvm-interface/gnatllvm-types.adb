@@ -208,17 +208,19 @@ package body GNATLLVM.Types is
 
    end Is_Nop_Conversion;
 
-   --------------------------
-   -- Emit_Type_Conversion --
-   --------------------------
+   ---------------------
+   -- Emit_Conversion --
+   ---------------------
 
-   function Emit_Type_Conversion
+   function Emit_Conversion
      (N                   : Node_Id;
       TE                  : Entity_Id;
       From_N              : Node_Id;
+      Is_Unchecked        : Boolean;
       Need_Overflow_Check : Boolean) return GL_Value
    is
-      Result : GL_Value := Emit (N);
+      Result : GL_Value           := Emit (N);
+      In_TE  : constant Entity_Id := Related_Type (Result);
 
    begin
       --  We have to be careful here.  There isn't as clear a distinction
@@ -233,7 +235,7 @@ package body GNATLLVM.Types is
       --  We test two things: first, we see if we're being used in a
       --  context where an LValue is definitely or likely needed and also
       --  look for a conversion that won't actually change any bits.  If
-      --  bot, do this as an unchecked conversion.  On the other hand, if
+      --  both, do this as an unchecked conversion.  On the other hand, if
       --  an overflow check is required, we know this is NOT an unchecked
       --  conversion.
 
@@ -247,16 +249,64 @@ package body GNATLLVM.Types is
       then
          return Convert_Ref (Get (Result, Any_Reference), TE);
 
+      --  For unchecked conversion between pointer and integer, just copy
+      --  the bits.  But use Size_Type and generic pointers to make sure
+      --  that any size changes are taken into account (they shouldn't be
+      --  because of the rules of UC, but let's be conservative).
+
+      elsif Is_Unchecked and then Is_Access_Type (In_TE)
+        and then Is_Discrete_Or_Fixed_Point_Type (TE)
+      then
+         Result := Get (From_Access (Get (Result, Data)),
+                        Reference_For_Integer);
+         return Convert (Ptr_To_Int (Result, Size_Type), TE);
+      elsif Is_Unchecked and then Is_Discrete_Or_Fixed_Point_Type (In_TE)
+        and then Is_Access_Type (TE)
+      then
+         --  If TE is an access to unconstrained, this means that the
+         --  address is to be taken as a thin pointer.  We also need special
+         --  code in the case of access to subprogram.
+
+         if Is_Unconstrained_Array (Full_Designated_Type (TE)) then
+            Result :=
+              Int_To_Relationship (Get (Result, Data),
+                                   Full_Designated_Type (TE), Thin_Pointer);
+         elsif Ekind (TE) = E_Access_Subprogram_Type then
+            Result := Int_To_Relationship (Get (Result, Data),
+                                           Full_Designated_Type (TE),
+                                           Reference);
+         else
+            Result := Int_To_Ref (Get (Result, Data),
+                                  Standard_Short_Short_Integer);
+         end if;
+
+         return Convert_To_Access (Result, TE);
+
+      --  We can unchecked convert floating point of the same width
+      --  (the only way that UC is formally defined) with a "bitcast"
+      --  instruction.
+
+      elsif Is_Unchecked
+        and then ((Is_Floating_Point_Type (TE)
+                     and then Is_Discrete_Or_Fixed_Point_Type (In_TE))
+                  or else (Is_Discrete_Or_Fixed_Point_Type (TE)
+                             and then Is_Floating_Point_Type (In_TE)))
+        and then (ULL'(Get_LLVM_Type_Size_In_Bits (Create_Type (TE))) =
+                    ULL'(Get_LLVM_Type_Size_In_Bits (Create_Type (In_TE))))
+      then
+         return Bit_Cast (Get (Result, Data), TE);
+
       --  If both types are elementary, hand that off to our helper.
 
-      elsif Is_Elementary_Type (Related_Type (Result))
-        and then Is_Elementary_Type (TE)
+      elsif Is_Elementary_Type (In_TE) and then Is_Elementary_Type (TE)
       then
          return Convert (Get (Result, Data), TE);
 
-      --  If both types are the same, just change the type of the result
+      --  If both types are the same, just change the type of the result.
+      --  Avoid confusing [0 x T] as both a zero-size constrained type and
+      --  the type used for a variable-sized type.
 
-      elsif not Is_Reference (Result)
+      elsif not Is_Reference (Result) and then not Is_Dynamic_Size (TE)
         and then Type_Of (Result) = Create_Type (TE)
       then
          return G_Is (Result, TE);
@@ -267,7 +317,7 @@ package body GNATLLVM.Types is
          return Convert_Ref (Get (Result, Any_Reference), TE);
       end if;
 
-   end Emit_Type_Conversion;
+   end Emit_Conversion;
 
    -------------
    -- Convert --
@@ -525,133 +575,6 @@ package body GNATLLVM.Types is
          return Convert_Pointer (Get (V, Fat_Pointer), TE);
       end if;
    end Convert_Ref;
-
-   --------------------------------
-   -- Emit_Unchecked_Conversion --
-   --------------------------------
-
-   function Emit_Unchecked_Conversion
-     (N : Node_Id; TE : Entity_Id) return GL_Value
-   is
-      T      : constant Type_T    := Create_Type (TE);
-      V      :  GL_Value          := Emit (N);
-      V_Type : constant Entity_Id := Related_Type (V);
-
-   begin
-      --  If the value is already of the desired LLVM type, we're done,
-      --  but show that the result is the new type and be sure that we're
-      --  not trying to have Data of a variable-sized type.
-
-      if ((Is_Reference (V) and then Type_Of (V) = Pointer_Type (T, 0))
-          or else (not Is_Reference (V) and then Type_Of (V) = T))
-        and then (not Is_Dynamic_Size (TE) or else Is_Reference (V))
-      then
-         return G (LLVM_Value (V), TE, Relationship (V));
-
-      --  The front end uses unchecked conversions for scalar types as
-      --  if it's a normal type conversion, but only if it's not a
-      --  conversion between FP and integer.  So handle that case.
-
-      elsif Is_Scalar_Type (TE) and then not Is_Packed_Array_Impl_Type (TE)
-        and then Is_Scalar_Type (V_Type)
-        and then not Is_Packed_Array_Impl_Type (V_Type)
-        and then Is_Floating_Point_Type (TE) = Is_Floating_Point_Type (V_Type)
-        and then Nkind (Parent (N)) = N_Unchecked_Type_Conversion
-        and then (Implementation_Base_Type (TE) /=
-                    Implementation_Base_Type (V_Type))
-      then
-         return Convert (Get (V, Data), TE);
-
-      --  If we have a reference to a value, just convert that to a reference
-      --  to the new types.  This is not only more efficient, but required
-      --  since the front end may put an unchecked conversion on the LHS of
-      --  an assignment.
-
-      elsif Is_Reference (V) then
-         return Convert_Ref (V, TE);
-
-      --  If converting pointer to pointer or pointer to/from integer, we
-      --  just copy the bits using the appropriate instruction.
-
-      elsif Is_Access_Type (TE) and then not Is_Access_Unconstrained (TE)
-        and then not Is_Access_Subprogram_Type (TE)
-        and then Is_Scalar_Type (V)
-      then
-         return Int_To_Ptr (V, TE);
-      elsif Is_Scalar_Type (TE) and then Is_Access_Type (V)
-        and then not Is_Access_Unconstrained (V)
-        and then not Is_Access_Subprogram_Type (V)
-      then
-         return Ptr_To_Int (V, TE);
-      elsif Is_Access_Type (TE) and then Is_Access_Type (V)
-        and then not Is_Access_Unconstrained (V)
-        and then not Is_Access_Unconstrained (TE)
-      then
-         return Pointer_Cast (V, TE);
-
-      --  If these are both integral types, we handle this as a normal
-      --  conversion.  Unchecked conversion is only defined if the sizes
-      --  are the same, which is handled above by checking for the same
-      --  LLVM type, but the front-end generates it, meaning to do
-      --  a normal conversion.
-
-      elsif Is_Discrete_Or_Fixed_Point_Type (TE)
-        and then Is_Discrete_Or_Fixed_Point_Type (V)
-      then
-         return Convert (V, TE);
-
-      --  We can unchecked convert floating point of the same width
-      --  (the only way that UC is formally defined) with a "bitcast"
-      --  instruction.
-
-      elsif ((Is_Floating_Point_Type (TE)
-                and then Is_Discrete_Or_Fixed_Point_Type (V))
-             or else (Is_Discrete_Or_Fixed_Point_Type (TE)
-                        and then Is_Floating_Point_Type (V)))
-        and then (ULL'(Get_LLVM_Type_Size_In_Bits (T)) =
-                    ULL'(Get_LLVM_Type_Size_In_Bits (V)))
-      then
-         return Bit_Cast (V, TE);
-
-      --  If we have an unconstrained array that we're constraining,
-      --  convert to an access to the result and then see if we can
-      --  get it as a value (which will only be the case for constant
-      --  size. ??? Review this code.
-
-      elsif Is_Access_Unconstrained (V)
-        and then Is_Array_Type (TE) and then Is_Constrained (TE)
-      then
-         return Get (Convert_Ref (V, TE), Object);
-
-      --  If we're converting to an unconstrained array, keep things the
-      --  way they are so we preserve bounds.
-
-      elsif Is_Unconstrained_Array (TE) then
-         return V;
-
-      --  Otherwise, these must be cases where we have to convert by
-      --  pointer punning.  We need the LValue of the expression
-      --  first.  If the type is a dynamic size, we know that's what
-      --  we have already.  Otherwise, get it for an LValue (which
-      --  will throw away the previous computation).  If we have an
-      --  unconstrained array, point to the array data.  Then
-      --  dereference in the proper type.
-
-      else
-         if not Is_Dynamic_Size (V)
-           and then (not Is_Reference (V)
-                       or else Full_Designated_Type (V) /= Full_Etype (N))
-         then
-            V := Emit_LValue (N);
-         end if;
-
-         if Is_Access_Unconstrained (V) then
-            V := Get (V, Reference);
-         end if;
-
-         return Get (Ptr_To_Ref (V, TE, "unc-ptr-cvt"), Object);
-      end if;
-   end Emit_Unchecked_Conversion;
 
    ---------------------
    -- Convert_Pointer --

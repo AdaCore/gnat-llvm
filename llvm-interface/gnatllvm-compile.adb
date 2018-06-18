@@ -492,38 +492,11 @@ package body GNATLLVM.Compile is
             return Emit_Unchecked_Conversion (Expression (N), TE);
 
          when N_Type_Conversion =>
-
-            --  We have to be careful here.  Both the front-end and RTS
-            --  have code of the form "Type (LValue)'Unrestricted_Access"
-            --  and expect this to produce a reference to the address of
-            --  LValue.  Since this code is called in both the LValue and
-            --  value case, we need to check for a no-op conversion,
-            --  where the bits aren't changed.  But if an overflow check
-            --  is requested, we know that bits need to be changed.
-
-            Result := Emit (Expression (N));
-            if Is_Elementary_Type (TE) and then Do_Overflow_Check (N) then
-               Result := Get (Result, Data);
-               Emit_Overflow_Check (Result, N);
-               return Convert (Result, TE);
-            elsif Is_Reference (Result)
-              and then Is_Nop_Conversion (Result, TE)
-            then
-               return Convert_Ref (Result, TE);
-
-            --  Otherwise, if this is an elementary type needing actual
-            --  conversion, get the data and convert it.  If not (meaning this
-            --  is a composite type), get a reference to the input and convert
-            --  that to a reference to TE.
-
-            elsif Is_Elementary_Type (TE) then
-               return Convert (Get (Result, Data), TE);
-            else
-               return Convert_Ref (Get (Result, Any_Reference), TE);
-            end if;
+            return Emit_Type_Conversion (Expression (N), TE, N,
+                                         Do_Overflow_Check (N));
 
          when N_Qualified_Expression =>
-            return Emit_Type_Conversion (Expression (N), TE);
+            return Emit_Type_Conversion (Expression (N), TE, N, False);
 
          when N_Identifier
             | N_Expanded_Name

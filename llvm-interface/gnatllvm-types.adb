@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Errout; use Errout;
+with Snames; use Snames;
 with Stand;  use Stand;
 with Table;  use Table;
 
@@ -57,6 +58,14 @@ package body GNATLLVM.Types is
       Table_Initial        => 3,
       Table_Increment      => 2,
       Table_Name           => "LValue_Stack");
+
+   function Is_In_LHS_Context (N : Node_Id) return Boolean;
+   --  Return True if N's parent (if N is Present) is such that we need a
+   --  LValue.
+
+   function Is_Nop_Conversion (V : GL_Value; TE : Entity_Id) return Boolean
+     with Pre => Is_Reference (V) and then Is_Type (TE);
+   --  Return True if converting V to type TE won't change any bits
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
      with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
@@ -136,48 +145,129 @@ package body GNATLLVM.Types is
       return False;
    end Are_Arrays_With_Different_Index_Types;
 
-   --------------------------
-   -- Emit_Type_Conversion --
-   --------------------------
+   -----------------------
+   -- Is_In_LHS_Context --
+   -----------------------
 
-   function Emit_Type_Conversion
-     (N : Node_Id; TE : Entity_Id) return GL_Value is
-
+   function Is_In_LHS_Context (N : Node_Id) return Boolean is
    begin
-      --  If both types are elementary, hand that off to our helper.
-
-      if Is_Elementary_Type (Full_Etype (N))
-        and then Is_Elementary_Type (TE)
-      then
-         return Convert (Emit_Expression (N), TE);
-
-      --  Otherwise, we do the same as an unchecked conversion.
-
-      else
-         return Emit_Unchecked_Conversion (N, TE);
-
+      if No (N) or No (Parent (N)) then
+         return False;
       end if;
-   end Emit_Type_Conversion;
+
+      --  The only cases that are LValue contexts are the LHS of an
+      --  assignment statement or a parameter to a subprogram call.
+
+      case Nkind (Parent (N)) is
+         when N_Assignment_Statement =>
+            return N = Name (Parent (N));
+
+         when N_Attribute_Reference =>
+            case Get_Attribute_Id (Attribute_Name (Parent (N))) is
+
+               when Attribute_Access
+                 | Attribute_Unchecked_Access
+                 | Attribute_Unrestricted_Access
+                 | Attribute_Address
+                 | Attribute_Pool_Address =>
+                  return True;
+
+               when others =>
+                  return False;
+            end case;
+
+         when N_Procedure_Call_Statement | N_Function_Call =>
+
+            --  We treat any operation that's an actual as if it's an LHS
+            --  even though this is a bit conservative.
+
+            return N /= Name (Parent (N));
+
+         when N_Parameter_Association =>
+            return True;
+
+         when others =>
+            return False;
+
+      end case;
+
+   end Is_In_LHS_Context;
 
    -----------------------
    -- Is_Nop_Conversion --
    -----------------------
 
    function Is_Nop_Conversion (V : GL_Value; TE : Entity_Id) return Boolean is
-      Out_T : constant Type_T := Create_Type (TE);
-      In_T  : constant Type_T :=
-        (if Get_Type_Kind (Type_Of (V)) = Pointer_Type_Kind
-         then Get_Element_Type (Type_Of (V)) else No_Type_T);
-
    begin
       --  This is a no-op if the two LLVM types are the same or if both
       --  GNAT types aren't scalar types.
 
-      return Out_T = In_T
+      return Type_Of (V) = Pointer_Type (Create_Type (TE), 0)
         or else (not Is_Scalar_Type (TE)
                    and then not Is_Scalar_Type (Related_Type (V)));
 
    end Is_Nop_Conversion;
+
+   --------------------------
+   -- Emit_Type_Conversion --
+   --------------------------
+
+   function Emit_Type_Conversion
+     (N                   : Node_Id;
+      TE                  : Entity_Id;
+      From_N              : Node_Id;
+      Need_Overflow_Check : Boolean) return GL_Value
+   is
+      Result : GL_Value := Emit (N);
+
+   begin
+      --  We have to be careful here.  There isn't as clear a distinction
+      --  between unchecked conversion and regular conversion as we might
+      --  like.  Both the front-end and RTS have code of the form "Type
+      --  (LValue)'Unrestricted_Access" and expect this to produce a
+      --  reference to the address of LValue.  This code is called in both
+      --  the LValue and value case.  If we're starting with a reference,
+      --  we want to keep it as a reference unless we're sure that this
+      --  needs an actual conversion.
+      --
+      --  We test two things: first, we see if we're being used in a
+      --  context where an LValue is definitely or likely needed and also
+      --  look for a conversion that won't actually change any bits.  If
+      --  bot, do this as an unchecked conversion.  On the other hand, if
+      --  an overflow check is required, we know this is NOT an unchecked
+      --  conversion.
+
+      if Is_Elementary_Type (TE) and then Need_Overflow_Check then
+         Result := Get (Result, Data);
+         Emit_Overflow_Check (Result, From_N);
+         return Convert (Result, TE);
+
+      elsif Is_Reference (Result) and then Is_In_LHS_Context (From_N)
+        and then Is_Nop_Conversion (Result, TE)
+      then
+         return Convert_Ref (Get (Result, Any_Reference), TE);
+
+      --  If both types are elementary, hand that off to our helper.
+
+      elsif Is_Elementary_Type (Related_Type (Result))
+        and then Is_Elementary_Type (TE)
+      then
+         return Convert (Get (Result, Data), TE);
+
+      --  If both types are the same, just change the type of the result
+
+      elsif not Is_Reference (Result)
+        and then Type_Of (Result) = Create_Type (TE)
+      then
+         return G_Is (Result, TE);
+
+      --  Otherwise, we do the same as an unchecked conversion.
+
+      else
+         return Convert_Ref (Get (Result, Any_Reference), TE);
+      end if;
+
+   end Emit_Type_Conversion;
 
    -------------
    -- Convert --
@@ -467,6 +557,8 @@ package body GNATLLVM.Types is
         and then not Is_Packed_Array_Impl_Type (V_Type)
         and then Is_Floating_Point_Type (TE) = Is_Floating_Point_Type (V_Type)
         and then Nkind (Parent (N)) = N_Unchecked_Type_Conversion
+        and then (Implementation_Base_Type (TE) /=
+                    Implementation_Base_Type (V_Type))
       then
          return Convert (Get (V, Data), TE);
 

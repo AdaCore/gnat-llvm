@@ -129,10 +129,6 @@ package GNATLLVM.Types is
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
      with Pre => Is_Type (TE);
 
-   function Is_Nop_Conversion (V : GL_Value; TE : Entity_Id) return Boolean
-     with Pre => Is_Reference (V) and then Is_Type (TE);
-   --  Return True if converting V to type TE won't change any bits
-
    function Convert (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Elementary_Type (TE) and then Is_Elementary_Type (V),
           Post => Is_Elementary_Type (Convert'Result);
@@ -169,14 +165,18 @@ package GNATLLVM.Types is
    --  Return True iff T1 and T2 are array types that have at least
    --  one index for whose LLVM types are different.  T1 must be unconstrained.
 
-   function Emit_Type_Conversion (N : Node_Id; TE : Entity_Id) return GL_Value
+   function Emit_Type_Conversion
+     (N                   : Node_Id;
+      TE                  : Entity_Id;
+      From_N              : Node_Id;
+      Need_Overflow_Check : Boolean) return GL_Value
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE),
           Post => Present (Emit_Type_Conversion'Result);
    --  Emit code to convert Expr to Dest_Type
 
    function Emit_Convert_Value (N : Node_Id; TE : Entity_Id) return GL_Value is
-     (Get (Emit_Type_Conversion (N, TE), Object))
+     (Get (Emit_Type_Conversion (N, TE, Empty, False), Object))
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE),
           Post => Present (Emit_Convert_Value'Result);

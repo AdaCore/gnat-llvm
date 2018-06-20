@@ -7,6 +7,8 @@ Missing features (identified so far):
 - reduce generation of elaboration code on e.g. aggregates (see system.ads)
 - Unchecked_Union
 - freeze nodes for types and subprograms (see c38102a)
+- very long compilation time in some cases (see various XFAIL in acats, and
+  output.adb in bootstrap)
 - representation clauses
 - debug info (for variables, types and parameters)
 - restriction checks done by back end

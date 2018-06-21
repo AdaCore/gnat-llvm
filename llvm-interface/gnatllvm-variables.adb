@@ -15,6 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers;             use Ada.Containers;
+with Ada.Containers.Hashed_Maps;
+with Ada.Unchecked_Conversion;
+with System.Storage_Elements;    use System.Storage_Elements;
+
 with Errout;   use Errout;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
@@ -136,6 +141,21 @@ package body GNATLLVM.Variables is
    function Is_Static_Address (N : Node_Id) return Boolean
      with Pre => Present (N);
    --  Return True if N represents an address that can computed statically
+
+   function Hash_Value_T (Val : Value_T) return Hash_Type;
+   --  Convert a Value_T to a hash
+
+   package Const_Map_P is new Ada.Containers.Hashed_Maps
+     (Key_Type => Value_T,
+      Element_Type => Value_T,
+      Hash => Hash_Value_T,
+      Equivalent_Keys => "=");
+   use Const_Map_P;
+   Const_Map : Map;
+   --  Map the Value_T for a constant to the Value_T for the global
+   --  variable containing that constant.  We do this at the Value_T level
+   --  rather than the GL_Value level because we may want to interpret the
+   --  same constant differently if they have different bounds.
 
    ------------------
    -- String_Equal --
@@ -650,6 +670,50 @@ package body GNATLLVM.Variables is
          end loop;
       end if;
    end Emit_Decl_Lists;
+
+   ------------------
+   -- Hash_Value_T --
+   ------------------
+
+   function Hash_Value_T (Val : Value_T) return Hash_Type is
+      function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
+   begin
+      return Hash_Type (To_Integer (UC (Val)) / (Val'Size / 8));
+   end Hash_Value_T;
+
+   --------------------------
+   -- Make_Global_Constant --
+   --------------------------
+
+   function Make_Global_Constant (V : GL_Value) return GL_Value is
+      TE      : constant Entity_Id := Related_Type (V);
+      In_V    : GL_Value           := V;
+      Out_Val : Value_T;
+
+   begin
+      --  If we're making a constant for a string literal, we want
+      --  both the bounds and data.
+
+      if Ekind (TE) = E_String_Literal_Subtype then
+         In_V := Get (In_V, Bounds_And_Data);
+      end if;
+
+      --  If we haven't already seen this value, make a constant for it
+
+      if not Const_Map.Contains (LLVM_Value (In_V)) then
+         Out_Val := Add_Global (LLVM_Module, Type_Of (In_V), "for-ref");
+         Set_Initializer     (Out_Val, LLVM_Value (In_V));
+         Set_Linkage         (Out_Val, Private_Linkage);
+         Set_Global_Constant (Out_Val, True);
+         Const_Map.Insert    (LLVM_Value (In_V),  Out_Val);
+      end if;
+
+      --  Now make a GL_Value.  We do this here since different constant
+      --  literals may have different types (i.e., bounds).
+
+      return G (Const_Map.Element (LLVM_Value (In_V)),
+                TE, Ref (Relationship (In_V)));
+   end Make_Global_Constant;
 
    --------------------------
    -- Make_Global_Variable --

@@ -82,6 +82,11 @@ package GNATLLVM.Variables is
    --  make the second pass over both lists if Pass2 is true.  The lists
    --  usually correspond to the public and private parts of a package.
 
+   function Make_Global_Constant (V : GL_Value) return GL_Value
+     with Pre  => not Is_Reference (V),
+          Post => Is_A_Global_Variable (Make_Global_Constant'Result);
+   --  Create a global constant that contains the value of V
+
    procedure Emit_Declaration
      (N : Node_Id; For_Freeze_Entity : Boolean := False)
      with Pre => Nkind_In (N, N_Object_Declaration, N_Exception_Declaration);

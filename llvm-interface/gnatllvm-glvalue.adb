@@ -25,6 +25,7 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.GLValue is
 
@@ -375,31 +376,17 @@ package body GNATLLVM.GLValue is
       --  it's on the stack of the calling subprogram since the called
       --  subprogram may capture the address and store it for later (this
       --  happens a lot with tasking).  If we have a string literal, we
-      --  also materaialize the bounds if we can.
-      --  ??? We should use a hash table here to avoid making duplicate
-      --  constants.
+      --  also materialize the bounds if we can.
 
       elsif Equiv_Relationship (Ref (Relationship (V)), R) then
          if Is_Constant (V) then
-            Result := V;
-            if Ekind (TE) = E_String_Literal_Subtype
-              and then Equiv_Relationship (R, Reference_To_Bounds_And_Data)
-            then
-               Result := Get (V, Bounds_And_Data);
-            end if;
-
-            Result := G (Add_Global (LLVM_Module, Type_Of (V), "for-ref"),
-                         TE, Ref (Relationship (V)));
-            Set_Initializer     (Result, V);
-            Set_Linkage         (Result, Private_Linkage);
-            Set_Global_Constant (Result, True);
+            return Get (Make_Global_Constant (V), R);
          else
             Result := G (Alloca (IR_Builder, Type_Of (V), ""),
                          Related_Type (V), Ref (Relationship (V)));
             Store (V, Result);
+            return Result;
          end if;
-
-         return Result;
       end if;
 
       --  Now we have specific rules for each relationship type.  It's tempting

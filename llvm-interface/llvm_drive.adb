@@ -91,15 +91,14 @@ package body LLVM_Drive is
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
       type Addr_Arr is array (Interfaces.C.int range <>) of Address;
       Opt0   : constant String   := "filename" & ASCII.NUL;
-      Opt1   : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
-      Addrs  : constant Addr_Arr (1 .. Switch_Table.Last + 2) :=
-        (1 => Opt0'Address, 2 => Opt1'Address, others => <>);
+      Addrs  : constant Addr_Arr (1 .. Switch_Table.Last + 1) :=
+        (1 => Opt0'Address, others => <>);
       Result : Nat;
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
 
-      Parse_Command_Line_Options (Switch_Table.Last + 2, Addrs'Address, "");
+      Parse_Command_Line_Options (Switch_Table.Last + 1, Addrs'Address, "");
 
       --  Finalize our compilation mode now that all switches are parsed
 

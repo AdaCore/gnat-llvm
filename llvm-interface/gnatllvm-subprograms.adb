@@ -166,7 +166,8 @@ package body GNATLLVM.Subprograms is
    ----------------------
 
    function Is_Return_By_Ref (E : Entity_Id) return Boolean is
-      (Returns_By_Ref (E) or else Is_By_Reference_Type (Full_Etype (E)))
+      (Returns_By_Ref (E) or else Is_By_Reference_Type (Full_Etype (E))
+         or else Requires_Transient_Scope (Full_Etype (E)))
       with Pre => Ekind_In (E, E_Function, E_Procedure, E_Subprogram_Type);
    --  True if the subprogram or subprogram type returns by reference,
    --  either because it's marked that way or because it returns a type

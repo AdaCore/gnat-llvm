@@ -1236,6 +1236,15 @@ package body GNATLLVM.GLValue is
                 TE, R);
    end Add_Global;
 
+   --------------------
+   -- Set_Value_Name --
+   --------------------
+
+   procedure Set_Value_Name (V : GL_Value; Name : String) is
+   begin
+      Set_Value_Name (LLVM_Value (V), Name);
+   end Set_Value_Name;
+
    ---------------------
    -- Set_Initializer --
    ---------------------

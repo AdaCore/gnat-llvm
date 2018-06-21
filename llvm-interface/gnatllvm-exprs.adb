@@ -921,7 +921,7 @@ package body GNATLLVM.Exprs is
       then
 
          --  Here, we have the situation where the source is of an LLVM
-         --  value, but the destiation may or may not be a variable-sized
+         --  value, but the destination may or may not be a variable-sized
          --  type.  In that case, since we know the size and know the object
          --  to store, we can convert Dest to the type of the pointer to
          --  Src, which we know is fixed-size, and do the store.  If Dest

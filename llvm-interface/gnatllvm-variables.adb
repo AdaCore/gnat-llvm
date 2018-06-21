@@ -895,11 +895,17 @@ package body GNATLLVM.Variables is
          return;
       end if;
 
-      --  If we have an initializing expression, get it
+      --  If we have an initializing expression, get it.  If we're making
+      --  an object of classwide type, we must have any initializing
+      --  expression by reference since we have to ignore its type when
+      --  doing the initializing.
 
       if Present (Expr) and then No (Value) then
-         Value := (if Is_Dynamic_Size (TE) then Emit_LValue (Expr)
-                   else Emit_Expression (Expr));
+         if Is_Class_Wide_Equivalent_Type (TE) then
+            Value := Get (Emit (Strip_Conversions (Expr)), Any_Reference);
+         else
+            Value := Get (Emit (Expr), Object);
+         end if;
       end if;
 
       --  Likewise for the expression for the address clause
@@ -945,6 +951,31 @@ package body GNATLLVM.Variables is
       elsif Present (Addr) then
          LLVM_Var := Addr;
 
+      --  If this is a true constant and we aren't taking its address,
+      --  we can just use the expression that computed the constant as
+      --  the value, once converted to the proper type.
+
+      elsif Ekind (Def_Ident) = E_Constant
+        and then Is_True_Constant (Def_Ident) and then Present (Value)
+        and then not Is_Aliased (Def_Ident)
+        and then not Address_Taken (Def_Ident)
+      then
+         if Is_Reference (Value) then
+            LLVM_Var := Convert_Ref (Value, TE);
+         elsif Is_Elementary_Type (TE) then
+            LLVM_Var := Convert (Value, TE);
+         else
+            LLVM_Var := Value;
+         end if;
+
+         Copied := True;
+
+         --  If this is an unnamed operation, set its name to that of our
+         --  variable to make the code easier to read.
+
+         if Get_Value_Name (LLVM_Var) = "" then
+            Set_Value_Name (LLVM_Var, Get_Name (Def_Ident));
+         end if;
       else
          --  Otherwise, allocate it on the stack, copying in any value
 

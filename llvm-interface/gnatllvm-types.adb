@@ -722,9 +722,9 @@ package body GNATLLVM.Types is
 
    begin
       while Present (E) loop
-         exit when not  Nkind_In (E, N_Type_Conversion,
-                                  N_Unchecked_Type_Conversion,
-                                  N_Qualified_Expression);
+         exit when not Nkind_In (E, N_Type_Conversion,
+                                 N_Unchecked_Type_Conversion,
+                                 N_Qualified_Expression);
          exit when Is_Elementary_Type (Full_Etype (E));
          exit when Get_Type_Size_Complexity (Full_Etype (E))
            <= Get_Type_Size_Complexity (Full_Etype (Expression (E)));
@@ -733,6 +733,24 @@ package body GNATLLVM.Types is
 
       return E;
    end Strip_Complex_Conversions;
+
+   -----------------------
+   -- Strip_Conversions --
+   -----------------------
+
+   function Strip_Conversions (N : Node_Id) return Node_Id is
+      E : Node_Id := N;
+
+   begin
+      while Present (E) loop
+         exit when not Nkind_In (E, N_Type_Conversion,
+                                 N_Unchecked_Type_Conversion,
+                                 N_Qualified_Expression);
+         E := Expression (E);
+      end loop;
+
+      return E;
+   end Strip_Conversions;
 
    ----------------------
    -- Bounds_To_Length --
@@ -1339,8 +1357,10 @@ package body GNATLLVM.Types is
    function Get_Alloc_Size
      (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
    is
-      Size : GL_Value :=
-        Get_Type_Size (Alloc_Type, V,
+      Classwide : constant Boolean := Is_Class_Wide_Equivalent_Type (TE);
+      Size      : GL_Value :=
+        Get_Type_Size (Alloc_Type,
+                       (if Classwide then No_GL_Value else V),
                        For_Type => No (V) and then not Is_Constrained (TE));
 
    begin

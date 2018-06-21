@@ -561,6 +561,13 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Const_Int (V);
    --  V is a constant integer; get its value
 
+   function Get_Value_Name (V : GL_Value) return String is
+     (Get_Value_Name (LLVM_Value (V)))
+     with Pre => Present (V);
+
+   procedure Set_Value_Name (V : GL_Value; Name : String)
+     with Pre => Present (V);
+
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
      (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = Val)
      with Pre => Present (V);

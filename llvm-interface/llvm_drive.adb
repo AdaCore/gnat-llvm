@@ -15,15 +15,18 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 with Ada.Directories;
 
 with System;         use System;
 with System.Strings; use System.Strings;
 
 with LLVM.Analysis;   use LLVM.Analysis;
-with LLVM.Target;     use LLVM.Target;
 with LLVM.Bit_Writer; use LLVM.Bit_Writer;
 with LLVM.Core;       use LLVM.Core;
+with LLVM.Support;    use LLVM.Support;
+with LLVM.Target;     use LLVM.Target;
 
 with Atree;    use Atree;
 with Errout;   use Errout;
@@ -36,6 +39,7 @@ with Sinfo;    use Sinfo;
 with Stand;    use Stand;
 with Stringt;
 with Switch;   use Switch;
+with Table;
 
 with Get_Targ; use Get_Targ;
 
@@ -70,15 +74,32 @@ package body LLVM_Drive is
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
 
+   type Pstring is access String;
+
+   package Switch_Table is new Table.Table
+     (Table_Component_Type => Pstring,
+      Table_Index_Type     => Interfaces.C.int,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Switch_Table");
+
    ------------------
    -- GNAT_To_LLVM --
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
+      type Addr_Arr is array (Interfaces.C.int range <>) of Address;
+      Opt0   : constant String   := "filename" & ASCII.NUL;
+      Opt1   : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
+      Addrs  : constant Addr_Arr (1 .. Switch_Table.Last + 2) :=
+        (1 => Opt0'Address, 2 => Opt1'Address, others => <>);
       Result : Nat;
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
+
+      Parse_Command_Line_Options (Switch_Table.Last + 2, Addrs'Address, "");
 
       --  Finalize our compilation mode now that all switches are parsed
 
@@ -237,16 +258,13 @@ package body LLVM_Drive is
       Last  : constant Natural  := Switch_Last (Switch);
 
    begin
-      if Switch = "--dump-ir" then
+      if not Is_Switch (Switch) then
+         return False;
+      elsif Switch = "--dump-ir" then
          Code_Generation := Dump_IR;
          return True;
       elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
          Code_Generation := Write_BC;
-         return True;
-      elsif Switch'Length > 9
-        and then Switch (Switch'First .. Switch'First + 8) = "--target="
-      then
-         Target := new String'(Switch (First + 8 .. Last));
          return True;
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
@@ -257,6 +275,16 @@ package body LLVM_Drive is
       elsif Switch = "-g" then
          Emit_Debug_Info := True;
          return True;
+      elsif Last > First + 7
+        and then Switch (First .. First + 7) = "-target="
+      then
+         Target := new String'(Switch (First + 8 .. Last));
+         return True;
+      elsif Last > First + 4
+        and then Switch (First .. First + 4) = "llvm-"
+      then
+         Switch_Table.Append (new String'(Switch (First + 4 .. Last)));
+         return True;
       end if;
 
       --  For now we allow the -O/-f/-m/-W/-w and -pipe switches, even
@@ -264,10 +292,8 @@ package body LLVM_Drive is
       --  This permits compatibility with existing scripts.
       --  ??? Should take into account -O
 
-      return
-        Is_Switch (Switch)
-          and then (Switch (First) in 'f' | 'm' | 'O' | 'W' | 'w'
-                    or else Switch (First .. Last) = "pipe");
+      return Switch (First) in 'f' | 'm' | 'O' | 'W' | 'w'
+        or else Switch (First .. Last) = "pipe";
    end Is_Back_End_Switch;
 
    ----------------------

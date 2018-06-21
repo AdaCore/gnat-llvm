@@ -203,6 +203,9 @@ package GNATLLVM.Types is
    --  conversions that increase the complexity of the size of the
    --  type because the caller will be doing any needed conversions.
 
+   function Strip_Conversions (N : Node_Id) return Node_Id;
+   --  Likewise, but remove all conversions
+
    function Bounds_To_Length
      (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (In_Low) and then Present (In_High)

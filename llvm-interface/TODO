@@ -3,7 +3,7 @@ Missing features (identified so far):
 - out parameters for scalars passed by value
 - more __sync builtins and other atomic builtins
 - call "_ext" version of raise routines
-- handle goto / loop exits out of blocks
+- handle goto out of blocks
 - reduce generation of elaboration code on e.g. aggregates (see system.ads)
 - Unchecked_Union
 - freeze nodes for types and subprograms (see c38102a)

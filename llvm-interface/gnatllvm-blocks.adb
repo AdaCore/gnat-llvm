@@ -144,15 +144,28 @@ package body GNATLLVM.Blocks is
 
    type Exit_Point is record
       Label_Entity : Entity_Id;
+      --  The Identifier of the block, used to find which block to exit
+
+      Orig_BB      : Basic_Block_T;
+      --  The basic block to jump to in order to exit the block
+
       Exit_BB      : Basic_Block_T;
+      --  A basic block to jump to, which includes any needed fixup code
+
       Block_Depth  : Block_Stack_Level;
+      --  The block depth of Orig_BB
+
+      From_Block   : Block_Stack_Level;
+      --  The starting block depth of Exit_BB
    end record;
 
-   Exit_Point_Low_Bound : constant := 1;
+   type Exit_Point_Level is new Integer;
+
+   Exit_Point_Low_Bound : constant Exit_Point_Level := 1;
 
    package Exit_Point_Table is new Table.Table
      (Table_Component_Type => Exit_Point,
-      Table_Index_Type     => Nat,
+      Table_Index_Type     => Exit_Point_Level,
       Table_Low_Bound      => Exit_Point_Low_Bound,
       Table_Initial        => 10,
       Table_Increment      => 5,
@@ -160,13 +173,16 @@ package body GNATLLVM.Blocks is
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
+   function Find_Exit_Point (N : Node_Id) return Exit_Point_Level;
+   --  Find the index into the exit point table for node N, if Present
+
    procedure Call_At_End (Block : Block_Stack_Level);
    --  Call the At_End procedure of Block, if any
 
    procedure Restore_Stack_From (Stack_Save : GL_Value);
    --  Restore the stack from the value saved in Stack_Save
 
-   procedure Emit_Fixups_From_To (From, To : Block_Stack_Level);
+   procedure Build_Fixups_From_To (From, To : Block_Stack_Level);
    --  We're currently in block From and going to block To.  Call any
    --  "at end" procedures in between and restore the stack, if needed.
 
@@ -354,16 +370,16 @@ package body GNATLLVM.Blocks is
    end Restore_Stack_From;
 
    -------------------------
-   -- Emit_Fixups_From_To --
+   -- Build_Fixups_From_To --
    -------------------------
 
-   procedure Emit_Fixups_From_To (From, To : Block_Stack_Level)
+   procedure Build_Fixups_From_To (From, To : Block_Stack_Level)
    is
       Stack_Save : GL_Value := No_GL_Value;
 
    begin
       --  We're going from block From to block To.  Run fixups for any blocks
-      --  we pass end then restore the outermost stack pointer.
+      --  we pass and then restore the outermost stack pointer.
 
       for J in reverse To + 1 .. From loop
          Call_At_End (J);
@@ -379,7 +395,7 @@ package body GNATLLVM.Blocks is
          Restore_Stack_From (Stack_Save);
       end if;
 
-   end Emit_Fixups_From_To;
+   end Build_Fixups_From_To;
 
    ----------------------------
    -- Emit_Fixups_For_Return --
@@ -390,7 +406,7 @@ package body GNATLLVM.Blocks is
       --  We're going from our current position entirely out of the block
       --  stack.
 
-      Emit_Fixups_From_To (Block_Stack.Last, 0);
+      Build_Fixups_From_To (Block_Stack.Last, 0);
    end Emit_Fixups_For_Return;
 
    ---------------------------
@@ -909,7 +925,7 @@ package body GNATLLVM.Blocks is
       BI.In_Stmts    := False;
       BI.Unprotected := True;
       if not At_Dead then
-         Emit_Fixups_From_To (Block, Block - 1);
+         Build_Fixups_From_To (Block, Block - 1);
          Maybe_Build_Br (Next_BB);
       end if;
 
@@ -1074,7 +1090,11 @@ package body GNATLLVM.Blocks is
 
    procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T) is
    begin
-      Exit_Point_Table.Append ((LE, Exit_Point, Block_Stack.Last));
+      Exit_Point_Table.Append ((Label_Entity => LE,
+                                Block_Depth  => Block_Stack.Last,
+                                Orig_BB      => Exit_Point,
+                                Exit_BB      => No_BB_T,
+                                From_Block   => -1));
    end Push_Loop;
 
    --------------
@@ -1086,23 +1106,23 @@ package body GNATLLVM.Blocks is
       Exit_Point_Table.Decrement_Last;
    end Pop_Loop;
 
-   --------------------
-   -- Get_Exit_Point --
-   --------------------
+   ---------------------
+   -- Find_Exit_Point --
+   ---------------------
 
-   function Get_Exit_Point (N : Node_Id) return Basic_Block_T is
+   function Find_Exit_Point (N : Node_Id) return Exit_Point_Level is
    begin
       --  If no exit label was specified, use the last one
 
       if No (N) then
-         return Exit_Point_Table.Table (Exit_Point_Table.Last).Exit_BB;
+         return Exit_Point_Table.Last;
       end if;
 
       --  Otherwise search for a match
 
       for I in Exit_Point_Low_Bound .. Exit_Point_Table.Last loop
          if Exit_Point_Table.Table (I).Label_Entity = Entity (N) then
-            return Exit_Point_Table.Table (I).Exit_BB;
+            return I;
          end if;
       end loop;
 
@@ -1110,7 +1130,32 @@ package body GNATLLVM.Blocks is
       --  statement with no corresponding loop: should not happen.
 
       Error_Msg_N ("unknown loop identifier", N);
-      raise Program_Error;
+      return Exit_Point_Table.Last;
+   end Find_Exit_Point;
+
+   --------------------
+   -- Get_Exit_Point --
+   --------------------
+
+   function Get_Exit_Point (N : Node_Id) return Basic_Block_T is
+      Current_BB : constant Basic_Block_T    := Get_Insert_Block;
+      EPT_Index  : constant Exit_Point_Level := Find_Exit_Point (N);
+      EPT        : Exit_Point renames Exit_Point_Table.Table (EPT_Index);
+
+   begin
+      --  If this entry doesn't correspond to a fixup from the current block,
+      --  make one.
+
+      if EPT.From_Block /= Block_Stack.Last then
+         EPT.From_Block := Block_Stack.Last;
+         EPT.Exit_BB    := Create_Basic_Block;
+         Position_Builder_At_End (EPT.Exit_BB);
+         Build_Fixups_From_To (Block_Stack.Last, EPT.Block_Depth);
+         Build_Br (EPT.Orig_BB);
+         Position_Builder_At_End (Current_BB);
+      end if;
+
+      return EPT.Exit_BB;
    end Get_Exit_Point;
 
    ----------------

@@ -802,9 +802,9 @@ package body GNATLLVM.Compile is
       --  around that code, so we free any variables allocated each iteration.
 
       Position_Builder_At_End (BB_Stmts);
+      Push_Loop (Loop_Identifier, BB_Next);
       Push_Block;
       Start_Block_Statements (Empty, No_List);
-      Push_Loop (Loop_Identifier, BB_Next);
       Emit (Statements (N));
       Set_Debug_Pos_At_Node (N);
       Pop_Block;

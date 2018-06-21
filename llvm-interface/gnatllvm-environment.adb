@@ -107,7 +107,7 @@ package body GNATLLVM.Environment is
    -- Get_Array_Info --
    ---------------------
 
-   function Get_Array_Info (TE : Entity_Id) return Nat is
+   function Get_Array_Info (TE : Entity_Id) return Array_Info_Id is
    begin
       if not Has_Type (TE) then
          Discard (Create_Type (TE));
@@ -265,7 +265,7 @@ package body GNATLLVM.Environment is
    -- Set_Array_Info --
    ---------------------
 
-   procedure Set_Array_Info (TE : Entity_Id; AI : Nat)
+   procedure Set_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
    is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 

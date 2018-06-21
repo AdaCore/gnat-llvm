@@ -64,8 +64,8 @@ package body GNATLLVM.Arrays is
 
    package Array_Info is new Table.Table
      (Table_Component_Type => Index_Bounds,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
+      Table_Index_Type     => Array_Info_Id'Base,
+      Table_Low_Bound      => Array_Info_Low_Bound,
       Table_Initial        => 1024,
       Table_Increment      => 100,
       Table_Name           => "Array_Info_Table");
@@ -164,16 +164,16 @@ package body GNATLLVM.Arrays is
       V        : GL_Value;
       For_Type : Boolean := False) return GL_Value
    is
-      Typ        : constant Entity_Id    := Type_For_Get_Bound (TE, V);
-      Info_Idx   : constant Nat          := Get_Array_Info (Typ);
-      Dim_Info   : constant Index_Bounds := Array_Info.Table (Info_Idx + Dim);
-      Bound_Info : constant One_Bound    :=
+      Typ        : constant Entity_Id     := Type_For_Get_Bound (TE, V);
+      Info_Idx   : constant Array_Info_Id := Get_Array_Info (Typ);
+      Dim_Info   : constant Index_Bounds  := Array_Info.Table (Info_Idx + Dim);
+      Bound_Info : constant One_Bound     :=
         (if Is_Low then Dim_Info.Low else Dim_Info.High);
       Bound_Idx  : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
       --  In the array fat pointer bounds structure, bounds are stored as a
       --  sequence of (lower bound, upper bound) pairs.
-      Expr       : constant Node_Id      := Bound_Info.Value;
-      Discrim    : constant Entity_Id    := Contains_Discriminant (Expr);
+      Expr       : constant Node_Id       := Bound_Info.Value;
+      Discrim    : constant Entity_Id     := Contains_Discriminant (Expr);
       Result     : GL_Value;
 
    begin
@@ -273,7 +273,7 @@ package body GNATLLVM.Arrays is
    function Get_Array_Size_Complexity
      (TE : Entity_Id; For_Type : Boolean := False) return Nat
    is
-      Info_Idx    : constant Nat := Get_Array_Info (TE);
+      Info_Idx    : constant Array_Info_Id := Get_Array_Info (TE);
 
    begin
       return Complexity : Nat :=
@@ -331,17 +331,20 @@ package body GNATLLVM.Arrays is
    -----------------------
 
    function Create_Array_Type (TE : Entity_Id) return Type_T is
-      Unconstrained     : constant Boolean   := not Is_Constrained (TE);
-      Comp_Type         : constant Entity_Id := Full_Component_Type (TE);
-      Base_Type         : constant Entity_Id := Implementation_Base_Type (TE);
-      Must_Use_Fake     : Boolean            := Is_Dynamic_Size (Comp_Type);
-      This_Dynamic_Size : Boolean            := Must_Use_Fake or Unconstrained;
-      CT_To_Use         : constant Entity_Id :=
+      Unconstrained     : constant Boolean       := not Is_Constrained (TE);
+      Comp_Type         : constant Entity_Id     := Full_Component_Type (TE);
+      Base_Type         : constant Entity_Id     :=
+        Implementation_Base_Type (TE);
+      Must_Use_Fake     : Boolean                :=
+        Is_Dynamic_Size (Comp_Type);
+      This_Dynamic_Size : Boolean                :=
+        Must_Use_Fake or Unconstrained;
+      CT_To_Use         : constant Entity_Id     :=
         (if Must_Use_Fake then Standard_Short_Short_Integer else Comp_Type);
-      Typ               : Type_T             := Create_Type (CT_To_Use);
+      Typ               : Type_T                 := Create_Type (CT_To_Use);
       --  This must be before the next line because it may recurse
-      First_Info        : constant Nat       := Array_Info.Last + 1;
-      Dim               : Nat                := 0;
+      First_Info        : constant Array_Info_Id := Array_Info.Last + Nat (1);
+      Dim               : Nat                    := 0;
       Index             : Entity_Id;
       Base_Index        : Entity_Id;
 
@@ -449,10 +452,10 @@ package body GNATLLVM.Arrays is
 
    function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
    is
-      Dims       : constant Nat := Number_Dimensions (TE);
+      Dims       : constant Nat           := Number_Dimensions (TE);
       Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
-      First_Info : constant Nat := Get_Array_Info (TE);
-      J          : Nat          := 0;
+      First_Info : constant Array_Info_Id := Get_Array_Info (TE);
+      J          : Nat                    := 0;
 
    begin
       for I in Nat range 0 .. Dims - 1 loop
@@ -675,7 +678,7 @@ package body GNATLLVM.Arrays is
    function Get_Array_Bounds
      (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
    is
-      Info_Idx   : constant Nat := Get_Array_Info (TE);
+      Info_Idx   : constant Array_Info_Id := Get_Array_Info (TE);
 
    begin
       return Bound_Val : GL_Value := Get_Undef_Relationship (TE, Bounds) do
@@ -912,5 +915,11 @@ package body GNATLLVM.Arrays is
         with "Invalid node kind in context: " & Node_Kind'Image (Nkind (N));
       pragma Annotate (Xcov, Exempt_Off);
    end Get_Dim_Range;
+
+begin
+   --  Make a dummy entry in the array info table, so the "Empty"
+   --  entry is never used.
+
+   Array_Info.Increment_Last;
 
 end GNATLLVM.Arrays;

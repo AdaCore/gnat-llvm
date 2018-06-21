@@ -23,7 +23,7 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Environment is
 
-   --  Define bounds and types for record and field information
+   --  Define bounds and types for record, field, and array information
 
    Record_Info_Low_Bound  : constant := 300_000_000;
    Record_Info_High_Bound : constant := 399_999_999;
@@ -40,14 +40,27 @@ package GNATLLVM.Environment is
    First_Field_Info_Id   : constant Field_Info_Id := Field_Info_Low_Bound;
    Empty_Field_Info_Id   : constant Field_Info_Id := First_Field_Info_Id;
 
+   Array_Info_Low_Bound  : constant := 500_000_000;
+   Array_Info_High_Bound : constant := 599_999_999;
+   type Array_Info_Id is range Array_Info_Low_Bound .. Array_Info_High_Bound;
+   First_Array_Info_Id   : constant Array_Info_Id := Array_Info_Low_Bound;
+   Empty_Array_Info_Id   : constant Array_Info_Id := First_Array_Info_Id;
+
+   function "+" (A : Array_Info_Id; N : Nat) return Array_Info_Id is
+     (Array_Info_Id (Nat (A) + N));
+
    function No (R : Record_Info_Id)      return Boolean is
       (R = Empty_Record_Info_Id);
    function No (F : Field_Info_Id)       return Boolean is
       (F = Empty_Field_Info_Id);
+   function No (A : Array_Info_Id)       return Boolean is
+      (A = Empty_Array_Info_Id);
    function Present (R : Record_Info_Id) return Boolean is
       (R /= Empty_Record_Info_Id);
    function Present (F : Field_Info_Id)  return Boolean is
       (F /= Empty_Field_Info_Id);
+   function Present (A : Array_Info_Id)  return Boolean is
+      (A /= Empty_Array_Info_Id);
 
    --  Define information saying how deep we are in the block stack.  The
    --  stack itself is in GNATLLVM.Blocks.
@@ -81,24 +94,24 @@ package GNATLLVM.Environment is
       --  with zero size, we need to use this flag to disambiguate the cases
       --  of a zero-length array and a variable-sized array.
 
-      Array_Bound_Info : Nat;
+      Array_Bound_Info : Array_Info_Id;
       --  For arrays, an index into bounds information maintained by
       --  GNATLLVM.Arrays.
 
-      TBAA        : Metadata_T;
+      TBAA             : Metadata_T;
       --  An LLVM TBAA Metadata node corresponding to the type.  Set only
       --  For types that are sufficiently primitive.
 
-      Basic_Block : Basic_Block_T;
+      Basic_Block      : Basic_Block_T;
       --  For labels and loop ids, records the corresponding basic block
 
-      Block_Inf   : Block_Info;
+      Block_Inf        : Block_Info;
       --  For labeles, records the depth and "in statements" status
 
-      Record_Inf  : Record_Info_Id;
+      Record_Inf       : Record_Info_Id;
       --  For records, gives the first index of the descriptor of the record
 
-      Field_Inf   : Field_Info_Id;
+      Field_Inf        : Field_Info_Id;
       --  For fields, gives the index of the descriptor of the field
    end record;
 
@@ -134,7 +147,7 @@ package GNATLLVM.Environment is
    function Get_Value       (VE : Entity_Id) return GL_Value
      with Pre => Present (VE);
 
-   function Get_Array_Info  (TE : Entity_Id) return Nat
+   function Get_Array_Info  (TE : Entity_Id) return Array_Info_Id
      with Pre => Is_Array_Type (TE);
 
    function Get_Record_Info (TE : Entity_Id) return Record_Info_Id
@@ -193,7 +206,7 @@ package GNATLLVM.Environment is
      with Pre  => Present (VE) and then Present (VL),
           Post => Get_Value (VE) = VL;
 
-   procedure Set_Array_Info (TE : Entity_Id; AI : Nat)
+   procedure Set_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
      with Pre  => Is_Array_Type (TE) and then Has_Type (TE),
           Post => Get_Array_Info (TE) = AI;
 

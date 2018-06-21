@@ -90,19 +90,6 @@ package body GNATLLVM.Environment is
       end if;
    end Get_Basic_Block;
 
-   --------------------
-   -- Get_Block_Info --
-   --------------------
-
-   function Get_Block_Info (BE : Entity_Id) return Block_Info is
-   begin
-      if LLVM_Info_Map (BE) = Empty_LLVM_Info_Id then
-         return No_Block_Info;
-      else
-         return LLVM_Info_Table.Table (LLVM_Info_Map (BE)).Block_Inf;
-      end if;
-   end Get_Block_Info;
-
    ---------------------
    -- Get_Array_Info --
    ---------------------
@@ -248,18 +235,6 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Basic_Block := BL;
    end Set_Basic_Block;
-
-   --------------------
-   -- Set_Block_Info --
-   --------------------
-
-   procedure Set_Block_Info (BE : Entity_Id; BI : Block_Info)
-   is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (BE);
-
-   begin
-      LLVM_Info_Table.Table (Id).Block_Inf := BI;
-   end Set_Block_Info;
 
    ---------------------
    -- Set_Array_Info --

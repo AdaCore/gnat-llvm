@@ -130,6 +130,20 @@ package body GNATLLVM.Environment is
 
    end Get_Field_Info;
 
+   --------------------
+   -- Get_Label_Info --
+   --------------------
+
+   function Get_Label_Info (VE : Entity_Id) return Label_Info_Id is
+   begin
+      if LLVM_Info_Map (VE) = Empty_LLVM_Info_Id then
+         return Empty_Label_Info_Id;
+      else
+         return LLVM_Info_Table.Table (LLVM_Info_Map (VE)).Label_Info;
+      end if;
+
+   end Get_Label_Info;
+
    function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id;
    --  Helper for below to allocate LLVM_Info_Table entry if needed.
 
@@ -152,7 +166,8 @@ package body GNATLLVM.Environment is
                                   Basic_Block     => No_BB_T,
                                   Record_Info     => Empty_Record_Info_Id,
                                   Field_Info      => Empty_Field_Info_Id,
-                                  Array_Info      => Empty_Array_Info_Id));
+                                  Array_Info      => Empty_Array_Info_Id,
+                                  Label_Info      => Empty_Label_Info_Id));
          Id := LLVM_Info_Table.Last;
          LLVM_Info_Map (N) := Id;
          return Id;
@@ -271,5 +286,17 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Field_Info := FI;
    end Set_Field_Info;
+
+   --------------------
+   -- Set_Label_Info --
+   --------------------
+
+   procedure Set_Label_Info (VE : Entity_Id; LI : Label_Info_Id)
+   is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (VE);
+
+   begin
+      LLVM_Info_Table.Table (Id).Label_Info := LI;
+   end Set_Label_Info;
 
 end GNATLLVM.Environment;

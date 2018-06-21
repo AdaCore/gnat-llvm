@@ -46,6 +46,12 @@ package GNATLLVM.Environment is
    First_Array_Info_Id   : constant Array_Info_Id := Array_Info_Low_Bound;
    Empty_Array_Info_Id   : constant Array_Info_Id := First_Array_Info_Id;
 
+   Label_Info_Low_Bound  : constant := 600_000_000;
+   Label_Info_High_Bound : constant := 699_999_999;
+   type Label_Info_Id is range Label_Info_Low_Bound .. Label_Info_High_Bound;
+   First_Label_Info_Id   : constant Label_Info_Id := Label_Info_Low_Bound;
+   Empty_Label_Info_Id   : constant Label_Info_Id := First_Label_Info_Id;
+
    function "+" (A : Array_Info_Id; N : Nat) return Array_Info_Id is
      (Array_Info_Id (Nat (A) + N));
 
@@ -55,12 +61,16 @@ package GNATLLVM.Environment is
       (F = Empty_Field_Info_Id);
    function No (A : Array_Info_Id)       return Boolean is
       (A = Empty_Array_Info_Id);
+   function No (L : Label_Info_Id)       return Boolean is
+      (L = Empty_Label_Info_Id);
    function Present (R : Record_Info_Id) return Boolean is
       (R /= Empty_Record_Info_Id);
    function Present (F : Field_Info_Id)  return Boolean is
       (F /= Empty_Field_Info_Id);
    function Present (A : Array_Info_Id)  return Boolean is
       (A /= Empty_Array_Info_Id);
+   function Present (L : Label_Info_Id)  return Boolean is
+      (L /= Empty_Label_Info_Id);
 
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
@@ -98,6 +108,9 @@ package GNATLLVM.Environment is
 
       Field_Info      : Field_Info_Id;
       --  For fields, gives the index of the descriptor of the field
+
+      Label_Info      : Label_Info_Id;
+      --  For labeles, points to information about that label
    end record;
 
    LLVM_Info_Low_Bound  : constant := 200_000_000;
@@ -141,6 +154,9 @@ package GNATLLVM.Environment is
    function Get_Field_Info (VE : Entity_Id)  return Field_Info_Id
      with Pre => Ekind_In (VE, E_Discriminant, E_Component);
 
+   function Get_Label_Info (VE : Entity_Id)  return Label_Info_Id
+     with Pre => Present (VE);
+
    function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T
      with Pre => Present (BE);
 
@@ -167,6 +183,10 @@ package GNATLLVM.Environment is
    function Has_Field_Info (VE : Entity_Id)  return Boolean is
       (Present (Get_Field_Info (VE)))
      with Pre => Ekind_In (VE, E_Discriminant, E_Component);
+
+   function Has_Label_Info (VE : Entity_Id)  return Boolean is
+      (Present (Get_Label_Info (VE)))
+     with Pre => Present (VE);
 
    procedure Set_Type       (TE : Entity_Id; TL : Type_T)
      with Pre  => Is_Type (TE) and then Present (TL),
@@ -195,6 +215,10 @@ package GNATLLVM.Environment is
    procedure Set_Field_Info (VE : Entity_Id; FI : Field_Info_Id)
      with Pre  => Ekind_In (VE, E_Discriminant, E_Component),
           Post => Get_Field_Info (VE) = FI;
+
+   procedure Set_Label_Info (VE : Entity_Id; LI : Label_Info_Id)
+     with Pre  => Present (VE),
+          Post => Get_Label_Info (VE) = LI;
 
    procedure Set_Basic_Block (BE : Entity_Id; BL : Basic_Block_T)
      with Pre => Present (BE), Post => Get_Basic_Block (BE) = BL;

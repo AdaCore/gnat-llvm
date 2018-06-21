@@ -100,7 +100,7 @@ package body GNATLLVM.Environment is
          Discard (Create_Type (TE));
       end if;
 
-      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Array_Bound_Info;
+      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Array_Info;
    end Get_Array_Info;
 
    ---------------------
@@ -113,7 +113,7 @@ package body GNATLLVM.Environment is
          Discard (Create_Type (TE));
       end if;
 
-      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Record_Inf;
+      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Record_Info;
    end Get_Record_Info;
 
    --------------------
@@ -125,7 +125,7 @@ package body GNATLLVM.Environment is
       if LLVM_Info_Map (VE) = Empty_LLVM_Info_Id then
          return Empty_Field_Info_Id;
       else
-         return LLVM_Info_Table.Table (LLVM_Info_Map (VE)).Field_Inf;
+         return LLVM_Info_Table.Table (LLVM_Info_Map (VE)).Field_Info;
       end if;
 
    end Get_Field_Info;
@@ -150,9 +150,9 @@ package body GNATLLVM.Environment is
                                   TBAA            => No_Metadata_T,
                                   Is_Dynamic_Size => False,
                                   Basic_Block     => No_BB_T,
-                                  Record_Inf      => Empty_Record_Info_Id,
-                                  Field_Inf       => Empty_Field_Info_Id,
-                                  others          => <>));
+                                  Record_Info     => Empty_Record_Info_Id,
+                                  Field_Info      => Empty_Field_Info_Id,
+                                  Array_Info      => Empty_Array_Info_Id));
          Id := LLVM_Info_Table.Last;
          LLVM_Info_Map (N) := Id;
          return Id;
@@ -245,7 +245,7 @@ package body GNATLLVM.Environment is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
-      LLVM_Info_Table.Table (Id).Array_Bound_Info := AI;
+      LLVM_Info_Table.Table (Id).Array_Info := AI;
    end Set_Array_Info;
 
    ---------------------
@@ -257,7 +257,7 @@ package body GNATLLVM.Environment is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
    begin
-      LLVM_Info_Table.Table (Id).Record_Inf := RI;
+      LLVM_Info_Table.Table (Id).Record_Info := RI;
    end Set_Record_Info;
 
    --------------------
@@ -269,7 +269,7 @@ package body GNATLLVM.Environment is
       Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (VE);
 
    begin
-      LLVM_Info_Table.Table (Id).Field_Inf := FI;
+      LLVM_Info_Table.Table (Id).Field_Info := FI;
    end Set_Field_Info;
 
 end GNATLLVM.Environment;

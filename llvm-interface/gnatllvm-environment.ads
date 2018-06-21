@@ -66,37 +66,37 @@ package GNATLLVM.Environment is
    --  information is used for each Ekind.
 
    type LLVM_Info is record
-      Value            : GL_Value;
+      Value           : GL_Value;
       --  The GL_Value corresponding to this entity, if a value
 
-      Typ              : Type_T;
+      Typ             : Type_T;
       --  The LLVM Type corresponding to this entity, if a type.  Set for
       --  all types.  If the GNAT type doesn't correspond directly to an
       --  LLVM type (e.g., some variable size arrays and records), this can
       --  be an opaque type and we get the information from other fields of
       --  this record.
 
-      Is_Dynamic_Size  : Boolean;
+      Is_Dynamic_Size : Boolean;
       --  True if the size of this type is dynamic.  This is always the case
       --  if the saved type is an opaque type, but if we have an array type
       --  with zero size, we need to use this flag to disambiguate the cases
       --  of a zero-length array and a variable-sized array.
 
-      Array_Bound_Info : Array_Info_Id;
+      Array_Info      : Array_Info_Id;
       --  For arrays, an index into bounds information maintained by
       --  GNATLLVM.Arrays.
 
-      TBAA             : Metadata_T;
+      TBAA            : Metadata_T;
       --  An LLVM TBAA Metadata node corresponding to the type.  Set only
       --  For types that are sufficiently primitive.
 
-      Basic_Block      : Basic_Block_T;
+      Basic_Block     : Basic_Block_T;
       --  For labels and loop ids, records the corresponding basic block
 
-      Record_Inf       : Record_Info_Id;
+      Record_Info     : Record_Info_Id;
       --  For records, gives the first index of the descriptor of the record
 
-      Field_Inf        : Field_Info_Id;
+      Field_Info      : Field_Info_Id;
       --  For fields, gives the index of the descriptor of the field
    end record;
 

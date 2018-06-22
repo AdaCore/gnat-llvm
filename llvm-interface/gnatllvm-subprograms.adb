@@ -613,6 +613,7 @@ package body GNATLLVM.Subprograms is
 
       Pop_Debug_Scope;
       Leave_Subp;
+      Reset_Block_Tables;
       Current_Subp := Empty;
    end Emit_One_Body;
 

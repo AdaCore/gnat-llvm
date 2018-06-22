@@ -113,6 +113,11 @@ package GNATLLVM.Blocks is
    procedure Emit_Reraise;
    --  Emit code for an N_Raise
 
+   procedure Reset_Block_Tables;
+   --  We don't cut back some of the tables in this module when we can
+   --  because they aren't used much, but we can certinly empty them
+   --  when a subprogram is completed.
+
    procedure Initialize;
    --  Initialize all global names
 

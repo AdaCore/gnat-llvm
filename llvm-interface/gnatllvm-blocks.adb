@@ -173,6 +173,89 @@ package body GNATLLVM.Blocks is
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
+   --  We maintain two tables to handles gotos and labels.  We need to
+   --  generate fixups when gotos branch outside of blocks, but have both
+   --  the case where we've previously seen the label and where we haven't.
+   --
+   --  For each label, we record, in Label_Info, which is linked to the
+   --  GNAT label object, the basic block that corresponds to the label.
+   --  When we've defined the label, we store the stack depth at which it's
+   --  defined.
+   --
+   --  If we're branching to a label at a known location, we generate a
+   --  second block that contains the fixup code followed by the actual
+   --  branch to the label's block.  We use Label_Info as a one-element
+   --  cache to save the location of the fixup code in case we see another
+   --  branch to that same label from the same depth.  However, this cache
+   --  needs to be invalidated once we leave that block since a new block
+   --  at the same depth will have a different fixup.
+   --
+   --  If where we don't know the label's location when branching to it, we
+   --  create an additional label, this time to collect the needed fixups.
+   --  We use the Open_Branches table for this.  Each time we exit a block,
+   --  its fixup is added to each Open_Branch.  When the label is finally
+   --  defined, we close the Open_Branch block (which may be a different
+   --  block from the one originally created if the fixup started a new
+   --  block) by doing the branch to the actual label (we knew this label
+   --  earlier, so could have ended the block with it, but the complexity
+   --  isn't worth it).
+   --
+   --  Note that this algorithm is quadratic in the number of labels and
+   --  can generate duplicate copies of fixups if there are many gotos to
+   --  the same label from different depths in the block stack.  Luckily,
+   --  there are very few labels and gotos in real programs, so this
+   --  implementation works well.  The same approach would work with more
+   --  labels, but we'd need more complex data structures that cache fixups
+   --  from more levels and avoid searching the entire list for open
+   --  branches.
+
+   type Label_Info is record
+      Orig_BB         : Basic_Block_T;
+      --  The basic block directly corresponding to the label
+
+      Fixup_BB        : Basic_Block_T;
+      --  A basic block to jump to, which includes any needed fixup code
+
+      Block_Depth     : Block_Stack_Level;
+      --  The block depth of Orig_BB, or -1 if not known
+
+      From_Block      : Block_Stack_Level;
+      --  The starting block depth of Exit_BB or -1 if none
+
+      Has_Open_Branch : Boolean;
+      --  True if we've made an entry in the Open_Branches table for this
+   end record;
+
+   package Label_Info_Table is new Table.Table
+     (Table_Component_Type => Label_Info,
+      Table_Index_Type     => Label_Info_Id,
+      Table_Low_Bound      => Label_Info_Low_Bound,
+      Table_Initial        => 100,
+      Table_Increment      => 10,
+      Table_Name           => "Label_Info_Table");
+   --  Information about labels we encounter
+
+   type Open_Branch is record
+      Orig_BB     : Basic_Block_T;
+      --  The actual label that we're trying to branch to
+
+      Made_BB     : Basic_Block_T;
+      --  The basic block we created to contain the needed fixups.
+
+      From_Block  : Block_Stack_Level;
+      --  The block depth at which this open branch has been fixed up to,
+      --  initially the block that the branch is being made from.
+   end record;
+
+   package Open_Branches is new Table.Table
+     (Table_Component_Type => Open_Branch,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 100,
+      Table_Increment      => 10,
+      Table_Name           => "Open_Branches");
+   --  Information needed to fixup branches to labels we haven't defined yet
+
    function Find_Exit_Point (N : Node_Id) return Exit_Point_Level;
    --  Find the index into the exit point table for node N, if Present
 
@@ -908,8 +991,8 @@ package body GNATLLVM.Blocks is
    ---------------
 
    procedure Pop_Block is
-      Block      : constant Block_Stack_Level := Block_Stack.Last;
-      BI         : Block_Info renames Block_Stack.Table (Block);
+      Depth      : constant Block_Stack_Level := Block_Stack.Last;
+      BI         : Block_Info renames Block_Stack.Table (Depth);
       At_Dead    : constant Boolean           := Are_In_Dead_Code;
       EH_Work    : constant Boolean           :=
         Present (BI.Landing_Pad) or else Present (BI.Dispatch_BB);
@@ -925,7 +1008,7 @@ package body GNATLLVM.Blocks is
       BI.In_Stmts    := False;
       BI.Unprotected := True;
       if not At_Dead then
-         Build_Fixups_From_To (Block, Block - 1);
+         Build_Fixups_From_To (Depth, Depth - 1);
          Maybe_Build_Br (Next_BB);
       end if;
 
@@ -933,8 +1016,41 @@ package body GNATLLVM.Blocks is
       --  code if we either have exception handlers or an "at end" proc.
 
       if EH_Work then
-         Emit_Handlers (Block);
+         Emit_Handlers (Depth);
       end if;
+
+      --  Look through the Open_Branches table to see if we have any
+      --  open branches at our level.  For each, add our fixup.  Note that
+      --  the fixup may have switched to a different block, so update it.
+
+      for J in 1 .. Open_Branches.Last loop
+         declare
+            Current_BB : constant Basic_Block_T := Get_Insert_Block;
+            OB         : Open_Branch renames Open_Branches.Table (J);
+
+         begin
+            if OB.From_Block = Depth then
+               Position_Builder_At_End (OB.Made_BB);
+               Build_Fixups_From_To (Depth, Depth - 1);
+               OB.From_Block := Depth - 1;
+               OB.Made_BB    := Get_Insert_Block;
+               Position_Builder_At_End (Current_BB);
+            end if;
+         end;
+      end loop;
+
+      --  Go through the Exit_Point_Table and Label_Info_Table and clear
+      --  out any From_Block that corresponds to our depth since those
+      --  are no longer valid: if we push again to that depth, we'll have
+      --  a different fixup.
+
+      for J in Exit_Point_Low_Bound .. Exit_Point_Table.Last loop
+         Exit_Point_Table.Table (J).From_Block := -1;
+      end loop;
+
+      for J in Label_Info_Low_Bound .. Label_Info_Table.Last loop
+         Label_Info_Table.Table (J).From_Block := -1;
+      end loop;
 
       --  ??? Clean this up later.  Too many branches here
 
@@ -1034,15 +1150,71 @@ package body GNATLLVM.Blocks is
    ------------------
 
    function Get_Label_BB (E : Entity_Id) return Basic_Block_T is
-      BB : Basic_Block_T := Get_Basic_Block (E);
+      Depth : constant Block_Stack_Level := Block_Stack.Last;
+      L_Idx : Label_Info_Id              := Get_Label_Info (E);
 
    begin
-      if No (BB) then
-         BB := Create_Basic_Block (Get_Name (E));
-         Set_Basic_Block (E, BB);
+      --  If we haven't either defined or tried to branch to this label
+      --  before, build a new Label_Info entry with just the label.
+
+      if No (L_Idx) then
+         Label_Info_Table.Append ((Orig_BB         =>
+                                     Create_Basic_Block (Get_Name (E)),
+                                   Fixup_BB        => No_BB_T,
+                                   Block_Depth     => -1,
+                                   From_Block      => -1,
+                                   Has_Open_Branch => False));
+         L_Idx := Label_Info_Table.Last;
+         Set_Label_Info (E, L_Idx);
       end if;
 
-      return BB;
+      declare
+         Current_BB : constant Basic_Block_T := Get_Insert_Block;
+         LI         : Label_Info renames Label_Info_Table.Table (L_Idx);
+         Orig_BB    : constant Basic_Block_T := LI.Orig_BB;
+
+      begin
+         --  First see if we know where this label is.  If we do, and the
+         --  depth of this entry is our depth, we have the label to branch
+         --  to which includes the needed fixups.  If not, we can make a
+         --  block for the fixups.
+
+         if LI.Block_Depth >= 0 then
+            if LI.From_Block /= Depth then
+               LI.From_Block := Depth;
+               LI.Fixup_BB   := Create_Basic_Block (Get_Name (E) & "-f");
+               Position_Builder_At_End (LI.Fixup_BB);
+               Build_Fixups_From_To (Depth, LI.Block_Depth);
+               Build_Br (Orig_BB);
+               Position_Builder_At_End (Current_BB);
+            end if;
+
+            return LI.Fixup_BB;
+
+         --  If we don't know where this label is, we need an entry in the
+         --  Open_Branches table for this label.  But first see if somebody
+         --  already made one.
+
+         else
+            for J in reverse 1 .. Open_Branches.Last loop
+               declare
+                  OB : Open_Branch renames Open_Branches.Table (J);
+
+               begin
+                  if  OB.Orig_BB = Orig_BB and then OB.From_Block = Depth then
+                     return OB.Made_BB;
+                  end if;
+               end;
+            end loop;
+
+            Open_Branches.Append ((Orig_BB    => LI.Orig_BB,
+                                   Made_BB    => Create_Basic_Block
+                                     (Get_Name (E) & "-m"),
+                                   From_Block => Depth));
+            LI.Has_Open_Branch := True;
+            return Open_Branches.Table (Open_Branches.Last).Made_BB;
+         end if;
+      end;
    end Get_Label_BB;
 
    ---------------------------
@@ -1054,14 +1226,18 @@ package body GNATLLVM.Blocks is
       E         : constant Entity_Id     :=
         (if Present (Node) and then Present (Identifier (Node))
          then Entity (Identifier (Node)) else Empty);
+      Name      : constant String        :=
+        (if Present (E) then Get_Name (E) else "");
       This_BB   : constant Basic_Block_T := Get_Insert_Block;
       Last_Inst : constant Value_T       := Get_Last_Instruction (This_BB);
       Entry_BB  : constant Basic_Block_T :=
-        Get_Entry_Basic_Block (LLVM_Value (Current_Func));
+          Get_Entry_Basic_Block (LLVM_Value (Current_Func));
+      L_Idx     : constant Label_Info_Id :=
+          (if Present (E) then Get_Label_Info (E) else Empty_Label_Info_Id);
       BB        : constant Basic_Block_T :=
-          (if Present (E) and then Has_BB (E) then Get_Basic_Block (E)
+          (if Present (L_Idx) then Label_Info_Table.Table (L_Idx).Orig_BB
            elsif No (Last_Inst) and then This_BB /= Entry_BB
-           then This_BB else Create_Basic_Block);
+           then This_BB else Create_Basic_Block (Name));
       --  If we have an identifier and it has a basic block already set,
       --  that's the one that we have to use.  If we've just started a
       --  basic block with no instructions in it, that basic block will do,
@@ -1075,13 +1251,57 @@ package body GNATLLVM.Blocks is
          Move_To_BB (BB);
       end if;
 
-      --  If we have an entity to point to the block, make that linkage.
+      --  If we don't have an entity to point to the block, we're done
 
-      if Present (E) then
-         Set_Basic_Block (E, BB);
+      if No (E) then
+         return BB;
       end if;
 
+      --  If we didn't previously have an entry, make one and we're done
+
+      if No (L_Idx) then
+         Label_Info_Table.Append ((Orig_BB         => BB,
+                                   Fixup_BB        => No_BB_T,
+                                   Block_Depth     => Block_Stack.Last,
+                                   From_Block      => -1,
+                                   Has_Open_Branch => False));
+         Set_Label_Info (E, Label_Info_Table.Last);
+         return BB;
+      end if;
+
+      declare
+         LI : Label_Info renames Label_Info_Table.Table (L_Idx);
+
+      begin
+         LI.Block_Depth := Block_Stack.Last;
+
+         --  If we don't have any open branch entries made for this label,
+         --  we have nothing left to do.
+
+         if not LI.Has_Open_Branch then
+            return BB;
+         end if;
+
+         --  Otherwise, we have to process each open branch for this label
+         --  by branching to it and marking the entry inactive.
+
+         for J in reverse 1 .. Open_Branches.Last loop
+            declare
+               OB : Open_Branch renames Open_Branches.Table (J);
+
+            begin
+               if OB.Orig_BB = BB then
+                  Position_Builder_At_End (OB.Made_BB);
+                  Build_Br (OB.Orig_BB);
+                  OB.From_Block := -1;
+                  Position_Builder_At_End (BB);
+               end if;
+            end;
+         end loop;
+      end;
+
       return BB;
+
    end Enter_Block_With_Node;
 
    ---------------
@@ -1158,6 +1378,18 @@ package body GNATLLVM.Blocks is
       return EPT.Exit_BB;
    end Get_Exit_Point;
 
+   ------------------------
+   -- Reset_Block_Tables --
+   ------------------------
+
+   procedure Reset_Block_Tables is
+   begin
+      Label_Info_Table.Set_Last (Label_Info_Low_Bound);
+      Block_Stack.Set_Last      (0);
+      Dispatch_Info.Set_Last    (0);
+      Open_Branches.Set_Last    (0);
+   end Reset_Block_Tables;
+
    ----------------
    -- Emit_Raise --
    ----------------
@@ -1231,5 +1463,11 @@ package body GNATLLVM.Blocks is
          Register_Global_Name ("__gnat_rcheck_CE_Range_Check_ext");
       end if;
    end Initialize;
+
+begin
+   --  Make a dummy entry in the label info table, so the "Empty"
+   --  entry is never used.
+
+   Label_Info_Table.Increment_Last;
 
 end GNATLLVM.Blocks;

@@ -138,8 +138,15 @@ package body LLVM_Drive is
 
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
       Module_Data_Layout := Get_Module_Data_Layout (LLVM_Module);
-      LLVM_Info_Map := new LLVM_Info_Array'
-        (First_Node_Id .. Last_Node_Id => Empty_LLVM_Info_Id);
+
+      --  We can't use a qualified expression here because that will cause
+      --  a temporary to be placed in our stack and if the array is very
+      --  large, it will blow our stack.
+
+      LLVM_Info_Map := new LLVM_Info_Array (First_Node_Id .. Last_Node_Id);
+      for J in LLVM_Info_Map'Range loop
+         LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
+      end loop;
 
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id

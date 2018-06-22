@@ -48,6 +48,9 @@ package GNATLLVM.Wrapper is
    procedure Set_Alloca_Align (Inst : Value_T; Align : unsigned);
    pragma Import (C, Set_Alloca_Align, "Set_Alloca_Align");
 
+   procedure Add_Nest_Attribute (Func : Value_T; Idx : unsigned);
+   pragma Import (C, Add_Nest_Attribute, "Add_Nest_Attribute");
+
    function Build_Extract_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;

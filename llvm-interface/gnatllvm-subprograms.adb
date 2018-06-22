@@ -98,6 +98,10 @@ package body GNATLLVM.Subprograms is
    Stack_Restore_Fn  : GL_Value := No_GL_Value;
    --  Functions to save and restore the stack pointer
 
+   Tramp_Init_Fn     : GL_Value := No_GL_Value;
+   Tramp_Adjust_Fn   : GL_Value := No_GL_Value;
+   --  Functions to initialize and adjust a trampoline
+
    function Get_Activation_Record_Ptr
      (V : GL_Value; E : Entity_Id) return GL_Value
      with Pre  => Is_Record_Type (Full_Designated_Type (V))
@@ -139,6 +143,9 @@ package body GNATLLVM.Subprograms is
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
    --  for it and return the result.  Otherwise, No_GL_Value.
+
+   function Get_Tramp_Init_Fn   return GL_Value;
+   function Get_Tramp_Adjust_Fn return GL_Value;
 
    Ada_Main_Elabb : GL_Value := No_GL_Value;
    --  ???  This a kludge.  We sometimes need an elab proc for Ada_Main and
@@ -433,6 +440,64 @@ package body GNATLLVM.Subprograms is
       return Stack_Restore_Fn;
    end Get_Stack_Restore_Fn;
 
+   -----------------------
+   -- Get_Tramp_Init_Fn --
+   -----------------------
+
+   function Get_Tramp_Init_Fn return GL_Value is
+   begin
+      if No (Tramp_Init_Fn) then
+         Tramp_Init_Fn := Add_Function
+           ("llvm.init.trampoline",
+            Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
+                    3 => Void_Ptr_Type),
+                   Void_Type),
+            Standard_Void_Type);
+         Set_Does_Not_Throw (Tramp_Init_Fn);
+      end if;
+
+      return Tramp_Init_Fn;
+   end Get_Tramp_Init_Fn;
+
+   -------------------------
+   -- Get_Tramp_Adjust_Fn --
+   -------------------------
+
+   function Get_Tramp_Adjust_Fn return GL_Value is
+   begin
+      if No (Tramp_Adjust_Fn) then
+         Tramp_Adjust_Fn := Add_Function
+           ("llvm.adjust.trampoline",
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Ptr_Type), Standard_A_Char);
+         Set_Does_Not_Throw (Tramp_Adjust_Fn);
+      end if;
+
+      return Tramp_Adjust_Fn;
+   end Get_Tramp_Adjust_Fn;
+
+   ---------------------
+   -- Make_Trampoline --
+   ---------------------
+
+   function Make_Trampoline
+     (TE : Entity_Id; Fn, Static_Link : GL_Value) return GL_Value
+   is
+      Tramp  : constant GL_Value :=
+        Array_Alloca (Standard_Short_Short_Integer, Size_Const_Int (ULL (72)),
+                      "tramp");
+      Cvt_Fn : constant GL_Value := Pointer_Cast (Fn, Standard_A_Char);
+
+   begin
+      --  We have to initialize the trampoline and then adjust it and return
+      --  that result.
+
+      Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Cvt_Fn, 3 => Static_Link));
+      return G_Is_Relationship
+        (Call (Get_Tramp_Adjust_Fn, Standard_A_Char, (1 => Tramp)),
+         TE, Trampoline);
+
+   end Make_Trampoline;
+
    -------------------------------
    -- Get_Activation_Record_Ptr --
    -------------------------------
@@ -554,7 +619,7 @@ package body GNATLLVM.Subprograms is
             --  Param_Num'th parameter), and associate the corresponding
             --  LLVM value to its entity.
 
-            Set_Value_Name (LLVM_Value (LLVM_Param), Get_Name (Param));
+            Set_Value_Name (LLVM_Param, Get_Name (Param));
 
             --  Add the parameter to the environnment
 
@@ -1244,6 +1309,8 @@ package body GNATLLVM.Subprograms is
            and then No (Interface_Name (Def_Ident))
          then "_ada_" & Subp_Name else Subp_Name);
       LLVM_Func   : GL_Value          := Get_Dup_Global_Value (Def_Ident);
+      Param_Num   : Natural           := 0;
+      Formal      : Entity_Id;
 
    begin
       --  If we've already seen this function name before, verify that we
@@ -1269,6 +1336,23 @@ package body GNATLLVM.Subprograms is
          end if;
 
          Set_Dup_Global_Value (Def_Ident, LLVM_Func);
+      end if;
+
+      --  For foreign convention functions, we need a trampoline if there
+      --  is an activation record, so mark the parameter that's the record.
+
+      if Has_Foreign_Convention (Def_Ident) then
+         Formal := First_Formal_With_Extras (Def_Ident);
+         while Present (Formal) loop
+            if Ekind (Formal) = E_In_Parameter
+              and then Is_Activation_Record (Formal)
+            then
+               Add_Nest_Attribute (LLVM_Func, Param_Num);
+            end if;
+
+            Param_Num := Param_Num + 1;
+            Next_Formal_With_Extras (Formal);
+         end loop;
       end if;
 
       Set_Value (Def_Ident, LLVM_Func);

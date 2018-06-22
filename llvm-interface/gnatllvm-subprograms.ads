@@ -96,6 +96,14 @@ package GNATLLVM.Subprograms is
           Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to N
 
+   function Make_Trampoline
+     (TE : Entity_Id; Fn, Static_Link : GL_Value) return GL_Value
+     with Pre  => Is_Type_Or_Void (TE) and then Present (Fn)
+                  and then Present (Static_Link),
+          Post => Present (Make_Trampoline'Result);
+   --  Given the type of a function, a pointer to it, and a static
+   --  link, make a trampoline that combines the static link and function.
+
    function Emit_Call (N : Node_Id) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  Compile a call statement/expression and return its result

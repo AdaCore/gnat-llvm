@@ -104,6 +104,11 @@ package GNATLLVM.GLValue is
       --  Similar to Reference_To_Subprogram except that it contains both
       --  a pointer to the subprogram and to the activation record.
 
+      Trampoline,
+      --  A pointer to a piece of code on the stack that can be called
+      --  and encapsulates both the address of the subprogram and the
+      --  address of the static link.
+
       Unknown,
       --  Object is an unknown relation to the type.  Used for peculiar
       --  LLVM objects such as landing pads.
@@ -193,6 +198,9 @@ package GNATLLVM.GLValue is
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref => Activation_Record, Ref => Invalid),
       Fat_Reference_To_Subprogram    =>
+        (Is_Ref => True,  Is_Any_Ref => True,
+         Deref => Invalid,           Ref => Invalid),
+      Trampoline                     =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref => Invalid,           Ref => Invalid),
       Unknown                        =>
@@ -365,6 +373,31 @@ package GNATLLVM.GLValue is
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (G_Is_Ref'Result);
    --  Constructor for case where we want to show that V has a different type
+
+   function G_Is_Relationship
+     (V : GL_Value; TE : Entity_Id; R : GL_Relationship) return GL_Value
+   is
+     (G (LLVM_Value (V), TE, R))
+     with Pre  => Present (V) and then Is_Type (TE),
+          Post => Present (G_Is_Relationship'Result);
+   --  Constructor for case where we want to show that V has a different type
+   --  and relationship.
+
+   function G_Is_Relationship
+     (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
+   is
+     (G (LLVM_Value (V), Related_Type (T), R))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (G_Is_Relationship'Result);
+   --  Constructor for case where we want to show that V has a different type
+   --  and relationship.
+
+   function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
+     (G (LLVM_Value (V), Related_Type (T), Relationship (T)))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (G_Is_Relationship'Result);
+   --  Constructor for case where we want to show that V has a different type
+   --  and relationship.
 
    function G_Is_Ref (V : GL_Value; T : GL_Value) return GL_Value is
      (G (LLVM_Value (V), Etype (T), Reference))
@@ -547,6 +580,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a function
 
+   function Is_Undef (V : GL_Value) return Boolean is
+     (Is_Undef (LLVM_Value (V)))
+     with Pre => Present (V);
+
    function Is_Constant (V : GL_Value) return Boolean is
      (Is_Constant (LLVM_Value (V)))
      with Pre => Present (V);
@@ -567,6 +604,10 @@ package GNATLLVM.GLValue is
 
    procedure Set_Value_Name (V : GL_Value; Name : String)
      with Pre => Present (V);
+
+   procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer)
+     with Pre => Is_A_Function (V);
+   --  Add the Nest attribute to parameter with index Idx
 
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
      (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = Val)

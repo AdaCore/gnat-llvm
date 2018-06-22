@@ -1,6 +1,8 @@
+#include "llvm/IR/Attributes.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
@@ -90,6 +92,13 @@ MDNode *
 Create_TBAA_Root (MDBuilder *MDHelper)
 {
   return MDHelper->createTBAARoot ("Ada TBAA");
+}
+
+extern "C"
+void
+Add_Nest_Attribute (Function *fn, unsigned idx)
+{
+    fn->addAttribute (idx, Attribute::Nest);
 }
 
 extern "C"

@@ -105,6 +105,14 @@ package body GNATLLVM.GLValue is
          when Reference_To_Subprogram =>
             return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
+         when Trampoline =>
+
+            --  We'd like to test V.Typ see that it's a subprogram type,
+            --  but if we're making this trampoline because of a 'Address,
+            --  we don't have any subprogram type in sight.
+
+            return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+
          when Unknown =>
             return True;
 
@@ -172,10 +180,12 @@ package body GNATLLVM.GLValue is
          return Thin_Pointer;
 
       --  If this is an access to subprogram, this is a pair of pointers
-      --  that includes the activation record.
+      --  that includes the activation record unless it's a foreign
+      --  convention, in which case it's a trampoline.
 
       elsif Ekind (TE) = E_Subprogram_Type then
-         return Fat_Reference_To_Subprogram;
+         return (if Has_Foreign_Convention (TE) then Trampoline
+                 else Fat_Reference_To_Subprogram);
 
       --  Otherwise,  it's just a Reference
 
@@ -209,7 +219,7 @@ package body GNATLLVM.GLValue is
       elsif R = Fat_Reference_To_Subprogram
         and then Has_Foreign_Convention (TE)
       then
-         return Reference;
+         return Trampoline;
       else
          return R;
       end if;
@@ -292,7 +302,7 @@ package body GNATLLVM.GLValue is
                   0);
             end if;
 
-         when Reference_To_Activation_Record =>
+         when Reference_To_Activation_Record | Trampoline =>
             return Void_Ptr_Type;
 
          when Fat_Reference_To_Subprogram =>
@@ -345,11 +355,13 @@ package body GNATLLVM.GLValue is
       end if;
 
       --  If we want any single-word relationship, we can convert everything
-      --  to Reference, except for Reference_To_Subprogrm, which is also OK.
+      --  to Reference, except for Reference_To_Subprogram and Trampoline,
+      --  which are also OK.
 
       if R = Reference_For_Integer then
          R := (if Relationship (V) = Reference_To_Subprogram
-               then Reference_To_Subprogram else Reference);
+                 or else Relationship (V) = Trampoline
+               then Relationship (V) else Reference);
       end if;
 
       --  If it's already the desired relationship, done
@@ -592,6 +604,20 @@ package body GNATLLVM.GLValue is
             if Relationship (V) = Reference then
                return Insert_Value (Get_Undef_Relationship (TE, R),
                                     Convert_To_Access (V, Standard_A_Char), 0);
+            end if;
+
+         when Trampoline =>
+
+            --  LLVM doesn't allow making a trampoline from an arbitrary
+            --  address.  So all we can do here is to just use the function
+            --  address and hope that we don't need the static link.
+            --  For all valid Ada operations, this is the case, but this
+            --  may be an issue if people do wierd stuff.
+
+            if Relationship (V) = Fat_Reference_To_Subprogram then
+               return Extract_Value_To_Relationship (TE, V, 0, R);
+            elsif Relationship (V) = Reference then
+               return Get (Get (V, Fat_Reference_To_Subprogram), R);
             end if;
 
          when Any_Reference =>
@@ -1231,6 +1257,15 @@ package body GNATLLVM.GLValue is
    begin
       Set_Value_Name (LLVM_Value (V), Name);
    end Set_Value_Name;
+
+   ------------------------
+   -- Add_Nest_Attribute --
+   -----------------------
+
+   procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer) is
+   begin
+      Add_Nest_Attribute (LLVM_Value (V), unsigned (Idx + 1));
+   end Add_Nest_Attribute;
 
    ---------------------
    -- Set_Initializer --

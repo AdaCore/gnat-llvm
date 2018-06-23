@@ -461,7 +461,7 @@ package body GNATLLVM.Exprs is
       end if;
 
       --  Otherwise, make the labels and branch to them depending on the
-      --  results of the tests.  If we're doing both comparison, we'll have
+      --  results of the tests.  If we're doing both comparisons, we'll have
       --  put both before the first test, but the optimizer can clean that up.
 
       BB_Raise :=
@@ -471,8 +471,10 @@ package body GNATLLVM.Exprs is
 
       if Present (Compare_UB) then
          Build_Cond_Br (Compare_UB, BB_Next, BB_Raise);
-         Position_Builder_At_End (BB_Next);
-         BB_Next := Create_Basic_Block;
+         if Present (Compare_LB) then
+            Position_Builder_At_End (BB_Next);
+            BB_Next := Create_Basic_Block;
+         end if;
       end if;
 
       if Present (Compare_LB) then

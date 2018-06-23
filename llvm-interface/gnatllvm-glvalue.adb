@@ -359,8 +359,7 @@ package body GNATLLVM.GLValue is
       --  which are also OK.
 
       if R = Reference_For_Integer then
-         R := (if Relationship (V) = Reference_To_Subprogram
-                 or else Relationship (V) = Trampoline
+         R := (if Relationship (V) in Reference_To_Subprogram | Trampoline
                then Relationship (V) else Reference);
       end if;
 
@@ -428,10 +427,8 @@ package body GNATLLVM.GLValue is
             --  If we have something that we can use to get the address of
             --  bounds, convert to that and then dereference.
 
-            if Relationship (V) = Fat_Pointer
-              or else Relationship (V) = Thin_Pointer
-              or else Relationship (V) = Reference_To_Thin_Pointer
-              or else Relationship (V) = Reference_To_Bounds_And_Data
+            if Relationship (V) in Fat_Pointer | Thin_Pointer |
+              Reference_To_Thin_Pointer | Reference_To_Bounds_And_Data
             then
                return Load (Get (V, Reference_To_Bounds));
 

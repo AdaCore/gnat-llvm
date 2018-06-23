@@ -35,8 +35,7 @@ package body GNATLLVM.Conditionals is
    function Build_Short_Circuit_Op
      (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
    is
-      And_Op               : constant Boolean :=
-        Op = N_And_Then or else Op = N_Op_And;
+      And_Op               : constant Boolean := Op in N_And_Then | N_Op_And;
       --  Whether this is an AND or OR operation
 
       LHS, RHS             : GL_Value;
@@ -192,7 +191,7 @@ package body GNATLLVM.Conditionals is
       --  comparisons are part of "if" statements.
 
       if  Is_Array_Type (Full_Etype (LHS)) then
-         pragma Assert (Kind = N_Op_Eq or else Kind = N_Op_Ne);
+         pragma Assert (Kind in N_Op_Eq | N_Op_Ne);
          pragma Assert (Number_Dimensions (Full_Etype (LHS)) =
                           Number_Dimensions (Full_Etype (RHS)));
 

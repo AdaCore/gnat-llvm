@@ -27,7 +27,7 @@ package GNATLLVM.Conditionals is
    function Build_Short_Circuit_Op
      (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
      with Pre  => Present (Left) and then Present (Right)
-                  and then (Op in N_Op_Boolean or else Op in N_Short_Circuit),
+                  and then (Op in N_Op_Boolean | N_Short_Circuit),
           Post => Present (Build_Short_Circuit_Op'Result);
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 

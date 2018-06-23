@@ -183,8 +183,7 @@ package body GNATLLVM.Environment is
 
    begin
       pragma Assert (Id /= Empty_LLVM_Info_Id);
-      pragma Assert (LLVM_Info_Map (New_T) = Empty_LLVM_Info_Id
-                       or else LLVM_Info_Map (New_T) = Id);
+      pragma Assert (LLVM_Info_Map (New_T) in Empty_LLVM_Info_Id | Id);
       --  We know this is a type and one for which we don't have any
       --  data, so we shouldn't have allocated anything for it.
       --  However, we may have a recursive type situation where it

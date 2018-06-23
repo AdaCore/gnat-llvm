@@ -62,8 +62,7 @@ package body GNATLLVM.Compile is
       if Library_Level
         and then ((Nkind (N) in N_Statement_Other_Than_Procedure_Call
                      and then Nkind (N) /= N_Null_Statement)
-                    or else Nkind (N) in N_Subprogram_Call
-                    or else Nkind (N) in N_Raise_xxx_Error
+                    or else Nkind (N) in N_Subprogram_Call | N_Raise_xxx_Error
                     or else Nkind_In (N, N_Raise_Statement,
                                       N_Handled_Sequence_Of_Statements))
       then

@@ -217,6 +217,13 @@ package body GNATLLVM.Subprograms is
          declare
             Param_Type : constant Node_Id := Full_Etype (Param_Ent);
          begin
+            --  pragma Assert (Ekind (Param_Ent) /= E_In_Parameter
+            --                   or else not Is_Activation_Record (Param_Ent)
+            --                   or else Present
+            --                   (First_Component_Or_Discriminant
+            --                      (Full_Designated_Type
+            --                         (Full_Etype (Param_Ent)))));
+
             --  If this is an out parameter, or a parameter whose type is
             --  unconstrained, take a pointer to the actual parameter.
             --  If it's a foreign convention, force to an actual pointer

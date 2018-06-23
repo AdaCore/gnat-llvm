@@ -131,12 +131,9 @@ package body GNATLLVM.Compile is
                Stmts      : constant Node_Id := Handled_Statement_Sequence (N);
 
             begin
-               --  Always process declarations
-
-               Push_Lexical_Debug_Scope (N);
-               if not Library_Level then
-                  Push_Block;
-               end if;
+               --  Always process declarations, but they do not provide
+               --  a scope, since those declarations are part of what
+               --  encloses us, if anything.
 
                Emit_Decl_Lists (Declarations (N), No_List);
 
@@ -146,16 +143,20 @@ package body GNATLLVM.Compile is
                --  them to the elaboration table (if we're not at library
                --  level).
 
+               Push_Lexical_Debug_Scope (N);
                if Library_Level
                  and then Nkind (Parent (N)) = N_Compilation_Unit
                then
                   Emit_Elab_Proc (N, Stmts, Parent (N), "b");
                elsif Present (Stmts) then
-                  Emit (Stmts);
-               end if;
+                  if not Library_Level then
+                     Push_Block;
+                  end if;
 
-               if not Library_Level then
-                  Pop_Block;
+                  Emit (Stmts);
+                  if not Library_Level then
+                     Pop_Block;
+                  end if;
                end if;
 
                Pop_Debug_Scope;

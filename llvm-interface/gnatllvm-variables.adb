@@ -1141,62 +1141,10 @@ package body GNATLLVM.Variables is
       elsif Ekind (Def_Ident) = E_Label then
          return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
 
-      --  If this is a subprogram, we have to check for a few extra things
+      --  If this is a subprogram, hand it off to our helper
 
       elsif Ekind (Def_Ident) in Subprogram_Kind then
-
-         --  If this has an Alias, use that
-
-         if Present (Alias (Def_Ident)) then
-            return Emit_Identifier (Alias (Def_Ident));
-         end if;
-
-         --  If we haven't gotten one yet, make it
-
-         if No (V) then
-            V := Create_Subprogram (Def_Ident);
-         end if;
-
-         --  If we are elaborating this for 'Access or 'Address, we
-         --  want the actual subprogram type here, not the type of the
-         --  return value, which is what TE is set to.  We also have
-         --  to make a trampoline or Fat_Reference_To_Subprogram here
-         --  since it's too late to make it in Get because we've lost
-         --  what subprogram it was for.
-
-         if Nkind (Parent (N)) = N_Attribute_Reference
-           and then Is_Access_Type (Full_Etype (Parent (N)))
-         then
-            declare
-               Typ    : constant Entity_Id :=
-                 Full_Designated_Type (Full_Etype (Parent (N)));
-               S_Link : constant GL_Value  := Get_Static_Link (N);
-            begin
-               if Has_Foreign_Convention (Typ) then
-                  return (if Is_Undef (S_Link) then V
-                          else Make_Trampoline (Typ, V, S_Link));
-               else
-                  return Insert_Value
-                    (Insert_Value (Get_Undef_Relationship
-                                     (Typ, Fat_Reference_To_Subprogram),
-                                   Get_Static_Link (N), 1),
-                     Pointer_Cast (V, Standard_A_Char), 0);
-               end if;
-            end;
-         elsif Nkind (Parent (N)) = N_Attribute_Reference
-           and then (Get_Attribute_Id (Attribute_Name (Parent (N))) =
-                       Attribute_Address)
-         then
-            declare
-               S_Link : constant GL_Value  := Get_Static_Link (N);
-
-            begin
-                  return (if Is_Undef (S_Link) then V
-                          else Make_Trampoline (TE, V, S_Link));
-            end;
-         else
-            return V;
-         end if;
+         return Emit_Subprogram_Identifier (Def_Ident, N, TE);
 
       --  If this entity has a known constant value, use it
 

@@ -104,6 +104,14 @@ package GNATLLVM.Subprograms is
    --  Given the type of a function, a pointer to it, and a static
    --  link, make a trampoline that combines the static link and function.
 
+   function Emit_Subprogram_Identifier
+     (Def_Ident : Entity_Id; N : Node_Id; TE : Entity_Id) return GL_Value
+     with Pre  => not Is_Type (Def_Ident) and then Is_Type_Or_Void (TE)
+                  and then (N = Def_Ident or else Nkind (N) in N_Has_Entity),
+          Post => Present (Emit_Subprogram_Identifier'Result);
+   --  Emit the value (creating the subprogram if needed) of the N_Identifier
+   --  or similar at N.  The entity if Def_Ident and its type is TE.
+
    function Emit_Call (N : Node_Id) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  Compile a call statement/expression and return its result

@@ -19,6 +19,7 @@ with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
+with Snames;   use Snames;
 with Stand;    use Stand;
 with Table;    use Table;
 
@@ -1165,6 +1166,71 @@ package body GNATLLVM.Subprograms is
 
       return No_GL_Value;
    end Emit_Intrinsic_Call;
+
+   --------------------------------
+   -- Emit_Subprogram_Identifier --
+   --------------------------------
+
+   function Emit_Subprogram_Identifier
+     (Def_Ident : Entity_Id; N : Node_Id; TE : Entity_Id) return GL_Value
+   is
+      V  : GL_Value := Get_Value (Def_Ident);
+
+   begin
+      --  If this has an Alias, use that
+
+      if Present (Alias (Def_Ident)) then
+         return Emit_Identifier (Alias (Def_Ident));
+      end if;
+
+      --  If we haven't gotten one yet, make it
+
+      if No (V) then
+         V := Create_Subprogram (Def_Ident);
+      end if;
+
+      --  If we are elaborating this for 'Access or 'Address, we want the
+      --  actual subprogram type here, not the type of the return value,
+      --  which is what TE is set to.  We also have to make a trampoline or
+      --  Fat_Reference_To_Subprogram here since it's too late to make it
+      --  in Get because we've lost what subprogram it was for.
+
+      if Nkind (Parent (N)) = N_Attribute_Reference then
+         declare
+            S_Link : constant GL_Value     := Get_Static_Link (N);
+            Ref    : constant Node_Id      := Parent (N);
+            Typ    : constant Entity_Id    := Full_Etype (Ref);
+            Attr   : constant Attribute_Id :=
+              Get_Attribute_Id (Attribute_Name (Ref));
+
+         begin
+            if Is_Access_Type (Typ) then
+               declare
+                  DT     : constant Entity_Id := Full_Designated_Type (Typ);
+                  S_Link : constant GL_Value  := Get_Static_Link (N);
+
+               begin
+                  if Has_Foreign_Convention (DT) then
+                     return (if Is_Undef (S_Link) then V
+                             else Make_Trampoline (DT, V, S_Link));
+                  else
+                     return Insert_Value
+                       (Insert_Value (Get_Undef_Relationship
+                                        (DT, Fat_Reference_To_Subprogram),
+                                      S_Link, 1),
+                        Pointer_Cast (V, Standard_A_Char), 0);
+                  end if;
+               end;
+            elsif Attr = Attribute_Address then
+               return (if Is_Undef (S_Link) then V
+                       else Make_Trampoline (TE, V, S_Link));
+            end if;
+         end;
+      end if;
+
+      return V;
+
+   end Emit_Subprogram_Identifier;
 
    ---------------
    -- Emit_Call --

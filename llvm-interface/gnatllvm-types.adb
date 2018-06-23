@@ -1097,6 +1097,7 @@ package body GNATLLVM.Types is
         (if Is_Access_Type (Temp)
          then Ptr_To_Relationship (Temp, Alloc_Type, R)
          else Int_To_Relationship (Temp, Alloc_Type, R));
+      New_V  : GL_Value;
 
    begin
       --  If this is to get bounds and data and we have a value to store
@@ -1107,7 +1108,8 @@ package body GNATLLVM.Types is
 
       if R = Reference_To_Bounds_And_Data then
          if Present (V) and then not Is_Reference (V) then
-            Store (Get (V, Bounds_And_Data), Memory);
+            New_V := Get (V, Bounds_And_Data);
+            Store (New_V, Ptr_To_Relationship (Memory, New_V, R));
             Copied := True;
          elsif not Is_Constrained (TE) then
             Store (Get_Array_Bounds (TE, Alloc_Type, V),

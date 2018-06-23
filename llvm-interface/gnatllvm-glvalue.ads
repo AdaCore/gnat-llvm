@@ -105,9 +105,10 @@ package GNATLLVM.GLValue is
       --  a pointer to the subprogram and to the activation record.
 
       Trampoline,
-      --  A pointer to a piece of code on the stack that can be called
-      --  and encapsulates both the address of the subprogram and the
-      --  address of the static link.
+      --  A pointer to a piece of code that can be called.  This can
+      --  either be the subprogram itself or a fragment on the stack
+      --  that can be called and encapsulates both the address of the
+      --  subprogram and the address of the static link.
 
       Unknown,
       --  Object is an unknown relation to the type.  Used for peculiar
@@ -812,12 +813,23 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Access_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Ptr_To_Ref'Result);
 
+   function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
+     with Pre  => Is_Access_Type (V) and then Is_Access_Type (T),
+          Post => Is_Access_Type (Ptr_To_Ref'Result);
+
    function Ptr_To_Relationship
      (V    : GL_Value;
       TE   : Entity_Id;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
      with Pre  => Is_Access_Type (V) and then Is_Type (TE),
+          Post => Is_Access_Type (Ptr_To_Relationship'Result);
+
+   function Ptr_To_Relationship
+     (V, T : GL_Value;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+     with Pre  => Is_Access_Type (V) and then Present (T),
           Post => Is_Access_Type (Ptr_To_Relationship'Result);
 
    function Trunc

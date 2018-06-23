@@ -828,6 +828,16 @@ package body GNATLLVM.GLValue is
                             Pointer_Type (Create_Type (TE), 0), Name),
               TE));
 
+   ----------------
+   -- Ptr_To_Ref --
+   ----------------
+
+   function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
+   is
+      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                            Pointer_Type (Type_Of (T), 0), Name),
+              Full_Designated_Type (T)));
+
    -------------------------
    -- Ptr_To_Relationship --
    -------------------------
@@ -841,6 +851,19 @@ package body GNATLLVM.GLValue is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Type_For_Relationship (TE, R), Name),
           TE, R));
+
+   -------------------------
+   -- Ptr_To_Relationship --
+   -------------------------
+
+   function Ptr_To_Relationship
+     (V, T : GL_Value;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+   is
+      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                        Type_For_Relationship (Related_Type (T), R), Name),
+          Related_Type (T), R));
 
    -----------
    -- Trunc --

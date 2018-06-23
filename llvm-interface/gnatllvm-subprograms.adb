@@ -1261,7 +1261,8 @@ package body GNATLLVM.Subprograms is
 
                   if Has_Foreign_Convention (Typ) then
                      return (if Is_Passed_Activation_Record (Def_Ident)
-                             then Make_Trampoline (DT, V, S_Link) else V);
+                             then Make_Trampoline (DT, V, S_Link)
+                             else G_Is_Relationship (V, DT, Trampoline));
                   else
                      return Insert_Value
                        (Insert_Value (Get_Undef_Relationship

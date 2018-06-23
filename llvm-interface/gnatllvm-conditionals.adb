@@ -88,28 +88,29 @@ package body GNATLLVM.Conditionals is
    function Emit_Comparison
      (Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
    is
-      Operation    : constant Pred_Mapping := Get_Preds (Kind);
-      Operand_Type : constant Entity_Id    := Full_Etype (LHS);
+      Operation : constant Pred_Mapping := Get_Preds (Kind);
+      TE        : constant Entity_Id    := Full_Etype (LHS);
+      BT        : constant Entity_Id    := Implementation_Base_Type (TE);
 
    begin
       --  LLVM treats pointers as integers regarding comparison.  But we first
       --  have to see if the pointer has an activation record.  If so,
       --  we just compare the functions, not the activation record.
 
-      if Is_Access_Subprogram_Type (Operand_Type)
-        and then not Has_Foreign_Convention (Operand_Type)
+      if Is_Access_Subprogram_Type (TE)
+        and then not Has_Foreign_Convention (TE)
       then
          return I_Cmp
            (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
 
-      elsif Is_Elementary_Type (Operand_Type) then
+      elsif Is_Elementary_Type (TE) then
          return Emit_Elementary_Comparison
-           (Kind, Emit_Expression (LHS), Emit_Expression (RHS));
+           (Kind, Emit_Convert_Value (LHS, BT), Emit_Convert_Value (RHS, BT));
 
       --  We'll see some simple record comparisons, typically if they're
       --  Equivalent_Types of, e.g., an E_Access_Protected_Subprogram_Type.
 
-      elsif Is_Record_Type (Operand_Type) then
+      elsif Is_Record_Type (TE) then
          declare
             --  Now we need to get the size of the record (in bytes) to do
             --  the memory comparison.  Memcmp is defined as returning zero
@@ -132,7 +133,7 @@ package body GNATLLVM.Conditionals is
                           Const_Null (Standard_Integer));
          end;
       else
-         pragma Assert (Is_Array_Type (Operand_Type)
+         pragma Assert (Is_Array_Type (TE)
                           and then Operation.Signed in Int_EQ | Int_NE);
          --  The front end expands record type comparisons and array
          --  comparisons for other than equality.

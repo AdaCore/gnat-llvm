@@ -191,16 +191,18 @@ package body GNATLLVM.Compile is
 
          when N_Handled_Sequence_Of_Statements =>
 
-            --  If First_Real_Statement is Present, items in Statements
-            --  prior to it are declarations and need to be treated as such.
-            --  Otherwise, all are statements.
+            --  If First_Real_Statement is Present, items in
+            --  Statements prior to it are declarations and need to be
+            --  mostly treated as such except that they are protected
+            --  by the exeception handlers of this block.  Otherwise,
+            --  all are statements.
 
+            Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
             if Present (First_Real_Statement (N)) then
                Emit_Decl_Lists (Statements (N), No_List,
                                 End_List => First_Real_Statement (N));
             end if;
 
-            Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
             Emit (Statements (N), Starting_At => First_Real_Statement (N));
 
          when N_Raise_Statement =>

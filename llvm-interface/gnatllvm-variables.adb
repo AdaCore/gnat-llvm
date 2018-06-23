@@ -705,6 +705,7 @@ package body GNATLLVM.Variables is
          Set_Initializer     (Out_Val, LLVM_Value (In_V));
          Set_Linkage         (Out_Val, Private_Linkage);
          Set_Global_Constant (Out_Val, True);
+         Set_Unnamed_Addr    (Out_Val, True);
          Const_Map.Insert    (LLVM_Value (In_V),  Out_Val);
       end if;
 

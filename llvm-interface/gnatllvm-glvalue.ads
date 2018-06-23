@@ -1454,4 +1454,7 @@ package GNATLLVM.GLValue is
    procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean)
      with Pre => Present (V);
 
+   procedure Set_Unnamed_Addr (V : GL_Value; Has_Unnamed_Addr : Boolean)
+     with Pre => Present (V);
+
 end GNATLLVM.GLValue;

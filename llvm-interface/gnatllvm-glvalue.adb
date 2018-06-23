@@ -1323,4 +1323,13 @@ package body GNATLLVM.GLValue is
       Set_Thread_Local (LLVM_Value (V), Thread_Local);
    end Set_Thread_Local;
 
+   ----------------------
+   -- Set_Unnamed_Addr --
+   ----------------------
+
+   procedure Set_Unnamed_Addr (V : GL_Value; Has_Unnamed_Addr : Boolean) is
+   begin
+      Set_Unnamed_Addr (LLVM_Value (V), Has_Unnamed_Addr);
+   end Set_Unnamed_Addr;
+
 end GNATLLVM.GLValue;

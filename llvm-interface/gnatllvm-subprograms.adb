@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Sem_Aux;  use Sem_Aux;
@@ -144,6 +145,11 @@ package body GNATLLVM.Subprograms is
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
    --  for it and return the result.  Otherwise, No_GL_Value.
+
+   function Is_Passed_Activation_Record (Def_Ident : Entity_Id) return Boolean
+     with Pre => Ekind (Def_Ident) in Subprogram_Kind;
+   --  Return True if Def_Ident is a nested subprogram that needs an
+   --  activation record.
 
    function Get_Tramp_Init_Fn   return GL_Value;
    function Get_Tramp_Adjust_Fn return GL_Value;
@@ -1167,6 +1173,34 @@ package body GNATLLVM.Subprograms is
       return No_GL_Value;
    end Emit_Intrinsic_Call;
 
+   ---------------------------------
+   -- Is_Passed_Activation_Record --
+   ---------------------------------
+
+   function Is_Passed_Activation_Record
+     (Def_Ident : Entity_Id) return Boolean
+   is
+      Formal : Entity_Id := First_Formal_With_Extras (Def_Ident);
+
+   begin
+      --  See if any parameter is an activation record.
+      --  ??? For now, at least, check if it's empty.
+
+      while Present (Formal) loop
+         if Ekind (Formal) = E_In_Parameter
+           and then Is_Activation_Record (Formal)
+           and then Present (First_Component_Or_Discriminant
+                               (Full_Designated_Type (Full_Etype (Formal))))
+         then
+            return True;
+         end if;
+
+         Next_Formal_With_Extras (Formal);
+      end loop;
+
+      return False;
+   end Is_Passed_Activation_Record;
+
    --------------------------------
    -- Emit_Subprogram_Identifier --
    --------------------------------
@@ -1189,11 +1223,12 @@ package body GNATLLVM.Subprograms is
          V := Create_Subprogram (Def_Ident);
       end if;
 
-      --  If we are elaborating this for 'Access or 'Address, we want the
+      --  If we're elaborating this for 'Access or 'Address, we want the
       --  actual subprogram type here, not the type of the return value,
-      --  which is what TE is set to.  We also have to make a trampoline or
-      --  Fat_Reference_To_Subprogram here since it's too late to make it
-      --  in Get because we've lost what subprogram it was for.
+      --  which is what TE is set to.  We also may have to make a
+      --  trampoline or Fat_Reference_To_Subprogram here since it's too
+      --  late to make it in Get because it doesn't know what subprogram it
+      --  was for.
 
       if Nkind (Parent (N)) = N_Attribute_Reference then
          declare
@@ -1210,9 +1245,23 @@ package body GNATLLVM.Subprograms is
                   S_Link : constant GL_Value  := Get_Static_Link (N);
 
                begin
-                  if Has_Foreign_Convention (DT) then
-                     return (if Is_Undef (S_Link) then V
-                             else Make_Trampoline (DT, V, S_Link));
+                  if Is_Passed_Activation_Record (Def_Ident)
+                    and then (Has_Foreign_Convention (Typ) /=
+                                Has_Foreign_Convention (Def_Ident))
+                  then
+                     Error_Msg_Node_1 := Def_Ident;
+                     Error_Msg_Node_2 := Typ;
+                     Error_Msg_N
+                       ("either access type & and subprogram &", Ref);
+                     Error_Msg_N
+                       ("\Convention Ada or neither may be since ", Ref);
+                     Error_Msg_NE
+                       ("\&references parent variables", Ref, Def_Ident);
+                  end if;
+
+                  if Has_Foreign_Convention (Typ) then
+                     return (if Is_Passed_Activation_Record (Def_Ident)
+                             then Make_Trampoline (DT, V, S_Link) else V);
                   else
                      return Insert_Value
                        (Insert_Value (Get_Undef_Relationship
@@ -1222,8 +1271,17 @@ package body GNATLLVM.Subprograms is
                   end if;
                end;
             elsif Attr = Attribute_Address then
-               return (if Is_Undef (S_Link) then V
-                       else Make_Trampoline (TE, V, S_Link));
+               if Is_Passed_Activation_Record (Def_Ident)
+                 and then not Has_Foreign_Convention (Def_Ident)
+               then
+                  Error_Msg_N
+                    ("cannot take address of Convention Ada subprogram ", Ref);
+                  Error_Msg_NE
+                    ("\& which references parent variables", Ref, Def_Ident);
+               end if;
+
+               return (if Is_Passed_Activation_Record (Def_Ident)
+                       then Make_Trampoline (TE, V, S_Link) else V);
             end if;
          end;
       end if;

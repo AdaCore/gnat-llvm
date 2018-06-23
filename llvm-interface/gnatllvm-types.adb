@@ -239,6 +239,24 @@ package body GNATLLVM.Types is
       --  an overflow check is required, we know this is NOT an unchecked
       --  conversion.
 
+      --  If we're converting between two access subprogram access types
+      --  and one is a foreign convention and one isn't, issue a warning
+      --  since that can cause issues with nested subprograms.
+
+      if Is_Access_Subprogram_Type (TE)
+        and then Is_Access_Subprogram_Type (In_TE)
+        and then Has_Foreign_Convention (TE) /= Has_Foreign_Convention (In_TE)
+      then
+         Error_Msg_Node_1 := In_TE;
+         Error_Msg_Node_2 := TE;
+         Error_Msg_N
+           ("??conversion between subprogram access types of different , ", N);
+         Error_Msg_N
+           ("\conventions, & and &, will not work if the former points ", N);
+         Error_Msg_N
+           ("\to a subprogram that references parent variables.", N);
+      end if;
+
       if Is_Elementary_Type (TE) and then Need_Overflow_Check then
          Result := Get (Result, Data);
          Emit_Overflow_Check (Result, From_N);

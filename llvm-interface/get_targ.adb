@@ -126,7 +126,7 @@ package body Get_Targ is
 
    function Get_System_Allocator_Alignment return Nat is
    begin
-      return 1;
+      return 8;
    end Get_System_Allocator_Alignment;
 
    ------------------------
@@ -135,7 +135,7 @@ package body Get_Targ is
 
    function Get_Float_Words_BE return Nat is
    begin
-      return 1;
+      return 0;
    end Get_Float_Words_BE;
 
    ------------------
@@ -144,7 +144,7 @@ package body Get_Targ is
 
    function Get_Words_BE return Nat is
    begin
-      return 1;
+      return 0;
    end Get_Words_BE;
 
    ------------------
@@ -153,7 +153,7 @@ package body Get_Targ is
 
    function Get_Bytes_BE return Nat is
    begin
-      return 1;
+      return 0;
    end Get_Bytes_BE;
 
    -----------------
@@ -162,7 +162,7 @@ package body Get_Targ is
 
    function Get_Bits_BE return Nat is
    begin
-      return 1;
+      return 0;
    end Get_Bits_BE;
 
    ---------------------
@@ -180,7 +180,7 @@ package body Get_Targ is
 
    function Get_Strict_Alignment return Nat is
    begin
-      return 1;
+      return 0;
    end Get_Strict_Alignment;
 
    --------------------------------

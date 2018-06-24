@@ -366,6 +366,10 @@ package body GNATLLVM.Subprograms is
             Set_Does_Not_Return (Func);
          end if;
 
+         if Can_Throw and not Can_Return then
+            Add_Cold_Attribute (Func);
+         end if;
+
          Set_Dup_Global_Value (S, Func);
          return Func;
       end if;

@@ -51,6 +51,9 @@ package GNATLLVM.Wrapper is
    procedure Add_Nest_Attribute (Func : Value_T; Idx : unsigned);
    pragma Import (C, Add_Nest_Attribute, "Add_Nest_Attribute");
 
+   procedure Add_Cold_Attribute (Func : Value_T);
+   pragma Import (C, Add_Cold_Attribute, "Add_Cold_Attribute");
+
    function Build_Extract_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;

@@ -102,6 +102,13 @@ Add_Nest_Attribute (Function *fn, unsigned idx)
 }
 
 extern "C"
+void
+Add_Cold_Attribute (Function *fn)
+{
+    fn->addFnAttr(Attribute::Cold);
+}
+
+extern "C"
 MDNode *
 Create_TBAA_Scalar_Type_Node_C (MDBuilder *MDHelper, const char *name,
 				MDNode *parent)

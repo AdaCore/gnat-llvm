@@ -1287,6 +1287,15 @@ package body GNATLLVM.GLValue is
       Add_Nest_Attribute (LLVM_Value (V), unsigned (Idx + 1));
    end Add_Nest_Attribute;
 
+   ------------------------
+   -- Add_Cold_Attribute --
+   -----------------------
+
+   procedure Add_Cold_Attribute (V : GL_Value) is
+   begin
+      Add_Cold_Attribute (LLVM_Value (V));
+   end Add_Cold_Attribute;
+
    ---------------------
    -- Set_Initializer --
    ---------------------

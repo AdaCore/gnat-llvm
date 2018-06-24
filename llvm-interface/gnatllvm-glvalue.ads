@@ -610,6 +610,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V);
    --  Add the Nest attribute to parameter with index Idx
 
+   procedure Add_Cold_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V);
+   --  Add the Cold attribute to function V
+
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
      (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = Val)
      with Pre => Present (V);

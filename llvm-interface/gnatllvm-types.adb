@@ -1177,12 +1177,14 @@ package body GNATLLVM.Types is
          Num_Elts    := Get_Alloc_Size (Alloc_Type, Alloc_Type, V);
       end if;
 
-      --  Check that we aren't atrying to allocate too much memory.  Raise
+      --  Check that we aren't trying to allocate too much memory.  Raise
       --  Storage_Error if so.  We don't try to support local exception
       --  labels and -fstack-check at the same time.  The divide below
-      --  will constant-fold.
+      --  will constant-fold, but make sure we aren't dividing by zero.
 
-      if Do_Stack_Check then
+      if Do_Stack_Check
+        and then Get_Type_Size (Element_Typ) /= Size_Const_Null
+      then
          Emit_Raise_Call_If (I_Cmp (Int_UGT, Num_Elts,
                                     U_Div (Size_Const_Int (Max_Alloc),
                                            Get_Type_Size (Element_Typ))),

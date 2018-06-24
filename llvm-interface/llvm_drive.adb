@@ -287,6 +287,9 @@ package body LLVM_Drive is
       elsif Switch = "-g" then
          Emit_Debug_Info := True;
          return True;
+      elsif Switch = "-fstack-check" then
+         Do_Stack_Check := True;
+         return True;
       elsif Last > First + 7
         and then Switch (First .. First + 7) = "-target="
       then

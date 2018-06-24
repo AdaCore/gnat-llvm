@@ -763,7 +763,8 @@ package body GNATLLVM.Compile is
 
                Bounds_From_Type (Var_Type, Low, High);
                LLVM_Var := Allocate_For_Type
-                 (Var_Type, Var_Type, (if Reversed then High else Low),
+                 (Var_Type, Var_Type, Def_Ident,
+                  (if Reversed then High else Low),
                   Name => Get_Name (Def_Ident));
                Set_Value (Def_Ident, LLVM_Var);
 

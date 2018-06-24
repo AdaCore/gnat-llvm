@@ -1400,7 +1400,7 @@ package body GNATLLVM.Subprograms is
 
       if Dynamic_Return then
          Args (Args'Last) :=
-           Allocate_For_Type (Return_Typ, Return_Typ, Name => "call-return");
+           Allocate_For_Type (Return_Typ, Return_Typ, Subp, Name => "return");
       end if;
 
       --  If the return type is of dynamic size, call as a procedure and

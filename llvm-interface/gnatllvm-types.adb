@@ -21,6 +21,7 @@ with Stand;  use Stand;
 with Table;  use Table;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
@@ -1135,19 +1136,27 @@ package body GNATLLVM.Types is
    function Allocate_For_Type
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
+      N          : Node_Id;
       V          : GL_Value := No_GL_Value;
       Name       : String := "") return GL_Value
    is
+      Max_Alloc   : constant ULL := 10_000_000;
       Element_Typ : Entity_Id;
       Num_Elts    : GL_Value;
-
    begin
       --  We have three cases.  If the object is not of a dynamic size,
       --  we just do the alloca and that's all.
 
       if not Is_Dynamic_Size (Alloc_Type) then
-         return
-           Move_Into_Memory (Alloca (Alloc_Type, Name), V, TE, Alloc_Type);
+         if Do_Stack_Check
+           and then Get_LLVM_Type_Size (Create_Type (Alloc_Type)) > Max_Alloc
+         then
+            Emit_Raise_Call (N, SE_Object_Too_Large);
+            return Emit_Undef (TE);
+         else
+            return
+              Move_Into_Memory (Alloca (Alloc_Type, Name), V, TE, Alloc_Type);
+         end if;
       end if;
 
       --  Otherwise, we probably have to do some sort of dynamic
@@ -1166,6 +1175,18 @@ package body GNATLLVM.Types is
       else
          Element_Typ := Standard_Short_Short_Integer;
          Num_Elts    := Get_Alloc_Size (Alloc_Type, Alloc_Type, V);
+      end if;
+
+      --  Check that we aren't atrying to allocate too much memory.  Raise
+      --  Storage_Error if so.  We don't try to support local exception
+      --  labels and -fstack-check at the same time.  The divide below
+      --  will constant-fold.
+
+      if Do_Stack_Check then
+         Emit_Raise_Call_If (I_Cmp (Int_UGT, Num_Elts,
+                                    U_Div (Size_Const_Int (Max_Alloc),
+                                           Get_Type_Size (Element_Typ))),
+                             N, SE_Object_Too_Large);
       end if;
 
       return Move_Into_Memory
@@ -1189,7 +1210,7 @@ package body GNATLLVM.Types is
       Align_V    : constant GL_Value  := Size_Const_Int (Align);
       Ret_Loc    : constant GL_Value  :=
         (if No (Proc) then No_GL_Value
-         else Allocate_For_Type (Size_Type, Size_Type));
+         else Allocate_For_Type (Size_Type, Size_Type, Empty));
 
    begin
       --  If no function was specified, use the default memory allocation

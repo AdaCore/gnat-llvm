@@ -1044,7 +1044,8 @@ package body GNATLLVM.Variables is
       else
          --  Otherwise, allocate it on the stack, copying in any value
 
-         LLVM_Var := Allocate_For_Type (TE, TE, Value, Get_Name (Def_Ident));
+         LLVM_Var := Allocate_For_Type (TE, TE, Def_Ident,
+                                        Value, Get_Name (Def_Ident));
          Copied := True;
       end if;
 

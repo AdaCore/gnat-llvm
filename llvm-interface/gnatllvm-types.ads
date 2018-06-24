@@ -259,6 +259,7 @@ package GNATLLVM.Types is
    function Allocate_For_Type
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
+      N          : Node_Id;
       V          : GL_Value := No_GL_Value;
       Name       : String := "") return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type),
@@ -266,7 +267,8 @@ package GNATLLVM.Types is
    --  Allocate space on the stack for an object of type TE and return
    --  a pointer to the space.  Name is the name to use for the LLVM
    --  value.  If Value is Present, it's a value to be copyied to the
-   --  temporary and can be used to size the allocated space.
+   --  temporary and can be used to size the allocated space.  N is a node
+   --  used for a Sloc if we have to raise an exception.
 
    function Heap_Allocate_For_Type
      (TE         : Entity_Id;
@@ -346,5 +348,8 @@ package GNATLLVM.Types is
 
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
+
+   Do_Stack_Check : Boolean := False;
+   --  If set, check for too-large allocation
 
 end GNATLLVM.Types;

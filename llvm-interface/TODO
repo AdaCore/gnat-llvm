@@ -13,5 +13,4 @@ Missing features (identified so far):
 - restriction checks done by back end
 - support for code generation switches (in particular -Ox and possibly some
   -fxxx switches)
-- support for stack checking (-fstack-check)
 - compile subprograms in inlined list

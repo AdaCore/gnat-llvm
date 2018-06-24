@@ -94,9 +94,12 @@ package GNATLLVM.Blocks is
    --  If N is specied, find the exit point corresponding to its entity.
    --  Otherwise, find the most recent (most inner) exit point.
 
-   procedure Emit_Overflow_Call_If (V : GL_Value; N : Node_Id)
+   procedure Emit_Raise_Call_If
+     (V    : GL_Value;
+      N    : Node_Id;
+      Kind : RT_Exception_Code := CE_Overflow_Check_Failed)
      with Pre => Present (V) and then Present (N);
-   --  Raise an oveflow exception if V evaluates to True
+   --  Raise an exception (default is overflow) if V evaluates to True
 
    procedure Emit_Fixups_For_Return;
    --  We're going to do a return.  Emit any needed fixups from the block

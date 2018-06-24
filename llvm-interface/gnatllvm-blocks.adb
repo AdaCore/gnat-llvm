@@ -586,20 +586,24 @@ package body GNATLLVM.Blocks is
       end if;
    end Get_Raise_Fn;
 
-   ---------------------------
-   -- Emit_Overflow_Call_If --
-   ---------------------------
+   ------------------------
+   -- Emit_Raise_Call_If --
+   ------------------------
 
-   procedure Emit_Overflow_Call_If (V : GL_Value; N : Node_Id) is
+   procedure Emit_Raise_Call_If
+     (V    : GL_Value;
+      N    : Node_Id;
+      Kind : RT_Exception_Code := CE_Overflow_Check_Failed)
+   is
       BB_Then  : constant Basic_Block_T := Create_Basic_Block ("raise");
       BB_Next  : constant Basic_Block_T := Create_Basic_Block;
 
    begin
       Build_Cond_Br (V, BB_Then, BB_Next);
       Position_Builder_At_End (BB_Then);
-      Emit_Raise_Call (N, CE_Overflow_Check_Failed);
+      Emit_Raise_Call (N, Kind);
       Move_To_BB (BB_Next);
-   end Emit_Overflow_Call_If;
+   end Emit_Raise_Call_If;
 
    ---------------------------
    -- Get_File_Name_Address --
@@ -914,7 +918,7 @@ package body GNATLLVM.Blocks is
                      Param   : constant Entity_Id := Clauses.Table (J).Param;
                      Typ     : constant Entity_Id := Full_Etype (Param);
                      V       : constant GL_Value  :=
-                       Allocate_For_Type (Typ, Typ, No_GL_Value,
+                       Allocate_For_Type (Typ, Typ, Param, No_GL_Value,
                                           Get_Name (Param));
                      Cvt_Ptr : constant GL_Value  :=
                        Convert_To_Access (Exc_Ptr, Standard_A_Char);

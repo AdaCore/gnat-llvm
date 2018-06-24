@@ -1094,7 +1094,8 @@ package body GNATLLVM.Variables is
         and then (not Library_Level
                     or else Compile_Time_Known_Value (Name (N)))
       then
-         Set_Value (Def_Ident, Emit_Convert_Value (Name (N), TE));
+         Set_Value (Def_Ident, Emit_Conversion (Name (N), TE,
+                                               Empty, False, False));
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
          Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
 

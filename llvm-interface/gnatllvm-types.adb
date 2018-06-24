@@ -261,12 +261,12 @@ package body GNATLLVM.Types is
       if Is_Elementary_Type (TE) and then Need_Overflow_Check then
          Result := Get (Result, Data);
          Emit_Overflow_Check (Result, From_N);
-         return Convert (Result, TE);
+         Result := Convert (Result, TE);
 
       elsif Is_Reference (Result) and then Is_In_LHS_Context (From_N)
         and then Is_Nop_Conversion (Result, TE)
       then
-         return Convert_Ref (Get (Result, Any_Reference), TE);
+         Result := Convert_Ref (Get (Result, Any_Reference), TE);
 
       --  For unchecked conversion between pointer and integer, just copy
       --  the bits.  But use Size_Type and generic pointers to make sure
@@ -278,7 +278,7 @@ package body GNATLLVM.Types is
       then
          Result := Get (From_Access (Get (Result, Data)),
                         Reference_For_Integer);
-         return Convert (Ptr_To_Int (Result, Size_Type), TE);
+         Result := Convert (Ptr_To_Int (Result, Size_Type), TE);
       elsif Is_Unchecked and then Is_Discrete_Or_Fixed_Point_Type (In_TE)
         and then Is_Access_Type (TE)
       then
@@ -299,7 +299,7 @@ package body GNATLLVM.Types is
                                   Standard_Short_Short_Integer);
          end if;
 
-         return Convert_To_Access (Result, TE);
+         Result := Convert_To_Access (Result, TE);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
@@ -315,11 +315,12 @@ package body GNATLLVM.Types is
       then
          return Bit_Cast (Get (Result, Data), TE);
 
-      --  If both types are elementary, hand that off to our helper.
+      --  If both types are elementary, hand that off to our helper
 
-      elsif Is_Elementary_Type (In_TE) and then Is_Elementary_Type (TE)
+      elsif Is_Elementary_Type (In_TE)
+        and then Is_Elementary_Type (TE)
       then
-         return Convert (Get (Result, Data), TE);
+         Result := Convert (Get (Result, Data), TE);
 
       --  If both types are the same, just change the type of the result.
       --  Avoid confusing [0 x T] as both a zero-size constrained type and
@@ -328,13 +329,46 @@ package body GNATLLVM.Types is
       elsif not Is_Reference (Result) and then not Is_Dynamic_Size (TE)
         and then Type_Of (Result) = Create_Type (TE)
       then
-         return G_Is (Result, TE);
+         Result := G_Is (Result, TE);
 
       --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         return Convert_Ref (Get (Result, Any_Reference), TE);
+         Result := Convert_Ref (Get (Result, Any_Reference), TE);
       end if;
+
+      --  For unchecked conversion, if the result is a non-biased
+      --  integral type whose precision is not equal to its size, sign-
+      --  or zero-extend the result.  But we need not do this if the
+      --  input is also an integral type and both are unsigned or both
+      --  are signed and the output is not narrower than the input and
+      --  we can't do this in the case of nonbinary modulus.
+
+      if Is_Unchecked and then Is_Discrete_Type (TE)
+        and then not Non_Binary_Modulus (TE)
+        and then RM_Size (TE) /= Esize (TE)
+        and then not (Is_Discrete_Or_Fixed_Point_Type (In_TE)
+                        and then Is_Unsigned_Type (TE)
+                        and then Is_Unsigned_Type (In_TE))
+        and then not (Is_Discrete_Or_Fixed_Point_Type (In_TE)
+                        and then not Is_Unsigned_Type (In_TE)
+                        and then not Is_Unsigned_Type (TE)
+                        and then RM_Size (TE) >= RM_Size (In_TE))
+      then
+         declare
+            Shift_Count : constant GL_Value  :=
+              Const_Int (TE, Esize (TE) - RM_Size (TE));
+            Left_Shift  : constant GL_Value :=
+              Shl (Convert (Get (Result, Data), TE), Shift_Count);
+
+         begin
+            Result := (if Is_Unsigned_Type (TE)
+                       then L_Shr (Left_Shift, Shift_Count)
+                       else A_Shr (Left_Shift, Shift_Count));
+         end;
+      end if;
+
+      return Result;
 
    end Emit_Conversion;
 

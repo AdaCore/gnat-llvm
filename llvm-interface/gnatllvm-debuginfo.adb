@@ -83,7 +83,7 @@ package body GNATLLVM.DebugInfo is
    procedure Initialize is
    begin
       if Emit_Debug_Info then
-         DI_Builder := Create_Debug_Builder (LLVM_Module);
+         DI_Builder         := Create_Debug_Builder (Module);
          Debug_Compile_Unit :=
            Create_Debug_Compile_Unit
            (DI_Builder, Get_Debug_File_Node (Main_Source_File));

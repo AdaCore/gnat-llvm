@@ -103,39 +103,39 @@ package GNATLLVM is
      (Ekind (E) = E_Void or else Is_Type (E));
    --  We can have Etype's that are E_Void for E_Procedure
 
-   LLVM_Context             : Context_T;
+   Context            : Context_T;
    --  The current LLVM Context
 
-   IR_Builder               : Builder_T;
+   IR_Builder         : Builder_T;
    --  The current LLVM Instruction builder
 
-   LLVM_Module              : Module_T;
+   Module             : Module_T;
    --  The LLVM Module being compiled
 
-   LLVM_Target              : Target_T;
+   LLVM_Target        : Target_T;
    --  The LLVM target for our module
 
-   LLVM_Target_Machine      : Target_Machine_T;
+   Target_Machine     : Target_Machine_T;
    --  The LLVM target machine for our module
 
-   MD_Builder               : MD_Builder_T;
+   MD_Builder         : MD_Builder_T;
    --  The current LLVM Metadata builder
 
-   TBAA_Root                : Metadata_T;
+   TBAA_Root          : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
 
-   Module_Data_Layout       : Target_Data_T;
+   Module_Data_Layout : Target_Data_T;
    --  LLVM current module data layout.
 
-   Size_Type                : Entity_Id;
-   LLVM_Size_Type           : Type_T;
+   Size_Type          : Entity_Id;
+   LLVM_Size_Type     : Type_T;
    --  Types to use for sizes
 
-   Void_Ptr_Type            : Type_T;
+   Void_Ptr_Type      : Type_T;
    --  Pointer to arbitrary memory (we use i8 *); equivalent of
    --  Standard_A_Char.
 
-   Int_32_Type              : Entity_Id;
+   Int_32_Type        : Entity_Id;
    --  GNAT type for 32-bit integers (for GEP indexes)
 
 end GNATLLVM;

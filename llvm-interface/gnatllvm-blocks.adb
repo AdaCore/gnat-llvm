@@ -640,7 +640,7 @@ package body GNATLLVM.Blocks is
               := Const_Null (Standard_Short_Short_Integer);
 
             Str := Const_Array (Elements, Any_Array);
-            V   := G_Ref (Add_Global (LLVM_Module, Type_Of (Str), "fname"),
+            V   := G_Ref (Add_Global (Module, Type_Of (Str), "fname"),
                           Any_Array);
             Set_Initializer (V, Str);
             Set_Linkage (V, Private_Linkage);

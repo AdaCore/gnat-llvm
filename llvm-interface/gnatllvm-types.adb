@@ -101,7 +101,7 @@ package body GNATLLVM.Types is
      (Types : Type_Array; Packed : Boolean := False) return Type_T is
    begin
       return Struct_Type_In_Context
-        (LLVM_Context, Types'Address, Types'Length, Packed);
+        (Context, Types'Address, Types'Length, Packed);
    end Build_Struct_Type;
 
    -----------------------------------------------
@@ -1012,17 +1012,17 @@ package body GNATLLVM.Types is
                      pragma Assert (UI_Is_In_Int_Range (Size));
                      case UI_To_Int (Size) is
                         when 32 =>
-                           T := Float_Type_In_Context (LLVM_Context);
+                           T := Float_Type_In_Context (Context);
                         when 64 =>
-                           T := Double_Type_In_Context (LLVM_Context);
+                           T := Double_Type_In_Context (Context);
                         when 128 =>
                            --  Extended precision; not IEEE_128
-                           T := X86_F_P80_Type_In_Context (LLVM_Context);
+                           T := X86_F_P80_Type_In_Context (Context);
                         when 80 | 96 =>
-                           T := X86_F_P80_Type_In_Context (LLVM_Context);
+                           T := X86_F_P80_Type_In_Context (Context);
                         when others =>
                            --  ??? Double check that
-                           T := F_P128_Type_In_Context (LLVM_Context);
+                           T := F_P128_Type_In_Context (Context);
                      end case;
 
                   when AAMP =>
@@ -1053,7 +1053,7 @@ package body GNATLLVM.Types is
             --  This is a Taft Amendment type, return a dummy type that
             --  we can take a pointer to.
 
-            T := Struct_Create_Named (LLVM_Context, Get_Name (Def_Ident));
+            T := Struct_Create_Named (Context, Get_Name (Def_Ident));
 
          when E_Private_Type
             | E_Private_Subtype

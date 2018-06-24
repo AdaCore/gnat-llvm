@@ -17,6 +17,10 @@
 
 package body GNATLLVM.Wrapper is
 
+   ----------------------------------
+   -- Create_TBAA_Scalar_Type_Node --
+   ----------------------------------
+
    function Create_TBAA_Scalar_Type_Node
      (MDBld  : MD_Builder_T;
       Name   : String;
@@ -104,24 +108,8 @@ package body GNATLLVM.Wrapper is
    end LLVM_Init_Module;
 
    -----------------------
-   -- LLVM_Write_Module --
+   -- Create_Debug_File --
    -----------------------
-
-   function LLVM_Write_Module
-     (Module   : Module_T;
-      Object   : Boolean;
-      Filename : String) return Nat
-   is
-      function LLVM_Write_Module_C
-        (Module   : Module_T;
-         Object   : Int;
-         Filename : String) return Nat;
-      pragma Import (C, LLVM_Write_Module_C, "LLVM_Write_Module");
-
-   begin
-      return LLVM_Write_Module_C
-        (Module, Boolean'Pos (Object), Filename & ASCII.NUL);
-   end LLVM_Write_Module;
 
    function Create_Debug_File
      (Bld : DI_Builder_T; Name, Dir : String) return Metadata_T
@@ -132,6 +120,10 @@ package body GNATLLVM.Wrapper is
    begin
       return Create_Debug_File_C (Bld, Name & ASCII.NUL, Dir & ASCII.NUL);
    end Create_Debug_File;
+
+   -----------------------------
+   -- Create_Debug_Subprogram --
+   -----------------------------
 
    function Create_Debug_Subprogram
      (Bld            : DI_Builder_T;

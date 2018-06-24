@@ -68,9 +68,6 @@ package body LLVM_Drive is
    Code_Generation    : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
 
-   Optimization_Level : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
-   --  Optimization level that we're performing
-
    Target_Triple      : String_Access        :=
      new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation
@@ -146,11 +143,11 @@ package body LLVM_Drive is
       --  Initialize the translation environment
 
       Initialize_LLVM;
-      LLVM_Context := Get_Global_Context;
-      IR_Builder   := Create_Builder_In_Context (LLVM_Context);
-      MD_Builder   := Create_MDBuilder_In_Context (LLVM_Context);
-      LLVM_Module  := Module_Create_With_Name_In_Context
-        (Get_Name (Defining_Entity (Unit (GNAT_Root))), LLVM_Context);
+      Context    := Get_Global_Context;
+      IR_Builder := Create_Builder_In_Context (Context);
+      MD_Builder := Create_MDBuilder_In_Context (Context);
+      Module     := Module_Create_With_Name_In_Context
+        (Get_Name (Defining_Entity (Unit (GNAT_Root))), Context);
       if Get_Target_From_Triple
         (Target_Triple.all, LLVM_Target'Address, Ptr_Ptr_Err)
       then
@@ -159,22 +156,25 @@ package body LLVM_Drive is
          return;
       end if;
 
-      LLVM_Target_Machine :=
-        Create_Target_Machine (LLVM_Target,
+      Target_Machine    :=
+        Create_Target_Machine (T          => LLVM_Target,
                                Triple     => Target_Triple.all,
                                CPU        => "generic",
                                Features   => "",
-                               Level      => Optimization_Level,
+                               Level      => (case Optimization_Level is
+                                  when 1      => Code_Gen_Level_Less,
+                                  when 2      => Code_Gen_Level_Default,
+                                  when 3      => Code_Gen_Level_Aggressive,
+                                  when others => Code_Gen_Level_None),
                                Reloc      => Reloc_Default,
                                Code_Model => Code_Model_Default);
 
-      Module_Data_Layout := Create_Target_Data_Layout (LLVM_Target_Machine);
-      Set_Target (LLVM_Module, Target_Triple.all);
-      LLVM_Init_Module (LLVM_Module,
-                        Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))),
-                        LLVM_Target_Machine);
-
+      Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
+      Set_Target       (Module, Target_Triple.all);
+      LLVM_Init_Module (Module,
+                        Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))),
+                        Target_Machine);
 
       --  We can't use a qualified expression here because that will cause
       --  a temporary to be placed in our stack and if the array is very
@@ -229,21 +229,21 @@ package body LLVM_Drive is
       --  Output the translation
 
       Finalize_Debugging;
-      if Verify_Module (LLVM_Module, Print_Message_Action, Null_Address) then
+      if Verify_Module (Module, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad LLVM code", GNAT_Root);
          if Code_Generation = Dump_IR then
-            Dump_Module (LLVM_Module);
+            Dump_Module (Module);
          end if;
 
       else
          case Code_Generation is
             when Dump_IR =>
-               Dump_Module (LLVM_Module);
+               Dump_Module (Module);
             when Write_BC =>
                declare
                   S : constant String := Output_File_Name (".bc");
                begin
-                  if Integer (Write_Bitcode_To_File (LLVM_Module, S)) /= 0 then
+                  if Integer (Write_Bitcode_To_File (Module, S)) /= 0 then
                      Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
                   end if;
                end;
@@ -253,7 +253,7 @@ package body LLVM_Drive is
                   S : constant String := Output_File_Name (".ll");
 
                begin
-                  if Print_Module_To_File (LLVM_Module, S, Ptr_Ptr_Err) then
+                  if Print_Module_To_File (Module, S, Ptr_Ptr_Err) then
                      Error_Msg_N
                        ("could not write `" & S & "`: " & Get_LLVM_Error_Msg,
                         GNAT_Root);
@@ -264,8 +264,11 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".s");
                begin
-                  if LLVM_Write_Module (LLVM_Module, False, S) /= 0 then
-                     Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
+                  if Target_Machine_Emit_To_File
+                    (Target_Machine, Module, S, Assembly_File, Ptr_Ptr_Err)
+                  then
+                     Error_Msg_N ("could not write `" & S & "`: " &
+                                    Get_LLVM_Error_Msg, GNAT_Root);
                   end if;
                end;
 
@@ -273,8 +276,11 @@ package body LLVM_Drive is
                declare
                   S : constant String := Output_File_Name (".o");
                begin
-                  if LLVM_Write_Module (LLVM_Module, True, S) /= 0 then
-                     Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
+                  if Target_Machine_Emit_To_File
+                    (Target_Machine, Module, S, Object_File, Ptr_Ptr_Err)
+                  then
+                     Error_Msg_N ("could not write `" & S & "`: " &
+                                    Get_LLVM_Error_Msg, GNAT_Root);
                   end if;
                end;
          end case;
@@ -284,7 +290,7 @@ package body LLVM_Drive is
 
       Dispose_Debugging;
       Dispose_Builder (IR_Builder);
-      Dispose_Module (LLVM_Module);
+      Dispose_Module  (Module);
    end GNAT_To_LLVM;
 
    ------------------------
@@ -315,18 +321,6 @@ package body LLVM_Drive is
          return True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
-         return True;
-      elsif Switch = "-O0" then
-         Optimization_Level := Code_Gen_Level_None;
-         return True;
-      elsif Switch = "-O1" then
-         Optimization_Level := Code_Gen_Level_Less;
-         return True;
-      elsif Switch = "-O2" then
-         Optimization_Level := Code_Gen_Level_Default;
-         return True;
-      elsif Switch = "-O3" then
-         Optimization_Level := Code_Gen_Level_Aggressive;
          return True;
       elsif Last > First + 7
         and then Switch (First .. First + 7) = "-target="

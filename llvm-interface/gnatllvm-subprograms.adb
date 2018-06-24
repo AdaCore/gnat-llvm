@@ -1550,7 +1550,7 @@ package body GNATLLVM.Subprograms is
    function Create_Basic_Block (Name : String := "") return Basic_Block_T is
    begin
       return Append_Basic_Block_In_Context
-        (LLVM_Context, LLVM_Value (Current_Func), Name);
+        (Context, LLVM_Value (Current_Func), Name);
    end Create_Basic_Block;
 
    ----------------

@@ -1417,7 +1417,7 @@ package GNATLLVM.GLValue is
    function Add_Function
      (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value
    is
-     (G (Add_Function (LLVM_Module, Name, T),
+     (G (Add_Function (Module, Name, T),
          Return_TE, Reference_To_Subprogram))
      with Pre  => Present (T) and then Is_Type_Or_Void (Return_TE),
           Post => Present (Add_Function'Result);

@@ -701,12 +701,12 @@ package body GNATLLVM.Variables is
       --  If we haven't already seen this value, make a constant for it
 
       if not Const_Map.Contains (LLVM_Value (In_V)) then
-         Out_Val := Add_Global (LLVM_Module, Type_Of (In_V), "for-ref");
-         Set_Initializer     (Out_Val, LLVM_Value (In_V));
-         Set_Linkage         (Out_Val, Private_Linkage);
-         Set_Global_Constant (Out_Val, True);
-         Set_Unnamed_Addr    (Out_Val, True);
-         Const_Map.Insert    (LLVM_Value (In_V),  Out_Val);
+         Out_Val := Add_Global  (Module, Type_Of (In_V), "for-ref");
+         Set_Initializer        (Out_Val, LLVM_Value (In_V));
+         Set_Linkage            (Out_Val, Private_Linkage);
+         Set_Global_Constant    (Out_Val, True);
+         Set_Unnamed_Addr       (Out_Val, True);
+         Const_Map.Insert       (LLVM_Value (In_V),  Out_Val);
       end if;
 
       --  Now make a GL_Value.  We do this here since different constant

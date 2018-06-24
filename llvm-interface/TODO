@@ -11,6 +11,5 @@ Missing features (identified so far):
 - representation clauses
 - debug info (for variables, types and parameters)
 - restriction checks done by back end
-- support for code generation switches (in particular -Ox and possibly some
-  -fxxx switches)
+- support for some -fxxx code generation switches
 - compile subprograms in inlined list

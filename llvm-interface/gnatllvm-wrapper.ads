@@ -89,13 +89,6 @@ package GNATLLVM.Wrapper is
       Target_Machine : Target_Machine_T);
    --  Initialize the LLVM module.
 
-   function LLVM_Write_Module
-     (Module   : Module_T;
-      Object   : Boolean;
-      Filename : String) return Nat;
-
-   --  Functions for creating debug information
-
    function Create_Debug_Builder (Module : Module_T) return DI_Builder_T;
    pragma Import (C, Create_Debug_Builder, "Create_Debug_Builder");
    --  Create a DIBuilder and return it

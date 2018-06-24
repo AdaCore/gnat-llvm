@@ -1264,7 +1264,7 @@ package body GNATLLVM.GLValue is
                    then Thin_Pointer else R);
       end if;
 
-      return G (Add_Global (LLVM_Module,
+      return G (Add_Global (Module,
                             Type_For_Relationship (TE, Deref (R)), Name),
                 TE, R);
    end Add_Global;

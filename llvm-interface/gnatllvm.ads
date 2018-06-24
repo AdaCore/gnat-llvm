@@ -25,8 +25,9 @@ with Einfo; use Einfo;
 with Namet; use Namet;
 with Types; use Types;
 
-with LLVM.Target; use LLVM.Target;
-with LLVM.Types;  use LLVM.Types;
+with LLVM.Target;         use LLVM.Target;
+with LLVM.Target_Machine; use LLVM.Target_Machine;
+with LLVM.Types;          use LLVM.Types;
 
 package GNATLLVM is
 
@@ -110,6 +111,12 @@ package GNATLLVM is
 
    LLVM_Module              : Module_T;
    --  The LLVM Module being compiled
+
+   LLVM_Target              : Target_T;
+   --  The LLVM target for our module
+
+   LLVM_Target_Machine      : Target_Machine_T;
+   --  The LLVM target machine for our module
 
    MD_Builder               : MD_Builder_T;
    --  The current LLVM Metadata builder

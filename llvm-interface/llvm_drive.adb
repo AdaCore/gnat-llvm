@@ -22,11 +22,11 @@ with Ada.Directories;
 with System;         use System;
 with System.Strings; use System.Strings;
 
-with LLVM.Analysis;   use LLVM.Analysis;
-with LLVM.Bit_Writer; use LLVM.Bit_Writer;
-with LLVM.Core;       use LLVM.Core;
-with LLVM.Support;    use LLVM.Support;
-with LLVM.Target;     use LLVM.Target;
+with LLVM.Analysis;       use LLVM.Analysis;
+with LLVM.Bit_Writer;     use LLVM.Bit_Writer;
+with LLVM.Core;           use LLVM.Core;
+with LLVM.Support;        use LLVM.Support;
+with LLVM.Target_Machine; use LLVM.Target_Machine;
 
 with Atree;    use Atree;
 with Errout;   use Errout;
@@ -65,10 +65,14 @@ package body LLVM_Drive is
    type Code_Generation_Kind is
      (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object);
 
-   Code_Generation : Code_Generation_Kind := Write_Object;
+   Code_Generation    : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
 
-   Target : String_Access := new String'("");
+   Optimization_Level : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
+   --  Optimization level that we're performing
+
+   Target_Triple      : String_Access        :=
+     new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation
 
    function Output_File_Name (Extension : String) return String;
@@ -89,11 +93,36 @@ package body LLVM_Drive is
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
-      type Addr_Arr is array (Interfaces.C.int range <>) of Address;
-      Opt0   : constant String                       := "filename" & ASCII.NUL;
-      Addrs  : Addr_Arr (1 .. Switch_Table.Last + 1) :=
-        (1 => Opt0'Address, others => <>);
-      Result : Nat;
+      type    Addr_Arr         is array (Interfaces.C.int range <>) of Address;
+      subtype Switch_Addrs     is Addr_Arr (1 .. Switch_Table.Last + 1);
+      subtype Err_Msg_Type     is String (1 .. 1000);
+      type    Ptr_Err_Msg_Type is access Err_Msg_Type;
+
+      Opt0        : constant String   := "filename" & ASCII.NUL;
+      Addrs       : Switch_Addrs      := (1 => Opt0'Address, others => <>);
+      Ptr_Err_Msg : Ptr_Err_Msg_Type;
+      Ptr_Ptr_Err : constant Address  := Ptr_Err_Msg'Address;
+
+      function Get_LLVM_Error_Msg return String;
+      --  Get the LLVM error message that was stored in Ptr_Err_Msg
+
+      ------------------------
+      -- Get_LLVM_Error_Msg --
+      ------------------------
+
+      function Get_LLVM_Error_Msg return String is
+         Err_Msg_Length : Integer := Ptr_Err_Msg'Length;
+
+      begin
+         for J in Err_Msg_Type'Range loop
+            if Ptr_Err_Msg.all (J) = ASCII.NUL then
+               Err_Msg_Length := J - 1;
+               exit;
+            end if;
+         end loop;
+
+         return Ptr_Err_Msg.all (1 .. Err_Msg_Length);
+      end Get_LLVM_Error_Msg;
 
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
@@ -116,28 +145,36 @@ package body LLVM_Drive is
 
       --  Initialize the translation environment
 
+      Initialize_LLVM;
       LLVM_Context := Get_Global_Context;
       IR_Builder   := Create_Builder_In_Context (LLVM_Context);
       MD_Builder   := Create_MDBuilder_In_Context (LLVM_Context);
       LLVM_Module  := Module_Create_With_Name_In_Context
         (Get_Name (Defining_Entity (Unit (GNAT_Root))), LLVM_Context);
-
-      Result := LLVM_Init_Module
-        (LLVM_Module,
-         Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))),
-         Target.all);
-
-      if Result /= 0 then
-         Error_Msg_N
-           ("error initializing LLVM module for " &
-              (if Target.all = "" then "default" else Target.all) & " target",
-            GNAT_Root);
-
+      if Get_Target_From_Triple
+        (Target_Triple.all, LLVM_Target'Address, Ptr_Ptr_Err)
+      then
+         Error_Msg_N ("cannot set target to " & Target_Triple.all & ": " &
+                        Get_LLVM_Error_Msg, GNAT_Root);
          return;
       end if;
 
+      LLVM_Target_Machine :=
+        Create_Target_Machine (LLVM_Target,
+                               Triple     => Target_Triple.all,
+                               CPU        => "generic",
+                               Features   => "",
+                               Level      => Optimization_Level,
+                               Reloc      => Reloc_Default,
+                               Code_Model => Code_Model_Default);
+
+      Module_Data_Layout := Create_Target_Data_Layout (LLVM_Target_Machine);
+      Set_Target (LLVM_Module, Target_Triple.all);
+      LLVM_Init_Module (LLVM_Module,
+                        Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))),
+                        LLVM_Target_Machine);
+
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
-      Module_Data_Layout := Get_Module_Data_Layout (LLVM_Module);
 
       --  We can't use a qualified expression here because that will cause
       --  a temporary to be placed in our stack and if the array is very
@@ -213,24 +250,13 @@ package body LLVM_Drive is
 
             when Write_IR =>
                declare
-                  subtype Err_Msg_Type is String (1 .. 1000);
-                  S              : constant String := Output_File_Name (".ll");
-                  Ptr_Err_Msg    : access Err_Msg_Type;
-                  Err_Msg_Length : Integer         := Err_Msg_Type'Length;
+                  S : constant String := Output_File_Name (".ll");
 
                begin
-                  if Print_Module_To_File (LLVM_Module, S, Ptr_Err_Msg'Address)
-                  then
-                     for I in Err_Msg_Type'Range loop
-                        if Ptr_Err_Msg.all (I) = ASCII.NUL then
-                           Err_Msg_Length := I - 1;
-                           exit;
-                        end if;
-                     end loop;
-
+                  if Print_Module_To_File (LLVM_Module, S, Ptr_Ptr_Err) then
                      Error_Msg_N
-                       ("could not write `" & S & "`: " &
-                          Ptr_Err_Msg.all (1 .. Err_Msg_Length), GNAT_Root);
+                       ("could not write `" & S & "`: " & Get_LLVM_Error_Msg,
+                        GNAT_Root);
                   end if;
                end;
 
@@ -290,10 +316,22 @@ package body LLVM_Drive is
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
          return True;
+      elsif Switch = "-O0" then
+         Optimization_Level := Code_Gen_Level_None;
+         return True;
+      elsif Switch = "-O1" then
+         Optimization_Level := Code_Gen_Level_Less;
+         return True;
+      elsif Switch = "-O2" then
+         Optimization_Level := Code_Gen_Level_Default;
+         return True;
+      elsif Switch = "-O3" then
+         Optimization_Level := Code_Gen_Level_Aggressive;
+         return True;
       elsif Last > First + 7
         and then Switch (First .. First + 7) = "-target="
       then
-         Target := new String'(Switch (First + 8 .. Last));
+         Target_Triple := new String'(Switch (First + 8 .. Last));
          return True;
       elsif Last > First + 4
         and then Switch (First .. First + 4) = "llvm-"
@@ -302,7 +340,7 @@ package body LLVM_Drive is
          return True;
       end if;
 
-      --  For now we allow the -O/-f/-m/-W/-w and -pipe switches, even
+      --  For now we allow the -f/-m/-W/-w and -pipe switches, even
       --  though they will have no effect.
       --  This permits compatibility with existing scripts.
       --  ??? Should take into account -O

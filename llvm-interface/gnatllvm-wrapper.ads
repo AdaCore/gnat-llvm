@@ -79,13 +79,15 @@ package GNATLLVM.Wrapper is
    procedure Set_Does_Not_Return (Fn : Value_T);
    pragma Import (C, Set_Does_Not_Return, "Set_Does_Not_Return");
 
-   function LLVM_Init_Module
-     (Module   : Module_T;
-      Filename : String;
-      Target   : String := "") return Nat;
-   --  Initialize the LLVM module. Returns 0 if it succeeds.
-   --  Target is the target triple to generate code for. If empty, defaults
-   --  to the default target LLVM is configured for.
+   procedure Initialize_LLVM;
+   pragma Import (C, Initialize_LLVM, "Initialize_LLVM");
+   --  Initializes various parts of the LLVM infrastructure.
+
+   procedure LLVM_Init_Module
+     (Module         : Module_T;
+      Filename       : String;
+      Target_Machine : Target_Machine_T);
+   --  Initialize the LLVM module.
 
    function LLVM_Write_Module
      (Module   : Module_T;

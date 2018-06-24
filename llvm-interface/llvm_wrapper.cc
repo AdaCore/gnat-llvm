@@ -197,41 +197,27 @@ Set_Does_Not_Return (Function *fn)
 }
 
 extern "C"
-int
-LLVM_Init_Module (Module *TheModule, const char *Filename, const char *target)
+void
+Initialize_LLVM (void)
 {
-  // Initialize the target registry etc.
+  // Initialize the target registry etc.  These functions appear to be
+  // in LLVM.Target, but they reference static inline function, so they
+  // can only be used from C, not Ada.
+
   InitializeAllTargetInfos();
   InitializeAllTargets();
   InitializeAllTargetMCs();
   InitializeAllAsmParsers();
   InitializeAllAsmPrinters();
+}
 
-  std::string TargetTriple =
-    target == NULL ? sys::getDefaultTargetTriple() : target;
-
-  TheModule->setTargetTriple(TargetTriple);
+extern "C"
+void
+LLVM_Init_Module (Module *TheModule, const char *Filename,
+		  TargetMachine *TheTargetMachine)
+{
   TheModule->setSourceFileName(Filename);
-  std::string Error;
-  auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
-
-  // Return an error if we couldn't find the requested target.
-  // This generally occurs if we've forgotten to initialise the
-  // TargetRegistry or we have a bogus target triple.
-  if (!Target) {
-    return 1;
-  }
-
-  auto CPU = "generic";
-  auto Features = "";
-
-  TargetOptions opt;
-  auto RM = Optional<Reloc::Model>();
-  auto TheTargetMachine =
-    Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
-
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
-  return 0;
 }
 
 extern "C"

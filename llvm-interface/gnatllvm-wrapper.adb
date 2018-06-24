@@ -88,29 +88,19 @@ package body GNATLLVM.Wrapper is
    -- LLVM_Init_Module --
    ----------------------
 
-   function LLVM_Init_Module
-     (Module   : LLVM.Types.Module_T;
-      Filename : String;
-      Target   : String := "") return Nat
+   procedure LLVM_Init_Module
+     (Module         : Module_T;
+      Filename       : String;
+      Target_Machine : Target_Machine_T)
    is
-      function LLVM_Init_Module_C
-        (Module   : LLVM.Types.Module_T;
-         Filename : String;
-         Target   : System.Address) return Nat;
+      procedure LLVM_Init_Module_C
+        (Module         : Module_T;
+         Filename       : String;
+         Target_Machine : Target_Machine_T);
       pragma Import (C, LLVM_Init_Module_C, "LLVM_Init_Module");
 
    begin
-      if Target = "" then
-         return LLVM_Init_Module_C
-           (Module, Filename & ASCII.NUL, System.Null_Address);
-      else
-         declare
-            S : aliased constant String := Target & ASCII.NUL;
-         begin
-            return LLVM_Init_Module_C
-              (Module, Filename & ASCII.NUL, S'Address);
-         end;
-      end if;
+      LLVM_Init_Module_C (Module, Filename & ASCII.NUL, Target_Machine);
    end LLVM_Init_Module;
 
    -----------------------
@@ -118,12 +108,12 @@ package body GNATLLVM.Wrapper is
    -----------------------
 
    function LLVM_Write_Module
-     (Module   : LLVM.Types.Module_T;
+     (Module   : Module_T;
       Object   : Boolean;
       Filename : String) return Nat
    is
       function LLVM_Write_Module_C
-        (Module   : LLVM.Types.Module_T;
+        (Module   : Module_T;
          Object   : Int;
          Filename : String) return Nat;
       pragma Import (C, LLVM_Write_Module_C, "LLVM_Write_Module");

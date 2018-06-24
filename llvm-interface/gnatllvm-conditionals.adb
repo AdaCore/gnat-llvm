@@ -710,19 +710,19 @@ package body GNATLLVM.Conditionals is
       --  First go through all the parts of the "if" statement recording
       --  the expressions and statements.
 
-      If_Parts (0) := (Cond => Condition (N),
-                       Stmts => Then_Statements (N),
-                       BB_True => Create_Basic_Block ("true"),
-                       BB_False => Create_Basic_Block ("false"));
+      If_Parts (0) := (Cond     => Condition (N),
+                       Stmts    => Then_Statements (N),
+                       BB_True  => Create_Basic_Block,
+                       BB_False => Create_Basic_Block);
 
       if Present (Elsif_Parts (N)) then
          Elsif_Part := First (Elsif_Parts (N));
          while Present (Elsif_Part) loop
-            If_Parts (If_Parts_Pos) := (Cond => Condition (Elsif_Part),
-                                        Stmts => Then_Statements (Elsif_Part),
-                                        BB_True => Create_Basic_Block ("true"),
-                                        BB_False =>
-                                          Create_Basic_Block ("false"));
+            If_Parts (If_Parts_Pos)
+              := (Cond     => Condition (Elsif_Part),
+                  Stmts    => Then_Statements (Elsif_Part),
+                  BB_True  => Create_Basic_Block,
+                  BB_False => Create_Basic_Block);
             If_Parts_Pos := If_Parts_Pos + 1;
             Next (Elsif_Part);
          end loop;
@@ -732,8 +732,7 @@ package body GNATLLVM.Conditionals is
       --  an "else" clause, it's a new basic block and the end; otherwise,
       --  it's the last False block.
 
-      BB_End := (if Present (Else_Statements (N))
-                 then Create_Basic_Block ("end")
+      BB_End := (if Present (Else_Statements (N)) then Create_Basic_Block
                  else If_Parts (If_Parts_Pos - 1).BB_False);
 
       --  Now process each entry that we made: test the condition and branch;

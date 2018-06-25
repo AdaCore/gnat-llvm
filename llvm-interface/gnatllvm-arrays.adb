@@ -190,7 +190,7 @@ package body GNATLLVM.Arrays is
 
          --  If we're looking for the size of a type (meaning the max size)
          --  and this expression involves a discriminant, use the minimum
-         --  or maxium value of the bound subtype or the discriminant's
+         --  or maximum value of the bound subtype or the discriminant's
          --  subtype.  Otherwise, just evaluate the expression.
 
          if For_Type and then Present (Discrim) then
@@ -214,6 +214,21 @@ package body GNATLLVM.Arrays is
          else
             Result := Emit_Convert_Value (Expr, Dim_Info.Bound_Type);
          end if;
+
+      --  See if we're asking for the maximum size of an uncontrained
+      --  array.  If so, return the appropriate bound.
+
+      elsif For_Type and then Is_Unconstrained_Array (TE) then
+         declare
+            Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
+            Bound_Limit : constant Node_Id   :=
+              (if Is_Low then Type_Low_Bound (Bound_Type)
+               else Type_High_Bound (Bound_Type));
+
+         begin
+            Result := Emit_Convert_Value (Bound_Limit, Dim_Info.Bound_Type);
+         end;
+
       else
          --  We now should have the unconstrained case.  Make sure we do.
          pragma Assert (Is_Unconstrained_Array (TE)

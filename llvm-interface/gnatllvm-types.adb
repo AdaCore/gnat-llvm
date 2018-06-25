@@ -115,13 +115,10 @@ package body GNATLLVM.Types is
 
    begin
 
-      --  The front end should not have gotten us here if the component
-      --  types or number of dimensions differ.
+      --  The front end should not have gotten us here if the number
+      --  of dimensions differ.
 
-      pragma Assert (Implementation_Base_Type (Full_Component_Type (T1)) =
-                       Implementation_Base_Type (Full_Component_Type (T2))
-                       and then (Number_Dimensions (T1) =
-                                   Number_Dimensions (T2)));
+      pragma Assert (Number_Dimensions (T1) = Number_Dimensions (T2));
 
       --  We don't need to do anything if the index types differ unless the
       --  corresponding LLVM types differ, so that's all we check.

@@ -34,6 +34,7 @@ with Ada.Command_Line; use Ada.Command_Line;
 
 with LLVM.Core;           use LLVM.Core;
 with LLVM.Support;        use LLVM.Support;
+with LLVM.Target;         use LLVM.Target;
 with LLVM.Target_Machine; use LLVM.Target_Machine;
 
 with GNATLLVM;         use GNATLLVM;
@@ -135,7 +136,7 @@ package body Get_Targ is
 
    function Get_Pointer_Size return Pos is
    begin
-      return 64;
+      return Pos (Pointer_Size (Module_Data_Layout)) * Get_Bits_Per_Unit;
    end Get_Pointer_Size;
 
    ---------------------------
@@ -162,7 +163,7 @@ package body Get_Targ is
 
    function Get_Float_Words_BE return Nat is
    begin
-      return 0;
+      return (if Byte_Order (Module_Data_Layout) = Big_Endian then 1 else 0);
    end Get_Float_Words_BE;
 
    ------------------
@@ -171,7 +172,7 @@ package body Get_Targ is
 
    function Get_Words_BE return Nat is
    begin
-      return 0;
+      return (if Byte_Order (Module_Data_Layout) = Big_Endian then 1 else 0);
    end Get_Words_BE;
 
    ------------------
@@ -180,7 +181,7 @@ package body Get_Targ is
 
    function Get_Bytes_BE return Nat is
    begin
-      return 0;
+      return (if Byte_Order (Module_Data_Layout) = Big_Endian then 1 else 0);
    end Get_Bytes_BE;
 
    -----------------
@@ -189,7 +190,7 @@ package body Get_Targ is
 
    function Get_Bits_BE return Nat is
    begin
-      return 0;
+      return (if Byte_Order (Module_Data_Layout) = Big_Endian then 1 else 0);
    end Get_Bits_BE;
 
    ---------------------
@@ -370,7 +371,6 @@ package body Get_Targ is
    First_Call : Boolean := True;
 
    function Get_Back_End_Config_File return String_Ptr is
-      Compile_Only : Boolean := False;
    begin
       if First_Call then
          First_Call := False;
@@ -390,8 +390,6 @@ package body Get_Targ is
                      Filename := new String'(Switch);
                   end if;
 
-               elsif Switch = "-c" or else Switch = "-S" then
-                  Compile_Only := True;
                elsif Switch = "--dump-ir" then
                   Code_Generation := Dump_IR;
                elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
@@ -435,9 +433,7 @@ package body Get_Targ is
             end;
          end loop;
 
-         if Compile_Only then
-            Initialize_LLVM_Target;
-         end if;
+         Initialize_LLVM_Target;
       end if;
 
       return null;

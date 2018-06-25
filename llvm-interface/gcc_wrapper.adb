@@ -34,8 +34,6 @@ procedure GCC_Wrapper is
 
    function Base_Name (S : String) return String;
 
-   function Get_Target return String;
-
    function Base_Name (S : String) return String is
       First : Natural := S'First;
       Last  : Natural := S'Last;
@@ -56,20 +54,14 @@ procedure GCC_Wrapper is
       return S (First .. Last);
    end Base_Name;
 
-   function Get_Target return String is
-      Base : constant String := Base_Name (Command_Name);
-      Last : constant Natural := Index (Base, "-") - 1;
-   begin
-      return Base (Base'First .. Last);
-   end Get_Target;
-
-   GCC       : constant String := Command_Name;
-   Args      : Argument_List (1 .. Argument_Count);
-   Arg_Count : Natural := 0;
-   Status    : Boolean;
-   Last      : Natural;
-   Compile   : Boolean := False;
-   Verbose   : Boolean := False;
+   GCC                : constant String := Command_Name;
+   Args               : Argument_List (1 .. Argument_Count);
+   Arg_Count          : Natural := 0;
+   Status             : Boolean;
+   Last               : Natural;
+   Compile            : Boolean := False;
+   Compile_With_Clang : Boolean := False;
+   Verbose            : Boolean := False;
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
@@ -99,18 +91,20 @@ begin
          Arg : constant String := Argument (1);
       begin
          if Arg = "-v" then
-            Put_Line ("Target: " & Get_Target);
+            Put_Line ("Target: llvm");
             Put_Line (Base_Name (GCC) & " version " &
                         Gnatvsn.Library_Version & " for GNAT " &
                         Gnatvsn.Gnat_Version_String);
             OS_Exit (0);
 
          elsif Arg = "-dumpversion" then
-            Put_Line (Gnatvsn.Gnat_Static_Version_String);
+            --  ??? fixed bugs expect a version of the form x.y.z
+            --  Put_Line (Gnatvsn.Gnat_Static_Version_String);
+            Put_Line ("7.3.1");
             OS_Exit (0);
 
          elsif Arg = "-dumpmachine" then
-            Put_Line (Get_Target);
+            Put_Line ("llvm");
             OS_Exit (0);
          end if;
       end;
@@ -121,7 +115,23 @@ begin
          Arg  : constant String := Argument (J);
          Skip : Boolean := False;
       begin
-         if Arg = "-c" or else Arg = "-S" then
+         if Arg'Length > 0
+           and then Arg (1) /= '-'
+         then
+            if Arg'Length > 2
+              and then Arg (Arg'Last - 1 .. Arg'Last) = ".c"
+            then
+               Compile_With_Clang := True;
+            end if;
+
+         elsif Arg = "-x"
+           and then J < Args'Last
+           and then (Argument (J + 1) = "c"
+                     or else Argument (J + 1) = "c++")
+         then
+            Compile_With_Clang := True;
+
+         elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
          elsif Arg = "-v" then
@@ -149,6 +159,20 @@ begin
    else
       Put_Line ("unexpected program name: " & GCC & ", exiting.");
       Set_Exit_Status (Failure);
+      return;
+   end if;
+
+   --  Compile c/c++ files with clang
+
+   if Compile_With_Clang then
+      Spawn (Locate_Exec_On_Path ("clang").all, Args (1 .. Arg_Count), Status);
+
+      if Status then
+         Set_Exit_Status (Success);
+      else
+         Set_Exit_Status (Failure);
+      end if;
+
       return;
    end if;
 

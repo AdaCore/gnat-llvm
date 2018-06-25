@@ -35,10 +35,12 @@ package body Back_End is
    -------------------
 
    procedure Call_Back_End (Mode : Back_End_Mode_Type) is
-      pragma Unreferenced (Mode); -- Mode not referenced
 
    begin
-      GNAT2LLVM.Call_Back_End;
+      --  ??? We only support code generation mode
+      if Mode = Generate_Object then
+         GNAT2LLVM.Call_Back_End;
+      end if;
    end Call_Back_End;
 
    -------------------------------

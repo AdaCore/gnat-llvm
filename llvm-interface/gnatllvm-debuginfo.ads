@@ -15,7 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.DebugInfo is
 
@@ -24,9 +24,6 @@ package GNATLLVM.DebugInfo is
 
    Debug_Compile_Unit  : Metadata_T;
    --  DICompilleUnit metadata for the main compile unit
-
-   Emit_Debug_Info     : Boolean := False;
-   --  Whether or not to emit debugging information (-g)
 
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
    DI_Cache : access DI_File_Cache := null;

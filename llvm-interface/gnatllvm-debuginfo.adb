@@ -18,7 +18,7 @@
 with Sinput; use Sinput;
 with Table;  use Table;
 
-with LLVM.Debug_Info;  use LLVM.Debug_Info;
+with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;

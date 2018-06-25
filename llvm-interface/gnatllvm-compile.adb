@@ -23,7 +23,7 @@ with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Uintp;    use Uintp;
 
-with LLVM.Core;     use LLVM.Core;
+with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;

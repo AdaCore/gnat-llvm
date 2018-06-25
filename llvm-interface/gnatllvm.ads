@@ -20,6 +20,8 @@ with System;
 with Interfaces.C;
 with Interfaces.C.Extensions;
 
+with GNAT.OS_Lib; use GNAT.OS_Lib;
+
 with Atree; use Atree;
 with Einfo; use Einfo;
 with Namet; use Namet;
@@ -137,5 +139,39 @@ package GNATLLVM is
 
    Int_32_Type        : Entity_Id;
    --  GNAT type for 32-bit integers (for GEP indexes)
+
+   --  GNAT LLVM switches
+
+   Output_Assembly : Boolean := False;
+   --  True if -S was specified
+
+   Emit_LLVM       : Boolean := False;
+   --  True if -emit-llvm was specified
+
+   type Code_Generation_Kind is
+     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object);
+
+   Code_Generation    : Code_Generation_Kind := Write_Object;
+   --  Type of code generation we're doing
+
+   Target_Triple      : String_Access :=
+     new String'(Get_Default_Target_Triple);
+   --  Name of the target for this compilation
+
+   Code_Gen_Level : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
+   --  Optimization level
+
+   Emit_Debug_Info : Boolean := False;
+   --  Whether or not to emit debugging information (-g)
+
+   Do_Stack_Check : Boolean := False;
+   --  If set, check for too-large allocation
+
+   subtype Err_Msg_Type is String (1 .. 10000);
+   type Ptr_Err_Msg_Type is access all Err_Msg_Type;
+   --  Used for LLVM error handling
+
+   function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
+   --  Get the LLVM error message that was stored in Msg
 
 end GNATLLVM;

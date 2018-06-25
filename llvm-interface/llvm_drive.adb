@@ -15,17 +15,13 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C; use Interfaces.C;
-
 with Ada.Directories;
 
 with System;         use System;
-with System.Strings; use System.Strings;
 
 with LLVM.Analysis;       use LLVM.Analysis;
 with LLVM.Bit_Writer;     use LLVM.Bit_Writer;
 with LLVM.Core;           use LLVM.Core;
-with LLVM.Support;        use LLVM.Support;
 with LLVM.Target_Machine; use LLVM.Target_Machine;
 
 with Atree;    use Atree;
@@ -34,12 +30,10 @@ with Lib;      use Lib;
 with Namet;    use Namet;
 with Opt;      use Opt;
 with Osint.C;  use Osint.C;
-with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Stand;    use Stand;
 with Stringt;
 with Switch;   use Switch;
-with Table;
 
 with Get_Targ; use Get_Targ;
 
@@ -50,131 +44,21 @@ with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
-with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body LLVM_Drive is
 
-   Output_Assembly : Boolean := False;
-   --  True if -S was specified
-
-   Emit_LLVM       : Boolean := False;
-   --  True if -emit-llvm was specified
-
-   type Code_Generation_Kind is
-     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object);
-
-   Code_Generation    : Code_Generation_Kind := Write_Object;
-   --  Type of code generation we're doing
-
-   Target_Triple      : String_Access        :=
-     new String'(Get_Default_Target_Triple);
-   --  Name of the target for this compilation
-
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
-
-   type Pstring is access String;
-
-   package Switch_Table is new Table.Table
-     (Table_Component_Type => Pstring,
-      Table_Index_Type     => Interfaces.C.int,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Switch_Table");
 
    ------------------
    -- GNAT_To_LLVM --
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
-      type    Addr_Arr         is array (Interfaces.C.int range <>) of Address;
-      subtype Switch_Addrs     is Addr_Arr (1 .. Switch_Table.Last + 1);
-      subtype Err_Msg_Type     is String (1 .. 1000);
-      type    Ptr_Err_Msg_Type is access Err_Msg_Type;
-
-      Opt0        : constant String   := "filename" & ASCII.NUL;
-      Addrs       : Switch_Addrs      := (1 => Opt0'Address, others => <>);
-      Ptr_Err_Msg : Ptr_Err_Msg_Type;
-      Ptr_Ptr_Err : constant Address  := Ptr_Err_Msg'Address;
-
-      function Get_LLVM_Error_Msg return String;
-      --  Get the LLVM error message that was stored in Ptr_Err_Msg
-
-      ------------------------
-      -- Get_LLVM_Error_Msg --
-      ------------------------
-
-      function Get_LLVM_Error_Msg return String is
-         Err_Msg_Length : Integer := Ptr_Err_Msg'Length;
-
-      begin
-         for J in Err_Msg_Type'Range loop
-            if Ptr_Err_Msg.all (J) = ASCII.NUL then
-               Err_Msg_Length := J - 1;
-               exit;
-            end if;
-         end loop;
-
-         return Ptr_Err_Msg.all (1 .. Err_Msg_Length);
-      end Get_LLVM_Error_Msg;
-
+      Err_Msg : aliased Ptr_Err_Msg_Type;
    begin
       pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
-
-      --  Add any LLVM parameters to the list of switches
-
-      for J in 1 .. Switch_Table.Last loop
-         Addrs (J + 1) := Switch_Table.Table (J).all'Address;
-      end loop;
-
-      Parse_Command_Line_Options (Switch_Table.Last + 1, Addrs'Address, "");
-
-      --  Finalize our compilation mode now that all switches are parsed
-
-      if Emit_LLVM then
-         Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
-      elsif Output_Assembly then
-         Code_Generation := Write_Assembly;
-      end if;
-
-      --  Initialize the translation environment
-
-      Initialize_LLVM;
-      Context    := Get_Global_Context;
-      IR_Builder := Create_Builder_In_Context (Context);
-      MD_Builder := Create_MDBuilder_In_Context (Context);
-      Module     := Module_Create_With_Name_In_Context
-        (Get_Name (Defining_Entity (Unit (GNAT_Root))), Context);
-      if Get_Target_From_Triple
-        (Target_Triple.all, LLVM_Target'Address, Ptr_Ptr_Err)
-      then
-         Error_Msg_N ("cannot set target to " & Target_Triple.all & ": " &
-                        Get_LLVM_Error_Msg, GNAT_Root);
-         return;
-      end if;
-
-      Target_Machine    :=
-        Create_Target_Machine (T          => LLVM_Target,
-                               Triple     => Target_Triple.all,
-                               CPU        => "generic",
-                               Features   => "",
-                               Level      => (case Optimization_Level is
-                                  when 1      => Code_Gen_Level_Less,
-                                  when 2      => Code_Gen_Level_Default,
-                                  when 3      => Code_Gen_Level_Aggressive,
-                                  when others => Code_Gen_Level_None),
-                               Reloc      => Reloc_Default,
-                               Code_Model => Code_Model_Default);
-
-      Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
-      TBAA_Root          := Create_TBAA_Root (MD_Builder);
-      Set_Target       (Module, Target_Triple.all);
-      LLVM_Init_Module (Module,
-                        Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))),
-                        Target_Machine);
 
       --  We can't use a qualified expression here because that will cause
       --  a temporary to be placed in our stack and if the array is very
@@ -253,9 +137,10 @@ package body LLVM_Drive is
                   S : constant String := Output_File_Name (".ll");
 
                begin
-                  if Print_Module_To_File (Module, S, Ptr_Ptr_Err) then
+                  if Print_Module_To_File (Module, S, Err_Msg'Address) then
                      Error_Msg_N
-                       ("could not write `" & S & "`: " & Get_LLVM_Error_Msg,
+                       ("could not write `" & S & "`: " &
+                        Get_LLVM_Error_Msg (Err_Msg),
                         GNAT_Root);
                   end if;
                end;
@@ -265,10 +150,11 @@ package body LLVM_Drive is
                   S : constant String := Output_File_Name (".s");
                begin
                   if Target_Machine_Emit_To_File
-                    (Target_Machine, Module, S, Assembly_File, Ptr_Ptr_Err)
+                    (Target_Machine, Module, S, Assembly_File, Err_Msg'Address)
                   then
-                     Error_Msg_N ("could not write `" & S & "`: " &
-                                    Get_LLVM_Error_Msg, GNAT_Root);
+                     Error_Msg_N
+                       ("could not write `" & S & "`: " &
+                        Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
                   end if;
                end;
 
@@ -277,10 +163,11 @@ package body LLVM_Drive is
                   S : constant String := Output_File_Name (".o");
                begin
                   if Target_Machine_Emit_To_File
-                    (Target_Machine, Module, S, Object_File, Ptr_Ptr_Err)
+                    (Target_Machine, Module, S, Object_File, Err_Msg'Address)
                   then
-                     Error_Msg_N ("could not write `" & S & "`: " &
-                                    Get_LLVM_Error_Msg, GNAT_Root);
+                     Error_Msg_N
+                       ("could not write `" & S & "`: " &
+                        Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
                   end if;
                end;
          end case;
@@ -305,41 +192,32 @@ package body LLVM_Drive is
       if not Is_Switch (Switch) then
          return False;
       elsif Switch = "--dump-ir" then
-         Code_Generation := Dump_IR;
          return True;
       elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
-         Code_Generation := Write_BC;
          return True;
       elsif Switch = "-emit-llvm" then
-         Emit_LLVM := True;
          return True;
       elsif Switch = "-S" then
-         Output_Assembly := True;
          return True;
       elsif Switch = "-g" then
-         Emit_Debug_Info := True;
          return True;
       elsif Switch = "-fstack-check" then
-         Do_Stack_Check := True;
          return True;
       elsif Last > First + 7
         and then Switch (First .. First + 7) = "-target="
       then
-         Target_Triple := new String'(Switch (First + 8 .. Last));
          return True;
       elsif Last > First + 4
         and then Switch (First .. First + 4) = "llvm-"
       then
-         Switch_Table.Append (new String'(Switch (First + 4 .. Last)));
          return True;
       end if;
 
       --  For now we allow the -f/-m/-W/-w and -pipe switches, even
       --  though they will have no effect.
       --  This permits compatibility with existing scripts.
-      --  ??? Should take into account -O
 
-      return Switch (First) in 'f' | 'm' | 'O' | 'W' | 'w'
+      return Switch (First) in 'f' | 'm' | 'W' | 'w'
         or else Switch (First .. Last) = "pipe";
    end Is_Back_End_Switch;
 

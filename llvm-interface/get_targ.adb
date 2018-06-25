@@ -24,11 +24,38 @@
 --  ??? Will need to replace hardcoded values by target specific information
 --  coming from the LLVM backend for the relevant target.
 
-with System.OS_Lib; use System.OS_Lib;
+with Output; use Output;
+with Table;
 
-with GNAT.Directory_Operations; use GNAT.Directory_Operations;
+with System;           use System;
+with System.OS_Lib;    use System.OS_Lib;
+with Interfaces.C;
+with Ada.Command_Line; use Ada.Command_Line;
+
+with LLVM.Core;           use LLVM.Core;
+with LLVM.Support;        use LLVM.Support;
+with LLVM.Target_Machine; use LLVM.Target_Machine;
+
+with GNATLLVM;         use GNATLLVM;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body Get_Targ is
+
+   Filename : String_Access := new String'("");
+
+   type Pstring is access String;
+
+   package Switch_Table is new Table.Table
+     (Table_Component_Type => Pstring,
+      Table_Index_Type     => Interfaces.C.int,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Switch_Table");
+
+   procedure Initialize_LLVM_Target;
+   --  Initialize all the data structures specific to the LLVM target code
+   --  generation.
 
    -----------------------
    -- Get_Bits_Per_Unit --
@@ -268,63 +295,147 @@ package body Get_Targ is
       end case;
    end Width_From_Size;
 
+   ----------------------------
+   -- Initialize_LLVM_Target --
+   ----------------------------
+
+   procedure Initialize_LLVM_Target is
+      use Interfaces.C;
+
+      type    Addr_Arr         is array (Interfaces.C.int range <>) of Address;
+      subtype Switch_Addrs     is Addr_Arr (1 .. Switch_Table.Last + 1);
+
+      Opt0        : constant String   := "filename" & ASCII.NUL;
+      Addrs       : Switch_Addrs      := (1 => Opt0'Address, others => <>);
+      Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
+
+   begin
+      --  Add any LLVM parameters to the list of switches
+
+      for J in 1 .. Switch_Table.Last loop
+         Addrs (J + 1) := Switch_Table.Table (J).all'Address;
+      end loop;
+
+      Parse_Command_Line_Options (Switch_Table.Last + 1, Addrs'Address, "");
+
+      --  Finalize our compilation mode now that all switches are parsed
+
+      if Emit_LLVM then
+         Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
+      elsif Output_Assembly then
+         Code_Generation := Write_Assembly;
+      end if;
+
+      --  Initialize the translation environment
+
+      Initialize_LLVM;
+      Context    := Get_Global_Context;
+      IR_Builder := Create_Builder_In_Context (Context);
+      MD_Builder := Create_MDBuilder_In_Context (Context);
+      Module     := Module_Create_With_Name_In_Context (Filename.all, Context);
+
+      if Get_Target_From_Triple
+        (Target_Triple.all, LLVM_Target'Address, Ptr_Err_Msg'Address)
+      then
+         Write_Str
+           ("cannot set target to " & Target_Triple.all & ": " &
+            Get_LLVM_Error_Msg (Ptr_Err_Msg));
+         Write_Eol;
+         OS_Exit (4);
+      end if;
+
+      Target_Machine    :=
+        Create_Target_Machine (T          => LLVM_Target,
+                               Triple     => Target_Triple.all,
+                               CPU        => "generic",
+                               Features   => "",
+                               Level      => Code_Gen_Level,
+                               Reloc      => Reloc_Default,
+                               Code_Model => Code_Model_Default);
+
+      Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
+      TBAA_Root          := Create_TBAA_Root (MD_Builder);
+      Set_Target       (Module, Target_Triple.all);
+   end Initialize_LLVM_Target;
+
    ------------------------------
    -- Get_Back_End_Config_File --
    ------------------------------
 
+   First_Call : Boolean := True;
+
    function Get_Back_End_Config_File return String_Ptr is
+      Compile_Only : Boolean := False;
+   begin
+      if First_Call then
+         First_Call := False;
 
-      function Exec_Name return String;
-      --  Return name of the current executable (from argv[0])
+         --  Scan command line for relevant switches and initialize LLVM
+         --  target if -c/-S was specified.
 
-      function Get_Target_File (Dir : String) return String_Ptr;
-      --  Return Dir & "target.atp" if found, null otherwise
+         for J in 1 .. Argument_Count loop
+            declare
+               Switch : constant String := Argument (J);
+            begin
+               if Switch'Length > 0
+                 and then Switch (1) /= '-'
+               then
+                  if Is_Regular_File (Switch) then
+                     Free (Filename);
+                     Filename := new String'(Switch);
+                  end if;
 
-      ---------------
-      -- Exec_Name --
-      ---------------
+               elsif Switch = "-c" or else Switch = "-S" then
+                  Compile_Only := True;
+               elsif Switch = "--dump-ir" then
+                  Code_Generation := Dump_IR;
+               elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
+                  Code_Generation := Write_BC;
+               elsif Switch = "-emit-llvm" then
+                  Emit_LLVM := True;
+               elsif Switch = "-S" then
+                  Output_Assembly := True;
+               elsif Switch = "-g" then
+                  Emit_Debug_Info := True;
+               elsif Switch = "-fstack-check" then
+                  Do_Stack_Check := True;
+               elsif Switch'Length > 9
+                 and then Switch (1 .. 9) = "--target="
+               then
+                  Target_Triple :=
+                    new String'(Switch (10 .. Switch'Last));
+               elsif Switch'Length > 1
+                 and then Switch (1 .. 2) = "-O"
+               then
+                  if Switch'Length = 2 then
+                     Code_Gen_Level := Code_Gen_Level_Less;
+                  else
+                     case Switch (3) is
+                        when '1' =>
+                           Code_Gen_Level := Code_Gen_Level_Less;
+                        when '2' | 's' =>
+                           Code_Gen_Level := Code_Gen_Level_Default;
+                        when '3' =>
+                           Code_Gen_Level := Code_Gen_Level_Aggressive;
+                        when others =>
+                           Code_Gen_Level := Code_Gen_Level_None;
+                     end case;
+                  end if;
 
-      function Exec_Name return String is
-         type Arg_Array is array (Nat) of Big_String_Ptr;
-         type Arg_Array_Ptr is access all Arg_Array;
-
-         gnat_argv : Arg_Array_Ptr;
-         pragma Import (C, gnat_argv);
-
-      begin
-         for J in 1 .. Natural'Last loop
-            if gnat_argv (0) (J) = ASCII.NUL then
-               return gnat_argv (0) (1 .. J - 1);
-            end if;
+               elsif Switch'Length > 6
+                 and then Switch (1 .. 6) = "-llvm-"
+               then
+                  Switch_Table.Append (new String'(Switch (6 .. Switch'Last)));
+               end if;
+            end;
          end loop;
 
-         raise Program_Error;
-      end Exec_Name;
-
-      ---------------------
-      -- Get_Target_File --
-      ---------------------
-
-      function Get_Target_File (Dir : String) return String_Ptr is
-         F : constant String := Dir & "target.atp";
-      begin
-         if Is_Regular_File (F) then
-            return new String'(F);
-         else
-            return null;
+         if Compile_Only then
+            Initialize_LLVM_Target;
          end if;
-      end Get_Target_File;
-
-      Exec : constant String := Exec_Name;
-
-   --  Start of processing for Get_Back_End_Config_File
-
-   begin
-      if Is_Absolute_Path (Exec) then
-         return Get_Target_File (Dir_Name (Exec));
-      else
-         return Get_Target_File (Dir_Name (Locate_Exec_On_Path (Exec).all));
       end if;
+
+      return null;
    end Get_Back_End_Config_File;
 
 end Get_Targ;

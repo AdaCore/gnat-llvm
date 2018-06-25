@@ -302,21 +302,26 @@ package body Get_Targ is
    procedure Initialize_LLVM_Target is
       use Interfaces.C;
 
-      type    Addr_Arr         is array (Interfaces.C.int range <>) of Address;
-      subtype Switch_Addrs     is Addr_Arr (1 .. Switch_Table.Last + 1);
+      Num_Builtin : constant := 2;
+
+      type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
+      subtype Switch_Addrs is Addr_Arr (1 .. Switch_Table.Last + Num_Builtin);
 
       Opt0        : constant String   := "filename" & ASCII.NUL;
-      Addrs       : Switch_Addrs      := (1 => Opt0'Address, others => <>);
+      Opt1        : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
+      Addrs       : Switch_Addrs      :=
+        (1 => Opt0'Address, 2 => Opt1'Address, others => <>);
       Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
 
    begin
       --  Add any LLVM parameters to the list of switches
 
       for J in 1 .. Switch_Table.Last loop
-         Addrs (J + 1) := Switch_Table.Table (J).all'Address;
+         Addrs (J + Num_Builtin) := Switch_Table.Table (J).all'Address;
       end loop;
 
-      Parse_Command_Line_Options (Switch_Table.Last + 1, Addrs'Address, "");
+      Parse_Command_Line_Options (Switch_Table.Last + Num_Builtin,
+                                  Addrs'Address, "");
 
       --  Finalize our compilation mode now that all switches are parsed
 

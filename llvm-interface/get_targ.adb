@@ -43,6 +43,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 package body Get_Targ is
 
    Filename : String_Access := new String'("");
+   CPU      : constant String_Access := new String'("generic");
 
    type Pstring is access String;
 
@@ -353,7 +354,7 @@ package body Get_Targ is
       Target_Machine    :=
         Create_Target_Machine (T          => LLVM_Target,
                                Triple     => Target_Triple.all,
-                               CPU        => "generic",
+                               CPU        => CPU.all,
                                Features   => "",
                                Level      => Code_Gen_Level,
                                Reloc      => Reloc_Default,
@@ -361,7 +362,7 @@ package body Get_Targ is
 
       Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
-      Set_Target       (Module, Target_Triple.all);
+      Set_Target (Module, Target_Triple.all);
    end Initialize_LLVM_Target;
 
    ------------------------------

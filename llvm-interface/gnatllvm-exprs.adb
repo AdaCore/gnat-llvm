@@ -94,8 +94,7 @@ package body GNATLLVM.Exprs is
                   --  handle denormalized constants, but should work in enough
                   --  cases for now.
 
-                  FP_Num :=
-                    Long_Float (UI_To_Long_Long_Integer (Numerator (Val)));
+                  FP_Num := Long_Float (UI_To_Mod64 (Numerator (Val)));
                   if UR_Is_Negative (Val) then
                      FP_Num := -FP_Num;
                   end if;

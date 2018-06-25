@@ -137,6 +137,17 @@ package body GNATLLVM.Utils is
       return Long_Long_Integer'Value (UI_Image_Buffer (1 .. UI_Image_Length));
    end UI_To_Long_Long_Integer;
 
+   -----------------
+   -- UI_To_Mod64 --
+   -----------------
+
+   function UI_To_Mod64 (U : Uint) return Mod64 is
+   begin
+      --  ??? Consider making this routine more efficient
+      UI_Image (U, Decimal);
+      return Mod64'Value (UI_Image_Buffer (1 .. UI_Image_Length));
+   end UI_To_Mod64;
+
    --------------------
    -- Get_Uint_Value --
    --------------------

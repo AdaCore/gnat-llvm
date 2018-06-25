@@ -124,12 +124,13 @@ begin
                Compile_With_Clang := True;
             end if;
 
-         elsif Arg = "-x"
-           and then J < Args'Last
-           and then (Argument (J + 1) = "c"
-                     or else Argument (J + 1) = "c++")
-         then
-            Compile_With_Clang := True;
+         elsif Arg = "-x" then
+            if J < Args'Last
+              and then (Argument (J + 1) = "c"
+                        or else Argument (J + 1) = "c++")
+            then
+               Compile_With_Clang := True;
+            end if;
 
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;

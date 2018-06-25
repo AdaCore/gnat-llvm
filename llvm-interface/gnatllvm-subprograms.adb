@@ -197,7 +197,9 @@ package body GNATLLVM.Subprograms is
         Has_Foreign_Convention (Def_Ident);
       Ret_By_Ref      : constant Boolean   := Is_Return_By_Ref (Def_Ident);
       Takes_S_Link    : constant Boolean   :=
-        Needs_Activation_Record (Def_Ident) or else Is_Type (Def_Ident);
+        not Foreign
+        and then (Needs_Activation_Record (Def_Ident)
+                    or else Is_Type (Def_Ident));
       Unc_Return      : constant Boolean   :=
         (Ekind (Return_Type) /= E_Void
            and then Is_Unconstrained_Array (Return_Type));
@@ -1315,11 +1317,7 @@ package body GNATLLVM.Subprograms is
       Param          : Node_Id;
       P_Type         : Entity_Id;
       Actual         : Node_Id;
-
-      --  If it's not an identifier, it must be an access to a subprogram and
-      --  in such a case, it must accept a static link.
-
-      This_Takes_S_Link : constant Boolean := not Direct_Call;
+      This_Takes_S_Link : constant Boolean := not Direct_Call and not Foreign;
       Orig_Arg_Count : constant Nat        := Count_Params (Subp_Typ);
       Args_Count     : constant Nat        :=
         Orig_Arg_Count + (if This_Takes_S_Link then 1 else 0) +

@@ -267,7 +267,7 @@ package body GNATLLVM.GLValue is
             pragma Assert (not Is_Dynamic_Size (TE));
             return T;
 
-         when Reference | Thin_Pointer =>
+         when Reference | Thin_Pointer | Trampoline =>
             return PT;
 
          when Reference_To_Reference | Reference_To_Thin_Pointer =>
@@ -302,7 +302,7 @@ package body GNATLLVM.GLValue is
                   0);
             end if;
 
-         when Reference_To_Activation_Record | Trampoline =>
+         when Reference_To_Activation_Record =>
             return Void_Ptr_Type;
 
          when Fat_Reference_To_Subprogram =>

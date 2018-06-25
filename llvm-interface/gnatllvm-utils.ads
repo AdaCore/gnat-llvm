@@ -23,6 +23,8 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
+with Interfaces; use Interfaces;
+
 package GNATLLVM.Utils is
 
    procedure Decode_Range (N : Node_Id; Low, High : out Uint)
@@ -91,9 +93,7 @@ package GNATLLVM.Utils is
    function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer
      with Pre => U /= No_Uint;
 
-   type Mod64 is mod 2 ** 64;
-
-   function UI_To_Mod64 (U : Uint) return Mod64
+   function UI_To_Unsigned_64 (U : Uint) return Unsigned_64
      with Pre => U /= No_Uint;
 
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean

@@ -146,7 +146,7 @@ package GNATLLVM.Environment is
      with Pre => Present (VE);
 
    function Get_Array_Info  (TE : Entity_Id) return Array_Info_Id
-     with Pre => Is_Array_Type (TE);
+     with Pre => Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE);
 
    function Get_Record_Info (TE : Entity_Id) return Record_Info_Id
      with Pre => Is_Record_Type (TE);
@@ -205,7 +205,8 @@ package GNATLLVM.Environment is
           Post => Get_Value (VE) = VL;
 
    procedure Set_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
-     with Pre  => Is_Array_Type (TE) and then Has_Type (TE),
+     with Pre  => (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE))
+                  and then Has_Type (TE),
           Post => Get_Array_Info (TE) = AI;
 
    procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info_Id)

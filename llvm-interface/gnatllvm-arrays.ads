@@ -24,7 +24,8 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Arrays is
 
-   function Create_Array_Type (TE  : Entity_Id) return Type_T
+   function Create_Array_Type
+     (TE : Entity_Id; Info_For_Type : Entity_Id := Empty) return Type_T
      with Pre  => Is_Array_Type (TE),
           Post => Present (Create_Array_Type'Result);
    --  Return the type used to represent Array_Type_Node.  This will be

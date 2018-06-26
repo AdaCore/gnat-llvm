@@ -151,6 +151,7 @@ package body GNATLLVM.Arrays is
       else
          return V_Type;
       end if;
+
    end Type_For_Get_Bound;
 
    ---------------------
@@ -345,7 +346,11 @@ package body GNATLLVM.Arrays is
    -- Create_Array_Type --
    -----------------------
 
-   function Create_Array_Type (TE : Entity_Id) return Type_T is
+   function Create_Array_Type
+     (TE : Entity_Id; Info_For_Type : Entity_Id := Empty) return Type_T
+   is
+      Setting_Type      : constant Entity_Id     :=
+        (if Present (Info_For_Type) then Info_For_Type else TE);
       Unconstrained     : constant Boolean       := not Is_Constrained (TE);
       Comp_Type         : constant Entity_Id     := Full_Component_Type (TE);
       Base_Type         : constant Entity_Id     :=
@@ -454,9 +459,9 @@ package body GNATLLVM.Arrays is
       --  It's redundant to set the type here, since our caller will set it,
       --  but we have to set it in order to set the array info.
 
-      Set_Type (TE, Typ);
-      Set_Is_Dynamic_Size (TE, This_Dynamic_Size);
-      Set_Array_Info (TE, First_Info);
+      Set_Type            (Setting_Type, Typ);
+      Set_Is_Dynamic_Size (Setting_Type, This_Dynamic_Size);
+      Set_Array_Info      (Setting_Type, First_Info);
 
       return Typ;
    end Create_Array_Type;

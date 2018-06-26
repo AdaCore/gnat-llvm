@@ -442,22 +442,7 @@ package body GNATLLVM.GLValue is
             --  where it's useful above).
 
             else
-               declare
-                  Bounds_Type : Entity_Id := TE;
-
-               begin
-                  --  If we have an integral type that's a packed array
-                  --  implementation type, get bounds from the original
-                  --  type.
-
-                  if Is_Integer_Type (Bounds_Type)
-                    and then Is_Packed_Array_Impl_Type (Bounds_Type)
-                  then
-                     Bounds_Type := Original_Array_Type (Bounds_Type);
-                  end if;
-
-                  return Get_Array_Bounds (Bounds_Type, Bounds_Type, V);
-               end;
+               return Get_Array_Bounds (TE, TE, V);
             end if;
 
          when Bounds_And_Data =>

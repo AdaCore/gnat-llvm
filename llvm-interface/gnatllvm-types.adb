@@ -946,8 +946,6 @@ package body GNATLLVM.Types is
       T         : Type_T     := No_Type_T;
       TBAA      : Metadata_T := No_Metadata_T;
       Def_Ident : Entity_Id;
-      Discard   : Type_T;
-      pragma Unreferenced (Discard);
       pragma Unreferenced (Definition);
 
    begin
@@ -976,11 +974,12 @@ package body GNATLLVM.Types is
       --  see if this isn't a base type and process that if so.
 
       if Base_Type (Def_Ident) /= Def_Ident then
-         Discard := GNAT_To_LLVM_Type (Base_Type (Def_Ident), False);
+         Discard (GNAT_To_LLVM_Type (Base_Type (Def_Ident), False));
       end if;
 
       case Ekind (Def_Ident) is
          when Discrete_Kind =>
+
             --  LLVM is expecting boolean expressions to be of size 1
             --  ??? will not work properly if there is a size clause
             --  Also avoid using 0-sized type for "mod 1" type (c420001).
@@ -995,6 +994,19 @@ package body GNATLLVM.Types is
                T := Int_Ty (Esize (Def_Ident));
             else
                T := Int_Ty (8);
+            end if;
+
+            --  If this is a packed array implementation type and the
+            --  original type is an array, create a type for that array
+            --  so we can use it later to get the bounds.  We have to do this
+            --  here and manually because Create_Type will bring us back here.
+
+            if Is_Packed_Array_Impl_Type (Def_Ident)
+              and then Present (Original_Array_Type (Def_Ident))
+              and then not Has_Type (Original_Array_Type (Def_Ident))
+            then
+               Discard (Create_Array_Type (Original_Array_Type (Def_Ident),
+                                           Info_For_Type => Def_Ident));
             end if;
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>

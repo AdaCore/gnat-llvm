@@ -42,8 +42,15 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body Get_Targ is
 
-   Filename : String_Access := new String'("");
-   CPU      : constant String_Access := new String'("generic");
+   Filename      : String_Access := new String'("");
+   --  Filename to compile.
+
+   CPU           :  String_Access := new String'("generic");
+   --  Name of the specific CPU for this compilation.
+
+   Target_Triple : String_Access :=
+     new String'(Get_Default_Target_Triple);
+   --  Name of the target for this compilation
 
    type Pstring is access String;
 
@@ -377,12 +384,15 @@ package body Get_Targ is
          First_Call := False;
 
          --  Scan command line for relevant switches and initialize LLVM
-         --  target if -c/-S was specified.
+         --  target.
 
          for J in 1 .. Argument_Count loop
             declare
                Switch : constant String := Argument (J);
+
             begin
+               pragma Assert (Switch'First = 1);
+
                if Switch'Length > 0
                  and then Switch (1) /= '-'
                then
@@ -406,8 +416,12 @@ package body Get_Targ is
                elsif Switch'Length > 9
                  and then Switch (1 .. 9) = "--target="
                then
+                  Free (Target_Triple);
                   Target_Triple :=
                     new String'(Switch (10 .. Switch'Last));
+               elsif Switch'Length > 6 and then Switch (1 .. 6) = "-mcpu=" then
+                  Free (CPU);
+                  CPU := new String'(Switch (7 .. Switch'Last));
                elsif Switch'Length > 1
                  and then Switch (1 .. 2) = "-O"
                then

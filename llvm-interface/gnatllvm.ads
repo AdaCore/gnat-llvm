@@ -20,8 +20,6 @@ with System;
 with Interfaces.C;
 with Interfaces.C.Extensions;
 
-with GNAT.OS_Lib; use GNAT.OS_Lib;
-
 with Atree; use Atree;
 with Einfo; use Einfo;
 with Namet; use Namet;
@@ -153,10 +151,6 @@ package GNATLLVM is
 
    Code_Generation    : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
-
-   Target_Triple      : String_Access :=
-     new String'(Get_Default_Target_Triple);
-   --  Name of the target for this compilation
 
    Code_Gen_Level : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
    --  Optimization level

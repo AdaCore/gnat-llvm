@@ -17,7 +17,14 @@
 
 with LLVM.Types; use LLVM.Types;
 
+with stdint_h; use stdint_h;
+
 package Uintp.LLVM is
+
+   type Word_Array is array (Nat range <>) of aliased uint64_t;
+
+   function Big_UI_To_Words (U : Uint) return Word_Array;
+   --  Convert a Uint into an array of words representing the value
 
    function UI_To_LLVM (T : Type_T; U : Uint) return Value_T;
    --  Convert a Uint into an LLVM native integer constant

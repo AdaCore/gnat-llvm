@@ -19,31 +19,24 @@ with Interfaces; use Interfaces;
 
 with LLVM.Core; use LLVM.Core;
 
-with stdint_h; use stdint_h;
-
 with GNATLLVM;  use GNATLLVM;
 
 package body Uintp.LLVM is
 
-   function Big_UI_To_LLVM (T : Type_T; U : Uint) return Value_T;
+   ---------------------
+   -- Big_UI_To_Words --
+   ---------------------
 
-   --------------------
-   -- Big_UI_To_LLVM --
-   --------------------
-
-   function Big_UI_To_LLVM (T : Type_T; U : Uint) return Value_T is
+   function Big_UI_To_Words (U : Uint) return Word_Array is
       D_Table        : Udigits.Table_Ptr renames Udigits.Table;
       Loc            : constant Int     := Uints.Table (U).Loc;
       Length         : constant Pos     := Uints.Table (U).Length;
       N_Bits         : constant Pos     := Base_Bits * Length;
       N_Words        : constant Pos     := (N_Bits + 63) / 64;
       N_Padding_Bits : constant Pos     := N_Words * 64 - N_Bits;
-      Is_Negative    : constant Boolean := D_Table (Loc) < Nat (0);
-      Words          : array (1 .. N_Words) of aliased uint64_t :=
-        (others => 0);
+      Words          : Word_Array (1 .. N_Words) := (others => 0);
       Cur_Word       : Nat              := N_Words;
       Cur_Bit        : Nat              := 64;
-      Result         : Value_T;
 
       function Ones (Length : Nat) return uint64_t is
          (uint64_t (2 ** Integer (Length) - 1));
@@ -112,11 +105,8 @@ package body Uintp.LLVM is
          Push_Bits (uint64_t (abs D_Table (Loc + I - 1)), Base_Bits);
       end loop;
 
-      Result := Const_Int_Of_Arbitrary_Precision
-        (T, Words'Length, Words (Words'First)'Access);
-
-      return (if Is_Negative then Const_Neg (Result) else Result);
-   end Big_UI_To_LLVM;
+      return Words;
+   end Big_UI_To_Words;
 
    ----------------
    -- UI_To_LLVM --
@@ -127,7 +117,14 @@ package body Uintp.LLVM is
       if UI_Is_In_Int_Range (U) then
          return Const_Int (T, ULL (UI_To_Int (U)), True);
       else
-         return Big_UI_To_LLVM (T, U);
+         declare
+            Words  : Word_Array       := Big_UI_To_Words (U);
+            Result : constant Value_T := Const_Int_Of_Arbitrary_Precision
+              (T, Words'Length, Words (Words'First)'Access);
+
+         begin
+            return (if U < Uint_0 then Const_Neg (Result) else Result);
+         end;
       end if;
    end UI_To_LLVM;
 

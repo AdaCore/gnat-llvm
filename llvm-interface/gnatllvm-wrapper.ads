@@ -17,6 +17,8 @@
 
 with System;
 
+with stdint_h;
+
 package GNATLLVM.Wrapper is
 
    function Create_MDBuilder_In_Context (Ctx : Context_T) return MD_Builder_T;
@@ -123,4 +125,12 @@ package GNATLLVM.Wrapper is
       Line   : Logical_Line_Number;
       Column : Column_Number);
    pragma Import (C, Set_Debug_Loc, "Set_Debug_Loc");
+
+   function Get_Float_From_Words
+     (Context   : Context_T;
+      Typ       : Type_T;
+      Num_Words : unsigned;
+      Words     : access stdint_h.uint64_t) return Value_T;
+   pragma Import (C, Get_Float_From_Words, "Get_Float_From_Words");
+
 end GNATLLVM.Wrapper;

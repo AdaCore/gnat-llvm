@@ -1,3 +1,5 @@
+#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/DIBuilder.h"
@@ -218,4 +220,17 @@ LLVM_Init_Module (Module *TheModule, const char *Filename,
 {
   TheModule->setSourceFileName(Filename);
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+}
+
+extern "C"
+Value *
+Get_Float_From_Words (LLVMContext *Context, Type *T,
+		      unsigned NumWords, const uint64_t Words[])
+{
+  auto LongInt = APInt (NumWords * 64, makeArrayRef (Words, NumWords));
+  auto Result = APFloat (T->getFltSemantics (),
+			 APInt::getNullValue(T->getPrimitiveSizeInBits()));
+  Result.convertFromAPInt(LongInt, false, APFloat::rmNearestTiesToEven);
+
+  return ConstantFP::get (*Context, Result);
 }

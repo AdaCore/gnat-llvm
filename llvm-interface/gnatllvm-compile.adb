@@ -562,14 +562,35 @@ package body GNATLLVM.Compile is
               (Record_Field_Offset (Emit_LValue (Prefix (N)),
                                     Entity (Selector_Name (N))));
 
-         when N_Indexed_Component =>
-            return Add_To_LValue_List
-              (Get_Indexed_LValue (Expressions (N), Emit_LValue (Prefix (N))));
+         when N_Indexed_Component | N_Slice =>
 
-         when N_Slice =>
-            return Add_To_LValue_List
-              (Get_Slice_LValue (TE, Discrete_Range (N),
-                                 Emit_LValue (Prefix (N))));
+            Result := Emit (Prefix (N));
+
+            --  This can be an integer type if it's the implementation
+            --  type of a packed array type.  In that case, convert it to
+            --  the result type.  ??? Do we have to worry about evaluating
+            --  the Expressions in case they have side-effects?
+
+            if Is_Integer_Type (Related_Type (Result))
+              and then Is_Packed_Array_Impl_Type (Related_Type (Result))
+            then
+               return (if Is_Reference (Result)
+                       then Convert_Ref (Result, TE)
+                       else Convert (Result, TE));
+
+            elsif Nkind (N) = N_Indexed_Component then
+
+               --  ??? If Result is Data and Expressions are constant,
+               --  we can do this with Extract_Value.
+
+               return Add_To_LValue_List
+                 (Get_Indexed_LValue (Expressions (N),
+                                      Get (Result, Any_Reference)));
+            else
+               return Add_To_LValue_List
+                 (Get_Slice_LValue (TE, Discrete_Range (N),
+                                    Get (Result, Any_Reference)));
+            end if;
 
          when N_Aggregate | N_Extension_Aggregate =>
 

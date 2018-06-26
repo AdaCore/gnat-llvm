@@ -462,10 +462,15 @@ package body GNATLLVM.Variables is
          when N_Indexed_Component =>
 
             --  Not static if prefix not static, a lower bound isn't static,
-            --  or an expression isn't static.
+            --  or an expression isn't static.  It's also possible that the
+            --  type of the prefix isn't actually an array in the case where
+            --  we have a packed array type.  But then we know that it
+            --  is static.
 
             if not Is_Static_Location (Prefix (N)) then
                return False;
+            elsif not Is_Array_Type (Full_Etype (Prefix (N))) then
+               return True;
             end if;
 
             Index := First_Index (Full_Etype (Prefix (N)));

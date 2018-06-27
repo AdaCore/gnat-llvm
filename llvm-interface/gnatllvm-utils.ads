@@ -23,8 +23,6 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
-with Interfaces; use Interfaces;
-
 package GNATLLVM.Utils is
 
    procedure Decode_Range (N : Node_Id; Low, High : out Uint)
@@ -89,12 +87,6 @@ package GNATLLVM.Utils is
    --  Return an LLVM value for the given type where all bits are set
 
    type Type_Array is array (Nat range <>) of Type_T;
-
-   function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer
-     with Pre => U /= No_Uint;
-
-   function UI_To_Unsigned_64 (U : Uint) return Unsigned_64
-     with Pre => U /= No_Uint;
 
    function Param_Needs_Ptr (Param : Entity_Id) return Boolean
      with Pre => Present (Param);

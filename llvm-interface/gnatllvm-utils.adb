@@ -126,28 +126,6 @@ package body GNATLLVM.Utils is
       return Params_Types;
    end Get_Param_Types;
 
-   -----------------------------
-   -- UI_To_Long_Long_Integer --
-   -----------------------------
-
-   function UI_To_Long_Long_Integer (U : Uint) return Long_Long_Integer is
-   begin
-      --  ??? Consider making this routine more efficient
-      UI_Image (U, Decimal);
-      return Long_Long_Integer'Value (UI_Image_Buffer (1 .. UI_Image_Length));
-   end UI_To_Long_Long_Integer;
-
-   -----------------------
-   -- UI_To_Unsigned_64 --
-   -----------------------
-
-   function UI_To_Unsigned_64 (U : Uint) return Unsigned_64 is
-   begin
-      --  ??? Consider making this routine more efficient
-      UI_Image (U, Decimal);
-      return Unsigned_64'Value (UI_Image_Buffer (1 .. UI_Image_Length));
-   end UI_To_Unsigned_64;
-
    --------------------
    -- Get_Uint_Value --
    --------------------

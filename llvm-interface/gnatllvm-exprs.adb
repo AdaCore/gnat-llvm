@@ -89,6 +89,12 @@ package body GNATLLVM.Exprs is
 
                   pragma Assert (Rbase (Val) = 2);
 
+                  --  Next get the bits for the numerator from its Uint
+                  --  value and the value of the denominator (which we know
+                  --  must fit into an integer) and call LLVM routines to
+                  --  convert it to the desired FP value and then negate it
+                  --  if needed.
+
                   declare
                      Words : constant Word_Array :=
                        UI_To_Words (Numerator (Val));

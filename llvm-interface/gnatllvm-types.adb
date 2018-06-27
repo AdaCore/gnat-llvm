@@ -436,7 +436,9 @@ package body GNATLLVM.Types is
          --  integers, rounding will always be correct as the true
          --  mathematical result will be closer to the higher integer
          --  compared to the lower one.  So, this constant works for all
-         --  floating-point numbers.
+         --  floating-point numbers.  We compute this using an LLVM
+         --  function ("next") that operates on an APFloat and returns
+         --  either a value epsilon higher or lower than the original.
          --
          --  The reason to use the same constant with subtract/add instead
          --  of a positive and negative constant is to allow the comparison

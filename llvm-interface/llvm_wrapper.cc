@@ -240,7 +240,7 @@ Value *
 Pred_FP (LLVMContext *Context, Type *T, Value *Val)
 {
   // We want to compute the predecessor of Val, but the "next" function
-  // can return unnormalized, so we have to multiply by one (adding sero
+  // can return unnormalized, so we have to multiply by one (adding zero
   // doesn't do it.
   const APFloat::integerPart oneVal = 1;
   auto apf = dyn_cast<ConstantFP>(Val)->getValueAPF ();

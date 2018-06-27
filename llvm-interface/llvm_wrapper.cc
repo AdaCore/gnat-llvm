@@ -237,9 +237,15 @@ Get_Float_From_Words_And_Exp (LLVMContext *Context, Type *T, int Exp,
 
 extern "C"
 Value *
-Pred_FP (LLVMContext *Context, Value *Val)
+Pred_FP (LLVMContext *Context, Type *T, Value *Val)
 {
-    auto apf = dyn_cast<ConstantFP>(Val)->getValueAPF ();
-    apf.next (true);
-    return ConstantFP:: get (*Context, apf);
+  // We want to compute the predecessor of Val, but the "next" function
+  // can return unnormalized, so we have to multiply by one (adding sero
+  // doesn't do it.
+  const APFloat::integerPart oneVal = 1;
+  auto apf = dyn_cast<ConstantFP>(Val)->getValueAPF ();
+  auto one = APFloat (T->getFltSemantics (), 1);
+  apf.next (true);
+  apf.multiply(one, APFloat::rmTowardZero);
+  return ConstantFP:: get (*Context, apf);
 }

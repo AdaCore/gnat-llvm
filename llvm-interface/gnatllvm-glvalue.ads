@@ -776,8 +776,7 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Type (TE),
           Post => Present (Get_Float_From_Words_And_Exp'Result);
 
-   function Pred_FP (V : GL_Value) return GL_Value is
-     (G (Pred_FP (Context, LLVM_Value (V)), Related_Type (V)))
+   function Pred_FP (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Pred_FP'Result);
 
    --  Define IR builder variants which take and/or return GL_Value

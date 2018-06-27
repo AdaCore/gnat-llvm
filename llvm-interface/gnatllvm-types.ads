@@ -219,7 +219,7 @@ package GNATLLVM.Types is
    --  may be Integer and the other Integer'Base), so just check the width.
 
    function Get_LLVM_Type_Size (T : Type_T) return ULL is
-     ((Size_Of_Type_In_Bits (Module_Data_Layout, T) + 7) / 8)
+     (ABI_Size_Of_Type (Module_Data_Layout, T))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bytes
 

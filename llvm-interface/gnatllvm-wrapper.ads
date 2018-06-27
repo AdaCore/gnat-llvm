@@ -135,7 +135,8 @@ package GNATLLVM.Wrapper is
    pragma Import (C, Get_Float_From_Words_And_Exp,
                   "Get_Float_From_Words_And_Exp");
 
-   function Pred_FP (Context : Context_T; V : Value_T) return Value_T;
+   function Pred_FP
+     (Context : Context_T; T : Type_T; V : Value_T) return Value_T;
    pragma Import (C, Pred_FP, "Pred_FP");
 
 end GNATLLVM.Wrapper;

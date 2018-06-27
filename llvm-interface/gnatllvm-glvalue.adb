@@ -770,6 +770,17 @@ package body GNATLLVM.GLValue is
                 TE);
    end Get_Float_From_Words_And_Exp;
 
+   -------------
+   -- Pred_FP --
+   -------------
+
+   function Pred_FP (V : GL_Value) return GL_Value is
+   begin
+      return G (Pred_FP (Context, Create_Type (Related_Type (V)),
+                         LLVM_Value (V)),
+                Related_Type (V));
+   end Pred_FP;
+
    ----------------
    -- Int_To_Ptr --
    ----------------

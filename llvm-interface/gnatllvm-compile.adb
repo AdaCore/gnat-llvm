@@ -492,20 +492,16 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
             return Emit_Conversion (Expression (N), TE, N,
-                                    Is_Unchecked        => True,
-                                    Need_Overflow_Check => False);
+                                    Is_Unchecked => True);
 
          when N_Type_Conversion =>
             return Emit_Conversion
               (Expression (N), TE, N,
-               Is_Unchecked        => False,
-               Need_Overflow_Check => Do_Overflow_Check (N));
+               Need_Overflow_Check => Do_Overflow_Check (N),
+               Float_Truncate      => Float_Truncate (N));
 
          when N_Qualified_Expression =>
-            return Emit_Conversion
-              (Expression (N), TE, N,
-               Is_Unchecked        => False,
-               Need_Overflow_Check => False);
+            return Emit_Conversion (Expression (N), TE, N);
 
          when N_Identifier
             | N_Expanded_Name

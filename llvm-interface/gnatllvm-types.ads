@@ -129,11 +129,21 @@ package GNATLLVM.Types is
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
      with Pre => Is_Type (TE);
 
-   function Convert (V : GL_Value; TE : Entity_Id) return GL_Value
+   function Convert
+     (V              : GL_Value;
+      TE             : Entity_Id;
+      Float_Truncate : Boolean := False) return GL_Value
      with Pre  => Is_Elementary_Type (TE) and then Is_Elementary_Type (V),
           Post => Is_Elementary_Type (Convert'Result);
    --  Convert Expr to the type TE, with both the types of Expr and TE
    --  being elementary.
+
+   function Convert
+     (V, T : GL_Value; Float_Truncate : Boolean := False) return GL_Value is
+     (Convert (V, Full_Etype (T), Float_Truncate))
+     with Pre  => Is_Elementary_Type (V) and then Is_Elementary_Type (T),
+          Post => Is_Elementary_Type (Convert'Result);
+   --  Variant of above where the type is that of another value (T)
 
    function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (V) and then Is_Type (TE),
@@ -168,9 +178,10 @@ package GNATLLVM.Types is
    function Emit_Conversion
      (N                   : Node_Id;
       TE                  : Entity_Id;
-      From_N              : Node_Id;
-      Is_Unchecked        : Boolean;
-      Need_Overflow_Check : Boolean) return GL_Value
+      From_N              : Node_Id := Empty;
+      Is_Unchecked        : Boolean := False;
+      Need_Overflow_Check : Boolean := False;
+      Float_Truncate      : Boolean := False) return GL_Value
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE)
                   and then not (Is_Unchecked and Need_Overflow_Check),
@@ -180,7 +191,7 @@ package GNATLLVM.Types is
    --  if there is a corresponding source node.
 
    function Emit_Convert_Value (N : Node_Id; TE : Entity_Id) return GL_Value is
-     (Get (Emit_Conversion (N, TE, Empty, False, False), Object))
+     (Get (Emit_Conversion (N, TE), Object))
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE),
           Post => Present (Emit_Convert_Value'Result);
@@ -191,12 +202,6 @@ package GNATLLVM.Types is
           Post => Is_Access_Type (Convert_Pointer'Result);
    --  V is a reference to some object.  Convert it to a reference to TE
    --  with the same relationship.
-
-   function Convert (V : GL_Value; T : GL_Value) return GL_Value is
-     (Convert (V, Full_Etype (T)))
-     with Pre  => Is_Elementary_Type (V) and then Is_Elementary_Type (T),
-          Post => Is_Elementary_Type (Convert'Result);
-   --  Variant of above where the type is that of another value (T)
 
    function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
    --  Remove any conversion from N, if Present, if they are record or array

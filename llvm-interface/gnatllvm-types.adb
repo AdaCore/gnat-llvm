@@ -213,9 +213,10 @@ package body GNATLLVM.Types is
    function Emit_Conversion
      (N                   : Node_Id;
       TE                  : Entity_Id;
-      From_N              : Node_Id;
-      Is_Unchecked        : Boolean;
-      Need_Overflow_Check : Boolean) return GL_Value
+      From_N              : Node_Id := Empty;
+      Is_Unchecked        : Boolean := False;
+      Need_Overflow_Check : Boolean := False;
+      Float_Truncate      : Boolean := False) return GL_Value
    is
       Result : GL_Value           := Emit (N);
       In_TE  : constant Entity_Id := Related_Type (Result);
@@ -317,7 +318,8 @@ package body GNATLLVM.Types is
       elsif Is_Elementary_Type (In_TE)
         and then Is_Elementary_Type (TE)
       then
-         Result := Convert (Get (Result, Data), TE);
+         Result := Convert (Get (Result, Data), TE,
+                            Float_Truncate => Float_Truncate);
 
       --  If both types are the same, just change the type of the result.
       --  Avoid confusing [0 x T] as both a zero-size constrained type and
@@ -373,7 +375,10 @@ package body GNATLLVM.Types is
    -- Convert --
    -------------
 
-   function Convert (V : GL_Value; TE : Entity_Id) return GL_Value
+   function Convert
+     (V              : GL_Value;
+      TE             : Entity_Id;
+      Float_Truncate : Boolean := False) return GL_Value
    is
       type Cvtf is access function
         (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value;
@@ -424,37 +429,40 @@ package body GNATLLVM.Types is
       elsif Src_FP and then not Dest_FP then
          Subp := (if Dest_Uns then FP_To_UI'Access else FP_To_SI'Access);
 
-         --  In the FP to Integer case, the LLVM instructions round to
-         --  zero, but the Ada semantics round away from zero, so we have
-         --  to adjust the input.  We first compute Type'Pred (0.5).  If
-         --  the input is strictly negative, subtract this value and
-         --  otherwise add it from the input.  For 0.5, the result is
-         --  exactly between 1.0 and the machine number preceding 1.0.
-         --  Since the last bit of 1.0 is even, this 0.5 will round to 1.0,
-         --  while all other number with an absolute value less than 0.5
-         --  round to 0.0.  For larger numbers exactly halfway between
-         --  integers, rounding will always be correct as the true
-         --  mathematical result will be closer to the higher integer
-         --  compared to the lower one.  So, this constant works for all
-         --  floating-point numbers.  We compute this using an LLVM
-         --  function ("next") that operates on an APFloat and returns
-         --  either a value epsilon higher or lower than the original.
-         --
-         --  The reason to use the same constant with subtract/add instead
-         --  of a positive and negative constant is to allow the comparison
-         --  to be scheduled in parallel with retrieval of the constant and
-         --  conversion of the input to the calc_type (if necessary).
+         if not Float_Truncate then
 
-         declare
-            Pred_Half  : constant GL_Value := Pred_FP (Const_Real (V, 0.5));
-            Val_Is_Neg : constant GL_Value :=
-              F_Cmp (Real_OLT, V, Const_Null (V));
-            Add_Amt    : constant GL_Value := F_Add (V, Pred_Half, "round");
-            Sub_Amt    : constant GL_Value := F_Sub (V, Pred_Half, "round");
+            --  In the FP to Integer case, the LLVM instructions round to
+            --  zero, but the Ada semantics round away from zero, so we have
+            --  to adjust the input.  We first compute Type'Pred (0.5).  If
+            --  the input is strictly negative, subtract this value and
+            --  otherwise add it from the input.  For 0.5, the result is
+            --  exactly between 1.0 and the machine number preceding 1.0.
+            --  Since the last bit of 1.0 is even, this 0.5 will round to 1.0,
+            --  while all other number with an absolute value less than 0.5
+            --  round to 0.0.  For larger numbers exactly halfway between
+            --  integers, rounding will always be correct as the true
+            --  mathematical result will be closer to the higher integer
+            --  compared to the lower one.  So, this constant works for all
+            --  floating-point numbers.  We compute this using an LLVM
+            --  function ("next") that operates on an APFloat and returns
+            --  either a value epsilon higher or lower than the original.
+            --
+            --  The reason to use the same constant with subtract/add instead
+            --  of a positive and negative constant is to allow the comparison
+            --  to be scheduled in parallel with retrieval of the constant and
+            --  conversion of the input to the calc_type (if necessary).
 
-         begin
-            Value := Build_Select (Val_Is_Neg, Sub_Amt, Add_Amt);
-         end;
+            declare
+               Pred_Half  : constant GL_Value := Pred_FP (Const_Real (V, 0.5));
+               Val_Is_Neg : constant GL_Value :=
+                 F_Cmp (Real_OLT, V, Const_Null (V));
+               Add_Amt    : constant GL_Value := F_Add (V, Pred_Half, "round");
+               Sub_Amt    : constant GL_Value := F_Sub (V, Pred_Half, "round");
+
+            begin
+               Value := Build_Select (Val_Is_Neg, Sub_Amt, Add_Amt);
+            end;
+         end if;
 
       elsif not Src_FP and then Dest_FP then
          Subp := (if Src_Uns then UI_To_FP'Access else SI_To_FP'Access);

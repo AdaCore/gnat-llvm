@@ -739,9 +739,7 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Pos
             | Attribute_Val =>
-            return Emit_Conversion (First (Expressions (N)), TE, N,
-                                    Is_Unchecked => False,
-                                    Need_Overflow_Check => False);
+            return Emit_Conversion (First (Expressions (N)), TE, N);
 
          when Attribute_Succ
             | Attribute_Pred =>

@@ -36,7 +36,6 @@ with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Exprs is
 
@@ -90,87 +89,14 @@ package body GNATLLVM.Exprs is
 
                   pragma Assert (Rbase (Val) = 2);
 
-                  --  We have a way to convert an arbitrary-precision
-                  --  integer into an FP value.  But we don't have the
-                  --  equivalent of ldexp to multiply the FP number by the
-                  --  appropriate power of two for the exponent.  However,
-                  --  powers of two are exact, so we can do it the hard way.
-
                   declare
-                     Max_Exp : constant Integer := 500;
-                     Exp     : constant Int  := -UI_To_Int (Denominator (Val));
-                     Abs_Exp : Integer       := Integer (abs Exp);
-                     Num_UI  : constant Uint := Numerator (Val);
-                     Result  : GL_Value;
-
-                     --  Dealing with the exponent is tricky because we not
-                     --  only have to ensure that we don't overflow in our
-                     --  host FP format (double), but that we don't overflow
-                     --  the target.  We can do this if we have an exponent
-                     --  whose absolute value overflows but, when we take the
-                     --  existing value into account, will fit.
-
-                     procedure Adjust_Exp (Adjust : Integer);
-                     --  Adjust the exponent of Result by Adjust,
-                     --  either up or down depending on the sign of Exp,
-                     --  and adjust Abs_Exp to show the adjustment.
-
-                     ----------------
-                     -- Adjust_Exp --
-                     ----------------
-
-                     procedure Adjust_Exp (Adjust : Integer) is
-                        Value : constant Interfaces.C.double := 2.0 ** Adjust;
-                        Cnst  : constant GL_Value := Const_Real (TE, Value);
-
-                     begin
-                        Abs_Exp := Abs_Exp - Adjust;
-                        Result  := (if Exp < 0 then F_Div (Result, Cnst)
-                                    else F_Mul (Result, Cnst));
-                     end Adjust_Exp;
+                     Words : constant Word_Array :=
+                       UI_To_Words (Numerator (Val));
+                     V     : constant GL_Value := Get_Float_From_Words_And_Exp
+                       (TE, -UI_To_Int (Denominator (Val)), Words);
 
                   begin
-                     --  We have two ways of getting the numerator.  If the
-                     --  value will fit in an Int, we know that it'll fit
-                     --  into a double, so we can get the constant directly.
-                     --  Otherwise, we have to get the exact value from the
-                     --  words of the Uint.
-
-                     if UI_Is_In_Int_Range (Num_UI) then
-                        Result := Const_Real (TE, Interfaces.C.double
-                                                (UI_To_Int (Num_UI)));
-                     else
-                        declare
-                           Words : Word_Array := Big_UI_To_Words (Num_UI);
-
-                        begin
-                           Result := G (Get_Float_From_Words
-                                          (Context, Create_Type (TE),
-                                           Words'Length,
-                                           Words (Words'First)'Access),
-                                        TE);
-                        end;
-                     end if;
-
-                     --  First do big adjustments (limited by the host type)
-                     --  if this is a large exponent.
-
-                     while Abs_Exp > Max_Exp loop
-                        Adjust_Exp (Max_Exp);
-                     end loop;
-
-                     --  Then do two pieces to avoid overflow
-
-                     Adjust_Exp (Abs_Exp / 2);
-                     Adjust_Exp (Abs_Exp);
-
-                     --  Finally, adjust the sign if needed.
-
-                     if UR_Is_Negative (Val) then
-                        Result := F_Neg (Result);
-                     end if;
-
-                     return Result;
+                     return (if UR_Is_Negative (Val) then F_Neg (V) else V);
                   end;
                end;
             end if;

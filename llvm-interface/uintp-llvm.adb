@@ -17,11 +17,53 @@
 
 with Interfaces; use Interfaces;
 
+with stdint_h; use stdint_h;
+
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM;  use GNATLLVM;
-
 package body Uintp.LLVM is
+
+   function Big_UI_To_Words (U : Uint) return Word_Array;
+   --  Convert a Uint into an array of words representing the value
+
+   ----------------
+   -- UI_To_LLVM --
+   ----------------
+
+   function UI_To_LLVM (T : Type_T; U : Uint) return Value_T is
+   begin
+      if UI_Is_In_Int_Range (U) then
+         return Const_Int (T, ULL (UI_To_Int (U)), True);
+      else
+         declare
+            Words  : Word_Array       := Big_UI_To_Words (U);
+            Result : constant Value_T := Const_Int_Of_Arbitrary_Precision
+              (T, Words'Length, Words (Words'First)'Access);
+
+         begin
+            return (if U < Uint_0 then Const_Neg (Result) else Result);
+         end;
+      end if;
+   end UI_To_LLVM;
+
+   -----------------
+   -- UI_To_Words --
+   -----------------
+
+   function UI_To_Words (U : Uint) return Word_Array is
+      Words : Word_Array (1 .. 1);
+
+   begin
+      --  If this fits in an int, get that value.  We can't use
+      --  Big_UI_To_Words for many integer values due to the way Uint works.
+
+      if UI_Is_In_Int_Range (U) then
+         Words (1) := uint64_t (UI_To_Int (U));
+         return Words;
+      else
+         return Big_UI_To_Words (U);
+      end if;
+   end UI_To_Words;
 
    ---------------------
    -- Big_UI_To_Words --
@@ -107,25 +149,5 @@ package body Uintp.LLVM is
 
       return Words;
    end Big_UI_To_Words;
-
-   ----------------
-   -- UI_To_LLVM --
-   ----------------
-
-   function UI_To_LLVM (T : Type_T; U : Uint) return Value_T is
-   begin
-      if UI_Is_In_Int_Range (U) then
-         return Const_Int (T, ULL (UI_To_Int (U)), True);
-      else
-         declare
-            Words  : Word_Array       := Big_UI_To_Words (U);
-            Result : constant Value_T := Const_Int_Of_Arbitrary_Precision
-              (T, Words'Length, Words (Words'First)'Access);
-
-         begin
-            return (if U < Uint_0 then Const_Neg (Result) else Result);
-         end;
-      end if;
-   end UI_To_LLVM;
 
 end Uintp.LLVM;

@@ -126,11 +126,16 @@ package GNATLLVM.Wrapper is
       Column : Column_Number);
    pragma Import (C, Set_Debug_Loc, "Set_Debug_Loc");
 
-   function Get_Float_From_Words
+   function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
       Typ       : Type_T;
+      Exp       : Int;
       Num_Words : unsigned;
       Words     : access stdint_h.uint64_t) return Value_T;
-   pragma Import (C, Get_Float_From_Words, "Get_Float_From_Words");
+   pragma Import (C, Get_Float_From_Words_And_Exp,
+                  "Get_Float_From_Words_And_Exp");
+
+   function Pred_FP (Context : Context_T; V : Value_T) return Value_T;
+   pragma Import (C, Pred_FP, "Pred_FP");
 
 end GNATLLVM.Wrapper;

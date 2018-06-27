@@ -224,13 +224,22 @@ LLVM_Init_Module (Module *TheModule, const char *Filename,
 
 extern "C"
 Value *
-Get_Float_From_Words (LLVMContext *Context, Type *T,
-		      unsigned NumWords, const uint64_t Words[])
+Get_Float_From_Words_And_Exp (LLVMContext *Context, Type *T, int Exp,
+			      unsigned NumWords, const uint64_t Words[])
 {
   auto LongInt = APInt (NumWords * 64, makeArrayRef (Words, NumWords));
-  auto Result = APFloat (T->getFltSemantics (),
-			 APInt::getNullValue(T->getPrimitiveSizeInBits()));
-  Result.convertFromAPInt(LongInt, false, APFloat::rmNearestTiesToEven);
-
+  auto Initial = APFloat (T->getFltSemantics (),
+			  APInt::getNullValue(T->getPrimitiveSizeInBits()));
+  Initial.convertFromAPInt(LongInt, false, APFloat::rmTowardZero);
+  auto Result = scalbn (Initial, Exp, APFloat::rmTowardZero);
   return ConstantFP::get (*Context, Result);
+}
+
+extern "C"
+Value *
+Pred_FP (LLVMContext *Context, Value *Val)
+{
+    auto apf = dyn_cast<ConstantFP>(Val)->getValueAPF ();
+    apf.next (true);
+    return ConstantFP:: get (*Context, apf);
 }

@@ -15,10 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout; use Errout;
-with Snames; use Snames;
-with Stand;  use Stand;
-with Table;  use Table;
+with Errout;     use Errout;
+with Snames;     use Snames;
+with Stand;      use Stand;
+with Table;      use Table;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
@@ -437,37 +437,21 @@ package body GNATLLVM.Types is
          --  mathematical result will be closer to the higher integer
          --  compared to the lower one.  So, this constant works for all
          --  floating-point numbers.
-
+         --
          --  The reason to use the same constant with subtract/add instead
          --  of a positive and negative constant is to allow the comparison
          --  to be scheduled in parallel with retrieval of the constant and
          --  conversion of the input to the calc_type (if necessary).
 
-         --  The easiest way of computing the constant is to do it at
-         --  compile-time by finding the correct floating-point type to use.
-
          declare
-            Size_In_Bits : constant ULL   := Get_LLVM_Type_Size_In_Bits (V);
-            PredHalf     : constant Long_Long_Float :=
-              (if Long_Long_Float'Size = Size_In_Bits
-               then Long_Long_Float'Pred (0.5)
-               elsif Long_Float'Size = Size_In_Bits
-               then Long_Long_Float (Long_Float'Pred (0.5))
-               elsif Float'Size = Size_In_Bits
-               then Long_Long_Float (Float'Pred (0.5))
-               else Long_Long_Float (Short_Float'Pred (0.5)));
-            Val_Neg    : constant GL_Value :=
-              F_Cmp (Real_OLT, V, Const_Real (V, 0.0));
-            Adjust_Amt : constant GL_Value :=
-                Const_Real (V, Interfaces.C.double (PredHalf));
-            --  ??? The conversion to "double" above may be problematic,
-            --  but it's not clear how else to get the constant to LLVM.
-
-            Add_Amt    : constant GL_Value := F_Add (V, Adjust_Amt, "round");
-            Sub_Amt    : constant GL_Value := F_Sub (V, Adjust_Amt, "round");
+            Pred_Half  : constant GL_Value := Pred_FP (Const_Real (V, 0.5));
+            Val_Is_Neg : constant GL_Value :=
+              F_Cmp (Real_OLT, V, Const_Null (V));
+            Add_Amt    : constant GL_Value := F_Add (V, Pred_Half, "round");
+            Sub_Amt    : constant GL_Value := F_Sub (V, Pred_Half, "round");
 
          begin
-            Value := Build_Select (Val_Neg, Sub_Amt, Add_Amt);
+            Value := Build_Select (Val_Is_Neg, Sub_Amt, Add_Amt);
          end;
 
       elsif not Src_FP and then Dest_FP then

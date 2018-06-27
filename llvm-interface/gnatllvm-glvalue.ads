@@ -18,7 +18,7 @@
 with Stand; use Stand;
 with Uintp; use Uintp;
 
-with LLVM.Core;   use LLVM.Core;
+with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
@@ -770,6 +770,15 @@ package GNATLLVM.GLValue is
    function Const_Array
      (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
      with Pre => Is_Array_Type (TE), Post => Present (Const_Array'Result);
+
+   function Get_Float_From_Words_And_Exp
+     (TE : Entity_Id; Exp : Int; Words : Word_Array) return GL_Value
+     with Pre  => Is_Type (TE),
+          Post => Present (Get_Float_From_Words_And_Exp'Result);
+
+   function Pred_FP (V : GL_Value) return GL_Value is
+     (G (Pred_FP (Context, LLVM_Value (V)), Related_Type (V)))
+     with Pre => Present (V), Post => Present (Pred_FP'Result);
 
    --  Define IR builder variants which take and/or return GL_Value
 

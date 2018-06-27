@@ -755,6 +755,21 @@ package body GNATLLVM.GLValue is
                 TE, (if TE = Any_Array then Unknown else Data));
    end Const_Array;
 
+   ----------------------------------
+   -- Get_Float_From_Words_And_Exp --
+   ---------------------------------
+
+   function Get_Float_From_Words_And_Exp
+     (TE : Entity_Id; Exp : Int; Words : Word_Array) return GL_Value
+   is
+      Our_Words : Word_Array := Words;
+   begin
+      return G (Get_Float_From_Words_And_Exp
+                  (Context, Create_Type (TE),
+                   Exp, Our_Words'Length, Our_Words (Our_Words'First)'Access),
+                TE);
+   end Get_Float_From_Words_And_Exp;
+
    ----------------
    -- Int_To_Ptr --
    ----------------

@@ -17,6 +17,8 @@
 
 with System;
 
+with stdint_h;
+
 with Interfaces.C;
 with Interfaces.C.Extensions;
 
@@ -102,6 +104,9 @@ package GNATLLVM is
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
      (Ekind (E) = E_Void or else Is_Type (E));
    --  We can have Etype's that are E_Void for E_Procedure
+
+   type Word_Array is array (Nat range <>) of aliased stdint_h.uint64_t;
+   --  Array of words for LLVM construction functions
 
    Context            : Context_T;
    --  The current LLVM Context

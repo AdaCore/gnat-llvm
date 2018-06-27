@@ -267,8 +267,9 @@ package body Get_Targ is
    -----------------------------
 
    procedure Register_Back_End_Types (Call_Back : Register_Type_Proc) is
-      Float_Str  : C_String := (others => ASCII.NUL);
-      Double_Str : C_String := (others => ASCII.NUL);
+      Float_Str       : C_String := (others => ASCII.NUL);
+      Double_Str      : C_String := (others => ASCII.NUL);
+--      Long_Double_Str : C_String := (others => ASCII.NUL);
 
    begin
       Float_Str (Float_Str'First .. Float_Str'First + 4) := "float";
@@ -287,6 +288,18 @@ package body Get_Targ is
          Precision => 64,
          Size      => 64,
          Alignment => 64);
+
+--     Long_Double_Str (Long_Double_Str'First .. Long_Double_Str'First + 10) :=
+--        "long double";
+--      Call_Back
+--        (C_Name    => Long_Double_Str,
+--         Digs      => 18,
+--        Complex   => False,
+--         Count     => 0,
+--         Float_Rep => IEEE_Binary,
+--         Precision => 80,
+--         Size      => 128,
+--         Alignment => 128);
    end Register_Back_End_Types;
 
    ---------------------

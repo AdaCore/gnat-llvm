@@ -153,7 +153,7 @@ package body Get_Targ is
 
    function Get_Maximum_Alignment return Pos is
    begin
-      return 8;
+      return 16;
    end Get_Maximum_Alignment;
 
    ------------------------------------

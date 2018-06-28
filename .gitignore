@@ -8,13 +8,17 @@ llvm-interface/obj-tools
 llvm-interface/gnat_src
 llvm/gen
 llvm/out
-llvm/llvm-6.0.0.src
 llvm/llvm-obj
-
+testsuite/out
 testsuite/output
 testsuite/srccov
 alis.list
 obj
+
+# Imported sources
+llvm/llvm-6.0.0.src
+llvm/clang
+acats
 
 # Code editors artifacts
 .#*

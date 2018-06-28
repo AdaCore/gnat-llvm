@@ -994,6 +994,8 @@ package body GNATLLVM.Types is
             --  original type is an array, create a type for that array
             --  so we can use it later to get the bounds.  We have to do this
             --  here and manually because Create_Type will bring us back here.
+            --  ??? This is a kludge that doesn't work completely and
+            --  will have to be replaced by something else.
 
             if Is_Packed_Array_Impl_Type (Def_Ident)
               and then Present (Original_Array_Type (Def_Ident))
@@ -1001,6 +1003,7 @@ package body GNATLLVM.Types is
             then
                Discard (Create_Array_Type (Original_Array_Type (Def_Ident),
                                            Info_For_Type => Def_Ident));
+               Set_Type (Def_Ident, No_Type_T);
             end if;
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>

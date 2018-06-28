@@ -78,19 +78,6 @@ package body GNATLLVM.Environment is
    end Get_Value;
 
    ---------------------
-   -- Get_Basic_Block --
-   ---------------------
-
-   function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T is
-   begin
-      if LLVM_Info_Map (BE) = Empty_LLVM_Info_Id then
-         return No_BB_T;
-      else
-         return LLVM_Info_Table.Table (LLVM_Info_Map (BE)).Basic_Block;
-      end if;
-   end Get_Basic_Block;
-
-   ---------------------
    -- Get_Array_Info --
    ---------------------
 
@@ -163,7 +150,6 @@ package body GNATLLVM.Environment is
                                   Typ             => No_Type_T,
                                   TBAA            => No_Metadata_T,
                                   Is_Dynamic_Size => False,
-                                  Basic_Block     => No_BB_T,
                                   Record_Info     => Empty_Record_Info_Id,
                                   Field_Info      => Empty_Field_Info_Id,
                                   Array_Info      => Empty_Array_Info_Id,
@@ -237,18 +223,6 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Value :=  VL;
    end Set_Value;
-
-   ---------------------
-   -- Set_Basic_Block --
-   ---------------------
-
-   procedure Set_Basic_Block (BE : Entity_Id; BL : Basic_Block_T)
-   is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (BE);
-
-   begin
-      LLVM_Info_Table.Table (Id).Basic_Block := BL;
-   end Set_Basic_Block;
 
    ---------------------
    -- Set_Array_Info --

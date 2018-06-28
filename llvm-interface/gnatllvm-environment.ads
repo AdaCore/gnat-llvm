@@ -92,16 +92,13 @@ package GNATLLVM.Environment is
       --  with zero size, we need to use this flag to disambiguate the cases
       --  of a zero-length array and a variable-sized array.
 
-      Array_Info      : Array_Info_Id;
-      --  For arrays, an index into bounds information maintained by
-      --  GNATLLVM.Arrays.
-
       TBAA            : Metadata_T;
       --  An LLVM TBAA Metadata node corresponding to the type.  Set only
       --  For types that are sufficiently primitive.
 
-      Basic_Block     : Basic_Block_T;
-      --  For labels and loop ids, records the corresponding basic block
+      Array_Info      : Array_Info_Id;
+      --  For arrays, an index into bounds information maintained by
+      --  GNATLLVM.Arrays.
 
       Record_Info     : Record_Info_Id;
       --  For records, gives the first index of the descriptor of the record
@@ -157,9 +154,6 @@ package GNATLLVM.Environment is
    function Get_Label_Info (VE : Entity_Id)  return Label_Info_Id
      with Pre => Present (VE);
 
-   function Get_Basic_Block (BE : Entity_Id) return Basic_Block_T
-     with Pre => Present (BE);
-
    function Has_Type        (TE : Entity_Id) return Boolean is
       (Present (Get_Type (TE)))
      with Pre => Is_Type (TE);
@@ -172,9 +166,9 @@ package GNATLLVM.Environment is
       (Present (Get_Value (VE)))
      with Pre => Present (VE);
 
-   function Has_BB          (BE : Entity_Id) return Boolean is
-      (Present (Get_Basic_Block (BE)))
-     with Pre => Present (BE);
+   function Has_Array_Info (TE : Entity_Id) return Boolean is
+      (Present (Get_Array_Info (TE)))
+     with Pre  => (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE));
 
    function Has_Record_Info (TE : Entity_Id) return Boolean is
       (Present (Get_Record_Info (TE)))
@@ -189,7 +183,9 @@ package GNATLLVM.Environment is
      with Pre => Present (VE);
 
    procedure Set_Type       (TE : Entity_Id; TL : Type_T)
-     with Pre  => Is_Type (TE) and then Present (TL),
+     with Pre  => Is_Type (TE) and then (Present (TL) or else Has_Type (TE))
+                  and then (not Has_Type (TE) or else Get_Type (TE) = TL
+                              or else TL = No_Type_T),
           Post => Get_Type (TE) = TL;
 
    procedure Set_Is_Dynamic_Size (TE : Entity_Id; B : Boolean := True)
@@ -201,28 +197,34 @@ package GNATLLVM.Environment is
           Post => Get_TBAA (TE) = TBAA;
 
    procedure Set_Value (VE : Entity_Id; VL : GL_Value)
-     with Pre  => Present (VE) and then Present (VL),
+     with Pre  => Present (VE) and then Present (VL)
+                  and then (not Has_Value (VE) or else Get_Value (VE) = VL),
           Post => Get_Value (VE) = VL;
 
    procedure Set_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
      with Pre  => (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE))
-                  and then Has_Type (TE),
+                  and then Has_Type (TE)
+                  and then (not Has_Array_Info (TE)
+                              or else Get_Array_Info (TE) = AI),
           Post => Get_Array_Info (TE) = AI;
 
    procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info_Id)
-     with Pre  => Is_Record_Type (TE) and then Has_Type (TE),
+     with Pre  => Is_Record_Type (TE) and then Has_Type (TE)
+                  and then (not Has_Record_Info (TE)
+                              or else Get_Record_Info (TE) = RI),
           Post => Get_Record_Info (TE) = RI;
 
    procedure Set_Field_Info (VE : Entity_Id; FI : Field_Info_Id)
-     with Pre  => Ekind_In (VE, E_Discriminant, E_Component),
+     with Pre  => Ekind_In (VE, E_Discriminant, E_Component)
+                  and then (not Has_Field_Info (VE)
+                              or else Get_Field_Info (VE) = FI),
           Post => Get_Field_Info (VE) = FI;
 
    procedure Set_Label_Info (VE : Entity_Id; LI : Label_Info_Id)
-     with Pre  => Present (VE),
+     with Pre  => Present (VE)
+                  and then (not Has_Label_Info (VE)
+                              or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI;
-
-   procedure Set_Basic_Block (BE : Entity_Id; BL : Basic_Block_T)
-     with Pre => Present (BE), Post => Get_Basic_Block (BE) = BL;
 
    procedure Copy_Type_Info (Old_T, New_T : Entity_Id)
      with Pre  => Has_Type (Old_T), Post => Has_Type (New_T);

@@ -417,6 +417,7 @@ package GNATLLVM.GLValue is
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Access_Type (G_Ref'Result);
    --  Likewise but when we already have a GL_Value
+   --  ??? This uses a different Relationship than above.  Why?
 
    procedure Discard (V : GL_Value);
    --  Evaluate V and throw away the result

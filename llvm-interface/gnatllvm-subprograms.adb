@@ -19,6 +19,7 @@ with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Sem_Aux;  use Sem_Aux;
+with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Stand;    use Stand;
@@ -114,6 +115,18 @@ package body GNATLLVM.Subprograms is
    --  pointer passed to the current subprogram.  Return a pointer to the
    --  proper activation record, which is either V or an up-level pointer.
 
+   function Param_Needs_Ptr (Param : Entity_Id) return Boolean
+     with Pre => Present (Param);
+   --  Returns True if Param needs to be passed by reference (pointer) rather
+   --  than by value.
+
+   function Param_Is_Activation_Record (Param : Entity_Id) return Boolean is
+     (Ekind (Param) = E_In_Parameter and then Is_Activation_Record (Param))
+     with Pre => Ekind_In (Param, E_In_Parameter, E_In_Out_Parameter,
+                           E_Out_Parameter);
+   --  Returns True is Param is a parameter used to pass an activation
+   --  record.
+
    function Is_Dynamic_Return (TE : Entity_Id) return Boolean is
      (Ekind (TE) /= E_Void and then Is_Dynamic_Size (TE)
         and then not Is_Unconstrained_Array (TE))
@@ -146,10 +159,10 @@ package body GNATLLVM.Subprograms is
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
    --  for it and return the result.  Otherwise, No_GL_Value.
 
-   function Is_Passed_Activation_Record (Def_Ident : Entity_Id) return Boolean
-     with Pre => Ekind (Def_Ident) in Subprogram_Kind;
-   --  Return True if Def_Ident is a nested subprogram that needs an
-   --  activation record.
+   function Has_Activation_Record (Def_Ident : Entity_Id) return Boolean
+     with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
+   --  Return True if Def_Ident is a nested subprogram or a subprogram type
+   --  that needs an activation record.
 
    function Get_Tramp_Init_Fn   return GL_Value;
    function Get_Tramp_Adjust_Fn return GL_Value;
@@ -175,6 +188,49 @@ package body GNATLLVM.Subprograms is
       end return;
    end Count_Params;
 
+   ---------------------
+   -- Param_Needs_Ptr --
+   ---------------------
+
+   function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
+      TE : constant Entity_Id := Full_Etype (Param);
+
+   begin
+      --  For foreign convension, the only time we pass by value is an
+      --  elementary type that's an In parameter and the mechanism isn't
+      --  By_Reference.
+
+      if Has_Foreign_Convention (Param)
+        or else Has_Foreign_Convention (Scope (Param))
+      then
+         return Ekind (Param) /= E_In_Parameter
+           or else not Is_Elementary_Type (TE)
+           or else Mechanism (Param) = By_Reference;
+
+      --  ??  For now, out or in out passes by reference
+
+      elsif Ekind (Param) /= E_In_Parameter then
+         return True;
+
+      --  If the mechanism is specified, use it
+
+      elsif Mechanism (Param) = By_Reference then
+         return True;
+
+      elsif Mechanism (Param) = By_Copy then
+         return False;
+
+      --  For the default case, return by reference if it's of dynamic size
+      --  or is of fixed size and larger than two pointer.
+
+      else
+         return Is_Dynamic_Size (TE)
+           or else (Get_LLVM_Type_Size (Create_Type (TE)) >
+                      2 * Get_LLVM_Type_Size (Void_Ptr_Type));
+      end if;
+
+   end Param_Needs_Ptr;
+
    ----------------------
    -- Is_Return_By_Ref --
    ----------------------
@@ -196,15 +252,13 @@ package body GNATLLVM.Subprograms is
       Foreign         : constant Boolean   :=
         Has_Foreign_Convention (Def_Ident);
       Ret_By_Ref      : constant Boolean   := Is_Return_By_Ref (Def_Ident);
-      Takes_S_Link    : constant Boolean   :=
-        not Foreign
-        and then (Needs_Activation_Record (Def_Ident)
-                    or else Is_Type (Def_Ident));
+      Adds_S_Link     : constant Boolean   :=
+        Is_Type (Def_Ident) and then not Foreign;
       Unc_Return      : constant Boolean   :=
         (Ekind (Return_Type) /= E_Void
            and then Is_Unconstrained_Array (Return_Type));
       LLVM_Return_Typ : Type_T             :=
-        (if Ekind (Return_Type) = E_Void
+        (if   Ekind (Return_Type) = E_Void
          then Void_Type elsif Unc_Return or else Ret_By_Ref
          then Create_Access_Type (Return_Type)
          else Create_Type (Return_Type));
@@ -212,7 +266,7 @@ package body GNATLLVM.Subprograms is
         not Ret_By_Ref and then Is_Dynamic_Return (Return_Type);
       Orig_Arg_Count  : constant Nat       := Count_Params (Def_Ident);
       Args_Count      : constant Nat       :=
-        Orig_Arg_Count + (if Takes_S_Link then 1 else 0) +
+        Orig_Arg_Count + (if Adds_S_Link then 1 else 0) +
           (if Dynamic_Return then 1 else 0);
       Arg_Types       : Type_Array (1 .. Args_Count);
       Param_Ent       : Entity_Id          :=
@@ -220,14 +274,13 @@ package body GNATLLVM.Subprograms is
       J               : Nat                := 1;
 
    begin
-      --  First, Associate an LLVM type for each Ada subprogram parameter
+      --  First, associate an LLVM type with each Ada subprogram parameter
 
       while Present (Param_Ent) loop
          declare
             Param_Type : constant Node_Id := Full_Etype (Param_Ent);
          begin
-            --  pragma Assert (Ekind (Param_Ent) /= E_In_Parameter
-            --                   or else not Is_Activation_Record (Param_Ent)
+            --  pragma Assert (not Param_Is_Activation_Record (Param_Ent)
             --                   or else Present
             --                   (First_Component_Or_Discriminant
             --                      (Full_Designated_Type
@@ -236,10 +289,10 @@ package body GNATLLVM.Subprograms is
             --  If this is an out parameter, or a parameter whose type is
             --  unconstrained, take a pointer to the actual parameter.
             --  If it's a foreign convention, force to an actual pointer
-            --  to the type./
+            --  to the type.
 
             Arg_Types (J) :=
-              (if Param_Needs_Ptr (Param_Ent)
+              (if   Param_Needs_Ptr (Param_Ent)
                then (if Foreign
                      then Pointer_Type (Create_Type (Param_Type), 0)
                      else Create_Access_Type (Param_Type))
@@ -252,7 +305,7 @@ package body GNATLLVM.Subprograms is
 
       --  Set the argument for the static link, if any
 
-      if Takes_S_Link then
+      if Adds_S_Link then
          Arg_Types (Orig_Arg_Count + 1) := Void_Ptr_Type;
       end if;
 
@@ -273,7 +326,12 @@ package body GNATLLVM.Subprograms is
 
    function Create_Subprogram_Access_Type return Type_T is
    begin
-      --  ??? Should we really always use char * for both of these?
+      --  It would be nice to have the field of this struct to be the
+      --  a pointer to the subprogram type, but it can't be because
+      --  the signature of an access type doesn't include the
+      --  possibility of an activation record while the actual
+      --  subprogram might have one.  So we use a generic pointer for
+      --  it and cast at the actual call.
 
       return Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
    end Create_Subprogram_Access_Type;
@@ -557,9 +615,7 @@ package body GNATLLVM.Subprograms is
       --  subprogram, and if this isn't a reference to the variable
       --  in its own subprogram.  If so, get the object from the activation
       --  record.  We return the address from the record so we can either
-      --  give an LValue or an expression.  ???  Note that we only handle
-      --  one level: there's no code here to go up multiple levels or
-      --  even detect that we need to.
+      --  give an LValue or an expression.
 
       if Ekind_In (E, E_Constant, E_Variable, E_In_Parameter, E_Out_Parameter,
                    E_In_Out_Parameter, E_Loop_Parameter)
@@ -624,10 +680,10 @@ package body GNATLLVM.Subprograms is
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          declare
-            Is_Ref : constant Boolean         := Param_Needs_Ptr (Param);
-            TE     : constant Entity_Id       := Full_Etype (Param);
-            R      : constant GL_Relationship :=
-              (if Is_Ref
+            Is_Ref    : constant Boolean         := Param_Needs_Ptr (Param);
+            TE        : constant Entity_Id       := Full_Etype (Param);
+            R         : constant GL_Relationship :=
+              (if   Is_Ref
                then (if Is_Unconstrained_Array (TE) then Fat_Pointer
                      else Reference)
                else Data);
@@ -641,18 +697,15 @@ package body GNATLLVM.Subprograms is
 
             Set_Value_Name (LLVM_Param, Get_Name (Param));
 
-            --  Add the parameter to the environnment
-
-            Set_Value (Param, LLVM_Param);
-
-            if Ekind (Param) = E_In_Parameter
-              and then Is_Activation_Record (Param)
-            then
+            if Param_Is_Activation_Record (Param) then
                Activation_Rec_Param := LLVM_Param;
             end if;
 
-            Param_Num := Param_Num + 1;
+            --  Add the parameter to the environnment
+
+            Set_Value (Param, LLVM_Param);
             Next_Formal_With_Extras (Param);
+            Param_Num := Param_Num + 1;
          end;
       end loop;
 
@@ -1179,17 +1232,25 @@ package body GNATLLVM.Subprograms is
       return No_GL_Value;
    end Emit_Intrinsic_Call;
 
-   ---------------------------------
-   -- Is_Passed_Activation_Record --
-   ---------------------------------
+   ---------------------------
+   -- Has_Activation_Record --
+   ---------------------------
 
-   function Is_Passed_Activation_Record
+   function Has_Activation_Record
      (Def_Ident : Entity_Id) return Boolean
    is
       Formal : Entity_Id := First_Formal_With_Extras (Def_Ident);
 
    begin
-      --  See if any parameter is an activation record.
+      --  In the type case, we don't consider it as having an activation
+      --  record for foreign conventions because we will have had to make
+      --  a trampoline directly at the 'Access or 'Address.
+
+      if Is_Type (Def_Ident) and then Has_Foreign_Convention (Def_Ident) then
+         return False;
+      end if;
+
+      --  Otherwise, see if any parameter is an activation record.
       --  ??? For now, at least, check if it's empty.
 
       while Present (Formal) loop
@@ -1205,7 +1266,7 @@ package body GNATLLVM.Subprograms is
       end loop;
 
       return False;
-   end Is_Passed_Activation_Record;
+   end Has_Activation_Record;
 
    --------------------------------
    -- Emit_Subprogram_Identifier --
@@ -1251,7 +1312,7 @@ package body GNATLLVM.Subprograms is
                   S_Link : constant GL_Value  := Get_Static_Link (N);
 
                begin
-                  if Is_Passed_Activation_Record (Def_Ident)
+                  if Has_Activation_Record (Def_Ident)
                     and then (Has_Foreign_Convention (Typ) /=
                                 Has_Foreign_Convention (Def_Ident))
                   then
@@ -1266,7 +1327,7 @@ package body GNATLLVM.Subprograms is
                   end if;
 
                   if Has_Foreign_Convention (Typ) then
-                     return (if Is_Passed_Activation_Record (Def_Ident)
+                     return (if   Has_Activation_Record (Def_Ident)
                              then Make_Trampoline (DT, V, S_Link)
                              else G_Is_Relationship (V, DT, Trampoline));
                   else
@@ -1278,7 +1339,7 @@ package body GNATLLVM.Subprograms is
                   end if;
                end;
             elsif Attr = Attribute_Address then
-               if Is_Passed_Activation_Record (Def_Ident)
+               if Has_Activation_Record (Def_Ident)
                  and then not Has_Foreign_Convention (Def_Ident)
                then
                   Error_Msg_N
@@ -1287,7 +1348,7 @@ package body GNATLLVM.Subprograms is
                     ("\& which references parent variables", Ref, Def_Ident);
                end if;
 
-               return (if Is_Passed_Activation_Record (Def_Ident)
+               return (if   Has_Activation_Record (Def_Ident)
                        then Make_Trampoline (TE, V, S_Link) else V);
             end if;
          end;
@@ -1302,32 +1363,33 @@ package body GNATLLVM.Subprograms is
    ---------------
 
    function Emit_Call (N : Node_Id) return GL_Value is
-      Subp           : Node_Id            := Name (N);
-      Our_Return_Typ : constant Entity_Id := Full_Etype (N);
-      Direct_Call    : constant Boolean   :=
+      Subp             : Node_Id            := Name (N);
+      Our_Return_Typ   : constant Entity_Id := Full_Etype (N);
+      Direct_Call      : constant Boolean   :=
         Nkind (Subp) /= N_Explicit_Dereference;
-      Subp_Typ       : constant Entity_Id :=
+      Subp_Typ         : constant Entity_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
-      Return_Typ     : constant Entity_Id := Full_Etype (Subp_Typ);
-      Foreign        : constant Boolean   := Has_Foreign_Convention (Subp_Typ);
-      Ret_By_Ref     : constant Boolean   :=
+      Return_Typ       : constant Entity_Id := Full_Etype (Subp_Typ);
+      Foreign          : constant Boolean   :=
+          Has_Foreign_Convention (Subp_Typ);
+      Ret_By_Ref       : constant Boolean   :=
         Is_Return_By_Ref ((if Direct_Call then Entity (Subp) else Subp_Typ));
-      Dynamic_Return : constant Boolean   :=
+      Dynamic_Return   : constant Boolean   :=
         not Ret_By_Ref and then Is_Dynamic_Return (Return_Typ);
-      Param          : Node_Id;
-      P_Type         : Entity_Id;
-      Actual         : Node_Id;
-      This_Takes_S_Link : constant Boolean := not Direct_Call and not Foreign;
-      Orig_Arg_Count : constant Nat        := Count_Params (Subp_Typ);
-      Args_Count     : constant Nat        :=
-        Orig_Arg_Count + (if This_Takes_S_Link then 1 else 0) +
+      Param            : Node_Id;
+      P_Type           : Entity_Id;
+      Actual           : Node_Id;
+      This_Adds_S_Link : constant Boolean := not Direct_Call and not Foreign;
+      Orig_Arg_Count   : constant Nat        := Count_Params (Subp_Typ);
+      Args_Count       : constant Nat        :=
+        Orig_Arg_Count + (if This_Adds_S_Link then 1 else 0) +
           (if Dynamic_Return then 1 else 0);
-      Args           : GL_Value_Array (1 .. Args_Count);
-      Idx            : Nat                 := 1;
-      S_Link         : GL_Value;
-      LLVM_Func      : GL_Value;
-      Arg            : GL_Value;
-      Result         : GL_Value;
+      Args             : GL_Value_Array (1 .. Args_Count);
+      Idx              : Nat                 := 1;
+      S_Link           : GL_Value;
+      LLVM_Func        : GL_Value;
+      Arg              : GL_Value;
+      Result           : GL_Value;
 
    begin
 
@@ -1346,7 +1408,7 @@ package body GNATLLVM.Subprograms is
       end if;
 
       LLVM_Func := Emit_LValue (Subp);
-      if This_Takes_S_Link then
+      if This_Adds_S_Link then
          S_Link    := Get (LLVM_Func, Reference_To_Activation_Record);
          LLVM_Func := Get (LLVM_Func, Reference);
       end if;
@@ -1389,7 +1451,7 @@ package body GNATLLVM.Subprograms is
 
       --  Set the argument for the static link, if any
 
-      if This_Takes_S_Link then
+      if This_Adds_S_Link then
          Args (Orig_Arg_Count + 1) := S_Link;
       end if;
 
@@ -1510,6 +1572,7 @@ package body GNATLLVM.Subprograms is
          return Load
            (GEP (Standard_A_Char, Emit_LValue (N),
                  (1 => Const_Null_32, 2 => Const_Null_32)));
+
       end if;
    end Subp_Ptr;
 

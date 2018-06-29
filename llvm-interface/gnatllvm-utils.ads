@@ -88,11 +88,6 @@ package GNATLLVM.Utils is
 
    type Type_Array is array (Nat range <>) of Type_T;
 
-   function Param_Needs_Ptr (Param : Entity_Id) return Boolean
-     with Pre => Present (Param);
-   --  Returns true if Param needs to be passed by reference (pointer) rather
-   --  than by value.
-
    function Get_Uint_Value (N : Node_Id) return Uint
      with Pre => Present (N);
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint

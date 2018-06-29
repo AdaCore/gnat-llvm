@@ -18,12 +18,11 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
-with Errout;   use Errout;
-with Output;   use Output;
-with Sem_Mech; use Sem_Mech;
-with Sem_Aux;  use Sem_Aux;
-with Sprint;   use Sprint;
-with Stringt;  use Stringt;
+with Errout;  use Errout;
+with Output;  use Output;
+with Sem_Aux; use Sem_Aux;
+with Sprint;  use Sprint;
+with Stringt; use Stringt;
 
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -174,38 +173,6 @@ package body GNATLLVM.Utils is
             return No_Uint;
       end case;
    end Get_Uint_Value;
-
-   ---------------------
-   -- Param_Needs_Ptr --
-   ---------------------
-
-   function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
-      TE : constant Entity_Id := Full_Etype (Param);
-
-   begin
-      --  ??? Return True for all array types for now
-
-      if Is_Array_Type (TE) then
-         return True;
-
-      --  Pass records by reference when using the default mechanism, otherwise
-      --  this will cause an inefficient pass C struct by copy which is not
-      --  what users expect by default.
-
-      elsif Is_Record_Type (TE)
-        and then Mechanism (Param) = Default_Mechanism
-      then
-         return True;
-
-      elsif Ekind_In (Param, E_In_Out_Parameter, E_Out_Parameter) then
-         return True;
-
-      --  ??? Missing cases of e.g. dynamic size objects, ...
-
-      else
-         return Mechanism (Param) = By_Reference;
-      end if;
-   end Param_Needs_Ptr;
 
    -------------
    -- Discard --

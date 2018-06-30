@@ -29,11 +29,6 @@ package GNATLLVM.Subprograms is
    type Overloaded_Intrinsic_Kind is
      (Unary, Binary, Overflow, Memcpy, Memset);
 
-   function Count_Params (E : Entity_Id) return Nat
-     with Pre => Present (E);
-   --  Return a count of the number of parameters of E, which is either
-   --  a subprogram or a subprogram type.
-
    function Create_Subprogram_Type (Def_Ident  : Entity_Id) return Type_T
      with Pre  => Present (Def_Ident),
           Post => Present (Create_Subprogram_Type'Result);

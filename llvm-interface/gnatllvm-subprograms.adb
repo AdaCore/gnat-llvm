@@ -39,6 +39,77 @@ with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Subprograms is
 
+   --  We define enum types corresponding to information about subprograms
+   --  and their parameters that we use consistently within this file to
+   --  process those subprograms and parameters.
+
+   type Param_Kind is
+     (PK_By_Reference,
+      --  This parameter is passed by reference
+
+      Foreign_By_Reference,
+      --  Similar to By_Reference, but for a subprogram with foreign convention
+
+      Activation_Record,
+      --  This parameter is a pointer to an activation record
+
+      In_Value,
+      --  This parameter is passed by value, but used only as an input
+
+      Out_Value,
+      --  This parameter is passed by value, but is only an output
+
+      In_Out_Value);
+      --  This parameter is passed by value and is both an input and output
+
+   function PK_Is_Reference (PK : Param_Kind) return Boolean is
+     (PK in PK_By_Reference | Foreign_By_Reference);
+   --  True if this parameter kind represents a value passed by reference
+   pragma Unreferenced (PK_Is_Reference);
+
+   function PK_Is_In (PK : Param_Kind) return Boolean is
+     (PK not in Out_Value);
+   --  True if this parameter kind corresponds to an input parameter to
+   --  the subprogram.
+
+   function PK_Is_Out (PK : Param_Kind) return Boolean is
+     (PK in Out_Value | In_Out_Value);
+   --  True if this parameter kind is returned from the subprogram
+
+   function Get_Param_Kind (Param : Entity_Id) return Param_Kind
+     with Pre => Ekind_In (Param, E_In_Parameter, E_In_Out_Parameter,
+                           E_Out_Parameter);
+   --  Return the parameter kind for Param
+
+   function Param_Needs_Ptr (Param : Entity_Id) return Boolean
+     with Pre => Present (Param);
+   --  Returns True if Param needs to be passed by reference (pointer) rather
+   --  than by value.
+
+   function Param_Is_Activation_Record (Param : Entity_Id) return Boolean is
+     (Ekind (Param) = E_In_Parameter and then Is_Activation_Record (Param))
+     with Pre => Ekind_In (Param, E_In_Parameter, E_In_Out_Parameter,
+                           E_Out_Parameter);
+   --  Returns True is Param is a parameter used to pass an activation
+   --  record.
+
+   function Count_Params (E : Entity_Id) return Nat
+     with Pre => Present (E);
+   --  Return a count of the number of parameters of E, which is either
+   --  a subprogram or a subprogram type.
+
+   function Count_In_Params (E : Entity_Id) return Nat
+     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   --  Return a count of the number of parameters of E, that are
+   --  explict input parameters to E.  We may have to add a parameter for
+   --  an activation record and/or address to place the return.
+
+   function Count_Out_Params (E : Entity_Id) return Nat
+     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   --  Return a count of the number of parameters of E, that are
+   --  output parameters to E.
+   pragma Unreferenced (Count_Out_Params);
+
    --  Elaboration entries can be either nodes to be emitted as statements
    --  or expressions to be saved.
 
@@ -115,18 +186,6 @@ package body GNATLLVM.Subprograms is
    --  pointer passed to the current subprogram.  Return a pointer to the
    --  proper activation record, which is either V or an up-level pointer.
 
-   function Param_Needs_Ptr (Param : Entity_Id) return Boolean
-     with Pre => Present (Param);
-   --  Returns True if Param needs to be passed by reference (pointer) rather
-   --  than by value.
-
-   function Param_Is_Activation_Record (Param : Entity_Id) return Boolean is
-     (Ekind (Param) = E_In_Parameter and then Is_Activation_Record (Param))
-     with Pre => Ekind_In (Param, E_In_Parameter, E_In_Out_Parameter,
-                           E_Out_Parameter);
-   --  Returns True is Param is a parameter used to pass an activation
-   --  record.
-
    function Is_Dynamic_Return (TE : Entity_Id) return Boolean is
      (Ekind (TE) /= E_Void and then Is_Dynamic_Size (TE)
         and then not Is_Unconstrained_Array (TE))
@@ -189,6 +248,105 @@ package body GNATLLVM.Subprograms is
    end Count_Params;
 
    ---------------------
+   -- Count_In_Params --
+   ---------------------
+
+   function Count_In_Params (E : Entity_Id) return Nat is
+      Param : Entity_Id := First_Formal_With_Extras (E);
+
+   begin
+      return Cnt : Nat := 0 do
+         while Present (Param) loop
+            if PK_Is_In (Get_Param_Kind (Param)) then
+               Cnt := Cnt + 1;
+            end if;
+
+            Param := Next_Formal_With_Extras (Param);
+         end loop;
+      end return;
+   end Count_In_Params;
+
+   ---------------------
+   -- Count_In_Params --
+   ---------------------
+
+   function Count_Out_Params (E : Entity_Id) return Nat is
+      Param : Entity_Id := First_Formal_With_Extras (E);
+
+   begin
+      return Cnt : Nat := 0 do
+         while Present (Param) loop
+            if PK_Is_Out (Get_Param_Kind (Param)) then
+               Cnt := Cnt + 1;
+            end if;
+
+            Param := Next_Formal_With_Extras (Param);
+         end loop;
+      end return;
+   end Count_Out_Params;
+
+   --------------------
+   -- Get_Param_Kind --
+   --------------------
+
+   function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
+      TE          : constant Entity_Id  := Full_Etype (Param);
+      By_Val_Kind : constant Param_Kind :=
+        (if    Ekind (Param) = E_In_Parameter     then In_Value
+         elsif Ekind (Param) = E_In_Out_Parameter then In_Out_Value
+         else  Out_Value);
+
+   begin
+      --  Handle the easy case of an activation record
+
+      if Ekind (Param) = E_In_Parameter
+        and then Is_Activation_Record (Param)
+      then
+         return Activation_Record;
+
+      --  For foreign convension, the only time we pass by value is an
+      --  elementary type that's an In parameter and the mechanism isn't
+      --  By_Reference.
+
+      elsif Has_Foreign_Convention (Param)
+        or else Has_Foreign_Convention (Scope (Param))
+      then
+         return (if   Ekind (Param) = E_In_Parameter
+                        and then Is_Elementary_Type (TE)
+                        and then Mechanism (Param) /= By_Reference
+                 then In_Value else Foreign_By_Reference);
+
+      --  ??  For now, out or in out passes by reference
+
+      elsif Ekind (Param) /= E_In_Parameter then
+         return PK_By_Reference;
+
+      --  Force by-reference types to be passed by reference
+
+      elsif Is_By_Reference_Type (TE) then
+         return PK_By_Reference;
+
+      --  If the mechanism is specified, use it
+
+      elsif Mechanism (Param) = By_Reference then
+         return PK_By_Reference;
+
+      elsif Mechanism (Param) = By_Copy then
+         return By_Val_Kind;
+
+      --  For the default case, return by reference if it's of dynamic size
+      --  or is of fixed size and larger than two pointer.
+
+      else
+         return (if   Is_Dynamic_Size (TE)
+                        or else (Get_LLVM_Type_Size (Create_Type (TE)) >
+                                   2 * Get_LLVM_Type_Size (Void_Ptr_Type))
+                 then PK_By_Reference else By_Val_Kind);
+      end if;
+
+   end Get_Param_Kind;
+
+   ---------------------
    -- Param_Needs_Ptr --
    ---------------------
 
@@ -210,6 +368,11 @@ package body GNATLLVM.Subprograms is
       --  ??  For now, out or in out passes by reference
 
       elsif Ekind (Param) /= E_In_Parameter then
+         return True;
+
+      --  Force by-reference types to be passed by reference
+
+      elsif Is_By_Reference_Type (TE) then
          return True;
 
       --  If the mechanism is specified, use it
@@ -264,7 +427,7 @@ package body GNATLLVM.Subprograms is
          else Create_Type (Return_Type));
       Dynamic_Return  : constant Boolean   :=
         not Ret_By_Ref and then Is_Dynamic_Return (Return_Type);
-      Orig_Arg_Count  : constant Nat       := Count_Params (Def_Ident);
+      Orig_Arg_Count  : constant Nat       := Count_In_Params (Def_Ident);
       Args_Count      : constant Nat       :=
         Orig_Arg_Count + (if Adds_S_Link then 1 else 0) +
           (if Dynamic_Return then 1 else 0);
@@ -278,28 +441,22 @@ package body GNATLLVM.Subprograms is
 
       while Present (Param_Ent) loop
          declare
-            Param_Type : constant Node_Id := Full_Etype (Param_Ent);
+            Param_Type : constant Node_Id    := Full_Etype (Param_Ent);
+            PK         : constant Param_Kind := Get_Param_Kind (Param_Ent);
+
          begin
-            --  pragma Assert (not Param_Is_Activation_Record (Param_Ent)
-            --                   or else Present
-            --                   (First_Component_Or_Discriminant
-            --                      (Full_Designated_Type
-            --                         (Full_Etype (Param_Ent)))));
+            if PK_Is_In (PK) then
+               Arg_Types (J) :=
+                 (if    PK = Foreign_By_Reference
+                  then  Pointer_Type (Create_Type (Param_Type), 0)
+                  elsif PK = PK_By_Reference
+                  then  Create_Access_Type (Param_Type)
+                  else  Create_Type (Param_Type));
 
-            --  If this is an out parameter, or a parameter whose type is
-            --  unconstrained, take a pointer to the actual parameter.
-            --  If it's a foreign convention, force to an actual pointer
-            --  to the type.
-
-            Arg_Types (J) :=
-              (if   Param_Needs_Ptr (Param_Ent)
-               then (if Foreign
-                     then Pointer_Type (Create_Type (Param_Type), 0)
-                     else Create_Access_Type (Param_Type))
-               else Create_Type (Param_Type));
+               J := J + 1;
+            end if;
          end;
 
-         J := J + 1;
          Next_Formal_With_Extras (Param_Ent);
       end loop;
 

@@ -845,10 +845,11 @@ package body GNATLLVM.Subprograms is
 
       In_Elab_Proc := False;
       Elaboration_Table.Set_Last (0);
-      Start_Block_Statements (Empty, No_List);
+      Start_Block_Statements
+        (Empty, (if No (Stmts) then No_List else Exception_Handlers (Stmts)));
       Emit (S_List);
-      Build_Ret_Void;
       Pop_Block;
+      Build_Ret_Void;
       Pop_Debug_Scope;
       Leave_Subp;
    end Emit_Elab_Proc;

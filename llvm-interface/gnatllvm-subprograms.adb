@@ -80,22 +80,10 @@ package body GNATLLVM.Subprograms is
                            E_Out_Parameter);
    --  Return the parameter kind for Param
 
-   function Param_Needs_Ptr (Param : Entity_Id) return Boolean
-     with Pre => Present (Param);
-   --  Returns True if Param needs to be passed by reference (pointer) rather
-   --  than by value.
-
-   function Param_Is_Activation_Record (Param : Entity_Id) return Boolean is
-     (Ekind (Param) = E_In_Parameter and then Is_Activation_Record (Param))
-     with Pre => Ekind_In (Param, E_In_Parameter, E_In_Out_Parameter,
-                           E_Out_Parameter);
-   --  Returns True is Param is a parameter used to pass an activation
-   --  record.
-
-   function Count_Params (E : Entity_Id) return Nat
-     with Pre => Present (E);
-   --  Return a count of the number of parameters of E, which is either
-   --  a subprogram or a subprogram type.
+   function Relationship_For_PK
+     (PK : Param_Kind; TE : Entity_Id) return GL_Relationship
+     with Pre => Is_Type (TE);
+   --  Return the Relationship for a parameter of type TE and kind PK
 
    function Count_In_Params (E : Entity_Id) return Nat
      with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
@@ -230,22 +218,6 @@ package body GNATLLVM.Subprograms is
    --  this can cause confusion with global names.  So if we made it as
    --  part of the processing of a declaration, save it.
 
-   ------------------
-   -- Count_Params --
-   ------------------
-
-   function Count_Params (E : Entity_Id) return Nat is
-      Param : Entity_Id := First_Formal_With_Extras (E);
-
-   begin
-      return Cnt : Nat := 0 do
-         while Present (Param) loop
-            Cnt := Cnt + 1;
-            Param := Next_Formal_With_Extras (Param);
-         end loop;
-      end return;
-   end Count_Params;
-
    ---------------------
    -- Count_In_Params --
    ---------------------
@@ -345,53 +317,21 @@ package body GNATLLVM.Subprograms is
 
    end Get_Param_Kind;
 
-   ---------------------
-   -- Param_Needs_Ptr --
-   ---------------------
+   -------------------------
+   -- Relationship_For_PK --
+   -------------------------
 
-   function Param_Needs_Ptr (Param : Entity_Id) return Boolean is
-      TE : constant Entity_Id := Full_Etype (Param);
-
+   function Relationship_For_PK
+     (PK : Param_Kind; TE : Entity_Id) return GL_Relationship is
    begin
-      --  For foreign convension, the only time we pass by value is an
-      --  elementary type that's an In parameter and the mechanism isn't
-      --  By_Reference.
-
-      if Has_Foreign_Convention (Param)
-        or else Has_Foreign_Convention (Scope (Param))
-      then
-         return Ekind (Param) /= E_In_Parameter
-           or else not Is_Elementary_Type (TE)
-           or else Mechanism (Param) = By_Reference;
-
-      --  ??  For now, out or in out passes by reference
-
-      elsif Ekind (Param) /= E_In_Parameter then
-         return True;
-
-      --  Force by-reference types to be passed by reference
-
-      elsif Is_By_Reference_Type (TE) then
-         return True;
-
-      --  If the mechanism is specified, use it
-
-      elsif Mechanism (Param) = By_Reference then
-         return True;
-
-      elsif Mechanism (Param) = By_Copy then
-         return False;
-
-      --  For the default case, return by reference if it's of dynamic size
-      --  or is of fixed size and larger than two pointer.
-
+      if PK_Is_Reference (PK) then
+         return (if Is_Unconstrained_Array (TE)
+                   and then PK /= Foreign_By_Reference
+                 then Fat_Pointer else Reference);
       else
-         return Is_Dynamic_Size (TE)
-           or else (Get_LLVM_Type_Size (Create_Type (TE)) >
-                      2 * Get_LLVM_Type_Size (Void_Ptr_Type));
+         return Data;
       end if;
-
-   end Param_Needs_Ptr;
+   end Relationship_For_PK;
 
    ----------------------
    -- Is_Return_By_Ref --
@@ -820,9 +760,9 @@ package body GNATLLVM.Subprograms is
       Dyn_Return      : constant Boolean   :=
         not Ret_By_Ref and then Is_Dynamic_Return (Return_Typ);
       Void_Return     : constant Boolean   := Void_Return_Typ or Dyn_Return;
-      Param_Num       : Natural            := 0;
-      Param           : Entity_Id;
+      Param_Num       : Nat                := 0;
       LLVM_Param      : GL_Value;
+      Param           : Entity_Id;
 
    begin
       Current_Subp := Def_Ident;
@@ -836,32 +776,39 @@ package body GNATLLVM.Subprograms is
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          declare
-            Is_Ref : constant Boolean         := Param_Needs_Ptr (Param);
-            TE     : constant Entity_Id       := Full_Etype (Param);
-            R      : constant GL_Relationship :=
-              (if   Is_Ref
-               then (if Is_Unconstrained_Array (TE) then Fat_Pointer
-                     else Reference)
-               else Data);
+            PK : constant Param_Kind      := Get_Param_Kind (Param);
+            TE : constant Entity_Id       := Full_Etype (Param);
+            R  : constant GL_Relationship := Relationship_For_PK (PK, TE);
+            V  : constant GL_Value        :=
+              (if   PK_Is_In (PK) then Get_Param (Func, Param_Num, TE, R)
+               else No_GL_Value);
+
          begin
-            LLVM_Param :=
-              G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)), TE, R);
+            --  If this is an out parameter, we have to make a variable
+            --  for it, possibly initialized to our parameter value if this
+            --  is also an in parameter.  Otherwise, we can use the parameter.
+            --  unchanged.
 
-            --  Define a name for the parameter Param (which is the
-            --  Param_Num'th parameter), and associate the corresponding
-            --  LLVM value to its entity.
+            if PK_Is_Out (PK) then
+               LLVM_Param := Allocate_For_Type (TE, TE, Param, V,
+                                                Get_Name (Param));
+            else
+               LLVM_Param := V;
+               Set_Value_Name (LLVM_Param, Get_Name (Param));
+            end if;
 
-            Set_Value_Name (LLVM_Param, Get_Name (Param));
-
-            if Param_Is_Activation_Record (Param) then
+            if PK = Activation_Record then
                Activation_Rec_Param := LLVM_Param;
             end if;
 
             --  Add the parameter to the environnment
 
             Set_Value (Param, LLVM_Param);
+            if PK_Is_In (PK) then
+               Param_Num := Param_Num + 1;
+            end if;
+
             Next_Formal_With_Extras (Param);
-            Param_Num := Param_Num + 1;
          end;
       end loop;
 
@@ -1534,10 +1481,9 @@ package body GNATLLVM.Subprograms is
       Dynamic_Return   : constant Boolean   :=
         not Ret_By_Ref and then Is_Dynamic_Return (Return_Typ);
       Param            : Node_Id;
-      P_Type           : Entity_Id;
       Actual           : Node_Id;
       This_Adds_S_Link : constant Boolean := not Direct_Call and not Foreign;
-      Orig_Arg_Count   : constant Nat        := Count_Params (Subp_Typ);
+      Orig_Arg_Count   : constant Nat        := Count_In_Params (Subp_Typ);
       Args_Count       : constant Nat        :=
         Orig_Arg_Count + (if This_Adds_S_Link then 1 else 0) +
           (if Dynamic_Return then 1 else 0);
@@ -1545,7 +1491,6 @@ package body GNATLLVM.Subprograms is
       Idx              : Nat                 := 1;
       S_Link           : GL_Value;
       LLVM_Func        : GL_Value;
-      Arg              : GL_Value;
       Result           : GL_Value;
 
    begin
@@ -1574,33 +1519,42 @@ package body GNATLLVM.Subprograms is
       Actual := First_Actual (N);
       while Present (Actual) loop
 
-         --  We don't want to get confused between LValues from a previous
-         --  parameter when getting positions and sizes of another, so clear
-         --  the list.
+         declare
+            TE  : constant Entity_Id       := Full_Etype (Param);
+            PK  : constant Param_Kind      := Get_Param_Kind (Param);
+            R   : constant GL_Relationship := Relationship_For_PK (PK, TE);
+            Arg : GL_Value;
 
-         Clear_LValue_List;
-         P_Type := Full_Etype (Param);
+         begin
+            if PK_Is_In (PK) then
 
-         --  We have two cases: if the param isn't passed indirectly, convert
-         --  the value to the parameter's type.  If it is, then convert the
-         --  pointer to being a pointer to the parameter's type.  The way we
-         --  do this depends on whether the subprogram has foreign convension
-         --  or not.
+               --  We don't want to get confused between LValues from
+               --  a previous parameter when getting positions and
+               --  sizes of another, so clear the list.
 
-         if Param_Needs_Ptr (Param) then
-            Arg := Emit_LValue (Actual);
-            if Foreign then
-               Arg := Ptr_To_Ref (Get (Arg, Reference), P_Type);
-            else
-               Arg := Convert_Ref (Arg, P_Type);
+               Clear_LValue_List;
+
+               --  We have two cases: if the param isn't passed
+               --  indirectly, convert the value to the parameter's type.
+               --  If it is, then convert the pointer to being a pointer
+               --  to the parameter's type.
+
+               if PK_Is_Reference (PK) then
+                  Arg := Emit_LValue (Actual);
+                  if PK = Foreign_By_Reference then
+                     Arg := Ptr_To_Relationship (Get (Arg, R), TE, R);
+                  else
+                     Arg := Convert_Ref (Arg, TE);
+                  end if;
+               else
+                  Arg := Emit_Convert_Value (Actual, TE);
+               end if;
+
+               Args (Idx) := Arg;
+               Idx := Idx + 1;
             end if;
+         end;
 
-            Args (Idx) := Arg;
-         else
-            Args (Idx) := Emit_Convert_Value (Actual, P_Type);
-         end if;
-
-         Idx := Idx + 1;
          Next_Actual (Actual);
          Next_Formal_With_Extras (Param);
          pragma Assert (No (Actual) = No (Param));

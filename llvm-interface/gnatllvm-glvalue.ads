@@ -1466,6 +1466,16 @@ package GNATLLVM.GLValue is
      --  Add a global to the environment which is of type TE, so the global
      --  itself represents the address of TE.
 
+   function Get_Param
+     (Func      : GL_Value;
+      Param_Num : Nat;
+      TE        : Entity_Id;
+      R         : GL_Relationship) return GL_Value
+   is
+     (G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)), TE, R))
+     with Pre  => Present (Func) and then Is_Type (TE),
+          Post => Present (Get_Param'Result);
+
    function Does_Not_Throw (V : GL_Value) return Boolean is
      (Does_Not_Throw (LLVM_Value (V)))
      with Pre => Present (V);

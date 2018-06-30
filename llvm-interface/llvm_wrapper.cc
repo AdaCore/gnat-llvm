@@ -142,6 +142,13 @@ Add_Nocapture_Attribute (Function *fn, unsigned idx)
 
 extern "C"
 void
+Add_Non_Null_Attribute (Function *fn, unsigned idx)
+{
+    fn->addParamAttr (idx, Attribute::NonNull);
+}
+
+extern "C"
+void
 Add_Readonly_Attribute (Function *fn, unsigned idx)
 {
     fn->addParamAttr (idx, Attribute::ReadOnly);

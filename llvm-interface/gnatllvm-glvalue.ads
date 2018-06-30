@@ -633,6 +633,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V);
    --  Add the Nocapture attribute to parameter with index Idx
 
+   procedure Add_Non_Null_Attribute (V : GL_Value; Idx : Integer)
+     with Pre => Is_A_Function (V);
+   --  Add the Nonnull attribute to parameter with index Idx
+
    procedure Add_Readonly_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V);
    --  Add the Readonly attribute to parameter with index Idx

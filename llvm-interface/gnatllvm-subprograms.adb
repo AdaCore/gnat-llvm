@@ -65,7 +65,6 @@ package body GNATLLVM.Subprograms is
    function PK_Is_Reference (PK : Param_Kind) return Boolean is
      (PK in PK_By_Reference | Foreign_By_Reference);
    --  True if this parameter kind represents a value passed by reference
-   pragma Unreferenced (PK_Is_Reference);
 
    function PK_Is_In (PK : Param_Kind) return Boolean is
      (PK not in Out_Value);
@@ -856,11 +855,6 @@ package body GNATLLVM.Subprograms is
 
             if Param_Is_Activation_Record (Param) then
                Activation_Rec_Param := LLVM_Param;
-               Add_Dereferenceable_Attribute (Func, Param_Num,
-                                              Full_Designated_Type (TE));
-               Add_Noalias_Attribute         (Func, Param_Num);
-               Add_Nocapture_Attribute       (Func, Param_Num);
-               Add_Readonly_Attribute        (Func, Param_Num);
             end if;
 
             --  Add the parameter to the environnment
@@ -1670,6 +1664,10 @@ package body GNATLLVM.Subprograms is
       LLVM_Func   : GL_Value          := Get_Dup_Global_Value (Def_Ident);
       Param_Num   : Natural           := 0;
       Formal      : Entity_Id;
+      Ret_By_Ref  : constant Boolean  := Is_Return_By_Ref (Def_Ident);
+      Return_Typ  : constant Entity_Id := Full_Etype (Def_Ident);
+      Dynamic_Return : constant Boolean :=
+        not Ret_By_Ref and then Is_Dynamic_Return (Return_Typ);
 
    begin
       --  If we've already seen this function name before, verify that we
@@ -1695,23 +1693,74 @@ package body GNATLLVM.Subprograms is
          end if;
 
          Set_Dup_Global_Value (Def_Ident, LLVM_Func);
-      end if;
 
-      --  For foreign convention functions, we need a trampoline if there
-      --  is an activation record, so mark the parameter that's the record.
+         --  Now deal with function and parameter attributes
+         --  ??? We don't handle most return value attributes yet.  noalias
+         --  is an important one.
 
-      if Has_Foreign_Convention (Def_Ident) then
+         if No_Return (Def_Ident) then
+            Set_Does_Not_Return (LLVM_Func);
+         end if;
+
          Formal := First_Formal_With_Extras (Def_Ident);
          while Present (Formal) loop
-            if Ekind (Formal) = E_In_Parameter
-              and then Is_Activation_Record (Formal)
-            then
-               Add_Nest_Attribute (LLVM_Func, Param_Num);
-            end if;
+            declare
+               PK : constant Param_Kind := Get_Param_Kind (Formal);
+               TE : constant Entity_Id  := Full_Etype (Formal);
+               DT : constant Entity_Id  :=
+                 (if   Is_Access_Type (TE) then Full_Designated_Type (TE)
+                  else Empty);
 
-            Param_Num := Param_Num + 1;
-            Next_Formal_With_Extras (Formal);
+            begin
+               if PK = Activation_Record then
+                  Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
+                  Add_Noalias_Attribute         (LLVM_Func, Param_Num);
+                  Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
+                  Add_Readonly_Attribute        (LLVM_Func, Param_Num);
+                  if Has_Foreign_Convention (Def_Ident) then
+                     Add_Nest_Attribute         (LLVM_Func, Param_Num);
+                  end if;
+
+               elsif PK_Is_Reference (PK)
+                 and then (not Is_Unconstrained_Array (TE)
+                             or else PK = Foreign_By_Reference)
+               then
+                  --  Technically, we can take 'Address of a parameter
+                  --  and put the address someplace, but that's undefined,
+                  --  so we can set this as nocapture.
+
+                  Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, TE);
+                  Add_Noalias_Attribute         (LLVM_Func, Param_Num);
+                  Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
+                  if Ekind (Formal) = E_In_Parameter then
+                     Add_Readonly_Attribute     (LLVM_Func, Param_Num);
+                  end if;
+
+               elsif PK_Is_In (PK) and then Is_Access_Type (TE)
+                 and then not Is_Unconstrained_Array (DT)
+                 and then Ekind (DT) /= E_Subprogram_Type
+               then
+                  if Can_Never_Be_Null (TE) then
+                     Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
+                  else
+                     Add_Dereferenceable_Or_Null_Attribute
+                       (LLVM_Func, Param_Num, DT);
+                  end if;
+               end if;
+
+               if PK_Is_In (PK) then
+                  Param_Num := Param_Num + 1;
+               end if;
+
+               Next_Formal_With_Extras (Formal);
+            end;
          end loop;
+
+         if Dynamic_Return then
+            Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, Return_Typ);
+            Add_Noalias_Attribute         (LLVM_Func, Param_Num);
+            Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
+         end if;
       end if;
 
       Set_Value (Def_Ident, LLVM_Func);

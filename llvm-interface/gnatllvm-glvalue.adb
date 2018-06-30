@@ -1318,11 +1318,20 @@ package body GNATLLVM.GLValue is
    ----------------------------------
 
    procedure Add_Dereferenceable_Attribute
-     (V : GL_Value; Idx : Integer; TE : Entity_Id) is
+     (V : GL_Value; Idx : Integer; TE : Entity_Id)
+   is
+      T : constant Type_T := Create_Type (TE);
+
    begin
-      if not Is_Dynamic_Size (TE) then
+      --  We can only show this is dereferencable if we know its size.
+      --  But this implies non-null, so we can set that even if we don't
+      --  know the size.
+
+      if Type_Is_Sized (T) then
          Add_Dereferenceable_Attribute (LLVM_Value (V), unsigned (Idx),
-                                        Get_LLVM_Type_Size (Create_Type (TE)));
+                                        Get_LLVM_Type_Size (T));
+      else
+         Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
       end if;
    end Add_Dereferenceable_Attribute;
 
@@ -1331,12 +1340,14 @@ package body GNATLLVM.GLValue is
    -------------------------------------------
 
    procedure Add_Dereferenceable_Or_Null_Attribute
-     (V : GL_Value; Idx : Integer; TE : Entity_Id) is
+     (V : GL_Value; Idx : Integer; TE : Entity_Id)
+   is
+      T : constant Type_T := Create_Type (TE);
+
    begin
-      if not Is_Dynamic_Size (TE) then
-         Add_Dereferenceable_Or_Null_Attribute
-           (LLVM_Value (V), unsigned (Idx),
-            Get_LLVM_Type_Size (Create_Type (TE)));
+      if Type_Is_Sized (T) then
+         Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V), unsigned (Idx),
+                                                Get_LLVM_Type_Size (T));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
 
@@ -1366,6 +1377,15 @@ package body GNATLLVM.GLValue is
    begin
       Add_Nocapture_Attribute (LLVM_Value (V), unsigned (Idx));
    end Add_Nocapture_Attribute;
+
+   ----------------------------
+   -- Add_Non_Null_Attribute --
+   ----------------------------
+
+   procedure Add_Non_Null_Attribute (V : GL_Value; Idx : Integer) is
+   begin
+      Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
+   end Add_Non_Null_Attribute;
 
    ----------------------------
    -- Add_Readonly_Attribute --

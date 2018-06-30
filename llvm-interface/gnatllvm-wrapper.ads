@@ -72,6 +72,9 @@ package GNATLLVM.Wrapper is
    procedure Add_Nocapture_Attribute (Func : Value_T; Idx : unsigned);
    pragma Import (C, Add_Nocapture_Attribute, "Add_Nocapture_Attribute");
 
+   procedure Add_Non_Null_Attribute (Func : Value_T; Idx : unsigned);
+   pragma Import (C, Add_Non_Null_Attribute, "Add_Non_Null_Attribute");
+
    procedure Add_Readonly_Attribute (Func : Value_T; Idx : unsigned);
    pragma Import (C, Add_Readonly_Attribute, "Add_Readonly_Attribute");
 

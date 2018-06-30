@@ -607,13 +607,35 @@ package GNATLLVM.GLValue is
    procedure Set_Value_Name (V : GL_Value; Name : String)
      with Pre => Present (V);
 
+   procedure Add_Cold_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V);
+   --  Add the Cold attribute to function V
+
+   procedure Add_Dereferenceable_Attribute
+     (V : GL_Value; Idx : Integer; TE : Entity_Id)
+     with Pre => Is_A_Function (V) and then Is_Type (TE);
+   --  Add the Dereferenceable attribute to parameter with index Idx
+
+   procedure Add_Dereferenceable_Or_Null_Attribute
+     (V : GL_Value; Idx : Integer; TE : Entity_Id)
+     with Pre => Is_A_Function (V) and then Is_Type (TE);
+   --  Add the Dereferenceableornull attribute to parameter with index Idx
+
    procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V);
    --  Add the Nest attribute to parameter with index Idx
 
-   procedure Add_Cold_Attribute (V : GL_Value)
+   procedure Add_Noalias_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V);
-   --  Add the Cold attribute to function V
+   --  Add the Noalias attribute to parameter with index Idx
+
+   procedure Add_Nocapture_Attribute (V : GL_Value; Idx : Integer)
+     with Pre => Is_A_Function (V);
+   --  Add the Nocapture attribute to parameter with index Idx
+
+   procedure Add_Readonly_Attribute (V : GL_Value; Idx : Integer)
+     with Pre => Is_A_Function (V);
+   --  Add the Readonly attribute to parameter with index Idx
 
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
      (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = Val)

@@ -50,11 +50,30 @@ package GNATLLVM.Wrapper is
    procedure Set_Alloca_Align (Inst : Value_T; Align : unsigned);
    pragma Import (C, Set_Alloca_Align, "Set_Alloca_Align");
 
+   procedure Add_Cold_Attribute (Func : Value_T);
+   pragma Import (C, Add_Cold_Attribute, "Add_Cold_Attribute");
+
+   procedure Add_Dereferenceable_Attribute
+     (Func : Value_T; Idx : unsigned; Bytes : ULL);
+   pragma Import (C, Add_Dereferenceable_Attribute,
+                  "Add_Dereferenceable_Attribute");
+
+   procedure Add_Dereferenceable_Or_Null_Attribute
+     (Func : Value_T; Idx : unsigned; Bytes : ULL);
+   pragma Import (C, Add_Dereferenceable_Or_Null_Attribute,
+                  "Add_Dereferenceable_Or_Null_Attribute");
+
    procedure Add_Nest_Attribute (Func : Value_T; Idx : unsigned);
    pragma Import (C, Add_Nest_Attribute, "Add_Nest_Attribute");
 
-   procedure Add_Cold_Attribute (Func : Value_T);
-   pragma Import (C, Add_Cold_Attribute, "Add_Cold_Attribute");
+   procedure Add_Noalias_Attribute (Func : Value_T; Idx : unsigned);
+   pragma Import (C, Add_Noalias_Attribute, "Add_Noalias_Attribute");
+
+   procedure Add_Nocapture_Attribute (Func : Value_T; Idx : unsigned);
+   pragma Import (C, Add_Nocapture_Attribute, "Add_Nocapture_Attribute");
+
+   procedure Add_Readonly_Attribute (Func : Value_T; Idx : unsigned);
+   pragma Import (C, Add_Readonly_Attribute, "Add_Readonly_Attribute");
 
    function Build_Extract_Value
      (Bld      : Builder_T;

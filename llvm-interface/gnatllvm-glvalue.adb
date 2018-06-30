@@ -1305,15 +1305,6 @@ package body GNATLLVM.GLValue is
    end Set_Value_Name;
 
    ------------------------
-   -- Add_Nest_Attribute --
-   -----------------------
-
-   procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer) is
-   begin
-      Add_Nest_Attribute (LLVM_Value (V), unsigned (Idx + 1));
-   end Add_Nest_Attribute;
-
-   ------------------------
    -- Add_Cold_Attribute --
    -----------------------
 
@@ -1321,6 +1312,69 @@ package body GNATLLVM.GLValue is
    begin
       Add_Cold_Attribute (LLVM_Value (V));
    end Add_Cold_Attribute;
+
+   -----------------------------------
+   -- Add_Dereferenceable_Attribute --
+   ----------------------------------
+
+   procedure Add_Dereferenceable_Attribute
+     (V : GL_Value; Idx : Integer; TE : Entity_Id) is
+   begin
+      if not Is_Dynamic_Size (TE) then
+         Add_Dereferenceable_Attribute (LLVM_Value (V), unsigned (Idx),
+                                        Get_LLVM_Type_Size (Create_Type (TE)));
+      end if;
+   end Add_Dereferenceable_Attribute;
+
+   -------------------------------------------
+   -- Add_Dereferenceable_Or_Null_Attribute --
+   -------------------------------------------
+
+   procedure Add_Dereferenceable_Or_Null_Attribute
+     (V : GL_Value; Idx : Integer; TE : Entity_Id) is
+   begin
+      if not Is_Dynamic_Size (TE) then
+         Add_Dereferenceable_Or_Null_Attribute
+           (LLVM_Value (V), unsigned (Idx),
+            Get_LLVM_Type_Size (Create_Type (TE)));
+      end if;
+   end Add_Dereferenceable_Or_Null_Attribute;
+
+   ------------------------
+   -- Add_Nest_Attribute --
+   -----------------------
+
+   procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer) is
+   begin
+      Add_Nest_Attribute (LLVM_Value (V), unsigned (Idx));
+   end Add_Nest_Attribute;
+
+   ---------------------------
+   -- Add_Noalias_Attribute --
+   ---------------------------
+
+   procedure Add_Noalias_Attribute (V : GL_Value; Idx : Integer) is
+   begin
+      Add_Noalias_Attribute (LLVM_Value (V), unsigned (Idx));
+   end Add_Noalias_Attribute;
+
+   ---------------------------
+   -- Add_Nocapture_Attribute --
+   ---------------------------
+
+   procedure Add_Nocapture_Attribute (V : GL_Value; Idx : Integer) is
+   begin
+      Add_Nocapture_Attribute (LLVM_Value (V), unsigned (Idx));
+   end Add_Nocapture_Attribute;
+
+   ----------------------------
+   -- Add_Readonly_Attribute --
+   ----------------------------
+
+   procedure Add_Readonly_Attribute (V : GL_Value; Idx : Integer) is
+   begin
+      Add_Readonly_Attribute (LLVM_Value (V), unsigned (Idx));
+   end Add_Readonly_Attribute;
 
    ---------------------
    -- Set_Initializer --

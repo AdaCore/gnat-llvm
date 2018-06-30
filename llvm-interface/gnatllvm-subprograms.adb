@@ -680,9 +680,9 @@ package body GNATLLVM.Subprograms is
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          declare
-            Is_Ref    : constant Boolean         := Param_Needs_Ptr (Param);
-            TE        : constant Entity_Id       := Full_Etype (Param);
-            R         : constant GL_Relationship :=
+            Is_Ref : constant Boolean         := Param_Needs_Ptr (Param);
+            TE     : constant Entity_Id       := Full_Etype (Param);
+            R      : constant GL_Relationship :=
               (if   Is_Ref
                then (if Is_Unconstrained_Array (TE) then Fat_Pointer
                      else Reference)
@@ -699,6 +699,11 @@ package body GNATLLVM.Subprograms is
 
             if Param_Is_Activation_Record (Param) then
                Activation_Rec_Param := LLVM_Param;
+               Add_Dereferenceable_Attribute (Func, Param_Num,
+                                              Full_Designated_Type (TE));
+               Add_Noalias_Attribute         (Func, Param_Num);
+               Add_Nocapture_Attribute       (Func, Param_Num);
+               Add_Readonly_Attribute        (Func, Param_Num);
             end if;
 
             --  Add the parameter to the environnment

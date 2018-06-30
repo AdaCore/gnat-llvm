@@ -98,16 +98,53 @@ Create_TBAA_Root (MDBuilder *MDHelper)
 
 extern "C"
 void
-Add_Nest_Attribute (Function *fn, unsigned idx)
+Add_Cold_Attribute (Function *fn)
 {
-    fn->addAttribute (idx, Attribute::Nest);
+    fn->addFnAttr(Attribute::Cold);
 }
 
 extern "C"
 void
-Add_Cold_Attribute (Function *fn)
+Add_Dereferenceable_Attribute (Function *fn, unsigned idx,
+			       unsigned long long Bytes)
 {
-    fn->addFnAttr(Attribute::Cold);
+    fn->addDereferenceableParamAttr (idx, Bytes);
+}
+
+extern "C"
+void
+Add_Dereferenceable_Or_Null_Attribute (Function *fn, unsigned idx,
+				       unsigned long long Bytes)
+{
+    fn->addDereferenceableOrNullParamAttr (idx, Bytes);
+}
+
+extern "C"
+void
+Add_Nest_Attribute (Function *fn, unsigned idx)
+{
+    fn->addParamAttr (idx, Attribute::Nest);
+}
+
+extern "C"
+void
+Add_Noalias_Attribute (Function *fn, unsigned idx)
+{
+    fn->addParamAttr (idx, Attribute::NoAlias);
+}
+
+extern "C"
+void
+Add_Nocapture_Attribute (Function *fn, unsigned idx)
+{
+    fn->addParamAttr (idx, Attribute::NoCapture);
+}
+
+extern "C"
+void
+Add_Readonly_Attribute (Function *fn, unsigned idx)
+{
+    fn->addParamAttr (idx, Attribute::ReadOnly);
 }
 
 extern "C"

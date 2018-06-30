@@ -28,13 +28,6 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package body GNATLLVM.Utils is
 
-   ------------------------
-   -- Is_Constant_Folded --
-   ------------------------
-   function Is_Constant_Folded (E : Entity_Id) return Boolean is
-     (Ekind (E) = E_Constant
-        and then Is_Scalar_Type (Get_Full_View (Full_Etype (E))));
-
    ------------------
    -- Decode_Range --
    ------------------
@@ -98,32 +91,6 @@ package body GNATLLVM.Utils is
       end if;
 
    end Range_Length;
-
-   ---------
-   -- Img --
-   ---------
-
-   function Img (I : Nat) return String is
-      Str : constant String := I'Image;
-   begin
-      return Str (Str'First + 1 .. Str'Last);
-   end Img;
-
-   ---------------------
-   -- Get_Param_Types --
-   ---------------------
-
-   function Get_Param_Types (Fn_Ty : Type_T) return Type_Array is
-      Fn_Ty_Real : constant Type_T :=
-        (if Get_Type_Kind (Fn_Ty) = Pointer_Type_Kind
-         then Get_Element_Type (Fn_Ty)
-         else Fn_Ty);
-      Params_Types : Type_Array (1 .. Nat (Count_Param_Types (Fn_Ty_Real)));
-
-   begin
-      Get_Param_Types (Fn_Ty_Real, Params_Types'Address);
-      return Params_Types;
-   end Get_Param_Types;
 
    --------------------
    -- Get_Uint_Value --

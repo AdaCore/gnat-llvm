@@ -38,9 +38,6 @@ package GNATLLVM.Utils is
    --  Given a decoded range, return the length of the range, or Max_Length,
    --  whichever is less.
 
-   function Is_Constant_Folded (E : Entity_Id) return Boolean
-     with Pre => Present (E);
-
    function Are_In_Dead_Code return Boolean;
    --  True if we're in dead code (the last instruction is a terminator)
 
@@ -125,16 +122,6 @@ package GNATLLVM.Utils is
    procedure Discard (V  : Value_T)        with Pre => Present (V);
    procedure Discard (T  : Type_T)         with Pre => Present (T);
    procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);
-
-   function Get_Param_Types (Fn_Ty : Type_T) return Type_Array
-     with Pre => Present (Fn_Ty);
-   --  Wrapper for equivalent LLVM function, returning a proper type array.
-   --  Given a function type or a pointer to function type, returns the types
-   --  of the arguments.
-
-   function Img (I : Nat) return String;
-   --  Img function for Nat type that doesn't append a space in front of it
-   --  (since a Nat is always positive).
 
    function Get_Ext_Name (E : Entity_Id) return String
      with Pre => Present (E);

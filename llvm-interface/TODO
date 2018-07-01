@@ -4,13 +4,12 @@ Missing features (identified so far):
 - packed array types are not working properly
 - more __sync builtins and other atomic builtins
 - call "_ext" version of raise routines
-- reduce generation of elaboration code on e.g. aggregates (see system.ads)
 - Unchecked_Union
 - freeze nodes for types and subprograms (see c38102a)
 - very long compilation time in some cases (see various XFAIL in acats, and
   output.adb in bootstrap)
 - representation clauses
 - debug info (for variables, types and parameters)
-- restriction checks done by back end
+- restriction checks done by back end (other than no elab, which is done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - compile subprograms in inlined list

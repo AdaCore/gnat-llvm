@@ -18,6 +18,7 @@
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
+with Restrict; use Restrict;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
@@ -1097,6 +1098,7 @@ package body GNATLLVM.Subprograms is
       if Elaboration_Table.Last = 0
         or else Elaboration_Table.Table (Elaboration_Table.Last).N /= N
       then
+         Check_Elaboration_Code_Allowed (N);
          Elaboration_Table.Append ((N => N, For_Type => For_Type));
       end if;
    end Add_To_Elab_Proc;

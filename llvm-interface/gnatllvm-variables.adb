@@ -142,6 +142,15 @@ package body GNATLLVM.Variables is
      with Pre => Present (N);
    --  Return True if N represents an address that can computed statically
 
+   function Is_Static_Conversion (In_TE, Out_TE : Entity_Id) return Boolean
+     with Pre => Is_Type (In_TE) and then Is_Type (Out_TE);
+   --  Return True if we can statically convert from In_TE to Out_TE
+
+   function Is_No_Elab_Needed (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N represents an expression that can be computed
+   --  without needing an elab proc.
+
    function Hash_Value_T (Val : Value_T) return Hash_Type;
    --  Convert a Value_T to a hash
 
@@ -447,17 +456,22 @@ package body GNATLLVM.Variables is
    begin
       case Nkind (N) is
          when N_Identifier | N_Expanded_Name =>
-            return No (Address_Clause (Entity (N)))
-              and then Ekind (Entity (N)) /= E_Enumeration_Literal
-              and then not Is_Dynamic_Size (Full_Etype (N));
+            return Is_Static_Location (Entity (N));
 
          when N_Defining_Identifier =>
-            return No (Address_Clause (N))
+            return (No (Address_Clause (N))
+                      or else Is_Static_Address (Address_Clause (N)))
               and then Ekind (N) /= E_Enumeration_Literal
-              and then not Is_Dynamic_Size (Full_Etype (N));
+              and then (Ekind (Full_Etype (N)) = E_Void
+                          or else not Is_Dynamic_Size (Full_Etype (N)));
 
          when N_Selected_Component =>
             return Is_Static_Location (Prefix (N));
+
+         when N_Unchecked_Type_Conversion
+            | N_Type_Conversion
+            | N_Qualified_Expression =>
+            return Is_Static_Location (Expression (N));
 
          when N_Indexed_Component =>
 
@@ -502,6 +516,28 @@ package body GNATLLVM.Variables is
       end case;
    end Is_Static_Location;
 
+   --------------------------
+   -- Is_Static_Conversion --
+   --------------------------
+
+   function Is_Static_Conversion (In_TE, Out_TE : Entity_Id) return Boolean is
+   begin
+      --  We can do the conversion statically if both types are elementary
+
+      return (Is_Elementary_Type (In_TE) and then Is_Elementary_Type (Out_TE))
+
+        --  Or if they're the same type
+
+        or else In_TE = Out_TE
+
+        --  Or if neither type is dynamic and the LLVM types are the same
+
+        or else (not Is_Dynamic_Size (In_TE)
+                   and then not Is_Dynamic_Size (Out_TE)
+                   and then Create_Type (In_TE) = Create_Type (Out_TE));
+
+   end Is_Static_Conversion;
+
    -----------------------
    -- Is_Static_Address --
    -----------------------
@@ -515,13 +551,91 @@ package body GNATLLVM.Variables is
             return Is_Static_Address (Expression (N));
 
          when N_Attribute_Reference =>
-            return Get_Attribute_Id (Attribute_Name (N)) = Attribute_Address
+            return (Get_Attribute_Id (Attribute_Name (N))
+                      in Attribute_Address | Attribute_Access |
+                        Attribute_Unchecked_Access |
+                        Attribute_Unrestricted_Access)
               and then Is_Static_Location (Prefix (N));
 
          when others =>
             return Compile_Time_Known_Value (N);
       end case;
    end Is_Static_Address;
+
+   -----------------------
+   -- Is_No_Elab_Needed --
+   -----------------------
+
+   function Is_No_Elab_Needed (N : Node_Id) return Boolean is
+      TE   : constant Entity_Id := Full_Etype (N);
+      Expr : Node_Id;
+
+   begin
+      case Nkind (N) is
+         when N_Aggregate | N_Extension_Aggregate =>
+            if Is_Array_Type (TE) then
+               Expr := First (Expressions (N));
+               while Present (Expr) loop
+                  exit when not Is_No_Elab_Needed (Expr);
+                  Next (Expr);
+               end loop;
+
+            elsif Is_Record_Type (TE) then
+               Expr := First (Component_Associations (N));
+               while Present (Expr) loop
+                  exit when not Is_No_Elab_Needed (Expression (Expr));
+                  Next (Expr);
+               end loop;
+            else
+               return False;
+            end if;
+
+            return No (Expr);
+
+         when N_Binary_Op =>
+            return Is_No_Elab_Needed (Left_Opnd (N))
+              and then Is_No_Elab_Needed (Right_Opnd (N));
+
+         when N_Unary_Op =>
+            return Is_No_Elab_Needed (Right_Opnd (N));
+
+         when N_Unchecked_Type_Conversion
+            | N_Type_Conversion
+            | N_Qualified_Expression =>
+            return Is_Static_Address (Expression (N))
+              or else (Is_Static_Conversion (Full_Etype (Expression (N)), TE)
+                         and then Is_No_Elab_Needed (Expression (N)));
+
+         when N_Attribute_Reference =>
+            case Get_Attribute_Id (Attribute_Name (N)) is
+               when Attribute_Size | Attribute_Object_Size
+                  | Attribute_Value_Size | Attribute_Component_Size
+                  | Attribute_Max_Size_In_Storage_Elements =>
+               if Is_Entity_Name (Prefix (N))
+                 and then Is_Type (Entity (Prefix (N)))
+               then
+                  return not Is_Dynamic_Size (Entity (Prefix (N)));
+               else
+                  return not Is_Dynamic_Size (Full_Etype (Prefix (N)));
+               end if;
+
+               when Attribute_Alignment | Attribute_Descriptor_Size =>
+                  return True;
+
+               when others =>
+                  return Is_Static_Address (N);
+            end case;
+
+         when others =>
+
+            --  If this is a compile-time constant or an address that we
+            --  can evaluate, we don't need any elaboration.
+
+            return Compile_Time_Known_Value (N)
+              or else Is_Static_Address (N);
+      end case;
+
+   end Is_No_Elab_Needed;
 
    ---------------------
    -- Emit_Decl_Lists --
@@ -846,14 +960,19 @@ package body GNATLLVM.Variables is
       end if;
 
       --  If this entity has a freeze node and we're not currently
-      --  processing the freeze node, all we do is evaluate the initial
-      --  expression, if there is one and it's not a constant.  Otherwise,
-      --  see if we've already evaluated that expression and get the value.
+      --  processing the freeze node, all we do is evaluate the
+      --  initial expression, if there is one and it's not something
+      --  we can evaluate statically.  Otherwise, see if we've already
+      --  evaluated that expression and get the value.
 
       if Present (Freeze_Node (Def_Ident))
         and then not For_Freeze_Entity and then not In_Elab_Proc
       then
-         if Present (Expr) and then not Compile_Time_Known_Value (Expr) then
+         if Present (Expr)
+           and then (not Is_No_Elab_Needed (Expr)
+                       or else not Is_Static_Conversion
+                       (Full_Etype (Expr), TE))
+         then
             if Library_Level then
                Add_To_Elab_Proc (Expr, For_Type => TE);
             else
@@ -913,15 +1032,12 @@ package body GNATLLVM.Variables is
          --  this case, we won't be added to the elab proc for any other
          --  reason because if we are, we may do both a static and run-time
          --  initialization.
-         --
-         --  ??? We'd like to use Compile_Time_Known_Value_Or_Agg here, but
-         --  if we have a conversion between two identical record subtypes
-         --  of different names, we can't do that at library level.
 
          if Present (Expr) then
-            if Compile_Time_Known_Value (Expr)
+            if Is_No_Elab_Needed (Expr)
               and then Is_A_Global_Variable (LLVM_Var)
               and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
+              and then Is_Static_Conversion (Full_Etype (Expr), TE)
             then
                if No (Value) then
                   Value := Emit_Convert_Value (Expr, TE);
@@ -1107,7 +1223,7 @@ package body GNATLLVM.Variables is
 
       elsif Is_True_Constant (Def_Ident)
         and then (not Library_Level
-                    or else Compile_Time_Known_Value (Name (N)))
+                    or else Is_No_Elab_Needed (Name (N)))
       then
          Set_Value (Def_Ident, Emit_Conversion (Name (N), TE,
                                                Empty, False, False));

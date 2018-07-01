@@ -935,10 +935,22 @@ package body GNATLLVM.Variables is
 
                Set_Initializer (LLVM_Var, Value);
                Set_Init := True;
-               Copied := True;
+               Copied   := True;
             elsif Library_Level then
                Add_To_Elab_Proc (N);
             end if;
+
+         --  If this is a constrained subtype for a unconstrained actual
+         --  array subtype, this is aliased, and we have no expression.
+         --  In that case, we still have to initialize the bounds.
+
+         elsif Is_Constr_Subt_For_UN_Aliased (TE)
+           and then Is_Array_Type (TE)
+         then
+            Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
+                                            Bounds_And_Data));
+            Set_Init := True;
+            Copied   := True;
          end if;
 
          --  If we haven't already set an initializing expression and

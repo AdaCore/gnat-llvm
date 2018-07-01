@@ -95,7 +95,23 @@ package body GNATLLVM.Subprograms is
      with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
    --  Return a count of the number of parameters of E, that are
    --  output parameters to E.
-   pragma Unreferenced (Count_Out_Params);
+
+   function First_Out_Param (E : Entity_Id) return Entity_Id
+     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
+          Post => No (First_Out_Param'Result)
+                  or else (Ekind_In (First_Out_Param'Result,
+                                     E_Out_Parameter, E_In_Out_Parameter));
+
+   function Next_Out_Param (E : Entity_Id) return Entity_Id
+     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
+          Post => No (Next_Out_Param'Result)
+                  or else (Ekind_In (Next_Out_Param'Result,
+                                     E_Out_Parameter, E_In_Out_Parameter));
+
+   procedure Next_Out_Param (E : in out Entity_Id)
+     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
+          Post => No (E) or else (Ekind_In (E, E_Out_Parameter,
+                                            E_In_Out_Parameter));
 
    --  For subprogram return, we have the mechanism for handling the
    --  subprogram return value, if any, and what the actual LLVM function
@@ -118,6 +134,35 @@ package body GNATLLVM.Subprograms is
    function Get_Return_Kind (Def_Ident : Entity_Id) return Return_Kind
      with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
    --  Get the Return_Kind of Def_Ident, a subprogram or subprogram type
+
+   --  Last, we have the actual LLVM return contents, which can be the
+   --  subprogram return, one or more out parameters, or both.  This
+   --  says which.
+
+   type L_Ret_Kind is
+     (Void,
+      --  The LLVM function has no return, meaning this is a procedure
+      --  with no out parameters.
+
+      Subprog_Return,
+      --  The LLVM function returns what the Ada function returns.
+      --  Return_Kind says if its by value or by reference
+
+      Out_Return,
+      --  The LLVM function returns the contents of the single out
+      --  parameter of a procedure, which must be by value
+
+      Struct_Out,
+      --  The LLVM function returns the contents of more than one
+      --  out parameter of a procedure, put together into a struct.
+
+      Struct_Out_Subprog);
+      --  The LLVM function retuns a struct which contains both the actual
+      --  return data of the function (either by value or reference) and
+      --  one or more out parameters.
+
+   function Get_L_Ret_Kind (Def_Ident : Entity_Id) return L_Ret_Kind
+     with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
 
    --  Elaboration entries can be either nodes to be emitted as statements
    --  or expressions to be saved.
@@ -245,14 +290,14 @@ package body GNATLLVM.Subprograms is
                Cnt := Cnt + 1;
             end if;
 
-            Param := Next_Formal_With_Extras (Param);
+            Next_Formal_With_Extras (Param);
          end loop;
       end return;
    end Count_In_Params;
 
-   ---------------------
-   -- Count_In_Params --
-   ---------------------
+   ----------------------
+   -- Count_Out_Params --
+   ----------------------
 
    function Count_Out_Params (E : Entity_Id) return Nat is
       Param : Entity_Id := First_Formal_With_Extras (E);
@@ -264,28 +309,109 @@ package body GNATLLVM.Subprograms is
                Cnt := Cnt + 1;
             end if;
 
-            Param := Next_Formal_With_Extras (Param);
+            Next_Formal_With_Extras (Param);
          end loop;
       end return;
    end Count_Out_Params;
+
+   ---------------------
+   -- First_Out_Param --
+   ---------------------
+
+   function First_Out_Param (E : Entity_Id) return Entity_Id is
+      Param : Entity_Id := First_Formal_With_Extras (E);
+
+   begin
+      while Present (Param) loop
+         exit when PK_Is_Out (Get_Param_Kind (Param));
+         Next_Formal_With_Extras (Param);
+      end loop;
+
+      return Param;
+   end First_Out_Param;
+
+   ---------------------
+   -- Next_Out_Param --
+   ---------------------
+
+   function Next_Out_Param (E : Entity_Id) return Entity_Id is
+      Param : Entity_Id := Next_Formal_With_Extras (E);
+
+   begin
+      while Present (Param) loop
+         exit when PK_Is_Out (Get_Param_Kind (Param));
+         Next_Formal_With_Extras (Param);
+      end loop;
+
+      return Param;
+   end Next_Out_Param;
+
+   ---------------------
+   -- Next_Out_Param --
+   ---------------------
+
+   procedure Next_Out_Param (E : in out Entity_Id) is
+   begin
+      E := Next_Out_Param (E);
+   end Next_Out_Param;
 
    --------------------
    -- Get_Param_Kind --
    --------------------
 
    function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
-      TE          : constant Entity_Id  := Full_Etype (Param);
-      Ptr_Size    : constant ULL        :=
+      TE           : constant Entity_Id  := Full_Etype (Param);
+      Param_Mode   : Entity_Kind         := Ekind (Param);
+      Ptr_Size     : constant ULL        :=
         Get_LLVM_Type_Size (Void_Ptr_Type);
-      By_Val_Kind : constant Param_Kind :=
-        (if    Ekind (Param) = E_In_Parameter     then In_Value
-         elsif Ekind (Param) = E_In_Out_Parameter then In_Out_Value
-         else  Out_Value);
+      By_Copy_Kind : Param_Kind;
+
+      function Has_Initialized_Component (TE : Entity_Id) return Boolean
+        with Pre => Is_Record_Type (TE);
+      --  Returns True if there's an E_Component in TE that has a
+      --  default expression.  See RM 6.4.1(14).
+
+      -------------------------------
+      -- Has_Initialized_Component --
+      -------------------------------
+
+      function Has_Initialized_Component (TE : Entity_Id) return Boolean is
+         F : Entity_Id := First_Entity (Implementation_Base_Type (TE));
+
+      begin
+         while Present (F) loop
+            exit when Ekind (F) = E_Component and then Present (Parent (F))
+              and then Present (Expression (Parent (F)));
+            Next_Entity (F);
+         end loop;
+
+         return Present (F);
+      end Has_Initialized_Component;
 
    begin
+      --  There are some case where an out parameter needs to be
+      --  viewed as in out.  These are detailed at 6.4.1(12).
+
+      if Param_Mode = E_Out_Parameter
+        and then (Is_Access_Type (TE)
+                    or else (Is_Scalar_Type (TE)
+                               and then Present (Default_Aspect_Value (TE)))
+                    or else Has_Discriminants (TE)
+                    or else (Is_Record_Type (TE)
+                               and then Has_Initialized_Component (TE)))
+      then
+         Param_Mode := E_In_Out_Parameter;
+      end if;
+
+      --  Set the return value if this ends up being by-copy.
+
+      By_Copy_Kind := (if    Param_Mode = E_In_Parameter     then In_Value
+                       elsif Param_Mode = E_In_Out_Parameter then In_Out_Value
+                       else  Out_Value);
+
       --  Handle the easy case of an activation record
 
-      if Ekind (Param) = E_In_Parameter
+      if Param_Mode = E_In_Parameter
         and then Is_Activation_Record (Param)
       then
          return Activation_Record;
@@ -297,15 +423,10 @@ package body GNATLLVM.Subprograms is
       elsif Has_Foreign_Convention (Param)
         or else Has_Foreign_Convention (Scope (Param))
       then
-         return (if   Ekind (Param) = E_In_Parameter
+         return (if   Param_Mode = E_In_Parameter
                         and then Is_Elementary_Type (TE)
                         and then Mechanism (Param) /= By_Reference
                  then In_Value else Foreign_By_Reference);
-
-      --  ??  For now, out or in out passes by reference
-
-      elsif Ekind (Param) /= E_In_Parameter then
-         return PK_By_Reference;
 
       --  Force by-reference and dynamic-sized types to be passed by reference
 
@@ -318,14 +439,14 @@ package body GNATLLVM.Subprograms is
          return PK_By_Reference;
 
       elsif Mechanism (Param) = By_Copy then
-         return By_Val_Kind;
+         return By_Copy_Kind;
 
       --  For the default case, return by reference if it' larger than
       --  two pointer.
 
       else
          return (if   Get_LLVM_Type_Size (Create_Type (TE)) > 2 * Ptr_Size
-                 then PK_By_Reference else By_Val_Kind);
+                 then PK_By_Reference else By_Copy_Kind);
       end if;
 
    end Get_Param_Kind;
@@ -373,6 +494,27 @@ package body GNATLLVM.Subprograms is
 
    end Get_Return_Kind;
 
+   --------------------
+   -- Get_L_Ret_Kind --
+   --------------------
+
+   function Get_L_Ret_Kind (Def_Ident : Entity_Id) return L_Ret_Kind is
+      RK      : constant Return_Kind := Get_Return_Kind (Def_Ident);
+      Num_Out : constant Nat         := Count_Out_Params (Def_Ident);
+      Has_Ret : constant Boolean     := RK not in None | Return_By_Parameter;
+
+   begin
+      if not Has_Ret and then Num_Out = 0 then
+         return Void;
+      elsif Num_Out = 0 then
+         return Subprog_Return;
+      elsif not Has_Ret then
+         return (if Num_Out = 1 then Out_Return else Struct_Out);
+      else
+         return Struct_Out_Subprog;
+      end if;
+   end Get_L_Ret_Kind;
+
    -------------------------
    -- Relationship_For_PK --
    -------------------------
@@ -394,31 +536,37 @@ package body GNATLLVM.Subprograms is
    ----------------------------
 
    function Create_Subprogram_Type (Def_Ident : Entity_Id) return Type_T is
-      Return_Type     : constant Entity_Id   := Full_Etype (Def_Ident);
+      Return_Type     : constant Entity_Id   := Full_Etype      (Def_Ident);
       RK              : constant Return_Kind := Get_Return_Kind (Def_Ident);
+      LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (Def_Ident);
       Foreign         : constant Boolean     :=
         Has_Foreign_Convention (Def_Ident);
       Adds_S_Link     : constant Boolean     :=
         Is_Type (Def_Ident) and then not Foreign;
-      LLVM_Return_Typ : Type_T               :=
+      LLVM_Ret_Typ    : Type_T               :=
         (if    RK in None | Return_By_Parameter then Void_Type
          elsif RK = RK_By_Reference then Create_Access_Type (Return_Type)
          else  Create_Type (Return_Type));
-      Args_Count      : constant Nat         :=
+      In_Args_Count   : constant Nat         :=
         Count_In_Params (Def_Ident) + (if Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);
-      Arg_Types       : Type_Array (1 .. Args_Count);
+      Out_Args_Count  : constant Nat         :=
+        Count_Out_Params (Def_Ident) +
+          (if LRK = Struct_Out_Subprog then 1 else 0);
+      In_Arg_Types    : Type_Array (1 .. In_Args_Count);
+      Out_Arg_Types   : Type_Array (1 .. Out_Args_Count);
       Param_Ent       : Entity_Id            :=
         First_Formal_With_Extras (Def_Ident);
       J               : Nat                  := 1;
+      LLVM_Result_Typ : Type_T               := LLVM_Ret_Typ;
 
    begin
       --  If the return type has dynamic size, we need to add a parameter
       --  to which we pass the address for the return to be placed in.
 
       if RK = Return_By_Parameter then
-         Arg_Types (1) := Create_Access_Type (Return_Type);
-         LLVM_Return_Typ := Void_Type;
+         In_Arg_Types (1) := Create_Access_Type (Return_Type);
+         LLVM_Ret_Typ := Void_Type;
          J := 2;
       end if;
 
@@ -431,7 +579,7 @@ package body GNATLLVM.Subprograms is
 
          begin
             if PK_Is_In (PK) then
-               Arg_Types (J) :=
+               In_Arg_Types (J) :=
                  (if    PK = Foreign_By_Reference
                   then  Pointer_Type (Create_Type (Param_Type), 0)
                   elsif PK = PK_By_Reference
@@ -448,10 +596,38 @@ package body GNATLLVM.Subprograms is
       --  Set the argument for the static link, if any
 
       if Adds_S_Link then
-         Arg_Types (J) := Void_Ptr_Type;
+         In_Arg_Types (J) := Void_Ptr_Type;
       end if;
 
-      return Fn_Ty (Arg_Types, LLVM_Return_Typ);
+      --  Now deal with the result type.  We've already set if it it's
+      --  simply the return type.
+
+      case LRK is
+         when Void | Subprog_Return =>
+            null;
+
+         when Out_Return =>
+            LLVM_Result_Typ :=
+              Create_Type (Full_Etype (First_Out_Param (Def_Ident)));
+
+         when Struct_Out | Struct_Out_Subprog =>
+            J := 1;
+            if LRK = Struct_Out_Subprog then
+               Out_Arg_Types (J) := LLVM_Ret_Typ;
+               J := J + 1;
+            end if;
+
+            Param_Ent := First_Out_Param (Def_Ident);
+            while Present (Param_Ent) loop
+               Out_Arg_Types (J) := Create_Type (Full_Etype (Param_Ent));
+               J := J + 1;
+               Next_Out_Param (Param_Ent);
+            end loop;
+
+            LLVM_Result_Typ := Build_Struct_Type (Out_Arg_Types);
+      end case;
+
+      return Fn_Ty (In_Arg_Types, LLVM_Result_Typ);
    end Create_Subprogram_Type;
 
    -----------------------------------
@@ -791,9 +967,10 @@ package body GNATLLVM.Subprograms is
    procedure Emit_One_Body (N : Node_Id) is
       Spec            : constant Node_Id     := Get_Acting_Spec (N);
       Func            : constant GL_Value    := Emit_Subprogram_Decl (Spec);
-      Def_Ident       : constant Entity_Id   := Defining_Entity (Spec);
-      Return_Typ      : constant Entity_Id   := Full_Etype (Def_Ident);
+      Def_Ident       : constant Entity_Id   := Defining_Entity      (Spec);
+      Return_Typ      : constant Entity_Id   := Full_Etype      (Def_Ident);
       RK              : constant Return_Kind := Get_Return_Kind (Def_Ident);
+      LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (Def_Ident);
       Param_Num       : Nat                  := 0;
       LLVM_Param      : GL_Value;
       Param           : Entity_Id;
@@ -814,7 +991,7 @@ package body GNATLLVM.Subprograms is
          LLVM_Param := Get_Param (Func, Param_Num, Return_Typ,
                                   (if Is_Unconstrained_Array (Return_Typ)
                                    then Fat_Pointer else Reference));
-         Set_Value_Name (LLVM_Value (LLVM_Param), "return");
+         Set_Value_Name (LLVM_Value (LLVM_Param), "_return");
          Return_Address_Param := LLVM_Param;
          Param_Num := Param_Num + 1;
       end if;
@@ -823,25 +1000,34 @@ package body GNATLLVM.Subprograms is
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          declare
-            PK : constant Param_Kind      := Get_Param_Kind (Param);
-            TE : constant Entity_Id       := Full_Etype (Param);
-            R  : constant GL_Relationship := Relationship_For_PK (PK, TE);
-            V  : constant GL_Value        :=
+            type String_Access is access constant String;
+
+            PK     : constant Param_Kind      := Get_Param_Kind (Param);
+            TE     : constant Entity_Id       := Full_Etype (Param);
+            R      : constant GL_Relationship := Relationship_For_PK (PK, TE);
+            V      : constant GL_Value        :=
               (if   PK_Is_In (PK) then Get_Param (Func, Param_Num, TE, R)
                else No_GL_Value);
+            P_Name : aliased constant String  := Get_Name (Param);
+            A_Name : aliased constant String  := P_Name & ".addr";
+            Name   : String_Access            := P_Name'Access;
 
          begin
+            Set_Debug_Pos_At_Node (Param);
+            if Present (V) then
+               Set_Value_Name (V, Get_Name (Param));
+               Name := A_Name'Access;
+            end if;
+
             --  If this is an out parameter, we have to make a variable
             --  for it, possibly initialized to our parameter value if this
             --  is also an in parameter.  Otherwise, we can use the parameter.
             --  unchanged.
 
             if PK_Is_Out (PK) then
-               LLVM_Param := Allocate_For_Type (TE, TE, Param, V,
-                                                Get_Name (Param));
+               LLVM_Param := Allocate_For_Type (TE, TE, Param, V, Name.all);
             else
                LLVM_Param := V;
-               Set_Value_Name (LLVM_Param, Get_Name (Param));
             end if;
 
             if PK = Activation_Record then
@@ -866,15 +1052,23 @@ package body GNATLLVM.Subprograms is
       --  use an access type if this is a dynamic type or a return by ref.
 
       if not Are_In_Dead_Code then
-         case RK is
-            when None | Return_By_Parameter =>
+         case LRK is
+            when Void =>
                Build_Ret_Void;
 
-            when RK_By_Reference =>
-               Build_Ret (Get_Undef_Ref (Return_Typ));
+            when Subprog_Return =>
+               if RK = RK_By_Reference then
+                  Build_Ret (Get_Undef_Ref (Return_Typ));
+               else
+                  Build_Ret (Get_Undef (Return_Typ));
+               end if;
 
-            when Value_Return =>
-               Build_Ret (Get_Undef (Return_Typ));
+            when Out_Return =>
+               Build_Ret (Get_Undef (Full_Etype
+                                       (First_Out_Param (Current_Subp))));
+
+            when Struct_Out | Struct_Out_Subprog =>
+               Build_Ret (Get_Undef_Fn_Ret (Current_Func));
          end case;
       end if;
 
@@ -1028,14 +1222,18 @@ package body GNATLLVM.Subprograms is
    ---------------------------
 
    procedure Emit_Return_Statement (N : Node_Id) is
-      TE : constant Entity_Id   := Full_Etype (Current_Subp);
-      RK : constant Return_Kind := Get_Return_Kind (Current_Subp);
+      TE  : constant Entity_Id   := Full_Etype (Current_Subp);
+      RK  : constant Return_Kind := Get_Return_Kind (Current_Subp);
+      LRK : constant L_Ret_Kind  := Get_L_Ret_Kind (Current_Subp);
+      V   : GL_Value             := No_GL_Value;
 
    begin
       --  First, generate any neded fixups for this.  Then see what kind of
       --  return we're doing.
 
       Emit_Fixups_For_Return;
+
+      --  Start by handling our expression, if any
 
       if Present (Expression (N)) then
          declare
@@ -1051,7 +1249,6 @@ package body GNATLLVM.Subprograms is
             if RK = Return_By_Parameter then
                Emit_Assignment (Return_Address_Param, Expr,
                                 No_GL_Value, True, True);
-               Build_Ret_Void;
 
             --  If this function returns unconstrained, allocate memory for
             --  the return value, copy the data to be returned to there,
@@ -1065,23 +1262,57 @@ package body GNATLLVM.Subprograms is
               or else (RK = RK_By_Reference
                          and then Present (Storage_Pool (N)))
             then
-               Build_Ret
-                 (Heap_Allocate_For_Type
-                    (TE, Full_Etype (Expr), Emit_Expression (Expr),
-                     Procedure_To_Call (N), Storage_Pool (N)));
+               V := (Heap_Allocate_For_Type
+                       (TE, Full_Etype (Expr), Emit_Expression (Expr),
+                        Procedure_To_Call (N), Storage_Pool (N)));
 
             elsif RK = RK_By_Reference then
-               Build_Ret (Convert_Ref (Emit_LValue (Expr), TE));
+               V := Convert_Ref (Emit_LValue (Expr), TE);
 
             else
-               Build_Ret (Emit_Convert_Value (Expr, TE));
+               V := Emit_Convert_Value (Expr, TE);
             end if;
          end;
-
       else
          pragma Assert (RK = None);
-         Build_Ret_Void;
       end if;
+
+      --  Now see what the actual return value of this LLVM function should be
+
+      case LRK is
+         when Void =>
+            Build_Ret_Void;
+
+         when Subprog_Return =>
+            Build_Ret (V);
+
+         when Out_Return =>
+            Build_Ret (Get (Get_Value (First_Out_Param (Current_Subp)), Data));
+
+         when Struct_Out | Struct_Out_Subprog =>
+
+            declare
+               Retval : GL_Value  := Get_Undef_Fn_Ret (Current_Func);
+               Param  : Entity_Id := First_Out_Param  (Current_Subp);
+               J      : unsigned  := 0;
+
+            begin
+               if LRK = Struct_Out_Subprog then
+                  Retval := Insert_Value (Retval, V, J);
+                  J      := J + 1;
+               end if;
+
+               while Present (Param) loop
+                  Retval :=
+                    Insert_Value (Retval, Get (Get_Value (Param), Data), J);
+                  J      := J + 1;
+                  Next_Out_Param (Param);
+               end loop;
+
+               Build_Ret (Retval);
+            end;
+      end case;
+
    end Emit_Return_Statement;
 
    ---------------------
@@ -1130,14 +1361,43 @@ package body GNATLLVM.Subprograms is
       end if;
    end Get_Static_Link;
 
-   ------------------------
-   -- Call_Alloc_Dealloc --
-   ------------------------
+   ----------------
+   -- Call_Alloc --
+   ----------------
 
-   procedure Call_Alloc_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
+   function Call_Alloc
+     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value
+   is
       Func           : constant GL_Value := Emit_Safe_LValue (Proc);
       Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
       S_Link         : GL_Value;
+
+   begin
+      if Subps_Index (Proc) /= Uint_0
+        and then Present (Subps.Table (Subp_Index (Proc)).ARECnF)
+      then
+         --  This needs a static link.  Get it, convert it to the precise
+         --  needed type, and then create the new argument list.
+
+         S_Link := Pointer_Cast (Get_Static_Link (Proc),
+                                 Full_Etype (Extra_Formals (Proc)));
+         Args_With_Link (Args'Range) := Args;
+         Args_With_Link (Args_With_Link'Last) := S_Link;
+         return Call (Func, Size_Type, Args_With_Link);
+      else
+         return Call (Func, Size_Type, Args);
+      end if;
+   end Call_Alloc;
+
+   ------------------
+   -- Call_Dealloc --
+   ------------------
+
+   procedure Call_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
+      Func           : constant GL_Value := Emit_Safe_LValue (Proc);
+      Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
+      S_Link         : GL_Value;
+
    begin
       if Subps_Index (Proc) /= Uint_0
         and then Present (Subps.Table (Subp_Index (Proc)).ARECnF)
@@ -1153,7 +1413,7 @@ package body GNATLLVM.Subprograms is
       else
          Call (Func, Args);
       end if;
-   end Call_Alloc_Dealloc;
+   end Call_Dealloc;
 
    --------------------
    -- Name_To_RMW_Op --
@@ -1511,31 +1771,78 @@ package body GNATLLVM.Subprograms is
    ---------------
 
    function Emit_Call (N : Node_Id) return GL_Value is
+
+      procedure Write_Back (In_LHS, In_RHS : GL_Value)
+        with Pre => Present (In_LHS) and then Present (In_RHS)
+                    and then not Is_Reference (In_RHS)
+                    and then Is_Reference (In_LHS);
+      --  Write the value in In_RHS to the location In_LHS
+
       Subp             : Node_Id              := Name (N);
       Our_Return_Typ   : constant Entity_Id   := Full_Etype (N);
       Direct_Call      : constant Boolean     :=
         Nkind (Subp) /= N_Explicit_Dereference;
       Subp_Typ         : constant Entity_Id   :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
-      RK               : constant Return_Kind := Get_Return_Kind (Subp_Typ);
-      Return_Typ       : constant Entity_Id   := Full_Etype (Subp_Typ);
+      RK               : constant Return_Kind := Get_Return_Kind  (Subp_Typ);
+      LRK              : constant L_Ret_Kind  := Get_L_Ret_Kind   (Subp_Typ);
+      Return_Typ       : constant Entity_Id   := Full_Etype       (Subp_Typ);
+      Orig_Arg_Count   : constant Nat         := Count_In_Params  (Subp_Typ);
+      Out_Arg_Count    : constant Nat         := Count_Out_Params (Subp_Typ);
+      Out_Param        : Entity_Id            := First_Out_Param  (Subp_Typ);
+      In_Idx           : Nat                  := 1;
+      Out_Idx          : Nat                  := 1;
+      Ret_Idx          : Nat                  := 1;
+      Result           : GL_Value             := No_GL_Value;
       Foreign          : constant Boolean     :=
         Has_Foreign_Convention (Subp_Typ);
-      Param            : Node_Id;
-      Actual           : Node_Id;
       This_Adds_S_Link : constant Boolean     :=
         not Direct_Call and not Foreign;
-      Orig_Arg_Count   : constant Nat         := Count_In_Params (Subp_Typ);
-      Args_Count       : constant Nat         :=
+      Arg_Count        : constant Nat         :=
         Orig_Arg_Count + (if This_Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);
-      Args             : GL_Value_Array (1 .. Args_Count);
-      Idx              : Nat                  := 1;
+      Args             : GL_Value_Array (1 .. Arg_Count);
+      Out_LHSs         : GL_Value_Array (1 .. Out_Arg_Count);
+      Actual_Return    : GL_Value;
       S_Link           : GL_Value;
       LLVM_Func        : GL_Value;
-      Result           : GL_Value;
+      Param            : Node_Id;
+      Actual           : Node_Id;
 
-   begin
+      ----------------
+      -- Write_Back --
+      ----------------
+
+      procedure Write_Back (In_LHS, In_RHS : GL_Value) is
+         LHS      : GL_Value           := In_LHS;
+         RHS      : GL_Value           := In_RHS;
+         LHS_TE   : constant Entity_Id := Related_Type (LHS);
+         RHS_TE   : constant Entity_Id := Related_Type (RHS);
+
+      begin
+         --  We've looked through any conversions in the actual and
+         --  evaluated the actual LHS to be assigned before the call.  We
+         --  wouldn't be here is this were a dynamic-sized type, and we
+         --  know that the types of LHS and RHS are similar, but it may be
+         --  a small record and the types on both sides may differ.
+         --
+         --  If we're dealing with elementary types, convert the RHS to the
+         --  type of the LHS.  Otherwise, convert the type of the LHS to be
+         --  a reference to the type of the RHS.
+
+         if Is_Elementary_Type (LHS_TE) then
+            RHS := Convert (RHS, LHS_TE);
+         else
+            LHS := Convert_Ref (LHS, RHS_TE);
+         end if;
+
+         --  Now do the assignment.  We could call Emit_Assignment, but
+         --  we've already done almost all of the work above.
+
+         Store (RHS, LHS);
+      end Write_Back;
+
+   begin  -- Start of processing for Emit_Call
 
       if Direct_Call then
          Subp := Entity (Subp);
@@ -1561,9 +1868,9 @@ package body GNATLLVM.Subprograms is
       --  type is of dynamic size.
 
       if RK = Return_By_Parameter then
-         Args (Idx) :=
+         Args (In_Idx) :=
            Allocate_For_Type (Return_Typ, Return_Typ, Subp, Name => "return");
-         Idx := Idx + 1;
+         In_Idx        := In_Idx + 1;
       end if;
 
       Param  := First_Formal_With_Extras (Subp_Typ);
@@ -1577,13 +1884,12 @@ package body GNATLLVM.Subprograms is
             Arg : GL_Value;
 
          begin
+            --  We don't want to get confused between LValues from
+            --  a previous parameter when getting positions and
+            --  sizes of another, so clear the list.
+
+            Clear_LValue_List;
             if PK_Is_In (PK) then
-
-               --  We don't want to get confused between LValues from
-               --  a previous parameter when getting positions and
-               --  sizes of another, so clear the list.
-
-               Clear_LValue_List;
 
                --  We have two cases: if the param isn't passed
                --  indirectly, convert the value to the parameter's type.
@@ -1601,8 +1907,18 @@ package body GNATLLVM.Subprograms is
                   Arg := Emit_Convert_Value (Actual, TE);
                end if;
 
-               Args (Idx) := Arg;
-               Idx := Idx + 1;
+               Args (In_Idx) := Arg;
+               In_Idx        := In_Idx + 1;
+            end if;
+
+            --  For out and in out parameters, we need to evaluate the
+            --  expression before the call (see, e.g., c64107a) into an
+            --  LValue and use that after the return.  We look through any
+            --  conversions here.
+
+            if PK_Is_Out (PK) then
+               Out_LHSs (Out_Idx) := Emit_LValue (Strip_Conversions (Actual));
+               Out_Idx            := Out_Idx + 1;
             end if;
          end;
 
@@ -1614,23 +1930,69 @@ package body GNATLLVM.Subprograms is
       --  Set the argument for the static link, if any
 
       if This_Adds_S_Link then
-         Args (Idx) := S_Link;
+         Args (In_Idx) := S_Link;
       end if;
 
-      --  If the return type is of dynamic size, call as a procedure and
-      --  return the address we set as the first parameter.
+      --  Now we handle the result.  It may be the return type of a function,
+      --  in which case we return it, one or more out parameters, or both.
+      --  We may also have used the first parameter to pass an address where
+      --  our value was returned.
+
+      case LRK is
+         when Void =>
+            Call (LLVM_Func, Args);
+
+         when Subprog_Return =>
+            if RK = RK_By_Reference then
+               return Call_Ref (LLVM_Func, Return_Typ, Args);
+            else
+               return Call (LLVM_Func, Return_Typ, Args);
+            end if;
+
+         when Out_Return =>
+
+            --  Write back the single out parameter to our saved LHS
+
+            Write_Back
+              (Out_LHSs (1), Call (LLVM_Func, Full_Etype (Out_Param), Args));
+
+         when Struct_Out | Struct_Out_Subprog =>
+            Actual_Return := Call_Struct (LLVM_Func, Return_Typ, Args);
+
+            --  First extract the return value (possibly returned by-ref)
+
+            Ret_Idx := 0;
+            if LRK = Struct_Out_Subprog then
+               if RK = RK_By_Reference then
+                  Result := Extract_Value_To_Ref (Return_Typ, Actual_Return,
+                                                  unsigned (Ret_Idx));
+               else
+                  Result := Extract_Value (Return_Typ, Actual_Return,
+                                           unsigned (Ret_Idx));
+               end if;
+
+               Ret_Idx := Ret_Idx + 1;
+            end if;
+
+            --  Now write back any out parameters
+
+            Out_Idx := 1;
+            while Present (Out_Param) loop
+               Write_Back (Out_LHSs (Out_Idx),
+                           Extract_Value (Full_Etype (Out_Param),
+                                          Actual_Return, unsigned (Ret_Idx)));
+               Ret_Idx := Ret_Idx + 1;
+               Out_Idx := Out_Idx + 1;
+               Next_Out_Param (Out_Param);
+            end loop;
+      end case;
 
       if RK = Return_By_Parameter then
-         Call (LLVM_Func, Args);
          return Convert_Ref (Args (1), Our_Return_Typ);
-      elsif RK = RK_By_Reference then
-         return Call_Ref (LLVM_Func, Return_Typ, Args);
-      elsif RK = None then
-         Call (LLVM_Func, Args);
-         return No_GL_Value;
       else
-         return Call (LLVM_Func, Return_Typ, Args);
+         return Result;
       end if;
+
    end Emit_Call;
 
    --------------------------

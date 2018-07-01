@@ -112,7 +112,8 @@ package GNATLLVM.GLValue is
 
       Unknown,
       --  Object is an unknown relation to the type.  Used for peculiar
-      --  LLVM objects such as landing pads.
+      --  LLVM objects such as landing pads or the structure representing
+      --  the return from a function.
 
       Any_Reference,
       --  Valid only as an operand to Get and indicates that a value with
@@ -662,6 +663,11 @@ package GNATLLVM.GLValue is
    function Get_Undef_Ref (T : Type_T; TE : Entity_Id) return GL_Value is
      (G_Ref (Get_Undef (T), TE))
      with Pre => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
+
+   function Get_Undef_Fn_Ret (V : GL_Value) return GL_Value is
+     (G (Get_Undef (Get_Return_Type (Get_Element_Type (Type_Of (V)))),
+         Related_Type (V), Unknown))
+     with Pre => Is_A_Function (V), Post => Is_Undef (Get_Undef_Fn_Ret'Result);
 
    function Const_Null (TE : Entity_Id) return GL_Value
      with Pre => Is_Type (TE), Post => Present (Const_Null'Result);
@@ -1395,6 +1401,16 @@ package GNATLLVM.GLValue is
       Name        : String := "") return GL_Value
      with Pre  => Present (Func) and then Is_Type (Result_Type),
           Post => Is_Reference (Call_Ref'Result);
+
+   function Call_Struct
+     (Func        : GL_Value;
+      Result_Type : Entity_Id;
+      Args        : GL_Value_Array;
+      Name        : String := "") return GL_Value
+     with Pre  => Present (Func) and then Is_Type_Or_Void (Result_Type),
+          Post => Present (Call_Struct'Result);
+   --  Used when an LLVM function is returning a structure for multiple
+   --  values.
 
    procedure Call
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")

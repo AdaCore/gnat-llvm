@@ -1250,46 +1250,38 @@ package body GNATLLVM.Types is
       Size       : constant GL_Value  := Get_Alloc_Size (TE, Alloc_Type, V);
       Align      : constant unsigned  := Get_Type_Alignment (Alloc_Type);
       Align_V    : constant GL_Value  := Size_Const_Int (Align);
-      Ret_Loc    : constant GL_Value  :=
-        (if No (Proc) then No_GL_Value
-         else Allocate_For_Type (Size_Type, Size_Type, Empty));
+      Result     : GL_Value;
 
    begin
       --  If no function was specified, use the default memory allocation
       --  function, where we just pass a size.
 
       if No (Proc) then
-         return Move_Into_Memory
-           (Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size)),
-            V, TE, Alloc_Type);
+         Result := Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size));
 
       --  If a procedure was specified (meaning that a pool must also have
       --  been specified) and the pool is a record, then it's a storage
       --  pool and we pass the pool, size, and alignment. Be sure that we
       --  convert the pool to actual type of the formal of the deallocator
-      --  function: it may be a derived type.  ???  This is a procedure
-      --  whose first parameter is an OUT parameter where it puts the
-      --  address.  We should be converting procedures with OUT parameters
-      --  to functions, which would make the below a lot easier, but we
-      --  don't yet (because there's no good place to indicate that we
-      --  have).
+      --  function: it may be a derived type.
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
-         Call_Alloc_Dealloc (Proc,
-               (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
-                                 Full_Etype (First_Formal (Proc))),
-                2 => Ret_Loc, 3 => Size, 4 => Align_V));
+         Result :=
+           Call_Alloc (Proc,
+                       (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
+                                         Full_Etype (First_Formal (Proc))),
+                        2 => Size, 3 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Call_Alloc_Dealloc (Proc, (1 => Ret_Loc, 2 => Size));
+         Result := Call_Alloc (Proc, (1 => Size));
       end if;
 
       --  If we're doing this for an unconstrained array, we have the pointer
       --  to the raw array, not a fat pointer.
 
-      return Move_Into_Memory (Load (Ret_Loc), V, TE, Alloc_Type);
+      return Move_Into_Memory (Result, V, TE, Alloc_Type);
    end Heap_Allocate_For_Type;
 
    ---------------------
@@ -1333,7 +1325,7 @@ package body GNATLLVM.Types is
       --  the deallocator function: it may be a derived type.
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
-         Call_Alloc_Dealloc (Proc,
+         Call_Dealloc (Proc,
                (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
                                  Full_Etype (First_Formal (Proc))),
                 2 => Ptr_To_Size_Type (Converted_V),
@@ -1342,8 +1334,7 @@ package body GNATLLVM.Types is
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Call_Alloc_Dealloc (Proc,
-               (1 => Ptr_To_Size_Type (Converted_V), 2 => Size));
+         Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Converted_V), 2 => Size));
       end if;
    end Heap_Deallocate;
 

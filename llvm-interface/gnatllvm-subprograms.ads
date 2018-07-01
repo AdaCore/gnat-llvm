@@ -112,10 +112,18 @@ package GNATLLVM.Subprograms is
    --  Compile a call statement/expression and return its result
    --  value.  If this is calling a procedure, there will be no return value.
 
-   procedure Call_Alloc_Dealloc (Proc : Entity_Id; Args : GL_Value_Array)
+   function Call_Alloc
+     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value
      with Pre => Ekind (Proc) = E_Procedure;
-   --  Proc is a Procedure_To_Call for an allocation or deallocation and Args
-   --  are its arguments.  See if Proc needs a static link and pass one, if so.
+   --  Proc is a Procedure_To_Call for an allocation and Args are its
+   --  arguments.  See if Proc needs a static link and pass one, if
+   --  so.  This procedure has one out parameter, so the low-level
+   --  call is as a function returning the memory that was allocated.
+
+   procedure Call_Dealloc (Proc : Entity_Id; Args : GL_Value_Array)
+     with Pre => Ekind (Proc) = E_Procedure;
+   --  Proc is a Procedure_To_Call for a deallocation and Args are its
+   --  arguments.  See if Proc needs a static link and pass one, if so.
 
    procedure Add_To_Elab_Proc (N : Node_Id; For_Type : Entity_Id := Empty)
      with Pre => Library_Level and then Present (N)

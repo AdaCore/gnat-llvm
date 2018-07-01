@@ -1184,6 +1184,19 @@ package body GNATLLVM.GLValue is
       return G_Ref (Call_Internal (Func, Args, Name), Result_Type);
    end Call_Ref;
 
+   -----------------
+   -- Call_Struct --
+   -----------------
+
+   function Call_Struct
+     (Func        : GL_Value;
+      Result_Type : Entity_Id;
+      Args        : GL_Value_Array;
+      Name        : String := "") return GL_Value is
+   begin
+      return G (Call_Internal (Func, Args, Name), Result_Type, Unknown);
+   end Call_Struct;
+
    ----------
    -- Call --
    ----------

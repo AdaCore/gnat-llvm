@@ -1662,18 +1662,14 @@ package body GNATLLVM.Subprograms is
       --  ??? For now, at least, check if it's empty.
 
       while Present (Formal) loop
-         if Ekind (Formal) = E_In_Parameter
+         exit when  Ekind (Formal) = E_In_Parameter
            and then Is_Activation_Record (Formal)
            and then Present (First_Component_Or_Discriminant
-                               (Full_Designated_Type (Full_Etype (Formal))))
-         then
-            return True;
-         end if;
-
+                               (Full_Designated_Type (Full_Etype (Formal))));
          Next_Formal_With_Extras (Formal);
       end loop;
 
-      return False;
+      return Present (Formal);
    end Has_Activation_Record;
 
    --------------------------------

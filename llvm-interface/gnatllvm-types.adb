@@ -131,16 +131,13 @@ package body GNATLLVM.Types is
       Idx1 := First_Index (T1);
       Idx2 := First_Index (T2);
       while Present (Idx1) loop
-         if Create_Type (Full_Etype (Idx1)) /= Create_Type (Full_Etype (Idx2))
-         then
-            return True;
-         end if;
-
+         exit when
+           Create_Type (Full_Etype (Idx1)) /= Create_Type (Full_Etype (Idx2));
          Next_Index (Idx1);
          Next_Index (Idx2);
       end loop;
 
-      return False;
+      return Present (Idx1);
    end Are_Arrays_With_Different_Index_Types;
 
    -----------------------

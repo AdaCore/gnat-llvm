@@ -476,18 +476,14 @@ package body GNATLLVM.Variables is
             Index := First_Index (Full_Etype (Prefix (N)));
             Expr  := First (Expressions (N));
             while Present (Index) loop
-               if not Is_Static_Expression
+               exit when not Is_Static_Expression
                  (Low_Bound (Get_Dim_Range (Index)))
-                 or else not Is_Static_Expression (Expr)
-               then
-                  return False;
-               end if;
-
+                 or else not Is_Static_Expression (Expr);
                Next_Index (Index);
                Next (Expr);
             end loop;
 
-            return True;
+            return No (Index);
 
          when N_Slice =>
 

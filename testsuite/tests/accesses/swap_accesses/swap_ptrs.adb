@@ -1,5 +1,5 @@
 package body Swap_Ptrs is
-   procedure Swap_Ptrs (A : in out Int_Access; B : in out Int_Access) is
+   procedure Swap_Ptrs (A : out Int_Access; B : out Int_Access) is
       Tmp : Int_Access;
    begin
       Tmp := A;

@@ -396,6 +396,7 @@ package body GNATLLVM.GLValue is
             Result := G (Alloca (IR_Builder, Type_Of (V), ""),
                          Related_Type (V), Ref (Relationship (V)));
             Store (V, Result);
+            Save_Stack_Pointer;
             return Result;
          end if;
       end if;
@@ -648,6 +649,7 @@ package body GNATLLVM.GLValue is
 
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (T));
+      Save_Stack_Pointer;
       return G (Inst, TE, R);
    end Alloca;
 
@@ -665,6 +667,7 @@ package body GNATLLVM.GLValue is
                       LLVM_Value (Num_Elts), Name);
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
+      Save_Stack_Pointer;
       return G_Ref (Inst, TE);
    end Array_Alloca;
 

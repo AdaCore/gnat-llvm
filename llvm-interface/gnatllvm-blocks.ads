@@ -46,6 +46,9 @@ package GNATLLVM.Blocks is
      with Pre => not Library_Level;
    --  Push a block onto the block stack and mark its start
 
+   procedure Save_Stack_Pointer;
+   --  Generate a stack save at the start of the current block
+
    procedure Start_Block_Statements
      (At_End_Proc : Entity_Id; EH_List : List_Id)
      with Pre => not Library_Level;

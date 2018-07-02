@@ -25,6 +25,24 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Utils is
 
+   --  A type used to save a position at some earlier point in emitting
+   --  code so that we can go back to it to emit more code.  Instr can
+   --  be empty, in which case we mean to insert at the beginning of
+   --  the basic block.
+
+   type Position_T is record
+      BB    : Basic_Block_T;
+      Instr : Value_T;
+   end record;
+
+   Empty_Position : Position_T := (No_BB_T, No_Value_T);
+
+   function No      (P : Position_T) return Boolean is (P = Empty_Position);
+   function Present (P : Position_T) return Boolean is (P /= Empty_Position);
+
+   function  Get_Current_Position return Position_T;
+   procedure Set_Current_Position (P : Position_T);
+
    procedure Decode_Range (N : Node_Id; Low, High : out Uint)
      with Pre => Present (N);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in

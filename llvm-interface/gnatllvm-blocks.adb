@@ -40,34 +40,37 @@ package body GNATLLVM.Blocks is
    --  we're in and we construct a table to act as a block stack.
 
    type Block_Info is record
-      In_Stmts           : Boolean;
+      In_Stmts          : Boolean;
       --  True if we are in the statement section of the current block
 
-      Unprotected        : Boolean;
+      Unprotected       : Boolean;
       --  True if we've reached the pop of the block (in the end handler
       --  or its fixup) where calls aren't protected by exceptions or
       --  At_End handlers in this block.
 
-      Stack_Save         : GL_Value;
-      --  Value of the stack pointer at entry to the block
+      Stack_Save        : GL_Value;
+      --  Value of the stack pointer at entry to the block, if saved
 
-      At_End_Proc        : GL_Value;
+      Starting_Position : Position_T;
+      --  The position at the start of the block
+
+      At_End_Proc       : GL_Value;
       --  Procedure to be called at normal or abnormal exit of the block
 
-      At_End_Parameter   : GL_Value;
+      At_End_Parameter  : GL_Value;
       --  A parameter to pass to the At_End_Proc, for example an
       --  activation record.
 
-      Landing_Pad        : Basic_Block_T;
+      Landing_Pad       : Basic_Block_T;
       --  Basic block containing the landing pad for this block, if any.
 
-      EH_List            : List_Id;
+      EH_List           : List_Id;
       --  List of exception handlers
 
-      Dispatch_BB        : Basic_Block_T;
+      Dispatch_BB       : Basic_Block_T;
       --  BB created by an inner handler to branch to our dispatch code
 
-      Exc_Ptr            : GL_Value;
+      Exc_Ptr           : GL_Value;
       --  The exception pointer for the block
 
    end record;
@@ -262,9 +265,6 @@ package body GNATLLVM.Blocks is
    procedure Call_At_End (Block : Block_Stack_Level);
    --  Call the At_End procedure of Block, if any
 
-   procedure Restore_Stack_From (Stack_Save : GL_Value);
-   --  Restore the stack from the value saved in Stack_Save
-
    procedure Build_Fixups_From_To (From, To : Block_Stack_Level);
    --  We're currently in block From and going to block To.  Call any
    --  "at end" procedures in between and restore the stack, if needed.
@@ -348,34 +348,54 @@ package body GNATLLVM.Blocks is
    ----------------
 
    procedure Push_Block is
-      Stack_Save : constant GL_Value :=
-        (if Block_Stack.Last < 1 then No_GL_Value
-         else Call (Get_Stack_Save_Fn, Standard_A_Char, (1 .. 0 => <>)));
    begin
-      Block_Stack.Append ((Stack_Save       => Stack_Save,
-                           At_End_Proc      => No_GL_Value,
-                           At_End_Parameter => No_GL_Value,
-                           Landing_Pad      => No_BB_T,
-                           Dispatch_BB      => No_BB_T,
-                           Exc_Ptr          => No_GL_Value,
-                           EH_List          => No_List,
-                           In_Stmts         => False,
-                           Unprotected      => False));
+      Block_Stack.Append ((Stack_Save        => No_GL_Value,
+                           Starting_Position => Get_Current_Position,
+                           At_End_Proc       => No_GL_Value,
+                           At_End_Parameter  => No_GL_Value,
+                           Landing_Pad       => No_BB_T,
+                           Dispatch_BB       => No_BB_T,
+                           Exc_Ptr           => No_GL_Value,
+                           EH_List           => No_List,
+                           In_Stmts          => False,
+                           Unprotected       => False));
 
    end Push_Block;
+
+   ------------------------
+   -- Save_Stack_Pointer --
+   ------------------------
+
+   procedure Save_Stack_Pointer is
+      BI : Block_Info renames Block_Stack.Table (Block_Stack.Last);
+      Our_BB : constant Basic_Block_T := Get_Insert_Block;
+
+   begin
+      --  If we're not in the top-level block and we haven't already saved
+      --  the stack, produce a stack save at the start of the block.
+
+      if No (BI.Stack_Save) and then Block_Stack.Last > 1 then
+         Set_Current_Position (BI.Starting_Position);
+         BI.Stack_Save := Call (Get_Stack_Save_Fn, Standard_A_Char,
+                                (1 .. 0 => <>));
+         Position_Builder_At_End (Our_BB);
+      end if;
+   end Save_Stack_Pointer;
 
    -----------------------------
    --  Start_Block_Statements --
    -----------------------------
 
    procedure Start_Block_Statements
-     (At_End_Proc : Entity_Id; EH_List : List_Id) is
+     (At_End_Proc : Entity_Id; EH_List : List_Id)
+   is
+      BI : Block_Info renames Block_Stack.Table (Block_Stack.Last);
 
    begin
-      pragma Assert (not Block_Stack.Table (Block_Stack.Last).In_Stmts);
+      pragma Assert (not BI.In_Stmts);
 
-      Block_Stack.Table (Block_Stack.Last).EH_List  := EH_List;
-      Block_Stack.Table (Block_Stack.Last).In_Stmts := True;
+      BI.EH_List  := EH_List;
+      BI.In_Stmts := True;
 
       if Present (At_End_Proc) then
 
@@ -385,13 +405,12 @@ package body GNATLLVM.Blocks is
          --  record.  There may not be a static link, however, if there re
          --  no uplevel references.
 
-         Block_Stack.Table (Block_Stack.Last).At_End_Proc :=
-           Emit_LValue (At_End_Proc);
+         BI.At_End_Proc := Emit_LValue (At_End_Proc);
          if Subps_Index (Entity (At_End_Proc)) /= Uint_0
            and then Present (Subps.Table (Subp_Index
                                             (Entity (At_End_Proc))).ARECnF)
          then
-            Block_Stack.Table (Block_Stack.Last).At_End_Parameter :=
+            BI.At_End_Parameter :=
               Pointer_Cast (Get_Static_Link (At_End_Proc),
                             Full_Etype (Extra_Formals (Entity (At_End_Proc))));
          end if;
@@ -443,15 +462,6 @@ package body GNATLLVM.Blocks is
       end if;
    end Call_At_End;
 
-   ------------------------
-   -- Restore_Stack_From --
-   ------------------------
-
-   procedure Restore_Stack_From (Stack_Save : GL_Value) is
-   begin
-      Call (Get_Stack_Restore_Fn, (1 => Stack_Save));
-   end Restore_Stack_From;
-
    -------------------------
    -- Build_Fixups_From_To --
    -------------------------
@@ -475,7 +485,7 @@ package body GNATLLVM.Blocks is
       --  the subprogram, restore the stack pointer.
 
       if To /= 0 and then Present (Stack_Save) then
-         Restore_Stack_From (Stack_Save);
+         Call (Get_Stack_Restore_Fn, (1 => Stack_Save));
       end if;
 
    end Build_Fixups_From_To;

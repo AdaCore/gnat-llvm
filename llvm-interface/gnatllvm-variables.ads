@@ -82,6 +82,16 @@ package GNATLLVM.Variables is
    --  make the second pass over both lists if Pass2 is true.  The lists
    --  usually correspond to the public and private parts of a package.
 
+   function Maybe_Promote_Alloca (T : Type_T) return Basic_Block_T
+     with Pre => Present (T);
+   --  Called when about to do an alloca of type T to see if that
+   --  alloca should be promoted to the entry block.  The return from
+   --  this function must be passed to Done_Promoting_Alloca along
+   --  with the alloca immediately after emitting the alloca.  The
+   --  pair of calls will do what's necessary, either promoting the
+   --  alloca or forcing a stack save/restore.
+   procedure Done_Promoting_Alloca (Alloca : Value_T; BB : Basic_Block_T);
+
    function Make_Global_Constant (V : GL_Value) return GL_Value
      with Pre  => not Is_Reference (V),
           Post => Is_A_Global_Variable (Make_Global_Constant'Result);

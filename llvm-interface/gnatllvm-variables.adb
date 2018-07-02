@@ -637,6 +637,50 @@ package body GNATLLVM.Variables is
 
    end Is_No_Elab_Needed;
 
+   --------------------------
+   -- Maybe_Promote_Alloca --
+   --------------------------
+
+   function Maybe_Promote_Alloca (T : Type_T) return Basic_Block_T is
+      Current_BB         : constant Basic_Block_T := Get_Insert_Block;
+      Threshold_In_Words : constant               := 4;
+      Max_Promoted_Size  : constant ULL :=
+        Get_LLVM_Type_Size (Void_Ptr_Type) * Threshold_In_Words;
+
+   begin
+      --  If this is small, promote it to the entry block by setting our
+      --  position into that block and returning our current position.
+      --  Otherwise, nothing to do here.
+
+      if Present (Entry_Block_Allocas)
+        and then Get_LLVM_Type_Size (T) <= Max_Promoted_Size
+      then
+         Set_Current_Position (Entry_Block_Allocas);
+         return Current_BB;
+      else
+         return No_BB_T;
+      end if;
+   end Maybe_Promote_Alloca;
+
+   ---------------------------
+   -- Done_Promoting_Alloca --
+   ---------------------------
+
+   procedure Done_Promoting_Alloca (Alloca : Value_T; BB : Basic_Block_T) is
+   begin
+      --  If we promoted this alloca, update the position for allocas
+      --  to after this one and restore the saved position.
+      --  Otherwise, indicate that a stack save may be needed in the
+      --  current block.
+
+      if Present (BB) then
+         Entry_Block_Allocas.Instr := Alloca;
+         Position_Builder_At_End (BB);
+      else
+         Save_Stack_Pointer;
+      end if;
+   end Done_Promoting_Alloca;
+
    ---------------------
    -- Emit_Decl_Lists --
    ---------------------

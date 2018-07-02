@@ -19,6 +19,7 @@ with Sinfo; use Sinfo;
 with Uintp; use Uintp;
 
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Subprograms is
 
@@ -191,22 +192,26 @@ package GNATLLVM.Subprograms is
    procedure Initialize;
    --  Initialize module
 
-   Current_Subp : Entity_Id := Empty;
+   Current_Subp             : Entity_Id  := Empty;
    --  The spec entity for the subprogram currently being compiled
 
-   Current_Func             : GL_Value := No_GL_Value;
+   Current_Func             : GL_Value   := No_GL_Value;
    --  Pointer to the current function
 
-   Activation_Rec_Param     : GL_Value;
+   Activation_Rec_Param     : GL_Value   := No_GL_Value;
    --  Parameter to this subprogram, if any, that represents an
    --  activtion record.
 
-   Return_Address_Param     : GL_Value;
+   Return_Address_Param     : GL_Value   := No_GL_Value;
    --  Parameter to this subprogram, if any, that represent the address
    --  to which we are to copy the return value
 
-   In_Elab_Proc             : Boolean := False;
+   In_Elab_Proc             : Boolean    := False;
    --  True if we're in the process of emitting the code for an elaboration
    --  procedure.
+
+   Entry_Block_Allocas      : Position_T := No_Position_T;
+   --  If Present, a location to use to insert small alloca's into the entry
+   --  block.
 
 end GNATLLVM.Subprograms;

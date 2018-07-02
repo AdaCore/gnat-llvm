@@ -35,10 +35,10 @@ package GNATLLVM.Utils is
       Instr : Value_T;
    end record;
 
-   Empty_Position : Position_T := (No_BB_T, No_Value_T);
+   No_Position_T : Position_T := (No_BB_T, No_Value_T);
 
-   function No      (P : Position_T) return Boolean is (P = Empty_Position);
-   function Present (P : Position_T) return Boolean is (P /= Empty_Position);
+   function No      (P : Position_T) return Boolean is (P =  No_Position_T);
+   function Present (P : Position_T) return Boolean is (P /= No_Position_T);
 
    function  Get_Current_Position return Position_T;
    procedure Set_Current_Position (P : Position_T);

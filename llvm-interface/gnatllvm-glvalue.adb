@@ -393,11 +393,17 @@ package body GNATLLVM.GLValue is
          if Is_Constant (V) then
             return Get (Make_Global_Constant (V), R);
          else
-            Result := G (Alloca (IR_Builder, Type_Of (V), ""),
-                         Related_Type (V), Ref (Relationship (V)));
-            Store (V, Result);
-            Save_Stack_Pointer;
-            return Result;
+            declare
+               T       : constant Type_T        := Type_Of (V);
+               Promote : constant Basic_Block_T := Maybe_Promote_Alloca (T);
+
+            begin
+               Result := G (Alloca (IR_Builder, T, ""),
+                            Related_Type (V), Ref (Relationship (V)));
+               Done_Promoting_Alloca (LLVM_Value (Result), Promote);
+               Store (V, Result);
+               return Result;
+            end;
          end if;
       end if;
 
@@ -642,14 +648,15 @@ package body GNATLLVM.GLValue is
    ------------
 
    function Alloca (TE : Entity_Id; Name : String := "") return GL_Value is
-      R    : constant GL_Relationship := Relationship_For_Alloc (TE);
-      PT   : constant Type_T          := Type_For_Relationship (TE, R);
-      T    : constant Type_T          := Get_Element_Type (PT);
-      Inst : constant Value_T         := Alloca (IR_Builder, T, Name);
+      R       : constant GL_Relationship := Relationship_For_Alloc (TE);
+      PT      : constant Type_T          := Type_For_Relationship (TE, R);
+      T       : constant Type_T          := Get_Element_Type (PT);
+      Promote : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
+      Inst    : constant Value_T         := Alloca (IR_Builder, T, Name);
 
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (T));
-      Save_Stack_Pointer;
+      Done_Promoting_Alloca (Inst, Promote);
       return G (Inst, TE, R);
    end Alloca;
 

@@ -35,7 +35,6 @@ with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Subprograms is
@@ -998,6 +997,7 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Push_Block;
+      Entry_Block_Allocas := Get_Current_Position;
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          declare
@@ -2151,10 +2151,11 @@ package body GNATLLVM.Subprograms is
 
    procedure Enter_Subp (Func : GL_Value) is
    begin
-      Current_Func := Func;
+      Current_Func         := Func;
       Activation_Rec_Param := No_GL_Value;
       Return_Address_Param := No_GL_Value;
-      Position_Builder_At_End (IR_Builder, Create_Basic_Block ("entry"));
+      Entry_Block_Allocas  := No_Position_T;
+      Position_Builder_At_End (Create_Basic_Block ("entry"));
    end Enter_Subp;
 
    ----------------

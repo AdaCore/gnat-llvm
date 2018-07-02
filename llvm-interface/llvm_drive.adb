@@ -110,68 +110,74 @@ package body LLVM_Drive is
 
       Emit (GNAT_Root);
 
-      --  Output the translation
+      --  Complete and verify the translation.  Unless just writing IR,
+      --  suppress doing anything else if there's an error.
 
       Finalize_Debugging;
       if Verify_Module (Module, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad LLVM code", GNAT_Root);
-         if Code_Generation = Dump_IR then
-            Dump_Module (Module);
+         if Code_Generation not in Dump_IR | Write_IR then
+            Code_Generation := None;
          end if;
-
-      else
-         case Code_Generation is
-            when Dump_IR =>
-               Dump_Module (Module);
-            when Write_BC =>
-               declare
-                  S : constant String := Output_File_Name (".bc");
-               begin
-                  if Integer (Write_Bitcode_To_File (Module, S)) /= 0 then
-                     Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
-                  end if;
-               end;
-
-            when Write_IR =>
-               declare
-                  S : constant String := Output_File_Name (".ll");
-
-               begin
-                  if Print_Module_To_File (Module, S, Err_Msg'Address) then
-                     Error_Msg_N
-                       ("could not write `" & S & "`: " &
-                        Get_LLVM_Error_Msg (Err_Msg),
-                        GNAT_Root);
-                  end if;
-               end;
-
-            when Write_Assembly =>
-               declare
-                  S : constant String := Output_File_Name (".s");
-               begin
-                  if Target_Machine_Emit_To_File
-                    (Target_Machine, Module, S, Assembly_File, Err_Msg'Address)
-                  then
-                     Error_Msg_N
-                       ("could not write `" & S & "`: " &
-                        Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
-                  end if;
-               end;
-
-            when Write_Object =>
-               declare
-                  S : constant String := Output_File_Name (".o");
-               begin
-                  if Target_Machine_Emit_To_File
-                    (Target_Machine, Module, S, Object_File, Err_Msg'Address)
-                  then
-                     Error_Msg_N
-                       ("could not write `" & S & "`: " &
-                        Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
-                  end if;
-               end;
-         end case;
       end if;
+
+      --  Output the translation
+
+      case Code_Generation is
+         when Dump_IR =>
+            Dump_Module (Module);
+
+         when Write_BC =>
+            declare
+               S : constant String := Output_File_Name (".bc");
+            begin
+               if Integer (Write_Bitcode_To_File (Module, S)) /= 0 then
+                  Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
+               end if;
+            end;
+
+         when Write_IR =>
+            declare
+               S : constant String := Output_File_Name (".ll");
+
+            begin
+               if Print_Module_To_File (Module, S, Err_Msg'Address) then
+                  Error_Msg_N
+                    ("could not write `" & S & "`: " &
+                       Get_LLVM_Error_Msg (Err_Msg),
+                     GNAT_Root);
+               end if;
+            end;
+
+         when Write_Assembly =>
+            declare
+               S : constant String := Output_File_Name (".s");
+            begin
+               if Target_Machine_Emit_To_File
+                 (Target_Machine, Module, S, Assembly_File, Err_Msg'Address)
+               then
+                  Error_Msg_N
+                    ("could not write `" & S & "`: " &
+                       Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
+               end if;
+            end;
+
+         when Write_Object =>
+            declare
+               S : constant String := Output_File_Name (".o");
+            begin
+               if Target_Machine_Emit_To_File
+                 (Target_Machine, Module, S, Object_File, Err_Msg'Address)
+               then
+                  Error_Msg_N
+                    ("could not write `" & S & "`: " &
+                       Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
+               end if;
+            end;
+
+         when None =>
+            null;
+      end case;
 
       --  Release the environment
 

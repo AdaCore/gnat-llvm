@@ -152,7 +152,7 @@ package GNATLLVM is
    --  True if -emit-llvm was specified
 
    type Code_Generation_Kind is
-     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object);
+     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object, None);
 
    Code_Generation    : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing

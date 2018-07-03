@@ -565,10 +565,27 @@ package body GNATLLVM.Exprs is
          end;
 
       else
-         --  If the number of bits shifted is bigger or equal than the number
-         --  of bits in LHS, the underlying LLVM instruction returns an
-         --  undefined value, so build what we want ourselves (we call this
-         --  a "saturated value").
+         --  First, compute the value using the underlying LLVM instruction
+
+         Result :=
+           (if To_Left
+            then Shl (LHS, N)
+            else
+              (if Arithmetic
+               then A_Shr (LHS, N) else L_Shr (LHS, N)));
+
+         --  If this is a packed array implementation type, we know
+         --  that the shift won't overflow, so we can just use the
+         --  result of the shift.
+
+         if Is_Packed_Array_Impl_Type (LHS) then
+            return Result;
+         end if;
+
+         --  Otherwise, if the number of bits shifted is bigger or
+         --  equal than the number of bits in LHS, the underlying LLVM
+         --  instruction returns an undefined value, so build what we
+         --  want ourselves (we call this a "saturated value").
 
          Saturated :=
            (if Arithmetic
@@ -586,15 +603,6 @@ package body GNATLLVM.Exprs is
 
             else Const_Null (LHS));
 
-         --  Now, compute the value using the underlying LLVM instruction
-
-         Result :=
-           (if To_Left
-            then Shl (LHS, N)
-            else
-              (if Arithmetic
-               then A_Shr (LHS, N) else L_Shr (LHS, N)));
-
          --  Now, we must decide at runtime if it is safe to rely on the
          --  underlying LLVM instruction. If so, use it, otherwise return
          --  the saturated value.
@@ -603,7 +611,7 @@ package body GNATLLVM.Exprs is
            (C_If   => I_Cmp (Int_UGE, N, LHS_Bits, "is-saturated"),
             C_Then => Saturated,
             C_Else => Result,
-            Name   => "shift-rotate-result");
+            Name   => "sr-result");
       end if;
    end Emit_Shift;
 

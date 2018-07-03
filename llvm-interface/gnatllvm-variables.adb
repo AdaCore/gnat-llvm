@@ -146,6 +146,10 @@ package body GNATLLVM.Variables is
      with Pre => Is_Type (In_TE) and then Is_Type (Out_TE);
    --  Return True if we can statically convert from In_TE to Out_TE
 
+   function Initialized_Value (E : Entity_Id) return Node_Id
+     with Pre => Present (E);
+   --  If E is an E_Constant that has an initializing expression, return it
+
    function Is_No_Elab_Needed (N : Node_Id) return Boolean
      with Pre => Present (N);
    --  Return True if N represents an expression that can be computed
@@ -563,6 +567,28 @@ package body GNATLLVM.Variables is
    end Is_Static_Address;
 
    -----------------------
+   -- Initialized_Value --
+   -----------------------
+
+   function Initialized_Value (E : Entity_Id) return Node_Id is
+      Decl : constant Node_Id := Declaration_Node (E);
+      CV   : Node_Id;
+
+   begin
+      if Ekind (E) /= E_Constant or else No (Decl)
+        or else not Is_True_Constant (E)
+        or else (Nkind (Decl) = N_Object_Declaration
+                   and then No_Initialization (Decl))
+      then
+         return Empty;
+      else
+         CV := Constant_Value (E);
+         return (if   Present (CV) and then Is_No_Elab_Needed (CV)
+                 then CV else Empty);
+      end if;
+   end Initialized_Value;
+
+   -----------------------
    -- Is_No_Elab_Needed --
    -----------------------
 
@@ -610,21 +636,51 @@ package body GNATLLVM.Variables is
             case Get_Attribute_Id (Attribute_Name (N)) is
                when Attribute_Size | Attribute_Object_Size
                   | Attribute_Value_Size | Attribute_Component_Size
-                  | Attribute_Max_Size_In_Storage_Elements =>
-               if Is_Entity_Name (Prefix (N))
-                 and then Is_Type (Entity (Prefix (N)))
-               then
-                  return not Is_Dynamic_Size (Entity (Prefix (N)));
-               else
-                  return not Is_Dynamic_Size (Full_Etype (Prefix (N)));
-               end if;
+                  | Attribute_Max_Size_In_Storage_Elements
+                  | Attribute_Alignment | Attribute_Descriptor_Size =>
 
-               when Attribute_Alignment | Attribute_Descriptor_Size =>
-                  return True;
+                  if Is_Entity_Name (Prefix (N))
+                    and then Is_Type (Entity (Prefix (N)))
+                  then
+                     return not Is_Dynamic_Size (Entity (Prefix (N)));
+                  else
+
+                  --  We have to be careful here because even though we
+                  --  don't usually need to evaluate the Prefix to get
+                  --  its size, we are required to, so it must be static
+                  --  as well.
+
+                     return not Is_Dynamic_Size (Full_Etype (Prefix (N)))
+                       and then Is_No_Elab_Needed (Prefix (N));
+                  end if;
 
                when others =>
                   return Is_Static_Address (N);
             end case;
+
+         --  If Emit_Identifier would walk into a constant value, we do as well
+
+         when N_Identifier | N_Expanded_Name =>
+            return Compile_Time_Known_Value (N)
+              or else Is_No_Elab_Needed (Entity (N));
+
+         when N_Defining_Identifier =>
+            declare
+               CV : constant Node_Id := Initialized_Value (N);
+
+            begin
+               if Ekind (N) = E_Constant and then Present (Full_View (N))
+                 and then No (Address_Clause (N))
+               then
+                  return Is_No_Elab_Needed (Full_View (N))
+                    and then Is_Static_Conversion (Full_Etype (Full_View (N)),
+                                                   TE);
+               else
+                  return Ekind (N) = E_Constant and then Present (CV)
+                    and then Is_No_Elab_Needed (CV)
+                    and then Is_Static_Conversion (Full_Etype (CV), TE);
+               end if;
+            end;
 
          when others =>
 
@@ -1294,11 +1350,9 @@ package body GNATLLVM.Variables is
       Def_Ident : constant Entity_Id :=
         (if Ekind (E) = E_Constant and then Present (Full_View (E))
            and then No (Address_Clause (E)) then Full_View (E) else E);
-      Expr      : constant Node_Id   :=
-        (if Ekind (Def_Ident) = E_Constant
-         then Constant_Value (Def_Ident) else Empty);
+      Expr      : constant Node_Id   := Initialized_Value          (Def_Ident);
       V_Act     : constant GL_Value  := Get_From_Activation_Record (Def_Ident);
-      V         : GL_Value           := Get_Value (Def_Ident);
+      V         : GL_Value           := Get_Value                  (Def_Ident);
 
    begin
       --  See if this is an entity that's present in our
@@ -1325,8 +1379,8 @@ package body GNATLLVM.Variables is
 
       --  If this entity has a known constant value, use it
 
-      elsif Present (Expr) and then Compile_Time_Known_Value (Expr) then
-         return Emit_Expression (Expr);
+      elsif Present (Expr) and then Is_No_Elab_Needed (Expr) then
+         return Emit_Conversion (Expr, TE);
 
       --  If this is a bare discriminant, it's a reference to the
       --  discriminant of some record.

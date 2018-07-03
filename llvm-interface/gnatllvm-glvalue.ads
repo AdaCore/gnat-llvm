@@ -522,6 +522,10 @@ package GNATLLVM.GLValue is
    function Is_Unconstrained_Array (V : GL_Value) return Boolean
      with Pre => Present (V);
 
+   function Is_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Packed_Array_Impl_Type (Full_Etype (V)))
+     with Pre => Present (V);
+
    function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean
      with Pre => Present (V);
 
@@ -1225,10 +1229,11 @@ package GNATLLVM.GLValue is
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")
      return GL_Value
    is
-     (G_From (Build_Select (IR_Builder, C_If => LLVM_Value (C_If),
-                            C_Then => LLVM_Value (C_Then),
-                            C_Else => LLVM_Value (C_Else), Name => Name),
-              C_Then))
+     ((if   C_If = Const_True then C_Then elsif C_If = Const_False then C_Else
+       else G_From (Build_Select (IR_Builder, C_If => LLVM_Value (C_If),
+                                  C_Then => LLVM_Value (C_Then),
+                                  C_Else => LLVM_Value (C_Else), Name => Name),
+                    C_Then)))
      with Pre  => Ekind (Full_Etype (C_If)) in Enumeration_Kind
                   and then Is_Elementary_Type (C_Then)
                   and then Is_Elementary_Type (C_Else),

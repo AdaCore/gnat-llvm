@@ -630,7 +630,7 @@ package body GNATLLVM.Blocks is
       if No (File_Name_Strings (Index)) then
          declare
             File     : constant String
-              := Get_Name_String (Reference_Name (Index));
+              := Get_Name_String (Debug_Source_Name (Index));
             Elements : GL_Value_Array (1 .. File'Length + 1);
             V        : GL_Value;
             Str      : GL_Value;

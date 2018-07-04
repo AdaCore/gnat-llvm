@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 package body GNATLLVM.Wrapper is
 
    ----------------------------------
@@ -144,5 +146,16 @@ package body GNATLLVM.Wrapper is
       return Create_Debug_Subprogram_C (Bld, Func, File, Name & ASCII.NUL,
                                         Ext_Name & ASCII.NUL, Lineno);
    end Create_Debug_Subprogram;
+
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Layout_Identical (T1, T2 : Type_T) return Boolean is
+      function Is_Layout_Identical_C (T1, T2 : Type_T) return Bool_T;
+      pragma Import (C, Is_Layout_Identical_C, "Is_Layout_Identical");
+   begin
+      return Is_Layout_Identical_C (T1, T2) /= 0;
+   end Is_Layout_Identical;
 
 end GNATLLVM.Wrapper;

@@ -1527,4 +1527,16 @@ package GNATLLVM.GLValue is
    procedure Set_Unnamed_Addr (V : GL_Value; Has_Unnamed_Addr : Boolean)
      with Pre => Present (V);
 
+   function Is_Layout_Identical (V : GL_Value; TE : Entity_Id) return Boolean
+     with Pre => Present (V) and then Is_Type (TE);
+
+   function Is_Layout_Identical (TE1, TE2 : Entity_Id) return Boolean
+     with Pre => Is_Type (TE1) and then Is_Type (TE2);
+
+   function Convert_Struct_Constant
+     (V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
+          Post => Present (Convert_Struct_Constant'Result);
+   --  Convert V, a constant of a struct type, to TE
+
 end GNATLLVM.GLValue;

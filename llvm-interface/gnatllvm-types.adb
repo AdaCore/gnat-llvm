@@ -215,8 +215,9 @@ package body GNATLLVM.Types is
       Need_Overflow_Check : Boolean := False;
       Float_Truncate      : Boolean := False) return GL_Value
    is
-      Result : GL_Value           := Emit (N);
-      In_TE  : constant Entity_Id := Related_Type (Result);
+      Result : GL_Value                 := Emit (N);
+      In_TE  : constant Entity_Id       := Related_Type (Result);
+      R      : constant GL_Relationship := Relationship (Result);
 
    begin
       --  We have to be careful here.  There isn't as clear a distinction
@@ -326,6 +327,27 @@ package body GNATLLVM.Types is
         and then Type_Of (Result) = Create_Type (TE)
       then
          Result := G_Is (Result, TE);
+
+      --  If we have an undefined value that we're converting to another
+      --  type, just get an undefined value of that type.  But watch for
+      --  the case where we have Data of some fixed-size type and we're
+      --  converting to a dynamic-sized type.  We handle the reference
+      --  cases below since we may have to deal with materializing bounds.
+
+      elsif Is_Undef (Result) and then R = Data
+        and then not Is_Dynamic_Size (TE)
+      then
+         return Get_Undef (TE);
+
+      --  If we have a constant of a struct type that we're converting to
+      --  a struct of the same layout, we can make a new constant.
+
+      elsif R = Data and then Is_Constant (Result)
+        and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
+        and then Is_Record_Type (TE) and then not Is_Dynamic_Size (TE)
+        and then Is_Layout_Identical (Result, TE)
+      then
+         return Convert_Struct_Constant (Result, TE);
 
       --  Otherwise, we do the same as an unchecked conversion.
 

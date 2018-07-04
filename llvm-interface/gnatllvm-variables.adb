@@ -534,6 +534,13 @@ package body GNATLLVM.Variables is
 
         or else In_TE = Out_TE
 
+        --  Or fixed-size record types with identical layout
+
+        or else (Is_Record_Type (In_TE) and then not Is_Dynamic_Size (In_TE)
+                   and then Is_Record_Type (Out_TE)
+                   and then not Is_Dynamic_Size (Out_TE)
+                   and then Is_Layout_Identical (In_TE, Out_TE))
+
         --  Or if neither type is dynamic and the LLVM types are the same
 
         or else (not Is_Dynamic_Size (In_TE)

@@ -38,6 +38,12 @@ package body GNATLLVM.GLValue is
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean;
    --  Internal version of GL_Value_Is_Valid
 
+   function Convert_Struct_Constant (V : Value_T; T : Type_T) return Value_T
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Convert_Struct_Constant'Result);
+   --  Inner (and recursize) function to convert a constant struct
+   --  from one type to another.
+
    -----------------------
    -- GL_Value_Is_Valid --
    -----------------------
@@ -267,7 +273,10 @@ package body GNATLLVM.GLValue is
             pragma Assert (not Is_Dynamic_Size (TE));
             return T;
 
-         when Reference | Thin_Pointer | Trampoline =>
+         when Object =>
+            return (if Is_Dynamic_Size (TE) then PT else T);
+
+         when Reference | Thin_Pointer | Trampoline | Any_Reference =>
             return PT;
 
          when Reference_To_Reference | Reference_To_Thin_Pointer =>
@@ -1463,5 +1472,69 @@ package body GNATLLVM.GLValue is
    begin
       Set_Unnamed_Addr (LLVM_Value (V), Has_Unnamed_Addr);
    end Set_Unnamed_Addr;
+
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Layout_Identical
+     (V : GL_Value; TE : Entity_Id) return Boolean
+   is
+     (Is_Layout_Identical (Type_Of (V), Create_Type (TE)));
+
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Layout_Identical (TE1, TE2 : Entity_Id) return Boolean is
+     (Is_Layout_Identical (Create_Type (TE1), Create_Type (TE2)));
+
+   -----------------------------
+   -- Convert_Struct_Constant --
+   -----------------------------
+
+   function Convert_Struct_Constant
+     (V : GL_Value; TE : Entity_Id) return GL_Value is
+
+   begin
+      return G (Convert_Struct_Constant (LLVM_Value (V), Create_Type (TE)),
+                TE, Data);
+   end Convert_Struct_Constant;
+
+   -----------------------------
+   -- Convert_Struct_Constant --
+   -----------------------------
+
+   function Convert_Struct_Constant (V : Value_T; T : Type_T) return Value_T
+   is
+      Num_Elmts : constant Nat    := Nat (Count_Struct_Element_Types (T));
+      Values    : Value_Array (0 .. Num_Elmts - 1);
+
+   begin
+      for J in Values'Range loop
+         declare
+            Idx   : constant unsigned := unsigned (J);
+            In_V  : Value_T           := Get_Operand (V, Idx);
+            In_T  : constant Type_T   := Type_Of (In_V);
+            Out_T : constant Type_T   := Struct_Get_Type_At_Index (T, Idx);
+
+         begin
+            --  It's possible that we have two identical constants but
+            --  the inner types are also the same structure but different
+            --  named types.  So we have to make a recursive call.
+
+            if In_T /= Out_T
+              and then Get_Type_Kind (In_T) = Struct_Type_Kind
+            then
+               In_V := Convert_Struct_Constant (In_V, Out_T);
+            end if;
+
+            Values (J) := In_V;
+         end;
+      end loop;
+
+      return Const_Named_Struct (T, Values'Address, unsigned (Num_Elmts));
+
+   end Convert_Struct_Constant;
 
 end GNATLLVM.GLValue;

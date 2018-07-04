@@ -161,4 +161,5 @@ package GNATLLVM.Wrapper is
      (Context : Context_T; T : Type_T; V : Value_T) return Value_T;
    pragma Import (C, Pred_FP, "Pred_FP");
 
+   function Is_Layout_Identical (T1, T2 : Type_T) return Boolean;
 end GNATLLVM.Wrapper;

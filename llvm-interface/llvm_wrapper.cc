@@ -2,6 +2,7 @@
 #include "llvm/ADT/APInt.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Function.h"
@@ -292,3 +293,11 @@ Pred_FP (LLVMContext *Context, Type *T, Value *Val)
   apf.multiply(one, APFloat::rmTowardZero);
   return ConstantFP:: get (*Context, apf);
 }
+
+extern "C"
+bool
+Is_Layout_Identical (StructType *T1, StructType *T2)
+{
+  return T1->isLayoutIdentical(T2);
+}
+

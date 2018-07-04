@@ -235,6 +235,8 @@ package body GNATLLVM.Records is
 
    function Create_Record_Type (TE : Entity_Id) return Type_T is
 
+      type Field_Info_Id_Array is array (Nat range <>) of Field_Info_Id;
+
       --  This function creates a record type and the description of that
       --  record.  Note that this function does not itself lay out the record.
       --  We don't actually lay out record in that sense.  Instead, we create
@@ -261,6 +263,12 @@ package body GNATLLVM.Records is
       Cur_Field   : Entity_Id := Empty;
       --  Used for a cache in Find_Matching_Field to avoid quadratic
       --  behavior.
+
+      Discrim_FIs : Field_Info_Id_Array :=
+        (1 .. Count_Entities (TE) + 1 => Empty_Field_Info_Id);
+      --  In entry J, we record the Field_Info corresponding to the
+      --  discriminant number J.  We use this for record subtypes of
+      --  derived types.
 
       Last_Align  : unsigned  := unsigned (Get_Maximum_Alignment);
       --  The last known alignment for this record
@@ -350,23 +358,21 @@ package body GNATLLVM.Records is
          --  the beginning to its previous value.
 
          while Present (Cur_Field) loop
-            if ORC (Cur_Field) = ORC (F) then
-               return Cur_Field;
-            end if;
-
+            exit when ORC (Cur_Field) = ORC (F);
             Next_Component_Or_Discriminant (Cur_Field);
          end loop;
 
-         Cur_Field := First_Component_Or_Discriminant (Rec_Type);
-         while Cur_Field /= Initial_Cur_Field loop
-            if ORC (Cur_Field) = ORC (F) then
-               return Cur_Field;
-            end if;
+         if No (Cur_Field) then
+            Cur_Field := First_Component_Or_Discriminant (Rec_Type);
+            while Cur_Field /= Initial_Cur_Field loop
+               exit when ORC (Cur_Field) = ORC (F);
+               Next_Component_Or_Discriminant (Cur_Field);
+            end loop;
+         end if;
 
-            Next_Component_Or_Discriminant (Cur_Field);
-         end loop;
+         return (if   Present (Cur_Field) and then ORC (Cur_Field) = ORC (F)
+                 then Cur_Field else Empty);
 
-         return Empty;
       end Find_Field_In_Entity_List;
 
       ------------
@@ -420,17 +426,24 @@ package body GNATLLVM.Records is
          --  actually in.  The fields in the entity list for this type are
          --  almost, but not quite, win the same order as in the component
          --  list, so we have to search for a field in that list with the
-         --  same Original_Record_Component as this field.
+         --  same Original_Record_Component as this field.  And finally,
+         --  if this is a hidden discriminant and we haven't yet found a
+         --  place to save the value, save it in Discriminant_FIs.
 
          Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
                                    Field_Ordinal => Ordinal));
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
-         end if;
-
-         Matching_Field := Find_Field_In_Entity_List (E, TE, Cur_Field);
-         if Present (Matching_Field) and then Matching_Field /= E then
-            Set_Field_Info (Matching_Field, Field_Info_Table.Last);
+         else
+            Matching_Field := Find_Field_In_Entity_List (E, TE, Cur_Field);
+            if Present (Matching_Field) then
+               Set_Field_Info (Matching_Field, Field_Info_Table.Last);
+            elsif Ekind (E) = E_Discriminant
+              and then Is_Completely_Hidden (E)
+            then
+               Discrim_FIs (UI_To_Int (Discriminant_Number (E))) :=
+                 Field_Info_Table.Last;
+            end if;
          end if;
       end Add_FI;
 
@@ -506,7 +519,7 @@ package body GNATLLVM.Records is
          is
             Discrim     : constant Entity_Id := Entity (Name (Part));
             Discrim_Num : constant Uint      := Discriminant_Number (Discrim);
-            Constraint  : constant Elist_Id  := Discriminant_Constraint (TE);
+            Constraint  : constant Elist_Id  := Stored_Constraint (TE);
             Elmt        : Elmt_Id            := First_Elmt (Constraint);
 
          begin
@@ -715,10 +728,12 @@ package body GNATLLVM.Records is
          --  ignore discriminants that are already in a parent type.
 
          if Has_Discriminants (Rec_Type) then
-            Field := First_Discriminant (Rec_Type);
+            Field := First_Stored_Discriminant (Rec_Type);
             while Present (Field) loop
                Field_To_Add := Field;
-               if Present (Sub_Rec_Type) then
+               if Present (Sub_Rec_Type)
+                 and then not Is_Completely_Hidden (Field)
+               then
                   Field_To_Add :=
                     Find_Field_In_Entity_List (Field, Sub_Rec_Type, Rec_Field);
                end if;
@@ -730,8 +745,61 @@ package body GNATLLVM.Records is
                  and then (No (Outer_Field)
                              or else not Has_Field_Info (Outer_Field))
                then
-                  Add_Field (Field);
+                  Add_Field (Field_To_Add);
+
+               --  If this field is a hidden discriminant, we need to
+               --  allow space for it in the record even though we
+               --  won't have a field for it.  Handle that case here.
+               --  The test for scope is testing whether we'll be
+               --  setting the field info for the field.
+
+               elsif Is_Completely_Hidden (Field_To_Add)
+                 and then Scope (Field_To_Add) /= TE
+               then
+                  Add_Field (Field_To_Add);
                end if;
+
+               Next_Stored_Discriminant (Field);
+            end loop;
+
+            --  If we have a new discriminant that renames one from
+            --  our parent, we need to mark which field the discriminant
+            --  corresponds to.  So make a pass over the discriminants
+            --  of this type seeing if any haven't had field information
+            --  set.  If we find any, copy it from the orginal field.
+
+            Field := First_Discriminant (Rec_Type);
+            while Present (Field) loop
+               declare
+                  ORC         : constant Entity_Id :=
+                    Original_Record_Component (Field);
+                  Discrim_Num : constant Nat       :=
+                    UI_To_Int (Discriminant_Number (ORC));
+                  Outer_Orig : constant Entity_Id :=
+                    Find_Field_In_Entity_List (ORC, TE, Cur_Field);
+
+               begin
+                  Outer_Field
+                    := Find_Field_In_Entity_List (Field, TE, Cur_Field);
+
+                  if Present (Outer_Field)
+                    and then not Has_Field_Info (Outer_Field)
+                    and then Scope (ORC) = Rec_Type
+                    and then Is_Completely_Hidden (ORC)
+                  then
+                     if Present (Outer_Field)
+                       and then Present (Outer_Orig)
+                     then
+                        Set_Field_Info (Outer_Field,
+                                        Get_Field_Info
+                                          (Original_Record_Component
+                                             (Outer_Orig)));
+                     elsif Present (Discrim_FIs (Discrim_Num)) then
+                        Set_Field_Info (Outer_Field,
+                                        Discrim_FIs (Discrim_Num));
+                     end if;
+                  end if;
+               end;
 
                Next_Discriminant (Field);
             end loop;
@@ -1441,8 +1509,7 @@ package body GNATLLVM.Records is
         (TE : Entity_Id; Field : Entity_Id) return Entity_Id
       with Pre  => Is_Record_Type (TE)
                    and then Ekind_In (Field, E_Discriminant, E_Component),
-           Post => Original_Record_Component (Field) =
-                     Original_Record_Component (Find_Matching_Field'Result);
+           Post => Chars (Field) = Chars (Find_Matching_Field'Result);
       --  Find a field corresponding to Fld in record type TE
 
       -------------------------
@@ -1452,19 +1519,15 @@ package body GNATLLVM.Records is
       function Find_Matching_Field
         (TE : Entity_Id; Field : Entity_Id) return Entity_Id
       is
-         ORC : constant Entity_Id := Original_Record_Component (Field);
          Ent : Entity_Id          := First_Component_Or_Discriminant (TE);
 
       begin
          while Present (Ent) loop
-            if Original_Record_Component (Ent) = ORC then
-               return Ent;
-            end if;
-
+            exit when Chars (Ent) = Chars (Field);
             Next_Component_Or_Discriminant (Ent);
          end loop;
 
-         return Empty;
+         return Ent;
       end Find_Matching_Field;
 
    begin
@@ -1516,8 +1579,9 @@ package body GNATLLVM.Records is
                   else
                      --  Ensure we understand this case
 
-                     pragma Assert (Ekind (Agg_Type) = E_Record_Subtype);
-                     pragma Assert (Has_Discriminants (Agg_Type));
+                     pragma Assert (Ekind (Agg_Type) = E_Record_Subtype
+                                      and then Has_Discriminants (Agg_Type)
+                                      and then (Ekind (Ent) = E_Component));
                   end if;
                end if;
             end;

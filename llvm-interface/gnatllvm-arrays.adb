@@ -26,7 +26,6 @@ with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -244,19 +243,6 @@ package body GNATLLVM.Arrays is
       Pop_Debug_Freeze_Pos;
       return Result;
    end Get_Array_Bound;
-
-   ---------------------------------
-   --  Use_Discriminant_For_Bound --
-   ---------------------------------
-
-   function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value is
-      Rec_Type : constant Entity_Id := Full_Scope (E);
-      Match    : constant GL_Value  := Get_Matching_Value (Rec_Type);
-
-   begin
-      return Get (Record_Field_Offset (Match, E), Data);
-
-   end Use_Discriminant_For_Bound;
 
    ----------------------
    -- Get_Array_Length --

@@ -54,13 +54,6 @@ package GNATLLVM.Arrays is
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
    --  Return the N_Range for an array type
 
-   function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value
-     with Pre  => Ekind (E) = E_Discriminant,
-          Post => Present (Use_Discriminant_For_Bound'Result);
-   --  E is an E_Discriminant that we've run into while emitting an expression.
-   --  If we are expecting one as a possible bound, evaluate this discriminant
-   --  as required to compute that bound.
-
    function Get_Array_Bound
      (TE       : Entity_Id;
       Dim      : Nat;

@@ -27,6 +27,13 @@ package GNATLLVM.Records is
           Post => Present (Create_Record_Type'Result);
    --  Create a type for the record denoted by Def_Ident
 
+   function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value
+     with Pre  => Ekind (E) = E_Discriminant,
+          Post => Present (Use_Discriminant_For_Bound'Result);
+   --  E is an E_Discriminant that we've run into while emitting an expression.
+   --  If we are expecting one as a possible bound, evaluate this discriminant
+   --  as required to compute that bound.
+
    function Record_Field_Offset
      (V : GL_Value; Field : Entity_Id) return GL_Value
      with Pre  => Present (V)

@@ -109,12 +109,32 @@ package body GNATLLVM.Records is
       Table_Increment      => 100,
       Table_Name           => "Record_Info_Table");
 
+   --  When computing the size of a record subtype, we push the subtype so
+   --  we can see if we run into a discriminant from its base type.  If we
+   --  do, we substitue the expression that corresponds to the discriminant
+   --  type.  In most cases, but not all, the front end already does this
+   --  substitution for us.
+
+   package Subtype_Stack is new Table.Table
+     (Table_Component_Type => Entity_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 2,
+      Table_Name           => "Subtype_Stack");
+
    function Count_Entities (E : Entity_Id) return Nat
      with Pre => Present (E);
    --  Return the number of entities of E.  This value will be used only
    --  to allocate an array that we know is large enough to contain all
    --  the fields, so we can overestimate the number of fields (even
    --  greatly), but can't underestimate.
+
+   function Get_Discriminant_Constraint
+     (TE : Entity_Id; E : Entity_Id) return Node_Id
+     with Pre  => Ekind (TE) = E_Record_Subtype,
+          Post => Present (Get_Discriminant_Constraint'Result);
+   --  Get the expression that constrains the discriminant E of type TE
 
    procedure Get_RI_Info
      (RI          : Record_Info;
@@ -228,6 +248,54 @@ package body GNATLLVM.Records is
          end loop;
       end return;
    end Count_Entities;
+
+   ---------------------------------
+   --  Use_Discriminant_For_Bound --
+   ---------------------------------
+
+   function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value is
+      Rec_Type : constant Entity_Id := Full_Scope (E);
+      TE       : constant Entity_Id := Full_Etype (E);
+
+   begin
+      --  See if we've pushed a subtype of this record type into our
+      --  stack of record subtypes.  If so, get the discriminant constraint
+      --  from that subtype.
+
+      for J in reverse 1 .. Subtype_Stack.Last loop
+         if Implementation_Base_Type (Subtype_Stack.Table (J)) = Rec_Type then
+            return Emit_Convert_Value
+              (Get_Discriminant_Constraint (Subtype_Stack.Table (J), E), TE);
+         end if;
+      end loop;
+
+      --  Otherwise, use a value that we pushed onto the LValue stacka
+
+      return
+        Get (Record_Field_Offset (Get_Matching_Value (Rec_Type), E), Data);
+
+   end Use_Discriminant_For_Bound;
+
+   ---------------------------------
+   -- Get_Discriminant_Constraint --
+   ---------------------------------
+
+   function Get_Discriminant_Constraint
+     (TE : Entity_Id; E : Entity_Id) return Node_Id
+   is
+      Discrim_Num : constant Uint      := Discriminant_Number (E);
+      Constraint  : constant Elist_Id  := Stored_Constraint (TE);
+      Elmt        : Elmt_Id            := First_Elmt (Constraint);
+
+   begin
+      --  Skip to the proper entry in the list and see if it's static
+
+      for J in 1 .. UI_To_Int (Discrim_Num) - 1 loop
+         Next_Elmt (Elmt);
+      end loop;
+
+      return Node (Elmt);
+   end Get_Discriminant_Constraint;
 
    ------------------------
    -- Create_Record_Type --
@@ -469,14 +537,6 @@ package body GNATLLVM.Records is
          --  specified and matches F or name is not specified and F is not
          --  a special name.
 
-         function Get_Discriminant_Constraint
-           (TE : Entity_Id; Part : Node_Id) return Node_Id
-           with Pre  => Ekind (TE) = E_Record_Subtype
-                       and then Nkind (Part) = N_Variant_Part,
-                Post => Present (Get_Discriminant_Constraint'Result);
-           --  Get the expression that constrains the discriminant of
-           --  type TE that's specified in Part.
-
          function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
            with Pre  => Is_Static_Expression (N) and then Present (Alts),
            Post => Present (Find_Choice'Result);
@@ -509,28 +569,6 @@ package body GNATLLVM.Records is
                          and then Chars (F) /= Name_uController);
             end if;
          end Matches_Name;
-
-         ---------------------------------
-         -- Get_Discriminant_Constraint --
-         ---------------------------------
-
-         function Get_Discriminant_Constraint
-           (TE : Entity_Id; Part : Node_Id) return Node_Id
-         is
-            Discrim     : constant Entity_Id := Entity (Name (Part));
-            Discrim_Num : constant Uint      := Discriminant_Number (Discrim);
-            Constraint  : constant Elist_Id  := Stored_Constraint (TE);
-            Elmt        : Elmt_Id            := First_Elmt (Constraint);
-
-         begin
-            --  Skip to the proper entry in the list and see if it's static
-
-            for J in 1 .. UI_To_Int (Discrim_Num) - 1 loop
-               Next_Elmt (Elmt);
-            end loop;
-
-            return Node (Elmt);
-         end Get_Discriminant_Constraint;
 
          -----------------
          -- Find_Choice --
@@ -574,8 +612,9 @@ package body GNATLLVM.Records is
             Var_Part           : constant Node_Id :=
               (if Present (List) then Variant_Part (List) else Empty);
             Constraining_Expr  : constant Node_Id :=
-              (if Present (From_Rec) and then Present (Var_Part)
-               then Get_Discriminant_Constraint (From_Rec, Var_Part)
+              (if   Present (From_Rec) and then Present (Var_Part)
+               then (Get_Discriminant_Constraint
+                       (From_Rec, Entity (Name (Var_Part))))
                else Empty);
             Static_Constraint  : constant Boolean :=
               Present (Constraining_Expr)
@@ -1255,6 +1294,13 @@ package body GNATLLVM.Records is
          Add_To_LValue_List (V);
       end if;
 
+      --  If this is a subtype, push it onto the stack we use to search for
+      --  discriminant values.
+
+      if Present (TE) and then Is_Constrained (TE) then
+         Subtype_Stack.Append (TE);
+      end if;
+
       --  Look at each piece of the record and find its value and alignment.
       --  Align to the needed alignment for this piece, add its size, and
       --  show what alignment we now have.
@@ -1317,6 +1363,10 @@ package body GNATLLVM.Records is
                       This_Size, Must_Align, This_Align, Return_Size => False);
       elsif Present (TE) then
          Must_Align := Size_Const_Int (ULL (Get_Type_Alignment (TE)));
+      end if;
+
+      if Present (TE) and then Is_Constrained (TE) then
+         Subtype_Stack.Decrement_Last;
       end if;
 
       Pop_Debug_Freeze_Pos;

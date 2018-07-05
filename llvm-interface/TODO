@@ -1,5 +1,7 @@
 Missing features (identified so far):
 
+- deal with recording positions for package bodies (can already do when
+  generating code, but not when pushing for elab proc)
 - address clauses on subprograms (maybe respecting freeze nodes), see cd30005
 - packed array types are not working properly
 - more __sync builtins and other atomic builtins

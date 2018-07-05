@@ -1183,8 +1183,8 @@ package body GNATLLVM.Blocks is
       end if;
 
       declare
-         Current_BB : constant Basic_Block_T := Get_Insert_Block;
          LI         : Label_Info renames Label_Info_Table.Table (L_Idx);
+         Current_BB : constant Basic_Block_T := Get_Insert_Block;
          Orig_BB    : constant Basic_Block_T := LI.Orig_BB;
 
       begin
@@ -1207,7 +1207,10 @@ package body GNATLLVM.Blocks is
 
          --  If we don't know where this label is, we need an entry in the
          --  Open_Branches table for this label.  But first see if somebody
-         --  already made one.
+         --  already made one.  However, if we've already started writing
+         --  fixups to it, we need to make sure that we branch to after
+         --  those fixup by starting a new block since a branch from an
+         --  outer level shouldn't be using those fixups.
 
          else
             for J in reverse 1 .. Open_Branches.Last loop
@@ -1216,6 +1219,13 @@ package body GNATLLVM.Blocks is
 
                begin
                   if  OB.Orig_BB = Orig_BB and then OB.From_Block = Depth then
+                     if Present (Get_Last_Instruction (OB.Made_BB)) then
+                        Position_Builder_At_End (OB.Made_BB);
+                        Move_To_BB (Create_Basic_Block (Get_Name (E) & "-mm"));
+                        OB.Made_BB := Get_Insert_Block;
+                        Position_Builder_At_End (Current_BB);
+                     end if;
+
                      return OB.Made_BB;
                   end if;
                end;

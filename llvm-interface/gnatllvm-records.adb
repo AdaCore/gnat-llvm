@@ -779,7 +779,15 @@ package body GNATLLVM.Records is
 
                Outer_Field
                  := Find_Field_In_Entity_List (Field_To_Add, TE, Cur_Field);
-               if Present (Field_To_Add)
+
+               --  If this is a tagged type, ignore if this was already in
+               --  a _parent field.
+
+               if Is_Tagged_Type (Rec_Type)
+                 and then Present (Corresponding_Discriminant (Field))
+               then
+                  null;
+               elsif Present (Field_To_Add)
                  and then not Has_Field_Info (Field_To_Add)
                  and then (No (Outer_Field)
                              or else not Has_Field_Info (Outer_Field))

@@ -788,7 +788,6 @@ package body GNATLLVM.Records is
                then
                   null;
                elsif Present (Field_To_Add)
-                 and then not Has_Field_Info (Field_To_Add)
                  and then (No (Outer_Field)
                              or else not Has_Field_Info (Outer_Field))
                then

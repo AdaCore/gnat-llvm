@@ -1450,7 +1450,8 @@ package body GNATLLVM.Types is
    function Get_Alloc_Size
      (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
    is
-      Classwide : constant Boolean := Is_Class_Wide_Equivalent_Type (TE);
+      Classwide : constant Boolean :=
+        Is_Class_Wide_Equivalent_Type (Alloc_Type);
       Size      : GL_Value :=
         Get_Type_Size (Alloc_Type,
                        (if Classwide then No_GL_Value else V),

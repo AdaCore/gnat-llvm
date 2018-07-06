@@ -820,6 +820,10 @@ package body GNATLLVM.Exprs is
                                   else Emit_LValue (Prefix (N)));
                V := Get_Type_Size (Prefix_Type, V, For_Type);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
+                  if Is_Unconstrained_Array (Prefix_Type) then
+                     V := NSW_Add (V, Get_Bound_Size (Prefix_Type));
+                  end if;
+
                   return Convert (V, TE);
                else
                   return Convert (NSW_Mul (V, Size_Const_Int (Uint_8)), TE);

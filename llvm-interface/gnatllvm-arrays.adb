@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Sem_Eval; use Sem_Eval;
+with Snames;   use Snames;
 with Stand;    use Stand;
 with Table;    use Table;
 with Uintp;    use Uintp;
@@ -76,8 +77,14 @@ package body GNATLLVM.Arrays is
           Post => Is_Array_Type (Type_For_Get_Bound'Result);
    --  Get the best type to use to search for a bound of an arrray
 
-   function Contains_Discriminant (N : Node_Id) return Entity_Id;
-   --  Return the discrminant if N contains a reference to a discriminant
+   function Emit_Expr_For_Minmax
+     (N : Node_Id; Is_Low : Boolean) return GL_Value
+     with Pre => Present (N);
+   --  Compute the value of N viewing any discriminant encountered as
+   --  being either their lowest or highest values, respectively
+
+   function Contains_Discriminant (N : Node_Id) return Boolean;
+   --  Return True if N contains a reference to a discriminant
 
    function Build_One_Bound
      (N : Node_Id; Unconstrained : Boolean) return One_Bound
@@ -94,7 +101,7 @@ package body GNATLLVM.Arrays is
 
    function Bound_Complexity
      (B : One_Bound; For_Type : Boolean) return Nat is
-      (if B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
+      (if    B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
        elsif For_Type then 1 else 2);
 
    function Get_GEP_Safe_Type (V : GL_Value) return Entity_Id
@@ -153,6 +160,103 @@ package body GNATLLVM.Arrays is
 
    end Type_For_Get_Bound;
 
+   --------------------------
+   -- Emit_Expr_For_Minmax --
+   --------------------------
+
+   function Emit_Expr_For_Minmax
+     (N : Node_Id; Is_Low : Boolean) return GL_Value
+   is
+      Attr     : Attribute_Id;
+      RHS, LHS : GL_Value;
+
+   begin
+      --  If N doesn't involve a discriminant, just evaluate it
+
+      if not Contains_Discriminant (N) then
+         return Emit_Safe_Expr (N);
+      end if;
+
+      case Nkind (N) is
+         when N_Identifier =>
+
+            --  If we get here, this must be a discriminant
+
+            pragma Assert (Ekind (Entity (N)) = E_Discriminant);
+            declare
+               TE    : constant Entity_Id := Full_Etype (Entity (N));
+               Limit : constant Node_Id   :=
+                 (if Is_Low then Type_Low_Bound (TE)
+                  else Type_High_Bound (TE));
+
+            begin
+               return Emit_Safe_Expr (Limit);
+            end;
+
+         when N_Attribute_Reference =>
+
+            --  The only ones we support are 'Range_Length, 'Min, and 'Max
+
+            Attr := Get_Attribute_Id (Attribute_Name (N));
+            if Attr = Attribute_Range_Length
+              and then Is_Scalar_Type (Full_Etype (Prefix (N)))
+            then
+               declare
+                  PT : constant Entity_Id := Full_Etype (Prefix (N));
+                  LB : constant Node_Id   := Type_Low_Bound  (PT);
+                  UB : constant Node_Id   := Type_High_Bound (PT);
+               begin
+                  LHS := Emit_Expr_For_Minmax (LB, True);
+                  RHS := Emit_Expr_For_Minmax (UB, False);
+                  return Bounds_To_Length (LHS, RHS, Full_Etype (N));
+               end;
+            else
+               pragma Assert (Attr in Attribute_Min | Attribute_Max);
+               LHS := Emit_Expr_For_Minmax (First (Expressions (N)), Is_Low);
+               RHS := Emit_Expr_For_Minmax (First (Expressions (N)), Is_Low);
+               return (if   Attr = Attribute_Min then Build_Min (LHS, RHS)
+                       else Build_Max (LHS, RHS));
+            end if;
+
+         when N_Op_Minus =>
+            LHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
+            return NSW_Neg (LHS);
+
+         when N_Op_Plus =>
+            return Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+
+         when N_Op_Add =>
+            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+            return NSW_Add (LHS, RHS);
+
+         when N_Op_Subtract =>
+            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
+            return NSW_Sub (LHS, RHS);
+
+         when N_Op_Multiply =>
+            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+            return NSW_Mul (LHS, RHS);
+
+         when N_Op_Divide =>
+            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+            return (if   Is_Unsigned_Type (LHS) then U_Div (LHS, RHS)
+                    else S_Div (LHS, RHS));
+
+         when N_Type_Conversion | N_Unchecked_Type_Conversion =>
+            LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
+            return Convert (LHS, Full_Etype (N));
+
+         when others =>
+            pragma Assert (False);
+            return Get_Undef (Full_Etype (N));
+      end case;
+
+   end Emit_Expr_For_Minmax;
+
    ---------------------
    -- Get_Array_Bound --
    ---------------------
@@ -173,7 +277,6 @@ package body GNATLLVM.Arrays is
       --  In the array fat pointer bounds structure, bounds are stored as a
       --  sequence of (lower bound, upper bound) pairs.
       Expr       : constant Node_Id       := Bound_Info.Value;
-      Discrim    : constant Entity_Id     := Contains_Discriminant (Expr);
       Result     : GL_Value;
 
    begin
@@ -189,27 +292,25 @@ package body GNATLLVM.Arrays is
       elsif Present (Expr) then
 
          --  If we're looking for the size of a type (meaning the max size)
-         --  and this expression involves a discriminant, use the minimum
-         --  or maximum value of the bound subtype or the discriminant's
-         --  subtype.  Otherwise, just evaluate the expression.
+         --  and this expression involves a discriminant, we compute the
+         --  expression for its minimum or maximum value, depending on the
+         --  bound, and then minimize or maximize with the bounds of the
+         --  index type.
 
-         if For_Type and then Present (Discrim) then
+         if For_Type and then Contains_Discriminant (Expr) then
             declare
                Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
-               Discr_Type  : constant Entity_Id := Full_Etype (Discrim);
                Bound_Limit : constant Node_Id   :=
                  (if Is_Low then Type_Low_Bound (Bound_Type)
                   else Type_High_Bound (Bound_Type));
-               Discr_Limit : constant Node_Id   :=
-                 (if Is_Low then Type_Low_Bound (Discr_Type)
-                  else Type_High_Bound (Discr_Type));
                Bound_Val   : constant GL_Value  :=
                  Convert (Emit_Safe_Expr (Bound_Limit), Dim_Info.Bound_Type);
-               Discr_Val   : constant GL_Value  :=
-                 Convert (Emit_Safe_Expr (Discr_Limit), Dim_Info.Bound_Type);
+
             begin
-               Result := (if Is_Low then Build_Max (Bound_Val, Discr_Val)
-                          else Build_Min (Bound_Val, Discr_Val));
+               Result := Convert (Emit_Expr_For_Minmax (Expr, Is_Low),
+                                  Dim_Info.Bound_Type);
+               Result := (if Is_Low then Build_Max (Bound_Val, Result)
+                          else Build_Min (Bound_Val, Result));
             end;
          else
             Result := Emit_Convert_Value (Expr, Dim_Info.Bound_Type);
@@ -524,13 +625,12 @@ package body GNATLLVM.Arrays is
    -- Contains_Discriminant --
    ---------------------------
 
-   function Contains_Discriminant (N : Node_Id) return Entity_Id is
-      Found_Discriminant : Entity_Id := Empty;
+   function Contains_Discriminant (N : Node_Id) return Boolean is
 
       function See_If_Discriminant (N : Node_Id) return Traverse_Result;
-      --  Scan a single node looking for a discriminant, setting above if so
+      --  Scan a single node looking for a discriminant
 
-      procedure Scan is new Traverse_Proc (See_If_Discriminant);
+      function Scan is new Traverse_Func (See_If_Discriminant);
       --  Used to scan an expression looking for a discriminant
 
       -------------------------
@@ -539,19 +639,45 @@ package body GNATLLVM.Arrays is
 
       function See_If_Discriminant (N : Node_Id) return Traverse_Result is
       begin
-         if Nkind (N) = N_Identifier and then Present (Entity (N))
-           and then Ekind (Entity (N)) = E_Discriminant
-         then
-            Found_Discriminant := Entity (N);
+         --  If this is a component reference, we know there's no
+         --  discriminant involved, but we don't want to be confused by
+         --  the Selector here, so skip the node.
+
+         if Nkind (N) = N_Selected_Component then
+            return Skip;
+
+         --  Otherwise, if this is not an N_Identifier or it has no
+         --  Entity, we're not interested.
+
+         elsif Nkind (N) /= N_Identifier or else No (Entity (N)) then
+            return OK;
+
+         --  If this is an actual discrminant, return and show that
+
+         elsif Ekind (Entity (N)) = E_Discriminant then
             return Abandon;
+
+         --  If this is a discrete or fixed-point type, see if either of
+         --  the bounds involve a discriminant.
+
+         elsif Is_Discrete_Or_Fixed_Point_Type (Entity (N)) then
+            begin
+               return (if Contains_Discriminant (Type_Low_Bound (Entity (N)))
+                         or else (Contains_Discriminant
+                                    (Type_High_Bound (Entity (N))))
+                       then Abandon else OK);
+            end;
+
+         --  Otherwise, no discriminant in sight
+
          else
             return OK;
+
          end if;
       end See_If_Discriminant;
 
    begin
-      Scan (N);
-      return Found_Discriminant;
+      return Scan (N) = Abandon;
    end Contains_Discriminant;
 
    ------------------------

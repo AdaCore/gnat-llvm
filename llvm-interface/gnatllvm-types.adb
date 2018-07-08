@@ -980,6 +980,12 @@ package body GNATLLVM.Types is
       if Def_Ident /= TE then
          T := GNAT_To_LLVM_Type (Def_Ident, False);
          Copy_Type_Info (Def_Ident, TE);
+         if Is_Record_Type (Def_Ident)
+           and then Is_Incomplete_Or_Private_Type (TE)
+         then
+            Copy_Field_Info (Def_Ident, TE);
+         end if;
+
          return T;
       end if;
 

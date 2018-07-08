@@ -22,6 +22,12 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Records is
 
+   procedure Copy_Field_Info (Old_TE, New_TE : Entity_Id)
+     with Pre => Is_Record_Type (Old_TE)
+                 and then Is_Incomplete_Or_Private_Type (New_TE);
+   --  Copy field information from the fields in Old_TE to the fields in
+   --  New_TE.
+
    function Create_Record_Type (TE : Entity_Id) return Type_T
      with Pre => Is_Record_Type (TE),
           Post => Present (Create_Record_Type'Result);

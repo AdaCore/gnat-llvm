@@ -130,6 +130,25 @@ package body GNATLLVM.Records is
    --  the fields, so we can overestimate the number of fields (even
    --  greatly), but can't underestimate.
 
+   function Find_Field_In_Entity_List
+     (F         : Entity_Id;
+      TE        : Entity_Id;
+      Cur_Field : in out Entity_Id) return Entity_Id
+     with Pre  => Ekind_In (F, E_Discriminant, E_Component)
+     and then Is_Record_Type (TE);
+   --  Find a field in the entity list of TE that has the same
+   --  Original_Record_Component as F and return it if so.  Cur_Field
+   --  is used to cache the last field tested to avoid quadratic behavior
+   --  since we'll be requesting fields in roughly (but not exactly!)
+   --  the same order as they are in the list.
+
+   function Find_Matching_Field
+     (TE : Entity_Id; Field : Entity_Id) return Entity_Id
+     with Pre  => Is_Record_Type (TE)
+     and then Ekind_In (Field, E_Discriminant, E_Component),
+     Post => Chars (Field) = Chars (Find_Matching_Field'Result);
+   --  Likewise, but without caching and compare by Chars
+
    function Get_Discriminant_Constraint
      (TE : Entity_Id; E : Entity_Id) return Node_Id
      with Pre  => Ekind (TE) = E_Record_Subtype,
@@ -297,6 +316,106 @@ package body GNATLLVM.Records is
       return Node (Elmt);
    end Get_Discriminant_Constraint;
 
+   -------------------------------
+   -- Find_Field_In_Entity_List --
+   -------------------------------
+
+   function Find_Field_In_Entity_List
+     (F         : Entity_Id;
+      TE        : Entity_Id;
+      Cur_Field : in out Entity_Id) return Entity_Id
+   is
+
+      function ORC (F : Entity_Id) return Entity_Id
+        with Pre  => Ekind_In (F, E_Discriminant, E_Component),
+        Post => Ekind_In (ORC'Result, E_Discriminant, E_Component);
+      --  Get the Original_Record_Component, but also check
+      --  Corresponding_Discriminant first;
+
+      ---------
+      -- ORC --
+      ---------
+
+      function ORC (F : Entity_Id) return Entity_Id is
+         Field : Entity_Id := F;
+
+      begin
+         while Ekind (Field) = E_Discriminant loop
+            exit when No (Corresponding_Discriminant (Field));
+            Field := Corresponding_Discriminant (Field);
+         end loop;
+
+         return Original_Record_Component (Field);
+      end ORC;
+
+      Initial_Cur_Field : constant Entity_Id := Cur_Field;
+
+   begin
+      --  Look from Cur_Field until the end of the list.  Then look from
+      --  the beginning to its previous value.
+
+      while Present (Cur_Field) loop
+         exit when ORC (Cur_Field) = ORC (F);
+         Next_Component_Or_Discriminant (Cur_Field);
+      end loop;
+
+      if No (Cur_Field) then
+         Cur_Field := First_Component_Or_Discriminant (TE);
+         while Cur_Field /= Initial_Cur_Field loop
+            exit when ORC (Cur_Field) = ORC (F);
+            Next_Component_Or_Discriminant (Cur_Field);
+         end loop;
+      end if;
+
+      return (if   Present (Cur_Field) and then ORC (Cur_Field) = ORC (F)
+              then Cur_Field else Empty);
+
+   end Find_Field_In_Entity_List;
+
+   -------------------------
+   -- Find_Matching_Field --
+   -------------------------
+
+   function Find_Matching_Field
+     (TE : Entity_Id; Field : Entity_Id) return Entity_Id
+   is
+      Ent : Entity_Id := First_Component_Or_Discriminant (TE);
+
+   begin
+      while Present (Ent) loop
+         exit when Chars (Ent) = Chars (Field);
+         Next_Component_Or_Discriminant (Ent);
+      end loop;
+
+      return Ent;
+   end Find_Matching_Field;
+
+   ---------------------
+   -- Copy_Field_Info --
+   ---------------------
+
+   procedure Copy_Field_Info (Old_TE, New_TE : Entity_Id) is
+      Cur_Field : Entity_Id := First_Component_Or_Discriminant (Old_TE);
+      New_Field : Entity_Id := First_Component_Or_Discriminant (New_TE);
+      Old_Field : Entity_Id;
+
+   begin
+      while Present (New_Field) loop
+         Old_Field := Find_Field_In_Entity_List (New_Field, Old_TE, Cur_Field);
+
+         --  ??? The latter test is a bit dubious here, but this has to do
+         --  with us using Full_Scope for tests.  It's not yet clear what
+         --  the right thing to do is here.
+
+         if Present (Old_Field) and then No (Get_Field_Info (Old_Field)) then
+            Set_Field_Info (New_Field, Get_Field_Info (Old_Field));
+         end if;
+
+         Next_Component_Or_Discriminant (New_Field);
+      end loop;
+
+   end Copy_Field_Info;
+
    ------------------------
    -- Create_Record_Type --
    ------------------------
@@ -329,7 +448,7 @@ package body GNATLLVM.Records is
       --  Ordinal of next entry in Types
 
       Cur_Field   : Entity_Id := Empty;
-      --  Used for a cache in Find_Matching_Field to avoid quadratic
+      --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
       Discrim_FIs : Field_Info_Id_Array :=
@@ -348,17 +467,6 @@ package body GNATLLVM.Records is
 
       LLVM_Type : Type_T;
       --  The LLVM type for this record type
-      function Find_Field_In_Entity_List
-        (F         : Entity_Id;
-         Rec_Type  : Entity_Id;
-         Cur_Field : in out Entity_Id) return Entity_Id
-        with Pre  => Ekind_In (F, E_Discriminant, E_Component)
-                     and then Is_Record_Type (Rec_Type);
-      --  Find a field in the entity list of Rec_Type that has the same
-      --  Original_Record_Component as F and return it if so.  Cur_Field
-      --  is used to cache the last field tested to avoid quadratic behavior
-      --  since we'll be requesting fields in roughly (but not exactly!)
-      --  the same order as they are in the list.
 
       procedure Add_RI
         (T            : Type_T                      := No_Type_T;
@@ -386,62 +494,6 @@ package body GNATLLVM.Records is
       procedure Flush_Current_Types;
       --  If there are any types in the Types array, create a record
       --  description for them.
-
-      -------------------------------
-      -- Find_Field_In_Entity_List --
-      -------------------------------
-
-      function Find_Field_In_Entity_List
-        (F         : Entity_Id;
-         Rec_Type  : Entity_Id;
-         Cur_Field : in out Entity_Id) return Entity_Id
-      is
-
-         function ORC (F : Entity_Id) return Entity_Id
-           with Pre  => Ekind_In (F, E_Discriminant, E_Component),
-                Post => Ekind_In (ORC'Result, E_Discriminant, E_Component);
-         --  Get the Original_Record_Component, but also check
-         --  Corresponding_Discriminant first;
-
-         ---------
-         -- ORC --
-         ---------
-
-         function ORC (F : Entity_Id) return Entity_Id is
-            Field : Entity_Id := F;
-
-         begin
-            while Ekind (Field) = E_Discriminant loop
-               exit when No (Corresponding_Discriminant (Field));
-               Field := Corresponding_Discriminant (Field);
-            end loop;
-
-            return Original_Record_Component (Field);
-         end ORC;
-
-         Initial_Cur_Field : constant Entity_Id := Cur_Field;
-
-      begin
-         --  Look from Cur_Field until the end of the list.  Then look from
-         --  the beginning to its previous value.
-
-         while Present (Cur_Field) loop
-            exit when ORC (Cur_Field) = ORC (F);
-            Next_Component_Or_Discriminant (Cur_Field);
-         end loop;
-
-         if No (Cur_Field) then
-            Cur_Field := First_Component_Or_Discriminant (Rec_Type);
-            while Cur_Field /= Initial_Cur_Field loop
-               exit when ORC (Cur_Field) = ORC (F);
-               Next_Component_Or_Discriminant (Cur_Field);
-            end loop;
-         end if;
-
-         return (if   Present (Cur_Field) and then ORC (Cur_Field) = ORC (F)
-                 then Cur_Field else Empty);
-
-      end Find_Field_In_Entity_List;
 
       ------------
       -- Add_RI --
@@ -1442,7 +1494,7 @@ package body GNATLLVM.Records is
          then CRC else Field);
       Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
       First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
-      F_Idx      : constant Field_Info_Id  := Get_Field_Info (Our_Field);
+      F_Idx      : Field_Info_Id           := Get_Field_Info (Our_Field);
       FI         : Field_Info;
       Our_Idx    : Record_Info_Id;
       Offset     : GL_Value;
@@ -1452,12 +1504,20 @@ package body GNATLLVM.Records is
    begin
       --  If the field information isn't present, this must be because we're
       --  referencing a field that's not in this variant and hence is a
-      --  constraint error.  So return undefined.
+      --  constraint error.  So return undefined.  ??? But first try something
+      --  to see if we can come up with the right field.
 
       if No (F_Idx) then
          pragma Assert (Ekind (Rec_Type) = E_Record_Subtype);
          pragma Assert (Has_Discriminants (Rec_Type));
-         return Get_Undef_Ref (F_Type);
+
+         if Rec_Type /= Scope (Field) then
+            F_Idx := Get_Field_Info (Find_Matching_Field (Rec_Type, Field));
+         end if;
+
+         if No (F_Idx) then
+            return Get_Undef_Ref (F_Type);
+         end if;
       end if;
 
       FI       := Field_Info_Table.Table (F_Idx);
@@ -1561,31 +1621,6 @@ package body GNATLLVM.Records is
    is
       Agg_Type   : constant Entity_Id := Full_Etype (Node);
       Expr       : Node_Id;
-
-      function Find_Matching_Field
-        (TE : Entity_Id; Field : Entity_Id) return Entity_Id
-      with Pre  => Is_Record_Type (TE)
-                   and then Ekind_In (Field, E_Discriminant, E_Component),
-           Post => Chars (Field) = Chars (Find_Matching_Field'Result);
-      --  Find a field corresponding to Fld in record type TE
-
-      -------------------------
-      -- Find_Matching_Field --
-      -------------------------
-
-      function Find_Matching_Field
-        (TE : Entity_Id; Field : Entity_Id) return Entity_Id
-      is
-         Ent : Entity_Id          := First_Component_Or_Discriminant (TE);
-
-      begin
-         while Present (Ent) loop
-            exit when Chars (Ent) = Chars (Field);
-            Next_Component_Or_Discriminant (Ent);
-         end loop;
-
-         return Ent;
-      end Find_Matching_Field;
 
    begin
       pragma Assert (not Is_Dynamic_Size (Agg_Type));

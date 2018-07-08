@@ -108,7 +108,7 @@ package body GNATLLVM.GLValue is
             return Ekind (V.Typ) = E_Subprogram_Type
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
-         when Reference_To_Subprogram =>
+         when Reference_To_Subprogram | Reference_To_Ref_To_Subprogram =>
             return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
          when Trampoline =>
@@ -1318,7 +1318,7 @@ package body GNATLLVM.GLValue is
       --  pointer (which points in the middle).
 
       if Need_Reference then
-         R := Ref (if R = Reference_To_Bounds_And_Data
+         R := Ref (if   R = Reference_To_Bounds_And_Data
                    then Thin_Pointer else R);
       end if;
 

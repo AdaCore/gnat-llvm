@@ -94,6 +94,10 @@ package GNATLLVM.GLValue is
       --  Reference should be used instead and if Typ is an access
       --  to subprogram type, then Data is the appropriate relationship.
 
+      Reference_To_Ref_To_Subprogram,
+      --  Value contains an address at which the address of a subprogram
+      --  is found.  That address is of relationship Reference_To_Subprogram.
+
       Activation_Record,
       --  Value is an activation record for a subprogram of Typ
 
@@ -192,7 +196,10 @@ package GNATLLVM.GLValue is
          Deref => Invalid,           Ref => Reference_To_Thin_Pointer),
       Reference_To_Subprogram        =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Invalid),
+         Deref => Invalid,           Ref => Reference_To_Ref_To_Subprogram),
+      Reference_To_Ref_To_Subprogram =>
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref => Reference_To_Subprogram, Ref => Invalid),
       Activation_Record              =>
         (Is_Ref => False, Is_Any_Ref => False,
          Deref => Invalid,           Ref => Reference_To_Activation_Record),

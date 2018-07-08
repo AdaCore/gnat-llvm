@@ -1690,10 +1690,13 @@ package body GNATLLVM.Subprograms is
          return Emit_Identifier (Alias (Def_Ident));
       end if;
 
-      --  If we haven't gotten one yet, make it
+      --  If we haven't gotten one yet, make it.  Otherwise, see if we need
+      --  to dereference it.
 
       if No (V) then
          V := Create_Subprogram (Def_Ident);
+      elsif Is_Double_Reference (V) then
+         V := Load (V);
       end if;
 
       --  If we're elaborating this for 'Access or 'Address, we want the
@@ -1997,10 +2000,93 @@ package body GNATLLVM.Subprograms is
    -- Emit_Subprogram_Decl --
    --------------------------
 
-   function Emit_Subprogram_Decl (N : Node_Id) return GL_Value is
-      Def_Ident : constant Entity_Id := Defining_Entity (N);
+   function Emit_Subprogram_Decl
+     (N : Node_Id; Frozen : Boolean := True) return GL_Value
+   is
+      Def_Ident   : constant Entity_Id := Defining_Entity (N);
+      V           : GL_Value           := Get_Value (Def_Ident);
+      Addr_Clause : constant Node_Id   := Address_Clause (Def_Ident);
+
    begin
-      if not Has_Value (Def_Ident) then
+      --  If we have a freeze node and we're not sure that it's already
+      --  frozen, do nothing.
+
+      if Present (Freeze_Node (Def_Ident))
+        and then not Frozen and then not In_Elab_Proc
+      then
+         return No_GL_Value;
+
+      --  Otherwise, if we have an address clause, we make a pointer
+      --  to the subprogram and either initialize it to the address
+      --  clause if it's static, assign it if we're not at library
+      --  level, or set up for our elab proc to do the initialization.
+
+      elsif Present (Addr_Clause) then
+         declare
+            Subp_T    : constant Type_T          :=
+              Pointer_Type (Create_Subprogram_Type (Def_Ident), 0);
+            TE        : constant Entity_Id       := Full_Etype (Def_Ident);
+            Addr_Expr : constant Node_Id         := Expression (Addr_Clause);
+            R         : constant GL_Relationship := Reference_To_Subprogram;
+            Addr      : GL_Value                 := Get_Value (Addr_Expr);
+
+            function Int_To_Subp (V : GL_Value) return GL_Value is
+              (G (Int_To_Ptr (IR_Builder, LLVM_Value (Addr), Subp_T, ""),
+                  TE, R))
+              with Pre => Present (V), Post => Present (Int_To_Subp'Result);
+
+         begin
+            if Library_Level or else In_Elab_Proc then
+               if No (V) then
+                  V := G (Add_Global (Module, Subp_T,
+                                      Get_Ext_Name (Def_Ident)),
+                          TE, Ref (R));
+                  Set_Value (Def_Ident, V);
+               end if;
+
+               --  If we have a static address, we can put it in the
+               --  initializer.
+
+               if Is_Static_Address (Addr_Expr) then
+                  if No (Addr) then
+                     Addr := Emit_Expression (Addr_Expr);
+                  end if;
+
+                  Set_Initializer (V, Int_To_Subp (Addr));
+
+               --  If we're in an elab proc, we already have the global
+               --  variable for the function's address and have just
+               --  previously evaluate the address.  So jus convert and
+               --  store it.
+
+               elsif In_Elab_Proc then
+                  Store (Int_To_Subp (Addr), V);
+
+               --  Otherwise, initialize this to null and add to elab proc
+
+               else
+                  Set_Initializer (V, G (Const_Null (Subp_T), TE, R));
+                  Add_To_Elab_Proc (N);
+               end if;
+
+            --  If inside a subprogram, convert the address to the proper
+            --  type, give it our name, and set it as our value.
+
+            else
+               if No (Addr) then
+                  Addr := Emit_Expression (Addr_Expr);
+               end if;
+
+               V := Int_To_Subp (Addr);
+               Set_Value_Name (V, Get_Ext_Name (Def_Ident));
+               Set_Value (Def_Ident, V);
+            end if;
+         end;
+
+      --  Otherwise, if we haven't already made this subprogram,
+      --  make it.
+
+      elsif not Has_Value (Def_Ident) then
          Set_Value (Def_Ident, Create_Subprogram (Def_Ident));
       end if;
 

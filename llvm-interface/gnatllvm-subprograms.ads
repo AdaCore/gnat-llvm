@@ -153,8 +153,9 @@ package GNATLLVM.Subprograms is
      with Pre => Ekind (Def_Ident) in Subprogram_Kind;
    --  Create and save an LLVM object for Def_Ident, a subprogram
 
-   function Emit_Subprogram_Decl (N : Node_Id) return GL_Value
-     with Post => Present (Emit_Subprogram_Decl'Result);
+   function Emit_Subprogram_Decl (N : Node_Id;
+      Frozen : Boolean := True) return GL_Value
+     with Pre => Present (N);
    --  Compile a subprogram declaration, creating the subprogram if not
    --  already done.  Return the subprogram value.
 

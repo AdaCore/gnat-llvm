@@ -174,12 +174,15 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Subprogram_Declaration =>
+            Emit (Specification (N));
+
+         when N_Function_Specification | N_Procedure_Specification =>
 
             --  Ignore intrinsic subprograms as calls to those will be
             --  expanded.
 
             if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N)) then
-               Discard (Emit_Subprogram_Decl (Specification (N)));
+               Discard (Emit_Subprogram_Decl (N, Frozen => False));
             end if;
 
          when N_Free_Statement =>
@@ -397,7 +400,7 @@ package body GNATLLVM.Compile is
                   Expr : constant Node_Id   := Expression (N);
 
                begin
-                  if Library_Level then
+                  if Library_Level and then not Is_Static_Address (Expr) then
                      Add_To_Elab_Proc (Expr, For_Type => Full_Etype (Expr));
                   else
                      Set_Value (Expr, Emit_Expression (Expr));
@@ -692,9 +695,27 @@ package body GNATLLVM.Compile is
       Decl : constant Node_Id   := Declaration_Node (E);
 
    begin
+      --  For objects, perform the object declaration
+
       if Nkind_In (Decl, N_Object_Declaration, N_Exception_Declaration) then
          Emit_Declaration (Decl, For_Freeze_Entity => True);
+
+      --  For subprograms, the decl node points to the subprogram
+      --  specification.  We only want to consider "normal" subprograms
+      --  that aren't intrinsic, so we not only test for intrinsic but for
+      --  an N_Subprogram_Declaration, as opposed to, for example an
+      --  N_Abstract_Subprogram_Declaration, which we don't process.  We also
+      --  have to test for protected subprograms.
+
+      elsif Nkind_In (Decl, N_Procedure_Specification,
+                      N_Function_Specification)
+        and then not Is_Intrinsic_Subprogram (E)
+        and then Nkind (Parent (Decl)) = N_Subprogram_Declaration
+        and then Convention (E) /= Convention_Protected
+      then
+         Discard (Emit_Subprogram_Decl (Decl));
       end if;
+
    end Process_Freeze_Entity;
 
    -------------------------

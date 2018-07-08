@@ -92,6 +92,15 @@ package GNATLLVM.Variables is
    --  alloca or forcing a stack save/restore.
    procedure Done_Promoting_Alloca (Alloca : Value_T; BB : Basic_Block_T);
 
+   function Is_Static_Address (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N represents an address that can computed statically
+
+   function Is_No_Elab_Needed (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N represents an expression that can be computed
+   --  without needing an elab proc.
+
    function Make_Global_Constant (V : GL_Value) return GL_Value
      with Pre  => not Is_Reference (V),
           Post => Is_A_Global_Variable (Make_Global_Constant'Result);

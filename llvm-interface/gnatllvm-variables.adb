@@ -139,10 +139,6 @@ package body GNATLLVM.Variables is
      with Pre => Present (N);
    --  Return True if N represent an object with constant address
 
-   function Is_Static_Address (N : Node_Id) return Boolean
-     with Pre => Present (N);
-   --  Return True if N represents an address that can computed statically
-
    function Is_Static_Conversion (In_TE, Out_TE : Entity_Id) return Boolean
      with Pre => Is_Type (In_TE) and then Is_Type (Out_TE);
    --  Return True if we can statically convert from In_TE to Out_TE
@@ -150,11 +146,6 @@ package body GNATLLVM.Variables is
    function Initialized_Value (E : Entity_Id) return Node_Id
      with Pre => Present (E);
    --  If E is an E_Constant that has an initializing expression, return it
-
-   function Is_No_Elab_Needed (N : Node_Id) return Boolean
-     with Pre => Present (N);
-   --  Return True if N represents an expression that can be computed
-   --  without needing an elab proc.
 
    function Hash_Value_T (Val : Value_T) return Hash_Type;
    --  Convert a Value_T to a hash
@@ -465,7 +456,8 @@ package body GNATLLVM.Variables is
 
          when N_Defining_Identifier =>
             return (No (Address_Clause (N))
-                      or else Is_Static_Address (Address_Clause (N)))
+                      or else Is_Static_Address (Expression
+                                                   (Address_Clause (N))))
               and then Ekind (N) /= E_Enumeration_Literal
               and then (Ekind (Full_Etype (N)) = E_Void
                           or else not Is_Dynamic_Size (Full_Etype (N)));

@@ -91,6 +91,19 @@ package body GNATLLVM.Environment is
    end Get_Array_Info;
 
    ---------------------
+   -- Get_Orig_Array_Info --
+   ---------------------
+
+   function Get_Orig_Array_Info (TE : Entity_Id) return Array_Info_Id is
+   begin
+      if not Has_Type (TE) then
+         Discard (Create_Type (TE));
+      end if;
+
+      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Orig_Array_Info;
+   end Get_Orig_Array_Info;
+
+   ---------------------
    -- Get_Record_Info --
    ---------------------
 
@@ -153,7 +166,8 @@ package body GNATLLVM.Environment is
                                   Record_Info     => Empty_Record_Info_Id,
                                   Field_Info      => Empty_Field_Info_Id,
                                   Array_Info      => Empty_Array_Info_Id,
-                                  Label_Info      => Empty_Label_Info_Id));
+                                  Label_Info      => Empty_Label_Info_Id,
+                                  Orig_Array_Info => Empty_Array_Info_Id));
          Id := LLVM_Info_Table.Last;
          LLVM_Info_Map (N) := Id;
          return Id;
@@ -235,6 +249,18 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Array_Info := AI;
    end Set_Array_Info;
+
+   ---------------------
+   -- Set_Orig_Array_Info --
+   ---------------------
+
+   procedure Set_Orig_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
+   is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+
+   begin
+      LLVM_Info_Table.Table (Id).Orig_Array_Info := AI;
+   end Set_Orig_Array_Info;
 
    ---------------------
    -- Set_Record_Info --

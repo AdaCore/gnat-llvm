@@ -93,13 +93,13 @@ package body GNATLLVM.GLValue is
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
 
          when Fat_Pointer | Bounds | Bounds_And_Data =>
-            return Is_Array_Type (V.Typ);
+            return Is_Array_Or_Packed_Array_Type (V.Typ);
 
          when  Thin_Pointer
             | Reference_To_Bounds | Reference_To_Bounds_And_Data =>
             return Is_Type (V.Typ)
               and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
-              and then Is_Array_Type (V.Typ);
+              and then Is_Array_Or_Packed_Array_Type (V.Typ);
 
          when Activation_Record  | Fat_Reference_To_Subprogram =>
             return Ekind (V.Typ) = E_Subprogram_Type;
@@ -150,6 +150,13 @@ package body GNATLLVM.GLValue is
    function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean is
      (Is_Constr_Subt_For_UN_Aliased (Related_Type (V)));
 
+   -----------------------
+   -- Type_Needs_Bounds --
+   -----------------------
+
+   function Type_Needs_Bounds (V : GL_Value) return Boolean is
+     (Type_Needs_Bounds (Related_Type (V)));
+
    ---------------------
    -- Is_Dynamic_Size --
    ---------------------
@@ -182,7 +189,7 @@ package body GNATLLVM.GLValue is
       --  unconstrained type for an aliased object, in order to point
       --  to the data, we need a thin pointer.
 
-      elsif Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE) then
+      elsif Type_Needs_Bounds (TE) then
          return Thin_Pointer;
 
       --  If this is an access to subprogram, this is a pair of pointers
@@ -246,8 +253,7 @@ package body GNATLLVM.GLValue is
       --  where the formal is a String.
 
       if Is_Unconstrained_Array (TE)
-        or else (Is_Constr_Subt_For_UN_Aliased (TE)
-                   and then Is_Array_Type (TE))
+        or else Type_Needs_Bounds (TE)
         or else Ekind (TE) = E_String_Literal_Subtype
       then
          return Reference_To_Bounds_And_Data;

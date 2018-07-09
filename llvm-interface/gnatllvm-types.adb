@@ -867,7 +867,8 @@ package body GNATLLVM.Types is
    -- Get_Fullest_View --
    ----------------------
 
-   function Get_Fullest_View (TE : Entity_Id) return Entity_Id is
+   function Get_Fullest_View
+     (TE : Entity_Id; Include_PAT : Boolean := True) return Entity_Id is
    begin
       --  Strictly speaking, the recursion below isn't necessary, but
       --  it's both simplest and safest.
@@ -890,7 +891,7 @@ package body GNATLLVM.Types is
             end if;
 
          when Array_Kind =>
-            if Present (Packed_Array_Impl_Type (TE)) then
+            if Include_PAT and then Present (Packed_Array_Impl_Type (TE)) then
                return Get_Fullest_View (Packed_Array_Impl_Type (TE));
             end if;
 
@@ -1015,22 +1016,6 @@ package body GNATLLVM.Types is
                T := Int_Ty (8);
             end if;
 
-            --  If this is a packed array implementation type and the
-            --  original type is an array, create a type for that array
-            --  so we can use it later to get the bounds.  We have to do this
-            --  here and manually because Create_Type will bring us back here.
-            --  ??? This is a kludge that doesn't work completely and
-            --  will have to be replaced by something else.
-
-            if Is_Packed_Array_Impl_Type (Def_Ident)
-              and then Present (Original_Array_Type (Def_Ident))
-              and then not Has_Type (Original_Array_Type (Def_Ident))
-            then
-               Discard (Create_Array_Type (Original_Array_Type (Def_Ident),
-                                           Info_For_Type => Def_Ident));
-               Set_Type (Def_Ident, No_Type_T);
-            end if;
-
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
             declare
                Float_Type : constant Node_Id
@@ -1109,6 +1094,14 @@ package body GNATLLVM.Types is
          if Present (TBAA) then
             Set_TBAA (TE, TBAA);
          end if;
+      end if;
+
+      --  If this is a packed array implementation type and the original
+      --  type is an array, set information about the bounds of the
+      --  original array.
+
+      if Is_Packed_Array_Impl_Type (Def_Ident) then
+         Discard (Create_Array_Type (Def_Ident, For_Orig => True));
       end if;
 
       return T;
@@ -1456,20 +1449,18 @@ package body GNATLLVM.Types is
    function Get_Alloc_Size
      (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
    is
-      Classwide : constant Boolean :=
-        Is_Class_Wide_Equivalent_Type (Alloc_Type);
-      Size      : GL_Value :=
+      Size : GL_Value :=
         Get_Type_Size (Alloc_Type,
-                       (if Classwide then No_GL_Value else V),
+                       (if   Is_Class_Wide_Equivalent_Type (Alloc_Type)
+                        then No_GL_Value else V),
                        For_Type => No (V) and then not Is_Constrained (TE));
 
    begin
       --  Adjust size if constrained subtype for aliased unconstrained or
-      --  for unconstrained itself
+      --  for unconstrained itself.
 
       if Is_Unconstrained_Array (TE)
-        or else (Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
-                   and then Is_Array_Type (Alloc_Type))
+        or else Type_Needs_Bounds (Alloc_Type)
       then
          Size := NSW_Add (Size, Get_Bound_Size (TE));
       end if;

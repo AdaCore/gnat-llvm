@@ -90,11 +90,13 @@ package GNATLLVM.Types is
      with Post => Present (Build_Struct_Type'Result);
    --  Build an LLVM struct type containing the specified types
 
-   function Get_Fullest_View (TE : Entity_Id) return Entity_Id
+   function Get_Fullest_View
+     (TE : Entity_Id; Include_PAT : Boolean := True) return Entity_Id
      with Pre => Is_Type_Or_Void (TE),
           Post => Is_Type_Or_Void (Get_Fullest_View'Result);
    --  Get the fullest possible view of E, looking through private,
-   --  limited, packed array and other implementation types.
+   --  limited, packed array and other implementation types.  If Include_PAT
+   --  is True, don't look inside packed array types.
 
    function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id
      with Pre => Is_Type (TE), Post => Is_Type (Ultimate_Base_Type'Result);
@@ -110,6 +112,11 @@ package GNATLLVM.Types is
      (Get_Fullest_View (Component_Type (TE)))
      with Pre  => Is_Array_Type (TE),
           Post => Present (Full_Component_Type'Result);
+
+   function Full_Original_Array_Type (TE : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Original_Array_Type (TE), Include_PAT => False))
+     with Pre  => Is_Packed_Array_Impl_Type (TE),
+          Post => Is_Array_Type (Full_Original_Array_Type'Result);
 
    function Full_Designated_Type (TE : Entity_Id) return Entity_Id is
      (Get_Fullest_View (Designated_Type (TE)))
@@ -128,6 +135,17 @@ package GNATLLVM.Types is
      (Is_Access_Type (TE)
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
      with Pre => Is_Type (TE);
+
+   function Is_Array_Or_Packed_Array_Type (TE : Entity_Id) return Boolean is
+     (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE))
+     with Pre => Is_Type (TE);
+
+   function Type_Needs_Bounds (TE : Entity_Id) return Boolean is
+     ((Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE))
+      or else (Is_Packed_Array_Impl_Type (TE)
+                 and then Type_Needs_Bounds (Original_Array_Type (TE))))
+     with Pre => Is_Type (TE);
+   --  True is TE is a type that needs bounds stored with data
 
    function Convert
      (V              : GL_Value;

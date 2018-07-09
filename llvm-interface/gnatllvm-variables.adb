@@ -957,8 +957,7 @@ package body GNATLLVM.Variables is
          --  that neither be, but it's not worth the trouble.
 
          if Is_Double_Reference (LLVM_Var) or else Is_Dynamic_Size (TE)
-           or else (Is_Constr_Subt_For_UN_Aliased (TE)
-                      and then Is_Array_Type (TE))
+           or else Type_Needs_Bounds (TE)
          then
             Error_Msg_N
               ("All uses of same interface name must have static size",
@@ -1143,9 +1142,7 @@ package body GNATLLVM.Variables is
                   Value := Emit_Convert_Value (Expr, TE);
                end if;
 
-               if Is_Constr_Subt_For_UN_Aliased (TE)
-                 and then Is_Array_Type (TE)
-               then
+               if Type_Needs_Bounds (TE) then
                   Value := Get (Value, Bounds_And_Data);
                end if;
 
@@ -1160,9 +1157,7 @@ package body GNATLLVM.Variables is
          --  array subtype, this is aliased, and we have no expression.
          --  In that case, we still have to initialize the bounds.
 
-         elsif Is_Constr_Subt_For_UN_Aliased (TE)
-           and then Is_Array_Type (TE)
-         then
+         elsif Type_Needs_Bounds (TE) then
             Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
                                             Bounds_And_Data));
             Set_Init := True;
@@ -1377,9 +1372,14 @@ package body GNATLLVM.Variables is
       elsif Ekind (Def_Ident) in Subprogram_Kind then
          return Emit_Subprogram_Identifier (Def_Ident, N, TE);
 
-      --  If this entity has a known constant value, use it
+      --  If this entity has a known constant value, use it unless we're
+      --  getting the address or an operation where we likely need an LValue.
 
-      elsif Present (Expr) and then Is_No_Elab_Needed (Expr) then
+      elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
+        and then not Nkind_In (Parent (N), N_Attribute_Reference,
+                               N_Selected_Component, N_Indexed_Component,
+                               N_Slice)
+      then
          return Emit_Conversion (Expr, TE);
 
       --  If this is a bare discriminant, it's a reference to the

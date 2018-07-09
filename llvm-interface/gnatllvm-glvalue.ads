@@ -536,6 +536,9 @@ package GNATLLVM.GLValue is
    function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean
      with Pre => Present (V);
 
+   function Type_Needs_Bounds (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
    function RM_Size (V : GL_Value) return Uint is
      (RM_Size (Full_Etype (V)))
      with Pre => not Is_Access_Type (V);

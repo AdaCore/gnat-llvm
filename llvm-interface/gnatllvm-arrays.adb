@@ -73,8 +73,8 @@ package body GNATLLVM.Arrays is
 
    function Type_For_Get_Bound
      (TE : Entity_Id; V : GL_Value) return Entity_Id
-     with Pre  => Is_Array_Type (TE),
-          Post => Is_Array_Type (Type_For_Get_Bound'Result);
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
+          Post => Is_Array_Or_Packed_Array_Type (Type_For_Get_Bound'Result);
    --  Get the best type to use to search for a bound of an arrray
 
    function Emit_Expr_For_Minmax
@@ -266,10 +266,12 @@ package body GNATLLVM.Arrays is
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
+      For_Type : Boolean := False;
+      For_Orig : Boolean := False) return GL_Value
    is
       Typ        : constant Entity_Id     := Type_For_Get_Bound (TE, V);
-      Info_Idx   : constant Array_Info_Id := Get_Array_Info (Typ);
+      Info_Idx   : constant Array_Info_Id :=
+        (if For_Orig then Get_Orig_Array_Info (Typ) else Get_Array_Info (Typ));
       Dim_Info   : constant Index_Bounds  := Array_Info.Table (Info_Idx + Dim);
       Bound_Info : constant One_Bound     :=
         (if Is_Low then Dim_Info.Low else Dim_Info.High);
@@ -434,14 +436,14 @@ package body GNATLLVM.Arrays is
    -----------------------
 
    function Create_Array_Type
-     (TE : Entity_Id; Info_For_Type : Entity_Id := Empty) return Type_T
+     (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
    is
-      Setting_Type      : constant Entity_Id     :=
-        (if Present (Info_For_Type) then Info_For_Type else TE);
-      Unconstrained     : constant Boolean       := not Is_Constrained (TE);
-      Comp_Type         : constant Entity_Id     := Full_Component_Type (TE);
+      A_TE              : constant Entity_Id     :=
+        (if For_Orig then Full_Original_Array_Type (TE) else TE);
+      Unconstrained     : constant Boolean       := not Is_Constrained (A_TE);
+      Comp_Type         : constant Entity_Id     := Full_Component_Type (A_TE);
       Base_Type         : constant Entity_Id     :=
-        Implementation_Base_Type (TE);
+        Implementation_Base_Type (A_TE);
       Must_Use_Fake     : Boolean                :=
         Is_Dynamic_Size (Comp_Type);
       This_Dynamic_Size : Boolean                :=
@@ -456,8 +458,8 @@ package body GNATLLVM.Arrays is
       Base_Index        : Entity_Id;
 
    begin
-      if Ekind (TE) = E_String_Literal_Subtype then
-         return Create_String_Literal_Type (TE, Typ);
+      if Ekind (A_TE) = E_String_Literal_Subtype then
+         return Create_String_Literal_Type (A_TE, Typ);
       end if;
 
       --  We loop through each dimension of the array creating the entries
@@ -471,7 +473,7 @@ package body GNATLLVM.Arrays is
       --  CT is the component type.  Otherwise, we have to use [0 x i8].
       --  We refer to both of these cases as creating a "fake" type.
 
-      Index      := First_Index (TE);
+      Index      := First_Index (A_TE);
       Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
@@ -543,12 +545,18 @@ package body GNATLLVM.Arrays is
          end loop;
       end if;
 
-      --  It's redundant to set the type here, since our caller will set it,
-      --  but we have to set it in order to set the array info.
+      --  Now set our results, either recording it as the information for
+      --  the original array type or as the primary info.  In the latter case,
+      --  we do a redundant-looking setting of the type to simplify handling
+      --  of the other sets.
 
-      Set_Type            (Setting_Type, Typ);
-      Set_Is_Dynamic_Size (Setting_Type, This_Dynamic_Size);
-      Set_Array_Info      (Setting_Type, First_Info);
+      if For_Orig then
+         Set_Orig_Array_Info (TE, First_Info);
+      else
+         Set_Type            (TE, Typ);
+         Set_Is_Dynamic_Size (TE, This_Dynamic_Size);
+         Set_Array_Info      (TE, First_Info);
+      end if;
 
       return Typ;
    end Create_Array_Type;
@@ -559,9 +567,13 @@ package body GNATLLVM.Arrays is
 
    function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
    is
-      Dims       : constant Nat           := Number_Dimensions (TE);
+      Dims       : constant Nat           :=
+        Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
+                           then Full_Original_Array_Type (TE) else TE);
       Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
-      First_Info : constant Array_Info_Id := Get_Array_Info (TE);
+      First_Info : constant Array_Info_Id :=
+        (if   Is_Packed_Array_Impl_Type (TE) then Get_Orig_Array_Info (TE)
+         else Get_Array_Info (TE));
       J          : Nat                    := 0;
 
    begin
@@ -600,10 +612,8 @@ package body GNATLLVM.Arrays is
       --  Only do anything if the destination has a nominal constrained
       --  subtype or (if we're asked) if it has an unconstrained type.
 
-      if Is_Array_Type (Dest_Type)
-        and then (Is_Constr_Subt_For_UN_Aliased (Dest_Type)
-                    or else (For_Unconstrained
-                               and then not Is_Constrained (Dest_Type)))
+      if Type_Needs_Bounds (Dest_Type)
+        or else (For_Unconstrained and then not Is_Constrained (Dest_Type))
       then
          Store (Get_Array_Bounds (Src_Type, Src_Type, Src),
                 Get (Dest, Reference_To_Bounds));
@@ -810,11 +820,16 @@ package body GNATLLVM.Arrays is
    function Get_Array_Bounds
      (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
    is
-      Info_Idx   : constant Array_Info_Id := Get_Array_Info (TE);
+      Info_Idx : constant Array_Info_Id :=
+        (if   Is_Packed_Array_Impl_Type (TE) then Get_Orig_Array_Info (TE)
+         else Get_Array_Info (TE));
+      N_Dim    : constant Nat           :=
+        (Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
+                            then Full_Original_Array_Type (TE) else TE));
 
    begin
       return Bound_Val : GL_Value := Get_Undef_Relationship (TE, Bounds) do
-         for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
+         for Dim in Nat range 0 .. N_Dim - 1 loop
             declare
                --  The type of the bound of the array we're using for the
                --  bounds may not be the same as the type of the bound in
@@ -824,9 +839,13 @@ package body GNATLLVM.Arrays is
                Bound_Type           : constant Entity_Id :=
                  Array_Info.Table (Info_Idx + Dim).Bound_Type;
                Low_Bound            : constant GL_Value  :=
-                 Get_Array_Bound (V_Type, Dim, True, V);
+                 Get_Array_Bound (V_Type, Dim, True, V,
+                                  For_Orig =>
+                                    Is_Packed_Array_Impl_Type (V_Type));
                High_Bound           : constant GL_Value  :=
-                 Get_Array_Bound (V_Type, Dim, False, V);
+                 Get_Array_Bound (V_Type, Dim, False, V,
+                                  For_Orig =>
+                                    Is_Packed_Array_Impl_Type (V_Type));
                Converted_Low_Bound  : constant GL_Value  :=
                  Convert (Low_Bound, Bound_Type);
                Converted_High_Bound : constant GL_Value  :=

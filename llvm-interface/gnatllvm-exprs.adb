@@ -708,7 +708,8 @@ package body GNATLLVM.Exprs is
                   else
                      Result :=
                        Get_Array_Bound
-                       (Prefix_Type, Dim, Attr = Attribute_First, Array_Descr);
+                       (Prefix_Type, Dim, Attr = Attribute_First, Array_Descr,
+                       For_Orig => Is_Packed_Array_Impl_Type (Prefix_Type));
                   end if;
                else
                   Error_Msg_N ("unsupported attribute: `" &
@@ -905,9 +906,7 @@ package body GNATLLVM.Exprs is
       --  we can get the value and bounds together and store them.  If we
       --  can, do so and we're done.  Otherwise, store the bounds.
 
-      if Is_Constr_Subt_For_UN_Aliased (Dest_Type)
-        and then Is_Array_Type (Dest_Type)
-      then
+      if Type_Needs_Bounds (Dest_Type) then
          if not Is_Reference (Src) and then not Is_Dynamic_Size (Dest_Type)
          then
             Store (Get (Src, Bounds_And_Data),

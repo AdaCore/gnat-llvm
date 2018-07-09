@@ -573,8 +573,7 @@ package body GNATLLVM.Compile is
             if Is_Integer_Type (Related_Type (Result))
               and then Is_Packed_Array_Impl_Type (Related_Type (Result))
             then
-               return (if Is_Reference (Result)
-                       then Convert_Ref (Result, TE)
+               return (if   Is_Reference (Result) then Convert_Ref (Result, TE)
                        else Convert (Result, TE));
 
             elsif Nkind (N) = N_Indexed_Component then

@@ -25,26 +25,28 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 package GNATLLVM.Arrays is
 
    function Create_Array_Type
-     (TE : Entity_Id; Info_For_Type : Entity_Id := Empty) return Type_T
-     with Pre  => Is_Array_Type (TE),
+     (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
+     with Pre  => (if   For_Orig then Is_Packed_Array_Impl_Type (TE)
+                   else Is_Array_Type (TE)),
           Post => Present (Create_Array_Type'Result);
    --  Return the type used to represent Array_Type_Node.  This will be
-   --  an opaque type if LLVM can't represent it directly.
+   --  an opaque type if LLVM can't represent it directly.  If For_Orig
+   --  is True, set the array info for the Original_Record_Type of TE.
 
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (TE),
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
           Post => Present (Create_Array_Fat_Pointer_Type'Result);
    --  Return the type used to store fat pointers to Array_Type
 
    function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Array_Type (TE),
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
           Post => Present (Create_Array_Bounds_Type'Result);
    --  Helper that returns the type used to store array bounds. This is a
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
    function Get_Bound_Size (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Array_Type (TE),
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
           Post => Present (Get_Bound_Size'Result);
    --  Get the size of the Bounds part of array and data of TE, taking into
    --  account both the size of the bounds and the alignment of the bounds
@@ -59,14 +61,16 @@ package GNATLLVM.Arrays is
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
+      For_Type : Boolean := False;
+      For_Orig : Boolean := False) return GL_Value
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE)
                   and then (Present (V) or else Is_Constrained (TE)
                               or else For_Type),
           Post => Present (Get_Array_Bound'Result);
    --  Get the bound (lower if Is_Low, else upper) for dimension number
    --  Dim (0-origin) of an array whose LValue is Value and is of type
-   --  Arr_Typ.
+   --  Arr_Typ.  If For_Orig is True, get the information from
+   --  Original_Array_Type of TE.
 
    function Get_Array_Length
      (TE      : Entity_Id;
@@ -154,7 +158,8 @@ package GNATLLVM.Arrays is
 
    function Get_Array_Bounds
      (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
-     with Pre  => Is_Array_Type (TE) and then Is_Array_Type (V_Type),
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE)
+                  and then Is_Array_Or_Packed_Array_Type (V_Type),
           Post => Present (Get_Array_Bounds'Result);
    --  Get the bounds of the array type V_Type using V if necessary.  TE
    --  is the type of the array we're getting the bounds for, in case they're

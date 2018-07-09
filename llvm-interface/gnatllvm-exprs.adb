@@ -844,7 +844,8 @@ package body GNATLLVM.Exprs is
          when Attribute_Descriptor_Size =>
             pragma Assert (Is_Unconstrained_Array (Full_Etype (Prefix (N))));
 
-            return Get_Bound_Size (Full_Etype (Prefix (N)));
+            return NSW_Mul (Get_Bound_Size (Full_Etype (Prefix (N))),
+                            Size_Const_Int (Uint_8));
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &

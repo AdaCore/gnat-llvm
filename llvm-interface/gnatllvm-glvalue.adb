@@ -1389,6 +1389,21 @@ package body GNATLLVM.GLValue is
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
 
+   --------------------------
+   -- Add_Inline_Attribute --
+   --------------------------
+
+   procedure Add_Inline_Attribute (V : GL_Value; Subp : Entity_Id) is
+   begin
+      if Is_Inlined (Subp) and then Has_Pragma_Inline_Always (Subp) then
+         Add_Inline_Always_Attribute (LLVM_Value (V));
+      elsif Is_Inlined (Subp) and then Has_Pragma_Inline (Subp) then
+         Add_Inline_Hint_Attribute (LLVM_Value (V));
+      elsif Has_Pragma_No_Inline (Subp) then
+         Add_Inline_No_Attribute (LLVM_Value (V));
+      end if;
+   end Add_Inline_Attribute;
+
    ------------------------
    -- Add_Nest_Attribute --
    -----------------------

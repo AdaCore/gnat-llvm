@@ -11,4 +11,3 @@ Missing features (identified so far):
 - debug info (for variables, types and parameters)
 - restriction checks done by back end (other than no elab, which is done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
-- compile subprograms in inlined list

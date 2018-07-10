@@ -122,6 +122,27 @@ Add_Dereferenceable_Or_Null_Attribute (Function *fn, unsigned idx,
 
 extern "C"
 void
+Add_Inline_Always_Attribute (Function *fn)
+{
+    fn->addFnAttr(Attribute::AlwaysInline);
+}
+
+extern "C"
+void
+Add_Inline_Hint_Attribute (Function *fn)
+{
+    fn->addFnAttr(Attribute::InlineHint);
+}
+
+extern "C"
+void
+Add_Inline_No_Attribute (Function *fn)
+{
+    fn->addFnAttr(Attribute::NoInline);
+}
+
+extern "C"
+void
 Add_Nest_Attribute (Function *fn, unsigned idx)
 {
     fn->addParamAttr (idx, Attribute::Nest);

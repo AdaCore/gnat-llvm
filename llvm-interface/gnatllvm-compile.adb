@@ -80,26 +80,65 @@ package body GNATLLVM.Compile is
       Clear_LValue_List;
       case Nkind (N) is
          when N_Compilation_Unit =>
+            declare
+               U         : constant Node_Id := Unit (N);
+               Subp      : Entity_Id;
+               Subp_Body : Node_Id;
 
-            --  We assume there won't be any elaboration code and
-            --  clear that flag if we're wrong.
+            begin
+               --  We assume there won't be any elaboration code and
+               --  clear that flag if we're wrong.
 
-            Set_Has_No_Elaboration_Code (N, True);
+               Set_Has_No_Elaboration_Code (N, True);
 
-            --  For a body, first process the spec if there is one
+               --  For a body, first process the spec if there is one
 
-            if Nkind (Unit (N)) = N_Package_Body
-              or else (Nkind (Unit (N)) = N_Subprogram_Body
-                         and then not Acts_As_Spec (Unit (N)))
-            then
-               Emit (Library_Unit (N));
-            end if;
+               if (Nkind (U) = N_Subprogram_Body and then not Acts_As_Spec (U))
+                 or else Nkind (U) = N_Package_Body
+               then
+                  Emit (Library_Unit (N));
+               end if;
 
-            Emit (Context_Items (N));
-            Emit_Decl_Lists (Declarations (Aux_Decls_Node (N)), No_List);
-            Emit (Unit (N));
-            Emit (Actions (Aux_Decls_Node (N)));
-            Emit (Pragmas_After (Aux_Decls_Node (N)));
+               Emit (Context_Items (N));
+               Emit_Decl_Lists (Declarations (Aux_Decls_Node (N)), No_List);
+               Emit (U);
+
+               --  Generate code for all the inlined subprograms
+
+               Subp := First_Inlined_Subprogram (N);
+               while Present (Subp) loop
+                  Subp_Body := Parent (Declaration_Node (Subp));
+
+                  --  Without optimization, process only the required
+                  --  subprograms.
+
+                  if (Code_Gen_Level /= Code_Gen_Level_None
+                        or else Has_Pragma_Inline_Always (Subp))
+
+                    --  The set of inlined subprograms is computed from
+                    --  data recorded early during expansion and it can be
+                    --  a strict superset of the final set computed after
+                    --  semantic analysis, for example if a call to such a
+                    --  subprogram occurs in a pragma Assert and assertions
+                    --  are disabled.  In that case, semantic analysis
+                    --  resets Is_Public to false but the entry for the
+                    --  subprogram in the inlining tables is stalled.
+
+                    and then Is_Public (Subp)
+                    and then Nkind (Subp_Body) = N_Subprogram_Declaration
+                    and then Present (Corresponding_Body (Subp_Body))
+                  then
+                     Subp_Body := Parent (Declaration_Node
+                                            (Corresponding_Body (Subp_Body)));
+                     Emit_One_Body (Subp_Body, For_Inline => True);
+                  end if;
+
+                  Next_Inlined_Subprogram (Subp);
+               end loop;
+
+               Emit (Actions (Aux_Decls_Node (N)));
+               Emit (Pragmas_After (Aux_Decls_Node (N)));
+            end;
 
          when N_Subunit =>
             Emit (Proper_Body (N));

@@ -636,6 +636,11 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V) and then Is_Type (TE);
    --  Add the Dereferenceableornull attribute to parameter with index Idx
 
+   procedure Add_Inline_Attribute (V : GL_Value; Subp : Entity_Id)
+     with Pre => Is_A_Function (V);
+   --  Add the appropropriate Inline attributes, if any, to the LLVM
+   --  function V based on the flags in Subp.
+
    procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V);
    --  Add the Nest attribute to parameter with index Idx

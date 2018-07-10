@@ -964,7 +964,7 @@ package body GNATLLVM.Subprograms is
    -- Emit_One_Body --
    -------------------
 
-   procedure Emit_One_Body (N : Node_Id) is
+   procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False) is
       Spec            : constant Node_Id     := Get_Acting_Spec (N);
       Func            : constant GL_Value    := Emit_Subprogram_Decl (Spec);
       Def_Ident       : constant Entity_Id   := Defining_Entity      (Spec);
@@ -976,6 +976,14 @@ package body GNATLLVM.Subprograms is
       Param           : Entity_Id;
 
    begin
+      --  If we're compiling this for inline, set the proper linkage
+
+      if For_Inline then
+         Set_Linkage (Func, Available_Externally_Linkage);
+      end if;
+
+      --  Now set up to process this subprogram
+
       Current_Subp := Def_Ident;
       Enter_Subp (Func);
       Push_Debug_Scope
@@ -2139,6 +2147,7 @@ package body GNATLLVM.Subprograms is
          --  ??? We don't handle most return value attributes yet.  noalias
          --  is an important one.
 
+         Add_Inline_Attribute (LLVM_Func, Def_Ident);
          if No_Return (Def_Ident) then
             Set_Does_Not_Return (LLVM_Func);
          end if;

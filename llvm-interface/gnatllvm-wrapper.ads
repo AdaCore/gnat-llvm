@@ -63,6 +63,16 @@ package GNATLLVM.Wrapper is
    pragma Import (C, Add_Dereferenceable_Or_Null_Attribute,
                   "Add_Dereferenceable_Or_Null_Attribute");
 
+   procedure Add_Inline_Always_Attribute (Func : Value_T);
+   pragma Import (C, Add_Inline_Always_Attribute,
+                  "Add_Inline_Always_Attribute");
+
+   procedure Add_Inline_Hint_Attribute (Func : Value_T);
+   pragma Import (C, Add_Inline_Hint_Attribute, "Add_Inline_Hint_Attribute");
+
+   procedure Add_Inline_No_Attribute (Func : Value_T);
+   pragma Import (C, Add_Inline_No_Attribute, "Add_Inline_No_Attribute");
+
    procedure Add_Nest_Attribute (Func : Value_T; Idx : unsigned);
    pragma Import (C, Add_Nest_Attribute, "Add_Nest_Attribute");
 

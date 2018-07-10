@@ -145,7 +145,7 @@ package GNATLLVM.Subprograms is
    --  an N_Handled_Sequence_Of_Statements that also have to be in the
    --  elaboration procedure.
 
-   procedure Emit_One_Body (N : Node_Id)
+   procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False)
      with Pre => Present (N);
    --  Generate code for one given subprogram body
 

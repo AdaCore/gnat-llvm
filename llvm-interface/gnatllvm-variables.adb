@@ -936,12 +936,12 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Make_Global_Variable (Def_Ident : Entity_Id) return GL_Value is
-      TE       : constant Entity_Id := Full_Etype (Def_Ident);
-      LLVM_Var : GL_Value           := Get_Dup_Global_Value (Def_Ident);
-      Addr_Expr    : constant Node_Id   :=
+      TE       : constant Entity_Id   := Full_Etype (Def_Ident);
+      LLVM_Var : GL_Value             := Get_Dup_Global_Value (Def_Ident);
+      Addr_Expr    : constant Node_Id :=
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
-      Is_Ref   : constant Boolean   :=
+      Is_Ref   : constant Boolean     :=
         Present (Addr_Expr) or else Is_Dynamic_Size (TE)
           or else Present (Renamed_Object (Def_Ident));
 

@@ -818,7 +818,9 @@ package body GNATLLVM.Records is
          --  Next, if there are discriminants, process them.  But
          --  ignore discriminants that are already in a parent type.
 
-         if Has_Discriminants (Rec_Type) then
+         if Has_Discriminants (Rec_Type)
+           and then not Is_Unchecked_Union (Rec_Type)
+         then
             Field := First_Stored_Discriminant (Rec_Type);
             while Present (Field) loop
                Field_To_Add := Field;
@@ -1609,7 +1611,8 @@ package body GNATLLVM.Records is
       For_Type : Boolean := False) return GL_Value is
    begin
       return Get_Record_Size_So_Far (TE, V, Empty_Record_Info_Id,
-                                     Empty_Record_Info_Id, For_Type);
+                                     Empty_Record_Info_Id,
+                                     For_Type or else Is_Unchecked_Union (TE));
    end Get_Record_Type_Size;
 
    ---------------------------

@@ -5,7 +5,6 @@ Missing features (identified so far):
 - packed array types are not working properly
 - more __sync builtins and other atomic builtins
 - call "_ext" version of raise routines
-- Unchecked_Union
 - freeze nodes for types (see c38102a)
 - very long compilation time in some cases (see various XFAIL in acats, and
   output.adb in bootstrap)

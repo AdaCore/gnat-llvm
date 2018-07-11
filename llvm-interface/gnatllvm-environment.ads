@@ -175,15 +175,15 @@ package GNATLLVM.Environment is
      with Pre => Present (VE);
 
    function Has_Array_Info      (TE : Entity_Id) return Boolean is
-      (Present (Get_Array_Info (TE)))
+      (Has_Type (TE) and then Present (Get_Array_Info (TE)))
      with Pre  => Is_Array_Type (TE);
 
    function Has_Orig_Array_Info (TE : Entity_Id) return Boolean is
-      (Present (Get_Orig_Array_Info (TE)))
+      (Has_Type (TE) and then Present (Get_Orig_Array_Info (TE)))
      with Pre  => Is_Packed_Array_Impl_Type (TE);
 
    function Has_Record_Info     (TE : Entity_Id) return Boolean is
-      (Present (Get_Record_Info (TE)))
+      (Has_Type (TE) and then Present (Get_Record_Info (TE)))
      with Pre => Is_Record_Type (TE);
 
    function Has_Field_Info      (VE : Entity_Id)  return Boolean is

@@ -876,18 +876,19 @@ package body GNATLLVM.Types is
       case Ekind (TE) is
          when Incomplete_Kind =>
             if From_Limited_With (TE) then
-               return Get_Fullest_View (Non_Limited_View (TE));
+               return Get_Fullest_View (Non_Limited_View (TE), Include_PAT);
             elsif Present (Full_View (TE)) then
-               return Get_Fullest_View (Full_View (TE));
+               return Get_Fullest_View (Full_View (TE), Include_PAT);
             end if;
 
          when Private_Kind =>
             if Present (Underlying_Full_View (TE)) then
-               return Get_Fullest_View (Underlying_Full_View (TE));
+               return
+                 Get_Fullest_View (Underlying_Full_View (TE), Include_PAT);
             elsif Present (Full_View (TE)) then
-               return Get_Fullest_View (Full_View (TE));
+               return Get_Fullest_View (Full_View (TE), Include_PAT);
             else
-               return Get_Fullest_View (Etype (TE));
+               return Get_Fullest_View (Etype (TE), Include_PAT);
             end if;
 
          when Array_Kind =>
@@ -897,33 +898,34 @@ package body GNATLLVM.Types is
 
          when E_Record_Subtype =>
             if Present (Cloned_Subtype (TE)) then
-               return Get_Fullest_View (Cloned_Subtype (TE));
+               return Get_Fullest_View (Cloned_Subtype (TE), Include_PAT);
             end if;
 
          when E_Class_Wide_Type =>
-            return Get_Fullest_View (Root_Type (TE));
+            return Get_Fullest_View (Root_Type (TE), Include_PAT);
 
          when  E_Class_Wide_Subtype =>
             if Present (Equivalent_Type (TE)) then
-               return Get_Fullest_View (Equivalent_Type (TE));
+               return Get_Fullest_View (Equivalent_Type (TE), Include_PAT);
             elsif Present (Cloned_Subtype (TE)) then
-               return Get_Fullest_View (Cloned_Subtype (TE));
+               return Get_Fullest_View (Cloned_Subtype (TE), Include_PAT);
             end if;
 
          when E_Protected_Type | E_Protected_Subtype
             | E_Task_Type |  E_Task_Subtype =>
             if Present (Corresponding_Record_Type (TE)) then
-               return Get_Fullest_View (Corresponding_Record_Type (TE));
+               return Get_Fullest_View (Corresponding_Record_Type (TE),
+                                        Include_PAT);
             end if;
 
          when E_Access_Protected_Subprogram_Type
             | E_Anonymous_Access_Protected_Subprogram_Type =>
             if Present (Equivalent_Type (TE)) then
-               return Get_Fullest_View (Equivalent_Type (TE));
+               return Get_Fullest_View (Equivalent_Type (TE), Include_PAT);
             end if;
 
          when E_Access_Subtype =>
-            return Get_Fullest_View (Base_Type (TE));
+            return Get_Fullest_View (Base_Type (TE), Include_PAT);
 
          when others =>
             null;
@@ -1210,7 +1212,7 @@ package body GNATLLVM.Types is
            and then Get_LLVM_Type_Size (Create_Type (Alloc_Type)) > Max_Alloc
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
-            return Emit_Undef (TE);
+            return Get_Undef_Ref (TE);
          else
             return
               Move_Into_Memory (Alloca (Alloc_Type, Name), V, TE, Alloc_Type);

@@ -1356,22 +1356,6 @@ package body GNATLLVM.Variables is
       if Present (V_Act) then
          return V_Act;
 
-      --  N_Defining_Identifier nodes for enumeration literals are not
-      --  stored in the environment. Handle them here.
-
-      elsif Ekind (Def_Ident) = E_Enumeration_Literal then
-         return Const_Int (TE, Enumeration_Rep (Def_Ident));
-
-      --  If this a label, we can use "blockaddress"
-
-      elsif Ekind (Def_Ident) = E_Label then
-         return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
-
-      --  If this is a subprogram, hand it off to our helper
-
-      elsif Ekind (Def_Ident) in Subprogram_Kind then
-         return Emit_Subprogram_Identifier (Def_Ident, N, TE);
-
       --  If this entity has a known constant value, use it unless we're
       --  getting the address or an operation where we likely need an LValue.
 
@@ -1381,26 +1365,44 @@ package body GNATLLVM.Variables is
                                N_Slice)
       then
          return Emit_Conversion (Expr, TE);
-
-      --  If this is a bare discriminant, it's a reference to the
-      --  discriminant of some record.
-
-      elsif Ekind (Def_Ident) = E_Discriminant then
-         return Use_Discriminant_For_Bound (Def_Ident);
       end if;
 
-      --  If we haven't seen this variable and it's not in our code unit,
-      --  make a global for it.
+      --  Otherwise, see if we have any special cases
 
-      if No (V) and then not In_Extended_Main_Code_Unit (Def_Ident) then
-         V := Make_Global_Variable (Def_Ident);
-      end if;
+      case Ekind (Def_Ident) is
 
-      --  Now return what we got (if we didn't get anything by now,
-      --  we have an internal error).  But avoid returning a double reference.
+         when E_Enumeration_Literal =>
+            --  N_Defining_Identifier nodes for enumeration literals are not
+            --  stored in the environment. Handle them here.
 
-      return (if Is_Double_Reference (V) then  Get (V, Any_Reference) else V);
+            return Const_Int (TE, Enumeration_Rep (Def_Ident));
 
+         when E_Label =>
+            return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
+
+         when Subprogram_Kind =>
+            return Emit_Subprogram_Identifier (Def_Ident, N, TE);
+
+         when E_Discriminant =>
+            --  If this is a bare discriminant, it's a reference to the
+            --  discriminant of some record.
+            return Use_Discriminant_For_Bound (Def_Ident);
+
+         when others =>
+            --  If we haven't seen this variable and it's not in our
+            --  code unit, make a global for it.
+
+            if No (V) and then not In_Extended_Main_Code_Unit (Def_Ident) then
+               V := Make_Global_Variable (Def_Ident);
+            end if;
+
+            --  Now return what we got (if we didn't get anything by now,
+            --  we have an internal error).  But avoid returning a double
+            --  reference.
+
+            return (if   Is_Double_Reference (V)
+                    then Get (V, Any_Reference) else V);
+      end case;
    end Emit_Identifier;
 
 end GNATLLVM.Variables;

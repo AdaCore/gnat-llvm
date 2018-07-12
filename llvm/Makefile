@@ -3,15 +3,15 @@ PARALLEL=$(shell grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 8)
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
-LLVM_SRC_DIR=llvm-6.0.0.src
-LLVM_CLANG_EXP_NAME=cfe-6.0.0.src
+LLVM_SRC_DIR=llvm-6.0.1.src
+LLVM_CLANG_EXP_NAME=cfe-6.0.1.src
 LLVM_INCLUDE_DIR=$(PWD)/$(LLVM_SRC_DIR)/include
 LLVM_INCLUDE_DIR_C=$(LLVM_INCLUDE_DIR)/llvm-c
 DL=wget
 LLVM_SRC_FNAME=$(LLVM_SRC_DIR).tar.xz
 LLVM_CLANG_SRC_FNAME=$(LLVM_CLANG_EXP_NAME).tar.xz
-LLVM_SRC_LINK=http://releases.llvm.org/6.0.0/$(LLVM_SRC_FNAME)
-LLVM_CLANG_SRC_LINK=http://releases.llvm.org/6.0.0/$(LLVM_CLANG_SRC_FNAME)
+LLVM_SRC_LINK=http://releases.llvm.org/6.0.1/$(LLVM_SRC_FNAME)
+LLVM_CLANG_SRC_LINK=http://releases.llvm.org/6.0.1/$(LLVM_CLANG_SRC_FNAME)
 
 .PHONY: configure
 

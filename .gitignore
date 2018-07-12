@@ -16,7 +16,7 @@ alis.list
 obj
 
 # Imported sources
-llvm/llvm-6.0.0.src
+llvm/llvm-6.0.1.src
 llvm/clang
 acats
 

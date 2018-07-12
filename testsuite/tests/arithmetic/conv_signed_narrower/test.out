@@ -1,5 +1,0 @@
-Foo (0x0000000000000000) = 0x00000000
-Foo (0x0000000000000001) = 0x00000001
-Foo (0x000000007fffffff) = 0x7fffffff
-Foo (0xffffffff80000000) = 0x80000000
-Foo (0xffffffffffffffff) = 0xffffffff

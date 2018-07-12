@@ -1,9 +1,0 @@
-Foo (-1, True, False) = -1
-Foo (0, True, False) = 0
-Foo (1, True, False) = 1
-Foo (-1, False, True) = -2
-Foo (0, False, True) = 0
-Foo (1, False, True) = 2
-Foo (-1, False, False) = -3
-Foo (0, False, False) = 0
-Foo (1, False, False) = 3

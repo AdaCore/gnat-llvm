@@ -1,6 +1,0 @@
-Foo (True, -1, -1) = -1.0
-Foo (True, 1, -1) = 1.0
-Foo (True, -1, 1) = 1.0
-Foo (False, -1, -1) = -1.0
-Foo (False, 1, -1) = -1.0
-Foo (False, -1, 1) = -1.0

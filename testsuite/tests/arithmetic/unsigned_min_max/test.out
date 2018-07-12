@@ -1,8 +1,0 @@
-Foo (True, 0, 0) = 0
-Foo (True, 0, 1) = 1
-Foo (True, 1, 0) = 1
-Foo (True, 0, 4294967295) = 4294967295
-Foo (False, 0, 0) = 0
-Foo (False, 0, 1) = 0
-Foo (False, 1, 0) = 0
-Foo (False, 0, 4294967295) = 0

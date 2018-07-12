@@ -1,5 +1,3 @@
-PARALLEL=$(shell grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo 8)
-
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
@@ -48,7 +46,7 @@ configure-prod:
 	$(CONFIGURE) -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 llvm:
-	$(MAKE) -s -j$(PARALLEL) -C llvm-obj
+	$(MAKE) -s -C llvm-obj
 
 $(OUT_DIR)/llvm-core.adb: $(LLVM_INCLUDE_DIR_C)/Core.h py/common.py py/lxml_subp.py py/wrapper.py
 	mkdir -p $(TMP_GEN_DIR) $(OUT_DIR)

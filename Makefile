@@ -15,9 +15,6 @@ build-be:
 llvm:
 	$(MAKE) -C llvm
 
-tests:
-	$(MAKE) -C testsuite
-
 acats:
 	$(MAKE) -C acats
 

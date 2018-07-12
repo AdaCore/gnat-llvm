@@ -1,4 +1,4 @@
-Missing features (identified so far):
+Limitations and missing features (identified so far):
 
 - deal with recording positions for package bodies (can already do when
   generating code, but not when pushing for elab proc)
@@ -11,3 +11,4 @@ Missing features (identified so far):
 - debug info (for variables, types and parameters)
 - restriction checks done by back end (other than no elab, which is done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
+- support for stack checking

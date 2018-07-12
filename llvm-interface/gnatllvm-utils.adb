@@ -273,7 +273,6 @@ package body GNATLLVM.Utils is
       Dump_LLVM_Type (Type_Of (V.Value));
       Write_Str (GL_Relationship'Image (V.Relationship) & ": ");
       pg (Union_Id (V.Typ));
-
    end Dump_GL_Value;
 
    ----------------------
@@ -290,7 +289,6 @@ package body GNATLLVM.Utils is
    --------------------
 
    procedure Dump_LLVM_Type (T : Type_T) is
-
       procedure Dump_LLVM_Type_C (T : Type_T);
       pragma Import (C, Dump_LLVM_Type_C, "Dump_LLVM_Type_C");
 

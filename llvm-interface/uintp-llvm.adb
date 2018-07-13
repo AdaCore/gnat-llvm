@@ -129,6 +129,7 @@ package body Uintp.LLVM is
            (Unsigned_64 (Words (Cur_Word))
             or Shift_Left (Buffer, Integer (Cur_Bit - Buffer_Length)));
          Cur_Bit := Cur_Bit - Buffer_Length;
+
          if Cur_Bit = Nat (0) then
             Cur_Word := Cur_Word - 1;
             Cur_Bit  := 64;
@@ -143,8 +144,8 @@ package body Uintp.LLVM is
 
       Push_Bits (0, N_Padding_Bits);
 
-      for I in Nat range 1 .. Nat (Length) loop
-         Push_Bits (uint64_t (abs D_Table (Loc + I - 1)), Base_Bits);
+      for J in 1 .. Nat (Length) loop
+         Push_Bits (uint64_t (abs D_Table (Loc + J - 1)), Base_Bits);
       end loop;
 
       return Words;

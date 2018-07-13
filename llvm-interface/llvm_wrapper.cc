@@ -196,7 +196,7 @@ extern "C"
 void
 Dump_LLVM_Type_C (Type *type)
 {
-    // type->dump ();
+    type->dump ();
 }
 
 extern "C"

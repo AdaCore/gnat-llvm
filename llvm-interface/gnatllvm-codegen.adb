@@ -15,105 +15,178 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Command_Line; use Ada.Command_Line;
 with Ada.Directories;
 
-with System;         use System;
+with LLVM.Analysis;   use LLVM.Analysis;
+with LLVM.Bit_Writer; use LLVM.Bit_Writer;
+with LLVM.Core;       use LLVM.Core;
+with LLVM.Debug_Info; use LLVM.Debug_Info;
+with LLVM.Support;    use LLVM.Support;
 
-with LLVM.Analysis;       use LLVM.Analysis;
-with LLVM.Bit_Writer;     use LLVM.Bit_Writer;
-with LLVM.Core;           use LLVM.Core;
-with LLVM.Target_Machine; use LLVM.Target_Machine;
-
-with Atree;    use Atree;
 with Errout;   use Errout;
 with Lib;      use Lib;
-with Namet;    use Namet;
 with Opt;      use Opt;
 with Osint.C;  use Osint.C;
-with Sinfo;    use Sinfo;
-with Stand;    use Stand;
-with Stringt;
+with Output;   use Output;
 with Switch;   use Switch;
 
-with Get_Targ; use Get_Targ;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with GNATLLVM;             use GNATLLVM;
-with GNATLLVM.Blocks;
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Subprograms;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
-
-package body LLVM_Drive is
+package body GNATLLVM.Codegen is
 
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
 
-   ------------------
-   -- GNAT_To_LLVM --
-   ------------------
+   -----------------------
+   -- Scan_Command_Line --
+   -----------------------
 
-   procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
-      Err_Msg : aliased Ptr_Err_Msg_Type;
+   procedure Scan_Command_Line is
    begin
-      pragma Assert (Nkind (GNAT_Root) = N_Compilation_Unit);
+      --  Scan command line for relevant switches and initialize LLVM
+      --  target.
 
-      --  We can't use a qualified expression here because that will cause
-      --  a temporary to be placed in our stack and if the array is very
-      --  large, it will blow our stack.
+      for J in 1 .. Argument_Count loop
+         declare
+            Switch : constant String := Argument (J);
 
-      LLVM_Info_Map := new LLVM_Info_Array (First_Node_Id .. Last_Node_Id);
-      for J in LLVM_Info_Map'Range loop
-         LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
+         begin
+            pragma Assert (Switch'First = 1);
+
+            if Switch'Length > 0
+              and then Switch (1) /= '-'
+            then
+               if Is_Regular_File (Switch) then
+                  Free (Filename);
+                  Filename := new String'(Switch);
+               end if;
+
+            elsif Switch = "--dump-ir" then
+               Code_Generation := Dump_IR;
+            elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
+               Code_Generation := Write_BC;
+            elsif Switch = "-emit-llvm" then
+               Emit_LLVM := True;
+            elsif Switch = "-S" then
+               Output_Assembly := True;
+            elsif Switch = "-g" then
+               Emit_Debug_Info := True;
+            elsif Switch = "-fstack-check" then
+               Do_Stack_Check := True;
+            elsif Switch'Length > 9
+              and then Switch (1 .. 9) = "--target="
+            then
+               Free (Target_Triple);
+               Target_Triple :=
+                 new String'(Switch (10 .. Switch'Last));
+            elsif Switch'Length > 6 and then Switch (1 .. 6) = "-mcpu=" then
+               Free (CPU);
+               CPU := new String'(Switch (7 .. Switch'Last));
+            elsif Switch'Length > 1
+              and then Switch (1 .. 2) = "-O"
+            then
+               if Switch'Length = 2 then
+                  Code_Gen_Level := Code_Gen_Level_Less;
+               else
+                  case Switch (3) is
+                     when '1' =>
+                        Code_Gen_Level := Code_Gen_Level_Less;
+                     when '2' | 's' =>
+                        Code_Gen_Level := Code_Gen_Level_Default;
+                     when '3' =>
+                        Code_Gen_Level := Code_Gen_Level_Aggressive;
+                     when others =>
+                        Code_Gen_Level := Code_Gen_Level_None;
+                  end case;
+               end if;
+
+            elsif Switch'Length > 6
+              and then Switch (1 .. 6) = "-llvm-"
+            then
+               Switch_Table.Append (new String'(Switch (6 .. Switch'Last)));
+            end if;
+         end;
+      end loop;
+   end Scan_Command_Line;
+
+   ----------------------------
+   -- Initialize_LLVM_Target --
+   ----------------------------
+
+   procedure Initialize_LLVM_Target is
+      Num_Builtin : constant := 2;
+
+      type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
+      subtype Switch_Addrs is Addr_Arr (1 .. Switch_Table.Last + Num_Builtin);
+
+      Opt0        : constant String   := "filename" & ASCII.NUL;
+      Opt1        : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
+      Addrs       : Switch_Addrs      :=
+        (1 => Opt0'Address, 2 => Opt1'Address, others => <>);
+      Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
+
+   begin
+      --  Add any LLVM parameters to the list of switches
+
+      for J in 1 .. Switch_Table.Last loop
+         Addrs (J + Num_Builtin) := Switch_Table.Table (J).all'Address;
       end loop;
 
-      LLVM_Info_Table.Increment_Last;
-      --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
+      Parse_Command_Line_Options (Switch_Table.Last + Num_Builtin,
+                                  Addrs'Address, "");
 
-      Void_Ptr_Type  := Create_Type (Standard_A_Char);
+      --  Finalize our compilation mode now that all switches are parsed
 
-      --  Find the integer type corresponding to the size of a pointer
-      --  and use that for our Size Type.
-
-      if Get_Pointer_Size = Get_Long_Long_Size then
-         Size_Type := Standard_Long_Long_Integer;
-      elsif Get_Pointer_Size = Get_Long_Size then
-         Size_Type := Standard_Long_Integer;
-      else
-         Size_Type := Standard_Integer;
+      if Emit_LLVM then
+         Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
+      elsif Output_Assembly then
+         Code_Generation := Write_Assembly;
       end if;
 
-      LLVM_Size_Type := Create_Type (Size_Type);
+      --  Initialize the translation environment
 
-      --  Likewise for the 32-bit integer type
+      Initialize_LLVM;
+      Context    := Get_Global_Context;
+      IR_Builder := Create_Builder_In_Context (Context);
+      MD_Builder := Create_MDBuilder_In_Context (Context);
+      Module     := Module_Create_With_Name_In_Context (Filename.all, Context);
 
-      if Get_Long_Long_Size = 32 then
-         Int_32_Type := Standard_Long_Long_Integer;
-      elsif Get_Long_Size = 32 then
-         Int_32_Type := Standard_Long_Integer;
-      else
-         Int_32_Type := Standard_Integer;
+      if Get_Target_From_Triple
+        (Target_Triple.all, LLVM_Target'Address, Ptr_Err_Msg'Address)
+      then
+         Write_Str
+           ("cannot set target to " & Target_Triple.all & ": " &
+            Get_LLVM_Error_Msg (Ptr_Err_Msg));
+         Write_Eol;
+         OS_Exit (4);
       end if;
 
-      --  Initialize modules and handle duplicate globals
+      Target_Machine    :=
+        Create_Target_Machine (T          => LLVM_Target,
+                               Triple     => Target_Triple.all,
+                               CPU        => CPU.all,
+                               Features   => "",
+                               Level      => Code_Gen_Level,
+                               Reloc      => Reloc_Default,
+                               Code_Model => Code_Model_Default);
 
-      Stringt.Unlock;
-      GNATLLVM.Blocks.Initialize;
-      GNATLLVM.DebugInfo.Initialize;
-      GNATLLVM.Subprograms.Initialize;
-      Detect_Duplicate_Global_Names;
-      Stringt.Lock;
+      Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
+      TBAA_Root          := Create_TBAA_Root (MD_Builder);
+      Set_Target (Module, Target_Triple.all);
+   end Initialize_LLVM_Target;
 
-      --  Actually translate
+   ------------------------
+   -- LLVM_Generate_Code --
+   ------------------------
 
-      Emit (GNAT_Root);
+   procedure LLVM_Generate_Code (GNAT_Root : Node_Id) is
+      Err_Msg : aliased Ptr_Err_Msg_Type;
 
+   begin
       --  Complete and verify the translation.  Unless just writing IR,
       --  suppress doing anything else if there's an error.
 
-      Finalize_Debugging;
       if Verify_Module (Module, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad LLVM code", GNAT_Root);
          if Code_Generation not in Dump_IR | Write_IR then
@@ -181,10 +254,10 @@ package body LLVM_Drive is
 
       --  Release the environment
 
-      Dispose_Debugging;
+      Dispose_DI_Builder (DI_Builder);
       Dispose_Builder (IR_Builder);
       Dispose_Module  (Module);
-   end GNAT_To_LLVM;
+   end LLVM_Generate_Code;
 
    ------------------------
    -- Is_Back_End_Switch --
@@ -259,4 +332,4 @@ package body LLVM_Drive is
       end if;
    end Output_File_Name;
 
-end LLVM_Drive;
+end GNATLLVM.Codegen;

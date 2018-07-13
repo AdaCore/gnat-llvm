@@ -21,8 +21,13 @@ with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
 
+   procedure GNAT_To_LLVM (GNAT_Root : Node_Id)
+     with Pre => Nkind (GNAT_Root) = N_Compilation_Unit;
+   --  Generate LLVM from GNAT_Root and then compile it
+
    procedure Emit (N : Node_Id)
      with Pre => Present (N);
+
    procedure Emit (List : List_Id; Starting_At : Node_Id := Empty);
    --  Emit a node and every element of a (possibly empty) List.  In the
    --  latter case, if Starting_At is Present, it indicates the starting

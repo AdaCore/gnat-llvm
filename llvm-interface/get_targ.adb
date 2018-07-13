@@ -24,47 +24,12 @@
 --  ??? Will need to replace hardcoded values by target specific information
 --  coming from the LLVM backend for the relevant target.
 
-with Output; use Output;
-with Table;
-
-with System;           use System;
-with System.OS_Lib;    use System.OS_Lib;
-with Interfaces.C;
-with Ada.Command_Line; use Ada.Command_Line;
-
-with LLVM.Core;           use LLVM.Core;
-with LLVM.Support;        use LLVM.Support;
-with LLVM.Target;         use LLVM.Target;
-with LLVM.Target_Machine; use LLVM.Target_Machine;
+with LLVM.Target; use LLVM.Target;
 
 with GNATLLVM;         use GNATLLVM;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
 package body Get_Targ is
-
-   Filename      : String_Access := new String'("");
-   --  Filename to compile.
-
-   CPU           :  String_Access := new String'("generic");
-   --  Name of the specific CPU for this compilation.
-
-   Target_Triple : String_Access :=
-     new String'(Get_Default_Target_Triple);
-   --  Name of the target for this compilation
-
-   type Pstring is access String;
-
-   package Switch_Table is new Table.Table
-     (Table_Component_Type => Pstring,
-      Table_Index_Type     => Interfaces.C.int,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Switch_Table");
-
-   procedure Initialize_LLVM_Target;
-   --  Initialize all the data structures specific to the LLVM target code
-   --  generation.
 
    -----------------------
    -- Get_Bits_Per_Unit --
@@ -317,74 +282,6 @@ package body Get_Targ is
       end case;
    end Width_From_Size;
 
-   ----------------------------
-   -- Initialize_LLVM_Target --
-   ----------------------------
-
-   procedure Initialize_LLVM_Target is
-      use Interfaces.C;
-
-      Num_Builtin : constant := 2;
-
-      type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
-      subtype Switch_Addrs is Addr_Arr (1 .. Switch_Table.Last + Num_Builtin);
-
-      Opt0        : constant String   := "filename" & ASCII.NUL;
-      Opt1        : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
-      Addrs       : Switch_Addrs      :=
-        (1 => Opt0'Address, 2 => Opt1'Address, others => <>);
-      Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
-
-   begin
-      --  Add any LLVM parameters to the list of switches
-
-      for J in 1 .. Switch_Table.Last loop
-         Addrs (J + Num_Builtin) := Switch_Table.Table (J).all'Address;
-      end loop;
-
-      Parse_Command_Line_Options (Switch_Table.Last + Num_Builtin,
-                                  Addrs'Address, "");
-
-      --  Finalize our compilation mode now that all switches are parsed
-
-      if Emit_LLVM then
-         Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
-      elsif Output_Assembly then
-         Code_Generation := Write_Assembly;
-      end if;
-
-      --  Initialize the translation environment
-
-      Initialize_LLVM;
-      Context    := Get_Global_Context;
-      IR_Builder := Create_Builder_In_Context (Context);
-      MD_Builder := Create_MDBuilder_In_Context (Context);
-      Module     := Module_Create_With_Name_In_Context (Filename.all, Context);
-
-      if Get_Target_From_Triple
-        (Target_Triple.all, LLVM_Target'Address, Ptr_Err_Msg'Address)
-      then
-         Write_Str
-           ("cannot set target to " & Target_Triple.all & ": " &
-            Get_LLVM_Error_Msg (Ptr_Err_Msg));
-         Write_Eol;
-         OS_Exit (4);
-      end if;
-
-      Target_Machine    :=
-        Create_Target_Machine (T          => LLVM_Target,
-                               Triple     => Target_Triple.all,
-                               CPU        => CPU.all,
-                               Features   => "",
-                               Level      => Code_Gen_Level,
-                               Reloc      => Reloc_Default,
-                               Code_Model => Code_Model_Default);
-
-      Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
-      TBAA_Root          := Create_TBAA_Root (MD_Builder);
-      Set_Target (Module, Target_Triple.all);
-   end Initialize_LLVM_Target;
-
    ------------------------------
    -- Get_Back_End_Config_File --
    ------------------------------
@@ -396,71 +293,7 @@ package body Get_Targ is
       if First_Call then
          First_Call := False;
 
-         --  Scan command line for relevant switches and initialize LLVM
-         --  target.
-
-         for J in 1 .. Argument_Count loop
-            declare
-               Switch : constant String := Argument (J);
-
-            begin
-               pragma Assert (Switch'First = 1);
-
-               if Switch'Length > 0
-                 and then Switch (1) /= '-'
-               then
-                  if Is_Regular_File (Switch) then
-                     Free (Filename);
-                     Filename := new String'(Switch);
-                  end if;
-
-               elsif Switch = "--dump-ir" then
-                  Code_Generation := Dump_IR;
-               elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
-                  Code_Generation := Write_BC;
-               elsif Switch = "-emit-llvm" then
-                  Emit_LLVM := True;
-               elsif Switch = "-S" then
-                  Output_Assembly := True;
-               elsif Switch = "-g" then
-                  Emit_Debug_Info := True;
-               elsif Switch = "-fstack-check" then
-                  Do_Stack_Check := True;
-               elsif Switch'Length > 9
-                 and then Switch (1 .. 9) = "--target="
-               then
-                  Free (Target_Triple);
-                  Target_Triple :=
-                    new String'(Switch (10 .. Switch'Last));
-               elsif Switch'Length > 6 and then Switch (1 .. 6) = "-mcpu=" then
-                  Free (CPU);
-                  CPU := new String'(Switch (7 .. Switch'Last));
-               elsif Switch'Length > 1
-                 and then Switch (1 .. 2) = "-O"
-               then
-                  if Switch'Length = 2 then
-                     Code_Gen_Level := Code_Gen_Level_Less;
-                  else
-                     case Switch (3) is
-                        when '1' =>
-                           Code_Gen_Level := Code_Gen_Level_Less;
-                        when '2' | 's' =>
-                           Code_Gen_Level := Code_Gen_Level_Default;
-                        when '3' =>
-                           Code_Gen_Level := Code_Gen_Level_Aggressive;
-                        when others =>
-                           Code_Gen_Level := Code_Gen_Level_None;
-                     end case;
-                  end if;
-
-               elsif Switch'Length > 6
-                 and then Switch (1 .. 6) = "-llvm-"
-               then
-                  Switch_Table.Append (new String'(Switch (6 .. Switch'Last)));
-               end if;
-            end;
-         end loop;
-
+         Scan_Command_Line;
          Initialize_LLVM_Target;
       end if;
 

@@ -114,6 +114,9 @@ package GNATLLVM is
    IR_Builder         : Builder_T;
    --  The current LLVM Instruction builder
 
+   DI_Builder          : DI_Builder_T;
+   --  The current LLVM Debug Info builder
+
    Module             : Module_T;
    --  The LLVM Module being compiled
 

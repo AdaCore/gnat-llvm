@@ -17,16 +17,20 @@
 
 with Errout;   use Errout;
 with Exp_Util; use Exp_Util;
+with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
+with Stand;    use Stand;
+with Stringt;  use Stringt;
 with Uintp;    use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
@@ -49,6 +53,68 @@ package body GNATLLVM.Compile is
    procedure Emit_Loop_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Loop_Statement;
    --  Generate code for a loop
+
+   ------------------
+   -- GNAT_To_LLVM --
+   ------------------
+
+   procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
+   begin
+      --  We can't use a qualified expression here because that will cause
+      --  a temporary to be placed in our stack and if the array is very
+      --  large, it will blow our stack.
+
+      LLVM_Info_Map := new LLVM_Info_Array (First_Node_Id .. Last_Node_Id);
+      for J in LLVM_Info_Map'Range loop
+         LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
+      end loop;
+
+      LLVM_Info_Table.Increment_Last;
+      --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
+
+      Void_Ptr_Type  := Create_Type (Standard_A_Char);
+
+      --  Find the integer type corresponding to the size of a pointer
+      --  and use that for our Size Type.
+
+      if Get_Pointer_Size = Get_Long_Long_Size then
+         Size_Type := Standard_Long_Long_Integer;
+      elsif Get_Pointer_Size = Get_Long_Size then
+         Size_Type := Standard_Long_Integer;
+      else
+         Size_Type := Standard_Integer;
+      end if;
+
+      LLVM_Size_Type := Create_Type (Size_Type);
+
+      --  Likewise for the 32-bit integer type
+
+      if Get_Long_Long_Size = 32 then
+         Int_32_Type := Standard_Long_Long_Integer;
+      elsif Get_Long_Size = 32 then
+         Int_32_Type := Standard_Long_Integer;
+      else
+         Int_32_Type := Standard_Integer;
+      end if;
+
+      --  Initialize modules and handle duplicate globals
+
+      Stringt.Unlock;
+      GNATLLVM.Blocks.Initialize;
+      GNATLLVM.DebugInfo.Initialize;
+      GNATLLVM.Subprograms.Initialize;
+      Detect_Duplicate_Global_Names;
+      Stringt.Lock;
+
+      --  Actually translate
+
+      Emit (GNAT_Root);
+
+      --   Now finalize things and generate code
+      Finalize_Debugging;
+      LLVM_Generate_Code (GNAT_Root);
+
+   end GNAT_To_LLVM;
 
    ----------
    -- Emit --

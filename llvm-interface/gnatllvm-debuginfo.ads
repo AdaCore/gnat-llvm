@@ -19,9 +19,6 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.DebugInfo is
 
-   DI_Builder          : DI_Builder_T;
-   --  The current LLVM Debug Info builder
-
    Debug_Compile_Unit  : Metadata_T;
    --  DICompilleUnit metadata for the main compile unit
 
@@ -76,8 +73,5 @@ package GNATLLVM.DebugInfo is
    --  calls should be used to freeze the position.  Each "push" must be
    --  cancelled with a "pop" and the position will be frozen until the
    --  all pushes have been popped.
-
-   procedure Dispose_Debugging;
-   --  Free any resources used by the debugging module
 
 end GNATLLVM.DebugInfo;

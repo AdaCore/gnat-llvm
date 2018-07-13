@@ -293,6 +293,10 @@ package body Get_Targ is
       if First_Call then
          First_Call := False;
 
+         --  We need information from the LLVM target to get our parameters
+         --  so initialize that now, which will also mean scanning the
+         --  command-line for parameters that are needed to initialize it.
+
          Scan_Command_Line;
          Initialize_LLVM_Target;
       end if;

@@ -15,36 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with System;           use System;
-with System.OS_Lib;    use System.OS_Lib;
-with Interfaces;
-with Interfaces.C;     use Interfaces.C;
-
-with Table;
-
 package GNATLLVM.Codegen is
-
-   Filename      : String_Access := new String'("");
-   --  Filename to compile.
-
-   CPU           :  String_Access := new String'("generic");
-   --  Name of the specific CPU for this compilation.
-
-   Code_Model    : Code_Model_T := Code_Model_Default;
-   Reloc_Mode    : Reloc_Mode_T := Reloc_Default;
-   --  Code generation options
-
-   Target_Triple : String_Access :=
-     new String'(Get_Default_Target_Triple);
-   --  Name of the target for this compilation
-
-   package Switch_Table is new Table.Table
-     (Table_Component_Type => String_Access,
-      Table_Index_Type     => Interfaces.C.int,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Switch_Table");
 
    procedure Scan_Command_Line;
    --  Scan operands relevant to code generation

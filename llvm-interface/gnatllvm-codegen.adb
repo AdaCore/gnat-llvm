@@ -17,6 +17,10 @@
 
 with Ada.Command_Line; use Ada.Command_Line;
 with Ada.Directories;
+with Interfaces;
+with Interfaces.C;     use Interfaces.C;
+with System;           use System;
+with System.OS_Lib;    use System.OS_Lib;
 
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Bit_Writer; use LLVM.Bit_Writer;
@@ -30,10 +34,35 @@ with Opt;      use Opt;
 with Osint.C;  use Osint.C;
 with Output;   use Output;
 with Switch;   use Switch;
+with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
+
+   Filename      : String_Access  := new String'("");
+   --  Filename to compile.
+
+   CPU           :  String_Access := new String'("generic");
+   --  Name of the specific CPU for this compilation.
+
+   Code_Model    : Code_Model_T   := Code_Model_Default;
+   Reloc_Mode    : Reloc_Mode_T   := Reloc_Default;
+   --  Code generation options
+
+   Target_Triple : String_Access  := new String'(Get_Default_Target_Triple);
+   --  Name of the target for this compilation
+
+   Optimize_IR   : Boolean        := False;
+   --  True if we should optimize IR before writing it out
+
+   package Switch_Table is new Table.Table
+     (Table_Component_Type => String_Access,
+      Table_Index_Type     => Interfaces.C.int,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Switch_Table");
 
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
@@ -46,9 +75,9 @@ package body GNATLLVM.Codegen is
    --------------------
 
    procedure Process_Switch (Switch : String) is
-      Len   : constant Integer := Switch'Length;
       First : constant Integer := Switch'First;
-      Last  : constant Integer := Switch'Last;
+      Last  : constant Integer := Switch_Last (Switch);
+      Len   : constant Integer := Last - First + 1;
 
       function Starts_With (S : String) return Boolean is
         (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
@@ -80,6 +109,8 @@ package body GNATLLVM.Codegen is
          Emit_Debug_Info := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
+      elsif Switch = "-foptimize-ir" then
+         Optimize_IR := True;
       elsif Starts_With ("--target=") then
          Free (Target_Triple);
          Target_Triple := new String'(Switch_Value ("--target="));
@@ -224,6 +255,15 @@ package body GNATLLVM.Codegen is
          end if;
       end if;
 
+      --  If we're generating code or being asked to optimize IR before
+      --  writing it, perform optimization.
+
+      if Code_Generation in Write_Assembly | Write_Object
+        or else Optimize_IR
+      then
+         Optimize_Module (Module, Target_Machine, Optimization_Level);
+      end if;
+
       --  Output the translation
 
       case Code_Generation is
@@ -294,7 +334,7 @@ package body GNATLLVM.Codegen is
    ------------------------
 
    function Is_Back_End_Switch (Switch : String) return Boolean is
-      First : constant Positive := Switch'First + 1;
+      First : constant Positive := Switch'First;
       Last  : constant Natural  := Switch_Last (Switch);
 
    begin
@@ -312,12 +352,14 @@ package body GNATLLVM.Codegen is
          return True;
       elsif Switch = "-fstack-check" then
          return True;
-      elsif Last > First + 7
-        and then Switch (First .. First + 7) = "-target="
+      elsif Switch = "-foptimize-ir" then
+         return True;
+      elsif Last > First + 8
+        and then Switch (First .. First + 8) = "--target="
       then
          return True;
-      elsif Last > First + 4
-        and then Switch (First .. First + 4) = "llvm-"
+      elsif Last > First + 5
+        and then Switch (First .. First + 5) = "-llvm-"
       then
          return True;
       end if;
@@ -327,8 +369,8 @@ package body GNATLLVM.Codegen is
       --  Scan_Command_Line above.  This permits compatibility with
       --  existing scripts.
 
-      return Switch (First) in 'f' | 'm' | 'W' | 'w'
-        or else Switch (First .. Last) = "pipe";
+      return Switch (First + 1) in 'f' | 'm' | 'W' | 'w'
+        or else Switch (First .. Last) = "-pipe";
    end Is_Back_End_Switch;
 
    ----------------------

@@ -123,6 +123,11 @@ package GNATLLVM.Wrapper is
       Target_Machine : Target_Machine_T);
    --  Initialize the LLVM module.
 
+   procedure Optimize_Module
+     (Module : Module_T; Target_Machine : Target_Machine_T; Opt_Level : Int);
+   pragma Import (C, Optimize_Module, "Optimize_Module");
+   --  Perform optimizatins on the module
+
    function Create_Debug_Builder (Module : Module_T) return DI_Builder_T;
    pragma Import (C, Create_Debug_Builder, "Create_Debug_Builder");
    --  Create a DIBuilder and return it

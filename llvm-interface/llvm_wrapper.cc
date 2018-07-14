@@ -281,6 +281,13 @@ Initialize_LLVM (void)
 
 extern "C"
 void
+Optimize_Module (Module *TheModule, TargetMachine *TheTargetMachine,
+		 int Opt_Level)
+{
+}
+
+extern "C"
+void
 LLVM_Init_Module (Module *TheModule, const char *Filename,
 		  TargetMachine *TheTargetMachine)
 {

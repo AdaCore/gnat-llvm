@@ -38,6 +38,93 @@ package body GNATLLVM.Codegen is
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
 
+   procedure Process_Switch (Switch : String);
+   --  Process one command-line switch
+
+   --------------------
+   -- Process_Switch --
+   --------------------
+
+   procedure Process_Switch (Switch : String) is
+      Len   : constant Integer := Switch'Length;
+      First : constant Integer := Switch'First;
+      Last  : constant Integer := Switch'Last;
+
+      function Starts_With (S : String) return Boolean is
+        (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
+      --  Return True if Switch starts with S
+
+      function Switch_Value (S : String) return String is
+        (Switch (S'Length + First .. Last));
+      --  Returns the value of a switch known to start with S
+
+   begin
+      --  ??? At some point, this and Is_Back_End_Switch need to have
+      --  some sort of common code.
+
+      if Len > 0 and then Switch (First) /= '-' then
+         if Is_Regular_File (Switch) then
+            Free (Filename);
+            Filename := new String'(Switch);
+         end if;
+
+      elsif Switch = "--dump-ir" then
+         Code_Generation := Dump_IR;
+      elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
+         Code_Generation := Write_BC;
+      elsif Switch = "-emit-llvm" then
+         Emit_LLVM := True;
+      elsif Switch = "-S" then
+         Output_Assembly := True;
+      elsif Switch = "-g" then
+         Emit_Debug_Info := True;
+      elsif Switch = "-fstack-check" then
+         Do_Stack_Check := True;
+      elsif Starts_With ("--target=") then
+         Free (Target_Triple);
+         Target_Triple := new String'(Switch_Value ("--target="));
+      elsif Starts_With ("-mcpu=") then
+         Free (CPU);
+         CPU := new String'(Switch_Value ("-mcpu="));
+      elsif Starts_With ("-O") then
+         if Len = 2 then
+            Code_Gen_Level := Code_Gen_Level_Less;
+         else
+            case Switch (First + 2) is
+               when '1' =>
+                  Code_Gen_Level := Code_Gen_Level_Less;
+               when '2' | 's' =>
+                  Code_Gen_Level := Code_Gen_Level_Default;
+               when '3' =>
+                  Code_Gen_Level := Code_Gen_Level_Aggressive;
+               when others =>
+                  Code_Gen_Level := Code_Gen_Level_None;
+            end case;
+         end if;
+      elsif Switch = "-mcode-model=small" then
+         Code_Model := Code_Model_Small;
+      elsif Switch = "-mcode-model=kernel" then
+         Code_Model := Code_Model_Kernel;
+      elsif Switch = "-mcode-model=medium" then
+         Code_Model := Code_Model_Medium;
+      elsif Switch = "-mcode-model=large" then
+         Code_Model := Code_Model_Large;
+      elsif Switch = "-mcode-model=default" then
+         Code_Model := Code_Model_Default;
+      elsif Switch = "-mrelocation-model=static" then
+         Reloc_Mode := Reloc_Static;
+      elsif Switch = "-mrelocation-model=pic" then
+         Reloc_Mode := Reloc_PIC;
+      elsif Switch = "-mrelocation-model=dynamic-no-pic" then
+         Reloc_Mode := Reloc_Dynamic_No_Pic;
+      elsif Switch = "-mrelocation-model=default" then
+         Reloc_Mode := Reloc_Default;
+      elsif Starts_With ("-llvm-") then
+         Switch_Table.Append (new String'(Switch_Value ("-llvm-")));
+      end if;
+
+   end Process_Switch;
+
    -----------------------
    -- Scan_Command_Line --
    -----------------------
@@ -48,81 +135,9 @@ package body GNATLLVM.Codegen is
       --  target.
 
       for J in 1 .. Argument_Count loop
-         declare
-            Switch : constant String := Argument (J);
-
-         begin
-            pragma Assert (Switch'First = 1);
-
-            if Switch'Length > 0
-              and then Switch (1) /= '-'
-            then
-               if Is_Regular_File (Switch) then
-                  Free (Filename);
-                  Filename := new String'(Switch);
-               end if;
-
-            elsif Switch = "--dump-ir" then
-               Code_Generation := Dump_IR;
-            elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
-               Code_Generation := Write_BC;
-            elsif Switch = "-emit-llvm" then
-               Emit_LLVM := True;
-            elsif Switch = "-S" then
-               Output_Assembly := True;
-            elsif Switch = "-g" then
-               Emit_Debug_Info := True;
-            elsif Switch = "-fstack-check" then
-               Do_Stack_Check := True;
-            elsif Switch'Length > 9 and then Switch (1 .. 9) = "--target=" then
-               Free (Target_Triple);
-               Target_Triple :=
-                 new String'(Switch (10 .. Switch'Last));
-            elsif Switch'Length > 6 and then Switch (1 .. 6) = "-mcpu=" then
-               Free (CPU);
-               CPU := new String'(Switch (7 .. Switch'Last));
-            elsif Switch'Length > 1
-              and then Switch (1 .. 2) = "-O"
-            then
-               if Switch'Length = 2 then
-                  Code_Gen_Level := Code_Gen_Level_Less;
-               else
-                  case Switch (3) is
-                     when '1' =>
-                        Code_Gen_Level := Code_Gen_Level_Less;
-                     when '2' | 's' =>
-                        Code_Gen_Level := Code_Gen_Level_Default;
-                     when '3' =>
-                        Code_Gen_Level := Code_Gen_Level_Aggressive;
-                     when others =>
-                        Code_Gen_Level := Code_Gen_Level_None;
-                  end case;
-               end if;
-            elsif Switch = "-mcode-model=small" then
-               Code_Model := Code_Model_Small;
-            elsif Switch = "-mcode-model=kernel" then
-               Code_Model := Code_Model_Kernel;
-            elsif Switch = "-mcode-model=medium" then
-               Code_Model := Code_Model_Medium;
-            elsif Switch = "-mcode-model=large" then
-               Code_Model := Code_Model_Large;
-            elsif Switch = "-mcode-model=default" then
-               Code_Model := Code_Model_Default;
-            elsif Switch = "-mrelocation-model=static" then
-               Reloc_Mode := Reloc_Static;
-            elsif Switch = "-mrelocation-model=pic" then
-               Reloc_Mode := Reloc_PIC;
-            elsif Switch = "-mrelocation-model=dynamic-no-pic" then
-               Reloc_Mode := Reloc_Dynamic_No_Pic;
-            elsif Switch = "-mrelocation-model=default" then
-               Reloc_Mode := Reloc_Default;
-            elsif Switch'Length > 6
-              and then Switch (1 .. 6) = "-llvm-"
-            then
-               Switch_Table.Append (new String'(Switch (6 .. Switch'Last)));
-            end if;
-         end;
+         Process_Switch (Argument (J));
       end loop;
+
    end Scan_Command_Line;
 
    ----------------------------

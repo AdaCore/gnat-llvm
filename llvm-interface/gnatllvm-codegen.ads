@@ -30,6 +30,10 @@ package GNATLLVM.Codegen is
    CPU           :  String_Access := new String'("generic");
    --  Name of the specific CPU for this compilation.
 
+   Code_Model    : Code_Model_T := Code_Model_Default;
+   Reloc_Mode    : Reloc_Mode_T := Reloc_Default;
+   --  Code generation options
+
    Target_Triple : String_Access :=
      new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation

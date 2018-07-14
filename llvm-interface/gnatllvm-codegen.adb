@@ -74,9 +74,7 @@ package body GNATLLVM.Codegen is
                Emit_Debug_Info := True;
             elsif Switch = "-fstack-check" then
                Do_Stack_Check := True;
-            elsif Switch'Length > 9
-              and then Switch (1 .. 9) = "--target="
-            then
+            elsif Switch'Length > 9 and then Switch (1 .. 9) = "--target=" then
                Free (Target_Triple);
                Target_Triple :=
                  new String'(Switch (10 .. Switch'Last));
@@ -100,7 +98,24 @@ package body GNATLLVM.Codegen is
                         Code_Gen_Level := Code_Gen_Level_None;
                   end case;
                end if;
-
+            elsif Switch = "-mcode-model=small" then
+               Code_Model := Code_Model_Small;
+            elsif Switch = "-mcode-model=kernel" then
+               Code_Model := Code_Model_Kernel;
+            elsif Switch = "-mcode-model=medium" then
+               Code_Model := Code_Model_Medium;
+            elsif Switch = "-mcode-model=large" then
+               Code_Model := Code_Model_Large;
+            elsif Switch = "-mcode-model=default" then
+               Code_Model := Code_Model_Default;
+            elsif Switch = "-mrelocation-model=static" then
+               Reloc_Mode := Reloc_Static;
+            elsif Switch = "-mrelocation-model=pic" then
+               Reloc_Mode := Reloc_PIC;
+            elsif Switch = "-mrelocation-model=dynamic-no-pic" then
+               Reloc_Mode := Reloc_Dynamic_No_Pic;
+            elsif Switch = "-mrelocation-model=default" then
+               Reloc_Mode := Reloc_Default;
             elsif Switch'Length > 6
               and then Switch (1 .. 6) = "-llvm-"
             then
@@ -168,8 +183,8 @@ package body GNATLLVM.Codegen is
                                CPU        => CPU.all,
                                Features   => "",
                                Level      => Code_Gen_Level,
-                               Reloc      => Reloc_Default,
-                               Code_Model => Code_Model_Default);
+                               Reloc      => Reloc_Mode,
+                               Code_Model => Code_Model);
 
       Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
@@ -292,9 +307,10 @@ package body GNATLLVM.Codegen is
          return True;
       end if;
 
-      --  For now we allow the -f/-m/-W/-w and -pipe switches, even
-      --  though they will have no effect.
-      --  This permits compatibility with existing scripts.
+      --  For now we allow the -f/-m/-W/-w and -pipe switches, even though
+      --  they will have no effect, though some are handled in
+      --  Scan_Command_Line above.  This permits compatibility with
+      --  existing scripts.
 
       return Switch (First) in 'f' | 'm' | 'W' | 'w'
         or else Switch (First .. Last) = "pipe";

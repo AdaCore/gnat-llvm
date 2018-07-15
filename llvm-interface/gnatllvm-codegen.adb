@@ -19,8 +19,6 @@ with Ada.Command_Line; use Ada.Command_Line;
 with Ada.Directories;
 with Interfaces;
 with Interfaces.C;     use Interfaces.C;
-with System;           use System;
-with System.OS_Lib;    use System.OS_Lib;
 
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Bit_Writer; use LLVM.Bit_Writer;
@@ -34,35 +32,10 @@ with Opt;      use Opt;
 with Osint.C;  use Osint.C;
 with Output;   use Output;
 with Switch;   use Switch;
-with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
-
-   Filename      : String_Access  := new String'("");
-   --  Filename to compile.
-
-   CPU           :  String_Access := new String'("generic");
-   --  Name of the specific CPU for this compilation.
-
-   Code_Model    : Code_Model_T   := Code_Model_Default;
-   Reloc_Mode    : Reloc_Mode_T   := Reloc_Default;
-   --  Code generation options
-
-   Target_Triple : String_Access  := new String'(Get_Default_Target_Triple);
-   --  Name of the target for this compilation
-
-   Optimize_IR   : Boolean        := False;
-   --  True if we should optimize IR before writing it out
-
-   package Switch_Table is new Table.Table
-     (Table_Component_Type => String_Access,
-      Table_Index_Type     => Interfaces.C.int,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Switch_Table");
 
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
@@ -114,24 +87,52 @@ package body GNATLLVM.Codegen is
       elsif Starts_With ("--target=") then
          Free (Target_Triple);
          Target_Triple := new String'(Switch_Value ("--target="));
+      elsif Starts_With ("-mtriple=") then
+         Free (Target_Triple);
+         Target_Triple := new String'(Switch_Value ("-mtriple="));
       elsif Starts_With ("-mcpu=") then
          Free (CPU);
          CPU := new String'(Switch_Value ("-mcpu="));
       elsif Starts_With ("-O") then
          if Len = 2 then
+            Code_Opt_Level := 1;
             Code_Gen_Level := Code_Gen_Level_Less;
          else
             case Switch (First + 2) is
                when '1' =>
                   Code_Gen_Level := Code_Gen_Level_Less;
-               when '2' | 's' =>
+                  Code_Opt_Level := 1;
+               when '2'  =>
                   Code_Gen_Level := Code_Gen_Level_Default;
+                  Code_Opt_Level := 2;
                when '3' =>
                   Code_Gen_Level := Code_Gen_Level_Aggressive;
-               when others =>
+                  Code_Opt_Level := 3;
+               when '0' =>
                   Code_Gen_Level := Code_Gen_Level_None;
+                  Code_Opt_Level := 0;
+               when 's' =>
+                  Code_Gen_Level := Code_Gen_Level_Default;
+                  Code_Opt_Level := 2;
+                  Size_Opt_Level := 1;
+               when 'z' =>
+                  Code_Gen_Level := Code_Gen_Level_Default;
+                  Code_Opt_Level := 2;
+                  Size_Opt_Level := 2;
+               when others =>
+                  null;
             end case;
          end if;
+      elsif Switch = "-fno-unit-at-a-time" then
+         No_Unit_At_A_Time := True;
+      elsif Switch = "-disable-loop-unrolling" then
+         No_Unroll_Loops := True;
+      elsif Switch = "-disable-loop-vectorization" then
+         No_Loop_Vectorization := True;
+      elsif Switch = "-disable-slp-vectorization" then
+         No_SLP_Vectorization := True;
+      elsif Switch = "-fno-inline" or else Switch = "-disable-inlining" then
+         No_Inlining := True;
       elsif Switch = "-mcode-model=small" then
          Code_Model := Code_Model_Small;
       elsif Switch = "-mcode-model=kernel" then
@@ -261,7 +262,14 @@ package body GNATLLVM.Codegen is
       if Code_Generation in Write_Assembly | Write_Object
         or else Optimize_IR
       then
-         Optimize_Module (Module, Target_Machine, Optimization_Level);
+         LLVM_Optimize_Module (Module, Target_Machine,
+                               Code_Opt_Level        => Code_Opt_Level,
+                               Size_Opt_Level        => Size_Opt_Level,
+                               No_Inlining           => No_Inlining,
+                               No_Unit_At_A_Time     => No_Unit_At_A_Time,
+                               No_Unroll_Loops       => No_Unroll_Loops,
+                               No_Loop_Vectorization => No_Loop_Vectorization,
+                               No_SLP_Vectorization  => No_SLP_Vectorization);
       end if;
 
       --  Output the translation
@@ -340,26 +348,18 @@ package body GNATLLVM.Codegen is
    begin
       if not Is_Switch (Switch) then
          return False;
-      elsif Switch = "--dump-ir" then
-         return True;
-      elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
-         return True;
-      elsif Switch = "-emit-llvm" then
-         return True;
-      elsif Switch = "-S" then
-         return True;
-      elsif Switch = "-g" then
-         return True;
-      elsif Switch = "-fstack-check" then
-         return True;
-      elsif Switch = "-foptimize-ir" then
-         return True;
-      elsif Last > First + 8
-        and then Switch (First .. First + 8) = "--target="
-      then
-         return True;
-      elsif Last > First + 5
-        and then Switch (First .. First + 5) = "-llvm-"
+      elsif Switch = "--dump-ir"
+        or else Switch = "--dump-bc" or else Switch = "--write-bc"
+        or else Switch = "-emit-llvm" or else Switch = "-S"
+        or else Switch = "-g"
+        or else Switch = "-disable-inlining"
+        or else Switch = "-disable-loop-unrolling"
+        or else Switch = "-disable-loop-vectorization"
+        or else Switch = "-disable-slp-vectorization"
+        or else (Last > First + 8
+                   and then Switch (First .. First + 8) = "--target=")
+        or else (Last > First + 5
+                   and then Switch (First .. First + 5) = "-llvm-")
       then
          return True;
       end if;

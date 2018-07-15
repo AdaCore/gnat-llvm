@@ -175,11 +175,11 @@ package body GNATLLVM.Compile is
                while Present (Subp) loop
                   Subp_Body := Parent (Declaration_Node (Subp));
 
-                  --  Without optimization, process only the required
-                  --  subprograms.
+                  --  Without optimization or if inlining is disabled,
+                  --  process only the required subprograms.
 
-                  if (Code_Gen_Level /= Code_Gen_Level_None
-                        or else Has_Pragma_Inline_Always (Subp))
+                  if (Has_Pragma_Inline_Always (Subp)
+                        or else (not No_Inlining and then Code_Opt_Level > 0))
 
                     --  The set of inlined subprograms is computed from
                     --  data recorded early during expansion and it can be

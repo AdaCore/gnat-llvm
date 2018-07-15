@@ -15,7 +15,56 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with System;           use System;
+with System.OS_Lib;    use System.OS_Lib;
+
+with Table;
+
 package GNATLLVM.Codegen is
+
+   Filename        : String_Access  := new String'("");
+   --  Filename to compile.
+
+   type Code_Generation_Kind is
+     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object, None);
+
+   Code_Generation : Code_Generation_Kind := Write_Object;
+   --  Type of code generation we're doing
+
+   CPU             :  String_Access := new String'("generic");
+   --  Name of the specific CPU for this compilation.
+
+   Target_Triple   : String_Access  := new String'(Get_Default_Target_Triple);
+   --  Name of the target for this compilation
+
+   Code_Gen_Level  : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
+   --  Optimization level for codegen
+
+   Code_Model      : Code_Model_T   := Code_Model_Default;
+   Reloc_Mode      : Reloc_Mode_T   := Reloc_Default;
+   --  Code generation options
+
+   Code_Opt_Level  : Int            := 0;
+   Size_Opt_Level  : Int            := 0;
+   --  Optimization levels
+
+   No_Inlining           : Boolean := False;
+   No_Unit_At_A_Time     : Boolean := False;
+   No_Unroll_Loops       : Boolean := False;
+   No_Loop_Vectorization : Boolean := False;
+   No_SLP_Vectorization  : Boolean := False;
+   --  Switch options for optimization
+
+   Optimize_IR           : Boolean := False;
+   --  True if we should optimize IR before writing it out
+
+   package Switch_Table is new Table.Table
+     (Table_Component_Type => String_Access,
+      Table_Index_Type     => Interfaces.C.int,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Switch_Table");
 
    procedure Scan_Command_Line;
    --  Scan operands relevant to code generation

@@ -281,8 +281,10 @@ Initialize_LLVM (void)
 
 extern "C"
 void
-Optimize_Module (Module *TheModule, TargetMachine *TheTargetMachine,
-		 int Opt_Level)
+LLVM_Optimize_Module (Module *TheModule, TargetMachine *TheTargetMachine,
+		      int Code_Opt_Level, int Size_Opt_Level, bool No_Inlining,
+		      bool No_Unit_At_A_Time, bool No_Unroll_Loops,
+		      bool No_Loop_Vectorization, bool No_SLP_Vectorization)
 {
 }
 

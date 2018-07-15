@@ -145,7 +145,7 @@ package body GNATLLVM.Codegen is
          Code_Model := Code_Model_Default;
       elsif Switch = "-mrelocation-model=static" then
          Reloc_Mode := Reloc_Static;
-      elsif Switch = "-mrelocation-model=pic" then
+      elsif Switch = "-fPIC" or else Switch = "-mrelocation-model=pic" then
          Reloc_Mode := Reloc_PIC;
       elsif Switch = "-mrelocation-model=dynamic-no-pic" then
          Reloc_Mode := Reloc_Dynamic_No_Pic;

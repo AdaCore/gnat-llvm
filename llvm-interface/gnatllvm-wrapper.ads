@@ -133,7 +133,7 @@ package GNATLLVM.Wrapper is
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
       No_SLP_Vectorization  : Boolean);
-   --  Perform optimizatins on the module
+   --  Perform optimizations on the module
 
    function Create_Debug_Builder (Module : Module_T) return DI_Builder_T;
    pragma Import (C, Create_Debug_Builder, "Create_Debug_Builder");

@@ -926,7 +926,7 @@ package body GNATLLVM.Exprs is
       --  elementary, but can be copied with a Store instruction, or where
       --  we're copying an object of variable size.
 
-      if Is_Elementary_Type (Dest_Type) then
+      if Is_Elementary_Type (Dest_Type) and then Src_R /= Bounds_And_Data then
 
          --  The easy case: convert the source to the destination type and
          --  store it.

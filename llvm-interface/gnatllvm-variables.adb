@@ -506,10 +506,13 @@ package body GNATLLVM.Variables is
             return not Is_Static_Location (Prefix (N))
               and then (Is_Static_Expression
                           (Low_Bound (Get_Dim_Range (Discrete_Range (N)))))
-              and then (Is_Static_Expression
-                          (Low_Bound
-                             (Get_Dim_Range (First_Index
-                                               (Full_Etype (Prefix (N)))))));
+              and then (not Is_Array_Type (Full_Etype (Prefix (N)))
+                          or else (Is_Static_Expression
+                                     (Low_Bound
+                                        (Get_Dim_Range
+                                           (First_Index
+                                              (Full_Etype
+                                                 (Prefix (N))))))));
          when others =>
             return False;
       end case;
@@ -894,7 +897,8 @@ package body GNATLLVM.Variables is
    function Hash_Value_T (Val : Value_T) return Hash_Type is
       function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
    begin
-      return Hash_Type (To_Integer (UC (Val)) / (Val'Size / 8));
+      return Hash_Type ((To_Integer (UC (Val)) / (Val'Size / 8))
+                        rem Hash_Type'Modulus);
    end Hash_Value_T;
 
    --------------------------
@@ -1232,7 +1236,8 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Dynamic_Size (TE) then
-            Store (Heap_Allocate_For_Type (TE, TE, Value), LLVM_Var);
+            Store (Get (Heap_Allocate_For_Type (TE, TE, Value), Any_Reference),
+                   LLVM_Var);
             Copied := True;
          end if;
 

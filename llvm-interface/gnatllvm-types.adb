@@ -1181,7 +1181,7 @@ package body GNATLLVM.Types is
       --  If we have a value to move into memory, move it
 
       if Present (New_V) then
-         Emit_Assignment (Memory, Empty, New_V, True, True);
+         Emit_Assignment (Memory, Empty, New_V);
       end if;
 
       return Convert_Ref (Memory, TE);

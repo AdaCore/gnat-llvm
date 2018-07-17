@@ -835,7 +835,7 @@ package body GNATLLVM.Arrays is
                      Emit_Assignment (GEP_Idx (Comp_Type,
                                                Get (Cur_Value, Reference),
                                                (1 => 0) & Indices),
-                                      Empty, Val, False, False);
+                                      Empty, Val);
                   end if;
                end;
             end if;

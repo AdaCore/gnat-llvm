@@ -348,7 +348,9 @@ package body GNATLLVM.Compile is
 
          when N_Assignment_Statement =>
             Emit_Assignment (Emit_LValue (Name (N)), Expression (N),
-                             No_GL_Value, Forwards_OK (N), Backwards_OK (N));
+                             No_GL_Value,
+                             Forwards_OK  => Forwards_OK (N),
+                             Backwards_OK => Backwards_OK (N));
 
          when N_Procedure_Call_Statement =>
             Discard (Emit_Call (N));

@@ -1257,8 +1257,7 @@ package body GNATLLVM.Subprograms is
             --  return value, do the copy instead of returning the value.
 
             if RK = Return_By_Parameter then
-               Emit_Assignment (Return_Address_Param, Expr,
-                                No_GL_Value, True, True);
+               Emit_Assignment (Return_Address_Param, Expr, No_GL_Value);
 
             --  If this function returns unconstrained, allocate memory for
             --  the return value, copy the data to be returned to there,

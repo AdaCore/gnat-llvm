@@ -859,10 +859,11 @@ package body GNATLLVM.Exprs is
    ---------------------
 
    procedure Emit_Assignment
-     (LValue                    : GL_Value;
-      Orig_E                    : Node_Id;
-      E_Value                   : GL_Value;
-      Forwards_OK, Backwards_OK : Boolean)
+     (LValue       : GL_Value;
+      Orig_E       : Node_Id;
+      E_Value      : GL_Value;
+      Forwards_OK  : Boolean := True;
+      Backwards_OK : Boolean := True)
    is
       E         : constant Node_Id   := Strip_Complex_Conversions (Orig_E);
       Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);

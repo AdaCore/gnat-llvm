@@ -1285,7 +1285,7 @@ package body GNATLLVM.Variables is
       --  that now.
 
       if not Copied and then Present (Value) then
-         Emit_Assignment (LLVM_Var, Empty, Value, True, True);
+         Emit_Assignment (LLVM_Var, Empty, Value);
       end if;
    end Emit_Declaration;
 

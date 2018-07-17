@@ -62,10 +62,11 @@ package GNATLLVM.Exprs is
    --  Handle N_Attribute_Reference nodes
 
    procedure Emit_Assignment
-     (LValue                    : GL_Value;
-      Orig_E                    : Node_Id;
-      E_Value                   : GL_Value;
-      Forwards_OK, Backwards_OK : Boolean)
+     (LValue       : GL_Value;
+      Orig_E       : Node_Id;
+      E_Value      : GL_Value;
+      Forwards_OK  : Boolean := True;
+      Backwards_OK : Boolean := True)
      with Pre => Present (LValue) or else Present (Orig_E);
    --  Copy the value of the expression E to LValue with the specified
    --  destination and expression types.

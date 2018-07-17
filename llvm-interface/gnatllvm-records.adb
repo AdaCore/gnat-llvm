@@ -1696,7 +1696,7 @@ package body GNATLLVM.Records is
                         else
                            Emit_Assignment (GEP_Idx (F_Type, Result,
                                                      (1 => 0, 2 => Idx)),
-                                            Empty, Val, False, False);
+                                            Empty, Val);
                         end if;
                      end;
                   else

@@ -464,6 +464,9 @@ package GNATLLVM.GLValue is
    function Is_Dynamic_Size (V : GL_Value) return Boolean
      with Pre => Present (V);
 
+   function Is_Loadable_Type (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
    function Is_Array_Type (V : GL_Value) return Boolean is
      (not Is_Reference (V) and then Is_Array_Type (Etype (V)))
      with Pre => Present (V);
@@ -1402,9 +1405,27 @@ package GNATLLVM.GLValue is
       Ptr         : GL_Value;
       Indices     : GL_Value_Array;
       Name        : String := "") return GL_Value
-     with Pre  => Is_Access_Type (Ptr),
+     with Pre  => Is_Access_Type (Ptr) and then Is_Type (Result_Type),
           Post => Is_Access_Type (GEP'Result);
    --  Helper for LLVM's Build_GEP
+
+   function GEP_Idx
+     (Result_Type : Entity_Id;
+      Ptr         : GL_Value;
+      Indices     : Index_Array;
+      Name        : String := "") return GL_Value
+     with Pre  => Is_Access_Type (Ptr) and then Is_Type (Result_Type),
+          Post => Is_Access_Type (GEP_Idx'Result);
+   --  ??? Why can't this overload GEP?
+
+   function GEP_To_Relationship
+     (Result_Type : Entity_Id;
+      R           : GL_Relationship;
+      Ptr         : GL_Value;
+      Indices     : Index_Array;
+      Name        : String := "") return GL_Value
+     with Pre  => Is_Access_Type (Ptr) and then Is_Type (Result_Type),
+          Post => Is_Access_Type (GEP_To_Relationship'Result);
 
    function Call
      (Func        : GL_Value;

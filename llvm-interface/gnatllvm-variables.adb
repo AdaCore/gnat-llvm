@@ -460,7 +460,9 @@ package body GNATLLVM.Variables is
                                                    (Address_Clause (N))))
               and then Ekind (N) /= E_Enumeration_Literal
               and then (Ekind (Full_Etype (N)) = E_Void
-                          or else not Is_Dynamic_Size (Full_Etype (N)));
+                          or else not Is_Dynamic_Size (Full_Etype (N)))
+              and then (Library_Level or else Is_Statically_Allocated (N)
+                          or else not In_Extended_Main_Code_Unit (N));
 
          when N_Selected_Component =>
             return Is_Static_Location (Prefix (N));
@@ -529,15 +531,14 @@ package body GNATLLVM.Variables is
 
         --  Or fixed-size record types with identical layout
 
-        or else (Is_Record_Type (In_TE) and then not Is_Dynamic_Size (In_TE)
+        or else (Is_Record_Type (In_TE) and then Is_Loadable_Type (In_TE)
                    and then Is_Record_Type (Out_TE)
-                   and then not Is_Dynamic_Size (Out_TE)
+                   and then Is_Loadable_Type (Out_TE)
                    and then Is_Layout_Identical (In_TE, Out_TE))
 
-        --  Or if neither type is dynamic and the LLVM types are the same
+        --  Or if both types are loadable and the LLVM types are the same
 
-        or else (not Is_Dynamic_Size (In_TE)
-                   and then not Is_Dynamic_Size (Out_TE)
+        or else (Is_Loadable_Type (In_TE) and then Is_Loadable_Type (Out_TE)
                    and then Create_Type (In_TE) = Create_Type (Out_TE));
 
    end Is_Static_Conversion;

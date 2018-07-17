@@ -23,7 +23,6 @@ with Table;      use Table;
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
@@ -335,7 +334,7 @@ package body GNATLLVM.Types is
       --  cases below since we may have to deal with materializing bounds.
 
       elsif Is_Undef (Result) and then R = Data
-        and then not Is_Dynamic_Size (TE)
+        and then Is_Loadable_Type (TE)
       then
          return Get_Undef (TE);
 
@@ -344,7 +343,7 @@ package body GNATLLVM.Types is
 
       elsif R = Data and then Is_Constant (Result)
         and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
-        and then Is_Record_Type (TE) and then not Is_Dynamic_Size (TE)
+        and then Is_Record_Type (TE) and then Is_Loadable_Type (TE)
         and then Is_Layout_Identical (Result, TE)
       then
          return Convert_Struct_Constant (Result, TE);
@@ -1153,12 +1152,11 @@ package body GNATLLVM.Types is
       Alloc_Type : Entity_Id) return GL_Value
    is
       R      : constant GL_Relationship := Relationship_For_Alloc (TE);
-      Copied : Boolean                  := False;
       Memory : GL_Value                 :=
         (if Is_Access_Type (Temp)
          then Ptr_To_Relationship (Temp, Alloc_Type, R)
          else Int_To_Relationship (Temp, Alloc_Type, R));
-      New_V  : GL_Value;
+      New_V  : GL_Value                 := V;
 
    begin
       --  If this is to get bounds and data and we have a value to store
@@ -1169,21 +1167,21 @@ package body GNATLLVM.Types is
 
       if R = Reference_To_Bounds_And_Data then
          if Present (V) and then not Is_Reference (V) then
-            New_V := Get (V, Bounds_And_Data);
-            Store (New_V, Ptr_To_Relationship (Memory, New_V, R));
-            Copied := True;
-         elsif not Is_Constrained (TE) then
-            Store (Get_Array_Bounds (TE, Alloc_Type, V),
-                   Get (Memory, Reference_To_Bounds));
+            New_V  := Get (V, Bounds_And_Data);
+            Memory := Ptr_To_Relationship (Memory, New_V, R);
+         else
+            if not Is_Constrained (TE) then
+               Store (Get_Array_Bounds (TE, Alloc_Type, V),
+                      Get (Memory, Reference_To_Bounds));
+               Memory := Get (Memory, Thin_Pointer);
+            end if;
          end if;
-
-         Memory := Get (Memory, Thin_Pointer);
       end if;
 
       --  If we have a value to move into memory, move it
 
-      if Present (V) and then not Copied then
-         Emit_Assignment (Memory, Empty, V, True, True);
+      if Present (New_V) then
+         Emit_Assignment (Memory, Empty, New_V, True, True);
       end if;
 
       return Convert_Ref (Memory, TE);
@@ -1429,10 +1427,10 @@ package body GNATLLVM.Types is
       For_Type : Boolean  := False) return GL_Value
    is
    begin
-      --  If a value was specified and it's not a reference, then it
-      --  must be of a fixed size.  That's the size we're looking for.
+      --  If a value was specified and it's data, then it must be of a
+      --  fixed size.  That's the size we're looking for.
 
-      if Present (V) and then not Is_Access_Type (V) then
+      if Present (V) and then Relationship (V) = Data then
          return Get_LLVM_Type_Size (Type_Of (V));
       elsif Is_Record_Type (TE) then
          return Get_Record_Type_Size (TE, V, For_Type);

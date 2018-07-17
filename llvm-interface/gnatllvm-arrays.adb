@@ -29,6 +29,7 @@ with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays is
 
@@ -776,7 +777,8 @@ package body GNATLLVM.Arrays is
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
    is
-      Comp_Type : constant Entity_Id := Full_Component_Type (Full_Etype (N));
+      TE        : constant Entity_Id := Full_Etype (N);
+      Comp_Type : constant Entity_Id := Full_Component_Type (TE);
       Cur_Index : Nat                := 0;
       Expr      : Node_Id;
 
@@ -789,6 +791,21 @@ package body GNATLLVM.Arrays is
 
       Expr := First (Expressions (N));
       return Cur_Value : GL_Value := Value_So_Far do
+
+         --  If we haven't already made a value, do so now.  If this is
+         --  a loadable type or we have a value, we start with an undef
+         --  of that type.  Otherwise, it's a variable of that type.
+
+         if No (Cur_Value) then
+            if Is_Loadable_Type (TE) or else Is_No_Elab_Needed (N) then
+               Cur_Value := Get_Undef (TE);
+            else
+               Cur_Value := Allocate_For_Type (TE, TE, N);
+            end if;
+         end if;
+
+         --  Now process each expression
+
          while Present (Expr) loop
 
             --  If this is a nested N_Aggregate and we have dimensions left
@@ -802,9 +819,25 @@ package body GNATLLVM.Arrays is
                   Cur_Value);
 
             else
-               Cur_Value := Insert_Value
-                 (Cur_Value, Emit_Convert_Value (Expr, Comp_Type),
-                  Indices_So_Far & (1 => Cur_Index));
+               declare
+                  Val     : constant GL_Value :=
+                    Emit_Convert_Value (Expr, Comp_Type);
+                  Indices : constant Index_Array :=
+                    Indices_So_Far & (1 => Cur_Index);
+
+               begin
+                  --  If we're using data, insert the value.  Otherwise, index
+                  --  to the proper offset and copy the data.
+
+                  if not Is_Reference (Cur_Value) then
+                     Cur_Value := Insert_Value (Cur_Value, Val, Indices);
+                  else
+                     Emit_Assignment (GEP_Idx (Comp_Type,
+                                               Get (Cur_Value, Reference),
+                                               (1 => 0) & Indices),
+                                      Empty, Val, False, False);
+                  end if;
+               end;
             end if;
 
             Cur_Index := Cur_Index + 1;
@@ -1007,7 +1040,7 @@ package body GNATLLVM.Arrays is
 
       if not Is_Dynamic_Size (Arr_Type) then
          return Ptr_To_Ref (GEP (TE, Array_Data,
-                                 (Size_Const_Null, Index_Shift),
+                                 (1 => Size_Const_Null, 2 => Index_Shift),
                                  "arr-lvalue"), TE);
       end if;
 

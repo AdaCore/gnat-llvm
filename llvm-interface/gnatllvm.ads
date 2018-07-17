@@ -51,26 +51,29 @@ package GNATLLVM is
    function "/" (L, R : unsigned)  return unsigned renames Interfaces.C."/";
    function "=" (L, R : unsigned)  return Boolean  renames Interfaces.C."=";
    function ">" (L, R : unsigned)  return Boolean  renames Interfaces.C.">";
+   function "<" (L, R : unsigned)  return Boolean  renames Interfaces.C."<";
    function "<=" (L, R : unsigned) return Boolean  renames Interfaces.C."<=";
+   function ">=" (L, R : unsigned) return Boolean  renames Interfaces.C.">=";
 
    subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
-   function "+" (L, R : unsigned_long_long)  return unsigned_long_long
-     renames Interfaces.C.Extensions."+";
-   function "-" (L, R : unsigned_long_long)  return unsigned_long_long
-     renames Interfaces.C.Extensions."-";
-   function "*" (L, R : unsigned_long_long)  return unsigned_long_long
-     renames Interfaces.C.Extensions."*";
-   function "/" (L, R : unsigned_long_long)  return unsigned_long_long
-     renames Interfaces.C.Extensions."/";
-   function "=" (L, R : unsigned_long_long)  return Boolean
-     renames Interfaces.C.Extensions."=";
-   function ">" (L, R : unsigned_long_long)  return Boolean
-     renames Interfaces.C.Extensions.">";
-   function "<=" (L, R : unsigned_long_long) return Boolean
-     renames Interfaces.C.Extensions."<=";
-
    subtype ULL is unsigned_long_long;
    --  Define shorter alias name for easier reading
+
+   function "+"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."+";
+   function "-"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."-";
+   function "*"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."*";
+   function "/"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."/";
+
+   function "="  (L, R : ULL)  return Boolean
+     renames Interfaces.C.Extensions."=";
+   function ">"  (L, R : ULL)  return Boolean
+     renames Interfaces.C.Extensions.">";
+   function "<"  (L, R : ULL)  return Boolean renames
+     Interfaces.C.Extensions."<";
+   function "<=" (L, R : ULL) return  Boolean renames
+     Interfaces.C.Extensions."<=";
+   function ">=" (L, R : ULL) return  Boolean renames
+     Interfaces.C.Extensions.">=";
 
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us

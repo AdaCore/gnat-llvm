@@ -38,6 +38,7 @@ with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Records is
 
@@ -1620,33 +1621,48 @@ package body GNATLLVM.Records is
    ---------------------------
 
    function Emit_Record_Aggregate
-     (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value
+     (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
    is
-      Agg_Type   : constant Entity_Id := Full_Etype (Node);
-      Expr       : Node_Id;
+      TE       : constant Entity_Id := Full_Etype (N);
+      Expr     : Node_Id;
 
    begin
-      pragma Assert (not Is_Dynamic_Size (Agg_Type));
+      pragma Assert (not Is_Dynamic_Size (TE));
 
-      --  The above assertion proved that Agg_Type is of fixed size.  This
+      --  The above assertion proved that TE is of fixed size.  This
       --  means that each of its components must be just a simple component
       --  into an LLVM structure, so we just go through each of the part of
       --  the aggregate and use the offset for that field, skipping
       --  a discriminant of an unchecked union.
 
-      Expr := First (Component_Associations (Node));
-      return Result     : GL_Value := Result_So_Far do
+      Expr := First (Component_Associations (N));
+      return Result : GL_Value := Result_So_Far do
+
+         --  If we haven't already made a value, do so now.  If this is
+         --  a loadable type or we have a value, we start with an undef
+         --  of that type.  Otherwise, it's a variable of that type.
+
+         if No (Result) then
+            if Is_Loadable_Type (TE) or else Is_No_Elab_Needed (N) then
+               Result := Get_Undef (TE);
+            else
+               Result := Allocate_For_Type (TE, TE, N);
+            end if;
+         end if;
+
+         --  Now process each expression
+
          while Present (Expr) loop
             declare
                Ent    : constant Entity_Id     :=
                  Find_Matching_Field
-                 (Agg_Type, Entity (First (Choices (Expr))));
+                 (TE, Entity (First (Choices (Expr))));
                F_Type : constant Entity_Id     := Full_Etype (Ent);
                F_Idx  : constant Field_Info_Id := Get_Field_Info (Ent);
 
             begin
                if Ekind (Ent) = E_Discriminant
-                 and then Is_Unchecked_Union (Agg_Type)
+                 and then Is_Unchecked_Union (TE)
                then
                   null;
                elsif Chars (Ent) = Name_uParent then
@@ -1666,16 +1682,28 @@ package body GNATLLVM.Records is
                   --  If so, just don't do anything with it.
 
                   if Present (F_Idx) then
-                     Result := Insert_Value
-                       (Result,
-                        Emit_Convert_Value (Expression (Expr), F_Type),
-                        unsigned
-                          (Field_Info_Table.Table (F_Idx).Field_Ordinal));
+                     declare
+                        Val : constant GL_Value   :=
+                          Emit_Convert_Value (Expression (Expr), F_Type);
+                        FI  : constant Field_Info :=
+                          Field_Info_Table.Table (F_Idx);
+                        Idx : constant Nat        := FI.Field_Ordinal;
+
+                     begin
+                        if not Is_Reference (Result) then
+                           Result :=
+                             Insert_Value (Result, Val, unsigned (Idx));
+                        else
+                           Emit_Assignment (GEP_Idx (F_Type, Result,
+                                                     (1 => 0, 2 => Idx)),
+                                            Empty, Val, False, False);
+                        end if;
+                     end;
                   else
                      --  Ensure we understand this case
 
-                     pragma Assert (Ekind (Agg_Type) = E_Record_Subtype
-                                      and then Has_Discriminants (Agg_Type)
+                     pragma Assert (Ekind (TE) = E_Record_Subtype
+                                      and then Has_Discriminants (TE)
                                       and then (Ekind (Ent) = E_Component));
                   end if;
                end if;

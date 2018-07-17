@@ -44,6 +44,17 @@ package body GNATLLVM.GLValue is
    --  Inner (and recursize) function to convert a constant struct
    --  from one type to another.
 
+   function Object_Is_Data (V : GL_Value_Base) return Boolean is
+     (not Is_Dynamic_Size (V.Typ)
+        and then (Is_Loadable_Type (V.Typ)
+                    or else (V.Relationship = Data
+                               and then (Is_Constant (V.Value)
+                                           or else Is_Undef (V.Value)))));
+   --  Return True if it's appropriate to use Data for V when converting to
+   --  a GL_Relationship of Object.  Since this is called from
+   --  GL_Value_Is_Valid, we have to be careful not to call any function
+   --  that takes a GL_Value as an operand.
+
    -----------------------
    -- GL_Value_Is_Valid --
    -----------------------
@@ -76,8 +87,8 @@ package body GNATLLVM.GLValue is
 
       case V.Relationship is
          when Data =>
-            return Is_Type (V.Typ) and then not Is_Dynamic_Size (V.Typ)
-              and then Ekind (V.Typ) /= E_Subprogram_Type;
+            return Is_Type (V.Typ) and then Ekind (V.Typ) /= E_Subprogram_Type
+              and then Object_Is_Data (V);
 
          when Reference =>
             --  ??? This should really only be non-array
@@ -163,6 +174,13 @@ package body GNATLLVM.GLValue is
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean is
      (not Is_Reference (V) and then Is_Dynamic_Size (Full_Etype (V)));
+
+   ----------------------
+   -- Is_Loadable_Type --
+   ----------------------
+
+   function Is_Loadable_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Loadable_Type (Related_Type (V)));
 
    -------------
    -- Discard --
@@ -276,11 +294,10 @@ package body GNATLLVM.GLValue is
    begin
       case R is
          when Data =>
-            pragma Assert (not Is_Dynamic_Size (TE));
             return T;
 
          when Object =>
-            return (if Is_Dynamic_Size (TE) then PT else T);
+            return (if Is_Loadable_Type (TE) then T else PT);
 
          when Reference | Thin_Pointer | Trampoline | Any_Reference =>
             return PT;
@@ -295,7 +312,6 @@ package body GNATLLVM.GLValue is
             return Create_Array_Bounds_Type (TE);
 
          when Bounds_And_Data =>
-            pragma Assert (not Is_Dynamic_Size (TE));
             return Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
                                        2 => T));
 
@@ -303,19 +319,10 @@ package body GNATLLVM.GLValue is
             return Pointer_Type (Create_Array_Bounds_Type (TE), 0);
 
          when Reference_To_Bounds_And_Data =>
-
-            --  If this is a constant-size type, then this is a
-            --  pointer to the bounds-and-data structure, otherwise a
-            --  pointer to the bounds.
-
-            if Is_Dynamic_Size (TE) then
-               return Pointer_Type (Create_Array_Bounds_Type (TE), 0);
-            else
-               return Pointer_Type
-                 (Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
-                                      2 => T)),
-                  0);
-            end if;
+            return Pointer_Type
+              (Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
+                                   2 => T)),
+               0);
 
          when Reference_To_Activation_Record =>
             return Void_Ptr_Type;
@@ -336,12 +343,11 @@ package body GNATLLVM.GLValue is
    function Equiv_Relationship
      (V : GL_Value; Rel : GL_Relationship) return Boolean
    is
-      TE     : constant Entity_Id := Related_Type (V);
-      R      : GL_Relationship    := Rel;
+      R : GL_Relationship := Rel;
 
    begin
       if R = Object then
-         R := (if Is_Dynamic_Size (TE) then Any_Reference else Data);
+         R := (if Object_Is_Data (V) then Data else Any_Reference);
       end if;
 
       return Relationship (V) = R
@@ -363,10 +369,10 @@ package body GNATLLVM.GLValue is
 
    begin
       --  Handle relationship of Object by converting it to the appropriate
-      --  relationship for TE.
+      --  relationship for TE and V.
 
       if R = Object then
-         R := (if Is_Dynamic_Size (TE) then Any_Reference else Data);
+         R := (if Object_Is_Data (V) then Data else Any_Reference);
       end if;
 
       --  If we want any single-word relationship, we can convert everything
@@ -486,10 +492,11 @@ package body GNATLLVM.GLValue is
             if Relationship (V) = Fat_Pointer then
                return Extract_Value_To_Relationship (TE, V, 1, R);
 
-            --  A reference to bounds and data is a reference to bounds
+            --  A reference to bounds and data is a reference to bounds;
+            --  we just get the address of the first field.
 
             elsif Relationship (V) = Reference_To_Bounds_And_Data then
-               return Ptr_To_Relationship (V, TE, R);
+               return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 0));
 
             --  The bounds are in front of the data for a thin pointer
 
@@ -549,8 +556,7 @@ package body GNATLLVM.GLValue is
             --  bounds and data, we can store them and proceed as above.
 
             elsif Relationship (V) = Reference_To_Bounds_And_Data then
-               Result := NSW_Add (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
-               return Int_To_Relationship (Result, TE, R);
+               return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 1));
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             end if;
@@ -573,8 +579,7 @@ package body GNATLLVM.GLValue is
             --  Ada language rules guarantee that it will be.
 
             if Relationship (V) = Reference_To_Bounds_And_Data then
-               Result := NSW_Add (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
-               return Int_To_Relationship (Result, TE, R);
+               return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 1));
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             elsif Relationship (V) = Fat_Pointer then
@@ -1104,6 +1109,53 @@ package body GNATLLVM.GLValue is
                                Val_Idxs'Length, Name);
       return G_Ref (Result, Result_Type);
    end GEP;
+
+   -------------
+   -- GEP_Idx --
+   -------------
+
+   function GEP_Idx
+     (Result_Type : Entity_Id;
+      Ptr         : GL_Value;
+      Indices     : Index_Array;
+      Name        : String := "") return GL_Value
+   is
+      Val_Idxs    : Value_Array (Indices'Range);
+      Result      : Value_T;
+
+   begin
+      for J in Indices'Range loop
+         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
+      end loop;
+
+      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
+                               Val_Idxs'Length, Name);
+      return G_Ref (Result, Result_Type);
+   end GEP_Idx;
+
+   -------------------------
+   -- GEP_To_Relationship --
+   -------------------------
+
+   function GEP_To_Relationship
+     (Result_Type : Entity_Id;
+      R           : GL_Relationship;
+      Ptr         : GL_Value;
+      Indices     : Index_Array;
+      Name        : String := "") return GL_Value
+   is
+      Val_Idxs    : Value_Array (Indices'Range);
+      Result      : Value_T;
+
+   begin
+      for J in Indices'Range loop
+         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
+      end loop;
+
+      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
+                               Val_Idxs'Length, Name);
+      return G (Result, Result_Type, R);
+   end GEP_To_Relationship;
 
    ----------
    -- Load --

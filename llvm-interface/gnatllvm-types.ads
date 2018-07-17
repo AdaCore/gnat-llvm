@@ -20,10 +20,17 @@ with Uintp; use Uintp;
 
 with LLVM.Core;   use LLVM.Core;
 
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package GNATLLVM.Types is
+
+   Max_Load_Size : constant := 128;
+   --  LLVM supports loading and storing of arbitrarily-large values, but
+   --  code generation and optimization is very slow if the value's size
+   --  is too large.  We pick an arbitary constant here to cut it off.
+   --  ??? Perhaps we should make this a command-line operand.
 
    function Create_Access_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Type (TE),
@@ -250,14 +257,12 @@ package GNATLLVM.Types is
      (Size_Const_Int (Get_LLVM_Type_Size (T)));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
-   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return ULL
-   is
+   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return ULL is
      (Size_Of_Type_In_Bits (Module_Data_Layout, T))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
-   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return ULL
-   is
+   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return ULL is
      (Size_Of_Type_In_Bits (Module_Data_Layout, Type_Of (V.Value)))
      with Pre => Present (V);
    --  Return the size of an LLVM type, in bits
@@ -278,6 +283,15 @@ package GNATLLVM.Types is
      with Pre  => Present (V),
           Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
    --  Variant of above to get type from a GL_Value
+
+   function Is_Loadable_Type (TE : Entity_Id) return Boolean is
+     (not Is_Dynamic_Size (TE)
+        and then Get_LLVM_Type_Size (Create_Type (TE)) < ULL (Max_Load_Size))
+     with Pre => Is_Type (TE);
+   --  Returns True if we should use a load/store instruction to copy values
+   --  of this type.  We can't do this if it's of dynamic size, but LLVM
+   --  doesn't do well with large load/store instructions, so we make an
+   --  arbitrary cap here of 128 bytes and use memcpy if larger.
 
    function Allocate_For_Type
      (TE         : Entity_Id;

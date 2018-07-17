@@ -697,12 +697,11 @@ package body GNATLLVM.Compile is
 
          when N_Aggregate | N_Extension_Aggregate =>
 
-            if Null_Record_Present (N) and then not Is_Dynamic_Size (TE)
-            then
+            if Null_Record_Present (N) and then not Is_Dynamic_Size (TE) then
                return Const_Null (TE);
 
             elsif Ekind (TE) in Record_Kind then
-               return Emit_Record_Aggregate (N, Get_Undef (TE));
+               return Emit_Record_Aggregate (N, No_GL_Value);
 
             else
                pragma Assert (Is_Array_Type (TE)
@@ -715,7 +714,7 @@ package body GNATLLVM.Compile is
                --  Exp_Aggr.  We handle them in Emit_Assignment.
 
                return Emit_Array_Aggregate
-                 (N, Number_Dimensions (TE), (1 .. 0 => <>), Get_Undef (TE));
+                 (N, Number_Dimensions (TE), (1 .. 0 => <>), No_GL_Value);
             end if;
 
          when N_If_Expression =>

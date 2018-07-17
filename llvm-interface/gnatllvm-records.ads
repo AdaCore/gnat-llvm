@@ -63,13 +63,12 @@ package GNATLLVM.Records is
    --  Like Get_Type_Size, but only for record types
 
    function Emit_Record_Aggregate
-     (Node : Node_Id; Result_So_Far : GL_Value) return GL_Value
-     with Pre  => Nkind_In (Node, N_Aggregate, N_Extension_Aggregate)
-                  and then Is_Record_Type (Full_Etype (Node))
-                  and then Present (Result_So_Far),
+     (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
+     with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
+                  and then Is_Record_Type (Full_Etype (N)),
           Post => Present (Emit_Record_Aggregate'Result);
-   --  Emit code for a record aggregate at Node.  Result_So_Far are any
-   --  fields already filled in for the record or undef if none have.
+   --  Emit code for a record aggregate at Node.  Result_So_Far, if
+   --  Present, contain any fields already filled in for the record.
 
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Ekind_In (E, E_Discriminant, E_Component)

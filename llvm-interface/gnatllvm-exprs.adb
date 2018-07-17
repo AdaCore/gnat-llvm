@@ -31,7 +31,6 @@ with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
@@ -44,7 +43,7 @@ package body GNATLLVM.Exprs is
    ----------------
 
    function Emit_Undef (TE : Entity_Id) return GL_Value is
-     ((if Is_Dynamic_Size (TE) then Get_Undef_Ref (TE) else Get_Undef (TE)));
+     ((if Is_Loadable_Type (TE) then Get_Undef (TE) else Get_Undef_Ref (TE)));
 
    ------------------
    -- Emit_Literal --
@@ -871,6 +870,8 @@ package body GNATLLVM.Exprs is
         (if Present (E_Value) then Related_Type (E_Value) else Full_Etype (E));
       Dest      : GL_Value           := LValue;
       Src       : GL_Value           := E_Value;
+      Dest_R    : GL_Relationship;
+      Src_R     : GL_Relationship;
 
    begin
       --  The back-end supports exactly two types of array aggregates.
@@ -894,21 +895,23 @@ package body GNATLLVM.Exprs is
       --  If we haven't yet computed our source expression, do it now.
 
       if No (Src) then
-         if Is_Dynamic_Size (Src_Type) then
-            Src := Emit_LValue (E);
-         else
+         if Is_Loadable_Type (Src_Type) then
             Src := Emit_Expression (E);
+         else
+            Src := Emit_LValue (E);
          end if;
       end if;
+
+      Dest_R := Relationship (Dest);
+      Src_R  := Relationship (Src);
 
       --  If we are assigning to a type that's the nominal constrained
       --  subtype of an unconstrained array for an aliased object see if
       --  we can get the value and bounds together and store them.  If we
       --  can, do so and we're done.  Otherwise, store the bounds.
 
-      if Type_Needs_Bounds (Dest_Type) then
-         if not Is_Reference (Src) and then not Is_Dynamic_Size (Dest_Type)
-         then
+      if Type_Needs_Bounds (Dest_Type) and then Src_R /= Bounds_And_Data then
+         if not Is_Reference (Src) and then Is_Loadable_Type (Dest_Type) then
             Store (Get (Src, Bounds_And_Data),
                    Get (LValue, Reference_To_Bounds_And_Data));
             return;
@@ -929,19 +932,18 @@ package body GNATLLVM.Exprs is
 
          Store (Convert (Get (Src, Data), Dest_Type), Dest);
 
-      elsif (Present (E) and then not Is_Dynamic_Size (Full_Etype (E)))
-         or else (Present (E_Value) and then not Is_Reference (E_Value))
+      elsif (Present (E) and then Is_Loadable_Type (Full_Etype (E)))
+         or else (Present (E_Value) and then Is_Loadable_Type (E_Value))
       then
-
          --  Here, we have the situation where the source is of an LLVM
-         --  value, but the destination may or may not be a variable-sized
-         --  type.  In that case, since we know the size and know the object
-         --  to store, we can convert Dest to the type of the pointer to
-         --  Src, which we know is fixed-size, and do the store.  If Dest
-         --  is pointer to an array type, we need to get the actual array
-         --  data.
+         --  value small enough to store, but the destination may or may
+         --  not be a variable-sized type.  In that case, since we know the
+         --  size and know the object to store, we can convert Dest to the
+         --  type of the pointer to Src, which we know is fixed-size, and
+         --  do the store.  If Dest is pointer to an array type, we need to
+         --  get the actual array data.
 
-         Src := Get (Src, Data);
+         Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
             Dest := Ptr_To_Ref (Get (Dest, Reference), Full_Etype (Src));
          end if;
@@ -949,25 +951,43 @@ package body GNATLLVM.Exprs is
          Store (Src, Dest);
 
       else
-
-         Src := Get (Src, Any_Reference);
-
          --  Otherwise, we have to do a variable-sized copy
 
          declare
-            Size      : constant GL_Value := Compute_Size
-              (Dest_Type, Full_Designated_Type (Src), Dest, Src);
             Align     : constant unsigned := Compute_Alignment
-              (Dest_Type, Full_Designated_Type (Src));
+              (Dest_Type, Related_Type (Src));
             Func_Name : constant String   :=
               (if Forwards_OK and then Backwards_OK
                then "memcpy" else "memmove");
+            Size      : GL_Value          := Compute_Size
+              (Dest_Type, Related_Type (Src), Dest, Src);
 
          begin
+            --  Get the proper relationship.  If we're copying both bounds
+            --  and data, get the reference to that.  Otherwise, if this is
+            --  a fat pointer, get the reference to the data.  Otherwise,
+            --  any reference will do.
+
+            Dest_R := (if    Src_R = Bounds_And_Data then Ref (Src_R)
+                       elsif Dest_R = Fat_Pointer then Reference
+                       else Any_Reference);
+            Src_R  := (if    Src_R = Bounds_And_Data then Ref (Src_R)
+                       elsif Src_R = Fat_Pointer then Reference
+                       else Any_Reference);
+
+            --  If we're copying both data and bounds, allow for the bounds
+            --  in the size computation. If we have a fat pointer, make it
+            --  a reference to the data.
+
+            if Src_R = Reference_To_Bounds_And_Data then
+               pragma Assert (Dest_R = Src_R);
+               Size := NSW_Add (Size, Get_Bound_Size (Related_Type (Src)));
+            end if;
+
             Call (Build_Intrinsic
                     (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
-                  (1 => Pointer_Cast (Get (Dest, Reference), Standard_A_Char),
-                   2 => Pointer_Cast (Get (Src,  Reference), Standard_A_Char),
+                  (1 => Pointer_Cast (Get (Dest, Dest_R), Standard_A_Char),
+                   2 => Pointer_Cast (Get (Src,  Src_R),  Standard_A_Char),
                    3 => Size,
                    4 => Const_Int_32 (Align),
                    5 => Const_False)); -- Is_Volatile

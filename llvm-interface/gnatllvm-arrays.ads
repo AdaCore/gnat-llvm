@@ -139,14 +139,14 @@ package GNATLLVM.Arrays is
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
      with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
-                  and then Present (Value_So_Far)
                   and then Is_Array_Type (Full_Etype (N)),
                Post => Present (Emit_Array_Aggregate'Result);
    --  Emit an N_Aggregate which is an array, returning the GL_Value that
-   --  contains the data.  Value_So_Far is any of the array whose value
-   --  we've accumulated so far.  Dims_Left says how many dimensions of the
-   --  outer array type we still can recurse into.  Indices_So_Far are the
-   --  indexes of any outer N_Aggregate expressions we went through.
+   --  contains the data.  Value_So_Far, if Present, is any of the array
+   --  whose value we've accumulated so far.  Dims_Left says how many
+   --  dimensions of the outer array type we still can recurse into.
+   --  Indices_So_Far are the indexes of any outer N_Aggregate expressions
+   --  we went through.
 
    procedure Maybe_Store_Bounds
      (Dest, Src : GL_Value; Src_Type : Entity_Id; For_Unconstrained : Boolean)

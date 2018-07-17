@@ -1,5 +1,7 @@
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -18,6 +20,9 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 using namespace llvm;
 using namespace llvm::sys;
@@ -281,11 +286,57 @@ Initialize_LLVM (void)
 
 extern "C"
 void
-LLVM_Optimize_Module (Module *TheModule, TargetMachine *TheTargetMachine,
+LLVM_Optimize_Module (Module *M, TargetMachine *TM,
 		      int Code_Opt_Level, int Size_Opt_Level, bool No_Inlining,
 		      bool No_Unit_At_A_Time, bool No_Unroll_Loops,
 		      bool No_Loop_Vectorization, bool No_SLP_Vectorization)
 {
+#ifdef LINK_WITH_OPT
+  legacy::PassManager Passes;
+  std::unique_ptr<legacy::FunctionPassManager> FPasses;
+  PassManagerBuilder Builder;
+
+  TargetLibraryInfoImpl TLII(TM->getTargetTriple());
+
+  Passes.add(new TargetLibraryInfoWrapperPass(TLII));
+
+  // Add internal analysis passes from the target machine.
+  Passes.add(createTargetTransformInfoWrapperPass (TM->getTargetIRAnalysis()));
+
+  FPasses.reset(new legacy::FunctionPassManager(M));
+  FPasses->add(createTargetTransformInfoWrapperPass
+	       (TM ? TM->getTargetIRAnalysis() : TargetIRAnalysis()));
+
+  Builder.OptLevel = Code_Opt_Level;
+  Builder.SizeLevel = Size_Opt_Level;
+
+  if (! No_Inlining && Code_Opt_Level > 1)
+    Builder.Inliner
+      = createFunctionInliningPass(Code_Opt_Level, Size_Opt_Level, false);
+  else if (! No_Inlining)
+    Builder.Inliner = createAlwaysInlinerLegacyPass();
+
+  Builder.DisableUnitAtATime = ! No_Unit_At_A_Time;
+  Builder.DisableUnrollLoops = Code_Opt_Level == 0 || No_Unroll_Loops;
+
+  Builder.LoopVectorize = (No_Loop_Vectorization ? false
+			   : Code_Opt_Level > 1 && Size_Opt_Level < 2);
+
+  Builder.SLPVectorize = (No_SLP_Vectorization ? false
+			  : Code_Opt_Level > 1 && Size_Opt_Level < 2);
+
+  TM->adjustPassManager(Builder);
+
+  Builder.populateFunctionPassManager(*FPasses);
+  Builder.populateModulePassManager(Passes);
+
+  FPasses->doInitialization();
+  for (Function &F : *M)
+    FPasses->run(F);
+  FPasses->doFinalization();
+
+  Passes.run(*M);
+#endif
 }
 
 extern "C"
@@ -330,4 +381,3 @@ Is_Layout_Identical (StructType *T1, StructType *T2)
 {
   return T1->isLayoutIdentical(T2);
 }
-

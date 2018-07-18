@@ -117,6 +117,12 @@ package GNATLLVM.Wrapper is
    pragma Import (C, Initialize_LLVM, "Initialize_LLVM");
    --  Initializes various parts of the LLVM infrastructure.
 
+   procedure Set_NUW (V : Value_T);
+   pragma Import (C, Set_NUW, "Set_NUW");
+
+   procedure Set_NSW (V : Value_T);
+   pragma Import (C, Set_NSW, "Set_NSW");
+
    procedure LLVM_Init_Module
      (Module         : Module_T;
       Filename       : String;

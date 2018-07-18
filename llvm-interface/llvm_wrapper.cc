@@ -216,6 +216,20 @@ Set_Volatile (Instruction *inst)
 
 extern "C"
 void
+Set_NUW (Instruction *inst)
+{
+  inst->setHasNoUnsignedWrap ();
+}
+
+extern "C"
+void
+Set_NSW (Instruction *inst)
+{
+  inst->setHasNoSignedWrap ();
+}
+
+extern "C"
+void
 Add_TBAA_Access (Instruction *inst, MDNode *md)
 {
   inst->setMetadata (LLVMContext::MD_tbaa, md);

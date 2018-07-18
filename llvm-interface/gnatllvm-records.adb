@@ -1384,9 +1384,8 @@ package body GNATLLVM.Records is
             Cur_Idx := New_Idx;
          else
             Get_RI_Info (RI, V, For_Type, This_Size, Must_Align, This_Align);
-            Total_Size := NSW_Add (Align_To (Total_Size, Cur_Align,
-                                             Must_Align),
-                                   This_Size);
+            Total_Size := Add (Align_To (Total_Size, Cur_Align, Must_Align),
+                               This_Size);
 
             --  The resulting alignment is the minimum of this alignment
             --  and the maximum of the current alignment and what we had
@@ -1477,7 +1476,7 @@ package body GNATLLVM.Records is
               Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
 
          begin
-            return NSW_Add (Offset, Const_Int (Offset, This_Offset));
+            return Add (Offset, Const_Int (Offset, This_Offset));
          end;
       end if;
    end Emit_Field_Position;

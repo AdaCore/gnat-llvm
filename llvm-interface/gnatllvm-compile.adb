@@ -932,8 +932,8 @@ package body GNATLLVM.Compile is
                  BB_Next, BB_Iter);
 
                Position_Builder_At_End (BB_Iter);
-               Store ((if Reversed then NSW_Sub (Prev, One, "next-loop-var")
-                       else NSW_Add (Prev, One, "next-loop-var")),
+               Store ((if   Reversed then Sub (Prev, One, "next-loop-var")
+                       else Add (Prev, One, "next-loop-var")),
                       LLVM_Var);
                Build_Br (BB_Stmts);
 

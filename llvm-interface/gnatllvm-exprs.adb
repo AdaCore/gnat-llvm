@@ -159,21 +159,21 @@ package body GNATLLVM.Exprs is
             if Ovfl_Check then
                Ovfl_Name := (if Unsign then "uadd" else "sadd");
             else
-                  Subp := (if FP then F_Add'Access else NSW_Add'Access);
+                  Subp := (if FP then F_Add'Access else Add'Access);
             end if;
 
          when N_Op_Subtract =>
             if Ovfl_Check then
                Ovfl_Name := (if Unsign then "usub" else "ssub");
             else
-               Subp := (if FP then F_Sub'Access else NSW_Sub'Access);
+               Subp := (if FP then F_Sub'Access else Sub'Access);
             end if;
 
          when N_Op_Multiply =>
             if Ovfl_Check then
                Ovfl_Name := (if Unsign then "umul" else "smul");
             else
-               Subp := (if FP then F_Mul'Access else NSW_Mul'Access);
+               Subp := (if FP then F_Mul'Access else Mul'Access);
             end if;
 
          when N_Op_Divide =>
@@ -245,7 +245,7 @@ package body GNATLLVM.Exprs is
 
       if not Unsign and Nkind (N) = N_Op_Mod then
          declare
-            Add_Back      : constant GL_Value := NSW_Add (Result, RVal);
+            Add_Back      : constant GL_Value := Add (Result, RVal);
             RHS_Neg       : constant GL_Value :=
               I_Cmp (Int_SLT, RVal, Const_Null (RVal), "RHS-neg");
             Result_Nonpos : constant GL_Value :=
@@ -275,8 +275,8 @@ package body GNATLLVM.Exprs is
             One         : constant GL_Value := Const_Int (RVal, Uint_1);
             Remainder   : constant GL_Value := U_Rem (LVal, RVal);
             Half_RHS    : constant GL_Value :=
-              L_Shr (NSW_Sub (RVal, One), One);
-            Plus_One    : constant GL_Value := NSW_Add (Result, One);
+              L_Shr (Sub (RVal, One), One);
+            Plus_One    : constant GL_Value := Add (Result, One);
             Need_Adjust : constant GL_Value :=
               I_Cmp (Int_UGT, Remainder, Half_RHS);
 
@@ -303,17 +303,17 @@ package body GNATLLVM.Exprs is
               I_Cmp (Int_SLT, Remainder, Const_Null (Remainder));
             Rem_Nonneg   : constant GL_Value  := Build_Not (Rem_Neg);
             Abs_Rem      : constant GL_Value  :=
-              Build_Select (Rem_Neg, NSW_Neg (Remainder), Remainder);
+              Build_Select (Rem_Neg, Neg (Remainder), Remainder);
             RHS_Neg      : constant GL_Value  :=
               I_Cmp (Int_SLT, RVal, Const_Null (RVal));
             Abs_RHS      : constant GL_Value  :=
-              Build_Select (RHS_Neg, NSW_Neg (RVal), RVal);
+              Build_Select (RHS_Neg, Neg (RVal), RVal);
             Need_Adjust  : constant GL_Value  :=
               I_Cmp (Int_UGE, Shl (Abs_Rem, One), Abs_RHS);
             Signs_Same    : constant GL_Value :=
               Build_Select (RHS_Neg, Rem_Neg, Rem_Nonneg, "signsame");
-            Plus_One     : constant GL_Value  := NSW_Add (Result, One);
-            Minus_One    : constant GL_Value  := NSW_Sub (Result, One);
+            Plus_One     : constant GL_Value  := Add (Result, One);
+            Minus_One    : constant GL_Value  := Sub (Result, One);
             Which_Adjust : constant GL_Value  :=
               Build_Select (Signs_Same, Plus_One, Minus_One);
 
@@ -348,8 +348,8 @@ package body GNATLLVM.Exprs is
                Compare   : constant GL_Value :=
                  Emit_Elementary_Comparison (N_Op_Ge, Expr, Zero);
                Neg_Expr  : constant GL_Value :=
-                 (if Is_Floating_Point_Type (Expr)
-                  then F_Neg (Expr) else NSW_Neg (Expr));
+                 (if   Is_Floating_Point_Type (Expr)
+                  then F_Neg (Expr) else Neg (Expr));
 
             begin
                if Is_Unsigned_Type (Expr) then
@@ -399,7 +399,7 @@ package body GNATLLVM.Exprs is
                      return Extract_Value (BT, Fn_Ret, 0);
                   end;
                else
-                  return NSW_Neg (V);
+                  return Neg (V);
                end if;
             end;
 
@@ -548,7 +548,7 @@ package body GNATLLVM.Exprs is
             --  two shifts.
 
             Reduced_N   : constant GL_Value := U_Rem (N, LHS_Bits);
-            Lower_Shift : constant GL_Value := NSW_Sub (LHS_Bits, Reduced_N);
+            Lower_Shift : constant GL_Value := Sub (LHS_Bits, Reduced_N);
             Reduced_Low : constant GL_Value := U_Rem (Lower_Shift, LHS_Bits);
             Upper       : constant GL_Value :=
               (if To_Left
@@ -735,9 +735,9 @@ package body GNATLLVM.Exprs is
             --  We don't support packing, so this is always the size minus 1
 
             return Convert
-              (NSW_Sub (NSW_Mul (Get_Type_Size (Full_Etype (Prefix (N))),
-                                 Size_Const_Int (Uint_8)),
-                        Size_Const_Int (Uint_1)),
+              (Sub (Mul (Get_Type_Size (Full_Etype (Prefix (N))),
+                         Size_Const_Int (Uint_8)),
+                    Size_Const_Int (Uint_1)),
                TE);
 
          when Attribute_Max
@@ -758,9 +758,9 @@ package body GNATLLVM.Exprs is
 
             begin
                pragma Assert (List_Length (Exprs) = 1);
-               V := (if Attr = Attribute_Succ
-                     then NSW_Add (Base, One, "attr-succ")
-                     else NSW_Sub (Base, One, "attr-pred"));
+               V := (if   Attr = Attribute_Succ
+                     then Add (Base, One, "attr-succ")
+                     else Sub (Base, One, "attr-pred"));
 
                --  If this is a modular type, we have to check for wrap
                --  and adjust if so.
@@ -821,20 +821,20 @@ package body GNATLLVM.Exprs is
                V := Get_Type_Size (Prefix_Type, V, For_Type);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
                   if Is_Unconstrained_Array (Prefix_Type) then
-                     V := NSW_Add (V, Get_Bound_Size (Prefix_Type));
+                     V := Add (V, Get_Bound_Size (Prefix_Type));
                   end if;
 
                   return Convert (V, TE);
                else
-                  return Convert (NSW_Mul (V, Size_Const_Int (Uint_8)), TE);
+                  return Convert (Mul (V, Size_Const_Int (Uint_8)), TE);
                end if;
             end;
 
          when Attribute_Component_Size =>
             return Convert
-              (NSW_Mul (Get_Type_Size
-                          (Full_Component_Type (Full_Etype (Prefix (N))),
-                           For_Type => True),
+              (Mul (Get_Type_Size
+                      (Full_Component_Type (Full_Etype (Prefix (N))),
+                       For_Type => True),
                         Size_Const_Int (Uint_8)),
                TE);
 
@@ -844,8 +844,8 @@ package body GNATLLVM.Exprs is
          when Attribute_Descriptor_Size =>
             pragma Assert (Is_Unconstrained_Array (Full_Etype (Prefix (N))));
 
-            return NSW_Mul (Get_Bound_Size (Full_Etype (Prefix (N))),
-                            Size_Const_Int (Uint_8));
+            return Mul (Get_Bound_Size (Full_Etype (Prefix (N))),
+                        Size_Const_Int (Uint_8));
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &
@@ -982,7 +982,7 @@ package body GNATLLVM.Exprs is
 
             if Src_R = Reference_To_Bounds_And_Data then
                pragma Assert (Dest_R = Src_R);
-               Size := NSW_Add (Size, Get_Bound_Size (Related_Type (Src)));
+               Size := Add (Size, Get_Bound_Size (Related_Type (Src)));
             end if;
 
             Call (Build_Intrinsic

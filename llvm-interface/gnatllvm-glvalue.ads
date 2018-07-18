@@ -669,6 +669,12 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 
+   function Set_Arith_Attrs (Inst : Value_T; V : GL_Value) return Value_T
+     with Pre  => Present (Inst) and then Present (V),
+          Post => Set_Arith_Attrs'Result = Inst;
+   --  Set NUW and/or NSW on Inst depending on the type and relationship
+   --  of V and return Inst.
+
    function Get_Undef (TE : Entity_Id) return GL_Value
      with Pre => Is_Type (TE), Post => Present (Get_Undef'Result);
 
@@ -1064,40 +1070,46 @@ package GNATLLVM.GLValue is
                   and then Is_Floating_Point_Type (RHS),
           Post => Present (F_Cmp'Result);
 
-   function NSW_Add
+   function Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-      ((if Is_Const_Int_Value (RHS, 0) then LHS
+      ((if    Is_Const_Int_Value (RHS, 0) then LHS
         elsif Is_Const_Int_Value (LHS, 0) then RHS
-        else G_From (NSW_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                              Name),
-               LHS)))
+        else G_From (Set_Arith_Attrs
+                       (Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                             Name),
+                        LHS),
+                     LHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Add'Result);
+           Post => Is_Discrete_Or_Fixed_Point_Type (Add'Result);
 
-   function NSW_Sub
+   function Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     ((if Is_Const_Int_Value (RHS, 0) then LHS
-       else G_From (NSW_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                             Name),
-              LHS)))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
-                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Sub'Result);
-
-   function NSW_Mul
-     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
-   is
-     ((if Is_Const_Int_Value (RHS, 1) then LHS
-       elsif Is_Const_Int_Value (LHS, 1) then RHS
-       else G_From (NSW_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                             Name),
+     ((if   Is_Const_Int_Value (RHS, 0) then LHS
+       else G_From (Set_Arith_Attrs
+                      (Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                            Name),
+                       LHS),
                     LHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Mul'Result);
+           Post => Is_Discrete_Or_Fixed_Point_Type (Sub'Result);
+
+   function Mul
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
+   is
+     ((if    Is_Const_Int_Value (RHS, 1) then LHS
+       elsif Is_Const_Int_Value (LHS, 1) then RHS
+       else G_From (Set_Arith_Attrs
+                      (Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                            Name),
+                       LHS),
+                    LHS)))
+      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+           Post => Is_Discrete_Or_Fixed_Point_Type (Mul'Result);
 
    function S_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
@@ -1229,12 +1241,12 @@ package GNATLLVM.GLValue is
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
            Post => Is_Discrete_Or_Fixed_Point_Type (Build_Not'Result);
 
-   function NSW_Neg
+   function Neg
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (NSW_Neg (IR_Builder, LLVM_Value (V), Name), V))
+     (G_From (Set_Arith_Attrs (Neg (IR_Builder, LLVM_Value (V), Name), V), V))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
-           Post => Is_Discrete_Or_Fixed_Point_Type (NSW_Neg'Result);
+           Post => Is_Discrete_Or_Fixed_Point_Type (Neg'Result);
 
    function F_Neg
      (V : GL_Value; Name : String := "") return GL_Value

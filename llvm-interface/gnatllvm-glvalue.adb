@@ -501,7 +501,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Relationship (V) = Thin_Pointer then
-               Result := NSW_Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
+               Result := Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -528,7 +528,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Relationship (V) = Thin_Pointer then
-               Result := NSW_Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
+               Result := Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
                return Int_To_Relationship (Result, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -1545,6 +1545,29 @@ package body GNATLLVM.GLValue is
    begin
       Set_Unnamed_Addr (LLVM_Value (V), Has_Unnamed_Addr);
    end Set_Unnamed_Addr;
+
+   ---------------------
+   -- Set_Arith_Attrs --
+   ---------------------
+
+   function Set_Arith_Attrs (Inst : Value_T; V : GL_Value) return Value_T is
+   begin
+      --  Before trying to set attributes, we need to verify that this is
+      --  an instruction.  If so, set the flags according to the type.
+      --  We have to treat a pointer as unsigned here, since it's possible
+      --  that it might cross the boundary where the high-bit changes.
+      --  A modular type might "overflow" in both signed or unsigned.
+
+      if No (Is_A_Instruction (Inst)) or else  Is_Modular_Integer_Type (V) then
+         null;
+      elsif Is_Access_Type (V) or else Is_Unsigned_Type (V) then
+         Set_NUW (Inst);
+      else
+         Set_NSW (Inst);
+      end if;
+
+      return Inst;
+   end Set_Arith_Attrs;
 
    -------------------------
    -- Is_Layout_Identical --

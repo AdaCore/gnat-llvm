@@ -832,8 +832,8 @@ package body GNATLLVM.Types is
         (C_If   => Is_Empty,
          C_Then => Const_Null (TE),
          C_Else =>
-           (if Low = Const_1 then High
-            else NSW_Add (NSW_Sub (High, Low), Const_1)));
+           (if   Low = Const_1 then High
+            else Add (Sub (High, Low), Const_1)));
    end Bounds_To_Length;
 
    --------------------------------
@@ -1371,10 +1371,8 @@ package body GNATLLVM.Types is
       then
          return V;
       else
-         return Build_And (NSW_Add (V,
-                                    NSW_Sub (Must_Align,
-                                             Size_Const_Int (Uint_1))),
-                           NSW_Neg (Must_Align));
+         return Build_And (Add (V, Sub (Must_Align, Size_Const_Int (Uint_1))),
+                           Neg (Must_Align));
       end if;
    end Align_To;
 
@@ -1462,7 +1460,7 @@ package body GNATLLVM.Types is
       if Is_Unconstrained_Array (TE)
         or else Type_Needs_Bounds (Alloc_Type)
       then
-         Size := NSW_Add (Size, Get_Bound_Size (TE));
+         Size := Add (Size, Get_Bound_Size (TE));
       end if;
 
       return Size;

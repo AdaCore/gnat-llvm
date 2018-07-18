@@ -221,7 +221,7 @@ package body GNATLLVM.Arrays is
 
          when N_Op_Minus =>
             LHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
-            return NSW_Neg (LHS);
+            return Neg (LHS);
 
          when N_Op_Plus =>
             return Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
@@ -229,17 +229,17 @@ package body GNATLLVM.Arrays is
          when N_Op_Add =>
             LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
             RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-            return NSW_Add (LHS, RHS);
+            return Add (LHS, RHS);
 
          when N_Op_Subtract =>
             LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
             RHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
-            return NSW_Sub (LHS, RHS);
+            return Sub (LHS, RHS);
 
          when N_Op_Multiply =>
             LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
             RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-            return NSW_Mul (LHS, RHS);
+            return Mul (LHS, RHS);
 
          when N_Op_Divide =>
             LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
@@ -706,7 +706,7 @@ package body GNATLLVM.Arrays is
         --  multiply all of them together.
 
          for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
-            Size := NSW_Mul (Size, Get_Array_Length (TE, Dim, V, For_Type));
+            Size := Mul (Size, Get_Array_Length (TE, Dim, V, For_Type));
          end loop;
       end return;
    end Get_Array_Elements;
@@ -727,7 +727,7 @@ package body GNATLLVM.Arrays is
         Get_Array_Elements (V, TE, For_Type);
 
    begin
-      return NSW_Mul
+      return Mul
         (To_Size_Type (Comp_Size), To_Size_Type (Num_Elements), "size");
    end Get_Array_Type_Size;
 
@@ -959,8 +959,7 @@ package body GNATLLVM.Arrays is
               Convert (Dim_Low_Bound, Dim_Op_Type);
 
          begin
-            Idxs (J) := NSW_Sub
-              (Converted_Index, Converted_Low_Bound, "index");
+            Idxs (J) := Sub (Converted_Index, Converted_Low_Bound, "index");
          end;
 
          J := J + 1;
@@ -998,12 +997,11 @@ package body GNATLLVM.Arrays is
       begin
 
          for Dim in 1 .. Number_Dimensions (Array_Type) - 1 loop
-            Index := NSW_Add (NSW_Mul (Index,
-                                       Get_Array_Length (Array_Type, Dim, V)),
-                              To_Size_Type (Idxs (Dim + 2)));
+            Index := Add (Mul (Index, Get_Array_Length (Array_Type, Dim, V)),
+                          To_Size_Type (Idxs (Dim + 2)));
          end loop;
 
-         Index := NSW_Mul (Index, Unit_Mult);
+         Index := Mul (Index, Unit_Mult);
          return Ptr_To_Ref
            (GEP (Unit_Type, Data, (1 => Index), "arr-lvalue"), Comp_Type);
       end;
@@ -1028,7 +1026,7 @@ package body GNATLLVM.Arrays is
       Dim_Op_Type : constant Entity_Id := Get_GEP_Safe_Type (Idx_LB);
       Cvt_Index   : constant GL_Value  := Convert (Index_Val, Dim_Op_Type);
       Cvt_LB      : constant GL_Value  := Convert (Idx_LB, Dim_Op_Type);
-      Index_Shift : constant GL_Value  := NSW_Sub (Cvt_Index, Cvt_LB);
+      Index_Shift : constant GL_Value  := Sub (Cvt_Index, Cvt_LB);
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
@@ -1054,7 +1052,7 @@ package body GNATLLVM.Arrays is
            (if Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_Type, For_Type => True));
          Index         : constant GL_Value  :=
-           NSW_Mul (To_Size_Type (Index_Shift), Unit_Mult);
+           Mul (To_Size_Type (Index_Shift), Unit_Mult);
 
       begin
          return Ptr_To_Ref

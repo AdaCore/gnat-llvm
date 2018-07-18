@@ -154,7 +154,6 @@ package body GNATLLVM.Codegen is
       elsif Starts_With ("-llvm-") then
          Switch_Table.Append (new String'(Switch_Value ("-llvm-")));
       end if;
-
    end Process_Switch;
 
    -----------------------
@@ -169,7 +168,6 @@ package body GNATLLVM.Codegen is
       for J in 1 .. Argument_Count loop
          Process_Switch (Argument (J));
       end loop;
-
    end Scan_Command_Line;
 
    ----------------------------
@@ -195,8 +193,8 @@ package body GNATLLVM.Codegen is
          Addrs (J + Num_Builtin) := Switch_Table.Table (J).all'Address;
       end loop;
 
-      Parse_Command_Line_Options (Switch_Table.Last + Num_Builtin,
-                                  Addrs'Address, "");
+      Parse_Command_Line_Options
+        (Switch_Table.Last + Num_Builtin, Addrs'Address, "");
 
       --  Finalize our compilation mode now that all switches are parsed
 
@@ -225,13 +223,14 @@ package body GNATLLVM.Codegen is
       end if;
 
       Target_Machine    :=
-        Create_Target_Machine (T          => LLVM_Target,
-                               Triple     => Target_Triple.all,
-                               CPU        => CPU.all,
-                               Features   => "",
-                               Level      => Code_Gen_Level,
-                               Reloc      => Reloc_Mode,
-                               Code_Model => Code_Model);
+        Create_Target_Machine
+          (T          => LLVM_Target,
+           Triple     => Target_Triple.all,
+           CPU        => CPU.all,
+           Features   => "",
+           Level      => Code_Gen_Level,
+           Reloc      => Reloc_Mode,
+           Code_Model => Code_Model);
 
       Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
@@ -262,14 +261,15 @@ package body GNATLLVM.Codegen is
       if Code_Generation in Write_Assembly | Write_Object
         or else Optimize_IR
       then
-         LLVM_Optimize_Module (Module, Target_Machine,
-                               Code_Opt_Level        => Code_Opt_Level,
-                               Size_Opt_Level        => Size_Opt_Level,
-                               No_Inlining           => No_Inlining,
-                               No_Unit_At_A_Time     => No_Unit_At_A_Time,
-                               No_Unroll_Loops       => No_Unroll_Loops,
-                               No_Loop_Vectorization => No_Loop_Vectorization,
-                               No_SLP_Vectorization  => No_SLP_Vectorization);
+         LLVM_Optimize_Module
+           (Module, Target_Machine,
+            Code_Opt_Level        => Code_Opt_Level,
+            Size_Opt_Level        => Size_Opt_Level,
+            No_Inlining           => No_Inlining,
+            No_Unit_At_A_Time     => No_Unit_At_A_Time,
+            No_Unroll_Loops       => No_Unroll_Loops,
+            No_Loop_Vectorization => No_Loop_Vectorization,
+            No_SLP_Vectorization  => No_SLP_Vectorization);
       end if;
 
       --  Output the translation
@@ -334,7 +334,7 @@ package body GNATLLVM.Codegen is
 
       Dispose_DI_Builder (DI_Builder);
       Dispose_Builder (IR_Builder);
-      Dispose_Module  (Module);
+      Dispose_Module (Module);
    end LLVM_Generate_Code;
 
    ------------------------

@@ -78,6 +78,11 @@ build: setup force
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
 
+build-opt: setup force
+	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
+	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS) -DLINK_WITH_OPT
+	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
+
 stage1: build gnatlib
 	$(RMDIR) stage1
 	$(MKDIR) stage1

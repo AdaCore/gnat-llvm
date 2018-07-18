@@ -9,8 +9,13 @@ sanity-check:
 
 build: sanity-check build-be
 
+build-opt: sanity-check build-be-opt
+
 build-be:
 	$(MAKE) -C llvm-interface build
+
+build-be-opt:
+	$(MAKE) -C llvm-interface build-opt
 
 llvm:
 	$(MAKE) -C llvm

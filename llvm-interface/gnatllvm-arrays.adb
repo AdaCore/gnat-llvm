@@ -788,16 +788,40 @@ package body GNATLLVM.Arrays is
       --  fixed-size components.  The other are very special cases of
       --  Others that are tested for in Aggr_Assignment_OK_For_Backend
       --  in Exp_Aggr.  We handle them in Emit_Assignment.
+      --
+      --  First handle the case where we have all constants.  In that
+      --  case, it's better to just make the array directly. But we can
+      --  only do this easily if this is a one-dimensional array.
+      --  ??? This could be extended to multi-dimension by operating at
+      --  a low level.
+
+      if Is_No_Elab_Needed (N) and then Number_Dimensions (TE) = 1 then
+         declare
+            Vals : GL_Value_Array (1 .. List_Length (Expressions (N)));
+            Idx  : Int := 1;
+
+         begin
+            Expr := First (Expressions (N));
+            while Present (Expr) loop
+               Vals (Idx) := Emit_Convert_Value (Expr, Comp_Type);
+               Idx        := Idx + 1;
+               Next (Expr);
+            end loop;
+
+            return Const_Array (Vals, TE);
+         end;
+      end if;
 
       Expr := First (Expressions (N));
       return Cur_Value : GL_Value := Value_So_Far do
 
          --  If we haven't already made a value, do so now.  If this is
          --  a loadable type or we have a value, we start with an undef
-         --  of that type.  Otherwise, it's a variable of that type.
+         --  of that type.  Otherwise, it's a variable of that type.  We
+         --  already handled the constant case above.
 
          if No (Cur_Value) then
-            if Is_Loadable_Type (TE) or else Is_No_Elab_Needed (N) then
+            if Is_Loadable_Type (TE) then
                Cur_Value := Get_Undef (TE);
             else
                Cur_Value := Allocate_For_Type (TE, TE, N);

@@ -77,11 +77,21 @@ build: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
+	$(MAKE) bugs-bins
 
 build-opt: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS) -DLINK_WITH_OPT
 	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
+	$(MAKE) bugs-bins
+
+bugs-bins:
+	rm -rf bugs/bin
+	mkdir -p bugs/bin
+	for f in gcc gnat1 gnat gnatbind gnatchop gnatclean gnatkr gnatlink gnatls gnatmake gnatname gnatprep; do \
+	  rm -f $$f; \
+	  ln bin/llvm-$$f bugs/bin/$$f; \
+	done
 
 stage1: build gnatlib
 	$(RMDIR) stage1

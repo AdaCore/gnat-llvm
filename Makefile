@@ -23,6 +23,9 @@ llvm:
 acats:
 	$(MAKE) -C acats
 
+fixed-bugs:
+	$(MAKE) -C fixedbugs
+
 clean:
 	$(MAKE) -C llvm-interface clean
 

@@ -436,15 +436,17 @@ package body GNATLLVM.Subprograms is
          return Activation_Record;
 
       --  For foreign convension, the only time we pass by value is an
-      --  elementary type that's an In parameter and the mechanism isn't
-      --  By_Reference.
+      --  elementary type that's an In parameter and Mechanism isn't
+      --  By_Reference or any type with a Mechanism of By_Copy.
 
       elsif Has_Foreign_Convention (Param)
         or else Has_Foreign_Convention (Scope (Param))
       then
          return (if   Param_Mode = E_In_Parameter
-                        and then Is_Elementary_Type (TE)
-                        and then Mechanism (Param) /= By_Reference
+                        and then (Mechanism (Param) = By_Copy
+                                    or else (Is_Elementary_Type (TE)
+                                               and then (Mechanism (Param) /=
+                                                           By_Reference)))
                  then In_Value else Foreign_By_Reference);
 
       --  Force by-reference and dynamic-sized types to be passed by reference

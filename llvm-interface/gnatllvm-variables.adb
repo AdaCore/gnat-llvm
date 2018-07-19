@@ -1028,7 +1028,7 @@ package body GNATLLVM.Variables is
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_External  : constant Boolean   :=
-        Is_Imported (Def_Ident)
+        Is_Imported (Def_Ident) and then No (Addr_Expr)
           and then not Get_Dup_Global_Is_Defined (Def_Ident);
       Is_Ref       : constant Boolean   :=
         Present (Addr_Expr) or else Is_Dynamic_Size (TE);
@@ -1101,7 +1101,8 @@ package body GNATLLVM.Variables is
       --  that way unless if we've already made the item (e.g., if we're
       --  in the elab proc).
 
-      if (Library_Level or else Is_Statically_Allocated (Def_Ident))
+      if (Library_Level or else Is_Statically_Allocated (Def_Ident)
+            or else Is_External)
         and then No (LLVM_Var)
       then
          pragma Assert (not In_Elab_Proc);

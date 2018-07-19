@@ -527,13 +527,17 @@ package body GNATLLVM.Arrays is
       if Must_Use_Fake then
          Typ := Array_Type (Typ, 0);
       else
-         for I in reverse First_Info .. Array_Info.Last loop
+         for J in reverse First_Info .. Array_Info.Last loop
             declare
-               Dim_Info : constant Index_Bounds := Array_Info.Table (I);
-               Low      : constant One_Bound    := Dim_Info.Low;
-               High     : constant One_Bound    := Dim_Info.High;
-               Dynamic  : constant Boolean      := Low.Dynamic or High.Dynamic;
-               Rng      : unsigned              := 0;
+               Idx      : constant Array_Info_Id :=
+                 (if   Convention (TE) = Convention_Fortran
+                  then Array_Info.Last + First_Info - J else J);
+               Dim_Info : constant Index_Bounds  := Array_Info.Table (Idx);
+               Low      : constant One_Bound     := Dim_Info.Low;
+               High     : constant One_Bound     := Dim_Info.High;
+               Dynamic  : constant Boolean       :=
+                 Low.Dynamic or High.Dynamic;
+               Rng      : unsigned               := 0;
             begin
                if not Dynamic and then Low.Cnst <= High.Cnst
                  and then High.Cnst - Low.Cnst < Int'Last - 1
@@ -781,6 +785,28 @@ package body GNATLLVM.Arrays is
       Comp_Type : constant Entity_Id := Full_Component_Type (TE);
       Cur_Index : Nat                := 0;
       Expr      : Node_Id;
+      Fortran   : constant Boolean   := Convention (TE) = Convention_Fortran;
+
+      function Swap (Indices : Index_Array) return Index_Array;
+      --  If this is a Fortran convention array, reverse the indexes
+
+      ----------
+      -- Swap --
+      ----------
+
+      function Swap (Indices : Index_Array) return Index_Array is
+         Result : Index_Array (Indices'Range);
+
+      begin
+         if not Fortran then
+            return Indices;
+         end if;
+
+         for J in Indices'Range loop
+            Result (J) := Indices (Indices'Last + Indices'First - J);
+         end loop;
+         return Result;
+      end Swap;
 
    begin
       --  The back-end supports exactly two types of array aggregates.
@@ -854,11 +880,12 @@ package body GNATLLVM.Arrays is
                   --  to the proper offset and copy the data.
 
                   if not Is_Reference (Cur_Value) then
-                     Cur_Value := Insert_Value (Cur_Value, Val, Indices);
+                     Cur_Value := Insert_Value (Cur_Value, Val,
+                                                Swap (Indices));
                   else
                      Emit_Assignment (GEP_Idx (Comp_Type,
                                                Get (Cur_Value, Reference),
-                                               (1 => 0) & Indices),
+                                               (1 => 0) & Swap (Indices)),
                                       Empty, Val);
                   end if;
                end;
@@ -955,8 +982,10 @@ package body GNATLLVM.Arrays is
    function Get_Indexed_LValue
      (Indexes : List_Id; V : GL_Value) return GL_Value
    is
-      Array_Type : constant Entity_Id := Full_Designated_Type (V);
-      Comp_Type  : constant Entity_Id := Full_Component_Type (Array_Type);
+      TE         : constant Entity_Id := Full_Designated_Type (V);
+      N_Dim      : constant Int       := Number_Dimensions (TE);
+      Fortran    : constant Boolean   := Convention (TE) = Convention_Fortran;
+      Comp_Type  : constant Entity_Id := Full_Component_Type (TE);
       Array_Data : constant GL_Value  := Get (V, Reference);
       J          : Nat                := 2;
       N          : Node_Id;
@@ -972,18 +1001,20 @@ package body GNATLLVM.Arrays is
          --  Adjust the index according to the range lower bound
 
          declare
-            User_Index    : constant GL_Value       := Emit_Safe_Expr (N);
-            Dim_Low_Bound : constant GL_Value       :=
-              Get_Array_Bound (Array_Type, J - 2, True, V);
-            Dim_Op_Type   : constant Entity_Id      :=
+            User_Index          : constant GL_Value  := Emit_Safe_Expr (N);
+            Dim_Low_Bound       : constant GL_Value  :=
+              Get_Array_Bound (TE, J - 2, True, V);
+            Dim_Op_Type         : constant Entity_Id :=
               Get_GEP_Safe_Type (Dim_Low_Bound);
-            Converted_Index : constant GL_Value     :=
+            Converted_Index     : constant GL_Value  :=
               Convert (User_Index, Dim_Op_Type);
-            Converted_Low_Bound : constant GL_Value :=
+            Converted_Low_Bound : constant GL_Value  :=
               Convert (Dim_Low_Bound, Dim_Op_Type);
+            Idx                : constant Int       :=
+              (if Fortran then 3 + N_Dim - J else J);
 
          begin
-            Idxs (J) := Sub (Converted_Index, Converted_Low_Bound, "index");
+            Idxs (Idx) := Sub (Converted_Index, Converted_Low_Bound, "index");
          end;
 
          J := J + 1;
@@ -993,7 +1024,7 @@ package body GNATLLVM.Arrays is
       --  There are two approaches we can take here.  If we haven't used
       --  a fake type, we can just do a GEP with the values above.
 
-      if not Is_Dynamic_Size (Array_Type) then
+      if not Is_Dynamic_Size (TE) then
          return GEP (Comp_Type, Array_Data, Idxs);
       end if;
 
@@ -1019,9 +1050,8 @@ package body GNATLLVM.Arrays is
          Index     : GL_Value           := To_Size_Type (Idxs (2));
 
       begin
-
-         for Dim in 1 .. Number_Dimensions (Array_Type) - 1 loop
-            Index := Add (Mul (Index, Get_Array_Length (Array_Type, Dim, V)),
+         for Dim in 1 .. N_Dim - 1 loop
+            Index := Add (Mul (Index, Get_Array_Length (TE, Dim, V)),
                           To_Size_Type (Idxs (Dim + 2)));
          end loop;
 

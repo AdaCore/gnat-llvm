@@ -561,7 +561,7 @@ package body GNATLLVM.Variables is
          when N_Attribute_Reference =>
             return (Get_Attribute_Id (Attribute_Name (N))
                       in Attribute_Address | Attribute_Access |
-                        Attribute_Unchecked_Access |
+                        Attribute_Unchecked_Access | Attribute_Code_Address |
                         Attribute_Unrestricted_Access)
               and then Is_Static_Location (Prefix (N));
 

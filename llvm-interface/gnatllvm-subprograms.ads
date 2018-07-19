@@ -30,6 +30,20 @@ package GNATLLVM.Subprograms is
    type Overloaded_Intrinsic_Kind is
      (Unary, Binary, Overflow, Memcpy, Memset);
 
+   --  These indicate whether a type must be passed by reference or what the
+   --  default pass-by-reference status is.
+
+   type Param_By_Ref_Kind is (Must, Default_By_Ref, Default_By_Copy);
+
+   function Get_Param_By_Ref_Kind (TE : Entity_Id) return Param_By_Ref_Kind
+     with Pre => Is_Type (TE);
+
+   function Get_Mechanism_Code (E : Entity_Id; Exprs : List_Id) return Uint
+     with Pre => Ekind_In (E, E_Function, E_Procedure);
+   --  This is inquiring about either the return of E (if No (Exprs)) or
+   --  of the parameter number given by the first expression of Exprs.
+   --  Return 2 is passed by reference, otherwise, return 1.
+
    function Create_Subprogram_Type (Def_Ident  : Entity_Id) return Type_T
      with Pre  => Present (Def_Ident),
           Post => Present (Create_Subprogram_Type'Result);

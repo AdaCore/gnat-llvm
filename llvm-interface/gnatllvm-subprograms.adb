@@ -18,6 +18,7 @@
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
+with Nlists;   use Nlists;
 with Restrict; use Restrict;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Mech; use Sem_Mech;
@@ -355,15 +356,33 @@ package body GNATLLVM.Subprograms is
       E := Next_Out_Param (E);
    end Next_Out_Param;
 
+   ---------------------------
+   -- Get_Param_By_Ref_Kind --
+   ---------------------------
+
+   function Get_Param_By_Ref_Kind
+     (TE : Entity_Id) return Param_By_Ref_Kind
+   is
+      Ptr_Size : constant ULL := Get_LLVM_Type_Size (Void_Ptr_Type);
+
+   begin
+      if Is_By_Reference_Type (TE) or else Is_Dynamic_Size (TE) then
+         return Must;
+      elsif Get_LLVM_Type_Size (Create_Type (TE)) > 2 * Ptr_Size then
+         return Default_By_Ref;
+      else
+         return Default_By_Copy;
+      end if;
+   end Get_Param_By_Ref_Kind;
+
    --------------------
    -- Get_Param_Kind --
    --------------------
 
    function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
-      TE           : constant Entity_Id  := Full_Etype (Param);
-      Param_Mode   : Entity_Kind         := Ekind (Param);
-      Ptr_Size     : constant ULL        :=
-        Get_LLVM_Type_Size (Void_Ptr_Type);
+      TE           : constant Entity_Id         := Full_Etype (Param);
+      By_Ref_Kind  : constant Param_By_Ref_Kind := Get_Param_By_Ref_Kind (TE);
+      Param_Mode   : Entity_Kind                := Ekind (Param);
       By_Copy_Kind : Param_Kind;
 
       function Has_Initialized_Component (TE : Entity_Id) return Boolean
@@ -430,7 +449,7 @@ package body GNATLLVM.Subprograms is
 
       --  Force by-reference and dynamic-sized types to be passed by reference
 
-      elsif Is_By_Reference_Type (TE) or else Is_Dynamic_Size (TE) then
+      elsif By_Ref_Kind = Must then
          return PK_By_Reference;
 
       --  If the mechanism is specified, use it
@@ -441,12 +460,12 @@ package body GNATLLVM.Subprograms is
       elsif Mechanism (Param) = By_Copy then
          return By_Copy_Kind;
 
-      --  For the default case, return by reference if it' larger than
+      --  For the default case, return by reference if it's larger than
       --  two pointer.
 
       else
-         return (if   Get_LLVM_Type_Size (Create_Type (TE)) > 2 * Ptr_Size
-                 then PK_By_Reference else By_Copy_Kind);
+         return (if   By_Ref_Kind = Default_By_Ref then PK_By_Reference
+                 else By_Copy_Kind);
       end if;
 
    end Get_Param_Kind;
@@ -514,6 +533,39 @@ package body GNATLLVM.Subprograms is
          return Struct_Out_Subprog;
       end if;
    end Get_L_Ret_Kind;
+
+   ------------------------
+   -- Get_Mechanism_Code --
+   ------------------------
+
+   function Get_Mechanism_Code (E : Entity_Id; Exprs : List_Id) return Uint is
+      P_Num : Int;
+      Param : Entity_Id;
+
+   begin
+      --  If there's no Exprs, then we're asking about the function return
+      --  mechanism; otherwise, we're asking about a parameter.
+
+      if No (Exprs) then
+         if Get_Return_Kind (E) in RK_By_Reference | Return_By_Parameter then
+            return Uint_2;
+         else
+            return Uint_1;
+         end if;
+      end if;
+
+      P_Num := UI_To_Int (Intval (First (Exprs)));
+      Param := First_Formal (E);
+      for J in 2 .. P_Num loop
+         Next_Formal (Param);
+      end loop;
+
+      if Get_Param_Kind (Param) in PK_By_Reference | Foreign_By_Reference then
+         return Uint_2;
+      else
+         return Uint_1;
+      end if;
+   end Get_Mechanism_Code;
 
    -------------------------
    -- Relationship_For_PK --

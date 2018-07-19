@@ -622,11 +622,13 @@ package body GNATLLVM.Exprs is
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
       TE   : constant Entity_Id    := Full_Etype (N);
+      P_TE : Entity_Id             := Full_Etype (Prefix (N));
       V    : GL_Value;
 
    begin
       case Attr is
          when Attribute_Access
+            | Attribute_Code_Address
             | Attribute_Unchecked_Access
             | Attribute_Unrestricted_Access =>
 
@@ -662,32 +664,31 @@ package body GNATLLVM.Exprs is
             | Attribute_Range_Length =>
 
             declare
-               Prefix_Type : Entity_Id    := Full_Etype (Prefix (N));
                Dim         : constant Nat :=
                  (if Present (Expressions (N))
                   then UI_To_Int (Intval (First (Expressions (N)))) - 1
                   else 0);
                Array_Descr : GL_Value;
-               Result      : GL_Value;
                Low, High   : GL_Value;
+
             begin
-               if Is_Scalar_Type (Prefix_Type) then
-                  Low  := Emit_Expression (Type_Low_Bound (Prefix_Type));
-                  High := Emit_Expression (Type_High_Bound (Prefix_Type));
+               if Is_Scalar_Type (P_TE) then
+                  Low  := Emit_Expression (Type_Low_Bound  (P_TE));
+                  High := Emit_Expression (Type_High_Bound (P_TE));
 
                   if Attr = Attribute_First then
-                     Result := Low;
+                     V := Low;
                   elsif Attr = Attribute_Last then
-                     Result := High;
+                     V := High;
                   elsif Attr = Attribute_Range_Length then
-                     Result := Bounds_To_Length (Low, High, TE);
+                     V := Bounds_To_Length (Low, High, TE);
                   else
                      Error_Msg_N ("unsupported attribute: `" &
                                     Attribute_Id'Image (Attr) & "`", N);
-                     Result := Get_Undef (TE);
+                     V := Get_Undef (TE);
                   end if;
 
-               elsif Is_Array_Type (Prefix_Type) then
+               elsif Is_Array_Type (P_TE) then
 
                   --  If what we're taking the prefix of is a type, we can't
                   --  evaluate it as an expression.
@@ -698,31 +699,37 @@ package body GNATLLVM.Exprs is
                      Array_Descr := No_GL_Value;
                   else
                      Array_Descr := Emit_LValue (Prefix (N));
-                     Prefix_Type := Related_Type (Array_Descr);
+                     P_TE        := Related_Type (Array_Descr);
                   end if;
 
                   if Attr = Attribute_Length then
-                     Result :=
-                       Get_Array_Length (Prefix_Type, Dim, Array_Descr);
+                     V := Get_Array_Length (P_TE, Dim, Array_Descr);
                   else
-                     Result :=
-                       Get_Array_Bound
-                       (Prefix_Type, Dim, Attr = Attribute_First, Array_Descr,
-                       For_Orig => Is_Packed_Array_Impl_Type (Prefix_Type));
+                     V := Get_Array_Bound
+                       (P_TE, Dim, Attr = Attribute_First, Array_Descr,
+                        For_Orig => Is_Packed_Array_Impl_Type (P_TE));
                   end if;
                else
                   Error_Msg_N ("unsupported attribute: `" &
                                  Attribute_Id'Image (Attr) & "`", N);
-                  Result := Get_Undef (TE);
+                  V := Get_Undef (TE);
                end if;
 
-               return Convert (Result, TE);
+               return Convert (V, TE);
             end;
 
-         when Attribute_Position =>
+         when Attribute_Position | Attribute_Bit_Position =>
 
-            return Emit_Field_Position (Entity (Selector_Name (Prefix (N))),
-                                        Emit_LValue (Prefix (Prefix (N))));
+            --  We don't pack, so the bit position is always a multiple
+            --  of the byte size.
+
+            V := Emit_Field_Position (Entity (Selector_Name (Prefix (N))),
+                                      Emit_LValue (Prefix (Prefix (N))));
+            if Attr = Attribute_Bit_Position then
+               V := Mul (V, Byte_Size);
+            end if;
+
+            return Convert (V, TE);
 
          when Attribute_First_Bit | Attribute_Bit =>
 
@@ -735,8 +742,7 @@ package body GNATLLVM.Exprs is
             --  We don't support packing, so this is always the size minus 1
 
             return Convert
-              (Sub (Mul (Get_Type_Size (Full_Etype (Prefix (N))),
-                         Size_Const_Int (Uint_8)),
+              (Sub (Mul (Get_Type_Size (P_TE), Byte_Size),
                     Size_Const_Int (Uint_1)),
                TE);
 
@@ -783,8 +789,7 @@ package body GNATLLVM.Exprs is
                return V;
             end;
 
-         when Attribute_Machine
-            | Attribute_Model =>
+         when Attribute_Machine | Attribute_Model =>
 
             --  ??? For now return the prefix itself. Would need to force a
             --  store in some cases.
@@ -792,13 +797,8 @@ package body GNATLLVM.Exprs is
             return Emit_Expression (First (Expressions (N)));
 
          when Attribute_Alignment =>
-            declare
-               Pre   : constant Node_Id  := Full_Etype (Prefix (N));
-               Align : constant unsigned := Get_Type_Alignment (Pre);
-
-            begin
-               return Const_Int (TE, Align, Sign_Extend => False);
-            end;
+            return Const_Int (TE, Get_Type_Alignment (P_TE),
+                              Sign_Extend => False);
 
          when Attribute_Size
             | Attribute_Object_Size
@@ -809,43 +809,53 @@ package body GNATLLVM.Exprs is
             --  enough for quite a while.
 
             declare
-               Prefix_Type : constant Entity_Id := Full_Etype (Prefix (N));
                Is_A_Type   : constant Boolean   :=
                  (Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N))));
                For_Type    : constant Boolean   :=
-                 Is_A_Type and then not Is_Constrained (Prefix_Type);
+                 Is_A_Type and then not Is_Constrained (P_TE);
+
             begin
                V := (if Is_A_Type then No_GL_Value
                                   else Emit_LValue (Prefix (N)));
-               V := Get_Type_Size (Prefix_Type, V, For_Type);
+               V := Get_Type_Size (P_TE, V, For_Type);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
-                  if Is_Unconstrained_Array (Prefix_Type) then
-                     V := Add (V, Get_Bound_Size (Prefix_Type));
+                  if Is_Unconstrained_Array (P_TE) then
+                     V := Add (V, Get_Bound_Size (P_TE));
                   end if;
 
                   return Convert (V, TE);
                else
-                  return Convert (Mul (V, Size_Const_Int (Uint_8)), TE);
+                  return Convert (Mul (V, Byte_Size), TE);
                end if;
             end;
 
          when Attribute_Component_Size =>
             return Convert
               (Mul (Get_Type_Size
-                      (Full_Component_Type (Full_Etype (Prefix (N))),
-                       For_Type => True),
-                        Size_Const_Int (Uint_8)),
+                      (Full_Component_Type (P_TE), For_Type => True),
+                    Byte_Size),
                TE);
 
          when Attribute_Null_Parameter =>
-            return Load (Const_Null_Ref (Full_Etype (Prefix (N))));
+            return Load (Const_Null_Ref (P_TE));
 
          when Attribute_Descriptor_Size =>
-            pragma Assert (Is_Unconstrained_Array (Full_Etype (Prefix (N))));
+            pragma Assert (Is_Unconstrained_Array (P_TE));
 
-            return Mul (Get_Bound_Size (Full_Etype (Prefix (N))),
-                        Size_Const_Int (Uint_8));
+            return Mul (Get_Bound_Size (P_TE), Byte_Size);
+
+         when Attribute_Passed_By_Reference =>
+
+            --  Return 1 if must pass by reference or if default to pass by ref
+
+            return Const_Int
+              (TE, (if   Get_Param_By_Ref_Kind (P_TE) = Default_By_Copy
+                    then Uint_0 else Uint_1));
+
+         when Attribute_Mechanism_Code =>
+            return Const_Int
+              (TE, Get_Mechanism_Code (Entity (Prefix (N)), Expressions (N)));
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &

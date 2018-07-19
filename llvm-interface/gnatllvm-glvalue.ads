@@ -780,6 +780,10 @@ package GNATLLVM.GLValue is
      (Const_Int (Size_Type, N))
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
+   function Byte_Size return GL_Value is
+     (Size_Const_Int (Uint_8))
+     with Post => Is_Constant (Byte_Size'Result);
+
    function Size_Const_Int
      (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
    is

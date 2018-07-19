@@ -309,7 +309,7 @@ text_io.ads  \
 unchconv.ads \
 unchdeal.ads
 
-COMPILABLE_SPECS= \
+COMPILABLE_ZFP_SPECS= \
 ada.ads      \
 a-unccon.ads \
 a-uncdea.ads \
@@ -359,7 +359,7 @@ zfp: build
 	cp -p $(GNAT_SRC)/hie/s-sssita.ad[sb] $(ZFPINCLUDE)/
 	cp -p $(GNAT_SRC)/hie/s-stalib__zfp.ads $(ZFPINCLUDE)/s-stalib.ads
 	cp -p $(GNAT_SRC)/libgnat/s-flocon__none.adb $(ZFPINCLUDE)/s-flocon.adb
-	cd $(ZFPLIB) && for f in $(COMPILABLE_SPECS); do \
+	cd $(ZFPLIB) && for f in $(COMPILABLE_ZFP_SPECS); do \
 	  $(COMPILE) ../adainclude/$$f || exit 1; \
 	done
 	cd $(ZFPLIB) && for f in ../adainclude/*.adb; do \

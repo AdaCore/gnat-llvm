@@ -1116,19 +1116,22 @@ package body GNATLLVM.Subprograms is
    --------------------
 
    procedure Emit_Elab_Proc
-     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String) is
-      U          : constant Node_Id  := Defining_Unit_Name (N);
-      Unit       : constant Node_Id  :=
+     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
+   is
+      Nest_Table_First : constant Nat      := Nested_Functions_Table.Last + 1;
+      U                : constant Node_Id  := Defining_Unit_Name (N);
+      Unit             : constant Node_Id  :=
         (if Nkind (U) = N_Defining_Program_Unit_Name
          then Defining_Identifier (U) else U);
-      S_List     : constant List_Id  :=
+      S_List           : constant List_Id  :=
         (if No (Stmts) then No_List else Statements (Stmts));
-      Name       : constant String   :=
+      Name             : constant String   :=
         Get_Name_String (Chars (Unit)) & "___elab" & Suffix;
-      Work_To_Do : constant Boolean  :=
+      Work_To_Do       : constant Boolean  :=
         Elaboration_Table.Last /= 0 or else Has_Non_Null_Statements (S_List);
-      Elab_Type  : constant Type_T   := Fn_Ty ((1 .. 0 => <>), Void_Type);
-      LLVM_Func  : GL_Value;
+      Elab_Type        : constant Type_T   :=
+        Fn_Ty ((1 .. 0 => <>), Void_Type);
+      LLVM_Func        : GL_Value;
 
    begin
       --  If nothing to elaborate, do nothing
@@ -1195,6 +1198,14 @@ package body GNATLLVM.Subprograms is
       Build_Ret_Void;
       Pop_Debug_Scope;
       Leave_Subp;
+
+      --  Now elaborate any subprograms that were nested inside us
+
+      for J in Nest_Table_First .. Nested_Functions_Table.Last loop
+         Emit_Subprogram_Body (Nested_Functions_Table.Table (J));
+      end loop;
+
+      Nested_Functions_Table.Set_Last (Nest_Table_First);
    end Emit_Elab_Proc;
 
    --------------------------

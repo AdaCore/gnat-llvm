@@ -86,11 +86,10 @@ build-opt: setup force
 	$(MAKE) bugs-bins
 
 bugs-bins:
-	rm -rf bugs/bin
-	mkdir -p bugs/bin
+	$(RMDIR) bugs/bin
+	$(MKDIR) bugs/bin
 	for f in gcc gnat1 gnat gnatbind gnatchop gnatclean gnatkr gnatlink gnatls gnatmake gnatname gnatprep; do \
-	  rm -f $$f; \
-	  ln bin/llvm-$$f bugs/bin/$$f; \
+	  rm -f $$f; ln bin/llvm-$$f bugs/bin/$$f; \
 	done
 
 stage1: build gnatlib

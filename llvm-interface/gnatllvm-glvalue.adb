@@ -270,8 +270,7 @@ package body GNATLLVM.GLValue is
       --  commonly used in situations where they're passed as parameters
       --  where the formal is a String.
 
-      if Is_Unconstrained_Array (TE)
-        or else Type_Needs_Bounds (TE)
+      if Is_Unconstrained_Array (TE) or else Type_Needs_Bounds (TE)
         or else Ekind (TE) = E_String_Literal_Subtype
       then
          return Reference_To_Bounds_And_Data;
@@ -542,14 +541,17 @@ package body GNATLLVM.GLValue is
          when Reference =>
 
             --  For Thin_Pointer, we have the value we need, possibly just
-            --  converting it.  For Fat pointer, we can extract it.
+            --  converting it.  For fat pointer, we can extract it.
 
-            if Relationship (V) = Thin_Pointer then
+            if Relationship (V) in Thin_Pointer | Trampoline then
                return Ptr_To_Relationship (V, TE, R);
             elsif Relationship (V) = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
             elsif Relationship (V) = Fat_Pointer then
                return Extract_Value_To_Relationship (TE, V, 0, R);
+            elsif Relationship (V) = Fat_Reference_To_Subprogram then
+               return
+                 Ptr_To_Relationship (Extract_Value_To_Ref (TE, V, 0), TE, R);
 
             --  If we have a reference to both bounds and data, we can
             --  compute where the data starts.  If we have the actual
@@ -559,14 +561,6 @@ package body GNATLLVM.GLValue is
                return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 1));
             elsif Relationship (V) = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
-            end if;
-
-            --  A reference to a subprogram is inside a fat reference to a
-            --  subprogram.
-
-            if Relationship (V) = Fat_Reference_To_Subprogram then
-               return
-                 Ptr_To_Relationship (Extract_Value_To_Ref (TE, V, 0), TE, R);
             end if;
 
          when Thin_Pointer =>
@@ -622,10 +616,10 @@ package body GNATLLVM.GLValue is
 
          when Fat_Reference_To_Subprogram =>
 
-            --  If we want to fat reference to a subprogram, make one with
+            --  If we want a fat reference to a subprogram, make one with
             --  an undefined static link.
 
-            if Relationship (V) = Reference then
+            if Relationship (V) in Reference | Trampoline then
                return Insert_Value (Get_Undef_Relationship (TE, R),
                                     Convert_To_Access (V, Standard_A_Char), 0);
             end if;
@@ -1590,10 +1584,14 @@ package body GNATLLVM.GLValue is
    -----------------------------
 
    function Convert_Struct_Constant
-     (V : GL_Value; TE : Entity_Id) return GL_Value is
+     (V : GL_Value; TE : Entity_Id) return GL_Value
+   is
+      T   : constant Type_T  := Create_Type (TE);
+      Val : constant Value_T := LLVM_Value (V);
 
    begin
-      return G (Convert_Struct_Constant (LLVM_Value (V), Create_Type (TE)),
+      return G ((if   Is_Null (Val) then Const_Null (T)
+                 else Convert_Struct_Constant (Val, T)),
                 TE, Data);
    end Convert_Struct_Constant;
 

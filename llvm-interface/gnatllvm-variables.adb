@@ -623,15 +623,23 @@ package body GNATLLVM.Variables is
             return No (Expr);
 
          when N_Binary_Op =>
-            return Is_No_Elab_Needed (Left_Opnd (N))
+            return not Do_Overflow_Check (N)
+              and then Is_No_Elab_Needed (Left_Opnd (N))
               and then Is_No_Elab_Needed (Right_Opnd (N));
 
          when N_Unary_Op =>
-            return Is_No_Elab_Needed (Right_Opnd (N));
+            return not Do_Overflow_Check (N)
+              and then Is_No_Elab_Needed (Right_Opnd (N));
 
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
+            if Nkind (N) = N_Type_Conversion
+              and then Do_Overflow_Check (N)
+            then
+               return False;
+            end if;
+
             return Is_Static_Address (Expression (N))
               or else (Is_Static_Conversion (Full_Etype (Expression (N)), TE)
                          and then Is_No_Elab_Needed (Expression (N)));

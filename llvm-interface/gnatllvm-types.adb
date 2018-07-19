@@ -245,12 +245,14 @@ package body GNATLLVM.Types is
       then
          Error_Msg_Node_1 := In_TE;
          Error_Msg_Node_2 := TE;
-         Error_Msg_N
-           ("??conversion between subprogram access types of different , ", N);
-         Error_Msg_N
-           ("\conventions, & and &, will not work if the former points ", N);
-         Error_Msg_N
-           ("\to a subprogram that references parent variables.", N);
+         Error_Msg
+           ("??conversion between subprogram access types of different",
+            Sloc (N));
+         Error_Msg
+           ("\conventions, & and &, will not work if the former points ",
+            Sloc (N));
+         Error_Msg
+           ("\to a subprogram that references parent variables.", Sloc (N));
       end if;
 
       if Is_Elementary_Type (TE) and then Need_Overflow_Check then
@@ -412,7 +414,7 @@ package body GNATLLVM.Types is
       Src_Size    : constant Nat     :=
         Nat (ULL'(Get_LLVM_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
-        (if Is_Modular_Integer_Type (TE) or else TE = Standard_Boolean
+        (if   Is_Modular_Integer_Type (TE) or else Is_Boolean_Type (TE)
          then RM_Size (TE) else Esize (TE));
       Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;

@@ -226,3 +226,144 @@ tracebak.o: tracebak.c tb-gcc.c
 	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \
 	  $(ALL_CPPFLAGS) $(INCLUDES) $(NO_OMIT_ADAFLAGS) $<
 
+# ZFP runtime
+
+COMMON_ZFP_SRCS= \
+a-assert.adb \
+a-assert.ads \
+ada.ads      \
+a-unccon.ads \
+a-uncdea.ads \
+gnat.ads     \
+g-souinf.ads \
+i-cexten.ads \
+interfac.ads \
+s-addope.ads \
+s-addope.adb \
+s-atacco.adb \
+s-atacco.ads \
+s-arit64.ads \
+s-arit64.adb \
+s-casuti.ads \
+s-casuti.adb \
+s-exnint.ads \
+s-exnint.adb \
+s-exnllf.ads \
+s-exnllf.adb \
+s-expint.ads \
+s-expint.adb \
+s-explli.ads \
+s-explli.adb \
+s-expuns.ads \
+s-expuns.adb \
+s-fatflt.ads \
+s-fatgen.adb \
+s-fatgen.ads \
+s-fatlfl.ads \
+s-fatllf.ads \
+s-fatsfl.ads \
+s-flocon.ads \
+s-fore.ads   \
+s-fore.adb   \
+s-imenne.adb \
+s-imenne.ads \
+s-imgboo.adb \
+s-imgboo.ads \
+s-imgcha.adb \
+s-imgcha.ads \
+s-imgenu.adb \
+s-imgenu.ads \
+s-imgint.adb \
+s-imgint.ads \
+s-imglli.adb \
+s-imglli.ads \
+s-imgllu.adb \
+s-imgllu.ads \
+s-imguns.adb \
+s-imguns.ads \
+s-imgwch.adb \
+s-imgwch.ads \
+s-maccod.ads \
+s-powtab.ads \
+s-stoele.adb \
+s-stoele.ads \
+s-unstyp.ads \
+s-valboo.adb \
+s-valboo.ads \
+s-valcha.adb \
+s-valcha.ads \
+s-valenu.adb \
+s-valenu.ads \
+s-valint.adb \
+s-valint.ads \
+s-vallli.adb \
+s-vallli.ads \
+s-valllu.adb \
+s-valllu.ads \
+s-valuns.adb \
+s-valuns.ads \
+s-valuti.adb \
+s-valuti.ads \
+machcode.ads \
+text_io.ads  \
+unchconv.ads \
+unchdeal.ads
+
+COMPILABLE_SPECS= \
+ada.ads      \
+a-unccon.ads \
+a-uncdea.ads \
+gnat.ads     \
+g-souinf.ads \
+i-c.ads      \
+i-cexten.ads \
+interfac.ads \
+s-atacco.ads \
+s-fatflt.ads \
+s-fatsfl.ads \
+s-fatllf.ads \
+s-fatlfl.ads \
+s-maccod.ads \
+s-powtab.ads \
+s-unstyp.ads \
+s-parame.ads \
+s-stalib.ads \
+system.ads   \
+machcode.ads \
+text_io.ads  \
+unchconv.ads \
+unchdeal.ads
+
+ZFPINCLUDE=lib/rts-zfp/adainclude
+ZFPLIB=lib/rts-zfp/adalib
+
+zfp: build
+	$(RMDIR) $(ZFPINCLUDE) $(ZFPLIB)
+	$(MKDIR) $(ZFPINCLUDE) $(ZFPLIB)
+	for f in $(COMMON_ZFP_SRCS); do \
+	  cp -p $(GNAT_SRC)/libgnat/$$f $(ZFPINCLUDE); \
+	done
+	cp -p $(GNAT_SRC)/hie/a-tags__c.ads $(ZFPINCLUDE)/a-tags.ads
+	cp -p $(GNAT_SRC)/hie/a-tags__c.adb $(ZFPINCLUDE)/a-tags.adb
+	cp -p $(GNAT_SRC)/hie/a-except__c.adb $(ZFPINCLUDE)/a-except.adb
+	cp -p $(GNAT_SRC)/hie/a-except__zfp.ads $(ZFPINCLUDE)/a-except.ads
+	cp -p $(GNAT_SRC)/hie/a-textio__c.adb $(ZFPINCLUDE)/a-textio.adb
+	cp -p $(GNAT_SRC)/hie/a-textio__c.ads $(ZFPINCLUDE)/a-textio.ads
+	cp -p $(GNAT_SRC)/hie/i-c__hie.ads $(ZFPINCLUDE)/i-c.ads
+	cp -p $(GNAT_SRC)/hie/s-assert__c.ads $(ZFPINCLUDE)/s-assert.ads
+	cp -p $(GNAT_SRC)/hie/s-assert__xi.adb $(ZFPINCLUDE)/s-assert.adb
+	cp -p $(GNAT_SRC)/hie/s-secsta__zfp.ads $(ZFPINCLUDE)/s-secsta.ads
+	cp -p $(GNAT_SRC)/hie/s-secsta__zfp.adb $(ZFPINCLUDE)/s-secsta.adb
+	cp -p $(GNAT_SRC)/hie/s-parame__zfp.ads $(ZFPINCLUDE)/s-parame.ads
+	cp -p $(GNAT_SRC)/hie/system-llvm.ads $(ZFPINCLUDE)/system.ads
+	cp -p $(GNAT_SRC)/hie/s-sssita.ad[sb] $(ZFPINCLUDE)/
+	cp -p $(GNAT_SRC)/hie/s-stalib__zfp.ads $(ZFPINCLUDE)/s-stalib.ads
+	cp -p $(GNAT_SRC)/libgnat/s-flocon__none.adb $(ZFPINCLUDE)/s-flocon.adb
+	cd $(ZFPLIB) && for f in $(COMPILABLE_SPECS); do \
+	  $(COMPILE) ../adainclude/$$f || exit 1; \
+	done
+	cd $(ZFPLIB) && for f in ../adainclude/*.adb; do \
+	  $(COMPILE) $$f || exit 1; \
+	done
+	cd $(ZFPLIB) && $(CHMOD) a-wx *.ali && $(AR) libgnat.a *.o && $(RM) *.o
+

@@ -693,8 +693,7 @@ package body GNATLLVM.Compile is
                                       Get (Result, Any_Reference)));
             else
                return Add_To_LValue_List
-                 (Get_Slice_LValue (TE, Discrete_Range (N),
-                                    Get (Result, Any_Reference)));
+                 (Get_Slice_LValue (TE, Get (Result, Any_Reference)));
             end if;
 
          when N_Aggregate | N_Extension_Aggregate =>

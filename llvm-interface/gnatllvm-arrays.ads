@@ -100,12 +100,11 @@ package GNATLLVM.Arrays is
    --  Get an LValue corresponding to indexing Value by Indexes.  Arr_Type
    --  is the array type.
 
-   function Get_Slice_LValue
-     (TE : Entity_Id; Rng : Node_Id; V : GL_Value) return GL_Value
+   function Get_Slice_LValue (TE : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Is_Array_Type (Full_Designated_Type (V))
                   and then Number_Dimensions (Full_Designated_Type (V)) = 1,
           Post => Present (Get_Slice_LValue'Result);
-   --  Similar, but Rng is the Discrete_Range for the slice
+   --  Similar, but we get the position from the First_Index of TE
 
    function Get_Array_Elements
      (V        : GL_Value;

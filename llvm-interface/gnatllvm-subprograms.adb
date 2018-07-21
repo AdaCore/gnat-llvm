@@ -241,6 +241,11 @@ package body GNATLLVM.Subprograms is
    --  pointer passed to the current subprogram.  Return a pointer to the
    --  proper activation record, which is either V or an up-level pointer.
 
+   function Add_Static_Link
+     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
+     with Pre => Ekind_In (Proc, E_Procedure, E_Function);
+   --  If Proc needs a static link, add it to the end of Args
+
    function Name_To_RMW_Op
      (S           : String;
       Index       : Integer;
@@ -263,11 +268,6 @@ package body GNATLLVM.Subprograms is
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
    --  for it and return the result.  Otherwise, No_GL_Value.
-
-   function Has_Activation_Record (Def_Ident : Entity_Id) return Boolean
-     with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
-   --  Return True if Def_Ident is a nested subprogram or a subprogram type
-   --  that needs an activation record.
 
    function Get_Tramp_Init_Fn   return GL_Value;
    function Get_Tramp_Adjust_Fn return GL_Value;
@@ -1393,10 +1393,8 @@ package body GNATLLVM.Subprograms is
    -- Get_Static_Link --
    ---------------------
 
-   function Get_Static_Link (N : Node_Id) return GL_Value is
-      Subp        : constant Entity_Id  :=
-        (if Nkind (N) in N_Entity then N else Entity (N));
-      Parent      : constant Entity_Id  := Enclosing_Subprogram (Subp);
+   function Get_Static_Link (Subp : Entity_Id) return GL_Value is
+      Parent      : constant Entity_Id := Enclosing_Subprogram (Subp);
       Ent_Caller  : Subp_Entry;
       Ent         : Subp_Entry;
       Result      : GL_Value;
@@ -1435,19 +1433,18 @@ package body GNATLLVM.Subprograms is
       end if;
    end Get_Static_Link;
 
-   ----------------
-   -- Call_Alloc --
-   ----------------
+   ---------------------
+   -- Add_Static_Link --
+   ---------------------
 
-   function Call_Alloc
-     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value
+   function Add_Static_Link
+     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
    is
-      Func           : constant GL_Value := Emit_Safe_LValue (Proc);
       Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
       S_Link         : GL_Value;
 
    begin
-      if Subps_Index (Proc) /= Uint_0
+      if Has_Activation_Record (Proc)
         and then Present (Subps.Table (Subp_Index (Proc)).ARECnF)
       then
          --  This needs a static link.  Get it, convert it to the precise
@@ -1457,10 +1454,21 @@ package body GNATLLVM.Subprograms is
                                  Full_Etype (Extra_Formals (Proc)));
          Args_With_Link (Args'Range) := Args;
          Args_With_Link (Args_With_Link'Last) := S_Link;
-         return Call (Func, Size_Type, Args_With_Link);
+         return Args_With_Link;
       else
-         return Call (Func, Size_Type, Args);
+         return Args;
       end if;
+   end Add_Static_Link;
+
+   ----------------
+   -- Call_Alloc --
+   ----------------
+
+   function Call_Alloc
+     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value is
+   begin
+      return Call (Emit_Safe_LValue (Proc), Size_Type,
+                   Add_Static_Link (Proc, Args));
    end Call_Alloc;
 
    ------------------
@@ -1468,25 +1476,8 @@ package body GNATLLVM.Subprograms is
    ------------------
 
    procedure Call_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
-      Func           : constant GL_Value := Emit_Safe_LValue (Proc);
-      Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
-      S_Link         : GL_Value;
-
    begin
-      if Subps_Index (Proc) /= Uint_0
-        and then Present (Subps.Table (Subp_Index (Proc)).ARECnF)
-      then
-         --  This needs a static link.  Get it, convert it to the precise
-         --  needed type, and then create the new argument list.
-
-         S_Link := Pointer_Cast (Get_Static_Link (Proc),
-                                 Full_Etype (Extra_Formals (Proc)));
-         Args_With_Link (Args'Range) := Args;
-         Args_With_Link (Args_With_Link'Last) := S_Link;
-         Call (Func, Args_With_Link);
-      else
-         Call (Func, Args);
-      end if;
+      Call (Emit_Safe_LValue (Proc), Add_Static_Link (Proc, Args));
    end Call_Dealloc;
 
    --------------------
@@ -1780,9 +1771,12 @@ package body GNATLLVM.Subprograms is
 
       if Nkind (Parent (N)) = N_Attribute_Reference then
          declare
-            S_Link : constant GL_Value     := Get_Static_Link (N);
             Ref    : constant Node_Id      := Parent (N);
             Typ    : constant Entity_Id    := Full_Etype (Ref);
+            S_Link : constant GL_Value     :=
+              (if   Has_Activation_Record (Def_Ident)
+               then Get_Static_Link (Def_Ident)
+               else Get_Undef (Standard_A_Char));
             Attr   : constant Attribute_Id :=
               Get_Attribute_Id (Attribute_Name (Ref));
 
@@ -1790,7 +1784,6 @@ package body GNATLLVM.Subprograms is
             if Is_Access_Type (Typ) then
                declare
                   DT     : constant Entity_Id := Full_Designated_Type (Typ);
-                  S_Link : constant GL_Value  := Get_Static_Link (N);
 
                begin
                   if Has_Activation_Record (Def_Ident)

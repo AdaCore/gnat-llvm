@@ -101,10 +101,10 @@ package GNATLLVM.Subprograms is
    --  Checks whether E is present in the current activation record and
    --  returns an LValue pointing to the value of the object if so.
 
-   function Get_Static_Link (N : Node_Id) return GL_Value
-     with Pre  => Present (N),
+   function Get_Static_Link (Subp : Entity_Id) return GL_Value
+     with Pre  => Ekind_In (Subp, E_Procedure, E_Function),
           Post => Present (Get_Static_Link'Result);
-   --  Build and return the static link to pass to a call to N
+   --  Build and return the static link to pass to a call to Subp
 
    function Make_Trampoline
      (TE : Entity_Id; Fn, Static_Link : GL_Value) return GL_Value
@@ -113,6 +113,11 @@ package GNATLLVM.Subprograms is
           Post => Present (Make_Trampoline'Result);
    --  Given the type of a function, a pointer to it, and a static
    --  link, make a trampoline that combines the static link and function.
+
+   function Has_Activation_Record (Def_Ident : Entity_Id) return Boolean
+     with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
+   --  Return True if Def_Ident is a nested subprogram or a subprogram type
+   --  that needs an activation record.
 
    function Emit_Subprogram_Identifier
      (Def_Ident : Entity_Id; N : Node_Id; TE : Entity_Id) return GL_Value

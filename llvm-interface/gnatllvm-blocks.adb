@@ -389,7 +389,8 @@ package body GNATLLVM.Blocks is
    procedure Start_Block_Statements
      (At_End_Proc : Entity_Id; EH_List : List_Id)
    is
-      BI : Block_Info renames Block_Stack.Table (Block_Stack.Last);
+      BI   : Block_Info renames Block_Stack.Table (Block_Stack.Last);
+      Subp : Entity_Id;
 
    begin
       pragma Assert (not BI.In_Stmts);
@@ -405,14 +406,14 @@ package body GNATLLVM.Blocks is
          --  record.  There may not be a static link, however, if there re
          --  no uplevel references.
 
+         Subp           := Entity (At_End_Proc);
          BI.At_End_Proc := Emit_LValue (At_End_Proc);
-         if Subps_Index (Entity (At_End_Proc)) /= Uint_0
-           and then Present (Subps.Table (Subp_Index
-                                            (Entity (At_End_Proc))).ARECnF)
+         if Has_Activation_Record (Subp)
+           and then Present (Subps.Table (Subp_Index (Subp)).ARECnF)
          then
             BI.At_End_Parameter :=
-              Pointer_Cast (Get_Static_Link (At_End_Proc),
-                            Full_Etype (Extra_Formals (Entity (At_End_Proc))));
+              Pointer_Cast (Get_Static_Link (Subp),
+                            Full_Etype (Extra_Formals (Subp)));
          end if;
       end if;
 

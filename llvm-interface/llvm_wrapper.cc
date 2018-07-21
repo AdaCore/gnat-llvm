@@ -13,6 +13,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -148,9 +149,14 @@ Add_Inline_No_Attribute (Function *fn)
 
 extern "C"
 void
-Add_Nest_Attribute (Function *fn, unsigned idx)
+Add_Nest_Attribute (Value *v, unsigned idx)
 {
-    fn->addParamAttr (idx, Attribute::Nest);
+    if (Function *fn = dyn_cast<Function>(v))
+	fn->addParamAttr (idx, Attribute::Nest);
+    else if (CallInst *ci = dyn_cast<CallInst>(v))
+	ci->addParamAttr (idx, Attribute::Nest);
+    else if (InvokeInst *ii = dyn_cast<InvokeInst>(v))
+	ii->addParamAttr (idx, Attribute::Nest);
 }
 
 extern "C"

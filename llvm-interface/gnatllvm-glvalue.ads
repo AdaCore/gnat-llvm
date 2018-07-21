@@ -387,7 +387,7 @@ package GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; R : GL_Relationship) return GL_Value
    is
      (G (LLVM_Value (V), TE, R))
-     with Pre  => Present (V) and then Is_Type (TE),
+     with Pre  => Present (V) and then Is_Type_Or_Void (TE),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
    --  and relationship.

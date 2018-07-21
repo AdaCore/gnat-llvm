@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
@@ -1786,20 +1785,6 @@ package body GNATLLVM.Subprograms is
                   DT     : constant Entity_Id := Full_Designated_Type (Typ);
 
                begin
-                  if Has_Activation_Record (Def_Ident)
-                    and then (Has_Foreign_Convention (Typ) /=
-                                Has_Foreign_Convention (Def_Ident))
-                  then
-                     Error_Msg_Node_1 := Def_Ident;
-                     Error_Msg_Node_2 := Typ;
-                     Error_Msg_N
-                       ("either access type & and subprogram &", Ref);
-                     Error_Msg_N
-                       ("\Convention Ada or neither may be since ", Ref);
-                     Error_Msg_NE
-                       ("\&references parent variables", Ref, Def_Ident);
-                  end if;
-
                   if Has_Foreign_Convention (Typ) then
                      return (if   Has_Activation_Record (Def_Ident)
                              then Make_Trampoline (DT, V, S_Link)
@@ -1813,15 +1798,6 @@ package body GNATLLVM.Subprograms is
                   end if;
                end;
             elsif Attr = Attribute_Address then
-               if Has_Activation_Record (Def_Ident)
-                 and then not Has_Foreign_Convention (Def_Ident)
-               then
-                  Error_Msg_N
-                    ("cannot take address of Convention Ada subprogram ", Ref);
-                  Error_Msg_NE
-                    ("\& which references parent variables", Ref, Def_Ident);
-               end if;
-
                return (if   Has_Activation_Record (Def_Ident)
                        then Make_Trampoline (TE, V, S_Link) else V);
             end if;
@@ -2231,9 +2207,7 @@ package body GNATLLVM.Subprograms is
                   Add_Noalias_Attribute         (LLVM_Func, Param_Num);
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
                   Add_Readonly_Attribute        (LLVM_Func, Param_Num);
-                  if Has_Foreign_Convention (Def_Ident) then
-                     Add_Nest_Attribute         (LLVM_Func, Param_Num);
-                  end if;
+                  Add_Nest_Attribute            (LLVM_Func, Param_Num);
 
                elsif PK_Is_Reference (PK)
                  and then (not Is_Unconstrained_Array (TE)

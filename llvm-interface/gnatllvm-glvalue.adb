@@ -1204,12 +1204,17 @@ package body GNATLLVM.GLValue is
         Is_A_Function (Func) and then Does_Not_Throw (Func);
       Lpad        : constant Basic_Block_T :=
         (if No_Raise then No_BB_T else Get_Landing_Pad);
+      Act_Param   : Int                    := -1;
       Arg_Values  : Value_Array (Args'Range);
       Next_BB     : Basic_Block_T;
       Call_Inst   : Value_T;
+
    begin
       for J in Args'Range loop
          Arg_Values (J) := LLVM_Value (Args (J));
+         if Relationship (Args (J)) = Reference_To_Activation_Record then
+            Act_Param := J - Args'First;
+         end if;
       end loop;
 
       --  If we have a landing pad, use an invoke instruction, first creating
@@ -1221,12 +1226,18 @@ package body GNATLLVM.GLValue is
                               Arg_Values'Address, Arg_Values'Length,
                               Next_BB, Lpad, Name);
          Position_Builder_At_End (Next_BB);
-         return Call_Inst;
       else
-         return Call (IR_Builder, LLVM_Func,
-                      Arg_Values'Address, Arg_Values'Length, Name);
+         Call_Inst := Call (IR_Builder, LLVM_Func,
+                            Arg_Values'Address, Arg_Values'Length, Name);
       end if;
 
+      --  If we found a parameter that was an activation record, mark it
+
+      if Act_Param >= 0 then
+         Add_Nest_Attribute (Call_Inst, unsigned (Act_Param));
+      end if;
+
+      return Call_Inst;
    end Call_Internal;
 
    ----------
@@ -1238,6 +1249,7 @@ package body GNATLLVM.GLValue is
       Result_Type : Entity_Id;
       Args        : GL_Value_Array;
       Name        : String := "") return GL_Value is
+
    begin
       return G (Call_Internal (Func, Args, Name), Result_Type);
    end Call;
@@ -1251,6 +1263,7 @@ package body GNATLLVM.GLValue is
       Result_Type : Entity_Id;
       Args        : GL_Value_Array;
       Name        : String := "") return GL_Value is
+
    begin
       return G_Ref (Call_Internal (Func, Args, Name), Result_Type);
    end Call_Ref;
@@ -1264,6 +1277,7 @@ package body GNATLLVM.GLValue is
       Result_Type : Entity_Id;
       Args        : GL_Value_Array;
       Name        : String := "") return GL_Value is
+
    begin
       return G (Call_Internal (Func, Args, Name), Result_Type, Unknown);
    end Call_Struct;

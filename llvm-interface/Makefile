@@ -280,8 +280,6 @@ s-imgllu.adb \
 s-imgllu.ads \
 s-imguns.adb \
 s-imguns.ads \
-s-imgwch.adb \
-s-imgwch.ads \
 s-maccod.ads \
 s-powtab.ads \
 s-stoele.adb \

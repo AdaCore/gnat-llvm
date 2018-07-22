@@ -1372,13 +1372,15 @@ package body GNATLLVM.Variables is
          return V_Act;
 
       --  If this entity has a known constant value, use it unless we're
-      --  getting the address or an operation where we likely need an LValue.
+      --  getting the address or an operation where we likely need an LValue,
+      --  but if it's part of Standard, we have to use it even then.
 
       elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
         and then not (Nkind_In (Parent (N), N_Attribute_Reference,
                                 N_Selected_Component, N_Indexed_Component,
                                 N_Slice)
-                        and then Prefix (Parent (N)) = N)
+                        and then Prefix (Parent (N)) = N
+                        and then Sloc (Def_Ident) > Standard_Location)
       then
          return Emit_Conversion (Expr, TE);
       end if;

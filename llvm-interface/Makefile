@@ -98,7 +98,6 @@ stage1: build gnatlib
 	$(MV) obj obj-tools bin lib stage1
 
 stage2: stage1
-	echo here
 	PATH=$(pwd)/stage1/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib
 	$(RMDIR) stage2
 	$(MKDIR) stage2

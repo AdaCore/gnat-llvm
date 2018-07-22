@@ -183,6 +183,24 @@ package body GNATLLVM.Utils is
       end case;
    end Get_Uint_Value;
 
+   ----------------------------
+   -- List_Length_Non_Pragma --
+   ----------------------------
+
+   function List_Length_Non_Pragma (List : List_Id) return Nat is
+      Node   : Node_Id;
+
+   begin
+      return  Result : Nat := 0 do
+         Node := First_Non_Pragma (List);
+         while Present (Node) loop
+            Result := Result + 1;
+            Next_Non_Pragma (Node);
+         end loop;
+      end return;
+
+   end List_Length_Non_Pragma;
+
    -------------
    -- Discard --
    -------------

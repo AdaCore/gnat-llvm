@@ -415,9 +415,9 @@ package body GNATLLVM.Conditionals is
       Alts        : constant List_Id       := Alternatives (N);
       Start_BB    : constant Basic_Block_T := Get_Insert_Block;
       BB_End      : constant Basic_Block_T := Create_Basic_Block ("case-end");
-      Alt         : Node_Id                := First (Alts);
+      Alt         : Node_Id                := First_Non_Pragma (Alts);
       Current_Alt : Nat                    := 1;
-      BBs         : Basic_Block_Array (1 .. List_Length (Alts));
+      BBs         : Basic_Block_Array (1 .. List_Length_Non_Pragma (Alts));
 
    begin
       --  First emit the code for each alternative and add its BB
@@ -428,7 +428,7 @@ package body GNATLLVM.Conditionals is
          Emit (Statements (Alt));
          Build_Br (BB_End);
          Current_Alt := Current_Alt + 1;
-         Next (Alt);
+         Next_Non_Pragma (Alt);
       end loop;
 
       --  Now go back into our block, generate the statements to make the
@@ -458,7 +458,7 @@ package body GNATLLVM.Conditionals is
       -------------------
 
       function Count_Choices (Alts : List_Id) return Nat is
-         Alt          : Node_Id := First (Alts);
+         Alt          : Node_Id := First_Non_Pragma (Alts);
          First_Choice : Node_Id;
 
       begin
@@ -476,7 +476,7 @@ package body GNATLLVM.Conditionals is
                  (if Nkind (First_Choice) = N_Others_Choice
                   then List_Length (Others_Discrete_Choices (First_Choice))
                   else List_Length (Discrete_Choices (Alt)));
-                  Next (Alt);
+                  Next_Non_Pragma (Alt);
             end loop;
          end return;
 
@@ -505,7 +505,7 @@ package body GNATLLVM.Conditionals is
       end record;
 
       Max_Cost       : constant Nat    := 10_000;
-      Num_Alts       : constant Nat    := List_Length (In_Alts);
+      Num_Alts       : constant Nat    := List_Length_Non_Pragma (In_Alts);
       Typ            : constant Type_T := Create_Type (Full_Etype (LHS));
       Current_Alt    : Nat             := 1;
       Current_Choice : Nat             := 1;
@@ -552,7 +552,7 @@ package body GNATLLVM.Conditionals is
       --  First we scan all the alternatives and choices and fill in most
       --  of the data.
 
-      Alt := First (In_Alts);
+      Alt := First_Non_Pragma (In_Alts);
       while Present (Alt) loop
          First_Choice := Current_Choice;
          Choice := First (Discrete_Choices (Alt));
@@ -611,7 +611,7 @@ package body GNATLLVM.Conditionals is
                                 If_Cost      => If_Cost,
                                 Switch_Cost  => Switch_Cost);
          Current_Alt := Current_Alt + 1;
-         Next (Alt);
+         Next_Non_Pragma (Alt);
       end loop;
 
       --  We have two strategies: we can use an LLVM switch instruction if

@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Nlists;     use Nlists;
 with Sinfo;      use Sinfo;
 with Uintp;      use Uintp;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -42,6 +43,10 @@ package GNATLLVM.Utils is
 
    function  Get_Current_Position return Position_T;
    procedure Set_Current_Position (P : Position_T);
+
+   function List_Length_Non_Pragma (List : List_Id) return Nat
+     with Pre => Present (List);
+   --  Like List_Length, but return only those items considered "non-pragma"
 
    procedure Decode_Range (N : Node_Id; Low, High : out Uint)
      with Pre => Present (N);

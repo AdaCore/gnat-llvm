@@ -48,7 +48,7 @@ package GNATLLVM.Records is
    --  Compute the offset of a given record field
 
    function Get_Record_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Nat
+     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
      with Pre => Is_Record_Type (TE);
    --  Return the complexity of computing the size of a record.  This roughly
    --  gives the number of "things" needed to access to compute the size.
@@ -57,7 +57,7 @@ package GNATLLVM.Records is
    function Get_Record_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
+      Max_Size : Boolean := False) return GL_Value
      with Pre  => Is_Record_Type (TE),
           Post => Present (Get_Record_Type_Size'Result);
    --  Like Get_Type_Size, but only for record types

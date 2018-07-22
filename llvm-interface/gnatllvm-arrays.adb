@@ -101,9 +101,9 @@ package body GNATLLVM.Arrays is
    --  Helper function to create type for string literals
 
    function Bound_Complexity
-     (B : One_Bound; For_Type : Boolean) return Nat is
+     (B : One_Bound; Max_Size : Boolean) return Nat is
       (if    B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
-       elsif For_Type then 1 else 2);
+       elsif Max_Size then 1 else 2);
 
    function Get_GEP_Safe_Type (V : GL_Value) return Entity_Id
      with Pre  => not Is_Reference (V),
@@ -267,7 +267,7 @@ package body GNATLLVM.Arrays is
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
-      For_Type : Boolean := False;
+      Max_Size : Boolean := False;
       For_Orig : Boolean := False) return GL_Value
    is
       Typ        : constant Entity_Id     := Type_For_Get_Bound (TE, V);
@@ -300,7 +300,7 @@ package body GNATLLVM.Arrays is
          --  bound, and then minimize or maximize with the bounds of the
          --  index type.
 
-         if For_Type and then Contains_Discriminant (Expr) then
+         if Max_Size and then Contains_Discriminant (Expr) then
             declare
                Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
                Bound_Limit : constant Node_Id   :=
@@ -322,7 +322,7 @@ package body GNATLLVM.Arrays is
       --  See if we're asking for the maximum size of an uncontrained
       --  array.  If so, return the appropriate bound.
 
-      elsif For_Type and then Is_Unconstrained_Array (TE) then
+      elsif Max_Size and then Is_Unconstrained_Array (TE) then
          declare
             Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
             Bound_Limit : constant Node_Id   :=
@@ -356,12 +356,12 @@ package body GNATLLVM.Arrays is
      (TE       : Entity_Id;
       Dim      : Nat;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
+      Max_Size : Boolean := False) return GL_Value
    is
       Low_Bound  : constant GL_Value :=
-        Get_Array_Bound (TE, Dim, True, V, For_Type);
+        Get_Array_Bound (TE, Dim, True, V, Max_Size);
       High_Bound : constant GL_Value :=
-        Get_Array_Bound (TE, Dim, False, V, For_Type);
+        Get_Array_Bound (TE, Dim, False, V, Max_Size);
 
    begin
       --  The length of an array that has the maximum range of its type is
@@ -377,7 +377,7 @@ package body GNATLLVM.Arrays is
    -------------------------------
 
    function Get_Array_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Nat
+     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
    is
       Info_Idx    : constant Array_Info_Id := Get_Array_Info (TE);
 
@@ -391,8 +391,8 @@ package body GNATLLVM.Arrays is
                  := Array_Info.Table (Info_Idx + Dim);
             begin
                Complexity := (Complexity +
-                                Bound_Complexity (Dim_Info.Low, For_Type) +
-                                Bound_Complexity (Dim_Info.High, For_Type));
+                                Bound_Complexity (Dim_Info.Low, Max_Size) +
+                                Bound_Complexity (Dim_Info.High, Max_Size));
             end;
          end loop;
       end return;
@@ -702,7 +702,7 @@ package body GNATLLVM.Arrays is
    function Get_Array_Elements
      (V        : GL_Value;
       TE       : Entity_Id;
-      For_Type : Boolean := False) return GL_Value is
+      Max_Size : Boolean := False) return GL_Value is
    begin
       return Size : GL_Value := Size_Const_Int (Uint_1) do
 
@@ -710,7 +710,7 @@ package body GNATLLVM.Arrays is
         --  multiply all of them together.
 
          for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
-            Size := Mul (Size, Get_Array_Length (TE, Dim, V, For_Type));
+            Size := Mul (Size, Get_Array_Length (TE, Dim, V, Max_Size));
          end loop;
       end return;
    end Get_Array_Elements;
@@ -722,13 +722,13 @@ package body GNATLLVM.Arrays is
    function Get_Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
+      Max_Size : Boolean := False) return GL_Value
    is
       Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
       Comp_Size     : constant GL_Value  :=
-        Get_Type_Size (Comp_Type, For_Type => True);
+        Get_Type_Size (Comp_Type, Max_Size => True);
       Num_Elements  : constant GL_Value  :=
-        Get_Array_Elements (V, TE, For_Type);
+        Get_Array_Elements (V, TE, Max_Size);
 
    begin
       return Mul
@@ -1046,7 +1046,7 @@ package body GNATLLVM.Arrays is
          Data      : constant GL_Value  := Ptr_To_Ref (Array_Data, Unit_Type);
          Unit_Mult : constant GL_Value  :=
            (if Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_Type, For_Type => True));
+            else Get_Type_Size (Comp_Type, Max_Size => True));
          Index     : GL_Value           := To_Size_Type (Idxs (2));
 
       begin
@@ -1101,7 +1101,7 @@ package body GNATLLVM.Arrays is
          Data      : constant GL_Value  := Ptr_To_Ref (Array_Data, Unit_Type);
          Unit_Mult : constant GL_Value  :=
            (if Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_Type, For_Type => True));
+            else Get_Type_Size (Comp_Type, Max_Size => True));
          Index         : constant GL_Value  :=
            Mul (To_Size_Type (Index_Shift), Unit_Mult);
 

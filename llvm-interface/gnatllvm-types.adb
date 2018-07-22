@@ -1242,7 +1242,7 @@ package body GNATLLVM.Types is
         and then not Is_Constr_Subt_For_UN_Aliased (Alloc_Type)
       then
          Element_Typ := Full_Component_Type (Alloc_Type);
-         Num_Elts    := Get_Array_Elements (V, Alloc_Type, For_Type => No (V));
+         Num_Elts    := Get_Array_Elements (V, Alloc_Type, Max_Size => No (V));
       else
          Element_Typ := Standard_Short_Short_Integer;
          Num_Elts    := Get_Alloc_Size (Alloc_Type, Alloc_Type, V);
@@ -1435,7 +1435,7 @@ package body GNATLLVM.Types is
    function Get_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value := No_GL_Value;
-      For_Type : Boolean  := False) return GL_Value
+      Max_Size : Boolean  := False) return GL_Value
    is
    begin
       --  If a value was specified and it's data, then it must be of a
@@ -1444,9 +1444,9 @@ package body GNATLLVM.Types is
       if Present (V) and then Relationship (V) = Data then
          return Get_LLVM_Type_Size (Type_Of (V));
       elsif Is_Record_Type (TE) then
-         return Get_Record_Type_Size (TE, V, For_Type);
+         return Get_Record_Type_Size (TE, V, Max_Size);
       elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
-         return Get_Array_Type_Size (TE, V, For_Type);
+         return Get_Array_Type_Size (TE, V, Max_Size);
       else
          return Get_LLVM_Type_Size (Create_Type (TE));
       end if;
@@ -1464,7 +1464,7 @@ package body GNATLLVM.Types is
         Get_Type_Size (Alloc_Type,
                        (if   Is_Class_Wide_Equivalent_Type (Alloc_Type)
                         then No_GL_Value else V),
-                       For_Type => No (V) and then not Is_Constrained (TE));
+                       Max_Size => No (V) and then not Is_Constrained (TE));
 
    begin
       --  Adjust size if constrained subtype for aliased unconstrained or
@@ -1508,13 +1508,13 @@ package body GNATLLVM.Types is
    ------------------------------
 
    function Get_Type_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Nat is
+     (TE : Entity_Id; Max_Size : Boolean := False) return Nat is
    begin
 
       if Is_Record_Type (TE) then
-         return Get_Record_Size_Complexity (TE, For_Type);
+         return Get_Record_Size_Complexity (TE, Max_Size);
       elsif Is_Array_Type (TE) then
-         return Get_Array_Size_Complexity (TE, For_Type);
+         return Get_Array_Size_Complexity  (TE, Max_Size);
 
       else
          --  All other types are constant size

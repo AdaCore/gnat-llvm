@@ -812,13 +812,13 @@ package body GNATLLVM.Exprs is
                Is_A_Type   : constant Boolean   :=
                  (Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N))));
-               For_Type    : constant Boolean   :=
+               Max_Size    : constant Boolean   :=
                  Is_A_Type and then not Is_Constrained (P_TE);
 
             begin
                V := (if Is_A_Type then No_GL_Value
                                   else Emit_LValue (Prefix (N)));
-               V := Get_Type_Size (P_TE, V, For_Type);
+               V := Get_Type_Size (P_TE, V, Max_Size);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
                   if Is_Unconstrained_Array (P_TE) then
                      V := Add (V, Get_Bound_Size (P_TE));
@@ -833,7 +833,7 @@ package body GNATLLVM.Exprs is
          when Attribute_Component_Size =>
             return Convert
               (Mul (Get_Type_Size
-                      (Full_Component_Type (P_TE), For_Type => True),
+                      (Full_Component_Type (P_TE), Max_Size => True),
                     Byte_Size),
                TE);
 

@@ -61,11 +61,11 @@ package GNATLLVM.Arrays is
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
-      For_Type : Boolean := False;
+      Max_Size : Boolean := False;
       For_Orig : Boolean := False) return GL_Value
      with Pre  => Is_Array_Or_Packed_Array_Type (TE)
                   and then (Present (V) or else Is_Constrained (TE)
-                              or else For_Type),
+                              or else Max_Size),
           Post => Present (Get_Array_Bound'Result);
    --  Get the bound (lower if Is_Low, else upper) for dimension number
    --  Dim (0-origin) of an array whose LValue is Value and is of type
@@ -76,16 +76,16 @@ package GNATLLVM.Arrays is
      (TE      : Entity_Id;
       Dim     : Nat;
       V       : GL_Value;
-      For_Type : Boolean := False) return GL_Value
+      Max_Size : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
                   and then (Present (V) or else Is_Constrained (TE)
-                              or else For_Type),
+                              or else Max_Size),
           Post => Type_Of (Get_Array_Length'Result) = LLVM_Size_Type;
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
 
    function Get_Array_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Nat
+     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
      with Pre => Is_Array_Type (TE);
    --  Return the complexity of computing the size of an array.  This roughly
    --  gives the number of "things" needed to access to compute the size.
@@ -109,10 +109,10 @@ package GNATLLVM.Arrays is
    function Get_Array_Elements
      (V        : GL_Value;
       TE       : Entity_Id;
-      For_Type : Boolean := False) return GL_Value
+      Max_Size : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE)
                   and then (Present (V) or else Is_Constrained (TE)
-                              or else For_Type),
+                              or else Max_Size),
           Post => Present (Get_Array_Elements'Result);
    --  Return the number of elements contained in an Array_Type object as an
    --  integer as large as a pointer for the target architecture. If it is an
@@ -122,7 +122,7 @@ package GNATLLVM.Arrays is
    function Get_Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value
+      Max_Size : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE),
           Post => Present (Get_Array_Type_Size'Result);
 

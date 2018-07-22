@@ -159,7 +159,7 @@ package body GNATLLVM.Records is
    procedure Get_RI_Info
      (RI          : Record_Info;
       V           : GL_Value;
-      For_Type    : Boolean;
+      Max_Size    : Boolean;
       Size        : out GL_Value;
       Must_Align  : out GL_Value;
       Is_Align    : out GL_Value;
@@ -176,7 +176,7 @@ package body GNATLLVM.Records is
       Must_Align : out GL_Value;
       Is_Align   : out GL_Value;
       V          : GL_Value;
-      For_Type   : Boolean)
+      Max_Size   : Boolean)
      with Post => Present (Must_Align) and then Present (Is_Align);
    --  Compute the amount to which a variant must be align and the amount
    --  to which the size of the variant is aligned.
@@ -184,7 +184,7 @@ package body GNATLLVM.Records is
    procedure Get_RI_Info_For_Variant
      (RI          : Record_Info;
       V           : GL_Value;
-      For_Type    : Boolean;
+      Max_Size    : Boolean;
       Size        : out GL_Value;
       Must_Align  : out GL_Value;
       Is_Align    : out GL_Value;
@@ -209,7 +209,7 @@ package body GNATLLVM.Records is
    function Get_Variant_For_RI
      (In_RI    : Record_Info;
       V        : GL_Value;
-      For_Type : Boolean;
+      Max_Size : Boolean;
       Need_Idx : Record_Info_Id) return Record_Info_Id
      with Pre => Present (Need_Idx);
    --  We are at RI when walking the description for a record and
@@ -221,7 +221,7 @@ package body GNATLLVM.Records is
       V         : GL_Value;
       Start_Idx : Record_Info_Id;
       Idx       : Record_Info_Id;
-      For_Type  : Boolean := False) return GL_Value
+      Max_Size  : Boolean := False) return GL_Value
      with Post => Present (Get_Record_Size_So_Far'Result);
    --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
    --  or the last segment, whichever comes first.  If TE is Present, it
@@ -1011,7 +1011,7 @@ package body GNATLLVM.Records is
    procedure Get_RI_Info
      (RI          : Record_Info;
       V           : GL_Value;
-      For_Type    : Boolean;
+      Max_Size    : Boolean;
       Size        : out GL_Value;
       Must_Align  : out GL_Value;
       Is_Align    : out GL_Value;
@@ -1089,16 +1089,16 @@ package body GNATLLVM.Records is
          Must_Align := Size_Const_Int (Get_Type_Alignment (TE));
          Is_Align   := Must_Align;
          if Return_Size then
-            This_Size  := Get_Type_Size (TE, V, For_Type or RI.Use_Max_Size);
+            This_Size  := Get_Type_Size (TE, V, Max_Size or RI.Use_Max_Size);
          end if;
 
       elsif RI.Variants /= null then
-         if For_Type then
+         if Max_Size then
             Get_RI_Info_For_Max_Size_Variant
               (RI, This_Size, Must_Align, Is_Align, Return_Size);
          else
             Get_RI_Info_For_Variant
-              (RI, V, For_Type, This_Size, Must_Align, Is_Align, Return_Size);
+              (RI, V, Max_Size, This_Size, Must_Align, Is_Align, Return_Size);
          end if;
 
       else
@@ -1121,7 +1121,7 @@ package body GNATLLVM.Records is
       Must_Align : out GL_Value;
       Is_Align   : out GL_Value;
       V          : GL_Value;
-      For_Type   : Boolean)
+      Max_Size   : Boolean)
    is
       Junk1 : GL_Value := No_GL_Value;
       Junk2 : GL_Value := No_GL_Value;
@@ -1131,14 +1131,14 @@ package body GNATLLVM.Records is
       --  Must_Align comes from the first fragment and Is_Align comes
       --  from the last.
 
-      Get_RI_Info (Record_Info_Table.Table (S_Idx), V, For_Type,
+      Get_RI_Info (Record_Info_Table.Table (S_Idx), V, Max_Size,
                    Junk1, Must_Align, Junk2, False);
       Idx := S_Idx;
       while Present (Record_Info_Table.Table (Idx).Next) loop
          Idx := Record_Info_Table.Table (Idx).Next;
       end loop;
 
-      Get_RI_Info (Record_Info_Table.Table (Idx), V, For_Type, Junk1,
+      Get_RI_Info (Record_Info_Table.Table (Idx), V, Max_Size, Junk1,
                    Junk2, Is_Align, False);
    end Get_Variant_Aligns;
 
@@ -1149,7 +1149,7 @@ package body GNATLLVM.Records is
    function Get_Variant_For_RI
      (In_RI    : Record_Info;
       V        : GL_Value;
-      For_Type : Boolean;
+      Max_Size : Boolean;
       Need_Idx : Record_Info_Id) return Record_Info_Id
    is
       Idx     : Record_Info_Id;
@@ -1172,7 +1172,7 @@ package body GNATLLVM.Records is
             if Idx = Need_Idx then
                return Variant_Idx;
             elsif RI.Variants /= null then
-               New_Idx := Get_Variant_For_RI (RI, V, For_Type, Need_Idx);
+               New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Need_Idx);
                if Present (New_Idx) then
                   return Variant_Idx;
                end if;
@@ -1192,7 +1192,7 @@ package body GNATLLVM.Records is
    procedure Get_RI_Info_For_Variant
      (RI          : Record_Info;
       V           : GL_Value;
-      For_Type    : Boolean;
+      Max_Size    : Boolean;
       Size        : out GL_Value;
       Must_Align  : out GL_Value;
       Is_Align    : out GL_Value;
@@ -1228,11 +1228,11 @@ package body GNATLLVM.Records is
             Sizes       (J) := Size_Const_Null;
          else
             Get_Variant_Aligns (RI.Variants (J),
-                                Must_Aligns (J), Is_Aligns (J), V, For_Type);
+                                Must_Aligns (J), Is_Aligns (J), V, Max_Size);
             if Return_Size then
                Sizes (J) :=
                  Get_Record_Size_So_Far (Empty, V, RI.Variants (J),
-                                         Empty_Record_Info_Id, For_Type);
+                                         Empty_Record_Info_Id, Max_Size);
             end if;
          end if;
 
@@ -1331,7 +1331,7 @@ package body GNATLLVM.Records is
       V         : GL_Value;
       Start_Idx : Record_Info_Id;
       Idx       : Record_Info_Id;
-      For_Type  : Boolean := False) return GL_Value
+      Max_Size  : Boolean := False) return GL_Value
    is
       Total_Size : GL_Value       := Size_Const_Null;
       Cur_Align  : GL_Value       :=
@@ -1377,13 +1377,13 @@ package body GNATLLVM.Records is
          --  to compute the size of the record.
 
          if RI.Variants /= null and then Present (Idx) then
-            New_Idx := Get_Variant_For_RI (RI, V, For_Type, Idx);
+            New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx);
          end if;
 
          if Present (New_Idx) then
             Cur_Idx := New_Idx;
          else
-            Get_RI_Info (RI, V, For_Type, This_Size, Must_Align, This_Align);
+            Get_RI_Info (RI, V, Max_Size, This_Size, Must_Align, This_Align);
             Total_Size := Add (Align_To (Total_Size, Cur_Align, Must_Align),
                                This_Size);
 
@@ -1582,7 +1582,7 @@ package body GNATLLVM.Records is
    --------------------------------
 
    function Get_Record_Size_Complexity
-     (TE : Entity_Id; For_Type : Boolean := False) return Nat
+     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
    is
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
@@ -1593,7 +1593,7 @@ package body GNATLLVM.Records is
             RI := Record_Info_Table.Table (Cur_Idx);
             if Present (RI.GNAT_Type) then
                Complexity := Complexity + Get_Type_Size_Complexity
-                 (RI.GNAT_Type, For_Type or RI.Use_Max_Size);
+                 (RI.GNAT_Type, Max_Size or RI.Use_Max_Size);
             end if;
 
             Cur_Idx := RI.Next;
@@ -1608,11 +1608,11 @@ package body GNATLLVM.Records is
    function Get_Record_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
-      For_Type : Boolean := False) return GL_Value is
+      Max_Size : Boolean := False) return GL_Value is
    begin
       return Get_Record_Size_So_Far (TE, V, Empty_Record_Info_Id,
                                      Empty_Record_Info_Id,
-                                     For_Type or else Is_Unchecked_Union (TE));
+                                     Max_Size or else Is_Unchecked_Union (TE));
    end Get_Record_Type_Size;
 
    ---------------------------

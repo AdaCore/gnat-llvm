@@ -1375,9 +1375,10 @@ package body GNATLLVM.Variables is
       --  getting the address or an operation where we likely need an LValue.
 
       elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
-        and then not Nkind_In (Parent (N), N_Attribute_Reference,
-                               N_Selected_Component, N_Indexed_Component,
-                               N_Slice)
+        and then not (Nkind_In (Parent (N), N_Attribute_Reference,
+                                N_Selected_Component, N_Indexed_Component,
+                                N_Slice)
+                        and then Prefix (Parent (N)) = N)
       then
          return Emit_Conversion (Expr, TE);
       end if;

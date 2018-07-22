@@ -662,7 +662,7 @@ package body GNATLLVM.Types is
 
    begin
       if Type_Of (V) = T then
-         return V;
+         return G_Is_Relationship (V, TE, R);
 
       --  If the input is an actual pointer, convert it
 

@@ -618,7 +618,18 @@ package body GNATLLVM.Types is
          if Full_Designated_Type (V) = TE then
             return V;
          else
-            return Ptr_To_Ref (V, TE);
+            --  If what we have is a reference to bounds and data or a
+            --  thin pointer and have an array type that needs bounds,
+            --  convert to the same relationship of that type.  Otherwise,
+            --  convert to a Reference and then to the new type.
+
+            if Relationship (V) in Reference_To_Bounds_And_Data | Thin_Pointer
+              and then Type_Needs_Bounds (TE)
+            then
+               return Ptr_To_Relationship (V, TE, Relationship (V));
+            else
+               return Ptr_To_Ref (Get (V, Reference), TE);
+            end if;
          end if;
 
       elsif Unc_Src and then Unc_Dest then

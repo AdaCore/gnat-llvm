@@ -125,13 +125,19 @@ package body GNATLLVM.Codegen is
          end if;
       elsif Switch = "-fno-unit-at-a-time" then
          No_Unit_At_A_Time := True;
-      elsif Switch = "-disable-loop-unrolling" then
+      elsif Switch = "-fno-unroll-loops" then
          No_Unroll_Loops := True;
-      elsif Switch = "-disable-loop-vectorization" then
+      elsif Switch = "-funroll-loops" then
+         No_Unroll_Loops := False;
+      elsif Switch = "-fno-vectorize" then
          No_Loop_Vectorization := True;
-      elsif Switch = "-disable-slp-vectorization" then
+      elsif Switch = "-fvectorize" then
+         No_Loop_Vectorization := False;
+      elsif Switch = "-fno-slp-vectorize" then
          No_SLP_Vectorization := True;
-      elsif Switch = "-fno-inline" or else Switch = "-disable-inlining" then
+      elsif Switch = "-fslp-vectorize" then
+         No_SLP_Vectorization := False;
+      elsif Switch = "-fno-inline" then
          No_Inlining := True;
       elsif Switch = "-mcode-model=small" then
          Code_Model := Code_Model_Small;
@@ -352,10 +358,6 @@ package body GNATLLVM.Codegen is
         or else Switch = "--dump-bc" or else Switch = "--write-bc"
         or else Switch = "-emit-llvm" or else Switch = "-S"
         or else Switch = "-g"
-        or else Switch = "-disable-inlining"
-        or else Switch = "-disable-loop-unrolling"
-        or else Switch = "-disable-loop-vectorization"
-        or else Switch = "-disable-slp-vectorization"
         or else (Last > First + 8
                    and then Switch (First .. First + 8) = "--target=")
         or else (Last > First + 5
@@ -365,7 +367,7 @@ package body GNATLLVM.Codegen is
       end if;
 
       --  For now we allow the -f/-m/-W/-w and -pipe switches, even though
-      --  they will have no effect, though some are handled in
+      --  most they will have no effect, though some are handled in
       --  Scan_Command_Line above.  This permits compatibility with
       --  existing scripts.
 

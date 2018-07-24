@@ -628,7 +628,7 @@ package body GNATLLVM.Records is
          -----------------
 
          function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id is
-            Value       : constant Uint := Expr_Value (N);
+            Value       : constant Uint := Expr_Rep_Value (N);
             Alt, Choice : Node_Id;
             Low, High   : Uint;
 

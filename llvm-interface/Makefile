@@ -191,12 +191,9 @@ quicklib: $(RTSDIR)
 	if [ -d $(RTSOBJ) ]; then \
 	  $(MV) $(RTSOBJ)/*.o $(RTSLIB); \
 	fi
-# Ada files
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=$(CROSSC) $(GNATRTL_OBJS)
-# C files
-	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  CC=$(CROSSC) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+	  ADAC=$(ADAC) CC=$(CROSSC) \
+	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 # Create libgnat/libgnarl.a
 	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)
 	@$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnat$(arext) \

@@ -1313,11 +1313,19 @@ package body GNATLLVM.Variables is
       LLVM_Var  : GL_Value;
 
    begin
+      --  If this is just a macro substitution by the front end, omit
+      --  the declaration.  ??? We may be able to write debugging info
+      --  for this object, but then again, maybe we can't (e.g. packed
+      --  array slice case).
+
+      if Is_Renaming_Of_Object (Def_Ident) then
+         return;
+
       --  If we've already defined this object, it means that we must be
       --  in an elab proc seeing this for the second time, which means
       --  that we have to set its address.
 
-      if Has_Value (Def_Ident) then
+      elsif Has_Value (Def_Ident) then
          pragma Assert (In_Elab_Proc);
 
          Store (Emit_LValue (Name (N)), Get_Value (Def_Ident));

@@ -1559,7 +1559,7 @@ package body GNATLLVM.Records is
       end if;
 
       --  If the type is dynamic size, we have to convert the pointer to
-      --  the type of this piece (which has no corresponding GNAT type.)
+      --  the type of this piece (which has no corresponding GNAT type).
 
       if Is_Dynamic_Size (Rec_Type) then
          Result := G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (Result),

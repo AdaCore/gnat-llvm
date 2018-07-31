@@ -478,10 +478,14 @@ package body GNATLLVM.Records is
          Use_Max_Size : Boolean                     := False);
       --  Add a Record_Info into the table, chaining it as appropriate
 
-      procedure Add_FI (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat)
+      procedure Add_FI
+        (E       : Entity_Id;
+         RI_Idx  : Record_Info_Id;
+         Ordinal : Nat;
+         F_TE    : in out Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
-      --  the field to point to it.
+      --  the field to point to it.  Update F_TE if we used a matching field.
 
       procedure Add_Field (E : Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
@@ -536,7 +540,10 @@ package body GNATLLVM.Records is
       ------------
 
       procedure Add_FI
-        (E : Entity_Id; RI_Idx : Record_Info_Id; Ordinal : Nat)
+        (E       : Entity_Id;
+         RI_Idx  : Record_Info_Id;
+         Ordinal : Nat;
+         F_TE    : in out Entity_Id)
       is
          Matching_Field : Entity_Id;
 
@@ -545,11 +552,13 @@ package body GNATLLVM.Records is
          --  must be in a parent.  So it was correct to allocate space for
          --  it, but let the record description be from the type that it's
          --  actually in.  The fields in the entity list for this type are
-         --  almost, but not quite, win the same order as in the component
+         --  almost, but not quite, in the same order as in the component
          --  list, so we have to search for a field in that list with the
          --  same Original_Record_Component as this field.  And finally,
          --  if this is a hidden discriminant and we haven't yet found a
          --  place to save the value, save it in Discriminant_FIs.
+         --
+         --  If we're using a matching field, update F_TE to its type.
 
          Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
                                    Field_Ordinal => Ordinal));
@@ -559,6 +568,7 @@ package body GNATLLVM.Records is
             Matching_Field := Find_Field_In_Entity_List (E, TE, Cur_Field);
             if Present (Matching_Field) then
                Set_Field_Info (Matching_Field, Field_Info_Table.Last);
+               F_TE := Full_Etype (Matching_Field);
             elsif Ekind (E) = E_Discriminant
               and then Is_Completely_Hidden (E)
             then
@@ -929,14 +939,15 @@ package body GNATLLVM.Records is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
-         Typ   : constant Entity_Id := Full_Etype (E);
-         Align : constant unsigned  := Get_Type_Alignment (Typ);
+         Typ   : Entity_Id         := Full_Etype (E);
+         Align : constant unsigned := Get_Type_Alignment (Typ);
+
       begin
          --  If this is the '_parent' field, we make a dummy entry and handle
          --  it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info (TE), 0);
+            Add_FI (E, Get_Record_Info (TE), 0, Typ);
             return;
 
          --  If this field is dynamic size, we have to close out the last
@@ -945,7 +956,7 @@ package body GNATLLVM.Records is
 
          elsif Is_Dynamic_Size (Typ) then
             Flush_Current_Types;
-            Add_FI (E, Cur_Idx, 0);
+            Add_FI (E, Cur_Idx, 0, Typ);
             Add_RI (Typ => Typ, Use_Max_Size => not Is_Constrained (Typ));
             Set_Is_Dynamic_Size (TE);
 
@@ -954,13 +965,14 @@ package body GNATLLVM.Records is
 
          else
             --  We need to flush the previous types if required by the
-            --  alignment.
+            --  alignment.  We assume here that if Add_FI updates our type
+            --  that it has the same alignment.
 
             if Align > Last_Align and then Align > Split_Align then
                Flush_Current_Types;
             end if;
 
-            Add_FI (E, Cur_Idx, Next_Type);
+            Add_FI (E, Cur_Idx, Next_Type, Typ);
             Types (Next_Type) := Create_Type (Typ);
             Next_Type := Next_Type + 1;
          end if;

@@ -1862,6 +1862,11 @@ package body GNATLLVM.Subprograms is
          RHS_TE   : constant Entity_Id := Related_Type (RHS);
 
       begin
+         --  Handle the case of an undef as our arg.  See below in Emit_Call.
+         if Is_Undef (LHS) then
+            return;
+         end if;
+
          --  We've looked through any conversions in the actual and
          --  evaluated the actual LHS to be assigned before the call.  We
          --  wouldn't be here is this were a dynamic-sized type, and we
@@ -1956,11 +1961,17 @@ package body GNATLLVM.Subprograms is
             --  For out and in out parameters, we need to evaluate the
             --  expression before the call (see, e.g., c64107a) into an
             --  LValue and use that after the return.  We look through any
-            --  conversions here.
+            --  conversions here.  However, if the input is an undef, it
+            --  really isn't an LValue, so we don't want to write anything
+            --  back.  Use an undef instead and check for it when we do the
+            --  writeback.
 
             if PK_Is_Out (PK) then
-               Out_LHSs (Out_Idx) := Emit_LValue (Strip_Conversions (Actual));
-               Out_Idx            := Out_Idx + 1;
+               Out_LHSs (Out_Idx) :=
+                 (if   PK_Is_In (PK) and then Is_Undef (Arg)
+                  then Get_Undef_Ref (TE)
+                  else Emit_LValue (Strip_Conversions (Actual)));
+               Out_Idx := Out_Idx + 1;
             end if;
          end;
 

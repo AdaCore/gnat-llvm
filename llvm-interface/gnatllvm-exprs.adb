@@ -723,8 +723,13 @@ package body GNATLLVM.Exprs is
             --  We don't pack, so the bit position is always a multiple
             --  of the byte size.
 
-            V := Emit_Field_Position (Entity (Selector_Name (Prefix (N))),
-                                      Emit_LValue (Prefix (Prefix (N))));
+            if Nkind (Prefix (N)) = N_Identifier then
+               V := Emit_Field_Position (Entity (Prefix (N)), No_GL_Value);
+            else
+               V := Emit_Field_Position (Entity (Selector_Name (Prefix (N))),
+                                         Emit_LValue (Prefix (Prefix (N))));
+            end if;
+
             if Attr = Attribute_Bit_Position then
                V := Mul (V, Byte_Size);
             end if;

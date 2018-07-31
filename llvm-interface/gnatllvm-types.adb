@@ -507,10 +507,12 @@ package body GNATLLVM.Types is
 
    function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
       DT     : constant Entity_Id       := Full_Designated_Type (TE);
+      In_R   : constant GL_Relationship := Relationship (V);
+      In_TE  : constant Entity_Id       := Related_Type (V);
       As_Ref : constant GL_Value        :=
-        (if Is_Access_Type (Related_Type (V)) then From_Access (V) else V);
-      R      : constant GL_Relationship :=
-        Relationship_For_Access_Type (TE);
+        (if   In_R /= Reference_To_Subprogram and then Is_Access_Type (In_TE)
+         then From_Access (V) else V);
+      R      : constant GL_Relationship := Relationship_For_Access_Type (TE);
       Result : GL_Value;
 
    begin
@@ -526,7 +528,7 @@ package body GNATLLVM.Types is
       --  procedure because the type is Void, so we have to handle that
       --  specially here.
 
-      if Relationship (As_Ref) = Reference_To_Subprogram
+      if In_R = Reference_To_Subprogram
         and then Ekind (TE) = E_Access_Subprogram_Type
       then
          Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
@@ -801,6 +803,7 @@ package body GNATLLVM.Types is
                                  N_Unchecked_Type_Conversion,
                                  N_Qualified_Expression);
          exit when Is_Elementary_Type (Full_Etype (E));
+         exit when Is_Elementary_Type (Full_Etype (Expression (E)));
          exit when Get_Type_Size_Complexity (Full_Etype (E))
            <= Get_Type_Size_Complexity (Full_Etype (Expression (E)));
          E := Expression (E);

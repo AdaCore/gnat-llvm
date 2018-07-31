@@ -613,7 +613,8 @@ package body GNATLLVM.Variables is
             elsif Is_Record_Type (TE) then
                Expr := First (Component_Associations (N));
                while Present (Expr) loop
-                  exit when not Is_No_Elab_Needed (Expression (Expr));
+                  exit when not Box_Present (Expr)
+                    and then not Is_No_Elab_Needed (Expression (Expr));
                   Next (Expr);
                end loop;
             else
@@ -1167,11 +1168,12 @@ package body GNATLLVM.Variables is
                Add_To_Elab_Proc (N);
             end if;
 
-         --  If this is a constrained subtype for a unconstrained actual
-         --  array subtype, this is aliased, and we have no expression.
-         --  In that case, we still have to initialize the bounds.
+         --  If this is a constrained subtype for a unconstrained
+         --  actual array subtype of fixed size, this is aliased, and
+         --  we have no expression.  In that case, we still have to
+         --  initialize the bounds.
 
-         elsif Type_Needs_Bounds (TE) then
+         elsif Type_Needs_Bounds (TE) and then not Is_Dynamic_Size (TE) then
             Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
                                             Bounds_And_Data));
             Set_Init := True;

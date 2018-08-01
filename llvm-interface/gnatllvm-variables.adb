@@ -604,6 +604,22 @@ package body GNATLLVM.Variables is
       case Nkind (N) is
          when N_Aggregate | N_Extension_Aggregate =>
             if Is_Array_Type (TE) then
+
+               --  We don't support constant aggregates of multi-dimensional
+               --  Fortran arrays because it's too complex.  And we also
+               --  can't make a constant aggregate of a dynamic size type
+               --  even if the array has constant elements because we can't
+               --  form the resulting GL_Value.  But be careful not to
+               --  be confused by having the unconstrained array as the type
+               --  of inner aggregates of multi-dimensional arrays.
+
+               if (Number_Dimensions (TE) > 1
+                     and then Convention (TE) = Convention_Fortran)
+                 or else (Is_Constrained (TE) and then Is_Dynamic_Size (TE))
+               then
+                  return False;
+               end if;
+
                Expr := First (Expressions (N));
                while Present (Expr) loop
                   exit when not Is_No_Elab_Needed (Expr);

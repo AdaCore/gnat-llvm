@@ -751,7 +751,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_Real
-       (TE : Entity_Id; V : Interfaces.C.double) return GL_Value
+     (TE : Entity_Id; V : Interfaces.C.double) return GL_Value
    is
      (G (Const_Real (Create_Type (TE), V), TE));
 
@@ -760,22 +760,27 @@ package body GNATLLVM.GLValue is
    -----------------
 
    function Const_Array
-       (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
+     (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
    is
-      T           : constant Type_T := Create_Type (Full_Component_Type (TE));
-      Elmt_Values : Value_Array (Elmts'Range);
+      T       : constant Type_T :=
+        (if   Elmts'Length = 0 then Create_Type (Component_Type (TE))
+         else Type_Of (Elmts (Elmts'First)));
+      --  Take the element type from what was passed, but if no elements
+      --  were passed, the only choice is from the component type of the array.
+      Values  : Value_Array (Elmts'Range);
 
    begin
       for J in Elmts'Range loop
-         Elmt_Values (J) := LLVM_Value (Elmts (J));
+         Values (J) := LLVM_Value (Elmts (J));
       end loop;
 
       --  We have a kludge here in the case of making a string literal
-      --  that's not in the source (e.g., for a filename).  In that case,
-      --  we pass Any_Array for the type, but that's unconstrained, so we
-      --  want use relationship "Unknown".
+      --  that's not in the source (e.g., for a filename) or when
+      --  we're handling inner dimensions of a multi-dimensional
+      --  array.  In those cases, we pass Any_Array for the type, but
+      --  that's unconstrained, so we want use relationship "Unknown".
 
-      return G (Const_Array (T, Elmt_Values'Address, Elmt_Values'Length),
+      return G (Const_Array (T, Values'Address, Values'Length),
                 TE, (if TE = Any_Array then Unknown else Data));
    end Const_Array;
 

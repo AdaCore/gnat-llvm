@@ -113,6 +113,17 @@ package body GNATLLVM.Arrays is
    --  zero-extend the value.  So if this type is smaller than the size of
    --  a pointer and is unsigned, we must return a wider type.
 
+   function Emit_Constant_Aggregate
+     (N : Node_Id; Comp_Type, TE : Entity_Id; Dims_Left : Nat) return GL_Value
+     with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
+                  and then Is_Array_Type (TE) and then Present (Comp_Type),
+          Post => Is_Constant (Emit_Constant_Aggregate'Result);
+   --  N is a constant aggregate.  TE is either the array type (at the
+   --  outer level) or Any_Array (if not).  Comp_Type is the underlying
+   --  component type of the array, and Dims_Left are the number of dimensions
+   --  remaining.  Return an LLVM constant including all of the constants
+   --  in that aggregate.
+
    ---------------------
    -- Build_One_Bound --
    ---------------------
@@ -771,6 +782,31 @@ package body GNATLLVM.Arrays is
              5 => Const_False));  --  Is_Volatile
    end Emit_Others_Aggregate;
 
+   -----------------------------
+   -- Emit_Constant_Aggregate --
+   -----------------------------
+
+   function Emit_Constant_Aggregate
+     (N : Node_Id; Comp_Type, TE : Entity_Id; Dims_Left : Nat) return GL_Value
+   is
+      Vals : GL_Value_Array (1 .. List_Length (Expressions (N)));
+      Idx  : Int := 1;
+      Expr : Node_Id;
+
+   begin
+      Expr := First (Expressions (N));
+      while Present (Expr) loop
+         Vals (Idx) :=
+           (if   Dims_Left = 1 then Emit_Convert_Value (Expr, Comp_Type)
+            else Emit_Constant_Aggregate (Expr, Comp_Type, Any_Array,
+                                          Dims_Left - 1));
+         Idx        := Idx + 1;
+         Next (Expr);
+      end loop;
+
+      return Const_Array (Vals, TE);
+   end Emit_Constant_Aggregate;
+
    --------------------------
    -- Emit_Array_Aggregate --
    --------------------------
@@ -816,26 +852,16 @@ package body GNATLLVM.Arrays is
       --  in Exp_Aggr.  We handle them in Emit_Assignment.
       --
       --  First handle the case where we have all constants.  In that
-      --  case, it's better to just make the array directly. But we can
-      --  only do this easily if this is a one-dimensional array.
-      --  ??? This could be extended to multi-dimension by operating at
-      --  a low level.
+      --  case, it's better to just make the array directly.  The test
+      --  here checks for multi-dimensional Fortran arrays, which we don't
+      --  handle.  However, we can only do this if we're either at the
+      --  top level of the array or the type is loadable.
 
-      if Is_No_Elab_Needed (N) and then Number_Dimensions (TE) = 1 then
-         declare
-            Vals : GL_Value_Array (1 .. List_Length (Expressions (N)));
-            Idx  : Int := 1;
-
-         begin
-            Expr := First (Expressions (N));
-            while Present (Expr) loop
-               Vals (Idx) := Emit_Convert_Value (Expr, Comp_Type);
-               Idx        := Idx + 1;
-               Next (Expr);
-            end loop;
-
-            return Const_Array (Vals, TE);
-         end;
+      if Is_No_Elab_Needed (N)
+        and then (Is_Loadable_Type (TE)
+                    or else Dims_Left = Number_Dimensions (TE))
+      then
+         return Emit_Constant_Aggregate (N, Comp_Type, TE, Dims_Left);
       end if;
 
       Expr := First (Expressions (N));

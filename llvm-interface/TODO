@@ -6,6 +6,7 @@ Limitations and missing features (identified so far):
 - call "_ext" version of raise routines
 - freeze nodes for types (see c38102a)
 - representation clauses
+- back annotation
 - debug info (for variables, types and parameters)
 - restriction checks done by back end (other than no elab, which is done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches

@@ -404,10 +404,6 @@ package body GNATLLVM.Records is
       while Present (New_Field) loop
          Old_Field := Find_Field_In_Entity_List (New_Field, Old_TE, Cur_Field);
 
-         --  ??? The latter test is a bit dubious here, but this has to do
-         --  with us using Full_Scope for tests.  It's not yet clear what
-         --  the right thing to do is here.
-
          if Present (Old_Field) and then No (Get_Field_Info (Old_Field)) then
             Set_Field_Info (New_Field, Get_Field_Info (Old_Field));
          end if;
@@ -511,6 +507,7 @@ package body GNATLLVM.Records is
          Variant_Expr : Node_Id                     := Empty;
          Variants     : access Record_Info_Id_Array := null;
          Use_Max_Size : Boolean                     := False) is
+
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
          --  but we may not actually end up using that one.

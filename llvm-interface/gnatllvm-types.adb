@@ -1035,34 +1035,31 @@ package body GNATLLVM.Types is
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
             declare
-               Float_Type : constant Node_Id
-                 := Full_Etype (Full_Etype (Def_Ident));
-               Size       : constant Uint := Esize (Float_Type);
+               Size : constant Uint := Esize (Implementation_Base_Type (TE));
 
             begin
-               case Float_Rep (Float_Type) is
+               pragma Assert (UI_Is_In_Int_Range (Size));
+               case Float_Rep (TE) is
                   when IEEE_Binary =>
-                     pragma Assert (UI_Is_In_Int_Range (Size));
                      case UI_To_Int (Size) is
                         when 32 =>
                            T := Float_Type_In_Context (Context);
                         when 64 =>
                            T := Double_Type_In_Context (Context);
-                        when 128 =>
+                        when 80 | 96 | 128 =>
                            --  Extended precision; not IEEE_128
                            T := X86_F_P80_Type_In_Context (Context);
-                        when 80 | 96 =>
-                           T := X86_F_P80_Type_In_Context (Context);
                         when others =>
-                           --  ??? Double check that
-                           T := F_P128_Type_In_Context (Context);
+                           T := Void_Type;
                      end case;
 
                   when AAMP =>
-                     --  Not supported
-                     Error_Msg_N ("unsupported floating point type", TE);
                      T := Void_Type;
                end case;
+
+               if T = Void_Type then
+                  Error_Msg_N ("unsupported floating point type", TE);
+               end if;
             end;
 
          when Access_Kind =>

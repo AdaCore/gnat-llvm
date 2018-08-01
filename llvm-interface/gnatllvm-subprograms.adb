@@ -1137,8 +1137,8 @@ package body GNATLLVM.Subprograms is
       Pop_Block;
 
       --  If we're in dead code here, it means that we made a label for the
-      --  end of a block, but didn't do anything with it.  So mark it as
-      --  unreachable.  ??? We need to sort this out sometime.
+      --  end of the outermost block, but didn't do anything with it.  So
+      --  mark it as unreachable.
 
       if not Are_In_Dead_Code then
          Build_Unreachable;
@@ -1545,8 +1545,7 @@ package body GNATLLVM.Subprograms is
       --  This is supposedly a __sync builtin.  Parse it to see what it
       --  tells us to do.  If anything is wrong with the builtin or its
       --  operands, just return No_GL_Value and a normal call will result,
-      --  which will produce a link error.  ???  We could produce warnings
-      --  here.
+      --  which will produce a link error.
       --
       --  We need to have "Op_and_fetch" or "fetch_and_Op".
 
@@ -1699,7 +1698,7 @@ package body GNATLLVM.Subprograms is
          return Emit_Bswap_Call (N, Fn_Name);
       end if;
 
-      --  ??? That's all we support for the moment
+      --  That's all we support for now
 
       return No_GL_Value;
    end Emit_Intrinsic_Call;
@@ -1723,13 +1722,10 @@ package body GNATLLVM.Subprograms is
       end if;
 
       --  Otherwise, see if any parameter is an activation record.
-      --  ??? For now, at least, check if it's empty.
 
       while Present (Formal) loop
          exit when  Ekind (Formal) = E_In_Parameter
-           and then Is_Activation_Record (Formal)
-           and then Present (First_Component_Or_Discriminant
-                               (Full_Designated_Type (Full_Etype (Formal))));
+           and then Is_Activation_Record (Formal);
          Next_Formal_With_Extras (Formal);
       end loop;
 

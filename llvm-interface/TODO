@@ -5,8 +5,6 @@ Limitations and missing features (identified so far):
 - more __sync builtins and other atomic builtins
 - call "_ext" version of raise routines
 - freeze nodes for types (see c38102a)
-- very long compilation time in some cases (see various XFAIL in acats, and
-  output.adb in bootstrap)
 - representation clauses
 - debug info (for variables, types and parameters)
 - restriction checks done by back end (other than no elab, which is done)

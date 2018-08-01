@@ -880,9 +880,21 @@ package GNATLLVM.GLValue is
                   and then Is_Type (TE) and then not Is_Access_Type (TE),
           Post => Present (Bit_Cast'Result);
 
+   function Bit_Cast (V, T : GL_Value; Name : String := "") return GL_Value is
+     (G_From (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (T), Name), T))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Bit_Cast'Result);
+
    function Pointer_Cast
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
      with Pre  => Is_Access_Type (V) and then Is_Access_Type (TE),
+          Post => Is_Access_Type (Pointer_Cast'Result);
+
+   function Pointer_Cast
+     (V, T : GL_Value; Name : String := "") return GL_Value
+   is
+     (G_From (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (T), Name), T))
+     with Pre  => Is_Access_Type (V) and then Is_Access_Type (T),
           Post => Is_Access_Type (Pointer_Cast'Result);
 
    function Ptr_To_Ref
@@ -966,7 +978,7 @@ package GNATLLVM.GLValue is
    function Int_To_Ptr
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
-     (Int_To_Ptr (V, Full_Etype (T), Name))
+     (G_From (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (T), Name), T))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Access_Type (T),
           Post => Is_Access_Type (Int_To_Ptr'Result);
@@ -974,22 +986,10 @@ package GNATLLVM.GLValue is
    function Ptr_To_Int
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
-     (Ptr_To_Int (V, Full_Etype (T), Name))
+     (G_From (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (T), Name), T))
      with Pre  => Is_Access_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
-
-   function Bit_Cast (V, T : GL_Value; Name : String := "") return GL_Value is
-     (Bit_Cast (V, Full_Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (Bit_Cast'Result);
-
-   function Pointer_Cast
-     (V, T : GL_Value; Name : String := "") return GL_Value
-   is
-     (Pointer_Cast (V, Full_Etype (T), Name))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (Pointer_Cast'Result);
 
    function Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
      (Trunc (V, Etype (T), Name))

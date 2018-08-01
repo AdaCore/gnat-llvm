@@ -554,6 +554,7 @@ package body GNATLLVM.Compile is
 
    function Emit (N : Node_Id) return GL_Value is
       TE     : constant Entity_Id := Full_Etype (N);
+      Expr   : Node_Id;
       Result : GL_Value;
 
    begin
@@ -674,12 +675,22 @@ package body GNATLLVM.Compile is
 
             --  This can be an integer type if it's the implementation
             --  type of a packed array type.  In that case, convert it to
-            --  the result type.  ??? Do we have to worry about evaluating
-            --  the Expressions in case they have side-effects?
+            --  the result type.
 
             if Is_Integer_Type (Related_Type (Result))
               and then Is_Packed_Array_Impl_Type (Related_Type (Result))
             then
+               --  Evaluate any expressions in case they have side-effects
+
+               Expr := First (Expressions (N));
+               while Present (Expr) loop
+                  if not Is_No_Elab_Needed (Expr) then
+                     Discard (Emit (Expr));
+                  end if;
+
+                  Next (Expr);
+               end loop;
+
                return (if   Is_Reference (Result) then Convert_Ref (Result, TE)
                        else Convert (Result, TE));
 

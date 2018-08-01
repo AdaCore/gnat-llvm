@@ -94,10 +94,7 @@ package body GNATLLVM.GLValue is
             --  ??? This should really only be non-array
             return Is_Type (V.Typ)
               and then (Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
-                          or else Is_Unconstrained_Array (V.Typ)
-            --  ??? Keep the above test until we see if we can use Fat_Pointer
-            --  consistently for this.
-                          or else (Ekind (V.Typ) = E_Subprogram_Type));
+                          or else Ekind (V.Typ) = E_Subprogram_Type);
 
          when Reference_To_Reference | Reference_To_Thin_Pointer =>
             return Is_Type (V.Typ)

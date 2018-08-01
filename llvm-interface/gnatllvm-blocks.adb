@@ -761,13 +761,11 @@ package body GNATLLVM.Blocks is
       --  executed if none of the handlers in our block are executed.
       --
       --  The landing pad must take into account the requirements of any
-      --  block above our own as well as this block.   If this or any upper
+      --  block above our own as well as this block.  If this or any upper
       --  block has an At_End proc, we must catch all exceptions, so the
       --  landingpad must contain a cleanup and hence need not list any
-      --  exceptions other than ones we catch (??? the documentation isn't
-      --  clear that this is required, but what sense does allowing clauses
-      --  with a cleanup mean if it isn't).  Otherwise, we need to list all
-      --  exceptions that we or any parent blocks catch.
+      --  exceptions other than ones we catch.  Otherwise, we need to list
+      --  all exceptions that we or any parent blocks catch.
       --
       --  The dispatcher may be entered either from the landingpad or by
       --  falling through from the dispatchers of inner blocks.  In the
@@ -892,7 +890,7 @@ package body GNATLLVM.Blocks is
          BB      := Lpad;
       end if;
 
-      --  If handlers, generate them and the code to dispatch to them
+      --  Generate handlers and the code to dispatch to them
 
       Next_BB := Create_Basic_Block;
       if Present (EH_List) then
@@ -902,6 +900,7 @@ package body GNATLLVM.Blocks is
          Exc_Ptr    := Extract_Value (Standard_A_Char,  EH_Data, 0);
          Selector   := Extract_Value (Standard_Integer, EH_Data, 1);
          BI.Exc_Ptr := Exc_Ptr;
+
          --  Generate code for the handlers, taking into account that we
          --  have duplicate BB's in the table.  We make a block for the
          --  handler to deal with allocated variables and to establish the
@@ -967,11 +966,13 @@ package body GNATLLVM.Blocks is
       --  Finally, see if there's an outer block that has an "at end" or
       --  exception handlers.  Ignore any block that's no longer
       --  "protected", meaning that we're generating code for the handlers.
-      --  If code in those handlers gets an exception, that should propagate
-      --  to the next outer block, not the one with the handlers.  Find the
-      --  innermost such.  If so, we branch to that dispatch table
-      --  (possibly making a BB for it, ??? but not doing any fixups) and
-      --  indicate the data needed for that block's Phi.
+      --  If code in those handlers gets an exception, that should
+      --  propagate to the next outer block, not the one with the handlers.
+      --  Find the innermost such.  If so, we branch to that dispatch table
+      --  (possibly making a BB for it) and indicate the data needed for
+      --  that block's Phi.  Note that fixups have already been done for
+      --  this block, so the only ones we have to do here are if we go
+      --  more than one level up.
 
       for J in reverse 1 .. Block - 1 loop
          declare
@@ -987,6 +988,7 @@ package body GNATLLVM.Blocks is
 
                Dispatch_Info.Append ((BI.Dispatch_BB, Get_Insert_Block,
                                       EH_Data));
+               Build_Fixups_From_To (Block - 1, J);
                Build_Br (BI.Dispatch_BB);
                Position_Builder_At_End (Next_BB);
                return;
@@ -1067,7 +1069,8 @@ package body GNATLLVM.Blocks is
          Label_Info_Table.Table (J).From_Block := -1;
       end loop;
 
-      --  ??? Clean this up later.  Too many branches here
+      --  If we made a label for end-of-block actions, move to it now.
+      --  Then pop our stack.
 
       Move_To_BB (Next_BB);
       Block_Stack.Decrement_Last;

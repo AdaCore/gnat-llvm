@@ -364,14 +364,11 @@ package body GNATLLVM.Conditionals is
          LHS := Get (From_Access (LHS), Reference_For_Integer);
          RHS := Get (From_Access (RHS), Reference_For_Integer);
 
-         --  Now we have simple pointers, but they may not be the same
-         --  LLVM type.  If they aren't, convert the RHS to the type of
-         --  the LHS.  ???  Make this higher level at some point.
+         --  Now we have simple pointers, but they may not be the same LLVM
+         --  type.  If they aren't, convert the RHS to the type of the LHS.
 
          if Type_Of (LHS) /= Type_Of (RHS) then
-            RHS := G_From (Pointer_Cast (IR_Builder, LLVM_Value (RHS),
-                                         Type_Of (LHS), ""),
-                           LHS);
+            RHS := Pointer_Cast (RHS, LHS);
          end if;
 
          return I_Cmp (Operation.Unsigned, LHS, RHS);

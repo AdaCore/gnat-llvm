@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
@@ -380,8 +381,10 @@ package body GNATLLVM.Subprograms is
 
    function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
       TE           : constant Entity_Id         := Full_Etype (Param);
+      Subp         : constant Entity_Id         := Scope (Param);
       By_Ref_Kind  : constant Param_By_Ref_Kind := Get_Param_By_Ref_Kind (TE);
       Param_Mode   : Entity_Kind                := Ekind (Param);
+      Mech         : Int                        := Mechanism (Param);
       By_Copy_Kind : Param_Kind;
 
       function Has_Initialized_Component (TE : Entity_Id) return Boolean
@@ -407,10 +410,18 @@ package body GNATLLVM.Subprograms is
       end Has_Initialized_Component;
 
    begin
+      --  If this is the first parameter of a Valued Procedure, it needs to be
+      --  an out parameter and is treated as an out parameter passed by value.
+
+      if Param = First_Formal_With_Extras (Subp)
+        and then Ekind (Subp) = E_Procedure and then Is_Valued_Procedure (Subp)
+      then
+         return Out_Value;
+
       --  There are some case where an out parameter needs to be
       --  viewed as in out.  These are detailed at 6.4.1(12).
 
-      if Param_Mode = E_Out_Parameter
+      elsif Param_Mode = E_Out_Parameter
         and then (Is_Access_Type (TE)
                     or else (Is_Scalar_Type (TE)
                                and then Present (Default_Aspect_Value (TE)))
@@ -419,6 +430,20 @@ package body GNATLLVM.Subprograms is
                                and then Has_Initialized_Component (TE)))
       then
          Param_Mode := E_In_Out_Parameter;
+      end if;
+
+      --  If the Mechanism is a positive number, whether it's By_Copy or
+      --  By_Reference depends on the size of the type.
+
+      if Mech > 0 then
+         if Is_Dynamic_Size (TE) then
+            Mech := By_Reference;
+         else
+            Mech := (if   Get_Const_Int_Value (Get_Type_Size (TE)) > ULL (Mech)
+                     then By_Reference else By_Copy);
+         end if;
+      elsif Mech not in Default_Mechanism | By_Reference | By_Copy then
+         Error_Msg_N ("unsupported mechanism for&", Param);
       end if;
 
       --  Set the return value if this ends up being by-copy.
@@ -439,13 +464,12 @@ package body GNATLLVM.Subprograms is
       --  By_Reference or any type with a Mechanism of By_Copy.
 
       elsif Has_Foreign_Convention (Param)
-        or else Has_Foreign_Convention (Scope (Param))
+        or else Has_Foreign_Convention (Subp)
       then
          return (if   Param_Mode = E_In_Parameter
-                        and then (Mechanism (Param) = By_Copy
+                        and then (Mech = By_Copy
                                     or else (Is_Elementary_Type (TE)
-                                               and then (Mechanism (Param) /=
-                                                           By_Reference)))
+                                               and then Mech /= By_Reference))
                  then In_Value else Foreign_By_Reference);
 
       --  Force by-reference and dynamic-sized types to be passed by reference
@@ -455,10 +479,10 @@ package body GNATLLVM.Subprograms is
 
       --  If the mechanism is specified, use it
 
-      elsif Mechanism (Param) = By_Reference then
+      elsif Mech = By_Reference then
          return PK_By_Reference;
 
-      elsif Mechanism (Param) = By_Copy then
+      elsif Mech = By_Copy then
          return By_Copy_Kind;
 
       --  For the default case, return by reference if it's larger than

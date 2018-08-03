@@ -59,6 +59,15 @@ package body GNATLLVM.Types is
       Table_Increment      => 2,
       Table_Name           => "LValue_Stack");
 
+   function Create_Discrete_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Discrete_Type (TE),
+          Post => Present (Create_Discrete_Type'Result);
+   function Create_Floating_Point_Type (TE : Entity_Id) return Type_T
+     with Pre  => Ekind_In (TE, E_Floating_Point_Type,
+                            E_Floating_Point_Subtype),
+          Post => Present (Create_Floating_Point_Type'Result);
+   --  Create an LLVM type for a discrete or FP type, respectively
+
    function Is_In_LHS_Context (N : Node_Id) return Boolean;
    --  Return True if N's parent (if N is Present) is such that we need a
    --  LValue.
@@ -967,6 +976,62 @@ package body GNATLLVM.Types is
       end if;
    end Create_Access_Type;
 
+   --------------------------
+   -- Create_Discrete_Type --
+   --------------------------
+
+   function Create_Discrete_Type (TE : Entity_Id) return Type_T is
+   begin
+      --  LLVM is expecting boolean expressions to be of size 1
+      --  ??? will not work properly if there is a size clause
+      --  Also avoid using 0-sized type for "mod 1" type (c420001).
+
+      if Is_Boolean_Type (TE) then
+         return Int_Ty (1);
+      elsif Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= Uint_0 then
+         return Int_Ty (RM_Size (TE));
+      elsif Esize (TE) /= Uint_0 then
+         return Int_Ty (Esize (TE));
+      else
+         return Int_Ty (8);
+      end if;
+   end Create_Discrete_Type;
+
+   --------------------------------
+   -- Create_Floating_Point_Type --
+   --------------------------------
+
+   function Create_Floating_Point_Type (TE : Entity_Id) return Type_T is
+      Size : constant Uint := Esize (Implementation_Base_Type (TE));
+      T    : Type_T;
+      pragma Assert (UI_Is_In_Int_Range (Size));
+
+   begin
+      case Float_Rep (TE) is
+         when IEEE_Binary =>
+            case UI_To_Int (Size) is
+               when 32 =>
+                  T := Float_Type_In_Context (Context);
+               when 64 =>
+                  T := Double_Type_In_Context (Context);
+               when 80 | 96 | 128 =>
+                  --  Extended precision; not IEEE_128
+                  T := X86_F_P80_Type_In_Context (Context);
+               when others =>
+                  T := Void_Type;
+            end case;
+
+         when AAMP =>
+            T := Void_Type;
+      end case;
+
+      if T = Void_Type then
+         Error_Msg_N ("unsupported floating point type", TE);
+      end if;
+
+      return T;
+   end Create_Floating_Point_Type;
+
    -----------------------
    -- GNAT_To_LLVM_Type --
    -----------------------
@@ -1016,51 +1081,10 @@ package body GNATLLVM.Types is
 
       case Ekind (Def_Ident) is
          when Discrete_Kind =>
-
-            --  LLVM is expecting boolean expressions to be of size 1
-            --  ??? will not work properly if there is a size clause
-            --  Also avoid using 0-sized type for "mod 1" type (c420001).
-
-            if Is_Boolean_Type (Def_Ident) then
-               T := Int_Ty (1);
-            elsif Is_Modular_Integer_Type (Def_Ident)
-              and then RM_Size (Def_Ident) /= Uint_0
-            then
-               T := Int_Ty (RM_Size (Def_Ident));
-            elsif Esize (Def_Ident) /= Uint_0 then
-               T := Int_Ty (Esize (Def_Ident));
-            else
-               T := Int_Ty (8);
-            end if;
+            T := Create_Discrete_Type (Def_Ident);
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
-            declare
-               Size : constant Uint := Esize (Implementation_Base_Type (TE));
-
-            begin
-               pragma Assert (UI_Is_In_Int_Range (Size));
-               case Float_Rep (TE) is
-                  when IEEE_Binary =>
-                     case UI_To_Int (Size) is
-                        when 32 =>
-                           T := Float_Type_In_Context (Context);
-                        when 64 =>
-                           T := Double_Type_In_Context (Context);
-                        when 80 | 96 | 128 =>
-                           --  Extended precision; not IEEE_128
-                           T := X86_F_P80_Type_In_Context (Context);
-                        when others =>
-                           T := Void_Type;
-                     end case;
-
-                  when AAMP =>
-                     T := Void_Type;
-               end case;
-
-               if T = Void_Type then
-                  Error_Msg_N ("unsupported floating point type", TE);
-               end if;
-            end;
+            T := Create_Floating_Point_Type (Def_Ident);
 
          when Access_Kind =>
             T := Type_For_Relationship

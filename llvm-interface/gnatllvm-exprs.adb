@@ -941,7 +941,13 @@ package body GNATLLVM.Exprs is
       if Is_Elementary_Type (Dest_Type) and then Src_R /= Bounds_And_Data then
 
          --  The easy case: convert the source to the destination type and
-         --  store it.
+         --  store it.  However, we may have a packed array implementation
+         --  type on the LHS and an array on the RHS.  Convert it to the LHS
+         --  type if so.
+
+         if Is_Packed_Array_Impl_Type (Dest_Type) then
+            Src := Convert_Ref (Get (Src, Reference), Dest_Type);
+         end if;
 
          Store (Convert (Get (Src, Data), Dest_Type), Dest);
 

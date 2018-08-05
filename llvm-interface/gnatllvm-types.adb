@@ -60,7 +60,7 @@ package body GNATLLVM.Types is
       Table_Name           => "LValue_Stack");
 
    function Create_Discrete_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Discrete_Type (TE),
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Present (Create_Discrete_Type'Result);
    function Create_Floating_Point_Type (TE : Entity_Id) return Type_T
      with Pre  => Ekind_In (TE, E_Floating_Point_Type,
@@ -1080,7 +1080,8 @@ package body GNATLLVM.Types is
       end if;
 
       case Ekind (Def_Ident) is
-         when Discrete_Kind =>
+         when Discrete_Kind | Fixed_Point_Kind =>
+
             T := Create_Discrete_Type (Def_Ident);
 
          when E_Floating_Point_Type | E_Floating_Point_Subtype =>
@@ -1100,21 +1101,11 @@ package body GNATLLVM.Types is
          when E_Subprogram_Type =>
             T := Create_Subprogram_Type (Def_Ident);
 
-         when Fixed_Point_Kind =>
-            T := Int_Ty (Esize (Def_Ident));
-
          when E_Incomplete_Type =>
             --  This is a Taft Amendment type, return a dummy type that
             --  we can take a pointer to.
 
             T := Struct_Create_Named (Context, Get_Name (Def_Ident));
-
-         when E_Private_Type
-            | E_Private_Subtype
-            | E_Limited_Private_Type
-            | E_Limited_Private_Subtype
-         =>
-            T := Create_Type (Full_Etype (Def_Ident));
 
          when others =>
             Error_Msg_N

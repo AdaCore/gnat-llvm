@@ -701,7 +701,7 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Undef_Ref (TE : Entity_Id) return GL_Value is
-     (G_Ref (Get_Undef (Create_Access_Type (TE)), TE));
+     (G_Ref (Get_Undef (Create_Access_Type_To (TE)), TE));
 
    ----------------
    -- Const_Null --
@@ -724,7 +724,7 @@ package body GNATLLVM.GLValue is
    --------------------
 
    function Const_Null_Ref (TE : Entity_Id) return GL_Value is
-     (G_Ref (Const_Null (Create_Access_Type (TE)), TE));
+     (G_Ref (Const_Null (Create_Access_Type_To (TE)), TE));
 
    ---------------
    -- Const_Int --

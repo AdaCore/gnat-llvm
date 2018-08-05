@@ -30,7 +30,7 @@ with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
 
-   --  We save pairs of GNAT type and LLVM Value_T for each level of
+   --  We save pairs of GNAT types and LLVM Value_T for each level of
    --  processing of an Emit_LValue so we can find it if we have a
    --  self-referential item (a discriminated record).
 
@@ -63,10 +63,12 @@ package body GNATLLVM.Types is
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Present (Create_Discrete_Type'Result);
    function Create_Floating_Point_Type (TE : Entity_Id) return Type_T
-     with Pre  => Ekind_In (TE, E_Floating_Point_Type,
-                            E_Floating_Point_Subtype),
+     with Pre  => Is_Floating_Point_Type (TE),
           Post => Present (Create_Floating_Point_Type'Result);
-   --  Create an LLVM type for a discrete or FP type, respectively
+   function Create_Access_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Access_Type (TE),
+          Post => Present (Create_Access_Type'Result);
+   --  Create an LLVM type for various GNAT types
 
    function Is_In_LHS_Context (N : Node_Id) return Boolean;
    --  Return True if N's parent (if N is Present) is such that we need a
@@ -958,24 +960,6 @@ package body GNATLLVM.Types is
       return TE;
    end Get_Fullest_View;
 
-   ------------------------
-   -- Create_Access_Type --
-   ------------------------
-
-   function Create_Access_Type (TE : Entity_Id) return Type_T
-   is
-      T : constant Type_T := Create_Type (TE);
-
-   begin
-      if Is_Unconstrained_Array (TE) then
-         return Create_Array_Fat_Pointer_Type (TE);
-      elsif Ekind (TE) = E_Subprogram_Type then
-         return Create_Subprogram_Access_Type;
-      else
-         return Pointer_Type (T, 0);
-      end if;
-   end Create_Access_Type;
-
    --------------------------
    -- Create_Discrete_Type --
    --------------------------
@@ -1032,6 +1016,18 @@ package body GNATLLVM.Types is
       return T;
    end Create_Floating_Point_Type;
 
+   ------------------------
+   -- Create_Access_Type --
+   ------------------------
+
+   function Create_Access_Type (TE : Entity_Id) return Type_T is
+      DT : constant Entity_Id       := Full_Designated_Type (TE);
+      R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
+
+   begin
+      return Type_For_Relationship (DT, R);
+   end Create_Access_Type;
+
    -----------------------
    -- GNAT_To_LLVM_Type --
    -----------------------
@@ -1039,16 +1035,15 @@ package body GNATLLVM.Types is
    function GNAT_To_LLVM_Type
      (TE : Entity_Id; Definition : Boolean) return Type_T
    is
-      T         : Type_T     := No_Type_T;
-      TBAA      : Metadata_T := No_Metadata_T;
-      Def_Ident : Entity_Id;
+      Full_TE   : constant Entity_Id := Get_Fullest_View (TE);
+      T         : Type_T             := Get_Type (TE);
+      TBAA      : Metadata_T;
       pragma Unreferenced (Definition);
 
    begin
       --  See if we already have a type.  If so, we must not be defining
       --  this type.  ??? But we can't add that test just yet.
 
-      T := Get_Type (TE);
       if Present (T) then
          --  ??? pragma Assert (not Definition);
          return T;
@@ -1059,14 +1054,13 @@ package body GNATLLVM.Types is
       --  defining the type, or where there's a Freeze_Node, but add this
       --  logic later.
 
-      Def_Ident := Get_Fullest_View (TE);
-      if Def_Ident /= TE then
-         T := GNAT_To_LLVM_Type (Def_Ident, False);
-         Copy_Type_Info (Def_Ident, TE);
-         if Is_Record_Type (Def_Ident)
+      if Full_TE /= TE then
+         T := GNAT_To_LLVM_Type (Full_TE, False);
+         Copy_Type_Info (Full_TE, TE);
+         if Is_Record_Type (Full_TE)
            and then Is_Incomplete_Or_Private_Type (TE)
          then
-            Copy_Field_Info (Def_Ident, TE);
+            Copy_Field_Info (Full_TE, TE);
          end if;
 
          return T;
@@ -1075,62 +1069,55 @@ package body GNATLLVM.Types is
       --  ??? This probably needs to be cleaned up, but before we do anything,
       --  see if this isn't a base type and process that if so.
 
-      if Base_Type (Def_Ident) /= Def_Ident then
-         Discard (GNAT_To_LLVM_Type (Base_Type (Def_Ident), False));
+      if Implementation_Base_Type (TE) /= TE then
+         Discard (GNAT_To_LLVM_Type (Implementation_Base_Type (TE), False));
       end if;
 
-      case Ekind (Def_Ident) is
-         when Discrete_Kind | Fixed_Point_Kind =>
+      case Ekind (TE) is
+         when Discrete_Or_Fixed_Point_Kind =>
+            T := Create_Discrete_Type (TE);
 
-            T := Create_Discrete_Type (Def_Ident);
-
-         when E_Floating_Point_Type | E_Floating_Point_Subtype =>
-            T := Create_Floating_Point_Type (Def_Ident);
+         when Float_Kind =>
+            T := Create_Floating_Point_Type (TE);
 
          when Access_Kind =>
-            T := Type_For_Relationship
-              (Full_Designated_Type (Def_Ident),
-               Relationship_For_Access_Type (Def_Ident));
+            T := Create_Access_Type (TE);
 
          when Record_Kind =>
-            T := Create_Record_Type (Def_Ident);
+            T := Create_Record_Type (TE);
 
          when Array_Kind =>
-            T := Create_Array_Type (Def_Ident);
+            T := Create_Array_Type (TE);
 
          when E_Subprogram_Type =>
-            T := Create_Subprogram_Type (Def_Ident);
+            T := Create_Subprogram_Type (TE);
 
          when E_Incomplete_Type =>
-            --  This is a Taft Amendment type, return a dummy type that
+            --  This is a Taft Amendment type, so return a dummy type that
             --  we can take a pointer to.
 
-            T := Struct_Create_Named (Context, Get_Name (Def_Ident));
+            T := Struct_Create_Named (Context, Get_Name (TE));
 
          when others =>
             Error_Msg_N
-              ("unsupported type kind: `"
-               & Ekind (Def_Ident)'Image & "`", Def_Ident);
-            raise Program_Error;
+              ("unsupported type kind: `" & Ekind (TE)'Image & "`", TE);
+            T := Void_Type;
       end case;
 
-      --  Now save the result, if we have one, and compute any TBAA
-      --  information.
+      --  Now save the result and compute any TBAA information
 
-      if Present (T) then
-         Set_Type (TE, T);
-         TBAA := Create_TBAA (TE);
-         if Present (TBAA) then
-            Set_TBAA (TE, TBAA);
-         end if;
+      Set_Type (TE, T);
+      TBAA := Create_TBAA (TE);
+      if Present (TBAA) then
+         Set_TBAA (TE, TBAA);
       end if;
 
       --  If this is a packed array implementation type and the original
       --  type is an array, set information about the bounds of the
       --  original array.
 
-      if Is_Packed_Array_Impl_Type (Def_Ident) then
-         Discard (Create_Array_Type (Def_Ident, For_Orig => True));
+      if Is_Packed_Array_Impl_Type (TE) then
+         Discard (Create_Array_Type (TE, For_Orig => True));
       end if;
 
       return T;
@@ -1141,12 +1128,19 @@ package body GNATLLVM.Types is
    -----------------
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T is
+      BT : constant Entity_Id := Implementation_Base_Type (TE);
+
    begin
-      if Ekind_In (TE, E_Signed_Integer_Type, E_Modular_Integer_Type,
-                   E_Floating_Point_Type)
-      then
+      --  If the base type has a TBAA, use it for us.  If it doesn't, it's
+      --  probably because this is the base type, in which case, make a
+      --  new entry for it.  If it's a type that we don't currently make
+      --  TBAA information for, return none.
+
+      if Has_TBAA (BT) then
+         return Get_TBAA (BT);
+      elsif Ekind (BT) in Discrete_Or_Fixed_Point_Kind | Float_Kind then
          return Create_TBAA_Scalar_Type_Node
-           (MD_Builder, Get_Name (TE), TBAA_Root);
+           (MD_Builder, Get_Name (BT), TBAA_Root);
       else
          return No_Metadata_T;
       end if;

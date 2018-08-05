@@ -32,12 +32,15 @@ package GNATLLVM.Types is
    --  is too large.  We pick an arbitary constant here to cut it off.
    --  ??? Perhaps we should make this a command-line operand.
 
-   function Create_Access_Type (TE : Entity_Id) return Type_T
+   function Create_Access_Type_To (TE : Entity_Id) return Type_T is
+     (Type_For_Relationship (TE, Relationship_For_Ref (TE)))
      with Pre  => Is_Type (TE),
-          Post => Present (Create_Access_Type'Result);
+          Post => Present (Create_Access_Type_To'Result);
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
-   --  between the two.
+   --  between the two.  Note that we need not have a GNAT type corresponding
+   --  to this access type, which makes this different than calling
+   --  Create_Type on an access to TE.
 
    function GNAT_To_LLVM_Type
      (TE : Entity_Id; Definition : Boolean) return Type_T

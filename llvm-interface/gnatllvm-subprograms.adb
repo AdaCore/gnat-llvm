@@ -622,7 +622,7 @@ package body GNATLLVM.Subprograms is
         Is_Type (Def_Ident) and then not Foreign;
       LLVM_Ret_Typ    : Type_T               :=
         (if    RK in None | Return_By_Parameter then Void_Type
-         elsif RK = RK_By_Reference then Create_Access_Type (Return_Type)
+         elsif RK = RK_By_Reference then Create_Access_Type_To (Return_Type)
          else  Create_Type (Return_Type));
       In_Args_Count   : constant Nat         :=
         Count_In_Params (Def_Ident) + (if Adds_S_Link then 1 else 0) +
@@ -642,7 +642,7 @@ package body GNATLLVM.Subprograms is
       --  to which we pass the address for the return to be placed in.
 
       if RK = Return_By_Parameter then
-         In_Arg_Types (1) := Create_Access_Type (Return_Type);
+         In_Arg_Types (1) := Create_Access_Type_To (Return_Type);
          LLVM_Ret_Typ := Void_Type;
          J := 2;
       end if;
@@ -660,7 +660,7 @@ package body GNATLLVM.Subprograms is
                  (if    PK = Foreign_By_Reference
                   then  Pointer_Type (Create_Type (Param_Type), 0)
                   elsif PK = PK_By_Reference
-                  then  Create_Access_Type (Param_Type)
+                  then  Create_Access_Type_To (Param_Type)
                   else  Create_Type (Param_Type));
 
                J := J + 1;

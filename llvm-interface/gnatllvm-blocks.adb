@@ -560,7 +560,7 @@ package body GNATLLVM.Blocks is
       if No (Set_Exception_Param_Fn) then
          Set_Exception_Param_Fn := Add_Global_Function
            ("__gnat_set_exception_parameter",
-            Fn_Ty ((1 => Create_Access_Type (Exc_Type), 2 => Void_Ptr_Type),
+            Fn_Ty ((1 => Create_Access_Type_To (Exc_Type), 2 => Void_Ptr_Type),
                    Void_Type),
             Standard_Void_Type);
       end if;

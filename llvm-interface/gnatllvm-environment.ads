@@ -76,40 +76,48 @@ package GNATLLVM.Environment is
    --  information is used for each Ekind.
 
    type LLVM_Info is record
-      Value           : GL_Value;
+      Value                 : GL_Value;
       --  The GL_Value corresponding to this entity, if a value
 
-      Typ             : Type_T;
+      Typ                   : Type_T;
       --  The LLVM Type corresponding to this entity, if a type.  Set for
       --  all types.  If the GNAT type doesn't correspond directly to an
       --  LLVM type (e.g., some variable size arrays and records), this can
       --  be an opaque type and we get the information from other fields of
       --  this record.
 
-      Is_Dynamic_Size : Boolean;
+      TBAA                  : Metadata_T;
+      --  An LLVM TBAA Metadata node corresponding to the type.  Set only
+      --  For types that are sufficiently primitive.
+
+      Is_Dynamic_Size       : Boolean;
       --  True if the size of this type is dynamic.  This is always the case
       --  if the saved type is an opaque type, but if we have an array type
       --  with zero size, we need to use this flag to disambiguate the cases
       --  of a zero-length array and a variable-sized array.
 
-      TBAA            : Metadata_T;
-      --  An LLVM TBAA Metadata node corresponding to the type.  Set only
-      --  For types that are sufficiently primitive.
+      Is_Being_Elaborated   : Boolean;
+      --  True if we're in the process of elaborating this type.
 
-      Array_Info      : Array_Info_Id;
+      Is_Dummy_Type         : Boolean;
+      --  Only set for access types and means that we're using a
+      --  temporary value for the type because we're currently
+      --  elaborating the designated type.
+
+      Array_Info            : Array_Info_Id;
       --  For arrays, an index into bounds information maintained by
       --  GNATLLVM.Arrays.
 
-      Record_Info     : Record_Info_Id;
+      Record_Info           : Record_Info_Id;
       --  For records, gives the first index of the descriptor of the record
 
-      Field_Info      : Field_Info_Id;
+      Field_Info            : Field_Info_Id;
       --  For fields, gives the index of the descriptor of the field
 
-      Label_Info      : Label_Info_Id;
+      Label_Info            : Label_Info_Id;
       --  For labels, points to information about that label
 
-      Orig_Array_Info : Array_Info_Id;
+      Orig_Array_Info       : Array_Info_Id;
       --  For a packed array implementation type, the bound information for
       --  the original array type.
 
@@ -139,6 +147,12 @@ package GNATLLVM.Environment is
      with Pre => Is_Type (TE);
 
    function Is_Dynamic_Size     (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+
+   function Is_Being_Elaborated (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+
+   function Is_Dummy_Type       (TE : Entity_Id) return Boolean
      with Pre => Is_Type (TE);
 
    function Get_TBAA            (TE : Entity_Id) return Metadata_T
@@ -197,12 +211,19 @@ package GNATLLVM.Environment is
    procedure Set_Type            (TE : Entity_Id; TL : Type_T)
      with Pre  => Is_Type (TE) and then (Present (TL) or else Has_Type (TE))
                   and then (not Has_Type (TE) or else Get_Type (TE) = TL
-                              or else TL = No_Type_T),
+                              or else TL = No_Type_T
+                              or else Is_Access_Type (TE)),
           Post => Get_Type (TE) = TL;
 
    procedure Set_Is_Dynamic_Size (TE : Entity_Id; B : Boolean := True)
      with Pre  => Is_Type (TE) and then Has_Type (TE),
           Post => Is_Dynamic_Size (TE) = B;
+
+   procedure Set_Is_Being_Elaborated (TE : Entity_Id; B : Boolean)
+     with Pre  => Is_Type (TE), Post => Is_Being_Elaborated (TE) = B;
+
+   procedure Set_Is_Dummy_Type   (TE : Entity_Id; B : Boolean)
+     with Pre  => Is_Type (TE), Post => Is_Dummy_Type (TE) = B;
 
    procedure Set_TBAA            (TE : Entity_Id; TBAA : Metadata_T)
      with Pre  => Is_Type (TE) and then Present (TBAA) and then Has_Type (TE),

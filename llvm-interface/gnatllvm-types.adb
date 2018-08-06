@@ -59,6 +59,10 @@ package body GNATLLVM.Types is
       Table_Increment      => 2,
       Table_Name           => "LValue_Stack");
 
+   function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+   --  Return True if TE or any type it depends on is being elaborated
+
    function Create_Discrete_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Present (Create_Discrete_Type'Result);
@@ -402,6 +406,38 @@ package body GNATLLVM.Types is
 
    end Emit_Conversion;
 
+   ---------------------------
+   -- Normalize_Access_Type --
+   ---------------------------
+
+   function Normalize_Access_Type (V : GL_Value) return GL_Value is
+      TE : constant Entity_Id := Related_Type (V);
+      T  : constant Type_T    := Create_Type (TE);
+
+   begin
+      --  If this is not an access type, we have nothing to do.  If
+      --  it's a reference to an access type and the LLVM type isn't
+      --  the actual type of the access type, convert it.
+
+      if not Is_Access_Type (TE) then
+         return V;
+      elsif Relationship (V) = Reference then
+         return (if   Get_Element_Type (Type_Of (V)) = T then V
+                 else Ptr_To_Ref (V, TE));
+
+      --  If it's an actual access type and the type differs, unpack it,
+      --  convert to the proper type, and repack.
+
+      elsif Type_Of (V) /= T then
+         return To_Access (Convert_Pointer (From_Access (V),
+                                            Full_Designated_Type (TE)),
+                           TE);
+
+      else
+         return V;
+      end if;
+
+   end Normalize_Access_Type;
    -------------
    -- Convert --
    -------------
@@ -960,6 +996,40 @@ package body GNATLLVM.Types is
       return TE;
    end Get_Fullest_View;
 
+   ---------------------------------
+   -- Depends_On_Being_Elaborated --
+   ---------------------------------
+
+   function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean is
+      F : Entity_Id;
+
+   begin
+      if Is_Being_Elaborated (TE)
+        or else (Is_Array_Type (TE)
+                   and then not Is_Elementary_Type (Full_Component_Type (TE))
+                   and then (Depends_On_Being_Elaborated
+                               (Full_Component_Type (TE))))
+      then
+         return True;
+      elsif not Is_Record_Type (TE) then
+         return False;
+      end if;
+
+      --  For records, see if any fields of non-elementary types depends on
+      --  something being elaborated.  We don't concern ourselves with
+      --  elementary types because scalar types can't depend on
+      --  non-scalar types and access types are handled specially.
+
+      F := First_Component_Or_Discriminant (TE);
+      while Present (F) loop
+         exit when not Is_Elementary_Type (Full_Etype (F))
+           and then Depends_On_Being_Elaborated (Full_Etype (F));
+         Next_Component_Or_Discriminant (F);
+      end loop;
+
+      return Present (F);
+   end Depends_On_Being_Elaborated;
+
    --------------------------
    -- Create_Discrete_Type --
    --------------------------
@@ -1025,7 +1095,60 @@ package body GNATLLVM.Types is
       R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
 
    begin
-      return Type_For_Relationship (DT, R);
+      --  If DT is a record type with a known LLVM type, if it's an
+      --  access subprogram for convention Ada (since that's always the
+      --  same type), or if it doesn't depend on something that's being
+      --  elaborated, handle this normally.
+
+      if (Is_Record_Type (DT) and then Has_Type (DT))
+        or else (Ekind (DT) = E_Subprogram_Type
+                   and R = Fat_Reference_To_Subprogram)
+        or else not Depends_On_Being_Elaborated (DT)
+      then
+         Set_Is_Dummy_Type (TE, False);
+         return Type_For_Relationship (DT, R);
+
+      --  Otherwise, if DT is currently being elaborated, we have to make a
+      --  dummy type that we know will be the same width of an access to
+      --  the actual object and we'll convert to the actual type when we
+      --  try to access an object of this access type.  The only types
+      --  where there's an elaboration that can recurse are record, array,
+      --  and access types (though access types whose designated types are
+      --  other access types are quite rare).
+
+      else
+         Set_Is_Dummy_Type (TE, True);
+         if Is_Record_Type (DT) then
+
+            --  We probably already made an opaque type for this record, but
+            --  if not, a pointer to void will be fine.
+
+            pragma Assert (R = Reference);
+            return (if   Has_Type (DT) then Pointer_Type (Get_Type (DT), 0)
+                    else Void_Ptr_Type);
+
+         elsif Is_Array_Type (DT) then
+
+            --  For arrays, we an use a pointer to void will work for all
+            --  but a fat pointer.  For a fat pointer, use two pointers to
+            --  void (we could make an array bound type without actually
+            --  fully elaborating the array type, but it's not worth the
+            --  trouble).
+
+            return (if   R /= Fat_Pointer then Void_Ptr_Type
+                    else Build_Struct_Type ((1 => Void_Ptr_Type,
+                                             2 => Void_Ptr_Type)));
+
+         elsif Ekind (DT) = E_Subprogram_Type then
+            return Void_Ptr_Type;
+
+         else
+            --  Access type is the only case left.  We use a void pointer.
+
+            pragma Assert (Is_Access_Type (DT) and then R = Reference);
+            return Void_Ptr_Type;
+         end if;
+      end if;
    end Create_Access_Type;
 
    -----------------------
@@ -1041,13 +1164,21 @@ package body GNATLLVM.Types is
       pragma Unreferenced (Definition);
 
    begin
-      --  See if we already have a type.  If so, we must not be defining
-      --  this type.  ??? But we can't add that test just yet.
+      --  See if we already have a non-dummy type.  If so, we must not be
+      --  defining this type.  ??? But we can't add that test just yet.
 
-      if Present (T) then
+      if Present (T) and then not Is_Dummy_Type (TE) then
          --  ??? pragma Assert (not Definition);
          return T;
       end if;
+
+      --  Set that we're elaborating the type.  Note that we have to do this
+      --  here rather than right before the case statement because we may
+      --  have two different types being elaborated that have the same
+      --  full view or base type.  Note that the call to Copy_Type_Info
+      --  will have the effect of clearing Is_Being_Elaborated.
+
+      Set_Is_Being_Elaborated (TE, True);
 
       --  See if we can get the type from the fullest view.
       --  ??? This isn't quite right in the case where we're not
@@ -1063,6 +1194,7 @@ package body GNATLLVM.Types is
             Copy_Field_Info (Full_TE, TE);
          end if;
 
+         Set_Is_Being_Elaborated (TE, False);
          return T;
       end if;
 
@@ -1103,6 +1235,7 @@ package body GNATLLVM.Types is
               ("unsupported type kind: `" & Ekind (TE)'Image & "`", TE);
             T := Void_Type;
       end case;
+      Set_Is_Being_Elaborated (TE, False);
 
       --  Now save the result and compute any TBAA information
 

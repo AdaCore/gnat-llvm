@@ -626,8 +626,9 @@ package body GNATLLVM.Compile is
             return Emit_Call (N);
 
          when N_Explicit_Dereference =>
-            return Add_To_LValue_List (From_Access
-                                         (Emit_Expression (Prefix (N))));
+            return Add_To_LValue_List (Normalize_Access_Type
+                                         (From_Access
+                                            (Emit_Expression (Prefix (N)))));
 
          when N_Allocator =>
 
@@ -666,8 +667,9 @@ package body GNATLLVM.Compile is
 
          when N_Selected_Component =>
             return Add_To_LValue_List
-              (Record_Field_Offset (Emit_LValue (Prefix (N)),
-                                    Entity (Selector_Name (N))));
+              (Normalize_Access_Type
+                 (Record_Field_Offset (Emit_LValue (Prefix (N)),
+                                       Entity (Selector_Name (N)))));
 
          when N_Indexed_Component | N_Slice =>
 
@@ -700,8 +702,9 @@ package body GNATLLVM.Compile is
                --  we can do this with Extract_Value.
 
                return Add_To_LValue_List
-                 (Get_Indexed_LValue (Expressions (N),
-                                      Get (Result, Any_Reference)));
+                 (Normalize_Access_Type
+                    (Get_Indexed_LValue (Expressions (N),
+                                         Get (Result, Any_Reference))));
             else
                return Add_To_LValue_List
                  (Get_Slice_LValue (TE, Get (Result, Any_Reference)));

@@ -1702,8 +1702,9 @@ package body GNATLLVM.Records is
                            Result :=
                              Insert_Value (Result, Val, unsigned (Idx));
                         else
-                           Emit_Assignment (GEP_Idx (F_Type, Result,
-                                                     (1 => 0, 2 => Idx)),
+                           Emit_Assignment (Normalize_Access_Type
+                                              (GEP_Idx (F_Type, Result,
+                                                        (1 => 0, 2 => Idx))),
                                             Empty, Val);
                         end if;
                      end;

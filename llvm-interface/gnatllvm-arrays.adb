@@ -909,9 +909,10 @@ package body GNATLLVM.Arrays is
                      Cur_Value := Insert_Value (Cur_Value, Val,
                                                 Swap (Indices));
                   else
-                     Emit_Assignment (GEP_Idx (Comp_Type,
-                                               Get (Cur_Value, Reference),
-                                               (1 => 0) & Swap (Indices)),
+                     Emit_Assignment (Normalize_Access_Type
+                                        (GEP_Idx (Comp_Type,
+                                                  Get (Cur_Value, Reference),
+                                                  (1 => 0) & Swap (Indices))),
                                       Empty, Val);
                   end if;
                end;

@@ -713,12 +713,11 @@ package body GNATLLVM.Subprograms is
 
    function Create_Subprogram_Access_Type return Type_T is
    begin
-      --  It would be nice to have the field of this struct to be the
-      --  a pointer to the subprogram type, but it can't be because
-      --  the signature of an access type doesn't include the
-      --  possibility of an activation record while the actual
-      --  subprogram might have one.  So we use a generic pointer for
-      --  it and cast at the actual call.
+      --  It would be nice to have the field of this struct to be a pointer
+      --  to the subprogram type, but it can't be because the signature of
+      --  an access type doesn't include the possibility of an activation
+      --  record while the actual subprogram might have one.  So we use a
+      --  generic pointer for it and cast at the actual call.
 
       return Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
    end Create_Subprogram_Access_Type;

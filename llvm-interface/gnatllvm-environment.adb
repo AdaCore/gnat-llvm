@@ -51,6 +51,27 @@ package body GNATLLVM.Environment is
       return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Is_Dynamic_Size;
    end Is_Dynamic_Size;
 
+   -------------------------
+   -- Is_Being_Elaborated --
+   -------------------------
+
+   function Is_Being_Elaborated (TE : Entity_Id) return Boolean is
+   begin
+      return LLVM_Info_Map (TE) /= Empty_LLVM_Info_Id
+        and then (LLVM_Info_Table.Table
+                    (LLVM_Info_Map (TE)).Is_Being_Elaborated);
+   end Is_Being_Elaborated;
+
+   -------------------
+   -- Is_Dummy_Type --
+   -------------------
+
+   function Is_Dummy_Type (TE : Entity_Id) return Boolean is
+   begin
+      return LLVM_Info_Map (TE) /= Empty_LLVM_Info_Id
+        and then LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Is_Dummy_Type;
+   end Is_Dummy_Type;
+
    --------------
    -- Get_TBAA --
    --------------
@@ -159,15 +180,17 @@ package body GNATLLVM.Environment is
       if Id /= Empty_LLVM_Info_Id then
          return Id;
       else
-         LLVM_Info_Table.Append ((Value           => No_GL_Value,
-                                  Typ             => No_Type_T,
-                                  TBAA            => No_Metadata_T,
-                                  Is_Dynamic_Size => False,
-                                  Record_Info     => Empty_Record_Info_Id,
-                                  Field_Info      => Empty_Field_Info_Id,
-                                  Array_Info      => Empty_Array_Info_Id,
-                                  Label_Info      => Empty_Label_Info_Id,
-                                  Orig_Array_Info => Empty_Array_Info_Id));
+         LLVM_Info_Table.Append ((Value               => No_GL_Value,
+                                  Typ                 => No_Type_T,
+                                  TBAA                => No_Metadata_T,
+                                  Is_Dynamic_Size     => False,
+                                  Is_Being_Elaborated => False,
+                                  Is_Dummy_Type       => False,
+                                  Record_Info         => Empty_Record_Info_Id,
+                                  Field_Info          => Empty_Field_Info_Id,
+                                  Array_Info          => Empty_Array_Info_Id,
+                                  Label_Info          => Empty_Label_Info_Id,
+                                  Orig_Array_Info     => Empty_Array_Info_Id));
          Id := LLVM_Info_Table.Last;
          LLVM_Info_Map (N) := Id;
          return Id;
@@ -183,13 +206,17 @@ package body GNATLLVM.Environment is
 
    begin
       pragma Assert (Id /= Empty_LLVM_Info_Id);
-      pragma Assert (LLVM_Info_Map (New_T) in Empty_LLVM_Info_Id | Id);
+      pragma Assert (LLVM_Info_Map (New_T) in Empty_LLVM_Info_Id | Id
+                       or else (LLVM_Info_Table.Table
+                                  (LLVM_Info_Map
+                                     (New_T)).Is_Being_Elaborated));
       --  We know this is a type and one for which we don't have any
       --  data, so we shouldn't have allocated anything for it.
       --  However, we may have a recursive type situation where it
       --  was defined as part of the code that calls us, so also allow
       --  the data to have already been set.  But it's still an error
-      --  if it was set to something different.
+      --  if it was set to something different unless that was set just
+      --  to establish that the type was being elaborated.
 
       LLVM_Info_Map (New_T) := Id;
    end Copy_Type_Info;
@@ -215,6 +242,28 @@ package body GNATLLVM.Environment is
    begin
       LLVM_Info_Table.Table (Id).Is_Dynamic_Size := B;
    end Set_Is_Dynamic_Size;
+
+   -----------------------------
+   -- Set_Is_Being_Elaborated --
+   -----------------------------
+
+   procedure Set_Is_Being_Elaborated (TE : Entity_Id; B : Boolean) is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+
+   begin
+      LLVM_Info_Table.Table (Id).Is_Being_Elaborated := B;
+   end Set_Is_Being_Elaborated;
+
+   -----------------------
+   -- Set_Is_Dummy_Type --
+   -----------------------
+
+   procedure Set_Is_Dummy_Type (TE : Entity_Id; B : Boolean) is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+
+   begin
+      LLVM_Info_Table.Table (Id).Is_Dummy_Type := B;
+   end Set_Is_Dummy_Type;
 
    --------------
    -- Set_TBAA --

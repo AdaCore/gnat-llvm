@@ -1,4 +1,12 @@
+.PHONEY: save-result run
+
+all: run
+
+save-results:
+	if [ -d output/old ]; then rm -rf output/old; fi
+	if [ -d output/new ]; then mv output/new output/old; fi
+
 run:
-	(cd support; PATH=$(PWD)/../llvm-interface/bugs/bin:$$PATH ./testsuite.py --output-dir=../output --keep-old-output-dir --jobs=18 \
+	(cd support; PATH=$(PWD)/../llvm-interface/bugs/bin:$$PATH ./testsuite.py -o ../output/new --old-output-dir=../output/old --jobs=18 \
   --tests-dir=../bugs --test-sections=fixed --max-consecutive-failures=30 \
   --discriminants=llvm)

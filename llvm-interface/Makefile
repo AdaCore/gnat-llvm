@@ -92,7 +92,8 @@ bugs-bins:
 	  rm -f $$f; ln bin/llvm-$$f bugs/bin/$$f; \
 	done
 
-stage1: build gnatlib
+stage1: 
+	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build gnatlib
 	$(RMDIR) stage1
 	$(MKDIR) stage1
 	$(MV) obj obj-tools bin lib stage1

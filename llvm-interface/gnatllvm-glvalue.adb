@@ -282,24 +282,26 @@ package body GNATLLVM.GLValue is
    ---------------------------
 
    function Type_For_Relationship
-     (TE : Entity_Id; R : GL_Relationship) return Type_T
-   is
-      T  : constant Type_T := Create_Type (TE);
-      PT : constant Type_T := Pointer_Type (T, 0);
-
+     (TE : Entity_Id; R : GL_Relationship) return Type_T is
    begin
+      --  Normally, we'd factor out the calls to Create_Type and Pointer_Type,
+      --  but since we're called when creating an access type and that
+      --  function knows when we actually need to elaborate the designated
+      --  type, only call those functions when we know we need to.
+
       case R is
          when Data =>
-            return T;
+            return Create_Type (TE);
 
          when Object =>
-            return (if Is_Loadable_Type (TE) then T else PT);
+            return (if   Is_Loadable_Type (TE) then Create_Type (TE)
+                    else Pointer_Type (Create_Type (TE), 0));
 
-         when Reference | Thin_Pointer | Trampoline | Any_Reference =>
-            return PT;
+         when Reference | Thin_Pointer | Any_Reference =>
+            return Pointer_Type (Create_Type (TE), 0);
 
          when Reference_To_Reference | Reference_To_Thin_Pointer =>
-            return Pointer_Type (PT, 0);
+            return Pointer_Type (Pointer_Type (Create_Type (TE), 0), 0);
 
          when Fat_Pointer =>
             return Create_Array_Fat_Pointer_Type (TE);
@@ -309,7 +311,7 @@ package body GNATLLVM.GLValue is
 
          when Bounds_And_Data =>
             return Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
-                                       2 => T));
+                                       2 => Create_Type (TE)));
 
          when Reference_To_Bounds =>
             return Pointer_Type (Create_Array_Bounds_Type (TE), 0);
@@ -317,10 +319,10 @@ package body GNATLLVM.GLValue is
          when Reference_To_Bounds_And_Data =>
             return Pointer_Type
               (Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
-                                   2 => T)),
+                                   2 => Create_Type (TE))),
                0);
 
-         when Reference_To_Activation_Record =>
+         when Reference_To_Activation_Record | Trampoline =>
             return Void_Ptr_Type;
 
          when Fat_Reference_To_Subprogram =>
@@ -328,7 +330,7 @@ package body GNATLLVM.GLValue is
 
          when others =>
             pragma Assert (False);
-            return T;
+            return Void_Ptr_Type;
       end case;
    end Type_For_Relationship;
 
@@ -868,6 +870,17 @@ package body GNATLLVM.GLValue is
    is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
          TE));
+
+   ----------------------------
+   --  Pointer_Cast_To_Dummy --
+   ----------------------------
+
+   function Pointer_Cast_To_Dummy
+     (V : GL_Value; Name : String := "") return GL_Value
+   is
+     (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                       Create_Dummy_Access_Type (Related_Type (V)), Name),
+         Related_Type (V), Unknown));
 
    ----------------
    -- Ptr_To_Ref --

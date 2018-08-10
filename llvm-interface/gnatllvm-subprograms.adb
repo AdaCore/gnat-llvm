@@ -1924,9 +1924,16 @@ package body GNATLLVM.Subprograms is
          end if;
       end if;
 
+      --  Get the suprogram to call.  If we have a static link, extract
+      --  it.  Then, unless the subprogram address is already a reference
+      --  to a subprogram, get it as a reference.
+
       LLVM_Func := Emit_LValue (Subp);
       if This_Adds_S_Link then
-         S_Link    := Get (LLVM_Func, Reference_To_Activation_Record);
+         S_Link := Get (LLVM_Func, Reference_To_Activation_Record);
+      end if;
+
+      if Relationship (LLVM_Func) /= Reference_To_Subprogram then
          LLVM_Func := Get (LLVM_Func, Reference);
       end if;
 

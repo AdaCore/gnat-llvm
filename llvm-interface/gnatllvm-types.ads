@@ -26,6 +26,39 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package GNATLLVM.Types is
 
+   --  Our strategy for handling types is very different from what's done by
+   --  Gigi in the GCC implementation of GNAT.  Here, we never pass a type
+   --  to any function that expects a type unless that type is the fullest
+   --  possible view.
+   --
+   --  We also ignore freeze nodes for types.  We can safely do this
+   --  because we don't actually do anything with an expression used as a
+   --  bound of the type other than putting the tree node for that
+   --  expression into a data structure.  The expression itself isn't
+   --  evaluated until an object of the type is referenced (or some other
+   --  operation that freezes the type).  We can safely do this because the
+   --  front end has removed all side effects from type bounds and other
+   --  constraints.
+   --
+   --  Finally, we always use a recursive algorithm to define types,
+   --  whether they're external or internal.  This means we have to "break
+   --  the loop" when there's a reference back to a type (such as a record
+   --  or array with an access type to itself).  We do this by looking at
+   --  whether the designated type of an access type depends on something
+   --  that's being elaborated and, if so, make a dummy access type of the
+   --  same width and structure.  For a designated type that's a record,
+   --  that dummy type will actually be the type of the record.  For scalar
+   --  types, we can fully elaborate the type and access to function types
+   --  always use void pointers, so don't depend on the designated type.
+   --
+   --  This means the only cases where we need a dummy type are the less
+   --  common cases of an array and access type.  We've also arranged
+   --  things so that the only place this dummy can show up is as the
+   --  component of a record, the component type of an array, or the
+   --  designated type of an access type.  So whenever we get one of those,
+   --  we check for the need to convert to the actual access type and not
+   --  the dummy one.
+
    Max_Load_Size : constant := 128;
    --  LLVM supports loading and storing of arbitrarily-large values, but
    --  code generation and optimization is very slow if the value's size
@@ -42,13 +75,16 @@ package GNATLLVM.Types is
    --  to this access type, which makes this different than calling
    --  Create_Type on an access to TE.
 
-   function GNAT_To_LLVM_Type
-     (TE : Entity_Id; Definition : Boolean) return Type_T
-     with Pre  => Is_Type (TE), Post => Present (GNAT_To_LLVM_Type'Result);
+   function Create_Type (TE : Entity_Id) return Type_T
+     with Pre => Present (TE) and then TE = Get_Fullest_View (TE),
+          Post => Present (Create_Type'Result);
+   --  Given a GNAT type TE, return the corresponding LLVM type, building
+   --  it first if necessary.
 
-   function Create_Type (TE : Entity_Id) return Type_T is
-      (GNAT_To_LLVM_Type (TE, False))
-     with Pre => Present (TE), Post => Present (Create_Type'Result);
+   function Create_Dummy_Access_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Access_Type (TE),
+          Post => Present (Create_Dummy_Access_Type'Result);
+   --  Make a type to be used as a dummy type for access type TE
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type (TE);
@@ -117,6 +153,10 @@ package GNATLLVM.Types is
      (if Ekind (Etype (N)) = E_Void then Etype (N)
       else Get_Fullest_View (Etype (N)))
      with Pre => Present (N), Post => Is_Type_Or_Void (Full_Etype'Result);
+
+   function Full_Entity (N : Node_Id) return Entity_Id is
+     (Get_Fullest_View (Entity (N)))
+     with Pre => Present (N), Post => Is_Type (Full_Entity'Result);
 
    function Full_Component_Type (TE : Entity_Id) return Entity_Id is
      (Get_Fullest_View (Component_Type (TE)))

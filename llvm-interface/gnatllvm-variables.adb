@@ -671,7 +671,7 @@ package body GNATLLVM.Variables is
                   if Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N)))
                   then
-                     return not Is_Dynamic_Size (Entity (Prefix (N)));
+                     return not Is_Dynamic_Size (Full_Entity (Prefix (N)));
                   else
 
                   --  We have to be careful here because even though we

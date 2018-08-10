@@ -264,10 +264,6 @@ package GNATLLVM.Environment is
                               or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI;
 
-   procedure Copy_Type_Info (Old_T, New_T : Entity_Id)
-     with Pre  => Has_Type (Old_T), Post => Has_Type (New_T);
-   --  Copy type-related information from Old_T to New_T
-
    function Get_Insert_Block return Basic_Block_T is
      (Get_Insert_Block (IR_Builder))
      with Post => Present (Get_Insert_Block'Result);

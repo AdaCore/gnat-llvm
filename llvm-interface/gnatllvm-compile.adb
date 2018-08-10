@@ -398,16 +398,23 @@ package body GNATLLVM.Compile is
             Pop_Block;
             Pop_Debug_Scope;
 
-         when N_Full_Type_Declaration
-            | N_Incomplete_Type_Declaration
+         when N_Incomplete_Type_Declaration
             | N_Private_Extension_Declaration
             | N_Private_Type_Declaration
+           =>
+            --  Ignore incomplete type declarations since we'll either
+            --  elaborate the type when we see the full declaration or
+            --  lazily elaborate the it either when we need it.
+            null;
+
+         when N_Full_Type_Declaration
             | N_Subtype_Declaration
             | N_Task_Type_Declaration
            =>
             declare
-               TE  : constant Entity_Id := Defining_Identifier (N);
-               T   : constant Type_T    := GNAT_To_LLVM_Type (TE, True);
+               TE  : constant Entity_Id :=
+                 Get_Fullest_View (Defining_Identifier (N));
+               T   : constant Type_T    := Create_Type (TE);
 
             begin
                if Esize (TE) /= Uint_0

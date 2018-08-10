@@ -60,7 +60,7 @@ package body GNATLLVM.Types is
       Table_Name           => "LValue_Stack");
 
    function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
    --  Return True if TE or any type it depends on is being elaborated
 
    function Create_Discrete_Type (TE : Entity_Id) return Type_T
@@ -1001,33 +1001,47 @@ package body GNATLLVM.Types is
    ---------------------------------
 
    function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean is
-      F : Entity_Id;
+      BT : constant Entity_Id := Implementation_Base_Type (TE);
+      F  : Entity_Id;
 
    begin
-      if Is_Being_Elaborated (TE)
-        or else (Is_Array_Type (TE)
-                   and then not Is_Elementary_Type (Full_Component_Type (TE))
-                   and then (Depends_On_Being_Elaborated
-                               (Full_Component_Type (TE))))
+      --  If this is a void type, it doesn't depend on anything.
+
+      if Ekind (TE) = E_Void then
+         return False;
+
+      --  This depends on something being elaborated if the type is being
+      --  elaborated, its base type depends on something being elaborated,
+      --  or this is an array with an aggregate component type that depends
+      --  on something being elaborated.
+
+      elsif Is_Being_Elaborated (TE)
+           or else (BT /= TE and then Depends_On_Being_Elaborated (BT))
+           or else (Is_Array_Type (TE)
+                      and then Is_Aggregate_Type (Full_Component_Type (TE))
+                      and then (Depends_On_Being_Elaborated
+                                  (Full_Component_Type (TE))))
       then
          return True;
-      elsif not Is_Record_Type (TE) then
+
+      --  If this is a record type, it depends on the type of each of
+      --  the fields which have aggregate types.
+
+      elsif Is_Record_Type (TE) then
+         F := First_Component_Or_Discriminant (TE);
+         while Present (F) loop
+            exit when Is_Aggregate_Type (Full_Etype (F))
+              and then Depends_On_Being_Elaborated (Full_Etype (F));
+            Next_Component_Or_Discriminant (F);
+         end loop;
+
+         return Present (F);
+
+      else
+         --  Otherwise, this doesn't depend on something being elaborated
+
          return False;
       end if;
-
-      --  For records, see if any fields of non-elementary types depends on
-      --  something being elaborated.  We don't concern ourselves with
-      --  elementary types because scalar types can't depend on
-      --  non-scalar types and access types are handled specially.
-
-      F := First_Component_Or_Discriminant (TE);
-      while Present (F) loop
-         exit when not Is_Elementary_Type (Full_Etype (F))
-           and then Depends_On_Being_Elaborated (Full_Etype (F));
-         Next_Component_Or_Discriminant (F);
-      end loop;
-
-      return Present (F);
    end Depends_On_Being_Elaborated;
 
    --------------------------
@@ -1095,18 +1109,27 @@ package body GNATLLVM.Types is
       R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
 
    begin
-      --  If DT is a record type with a known LLVM type, if it's an
-      --  access subprogram for convention Ada (since that's always the
-      --  same type), or if it doesn't depend on something that's being
+      --  If DT is a subprogram type (since the access type to it is always
+      --  the same type) or if it doesn't depend on something that's being
       --  elaborated, handle this normally.
 
-      if (Is_Record_Type (DT) and then Has_Type (DT))
-        or else (Ekind (DT) = E_Subprogram_Type
-                   and R = Fat_Reference_To_Subprogram)
+      if Ekind (DT) = E_Subprogram_Type
         or else not Depends_On_Being_Elaborated (DT)
       then
          Set_Is_Dummy_Type (TE, False);
          return Type_For_Relationship (DT, R);
+
+      --  If this is a record type, we can get the actual type that will be
+      --  used here. If it hasn't been done yet, set it for the record
+      --  type, and mark it dummy.
+
+      elsif Is_Record_Type (DT) then
+         if not Has_Type (DT) then
+            Set_Type (DT, Struct_Create_Named (Context, Get_Name (DT)));
+            Set_Is_Dummy_Type (DT, True);
+         end if;
+
+         return Pointer_Type (Get_Type (DT), 0);
 
       --  Otherwise, if DT is currently being elaborated, we have to make a
       --  dummy type that we know will be the same width of an access to
@@ -1118,91 +1141,69 @@ package body GNATLLVM.Types is
 
       else
          Set_Is_Dummy_Type (TE, True);
-         if Is_Record_Type (DT) then
-
-            --  We probably already made an opaque type for this record, but
-            --  if not, a pointer to void will be fine.
-
-            pragma Assert (R = Reference);
-            return (if   Has_Type (DT) then Pointer_Type (Get_Type (DT), 0)
-                    else Void_Ptr_Type);
-
-         elsif Is_Array_Type (DT) then
-
-            --  For arrays, we an use a pointer to void will work for all
-            --  but a fat pointer.  For a fat pointer, use two pointers to
-            --  void (we could make an array bound type without actually
-            --  fully elaborating the array type, but it's not worth the
-            --  trouble).
-
-            return (if   R /= Fat_Pointer then Void_Ptr_Type
-                    else Build_Struct_Type ((1 => Void_Ptr_Type,
-                                             2 => Void_Ptr_Type)));
-
-         elsif Ekind (DT) = E_Subprogram_Type then
-            return Void_Ptr_Type;
-
-         else
-            --  Access type is the only case left.  We use a void pointer.
-
-            pragma Assert (Is_Access_Type (DT) and then R = Reference);
-            return Void_Ptr_Type;
-         end if;
+         return Create_Dummy_Access_Type (TE);
       end if;
    end Create_Access_Type;
 
-   -----------------------
-   -- GNAT_To_LLVM_Type --
-   -----------------------
+   ------------------------------
+   -- Create_Dummy_Access_Type --
+   ------------------------------
 
-   function GNAT_To_LLVM_Type
-     (TE : Entity_Id; Definition : Boolean) return Type_T
-   is
-      Full_TE   : constant Entity_Id := Get_Fullest_View (TE);
-      T         : Type_T             := Get_Type (TE);
-      TBAA      : Metadata_T;
-      pragma Unreferenced (Definition);
+   function Create_Dummy_Access_Type (TE : Entity_Id) return Type_T is
+      DT : constant Entity_Id       := Full_Designated_Type (TE);
+      R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
 
    begin
-      --  See if we already have a non-dummy type.  If so, we must not be
-      --  defining this type.  ??? But we can't add that test just yet.
+      if Is_Array_Type (DT) then
+
+         --  For arrays, a pointer to void will work for all but a fat
+         --  pointer.  For a fat pointer, use two pointers to void (we
+         --  could make an array bound type without actually fully
+         --  elaborating the array type, but it's not worth the trouble).
+
+         return (if   R /= Fat_Pointer then Void_Ptr_Type
+                 else Build_Struct_Type ((1 => Void_Ptr_Type,
+                                          2 => Void_Ptr_Type)));
+
+      elsif Ekind (DT) = E_Subprogram_Type then
+         return Void_Ptr_Type;
+
+      else
+         --  Access type is the only case left.  We use a void pointer.
+
+         pragma Assert (Is_Access_Type (DT) and then R = Reference);
+         return Void_Ptr_Type;
+      end if;
+
+   end Create_Dummy_Access_Type;
+
+   -----------------
+   -- Create_Type --
+   -----------------
+
+   function Create_Type (TE : Entity_Id) return Type_T is
+      T    : Type_T := Get_Type (TE);
+      TBAA : Metadata_T;
+
+   begin
+      --  See if we already have a non-dummy type
 
       if Present (T) and then not Is_Dummy_Type (TE) then
-         --  ??? pragma Assert (not Definition);
          return T;
       end if;
 
       --  Set that we're elaborating the type.  Note that we have to do this
       --  here rather than right before the case statement because we may
       --  have two different types being elaborated that have the same
-      --  full view or base type.  Note that the call to Copy_Type_Info
-      --  will have the effect of clearing Is_Being_Elaborated.
+      --  base type.
 
       Set_Is_Being_Elaborated (TE, True);
 
-      --  See if we can get the type from the fullest view.
-      --  ??? This isn't quite right in the case where we're not
-      --  defining the type, or where there's a Freeze_Node, but add this
-      --  logic later.
-
-      if Full_TE /= TE then
-         T := GNAT_To_LLVM_Type (Full_TE, False);
-         Copy_Type_Info (Full_TE, TE);
-         if Is_Record_Type (Full_TE)
-           and then Is_Incomplete_Or_Private_Type (TE)
-         then
-            Copy_Field_Info (Full_TE, TE);
-         end if;
-
-         Set_Is_Being_Elaborated (TE, False);
-         return T;
-      end if;
-
-      --  ??? This probably needs to be cleaned up, but before we do anything,
-      --  see if this isn't a base type and process that if so.
+      --  Before we do anything, see if this isn't a base type and
+      --  process that if so.
 
       if Implementation_Base_Type (TE) /= TE then
-         Discard (GNAT_To_LLVM_Type (Implementation_Base_Type (TE), False));
+         Discard (Create_Type (Implementation_Base_Type (TE)));
       end if;
 
       case Ekind (TE) is
@@ -1237,7 +1238,7 @@ package body GNATLLVM.Types is
       end case;
       Set_Is_Being_Elaborated (TE, False);
 
-      --  Now save the result and compute any TBAA information
+      --  Now save the result and any TBAA information
 
       Set_Type (TE, T);
       TBAA := Create_TBAA (TE);
@@ -1254,7 +1255,7 @@ package body GNATLLVM.Types is
       end if;
 
       return T;
-   end GNAT_To_LLVM_Type;
+   end Create_Type;
 
    -----------------
    -- Create_TBAA --
@@ -1271,9 +1272,9 @@ package body GNATLLVM.Types is
 
       if Has_TBAA (BT) then
          return Get_TBAA (BT);
-      elsif Ekind (BT) in Discrete_Or_Fixed_Point_Kind | Float_Kind then
-         return Create_TBAA_Scalar_Type_Node
-           (MD_Builder, Get_Name (BT), TBAA_Root);
+      elsif Is_Scalar_Type (BT) then
+         return Create_TBAA_Scalar_Type_Node (MD_Builder, Get_Name (BT),
+                                              TBAA_Root);
       else
          return No_Metadata_T;
       end if;

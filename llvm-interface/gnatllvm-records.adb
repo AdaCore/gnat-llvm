@@ -95,11 +95,13 @@ package body GNATLLVM.Records is
 
    --  The information for a field is the index of the piece in the
    --  record information and optionally the index within the piece in the
-   --  case when its an LLVM_type.
+   --  case when its an LLVM_type.  We also record if the type of this
+   --  field when the record was created was a dummy type.
 
    type Field_Info is record
       Rec_Info_Idx  : Record_Info_Id;
       Field_Ordinal : Nat;
+      Is_Dummy_Type : Boolean;
    end record;
 
    package Field_Info_Table is new Table.Table
@@ -391,28 +393,6 @@ package body GNATLLVM.Records is
       return Ent;
    end Find_Matching_Field;
 
-   ---------------------
-   -- Copy_Field_Info --
-   ---------------------
-
-   procedure Copy_Field_Info (Old_TE, New_TE : Entity_Id) is
-      Cur_Field : Entity_Id := First_Component_Or_Discriminant (Old_TE);
-      New_Field : Entity_Id := First_Component_Or_Discriminant (New_TE);
-      Old_Field : Entity_Id;
-
-   begin
-      while Present (New_Field) loop
-         Old_Field := Find_Field_In_Entity_List (New_Field, Old_TE, Cur_Field);
-
-         if Present (Old_Field) and then No (Get_Field_Info (Old_Field)) then
-            Set_Field_Info (New_Field, Get_Field_Info (Old_Field));
-         end if;
-
-         Next_Component_Or_Discriminant (New_Field);
-      end loop;
-
-   end Copy_Field_Info;
-
    ------------------------
    -- Create_Record_Type --
    ------------------------
@@ -462,7 +442,7 @@ package body GNATLLVM.Records is
       --  field is greater than both this and Last_Align.  This only occurs
       --  for variant records.  See details there.
 
-      LLVM_Type : Type_T;
+      LLVM_Type : Type_T      := Get_Type (TE);
       --  The LLVM type for this record type
 
       procedure Add_RI
@@ -475,9 +455,10 @@ package body GNATLLVM.Records is
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
-        (E       : Entity_Id;
-         RI_Idx  : Record_Info_Id;
-         Ordinal : Nat;
+        (E             : Entity_Id;
+         RI_Idx        : Record_Info_Id;
+         Ordinal       : Nat;
+         Is_Dummy_Type : Boolean;
          F_TE    : in out Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
@@ -537,9 +518,10 @@ package body GNATLLVM.Records is
       ------------
 
       procedure Add_FI
-        (E       : Entity_Id;
-         RI_Idx  : Record_Info_Id;
-         Ordinal : Nat;
+        (E             : Entity_Id;
+         RI_Idx        : Record_Info_Id;
+         Ordinal       : Nat;
+         Is_Dummy_Type : Boolean;
          F_TE    : in out Entity_Id)
       is
          Matching_Field : Entity_Id;
@@ -557,8 +539,9 @@ package body GNATLLVM.Records is
          --
          --  If we're using a matching field, update F_TE to its type.
 
-         Field_Info_Table.Append ((Rec_Info_Idx => RI_Idx,
-                                   Field_Ordinal => Ordinal));
+         Field_Info_Table.Append ((Rec_Info_Idx  => RI_Idx,
+                                   Field_Ordinal => Ordinal,
+                                   Is_Dummy_Type => Is_Dummy_Type));
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
          else
@@ -944,7 +927,7 @@ package body GNATLLVM.Records is
          --  it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info (TE), 0, Typ);
+            Add_FI (E, Get_Record_Info (TE), 0, False, Typ);
             return;
 
          --  If this field is dynamic size, we have to close out the last
@@ -953,7 +936,7 @@ package body GNATLLVM.Records is
 
          elsif Is_Dynamic_Size (Typ) then
             Flush_Current_Types;
-            Add_FI (E, Cur_Idx, 0, Typ);
+            Add_FI (E, Cur_Idx, 0, False, Typ);
             Add_RI (Typ => Typ, Use_Max_Size => not Is_Constrained (Typ));
             Set_Is_Dynamic_Size (TE);
 
@@ -969,8 +952,8 @@ package body GNATLLVM.Records is
                Flush_Current_Types;
             end if;
 
-            Add_FI (E, Cur_Idx, Next_Type, Typ);
             Types (Next_Type) := Create_Type (Typ);
+            Add_FI (E, Cur_Idx, Next_Type, Is_Dummy_Type (Typ), Typ);
             Next_Type := Next_Type + 1;
          end if;
 
@@ -983,10 +966,15 @@ package body GNATLLVM.Records is
       --  Because of the potential recursion between record and access types,
       --  make a dummy type for us and set it as our type right at the start.
       --  Then initialize our first record info table entry, which we know
-      --  will be used.
+      --  will be used.  But first see if the dummy type was already made.
 
-      LLVM_Type := Struct_Create_Named (Context, Get_Name (TE));
-      Set_Type (TE, LLVM_Type);
+      if Present (LLVM_Type) then
+         Set_Is_Dummy_Type (TE, False);
+      else
+         LLVM_Type := Struct_Create_Named (Context, Get_Name (TE));
+         Set_Type (TE, LLVM_Type);
+      end if;
+
       Record_Info_Table.Increment_Last;
       Cur_Idx := Record_Info_Table.Last;
       Set_Record_Info (TE, Cur_Idx);
@@ -1691,14 +1679,22 @@ package body GNATLLVM.Records is
 
                   if Present (F_Idx) then
                      declare
-                        Val : constant GL_Value   :=
-                          Emit_Convert_Value (Expression (Expr), F_Type);
                         FI  : constant Field_Info :=
                           Field_Info_Table.Table (F_Idx);
                         Idx : constant Nat        := FI.Field_Ordinal;
+                        Val : GL_Value            :=
+                          Emit_Convert_Value (Expression (Expr), F_Type);
 
                      begin
                         if not Is_Reference (Result) then
+
+                           --  If this field had a dummy type, convert our
+                           --  expression into it.
+
+                           if FI.Is_Dummy_Type then
+                              Val := Pointer_Cast_To_Dummy (Val);
+                           end if;
+
                            Result :=
                              Insert_Value (Result, Val, unsigned (Idx));
                         else

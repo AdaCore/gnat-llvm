@@ -54,6 +54,10 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (N) = N_Loop_Statement;
    --  Generate code for a loop
 
+   function Emit_Internal (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit_Internal'Result);
+   --  Same as Emit, but push result into LValue list
+
    ------------------
    -- GNAT_To_LLVM --
    ------------------
@@ -560,6 +564,15 @@ package body GNATLLVM.Compile is
    ----------
 
    function Emit (N : Node_Id) return GL_Value is
+   begin
+      return Add_To_LValue_List (Emit_Internal (N));
+   end Emit;
+
+   --------------------
+   --  Emit_Internal --
+   --------------------
+
+   function Emit_Internal (N : Node_Id) return GL_Value is
       TE     : constant Entity_Id := Full_Etype (N);
       Expr   : Node_Id;
       Result : GL_Value;
@@ -633,9 +646,8 @@ package body GNATLLVM.Compile is
             return Emit_Call (N);
 
          when N_Explicit_Dereference =>
-            return Add_To_LValue_List (Normalize_Access_Type
-                                         (From_Access
-                                            (Emit_Expression (Prefix (N)))));
+            return Normalize_Access_Type
+              (From_Access (Emit_Expression (Prefix (N))));
 
          when N_Allocator =>
 
@@ -673,10 +685,9 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (N);
 
          when N_Selected_Component =>
-            return Add_To_LValue_List
-              (Normalize_Access_Type
-                 (Record_Field_Offset (Emit_LValue (Prefix (N)),
-                                       Entity (Selector_Name (N)))));
+            return Normalize_Access_Type
+              (Record_Field_Offset (Emit_LValue (Prefix (N)),
+                                    Entity (Selector_Name (N))));
 
          when N_Indexed_Component | N_Slice =>
 
@@ -708,13 +719,11 @@ package body GNATLLVM.Compile is
                --  ??? If Result is Data and Expressions are constant,
                --  we can do this with Extract_Value.
 
-               return Add_To_LValue_List
-                 (Normalize_Access_Type
-                    (Get_Indexed_LValue (Expressions (N),
-                                         Get (Result, Any_Reference))));
+               return Normalize_Access_Type
+                 (Get_Indexed_LValue (Expressions (N),
+                                      Get (Result, Any_Reference)));
             else
-               return Add_To_LValue_List
-                 (Get_Slice_LValue (TE, Get (Result, Any_Reference)));
+               return Get_Slice_LValue (TE, Get (Result, Any_Reference));
             end if;
 
          when N_Aggregate | N_Extension_Aggregate =>
@@ -778,7 +787,7 @@ package body GNATLLVM.Compile is
                  Node_Kind'Image (Nkind (N)) & "`", N);
             return Emit_Undef (TE);
       end case;
-   end Emit;
+   end Emit_Internal;
 
    ----------
    -- Emit --
@@ -912,8 +921,7 @@ package body GNATLLVM.Compile is
                Def_Ident  : constant Node_Id   := Defining_Identifier (Spec);
                Reversed   : constant Boolean   := Reverse_Present (Spec);
                Var_Type   : constant Entity_Id := Full_Etype (Def_Ident);
-               Var_BT     : constant Entity_Id :=
-                 Implementation_Base_Type (Var_Type);
+               Var_BT     : constant Entity_Id := Full_Base_Type (Var_Type);
                Uns_BT     : constant Boolean   := Is_Unsigned_Type (Var_BT);
                One        : constant GL_Value  := Const_Int (Var_Type, Uint_1);
                LLVM_Var   : GL_Value;

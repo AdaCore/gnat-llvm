@@ -29,6 +29,7 @@ with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
@@ -397,7 +398,7 @@ package body GNATLLVM.Subprograms is
       -------------------------------
 
       function Has_Initialized_Component (TE : Entity_Id) return Boolean is
-         F : Entity_Id := First_Entity (Implementation_Base_Type (TE));
+         F : Entity_Id := First_Entity (Full_Base_Type (TE));
 
       begin
          while Present (F) loop
@@ -1601,10 +1602,10 @@ package body GNATLLVM.Subprograms is
 
       TE  := Full_Etype (Val);
       PT  := Full_Etype (Ptr);
-      BT  := Implementation_Base_Type (TE);
+      BT  := Full_Base_Type (TE);
       if not Is_Elementary_Type (TE)
         or else not Is_Access_Type (PT)
-        or else Implementation_Base_Type (Full_Designated_Type (PT)) /= BT
+        or else Full_Base_Type (Full_Designated_Type (PT)) /= BT
       then
          return No_GL_Value;
       end if;
@@ -1851,6 +1852,7 @@ package body GNATLLVM.Subprograms is
       Orig_Arg_Count   : constant Nat         := Count_In_Params  (Subp_Typ);
       Out_Arg_Count    : constant Nat         := Count_Out_Params (Subp_Typ);
       Out_Param        : Entity_Id            := First_Out_Param  (Subp_Typ);
+      No_Adjust_LV     : constant Boolean     := Contains_Discriminant (N);
       In_Idx           : Nat                  := 1;
       Out_Idx          : Nat                  := 1;
       Ret_Idx          : Nat                  := 1;
@@ -1946,6 +1948,14 @@ package body GNATLLVM.Subprograms is
          In_Idx        := In_Idx + 1;
       end if;
 
+      --  Normally, we want to handle any LValues in each argument separately.
+      --  However, this may be a call that converts a discriminant Rep to a Pos
+      --  in which case, we don't want to change the LValue lists.
+
+      if not No_Adjust_LV then
+         Push_LValue_List;
+      end if;
+
       Param  := First_Formal_With_Extras (Subp_Typ);
       Actual := First_Actual (N);
       while Present (Actual) loop
@@ -1961,7 +1971,10 @@ package body GNATLLVM.Subprograms is
             --  a previous parameter when getting positions and
             --  sizes of another, so clear the list.
 
-            Clear_LValue_List;
+            if not No_Adjust_LV then
+               Clear_LValue_List;
+            end if;
+
             if PK_Is_In (PK) then
 
                --  We have two cases: if the param isn't passed
@@ -2005,6 +2018,10 @@ package body GNATLLVM.Subprograms is
          Next_Formal_With_Extras (Param);
          pragma Assert (No (Actual) = No (Param));
       end loop;
+
+      if not No_Adjust_LV then
+         Pop_LValue_List;
+      end if;
 
       --  Set the argument for the static link, if any
 

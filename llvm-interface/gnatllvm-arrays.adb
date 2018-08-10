@@ -84,9 +84,6 @@ package body GNATLLVM.Arrays is
    --  Compute the value of N viewing any discriminant encountered as
    --  being either their lowest or highest values, respectively
 
-   function Contains_Discriminant (N : Node_Id) return Boolean;
-   --  Return True if N contains a reference to a discriminant
-
    function Build_One_Bound
      (N : Node_Id; Unconstrained : Boolean) return One_Bound
      with Pre => Present (N);
@@ -262,6 +259,23 @@ package body GNATLLVM.Arrays is
             LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
             return Convert (LHS, Full_Etype (N));
 
+         when N_Function_Call =>
+
+            --  We assume here that what we have is a call to enumRP (disc)
+            --  and get the 'Pos of the first or last in the range.
+
+            declare
+               Params : constant List_Id   := Parameter_Associations (N);
+               Discr  : constant Entity_Id := Entity (First (Params));
+               TE     : constant Entity_Id := Full_Etype (Discr);
+               Bound  : constant Node_Id   :=
+                 Entity ((if   Is_Low then Type_Low_Bound (TE)
+                          else Type_High_Bound (TE)));
+
+            begin
+               return Const_Int (Full_Etype (N), Enumeration_Pos (Bound));
+            end;
+
          when others =>
             pragma Assert (False);
             return Get_Undef (Full_Etype (N));
@@ -318,7 +332,8 @@ package body GNATLLVM.Arrays is
                  (if Is_Low then Type_Low_Bound (Bound_Type)
                   else Type_High_Bound (Bound_Type));
                Bound_Val   : constant GL_Value  :=
-                 Convert (Emit_Safe_Expr (Bound_Limit), Dim_Info.Bound_Type);
+                   Convert (Emit_Expr_For_Minmax (Bound_Limit, Is_Low),
+                            Dim_Info.Bound_Type);
 
             begin
                Result := Convert (Emit_Expr_For_Minmax (Expr, Is_Low),
@@ -455,7 +470,7 @@ package body GNATLLVM.Arrays is
       Unconstrained     : constant Boolean       := not Is_Constrained (A_TE);
       Comp_Type         : constant Entity_Id     := Full_Component_Type (A_TE);
       Base_Type         : constant Entity_Id     :=
-        Implementation_Base_Type (A_TE);
+        Full_Base_Type (A_TE, For_Orig);
       Must_Use_Fake     : Boolean                :=
         Is_Dynamic_Size (Comp_Type);
       This_Dynamic_Size : Boolean                :=
@@ -489,17 +504,15 @@ package body GNATLLVM.Arrays is
       Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
-            Idx_Range : constant Node_Id        := Get_Dim_Range (Index);
+            Idx_Range  : constant Node_Id      := Get_Dim_Range (Index);
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 
-            Index_Type : constant Entity_Id     := Full_Etype (Index);
-            Index_Base : constant Entity_Id     :=
-              Implementation_Base_Type (Index_Type);
-
-            LB          : constant Node_Id      := Low_Bound (Idx_Range);
-            HB          : constant Node_Id      := High_Bound (Idx_Range);
-            Dim_Info    : constant Index_Bounds :=
+            Index_Type : constant Entity_Id    := Full_Etype (Index);
+            Index_Base : constant Entity_Id    := Full_Base_Type (Index_Type);
+            LB         : constant Node_Id      := Low_Bound (Idx_Range);
+            HB         : constant Node_Id      := High_Bound (Idx_Range);
+            Dim_Info   : constant Index_Bounds :=
               (Bound_Type    => Index_Base,
                Bound_Subtype => Full_Etype (Base_Index),
                Low           => Build_One_Bound (LB, Unconstrained),

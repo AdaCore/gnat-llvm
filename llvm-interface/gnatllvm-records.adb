@@ -285,7 +285,7 @@ package body GNATLLVM.Records is
       --  from that subtype.
 
       for J in reverse 1 .. Subtype_Stack.Last loop
-         if Implementation_Base_Type (Subtype_Stack.Table (J)) = Rec_Type then
+         if Full_Base_Type (Subtype_Stack.Table (J)) = Rec_Type then
             return Emit_Convert_Value
               (Get_Discriminant_Constraint (Subtype_Stack.Table (J), E), TE);
          end if;
@@ -563,8 +563,7 @@ package body GNATLLVM.Records is
       ----------------
 
       procedure Add_Fields (Def_Ident : Entity_Id) is
-         Rec_Type     : constant Entity_Id :=
-           Implementation_Base_Type (Def_Ident);
+         Rec_Type     : constant Entity_Id := Full_Base_Type (Def_Ident);
          --  The base type, which we use to get the record order from
 
          Sub_Rec_Type : constant Entity_Id :=
@@ -724,7 +723,7 @@ package body GNATLLVM.Records is
                return;
             end if;
 
-            Variant := First (Variants (Var_Part));
+            Variant := First_Non_Pragma (Variants (Var_Part));
             Flush_Current_Types;
             Set_Is_Dynamic_Size (TE);
             Saved_Cur_Idx   := Cur_Idx;
@@ -768,7 +767,7 @@ package body GNATLLVM.Records is
 
                Var_Array (J) := First_Idx;
                J             := J + 1;
-               Next (Variant);
+               Next_Non_Pragma (Variant);
             end loop;
 
             Prev_Idx  := Saved_Prev_Idx;

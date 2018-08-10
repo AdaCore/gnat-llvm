@@ -144,6 +144,13 @@ package GNATLLVM.Types is
    --  limited, packed array and other implementation types.  If Include_PAT
    --  is True, don't look inside packed array types.
 
+   function Full_Base_Type
+     (TE : Entity_Id; For_Orig : Boolean := False) return Entity_Id
+   is
+     (Get_Fullest_View (Implementation_Base_Type (TE), not For_Orig))
+     with Pre  => Is_Type (TE),
+          Post => Present (Full_Base_Type'Result);
+
    function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id
      with Pre => Is_Type (TE), Post => Is_Type (Ultimate_Base_Type'Result);
    --  Go up TE's Etype chain until it points to itself, which will

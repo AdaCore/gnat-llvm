@@ -456,10 +456,9 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Access_Type (V) and then not Is_Subprogram_Reference (V),
           Post => Is_Type_Or_Void (Full_Designated_Type'Result);
 
-   function Implementation_Base_Type (V : GL_Value) return Entity_Id is
-     (Implementation_Base_Type (Etype (V)))
+   function Full_Base_Type (V : GL_Value) return Entity_Id
      with Pre  => not Is_Reference (V),
-            Post => Is_Type (Implementation_Base_Type'Result);
+            Post => Is_Type (Full_Base_Type'Result);
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean
      with Pre => Present (V);

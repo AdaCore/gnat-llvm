@@ -90,7 +90,7 @@ package body GNATLLVM.Conditionals is
    is
       Operation : constant Pred_Mapping := Get_Preds (Kind);
       TE        : constant Entity_Id    := Full_Etype (LHS);
-      BT        : constant Entity_Id    := Implementation_Base_Type (TE);
+      BT        : constant Entity_Id    := Full_Base_Type (TE);
 
    begin
       --  LLVM treats pointers as integers regarding comparison.  But we first
@@ -350,8 +350,8 @@ package body GNATLLVM.Conditionals is
       --  its base type.
 
       if Is_Scalar_Type (LHS) then
-         LHS := Convert (LHS, Implementation_Base_Type (LHS));
-         RHS := Convert (RHS, Implementation_Base_Type (RHS));
+         LHS := Convert (LHS, Full_Base_Type (LHS));
+         RHS := Convert (RHS, Full_Base_Type (RHS));
       end if;
 
       --  If we're comparing two access types, first get the values as
@@ -874,7 +874,7 @@ package body GNATLLVM.Conditionals is
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
    is
-      LHS_BT   : constant Entity_Id := Implementation_Base_Type (LHS);
+      LHS_BT   : constant Entity_Id := Full_Base_Type (LHS);
       LHS_Base : GL_Value;
       Cond     : GL_Value;
       Inner_BB : Basic_Block_T;

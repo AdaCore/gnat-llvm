@@ -24,6 +24,9 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Arrays is
 
+   function Contains_Discriminant (N : Node_Id) return Boolean;
+   --  Return True if N contains a reference to a discriminant
+
    function Create_Array_Type
      (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
      with Pre  => (if   For_Orig then Is_Packed_Array_Impl_Type (TE)

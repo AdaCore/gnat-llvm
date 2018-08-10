@@ -784,7 +784,9 @@ package body GNATLLVM.Types is
 
    function Add_To_LValue_List (V : GL_Value) return GL_Value is
    begin
-      Add_To_LValue_List (V);
+      if Is_Record_Type (Related_Type (V)) then
+         Add_To_LValue_List (V);
+      end if;
       return V;
    end Add_To_LValue_List;
 
@@ -821,11 +823,11 @@ package body GNATLLVM.Types is
       --  object will have been added last.
 
       for J in reverse LValue_Pair_First .. LValue_Pair_Table.Last loop
-         if Is_Parent_Of (T_Need => Implementation_Base_Type (TE),
-                          T_Have => Implementation_Base_Type
+         if Is_Parent_Of (T_Need => Full_Base_Type (TE),
+                          T_Have => Full_Base_Type
                             (LValue_Pair_Table.Table (J).Typ))
-           or else Is_Parent_Of (T_Have => Implementation_Base_Type (TE),
-                                 T_Need => Implementation_Base_Type
+           or else Is_Parent_Of (T_Have => Full_Base_Type (TE),
+                                 T_Need => Full_Base_Type
                                    (LValue_Pair_Table.Table (J).Typ))
          then
             return Convert_Ref (LValue_Pair_Table.Table (J), TE);
@@ -919,8 +921,8 @@ package body GNATLLVM.Types is
    function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id is
    begin
       return Typ : Entity_Id := TE do
-         while Etype (Typ) /= Typ loop
-            Typ := Etype (Typ);
+         while Full_Etype (Typ) /= Typ loop
+            Typ := Full_Etype (Typ);
          end loop;
       end return;
    end Ultimate_Base_Type;
@@ -1001,7 +1003,7 @@ package body GNATLLVM.Types is
    ---------------------------------
 
    function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean is
-      BT : constant Entity_Id := Implementation_Base_Type (TE);
+      BT : constant Entity_Id := Full_Base_Type (TE);
       F  : Entity_Id;
 
    begin
@@ -1070,7 +1072,7 @@ package body GNATLLVM.Types is
    --------------------------------
 
    function Create_Floating_Point_Type (TE : Entity_Id) return Type_T is
-      Size : constant Uint := Esize (Implementation_Base_Type (TE));
+      Size : constant Uint := Esize (Full_Base_Type (TE));
       T    : Type_T;
       pragma Assert (UI_Is_In_Int_Range (Size));
 
@@ -1202,8 +1204,8 @@ package body GNATLLVM.Types is
       --  Before we do anything, see if this isn't a base type and
       --  process that if so.
 
-      if Implementation_Base_Type (TE) /= TE then
-         Discard (Create_Type (Implementation_Base_Type (TE)));
+      if Full_Base_Type (TE) /= TE then
+         Discard (Create_Type (Full_Base_Type (TE)));
       end if;
 
       case Ekind (TE) is
@@ -1262,7 +1264,7 @@ package body GNATLLVM.Types is
    -----------------
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T is
-      BT : constant Entity_Id := Implementation_Base_Type (TE);
+      BT : constant Entity_Id := Full_Base_Type (TE);
 
    begin
       --  If the base type has a TBAA, use it for us.  If it doesn't, it's
@@ -1673,7 +1675,7 @@ package body GNATLLVM.Types is
 
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id)
    is
-      TBAA : constant Metadata_T := Get_TBAA (Implementation_Base_Type (TE));
+      TBAA : constant Metadata_T := Get_TBAA (TE);
    begin
       if Is_Volatile (TE) then
          Set_Volatile (Inst);

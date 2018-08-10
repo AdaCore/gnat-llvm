@@ -229,7 +229,7 @@ package body GNATLLVM.GLValue is
    function Relationship_For_Access_Type
      (TE : Entity_Id) return GL_Relationship
    is
-      BT : constant Entity_Id       := Implementation_Base_Type (TE);
+      BT : constant Entity_Id       := Full_Base_Type (TE);
       DT : constant Entity_Id       := Full_Designated_Type (BT);
       R  : constant GL_Relationship := Relationship_For_Ref (DT);
       --  A subtype always has the same representation as its base type.
@@ -1095,6 +1095,13 @@ package body GNATLLVM.GLValue is
    function Full_Designated_Type (V : GL_Value) return Entity_Id is
      ((if Is_Reference (V) then Get_Fullest_View (Related_Type (V))
        else Full_Designated_Type (Etype (V))));
+
+   --------------------
+   -- Full_Base_Type --
+   --------------------
+
+   function Full_Base_Type (V : GL_Value) return Entity_Id is
+     (Full_Base_Type (Etype (V)));
 
    ---------
    -- GEP --

@@ -82,8 +82,7 @@ package body GNATLLVM.Exprs is
                   --  values and simplify the rest of the logic.
 
                   if not Is_Machine_Number (N) then
-                     Val := Machine
-                       (Implementation_Base_Type (TE), Val, Round_Even, N);
+                     Val := Machine (Full_Base_Type (TE), Val, Round_Even, N);
                   end if;
 
                   pragma Assert (Rbase (Val) = 2);
@@ -142,8 +141,8 @@ package body GNATLLVM.Exprs is
       RHS_Node   : constant Node_Id   := Right_Opnd (N);
       Left_Type  : constant Entity_Id := Full_Etype (LHS_Node);
       Right_Type : constant Entity_Id := Full_Etype (RHS_Node);
-      LHS_BT     : constant Entity_Id := Implementation_Base_Type (Left_Type);
-      RHS_BT     : constant Entity_Id := Implementation_Base_Type (Right_Type);
+      LHS_BT     : constant Entity_Id := Full_Base_Type (Left_Type);
+      RHS_BT     : constant Entity_Id := Full_Base_Type (Right_Type);
       LVal       : constant GL_Value  := Emit_Convert_Value (LHS_Node, LHS_BT);
       RVal       : constant GL_Value  := Emit_Convert_Value (RHS_Node, RHS_BT);
       FP         : constant Boolean   := Is_Floating_Point_Type (LHS_BT);
@@ -240,8 +239,8 @@ package body GNATLLVM.Exprs is
       --  the same sign iff their xor is non-negative, which is the best
       --  code for the general case, but having a variable as the second
       --  operand of mod is quite rare, so it's best to do slightly less
-      --  efficient code for then general case that will get
-      --  constant-folded in the constant case.
+      --  efficient code for the general case that will get constant-folded
+      --  in the constant case.
 
       if not Unsign and Nkind (N) = N_Op_Mod then
          declare
@@ -274,8 +273,7 @@ package body GNATLLVM.Exprs is
 
             One         : constant GL_Value := Const_Int (RVal, Uint_1);
             Remainder   : constant GL_Value := U_Rem (LVal, RVal);
-            Half_RHS    : constant GL_Value :=
-              L_Shr (Sub (RVal, One), One);
+            Half_RHS    : constant GL_Value := L_Shr (Sub (RVal, One), One);
             Plus_One    : constant GL_Value := Add (Result, One);
             Need_Adjust : constant GL_Value :=
               I_Cmp (Int_UGT, Remainder, Half_RHS);
@@ -366,7 +364,7 @@ package body GNATLLVM.Exprs is
             declare
                Expr : constant GL_Value  := Emit_Expression (Right_Opnd (N));
                TE   : constant Entity_Id := Full_Etype (Expr);
-               BT   : constant Entity_Id := Implementation_Base_Type (TE);
+               BT   : constant Entity_Id := Full_Base_Type (TE);
                V    : constant GL_Value  := Convert (Expr, BT);
 
             begin
@@ -417,8 +415,8 @@ package body GNATLLVM.Exprs is
    procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id) is
       In_TE      : constant Entity_Id := Full_Etype (V);
       Out_TE     : constant Entity_Id := Full_Etype (N);
-      In_BT      : constant Entity_Id := Implementation_Base_Type (In_TE);
-      Out_BT     : constant Entity_Id := Implementation_Base_Type (Out_TE);
+      In_BT      : constant Entity_Id := Full_Base_Type (In_TE);
+      Out_BT     : constant Entity_Id := Full_Base_Type (Out_TE);
       In_FP      : constant Boolean   := Is_Floating_Point_Type (In_TE);
       Out_FP     : constant Boolean   := Is_Floating_Point_Type (Out_TE);
       In_LB      : constant Node_Id   := Type_Low_Bound  (In_BT);
@@ -433,12 +431,12 @@ package body GNATLLVM.Exprs is
       BB_Next    : Basic_Block_T;
 
    begin
-      --  In the case of both types being integers, we determine the need
-      --  for each check individually by seeing if the output bounds are
-      --  tighter than the input bounds.  But this isn't worth doing for FP
-      --  since the chances of having a difference here is very low.  Since
-      --  an FP NaN or Inf always compares false, do the comparison so
-      --  false is a failure.
+      --  If both types are integers, we determine the need for each check
+      --  individually by seeing if the output bounds are tighter than the
+      --  input bounds.  But this isn't worth doing for FP since the
+      --  chances of having a difference is very low.  Since an FP NaN or
+      --  Inf always compares false, do the comparison so false is a
+      --  failure.
 
       if In_FP or else Out_FP
         or else Get_Uint_Value (Out_LB) > Get_Uint_Value (In_LB)
@@ -465,7 +463,7 @@ package body GNATLLVM.Exprs is
       --  put both before the first test, but the optimizer can clean that up.
 
       BB_Raise :=
-        (if Present (Label_Ent) then Get_Label_BB (Label_Ent)
+        (if   Present (Label_Ent) then Get_Label_BB (Label_Ent)
          else Create_Basic_Block);
       BB_Next := Create_Basic_Block;
 
@@ -518,44 +516,47 @@ package body GNATLLVM.Exprs is
       case Operation is
          when N_Op_Shift_Left =>
             To_Left := True;
+
          when N_Op_Shift_Right_Arithmetic =>
             Arithmetic := True;
+
          when N_Op_Rotate_Left =>
             To_Left := True;
             Rotate := True;
+
          when N_Op_Rotate_Right =>
             Rotate := True;
+
          when others =>
             null;
       end case;
 
       if Rotate then
 
-         --  LLVM instructions will return an undefined value for
-         --  rotations with too many bits, so we must handle "multiple
-         --  turns".
-
          declare
-            --  There is no "rotate" instruction in LLVM, so we have to stick
-            --  to shift instructions, just like in C. If we consider that we
-            --  are rotating to the left:
+            --  There's no "rotate" instruction in LLVM, so we have to use
+            --  two shift instructions, just like in C. If we're rotating
+            --  to the left:
             --
             --     Result := (Operand << Bits) | (Operand >> (Size - Bits));
             --               -----------------   --------------------------
             --                    Upper                   Lower
             --
-            --  If we are rotating to the right, we switch the direction of the
-            --  two shifts.
+            --  If we're rotating to the right, we switch the direction of
+            --  the two shifts.
+            --
+            --  LLVM instructions return an undefined value for rotations
+            --  with too many bits, so we must handle "multiple turns".
 
             Reduced_N   : constant GL_Value := U_Rem (N, LHS_Bits);
             Lower_Shift : constant GL_Value := Sub (LHS_Bits, Reduced_N);
             Reduced_Low : constant GL_Value := U_Rem (Lower_Shift, LHS_Bits);
             Upper       : constant GL_Value :=
-              (if To_Left
+              (if   To_Left
                then Shl   (LHS, Reduced_N,   "rotate-upper")
                else L_Shr (LHS, Reduced_N,   "rotate-upper"));
             Lower       : constant GL_Value :=
-              (if To_Left
+              (if   To_Left
                then L_Shr (LHS, Reduced_Low, "rotate-lower")
                else Shl   (LHS, Reduced_Low, "rotate-lower"));
 
@@ -567,31 +568,28 @@ package body GNATLLVM.Exprs is
          --  First, compute the value using the underlying LLVM instruction
 
          Result :=
-           (if To_Left
-            then Shl (LHS, N)
-            else
-              (if Arithmetic
-               then A_Shr (LHS, N) else L_Shr (LHS, N)));
+           (if    To_Left
+            then  Shl (LHS, N)
+            elsif Arithmetic then A_Shr (LHS, N) else L_Shr (LHS, N));
 
-         --  If this is a packed array implementation type, we know
-         --  that the shift won't overflow, so we can just use the
-         --  result of the shift.
+         --  If this is a packed array implementation type, we know the
+         --  shift won't overflow, so we can just use the result.
 
          if Is_Packed_Array_Impl_Type (LHS) then
             return Result;
          end if;
 
-         --  Otherwise, if the number of bits shifted is bigger or
-         --  equal than the number of bits in LHS, the underlying LLVM
-         --  instruction returns an undefined value, so build what we
-         --  want ourselves (we call this a "saturated value").
+         --  Otherwise, if the number of bits shifted is larger or equal to
+         --  the number of bits in LHS, the underlying LLVM instruction
+         --  returns an undefined value, so build what we want ourselves
+         --  (we call this a "saturated value").
 
          Saturated :=
            (if Arithmetic
 
-            --  If we are performing an arithmetic shift, the saturated value
-            --  is 0 if LHS is positive, -1 otherwise (in this context, LHS is
-            --  always interpreted as a signed integer).
+            --  If we're performing an arithmetic shift, the saturated
+            --  value is 0 if LHS is positive and -1 otherwise (in this
+            --  context, LHS is always interpreted as a signed integer).
 
             then Build_Select
               (C_If   => I_Cmp
@@ -627,22 +625,19 @@ package body GNATLLVM.Exprs is
 
    begin
       case Attr is
-         when Attribute_Access
-            | Attribute_Code_Address
-            | Attribute_Unchecked_Access
-            | Attribute_Unrestricted_Access =>
+         when Attribute_Access | Attribute_Code_Address
+            | Attribute_Unchecked_Access | Attribute_Unrestricted_Access =>
 
-            --  We store values as pointers, so, getting an access to an
-            --  expression is the same thing as getting an LValue, and has
-            --  the same constraints.  But we do have to be sure that it's
-            --  of the right type.
+            --  We store values as pointers, so getting an access to an
+            --  expression is the same as getting an LValue and has the
+            --  same constraints.  But we do have to be sure that it's of
+            --  the right type.
 
             return Convert (Emit_LValue (Prefix (N)), TE);
 
-         when Attribute_Address
-            | Attribute_Pool_Address =>
+         when Attribute_Address | Attribute_Pool_Address =>
 
-            --  We need a single-word pointer, then we convert it to the
+            --  We need a single-word pointer, then convert it to the
             --  desired integral type.
 
             return Ptr_To_Int (Get (Emit_LValue (Prefix (N)),
@@ -658,14 +653,12 @@ package body GNATLLVM.Exprs is
                return Int_To_Ref (Emit_Expression (Expr), TE, "attr-deref");
             end;
 
-         when Attribute_First
-            | Attribute_Last
-            | Attribute_Length
-            | Attribute_Range_Length =>
+         when Attribute_First  | Attribute_Last
+            | Attribute_Length | Attribute_Range_Length =>
 
             declare
                Dim         : constant Nat :=
-                 (if Present (Expressions (N))
+                 (if   Present (Expressions (N))
                   then UI_To_Int (Intval (First (Expressions (N)))) - 1
                   else 0);
                Array_Descr : GL_Value;
@@ -751,17 +744,14 @@ package body GNATLLVM.Exprs is
                     Size_Const_Int (Uint_1)),
                TE);
 
-         when Attribute_Max
-            | Attribute_Min =>
+         when Attribute_Max | Attribute_Min =>
             pragma Assert (List_Length (Expressions (N)) = 2);
             return Emit_Min_Max (Expressions (N), Attr = Attribute_Max);
 
-         when Attribute_Pos
-            | Attribute_Val =>
+         when Attribute_Pos | Attribute_Val =>
             return Emit_Conversion (First (Expressions (N)), TE, N);
 
-         when Attribute_Succ
-            | Attribute_Pred =>
+         when Attribute_Succ | Attribute_Pred =>
             declare
                Exprs : constant List_Id  := Expressions (N);
                Base  : constant GL_Value := Emit_Expression (First (Exprs));
@@ -805,8 +795,7 @@ package body GNATLLVM.Exprs is
             return Const_Int (TE, Get_Type_Alignment (P_TE),
                               Sign_Extend => False);
 
-         when Attribute_Size
-            | Attribute_Object_Size
+         when Attribute_Size | Attribute_Object_Size
             | Attribute_Value_Size
             | Attribute_Max_Size_In_Storage_Elements =>
 
@@ -889,12 +878,12 @@ package body GNATLLVM.Exprs is
    begin
       --  The back-end supports exactly two types of array aggregates.
       --  One, handled in Emit_Array_Aggregate, is for a fixed-size
-      --  aggregate of fixed-size components.  The other are special cases
-      --  of Others that are tested for in Aggr_Assignment_OK_For_Backend
-      --  in Exp_Aggr.  We have to handle them here because we want to
-      --  store directly into the LHS.  The front end guarantees that any
-      --  Others aggregate will always be the RHS of an assignment, so
-      --  we'll see it here.
+      --  aggregate of fixed-size components.  The other type is special
+      --  cases of Others tested for in Aggr_Assignment_OK_For_Backend in
+      --  Exp_Aggr.  We have to handle them here because we want to store
+      --  directly into the LHS.  The front end guarantees that any Others
+      --  aggregate will always be the RHS of an assignment, so we'll see
+      --  it here.
 
       if Is_Array_Type (Dest_Type) and then Present (E)
         and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
@@ -918,8 +907,8 @@ package body GNATLLVM.Exprs is
       Dest_R := Relationship (Dest);
       Src_R  := Relationship (Src);
 
-      --  If we are assigning to a type that's the nominal constrained
-      --  subtype of an unconstrained array for an aliased object see if
+      --  If we're assigning to a type that's the nominal constrained
+      --  subtype of an unconstrained array for an aliased object, see if
       --  we can get the value and bounds together and store them.  If we
       --  can, do so and we're done.  Otherwise, store the bounds.
 
@@ -933,10 +922,10 @@ package body GNATLLVM.Exprs is
          Maybe_Store_Bounds (LValue, Src, Src_Type, False);
       end if;
 
-      --  We now have three case: where we're copying an object of an
-      --  elementary type, where we're copying an object that's not
-      --  elementary, but can be copied with a Store instruction, or where
-      --  we're copying an object of variable size.
+      --  We now have three case: we're copying an object of an elementary
+      --  type, we're copying an object that's not elementary, but can be
+      --  copied with a Store instruction, or we're copying an object of
+      --  variable size.
 
       if Is_Elementary_Type (Dest_Type) and then Src_R /= Bounds_And_Data then
 
@@ -954,13 +943,12 @@ package body GNATLLVM.Exprs is
       elsif (Present (E) and then Is_Loadable_Type (Full_Etype (E)))
          or else (Present (E_Value) and then Is_Loadable_Type (E_Value))
       then
-         --  Here, we have the situation where the source is of an LLVM
-         --  value small enough to store, but the destination may or may
-         --  not be a variable-sized type.  In that case, since we know the
-         --  size and know the object to store, we can convert Dest to the
-         --  type of the pointer to Src, which we know is fixed-size, and
-         --  do the store.  If Dest is pointer to an array type, we need to
-         --  get the actual array data.
+         --  Here, the source is of an LLVM value small enough to store,
+         --  but the destination may or may not be a variable-sized type.
+         --  Since we know the size and know the object to store, we can
+         --  convert Dest to the type of the pointer to Src, which we know
+         --  is fixed-size, and do the store.  If Dest is pointer to an
+         --  array type, we need to get the actual array data.
 
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
@@ -1123,7 +1111,7 @@ package body GNATLLVM.Exprs is
             Add_Constraint (Output_Constraint);
          end if;
 
-         --  Now collect inputs and add their constraints
+         --  Collect inputs and add their constraints
 
          Setup_Asm_Inputs (N);
          Input := Asm_Input_Value;
@@ -1135,7 +1123,7 @@ package body GNATLLVM.Exprs is
             Input := Asm_Input_Value;
          end loop;
 
-         --  Now add clobber constraints
+         --  Add clobber constraints
 
          Clobber_Setup (N);
          Clobber := Clobber_Get_Next;
@@ -1161,13 +1149,13 @@ package body GNATLLVM.Exprs is
               Get_Character (Get_String_Char (Template_Strval, Int (J)));
          end loop;
 
-         --  Now create the inline asm
+         --  Create the inline asm
 
          Asm := Inline_Asm (Args, Output_Variable, Template,
                             Constraints (1 .. Constraint_Pos),
                             Is_Asm_Volatile (N), False);
 
-         --  If we have an output, generate the vall with an output and store
+         --  If we have an output, generate the call with an output and store
          --  the result.  Otherwise, just do the call.
 
          if Present (Output_Variable) then

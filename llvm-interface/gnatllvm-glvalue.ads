@@ -901,6 +901,13 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Access_Type (V) and then Is_Access_Type (T),
           Post => Is_Access_Type (Pointer_Cast'Result);
 
+   function Pointer_Cast
+     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   is
+     (G_From (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name), V))
+     with Pre  => Is_Access_Type (V) and then Present (T),
+          Post => Is_Access_Type (Pointer_Cast'Result);
+
    function Ptr_To_Ref
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
      with Pre  => Is_Access_Type (V) and then Is_Type (TE),

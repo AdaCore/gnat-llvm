@@ -455,9 +455,18 @@ package body GNATLLVM.Variables is
             return Is_Static_Location (Entity (N));
 
          when N_Defining_Identifier =>
-            return (No (Address_Clause (N))
-                      or else Is_Static_Address (Expression
-                                                   (Address_Clause (N))))
+
+            --  If this is at top level and has an address clause, we'll
+            --  still allocate the variable, but set the initial value to
+            --  be the address, so we can't consider this a static location
+            --  in that case.  If we're not at top level and we do that, we
+            --  could, but it's not worth the trouble because the
+            --  distinction between static and non-static isn't that
+            --  important then.
+
+            return No (Address_Clause (N))
+              and then (No (Renamed_Object (N))
+                          or else Is_Static_Location (Renamed_Object (N)))
               and then Ekind (N) /= E_Enumeration_Literal
               and then (Ekind (Full_Etype (N)) = E_Void
                           or else not Is_Dynamic_Size (Full_Etype (N)))
@@ -551,12 +560,15 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Is_Static_Address (N : Node_Id) return Boolean is
+      TE : constant Entity_Id := Full_Etype (N);
+
    begin
       case Nkind (N) is
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
-            return Is_Static_Address (Expression (N));
+            return Is_Static_Conversion (Full_Etype (Expression (N)), TE)
+              and then Is_Static_Address (Expression (N));
 
          when N_Attribute_Reference =>
             return (Get_Attribute_Id (Attribute_Name (N))
@@ -657,9 +669,8 @@ package body GNATLLVM.Variables is
                return False;
             end if;
 
-            return Is_Static_Address (Expression (N))
-              or else (Is_Static_Conversion (Full_Etype (Expression (N)), TE)
-                         and then Is_No_Elab_Needed (Expression (N)));
+            return Is_Static_Conversion (Full_Etype (Expression (N)), TE)
+              and then Is_No_Elab_Needed (Expression (N));
 
          when N_Attribute_Reference =>
             case Get_Attribute_Id (Attribute_Name (N)) is
@@ -687,13 +698,16 @@ package body GNATLLVM.Variables is
                   return Is_Static_Address (N);
             end case;
 
+         when N_Identifier | N_Expanded_Name =>
+            return Is_No_Elab_Needed (Entity (N));
+
          --  If Emit_Identifier would walk into a constant value, we do as well
 
-         when N_Identifier | N_Expanded_Name =>
-            return Compile_Time_Known_Value (N)
-              or else Is_No_Elab_Needed (Entity (N));
-
          when N_Defining_Identifier =>
+            if Ekind (N) = E_Enumeration_Literal then
+               return True;
+            end if;
+
             declare
                CV : constant Node_Id := Initialized_Value (N);
 

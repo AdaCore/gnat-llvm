@@ -1766,10 +1766,19 @@ package body GNATLLVM.Subprograms is
       V  : GL_Value := Get_Value (Def_Ident);
 
    begin
-      --  If this has an Alias, use that
+      --  If this has an Alias, use that.  But make sure that it's the proper
+      --  type since we may have extension records or slightly different
+      --  subtypes for some parameters.
 
       if Present (Alias (Def_Ident)) then
-         return Emit_Identifier (Alias (Def_Ident));
+         declare
+            T : constant Type_T :=
+              Pointer_Type (Create_Subprogram_Type (Def_Ident), 0);
+
+         begin
+            V := Emit_Identifier (Alias (Def_Ident));
+            return (if Type_Of (V) /= T then Pointer_Cast (V, T) else V);
+         end;
       end if;
 
       --  If we haven't gotten one yet, make it.  Otherwise, see if we need

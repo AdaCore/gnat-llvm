@@ -657,7 +657,8 @@ package body GNATLLVM.Exprs is
             | Attribute_Length | Attribute_Range_Length =>
 
             declare
-               Dim         : constant Nat :=
+               BT          : constant Entity_Id := Full_Base_Type (P_TE);
+               Dim         : constant Nat       :=
                  (if   Present (Expressions (N))
                   then UI_To_Int (Intval (First (Expressions (N)))) - 1
                   else 0);
@@ -666,8 +667,8 @@ package body GNATLLVM.Exprs is
 
             begin
                if Is_Scalar_Type (P_TE) then
-                  Low  := Emit_Expression (Type_Low_Bound  (P_TE));
-                  High := Emit_Expression (Type_High_Bound (P_TE));
+                  Low  := Emit_Convert_Value (Type_Low_Bound  (P_TE), BT);
+                  High := Emit_Convert_Value (Type_High_Bound (P_TE), BT);
 
                   if Attr = Attribute_First then
                      V := Low;

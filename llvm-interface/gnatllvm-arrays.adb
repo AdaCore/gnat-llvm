@@ -1164,7 +1164,7 @@ package body GNATLLVM.Arrays is
             | N_Real_Range_Specification =>
             return N;
          when N_Identifier | N_Expanded_Name =>
-            return Get_Dim_Range (Scalar_Range (Entity (N)));
+            return Get_Dim_Range (Scalar_Range (Full_Entity (N)));
 
          when N_Subtype_Indication =>
             declare
@@ -1176,7 +1176,8 @@ package body GNATLLVM.Arrays is
                   end if;
                else
                   return
-                    Get_Dim_Range (Scalar_Range (Entity (Subtype_Mark (N))));
+                    Get_Dim_Range (Scalar_Range
+                                     (Full_Entity (Subtype_Mark (N))));
                end if;
             end;
 

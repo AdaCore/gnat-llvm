@@ -72,6 +72,9 @@ package GNATLLVM.Environment is
    function Present (L : Label_Info_Id)  return Boolean is
       (L /= Empty_Label_Info_Id);
 
+   pragma Inline (No);
+   pragma Inline (Present);
+
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
 
@@ -263,6 +266,34 @@ package GNATLLVM.Environment is
                   and then (not Has_Label_Info (VE)
                               or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI;
+
+   pragma Inline (Get_Type);
+   pragma Inline (Is_Dynamic_Size);
+   pragma Inline (Is_Being_Elaborated);
+   pragma Inline (Is_Dummy_Type);
+   pragma Inline (Get_TBAA);
+   pragma Inline (Get_Value);
+   pragma Inline (Get_Array_Info);
+   pragma Inline (Get_Orig_Array_Info);
+   pragma Inline (Get_Record_Info);
+   pragma Inline (Get_Label_Info);
+   pragma Inline (Has_Type);
+   pragma Inline (Has_TBAA);
+   pragma Inline (Has_Value);
+   pragma Inline (Has_Array_Info);
+   pragma Inline (Has_Orig_Array_Info);
+   pragma Inline (Has_Record_Info);
+   pragma Inline (Has_Label_Info);
+   pragma Inline (Set_Type);
+   pragma Inline (Set_Is_Dynamic_Size);
+   pragma Inline (Set_Is_Being_Elaborated);
+   pragma Inline (Set_Is_Dummy_Type);
+   pragma Inline (Set_TBAA);
+   pragma Inline (Set_Value);
+   pragma Inline (Set_Array_Info);
+   pragma Inline (Set_Orig_Array_Info);
+   pragma Inline (Set_Record_Info);
+   pragma Inline (Set_Label_Info);
 
    function Get_Insert_Block return Basic_Block_T is
      (Get_Insert_Block (IR_Builder))

@@ -20,6 +20,29 @@ with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 
+   function Get_LLVM_Info_Id         (TE : Entity_Id) return LLVM_Info_Id
+     with Pre => Is_Type (TE);
+   --  Helper for below to get LLVM_Info_Table entry, forcing type
+   --  creation if not done
+
+   function Get_LLVM_Info_Id_For_Set (N : Node_Id) return LLVM_Info_Id;
+   --  Helper for below to allocate LLVM_Info_Table entry if needed.
+   pragma Inline (Get_LLVM_Info_Id);
+   pragma Inline (Get_LLVM_Info_Id_For_Set);
+
+   ----------------------
+   -- Get_LLVM_Info_Id --
+   ----------------------
+
+   function Get_LLVM_Info_Id (TE : Entity_Id) return LLVM_Info_Id is
+   begin
+      if not Has_Type (TE) then
+         Discard (Create_Type (TE));
+      end if;
+
+      return LLVM_Info_Map (TE);
+   end Get_LLVM_Info_Id;
+
    --------------
    -- Get_Type --
    --------------
@@ -32,24 +55,6 @@ package body GNATLLVM.Environment is
          return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Typ;
       end if;
    end Get_Type;
-
-   ---------------------
-   -- Is_Dynamic_Size --
-   ---------------------
-
-   function Is_Dynamic_Size (TE : Entity_Id) return Boolean is
-   begin
-      --  ??? It would be better structuring if we could guarantee that this
-      --  would only be called after the type has been elaborated, but
-      --  we don't yet (and may never) have a good way of early lazy
-      --  elaboration of those types.
-
-      if not Has_Type (TE) then
-         Discard (Create_Type (TE));
-      end if;
-
-      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Is_Dynamic_Size;
-   end Is_Dynamic_Size;
 
    -------------------------
    -- Is_Being_Elaborated --
@@ -72,19 +77,6 @@ package body GNATLLVM.Environment is
         and then LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Is_Dummy_Type;
    end Is_Dummy_Type;
 
-   --------------
-   -- Get_TBAA --
-   --------------
-
-   function Get_TBAA (TE : Entity_Id) return Metadata_T is
-   begin
-      if not Has_Type (TE) then
-         Discard (Create_Type (TE));
-      end if;
-
-      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).TBAA;
-   end Get_TBAA;
-
    ---------------
    -- Get_Value --
    ---------------
@@ -97,45 +89,6 @@ package body GNATLLVM.Environment is
          return LLVM_Info_Table.Table (LLVM_Info_Map (VE)).Value;
       end if;
    end Get_Value;
-
-   ---------------------
-   -- Get_Array_Info --
-   ---------------------
-
-   function Get_Array_Info (TE : Entity_Id) return Array_Info_Id is
-   begin
-      if not Has_Type (TE) then
-         Discard (Create_Type (TE));
-      end if;
-
-      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Array_Info;
-   end Get_Array_Info;
-
-   ---------------------
-   -- Get_Orig_Array_Info --
-   ---------------------
-
-   function Get_Orig_Array_Info (TE : Entity_Id) return Array_Info_Id is
-   begin
-      if not Has_Type (TE) then
-         Discard (Create_Type (TE));
-      end if;
-
-      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Orig_Array_Info;
-   end Get_Orig_Array_Info;
-
-   ---------------------
-   -- Get_Record_Info --
-   ---------------------
-
-   function Get_Record_Info (TE : Entity_Id) return Record_Info_Id is
-   begin
-      if not Has_Type (TE) then
-         Discard (Create_Type (TE));
-      end if;
-
-      return LLVM_Info_Table.Table (LLVM_Info_Map (TE)).Record_Info;
-   end Get_Record_Info;
 
    --------------------
    -- Get_Field_Info --
@@ -165,14 +118,66 @@ package body GNATLLVM.Environment is
 
    end Get_Label_Info;
 
-   function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id;
-   --  Helper for below to allocate LLVM_Info_Table entry if needed.
+   ---------------------
+   -- Is_Dynamic_Size --
+   ---------------------
 
-   ----------------------
-   -- Get_LLVM_Info_Id --
-   ----------------------
+   function Is_Dynamic_Size (TE : Entity_Id) return Boolean is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
 
-   function Get_LLVM_Info_Id (N : Node_Id) return LLVM_Info_Id
+   begin
+      return LLVM_Info_Table.Table (Id).Is_Dynamic_Size;
+   end Is_Dynamic_Size;
+
+   --------------
+   -- Get_TBAA --
+   --------------
+
+   function Get_TBAA (TE : Entity_Id) return Metadata_T is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+
+   begin
+      return LLVM_Info_Table.Table (Id).TBAA;
+   end Get_TBAA;
+
+   ---------------------
+   -- Get_Array_Info --
+   ---------------------
+
+   function Get_Array_Info (TE : Entity_Id) return Array_Info_Id is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+
+   begin
+      return LLVM_Info_Table.Table (Id).Array_Info;
+   end Get_Array_Info;
+
+   ---------------------
+   -- Get_Orig_Array_Info --
+   ---------------------
+
+   function Get_Orig_Array_Info (TE : Entity_Id) return Array_Info_Id is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+
+   begin
+      return LLVM_Info_Table.Table (Id).Orig_Array_Info;
+   end Get_Orig_Array_Info;
+
+   ---------------------
+   -- Get_Record_Info --
+   ---------------------
+
+   function Get_Record_Info (TE : Entity_Id) return Record_Info_Id is
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+
+   begin
+      return LLVM_Info_Table.Table (Id).Record_Info;
+   end Get_Record_Info;
+
+   ------------------------------
+   -- Get_LLVM_Info_Id_For_Set --
+   ------------------------------
+
+   function Get_LLVM_Info_Id_For_Set (N : Node_Id) return LLVM_Info_Id
    is
       Id : LLVM_Info_Id := LLVM_Info_Map (N);
 
@@ -195,14 +200,14 @@ package body GNATLLVM.Environment is
          LLVM_Info_Map (N) := Id;
          return Id;
       end if;
-   end Get_LLVM_Info_Id;
+   end Get_LLVM_Info_Id_For_Set;
 
    --------------
    -- Set_Type --
    --------------
 
    procedure Set_Type (TE : Entity_Id; TL : Type_T) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Typ := TL;
@@ -213,7 +218,7 @@ package body GNATLLVM.Environment is
    -------------------------
 
    procedure Set_Is_Dynamic_Size (TE : Entity_Id; B : Boolean := True) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Is_Dynamic_Size := B;
@@ -224,7 +229,7 @@ package body GNATLLVM.Environment is
    -----------------------------
 
    procedure Set_Is_Being_Elaborated (TE : Entity_Id; B : Boolean) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Is_Being_Elaborated := B;
@@ -235,7 +240,7 @@ package body GNATLLVM.Environment is
    -----------------------
 
    procedure Set_Is_Dummy_Type (TE : Entity_Id; B : Boolean) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Is_Dummy_Type := B;
@@ -246,7 +251,7 @@ package body GNATLLVM.Environment is
    --------------
 
    procedure Set_TBAA (TE : Entity_Id; TBAA : Metadata_T) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).TBAA := TBAA;
@@ -257,7 +262,7 @@ package body GNATLLVM.Environment is
    ---------------
 
    procedure Set_Value (VE : Entity_Id; VL : GL_Value) is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (VE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (VE);
 
    begin
       LLVM_Info_Table.Table (Id).Value :=  VL;
@@ -269,7 +274,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Array_Info := AI;
@@ -281,7 +286,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Orig_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Orig_Array_Info := AI;
@@ -293,7 +298,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Record_Info (TE : Entity_Id; RI : Record_Info_Id)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (TE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (TE);
 
    begin
       LLVM_Info_Table.Table (Id).Record_Info := RI;
@@ -305,7 +310,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Field_Info (VE : Entity_Id; FI : Field_Info_Id)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (VE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (VE);
 
    begin
       LLVM_Info_Table.Table (Id).Field_Info := FI;
@@ -317,7 +322,7 @@ package body GNATLLVM.Environment is
 
    procedure Set_Label_Info (VE : Entity_Id; LI : Label_Info_Id)
    is
-      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id (VE);
+      Id : constant LLVM_Info_Id := Get_LLVM_Info_Id_For_Set (VE);
 
    begin
       LLVM_Info_Table.Table (Id).Label_Info := LI;

@@ -140,7 +140,7 @@ package GNATLLVM.Environment is
       Table_Increment      => 100,
       Table_Name           => "LLVM_Info_Table");
 
-   type LLVM_Info_Array is array (Node_Id range <>) of LLVM_Info_Id;
+   type LLVM_Info_Array is array (Node_Id range <>) of aliased LLVM_Info_Id;
    type Ptr_LLVM_Info_Array is access all LLVM_Info_Array;
 
    LLVM_Info_Map             : Ptr_LLVM_Info_Array;
@@ -179,37 +179,14 @@ package GNATLLVM.Environment is
    function Get_Label_Info      (VE : Entity_Id)  return Label_Info_Id
      with Pre => Present (VE);
 
-   function Has_Type            (TE : Entity_Id) return Boolean is
-      (Present (Get_Type (TE)))
-     with Pre => Is_Type (TE);
-
-   function Has_TBAA            (TE : Entity_Id) return Boolean is
-      (Present (Get_TBAA (TE)))
-     with Pre => Is_Type (TE);
-
-   function Has_Value           (VE : Entity_Id) return Boolean is
-      (Present (Get_Value (VE)))
-     with Pre => Present (VE);
-
-   function Has_Array_Info      (TE : Entity_Id) return Boolean is
-      (Has_Type (TE) and then Present (Get_Array_Info (TE)))
-     with Pre  => Is_Array_Type (TE);
-
-   function Has_Orig_Array_Info (TE : Entity_Id) return Boolean is
-      (Has_Type (TE) and then Present (Get_Orig_Array_Info (TE)))
-     with Pre  => Is_Packed_Array_Impl_Type (TE);
-
-   function Has_Record_Info     (TE : Entity_Id) return Boolean is
-      (Has_Type (TE) and then Present (Get_Record_Info (TE)))
-     with Pre => Is_Record_Type (TE);
-
-   function Has_Field_Info      (VE : Entity_Id)  return Boolean is
-      (Present (Get_Field_Info (VE)))
-     with Pre => Ekind_In (VE, E_Discriminant, E_Component);
-
-   function Has_Label_Info      (VE : Entity_Id)  return Boolean is
-      (Present (Get_Label_Info (VE)))
-     with Pre => Present (VE);
+   function Has_Type            (TE : Entity_Id) return Boolean;
+   function Has_Value           (VE : Entity_Id) return Boolean;
+   function Has_Field_Info      (VE : Entity_Id) return Boolean;
+   function Has_Label_Info      (VE : Entity_Id) return Boolean;
+   function Has_TBAA            (TE : Entity_Id) return Boolean;
+   function Has_Array_Info      (TE : Entity_Id) return Boolean;
+   function Has_Orig_Array_Info (TE : Entity_Id) return Boolean;
+   function Has_Record_Info     (TE : Entity_Id) return Boolean;
 
    procedure Set_Type            (TE : Entity_Id; TL : Type_T)
      with Pre  => Is_Type (TE) and then (Present (TL) or else Has_Type (TE))

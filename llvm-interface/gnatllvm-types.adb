@@ -83,7 +83,7 @@ package body GNATLLVM.Types is
    --  Return True if converting V to type TE won't change any bits
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
-     with Pre => Is_Type (T_Need) and then Is_Type (T_Have);
+     with Pre => Is_Record_Type (T_Need) and then Is_Record_Type (T_Have);
    --  True if T_Have is a parent type of T_Need
 
    function Get_Alloc_Size
@@ -774,8 +774,17 @@ package body GNATLLVM.Types is
    -------------------------
 
    procedure Add_To_LValue_List (V : GL_Value) is
+      TE : constant Entity_Id := Related_Type (V);
+
    begin
-      LValue_Pair_Table.Append (V);
+      --  Only add to the LValue list if this is a record type.  We might
+      --  be tempted to do this only if the type has discriminants, but
+      --  that doesn't work because a parent might and it's not worth
+      --  checking.
+
+      if Is_Record_Type (TE) then
+         LValue_Pair_Table.Append (V);
+      end if;
    end Add_To_LValue_List;
 
    -------------------------
@@ -784,9 +793,7 @@ package body GNATLLVM.Types is
 
    function Add_To_LValue_List (V : GL_Value) return GL_Value is
    begin
-      if Is_Record_Type (Related_Type (V)) then
-         Add_To_LValue_List (V);
-      end if;
+      Add_To_LValue_List (V);
       return V;
    end Add_To_LValue_List;
 
@@ -795,20 +802,19 @@ package body GNATLLVM.Types is
    ------------------
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean is
+      BT_Need : constant Entity_Id := Full_Base_Type (T_Need);
+      BT_Have : constant Entity_Id := Full_Base_Type (T_Have);
+
    begin
       --  If the two types are the same return True.  Likewise if
       --  T_Have has a parent different than itself and that and this
       --  relation holds for that.
 
-      if T_Need = T_Have then
-         return True;
-      elsif Ekind (T_Have) = E_Record_Type
-        and then Full_Etype (T_Have) /= T_Have
-      then
-         return Is_Parent_Of (T_Need, Full_Etype (T_Have));
-      else
-         return False;
-      end if;
+      return BT_Need = BT_Have
+        or else (Full_Etype (BT_Have) /= BT_Have
+                   and then Is_Parent_Of (BT_Need, Full_Etype (BT_Have)))
+        or else (Present (Parent_Subtype (BT_Have))
+                   and then Is_Parent_Of (BT_Need, Parent_Subtype (BT_Have)));
 
    end Is_Parent_Of;
 
@@ -823,12 +829,8 @@ package body GNATLLVM.Types is
       --  object will have been added last.
 
       for J in reverse LValue_Pair_First .. LValue_Pair_Table.Last loop
-         if Is_Parent_Of (T_Need => Full_Base_Type (TE),
-                          T_Have => Full_Base_Type
-                            (LValue_Pair_Table.Table (J).Typ))
-           or else Is_Parent_Of (T_Have => Full_Base_Type (TE),
-                                 T_Need => Full_Base_Type
-                                   (LValue_Pair_Table.Table (J).Typ))
+         if Is_Parent_Of (TE, LValue_Pair_Table.Table (J).Typ)
+           or else Is_Parent_Of (LValue_Pair_Table.Table (J).Typ, TE)
          then
             return Convert_Ref (LValue_Pair_Table.Table (J), TE);
          end if;
@@ -943,6 +945,8 @@ package body GNATLLVM.Types is
                return Get_Fullest_View (Non_Limited_View (TE), Include_PAT);
             elsif Present (Full_View (TE)) then
                return Get_Fullest_View (Full_View (TE), Include_PAT);
+            elsif Ekind (TE) = E_Incomplete_Subtype then
+               return Get_Fullest_View (Etype (TE));
             end if;
 
          when Private_Kind =>
@@ -1228,10 +1232,12 @@ package body GNATLLVM.Types is
             T := Create_Subprogram_Type (TE);
 
          when E_Incomplete_Type =>
-            --  This is a Taft Amendment type, so return a dummy type that
-            --  we can take a pointer to.
+            --  This is normally a Taft Amendment type, so return a
+            --  dummy type that we can take a pointer to.  But it may also
+            --  be an actual type in the case of an error, so use something
+            --  that we can take the size an alignment of.
 
-            T := Struct_Create_Named (Context, Get_Name (TE));
+            T := Int_Ty (8);
 
          when others =>
             Error_Msg_N

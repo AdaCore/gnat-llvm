@@ -361,9 +361,7 @@ package body GNATLLVM.Subprograms is
    -- Get_Param_By_Ref_Kind --
    ---------------------------
 
-   function Get_Param_By_Ref_Kind
-     (TE : Entity_Id) return Param_By_Ref_Kind
-   is
+   function Get_Param_By_Ref_Kind (TE : Entity_Id) return Param_By_Ref_Kind is
       Ptr_Size : constant ULL := Get_LLVM_Type_Size (Void_Ptr_Type);
 
    begin

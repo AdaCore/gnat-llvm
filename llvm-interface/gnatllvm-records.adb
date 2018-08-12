@@ -276,13 +276,14 @@ package body GNATLLVM.Records is
    ---------------------------------
 
    function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value is
-      Rec_Type : constant Entity_Id := Full_Scope (E);
-      TE       : constant Entity_Id := Full_Etype (E);
+      Rec_Type   : constant Entity_Id := Full_Scope (E);
+      TE         : constant Entity_Id := Full_Etype (E);
 
    begin
       --  See if we've pushed a subtype of this record type into our
       --  stack of record subtypes.  If so, get the discriminant constraint
-      --  from that subtype.
+      --  from that subtype.  But ignore a constraint on this discriminant
+      --  that just repeats the discriminant.
 
       for J in reverse 1 .. Subtype_Stack.Last loop
          if Full_Base_Type (Subtype_Stack.Table (J)) = Rec_Type then
@@ -580,8 +581,7 @@ package body GNATLLVM.Records is
          --  a special name.
 
          function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
-           with Pre  => Is_Static_Expression (N) and then Present (Alts),
-           Post => Present (Find_Choice'Result);
+           with Pre => Is_Static_Expression (N) and then Present (Alts);
          --  N is a static expression and Alts is a list of alternatives.
          --  Return which alternate has a Choice that covers N.
 
@@ -622,7 +622,7 @@ package body GNATLLVM.Records is
             Low, High   : Uint;
 
          begin
-            Alt := First (Alts);
+            Alt := First_Non_Pragma (Alts);
             while Present (Alt) loop
                Choice := First (Discrete_Choices (Alt));
                if Nkind (Choice) = N_Others_Choice then
@@ -638,7 +638,7 @@ package body GNATLLVM.Records is
                   Next (Choice);
                end loop;
 
-               Next (Alt);
+               Next_Non_Pragma (Alt);
             end loop;
 
             return Empty;
@@ -711,15 +711,17 @@ package body GNATLLVM.Records is
 
             --  Otherwise process variants.  If we statically constrain the
             --  variant, see which variant is being referenced and output
-            --  that one.  walk the proper variant here to verify that
+            --  that one.  Walk the proper variant here to verify that
             --  ever.  Otherwise, set up for the variant, make the entres
             --  for each variant, and then create the RI for the variant.
+            --  In the case of an error, there may not be a match.
 
             if Static_Constraint then
-               Add_Component_List (Component_List
-                                     (Find_Choice (Constraining_Expr,
-                                                   Variants (Var_Part))),
-                                   From_Rec, No_Name);
+               Variant := Find_Choice (Constraining_Expr, Variants (Var_Part));
+               if Present (Variant) then
+                  Add_Component_List (Component_List (Variant), From_Rec,
+                                      No_Name);
+               end if;
                return;
             end if;
 
@@ -1329,17 +1331,18 @@ package body GNATLLVM.Records is
       Idx       : Record_Info_Id;
       Max_Size  : Boolean := False) return GL_Value
    is
-      Total_Size : GL_Value       := Size_Const_Null;
-      Cur_Align  : GL_Value       :=
+      Total_Size   : GL_Value       := Size_Const_Null;
+      Cur_Align    : GL_Value       :=
         Size_Const_Int (ULL (Get_Maximum_Alignment));
-      Cur_Idx    : Record_Info_Id :=
+      Cur_Idx      : Record_Info_Id :=
         (if Present (Start_Idx) then Start_Idx elsif Present (TE)
          then Get_Record_Info (TE) else Empty_Record_Info_Id);
-      This_Size  : GL_Value       := No_GL_Value;
-      Must_Align : GL_Value       := Size_Const_Int (Uint_1);
-      This_Align : GL_Value;
-      New_Idx    : Record_Info_Id;
-      RI         : Record_Info;
+      This_Size    : GL_Value       := No_GL_Value;
+      Must_Align   : GL_Value       := Size_Const_Int (Uint_1);
+      Pushed_Stack : Boolean        := False;
+      This_Align   : GL_Value;
+      New_Idx      : Record_Info_Id;
+      RI           : Record_Info;
 
    begin
       Push_Debug_Freeze_Pos;
@@ -1355,8 +1358,12 @@ package body GNATLLVM.Records is
       --  If this is a subtype, push it onto the stack we use to search for
       --  discriminant values.
 
-      if Present (TE) and then Is_Constrained (TE) then
+      if Present (TE) and then Ekind (TE) = E_Record_Subtype
+        and then Has_Discriminants (Full_Base_Type (TE))
+        and then Is_Constrained (TE)
+      then
          Subtype_Stack.Append (TE);
+         Pushed_Stack := True;
       end if;
 
       --  Look at each piece of the record and find its value and alignment.
@@ -1422,7 +1429,7 @@ package body GNATLLVM.Records is
          Must_Align := Size_Const_Int (ULL (Get_Type_Alignment (TE)));
       end if;
 
-      if Present (TE) and then Is_Constrained (TE) then
+      if Pushed_Stack then
          Subtype_Stack.Decrement_Last;
       end if;
 
@@ -1506,7 +1513,6 @@ package body GNATLLVM.Records is
       --  to see if we can come up with the right field.
 
       if No (F_Idx) then
-         pragma Assert (Ekind (Rec_Type) = E_Record_Subtype);
          pragma Assert (Has_Discriminants (Rec_Type));
 
          if Rec_Type /= Scope (Field) then

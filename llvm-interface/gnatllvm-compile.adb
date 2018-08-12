@@ -64,6 +64,14 @@ package body GNATLLVM.Compile is
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
    begin
+      --  If we read a target config file, we may not have called our
+      --  initialization yet, so do it here.
+
+      if Context = Context_T (System.Null_Address) then
+         Scan_Command_Line;
+         Initialize_LLVM_Target;
+      end if;
+
       --  We can't use a qualified expression here because that will cause
       --  a temporary to be placed in our stack and if the array is very
       --  large, it will blow our stack.

@@ -1360,7 +1360,8 @@ package body GNATLLVM.Variables is
       elsif Has_Value (Def_Ident) then
          pragma Assert (In_Elab_Proc);
 
-         Store (Emit_LValue (Name (N)), Get_Value (Def_Ident));
+         Store (Convert_Ref (Emit_LValue (Name (N)), TE),
+                Get_Value (Def_Ident));
 
       --  If this is a constant, just use the value of the expression for
       --  this object.  Otherwise, get the LValue of the expression, but

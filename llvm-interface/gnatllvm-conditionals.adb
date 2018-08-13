@@ -22,7 +22,6 @@ with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 

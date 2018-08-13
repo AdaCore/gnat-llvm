@@ -17,8 +17,6 @@
 
 with Table; use Table;
 
-with LLVM.Core;   use LLVM.Core;
-
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Environment is
@@ -271,9 +269,5 @@ package GNATLLVM.Environment is
    pragma Inline (Set_Orig_Array_Info);
    pragma Inline (Set_Record_Info);
    pragma Inline (Set_Label_Info);
-
-   function Get_Insert_Block return Basic_Block_T is
-     (Get_Insert_Block (IR_Builder))
-     with Post => Present (Get_Insert_Block'Result);
 
 end GNATLLVM.Environment;

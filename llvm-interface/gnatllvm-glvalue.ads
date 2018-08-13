@@ -1560,6 +1560,10 @@ package GNATLLVM.GLValue is
      with Pre  => Present (Func) and then Is_Type (TE),
           Post => Present (Get_Param'Result);
 
+   function Get_Insert_Block return Basic_Block_T is
+     (Get_Insert_Block (IR_Builder))
+     with Post => Present (Get_Insert_Block'Result);
+
    function Does_Not_Throw (V : GL_Value) return Boolean is
      (Does_Not_Throw (LLVM_Value (V)))
      with Pre => Present (V);

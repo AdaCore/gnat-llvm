@@ -57,17 +57,6 @@ package body GNATLLVM.Environment is
      (LI.Orig_Array_Info);
    function Raw_Get_Record (LI : Access_LLVM_Info) return Record_Info_Id is
      (LI.Record_Info);
-   pragma Inline (Raw_Get_Type);
-   pragma Inline (Raw_Get_Value);
-   pragma Inline (Raw_Get_Elab);
-   pragma Inline (Raw_Get_Dummy);
-   pragma Inline (Raw_Get_Field);
-   pragma Inline (Raw_Get_Label);
-   pragma Inline (Raw_Get_Dyn);
-   pragma Inline (Raw_Get_TBAA);
-   pragma Inline (Raw_Get_Array);
-   pragma Inline (Raw_Get_O_A);
-   pragma Inline (Raw_Get_Record);
 
    --  Define procedures to set values into LLVM_Info
 
@@ -82,6 +71,7 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_Array  (LI : Access_LLVM_Info; Val : Array_Info_Id);
    procedure Raw_Set_O_A    (LI : Access_LLVM_Info; Val : Array_Info_Id);
    procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id);
+
    pragma Inline (Raw_Set_Type);
    pragma Inline (Raw_Set_Value);
    pragma Inline (Raw_Set_Elab);
@@ -181,12 +171,12 @@ package body GNATLLVM.Environment is
       with procedure Setter (LI : Access_LLVM_Info; Val : Obj);
    package Pkg_None is
       function  Get (E : Entity_Id) return Obj;
-      function  Has (E : Entity_Id) return Boolean;
+      function  Has (E : Entity_Id) return Boolean is (Get (E) /= None);
       procedure Set (E : Entity_Id; Val : Obj);
 
       pragma Inline (Get);
-      pragma Inline (Has);
       pragma Inline (Set);
+
    end Pkg_None;
 
    package body Pkg_None is
@@ -206,24 +196,14 @@ package body GNATLLVM.Environment is
       end Get;
 
       ---------
-      -- Has --
-      ---------
-
-      function Has (E : Entity_Id) return Boolean is
-      begin
-         return Get (E) /= None;
-      end Has;
-
-      ---------
       -- Set --
       ---------
 
       procedure Set (E : Entity_Id; Val : Obj) is
-         LI : constant Access_LLVM_Info := Get_LLVM_Info_For_Set (E);
-
       begin
-         Setter (LI, Val);
+         Setter (Get_LLVM_Info_For_Set (E), Val);
       end Set;
+
    end Pkg_None;
 
    --  Likewise when we always elaborate the type first
@@ -238,46 +218,25 @@ package body GNATLLVM.Environment is
       with function  Getter (LI : Access_LLVM_Info) return Obj;
       with procedure Setter (LI : Access_LLVM_Info; Val : Obj);
    package Pkg_Elab is
-      function  Get (E : Entity_Id) return Obj;
-      function  Has (E : Entity_Id) return Boolean;
+      function  Get (E : Entity_Id) return Obj is (Getter (Get_LLVM_Info (E)));
+      function  Has (E : Entity_Id) return Boolean is (Get (E) /= None);
       procedure Set (E : Entity_Id; Val : Obj);
 
-      pragma Inline (Get);
-      pragma Inline (Has);
       pragma Inline (Set);
+
    end Pkg_Elab;
 
    package body Pkg_Elab is
-
-      ---------
-      -- Get --
-      ---------
-
-      function Get (E : Entity_Id) return Obj is
-         LI : constant Access_LLVM_Info := Get_LLVM_Info (E);
-      begin
-         return Getter (LI);
-      end Get;
-
-      ---------
-      -- Has --
-      ---------
-
-      function Has (E : Entity_Id) return Boolean is
-      begin
-         return Get (E) /= None;
-      end Has;
 
       ---------
       -- Set --
       ---------
 
       procedure Set (E : Entity_Id; Val : Obj) is
-         LI : constant Access_LLVM_Info := Get_LLVM_Info_For_Set (E);
-
       begin
-         Setter (LI, Val);
+         Setter (Get_LLVM_Info_For_Set (E), Val);
       end Set;
+
    end Pkg_Elab;
 
    --  Instantiate the above packages to make the rest of the

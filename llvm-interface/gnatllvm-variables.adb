@@ -1296,8 +1296,7 @@ package body GNATLLVM.Variables is
       elsif Ekind (Def_Ident) = E_Constant
         and then Is_True_Constant (Def_Ident) and then Present (Value)
         and then not Is_Aliased (Def_Ident)
-        and then not Address_Taken (Def_Ident)
-        and then not Is_Reference (Value)
+        and then not Address_Taken (Def_Ident) and then Is_Data (Value)
       then
          if Is_Elementary_Type (TE) then
             LLVM_Var := Convert (Value, TE);

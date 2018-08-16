@@ -207,7 +207,7 @@ package GNATLLVM.Environment is
      with Pre  => Is_Type (TE) and then Present (TBAA) and then Has_Type (TE),
           Post => Get_TBAA (TE) = TBAA;
 
-   procedure Set_Value           (VE : Entity_Id; VL : GL_Value)
+   procedure Set_Value_R         (VE : Entity_Id; VL : GL_Value)
      with Pre  => Present (VE) and then Present (VL)
                   and then (not Has_Value (VE) or else Get_Value (VE) = VL),
           Post => Get_Value (VE) = VL;
@@ -264,7 +264,7 @@ package GNATLLVM.Environment is
    pragma Inline (Set_Is_Being_Elaborated);
    pragma Inline (Set_Is_Dummy_Type);
    pragma Inline (Set_TBAA);
-   pragma Inline (Set_Value);
+   pragma Inline (Set_Value_R);
    pragma Inline (Set_Array_Info);
    pragma Inline (Set_Orig_Array_Info);
    pragma Inline (Set_Record_Info);

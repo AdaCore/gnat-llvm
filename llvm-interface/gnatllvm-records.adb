@@ -1691,7 +1691,7 @@ package body GNATLLVM.Records is
                           Emit_Convert_Value (Expression (Expr), F_Type);
 
                      begin
-                        if not Is_Reference (Result) then
+                        if Is_Data (Result) then
 
                            --  If this field had a dummy type, convert our
                            --  expression into it.

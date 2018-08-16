@@ -170,14 +170,14 @@ package body GNATLLVM.GLValue is
    ---------------------
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean is
-     (not Is_Reference (V) and then Is_Dynamic_Size (Full_Etype (V)));
+     (Is_Data (V) and then Is_Dynamic_Size (Full_Etype (V)));
 
    ----------------------
    -- Is_Loadable_Type --
    ----------------------
 
    function Is_Loadable_Type (V : GL_Value) return Boolean is
-     (not Is_Reference (V) and then Is_Loadable_Type (Related_Type (V)));
+     (Is_Data (V) and then Is_Loadable_Type (Related_Type (V)));
 
    -------------
    -- Discard --
@@ -355,6 +355,15 @@ package body GNATLLVM.GLValue is
                    and then Relationship (V) /= Fat_Reference_To_Subprogram);
 
    end Equiv_Relationship;
+
+   ---------------
+   -- Set_Value --
+   ---------------
+
+   procedure Set_Value (VE : Entity_Id; VL : GL_Value) is
+   begin
+      Set_Value_R (VE, Not_Pristine (VL));
+   end Set_Value;
 
    ---------
    -- Get --
@@ -670,7 +679,7 @@ package body GNATLLVM.GLValue is
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (T));
       Done_Promoting_Alloca (Inst, Promote);
-      return G (Inst, TE, R);
+      return G (Inst, TE, R, Is_Pristine => True);
    end Alloca;
 
    ------------------
@@ -688,7 +697,7 @@ package body GNATLLVM.GLValue is
    begin
       Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
       Save_Stack_Pointer;
-      return G_Ref (Inst, TE);
+      return G_Ref (Inst, TE, Is_Pristine => True);
    end Array_Alloca;
 
    ---------------
@@ -841,7 +850,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
                       Type_For_Relationship (TE, R), Name),
-          TE, R));
+          TE, R, Is_Pristine (V)));
 
    ----------------
    -- Ptr_To_Int --
@@ -850,7 +859,8 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Int
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-     (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
+      (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE,
+          Data, Is_Pristine (V)));
 
    --------------
    -- Bit_Cast --
@@ -880,7 +890,7 @@ package body GNATLLVM.GLValue is
    is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                        Create_Dummy_Access_Type (Related_Type (V)), Name),
-         Related_Type (V), Unknown));
+         Related_Type (V), Unknown, Is_Pristine (V)));
 
    ----------------
    -- Ptr_To_Ref --
@@ -889,9 +899,9 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Ref
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
-      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                            Pointer_Type (Create_Type (TE), 0), Name),
-              TE));
+     (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                           Pointer_Type (Create_Type (TE), 0), Name),
+             TE, Is_Pristine => Is_Pristine (V)));
 
    ----------------
    -- Ptr_To_Ref --
@@ -899,9 +909,9 @@ package body GNATLLVM.GLValue is
 
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
    is
-      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                            Pointer_Type (Type_Of (T), 0), Name),
-              Full_Designated_Type (T)));
+     (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                           Pointer_Type (Type_Of (T), 0), Name),
+             Full_Designated_Type (T), Is_Pristine => Is_Pristine (V)));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -915,7 +925,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Type_For_Relationship (TE, R), Name),
-          TE, R));
+          TE, R, Is_Pristine (V)));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -928,7 +938,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Type_For_Relationship (Related_Type (T), R), Name),
-          Related_Type (T), R));
+          Related_Type (T), R, Is_Pristine (V)));
 
    -----------
    -- Trunc --
@@ -1123,7 +1133,7 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G_Ref (Result, Result_Type);
+      return G_Ref (Result, Result_Type, Is_Pristine => Is_Pristine (Ptr));
    end GEP;
 
    -------------
@@ -1146,7 +1156,7 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G_Ref (Result, Result_Type);
+      return G_Ref (Result, Result_Type, Is_Pristine => Is_Pristine (Ptr));
    end GEP_Idx;
 
    -------------------------
@@ -1170,7 +1180,7 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, Result_Type, R);
+      return G (Result, Result_Type, R, Is_Pristine => Is_Pristine (Ptr));
    end GEP_To_Relationship;
 
    ----------

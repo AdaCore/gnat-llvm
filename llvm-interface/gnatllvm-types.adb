@@ -339,7 +339,7 @@ package body GNATLLVM.Types is
       --  Avoid confusing [0 x T] as both a zero-size constrained type and
       --  the type used for a variable-sized type.
 
-      elsif not Is_Reference (Result) and then not Is_Dynamic_Size (TE)
+      elsif Is_Data (Result) and then not Is_Dynamic_Size (TE)
         and then Type_Of (Result) = Create_Type (TE)
       then
          Result := G_Is (Result, TE);
@@ -438,6 +438,7 @@ package body GNATLLVM.Types is
       end if;
 
    end Normalize_Access_Type;
+
    -------------
    -- Convert --
    -------------
@@ -557,7 +558,7 @@ package body GNATLLVM.Types is
       In_R   : constant GL_Relationship := Relationship (V);
       In_TE  : constant Entity_Id       := Related_Type (V);
       As_Ref : constant GL_Value        :=
-        (if   In_R /= Reference_To_Subprogram and then Is_Access_Type (In_TE)
+        (if   Is_Data (V) and then Is_Access_Type (In_TE)
          then From_Access (V) else V);
       R      : constant GL_Relationship := Relationship_For_Access_Type (TE);
       Result : GL_Value;
@@ -1330,7 +1331,7 @@ package body GNATLLVM.Types is
       --  nominal type for alias to unconstrained case.
 
       if R = Reference_To_Bounds_And_Data then
-         if Present (V) and then not Is_Reference (V) then
+         if Present (V) and then Is_Data (V) then
             New_V  := Get (V, Bounds_And_Data);
             Memory := Ptr_To_Relationship (Memory, New_V, R);
          else

@@ -220,7 +220,7 @@ package GNATLLVM.Subprograms is
 
    Activation_Rec_Param     : GL_Value   := No_GL_Value;
    --  Parameter to this subprogram, if any, that represents an
-   --  activtion record.
+   --  activation record, expressed as a reference to the record.
 
    Return_Address_Param     : GL_Value   := No_GL_Value;
    --  Parameter to this subprogram, if any, that represent the address

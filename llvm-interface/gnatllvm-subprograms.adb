@@ -984,7 +984,8 @@ package body GNATLLVM.Subprograms is
          pragma Assert (Present (First_Field)
                           and then Is_Access_Type (Full_Etype (First_Field)));
          return Get_Activation_Record_Ptr
-           (Load (Record_Field_Offset (V, First_Field)), E);
+           (From_Access (Load (Record_Field_Offset (V, First_Field))),
+            E);
       end if;
    end Get_Activation_Record_Ptr;
 
@@ -1115,7 +1116,7 @@ package body GNATLLVM.Subprograms is
             end if;
 
             if PK = Activation_Record then
-               Activation_Rec_Param := LLVM_Param;
+               Activation_Rec_Param := From_Access (LLVM_Param);
             end if;
 
             --  Add the parameter to the environnment
@@ -1843,8 +1844,7 @@ package body GNATLLVM.Subprograms is
 
       procedure Write_Back (In_LHS, In_RHS : GL_Value)
         with Pre => Present (In_LHS) and then Present (In_RHS)
-                    and then not Is_Reference (In_RHS)
-                    and then Is_Reference (In_LHS);
+                    and then Is_Data (In_RHS) and then Is_Reference (In_LHS);
       --  Write the value in In_RHS to the location In_LHS
 
       Subp             : Node_Id              := Name (N);

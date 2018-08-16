@@ -683,11 +683,11 @@ package body GNATLLVM.Compile is
                Result := Heap_Allocate_For_Type
                  (Full_Designated_Type (TE), Typ, Value,
                   Procedure_To_Call (N), Storage_Pool (N));
-               return Convert (Result, TE);
+               return Convert_To_Access (Result, TE);
             end;
 
          when N_Reference =>
-            return Convert (Emit_LValue (Prefix (N)), TE);
+            return Convert_To_Access (Emit_LValue (Prefix (N)), TE);
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (N);

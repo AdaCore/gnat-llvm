@@ -267,13 +267,19 @@ package body GNATLLVM.Environment is
 
    --  Now complete our job by renaming the subprograms created above
 
-   function  Get_Type (TE : Entity_Id) return Type_T renames Env_Type.Get;
-   function  Has_Type (TE : Entity_Id) return Boolean renames Env_Type.Has;
-   procedure Set_Type (TE : Entity_Id; TL : Type_T) renames Env_Type.Set;
+   function  Get_Type                (TE : Entity_Id) return Type_T
+     renames Env_Type.Get;
+   function  Has_Type                (TE : Entity_Id) return Boolean
+     renames Env_Type.Has;
+   procedure Set_Type                (TE : Entity_Id; TL : Type_T)
+     renames Env_Type.Set;
 
-   function  Get_Value (VE : Entity_Id) return GL_Value renames Env_Value.Get;
-   function  Has_Value (VE : Entity_Id) return Boolean renames Env_Value.Has;
-   procedure Set_Value (VE : Entity_Id; VL : GL_Value) renames Env_Value.Set;
+   function  Get_Value                (VE : Entity_Id) return GL_Value
+     renames Env_Value.Get;
+   function  Has_Value                (VE : Entity_Id) return Boolean
+     renames Env_Value.Has;
+   procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)
+     renames Env_Value.Set;
 
    function  Is_Being_Elaborated     (TE : Entity_Id) return Boolean
      renames Env_Elab.Get;

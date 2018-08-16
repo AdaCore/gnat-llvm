@@ -633,7 +633,7 @@ package body GNATLLVM.Exprs is
             --  same constraints.  But we do have to be sure that it's of
             --  the right type.
 
-            return Convert (Emit_LValue (Prefix (N)), TE);
+            return Convert_To_Access (Emit_LValue (Prefix (N)), TE);
 
          when Attribute_Address | Attribute_Pool_Address =>
 
@@ -914,7 +914,7 @@ package body GNATLLVM.Exprs is
       --  can, do so and we're done.  Otherwise, store the bounds.
 
       if Type_Needs_Bounds (Dest_Type) and then Src_R /= Bounds_And_Data then
-         if not Is_Reference (Src) and then Is_Loadable_Type (Dest_Type) then
+         if Is_Data (Src) and then Is_Loadable_Type (Dest_Type) then
             Store (Get (Src, Bounds_And_Data),
                    Get (LValue, Reference_To_Bounds_And_Data));
             return;

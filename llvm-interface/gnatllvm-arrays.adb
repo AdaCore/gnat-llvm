@@ -103,7 +103,7 @@ package body GNATLLVM.Arrays is
        elsif Max_Size then 1 else 2);
 
    function Get_GEP_Safe_Type (V : GL_Value) return Entity_Id
-     with Pre  => not Is_Reference (V),
+     with Pre  => Is_Data (V),
           Post => Is_Integer_Type (Get_GEP_Safe_Type'Result);
    --  GEP treats array indices as signed values.  If the type is unsigned
    --  (including Boolean; see C55C02B), it will sign-extend rather than
@@ -918,7 +918,7 @@ package body GNATLLVM.Arrays is
                   --  If we're using data, insert the value.  Otherwise, index
                   --  to the proper offset and copy the data.
 
-                  if not Is_Reference (Cur_Value) then
+                  if Is_Data (Cur_Value) then
                      Cur_Value := Insert_Value (Cur_Value, Val,
                                                 Swap (Indices));
                   else

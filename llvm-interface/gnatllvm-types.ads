@@ -208,27 +208,26 @@ package GNATLLVM.Types is
      (V              : GL_Value;
       TE             : Entity_Id;
       Float_Truncate : Boolean := False) return GL_Value
-     with Pre  => Is_Elementary_Type (TE) and then Is_Elementary_Type (V),
-          Post => Is_Elementary_Type (Convert'Result);
+     with Pre  => Is_Data (V) and then Is_Elementary_Type (TE)
+                  and then Is_Elementary_Type (V),
+          Post => Is_Data (Convert'Result)
+                  and then Is_Elementary_Type (Convert'Result);
    --  Convert Expr to the type TE, with both the types of Expr and TE
    --  being elementary.
 
    function Convert
      (V, T : GL_Value; Float_Truncate : Boolean := False) return GL_Value is
      (Convert (V, Full_Etype (T), Float_Truncate))
-     with Pre  => Is_Elementary_Type (V) and then Is_Elementary_Type (T),
-          Post => Is_Elementary_Type (Convert'Result);
+     with Pre  => Is_Data (V) and then Is_Elementary_Type (V)
+                  and then Is_Elementary_Type (T),
+          Post => Is_Data (Convert'Result)
+                  and then Is_Elementary_Type (Convert'Result);
    --  Variant of above where the type is that of another value (T)
 
    function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Convert_Ref'Result);
-   --  Convert Src, which should be an access, into an access to Desig_Type
-
-   function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Convert_To_Access'Result);
-   --  Convert Src, which should be an access, into an access type TE
+     with Pre  => Is_Reference (V) and then Is_Type (TE),
+          Post => Is_Reference (Convert_Ref'Result);
+   --  Convert Src, which should be a reference, into a reference to TE
 
    function Convert_Ref
      (V : GL_Value; T : GL_Value) return GL_Value is
@@ -236,6 +235,12 @@ package GNATLLVM.Types is
      with Pre  => Present (V) and then Present (T),
           Post => Is_Access_Type (Convert_Ref'Result);
    --  Likewise, but get type from V
+
+   function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE),
+          Post => Is_Access_Type (Convert_To_Access'Result);
+   --  Convert Src, which should be an access or reference, into an access
+   --  type TE
 
    function Convert_To_Access
      (V : GL_Value; T : GL_Value) return GL_Value is

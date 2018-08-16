@@ -289,6 +289,9 @@ package body GNATLLVM.Utils is
    begin
       Dump_LLVM_Value (V.Value);
       Dump_LLVM_Type (Type_Of (V.Value));
+      if Is_Pristine (V) then
+         Write_Str ("Pristine ");
+      end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
       Write_Int (Int (V.Typ));
       Write_Str ("): ");

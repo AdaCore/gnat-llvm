@@ -222,7 +222,7 @@ package body GNATLLVM.Arrays is
             else
                pragma Assert (Attr in Attribute_Min | Attribute_Max);
                LHS := Emit_Expr_For_Minmax (First (Expressions (N)), Is_Low);
-               RHS := Emit_Expr_For_Minmax (First (Expressions (N)), Is_Low);
+               RHS := Emit_Expr_For_Minmax (Last  (Expressions (N)), Is_Low);
                return (if   Attr = Attribute_Min then Build_Min (LHS, RHS)
                        else Build_Max (LHS, RHS));
             end if;
@@ -329,7 +329,7 @@ package body GNATLLVM.Arrays is
             declare
                Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
                Bound_Limit : constant Node_Id   :=
-                 (if Is_Low then Type_Low_Bound (Bound_Type)
+                 (if   Is_Low then Type_Low_Bound (Bound_Type)
                   else Type_High_Bound (Bound_Type));
                Bound_Val   : constant GL_Value  :=
                    Convert (Emit_Expr_For_Minmax (Bound_Limit, Is_Low),
@@ -338,7 +338,7 @@ package body GNATLLVM.Arrays is
             begin
                Result := Convert (Emit_Expr_For_Minmax (Expr, Is_Low),
                                   Dim_Info.Bound_Type);
-               Result := (if Is_Low then Build_Max (Bound_Val, Result)
+               Result := (if   Is_Low then Build_Max (Bound_Val, Result)
                           else Build_Min (Bound_Val, Result));
             end;
          else

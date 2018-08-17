@@ -19,7 +19,7 @@ project Gnat_LLVM is
    end Compiler;
 
    package CodePeer is
-      for Switches use ("-level", "1", "-no-html-output", "-jobs", "0");
+      for Switches use ("-level", "1");
       for Excluded_Source_Dirs use ("gnat_src", "obj");
    end CodePeer;
 

@@ -120,7 +120,7 @@ fast:
 force:
 
 clean:
-	$(RMDIR) obj obj-tools lib
+	$(RMDIR) obj obj-tools lib stage1 stage2
 
 # Full runtime
 

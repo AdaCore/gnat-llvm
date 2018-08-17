@@ -549,7 +549,9 @@ package body GNATLLVM.Compile is
       V : GL_Value;
    begin
       Push_LValue_List;
+      Push_Debug_Freeze_Pos;
       V := Emit_Expression (N);
+      Pop_Debug_Freeze_Pos;
       Pop_LValue_List;
       return V;
    end Emit_Safe_Expr;
@@ -562,7 +564,9 @@ package body GNATLLVM.Compile is
       V : GL_Value;
    begin
       Push_LValue_List;
+      Push_Debug_Freeze_Pos;
       V := Emit_LValue (N);
+      Pop_Debug_Freeze_Pos;
       Pop_LValue_List;
       return V;
    end Emit_Safe_LValue;

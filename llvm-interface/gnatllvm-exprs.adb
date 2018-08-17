@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Unchecked_Deallocation;
+
 with Errout;     use Errout;
 with Eval_Fat;   use Eval_Fat;
 with Exp_Code;   use Exp_Code;
@@ -51,6 +53,8 @@ package body GNATLLVM.Exprs is
 
    function Emit_Literal (N : Node_Id) return GL_Value is
       TE : constant Entity_Id := Full_Etype (N);
+      V  : GL_Value;
+
    begin
       case Nkind (N) is
          when N_Character_Literal =>
@@ -96,10 +100,10 @@ package body GNATLLVM.Exprs is
                   declare
                      Words : constant Word_Array :=
                        UI_To_Words (Numerator (Val));
-                     V     : constant GL_Value := Get_Float_From_Words_And_Exp
-                       (TE, -UI_To_Int (Denominator (Val)), Words);
 
                   begin
+                     V := Get_Float_From_Words_And_Exp
+                       (TE, -UI_To_Int (Denominator (Val)), Words);
                      return (if UR_Is_Negative (Val) then F_Neg (V) else V);
                   end;
                end;
@@ -107,19 +111,54 @@ package body GNATLLVM.Exprs is
 
          when N_String_Literal =>
             declare
-               String       : constant String_Id := Strval (N);
-               Length       : constant Nat       := String_Length (String);
-               Element_Type : constant Entity_Id := Full_Component_Type (TE);
-               Elements     : GL_Value_Array (1 .. Length);
+               Str_Id  : constant String_Id := Strval (N);
+               Length  : constant Nat       := String_Length (Str_Id);
+               Elmt_TE : constant Entity_Id := Full_Component_Type (TE);
 
             begin
-               for J in Elements'Range loop
-                  Elements (J) :=
-                    Const_Int (Element_Type,
-                               ULL (Get_String_Char (String, Nat (J))));
-               end loop;
+               --  If this is a normal string, where the size of a character
+               --  is a byte, use Const_String to create the string.
 
-               return Const_Array (Elements, TE);
+               if Get_LLVM_Type_Size_In_Bits (Create_Type (Elmt_TE)) = 8 then
+                  declare
+                     type String_Access is access String;
+                     procedure Free is new Ada.Unchecked_Deallocation
+                       (String, String_Access);
+
+                     Str : String_Access := new String (1 .. Integer (Length));
+
+                  begin
+                     for J in Str'Range loop
+                        Str (J) :=
+                          Get_Character (Get_String_Char (Str_Id, Nat (J)));
+                     end loop;
+
+                     V := Const_String (Str.all, TE);
+                     Free (Str);
+                     return V;
+                  end;
+
+               else
+                  --  Otherwise, we have to create an array for each character
+                  --  this might be large, so don't try to allocate it in
+                  --  the stack.
+
+                  declare
+                     Elements : Access_GL_Value_Array :=
+                       new GL_Value_Array (1 .. Length);
+
+                  begin
+                     for J in Elements'Range loop
+                        Elements (J) :=
+                          Const_Int (Elmt_TE,
+                                     ULL (Get_String_Char (Str_Id, Nat (J))));
+                     end loop;
+
+                     V := Const_Array (Elements.all, TE);
+                     Free (Elements);
+                     return V;
+                  end;
+               end if;
             end;
 
          when others =>

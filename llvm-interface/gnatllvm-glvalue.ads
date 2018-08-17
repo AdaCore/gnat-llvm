@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Unchecked_Deallocation;
+
 with Stand; use Stand;
 with Uintp; use Uintp;
 
@@ -298,6 +300,9 @@ package GNATLLVM.GLValue is
    --  Subtype used by everybody except validation function
 
    type GL_Value_Array is array (Nat range <>) of GL_Value;
+   type Access_GL_Value_Array is access all GL_Value_Array;
+   procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
+                                                     Access_GL_Value_Array);
 
    No_GL_Value : constant GL_Value := (No_Value_T, Empty, Data, False);
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
@@ -697,17 +702,17 @@ package GNATLLVM.GLValue is
    function Get_Undef_Relationship
      (TE : Entity_Id; R : GL_Relationship) return GL_Value
    is
-     (G (Get_Undef (Type_For_Relationship (TE, R)), TE, R))
+     (G (Get_Undef (Type_For_Relationship (TE, R)), TE, R, True))
      with Pre  => Is_Type (TE),
           Post => Present (Get_Undef_Relationship'Result);
 
    function Get_Undef_Ref (T : Type_T; TE : Entity_Id) return GL_Value is
-     (G_Ref (Get_Undef (T), TE))
+     (G_Ref (Get_Undef (T), TE, Is_Pristine => True))
      with Pre => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
 
    function Get_Undef_Fn_Ret (V : GL_Value) return GL_Value is
      (G (Get_Undef (Get_Return_Type (Get_Element_Type (Type_Of (V)))),
-         Related_Type (V), Unknown))
+         Related_Type (V), Unknown, Is_Pristine => True))
      with Pre => Is_A_Function (V), Post => Is_Undef (Get_Undef_Fn_Ret'Result);
 
    function Const_Null (TE : Entity_Id) return GL_Value
@@ -848,6 +853,10 @@ package GNATLLVM.GLValue is
    function Const_Array
      (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
      with Pre => Is_Array_Type (TE), Post => Present (Const_Array'Result);
+
+   function Const_String (S : String; TE : Entity_Id) return GL_Value is
+     (G (Const_String (S, unsigned (S'Length), True), TE))
+     with Pre => Is_Array_Type (TE), Post => Is_Constant (Const_String'Result);
 
    function Get_Float_From_Words_And_Exp
      (TE : Entity_Id; Exp : Int; Words : Word_Array) return GL_Value

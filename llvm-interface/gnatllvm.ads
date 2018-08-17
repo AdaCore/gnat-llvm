@@ -78,8 +78,9 @@ package GNATLLVM is
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us
 
-   type Value_Array       is array (Nat range <>) of Value_T;
-   type Basic_Block_Array is array (Nat range <>) of Basic_Block_T;
+   type Value_Array        is array (Nat range <>) of Value_T;
+   type Basic_Block_Array  is array (Nat range <>) of Basic_Block_T;
+   type Access_Value_Array is access all Value_Array;
 
    No_Value_T    : constant Value_T       := Value_T (System.Null_Address);
    No_Type_T     : constant Type_T        := Type_T (System.Null_Address);

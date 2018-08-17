@@ -712,7 +712,7 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Undef_Ref (TE : Entity_Id) return GL_Value is
-     (G_Ref (Get_Undef (Create_Access_Type_To (TE)), TE));
+     (G_Ref (Get_Undef (Create_Access_Type_To (TE)), TE, Is_Pristine => True));
 
    ----------------
    -- Const_Null --
@@ -775,8 +775,10 @@ package body GNATLLVM.GLValue is
          else Type_Of (Elmts (Elmts'First)));
       --  Take the element type from what was passed, but if no elements
       --  were passed, the only choice is from the component type of the array.
-      Values  : Value_Array (Elmts'Range);
-
+      Values  : Access_Value_Array := new Value_Array (Elmts'Range);
+      V       : GL_Value;
+      procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
+                                                        Access_Value_Array);
    begin
       for J in Elmts'Range loop
          Values (J) := LLVM_Value (Elmts (J));
@@ -788,8 +790,10 @@ package body GNATLLVM.GLValue is
       --  array.  In those cases, we pass Any_Array for the type, but
       --  that's unconstrained, so we want use relationship "Unknown".
 
-      return G (Const_Array (T, Values'Address, Values'Length),
-                TE, (if TE = Any_Array then Unknown else Data));
+      V := G (Const_Array (T, Values.all'Address, Values.all'Length),
+              TE, (if TE = Any_Array then Unknown else Data));
+      Free (Values);
+      return V;
    end Const_Array;
 
    ----------------------------------

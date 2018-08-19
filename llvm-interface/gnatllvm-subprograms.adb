@@ -1106,7 +1106,7 @@ package body GNATLLVM.Subprograms is
 
             --  If this is an out parameter, we have to make a variable
             --  for it, possibly initialized to our parameter value if this
-            --  is also an in parameter.  Otherwise, we can use the parameter.
+            --  is also an in parameter.  Otherwise, we can use the parameter
             --  unchanged.
 
             if PK_Is_Out (PK) then

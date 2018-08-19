@@ -664,8 +664,8 @@ package body GNATLLVM.Exprs is
 
    begin
       case Attr is
-         when Attribute_Access | Attribute_Code_Address
-            | Attribute_Unchecked_Access | Attribute_Unrestricted_Access =>
+         when Attribute_Access | Attribute_Unchecked_Access
+            | Attribute_Unrestricted_Access =>
 
             --  We store values as pointers, so getting an access to an
             --  expression is the same as getting an LValue and has the
@@ -674,7 +674,8 @@ package body GNATLLVM.Exprs is
 
             return Convert_To_Access (Emit_LValue (Prefix (N)), TE);
 
-         when Attribute_Address | Attribute_Pool_Address =>
+         when Attribute_Address | Attribute_Pool_Address
+            | Attribute_Code_Address =>
 
             --  We need a single-word pointer, then convert it to the
             --  desired integral type.
@@ -938,11 +939,20 @@ package body GNATLLVM.Exprs is
 
       if No (Src) then
          if Is_Loadable_Type (Src_Type) then
-            Src := Emit_Expression (E);
+            Src := Emit_Expression (E, LHS => Dest);
          else
-            Src := Emit_LValue (E);
+            Src := Emit_LValue (E, LHS => Dest);
          end if;
       end if;
+
+      --  If the above evaluation used the location we specified, we're done
+
+      if Src = Dest then
+         return;
+      end if;
+
+      --  See what relationships we have for the source and destination to
+      --  help make choices below.
 
       Dest_R := Relationship (Dest);
       Src_R  := Relationship (Src);

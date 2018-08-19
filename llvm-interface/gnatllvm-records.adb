@@ -1655,18 +1655,18 @@ package body GNATLLVM.Records is
 
          while Present (Expr) loop
             declare
-               Ent    : constant Entity_Id     :=
+               Field  : constant Entity_Id     :=
                  Find_Matching_Field
                  (TE, Entity (First (Choices (Expr))));
-               F_Type : constant Entity_Id     := Full_Etype (Ent);
-               F_Idx  : constant Field_Info_Id := Get_Field_Info (Ent);
+               F_Type : constant Entity_Id     := Full_Etype (Field);
+               F_Idx  : constant Field_Info_Id := Get_Field_Info (Field);
 
             begin
-               if Ekind (Ent) = E_Discriminant
+               if Ekind (Field) = E_Discriminant
                  and then Is_Unchecked_Union (TE)
                then
                   null;
-               elsif Chars (Ent) = Name_uParent then
+               elsif Chars (Field) = Name_uParent then
 
                   --  If this is "_parent", its fields are our fields too.
                   --  Assume Expression is also an N_Aggregate.
@@ -1704,8 +1704,8 @@ package body GNATLLVM.Records is
                              Insert_Value (Result, Val, unsigned (Idx));
                         else
                            Emit_Assignment (Normalize_Access_Type
-                                              (GEP_Idx (F_Type, Result,
-                                                        (1 => 0, 2 => Idx))),
+                                              (Record_Field_Offset (Result,
+                                                                    Field)),
                                             Empty, Val);
                         end if;
                      end;
@@ -1714,7 +1714,7 @@ package body GNATLLVM.Records is
 
                      pragma Assert (Ekind (TE) = E_Record_Subtype
                                       and then Has_Discriminants (TE)
-                                      and then (Ekind (Ent) = E_Component));
+                                      and then (Ekind (Field) = E_Component));
                   end if;
                end if;
             end;

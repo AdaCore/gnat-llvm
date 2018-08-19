@@ -1840,8 +1840,10 @@ package body GNATLLVM.Subprograms is
    -- Emit_Call --
    ---------------
 
-   function Emit_Call (N : Node_Id) return GL_Value is
-
+   function Emit_Call
+     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
+   is
+      pragma Unreferenced (LHS);
       procedure Write_Back (In_LHS, In_RHS : GL_Value)
         with Pre => Present (In_LHS) and then Present (In_RHS)
                     and then Is_Data (In_RHS) and then Is_Reference (In_LHS);

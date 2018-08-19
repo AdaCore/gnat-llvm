@@ -20,10 +20,18 @@ with Sinfo;    use Sinfo;
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package GNATLLVM.Exprs is
    --  This can't be named GNATLLVM.Expressions because it conflicts
    --  with Expressions in Sinfo,
+
+   function Is_Safe_From (LHS : GL_Value; RHS : Node_Id) return Boolean is
+     (Is_Pristine (LHS) or else Is_No_Elab_Needed (RHS))
+     with Pre => Present (LHS) and then Present (RHS);
+   --  True if we know that clobbering LHS won't change the value of
+   --  RHS.  That's certainly true if LHS is pristine or RHS is a constant.
+   --  Perhaps we can test more cases later, so this is really a placeholder.
 
    procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id)
      with Pre => Nkind (N) = N_Type_Conversion and then Present (V)

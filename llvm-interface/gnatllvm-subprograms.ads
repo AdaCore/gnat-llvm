@@ -127,10 +127,13 @@ package GNATLLVM.Subprograms is
    --  Emit the value (creating the subprogram if needed) of the N_Identifier
    --  or similar at N.  The entity if Def_Ident and its type is TE.
 
-   function Emit_Call (N : Node_Id) return GL_Value
+   function Emit_Call
+     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  Compile a call statement/expression and return its result
    --  value.  If this is calling a procedure, there will be no return value.
+   --  If LHS is Present, it's a place that we'll be storing the result of
+   --  the function in case that turns out to be useful.
 
    function Call_Alloc
      (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value

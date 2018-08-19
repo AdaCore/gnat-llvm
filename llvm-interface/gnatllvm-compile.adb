@@ -54,7 +54,10 @@ package body GNATLLVM.Compile is
      with Pre => Nkind (N) = N_Loop_Statement;
    --  Generate code for a loop
 
-   function Emit_Internal (N : Node_Id) return GL_Value
+   function Emit_Internal
+     (N       : Node_Id;
+      LHS     : GL_Value := No_GL_Value;
+      For_LHS : Boolean := False) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Internal'Result);
    --  Same as Emit, but push result into LValue list
 
@@ -350,17 +353,17 @@ package body GNATLLVM.Compile is
          when N_Implicit_Label_Declaration =>
 
             --  Don't do anything here in case this label isn't actually
-            --  used as a label.  In that case, the basic block we create
-            --  here will be empty, which LLVM doesn't allow.  This can't
-            --  occur for user-defined labels, but can occur with some
-            --  labels placed by the front end.  Instead, lazily create
-            --  the basic block where it's placed or when its the target
-            --  of a goto.
+            --  used in an N_Label or N_Goto_Statement operation.  If it
+            --  were unused, the basic block we create here would be empty,
+            --  which LLVM doesn't allow.  This can't occur for
+            --  user-defined labels, but can occur with some labels placed
+            --  by the front end.  Instead, lazily create the basic block
+            --  where it's placed or when its the target of a goto.
             null;
 
          when N_Assignment_Statement =>
-            Emit_Assignment (Emit_LValue (Name (N)), Expression (N),
-                             No_GL_Value,
+            Emit_Assignment (Emit_LValue (Name (N), For_LHS => True),
+                             Expression (N), No_GL_Value,
                              Forwards_OK  => Forwards_OK (N),
                              Backwards_OK => Backwards_OK (N));
 
@@ -545,12 +548,15 @@ package body GNATLLVM.Compile is
    -- Emit_Safe_Expr --
    --------------------
 
-   function Emit_Safe_Expr (N : Node_Id) return GL_Value is
+   function Emit_Safe_Expr
+     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
+   is
       V : GL_Value;
+
    begin
       Push_LValue_List;
       Push_Debug_Freeze_Pos;
-      V := Emit_Expression (N);
+      V := Emit_Expression (N, LHS => LHS);
       Pop_Debug_Freeze_Pos;
       Pop_LValue_List;
       return V;
@@ -560,12 +566,17 @@ package body GNATLLVM.Compile is
    -- Emit_Safe_LValue --
    ----------------------
 
-   function Emit_Safe_LValue (N : Node_Id) return GL_Value is
+   function Emit_Safe_LValue
+     (N       : Node_Id;
+      LHS     : GL_Value := No_GL_Value;
+      For_LHS : Boolean  := False) return GL_Value
+   is
       V : GL_Value;
+
    begin
       Push_LValue_List;
       Push_Debug_Freeze_Pos;
-      V := Emit_LValue (N);
+      V := Emit_LValue (N, LHS => LHS, For_LHS => For_LHS);
       Pop_Debug_Freeze_Pos;
       Pop_LValue_List;
       return V;
@@ -575,16 +586,23 @@ package body GNATLLVM.Compile is
    -- Emit --
    ----------
 
-   function Emit (N : Node_Id) return GL_Value is
+   function Emit
+     (N       : Node_Id;
+      LHS     : GL_Value := No_GL_Value;
+      For_LHS : Boolean  := False) return GL_Value is
    begin
-      return Add_To_LValue_List (Emit_Internal (N));
+      return Add_To_LValue_List (Emit_Internal (N, LHS, For_LHS));
    end Emit;
 
    --------------------
    --  Emit_Internal --
    --------------------
 
-   function Emit_Internal (N : Node_Id) return GL_Value is
+   function Emit_Internal
+     (N       : Node_Id;
+      LHS     : GL_Value := No_GL_Value;
+      For_LHS : Boolean  := False) return GL_Value
+   is
       TE     : constant Entity_Id := Full_Etype (N);
       Expr   : Node_Id;
       Result : GL_Value;
@@ -594,6 +612,7 @@ package body GNATLLVM.Compile is
       case Nkind (N) is
 
          when N_Binary_Op =>
+            pragma Assert (not For_LHS);
             if Nkind (N) in N_Op_Compare then
                return Emit_Comparison (Nkind (N), Left_Opnd (N),
                                        Right_Opnd (N));
@@ -604,18 +623,21 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Unary_Op =>
+            pragma Assert (not For_LHS);
             return Emit_Unary_Operation (N);
 
          when N_Expression_With_Actions =>
             Push_LValue_List;
             Emit (Actions (N));
             Pop_LValue_List;
-            return Emit_Expression (Expression (N));
+            return Emit (Expression (N), LHS => LHS, For_LHS => For_LHS);
 
          when N_Character_Literal | N_Numeric_Or_String_Literal =>
+            pragma Assert (not For_LHS);
             return Emit_Literal (N);
 
          when N_And_Then | N_Or_Else =>
+            pragma Assert (not For_LHS);
             if Side_Effect_Free (Left_Opnd (N))
               and then Side_Effect_Free (Right_Opnd (N))
               and then Is_Simple_Conditional (N)
@@ -655,7 +677,8 @@ package body GNATLLVM.Compile is
             return Emit_Identifier (N);
 
          when N_Function_Call =>
-            return Emit_Call (N);
+            pragma Assert (not For_LHS);
+            return Emit_Call (N, LHS => LHS);
 
          when N_Explicit_Dereference =>
             return Normalize_Access_Type
@@ -675,6 +698,7 @@ package body GNATLLVM.Compile is
                --  which contains both the object type and an initial
                --  value for the object.
 
+               pragma Assert (not For_LHS);
                if Is_Entity_Name (Expr) then
                   Typ   := Get_Fullest_View (Entity (Expr));
                   Value := No_GL_Value;
@@ -691,6 +715,11 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Reference =>
+
+            --  It's tempting to mark the call below as For_LHS, but we
+            --  do allow taking 'Reference of something that's not an LValue
+            --  (though an assignment to it will fail in that case).
+
             return Convert_To_Access (Emit_LValue (Prefix (N)), TE);
 
          when N_Attribute_Reference =>
@@ -698,12 +727,12 @@ package body GNATLLVM.Compile is
 
          when N_Selected_Component =>
             return Normalize_Access_Type
-              (Record_Field_Offset (Emit_LValue (Prefix (N)),
+              (Record_Field_Offset (Emit_LValue (Prefix (N),
+                                                 For_LHS => For_LHS),
                                     Entity (Selector_Name (N))));
 
          when N_Indexed_Component | N_Slice =>
-
-            Result := Emit (Prefix (N));
+            Result := Emit (Prefix (N), For_LHS => For_LHS);
 
             --  This can be an integer type if it's the implementation
             --  type of a packed array type.  In that case, convert it to
@@ -740,11 +769,14 @@ package body GNATLLVM.Compile is
 
          when N_Aggregate | N_Extension_Aggregate =>
 
+            pragma Assert (not For_LHS);
             if Null_Record_Present (N) and then not Is_Dynamic_Size (TE) then
                return Const_Null (TE);
 
             elsif Ekind (TE) in Record_Kind then
-               return Emit_Record_Aggregate (N, No_GL_Value);
+               return Emit_Record_Aggregate
+                 (N, (if   Present (LHS) and then Is_Safe_From (LHS, N)
+                      then LHS else No_GL_Value));
 
             else
                pragma Assert (Is_Array_Type (TE)
@@ -757,13 +789,17 @@ package body GNATLLVM.Compile is
                --  Exp_Aggr.  We handle them in Emit_Assignment.
 
                return Emit_Array_Aggregate
-                 (N, Number_Dimensions (TE), (1 .. 0 => <>), No_GL_Value);
+                 (N, Number_Dimensions (TE), (1 .. 0 => <>),
+                  (if   Present (LHS) and then Is_Safe_From (LHS, N) then LHS
+                   else No_GL_Value));
             end if;
 
          when N_If_Expression =>
+            pragma Assert (not For_LHS);
             return Emit_If_Expression (N);
 
          when N_Null =>
+            pragma Assert (not For_LHS);
             return Const_Null (TE);
 
          when N_In =>
@@ -772,6 +808,7 @@ package body GNATLLVM.Compile is
                Left : constant GL_Value := Emit_Expression (Left_Opnd (N));
 
             begin
+               pragma Assert (not For_LHS);
                pragma Assert (No (Alternatives (N)));
                pragma Assert (Present (Rng));
                --  The front end guarantees the above
@@ -789,6 +826,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_xxx_Error =>
+            pragma Assert (not For_LHS);
             pragma Assert (No (Condition (N)));
             Emit_Raise (N);
             return Emit_Undef (TE);

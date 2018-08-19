@@ -259,6 +259,7 @@ package GNATLLVM.Types is
      (N                   : Node_Id;
       TE                  : Entity_Id;
       From_N              : Node_Id := Empty;
+      For_LHS             : Boolean := False;
       Is_Unchecked        : Boolean := False;
       Need_Overflow_Check : Boolean := False;
       Float_Truncate      : Boolean := False) return GL_Value

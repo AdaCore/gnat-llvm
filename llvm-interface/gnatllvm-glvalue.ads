@@ -1629,4 +1629,8 @@ package GNATLLVM.GLValue is
           Post => Present (Convert_Struct_Constant'Result);
    --  Convert V, a constant of a struct type, to TE
 
+   function Idxs_To_GL_Values (Idxs : Index_Array) return GL_Value_Array;
+   --  Convert an array of integer indices into the corresponding constant
+   --  GL_Values (of Size_Type).
+
 end GNATLLVM.GLValue;

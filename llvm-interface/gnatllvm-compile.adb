@@ -779,14 +779,13 @@ package body GNATLLVM.Compile is
                       then LHS else No_GL_Value));
 
             else
-               pragma Assert (Is_Array_Type (TE)
-                                   and then not Is_Dynamic_Size (TE));
+               pragma Assert (Is_Array_Type (TE));
                --  The back-end supports exactly two types of array
                --  aggregates.  One, which we handle here, is for a
-               --  fixed-size aggregate of fixed-size components.  The
-               --  other are very special cases of Others that are
-               --  tested for in Aggr_Assignment_OK_For_Backend in
-               --  Exp_Aggr.  We handle them in Emit_Assignment.
+               --  fixed-size aggregate.  The other are very special cases
+               --  of Others that are tested for in
+               --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.  We handle
+               --  them in Emit_Assignment.
 
                return Emit_Array_Aggregate
                  (N, Number_Dimensions (TE), (1 .. 0 => <>),

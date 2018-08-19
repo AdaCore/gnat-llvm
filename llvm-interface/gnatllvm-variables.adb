@@ -1291,7 +1291,7 @@ package body GNATLLVM.Variables is
       --  we can just use the expression that computed the constant as
       --  the value, once converted to the proper type.  If the value
       --  is a Reference, it may be to something that's not constant,
-      --  so actually have to allocate our entity and copy into it.
+      --  so we actually have to allocate our entity and copy into it.
 
       elsif Ekind (Def_Ident) = E_Constant
         and then Is_True_Constant (Def_Ident) and then Present (Value)

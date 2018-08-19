@@ -1681,4 +1681,17 @@ package body GNATLLVM.GLValue is
 
    end Convert_Struct_Constant;
 
+   -----------------------
+   -- Idxs_To_GL_Values --
+   -----------------------
+
+   function Idxs_To_GL_Values (Idxs : Index_Array) return GL_Value_Array is
+   begin
+      return GL_Idxs : GL_Value_Array (Idxs'Range) do
+         for J in Idxs'Range loop
+            GL_Idxs (J) := Size_Const_Int (unsigned (Idxs (J)));
+         end loop;
+      end return;
+   end Idxs_To_GL_Values;
+
 end GNATLLVM.GLValue;

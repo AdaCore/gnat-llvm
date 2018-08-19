@@ -96,9 +96,9 @@ package GNATLLVM.Arrays is
 
    function Get_Indexed_LValue
      (Indexes : List_Id; V : GL_Value) return GL_Value
-     with Pre  => Is_Array_Type (Full_Designated_Type (V))
+     with Pre  => Is_Reference (V) and then Is_Array_Type (Related_Type (V))
                   and then List_Length (Indexes) =
-                    Number_Dimensions (Full_Designated_Type (V)),
+                    Number_Dimensions (Related_Type (V)),
           Post => Present (Get_Indexed_LValue'Result);
    --  Get an LValue corresponding to indexing Value by Indexes.  Arr_Type
    --  is the array type.

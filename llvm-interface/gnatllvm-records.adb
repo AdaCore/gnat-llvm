@@ -1248,7 +1248,7 @@ package body GNATLLVM.Records is
 
       Position_Builder_At_End (End_BB);
       Must_Align := Build_Phi (Must_Aligns, From_BBs);
-      Is_Align   := Build_Phi (Is_Aligns,    From_BBs);
+      Is_Align   := Build_Phi (Is_Aligns,   From_BBs);
       if Return_Size then
          Size    := Build_Phi (Sizes,       From_BBs);
       end if;

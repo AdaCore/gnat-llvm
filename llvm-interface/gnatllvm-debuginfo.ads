@@ -25,7 +25,7 @@ package GNATLLVM.DebugInfo is
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
    DI_Cache : access DI_File_Cache := null;
 
-   procedure Push_Debug_Scope (Scope : Metadata_T)
+   procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T)
      with Pre => not Emit_Debug_Info or else Present (Scope);
    --  Push the current debug scope and make Scope the present scope.  Does
    --  nothing if not debugging.

@@ -23,6 +23,7 @@ with Restrict; use Restrict;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
+with Sinput; use Sinput;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Table;    use Table;
@@ -1063,7 +1064,8 @@ package body GNATLLVM.Subprograms is
       Current_Subp := Def_Ident;
       Enter_Subp (Func);
       Push_Debug_Scope
-        (Create_Subprogram_Debug_Info (Func, Def_Ident, N,
+        (Get_Source_File_Index (Sloc (N)),
+         Create_Subprogram_Debug_Info (Func, Def_Ident, N,
                                        Get_Name_String (Chars (Def_Ident)),
                                        Get_Ext_Name (Def_Ident)));
 
@@ -1231,7 +1233,8 @@ package body GNATLLVM.Subprograms is
 
       Enter_Subp (LLVM_Func);
       Push_Debug_Scope
-        (Create_Subprogram_Debug_Info
+        (Get_Source_File_Index (Sloc (N)),
+         Create_Subprogram_Debug_Info
            (LLVM_Func, Unit, N, Get_Name_String (Chars (Unit)), Name));
       Set_Debug_Pos_At_Node (N);
       Push_Block;

@@ -29,8 +29,16 @@ package body GNATLLVM.DebugInfo is
 
    Debug_Scope_Low_Bound : constant := 1;
 
+   type Debug_Scope is record
+      SFI   : Source_File_Index;
+      --  Source file index for this scope
+
+      Scope : Metadata_T;
+      --  LLVM debugging metadata for this scope
+   end record;
+
    package Debug_Scope_Table is new Table.Table
-     (Table_Component_Type => Metadata_T,
+     (Table_Component_Type => Debug_Scope,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => Debug_Scope_Low_Bound,
       Table_Initial        => 10,
@@ -45,9 +53,13 @@ package body GNATLLVM.DebugInfo is
    --  Won't be needed when we support a global scope.
 
    function Current_Debug_Scope return Metadata_T is
-     (Debug_Scope_Table.Table (Debug_Scope_Table.Last))
+     (Debug_Scope_Table.Table (Debug_Scope_Table.Last).Scope)
      with Post => Present (Current_Debug_Scope'Result);
    --  Current debug info scope
+
+   function Current_Debug_SFI return Source_File_Index is
+     (Debug_Scope_Table.Table (Debug_Scope_Table.Last).SFI);
+   --  Current debug info source file index
 
    Freeze_Pos_Level : Natural := 0;
    --  Current level of pushes of requests to freeze debug position
@@ -56,10 +68,10 @@ package body GNATLLVM.DebugInfo is
    -- Push_Debug_Scope --
    ----------------------
 
-   procedure Push_Debug_Scope (Scope : Metadata_T) is
+   procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T) is
    begin
       if Emit_Debug_Info then
-         Debug_Scope_Table.Append (Scope);
+         Debug_Scope_Table.Append ((SFI, Scope));
       end if;
    end Push_Debug_Scope;
 
@@ -155,12 +167,13 @@ package body GNATLLVM.DebugInfo is
    ------------------------------
 
    procedure Push_Lexical_Debug_Scope (N : Node_Id) is
+      SFI : constant Source_File_Index := Get_Source_File_Index (Sloc (N));
+
    begin
       if Emit_Debug_Info and then not Library_Level then
          Push_Debug_Scope
-           (Create_Debug_Lexical_Block
-              (DI_Builder, Current_Debug_Scope,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
+           (SFI, Create_Debug_Lexical_Block
+              (DI_Builder, Current_Debug_Scope, Get_Debug_File_Node (SFI),
                Get_Logical_Line_Number (Sloc (N)),
                Get_Column_Number (Sloc (N))));
       end if;
@@ -189,9 +202,11 @@ package body GNATLLVM.DebugInfo is
    ---------------------------
 
    procedure Set_Debug_Pos_At_Node (N : Node_Id) is
+      SFI : constant Source_File_Index := Get_Source_File_Index (Sloc (N));
+
    begin
       if Emit_Debug_Info and then Has_Debug_Scope
-        and then Freeze_Pos_Level = 0
+        and then Freeze_Pos_Level = 0 and then SFI = Current_Debug_SFI
       then
          Set_Debug_Loc (IR_Builder, Current_Debug_Scope,
                         Get_Logical_Line_Number (Sloc (N)),

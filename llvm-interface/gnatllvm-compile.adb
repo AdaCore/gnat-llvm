@@ -710,7 +710,7 @@ package body GNATLLVM.Compile is
 
                Result := Heap_Allocate_For_Type
                  (Full_Designated_Type (TE), Typ, Value,
-                  Procedure_To_Call (N), Storage_Pool (N));
+                  Proc => Procedure_To_Call (N), Pool => Storage_Pool (N));
                return Convert_To_Access (Result, TE);
             end;
 

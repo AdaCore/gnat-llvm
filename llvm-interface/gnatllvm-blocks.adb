@@ -928,8 +928,8 @@ package body GNATLLVM.Blocks is
                      Param   : constant Entity_Id := Clauses.Table (J).Param;
                      Typ     : constant Entity_Id := Full_Etype (Param);
                      V       : constant GL_Value  :=
-                       Allocate_For_Type (Typ, Typ, Param, No_GL_Value,
-                                          Get_Name (Param));
+                       Allocate_For_Type (Typ, Typ, Param,
+                                          Name => Get_Name (Param));
                      Cvt_Ptr : constant GL_Value  :=
                        Convert_To_Access (Exc_Ptr, Standard_A_Char);
 

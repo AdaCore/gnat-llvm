@@ -1110,7 +1110,8 @@ package body GNATLLVM.Subprograms is
             --  unchanged.
 
             if PK_Is_Out (PK) then
-               LLVM_Param := Allocate_For_Type (TE, TE, Param, V, Name.all);
+               LLVM_Param := Allocate_For_Type (TE, TE, Param, V,
+                                                Name => Name.all);
             else
                LLVM_Param := V;
             end if;
@@ -1359,8 +1360,9 @@ package body GNATLLVM.Subprograms is
                          and then Present (Storage_Pool (N)))
             then
                V := (Heap_Allocate_For_Type
-                       (TE, Full_Etype (Expr), Emit_Expression (Expr),
-                        Procedure_To_Call (N), Storage_Pool (N)));
+                       (TE, Full_Etype (Expr), Expr => Expr,
+                        Proc => Procedure_To_Call (N),
+                        Pool => Storage_Pool (N)));
 
             elsif RK = RK_By_Reference then
                V := Convert_Ref (Emit_LValue (Expr), TE);

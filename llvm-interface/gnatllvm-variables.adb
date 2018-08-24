@@ -1053,17 +1053,18 @@ package body GNATLLVM.Variables is
       TE           : constant Entity_Id := Full_Etype (Def_Ident);
       No_Init      : constant Boolean   :=
         Nkind (N) = N_Object_Declaration and then No_Initialization (N);
-      Expr         : constant Node_Id   :=
-        (if No_Init then Empty else Expression (N));
       Addr_Expr    : constant Node_Id   :=
-        (if Present (Address_Clause (Def_Ident))
+        (if   Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_External  : constant Boolean   :=
         Is_Imported (Def_Ident) and then No (Addr_Expr)
           and then not Get_Dup_Global_Is_Defined (Def_Ident);
       Is_Ref       : constant Boolean   :=
         Present (Addr_Expr) or else Is_Dynamic_Size (TE);
-      Value        : GL_Value           := No_GL_Value;
+      Expr         : Node_Id            :=
+        (if No_Init then Empty else Expression (N));
+      Value        : GL_Value           :=
+        (if Present (Expr) then Get_Value (Expr) else No_GL_Value);
       Addr         : GL_Value           :=
         (if Present (Addr_Expr) then Get_Value (Addr_Expr) else No_GL_Value);
       Copied       : Boolean            := False;
@@ -1124,8 +1125,6 @@ package body GNATLLVM.Variables is
          end if;
 
          return;
-      elsif Present (Expr) and then Has_Value (Expr) then
-         Value := Get_Value (Expr);
       end if;
 
       --  Handle top-level declarations or ones that need to be treated
@@ -1230,20 +1229,15 @@ package body GNATLLVM.Variables is
          return;
       end if;
 
-      --  If we have an initializing expression, get it.  If we're making
-      --  an object of classwide type, we must have any initializing
-      --  expression by reference since we have to ignore its type when
-      --  doing the initializing.
+      --  If we're making an object of classwide type, strip off any
+      --  conversions, since we have to ignore its type when doing the
+      --  initializing.
 
-      if Present (Expr) and then No (Value) then
-         if Is_Class_Wide_Equivalent_Type (TE) then
-            Value := Get (Emit (Strip_Conversions (Expr)), Any_Reference);
-         else
-            Value := Get (Emit (Expr), Object);
-         end if;
+      if Present (Expr) and then Is_Class_Wide_Equivalent_Type (TE) then
+         Expr := Strip_Conversions (Expr);
       end if;
 
-      --  Likewise for the expression for the address clause
+      --  Evaluate any expression for the address clause
 
       if Present (Addr_Expr) then
          if No (Addr) then
@@ -1277,7 +1271,8 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Dynamic_Size (TE) then
-            Store (Get (Heap_Allocate_For_Type (TE, TE, Value), Any_Reference),
+            Store (Get (Heap_Allocate_For_Type (TE, TE, Value, Expr),
+                        Any_Reference),
                    LLVM_Var);
             Copied := True;
          end if;
@@ -1294,29 +1289,34 @@ package body GNATLLVM.Variables is
       --  so we actually have to allocate our entity and copy into it.
 
       elsif Ekind (Def_Ident) = E_Constant
-        and then Is_True_Constant (Def_Ident) and then Present (Value)
+        and then Is_True_Constant (Def_Ident)
+        and then (Present (Expr) or else Present (Value))
         and then not Is_Aliased (Def_Ident)
-        and then not Address_Taken (Def_Ident) and then Is_Data (Value)
+        and then not Address_Taken (Def_Ident)
       then
+         Value := Emit (Expr);
          if Is_Elementary_Type (TE) then
-            LLVM_Var := Convert (Value, TE);
-         else
+            LLVM_Var := Convert (Get (Value, Data), TE);
+            Copied := True;
+         elsif Is_Data (Value) then
             LLVM_Var := Value;
+            Copied := True;
          end if;
-
-         Copied := True;
 
          --  If this is an unnamed operation, set its name to that of our
          --  variable to make the code easier to read.
 
-         if Get_Value_Name (LLVM_Var) = "" then
+         if Present (LLVM_Var) and then Get_Value_Name (LLVM_Var) = "" then
             Set_Value_Name (LLVM_Var, Get_Name (Def_Ident));
          end if;
-      else
-         --  Otherwise, allocate it on the stack, copying in any value
+      end if;
 
-         LLVM_Var := Allocate_For_Type (TE, TE, Def_Ident,
-                                        Value, Get_Name (Def_Ident));
+      --  Otherwise, if we still haven't made a variable, allocate it
+      --  on the stack, copying in any value.
+
+      if No (LLVM_Var) then
+         LLVM_Var := Allocate_For_Type (TE, TE, Def_Ident, Value, Expr,
+                                        Name => Get_Name (Def_Ident));
          Copied := True;
       end if;
 
@@ -1329,8 +1329,8 @@ package body GNATLLVM.Variables is
       --  If we haven't already copied in any initializing expression, do
       --  that now.
 
-      if not Copied and then Present (Value) then
-         Emit_Assignment (LLVM_Var, Empty, Value);
+      if not Copied and then (Present (Expr) or else Present (Value)) then
+         Emit_Assignment (LLVM_Var, Expr, Value);
       end if;
    end Emit_Declaration;
 

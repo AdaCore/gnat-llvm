@@ -361,26 +361,29 @@ package GNATLLVM.Types is
       Alloc_Type : Entity_Id;
       N          : Node_Id;
       V          : GL_Value := No_GL_Value;
+      Expr       : Node_Id  := Empty;
       Name       : String := "") return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type),
           Post => Is_Access_Type (Allocate_For_Type'Result);
-   --  Allocate space on the stack for an object of type TE and return
-   --  a pointer to the space.  Name is the name to use for the LLVM
-   --  value.  If Value is Present, it's a value to be copyied to the
-   --  temporary and can be used to size the allocated space.  N is a node
-   --  used for a Sloc if we have to raise an exception.
+   --  Allocate space on the stack for an object of type TE and return a
+   --  pointer to the space.  Name is the name to use for the LLVM value.
+   --  V, if Present, is a value to be copyied to the temporary and can be
+   --  used to size the allocated space.  Likewise For Expr, but both Expr
+   --  and V can't be Present.  N is a node used for a Sloc if we have to
+   --  raise an exception.
 
    function Heap_Allocate_For_Type
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
       V          : GL_Value  := No_GL_Value;
+      Expr       : Node_Id   := Empty;
       Proc       : Entity_Id := Empty;
       Pool       : Entity_Id := Empty) return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type)
                   and then (No (Proc) or else Present (Pool)),
           Post => Is_Access_Type (Heap_Allocate_For_Type'Result);
-   --  Similarly, but allocate storage on the heap.  This will handle
-   --  default allocation, secondary stack, and storage pools.
+   --  Similarly, but allocate storage on the heap.  This handles default
+   --  allocation, secondary stack, and storage pools.
 
    procedure Heap_Deallocate (V : GL_Value; Proc : Entity_Id; Pool : Entity_Id)
      with Pre => Present (V)

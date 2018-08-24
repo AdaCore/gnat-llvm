@@ -74,6 +74,11 @@ package body GNATLLVM.GLValue is
    ----------------------------
 
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean is
+      TE   : constant Entity_Id   := V.Typ;
+      Val  : constant Value_T     := V.Value;
+      Kind : constant Type_Kind_T :=
+        (if No (Val) then Void_Type_Kind else Get_Type_Kind (Type_Of (Val)));
+
    begin
       --  We have to be very careful in this function not to call any
       --  functions that take a GL_Value as an operand to avoid infinite
@@ -81,51 +86,58 @@ package body GNATLLVM.GLValue is
 
       if V = No_GL_Value then
          return True;
-      elsif No (V.Value) or else No (V.Typ) then
+      elsif No (Val) or else No (TE) then
          return False;
       end if;
 
       case V.Relationship is
          when Data =>
-            return Is_Type (V.Typ) and then Ekind (V.Typ) /= E_Subprogram_Type
-              and then Object_Is_Data (V);
+
+            --  We allow a non-loadable type to be Data to handle cases
+            --  such as passing large objects by value.  We don't want to
+            --  generate such unless we have to, but we also don't want
+            --  to make it invalid.  We can't use Data for a dynamic
+            --  size type, though.
+
+            return Is_Type (TE) and then Ekind (TE) /= E_Subprogram_Type
+              and then not Is_Dynamic_Size (TE);
 
          when Reference =>
             --  ??? This should really only be non-array
-            return Is_Type (V.Typ)
-              and then (Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
-                          or else Ekind (V.Typ) = E_Subprogram_Type);
+            return Is_Type (TE)
+              and then (Kind = Pointer_Type_Kind
+                          or else Ekind (TE) = E_Subprogram_Type);
 
          when Reference_To_Reference | Reference_To_Thin_Pointer =>
-            return Is_Type (V.Typ)
-              and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+            return Is_Type (TE)
+              and then Kind = Pointer_Type_Kind;
 
          when Fat_Pointer | Bounds | Bounds_And_Data =>
-            return Is_Array_Or_Packed_Array_Type (V.Typ);
+            return Is_Array_Or_Packed_Array_Type (TE);
 
          when  Thin_Pointer
             | Reference_To_Bounds | Reference_To_Bounds_And_Data =>
-            return Is_Type (V.Typ)
-              and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind
-              and then Is_Array_Or_Packed_Array_Type (V.Typ);
+            return Is_Type (TE)
+              and then Kind = Pointer_Type_Kind
+              and then Is_Array_Or_Packed_Array_Type (TE);
 
          when Activation_Record  | Fat_Reference_To_Subprogram =>
-            return Ekind (V.Typ) = E_Subprogram_Type;
+            return Ekind (TE) = E_Subprogram_Type;
 
          when Reference_To_Activation_Record =>
-            return Ekind (V.Typ) = E_Subprogram_Type
-              and then Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+            return Ekind (TE) = E_Subprogram_Type
+              and then Kind = Pointer_Type_Kind;
 
          when Reference_To_Subprogram | Reference_To_Ref_To_Subprogram =>
-            return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+            return Kind = Pointer_Type_Kind;
 
          when Trampoline =>
 
-            --  We'd like to test V.Typ see that it's a subprogram type,
+            --  We'd like to test TE to see that it's a subprogram type,
             --  but if we're making this trampoline because of a 'Address,
             --  we don't have any subprogram type in sight.
 
-            return Get_Type_Kind (Type_Of (V.Value)) = Pointer_Type_Kind;
+            return Kind = Pointer_Type_Kind;
 
          when Unknown =>
             return True;

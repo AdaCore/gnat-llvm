@@ -1050,26 +1050,56 @@ package body GNATLLVM.Variables is
      (N : Node_Id; For_Freeze_Entity : Boolean := False)
    is
       Def_Ident    : constant Node_Id   := Defining_Identifier (N);
-      TE           : constant Entity_Id := Full_Etype (Def_Ident);
+      --  Identifier being defined
+
       No_Init      : constant Boolean   :=
         Nkind (N) = N_Object_Declaration and then No_Initialization (N);
+      --  True if we aren't to initialize this object (ignore expression)
+
+      Expr         : Node_Id            :=
+        (if No_Init then Empty else Expression (N));
+      --  Initializing expression, if Present and we are to use one
+
+      TE           : constant Entity_Id :=
+        (if   Ekind (Etype (Def_Ident)) = E_Class_Wide_Type
+              and then Present (Expr)
+              and then Nkind (Expr) = N_Qualified_Expression
+         then Full_Etype (Expression (Expr)) else Full_Etype (Def_Ident));
+      --  Type to use for allocation.  Normally, the type of the identifier
+      --  unless we have a qualified expression initializing a class wide
+      --  type.
+
       Addr_Expr    : constant Node_Id   :=
         (if   Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
+      --  Expression to use for the address, if Present
+
       Is_External  : constant Boolean   :=
         Is_Imported (Def_Ident) and then No (Addr_Expr)
           and then not Get_Dup_Global_Is_Defined (Def_Ident);
+      --  True if variable is not defined in this unit
+
       Is_Ref       : constant Boolean   :=
         Present (Addr_Expr) or else Is_Dynamic_Size (TE);
-      Expr         : Node_Id            :=
-        (if No_Init then Empty else Expression (N));
+      --  True if we need to use an indirection for this variable
+
       Value        : GL_Value           :=
         (if Present (Expr) then Get_Value (Expr) else No_GL_Value);
+      --  Any value that we've previously saved for an initializing expression
+
       Addr         : GL_Value           :=
         (if Present (Addr_Expr) then Get_Value (Addr_Expr) else No_GL_Value);
+      --  Likewise for address
+
       Copied       : Boolean            := False;
+      --  True if we've copied the value to the variable
+
       Set_Init     : Boolean            := False;
+      --  True if we've made an initializer for a static variable that we're
+      --  defining.
+
       LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
+      --  The LLVM value for the variable
 
    begin
 
@@ -1295,7 +1325,9 @@ package body GNATLLVM.Variables is
         and then not Address_Taken (Def_Ident)
       then
          Value := Emit (Expr);
-         if Is_Elementary_Type (TE) then
+         if Is_Elementary_Type (TE)
+           and then not Is_Packed_Array_Impl_Type (TE)
+         then
             LLVM_Var := Convert (Get (Value, Data), TE);
             Copied := True;
          elsif Is_Data (Value) then

@@ -1068,6 +1068,7 @@ package body GNATLLVM.Subprograms is
          Create_Subprogram_Debug_Info (Func, Def_Ident, N,
                                        Get_Name_String (Chars (Def_Ident)),
                                        Get_Ext_Name (Def_Ident)));
+      Set_Debug_Pos_At_Node (N);
 
       --  If the return type has dynamic size, we've added a parameter
       --  that's passed the address to which we want to copy our return

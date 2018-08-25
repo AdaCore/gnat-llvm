@@ -1628,14 +1628,15 @@ package body GNATLLVM.Records is
       Expr     : Node_Id;
 
    begin
-      pragma Assert (not Is_Dynamic_Size (TE));
+      --  If we can use Data for the result, it means that each of its
+      --  components must be just a simple component into an LLVM
+      --  structure, so we just go through each of the part of the
+      --  aggregate and use the offset for that field, skipping a
+      --  discriminant of an unchecked union.  If not, we use
+      --  Record_Field_Offset to do the reference.  First, ensure that
+      --  the type has been elaborated so field indices exist.
 
-      --  The above assertion proved that TE is of fixed size.  This
-      --  means that each of its components must be just a simple component
-      --  into an LLVM structure, so we just go through each of the part of
-      --  the aggregate and use the offset for that field, skipping
-      --  a discriminant of an unchecked union.
-
+      Discard (Create_Type (TE));
       Expr := First (Component_Associations (N));
       return Result : GL_Value := Result_So_Far do
 

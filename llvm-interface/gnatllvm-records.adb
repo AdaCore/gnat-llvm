@@ -1640,12 +1640,15 @@ package body GNATLLVM.Records is
       Expr := First (Component_Associations (N));
       return Result : GL_Value := Result_So_Far do
 
-         --  If we haven't already made a value, do so now.  If this is
-         --  a loadable type or we have a value, we start with an undef
-         --  of that type.  Otherwise, it's a variable of that type.
+         --  If we haven't already made a value, do so now.  If this is a
+         --  loadable type or not of dynamic size and we have a value, we
+         --  start with an undef of that type.  Otherwise, it's a variable
+         --  of that type.
 
          if No (Result) then
-            if Is_Loadable_Type (TE) or else Is_No_Elab_Needed (N) then
+            if Is_Loadable_Type (TE)
+              or else (not Is_Dynamic_Size (TE) and then Is_No_Elab_Needed (N))
+            then
                Result := Get_Undef (TE);
             else
                Result := Allocate_For_Type (TE, TE, N);

@@ -1945,7 +1945,7 @@ package body GNATLLVM.Subprograms is
       --  it.  Then, unless the subprogram address is already a reference
       --  to a subprogram, get it as a reference.
 
-      LLVM_Func := Emit_LValue (Subp);
+      LLVM_Func := Emit_Safe_LValue (Subp);
       if This_Adds_S_Link then
          S_Link := Get (LLVM_Func, Reference_To_Activation_Record);
       end if;
@@ -1959,7 +1959,10 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          Args (In_Idx) :=
-           Allocate_For_Type (Return_Typ, Return_Typ, Subp, Name => "return");
+           Allocate_For_Type (Return_Typ, Return_Typ, Subp,
+                              Name     => "return",
+                              Max_Size =>
+                                Is_Unconstrained_Record (Return_Typ));
          In_Idx        := In_Idx + 1;
       end if;
 

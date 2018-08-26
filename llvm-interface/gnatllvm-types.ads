@@ -184,14 +184,22 @@ package GNATLLVM.Types is
      (Get_Fullest_View (Scope (E)))
      with Pre => Present (E), Post => Present (Full_Scope'Result);
 
+   function Is_Unconstrained_Record (TE : Entity_Id) return Boolean is
+     (Ekind (TE) = E_Record_Type and then Has_Discriminants (TE))
+     with Pre => Is_Type_Or_Void (TE);
+
    function Is_Unconstrained_Array (TE : Entity_Id) return Boolean is
      (Is_Array_Type (TE) and then not Is_Constrained (TE))
      with Pre => Is_Type_Or_Void (TE);
 
-   function Is_Access_Unconstrained (TE : Entity_Id) return Boolean is
+   function Is_Access_Unconstrained_Array (TE : Entity_Id) return Boolean is
      (Is_Access_Type (TE)
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
      with Pre => Is_Type (TE);
+
+   function Is_Unconstrained_Type (TE : Entity_Id) return Boolean is
+     (Is_Unconstrained_Array (TE) or else Is_Unconstrained_Record (TE))
+     with Pre => Is_Type_Or_Void (TE);
 
    function Is_Array_Or_Packed_Array_Type (TE : Entity_Id) return Boolean is
      (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE))
@@ -362,7 +370,8 @@ package GNATLLVM.Types is
       N          : Node_Id;
       V          : GL_Value := No_GL_Value;
       Expr       : Node_Id  := Empty;
-      Name       : String := "") return GL_Value
+      Name       : String   := "";
+      Max_Size   : Boolean  := False) return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type),
           Post => Is_Access_Type (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type TE and return a
@@ -378,7 +387,8 @@ package GNATLLVM.Types is
       V          : GL_Value  := No_GL_Value;
       Expr       : Node_Id   := Empty;
       Proc       : Entity_Id := Empty;
-      Pool       : Entity_Id := Empty) return GL_Value
+      Pool       : Entity_Id := Empty;
+      Max_Size   : Boolean   := False) return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type)
                   and then (No (Proc) or else Present (Pool)),
           Post => Is_Access_Type (Heap_Allocate_For_Type'Result);

@@ -489,9 +489,6 @@ package GNATLLVM.GLValue is
      (not Is_Reference (V) and then Is_Array_Type (Etype (V)))
      with Pre => Present (V);
 
-   function Is_Access_Unconstrained (V : GL_Value) return Boolean
-     with Pre => Present (V);
-
    function Is_Access_Subprogram_Type (V : GL_Value) return Boolean is
     (Is_Access_Type (V)
        and then Ekind (Full_Designated_Type (V)) = E_Subprogram_Type)
@@ -547,7 +544,16 @@ package GNATLLVM.GLValue is
      (not Is_Reference (V) and then Is_Modular_Integer_Type (Full_Etype (V)))
      with Pre => Present (V);
 
+   function Is_Unconstrained_Record (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
    function Is_Unconstrained_Array (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
+   function Is_Unconstrained_Type (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
+   function Is_Access_Unconstrained_Array (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function Is_Packed_Array_Impl_Type (V : GL_Value) return Boolean is

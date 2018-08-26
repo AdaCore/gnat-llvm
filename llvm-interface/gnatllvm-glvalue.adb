@@ -147,21 +147,35 @@ package body GNATLLVM.GLValue is
       end case;
    end GL_Value_Is_Valid_Int;
 
-   -----------------------------
-   -- Is_Access_Unconstrained --
-   -----------------------------
-
-   function Is_Access_Unconstrained (V : GL_Value) return Boolean is
-     (Is_Access_Type (V) and then not Is_Subprogram_Reference (V)
-        and then Is_Unconstrained_Array (Full_Designated_Type (V))
-        and then Relationship (V) /= Reference);
-
    ----------------------------
    -- Is_Unconstrained_Array --
    ----------------------------
 
    function Is_Unconstrained_Array (V : GL_Value) return Boolean is
      (Is_Unconstrained_Array (Related_Type (V)));
+
+   -----------------------------------
+   -- Is_Access_Unconstrained_Array --
+   -----------------------------------
+
+   function Is_Access_Unconstrained_Array (V : GL_Value) return Boolean is
+     (Is_Access_Type (V) and then not Is_Subprogram_Reference (V)
+        and then Is_Unconstrained_Array (Full_Designated_Type (V))
+        and then Relationship (V) /= Reference);
+
+   -----------------------------
+   -- Is_Unconstrained_Record --
+   -----------------------------
+
+   function Is_Unconstrained_Record (V : GL_Value) return Boolean is
+     (Is_Unconstrained_Record (Related_Type (V)));
+
+   ---------------------------
+   -- Is_Unconstrained_Type --
+   ---------------------------
+
+   function Is_Unconstrained_Type (V : GL_Value) return Boolean is
+     (Is_Unconstrained_Type (Related_Type (V)));
 
    -----------------------------------
    -- Is_Constr_Subt_For_UN_Aliased --

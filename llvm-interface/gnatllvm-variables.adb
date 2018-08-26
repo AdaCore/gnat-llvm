@@ -1069,6 +1069,9 @@ package body GNATLLVM.Variables is
       --  unless we have a qualified expression initializing a class wide
       --  type.
 
+      Max_Size     : constant Boolean   := Is_Unconstrained_Record (TE);
+      --  True if our allocation should be of the maximum size.
+
       Addr_Expr    : constant Node_Id   :=
         (if   Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
@@ -1301,7 +1304,8 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Dynamic_Size (TE) then
-            Store (Get (Heap_Allocate_For_Type (TE, TE, Value, Expr),
+            Store (Get (Heap_Allocate_For_Type (TE, TE, Value, Expr,
+                                                Max_Size => Max_Size),
                         Any_Reference),
                    LLVM_Var);
             Copied := True;
@@ -1348,7 +1352,8 @@ package body GNATLLVM.Variables is
 
       if No (LLVM_Var) then
          LLVM_Var := Allocate_For_Type (TE, TE, Def_Ident, Value, Expr,
-                                        Name => Get_Name (Def_Ident));
+                                        Name     => Get_Name (Def_Ident),
+                                        Max_Size => Max_Size);
          Copied := True;
       end if;
 

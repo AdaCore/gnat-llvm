@@ -708,9 +708,17 @@ package body GNATLLVM.Compile is
                   Value := Emit_Expression (Expression (Expr));
                end if;
 
+               --  If TE's designated type is a record with discriminants
+               --  and there's no Value, we're usually passed a subtype as
+               --  Typ.  But in some cases (such as where it's limited), we
+               --  aren't.
+
                Result := Heap_Allocate_For_Type
                  (Full_Designated_Type (TE), Typ, Value,
-                  Proc => Procedure_To_Call (N), Pool => Storage_Pool (N));
+                  Proc     => Procedure_To_Call (N),
+                  Pool     => Storage_Pool (N),
+                  Max_Size => (Is_Unconstrained_Record (Typ)
+                                 and then No (Value)));
                return Convert_To_Access (Result, TE);
             end;
 

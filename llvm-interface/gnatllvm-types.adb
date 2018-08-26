@@ -87,7 +87,10 @@ package body GNATLLVM.Types is
    --  True if T_Have is a parent type of T_Need
 
    function Get_Alloc_Size
-     (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
+     (TE         : Entity_Id;
+      Alloc_Type : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean) return GL_Value
      with Pre => Is_Type (TE), Post => Present (Get_Alloc_Size'Result);
    --  Like Get_Type_Size, but used for the size to be allocated, so we
    --  include the size of the bounds in some array cases.
@@ -595,7 +598,7 @@ package body GNATLLVM.Types is
 
    function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
       V_Type   : constant Entity_Id := Related_Type (V);
-      Unc_Src  : constant Boolean   := Is_Access_Unconstrained (V);
+      Unc_Src  : constant Boolean   := Is_Access_Unconstrained_Array (V);
       Unc_Dest : constant Boolean   := Is_Unconstrained_Array (TE);
 
    begin
@@ -1368,7 +1371,8 @@ package body GNATLLVM.Types is
       N          : Node_Id;
       V          : GL_Value := No_GL_Value;
       Expr       : Node_Id  := Empty;
-      Name       : String   := "") return GL_Value
+      Name       : String   := "";
+      Max_Size   : Boolean  := False) return GL_Value
    is
       Max_Alloc   : constant ULL := 10_000_000;
       Value       : GL_Value     := V;
@@ -1414,7 +1418,8 @@ package body GNATLLVM.Types is
          Num_Elts    := Get_Array_Elements (Value, Alloc_Type);
       else
          Element_Typ := Standard_Short_Short_Integer;
-         Num_Elts    := Get_Alloc_Size (Alloc_Type, Alloc_Type, Value);
+         Num_Elts    :=
+           Get_Alloc_Size (Alloc_Type, Alloc_Type, Value, Max_Size);
       end if;
 
       --  Check that we aren't trying to allocate too much memory.  Raise
@@ -1444,16 +1449,17 @@ package body GNATLLVM.Types is
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
       V          : GL_Value  := No_GL_Value;
-      Expr       : Node_Id  := Empty;
+      Expr       : Node_Id   := Empty;
       Proc       : Entity_Id := Empty;
-      Pool       : Entity_Id := Empty) return GL_Value
+      Pool       : Entity_Id := Empty;
+      Max_Size   : Boolean   := False) return GL_Value
    is
       Value   : constant GL_Value  :=
         (if    Present (V) then V
-         elsif Is_Unconstrained_Array (Alloc_Type)
-               and then Present (Expr)
+         elsif Is_Unconstrained_Type (Alloc_Type) and then Present (Expr)
          then  Emit (Expr) else No_GL_Value);
-      Size    : constant GL_Value  := Get_Alloc_Size (TE, Alloc_Type, Value);
+      Size    : constant GL_Value  :=
+         Get_Alloc_Size (TE, Alloc_Type, Value, Max_Size);
       Align   : constant unsigned  := Get_Type_Alignment (Alloc_Type);
       Align_V : constant GL_Value  := Size_Const_Int (Align);
       Result  : GL_Value;
@@ -1633,13 +1639,16 @@ package body GNATLLVM.Types is
    --------------------
 
    function Get_Alloc_Size
-     (TE, Alloc_Type : Entity_Id; V : GL_Value) return GL_Value
+     (TE         : Entity_Id;
+      Alloc_Type : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean) return GL_Value
    is
       Size : GL_Value :=
         Get_Type_Size (Alloc_Type,
                        (if   Is_Class_Wide_Equivalent_Type (Alloc_Type)
                         then No_GL_Value else V),
-                       Max_Size => No (V) and then not Is_Constrained (TE));
+                       Max_Size => Max_Size);
 
    begin
       --  Adjust size if constrained subtype for aliased unconstrained or

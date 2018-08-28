@@ -201,13 +201,17 @@ package body GNATLLVM.Records is
          Name : String := "") return Result;
       with function  Sz_Add
         (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Sub
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_And
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Neg (V : Result; Name : String := "") return Result;
       with function  Sz_Select
         (V_If, V_Then, V_Else : Result; Name : String := "") return Result;
       with function  Sz_Min (V1, V2 : Result) return Result;
       with function  Sz_Max (V1, V2 : Result) return Result;
       with function  Sz_Is_Const (V : Result) return Boolean;
       with function  Sz_Const_Val (V : Result) return ULL;
-      with function  Sz_Align_To (V, Cur, Must : Result) return Result;
       with procedure Sz_Add_To_List (V : Result);
    package Size is
 
@@ -289,6 +293,12 @@ package body GNATLLVM.Records is
       --  from the start of its type as a value of Size_Type.  If Present, V
       --  is a value of that type, which is used in the case of a
       --  discriminated record.
+
+      function Align_To (V, Cur_Align, Must_Align : Result) return Result
+        with Pre => Present (V), Post => Present (Align_To'Result);
+      --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
+      --  Align_To.
+
    end Size;
 
    ------------------------
@@ -1387,8 +1397,8 @@ package body GNATLLVM.Records is
             else
                Get_RI_Info (RI, V, Max_Size, This_Size,
                             Must_Align, This_Align);
-               Total_Size := Sz_Add (Sz_Align_To (Total_Size, Cur_Align,
-                                                  Must_Align),
+               Total_Size := Sz_Add (Align_To (Total_Size, Cur_Align,
+                                               Must_Align),
                                      This_Size);
 
                --  The resulting alignment is the minimum of this alignment
@@ -1436,7 +1446,7 @@ package body GNATLLVM.Records is
          end if;
 
          Pop_Debug_Freeze_Pos;
-         return Sz_Align_To (Total_Size, Cur_Align, Must_Align);
+         return Align_To (Total_Size, Cur_Align, Must_Align);
       end Get_Record_Size_So_Far;
 
       --------------------------
@@ -1501,6 +1511,25 @@ package body GNATLLVM.Records is
          end if;
       end Emit_Field_Position;
 
+      --------------
+      -- Align_To --
+      --------------
+
+      function Align_To (V, Cur_Align, Must_Align : Result) return Result is
+      begin
+         --  If both alignments are constant and we can determine that we
+         --  needn't do any alignment, do nothing.  Otherwise, align.
+
+         if Sz_Is_Const (Cur_Align) and then Sz_Is_Const (Must_Align)
+           and then Sz_Const_Val (Must_Align) <= Sz_Const_Val (Cur_Align)
+         then
+            return V;
+         else
+            return Sz_And (Sz_Add (V, Sz_Sub (Must_Align, Sz_Const (ULL (1)))),
+                           Sz_Neg (Must_Align));
+         end if;
+      end Align_To;
+
    end Size;
 
    --  Here we instantiate the size routines with functions that compute
@@ -1512,11 +1541,13 @@ package body GNATLLVM.Records is
                 Sz_Add_To_List         => Add_To_LValue_List,
                 Sz_Const               => Size_Const_Int,
                 Sz_Add                 => Add,
+                Sz_Sub                 => Sub,
+                Sz_And                 => Build_And,
+                Sz_Neg                 => Neg,
                 Sz_I_Cmp               => I_Cmp,
                 Sz_Select              => Build_Select,
                 Sz_Min                 => Build_Min,
                 Sz_Max                 => Build_Max,
-                Sz_Align_To            => Align_To,
                 Sz_Is_Const            => Is_A_Const_Int,
                 Sz_Const_Val           => Get_Const_Int_Value,
                 Sz_Type_Size           => Get_Type_Size,
@@ -1546,25 +1577,8 @@ package body GNATLLVM.Records is
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      renames LLVM_Size.Emit_Field_Position;
 
-   --------------
-   -- Align_To --
-   --------------
-
-   function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value is
-   begin
-      --  If both alignments are constant and we can determine that we
-      --  needn't do any alignment, do nothing.  Otherwise, align.
-
-      if Is_A_Const_Int (Cur_Align) and then Is_A_Const_Int (Must_Align)
-        and then (Get_Const_Int_Value (Must_Align)
-                    <= Get_Const_Int_Value (Cur_Align))
-      then
-         return V;
-      else
-         return Build_And (Add (V, Sub (Must_Align, Size_Const_Int (Uint_1))),
-                           Neg (Must_Align));
-      end if;
-   end Align_To;
+   function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
+     renames LLVM_Size.Align_To;
 
    -----------------------------
    -- Get_RI_Info_For_Variant --

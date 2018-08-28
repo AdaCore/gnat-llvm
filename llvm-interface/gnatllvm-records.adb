@@ -1546,6 +1546,26 @@ package body GNATLLVM.Records is
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      renames LLVM_Size.Emit_Field_Position;
 
+   --------------
+   -- Align_To --
+   --------------
+
+   function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value is
+   begin
+      --  If both alignments are constant and we can determine that we
+      --  needn't do any alignment, do nothing.  Otherwise, align.
+
+      if Is_A_Const_Int (Cur_Align) and then Is_A_Const_Int (Must_Align)
+        and then (Get_Const_Int_Value (Must_Align)
+                    <= Get_Const_Int_Value (Cur_Align))
+      then
+         return V;
+      else
+         return Build_And (Add (V, Sub (Must_Align, Size_Const_Int (Uint_1))),
+                           Neg (Must_Align));
+      end if;
+   end Align_To;
+
    -----------------------------
    -- Get_RI_Info_For_Variant --
    -----------------------------

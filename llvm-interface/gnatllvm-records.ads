@@ -74,6 +74,11 @@ package GNATLLVM.Records is
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
 
+   function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
+     with Pre => Present (V), Post => Present (Align_To'Result);
+   --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
+   --  Align_To.
+
    --  The following are debug procedures to print information about records
    --  and fields.
 

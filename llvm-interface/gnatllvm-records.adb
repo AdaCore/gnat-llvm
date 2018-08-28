@@ -158,31 +158,6 @@ package body GNATLLVM.Records is
           Post => Present (Get_Discriminant_Constraint'Result);
    --  Get the expression that constrains the discriminant E of type TE
 
-   procedure Get_RI_Info
-     (RI          : Record_Info;
-      V           : GL_Value;
-      Max_Size    : Boolean;
-      Size        : out GL_Value;
-      Must_Align  : out GL_Value;
-      Is_Align    : out GL_Value;
-      Return_Size : Boolean := True)
-     with Post => (not Return_Size or else Present (Size))
-                  and then Present (Must_Align) and then Present (Is_Align);
-   --  Return information about a record fragment RI.  This includes is
-   --  size, the amount to which this fragment must be aligned, and the
-   --  amout to which the resulting size is known to be aligned.  If the
-   --  size isn't wanted, don't compute it.
-
-   procedure Get_Variant_Aligns
-     (S_Idx      : Record_Info_Id;
-      Must_Align : out GL_Value;
-      Is_Align   : out GL_Value;
-      V          : GL_Value;
-      Max_Size   : Boolean)
-     with Post => Present (Must_Align) and then Present (Is_Align);
-   --  Compute the amount to which a variant must be align and the amount
-   --  to which the size of the variant is aligned.
-
    procedure Get_RI_Info_For_Variant
      (RI          : Record_Info;
       V           : GL_Value;
@@ -196,39 +171,125 @@ package body GNATLLVM.Records is
    --  Like Get_RI_Info, but for a fragment known to be a variant and
    --  where we're not getting the maximum size.
 
-   procedure Get_RI_Info_For_Max_Size_Variant
-     (RI          : Record_Info;
-      Size        : out GL_Value;
-      Must_Align  : out GL_Value;
-      Is_Align    : out GL_Value;
-      Return_Size : Boolean := True)
-     with Pre  => RI.Variants /= null,
-          Post => (not Return_Size or else Present (Size))
-                  and then Present (Must_Align) and then Present (Is_Align);
-   --  Get informaton correspondind to the maxium size of the variant
-   --  described by In_RI.
+   --  We put the routines used to compute sizes into a generic so that we
+   --  can instantiate them using various types of sizing.  The most common
+   --  case is an actual size computation, where we produce a GL_Value.
+   --  But we may also instantiate this package to generate the structure
+   --  needed for back-annotation.
 
-   function Get_Variant_For_RI
-     (In_RI    : Record_Info;
-      V        : GL_Value;
-      Max_Size : Boolean;
-      Need_Idx : Record_Info_Id) return Record_Info_Id
-     with Pre => Present (Need_Idx);
-   --  We are at RI when walking the description for a record and
-   --  it has variants.  We're looking for Need_Idx.  If Need_Idx is an
-   --  index in one of the variants, return that variant.
+   generic
+      type Result is private;
+      Empty_Result : Result;
+      with function Sz_Const
+        (C : ULL; Sign_Extend : Boolean := False) return Result;
+      with function Sz_Type_Size
+        (TE       : Entity_Id;
+         V        : Result := Empty_Result;
+         Max_Size : Boolean := False) return Result;
+      with procedure Sz_RI_Info_For_Variant
+        (RI          : Record_Info;
+         V           : Result;
+         Max_Size    : Boolean;
+         Size        : out Result;
+         Must_Align  : out Result;
+         Is_Align    : out Result;
+         Return_Size : Boolean := True);
+      with function  Sz_I_Cmp
+        (Op : Int_Predicate_T;
+         LHS : Result;
+         RHS : Result;
+         Name : String := "") return Result;
+      with function  Sz_Add
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Select
+        (V_If, V_Then, V_Else : Result; Name : String := "") return Result;
+      with function  Sz_Min (V1, V2 : Result) return Result;
+      with function  Sz_Max (V1, V2 : Result) return Result;
+      with function  Sz_Is_Const (V : Result) return Boolean;
+      with function  Sz_Const_Val (V : Result) return ULL;
+      with function  Sz_Align_To (V, Cur, Must : Result) return Result;
+      with procedure Sz_Add_To_List (V : Result);
+   package Size is
 
-   function Get_Record_Size_So_Far
-     (TE        : Entity_Id;
-      V         : GL_Value;
-      Start_Idx : Record_Info_Id;
-      Idx       : Record_Info_Id;
-      Max_Size  : Boolean := False) return GL_Value
-     with Post => Present (Get_Record_Size_So_Far'Result);
-   --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
-   --  or the last segment, whichever comes first.  If TE is Present, it
-   --  provides the default for Start_Idx and also requests alignment to
-   --  TE's alignment if we're looking for the size.
+      function No      (V : Result) return Boolean is (V = Empty_Result);
+      function Present (V : Result) return Boolean is (V /= Empty_Result);
+
+      procedure Get_RI_Info
+        (RI          : Record_Info;
+         V           : Result;
+         Max_Size    : Boolean;
+         Size        : out Result;
+         Must_Align  : out Result;
+         Is_Align    : out Result;
+         Return_Size : Boolean := True)
+        with Post => (not Return_Size or else Present (Size))
+                      and then Present (Must_Align)
+                      and then Present (Is_Align);
+      --  Return information about a record fragment RI.  This
+      --  includes its size, the amount to which this fragment must be
+      --  aligned, and the amout to which the resulting size is known
+      --  to be aligned.  If the size isn't wanted, don't compute it.
+
+      procedure Get_Variant_Aligns
+        (S_Idx      : Record_Info_Id;
+         Must_Align : out Result;
+         Is_Align   : out Result;
+         V          : Result;
+         Max_Size   : Boolean)
+        with Post => Present (Must_Align) and then Present (Is_Align);
+      --  Compute the amount to which a variant must be align and the amount
+      --  to which the size of the variant is aligned.
+
+      function Get_Variant_For_RI
+        (In_RI    : Record_Info;
+         V        : Result;
+         Max_Size : Boolean;
+         Need_Idx : Record_Info_Id) return Record_Info_Id
+        with Pre => Present (Need_Idx);
+      --  We are at RI when walking the description for a record and
+      --  it has variants.  We're looking for Need_Idx.  If Need_Idx is an
+      --  index in one of the variants, return that variant.
+
+      procedure Get_RI_Info_For_Max_Size_Variant
+        (RI          : Record_Info;
+         Size        : out Result;
+         Must_Align  : out Result;
+         Is_Align    : out Result;
+         Return_Size : Boolean := True)
+        with Pre  => RI.Variants /= null,
+             Post => (not Return_Size or else Present (Size))
+                      and then Present (Must_Align)
+                      and then Present (Is_Align);
+      --  Get informaton correspondind to the maxium size of the variant
+      --  described by In_RI.
+
+      function Get_Record_Size_So_Far
+        (TE        : Entity_Id;
+         V         : Result;
+         Start_Idx : Record_Info_Id;
+         Idx       : Record_Info_Id;
+         Max_Size  : Boolean := False) return Result
+        with Post => Present (Get_Record_Size_So_Far'Result);
+      --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
+      --  or the last segment, whichever comes first.  If TE is Present, it
+      --  provides the default for Start_Idx and also requests alignment to
+      --  TE's alignment if we're looking for the size.
+
+      function Get_Record_Type_Size
+        (TE       : Entity_Id;
+         V        : Result;
+         Max_Size : Boolean := False) return Result
+        with Pre  => Is_Record_Type (TE),
+            Post => Present (Get_Record_Type_Size'Result);
+      --  Like Get_Type_Size, but only for record types
+
+      function Emit_Field_Position (E : Entity_Id; V : Result) return Result
+        with Pre  => Ekind_In (E, E_Discriminant, E_Component);
+      --  Compute and return the position in bytes of the field specified by E
+      --  from the start of its type as a value of Size_Type.  If Present, V
+      --  is a value of that type, which is used in the case of a
+      --  discriminated record.
+   end Size;
 
    ------------------------
    --  RI_Value_Is_Valid --
@@ -1002,186 +1063,488 @@ package body GNATLLVM.Records is
       return LLVM_Type;
    end Create_Record_Type;
 
-   -----------------
-   -- Get_RI_Info --
-   -----------------
+   --  These are the generic functions to compute the size of record and
+   --  offsets of fields within them.
 
-   procedure Get_RI_Info
-     (RI          : Record_Info;
-      V           : GL_Value;
-      Max_Size    : Boolean;
-      Size        : out GL_Value;
-      Must_Align  : out GL_Value;
-      Is_Align    : out GL_Value;
-      Return_Size : Boolean := True)
-   is
-      T         : constant Type_T      := RI.LLVM_Type;
-      TE        : constant Entity_Id   := RI.GNAT_Type;
-      This_Size : GL_Value             := No_GL_Value;
+   package body Size is
 
-   begin
+      -----------------
+      -- Get_RI_Info --
+      -----------------
+
+      procedure Get_RI_Info
+        (RI          : Record_Info;
+         V           : Result;
+         Max_Size    : Boolean;
+         Size        : out Result;
+         Must_Align  : out Result;
+         Is_Align    : out Result;
+         Return_Size : Boolean := True)
+      is
+         T         : constant Type_T      := RI.LLVM_Type;
+         TE        : constant Entity_Id   := RI.GNAT_Type;
+         This_Size : Result               := Empty_Result;
+
+      begin
          --  First check for zero length LLVM type since the code below will
          --  fail if we have no fields.
 
-      if Present (T) and then Get_LLVM_Type_Size (T) = ULL (0) then
-            This_Size  := Size_Const_Null;
-            Must_Align := Size_Const_Int (Get_Type_Alignment (T));
-            Is_Align   := Size_Const_Int (Get_Type_Alignment (T));
+         if Present (T) and then Get_LLVM_Type_Size (T) = ULL (0) then
+            This_Size  := Sz_Const (ULL (0));
+            Must_Align := Sz_Const (ULL (Get_Type_Alignment (T)));
+            Is_Align   := Sz_Const (ULL (Get_Type_Alignment (T)));
 
-      elsif Present (T) then
+         elsif Present (T) then
 
-         --  We have to be careful how we compute the size of this record
-         --  fragment because we don't want to count the padding at the end
-         --  in all cases.  If this is followed by a variable-sized
-         --  fragment, we may have a subtype where the following field is
-         --  fixed size and hence is part of the same LLVM struct in that
-         --  subtype.  In such a case, if the alignment of that type is
-         --  less than the alignment of our type, there'll be less padding.
-         --
-         --  For example, suppose we have:
-         --
-         --     type R (X : Integer) is record
-         --        A : Integer;
-         --        B : Short_Short_Integer;
-         --        C : String (1 .. X);
-         --     end record;
-         --
-         --  In the layout of the base type, which is of variable size, the
-         --  LLVM struct will be { i32, i32, i8 } and the next fragment
-         --  will be for field C.  The above struct has a size of 12
-         --  because the size is always a multiple of itsq alignment.
-         --  However, if we have a subtype of R with X = 10, the struct for
-         --  that subtype (now containing all the fields) will be
-         --
-         --      { i32, i32, i8, [10 x i8] }
-         --
-         --  but that last array will be at an offset of 9, not 12, which
-         --  is what we'd get by just positioning it from the size of the
-         --  fragment from the base type.
-         --
-         --  Therefore, we need to compute the size of this struct by
-         --  adding the position of the last field to its size.  If padding
-         --  is needed for any reason, our caller will take care of that.
-         --
-         --  In addition, unlike in the GNAT type (variable sized) case,
-         --  the alignment that we must receive and that we generate are
-         --  not the same.
-         --
-         declare
-            Num_Types   : constant unsigned := Count_Struct_Element_Types (T);
-            Last_Type   : constant Type_T   :=
-              Struct_Get_Type_At_Index (T, Num_Types - 1);
-            Last_Size   : constant ULL      := Get_LLVM_Type_Size (Last_Type);
-            Last_Offset : constant ULL      :=
-              Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
+            --  We have to be careful how we compute the size of this record
+            --  fragment because we don't want to count the padding at the end
+            --  in all cases.  If this is followed by a variable-sized
+            --  fragment, we may have a subtype where the following field is
+            --  fixed size and hence is part of the same LLVM struct in that
+            --  subtype.  In such a case, if the alignment of that type is
+            --  less than the alignment of our type, there'll be less padding.
+            --
+            --  For example, suppose we have:
+            --
+            --     type R (X : Integer) is record
+            --        A : Integer;
+            --        B : Short_Short_Integer;
+            --        C : String (1 .. X);
+            --     end record;
+            --
+            --  In the layout of the base type, which is of variable size, the
+            --  LLVM struct will be { i32, i32, i8 } and the next fragment
+            --  will be for field C.  The above struct has a size of 12
+            --  because the size is always a multiple of itsq alignment.
+            --  However, if we have a subtype of R with X = 10, the struct for
+            --  that subtype (now containing all the fields) will be
+            --
+            --      { i32, i32, i8, [10 x i8] }
+            --
+            --  but that last array will be at an offset of 9, not 12, which
+            --  is what we'd get by just positioning it from the size of the
+            --  fragment from the base type.
+            --
+            --  Therefore, we need to compute the size of this struct by
+            --  adding the position of the last field to its size.  If padding
+            --  is needed for any reason, our caller will take care of that.
+            --
+            --  In addition, unlike in the GNAT type (variable sized) case,
+            --  the alignment that we must receive and that we generate are
+            --  not the same.
+            --
+            declare
+               Num_Types   : constant unsigned :=
+                 Count_Struct_Element_Types (T);
+               Last_Type   : constant Type_T   :=
+                 Struct_Get_Type_At_Index (T, Num_Types - 1);
+               Last_Size   : constant ULL      :=
+                 Get_LLVM_Type_Size (Last_Type);
+               Last_Offset : constant ULL      :=
+                 Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
 
-         begin
-            Must_Align := Size_Const_Int (Get_Type_Alignment (T));
-            Is_Align   := Size_Const_Int (Get_Type_Alignment (Last_Type));
-            This_Size  := Size_Const_Int (Last_Offset + Last_Size);
-         end;
+            begin
+               Must_Align := Sz_Const (ULL (Get_Type_Alignment (T)));
+               Is_Align   := Sz_Const (ULL (Get_Type_Alignment (Last_Type)));
+               This_Size  := Sz_Const (ULL (Last_Offset + Last_Size));
+            end;
 
-      --  The GNAT type case is easy
+            --  The GNAT type case is easy
 
-      elsif Present (TE) then
-         Must_Align := Size_Const_Int (Get_Type_Alignment (TE));
-         Is_Align   := Must_Align;
-         if Return_Size then
-            This_Size  := Get_Type_Size (TE, V, Max_Size or RI.Use_Max_Size);
-         end if;
+         elsif Present (TE) then
+            Must_Align := Sz_Const (ULL (Get_Type_Alignment (TE)));
+            Is_Align   := Must_Align;
+            if Return_Size then
+               This_Size  := Sz_Type_Size (TE, V, Max_Size or RI.Use_Max_Size);
+            end if;
 
-      elsif RI.Variants /= null then
-         if Max_Size then
-            Get_RI_Info_For_Max_Size_Variant
-              (RI, This_Size, Must_Align, Is_Align, Return_Size);
+         elsif RI.Variants /= null then
+            if Max_Size then
+               Get_RI_Info_For_Max_Size_Variant
+                 (RI, This_Size, Must_Align, Is_Align, Return_Size);
+            else
+               Sz_RI_Info_For_Variant
+                 (RI, V, Max_Size, This_Size, Must_Align, Is_Align,
+                  Return_Size);
+            end if;
+
          else
-            Get_RI_Info_For_Variant
-              (RI, V, Max_Size, This_Size, Must_Align, Is_Align, Return_Size);
+            Must_Align := Sz_Const (ULL (1));
+            Is_Align   := Sz_Const (ULL (Get_Maximum_Alignment));
+            This_Size  := Sz_Const (ULL (0));
          end if;
 
-      else
-         Must_Align := Size_Const_Int (Uint_1);
-         Is_Align   := Size_Const_Int (ULL (Get_Maximum_Alignment));
-         This_Size  := Size_Const_Null;
-      end if;
+         if Return_Size then
+            Size := This_Size;
+         end if;
+      end Get_RI_Info;
 
-      if Return_Size then
-         Size := This_Size;
-      end if;
-   end Get_RI_Info;
+      ------------------------
+      -- Get_Variant_Aligns --
+      ------------------------
 
-   ------------------------
-   -- Get_Variant_Aligns --
-   ------------------------
+      procedure Get_Variant_Aligns
+        (S_Idx      : Record_Info_Id;
+         Must_Align : out Result;
+         Is_Align   : out Result;
+         V          : Result;
+         Max_Size   : Boolean)
+      is
+         Junk1 : Result := Empty_Result;
+         Junk2 : Result := Empty_Result;
+         Idx : Record_Info_Id;
+
+      begin
+         --  Must_Align comes from the first fragment and Is_Align comes
+         --  from the last.
+
+         Get_RI_Info (Record_Info_Table.Table (S_Idx), V, Max_Size,
+                      Junk1, Must_Align, Junk2, False);
+         Idx := S_Idx;
+         while Present (Record_Info_Table.Table (Idx).Next) loop
+            Idx := Record_Info_Table.Table (Idx).Next;
+         end loop;
+
+         Get_RI_Info (Record_Info_Table.Table (Idx), V, Max_Size, Junk1,
+                      Junk2, Is_Align, False);
+      end Get_Variant_Aligns;
+
+      ------------------------
+      -- Get_Variant_For_RI --
+      ------------------------
+
+      function Get_Variant_For_RI
+        (In_RI    : Record_Info;
+         V        : Result;
+         Max_Size : Boolean;
+         Need_Idx : Record_Info_Id) return Record_Info_Id
+      is
+         Idx     : Record_Info_Id;
+         RI      : Record_Info;
+         New_Idx : Record_Info_Id;
+
+      begin
+         --  Look through each variant
+
+         for Variant_Idx of In_RI.Variants.all loop
+
+            --  Now look through each entry in the variant, looking into nested
+            --  variants if necessary.  We start looking at the first chained
+            --  entry of each variant, since that's where fields of that
+            --  variant start.
+
+            Idx := Variant_Idx;
+            while Present (Idx) loop
+               RI := Record_Info_Table.Table (Idx);
+               if Idx = Need_Idx then
+                  return Variant_Idx;
+               elsif RI.Variants /= null then
+                  New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Need_Idx);
+                  if Present (New_Idx) then
+                     return Variant_Idx;
+                  end if;
+               end if;
+
+               Idx := RI.Next;
+            end loop;
+         end loop;
+
+         return Empty_Record_Info_Id;
+      end Get_Variant_For_RI;
+
+      --------------------------------------
+      -- Get_RI_Info_For_Max_Size_Variant --
+      --------------------------------------
+
+      procedure Get_RI_Info_For_Max_Size_Variant
+        (RI          : Record_Info;
+         Size        : out Result;
+         Must_Align  : out Result;
+         Is_Align    : out Result;
+         Return_Size : Boolean := True)
+      is
+         Max_Const_Size : ULL    := 0;
+         Max_Var_Size   : Result := Empty_Result;
+         Max_Must_Align : Result := Sz_Const (ULL (1));
+         Min_Is_Align   : Result := Sz_Const (ULL (1));
+         Our_Size       : Result;
+         Our_Must_Align : Result;
+         Our_Is_Align   : Result;
+
+      begin
+         --  We need to compute the maximum size of each variant.  Most
+         --  discriminant sizes are constant, so we use an algorithm that'll
+         --  work best in that situation.  So we record the largest constant
+         --  size and make a chain of Select instructions to compute the
+         --  largest non-constant.  Then we merge them.  Also return the
+         --  maximum "must align" and minimum "is_align".  Here we use an
+         --  algorithm that's most efficient when all alignments are constant
+         --  since that's almost always the case in the "max size" situation.
+
+         for J in RI.Variants'Range loop
+            if Present (RI.Variants (J)) then
+               Get_Variant_Aligns (RI.Variants (J), Our_Must_Align,
+                                   Our_Is_Align, Empty_Result, True);
+               Max_Must_Align := Sz_Max (Our_Must_Align, Max_Must_Align);
+               Min_Is_Align   := Sz_Min (Our_Is_Align, Min_Is_Align);
+
+               if Return_Size then
+                  Our_Size := Get_Record_Size_So_Far (Empty, Empty_Result,
+                                                      RI.Variants (J),
+                                                      Empty_Record_Info_Id,
+                                                      True);
+                  if Sz_Is_Const (Our_Size) then
+                     if Sz_Const_Val (Our_Size) > Max_Const_Size then
+                        Max_Const_Size := Sz_Const_Val (Our_Size);
+                     end if;
+                  elsif No (Max_Var_Size) then
+                     Max_Var_Size := Our_Size;
+                  else
+                     Max_Var_Size := Sz_Max (Our_Size, Max_Var_Size);
+                  end if;
+               end if;
+            end if;
+         end loop;
+
+         Must_Align := Max_Must_Align;
+         Is_Align   := Min_Is_Align;
+         if Return_Size then
+            if No (Max_Var_Size) then
+               Size := Sz_Const (Max_Const_Size);
+            elsif Max_Const_Size = 0 then
+               Size := Max_Var_Size;
+            else
+               Size := Sz_Max (Max_Var_Size, Sz_Const (Max_Const_Size));
+            end if;
+         end if;
+      end Get_RI_Info_For_Max_Size_Variant;
+
+      ----------------------------
+      -- Get_Record_Size_So_Far --
+      ----------------------------
+
+      function Get_Record_Size_So_Far
+        (TE        : Entity_Id;
+         V         : Result;
+         Start_Idx : Record_Info_Id;
+         Idx       : Record_Info_Id;
+         Max_Size  : Boolean := False) return Result
+      is
+         Total_Size   : Result         := Sz_Const (ULL (0));
+         Cur_Align    : Result         :=
+           Sz_Const (ULL (Get_Maximum_Alignment));
+         Cur_Idx      : Record_Info_Id :=
+           (if Present (Start_Idx) then Start_Idx elsif Present (TE)
+           then Get_Record_Info (TE) else Empty_Record_Info_Id);
+         This_Size    : Result         := Empty_Result;
+         Must_Align   : Result         := Sz_Const (ULL (1));
+         Pushed_Stack : Boolean        := False;
+         This_Align   : Result;
+         New_Idx      : Record_Info_Id;
+         RI           : Record_Info;
+
+      begin
+         Push_Debug_Freeze_Pos;
+
+         --  If we're passed V, add it to the list that Get_Matching_Value
+         --  will search if we run into a discriminant in one of the
+         --  computations below.
+
+         if Present (V) then
+            Sz_Add_To_List (V);
+         end if;
+
+         --  If this is a subtype, push it onto the stack we use to search for
+         --  discriminant values.
+
+         if Present (TE) and then Ekind (TE) = E_Record_Subtype
+           and then Has_Discriminants (Full_Base_Type (TE))
+           and then Is_Constrained (TE)
+         then
+            Subtype_Stack.Append (TE);
+            Pushed_Stack := True;
+         end if;
+
+         --  Look at each piece of the record and find its value and alignment.
+         --  Align to the needed alignment for this piece, add its size, and
+         --  show what alignment we now have.
+
+         while Present (Cur_Idx) and then Cur_Idx /= Idx loop
+            New_Idx := Empty_Record_Info_Id;
+            RI      := Record_Info_Table.Table (Cur_Idx);
+
+            --  If we're reached a variant point, we have two cases.  We
+            --  could be looking for a specific RI index, in which case we
+            --  see which variant has that index and set it as next, or
+            --  we're looking to compute the size of the record.
+
+            if RI.Variants /= null and then Present (Idx) then
+               New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx);
+            end if;
+
+            if Present (New_Idx) then
+               Cur_Idx := New_Idx;
+            else
+               Get_RI_Info (RI, V, Max_Size, This_Size,
+                            Must_Align, This_Align);
+               Total_Size := Sz_Add (Sz_Align_To (Total_Size, Cur_Align,
+                                                  Must_Align),
+                                     This_Size);
+
+               --  The resulting alignment is the minimum of this alignment
+               --  and the maximum of the current alignment and what we had
+               --  to align to.
+
+               declare
+                  Cur_GT_Max   : constant Result :=
+                    Sz_I_Cmp (Int_SGT, Cur_Align, Must_Align);
+                  Max_Cur_Must : constant Result :=
+                    Sz_Select (Cur_GT_Max, Cur_Align, Must_Align);
+                  This_LT_Max  : constant Result :=
+                    Sz_I_Cmp (Int_SLT, This_Align, Max_Cur_Must);
+
+               begin
+                  Cur_Align :=
+                    Sz_Select (This_LT_Max, This_Align, Max_Cur_Must);
+               end;
+
+               Cur_Idx := RI.Next;
+            end if;
+         end loop;
+
+         --  At this point, either Idx is not Present, meaning we were
+         --  supposed to be at the end of the type, or it is, in which case
+         --  we should have hit it.  If either is the case, we have an
+         --  error where we're looking for a field in the wrong type.
+
+         pragma Assert (Cur_Idx = Idx);
+
+         --  Now we may have to do a final alignment.  If Idx is specified,
+         --  use the alignment for that field.  Otherwise, use the
+         --  alignment for the type.
+
+         if Present (Idx) then
+            Get_RI_Info (Record_Info_Table.Table (Idx), Empty_Result, False,
+                         This_Size, Must_Align, This_Align,
+                         Return_Size => False);
+         elsif Present (TE) then
+            Must_Align := Sz_Const (ULL (Get_Type_Alignment (TE)));
+         end if;
+
+         if Pushed_Stack then
+            Subtype_Stack.Decrement_Last;
+         end if;
+
+         Pop_Debug_Freeze_Pos;
+         return Sz_Align_To (Total_Size, Cur_Align, Must_Align);
+      end Get_Record_Size_So_Far;
+
+      --------------------------
+      -- Get_Record_Type_Size --
+      --------------------------
+
+      function Get_Record_Type_Size
+        (TE       : Entity_Id;
+         V        : Result;
+         Max_Size : Boolean := False) return Result is
+
+      begin
+         return Get_Record_Size_So_Far
+           (TE, V, Empty_Record_Info_Id, Empty_Record_Info_Id,
+            Max_Size or else Is_Unchecked_Union (TE));
+      end Get_Record_Type_Size;
+
+      -------------------------
+      -- Emit_Field_Position --
+      -------------------------
+
+      function Emit_Field_Position
+        (E : Entity_Id; V : Result) return Result
+      is
+         TE     : constant Entity_Id      := Full_Scope (E);
+         R_Idx  : constant Record_Info_Id := Get_Record_Info (TE);
+         F_Idx  : constant Field_Info_Id  := Get_Field_Info (E);
+         FI     : Field_Info;
+         Idx    : Record_Info_Id;
+         RI     : Record_Info;
+         Offset : Result;
+
+      begin
+         --  If there's no field information for this field, the field
+         --  position is undefined.
+
+         if No (F_Idx) then
+            return Empty_Result;
+         end if;
+
+         FI     := Field_Info_Table.Table (F_Idx);
+         Idx    := FI.Rec_Info_Idx;
+         RI     := Record_Info_Table.Table (Idx);
+         Offset := Get_Record_Size_So_Far (TE, V, R_Idx, Idx);
+
+         --  Offset now gives the offset from the start of the record to the
+         --  piece that this field is in.  If this piece has a GNAT type, then
+         --  the field is the entire piece and we have the offset.  If it's an
+         --  LLVM type, we need to compute the offset within that type.
+
+         if Present (RI.GNAT_Type) then
+            return Offset;
+         else
+            declare
+               Ordinal     : constant unsigned := unsigned (FI.Field_Ordinal);
+               This_Offset : constant ULL      :=
+                 Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
+
+            begin
+               return Sz_Add (Offset, Sz_Const (This_Offset));
+            end;
+         end if;
+      end Emit_Field_Position;
+
+   end Size;
+
+   --  Here we instantiate the size routines with functions that compute
+   --  the LLVM value the size and make those visible to clients.
+
+   package LLVM_Size is
+      new Size (Result => GL_Value,
+                Empty_Result           => No_GL_Value,
+                Sz_Add_To_List         => Add_To_LValue_List,
+                Sz_Const               => Size_Const_Int,
+                Sz_Add                 => Add,
+                Sz_I_Cmp               => I_Cmp,
+                Sz_Select              => Build_Select,
+                Sz_Min                 => Build_Min,
+                Sz_Max                 => Build_Max,
+                Sz_Align_To            => Align_To,
+                Sz_Is_Const            => Is_A_Const_Int,
+                Sz_Const_Val           => Get_Const_Int_Value,
+                Sz_Type_Size           => Get_Type_Size,
+                Sz_RI_Info_For_Variant => Get_RI_Info_For_Variant);
 
    procedure Get_Variant_Aligns
      (S_Idx      : Record_Info_Id;
       Must_Align : out GL_Value;
       Is_Align   : out GL_Value;
       V          : GL_Value;
-      Max_Size   : Boolean)
-   is
-      Junk1 : GL_Value := No_GL_Value;
-      Junk2 : GL_Value := No_GL_Value;
-      Idx : Record_Info_Id;
+      Max_Size   : Boolean) renames LLVM_Size.Get_Variant_Aligns;
 
-   begin
-      --  Must_Align comes from the first fragment and Is_Align comes
-      --  from the last.
+   function Get_Record_Size_So_Far
+     (TE        : Entity_Id;
+      V         : GL_Value;
+      Start_Idx : Record_Info_Id;
+      Idx       : Record_Info_Id;
+      Max_Size  : Boolean := False) return GL_Value
+     renames LLVM_Size.Get_Record_Size_So_Far;
 
-      Get_RI_Info (Record_Info_Table.Table (S_Idx), V, Max_Size,
-                   Junk1, Must_Align, Junk2, False);
-      Idx := S_Idx;
-      while Present (Record_Info_Table.Table (Idx).Next) loop
-         Idx := Record_Info_Table.Table (Idx).Next;
-      end loop;
-
-      Get_RI_Info (Record_Info_Table.Table (Idx), V, Max_Size, Junk1,
-                   Junk2, Is_Align, False);
-   end Get_Variant_Aligns;
-
-   ------------------------
-   -- Get_Variant_For_RI --
-   ------------------------
-
-   function Get_Variant_For_RI
-     (In_RI    : Record_Info;
+   function Get_Record_Type_Size
+     (TE       : Entity_Id;
       V        : GL_Value;
-      Max_Size : Boolean;
-      Need_Idx : Record_Info_Id) return Record_Info_Id
-   is
-      Idx     : Record_Info_Id;
-      RI      : Record_Info;
-      New_Idx : Record_Info_Id;
+      Max_Size : Boolean := False) return GL_Value
+     renames LLVM_Size.Get_Record_Type_Size;
 
-   begin
-      --  Look through each variant
-
-      for Variant_Idx of In_RI.Variants.all loop
-
-         --  Now look through each entry in the variant, looking into nested
-         --  variants if necessary.  We start looking at the first chained
-         --  entry of each variant, since that's where fields of that
-         --  variant start.
-
-         Idx := Variant_Idx;
-         while Present (Idx) loop
-            RI := Record_Info_Table.Table (Idx);
-            if Idx = Need_Idx then
-               return Variant_Idx;
-            elsif RI.Variants /= null then
-               New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Need_Idx);
-               if Present (New_Idx) then
-                  return Variant_Idx;
-               end if;
-            end if;
-
-            Idx := RI.Next;
-         end loop;
-      end loop;
-
-      return Empty_Record_Info_Id;
-   end Get_Variant_For_RI;
+   function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
+     renames LLVM_Size.Emit_Field_Position;
 
    -----------------------------
    -- Get_RI_Info_For_Variant --
@@ -1253,236 +1616,6 @@ package body GNATLLVM.Records is
          Size    := Build_Phi (Sizes,       From_BBs);
       end if;
    end Get_RI_Info_For_Variant;
-
-   --------------------------------------
-   -- Get_RI_Info_For_Max_Size_Variant --
-   --------------------------------------
-
-   procedure Get_RI_Info_For_Max_Size_Variant
-     (RI          : Record_Info;
-      Size        : out GL_Value;
-      Must_Align  : out GL_Value;
-      Is_Align    : out GL_Value;
-      Return_Size : Boolean := True)
-   is
-      Max_Const_Size : ULL      := 0;
-      Max_Var_Size   : GL_Value := No_GL_Value;
-      Max_Must_Align : GL_Value := Size_Const_Int (Uint_1);
-      Min_Is_Align   : GL_Value := Size_Const_Int (Uint_1);
-      Our_Size       : GL_Value;
-      Our_Must_Align : GL_Value;
-      Our_Is_Align   : GL_Value;
-
-   begin
-      --  We need to compute the maximum size of each variant.  Most
-      --  discriminant sizes are constant, so we use an algorithm that'll
-      --  work best in that situation.  So we record the largest constant
-      --  size and make a chain of Select instructions to compute the
-      --  largest non-constant.  Then we merge them.  Also return the
-      --  maximum "must align" and minimum "is_align".  Here we use an
-      --  algorithm that's most efficient when all alignments are constant
-      --  since that's almost always the case in the "max size" situation.
-
-      for J in RI.Variants'Range loop
-         if Present (RI.Variants (J)) then
-            Get_Variant_Aligns (RI.Variants (J), Our_Must_Align, Our_Is_Align,
-                               No_GL_Value, True);
-            Max_Must_Align := Build_Max (Our_Must_Align, Max_Must_Align);
-            Min_Is_Align   := Build_Min (Our_Is_Align, Min_Is_Align);
-
-            if Return_Size then
-               Our_Size := Get_Record_Size_So_Far (Empty, No_GL_Value,
-                                                   RI.Variants (J),
-                                                   Empty_Record_Info_Id, True);
-               if Is_A_Const_Int (Our_Size) then
-                  if Get_Const_Int_Value (Our_Size) > Max_Const_Size then
-                     Max_Const_Size := Get_Const_Int_Value (Our_Size);
-                  end if;
-               elsif No (Max_Var_Size) then
-                  Max_Var_Size := Our_Size;
-               else
-                  Max_Var_Size := Build_Max (Our_Size, Max_Var_Size);
-               end if;
-            end if;
-         end if;
-      end loop;
-
-      Must_Align := Max_Must_Align;
-      Is_Align   := Min_Is_Align;
-      if Return_Size then
-         if No (Max_Var_Size) then
-            Size := Size_Const_Int (Max_Const_Size);
-         elsif Max_Const_Size = 0 then
-            Size := Max_Var_Size;
-         else
-            Size := Build_Max (Max_Var_Size, Size_Const_Int (Max_Const_Size));
-         end if;
-      end if;
-   end Get_RI_Info_For_Max_Size_Variant;
-
-   ----------------------------
-   -- Get_Record_Size_So_Far --
-   ----------------------------
-
-   function Get_Record_Size_So_Far
-     (TE        : Entity_Id;
-      V         : GL_Value;
-      Start_Idx : Record_Info_Id;
-      Idx       : Record_Info_Id;
-      Max_Size  : Boolean := False) return GL_Value
-   is
-      Total_Size   : GL_Value       := Size_Const_Null;
-      Cur_Align    : GL_Value       :=
-        Size_Const_Int (ULL (Get_Maximum_Alignment));
-      Cur_Idx      : Record_Info_Id :=
-        (if Present (Start_Idx) then Start_Idx elsif Present (TE)
-         then Get_Record_Info (TE) else Empty_Record_Info_Id);
-      This_Size    : GL_Value       := No_GL_Value;
-      Must_Align   : GL_Value       := Size_Const_Int (Uint_1);
-      Pushed_Stack : Boolean        := False;
-      This_Align   : GL_Value;
-      New_Idx      : Record_Info_Id;
-      RI           : Record_Info;
-
-   begin
-      Push_Debug_Freeze_Pos;
-
-      --  If we're passed V, add it to the list that Get_Matching_Value
-      --  will search if we run into a discriminant in one of the computations
-      --  below.
-
-      if Present (V) then
-         Add_To_LValue_List (V);
-      end if;
-
-      --  If this is a subtype, push it onto the stack we use to search for
-      --  discriminant values.
-
-      if Present (TE) and then Ekind (TE) = E_Record_Subtype
-        and then Has_Discriminants (Full_Base_Type (TE))
-        and then Is_Constrained (TE)
-      then
-         Subtype_Stack.Append (TE);
-         Pushed_Stack := True;
-      end if;
-
-      --  Look at each piece of the record and find its value and alignment.
-      --  Align to the needed alignment for this piece, add its size, and
-      --  show what alignment we now have.
-
-      while Present (Cur_Idx) and then Cur_Idx /= Idx loop
-         New_Idx := Empty_Record_Info_Id;
-         RI      := Record_Info_Table.Table (Cur_Idx);
-
-         --  If we're reached a variant point, we have two cases.  We could
-         --  be looking for a specific RI index, in which case we see which
-         --  variant has that index and set it as next, or we're looking
-         --  to compute the size of the record.
-
-         if RI.Variants /= null and then Present (Idx) then
-            New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx);
-         end if;
-
-         if Present (New_Idx) then
-            Cur_Idx := New_Idx;
-         else
-            Get_RI_Info (RI, V, Max_Size, This_Size, Must_Align, This_Align);
-            Total_Size := Add (Align_To (Total_Size, Cur_Align, Must_Align),
-                               This_Size);
-
-            --  The resulting alignment is the minimum of this alignment
-            --  and the maximum of the current alignment and what we had
-            --  to align to.
-
-            declare
-               Cur_GT_Max : constant GL_Value :=
-                 I_Cmp (Int_SGT, Cur_Align, Must_Align);
-               Max_Cur_Must : constant GL_Value :=
-                 Build_Select (Cur_GT_Max, Cur_Align, Must_Align);
-               This_LT_Max : constant GL_Value :=
-                 I_Cmp (Int_SLT, This_Align, Max_Cur_Must);
-
-            begin
-               Cur_Align :=
-                 Build_Select (This_LT_Max, This_Align, Max_Cur_Must);
-            end;
-
-            Cur_Idx := RI.Next;
-         end if;
-      end loop;
-
-      --  At this point, either Idx is not Present, meaning we were supposed
-      --  to be at the end of the type, or it is, in which case we should
-      --  have hit it.  If either is the case, we have an error where we're
-      --  looking for a field in the wrong type.
-
-      pragma Assert (Cur_Idx = Idx);
-
-      --  Now we may have to do a final alignment.  If Idx is specified,
-      --  use the alignment for that field.  Otherwise, use the alignment
-      --  for the type.
-
-      if Present (Idx) then
-         Get_RI_Info (Record_Info_Table.Table (Idx), No_GL_Value, False,
-                      This_Size, Must_Align, This_Align, Return_Size => False);
-      elsif Present (TE) then
-         Must_Align := Size_Const_Int (ULL (Get_Type_Alignment (TE)));
-      end if;
-
-      if Pushed_Stack then
-         Subtype_Stack.Decrement_Last;
-      end if;
-
-      Pop_Debug_Freeze_Pos;
-      return Align_To (Total_Size, Cur_Align, Must_Align);
-   end Get_Record_Size_So_Far;
-
-   -------------------------
-   -- Emit_Field_Position --
-   -------------------------
-
-   function Emit_Field_Position
-     (E : Entity_Id; V : GL_Value) return GL_Value
-   is
-      TE     : constant Entity_Id      := Full_Scope (E);
-      R_Idx  : constant Record_Info_Id := Get_Record_Info (TE);
-      F_Idx  : constant Field_Info_Id  := Get_Field_Info (E);
-      FI     : Field_Info;
-      Idx    : Record_Info_Id;
-      RI     : Record_Info;
-      Offset : GL_Value;
-
-   begin
-      --  If there's no field information for this field, the field
-      --  position is undefined.
-
-      if No (F_Idx) then
-         return Get_Undef (Size_Type);
-      end if;
-
-      FI     := Field_Info_Table.Table (F_Idx);
-      Idx    := FI.Rec_Info_Idx;
-      RI     := Record_Info_Table.Table (Idx);
-      Offset := Get_Record_Size_So_Far (TE, V, R_Idx, Idx);
-
-      --  Offset now gives the offset from the start of the record to the
-      --  piece that this field is in.  If this piece has a GNAT type, then
-      --  the field is the entire piece and we have the offset.  If it's an
-      --  LLVM type, we need to compute the offset within that type.
-
-      if Present (RI.GNAT_Type) then
-         return Offset;
-      else
-         declare
-            Ordinal     : constant unsigned := unsigned (FI.Field_Ordinal);
-            This_Offset : constant ULL      :=
-              Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
-
-         begin
-            return Add (Offset, Const_Int (Offset, This_Offset));
-         end;
-      end if;
-   end Emit_Field_Position;
 
    -------------------------
    -- Record_Field_Offset --
@@ -1602,20 +1735,6 @@ package body GNATLLVM.Records is
          end loop;
       end return;
    end Get_Record_Size_Complexity;
-
-   --------------------------
-   -- Get_Record_Type_Size --
-   --------------------------
-
-   function Get_Record_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value is
-   begin
-      return Get_Record_Size_So_Far (TE, V, Empty_Record_Info_Id,
-                                     Empty_Record_Info_Id,
-                                     Max_Size or else Is_Unchecked_Union (TE));
-   end Get_Record_Type_Size;
 
    ---------------------------
    -- Emit_Record_Aggregate --

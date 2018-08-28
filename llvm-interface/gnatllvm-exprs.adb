@@ -764,6 +764,9 @@ package body GNATLLVM.Exprs is
                                          Emit_LValue (Prefix (Prefix (N))));
             end if;
 
+            if No (V) then
+               V := Get_Undef (Size_Type);
+            end if;
             if Attr = Attribute_Bit_Position then
                V := Mul (V, Byte_Size);
             end if;

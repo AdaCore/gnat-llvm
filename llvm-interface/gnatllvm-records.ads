@@ -66,11 +66,13 @@ package GNATLLVM.Records is
 
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Ekind_In (E, E_Discriminant, E_Component),
-          Post => Type_Of (Emit_Field_Position'Result) = LLVM_Size_Type;
-   --  Compute and return the position in bytes of the field specified by E
-   --  from the start of its type as a value of Size_Type.  If Present, V
-   --  is a value of that type, which is used in the case of a
-   --  discriminated record.
+          Post => No (Emit_Field_Position'Result)
+                  or else (Type_Of (Emit_Field_Position'Result) =
+                             LLVM_Size_Type);
+   --  Compute and return the position in bytes of the field specified
+   --  by E from the start of its type as a value of Size_Type.  If
+   --  Present, V is a value of that type, which is used in the case
+   --  of a discriminated record.
 
    --  The following are debug procedures to print information about records
    --  and fields.

@@ -93,36 +93,34 @@ package body GNATLLVM.Codegen is
       elsif Starts_With ("-mcpu=") then
          Free (CPU);
          CPU := new String'(Switch_Value ("-mcpu="));
-      elsif Starts_With ("-O") then
-         if Len = 2 then
+      elsif Switch = "-O" then
             Code_Opt_Level := 1;
             Code_Gen_Level := Code_Gen_Level_Less;
-         else
-            case Switch (First + 2) is
-               when '1' =>
-                  Code_Gen_Level := Code_Gen_Level_Less;
-                  Code_Opt_Level := 1;
-               when '2'  =>
-                  Code_Gen_Level := Code_Gen_Level_Default;
-                  Code_Opt_Level := 2;
-               when '3' =>
-                  Code_Gen_Level := Code_Gen_Level_Aggressive;
-                  Code_Opt_Level := 3;
-               when '0' =>
-                  Code_Gen_Level := Code_Gen_Level_None;
-                  Code_Opt_Level := 0;
-               when 's' =>
-                  Code_Gen_Level := Code_Gen_Level_Default;
-                  Code_Opt_Level := 2;
-                  Size_Opt_Level := 1;
-               when 'z' =>
-                  Code_Gen_Level := Code_Gen_Level_Default;
-                  Code_Opt_Level := 2;
-                  Size_Opt_Level := 2;
-               when others =>
-                  null;
-            end case;
-         end if;
+      elsif Starts_With ("-O") then
+         case Switch (First + 2) is
+            when '1' =>
+               Code_Gen_Level := Code_Gen_Level_Less;
+               Code_Opt_Level := 1;
+            when '2'  =>
+               Code_Gen_Level := Code_Gen_Level_Default;
+               Code_Opt_Level := 2;
+            when '3' =>
+               Code_Gen_Level := Code_Gen_Level_Aggressive;
+               Code_Opt_Level := 3;
+            when '0' =>
+               Code_Gen_Level := Code_Gen_Level_None;
+               Code_Opt_Level := 0;
+            when 's' =>
+               Code_Gen_Level := Code_Gen_Level_Default;
+               Code_Opt_Level := 2;
+               Size_Opt_Level := 1;
+            when 'z' =>
+               Code_Gen_Level := Code_Gen_Level_Default;
+               Code_Opt_Level := 2;
+               Size_Opt_Level := 2;
+            when others =>
+               null;
+         end case;
       elsif Switch = "-fno-unit-at-a-time" then
          No_Unit_At_A_Time := True;
       elsif Switch = "-fno-unroll-loops" then

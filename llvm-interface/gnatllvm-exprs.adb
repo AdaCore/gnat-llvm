@@ -674,8 +674,7 @@ package body GNATLLVM.Exprs is
 
             return Convert_To_Access (Emit_LValue (Prefix (N)), TE);
 
-         when Attribute_Address | Attribute_Pool_Address
-            | Attribute_Code_Address =>
+         when Attribute_Address | Attribute_Code_Address =>
 
             --  We need a single-word pointer, then convert it to the
             --  desired integral type.
@@ -683,6 +682,25 @@ package body GNATLLVM.Exprs is
             return Ptr_To_Int (Get (Emit_LValue (Prefix (N)),
                                     Reference_For_Integer),
                                TE, "attr-address");
+
+         when Attribute_Pool_Address =>
+
+            --  Evaluate this object.  We normally want to look at the
+            --  address of the object itself (e.g., as a Reference), but if
+            --  it's an access type, what we want is the value.  So convert
+            --  it to a reference.
+
+            V := Emit (Prefix (N));
+            if Is_Access_Type (P_TE) then
+               V := From_Access (Get (V, Data));
+            end if;
+
+            --  If it's an unconstrained array, we want the location of the
+            --  bounds, which is the first thing allocated.
+
+            V := Get (V, (if   Is_Unconstrained_Array (V)
+                          then Reference_To_Bounds_And_Data else Reference));
+            return Ptr_To_Int (V, TE, "pool-address");
 
          when Attribute_Deref =>
             declare

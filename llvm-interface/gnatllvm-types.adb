@@ -1344,7 +1344,7 @@ package body GNATLLVM.Types is
             New_V  := Get (New_V, Bounds_And_Data);
             Memory := Ptr_To_Relationship (Memory, New_V, R);
          else
-            if not Is_Constrained (TE) then
+            if not Is_Constrained (TE) or else No (New_V) then
                Store (Get_Array_Bounds (TE, Alloc_Type, New_V),
                       Get (Memory, Reference_To_Bounds));
                Memory := Get (Memory, Thin_Pointer);

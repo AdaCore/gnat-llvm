@@ -199,7 +199,7 @@ package body GNATLLVM.Subprograms is
 
    type Intrinsic is record
       Name  : access String;
-      Width : Uint;
+      Width : ULL;
       Func  : GL_Value;
    end record;
    --  A description of an intrinsic function that we've created
@@ -731,14 +731,19 @@ package body GNATLLVM.Subprograms is
       Name : String;
       TE   : Entity_Id) return GL_Value
    is
-      Width         : constant Uint   := Esize (TE);
-      Full_Name     : constant String := Name & UI_Image (Width);
-      LLVM_Typ      : constant Type_T := Create_Type (TE);
-      Return_TE     : Entity_Id := TE;
-      Fun_Ty        : Type_T;
-      Result        : GL_Value;
+      T         : constant Type_T := Create_Type (TE);
+      Width     : constant ULL    := Get_LLVM_Type_Size_In_Bits (T);
+      --  We need to use Get_LLVM_Type_Size_In_Bits instead of Esize (TE)
+      --  so that we handle FP types properly.
+
+      W         : constant String := Int'Image (Int (Width));
+      Full_Name : constant String := Name & W (W'First + 1 .. W'Last);
+      Return_TE : Entity_Id       := TE;
+      Fun_Ty    : Type_T;
+      Result    : GL_Value;
 
    begin
+
       for J in 1 .. Intrinsic_Functions_Table.Last loop
          if Intrinsic_Functions_Table.Table (J).Name.all = Name
            and then Intrinsic_Functions_Table.Table (J).Width = Width
@@ -749,15 +754,14 @@ package body GNATLLVM.Subprograms is
 
       case Kind is
          when Unary =>
-            Fun_Ty := Fn_Ty ((1 => LLVM_Typ), LLVM_Typ);
+            Fun_Ty := Fn_Ty ((1 => T), T);
 
          when Binary =>
-            Fun_Ty := Fn_Ty ((1 => LLVM_Typ, 2 => LLVM_Typ), LLVM_Typ);
+            Fun_Ty := Fn_Ty ((1 => T, 2 => T), T);
 
          when Overflow =>
-            Fun_Ty := Fn_Ty
-              ((1 => LLVM_Typ, 2 => LLVM_Typ),
-               Build_Struct_Type ((1 => LLVM_Typ, 2 => Int_Ty (1))));
+            Fun_Ty := Fn_Ty ((1 => T, 2 => T),
+                             Build_Struct_Type ((1 => T, 2 => Int_Ty (1))));
 
          when Memcpy =>
             Return_TE := Standard_Void_Type;

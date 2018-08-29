@@ -278,7 +278,7 @@ package body GNATLLVM.Types is
       if Is_Elementary_Type (TE) and then Need_Overflow_Check then
          Result := Get (Result, Data);
          Emit_Overflow_Check (Result, From_N);
-         Result := Convert (Result, TE);
+         Result := Convert (Result, TE, Float_Truncate => Float_Truncate);
 
       elsif Is_Reference (Result) and then Is_In_LHS_Context (From_N)
         and then Is_Nop_Conversion (Result, TE)

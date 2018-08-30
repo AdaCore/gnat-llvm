@@ -510,9 +510,10 @@ package body GNATLLVM.Records is
       --  The last known alignment for this record
 
       Split_Align : unsigned  := unsigned (Get_Maximum_Alignment);
-      --  We need to split an LLVM fragment type if the alignment of the next
-      --  field is greater than both this and Last_Align.  This only occurs
-      --  for variant records.  See details there.
+      --  We need to split an LLVM fragment type if the alignment of the
+      --  next field is greater than both this and Last_Align.  This occurs
+      --  for variant records; see details there.  It also occurs for the
+      --  same reason after a variable-size field.
 
       LLVM_Type : Type_T      := Get_Type (TE);
       --  The LLVM type for this record type
@@ -1011,6 +1012,7 @@ package body GNATLLVM.Records is
             Add_FI (E, Cur_Idx, 0, False, Typ);
             Add_RI (Typ => Typ, Use_Max_Size => not Is_Constrained (Typ));
             Set_Is_Dynamic_Size (TE);
+            Split_Align := Align;
 
          --  If it's of fixed size, add it to the current set of fields
          --  and make a field descriptor.
@@ -1020,8 +1022,9 @@ package body GNATLLVM.Records is
             --  alignment.  We assume here that if Add_FI updates our type
             --  that it has the same alignment.
 
-            if Align > Last_Align and then Align > Split_Align then
+            if Align > Split_Align then
                Flush_Current_Types;
+               Split_Align := Align;
             end if;
 
             Types (Next_Type) := Create_Type (Typ);

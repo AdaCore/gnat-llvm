@@ -591,8 +591,7 @@ package body GNATLLVM.Variables is
       CV   : Node_Id;
 
    begin
-      if Ekind (E) /= E_Constant or else No (Decl)
-        or else not Is_True_Constant (E)
+      if No (Decl) or else not Is_True_Constant (E)
         or else (Nkind (Decl) = N_Object_Declaration
                    and then No_Initialization (Decl))
       then
@@ -1322,11 +1321,9 @@ package body GNATLLVM.Variables is
       --  is a Reference, it may be to something that's not constant,
       --  so we actually have to allocate our entity and copy into it.
 
-      elsif Ekind (Def_Ident) = E_Constant
-        and then Is_True_Constant (Def_Ident)
-        and then (Present (Expr) or else Present (Value))
-        and then not Is_Aliased (Def_Ident)
+      elsif Is_True_Constant (Def_Ident) and then not Is_Aliased (Def_Ident)
         and then not Address_Taken (Def_Ident)
+        and then (Present (Expr) or else Present (Value))
       then
          Value := Emit (Expr);
          if Is_Elementary_Type (TE)

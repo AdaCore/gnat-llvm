@@ -234,9 +234,10 @@ package body GNATLLVM.Types is
       Need_Overflow_Check : Boolean := False;
       Float_Truncate      : Boolean := False) return GL_Value
    is
-      Result : GL_Value                 := Emit (N, For_LHS => For_LHS);
-      In_TE  : constant Entity_Id       := Related_Type (Result);
-      R      : constant GL_Relationship := Relationship (Result);
+      Result      : GL_Value                 := Emit (N, For_LHS => For_LHS);
+      Orig_Result : constant GL_Value        := Result;
+      In_TE       : constant Entity_Id       := Related_Type (Result);
+      R           : constant GL_Relationship := Relationship (Result);
 
    begin
       --  We have to be careful here.  There isn't as clear a distinction
@@ -332,13 +333,20 @@ package body GNATLLVM.Types is
       then
          return Bit_Cast (Get (Result, Data), TE);
 
-      --  If both types are elementary, hand that off to our helper
+      --  If both types are elementary, hand that off to our helper, but
+      --  raise a Constraint_Error if this conversion overflowed by producing
+      --  an undef.
 
       elsif Is_Elementary_Type (In_TE)
         and then Is_Elementary_Type (TE)
       then
          Result := Convert (Get (Result, Data), TE,
                             Float_Truncate => Float_Truncate);
+         if Is_Undef (Result) and then not Is_Undef (Orig_Result) then
+            Error_Msg_N ("?`Constraint_Error` will be raised at run time",
+                         From_N);
+            Emit_Raise_Call (From_N, CE_Overflow_Check_Failed);
+         end if;
 
       --  If both types are the same, just change the type of the result.
       --  Avoid confusing [0 x T] as both a zero-size constrained type and

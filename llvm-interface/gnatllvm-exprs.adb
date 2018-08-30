@@ -77,8 +77,12 @@ package body GNATLLVM.Exprs is
                   Val : Ureal := Realval (N);
 
                begin
+                  --  Handle zero separately to save time, but be sure we
+                  --  get the proper sign for zero.
+
                   if UR_Is_Zero (Val) then
-                     return Const_Real (TE, 0.0);
+                     V := Const_Real (TE, 0.0);
+                     return (if UR_Is_Negative (Val) then F_Neg (V) else V);
                   end if;
 
                   --  First convert the value to a machine number if it isn't

@@ -592,6 +592,7 @@ package body GNATLLVM.Variables is
 
    begin
       if No (Decl) or else not Is_True_Constant (E)
+        or else Is_Volatile (E)
         or else (Nkind (Decl) = N_Object_Declaration
                    and then No_Initialization (Decl))
       then
@@ -1323,13 +1324,17 @@ package body GNATLLVM.Variables is
 
       elsif Is_True_Constant (Def_Ident) and then not Is_Aliased (Def_Ident)
         and then not Address_Taken (Def_Ident)
+        and then not Is_Volatile (Def_Ident)
         and then (Present (Expr) or else Present (Value))
       then
-         Value := Emit (Expr);
+         if No (Value) then
+            Value := Emit_Conversion (Expr, TE);
+         end if;
+
          if Is_Elementary_Type (TE)
            and then not Is_Packed_Array_Impl_Type (TE)
          then
-            LLVM_Var := Convert (Get (Value, Data), TE);
+            LLVM_Var := Get (Value, Data);
             Copied := True;
          elsif Is_Data (Value) then
             LLVM_Var := Value;
@@ -1406,6 +1411,7 @@ package body GNATLLVM.Variables is
       --  computation.
 
       elsif Is_True_Constant (Def_Ident)
+        and then not Is_Volatile (Def_Ident)
         and then (not Library_Level
                     or else Is_No_Elab_Needed (Name (N)))
       then

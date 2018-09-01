@@ -372,43 +372,44 @@ package body GNATLLVM.Exprs is
    --------------------------
 
    function Emit_Unary_Operation (N : Node_Id) return GL_Value is
+      Result : constant GL_Value  := Emit_Expression (Right_Opnd (N));
+      TE     : constant Entity_Id := Full_Etype (Result);
+      BT     : constant Entity_Id := Full_Base_Type (TE);
+
    begin
       case Nkind (N) is
 
          when N_Op_Not =>
-            return Build_Not (Emit_Expression (Right_Opnd (N)));
+            return (if   Is_Boolean_Type (Result)
+                    then Build_Xor (Result, Const_Int (Result, ULL (1)))
+                    else Build_Not (Result));
 
          when N_Op_Abs =>
 
             --  Emit: X >= 0 ? X : -X;
 
             declare
-               Expr      : constant GL_Value :=
-                 Emit_Expression (Right_Opnd (N));
-               Zero      : constant GL_Value := Const_Null (Expr);
+               Zero      : constant GL_Value := Const_Null (Result);
                Compare   : constant GL_Value :=
-                 Emit_Elementary_Comparison (N_Op_Ge, Expr, Zero);
+                 Emit_Elementary_Comparison (N_Op_Ge, Result, Zero);
                Neg_Expr  : constant GL_Value :=
-                 (if   Is_Floating_Point_Type (Expr)
-                  then F_Neg (Expr) else Neg (Expr));
+                 (if   Is_Floating_Point_Type (Result)
+                  then F_Neg (Result) else Neg (Result));
 
             begin
-               if Is_Unsigned_Type (Expr) then
-                  return Expr;
+               if Is_Unsigned_Type (Result) then
+                  return Result;
                else
-                  return Build_Select (Compare, Expr, Neg_Expr, "abs");
+                  return Build_Select (Compare, Result, Neg_Expr, "abs");
                end if;
             end;
 
          when N_Op_Plus =>
-            return Emit_Expression (Right_Opnd (N));
+            return Result;
 
          when N_Op_Minus =>
             declare
-               Expr : constant GL_Value  := Emit_Expression (Right_Opnd (N));
-               TE   : constant Entity_Id := Full_Etype (Expr);
-               BT   : constant Entity_Id := Full_Base_Type (TE);
-               V    : constant GL_Value  := Convert (Expr, BT);
+               V : constant GL_Value  := Convert (Result, BT);
 
             begin
                if Is_Floating_Point_Type (BT) then
@@ -446,7 +447,7 @@ package body GNATLLVM.Exprs is
 
          when others =>
             pragma Assert (False);
-            return Emit_Undef (Full_Etype (N));
+            return Emit_Undef (TE);
       end case;
 
    end Emit_Unary_Operation;

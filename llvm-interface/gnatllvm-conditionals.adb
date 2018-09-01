@@ -61,8 +61,9 @@ package body GNATLLVM.Conditionals is
       LHS := Emit_Expression (Left);
       Block_Left_Expr_End := Get_Insert_Block;
 
-      Build_Cond_Br (LHS, (if And_Op then Block_Right_Expr else Block_Exit),
-                          (if And_Op then Block_Exit else Block_Right_Expr));
+      Build_Cond_Br (I_Cmp (Int_NE, LHS, Const_Null (LHS)),
+                     (if And_Op then Block_Right_Expr else Block_Exit),
+                     (if And_Op then Block_Exit else Block_Right_Expr));
 
       --  Emit code for the evaluation of the right part expression
 
@@ -791,6 +792,7 @@ package body GNATLLVM.Conditionals is
    is
       And_Op : constant Boolean := Nkind_In (N, N_And_Then, N_Op_And);
       BB_New : Basic_Block_T;
+      Result : GL_Value;
 
    begin
       case Nkind (N) is
@@ -840,7 +842,8 @@ package body GNATLLVM.Conditionals is
             --  simple comparisons.
 
             declare
-               Low, High     : Uint;
+               Low, High : Uint;
+
             begin
                Decode_Range (Right_Opnd (N), Low, High);
                if Low /= No_Uint and then High /= No_Uint then
@@ -858,9 +861,14 @@ package body GNATLLVM.Conditionals is
       end case;
 
       --  If we haven't handled it via one of the special cases above,
-      --  just evaluate the expression and do the branch.
+      --  just evaluate the expression and do the branch, depending on
+      --  whether the result if zero or nonzero.  We must have a boolean
+      --  type here.
 
-      Build_Cond_Br (Emit_Expression (N), BB_True, BB_False);
+      pragma Assert (Is_Boolean_Type (Etype (N)));
+      Result := Emit_Expression (N);
+      Build_Cond_Br (I_Cmp (Int_NE, Result, Const_Null (Result)),
+                     BB_True, BB_False);
 
    end Emit_If_Cond;
 
@@ -928,7 +936,7 @@ package body GNATLLVM.Conditionals is
       --  Start by generating the conditional branch and working on each
       --  expression in its own BB.
 
-      Build_Cond_Br (Emit_Expression (Condition), Then_BB, Else_BB);
+      Emit_If_Cond (Condition, Then_BB, Else_BB);
       Position_Builder_At_End (Then_BB);
       Then_Value := Emit (Then_Expr);
       Then_Type  := Related_Type (Then_Value);

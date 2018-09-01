@@ -44,6 +44,11 @@ package GNATLLVM.GLValue is
       --  is requivalent to a relationship of Reference to the
       --  Designated_Type of Typ.
 
+      Boolean_Data,
+      --  Like Data, but this is an actual LLVM boolean value (i1) instead
+      --  of the normal i8 that we'd use for a Boolean type.  In this case,
+      --  the type must be Standard_Boolean.
+
       Reference,
       --  Value contains the address of an object of Typ.  This is always
       --  the case for types of variable size or for names corresponding to
@@ -166,69 +171,72 @@ package GNATLLVM.GLValue is
    type Relationship_Array is array (GL_Relationship) of Relationship_Property;
 
    Relation_Props : constant Relationship_Array :=
-     (Data                         =>
+     (Data                           =>
         (Is_Ref => False, Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Reference),
+         Deref  => Invalid,          Ref => Reference),
+      Boolean_Data                   =>
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref  => Invalid,          Ref => Invalid),
       Reference                      =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Data,              Ref => Reference_To_Reference),
+         Deref  => Data,             Ref => Reference_To_Reference),
       Reference_To_Reference         =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Reference,         Ref => Invalid),
+         Deref  => Reference,        Ref => Invalid),
       Fat_Pointer                    =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Invalid),
+         Deref  => Invalid,          Ref => Invalid),
       Bounds                         =>
         (Is_Ref => False, Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Reference_To_Bounds),
+         Deref  => Invalid,          Ref => Reference_To_Bounds),
       Bounds_And_Data                =>
         (Is_Ref => False, Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Reference_To_Bounds_And_Data),
+         Deref  => Invalid,          Ref => Reference_To_Bounds_And_Data),
       Reference_To_Bounds            =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Bounds,            Ref => Invalid),
+         Deref  => Bounds,           Ref => Invalid),
       Reference_To_Bounds_And_Data   =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Bounds_And_Data,   Ref => Invalid),
+         Deref  => Bounds_And_Data,  Ref => Invalid),
       Reference_To_Thin_Pointer      =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Thin_Pointer,      Ref => Invalid),
+         Deref  => Thin_Pointer,     Ref => Invalid),
       Thin_Pointer                   =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Reference_To_Thin_Pointer),
+         Deref  => Invalid,          Ref => Reference_To_Thin_Pointer),
       Reference_To_Subprogram        =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Reference_To_Ref_To_Subprogram),
+         Deref  => Invalid,          Ref => Reference_To_Ref_To_Subprogram),
       Reference_To_Ref_To_Subprogram =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Reference_To_Subprogram, Ref => Invalid),
+         Deref  => Reference_To_Subprogram, Ref => Invalid),
       Activation_Record              =>
         (Is_Ref => False, Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Reference_To_Activation_Record),
+         Deref  => Invalid,          Ref => Reference_To_Activation_Record),
       Reference_To_Activation_Record =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Activation_Record, Ref => Invalid),
+         Deref  => Activation_Record, Ref => Invalid),
       Fat_Reference_To_Subprogram    =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Invalid),
+         Deref  => Invalid,          Ref => Invalid),
       Trampoline                     =>
         (Is_Ref => True,  Is_Any_Ref => True,
-         Deref => Invalid,           Ref => Invalid),
+         Deref  => Invalid,          Ref => Invalid),
       Unknown                        =>
         (Is_Ref => False, Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Invalid),
+         Deref  => Invalid,          Ref => Invalid),
       Any_Reference                  =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Invalid),
+         Deref  => Invalid,          Ref => Invalid),
       Reference_For_Integer          =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Invalid),
+         Deref  => Invalid,          Ref => Invalid),
       Object                         =>
         (Is_Ref => True,  Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Invalid),
+         Deref  => Invalid,          Ref => Invalid),
       Invalid                        =>
         (Is_Ref => False, Is_Any_Ref => False,
-         Deref => Invalid,           Ref => Invalid));
+         Deref  => Invalid,          Ref => Invalid));
 
    function Deref (R : GL_Relationship) return GL_Relationship is
      (Relation_Props (R).Deref);
@@ -248,7 +256,7 @@ package GNATLLVM.GLValue is
      (R = Reference_To_Subprogram);
 
    function Is_Data (R : GL_Relationship)                 return Boolean is
-     (R = Data);
+     (R in Data | Boolean_Data);
 
    function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Type (TE);
@@ -363,14 +371,9 @@ package GNATLLVM.GLValue is
      (Is_Data (Relationship (V)))
      with Pre => Present (V);
 
-   function Has_Known_Etype (V : GL_Value)         return Boolean is
-     (Relationship (V) = Data)
-     with Pre => Present (V);
-   --  True if we know what V's Etype is
-
    function Etype (V : GL_Value) return Entity_Id is
      (Related_Type (V))
-     with Pre  => Present (V) and then Has_Known_Etype (V),
+     with Pre  => Present (V) and then Is_Data (V),
           Post => Is_Type_Or_Void (Etype'Result);
 
    --  Constructors for a GL_Value
@@ -519,8 +522,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Is_Integer_Type (V : GL_Value) return Boolean is
-     (not Is_Reference (V)
-        and then Is_Integer_Type (Full_Etype (V)))
+     (not Is_Reference (V) and then Is_Integer_Type (Full_Etype (V)))
+     with Pre => Present (V);
+
+   function Is_Boolean_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Boolean_Type (Full_Etype (V)))
      with Pre => Present (V);
 
    function Is_Fixed_Point_Type (V : GL_Value) return Boolean is
@@ -851,10 +857,10 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Floating_Point_Type (V),
           Post => Present (Const_Real'Result);
 
-   function Const_True return GL_Value is
-     (Const_Int (Standard_Boolean, ULL (1)));
-   function Const_False return GL_Value is
-     (Const_Int (Standard_Boolean, ULL (0)));
+   function Const_True return GL_Value
+     with Post => Relationship (Const_True'Result) = Boolean_Data;
+   function Const_False return GL_Value
+     with Post => Relationship (Const_False'Result) = Boolean_Data;
 
    function Const_Array
      (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
@@ -1099,7 +1105,7 @@ package GNATLLVM.GLValue is
       Name     : String := "") return GL_Value
    is
      (G (I_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Standard_Boolean))
+         Standard_Boolean, Boolean_Data))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (I_Cmp'Result);
 
@@ -1109,7 +1115,7 @@ package GNATLLVM.GLValue is
       Name     : String := "") return GL_Value
    is
      (G (F_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Standard_Boolean))
+         Standard_Boolean, Boolean_Data))
      with Pre  => Is_Floating_Point_Type (LHS)
                   and then Is_Floating_Point_Type (RHS),
           Post => Present (F_Cmp'Result);

@@ -475,8 +475,7 @@ package body GNATLLVM.Types is
       Src_Size    : constant Nat     :=
         Nat (ULL'(Get_LLVM_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
-        (if   Is_Modular_Integer_Type (TE) or else Is_Boolean_Type (TE)
-         then RM_Size (TE) else Esize (TE));
+        (if   Is_Modular_Integer_Type (TE) then RM_Size (TE) else Esize (TE));
       Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
       Subp        : Cvtf             := null;
@@ -1070,13 +1069,18 @@ package body GNATLLVM.Types is
 
    function Create_Discrete_Type (TE : Entity_Id) return Type_T is
    begin
-      --  LLVM is expecting boolean expressions to be of size 1
-      --  ??? will not work properly if there is a size clause
-      --  Also avoid using 0-sized type for "mod 1" type (c420001).
+      --  It's tempting to use i1 for boolean types, but that causes issue.
+      --  First, we'd have to handle booleans with rep clauses specially,
+      --  but, perhaps more importantly, LLVM treats a boolean as being true
+      --  if it's 1 (interpreted as an 8-bit value) and zero otherwise, but
+      --  the more natural interpretaton is that it's false if zero and
+      --  true otherwise and this can become visible when using overlays
+      --  with 'Address.
+      --
+      --  So we only use i1 for the internal boolean object (e.g., the result
+      --  of a comparison) and for a 1-bit modular type.
 
-      if Is_Boolean_Type (TE) then
-         return Int_Ty (1);
-      elsif Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= Uint_0 then
+      if Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= Uint_0 then
          return Int_Ty (RM_Size (TE));
       elsif Esize (TE) /= Uint_0 then
          return Int_Ty (Esize (TE));

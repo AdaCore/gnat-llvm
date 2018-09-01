@@ -1009,7 +1009,9 @@ package body GNATLLVM.Exprs is
          --  type on the LHS and an array on the RHS.  Convert it to the LHS
          --  type if so.
 
-         if Is_Packed_Array_Impl_Type (Dest_Type) then
+         if Is_Packed_Array_Impl_Type (Dest_Type)
+           and then not Is_Elementary_Type (Src_Type)
+         then
             Src := Convert_Ref (Get (Src, Reference), Dest_Type);
          end if;
 

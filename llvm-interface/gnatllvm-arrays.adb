@@ -1089,6 +1089,7 @@ package body GNATLLVM.Arrays is
       N_Dim      : constant Int       := Number_Dimensions (TE);
       Comp_Type  : constant Entity_Id := Full_Component_Type (TE);
       Array_Data : constant GL_Value  := Get (V, Reference);
+      Fortran    : constant Boolean   := Convention (TE) = Convention_Fortran;
 
    begin
       if not Is_Dynamic_Size (TE) then
@@ -1104,7 +1105,8 @@ package body GNATLLVM.Arrays is
       --  for each dimension after the first, multiply by the size of
       --  that dimension and add that index.  Finally, we multiply by
       --  the size of the component type if it isn't the indexing
-      --  type.  We do all of this in Size_Type.
+      --  type.  We do all of this in Size_Type.  Getting the indexing here
+      --  correct for the Fortran and non-Fortran cases are tricky.
 
       declare
          Use_Comp  : constant Boolean   := not Is_Dynamic_Size (Comp_Type);
@@ -1115,11 +1117,13 @@ package body GNATLLVM.Arrays is
            (if Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_Type, Max_Size => True));
          Index     : GL_Value           := To_Size_Type (Idxs (2));
+         Dim       : Int                := (if Fortran then N_Dim - 2 else 1);
 
       begin
-         for Dim in 1 .. N_Dim - 1 loop
+         for Idx in 3 .. Idxs'Last loop
             Index := Add (Mul (Index, Get_Array_Length (TE, Dim, V)),
-                          To_Size_Type (Idxs (Dim + 2)));
+                          To_Size_Type (Idxs (Idx)));
+            Dim   := (if Fortran then Dim - 1 else Dim + 1);
          end loop;
 
          Index := Mul (Index, Unit_Mult);

@@ -860,15 +860,19 @@ package body GNATLLVM.Conditionals is
 
       end case;
 
-      --  If we haven't handled it via one of the special cases above,
-      --  just evaluate the expression and do the branch, depending on
-      --  whether the result if zero or nonzero.  We must have a boolean
-      --  type here.
+      --  If we haven't handled it via one of the special cases above, just
+      --  evaluate the expression and do the branch, depending on whether
+      --  the result if zero or nonzero, unless we already have an i1
+      --  (Boolean_Data relationship).  We must have a boolean type here.
 
       pragma Assert (Is_Boolean_Type (Etype (N)));
-      Result := Emit_Expression (N);
-      Build_Cond_Br (I_Cmp (Int_NE, Result, Const_Null (Result)),
-                     BB_True, BB_False);
+      Result := Emit (N);
+      if Relationship (Result) /= Boolean_Data then
+         Result := Get (Result, Data);
+         Result := I_Cmp (Int_NE, Result, Const_Null (Result));
+      end if;
+
+      Build_Cond_Br (Result, BB_True, BB_False);
 
    end Emit_If_Cond;
 

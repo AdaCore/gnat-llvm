@@ -902,7 +902,7 @@ package body GNATLLVM.Conditionals is
          Inner_BB := Create_Basic_Block ("range-test");
          LHS_Base := Convert (LHS, LHS_BT);
          Cond     := Emit_Elementary_Comparison (N_Op_Ge, LHS_Base,
-                                             Const_Int (LHS_BT, Low));
+                                                 Const_Int (LHS_BT, Low));
          Build_Cond_Br (Cond, Inner_BB, BB_False);
          Position_Builder_At_End (Inner_BB);
          Cond := Emit_Elementary_Comparison (N_Op_Le, LHS_Base,

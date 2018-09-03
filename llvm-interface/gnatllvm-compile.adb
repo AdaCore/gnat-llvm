@@ -467,7 +467,7 @@ package body GNATLLVM.Compile is
                         end if;
 
                      when Name_Space =>
-                        if Size_Opt_Level /= 0 then
+                        if Size_Opt_Level = 0 then
                            Error_Msg_N ("must specify -Os or -Oz?", N);
                         end if;
 

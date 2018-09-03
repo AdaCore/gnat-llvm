@@ -764,7 +764,7 @@ package body GNATLLVM.Exprs is
                   else
                      V := Get_Array_Bound
                        (P_TE, Dim, Attr = Attribute_First, Array_Descr,
-                        For_Orig => Is_Packed_Array_Impl_Type (P_TE));
+                        For_Orig => Is_Bit_Packed_Array_Impl_Type (P_TE));
                   end if;
                else
                   Error_Msg_N ("unsupported attribute: `" &

@@ -480,7 +480,7 @@ package GNATLLVM.GLValue is
 
    function Full_Base_Type (V : GL_Value) return Entity_Id
      with Pre  => not Is_Reference (V),
-            Post => Is_Type (Full_Base_Type'Result);
+          Post => Is_Type (Full_Base_Type'Result);
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean
      with Pre => Present (V);
@@ -563,7 +563,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Is_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
-     (not Is_Reference (V) and then Is_Packed_Array_Impl_Type (Full_Etype (V)))
+     (Is_Packed_Array_Impl_Type (Related_Type (V)))
+     with Pre => Present (V);
+
+   function Is_Bit_Packed_Array_Impl_Type (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean

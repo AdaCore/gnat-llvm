@@ -86,7 +86,9 @@ package body GNATLLVM.Arrays is
    --  being either their lowest or highest values, respectively
 
    function Build_One_Bound
-     (N : Node_Id; Unconstrained : Boolean) return One_Bound
+     (N             : Node_Id;
+      Unconstrained : Boolean;
+      For_Orig      : Boolean) return One_Bound
      with Pre => Present (N);
    --  Helper function to build a One_Bound object from N
 
@@ -137,14 +139,19 @@ package body GNATLLVM.Arrays is
    ---------------------
 
    function Build_One_Bound
-     (N : Node_Id; Unconstrained : Boolean) return One_Bound is
+     (N             : Node_Id;
+      Unconstrained : Boolean;
+      For_Orig      : Boolean) return One_Bound
+   is
+      Val : Uint;
 
    begin
       if Unconstrained then
          return (Cnst => No_Uint, Value => Empty, Dynamic => True);
       elsif Compile_Time_Known_Value (N) then
-         return (Cnst => Expr_Value (N), Value => Empty,
-                 Dynamic => not UI_Is_In_Int_Range (Expr_Value (N)));
+         Val := (if For_Orig then Expr_Rep_Value (N) else Expr_Value (N));
+         return (Cnst => Val, Value => Empty,
+                 Dynamic => not UI_Is_In_Int_Range (Val));
       else
          return (Cnst => No_Uint, Value => N, Dynamic => True);
       end if;
@@ -526,8 +533,8 @@ package body GNATLLVM.Arrays is
             Dim_Info   : constant Index_Bounds :=
               (Bound_Type    => Index_Base,
                Bound_Subtype => Full_Etype (Base_Index),
-               Low           => Build_One_Bound (LB, Unconstrained),
-               High          => Build_One_Bound (HB, Unconstrained));
+               Low           => Build_One_Bound (LB, Unconstrained, For_Orig),
+               High          => Build_One_Bound (HB, Unconstrained, For_Orig));
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges
             --  that are outside the base type if the subtype is superflat

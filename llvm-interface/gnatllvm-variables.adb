@@ -1331,8 +1331,7 @@ package body GNATLLVM.Variables is
             Value := Emit_Conversion (Expr, TE);
          end if;
 
-         if Is_Elementary_Type (TE)
-           and then not Is_Packed_Array_Impl_Type (TE)
+         if Is_Elementary_Type (TE) and then not Is_Packed_Array_Impl_Type (TE)
          then
             LLVM_Var := Get (Value, Data);
             Copied := True;

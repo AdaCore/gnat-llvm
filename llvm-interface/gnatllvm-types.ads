@@ -201,6 +201,11 @@ package GNATLLVM.Types is
      (Is_Unconstrained_Array (TE) or else Is_Unconstrained_Record (TE))
      with Pre => Is_Type_Or_Void (TE);
 
+   function Is_Bit_Packed_Array_Impl_Type (TE : Entity_Id) return Boolean is
+     (Is_Packed_Array_Impl_Type (TE)
+        and then Is_Bit_Packed_Array (Original_Array_Type (TE)))
+     with Pre => Is_Type (TE);
+
    function Is_Array_Or_Packed_Array_Type (TE : Entity_Id) return Boolean is
      (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE))
      with Pre => Is_Type (TE);

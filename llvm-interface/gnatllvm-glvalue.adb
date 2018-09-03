@@ -187,6 +187,13 @@ package body GNATLLVM.GLValue is
    function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean is
      (Is_Constr_Subt_For_UN_Aliased (Related_Type (V)));
 
+   -----------------------------------
+   -- Is_Bit_Packed_Array_Impl_Type --
+   -----------------------------------
+
+   function Is_Bit_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
+     (Is_Bit_Packed_Array_Impl_Type (Related_Type (V)));
+
    -----------------------
    -- Type_Needs_Bounds --
    -----------------------

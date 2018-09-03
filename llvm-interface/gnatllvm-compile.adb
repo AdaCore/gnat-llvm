@@ -642,8 +642,35 @@ package body GNATLLVM.Compile is
                                        Right_Opnd (N));
             elsif Nkind (N) in N_Op_Shift then
                return Emit_Shift (Nkind (N), Left_Opnd (N), Right_Opnd (N));
+            elsif Nkind_In (N, N_Op_And, N_Op_Or, N_Op_Xor)
+              and then Is_Boolean_Type (TE)
+            then
+               declare
+                  BT  : constant Entity_Id := Full_Base_Type (TE);
+                  LHS : GL_Value := Emit (Left_Opnd (N));
+                  RHS : GL_Value := Emit (Right_Opnd (N));
+
+               begin
+                  --  If both are Boolean_Data, we can compute our result in
+                  --  that type.  Otherwise, force to Data.
+
+                  if Relationship (LHS) /= Boolean_Data
+                    or else Relationship (RHS) /= Boolean_Data
+                  then
+                     LHS := Convert (Get (LHS, Data), BT);
+                     RHS := Convert (Get (RHS, Data), BT);
+                  end if;
+
+                  if Nkind (N) = N_Op_And then
+                     return Build_And (LHS, RHS);
+                  elsif Nkind (N) = N_Op_Or then
+                     return Build_Or (LHS, RHS);
+                  else  --  Nkind (N) = N_Op_Xor
+                     return Build_Xor (LHS, RHS);
+                  end if;
+               end;
             else
-               return Emit_Binary_Operation (N);
+                  return Emit_Binary_Operation (N);
             end if;
 
          when N_Unary_Op =>

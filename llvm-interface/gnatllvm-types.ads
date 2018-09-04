@@ -400,9 +400,14 @@ package GNATLLVM.Types is
    --  Similarly, but allocate storage on the heap.  This handles default
    --  allocation, secondary stack, and storage pools.
 
-   procedure Heap_Deallocate (V : GL_Value; Proc : Entity_Id; Pool : Entity_Id)
+   procedure Heap_Deallocate
+     (V        : GL_Value;
+      Desig_TE : Entity_Id;
+      Proc     : Entity_Id;
+      Pool     : Entity_Id)
      with Pre => Present (V)
-                  and then (No (Proc) or else Present (Pool));
+                 and then (No (Proc) or else Present (Pool))
+                 and then (No (Desig_TE) or else Is_Type (Desig_TE));
    --  Free memory allocated by Heap_Allocate_For_Type
 
    function To_Size_Type (V : GL_Value) return GL_Value is

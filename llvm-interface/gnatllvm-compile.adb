@@ -307,6 +307,7 @@ package body GNATLLVM.Compile is
 
          when N_Free_Statement =>
             Heap_Deallocate (Emit_Expression (Expression (N)),
+                             Actual_Designated_Subtype (N),
                              Procedure_To_Call (N), Storage_Pool (N));
 
          when N_Code_Statement =>
@@ -732,8 +733,19 @@ package body GNATLLVM.Compile is
             return Emit_Call (N, LHS => LHS);
 
          when N_Explicit_Dereference =>
-            return Normalize_Access_Type
+
+            --  Dereference the value, then see if we have an
+            --  Actual_Designated_Subtype that we have to convert to.
+
+            Result := Normalize_Access_Type
               (From_Access (Emit_Expression (Prefix (N))));
+            if Present (Actual_Designated_Subtype (N)) then
+               Result := Convert_Ref (Get (Result, Reference),
+                                      Get_Fullest_View
+                                        (Actual_Designated_Subtype (N)));
+            end if;
+
+            return Result;
 
          when N_Allocator =>
 

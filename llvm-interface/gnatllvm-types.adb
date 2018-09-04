@@ -1512,54 +1512,68 @@ package body GNATLLVM.Types is
    -- Heap_Deallocate --
    ---------------------
 
-   procedure Heap_Deallocate (V : GL_Value; Proc : Entity_Id; Pool : Entity_Id)
+   procedure Heap_Deallocate
+     (V        : GL_Value;
+      Desig_TE : Entity_Id;
+      Proc     : Entity_Id;
+      Pool     : Entity_Id)
    is
-      DT          : constant Entity_Id := Full_Designated_Type (V);
-      Size        : constant GL_Value  := Get_Type_Size (DT, From_Access (V));
-      Align       : constant unsigned  := Get_Type_Alignment (DT);
-      Align_V     : constant GL_Value  := Size_Const_Int (Align);
-      Converted_V : GL_Value           := V;
+      Conv_V : GL_Value           := V;
 
    begin
       --  If V is an access type, convert it to a reference to the
       --  underlying data.
 
       if Is_Access_Type (V) and then Relationship (V) = Data then
-         Converted_V := From_Access (V);
+         Conv_V := From_Access (V);
+      end if;
+
+      --  If we have a designated type, convert to it
+
+      if Present (Desig_TE) then
+         Conv_V := Convert_Ref (Conv_V, Get_Fullest_View (Desig_TE));
       end if;
 
       --  If V is an unconstrained array, we want a pointer to the bounds
       --  and data.  Otherwise just a Reference.  We'll then either convert
       --  it to a generic pointer or to an integer (System.Address).
 
-      Converted_V := Get (Converted_V,
-                          Relationship_For_Alloc (Related_Type (Converted_V)));
+      Conv_V := Get (Conv_V, Relationship_For_Alloc (Related_Type (Conv_V)));
 
-      --  If no subprogram was specified, use the default memory deallocation
-      --  procedure, where we just pass the object.
+      declare
+         DT      : constant Entity_Id := Related_Type (Conv_V);
+         Size    : constant GL_Value  := Get_Type_Size (DT, Conv_V);
+         Align   : constant unsigned  := Get_Type_Alignment (DT);
+         Align_V : constant GL_Value  := Size_Const_Int (Align);
 
-      if No (Proc) then
-         Call (Get_Default_Free_Fn,
-               (1 => Pointer_Cast (Converted_V, Standard_A_Char)));
+      begin
+         --  If no subprogram was specified, use the default memory
+         --  deallocation procedure, where we just pass the object.
 
-      --  If a procedure was specified (meaning that a pool must also
-      --  have been specified) and the pool is a record, then it's a
-      --  storage pool and we pass the pool, size, and alignment.  Be
-      --  sure that we convert the pool to actual type of the formal of
-      --  the deallocator function: it may be a derived type.
+         if No (Proc) then
+            Call (Get_Default_Free_Fn,
+                  (1 => Pointer_Cast (Conv_V, Standard_A_Char)));
 
-      elsif Is_Record_Type (Full_Etype (Pool)) then
-         Call_Dealloc (Proc,
-               (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
-                                 Full_Etype (First_Formal (Proc))),
-                2 => Ptr_To_Size_Type (Converted_V),
-                3 => Size, 4 => Align_V));
+            --  If a procedure was specified (meaning that a pool must also
+            --  have been specified) and the pool is a record, then it's a
+            --  storage pool and we pass the pool, size, and alignment.  Be
+            --  sure that we convert the pool to actual type of the formal
+            --  of the deallocator function: it may be a derived type.
 
-      --  Otherwise, this is the secondary stack and we just call with size
+         elsif Is_Record_Type (Full_Etype (Pool)) then
+            Call_Dealloc (Proc,
+                          (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
+                                            Full_Etype (First_Formal (Proc))),
+                           2 => Ptr_To_Size_Type (Conv_V),
+                           3 => Size, 4 => Align_V));
 
-      else
-         Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Converted_V), 2 => Size));
-      end if;
+            --  Otherwise, this is the secondary stack and we just call
+            --  it with the size.
+
+         else
+            Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Conv_V), 2 => Size));
+         end if;
+      end;
    end Heap_Deallocate;
 
    ------------------------

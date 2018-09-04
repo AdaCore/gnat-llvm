@@ -822,7 +822,9 @@ package body GNATLLVM.Blocks is
 
       if Present (LP_Inst) then
          for J in reverse 1 .. Block - 1 loop
-            if Present (Block_Stack.Table (J).EH_List) then
+            if Present (Block_Stack.Table (J).EH_List)
+              and then not Block_Stack.Table (J).Unprotected
+            then
                Handler := First_Non_Pragma (Block_Stack.Table (J).EH_List);
                while Present (Handler) loop
                   Choice := First (Exception_Choices (Handler));

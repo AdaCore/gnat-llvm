@@ -232,11 +232,9 @@ package body GNATLLVM.Conditionals is
 
             for Dim in 0 .. Last_Dim loop
                LHS_Lengths (Dim) :=
-                 Get_Array_Length (Full_Designated_Type (LHS_Val),
-                                   Dim, LHS_Val);
+                 Get_Array_Length (Full_Etype (Our_LHS), Dim, LHS_Val);
                RHS_Lengths (Dim) :=
-                 Get_Array_Length (Full_Designated_Type (RHS_Val),
-                                   Dim, RHS_Val);
+                 Get_Array_Length (Full_Etype (Our_RHS), Dim, RHS_Val);
             end loop;
 
             if Last_Dim /= 1 then

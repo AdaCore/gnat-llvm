@@ -1518,7 +1518,7 @@ package body GNATLLVM.Types is
       Proc     : Entity_Id;
       Pool     : Entity_Id)
    is
-      Conv_V : GL_Value           := V;
+      Conv_V : GL_Value := V;
 
    begin
       --  If V is an access type, convert it to a reference to the
@@ -1542,11 +1542,18 @@ package body GNATLLVM.Types is
 
       declare
          DT      : constant Entity_Id := Related_Type (Conv_V);
-         Size    : constant GL_Value  := Get_Type_Size (DT, Conv_V);
          Align   : constant unsigned  := Get_Type_Alignment (DT);
          Align_V : constant GL_Value  := Size_Const_Int (Align);
+         Size    : GL_Value           := Get_Type_Size (DT, Conv_V);
 
       begin
+         --  If this is an unconstrained array, add in the size of the
+         --  bounds.
+
+         if Is_Unconstrained_Array (DT) then
+            Size := Add (Size, Get_Bound_Size (DT));
+         end if;
+
          --  If no subprogram was specified, use the default memory
          --  deallocation procedure, where we just pass the object.
 

@@ -19,7 +19,6 @@ with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
-with Restrict; use Restrict;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
@@ -1190,7 +1189,6 @@ package body GNATLLVM.Subprograms is
       if Elaboration_Table.Last = 0
         or else Elaboration_Table.Table (Elaboration_Table.Last).N /= N
       then
-         Check_Elaboration_Code_Allowed (N);
          Elaboration_Table.Append ((N => N, For_Type => For_Type));
       end if;
    end Add_To_Elab_Proc;
@@ -1274,13 +1272,15 @@ package body GNATLLVM.Subprograms is
       --  see them, unlike any that were previously partially processed
       --  as declarations.
 
-      In_Elab_Proc := False;
+      In_Elab_Proc       := False;
+      In_Elab_Proc_Stmts := True;
       Elaboration_Table.Set_Last (0);
       Start_Block_Statements
         (Empty, (if No (Stmts) then No_List else Exception_Handlers (Stmts)));
       Emit (S_List);
       Pop_Block;
       Build_Ret_Void;
+      In_Elab_Proc_Stmts := False;
       Pop_Debug_Scope;
       Leave_Subp;
 

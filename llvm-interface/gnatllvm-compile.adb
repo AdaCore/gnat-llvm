@@ -20,6 +20,7 @@ with Exp_Util; use Exp_Util;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
+with Restrict; use Restrict;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Stand;    use Stand;
@@ -155,6 +156,21 @@ package body GNATLLVM.Compile is
 
       elsif not Library_Level and then Are_In_Dead_Code then
          Position_Builder_At_End (Create_Basic_Block ("dead-code"));
+      end if;
+
+      --  If we're in the elaboration procedure, check if we're violating a
+      --  No_Elaboration_Code restriction by having a statement there.
+      --  Don't check for a possible No_Elaboration_Code restriction
+      --  violation on N_Handled_Sequence_Of_Statements, as we want to
+      --  signal an error on every nested real statement instead.  This
+      --  also avoids triggering spurious errors on dummy (empty) sequences
+      --  created by the front-end for package bodies in some cases.
+
+      if (In_Elab_Proc or else In_Elab_Proc_Stmts)
+        and then not Nkind_In (N, N_Handled_Sequence_Of_Statements,
+                               N_Implicit_Label_Declaration)
+      then
+         Check_Elaboration_Code_Allowed (N);
       end if;
 
       Set_Debug_Pos_At_Node (N);

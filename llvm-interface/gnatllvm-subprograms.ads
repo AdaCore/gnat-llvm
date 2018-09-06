@@ -231,7 +231,11 @@ package GNATLLVM.Subprograms is
 
    In_Elab_Proc             : Boolean    := False;
    --  True if we're in the process of emitting the code for an elaboration
-   --  procedure.
+   --  procedure and processing the code for deferred declaration statements.
+
+   In_Elab_Proc_Stmts       : Boolean    := False;
+   --  Likewise, but we're in the part of the elab proc that handles
+   --  statements explicitly in the body of the package.
 
    Entry_Block_Allocas      : Position_T := No_Position_T;
    --  If Present, a location to use to insert small alloca's into the entry

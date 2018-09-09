@@ -1316,15 +1316,13 @@ package body GNATLLVM.Variables is
       elsif Present (Addr) then
          LLVM_Var := Addr;
 
-      --  If this is a true constant and we aren't taking its address,
-      --  we can just use the expression that computed the constant as
-      --  the value, once converted to the proper type.  If the value
-      --  is a Reference, it may be to something that's not constant,
-      --  so we actually have to allocate our entity and copy into it.
+      --  If this is a true constant, we can just use the expression that
+      --  computed the constant as the value, once converted to the proper
+      --  type.  If the value is a Reference, it may be to something that's
+      --  not constant, so we actually have to allocate our entity and copy
+      --  into it.
 
-      elsif Is_True_Constant (Def_Ident) and then not Is_Aliased (Def_Ident)
-        and then not Address_Taken (Def_Ident)
-        and then not Is_Volatile (Def_Ident)
+      elsif Is_True_Constant (Def_Ident) and then not Is_Volatile (Def_Ident)
         and then (Present (Expr) or else Present (Value))
       then
          if No (Value) then

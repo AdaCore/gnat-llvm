@@ -61,8 +61,10 @@ procedure GCC_Wrapper is
    Last               : Natural;
    Compile            : Boolean := False;
    Compile_With_Clang : Boolean := False;
+   Compile_Ada        : Boolean := True;
    Verbose            : Boolean := False;
    Dash_O_Index       : Natural := 0;
+   Dash_w_Index       : Natural := 0;
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
@@ -127,6 +129,7 @@ begin
                        and then Arg (Arg'Last - 3 .. Arg'Last) = ".cpp")
             then
                Compile_With_Clang := True;
+               Compile_Ada := False;
             end if;
 
          elsif Arg = "-x" then
@@ -140,10 +143,15 @@ begin
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
-         --  Replace -o by -gnatO as done by the gcc driver
+         --  Recognize -o specially
 
-         elsif Arg = "-o" and then Compile and then not Compile_With_Clang then
+         elsif Arg = "-o" then
             Dash_O_Index := Arg_Count + 1;
+
+         --  Recognize -w specially
+
+         elsif Arg = "-w" then
+            Dash_w_Index := Arg_Count + 1;
 
          elsif Arg = "-v" then
             Verbose := True;
@@ -159,8 +167,14 @@ begin
 
    --  Replace -o by -gnatO when compiling Ada code
 
-   if Dash_O_Index /= 0 and then Compile and then not Compile_With_Clang then
+   if Dash_O_Index /= 0 and then Compile and then Compile_Ada then
       Args (Dash_O_Index) := new String'("-gnatO");
+   end if;
+
+   --  Replace -w by -gnatws when compiling Ada code
+
+   if Dash_w_Index /= 0 and then Compile and then Compile_Ada then
+      Args (Dash_w_Index) := new String'("-gnatws");
    end if;
 
    if GCC'Length >= 3

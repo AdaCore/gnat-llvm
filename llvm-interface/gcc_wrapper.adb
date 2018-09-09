@@ -62,6 +62,7 @@ procedure GCC_Wrapper is
    Compile            : Boolean := False;
    Compile_With_Clang : Boolean := False;
    Verbose            : Boolean := False;
+   Dash_O_Index       : Natural := 0;
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
@@ -118,8 +119,12 @@ begin
          if Arg'Length > 0
            and then Arg (1) /= '-'
          then
-            if Arg'Length > 2
-              and then Arg (Arg'Last - 1 .. Arg'Last) = ".c"
+            if (Arg'Length > 2
+                and then Arg (Arg'Last - 1 .. Arg'Last) = ".c")
+              or else (Arg'Length > 3
+                       and then Arg (Arg'Last - 2 .. Arg'Last) = ".cc")
+              or else (Arg'Length > 4
+                       and then Arg (Arg'Last - 3 .. Arg'Last) = ".cpp")
             then
                Compile_With_Clang := True;
             end if;
@@ -135,6 +140,11 @@ begin
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
+         --  Replace -o by -gnatO as done by the gcc driver
+
+         elsif Arg = "-o" and then Compile and then not Compile_With_Clang then
+            Dash_O_Index := Arg_Count + 1;
+
          elsif Arg = "-v" then
             Verbose := True;
             Skip := True;
@@ -146,6 +156,12 @@ begin
          end if;
       end;
    end loop;
+
+   --  Replace -o by -gnatO when compiling Ada code
+
+   if Dash_O_Index /= 0 and then Compile and then not Compile_With_Clang then
+      Args (Dash_O_Index) := new String'("-gnatO");
+   end if;
 
    if GCC'Length >= 3
      and then GCC (GCC'Last - 2 .. GCC'Last) = "gcc"

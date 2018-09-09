@@ -388,8 +388,8 @@ package body GNATLLVM.Subprograms is
 
       function Has_Initialized_Component (TE : Entity_Id) return Boolean
         with Pre => Is_Record_Type (TE);
-      --  Returns True if there's an E_Component in TE that has a
-      --  default expression.  See RM 6.4.1(14).
+      --  Returns True if there's an E_Component in TE that has an
+      --  implicit initial value.  See RM 6.4.1(14) and RM 3.1.1.
 
       -------------------------------
       -- Has_Initialized_Component --
@@ -402,6 +402,8 @@ package body GNATLLVM.Subprograms is
          while Present (F) loop
             exit when Ekind (F) = E_Component and then Present (Parent (F))
               and then Present (Expression (Parent (F)));
+            exit when Ekind (F) = E_Component
+              and then Is_Access_Type (Full_Etype (F));
             Next_Entity (F);
          end loop;
 

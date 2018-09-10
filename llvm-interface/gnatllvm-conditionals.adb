@@ -401,6 +401,37 @@ package body GNATLLVM.Conditionals is
       end if;
    end Emit_Elementary_Comparison;
 
+   ---------------------
+   -- Emit_And_Or_Xor --
+   ---------------------
+
+   function Emit_And_Or_Xor
+     (Kind : Node_Kind; LHS_Node, RHS_Node : Node_Id) return GL_Value
+   is
+      BT  : constant Entity_Id := Full_Base_Type (Full_Etype (LHS_Node));
+      LHS : GL_Value           := Emit (LHS_Node);
+      RHS : GL_Value           := Emit (RHS_Node);
+
+   begin
+      --  If both are Boolean_Data, we can compute our result in that
+      --  relationship.  Otherwise, force to Data.
+
+      if Relationship (LHS) /= Boolean_Data
+        or else Relationship (RHS) /= Boolean_Data
+      then
+         LHS := Convert (Get (LHS, Data), BT);
+         RHS := Convert (Get (RHS, Data), BT);
+      end if;
+
+      if Kind = N_Op_And then
+         return Build_And (LHS, RHS);
+      elsif Kind = N_Op_Or then
+         return Build_Or (LHS, RHS);
+      else  --  Kind = N_Op_Xor
+         return Build_Xor (LHS, RHS);
+      end if;
+   end Emit_And_Or_Xor;
+
    -------------------------
    -- Emit_Case_Statement --
    -------------------------

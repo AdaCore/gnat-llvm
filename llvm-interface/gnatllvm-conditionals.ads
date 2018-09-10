@@ -38,6 +38,13 @@ package GNATLLVM.Conditionals is
           Post => Present (Emit_Comparison'Result);
    --  Generate a result which is a comparison of two expressions
 
+   function Emit_And_Or_Xor
+     (Kind : Node_Kind; LHS_Node, RHS_Node : Node_Id) return GL_Value
+     with Pre  => Present (LHS_Node) and then Present (RHS_Node)
+                  and then Kind in N_Op_And | N_Op_Or | N_Op_Xor,
+          Post => Present (Emit_And_Or_Xor'Result);
+   --  Generate a result which is the logical operation of the two expressions
+
    procedure Emit_Comparison_And_Branch
      (Kind              : Node_Kind;
       LHS, RHS          : Node_Id;

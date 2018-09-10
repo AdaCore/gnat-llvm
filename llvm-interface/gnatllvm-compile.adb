@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
-with Exp_Util; use Exp_Util;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
@@ -706,8 +705,8 @@ package body GNATLLVM.Compile is
 
          when N_And_Then | N_Or_Else =>
             pragma Assert (not For_LHS);
-            if Side_Effect_Free (Left_Opnd (N))
-              and then Side_Effect_Free (Right_Opnd (N))
+            if Safe_For_Short_Circuit (Left_Opnd (N))
+              and then Safe_For_Short_Circuit (Right_Opnd (N))
               and then Is_Simple_Conditional (N)
             then
                declare

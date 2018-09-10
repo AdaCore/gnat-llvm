@@ -813,8 +813,8 @@ package body GNATLLVM.Conditionals is
             --  as a short-circuit if there are no side-effects.
 
             if Nkind_In (N, N_And_Then, N_Or_Else)
-              or else (Side_Effect_Free (Left_Opnd (N))
-                         and then Side_Effect_Free (Right_Opnd (N)))
+              or else (Safe_For_Short_Circuit (Left_Opnd (N))
+                         and then Safe_For_Short_Circuit (Right_Opnd (N)))
             then
                --  Depending on the result of the test of the left operand,
                --  we either go to a final basic block or to a new
@@ -1037,5 +1037,31 @@ package body GNATLLVM.Conditionals is
       return Build_Select (Choose, Left, Right,
                            (if Compute_Max then "max" else "min"));
    end Emit_Min_Max;
+
+   ----------------------------
+   -- Safe_For_Short_Circuit --
+   ----------------------------
+
+   function Safe_For_Short_Circuit (N : Node_Id) return Boolean is
+      function Process (N : Node_Id) return Traverse_Result;
+      --  Process one node in search of something that could cause an
+      --  exception.
+
+      -------------
+      -- Process --
+      -------------
+
+      function Process (N : Node_Id) return Traverse_Result is
+      begin
+         return (if   Nkind_In (N, N_Op_Divide, N_Explicit_Dereference,
+                                N_Indexed_Component)
+                 then Abandon else OK);
+      end Process;
+
+      function Search_For_Exception is new Traverse_Func (Process);
+
+   begin
+      return Side_Effect_Free (N) and then Search_For_Exception (N) /= Abandon;
+   end Safe_For_Short_Circuit;
 
 end GNATLLVM.Conditionals;

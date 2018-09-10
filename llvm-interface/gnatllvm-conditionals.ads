@@ -109,4 +109,9 @@ package GNATLLVM.Conditionals is
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
 
+   function Safe_For_Short_Circuit (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  True iff N is an expression for which we can safely convert a
+   --  short-circuit operation to a non-short-circuit and vice versa.
+
 end GNATLLVM.Conditionals;

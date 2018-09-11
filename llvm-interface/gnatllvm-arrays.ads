@@ -55,6 +55,11 @@ package GNATLLVM.Arrays is
    --  account both the size of the bounds and the alignment of the bounds
    --  and TE.
 
+   function Get_Bound_Alignment (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
+          Post => Full_Etype (Get_Bound_Alignment'Result) = Size_Type;
+   --  Get the alignment of the Bounds part of array and data of TE
+
    function Get_Dim_Range (N : Node_Id) return Node_Id
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
    --  Return the N_Range for an array type

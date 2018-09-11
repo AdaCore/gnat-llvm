@@ -90,10 +90,19 @@ package body GNATLLVM.Types is
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
       V          : GL_Value;
-      Max_Size   : Boolean) return GL_Value
-     with Pre => Is_Type (TE), Post => Present (Get_Alloc_Size'Result);
+      Max_Size   : Boolean := False) return GL_Value
+     with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type),
+          Post => Present (Get_Alloc_Size'Result);
    --  Like Get_Type_Size, but used for the size to be allocated, so we
    --  include the size of the bounds in some array cases.
+
+   function Get_Alloc_Alignment
+     (TE         : Entity_Id;
+      Alloc_Type : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE) and then Is_Type (Alloc_Type),
+          Post => Full_Etype (Get_Alloc_Alignment'Result) = Size_Type;
+   --  Like Get_Type_Size, but used for the alignment in an allocateor, so we
+   --  include the alignment of the bounds in some array cases.
 
    function Move_Into_Memory
      (Temp       : GL_Value;
@@ -1472,8 +1481,7 @@ package body GNATLLVM.Types is
          then  Emit (Expr) else No_GL_Value);
       Size    : constant GL_Value  :=
          Get_Alloc_Size (TE, Alloc_Type, Value, Max_Size);
-      Align   : constant unsigned  := Get_Type_Alignment (Alloc_Type);
-      Align_V : constant GL_Value  := Size_Const_Int (Align);
+      Align   : constant GL_Value  := Get_Alloc_Alignment (TE, Alloc_Type);
       Result  : GL_Value;
 
    begin
@@ -1494,7 +1502,7 @@ package body GNATLLVM.Types is
            Call_Alloc (Proc,
                        (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
                                          Full_Etype (First_Formal (Proc))),
-                        2 => Size, 3 => Align_V));
+                        2 => Size, 3 => Align));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
@@ -1542,18 +1550,10 @@ package body GNATLLVM.Types is
 
       declare
          DT      : constant Entity_Id := Related_Type (Conv_V);
-         Align   : constant unsigned  := Get_Type_Alignment (DT);
-         Align_V : constant GL_Value  := Size_Const_Int (Align);
-         Size    : GL_Value           := Get_Type_Size (DT, Conv_V);
+         Align   : constant GL_Value  := Get_Alloc_Alignment (DT, DT);
+         Size    : constant GL_Value  := Get_Alloc_Size (DT, DT, Conv_V);
 
       begin
-         --  If this is an unconstrained array, add in the size of the
-         --  bounds.
-
-         if Is_Unconstrained_Array (DT) then
-            Size := Add (Size, Get_Bound_Size (DT));
-         end if;
-
          --  If no subprogram was specified, use the default memory
          --  deallocation procedure, where we just pass the object.
 
@@ -1572,7 +1572,7 @@ package body GNATLLVM.Types is
                           (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
                                             Full_Etype (First_Formal (Proc))),
                            2 => Ptr_To_Size_Type (Conv_V),
-                           3 => Size, 4 => Align_V));
+                           3 => Size, 4 => Align));
 
             --  Otherwise, this is the secondary stack and we just call
             --  it with the size.
@@ -1587,8 +1587,8 @@ package body GNATLLVM.Types is
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (TE : Entity_Id) return unsigned is
-      Largest_Align : unsigned  := 1;
+   function Get_Type_Alignment (TE : Entity_Id) return ULL is
+      Largest_Align : ULL  := 1;
       Field         : Entity_Id;
 
    begin
@@ -1604,8 +1604,8 @@ package body GNATLLVM.Types is
          while Present (Field) loop
             if Ekind_In (Field, E_Discriminant, E_Component) then
                Largest_Align
-                 := unsigned'Max (Largest_Align,
-                                  Get_Type_Alignment (Full_Etype (Field)));
+                 := ULL'Max (Largest_Align,
+                             Get_Type_Alignment (Full_Etype (Field)));
             end if;
 
             Next_Entity (Field);
@@ -1655,7 +1655,7 @@ package body GNATLLVM.Types is
      (TE         : Entity_Id;
       Alloc_Type : Entity_Id;
       V          : GL_Value;
-      Max_Size   : Boolean) return GL_Value
+      Max_Size   : Boolean := False) return GL_Value
    is
       Size : GL_Value :=
         Get_Type_Size (Alloc_Type,
@@ -1670,11 +1670,32 @@ package body GNATLLVM.Types is
       if Is_Unconstrained_Array (TE)
         or else Type_Needs_Bounds (Alloc_Type)
       then
-         Size := Add (Size, Get_Bound_Size (TE));
+         Size := Align_To (Add (Size, Get_Bound_Size (TE)),
+                           Get_Type_Alignment (TE), Get_Bound_Alignment (TE));
       end if;
 
       return Size;
    end Get_Alloc_Size;
+
+   -------------------------
+   -- Get_Alloc_Alignment --
+   -------------------------
+
+   function Get_Alloc_Alignment
+     (TE         : Entity_Id;
+      Alloc_Type : Entity_Id) return GL_Value
+   is
+      Align : GL_Value := Get_Type_Alignment (Alloc_Type);
+
+   begin
+      if Is_Unconstrained_Array (TE)
+        or else Type_Needs_Bounds (Alloc_Type)
+      then
+         Align := Build_Max (Align, Get_Bound_Alignment (TE));
+      end if;
+
+      return Align;
+   end Get_Alloc_Alignment;
 
    ------------------
    -- Compute_Size --

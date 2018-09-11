@@ -642,9 +642,16 @@ package body GNATLLVM.Arrays is
       T : constant Type_T := Create_Array_Bounds_Type (TE);
    begin
       return Align_To (Get_LLVM_Type_Size (T),
-                       Size_Const_Int (ULL (Get_Type_Alignment (T))),
-                       Size_Const_Int (ULL (Get_Type_Alignment (TE))));
+                       Size_Const_Int (Get_Type_Alignment (T)),
+                       Size_Const_Int (Get_Type_Alignment (TE)));
    end Get_Bound_Size;
+
+   -------------------------
+   -- Get_Bound_Alignment --
+   -------------------------
+
+   function Get_Bound_Alignment (TE : Entity_Id) return GL_Value is
+      (Size_Const_Int (Get_Type_Alignment (Create_Array_Bounds_Type (TE))));
 
    ------------------------
    -- Maybe_Store_Bounds --
@@ -783,7 +790,7 @@ package body GNATLLVM.Arrays is
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
       TE    : constant Entity_Id := Full_Etype (N);
-      Align : constant unsigned  := Get_Type_Alignment (TE);
+      Align : constant ULL       := Get_Type_Alignment (TE);
       E     : Node_Id            :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;

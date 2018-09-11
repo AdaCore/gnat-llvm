@@ -243,9 +243,9 @@ Add_TBAA_Access (Instruction *inst, MDNode *md)
 
 extern "C"
 void
-Set_Alloca_Align (AllocaInst *inst, unsigned align)
+Set_Alloca_Align (AllocaInst *inst, unsigned long long align)
 {
-    inst->setAlignment (align);
+    inst->setAlignment ((unsigned) align);
 }
 
 /* The LLVM C interface only provide single-index forms of extractvalue

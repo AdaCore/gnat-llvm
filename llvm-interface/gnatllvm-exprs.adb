@@ -1039,7 +1039,7 @@ package body GNATLLVM.Exprs is
          --  Otherwise, we have to do a variable-sized copy
 
          declare
-            Align     : constant unsigned := Compute_Alignment
+            Align     : constant ULL      := Compute_Alignment
               (Dest_Type, Related_Type (Src));
             Func_Name : constant String   :=
               (if Forwards_OK and then Backwards_OK

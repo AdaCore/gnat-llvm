@@ -506,10 +506,10 @@ package body GNATLLVM.Records is
       --  discriminant number J.  We use this for record subtypes of
       --  derived types.
 
-      Last_Align  : unsigned  := unsigned (Get_Maximum_Alignment);
+      Last_Align  : ULL       := ULL (Get_Maximum_Alignment);
       --  The last known alignment for this record
 
-      Split_Align : unsigned  := unsigned (Get_Maximum_Alignment);
+      Split_Align : ULL       := ULL (Get_Maximum_Alignment);
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the
@@ -737,7 +737,7 @@ package body GNATLLVM.Records is
             Saved_Cur_Idx      : Record_Info_Id;
             Saved_Prev_Idx     : Record_Info_Id;
             Saved_First_Idx    : Record_Info_Id;
-            Saved_Align        : unsigned;
+            Saved_Align        : ULL;
             Component_Def      : Node_Id;
             Field              : Entity_Id;
             Field_To_Add       : Entity_Id;
@@ -992,8 +992,8 @@ package body GNATLLVM.Records is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
-         Typ   : Entity_Id         := Full_Etype (E);
-         Align : constant unsigned := Get_Type_Alignment (Typ);
+         Typ   : Entity_Id    := Full_Etype (E);
+         Align : constant ULL := Get_Type_Alignment (Typ);
 
       begin
          --  If this is the '_parent' field, we make a dummy entry and handle
@@ -1104,8 +1104,8 @@ package body GNATLLVM.Records is
 
          if Present (T) and then Get_LLVM_Type_Size (T) = ULL (0) then
             This_Size  := Sz_Const (ULL (0));
-            Must_Align := Sz_Const (ULL (Get_Type_Alignment (T)));
-            Is_Align   := Sz_Const (ULL (Get_Type_Alignment (T)));
+            Must_Align := Sz_Const (Get_Type_Alignment (T));
+            Is_Align   := Sz_Const (Get_Type_Alignment (T));
 
          elsif Present (T) then
 
@@ -1157,15 +1157,15 @@ package body GNATLLVM.Records is
                  Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
 
             begin
-               Must_Align := Sz_Const (ULL (Get_Type_Alignment (T)));
-               Is_Align   := Sz_Const (ULL (Get_Type_Alignment (Last_Type)));
-               This_Size  := Sz_Const (ULL (Last_Offset + Last_Size));
+               Must_Align := Sz_Const (Get_Type_Alignment (T));
+               Is_Align   := Sz_Const (Get_Type_Alignment (Last_Type));
+               This_Size  := Sz_Const (Last_Offset + Last_Size);
             end;
 
             --  The GNAT type case is easy
 
          elsif Present (TE) then
-            Must_Align := Sz_Const (ULL (Get_Type_Alignment (TE)));
+            Must_Align := Sz_Const (Get_Type_Alignment (TE));
             Is_Align   := Must_Align;
             if Return_Size then
                This_Size  := Sz_Type_Size (TE, V, Max_Size or RI.Use_Max_Size);
@@ -1441,7 +1441,7 @@ package body GNATLLVM.Records is
                          This_Size, Must_Align, This_Align,
                          Return_Size => False);
          elsif Present (TE) then
-            Must_Align := Sz_Const (ULL (Get_Type_Alignment (TE)));
+            Must_Align := Sz_Const (Get_Type_Alignment (TE));
          end if;
 
          if Pushed_Stack then

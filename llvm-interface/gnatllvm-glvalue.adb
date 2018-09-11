@@ -1454,8 +1454,15 @@ package body GNATLLVM.GLValue is
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (V : GL_Value) return unsigned is
+   function Get_Type_Alignment (V : GL_Value) return ULL is
       (Get_Type_Alignment (Full_Etype (V)));
+
+   ------------------------
+   -- Get_Type_Alignment --
+   ------------------------
+
+   function Get_Type_Alignment (TE : Entity_Id) return GL_Value is
+      (Size_Const_Int (Get_Type_Alignment (TE)));
 
    ----------------
    -- Add_Global --

@@ -417,12 +417,12 @@ package GNATLLVM.Types is
    --  Convert V to Size_Type.  This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 
-   function Get_Type_Alignment (T : Type_T) return unsigned is
-     (ABI_Alignment_Of_Type (Module_Data_Layout, T))
+   function Get_Type_Alignment (T : Type_T) return ULL is
+     (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
-   function Get_Type_Alignment (TE : Entity_Id) return unsigned
+   function Get_Type_Alignment (TE : Entity_Id) return ULL
      with Pre => Is_Type (TE);
    --  Return the size of a GNAT type, in bits
 
@@ -451,9 +451,9 @@ package GNATLLVM.Types is
    --  use Get_Matching_Value.
 
    function Compute_Alignment
-     (Left_Type, Right_Type : Entity_Id) return unsigned is
-     (unsigned'Max (Get_Type_Alignment (Left_Type),
-                    Get_Type_Alignment (Right_Type)))
+     (Left_Type, Right_Type : Entity_Id) return ULL is
+     (ULL'Max (Get_Type_Alignment (Left_Type),
+               Get_Type_Alignment (Right_Type)))
      with Pre  => Is_Type (Left_Type) and then Is_Type (Right_Type);
    --  Likewise, but compute strictest alignment in bits
 

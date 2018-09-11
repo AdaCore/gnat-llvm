@@ -1568,8 +1568,12 @@ package GNATLLVM.GLValue is
    function Get_Type_Size (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Get_Type_Size'Result);
 
-   function Get_Type_Alignment (V : GL_Value) return unsigned
+   function Get_Type_Alignment (V : GL_Value) return ULL
      with Pre => Present (V);
+
+   function Get_Type_Alignment (TE : Entity_Id) return GL_Value
+     with Pre  => Is_Type (TE),
+          Post => Full_Etype (Get_Type_Alignment'Result) = Size_Type;
 
    function Add_Function
      (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value

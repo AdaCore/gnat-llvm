@@ -19,10 +19,11 @@ with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
+with Restrict; use Restrict;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
-with Sinput; use Sinput;
+with Sinput;   use Sinput;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Table;    use Table;
@@ -949,7 +950,7 @@ package body GNATLLVM.Subprograms is
    ---------------------
 
    function Make_Trampoline
-     (TE : Entity_Id; Fn, Static_Link : GL_Value) return GL_Value
+     (TE : Entity_Id; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
    is
       Tramp  : constant GL_Value :=
         Array_Alloca (Standard_Short_Short_Integer, Size_Const_Int (ULL (72)),
@@ -960,6 +961,7 @@ package body GNATLLVM.Subprograms is
       --  We have to initialize the trampoline and then adjust it and return
       --  that result.
 
+      Check_Implicit_Dynamic_Code_Allowed (N);
       Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Cvt_Fn, 3 => Static_Link));
       return G_Is_Relationship
         (Call (Get_Tramp_Adjust_Fn, Standard_A_Char, (1 => Tramp)),
@@ -1827,7 +1829,7 @@ package body GNATLLVM.Subprograms is
                begin
                   if Has_Foreign_Convention (Typ) then
                      return (if   Has_Activation_Record (Def_Ident)
-                             then Make_Trampoline (DT, V, S_Link)
+                             then Make_Trampoline (DT, V, S_Link, N)
                              else G_Is_Relationship (V, DT, Trampoline));
                   else
                      return Insert_Value
@@ -1839,7 +1841,7 @@ package body GNATLLVM.Subprograms is
                end;
             elsif Attr = Attribute_Address then
                return (if   Has_Activation_Record (Def_Ident)
-                       then Make_Trampoline (TE, V, S_Link) else V);
+                       then Make_Trampoline (TE, V, S_Link, N) else V);
             end if;
          end;
       end if;

@@ -107,12 +107,13 @@ package GNATLLVM.Subprograms is
    --  Build and return the static link to pass to a call to Subp
 
    function Make_Trampoline
-     (TE : Entity_Id; Fn, Static_Link : GL_Value) return GL_Value
+     (TE : Entity_Id; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
      with Pre  => Is_Type_Or_Void (TE) and then Present (Fn)
-                  and then Present (Static_Link),
+                  and then Present (Static_Link) and then Present (N),
           Post => Present (Make_Trampoline'Result);
-   --  Given the type of a function, a pointer to it, and a static
-   --  link, make a trampoline that combines the static link and function.
+   --  Given the type of a function, a pointer to it, a static link 9and the
+   --  location of the reference, make a trampoline that combines the
+   --  static link and function.
 
    function Has_Activation_Record (Def_Ident : Entity_Id) return Boolean
      with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;

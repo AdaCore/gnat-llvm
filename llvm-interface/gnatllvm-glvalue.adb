@@ -44,10 +44,10 @@ package body GNATLLVM.GLValue is
    --  Inner (and recursize) function to convert a constant struct
    --  from one type to another.
 
-   function Object_Is_Data (V : GL_Value_Base) return Boolean is
+   function Object_Can_Be_Data (V : GL_Value_Base) return Boolean is
      (not Is_Dynamic_Size (V.Typ)
         and then (Is_Loadable_Type (V.Typ)
-                    or else (V.Relationship = Data
+                    or else (Is_Data (V.Relationship)
                                and then (Is_Constant (V.Value)
                                            or else Is_Undef (V.Value)))));
    --  Return True if it's appropriate to use Data for V when converting to
@@ -384,7 +384,7 @@ package body GNATLLVM.GLValue is
 
    begin
       if R = Object then
-         R := (if Object_Is_Data (V) then Data else Any_Reference);
+         R := (if Object_Can_Be_Data (V) then Data else Any_Reference);
       end if;
 
       return Relationship (V) = R
@@ -419,7 +419,7 @@ package body GNATLLVM.GLValue is
       --  relationship for TE and V.
 
       if R = Object then
-         R := (if Object_Is_Data (V) then Data else Any_Reference);
+         R := (if Object_Can_Be_Data (V) then Data else Any_Reference);
       end if;
 
       --  If we want any single-word relationship, we can convert everything

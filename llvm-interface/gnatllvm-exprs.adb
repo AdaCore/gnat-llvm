@@ -961,20 +961,17 @@ package body GNATLLVM.Exprs is
          return;
       end if;
 
-      --  If we haven't yet computed our source expression, do it now.
+      --  If we haven't yet computed our source expression, do it now.  If
+      --  the evaluation used the location we specified, we're done.
+      --  Otherwise, if we want a value, get it.
 
       if No (Src) then
-         if Is_Loadable_Type (Src_Type) then
-            Src := Emit_Expression (E, LHS => Dest);
-         else
-            Src := Emit_LValue (E, LHS => Dest);
+         Src := Emit (E, LHS => Dest);
+         if Src = Dest then
+            return;
+         elsif not Is_Data (Src) and then Is_Loadable_Type (Src_Type) then
+            Src := Get (Src, Object);
          end if;
-      end if;
-
-      --  If the above evaluation used the location we specified, we're done
-
-      if Src = Dest then
-         return;
       end if;
 
       --  See what relationships we have for the source and destination to

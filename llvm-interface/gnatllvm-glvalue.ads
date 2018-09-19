@@ -256,7 +256,7 @@ package GNATLLVM.GLValue is
      (R = Reference_To_Subprogram);
 
    function Is_Data (R : GL_Relationship)                 return Boolean is
-     (R in Data | Boolean_Data);
+     (R in Data | Boolean_Data | Bounds_And_Data);
 
    function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Type (TE);

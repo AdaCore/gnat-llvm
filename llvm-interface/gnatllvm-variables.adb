@@ -588,8 +588,11 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Initialized_Value (E : Entity_Id) return Node_Id is
-      Decl : constant Node_Id := Declaration_Node (E);
-      CV   : Node_Id;
+      Full_E : constant Entity_Id :=
+        (if   Ekind (E) = E_Constant and then Present (Full_View (E))
+         then Full_View (E) else E);
+      Decl   : constant Node_Id   := Declaration_Node (Full_E);
+      CV     : Node_Id;
 
    begin
       if No (Decl) or else not Is_True_Constant (E)
@@ -1053,12 +1056,18 @@ package body GNATLLVM.Variables is
       Def_Ident    : constant Node_Id   := Defining_Identifier (N);
       --  Identifier being defined
 
+      Full_Ident   : constant Node_Id    :=
+        (if   Ekind (Def_Ident) = E_Constant
+           and then Present (Full_View (Def_Ident))
+         then Full_View (Def_Ident) else Def_Ident);
+      --  Identifier to use to find the initializing expression
+
       No_Init      : constant Boolean   :=
         Nkind (N) = N_Object_Declaration and then No_Initialization (N);
       --  True if we aren't to initialize this object (ignore expression)
 
       Expr         : Node_Id            :=
-        (if No_Init then Empty else Expression (N));
+        (if No_Init then Empty else Expression (Parent (Full_Ident)));
       --  Initializing expression, if Present and we are to use one
 
       TE           : constant Entity_Id :=
@@ -1129,13 +1138,17 @@ package body GNATLLVM.Variables is
       --  value is built manually.  And constants that are renamings are
       --  handled like variables.
 
-      if Ekind (Def_Ident) = E_Constant
-        and then Present (Full_View (Def_Ident))
-        and then No (Addr_Expr) and then not No_Init
+      if Full_Ident /= Def_Ident and then No (Addr_Expr) and then not No_Init
         and then No (Renamed_Object (Def_Ident))
       then
          return;
-      end if;
+
+      --  If we already have a saved value, but are neither in an elab
+      --  proc or at library level, it must be necause this is a Full_View
+      --  of a previous deferred constant.
+
+      elsif Present (LLVM_Var) and not In_Elab_Proc and not Library_Level then
+         return;
 
       --  If this entity has a freeze node and we're not currently
       --  processing the freeze node, all we do is evaluate the
@@ -1143,9 +1156,18 @@ package body GNATLLVM.Variables is
       --  we can evaluate statically.  Otherwise, see if we've already
       --  evaluated that expression and get the value.
 
-      if Present (Freeze_Node (Def_Ident))
+      elsif Present (Freeze_Node (Def_Ident))
         and then not For_Freeze_Entity and then not In_Elab_Proc
       then
+
+         --  If we have a Full_View, we may see that declaration
+         --  before our freeze node, so set a dummy value for it so we
+         --  can detect that.
+
+         if Full_Ident /= Def_Ident then
+            Set_Value (Full_Ident, Emit_Undef (TE));
+         end if;
+
          if Present (Expr)
            and then (not Is_No_Elab_Needed (Expr)
                        or else not Is_Static_Conversion
@@ -1367,7 +1389,7 @@ package body GNATLLVM.Variables is
       --  that now.
 
       if not Copied and then (Present (Expr) or else Present (Value)) then
-         Emit_Assignment (LLVM_Var, Expr, Value);
+         Emit_Assignment (Get (LLVM_Var, Any_Reference), Expr, Value);
       end if;
    end Emit_Declaration;
 

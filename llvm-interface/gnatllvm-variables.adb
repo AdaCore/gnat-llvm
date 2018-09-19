@@ -991,7 +991,8 @@ package body GNATLLVM.Variables is
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_Ref   : constant Boolean     :=
         Present (Addr_Expr) or else Is_Dynamic_Size (TE)
-          or else Present (Renamed_Object (Def_Ident));
+          or else (Present (Renamed_Object (Def_Ident))
+                     and then Is_Name (Renamed_Object (Def_Ident)));
 
    begin
 
@@ -1400,6 +1401,7 @@ package body GNATLLVM.Variables is
    procedure Emit_Renaming_Declaration (N : Node_Id) is
       Def_Ident : constant Entity_Id := Defining_Identifier (N);
       TE        : constant Entity_Id := Full_Etype (Def_Ident);
+      Use_LHS   : constant Boolean   := Is_Name (Name (N));
       LLVM_Var  : GL_Value;
 
    begin
@@ -1413,12 +1415,13 @@ package body GNATLLVM.Variables is
 
       --  If we've already defined this object, it means that we must be
       --  in an elab proc seeing this for the second time, which means
-      --  that we have to set its address.
+      --  that we have to set its address or value.
 
       elsif Has_Value (Def_Ident) then
          pragma Assert (In_Elab_Proc);
 
-         Store (Convert_Ref (Emit_LValue (Name (N)), TE),
+         Store ((if   Use_LHS then Convert_Ref (Emit_LValue (Name (N)), TE)
+                 else Emit_Convert_Value (Name (N), TE)),
                 Get_Value (Def_Ident));
 
       --  If this is a constant, just use the value of the expression for
@@ -1441,10 +1444,15 @@ package body GNATLLVM.Variables is
          Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
 
       else
+         --  If this is a constant, we're going to put the actual value there;
+         --  otherwise, we'll put the address of the expression.
+
          LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident),
-                                 Need_Reference => True);
+                                 Need_Reference => Use_LHS);
          Set_Value (Def_Ident, LLVM_Var);
-         Set_Initializer (LLVM_Var, Const_Null_Ref (TE));
+         Set_Initializer (LLVM_Var,
+                          (if   Use_LHS then Const_Null_Ref (TE)
+                           else Const_Null (TE)));
          Add_To_Elab_Proc (N);
       end if;
    end Emit_Renaming_Declaration;

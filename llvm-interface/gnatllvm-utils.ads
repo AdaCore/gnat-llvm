@@ -76,6 +76,11 @@ package GNATLLVM.Utils is
    procedure Move_To_BB (BB : Basic_Block_T);
    --  If BB is Present, generate a branch to it and position there
 
+   function Is_Name (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N is an expression that represents a variable or
+   --  something else that can be used in an LHS context.
+
    procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
      with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
    --  Helper for LLVM's Build_Store

@@ -269,6 +269,27 @@ package body GNATLLVM.Utils is
       end if;
    end Get_Ext_Name;
 
+   -------------
+   -- Is_Name --
+   -------------
+
+   function Is_Name (N : Node_Id) return Boolean is
+   begin
+      case Nkind (N) is
+         when N_Identifier | N_Expanded_Name | N_Explicit_Dereference =>
+            return True;
+
+         when N_Expression_With_Actions =>
+            return Is_Name (Expression (N));
+
+         when  N_Indexed_Component | N_Slice | N_Selected_Component =>
+            return Is_Name (Prefix (N));
+
+         when others =>
+            return False;
+      end case;
+   end Is_Name;
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    ---------------------

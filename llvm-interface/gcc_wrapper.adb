@@ -96,8 +96,8 @@ begin
          if Arg = "-v" then
             Put_Line ("Target: llvm");
             Put_Line (Base_Name (GCC) & " version " &
-                        Gnatvsn.Library_Version & " for GNAT " &
-                        Gnatvsn.Gnat_Version_String);
+                      Gnatvsn.Library_Version & " for GNAT " &
+                      Gnatvsn.Gnat_Version_String);
             OS_Exit (0);
 
          elsif Arg = "-dumpversion" then
@@ -108,6 +108,23 @@ begin
 
          elsif Arg = "-dumpmachine" then
             Put_Line ("llvm");
+            OS_Exit (0);
+
+         elsif Arg = "--version" then
+            Put_Line (Base_Name (GCC) & " " &
+                      Gnatvsn.Library_Version & " for GNAT " &
+                      Gnatvsn.Gnat_Version_String);
+            Put_Line ("Copyright (C) 2018 Free Software Foundation, Inc.");
+            Put_Line ("This is free software; see the source for copying " &
+                      "conditions.");
+            Put_Line ("See your AdaCore support agreement for details of " &
+                      "warranty and support.");
+            Put_Line ("If you do not have a current support agreement, then " &
+                      "there is absolutely");
+            Put_Line ("no warranty; not even for MERCHANTABILITY or FITNESS " &
+                      "FOR A PARTICULAR");
+            Put_Line ("PURPOSE.");
+
             OS_Exit (0);
          end if;
       end;

@@ -12,3 +12,4 @@ Limitations and missing features (identified so far):
 - support for stack checking
 - materialize bounds from 0 to 'Last for foreign array param (2315-001)
 - See if can use .rodata (see I305-025)
+- pragma Weak_External (see IB12-009)

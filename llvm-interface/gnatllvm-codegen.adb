@@ -253,7 +253,7 @@ package body GNATLLVM.Codegen is
       --  suppress doing anything else if there's an error.
 
       if Verify_Module (Module, Print_Message_Action, Null_Address) then
-         Error_Msg_N ("the backend generated bad LLVM code", GNAT_Root);
+         Error_Msg_N ("the backend generated bad 'L'L'V'M code", GNAT_Root);
          if Code_Generation not in Dump_IR | Write_IR then
             Code_Generation := None;
          end if;

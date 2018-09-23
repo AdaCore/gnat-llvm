@@ -1105,7 +1105,7 @@ package body GNATLLVM.Exprs is
          Next_Asm_Output;
 
          if Present (Asm_Output_Variable) then
-            Error_Msg_N ("LLVM only allows one output", N);
+            Error_Msg_N ("'L'L'V'M only allows one output", N);
          end if;
       end if;
 

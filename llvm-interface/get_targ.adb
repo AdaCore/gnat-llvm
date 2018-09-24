@@ -46,7 +46,7 @@ package body Get_Targ is
 
    function Get_Bits_Per_Word return Pos is
    begin
-      return 32;
+      return Pos (Pointer_Size (Module_Data_Layout)) * Get_Bits_Per_Unit;
    end Get_Bits_Per_Word;
 
    -------------------

@@ -118,6 +118,11 @@ package body GNATLLVM.Codegen is
                Code_Gen_Level := Code_Gen_Level_Default;
                Code_Opt_Level := 2;
                Size_Opt_Level := 2;
+            when 'f' =>
+               if Switch_Value ("-O") = "fast" then
+                  Code_Gen_Level := Code_Gen_Level_Aggressive;
+                  Code_Opt_Level := 3;
+               end if;
             when others =>
                null;
          end case;

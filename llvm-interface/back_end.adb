@@ -19,7 +19,10 @@ with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 
 with Adabkend;
-with Opt; use Opt;
+with Errout; use Errout;
+with Lib;    use Lib;
+with Opt;    use Opt;
+with Types;  use Types;
 
 package body Back_End is
 
@@ -36,8 +39,29 @@ package body Back_End is
    -------------------
 
    procedure Call_Back_End (Mode : Back_End_Mode_Type) is
-
    begin
+      --  Deal with case of generating SCIL, we should not be here unless
+      --  debugging CodePeer mode in GNAT.
+
+      if Generate_SCIL then
+         Error_Msg_N ("'S'C'I'L generation not available", Cunit (Main_Unit));
+
+         if CodePeer_Mode
+           or else (Mode /= Generate_Object
+                     and then not Back_Annotate_Rep_Info)
+         then
+            return;
+         end if;
+      end if;
+
+      --  We should be here in GNATprove mode only when debugging GNAT. Do not
+      --  call the back-end in that case, as it is not prepared to handle the
+      --  special form of the tree obtained in GNATprove mode.
+
+      if GNATprove_Mode then
+         return;
+      end if;
+
       --  ??? We only support code generation mode
       if Mode = Generate_Object then
          GNAT2LLVM.Call_Back_End;
@@ -58,5 +82,4 @@ begin
 
    Expand_Nonbinary_Modular_Ops    := True;
    Unnest_Subprogram_Mode          := True;
-
 end Back_End;

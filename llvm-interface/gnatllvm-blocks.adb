@@ -1428,10 +1428,11 @@ package body GNATLLVM.Blocks is
       Label   : constant Entity_Id     := Get_Exception_Goto_Entry (Nkind (N));
       Cond    : constant Node_Id       := Condition (N);
       BB_Then : constant Basic_Block_T :=
-        (if Present (Label) then Get_Label_BB (Label)
+        (if    Present (Label) then Get_Label_BB (Label)
          elsif No (Cond) then No_BB_T else Create_Basic_Block ("raise"));
       BB_Next : constant Basic_Block_T :=
-        (if Present (Cond) then Create_Basic_Block else No_BB_T);
+        (if   Present (Cond) or else Present (Label) then Create_Basic_Block
+         else No_BB_T);
 
    begin
       --  If there's a condition, test it.  If we have the label case,

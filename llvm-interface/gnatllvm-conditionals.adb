@@ -1058,15 +1058,21 @@ package body GNATLLVM.Conditionals is
      (Exprs       : List_Id;
       Compute_Max : Boolean) return GL_Value
    is
-      Left      : constant GL_Value := Emit_Expression (First (Exprs));
-      Right     : constant GL_Value := Emit_Expression (Last (Exprs));
-      Choose    : constant GL_Value :=
+      LHS        : constant GL_Value := Emit_Expression (First (Exprs));
+      RHS        : constant GL_Value := Emit_Expression (Last (Exprs));
+      Choose     : constant GL_Value :=
         Emit_Elementary_Comparison
-        ((if Compute_Max then N_Op_Gt else N_Op_Lt), Left, Right);
+        ((if Compute_Max then N_Op_Gt else N_Op_Lt), LHS, RHS);
+      RHS_No_Nan : constant GL_Value :=
+        (if   Is_Floating_Point_Type (RHS) then F_Cmp (Real_OEQ, RHS, RHS)
+         else Const_True);
 
    begin
-      return Build_Select (Choose, Left, Right,
-                           (if Compute_Max then "max" else "min"));
+      --  If the comparison is True, the result is the LHS.  But if the
+      --  comparison is False, the result RHS is RHS isn't a Nan and
+      --  otherwise LHS.
+
+      return Build_Select (Choose, LHS, Build_Select (RHS_No_Nan, RHS, LHS));
    end Emit_Min_Max;
 
    ----------------------------

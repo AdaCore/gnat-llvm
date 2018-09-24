@@ -259,9 +259,12 @@ package body GNATLLVM.Codegen is
 
       if Verify_Module (Module, Print_Message_Action, Null_Address) then
          Error_Msg_N ("the backend generated bad 'L'L'V'M code", GNAT_Root);
-         if Code_Generation not in Dump_IR | Write_IR then
-            Code_Generation := None;
-         end if;
+      end if;
+
+      if Serious_Errors_Detected /= 0
+        and then Code_Generation not in Dump_IR | Write_IR
+      then
+         Code_Generation := None;
       end if;
 
       --  If we're generating code or being asked to optimize IR before

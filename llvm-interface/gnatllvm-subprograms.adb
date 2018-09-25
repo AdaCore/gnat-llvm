@@ -1372,7 +1372,9 @@ package body GNATLLVM.Subprograms is
                          and then Present (Storage_Pool (N)))
             then
                V := (Heap_Allocate_For_Type
-                       (TE, Full_Etype (Expr), Expr => Expr,
+                       (TE, Full_Etype (Expr),
+                        Expr => Expr,
+                        N    => N,
                         Proc => Procedure_To_Call (N),
                         Pool => Storage_Pool (N)));
 

@@ -15,10 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;     use Errout;
-with Snames;     use Snames;
-with Stand;      use Stand;
-with Table;      use Table;
+with Errout;   use Errout;
+with Restrict; use Restrict;
+with Snames;   use Snames;
+with Stand;    use Stand;
+with Table;    use Table;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
@@ -1469,6 +1470,7 @@ package body GNATLLVM.Types is
      (TE       : Entity_Id;
       Alloc_TE : Entity_Id;
       V        : GL_Value  := No_GL_Value;
+      N        : Node_Id   := Empty;
       Expr     : Node_Id   := Empty;
       Proc     : Entity_Id := Empty;
       Pool     : Entity_Id := Empty;
@@ -1484,6 +1486,21 @@ package body GNATLLVM.Types is
       Result  : GL_Value;
 
    begin
+      --  Check that we aren't violating any restrictions
+
+      if Present (N)
+        and then not (Nkind (N) = N_Allocator and then Comes_From_Source (N))
+      then
+         Check_No_Implicit_Heap_Alloc (N);
+         if Has_Task (TE) then
+            Check_No_Implicit_Task_Alloc (N);
+         end if;
+
+         if Has_Protected (TE) then
+            Check_No_Implicit_Protected_Alloc (N);
+         end if;
+      end if;
+
       --  If no function was specified, use the default memory allocation
       --  function, where we just pass a size.
 

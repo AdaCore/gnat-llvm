@@ -765,7 +765,9 @@ package body GNATLLVM.Compile is
                --  aren't.
 
                Result := Heap_Allocate_For_Type
-                 (Full_Designated_Type (TE), Typ, Value,
+                 (Full_Designated_Type (TE), Typ,
+                  V        => Value,
+                  N        => N,
                   Proc     => Procedure_To_Call (N),
                   Pool     => Storage_Pool (N),
                   Max_Size => (Is_Unconstrained_Record (Typ)

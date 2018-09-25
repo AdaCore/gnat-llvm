@@ -390,6 +390,7 @@ package GNATLLVM.Types is
      (TE       : Entity_Id;
       Alloc_TE : Entity_Id;
       V        : GL_Value  := No_GL_Value;
+      N        : Node_Id   := Empty;
       Expr     : Node_Id   := Empty;
       Proc     : Entity_Id := Empty;
       Pool     : Entity_Id := Empty;

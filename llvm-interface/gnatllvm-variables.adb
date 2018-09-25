@@ -1329,7 +1329,9 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Dynamic_Size (TE) then
-            Store (Get (Heap_Allocate_For_Type (TE, TE, Value, Expr,
+            Store (Get (Heap_Allocate_For_Type (TE, TE, Value,
+                                                Expr     => Expr,
+                                                N        => N,
                                                 Max_Size => Max_Size),
                         Any_Reference),
                    LLVM_Var);

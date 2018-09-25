@@ -578,6 +578,17 @@ package body GNATLLVM.Variables is
                         Attribute_Unrestricted_Access)
               and then Is_Static_Location (Prefix (N));
 
+         when N_Identifier | N_Expanded_Name =>
+            return Is_Static_Address (Entity (N));
+
+         when N_Defining_Identifier =>
+            declare
+               CV : constant Node_Id := Initialized_Value (N);
+
+            begin
+               return Present (CV) and then Is_Static_Address (CV);
+            end;
+
          when others =>
             return Compile_Time_Known_Value (N);
       end case;

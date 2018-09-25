@@ -1185,6 +1185,35 @@ package body GNATLLVM.Variables is
          return;
       end if;
 
+      --  If this is an aliased object with an unconstrained array nominal
+      --  subtype, then it can overlay only another aliased object with an
+      --  unconstrained array nominal subtype and compatible template.
+
+      if Present (Addr_Expr)
+        and then Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE)
+        and then Nkind (Addr_Expr) = N_Attribute_Reference
+        and then (Get_Attribute_Id (Attribute_Name (Addr_Expr))
+                    = Attribute_Address)
+      then
+         declare
+            Other_Id : constant Entity_Id := Entity (Prefix (Addr_Expr));
+            Other_TE : constant Entity_Id := Full_Etype (Other_Id);
+
+         begin
+            if not Is_Constr_Subt_For_UN_Aliased (Other_TE)
+              or else not Is_Array_Type (Other_TE)
+              or else Get_Bound_Size (TE) /= Get_Bound_Size (Other_TE)
+            then
+               Error_Msg_NE ("aliased object& with unconstrained array " &
+                               "nominal subtype", Address_Clause (Def_Ident),
+                             Def_Ident);
+               Error_Msg_N ("\\can overlay only aliased object with " &
+                              "compatible subtype",
+                            Address_Clause (Def_Ident));
+            end if;
+         end;
+      end if;
+
       --  Handle top-level declarations or ones that need to be treated
       --  that way unless if we've already made the item (e.g., if we're
       --  in the elab proc).

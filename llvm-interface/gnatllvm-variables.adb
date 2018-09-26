@@ -1485,7 +1485,7 @@ package body GNATLLVM.Variables is
       --  materialize the value and because it may need run-time
       --  computation.
 
-      elsif Is_True_Constant (Def_Ident)
+      elsif Is_True_Constant (Def_Ident) and then not Use_LHS
         and then not Is_Volatile (Def_Ident)
         and then (not Library_Level
                     or else Is_No_Elab_Needed (Name (N)))

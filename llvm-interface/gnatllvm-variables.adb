@@ -667,9 +667,18 @@ package body GNATLLVM.Variables is
             return No (Expr);
 
          when N_Binary_Op =>
-            return not Do_Overflow_Check (N)
-              and then Is_No_Elab_Needed (Left_Opnd (N))
-              and then Is_No_Elab_Needed (Right_Opnd (N));
+
+            --  LLVM doesn't allow comparisons of symbols to be considered
+            --  static, so we can only allow actual known values in that case.
+
+            if Nkind (N) in N_Op_Compare then
+               return Compile_Time_Known_Value (Left_Opnd (N))
+                 and then Compile_Time_Known_Value (Right_Opnd (N));
+            else
+               return not Do_Overflow_Check (N)
+                 and then Is_No_Elab_Needed (Left_Opnd  (N))
+                 and then Is_No_Elab_Needed (Right_Opnd (N));
+            end if;
 
          when N_Unary_Op =>
             return not Do_Overflow_Check (N)

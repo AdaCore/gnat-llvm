@@ -483,45 +483,62 @@ package body GNATLLVM.Variables is
 
          when N_Indexed_Component =>
 
-            --  Not static if prefix not static, a lower bound isn't static,
-            --  or an expression isn't static.  It's also possible that the
-            --  type of the prefix isn't actually an array in the case where
-            --  we have a packed array type.  But then we know that it
-            --  is static.
+            declare
+               TE : constant Entity_Id := Full_Etype (Prefix (N));
 
-            if not Is_Static_Location (Prefix (N)) then
-               return False;
-            elsif not Is_Array_Type (Full_Etype (Prefix (N))) then
-               return True;
-            end if;
+            begin
+               --  Not static if prefix not static, a lower bound isn't
+               --  static, or an expression isn't static.  It's also
+               --  possible that the type of the prefix isn't actually an
+               --  array in the case where we have a packed array type.
+               --  But then we know that it is static.
 
-            Index := First_Index (Full_Etype (Prefix (N)));
-            Expr  := First (Expressions (N));
-            while Present (Index) loop
-               exit when not Is_Static_Expression
-                 (Low_Bound (Get_Dim_Range (Index)))
-                 or else not Is_Static_Expression (Expr);
-               Next_Index (Index);
-               Next (Expr);
-            end loop;
+               if not Is_Static_Location (Prefix (N)) then
+                  return False;
+               elsif not Is_Array_Type (TE)
+                 or else Ekind (TE) = E_String_Literal_Subtype
+               then
+                  return True;
+               end if;
 
-            return No (Index);
+               Index := First_Index (TE);
+               Expr  := First (Expressions (N));
+               while Present (Index) loop
+                  exit when not Is_Static_Expression
+                    (Low_Bound (Get_Dim_Range (Index)))
+                    or else not Is_Static_Expression (Expr);
+                  Next_Index (Index);
+                  Next (Expr);
+               end loop;
+
+               return No (Index);
+            end;
 
          when N_Slice =>
 
-            --  Static if prefix is static and the lower bound and
-            --  expression are static.
+            --  Not static unless prefix is static and the lower bound of
+            --  the node.
 
-            return not Is_Static_Location (Prefix (N))
-              and then (Is_Static_Expression
-                          (Low_Bound (Get_Dim_Range (Discrete_Range (N)))))
-              and then (not Is_Array_Type (Full_Etype (Prefix (N)))
-                          or else (Is_Static_Expression
-                                     (Low_Bound
-                                        (Get_Dim_Range
-                                           (First_Index
-                                              (Full_Etype
-                                                 (Prefix (N))))))));
+            if not Is_Static_Location (Prefix (N))
+              or else not (Is_Static_Expression
+                             (Low_Bound (Get_Dim_Range (Discrete_Range (N)))))
+            then
+               return False;
+            end if;
+
+            --  Now check the lower bound of the prefix.  A string literal
+            --  is always static.
+
+            declare
+               TE : constant Entity_Id := Full_Etype (Prefix (N));
+
+            begin
+               return not Is_Array_Type (TE)
+                 or else Ekind (TE) = E_String_Literal_Subtype
+                 or else (Is_Static_Expression
+                            (Low_Bound (Get_Dim_Range (First_Index (TE)))));
+            end;
+
          when others =>
             return False;
       end case;

@@ -2223,6 +2223,9 @@ package body GNATLLVM.Subprograms is
    function Create_Subprogram (Def_Ident : Entity_Id) return GL_Value is
       Subp_Type   : constant Type_T      := Create_Subprogram_Type (Def_Ident);
       Subp_Name   : constant String      := Get_Ext_Name (Def_Ident);
+      Is_Imported : constant Boolean     :=
+        Present (Interface_Name (Def_Ident))
+        and then No (Address_Clause (Def_Ident));
       Actual_Name : constant String      :=
         (if Is_Compilation_Unit (Def_Ident)
            and then No (Interface_Name (Def_Ident))
@@ -2252,7 +2255,7 @@ package body GNATLLVM.Subprograms is
 
          if not In_Extended_Main_Code_Unit (Def_Ident) then
             Set_Linkage (LLVM_Func, External_Linkage);
-         elsif not Is_Public (Def_Ident) then
+         elsif not Is_Public (Def_Ident) and then not Is_Imported then
             Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
          end if;
 

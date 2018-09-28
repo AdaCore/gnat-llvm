@@ -468,4 +468,7 @@ package GNATLLVM.Types is
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
 
+   Disable_LV_Append : Nat := 0;
+   --  If nonzero, disable appending expressions to the LValue list.
+
 end GNATLLVM.Types;

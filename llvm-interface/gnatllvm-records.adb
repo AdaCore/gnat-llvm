@@ -1614,6 +1614,7 @@ package body GNATLLVM.Records is
       --  and ending (for use with Phi) basic blocks for each.
 
       for J in RI.Variants'Range loop
+         Disable_LV_Append := Disable_LV_Append + 1;
          To_BBs (J) := Create_Basic_Block;
          Position_Builder_At_End (To_BBs (J));
 
@@ -1636,6 +1637,7 @@ package body GNATLLVM.Records is
 
          From_BBs (J) := Get_Insert_Block;
          Build_Br (End_BB);
+         Disable_LV_Append := Disable_LV_Append - 1;
       end loop;
 
       --  Now emit the code to branch to the fragments we made above

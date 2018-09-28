@@ -805,7 +805,7 @@ package body GNATLLVM.Types is
       --  that doesn't work because a parent might and it's not worth
       --  checking.
 
-      if Is_Record_Type (TE) then
+      if Is_Record_Type (TE) and then Disable_LV_Append = 0 then
          LValue_Pair_Table.Append (V);
       end if;
    end Add_To_LValue_List;

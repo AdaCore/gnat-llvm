@@ -1055,12 +1055,13 @@ package body GNATLLVM.Conditionals is
    ------------------
 
    function Emit_Min_Max
-     (Exprs       : List_Id;
-      Compute_Max : Boolean) return GL_Value
+     (Exprs : List_Id; Compute_Max : Boolean) return GL_Value
    is
-      LHS        : constant GL_Value := Emit_Expression (First (Exprs));
-      RHS        : constant GL_Value := Emit_Expression (Last (Exprs));
-      Choose     : constant GL_Value :=
+      LHS_N      : constant Node_Id   := First (Exprs);
+      BT         : constant Entity_Id := Full_Base_Type (Full_Etype (LHS_N));
+      LHS        : constant GL_Value  := Emit_Convert_Value (LHS_N, BT);
+      RHS        : constant GL_Value  := Emit_Convert_Value (Last (Exprs), BT);
+      Choose     : constant GL_Value  :=
         Emit_Elementary_Comparison
         ((if Compute_Max then N_Op_Gt else N_Op_Lt), LHS, RHS);
       RHS_No_Nan : constant GL_Value :=

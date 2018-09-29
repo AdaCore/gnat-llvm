@@ -602,6 +602,33 @@ package body GNATLLVM.Compile is
       return V;
    end Emit_Safe_Expr;
 
+   -----------------
+   -- Emit_LValue --
+   -----------------
+
+   function Emit_LValue
+     (N       : Node_Id;
+      LHS     : GL_Value := No_GL_Value;
+      For_LHS : Boolean  := False) return GL_Value is
+   begin
+      --  We have an important special case here.  If N is an N_Identifier or
+      --  N_Expanded_Name and its value is a Reference, always return that
+      --  reference in preference to returning its value and forcing it into
+      --  memory.  But don't do this for subprograms since they may need
+      --  static links and avoid variables that are in activation records.
+
+      if Nkind_In (N, N_Identifier, N_Expanded_Name)
+        and then not Ekind_In (Entity (N), E_Function, E_Procedure)
+        and then No (Get_From_Activation_Record (Entity (N)))
+        and then Has_Value (Entity (N))
+        and then Is_Single_Reference (Get_Value (Entity (N)))
+      then
+         return Get_Value (Entity (N));
+      else
+         return Get (Emit (N, LHS, For_LHS), Any_Reference);
+      end if;
+   end Emit_LValue;
+
    ----------------------
    -- Emit_Safe_LValue --
    ----------------------

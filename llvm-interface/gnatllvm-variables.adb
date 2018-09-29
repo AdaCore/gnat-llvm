@@ -686,16 +686,29 @@ package body GNATLLVM.Variables is
          when N_Binary_Op =>
 
             --  LLVM doesn't allow comparisons of symbols to be considered
-            --  static, so we can only allow actual known values in that case.
+            --  static, so we can only allow actual known values in that
+            --  case.  But there's one exception: if we're doing a
+            --  comparison of two values that are static addresses and the
+            --  addresses as the same, the result is known to be true or
+            --  false, respectively, and will constant fold to that.
 
-            if Nkind (N) in N_Op_Compare then
-               return Compile_Time_Known_Value (Left_Opnd (N))
-                 and then Compile_Time_Known_Value (Right_Opnd (N));
-            else
-               return not Do_Overflow_Check (N)
-                 and then Is_No_Elab_Needed (Left_Opnd  (N))
-                 and then Is_No_Elab_Needed (Right_Opnd (N));
-            end if;
+            declare
+               LHS : constant Node_Id := Left_Opnd  (N);
+               RHS : constant Node_Id := Right_Opnd (N);
+
+            begin
+               if Nkind (N) in N_Op_Compare then
+                  return (Is_Static_Address (LHS)
+                            and then Is_Static_Address (RHS)
+                            and then Emit_LValue (LHS) = Emit_LValue (RHS))
+                    or else (Compile_Time_Known_Value (LHS)
+                               and then Compile_Time_Known_Value (RHS));
+               else
+                  return not Do_Overflow_Check (N)
+                    and then Is_No_Elab_Needed (LHS)
+                    and then Is_No_Elab_Needed (RHS);
+               end if;
+            end;
 
          when N_Unary_Op =>
             return not Do_Overflow_Check (N)

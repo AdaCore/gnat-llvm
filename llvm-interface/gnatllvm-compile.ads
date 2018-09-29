@@ -49,10 +49,7 @@ package GNATLLVM.Compile is
      (N       : Node_Id;
       LHS     : GL_Value := No_GL_Value;
       For_LHS : Boolean  := False) return GL_Value
-   is
-     (Get (Emit (N, LHS, For_LHS), Any_Reference))
-     with Pre  => Present (N),
-          Post => Present (Emit_LValue'Result);
+     with Pre => Present (N), Post => Present (Emit_LValue'Result);
    --  Compile an expression node to an LLVM value that's a reference.
    --  If N corresponds to an LValue in the language, then the result
    --  will also be an LValue.  LHS and For_LHS are like for Emit.

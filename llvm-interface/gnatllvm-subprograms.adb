@@ -363,12 +363,12 @@ package body GNATLLVM.Subprograms is
    ---------------------------
 
    function Get_Param_By_Ref_Kind (TE : Entity_Id) return Param_By_Ref_Kind is
-      Ptr_Size : constant ULL := Get_LLVM_Type_Size (Void_Ptr_Type);
+      Ptr_Size : constant ULL := Get_Type_Size (Void_Ptr_Type);
 
    begin
       if Is_By_Reference_Type (TE) or else Is_Dynamic_Size (TE) then
          return Must;
-      elsif Get_LLVM_Type_Size (Create_Type (TE)) > 2 * Ptr_Size then
+      elsif Get_Type_Size (Create_Type (TE)) > 2 * Ptr_Size then
          return Default_By_Ref;
       else
          return Default_By_Copy;
@@ -505,8 +505,7 @@ package body GNATLLVM.Subprograms is
       TE       : constant Entity_Id := Full_Etype (Def_Ident);
       T        : constant Type_T    :=
         (if Ekind (TE) /= E_Void then Create_Type (TE) else No_Type_T);
-      Ptr_Size : constant ULL       :=
-        Get_LLVM_Type_Size (Void_Ptr_Type);
+      Ptr_Size : constant ULL       := Get_Type_Size (Void_Ptr_Type);
 
    begin
       --  If there's no return type, that's simple
@@ -528,7 +527,7 @@ package body GNATLLVM.Subprograms is
       elsif not Is_Unconstrained_Array (TE)
         and then (Is_Dynamic_Size (TE)
                     or else (not Has_Foreign_Convention (Def_Ident)
-                               and then Get_LLVM_Type_Size (T) > 5 * Ptr_Size))
+                               and then Get_Type_Size (T) > 5 * Ptr_Size))
       then
          return Return_By_Parameter;
 
@@ -734,8 +733,8 @@ package body GNATLLVM.Subprograms is
       TE   : Entity_Id) return GL_Value
    is
       T         : constant Type_T := Create_Type (TE);
-      Width     : constant ULL    := Get_LLVM_Type_Size_In_Bits (T);
-      --  We need to use Get_LLVM_Type_Size_In_Bits instead of Esize (TE)
+      Width     : constant ULL    := Get_Type_Size_In_Bits (T);
+      --  We need to use Get_Type_Size_In_Bits instead of Esize (TE)
       --  so that we handle FP types properly.
 
       W         : constant String := Int'Image (Int (Width));
@@ -1357,7 +1356,7 @@ package body GNATLLVM.Subprograms is
             --  return value, do the copy instead of returning the value.
 
             if RK = Return_By_Parameter then
-               Emit_Assignment (Return_Address_Param, Expr, No_GL_Value);
+               Emit_Assignment (Return_Address_Param, Expr);
 
             --  If this function returns unconstrained, allocate memory for
             --  the return value, copy the data to be returned to there,
@@ -1382,7 +1381,7 @@ package body GNATLLVM.Subprograms is
                V := Convert_Ref (Emit_LValue (Expr), TE);
 
             else
-               V := Emit_Convert_Value (Expr, TE);
+               V := Get (Emit_Conversion (Expr, TE), Data);
             end if;
          end;
       else
@@ -1630,7 +1629,7 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      Type_Size := Get_LLVM_Type_Size (Create_Type (TE));
+      Type_Size := Get_Type_Size (Create_Type (TE));
       if not (S (Index .. Index + 1) = "_1" and then Type_Size = 1)
         and then not (S (Index .. Index + 1) = "_2" and then Type_Size = 2)
         and then not (S (Index .. Index + 1) = "_4" and then Type_Size = 4)
@@ -1704,7 +1703,7 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      Type_Size := Get_LLVM_Type_Size_In_Bits (Create_Type (TE));
+      Type_Size := Get_Type_Size_In_Bits (Create_Type (TE));
       if not (S (S'Last - 1 .. S'Last) = "16" and then Type_Size = 16)
         and then not (S (S'Last - 1 .. S'Last) = "32" and then Type_Size = 32)
         and then not (S (S'Last - 1 .. S'Last) = "64" and then Type_Size = 64)
@@ -2018,7 +2017,7 @@ package body GNATLLVM.Subprograms is
                      Arg := Convert_Ref (Arg, TE);
                   end if;
                else
-                  Arg := Emit_Convert_Value (Actual, TE);
+                  Arg := Get (Emit_Conversion (Actual, TE), Data);
                end if;
 
                Args (In_Idx) := Arg;
@@ -2209,7 +2208,7 @@ package body GNATLLVM.Subprograms is
       --  Otherwise, if we haven't already made this subprogram,
       --  make it.
 
-      elsif not Has_Value (Def_Ident) then
+      elsif No (Get_Value (Def_Ident)) then
          Set_Value (Def_Ident, Create_Subprogram (Def_Ident));
       end if;
 

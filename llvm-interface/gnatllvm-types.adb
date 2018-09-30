@@ -231,6 +231,42 @@ package body GNATLLVM.Types is
 
    end Is_Nop_Conversion;
 
+   ----------------------
+   -- Is_Loadable_Type --
+   ----------------------
+
+   function Is_Loadable_Type (T : Type_T) return Boolean is
+   begin
+      --  A type isn't loadable if it's too larged
+
+      if Get_Type_Size (T) / Get_Type_Alignment (T) > Max_Load_Size then
+         return False;
+
+      --  If a structure, it isn't loadable if any component isn't
+
+      elsif Get_Type_Kind (T) = Struct_Type_Kind
+        and then Count_Struct_Element_Types (T) /= 0
+      then
+         for J in 0 .. Count_Struct_Element_Types (T) - 1 loop
+            if not Is_Loadable_Type (Struct_Get_Type_At_Index (T, J)) then
+               return False;
+            end if;
+         end loop;
+
+      --  Likewise for an array (its component might be an array that has
+      --  a non-loadable type as a component).
+
+      elsif Get_Type_Kind (T) = Array_Type_Kind
+        and then not Is_Loadable_Type (Get_Element_Type (T))
+      then
+         return False;
+      end if;
+
+      --  If nothing prevented this from being a loadable type, it is
+
+      return True;
+   end Is_Loadable_Type;
+
    ---------------------
    -- Emit_Conversion --
    ---------------------
@@ -338,8 +374,8 @@ package body GNATLLVM.Types is
                      and then Is_Discrete_Or_Fixed_Point_Type (In_TE))
                   or else (Is_Discrete_Or_Fixed_Point_Type (TE)
                              and then Is_Floating_Point_Type (In_TE)))
-        and then (ULL'(Get_LLVM_Type_Size_In_Bits (Create_Type (TE))) =
-                    ULL'(Get_LLVM_Type_Size_In_Bits (Create_Type (In_TE))))
+        and then (ULL'(Get_Type_Size_In_Bits (Create_Type (TE))) =
+                    ULL'(Get_Type_Size_In_Bits (Create_Type (In_TE))))
       then
          return Bit_Cast (Get (Result, Data), TE);
 
@@ -383,7 +419,7 @@ package body GNATLLVM.Types is
 
       elsif R = Data and then Is_Constant (Result)
         and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
-        and then Is_Record_Type (TE) and then Is_Loadable_Type (TE)
+        and then Is_Record_Type (TE) and then not Is_Dynamic_Size (TE)
         and then Is_Layout_Identical (Result, TE)
       then
          return Convert_Struct_Constant (Result, TE);
@@ -482,8 +518,7 @@ package body GNATLLVM.Types is
       Dest_FP     : constant Boolean := Is_Floating_Point_Type (TE);
       Src_Uns     : constant Boolean := Is_Unsigned_Type (V);
       Dest_Uns    : constant Boolean := Is_Unsigned_Type (TE);
-      Src_Size    : constant Nat     :=
-        Nat (ULL'(Get_LLVM_Type_Size_In_Bits (V)));
+      Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
         (if   Is_Modular_Integer_Type (TE) then RM_Size (TE) else Esize (TE));
       Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
@@ -926,18 +961,15 @@ package body GNATLLVM.Types is
             else Add (Sub (High, Low), Const_1)));
    end Bounds_To_Length;
 
-   --------------------------------
-   -- Get_LLVM_Type_Size_In_Bits --
-   --------------------------------
+   ---------------------------
+   -- Get_Type_Size_In_Bits --
+   ---------------------------
 
-   function Get_LLVM_Type_Size_In_Bits (TE : Entity_Id) return GL_Value
-   is
-      LLVM_Type : constant Type_T := Create_Type (TE);
-
+   function Get_Type_Size_In_Bits (TE : Entity_Id) return GL_Value is
    begin
       pragma Assert (not Is_Dynamic_Size (TE));
-      return Get_LLVM_Type_Size_In_Bits (LLVM_Type);
-   end Get_LLVM_Type_Size_In_Bits;
+      return Get_Type_Size_In_Bits (Create_Type (TE));
+   end Get_Type_Size_In_Bits;
 
    ------------------------
    -- Ultimate_Base_Type --
@@ -1158,7 +1190,7 @@ package body GNATLLVM.Types is
       --  type, and mark it dummy.
 
       elsif Is_Record_Type (DT) then
-         if not Has_Type (DT) then
+         if No (Get_Type (DT)) then
             Set_Type (DT, Struct_Create_Named (Context, Get_Name (DT)));
             Set_Is_Dummy_Type (DT, True);
          end if;
@@ -1298,7 +1330,8 @@ package body GNATLLVM.Types is
    -----------------
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T is
-      BT : constant Entity_Id := Full_Base_Type (TE);
+      BT   : constant Entity_Id  := Full_Base_Type (TE);
+      TBAA : constant Metadata_T := Get_TBAA (BT);
 
    begin
       --  If the base type has a TBAA, use it for us.  If it doesn't, it's
@@ -1306,8 +1339,8 @@ package body GNATLLVM.Types is
       --  new entry for it.  If it's a type that we don't currently make
       --  TBAA information for, return none.
 
-      if Has_TBAA (BT) then
-         return Get_TBAA (BT);
+      if Present (TBAA) then
+         return TBAA;
       elsif Is_Scalar_Type (BT) then
          return Create_TBAA_Scalar_Type_Node (MD_Builder, Get_Name (BT),
                                               TBAA_Root);
@@ -1377,7 +1410,7 @@ package body GNATLLVM.Types is
       --  If we have a value to move into memory, move it
 
       if Present (New_V) and then New_V /= Memory then
-         Emit_Assignment (Memory, Empty, New_V);
+         Emit_Assignment (Memory, Value => New_V);
       end if;
 
       return Convert_Ref (Memory, TE);
@@ -1407,7 +1440,7 @@ package body GNATLLVM.Types is
 
       if not Is_Dynamic_Size (Alloc_TE) then
          if Do_Stack_Check
-           and then Get_LLVM_Type_Size (Create_Type (Alloc_TE)) > Max_Alloc
+           and then Get_Type_Size (Create_Type (Alloc_TE)) > Max_Alloc
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
             return Get_Undef_Ref (TE);
@@ -1658,13 +1691,13 @@ package body GNATLLVM.Types is
       --  fixed size.  That's the size we're looking for.
 
       if Present (V) and then Relationship (V) = Data then
-         return Get_LLVM_Type_Size (Type_Of (V));
+         return Get_Type_Size (Type_Of (V));
       elsif Is_Record_Type (TE) then
          return Get_Record_Type_Size (TE, V, Max_Size);
       elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
          return Get_Array_Type_Size (TE, V, Max_Size);
       else
-         return Get_LLVM_Type_Size (Create_Type (TE));
+         return Get_Type_Size (Create_Type (TE));
       end if;
 
    end Get_Type_Size;

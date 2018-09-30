@@ -71,13 +71,13 @@ package GNATLLVM.Exprs is
 
    procedure Emit_Assignment
      (LValue       : GL_Value;
-      Orig_E       : Node_Id;
-      E_Value      : GL_Value;
-      Forwards_OK  : Boolean := True;
-      Backwards_OK : Boolean := True)
-     with Pre => Present (LValue) or else Present (Orig_E);
-   --  Copy the value of the expression E to LValue with the specified
-   --  destination and expression types.
+      Expr         : Node_Id  := Empty;
+      Value        : GL_Value := No_GL_Value;
+      Forwards_OK  : Boolean  := True;
+      Backwards_OK : Boolean  := True)
+     with Pre => Present (LValue)
+                 and then (Present (Expr) or else Present (Value));
+   --  Copy the value of the expression Expr or Value to LValue
 
    procedure Emit_Code_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Code_Statement;

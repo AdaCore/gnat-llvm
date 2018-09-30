@@ -123,7 +123,7 @@ package body GNATLLVM.Environment is
 
    function Get_LLVM_Info (TE : Entity_Id) return Access_LLVM_Info is
    begin
-      if not Has_Type (TE) then
+      if No (Get_Type (TE)) then
          Discard (Create_Type (TE));
       end if;
 
@@ -171,7 +171,6 @@ package body GNATLLVM.Environment is
       with procedure Setter (LI : Access_LLVM_Info; Val : Obj);
    package Pkg_None is
       function  Get (E : Entity_Id) return Obj;
-      function  Has (E : Entity_Id) return Boolean is (Get (E) /= None);
       procedure Set (E : Entity_Id; Val : Obj);
 
       pragma Inline (Get);
@@ -214,12 +213,10 @@ package body GNATLLVM.Environment is
 
    generic
       type Obj is private;
-      None : Obj;
       with function  Getter (LI : Access_LLVM_Info) return Obj;
       with procedure Setter (LI : Access_LLVM_Info; Val : Obj);
    package Pkg_Elab is
       function  Get (E : Entity_Id) return Obj is (Getter (Get_LLVM_Info (E)));
-      function  Has (E : Entity_Id) return Boolean is (Get (E) /= None);
       procedure Set (E : Entity_Id; Val : Obj);
 
       pragma Inline (Set);
@@ -254,30 +251,25 @@ package body GNATLLVM.Environment is
                                        Raw_Get_Field, Raw_Set_Field);
    package Env_Label  is new Pkg_None (Label_Info_Id, Empty_Label_Info_Id,
                                        Raw_Get_Label, Raw_Set_Label);
-   package Env_Dyn    is new Pkg_Elab (Boolean, False,
-                                       Raw_Get_Dyn, Raw_Set_Dyn);
-   package Env_TBAA   is new Pkg_Elab (Metadata_T, No_Metadata_T,
-                                       Raw_Get_TBAA, Raw_Set_TBAA);
-   package Env_Array  is new Pkg_Elab (Array_Info_Id, Empty_Array_Info_Id,
+
+   package Env_Dyn    is new Pkg_Elab (Boolean, Raw_Get_Dyn, Raw_Set_Dyn);
+   package Env_TBAA   is new Pkg_Elab (Metadata_T, Raw_Get_TBAA, Raw_Set_TBAA);
+   package Env_Array  is new Pkg_Elab (Array_Info_Id,
                                        Raw_Get_Array, Raw_Set_Array);
-   package Env_O_A    is new Pkg_Elab (Array_Info_Id, Empty_Array_Info_Id,
+   package Env_O_A    is new Pkg_Elab (Array_Info_Id,
                                        Raw_Get_O_A, Raw_Set_O_A);
-   package Env_Record is new Pkg_Elab (Record_Info_Id, Empty_Record_Info_Id,
+   package Env_Record is new Pkg_Elab (Record_Info_Id,
                                        Raw_Get_Record, Raw_Set_Record);
 
    --  Now complete our job by renaming the subprograms created above
 
    function  Get_Type                (TE : Entity_Id) return Type_T
      renames Env_Type.Get;
-   function  Has_Type                (TE : Entity_Id) return Boolean
-     renames Env_Type.Has;
    procedure Set_Type                (TE : Entity_Id; TL : Type_T)
      renames Env_Type.Set;
 
    function  Get_Value                (VE : Entity_Id) return GL_Value
      renames Env_Value.Get;
-   function  Has_Value                (VE : Entity_Id) return Boolean
-     renames Env_Value.Has;
    procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)
      renames Env_Value.Set;
 
@@ -293,15 +285,11 @@ package body GNATLLVM.Environment is
 
    function  Get_Field_Info          (VE : Entity_Id) return Field_Info_Id
      renames Env_Field.Get;
-   function  Has_Field_Info          (VE : Entity_Id) return Boolean
-     renames Env_Field.Has;
    procedure Set_Field_Info          (VE : Entity_Id; FI : Field_Info_Id)
      renames Env_Field.Set;
 
    function  Get_Label_Info          (VE : Entity_Id) return Label_Info_Id
      renames Env_Label.Get;
-   function  Has_Label_Info          (VE : Entity_Id) return Boolean
-     renames Env_Label.Has;
    procedure Set_Label_Info          (VE : Entity_Id; LI : Label_Info_Id)
      renames Env_Label.Set;
 
@@ -312,29 +300,21 @@ package body GNATLLVM.Environment is
 
    function  Get_TBAA                (TE : Entity_Id) return Metadata_T
      renames Env_TBAA.Get;
-   function  Has_TBAA                (TE : Entity_Id) return Boolean
-     renames Env_TBAA.Has;
    procedure Set_TBAA                (TE : Entity_Id; TBAA : Metadata_T)
      renames Env_TBAA.Set;
 
    function  Get_Array_Info          (TE : Entity_Id) return Array_Info_Id
      renames Env_Array.Get;
-   function  Has_Array_Info          (TE : Entity_Id) return Boolean
-     renames Env_Array.Has;
    procedure Set_Array_Info          (TE : Entity_Id; AI : Array_Info_Id)
      renames Env_Array.Set;
 
    function  Get_Orig_Array_Info     (TE : Entity_Id) return Array_Info_Id
      renames Env_O_A.Get;
-   function  Has_Orig_Array_Info     (TE : Entity_Id) return Boolean
-     renames Env_O_A.Has;
    procedure Set_Orig_Array_Info     (TE : Entity_Id; AI : Array_Info_Id)
      renames Env_O_A.Set;
 
    function  Get_Record_Info         (TE : Entity_Id) return Record_Info_Id
      renames Env_Record.Get;
-   function  Has_Record_Info         (TE : Entity_Id) return Boolean
-     renames Env_Record.Has;
    procedure Set_Record_Info         (TE : Entity_Id; RI : Record_Info_Id)
      renames Env_Record.Set;
 

@@ -560,9 +560,9 @@ package body GNATLLVM.Variables is
 
         --  Or fixed-size record types with identical layout
 
-        or else (Is_Record_Type (In_TE) and then Is_Loadable_Type (In_TE)
+        or else (Is_Record_Type (In_TE) and then not Is_Dynamic_Size (In_TE)
                    and then Is_Record_Type (Out_TE)
-                   and then Is_Loadable_Type (Out_TE)
+                   and then not Is_Dynamic_Size (Out_TE)
                    and then Is_Layout_Identical (In_TE, Out_TE))
 
         --  Or if neither type is dynamic and the LLVM types are the same
@@ -797,8 +797,8 @@ package body GNATLLVM.Variables is
    function Maybe_Promote_Alloca (T : Type_T) return Basic_Block_T is
       Current_BB         : constant Basic_Block_T := Get_Insert_Block;
       Threshold_In_Words : constant               := 4;
-      Max_Promoted_Size  : constant ULL :=
-        Get_LLVM_Type_Size (Void_Ptr_Type) * Threshold_In_Words;
+      Max_Promoted_Size  : constant ULL           :=
+        Get_Type_Size (Void_Ptr_Type) * Threshold_In_Words;
 
    begin
       --  If this is small, promote it to the entry block by setting our
@@ -806,7 +806,7 @@ package body GNATLLVM.Variables is
       --  Otherwise, nothing to do here.
 
       if Present (Entry_Block_Allocas)
-        and then Get_LLVM_Type_Size (T) <= Max_Promoted_Size
+        and then Get_Type_Size (T) <= Max_Promoted_Size
       then
          Set_Current_Position (Entry_Block_Allocas);
          return Current_BB;
@@ -1464,7 +1464,7 @@ package body GNATLLVM.Variables is
 
       --  If we haven't already set the value, set it now
 
-      if not Has_Value (Def_Ident) then
+      if No (Get_Value (Def_Ident)) then
          Set_Value (Def_Ident, LLVM_Var);
       end if;
 
@@ -1484,7 +1484,7 @@ package body GNATLLVM.Variables is
       Def_Ident : constant Entity_Id := Defining_Identifier (N);
       TE        : constant Entity_Id := Full_Etype (Def_Ident);
       Use_LHS   : constant Boolean   := Is_Name (Name (N));
-      LLVM_Var  : GL_Value;
+      LLVM_Var  : GL_Value           := Get_Value (Def_Ident);
 
    begin
       --  If this is just a macro substitution by the front end, omit
@@ -1499,12 +1499,15 @@ package body GNATLLVM.Variables is
       --  in an elab proc seeing this for the second time, which means
       --  that we have to set its address or value.
 
-      elsif Has_Value (Def_Ident) then
+      elsif Present (LLVM_Var) then
          pragma Assert (In_Elab_Proc);
 
-         Store ((if   Use_LHS then Convert_Ref (Emit_LValue (Name (N)), TE)
-                 else Emit_Convert_Value (Name (N), TE)),
-                Get_Value (Def_Ident));
+         if Use_LHS then
+            Store (Convert_Ref (Emit_LValue (Name (N)), TE), LLVM_Var);
+         else
+            Emit_Assignment (LLVM_Var,
+                             Value => Emit_Convert_Value (Name (N), TE));
+         end if;
 
       --  If this is a constant, just use the value of the expression for
       --  this object.  Otherwise, get the LValue of the expression, but

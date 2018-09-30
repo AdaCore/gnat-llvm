@@ -907,7 +907,7 @@ package body GNATLLVM.Records is
                   null;
                elsif Present (Field_To_Add)
                  and then (No (Outer_Field)
-                             or else not Has_Field_Info (Outer_Field))
+                             or else No (Get_Field_Info (Outer_Field)))
                then
                   Add_Field (Field_To_Add);
 
@@ -947,7 +947,7 @@ package body GNATLLVM.Records is
                     := Find_Field_In_Entity_List (Field, TE, Cur_Field);
 
                   if Present (Outer_Field)
-                    and then not Has_Field_Info (Outer_Field)
+                    and then No (Get_Field_Info (Outer_Field))
                     and then Scope (ORC) = Rec_Type
                     and then Is_Completely_Hidden (ORC)
                   then
@@ -1102,7 +1102,7 @@ package body GNATLLVM.Records is
          --  First check for zero length LLVM type since the code below will
          --  fail if we have no fields.
 
-         if Present (T) and then Get_LLVM_Type_Size (T) = ULL (0) then
+         if Present (T) and then Get_Type_Size (T) = ULL (0) then
             This_Size  := Sz_Const (ULL (0));
             Must_Align := Sz_Const (Get_Type_Alignment (T));
             Is_Align   := Sz_Const (Get_Type_Alignment (T));
@@ -1151,8 +1151,7 @@ package body GNATLLVM.Records is
                  Count_Struct_Element_Types (T);
                Last_Type   : constant Type_T   :=
                  Struct_Get_Type_At_Index (T, Num_Types - 1);
-               Last_Size   : constant ULL      :=
-                 Get_LLVM_Type_Size (Last_Type);
+               Last_Size   : constant ULL      := Get_Type_Size (Last_Type);
                Last_Offset : constant ULL      :=
                  Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
 

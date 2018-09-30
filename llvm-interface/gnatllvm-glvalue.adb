@@ -1529,7 +1529,7 @@ package body GNATLLVM.GLValue is
 
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Attribute (LLVM_Value (V), unsigned (Idx),
-                                        Get_LLVM_Type_Size (T));
+                                        Get_Type_Size (T));
       else
          Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
       end if;
@@ -1547,7 +1547,7 @@ package body GNATLLVM.GLValue is
    begin
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V), unsigned (Idx),
-                                                Get_LLVM_Type_Size (T));
+                                                Get_Type_Size (T));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
 

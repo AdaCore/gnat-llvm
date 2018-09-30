@@ -59,11 +59,13 @@ package GNATLLVM.Types is
    --  we check for the need to convert to the actual access type and not
    --  the dummy one.
 
-   Max_Load_Size : constant := 128;
+   Max_Load_Size : constant := 8;
    --  LLVM supports loading and storing of arbitrarily-large values, but
-   --  code generation and optimization is very slow if the value's size
-   --  is too large.  We pick an arbitary constant here to cut it off.
-   --  ??? Perhaps we should make this a command-line operand.
+   --  code generation and optimization is very slow if the value's size is
+   --  too large.  We pick an arbitary constant here to cut it off.  This
+   --  constant is in number of loads or stores, meaning the maximum value
+   --  of the size divided by the alignment.  ??? Perhaps we should make
+   --  this a command-line operand.
 
    function Create_Access_Type_To (TE : Entity_Id) return Type_T is
      (Type_For_Relationship (TE, Relationship_For_Ref (TE)))
@@ -324,50 +326,57 @@ package GNATLLVM.Types is
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
-   function Get_LLVM_Type_Size (T : Type_T) return ULL is
+   function Get_Type_Size (T : Type_T) return ULL is
      (ABI_Size_Of_Type (Module_Data_Layout, T))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bytes
 
-   function Get_LLVM_Type_Size (T : Type_T) return GL_Value is
-     (Size_Const_Int (Get_LLVM_Type_Size (T)));
+   function Get_Type_Size (T : Type_T) return GL_Value is
+     (Size_Const_Int (Get_Type_Size (T)));
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
-   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return ULL is
+   function Get_Type_Size_In_Bits (T : Type_T) return ULL is
      (Size_Of_Type_In_Bits (Module_Data_Layout, T))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
-   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return ULL is
+   function Get_Type_Size_In_Bits (V : GL_Value) return ULL is
      (Size_Of_Type_In_Bits (Module_Data_Layout, Type_Of (V.Value)))
      with Pre => Present (V);
    --  Return the size of an LLVM type, in bits
 
-   function Get_LLVM_Type_Size_In_Bits (T : Type_T) return GL_Value is
-     (Const_Int (Size_Type, Get_LLVM_Type_Size_In_Bits (T), False))
+   function Get_Type_Size_In_Bits (T : Type_T) return GL_Value is
+     (Const_Int (Size_Type, Get_Type_Size_In_Bits (T), False))
      with Pre  => Present (T),
-          Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
+          Post => Present (Get_Type_Size_In_Bits'Result);
    --  Return the size of an LLVM type, in bits, as an LLVM constant
 
-   function Get_LLVM_Type_Size_In_Bits (TE : Entity_Id) return GL_Value
+   function Get_Type_Size_In_Bits (TE : Entity_Id) return GL_Value
      with Pre  => Present (TE),
-          Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
+          Post => Present (Get_Type_Size_In_Bits'Result);
    --  Likewise, but convert from a GNAT type
 
-   function Get_LLVM_Type_Size_In_Bits (V : GL_Value) return GL_Value is
-     (Get_LLVM_Type_Size_In_Bits (V.Typ))
+   function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value is
+     (Get_Type_Size_In_Bits (V.Typ))
      with Pre  => Present (V),
-          Post => Present (Get_LLVM_Type_Size_In_Bits'Result);
+          Post => Present (Get_Type_Size_In_Bits'Result);
    --  Variant of above to get type from a GL_Value
 
+   function Get_Type_Alignment (T : Type_T) return ULL is
+     (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
+     with Pre => Present (T);
+   --  Return the size of an LLVM type, in bits
+
+   function Is_Loadable_Type (T : Type_T) return Boolean
+     with Pre => Present (T);
+   --  Used for the function below
+
    function Is_Loadable_Type (TE : Entity_Id) return Boolean is
-     (not Is_Dynamic_Size (TE)
-        and then Get_LLVM_Type_Size (Create_Type (TE)) < ULL (Max_Load_Size))
+     (not Is_Dynamic_Size (TE) and then Is_Loadable_Type (Create_Type (TE)))
      with Pre => Is_Type (TE);
    --  Returns True if we should use a load/store instruction to copy values
    --  of this type.  We can't do this if it's of dynamic size, but LLVM
-   --  doesn't do well with large load/store instructions, so we make an
-   --  arbitrary cap here of 128 bytes and use memcpy if larger.
+   --  also doesn't do well with large load/store instructions.
 
    function Allocate_For_Type
      (TE       : Entity_Id;
@@ -417,11 +426,6 @@ package GNATLLVM.Types is
           Post => Type_Of (To_Size_Type'Result) = LLVM_Size_Type;
    --  Convert V to Size_Type.  This is always Size_Type's width, but may
    --  actually be a different GNAT type.
-
-   function Get_Type_Alignment (T : Type_T) return ULL is
-     (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
-     with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment (TE : Entity_Id) return ULL
      with Pre => Is_Type (TE);

@@ -379,7 +379,7 @@ package body GNATLLVM.Compile is
 
          when N_Assignment_Statement =>
             Emit_Assignment (Emit_LValue (Name (N), For_LHS => True),
-                             Expression (N), No_GL_Value,
+                             Expr         => Expression (N),
                              Forwards_OK  => Forwards_OK (N),
                              Backwards_OK => Backwards_OK (N));
 
@@ -450,7 +450,7 @@ package body GNATLLVM.Compile is
             begin
                if Esize (TE) /= Uint_0
                  and then (Is_Dynamic_Size (TE)
-                            or else (Nat (ULL'(Get_LLVM_Type_Size_In_Bits (T)))
+                            or else (Nat (ULL'(Get_Type_Size_In_Bits (T)))
                                        > Esize (TE)))
                then
                   Error_Msg_Uint_1 := Esize (TE);
@@ -620,7 +620,7 @@ package body GNATLLVM.Compile is
       if Nkind_In (N, N_Identifier, N_Expanded_Name)
         and then not Ekind_In (Entity (N), E_Function, E_Procedure)
         and then No (Get_From_Activation_Record (Entity (N)))
-        and then Has_Value (Entity (N))
+        and then Present (Get_Value (Entity (N)))
         and then Is_Single_Reference (Get_Value (Entity (N)))
       then
          return Get_Value (Entity (N));

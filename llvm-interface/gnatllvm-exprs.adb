@@ -123,7 +123,7 @@ package body GNATLLVM.Exprs is
                --  If this is a normal string, where the size of a character
                --  is a byte, use Const_String to create the string.
 
-               if Get_LLVM_Type_Size_In_Bits (Create_Type (Elmt_TE)) = 8 then
+               if Get_Type_Size_In_Bits (Create_Type (Elmt_TE)) = 8 then
                   declare
                      type String_Access is access String;
                      procedure Free is new Ada.Unchecked_Deallocation
@@ -548,7 +548,7 @@ package body GNATLLVM.Exprs is
       LHS       : constant GL_Value := Emit_Expression (LHS_Node);
       RHS       : constant GL_Value := Emit_Expression (RHS_Node);
       N         : constant GL_Value := Convert (RHS, LHS);
-      LHS_Size  : constant GL_Value := Get_LLVM_Type_Size_In_Bits (LHS);
+      LHS_Size  : constant GL_Value := Get_Type_Size_In_Bits (LHS);
       LHS_Bits  : constant GL_Value := Convert (LHS_Size, LHS);
       Result    : GL_Value          := LHS;
       Saturated : GL_Value;
@@ -928,17 +928,17 @@ package body GNATLLVM.Exprs is
 
    procedure Emit_Assignment
      (LValue       : GL_Value;
-      Orig_E       : Node_Id;
-      E_Value      : GL_Value;
-      Forwards_OK  : Boolean := True;
-      Backwards_OK : Boolean := True)
+      Expr         : Node_Id  := Empty;
+      Value        : GL_Value := No_GL_Value;
+      Forwards_OK  : Boolean  := True;
+      Backwards_OK : Boolean  := True)
    is
-      E         : constant Node_Id   := Strip_Complex_Conversions (Orig_E);
+      E         : constant Node_Id   := Strip_Complex_Conversions (Expr);
       Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);
       Src_Type  : constant Entity_Id :=
-        (if Present (E_Value) then Related_Type (E_Value) else Full_Etype (E));
+        (if Present (Value) then Related_Type (Value) else Full_Etype (E));
       Dest      : GL_Value           := LValue;
-      Src       : GL_Value           := E_Value;
+      Src       : GL_Value           := Value;
       Dest_R    : GL_Relationship;
       Src_R     : GL_Relationship;
 
@@ -1016,7 +1016,7 @@ package body GNATLLVM.Exprs is
          Store (Convert (Get (Src, Data), Dest_Type), Dest);
 
       elsif (Present (E) and then Is_Loadable_Type (Full_Etype (E)))
-         or else (Present (E_Value) and then Is_Loadable_Type (E_Value))
+         or else (Present (Value) and then Is_Loadable_Type (Value))
       then
          --  Here, the source is of an LLVM value small enough to store,
          --  but the destination may or may not be a variable-sized type.

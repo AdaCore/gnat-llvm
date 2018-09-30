@@ -177,24 +177,16 @@ package GNATLLVM.Environment is
    function Get_Label_Info      (VE : Entity_Id)  return Label_Info_Id
      with Pre => Present (VE);
 
-   function Has_Type            (TE : Entity_Id) return Boolean;
-   function Has_Value           (VE : Entity_Id) return Boolean;
-   function Has_Field_Info      (VE : Entity_Id) return Boolean;
-   function Has_Label_Info      (VE : Entity_Id) return Boolean;
-   function Has_TBAA            (TE : Entity_Id) return Boolean;
-   function Has_Array_Info      (TE : Entity_Id) return Boolean;
-   function Has_Orig_Array_Info (TE : Entity_Id) return Boolean;
-   function Has_Record_Info     (TE : Entity_Id) return Boolean;
-
    procedure Set_Type            (TE : Entity_Id; TL : Type_T)
-     with Pre  => Is_Type (TE) and then (Present (TL) or else Has_Type (TE))
-                  and then (not Has_Type (TE) or else Get_Type (TE) = TL
+     with Pre  => Is_Type (TE)
+                  and then (Present (TL) or else Present (Get_Type (TE)))
+                  and then (No (Get_Type (TE)) or else Get_Type (TE) = TL
                               or else TL = No_Type_T
                               or else Is_Access_Type (TE)),
           Post => Get_Type (TE) = TL;
 
    procedure Set_Is_Dynamic_Size (TE : Entity_Id; B : Boolean := True)
-     with Pre  => Is_Type (TE) and then Has_Type (TE),
+     with Pre  => Is_Type (TE) and then Present (Get_Type (TE)),
           Post => Is_Dynamic_Size (TE) = B;
 
    procedure Set_Is_Being_Elaborated (TE : Entity_Id; B : Boolean)
@@ -204,41 +196,43 @@ package GNATLLVM.Environment is
      with Pre  => Is_Type (TE), Post => Is_Dummy_Type (TE) = B;
 
    procedure Set_TBAA            (TE : Entity_Id; TBAA : Metadata_T)
-     with Pre  => Is_Type (TE) and then Present (TBAA) and then Has_Type (TE),
+     with Pre  => Is_Type (TE) and then Present (TBAA)
+                  and then Present (Get_Type (TE)),
           Post => Get_TBAA (TE) = TBAA;
 
    procedure Set_Value_R         (VE : Entity_Id; VL : GL_Value)
      with Pre  => Present (VE) and then Present (VL)
-                  and then (not Has_Value (VE) or else Get_Value (VE) = VL),
+                  and then (No (Get_Value (VE)) or else Get_Value (VE) = VL),
           Post => Get_Value (VE) = VL;
 
    procedure Set_Array_Info      (TE : Entity_Id; AI : Array_Info_Id)
-     with Pre  => Is_Array_Type (TE) and then Has_Type (TE)
-                  and then (not Has_Array_Info (TE)
+     with Pre  => Is_Array_Type (TE) and then Present (Get_Type (TE))
+                  and then (No (Get_Array_Info (TE))
                               or else Get_Array_Info (TE) = AI),
           Post => Get_Array_Info (TE) = AI;
 
    procedure Set_Orig_Array_Info (TE : Entity_Id; AI : Array_Info_Id)
-     with Pre  => Is_Packed_Array_Impl_Type (TE) and then Has_Type (TE)
-                  and then (not Has_Orig_Array_Info (TE)
+     with Pre  => Is_Packed_Array_Impl_Type (TE)
+                  and then Present (Get_Type (TE))
+                  and then (No (Get_Orig_Array_Info (TE))
                               or else Get_Orig_Array_Info (TE) = AI),
           Post => Get_Orig_Array_Info (TE) = AI;
 
    procedure Set_Record_Info     (TE : Entity_Id; RI : Record_Info_Id)
      with Pre  => Is_Record_Type (TE)
-                  and then (not Has_Record_Info (TE)
+                  and then (No (Get_Record_Info (TE))
                               or else Get_Record_Info (TE) = RI),
           Post => Get_Record_Info (TE) = RI;
 
    procedure Set_Field_Info      (VE : Entity_Id; FI : Field_Info_Id)
      with Pre  => Ekind_In (VE, E_Discriminant, E_Component)
-                  and then (not Has_Field_Info (VE)
+                  and then (No (Get_Field_Info (VE))
                               or else Get_Field_Info (VE) = FI),
           Post => Get_Field_Info (VE) = FI;
 
    procedure Set_Label_Info      (VE : Entity_Id; LI : Label_Info_Id)
      with Pre  => Present (VE)
-                  and then (not Has_Label_Info (VE)
+                  and then (No (Get_Label_Info (VE))
                               or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI;
 
@@ -252,13 +246,6 @@ package GNATLLVM.Environment is
    pragma Inline (Get_Orig_Array_Info);
    pragma Inline (Get_Record_Info);
    pragma Inline (Get_Label_Info);
-   pragma Inline (Has_Type);
-   pragma Inline (Has_TBAA);
-   pragma Inline (Has_Value);
-   pragma Inline (Has_Array_Info);
-   pragma Inline (Has_Orig_Array_Info);
-   pragma Inline (Has_Record_Info);
-   pragma Inline (Has_Label_Info);
    pragma Inline (Set_Type);
    pragma Inline (Set_Is_Dynamic_Size);
    pragma Inline (Set_Is_Being_Elaborated);

@@ -41,14 +41,8 @@ package GNATLLVM.Wrapper is
       Offset                 : ULL) return Metadata_T;
    pragma Import (C, Create_TBAA_Access_Tag, "Create_TBAA_Access_Tag");
 
-   procedure Set_Volatile (Value : Value_T);
-   pragma Import (C, Set_Volatile, "Set_Volatile");
-
    procedure Add_TBAA_Access (Value : Value_T; TBAA : Metadata_T);
    pragma Import (C, Add_TBAA_Access, "Add_TBAA_Access");
-
-   procedure Set_Alloca_Align (Inst : Value_T; Align : ULL);
-   pragma Import (C, Set_Alloca_Align, "Set_Alloca_Align");
 
    procedure Add_Cold_Attribute (Func : Value_T);
    pragma Import (C, Add_Cold_Attribute, "Add_Cold_Attribute");

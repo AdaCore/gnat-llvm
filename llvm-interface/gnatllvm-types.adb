@@ -1801,9 +1801,7 @@ package body GNATLLVM.Types is
    is
       TBAA : constant Metadata_T := Get_TBAA (TE);
    begin
-      if Is_Volatile (TE) then
-         Set_Volatile (Inst);
-      end if;
+      Set_Volatile (Inst, Is_Volatile (TE));
 
       if Present (TBAA) then
          Add_TBAA_Access

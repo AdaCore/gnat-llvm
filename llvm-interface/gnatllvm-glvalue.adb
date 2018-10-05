@@ -720,7 +720,7 @@ package body GNATLLVM.GLValue is
       Inst    : constant Value_T         := Alloca (IR_Builder, T, Name);
 
    begin
-      Set_Alloca_Align (Inst, Get_Type_Alignment (T));
+      Set_Alignment (Inst, unsigned (Get_Type_Alignment (T)));
       Done_Promoting_Alloca (Inst, Promote);
       return G (Inst, TE, R, Is_Pristine => True);
    end Alloca;
@@ -738,7 +738,7 @@ package body GNATLLVM.GLValue is
         Array_Alloca (IR_Builder, Create_Type (TE),
                       LLVM_Value (Num_Elts), Name);
    begin
-      Set_Alloca_Align (Inst, Get_Type_Alignment (TE));
+      Set_Alignment (Inst, unsigned (ULL'(Get_Type_Alignment (TE))));
       Save_Stack_Pointer;
       return G_Ref (Inst, TE, Is_Pristine => True);
    end Array_Alloca;

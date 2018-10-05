@@ -212,16 +212,6 @@ Dump_LLVM_Type_C (Type *type)
 
 extern "C"
 void
-Set_Volatile (Instruction *inst)
-{
-  if (StoreInst *SI = dyn_cast<StoreInst> (inst))
-    SI->setVolatile (true);
-  else if (LoadInst *LI = dyn_cast<LoadInst> (inst))
-    LI->setVolatile (true);
-}
-
-extern "C"
-void
 Set_NUW (Instruction *inst)
 {
   inst->setHasNoUnsignedWrap ();
@@ -239,13 +229,6 @@ void
 Add_TBAA_Access (Instruction *inst, MDNode *md)
 {
   inst->setMetadata (LLVMContext::MD_tbaa, md);
-}
-
-extern "C"
-void
-Set_Alloca_Align (AllocaInst *inst, unsigned long long align)
-{
-    inst->setAlignment ((unsigned) align);
 }
 
 /* The LLVM C interface only provide single-index forms of extractvalue

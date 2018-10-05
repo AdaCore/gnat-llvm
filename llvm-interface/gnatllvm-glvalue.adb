@@ -1388,6 +1388,36 @@ package body GNATLLVM.GLValue is
    end Call;
 
    ----------------
+   -- Call_Align --
+   ----------------
+
+   procedure Call_With_Align
+     (Func : GL_Value; Args : GL_Value_Array; Align : ULL; Name : String := "")
+   is
+      CI : constant Value_T := Call_Internal (Func, Args, Name);
+
+   begin
+      Set_Instr_Param_Alignment (CI, 1, unsigned (Align));
+   end Call_With_Align;
+
+   ------------------------
+   --  Call_With_Align_2 --
+   ------------------------
+
+   procedure Call_With_Align_2
+     (Func             : GL_Value;
+      Args             : GL_Value_Array;
+      Align_1, Align_2 : ULL;
+      Name             : String := "")
+   is
+      CI : constant Value_T := Call_Internal (Func, Args, Name);
+
+   begin
+      Set_Instr_Param_Alignment (CI, 1, unsigned (Align_1));
+      Set_Instr_Param_Alignment (CI, 2, unsigned (Align_2));
+   end Call_With_Align_2;
+
+   ----------------
    -- Add_Clause --
    ----------------
 

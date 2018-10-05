@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Debug_Info;      use LLVM.Debug_Info;
+
 with Sinput; use Sinput;
 with Table;  use Table;
 
@@ -63,6 +65,8 @@ package body GNATLLVM.DebugInfo is
 
    Freeze_Pos_Level : Natural := 0;
    --  Current level of pushes of requests to freeze debug position
+
+   subtype UL is Interfaces.C.unsigned_long;
 
    ----------------------
    -- Push_Debug_Scope --
@@ -132,8 +136,9 @@ package body GNATLLVM.DebugInfo is
          Name      : constant String :=
            Get_Name_String (Debug_Source_Name (File));
          DIFile    : constant Metadata_T :=
-           Create_Debug_File (DI_Builder, Name,
-                              Full_Name (1 .. Full_Name'Length - Name'Length));
+           DI_Create_File (DI_Builder, Name, UL (Name'Length),
+                           Full_Name (1 .. Full_Name'Length - Name'Length),
+                           UL (Full_Name'Length - Name'Length));
       begin
          DI_Cache (File) := DIFile;
          return DIFile;

@@ -768,14 +768,14 @@ package body GNATLLVM.Subprograms is
             Return_TE := Standard_Void_Type;
             Fun_Ty := Fn_Ty
               ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
-                3 => LLVM_Size_Type, 4 => Int_Ty (32), 5 => Int_Ty (1)),
+                3 => LLVM_Size_Type, 4 => Int_Ty (1)),
                Void_Type);
 
          when Memset =>
             Return_TE := Standard_Void_Type;
             Fun_Ty := Fn_Ty
               ((1 => Void_Ptr_Type, 2 => Int_Ty (8), 3 => LLVM_Size_Type,
-                4 => Int_Ty (32), 5 => Int_Ty (1)),
+                4 => Int_Ty (1)),
                Void_Type);
       end case;
 

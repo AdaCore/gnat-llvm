@@ -42,7 +42,7 @@ extern "C"
 DIFile *
 Create_Debug_File_C (DIBuilder *DBld, const char *name, const char *dir)
 {
-  return  DBld->createFile (name, dir);
+  return  DBld->createFile (name, dir, None, None);
 }
 
 extern "C"

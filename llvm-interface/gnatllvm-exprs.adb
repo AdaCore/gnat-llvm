@@ -1036,8 +1036,6 @@ package body GNATLLVM.Exprs is
          --  Otherwise, we have to do a variable-sized copy
 
          declare
-            Align     : constant ULL      := Compute_Alignment
-              (Dest_Type, Related_Type (Src));
             Func_Name : constant String   :=
               (if Forwards_OK and then Backwards_OK
                then "memcpy" else "memmove");
@@ -1066,13 +1064,15 @@ package body GNATLLVM.Exprs is
                Size := Add (Size, Get_Bound_Size (Related_Type (Src)));
             end if;
 
-            Call (Build_Intrinsic
-                    (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
-                  (1 => Pointer_Cast (Get (Dest, Dest_R), Standard_A_Char),
-                   2 => Pointer_Cast (Get (Src,  Src_R),  Standard_A_Char),
-                   3 => Size,
-                   4 => Const_Int_32 (Align),
-                   5 => Const_False)); -- Is_Volatile
+            Call_With_Align_2
+              (Build_Intrinsic
+                 (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
+               (1 => Pointer_Cast (Get (Dest, Dest_R), Standard_A_Char),
+                2 => Pointer_Cast (Get (Src,  Src_R),  Standard_A_Char),
+                3 => Size,
+                4 => Const_False), -- Is_Volatile
+               Get_Type_Alignment (Dest_Type),
+               Get_Type_Alignment (Related_Type (Src)));
          end;
       end if;
    end Emit_Assignment;

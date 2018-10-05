@@ -790,7 +790,6 @@ package body GNATLLVM.Arrays is
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
       TE    : constant Entity_Id := Full_Etype (N);
-      Align : constant ULL       := Get_Type_Alignment (TE);
       E     : Node_Id            :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
@@ -812,12 +811,13 @@ package body GNATLLVM.Arrays is
          Value := Emit_Convert_Value (E, Standard_Short_Short_Integer);
       end if;
 
-      Call (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
-            (1 => Pointer_Cast (Get (LValue, Reference), Standard_A_Char),
-             2 => Value,
-             3 => Get_Type_Size (TE),
-             4 => Const_Int_32 (Align),
-             5 => Const_False));  --  Is_Volatile
+      Call_With_Align
+        (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
+         (1 => Pointer_Cast (Get (LValue, Reference), Standard_A_Char),
+          2 => Value,
+          3 => Get_Type_Size (TE),
+          4 => Const_False),  --  Is_Volatile
+         Get_Type_Alignment (TE));
    end Emit_Others_Aggregate;
 
    -----------------------------

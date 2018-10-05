@@ -455,13 +455,6 @@ package GNATLLVM.Types is
    --  specified, we can only be comparing arrays, so we won't need to
    --  use Get_Matching_Value.
 
-   function Compute_Alignment
-     (Left_Type, Right_Type : Entity_Id) return ULL is
-     (ULL'Max (Get_Type_Alignment (Left_Type),
-               Get_Type_Alignment (Right_Type)))
-     with Pre  => Is_Type (Left_Type) and then Is_Type (Right_Type);
-   --  Likewise, but compute strictest alignment in bits
-
    function Get_Type_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat
      with Pre  => Is_Type (TE);

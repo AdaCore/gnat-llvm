@@ -1522,6 +1522,17 @@ package GNATLLVM.GLValue is
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
      with Pre  => Present (Func);
 
+   procedure Call_With_Align
+     (Func : GL_Value; Args : GL_Value_Array; Align : ULL; Name : String := "")
+     with Pre  => Present (Func);
+
+   procedure Call_With_Align_2
+     (Func             : GL_Value;
+      Args             : GL_Value_Array;
+      Align_1, Align_2 : ULL;
+      Name             : String := "")
+     with Pre  => Present (Func);
+
    function Landing_Pad
      (T                : Type_T;
       Personality_Func : GL_Value;

@@ -135,12 +135,9 @@ package GNATLLVM.Wrapper is
       No_SLP_Vectorization  : Boolean);
    --  Perform optimizations on the module
 
-   function Create_Debug_Builder (Module : Module_T) return DI_Builder_T;
-   pragma Import (C, Create_Debug_Builder, "Create_Debug_Builder");
+   procedure Add_Debug_Flags (Module : Module_T);
+   pragma Import (C, Add_Debug_Flags, "Add_Debug_Flags");
    --  Create a DIBuilder and return it
-
-   function Create_Debug_File
-     (Bld : DI_Builder_T; Name, Dir : String) return Metadata_T;
 
    function Create_Debug_Compile_Unit
      (Bld : DI_Builder_T; File : Metadata_T) return Metadata_T;
@@ -159,9 +156,6 @@ package GNATLLVM.Wrapper is
       Line        : Logical_Line_Number;
       Column      : Column_Number) return Metadata_T;
    pragma Import (C, Create_Debug_Lexical_Block, "Create_Debug_Lexical_Block");
-
-   procedure Finalize_Debug_Info (Bld : DI_Builder_T);
-   pragma Import (C, Finalize_Debug_Info, "Finalize_Debug_Info");
 
    procedure Set_Debug_Loc
      (Bld    : Builder_T;

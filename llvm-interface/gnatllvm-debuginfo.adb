@@ -97,7 +97,8 @@ package body GNATLLVM.DebugInfo is
    procedure Initialize is
    begin
       if Emit_Debug_Info then
-         DI_Builder         := Create_Debug_Builder (Module);
+         Add_Debug_Flags (Module);
+         DI_Builder         := Create_DI_Builder (Module);
          Debug_Compile_Unit :=
            Create_Debug_Compile_Unit
            (DI_Builder, Get_Debug_File_Node (Main_Source_File));
@@ -111,7 +112,7 @@ package body GNATLLVM.DebugInfo is
    procedure Finalize_Debugging is
    begin
       if Emit_Debug_Info then
-         Finalize_Debug_Info (DI_Builder);
+         DI_Builder_Finalize (DI_Builder);
       end if;
    end Finalize_Debugging;
 

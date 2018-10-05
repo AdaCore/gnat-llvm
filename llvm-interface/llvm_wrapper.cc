@@ -29,20 +29,12 @@ using namespace llvm;
 using namespace llvm::sys;
 
 extern "C"
-DIBuilder *
-Create_Debug_Builder (Module *TheModule)
+void
+Add_Debug_Flags (Module *TheModule)
 {
   TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
 			   DEBUG_METADATA_VERSION);
   TheModule->addModuleFlag(Module::Warning, "Dwarf Version", 4);
-  return new DIBuilder (*TheModule);
-}
-
-extern "C"
-DIFile *
-Create_Debug_File_C (DIBuilder *DBld, const char *name, const char *dir)
-{
-  return  DBld->createFile (name, dir, None, None);
 }
 
 extern "C"
@@ -65,13 +57,6 @@ Create_Debug_Subprogram_C (DIBuilder *DBld, Function *func, DIFile *file,
 					     lineno, st, false, true, lineno);
   func->setSubprogram (subp);
   return subp;
-}
-
-extern "C"
-void
-Finalize_Debug_Info (DIBuilder *DBld)
-{
-  DBld->finalize ();
 }
 
 extern "C"

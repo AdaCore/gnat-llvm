@@ -147,20 +147,6 @@ package body GNATLLVM.Wrapper is
                               No_Loop_Vect_B, No_SLP_Vect_B);
    end LLVM_Optimize_Module;
 
-   -----------------------
-   -- Create_Debug_File --
-   -----------------------
-
-   function Create_Debug_File
-     (Bld : DI_Builder_T; Name, Dir : String) return Metadata_T
-   is
-      function Create_Debug_File_C
-        (Bld : DI_Builder_T; Name, Dir : String) return Metadata_T;
-      pragma Import (C, Create_Debug_File_C, "Create_Debug_File_C");
-   begin
-      return Create_Debug_File_C (Bld, Name & ASCII.NUL, Dir & ASCII.NUL);
-   end Create_Debug_File;
-
    -----------------------------
    -- Create_Debug_Subprogram --
    -----------------------------

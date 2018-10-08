@@ -82,6 +82,9 @@ package GNATLLVM.Wrapper is
    procedure Add_Readonly_Attribute (Func : Value_T; Idx : unsigned);
    pragma Import (C, Add_Readonly_Attribute, "Add_Readonly_Attribute");
 
+   procedure Add_Writeonly_Attribute (Func : Value_T; Idx : unsigned);
+   pragma Import (C, Add_Writeonly_Attribute, "Add_Writeonly_Attribute");
+
    function Build_Extract_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;

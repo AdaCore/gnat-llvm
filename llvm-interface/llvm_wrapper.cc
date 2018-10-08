@@ -173,6 +173,13 @@ Add_Readonly_Attribute (Function *fn, unsigned idx)
 }
 
 extern "C"
+void
+Add_Writeonly_Attribute (Function *fn, unsigned idx)
+{
+    fn->addParamAttr (idx, Attribute::WriteOnly);
+}
+
+extern "C"
 MDNode *
 Create_TBAA_Scalar_Type_Node_C (MDBuilder *MDHelper, const char *name,
 				MDNode *parent)

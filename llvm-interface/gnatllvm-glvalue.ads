@@ -697,6 +697,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V);
    --  Add the Readonly attribute to parameter with index Idx
 
+   procedure Add_Writeonly_Attribute (V : GL_Value; Idx : Integer)
+     with Pre => Is_A_Function (V);
+   --  Add the Writeonly attribute to parameter with index Idx
+
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
      (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = Val)
      with Pre => Present (V);

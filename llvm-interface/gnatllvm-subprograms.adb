@@ -47,10 +47,16 @@ package body GNATLLVM.Subprograms is
    --  process those subprograms and parameters.
 
    type Param_Kind is
-     (PK_By_Reference,
-      --  This parameter is passed by reference
+     (PK_By_Ref_In,
+      --  This parameter is passed by reference and is only read
 
-      Foreign_By_Reference,
+      PK_By_Ref_Out,
+      --  This parameter is passed by reference and is only written
+
+      PK_By_Ref_In_Out,
+      --  This parameter is passed by reference and is read and written
+
+      Foreign_By_Ref,
       --  Similar to By_Reference, but for a subprogram with foreign convention
 
       Activation_Record,
@@ -66,13 +72,13 @@ package body GNATLLVM.Subprograms is
       --  This parameter is passed by value and is both an input and output
 
    function PK_Is_Reference (PK : Param_Kind) return Boolean is
-     (PK in PK_By_Reference | Foreign_By_Reference);
+     (PK in PK_By_Ref_In | PK_By_Ref_Out | PK_By_Ref_In_Out | Foreign_By_Ref);
    --  True if this parameter kind represents a value passed by reference
 
-   function PK_Is_In (PK : Param_Kind) return Boolean is
+   function PK_Is_In_Or_Ref (PK : Param_Kind) return Boolean is
      (PK not in Out_Value);
    --  True if this parameter kind corresponds to an input parameter to
-   --  the subprogram.
+   --  the subprogram in the C sense.
 
    function PK_Is_Out (PK : Param_Kind) return Boolean is
      (PK in Out_Value | In_Out_Value);
@@ -289,7 +295,7 @@ package body GNATLLVM.Subprograms is
    begin
       return Cnt : Nat := 0 do
          while Present (Param) loop
-            if PK_Is_In (Get_Param_Kind (Param)) then
+            if PK_Is_In_Or_Ref (Get_Param_Kind (Param)) then
                Cnt := Cnt + 1;
             end if;
 
@@ -359,10 +365,10 @@ package body GNATLLVM.Subprograms is
    end Next_Out_Param;
 
    ---------------------------
-   -- Get_Param_By_Ref_Kind --
+   -- Get_Param_By_Ref_Mech --
    ---------------------------
 
-   function Get_Param_By_Ref_Kind (TE : Entity_Id) return Param_By_Ref_Kind is
+   function Get_Param_By_Ref_Mech (TE : Entity_Id) return Param_By_Ref_Mech is
       Ptr_Size : constant ULL := Get_Type_Size (Void_Ptr_Type);
 
    begin
@@ -373,7 +379,7 @@ package body GNATLLVM.Subprograms is
       else
          return Default_By_Copy;
       end if;
-   end Get_Param_By_Ref_Kind;
+   end Get_Param_By_Ref_Mech;
 
    --------------------
    -- Get_Param_Kind --
@@ -382,10 +388,11 @@ package body GNATLLVM.Subprograms is
    function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
       TE           : constant Entity_Id         := Full_Etype (Param);
       Subp         : constant Entity_Id         := Scope (Param);
-      By_Ref_Kind  : constant Param_By_Ref_Kind := Get_Param_By_Ref_Kind (TE);
+      By_Ref_Mech  : constant Param_By_Ref_Mech := Get_Param_By_Ref_Mech (TE);
       Param_Mode   : Entity_Kind                := Ekind (Param);
       Mech         : Int                        := Mechanism (Param);
       By_Copy_Kind : Param_Kind;
+      By_Ref_Kind  : Param_Kind;
 
       function Has_Initialized_Component (TE : Entity_Id) return Boolean
         with Pre => Is_Record_Type (TE);
@@ -448,11 +455,14 @@ package body GNATLLVM.Subprograms is
          Error_Msg_N ("unsupported mechanism for&", Param);
       end if;
 
-      --  Set the return value if this ends up being by-copy.
+      --  Set the return value if this ends up being by-copy or by-ref
 
-      By_Copy_Kind := (if    Param_Mode = E_In_Parameter     then In_Value
-                       elsif Param_Mode = E_In_Out_Parameter then In_Out_Value
-                       else  Out_Value);
+      By_Copy_Kind := (if    Param_Mode = E_In_Parameter  then In_Value
+                       elsif Param_Mode = E_Out_Parameter then Out_Value
+                       else  In_Out_Value);
+      By_Ref_Kind :=  (if    Param_Mode = E_In_Parameter  then PK_By_Ref_In
+                       elsif Param_Mode = E_Out_Parameter then PK_By_Ref_Out
+                       else  PK_By_Ref_In_Out);
 
       --  Handle the easy case of an activation record
 
@@ -472,17 +482,17 @@ package body GNATLLVM.Subprograms is
                         and then (Mech = By_Copy
                                     or else (Is_Elementary_Type (TE)
                                                and then Mech /= By_Reference))
-                 then In_Value else Foreign_By_Reference);
+                 then In_Value else Foreign_By_Ref);
 
       --  Force by-reference and dynamic-sized types to be passed by reference
 
-      elsif By_Ref_Kind = Must then
-         return PK_By_Reference;
+      elsif By_Ref_Mech = Must then
+         return By_Ref_Kind;
 
       --  If the mechanism is specified, use it
 
       elsif Mech = By_Reference then
-         return PK_By_Reference;
+         return By_Ref_Kind;
 
       elsif Mech = By_Copy then
          return By_Copy_Kind;
@@ -491,7 +501,7 @@ package body GNATLLVM.Subprograms is
       --  two pointer.
 
       else
-         return (if   By_Ref_Kind = Default_By_Ref then PK_By_Reference
+         return (if   By_Ref_Mech = Default_By_Ref then By_Ref_Kind
                  else By_Copy_Kind);
       end if;
 
@@ -586,7 +596,7 @@ package body GNATLLVM.Subprograms is
          Next_Formal (Param);
       end loop;
 
-      if Get_Param_Kind (Param) in PK_By_Reference | Foreign_By_Reference then
+      if PK_Is_Reference (Get_Param_Kind (Param)) then
          return Uint_2;
       else
          return Uint_1;
@@ -602,7 +612,7 @@ package body GNATLLVM.Subprograms is
    begin
       if PK_Is_Reference (PK) then
          return (if Is_Unconstrained_Array (TE)
-                   and then PK /= Foreign_By_Reference
+                   and then PK /= Foreign_By_Ref
                  then Fat_Pointer else Reference);
       else
          return Data;
@@ -656,11 +666,11 @@ package body GNATLLVM.Subprograms is
             PK         : constant Param_Kind := Get_Param_Kind (Param_Ent);
 
          begin
-            if PK_Is_In (PK) then
+            if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
-                 (if    PK = Foreign_By_Reference
+                 (if    PK = Foreign_By_Ref
                   then  Pointer_Type (Create_Type (Param_Type), 0)
-                  elsif PK = PK_By_Reference
+                  elsif PK_Is_Reference (PK)
                   then  Create_Access_Type_To (Param_Type)
                   else  Create_Type (Param_Type));
 
@@ -1100,8 +1110,8 @@ package body GNATLLVM.Subprograms is
             TE     : constant Entity_Id       := Full_Etype (Param);
             R      : constant GL_Relationship := Relationship_For_PK (PK, TE);
             V      : constant GL_Value        :=
-              (if   PK_Is_In (PK) then Get_Param (Func, Param_Num, TE, R)
-               else No_GL_Value);
+              (if   PK_Is_In_Or_Ref (PK)
+               then Get_Param (Func, Param_Num, TE, R) else No_GL_Value);
             P_Name : aliased constant String  := Get_Name (Param);
             A_Name : aliased constant String  := P_Name & ".addr";
             Name   : String_Access            := P_Name'Access;
@@ -1132,7 +1142,7 @@ package body GNATLLVM.Subprograms is
             --  Add the parameter to the environnment
 
             Set_Value (Param, LLVM_Param);
-            if PK_Is_In (PK) then
+            if PK_Is_In_Or_Ref (PK) then
                Param_Num := Param_Num + 1;
             end if;
 
@@ -2002,20 +2012,17 @@ package body GNATLLVM.Subprograms is
                Clear_LValue_List;
             end if;
 
-            if PK_Is_In (PK) then
+            if PK_Is_In_Or_Ref (PK) then
 
-               --  We have two cases: if the param isn't passed
-               --  indirectly, convert the value to the parameter's type.
-               --  If it is, then convert the pointer to being a pointer
-               --  to the parameter's type.
+               --  If the param isn't passed by reference, convert the
+               --  value to the parameter's type.  If it is, convert the
+               --  pointer to being a pointer to the parameter's type.
 
                if PK_Is_Reference (PK) then
                   Arg := Emit_LValue (Actual);
-                  if PK = Foreign_By_Reference then
-                     Arg := Ptr_To_Relationship (Get (Arg, R), TE, R);
-                  else
-                     Arg := Convert_Ref (Arg, TE);
-                  end if;
+                  Arg := (if   PK = Foreign_By_Ref
+                          then Ptr_To_Relationship (Get (Arg, R), TE, R)
+                          else Convert_Ref (Arg, TE));
                else
                   Arg := Get (Emit_Conversion (Actual, TE), Data);
                end if;
@@ -2034,7 +2041,7 @@ package body GNATLLVM.Subprograms is
 
             if PK_Is_Out (PK) then
                Out_LHSs (Out_Idx) :=
-                 (if   PK_Is_In (PK) and then Is_Undef (Arg)
+                 (if   PK_Is_In_Or_Ref (PK) and then Is_Undef (Arg)
                   then Get_Undef_Ref (TE)
                   else Emit_LValue (Strip_Conversions (Actual)));
                Out_Idx := Out_Idx + 1;
@@ -2295,7 +2302,7 @@ package body GNATLLVM.Subprograms is
 
                elsif PK_Is_Reference (PK)
                  and then (not Is_Unconstrained_Array (TE)
-                             or else PK = Foreign_By_Reference)
+                             or else PK = Foreign_By_Ref)
                then
                   --  Technically, we can take 'Address of a parameter
                   --  and put the address someplace, but that's undefined,
@@ -2306,9 +2313,11 @@ package body GNATLLVM.Subprograms is
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
                   if Ekind (Formal) = E_In_Parameter then
                      Add_Readonly_Attribute     (LLVM_Func, Param_Num);
+                  elsif Ekind (Formal) = E_Out_Parameter then
+                     Add_Writeonly_Attribute    (LLVM_Func, Param_Num);
                   end if;
 
-               elsif PK_Is_In (PK) and then Is_Access_Type (TE)
+               elsif PK_Is_In_Or_Ref (PK) and then Is_Access_Type (TE)
                  and then not Is_Unconstrained_Array (DT)
                  and then Ekind (DT) /= E_Subprogram_Type
                then
@@ -2320,7 +2329,7 @@ package body GNATLLVM.Subprograms is
                   end if;
                end if;
 
-               if PK_Is_In (PK) then
+               if PK_Is_In_Or_Ref (PK) then
                   Param_Num := Param_Num + 1;
                end if;
 

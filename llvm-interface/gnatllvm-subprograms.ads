@@ -33,9 +33,9 @@ package GNATLLVM.Subprograms is
    --  These indicate whether a type must be passed by reference or what the
    --  default pass-by-reference status is.
 
-   type Param_By_Ref_Kind is (Must, Default_By_Ref, Default_By_Copy);
+   type Param_By_Ref_Mech is (Must, Default_By_Ref, Default_By_Copy);
 
-   function Get_Param_By_Ref_Kind (TE : Entity_Id) return Param_By_Ref_Kind
+   function Get_Param_By_Ref_Mech (TE : Entity_Id) return Param_By_Ref_Mech
      with Pre => Is_Type (TE);
 
    function Get_Mechanism_Code (E : Entity_Id; Exprs : List_Id) return Uint

@@ -55,9 +55,10 @@ package body GNATLLVM.Compile is
    --  Generate code for a loop
 
    function Emit_Internal
-     (N       : Node_Id;
-      LHS     : GL_Value := No_GL_Value;
-      For_LHS : Boolean := False) return GL_Value
+     (N          : Node_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean := False;
+      Prefer_LHS : Boolean := False) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Internal'Result);
    --  Same as Emit, but push result into LValue list
 
@@ -607,9 +608,10 @@ package body GNATLLVM.Compile is
    -----------------
 
    function Emit_LValue
-     (N       : Node_Id;
-      LHS     : GL_Value := No_GL_Value;
-      For_LHS : Boolean  := False) return GL_Value is
+     (N          : Node_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False) return GL_Value is
    begin
       --  We have an important special case here.  If N is an N_Identifier or
       --  N_Expanded_Name and its value is a Reference, always return that
@@ -625,7 +627,9 @@ package body GNATLLVM.Compile is
       then
          return Get_Value (Entity (N));
       else
-         return Get (Emit (N, LHS, For_LHS), Any_Reference);
+         return Get (Emit (N, LHS,
+                           For_LHS => For_LHS, Prefer_LHS => Prefer_LHS),
+                     Any_Reference);
       end if;
    end Emit_LValue;
 
@@ -634,16 +638,19 @@ package body GNATLLVM.Compile is
    ----------------------
 
    function Emit_Safe_LValue
-     (N       : Node_Id;
-      LHS     : GL_Value := No_GL_Value;
-      For_LHS : Boolean  := False) return GL_Value
+     (N          : Node_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False) return GL_Value
    is
       V : GL_Value;
 
    begin
       Push_LValue_List;
       Push_Debug_Freeze_Pos;
-      V := Emit_LValue (N, LHS => LHS, For_LHS => For_LHS);
+      V := Emit_LValue (N, LHS     => LHS,
+                        For_LHS    => For_LHS,
+                        Prefer_LHS => Prefer_LHS);
       Pop_Debug_Freeze_Pos;
       Pop_LValue_List;
       return V;
@@ -654,11 +661,14 @@ package body GNATLLVM.Compile is
    ----------
 
    function Emit
-     (N       : Node_Id;
-      LHS     : GL_Value := No_GL_Value;
-      For_LHS : Boolean  := False) return GL_Value is
+     (N          : Node_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False) return GL_Value is
    begin
-      return Add_To_LValue_List (Emit_Internal (N, LHS, For_LHS));
+      return Add_To_LValue_List (Emit_Internal (N, LHS,
+                                                For_LHS    => For_LHS,
+                                                Prefer_LHS => Prefer_LHS));
    end Emit;
 
    --------------------
@@ -666,9 +676,10 @@ package body GNATLLVM.Compile is
    --------------------
 
    function Emit_Internal
-     (N       : Node_Id;
-      LHS     : GL_Value := No_GL_Value;
-      For_LHS : Boolean  := False) return GL_Value
+     (N          : Node_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False) return GL_Value
    is
       TE     : constant Entity_Id := Full_Etype (N);
       Expr   : Node_Id;
@@ -702,7 +713,10 @@ package body GNATLLVM.Compile is
             Push_LValue_List;
             Emit (Actions (N));
             Pop_LValue_List;
-            return Emit (Expression (N), LHS => LHS, For_LHS => For_LHS);
+            return Emit (Expression (N),
+                         LHS        => LHS,
+                         For_LHS    => For_LHS,
+                         Prefer_LHS => Prefer_LHS);
 
          when N_Character_Literal | N_Numeric_Or_String_Literal =>
             pragma Assert (not For_LHS);
@@ -816,11 +830,14 @@ package body GNATLLVM.Compile is
          when N_Selected_Component =>
             return Normalize_Access_Type
               (Record_Field_Offset (Emit_LValue (Prefix (N),
-                                                 For_LHS => For_LHS),
+                                                 For_LHS    => For_LHS,
+                                                 Prefer_LHS => Prefer_LHS),
                                     Entity (Selector_Name (N))));
 
          when N_Indexed_Component | N_Slice =>
-            Result := Emit (Prefix (N), For_LHS => For_LHS);
+            Result := Emit (Prefix (N),
+                            For_LHS    => For_LHS,
+                            Prefer_LHS => Prefer_LHS);
 
             --  This can be an integer type if it's the implementation
             --  type of a packed array type.  In that case, convert it to
@@ -845,12 +862,49 @@ package body GNATLLVM.Compile is
 
             elsif Nkind (N) = N_Indexed_Component then
 
-               --  ??? If Result is Data and Expressions are constant,
-               --  we can do this with Extract_Value.
+               declare
+                  Idxs   : constant GL_Value_Array :=
+                    Get_Indices (Expressions (N), Result);
+                  C_Idxs : Index_Array (Idxs'First + 1 .. Idxs'Last);
+                  Bound  : LLI;
 
-               return Normalize_Access_Type
-                 (Get_Indexed_LValue (Expressions (N),
-                                      Get (Result, Any_Reference)));
+               begin
+                  --  If we have something in a data form, we're not
+                  --  requiring or preferring an a LHS, and all indices are
+                  --  constants, we can and should do this with an
+                  --  Extract_Value.
+
+                  if Is_Data (Result) and then not For_LHS
+                    and then not Prefer_LHS
+                    and then (for all J of Idxs => Is_A_Const_Int (J))
+                  then
+                     for J in C_Idxs'Range loop
+                        Bound := Get_Const_Int_Value (Idxs (J));
+
+                        --  Since this is an LLVM object, we know that all
+                        --  valid bounds are well within the range of an
+                        --  unsigned.  But we don't want to get a constraint
+                        --  error below if the contant is invalid.  So test
+                        --  and force to zero (any constant will do since this
+                        --  is erroneous) in that case.
+
+                        if Bound < 0 or else Bound > LLI (unsigned'Last) then
+                           Bound := 0;
+                        end if;
+
+                        C_Idxs (J) := unsigned (Bound);
+                     end loop;
+
+                     return Extract_Value (TE, Result,
+                                           Swap_Indices (C_Idxs, Result));
+                  else
+                     --  Otherwise, get a reference and do this using GEP.
+
+                     return Normalize_Access_Type
+                       (Get_Indexed_LValue (Idxs,
+                                            Get (Result, Any_Reference)));
+                  end if;
+               end;
             else
                return Get_Slice_LValue (TE, Get (Result, Any_Reference));
             end if;

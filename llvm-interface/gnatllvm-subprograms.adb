@@ -448,7 +448,7 @@ package body GNATLLVM.Subprograms is
          if Is_Dynamic_Size (TE) then
             Mech := By_Reference;
          else
-            Mech := (if   Get_Const_Int_Value (Get_Type_Size (TE)) > ULL (Mech)
+            Mech := (if   Get_Const_Int_Value (Get_Type_Size (TE)) > LLI (Mech)
                      then By_Reference else By_Copy);
          end if;
       elsif Mech not in Default_Mechanism | By_Reference | By_Copy then

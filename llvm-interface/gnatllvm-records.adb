@@ -1551,7 +1551,7 @@ package body GNATLLVM.Records is
                 Sz_Min                 => Build_Min,
                 Sz_Max                 => Build_Max,
                 Sz_Is_Const            => Is_A_Const_Int,
-                Sz_Const_Val           => Get_Const_Int_Value,
+                Sz_Const_Val           => Get_Const_Int_Value_ULL,
                 Sz_Type_Size           => Get_Type_Size,
                 Sz_RI_Info_For_Variant => Get_RI_Info_For_Variant);
 

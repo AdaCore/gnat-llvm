@@ -71,7 +71,7 @@ package body GNATLLVM.Arrays is
       Table_Initial        => 1024,
       Table_Increment      => 100,
       Table_Name           => "Array_Info_Table");
-   --  Table of representation of arrays indexes
+   --  Table of representation of arrays indices
 
    function Type_For_Get_Bound
      (TE : Entity_Id; V : GL_Value) return Entity_Id
@@ -123,16 +123,6 @@ package body GNATLLVM.Arrays is
    --  component type of the array, and Dims_Left are the number of dimensions
    --  remaining.  Return an LLVM constant including all of the constants
    --  in that aggregate.
-
-   function Get_Indexed_LValue_From_Idxs
-     (Idxs : GL_Value_Array; V : GL_Value) return GL_Value
-     with Pre  => Is_Reference (V) and then Is_Array_Type (Related_Type (V))
-                  and then Idxs'Length =
-                    Number_Dimensions (Related_Type (V)) + 1,
-          Post => Present (Get_Indexed_LValue_From_Idxs'Result);
-   --  Internal function similar to Get_Indexed_LValue (and called from it)
-   --  that's passed an array of a zero followed by the relative (to the
-   --  low bound) value of each array index.
 
    ---------------------
    -- Build_One_Bound --
@@ -383,7 +373,7 @@ package body GNATLLVM.Arrays is
                           and then Relationship (V) /= Reference);
 
          Result := Extract_Value
-           (Dim_Info.Bound_Type, Get (V, Bounds), (1 => Bound_Idx),
+           (Dim_Info.Bound_Type, Get (V, Bounds), (1 => unsigned (Bound_Idx)),
             (if Is_Low then "low-bound" else "high-bound"));
 
       end if;
@@ -845,6 +835,26 @@ package body GNATLLVM.Arrays is
       return Const_Array (Vals, TE);
    end Emit_Constant_Aggregate;
 
+   ------------------
+   -- Swap_Indices --
+   ------------------
+
+   function Swap_Indices
+     (Idxs : Index_Array; V : GL_Value) return Index_Array
+   is
+      Result : Index_Array (Idxs'Range);
+
+   begin
+      if Convention (Related_Type (V)) /= Convention_Fortran then
+         return Idxs;
+      end if;
+
+      for J in Idxs'Range loop
+         Result (J) := Idxs (Idxs'Last + Idxs'First - J);
+      end loop;
+      return Result;
+   end Swap_Indices;
+
    --------------------------
    -- Emit_Array_Aggregate --
    --------------------------
@@ -857,30 +867,8 @@ package body GNATLLVM.Arrays is
    is
       TE        : constant Entity_Id := Full_Etype (N);
       Comp_Type : constant Entity_Id := Full_Component_Type (TE);
-      Cur_Index : Nat                := 0;
+      Cur_Index : unsigned           := 0;
       Expr      : Node_Id;
-      Fortran   : constant Boolean   := Convention (TE) = Convention_Fortran;
-
-      function Swap (Indices : Index_Array) return Index_Array;
-      --  If this is a Fortran convention array, reverse the indexes
-
-      ----------
-      -- Swap --
-      ----------
-
-      function Swap (Indices : Index_Array) return Index_Array is
-         Result : Index_Array (Indices'Range);
-
-      begin
-         if not Fortran then
-            return Indices;
-         end if;
-
-         for J in Indices'Range loop
-            Result (J) := Indices (Indices'Last + Indices'First - J);
-         end loop;
-         return Result;
-      end Swap;
 
    begin
       --  The back-end supports exactly two types of array aggregates.
@@ -945,13 +933,15 @@ package body GNATLLVM.Arrays is
                      Cur_Value :=
                        Insert_Value (Cur_Value,
                                      Emit_Convert_Value (Expr, Comp_Type),
-                                     Swap (Indices));
+                                     Swap_Indices (Indices, Cur_Value));
                   else
                      declare
                         GL_Idxs : constant GL_Value_Array :=
-                          Idxs_To_GL_Values ((1 => 0) & Swap (Indices));
+                          Idxs_To_GL_Values ((1 => 0) &
+                                               Swap_Indices (Indices,
+                                                             Cur_Value));
                         LValue  : constant GL_Value       :=
-                          Get_Indexed_LValue_From_Idxs (GL_Idxs, Cur_Value);
+                          Get_Indexed_LValue (GL_Idxs, Cur_Value);
 
                      begin
                         Emit_Assignment (Normalize_Access_Type (LValue), Expr,
@@ -1007,10 +997,11 @@ package body GNATLLVM.Arrays is
 
             begin
                Bound_Val := Insert_Value
-                 (Bound_Val, Converted_Low_Bound, (1 => Dim * 2));
+                 (Bound_Val, Converted_Low_Bound, (1 => unsigned (Dim * 2)));
 
                Bound_Val := Insert_Value
-                 (Bound_Val, Converted_High_Bound, (1 => Dim * 2 + 1));
+                 (Bound_Val, Converted_High_Bound,
+                  (1 => unsigned (Dim * 2 + 1)));
             end;
          end loop;
       end return;
@@ -1045,12 +1036,12 @@ package body GNATLLVM.Arrays is
       return Empty;
    end Get_GEP_Safe_Type;
 
-   ------------------------
-   -- Get_Indexed_LValue --
-   ------------------------
+   -----------------
+   -- Get_Indices --
+   -----------------
 
-   function Get_Indexed_LValue
-     (Indexes : List_Id; V : GL_Value) return GL_Value
+   function Get_Indices
+     (Indices : List_Id; V : GL_Value) return GL_Value_Array
    is
       TE         : constant Entity_Id := Related_Type (V);
       N_Dim      : constant Int       := Number_Dimensions (TE);
@@ -1064,7 +1055,7 @@ package body GNATLLVM.Arrays is
       --  pointer deference, and then one per array index.
 
    begin
-      N := First (Indexes);
+      N := First (Indices);
       while Present (N) loop
 
          --  Adjust the index according to the range lower bound
@@ -1089,14 +1080,14 @@ package body GNATLLVM.Arrays is
          Next (N);
       end loop;
 
-      return Get_Indexed_LValue_From_Idxs (Idxs, V);
-   end Get_Indexed_LValue;
+      return Idxs;
+   end Get_Indices;
 
-   ----------------------------------
-   -- Get_Indexed_LValue_From_Idxs --
-   ----------------------------------
+   ------------------------
+   -- Get_Indexed_LValue --
+   ------------------------
 
-   function Get_Indexed_LValue_From_Idxs
+   function Get_Indexed_LValue
      (Idxs : GL_Value_Array; V : GL_Value) return GL_Value
    is
       TE         : constant Entity_Id := Related_Type (V);
@@ -1145,7 +1136,7 @@ package body GNATLLVM.Arrays is
            (GEP (Unit_Type, Data, (1 => Index), "arr-lvalue"), Comp_Type);
       end;
 
-   end Get_Indexed_LValue_From_Idxs;
+   end Get_Indexed_LValue;
 
    ----------------------
    -- Get_Slice_LValue --

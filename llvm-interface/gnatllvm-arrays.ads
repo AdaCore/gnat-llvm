@@ -99,14 +99,32 @@ package GNATLLVM.Arrays is
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the array type is of a constant size.
 
+   function Get_Indices
+     (Indices : List_Id; V : GL_Value) return GL_Value_Array
+     with Pre  => Is_Array_Type (Related_Type (V))
+                  and then (List_Length (Indices) =
+                              Number_Dimensions (Related_Type (V))),
+          Post => (Get_Indices'Result'Length =
+                     Number_Dimensions (Related_Type (V)) + 1);
+   --  Given a list of indices and V, return a list where we've evaluated
+   --  all the indices and subtracted the lower bounds of each dimension.
+   --  This list consists of the constant zero followed by the indices.
+
+   function Swap_Indices
+     (Idxs : Index_Array; V : GL_Value) return Index_Array
+     with Pre  => Is_Array_Type (Related_Type (V)),
+          Post => Swap_Indices'Result'Length = Idxs'Length;
+   --  Given a list of indices, swap them if V is a Fortran array
+
    function Get_Indexed_LValue
-     (Indexes : List_Id; V : GL_Value) return GL_Value
+     (Idxs : GL_Value_Array; V : GL_Value) return GL_Value
      with Pre  => Is_Reference (V) and then Is_Array_Type (Related_Type (V))
-                  and then List_Length (Indexes) =
-                    Number_Dimensions (Related_Type (V)),
+                  and then (Idxs'Length =
+                              Number_Dimensions (Related_Type (V)) + 1),
           Post => Present (Get_Indexed_LValue'Result);
-   --  Get an LValue corresponding to indexing Value by Indexes.  Arr_Type
-   --  is the array type.
+   --  Get an LValue corresponding to indexing V by the list of indices
+   --  in Idxs.  This list is the constant zero followed by the actual indices
+   --  (i.e., with the lower bound already subtracted).
 
    function Get_Slice_LValue (TE : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Is_Array_Type (Full_Designated_Type (V))
@@ -152,7 +170,7 @@ package GNATLLVM.Arrays is
    --  contains the data.  Value_So_Far, if Present, is any of the array
    --  whose value we've accumulated so far.  Dims_Left says how many
    --  dimensions of the outer array type we still can recurse into.
-   --  Indices_So_Far are the indexes of any outer N_Aggregate expressions
+   --  Indices_So_Far are the indices of any outer N_Aggregate expressions
    --  we went through.
 
    procedure Maybe_Store_Bounds

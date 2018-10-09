@@ -779,6 +779,25 @@ package body GNATLLVM.Variables is
                end if;
             end;
 
+         --  If this is extracting constant offsets from something that we
+         --  can elaborate statically, we can elaborate this statically.
+         --  We need not check for constant bounds since we couldn't
+         --  elaborate our Prefix if they were variable.
+
+         when N_Indexed_Component =>
+
+            if not Is_No_Elab_Needed (Prefix (N)) then
+               return False;
+            end if;
+
+            Expr := First (Expressions (N));
+            while Present (Expr) loop
+               exit when not Is_No_Elab_Needed (Expr);
+               Next (Expr);
+            end loop;
+
+            return No (Expr);
+
          when others =>
 
             --  If this is a compile-time constant or an address that we
@@ -1570,8 +1589,7 @@ package body GNATLLVM.Variables is
 
       elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
         and then not (Nkind_In (Parent (N), N_Attribute_Reference,
-                                N_Selected_Component, N_Indexed_Component,
-                                N_Slice)
+                                N_Selected_Component, N_Slice)
                         and then Prefix (Parent (N)) = N
                         and then Sloc (Def_Ident) > Standard_Location)
       then

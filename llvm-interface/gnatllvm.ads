@@ -75,6 +75,10 @@ package GNATLLVM is
    function ">=" (L, R : ULL) return  Boolean renames
      Interfaces.C.Extensions.">=";
 
+   subtype long_long_integer is Interfaces.C.Extensions.long_long;
+   subtype LLI is long_long_integer;
+   --  Define shorter alias name for easier reading
+
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us
 

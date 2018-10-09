@@ -646,10 +646,14 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a constant integer
 
-   function Get_Const_Int_Value (V : GL_Value) return ULL is
-     (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
+   function Get_Const_Int_Value (V : GL_Value) return LLI is
+     (Const_Int_Get_S_Ext_Value (LLVM_Value (V)))
      with Pre => Is_A_Const_Int (V);
    --  V is a constant integer; get its value
+
+   function Get_Const_Int_Value_ULL (V : GL_Value) return ULL is
+     (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
+     with Pre => Is_A_Const_Int (V);
 
    function Get_Value_Name (V : GL_Value) return String is
      (Get_Value_Name (LLVM_Value (V)))
@@ -702,7 +706,7 @@ package GNATLLVM.GLValue is
    --  Add the Writeonly attribute to parameter with index Idx
 
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
-     (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = Val)
+     (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = LLI (Val))
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 
@@ -1419,7 +1423,7 @@ package GNATLLVM.GLValue is
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 
-   type Index_Array is array (Nat range <>) of Nat;
+   type Index_Array is array (Nat range <>) of unsigned;
 
    function Extract_Value
      (Typ     : Entity_Id;

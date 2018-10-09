@@ -684,7 +684,8 @@ package body GNATLLVM.Exprs is
             --  We need a single-word pointer, then convert it to the
             --  desired integral type.
 
-            return Ptr_To_Int (Get (Emit_LValue (Prefix (N)),
+            return Ptr_To_Int (Get (Emit_LValue (Prefix (N),
+                                                 Prefer_LHS => True),
                                     Reference_For_Integer),
                                TE, "attr-address");
 
@@ -695,7 +696,7 @@ package body GNATLLVM.Exprs is
             --  it's an access type, what we want is the value.  So convert
             --  it to a reference.
 
-            V := Emit (Prefix (N));
+            V := Emit (Prefix (N), Prefer_LHS => True);
             if Is_Access_Type (P_TE) then
                V := From_Access (Get (V, Data));
             end if;

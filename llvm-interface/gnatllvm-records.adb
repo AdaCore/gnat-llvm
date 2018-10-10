@@ -1186,9 +1186,7 @@ package body GNATLLVM.Records is
             This_Size  := Sz_Const (ULL (0));
          end if;
 
-         if Return_Size then
-            Size := This_Size;
-         end if;
+         Size := (if Return_Size then This_Size else Empty_Result);
       end Get_RI_Info;
 
       ------------------------
@@ -1320,14 +1318,15 @@ package body GNATLLVM.Records is
 
          Must_Align := Max_Must_Align;
          Is_Align   := Min_Is_Align;
-         if Return_Size then
-            if No (Max_Var_Size) then
-               Size := Sz_Const (Max_Const_Size);
-            elsif Max_Const_Size = 0 then
-               Size := Max_Var_Size;
-            else
-               Size := Sz_Max (Max_Var_Size, Sz_Const (Max_Const_Size));
-            end if;
+
+         if not Return_Size then
+            Size := Empty_Result;
+         elsif No (Max_Var_Size) then
+            Size := Sz_Const (Max_Const_Size);
+         elsif Max_Const_Size = 0 then
+            Size := Max_Var_Size;
+         else
+            Size := Sz_Max (Max_Var_Size, Sz_Const (Max_Const_Size));
          end if;
       end Get_RI_Info_For_Max_Size_Variant;
 
@@ -1650,9 +1649,8 @@ package body GNATLLVM.Records is
       Position_Builder_At_End (End_BB);
       Must_Align := Build_Phi (Must_Aligns, From_BBs);
       Is_Align   := Build_Phi (Is_Aligns,   From_BBs);
-      if Return_Size then
-         Size    := Build_Phi (Sizes,       From_BBs);
-      end if;
+      Size := (if   Return_Size then Build_Phi (Sizes, From_BBs)
+               else No_GL_Value);
    end Get_RI_Info_For_Variant;
 
    -------------------------

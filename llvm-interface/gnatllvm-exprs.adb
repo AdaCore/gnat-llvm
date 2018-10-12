@@ -1086,9 +1086,9 @@ package body GNATLLVM.Exprs is
       Template_Strval   : constant String_Id := Strval (Asm_Template (N));
       Num_Inputs        : Nat                := 0;
       Constraint_Length : Nat                := 0;
+      Output_Constraint : Node_Id            := Empty;
       Output_Val        : GL_Value           := No_GL_Value;
       Output_Variable   : Node_Id;
-      Output_Constraint : Node_Id := Empty;
       Input             : Node_Id;
       Clobber           : System.Address;
 

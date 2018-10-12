@@ -394,29 +394,45 @@ package body GNATLLVM.Subprograms is
       By_Copy_Kind : Param_Kind;
       By_Ref_Kind  : Param_Kind;
 
-      function Has_Initialized_Component (TE : Entity_Id) return Boolean
-        with Pre => Is_Record_Type (TE);
-      --  Returns True if there's an E_Component in TE that has an
-      --  implicit initial value.  See RM 6.4.1(14) and RM 3.1.1.
+      function Is_Initialized (TE : Entity_Id) return Boolean
+        with Pre => Is_Type (TE);
+      --  Returns True if TE has a subcomponent with an implicit
+      --  initial value.  See RM 6.4.1(14) and RM 3.1.1.
 
-      -------------------------------
-      -- Has_Initialized_Component --
-      -------------------------------
+      --------------------
+      -- Is_Initialized --
+      --------------------
 
-      function Has_Initialized_Component (TE : Entity_Id) return Boolean is
-         F : Entity_Id := First_Entity (Full_Base_Type (TE));
+      function Is_Initialized (TE : Entity_Id) return Boolean is
+         F : Entity_Id;
 
       begin
-         while Present (F) loop
-            exit when Ekind (F) = E_Component and then Present (Parent (F))
-              and then Present (Expression (Parent (F)));
-            exit when Ekind (F) = E_Component
-              and then Is_Access_Type (Full_Etype (F));
-            Next_Entity (F);
-         end loop;
+         if Is_Access_Type (TE)
+           or else (Is_Scalar_Type (TE)
+                      and then Present (Default_Aspect_Value (TE)))
+           or else (Has_Discriminants (TE)
+                      and not Is_Unchecked_Union (TE))
+         then
+            return True;
 
-         return Present (F);
-      end Has_Initialized_Component;
+         elsif Is_Array_Type (TE) then
+            return Is_Initialized (Full_Component_Type (TE));
+
+         elsif Is_Record_Type (TE) then
+            F := First_Component_Or_Discriminant (Full_Base_Type (TE));
+            while Present (F) loop
+               exit when Present (Parent (F))
+                 and then Present (Expression (Parent (F)));
+               exit when Is_Initialized (Full_Base_Type (Full_Etype (F)));
+               Next_Component_Or_Discriminant (F);
+            end loop;
+
+            return Present (F);
+         else
+            return False;
+         end if;
+
+      end Is_Initialized;
 
    begin
       --  If this is the first parameter of a Valued Procedure, it needs to be
@@ -430,14 +446,7 @@ package body GNATLLVM.Subprograms is
       --  There are some case where an out parameter needs to be
       --  viewed as in out.  These are detailed at 6.4.1(12).
 
-      elsif Param_Mode = E_Out_Parameter
-        and then (Is_Access_Type (TE)
-                    or else (Is_Scalar_Type (TE)
-                               and then Present (Default_Aspect_Value (TE)))
-                    or else Has_Discriminants (TE)
-                    or else (Is_Record_Type (TE)
-                               and then Has_Initialized_Component (TE)))
-      then
+      elsif Param_Mode = E_Out_Parameter and then Is_Initialized (TE) then
          Param_Mode := E_In_Out_Parameter;
       end if;
 

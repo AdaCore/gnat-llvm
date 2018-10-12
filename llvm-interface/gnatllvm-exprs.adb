@@ -1088,7 +1088,7 @@ package body GNATLLVM.Exprs is
       Constraint_Length : Nat                := 0;
       Output_Val        : GL_Value           := No_GL_Value;
       Output_Variable   : Node_Id;
-      Output_Constraint : Node_Id;
+      Output_Constraint : Node_Id := Empty;
       Input             : Node_Id;
       Clobber           : System.Address;
 

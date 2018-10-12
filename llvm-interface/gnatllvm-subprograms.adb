@@ -1579,6 +1579,8 @@ package body GNATLLVM.Subprograms is
          end if;
       end loop;
 
+      End_Index := Integer'First;
+      Op := Atomic_RMW_Bin_Op_T'First;
       return False;
    end Name_To_RMW_Op;
 

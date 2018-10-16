@@ -142,9 +142,30 @@ package body GNATLLVM.Arrays is
          Val := (if For_Orig then Expr_Rep_Value (N) else Expr_Value (N));
          return (Cnst => Val, Value => Empty,
                  Dynamic => not UI_Is_In_Int_Range (Val));
-      else
-         return (Cnst => No_Uint, Value => N, Dynamic => True);
+      elsif Is_No_Elab_Needed (N) then
+
+         --  If this is can be evaluated at compile-time, do so and see if
+         --  it's an integer that's in range of an Int.  If so, make a Uint
+         --  out of it and use it as a constant.
+
+         declare
+            V   : constant GL_Value := Emit_Expression (N);
+            Val : LLI;
+
+         begin
+            if Is_A_Const_Int (V) then
+               Val := Get_Const_Int_Value (V);
+               if Val in LLI (Int'First) .. LLI (Int'Last) then
+                  return (Cnst => UI_From_Int (Int (Val)),
+                          Value => Empty, Dynamic => False);
+               end if;
+            end if;
+         end;
       end if;
+
+      --  If we reach here, this must be a dynamic case
+
+      return (Cnst => No_Uint, Value => N, Dynamic => True);
 
    end Build_One_Bound;
 
@@ -473,6 +494,8 @@ package body GNATLLVM.Arrays is
    function Create_Array_Type
      (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
    is
+      type Dim_Info_Array is array (Nat range <>) of Index_Bounds;
+
       A_TE              : constant Entity_Id     :=
         (if For_Orig then Full_Original_Array_Type (TE) else TE);
       Unconstrained     : constant Boolean       := not Is_Constrained (A_TE);
@@ -486,9 +509,12 @@ package body GNATLLVM.Arrays is
       CT_To_Use         : constant Entity_Id     :=
         (if Must_Use_Fake then Standard_Short_Short_Integer else Comp_Type);
       Typ               : Type_T                 := Create_Type (CT_To_Use);
-      --  This must be before the next line because it may recurse
-      First_Info        : constant Array_Info_Id := Array_Info.Last + Nat (1);
       Dim               : Nat                    := 0;
+      Last_Dim          : constant Nat           :=
+        (if   Ekind (A_TE) = E_String_Literal_Subtype
+         then 1 else Number_Dimensions (A_TE) - 1);
+      Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
+      First_Info        : Array_Info_Id;
       Index             : Entity_Id;
       Base_Index        : Entity_Id;
 
@@ -546,11 +572,19 @@ package body GNATLLVM.Arrays is
                end if;
             end if;
 
-            Array_Info.Append (Dim_Info);
+            Dim_Infos (Dim) := Dim_Info;
             Next_Index (Index);
             Next_Index (Base_Index);
             Dim := Dim + 1;
          end;
+      end loop;
+
+      --  Now write all the dimension information into the array table. We
+      --  do it here in case we elaborate any types above.
+
+      First_Info := Array_Info.Last + Nat (1);
+      for J in Dim_Infos'Range loop
+         Array_Info.Append (Dim_Infos (J));
       end loop;
 
       --  If we must use a fake type, make one.  Otherwise loop through

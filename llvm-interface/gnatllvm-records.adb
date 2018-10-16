@@ -34,7 +34,6 @@ with LLVM.Core;  use LLVM.Core;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
@@ -1580,6 +1579,20 @@ package body GNATLLVM.Records is
 
    function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
      renames LLVM_Size.Align_To;
+
+   -----------------------
+   -- Get_Field_Ordinal --
+   -----------------------
+
+   function Get_Field_Ordinal
+     (F_Idx : Field_Info_Id; TE : Entity_Id) return unsigned
+   is
+      FI     : constant Field_Info := Field_Info_Table.Table (F_Idx);
+
+   begin
+      pragma Assert (FI.Rec_Info_Idx = Get_Record_Info (TE));
+      return unsigned (FI.Field_Ordinal);
+   end Get_Field_Ordinal;
 
    -----------------------------
    -- Get_RI_Info_For_Variant --

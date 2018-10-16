@@ -828,11 +828,33 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (N);
 
          when N_Selected_Component =>
-            return Normalize_Access_Type
-              (Record_Field_Offset (Emit_LValue (Prefix (N),
-                                                 For_LHS    => For_LHS,
-                                                 Prefer_LHS => Prefer_LHS),
-                                    Entity (Selector_Name (N))));
+            declare
+               F     : constant Entity_Id     := Entity (Selector_Name (N));
+               R_TE  : constant Entity_Id     := Full_Scope (F);
+               F_Idx : constant Field_Info_Id := Get_Field_Info (F);
+
+            begin
+               Result := Emit (Prefix (N),
+                               For_LHS    => For_LHS,
+                               Prefer_LHS => Prefer_LHS);
+
+               --  If we have something in a data form and we're not requiring
+               --  or preferring an LHS, and we have information about the
+               --  field, we can and should do this with an Extract_Value.
+
+               if Is_Data (Result) and then not For_LHS
+                 and then not Prefer_LHS and then Present (F_Idx)
+                 and then not Is_Dynamic_Size (R_TE)
+                 and then (Full_Etype (Result) = R_TE
+                             or else Is_Layout_Identical (Result, R_TE))
+               then
+                  return Extract_Value (TE, Result,
+                                        Get_Field_Ordinal (F_Idx, R_TE));
+               else
+                  return Normalize_Access_Type
+                    (Record_Field_Offset (Get (Result, Any_Reference), F));
+               end if;
+            end;
 
          when N_Indexed_Component | N_Slice =>
             Result := Emit (Prefix (N),
@@ -870,7 +892,7 @@ package body GNATLLVM.Compile is
 
                begin
                   --  If we have something in a data form, we're not
-                  --  requiring or preferring an a LHS, and all indices are
+                  --  requiring or preferring an LHS, and all indices are
                   --  constants, we can and should do this with an
                   --  Extract_Value.
 

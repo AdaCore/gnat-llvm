@@ -17,6 +17,7 @@
 
 with Sinfo;  use Sinfo;
 
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -73,6 +74,11 @@ package GNATLLVM.Records is
    --  by E from the start of its type as a value of Size_Type.  If
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
+
+   function Get_Field_Ordinal
+     (F_Idx : Field_Info_Id; TE : Entity_Id) return unsigned
+   with Pre => Present (F_Idx) and then Is_Record_Type (TE);
+   --  Return the index of the field denoted by F_Idx in type TE.
 
    function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);

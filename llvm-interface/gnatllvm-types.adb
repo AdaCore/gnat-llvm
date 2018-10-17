@@ -938,28 +938,6 @@ package body GNATLLVM.Types is
       return E;
    end Strip_Conversions;
 
-   ----------------------
-   -- Bounds_To_Length --
-   ----------------------
-
-   function Bounds_To_Length
-     (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
-   is
-      Low      : constant GL_Value := Convert (In_Low, TE);
-      High     : constant GL_Value := Convert (In_High, TE);
-      Cmp_Kind : constant Int_Predicate_T :=
-        (if Is_Unsigned_Type (TE) then Int_UGT else Int_SGT);
-      Is_Empty : constant GL_Value := I_Cmp (Cmp_Kind, Low, High, "is-empty");
-      Const_1  : constant GL_Value := Const_Int (TE, Uint_1);
-   begin
-      return Build_Select
-        (C_If   => Is_Empty,
-         C_Then => Const_Null (TE),
-         C_Else =>
-           (if   Low = Const_1 then High
-            else Add (Sub (High, Low), Const_1)));
-   end Bounds_To_Length;
-
    ---------------------------
    -- Get_Type_Size_In_Bits --
    ---------------------------

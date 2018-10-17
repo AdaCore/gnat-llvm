@@ -1875,7 +1875,7 @@ package body GNATLLVM.Records is
                            Result :=
                              Insert_Value (Result, Val, unsigned (Idx));
                         else
-                           Emit_Assignment (Normalize_Access_Type
+                           Emit_Assignment (Normalize_LValue_Reference
                                               (Record_Field_Offset (Result,
                                                                     Field)),
                                             Empty, Val);

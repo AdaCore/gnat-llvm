@@ -465,24 +465,23 @@ package body GNATLLVM.Types is
 
    end Emit_Conversion;
 
-   ---------------------------
-   -- Normalize_Access_Type --
-   ---------------------------
+   -------------------------------
+   -- Normalize_LValue_Refrence --
+   -------------------------------
 
-   function Normalize_Access_Type (V : GL_Value) return GL_Value is
-      TE : constant Entity_Id := Related_Type (V);
-      T  : constant Type_T    := Create_Type (TE);
+   function Normalize_LValue_Reference (V : GL_Value) return GL_Value is
+      TE : constant Entity_Id       := Related_Type (V);
+      R  : constant GL_Relationship := Relationship (V);
+      T  : constant Type_T          := Type_For_Relationship (TE, R);
 
    begin
-      --  If this is not an access type, we have nothing to do.  If
-      --  it's a reference to an access type and the LLVM type isn't
-      --  the actual type of the access type, convert it.
+      --  If this a reference and the LLVM type doesn't agree with the
+      --  proper type for TE and the relationship, convert it.
 
-      if not Is_Access_Type (TE) then
-         return V;
-      elsif Relationship (V) = Reference then
-         return (if   Get_Element_Type (Type_Of (V)) = T then V
-                 else Ptr_To_Ref (V, TE));
+      if Relationship (V) = Reference
+        and then Get_Element_Type (Type_Of (V)) /= T
+      then
+         return Ptr_To_Relationship (V, TE, R);
 
       --  If it's an actual access type and the type differs, unpack it,
       --  convert to the proper type, and repack.
@@ -496,7 +495,7 @@ package body GNATLLVM.Types is
          return V;
       end if;
 
-   end Normalize_Access_Type;
+   end Normalize_LValue_Reference;
 
    -------------
    -- Convert --

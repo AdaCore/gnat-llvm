@@ -178,6 +178,222 @@ package body GNATLLVM.Arrays is
 
    end Build_One_Bound;
 
+   --------------------------------
+   -- Create_String_Literal_Type --
+   --------------------------------
+
+   function Create_String_Literal_Type
+     (TE : Entity_Id; Comp_Typ : Type_T) return Type_T
+   is
+      First      : constant Uint         :=
+        Get_Uint_Value (String_Literal_Low_Bound (TE));
+      Length     : constant Uint         := String_Literal_Length (TE);
+      Last       : constant Uint         := First + Length - 1;
+      Low_Bound  : constant One_Bound    :=
+        (Cnst => First, Value => Empty, Dynamic => False);
+      High_Bound : constant One_Bound    :=
+        (Cnst => Last, Value => Empty, Dynamic => False);
+      Dim_Info   : constant Index_Bounds
+        := (Bound_Type    => Standard_Integer,
+            Bound_Subtype => Standard_Integer,
+            Low           => Low_Bound,
+            High          => High_Bound);
+      Result_Typ : constant Type_T       :=
+        Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
+
+   begin
+      --  It's redundant to set the type here, since our caller will set it,
+      --  but we have to set it in order to set the array info.
+
+      Set_Type (TE, Result_Typ);
+      Array_Info.Append (Dim_Info);
+      Set_Array_Info (TE, Array_Info.Last);
+      return Result_Typ;
+
+   end Create_String_Literal_Type;
+
+   -----------------------
+   -- Create_Array_Type --
+   -----------------------
+
+   function Create_Array_Type
+     (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
+   is
+      type Dim_Info_Array is array (Nat range <>) of Index_Bounds;
+
+      A_TE              : constant Entity_Id     :=
+        (if For_Orig then Full_Original_Array_Type (TE) else TE);
+      Unconstrained     : constant Boolean       := not Is_Constrained (A_TE);
+      Comp_Type         : constant Entity_Id     := Full_Component_Type (A_TE);
+      Base_Type         : constant Entity_Id     :=
+        Full_Base_Type (A_TE, For_Orig);
+      Must_Use_Fake     : Boolean                :=
+        Is_Dynamic_Size (Comp_Type);
+      This_Dynamic_Size : Boolean                :=
+        Must_Use_Fake or Unconstrained;
+      CT_To_Use         : constant Entity_Id     :=
+        (if Must_Use_Fake then Standard_Short_Short_Integer else Comp_Type);
+      Typ               : Type_T                 := Create_Type (CT_To_Use);
+      Dim               : Nat                    := 0;
+      Last_Dim          : constant Nat           :=
+        (if   Ekind (A_TE) = E_String_Literal_Subtype
+         then 1 else Number_Dimensions (A_TE) - 1);
+      Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
+      First_Info        : Array_Info_Id;
+      Index             : Entity_Id;
+      Base_Index        : Entity_Id;
+
+   begin
+      if Ekind (A_TE) = E_String_Literal_Subtype then
+         return Create_String_Literal_Type (A_TE, Typ);
+      end if;
+
+      --  We loop through each dimension of the array creating the entries
+      --  for Array_Info.  If the component type is of variable size or if
+      --  either bound of an index is a dynamic size, this type is of
+      --  dynamic size.  We could use an opaque type in that case, but
+      --  we have numerous array subtypes that should be treated identically
+      --  but couldn't if we took that approach.  However, all of those
+      --  subtypes will have the same component type.  If that component
+      --  type is of fixed size, we can make an LLVM array [0 x CT] where
+      --  CT is the component type.  Otherwise, we have to use [0 x i8].
+      --  We refer to both of these cases as creating a "fake" type.
+
+      Index      := First_Index (A_TE);
+      Base_Index := First_Index (Base_Type);
+      while Present (Index) loop
+         declare
+            Idx_Range  : constant Node_Id      := Get_Dim_Range (Index);
+            --  Sometimes, the frontend leaves an identifier that
+            --  references an integer subtype instead of a range.
+
+            Index_Type : constant Entity_Id    := Full_Etype (Index);
+            Index_Base : constant Entity_Id    := Full_Base_Type (Index_Type);
+            LB         : constant Node_Id      := Low_Bound (Idx_Range);
+            HB         : constant Node_Id      := High_Bound (Idx_Range);
+            Dim_Info   : constant Index_Bounds :=
+              (Bound_Type    => Index_Base,
+               Bound_Subtype => Full_Etype (Base_Index),
+               Low           => Build_One_Bound (LB, Unconstrained, For_Orig),
+               High          => Build_One_Bound (HB, Unconstrained, For_Orig));
+            --  We have to be careful here and flag the type of the index
+            --  from that of the base type since we can have index ranges
+            --  that are outside the base type if the subtype is superflat
+            --  (see C37172C).  We also need to record the subtype of the
+            --  index as it appears in the base array type since that's
+            --  what's used to compute the min/max sizes of objects.
+
+         begin
+            --  Update whether or not this will be of dynamic size and
+            --  whether we must use a fake type based on this dimension.
+            --  Then record it.  Note that LLVM only allows the range of an
+            --  array to be in the range of "unsigned".  So we have to treat
+            --  a too-large constant as if it's of variable size.
+
+            if Dim_Info.Low.Dynamic or else Dim_Info.High.Dynamic then
+               This_Dynamic_Size := True;
+               if Dim /= 0 then
+                  Must_Use_Fake := True;
+               end if;
+            end if;
+
+            Dim_Infos (Dim) := Dim_Info;
+            Next_Index (Index);
+            Next_Index (Base_Index);
+            Dim := Dim + 1;
+         end;
+      end loop;
+
+      --  Now write all the dimension information into the array table. We
+      --  do it here in case we elaborate any types above.
+
+      First_Info := Array_Info.Last + Nat (1);
+      for J in Dim_Infos'Range loop
+         Array_Info.Append (Dim_Infos (J));
+      end loop;
+
+      --  If we must use a fake type, make one.  Otherwise loop through
+      --  the types making the LLVM type.
+
+      if Must_Use_Fake then
+         Typ := Array_Type (Typ, 0);
+      else
+         for J in reverse First_Info .. Array_Info.Last loop
+            declare
+               Idx      : constant Array_Info_Id :=
+                 (if   Convention (TE) = Convention_Fortran
+                  then Array_Info.Last + First_Info - J else J);
+               Dim_Info : constant Index_Bounds  := Array_Info.Table (Idx);
+               Low      : constant One_Bound     := Dim_Info.Low;
+               High     : constant One_Bound     := Dim_Info.High;
+               Dynamic  : constant Boolean       :=
+                 Low.Dynamic or High.Dynamic;
+               Rng      : unsigned               := 0;
+            begin
+               if not Dynamic and then Low.Cnst <= High.Cnst
+                 and then High.Cnst - Low.Cnst < Int'Last - 1
+               then
+                  Rng := unsigned (UI_To_Int (High.Cnst - Low.Cnst) + 1);
+               end if;
+
+               Typ := Array_Type (Typ, Rng);
+            end;
+         end loop;
+      end if;
+
+      --  Now set our results, either recording it as the information for
+      --  the original array type or as the primary info.  In the latter case,
+      --  we do a redundant-looking setting of the type to simplify handling
+      --  of the other sets.
+
+      if For_Orig then
+         Set_Orig_Array_Info (TE, First_Info);
+      else
+         Set_Type            (TE, Typ);
+         Set_Is_Dynamic_Size (TE, This_Dynamic_Size);
+         Set_Array_Info      (TE, First_Info);
+      end if;
+
+      return Typ;
+   end Create_Array_Type;
+
+   ------------------------------
+   -- Create_Array_Bounds_Type --
+   ------------------------------
+
+   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
+   is
+      Dims       : constant Nat           :=
+        Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
+                           then Full_Original_Array_Type (TE) else TE);
+      Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
+      First_Info : constant Array_Info_Id :=
+        (if   Is_Packed_Array_Impl_Type (TE) then Get_Orig_Array_Info (TE)
+         else Get_Array_Info (TE));
+      J          : Nat                    := 0;
+
+   begin
+      for I in Nat range 0 .. Dims - 1 loop
+         Fields (J) :=
+           Create_Type (Array_Info.Table (First_Info + I).Bound_Type);
+         Fields (J + 1) := Fields (J);
+         J := J + 2;
+      end loop;
+
+      return Build_Struct_Type (Fields);
+   end Create_Array_Bounds_Type;
+
+   -----------------------------------
+   -- Create_Array_Fat_Pointer_Type --
+   -----------------------------------
+
+   function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T is
+   begin
+      return Build_Struct_Type
+        ((1 => Pointer_Type (Create_Type (TE), 0),
+          2 => Pointer_Type (Create_Array_Bounds_Type (TE), 0)));
+   end Create_Array_Fat_Pointer_Type;
+
    ------------------------
    -- Type_For_Get_Bound --
    ------------------------
@@ -458,6 +674,46 @@ package body GNATLLVM.Arrays is
       return Bounds_To_Length (Low_Bound, High_Bound, Size_Type);
    end Get_Array_Length;
 
+   ------------------------
+   -- Get_Array_Elements --
+   ------------------------
+
+   function Get_Array_Elements
+     (V        : GL_Value;
+      TE       : Entity_Id;
+      Max_Size : Boolean := False) return GL_Value is
+   begin
+      return Size : GL_Value := Size_Const_Int (Uint_1) do
+
+        --  Go through every array dimension.  Get its size and
+        --  multiply all of them together.
+
+         for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
+            Size := Mul (Size, Get_Array_Length (TE, Dim, V, Max_Size));
+         end loop;
+      end return;
+   end Get_Array_Elements;
+
+   -------------------------
+   -- Get_Array_Type_Size --
+   -------------------------
+
+   function Get_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return GL_Value
+   is
+      Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
+      Comp_Size     : constant GL_Value  :=
+        Get_Type_Size (Comp_Type, Max_Size => True);
+      Num_Elements  : constant GL_Value  :=
+        Get_Array_Elements (V, TE, Max_Size);
+
+   begin
+      return Mul
+        (To_Size_Type (Comp_Size), To_Size_Type (Num_Elements), "size");
+   end Get_Array_Type_Size;
+
    -------------------------------
    -- Get_Array_Size_Complexity --
    -------------------------------
@@ -483,211 +739,6 @@ package body GNATLLVM.Arrays is
          end loop;
       end return;
    end Get_Array_Size_Complexity;
-
-   --------------------------------
-   -- Create_String_Literal_Type --
-   --------------------------------
-
-   function Create_String_Literal_Type
-     (TE : Entity_Id; Comp_Typ : Type_T) return Type_T
-   is
-      First      : constant Uint         :=
-        Get_Uint_Value (String_Literal_Low_Bound (TE));
-      Length     : constant Uint         := String_Literal_Length (TE);
-      Last       : constant Uint         := First + Length - 1;
-      Low_Bound  : constant One_Bound    :=
-        (Cnst => First, Value => Empty, Dynamic => False);
-      High_Bound : constant One_Bound    :=
-        (Cnst => Last, Value => Empty, Dynamic => False);
-      Dim_Info   : constant Index_Bounds
-        := (Bound_Type    => Standard_Integer,
-            Bound_Subtype => Standard_Integer,
-            Low           => Low_Bound,
-            High          => High_Bound);
-      Result_Typ : constant Type_T       :=
-        Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
-
-   begin
-      --  It's redundant to set the type here, since our caller will set it,
-      --  but we have to set it in order to set the array info.
-
-      Set_Type (TE, Result_Typ);
-      Array_Info.Append (Dim_Info);
-      Set_Array_Info (TE, Array_Info.Last);
-      return Result_Typ;
-
-   end Create_String_Literal_Type;
-
-   -----------------------
-   -- Create_Array_Type --
-   -----------------------
-
-   function Create_Array_Type
-     (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
-   is
-      type Dim_Info_Array is array (Nat range <>) of Index_Bounds;
-
-      A_TE              : constant Entity_Id     :=
-        (if For_Orig then Full_Original_Array_Type (TE) else TE);
-      Unconstrained     : constant Boolean       := not Is_Constrained (A_TE);
-      Comp_Type         : constant Entity_Id     := Full_Component_Type (A_TE);
-      Base_Type         : constant Entity_Id     :=
-        Full_Base_Type (A_TE, For_Orig);
-      Must_Use_Fake     : Boolean                :=
-        Is_Dynamic_Size (Comp_Type);
-      This_Dynamic_Size : Boolean                :=
-        Must_Use_Fake or Unconstrained;
-      CT_To_Use         : constant Entity_Id     :=
-        (if Must_Use_Fake then Standard_Short_Short_Integer else Comp_Type);
-      Typ               : Type_T                 := Create_Type (CT_To_Use);
-      Dim               : Nat                    := 0;
-      Last_Dim          : constant Nat           :=
-        (if   Ekind (A_TE) = E_String_Literal_Subtype
-         then 1 else Number_Dimensions (A_TE) - 1);
-      Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
-      First_Info        : Array_Info_Id;
-      Index             : Entity_Id;
-      Base_Index        : Entity_Id;
-
-   begin
-      if Ekind (A_TE) = E_String_Literal_Subtype then
-         return Create_String_Literal_Type (A_TE, Typ);
-      end if;
-
-      --  We loop through each dimension of the array creating the entries
-      --  for Array_Info.  If the component type is of variable size or if
-      --  either bound of an index is a dynamic size, this type is of
-      --  dynamic size.  We could use an opaque type in that case, but
-      --  we have numerous array subtypes that should be treated identically
-      --  but couldn't if we took that approach.  However, all of those
-      --  subtypes will have the same component type.  If that component
-      --  type is of fixed size, we can make an LLVM array [0 x CT] where
-      --  CT is the component type.  Otherwise, we have to use [0 x i8].
-      --  We refer to both of these cases as creating a "fake" type.
-
-      Index      := First_Index (A_TE);
-      Base_Index := First_Index (Base_Type);
-      while Present (Index) loop
-         declare
-            Idx_Range  : constant Node_Id      := Get_Dim_Range (Index);
-            --  Sometimes, the frontend leaves an identifier that
-            --  references an integer subtype instead of a range.
-
-            Index_Type : constant Entity_Id    := Full_Etype (Index);
-            Index_Base : constant Entity_Id    := Full_Base_Type (Index_Type);
-            LB         : constant Node_Id      := Low_Bound (Idx_Range);
-            HB         : constant Node_Id      := High_Bound (Idx_Range);
-            Dim_Info   : constant Index_Bounds :=
-              (Bound_Type    => Index_Base,
-               Bound_Subtype => Full_Etype (Base_Index),
-               Low           => Build_One_Bound (LB, Unconstrained, For_Orig),
-               High          => Build_One_Bound (HB, Unconstrained, For_Orig));
-            --  We have to be careful here and flag the type of the index
-            --  from that of the base type since we can have index ranges
-            --  that are outside the base type if the subtype is superflat
-            --  (see C37172C).  We also need to record the subtype of the
-            --  index as it appears in the base array type since that's
-            --  what's used to compute the min/max sizes of objects.
-
-         begin
-            --  Update whether or not this will be of dynamic size and
-            --  whether we must use a fake type based on this dimension.
-            --  Then record it.  Note that LLVM only allows the range of an
-            --  array to be in the range of "unsigned".  So we have to treat
-            --  a too-large constant as if it's of variable size.
-
-            if Dim_Info.Low.Dynamic or else Dim_Info.High.Dynamic then
-               This_Dynamic_Size := True;
-               if Dim /= 0 then
-                  Must_Use_Fake := True;
-               end if;
-            end if;
-
-            Dim_Infos (Dim) := Dim_Info;
-            Next_Index (Index);
-            Next_Index (Base_Index);
-            Dim := Dim + 1;
-         end;
-      end loop;
-
-      --  Now write all the dimension information into the array table. We
-      --  do it here in case we elaborate any types above.
-
-      First_Info := Array_Info.Last + Nat (1);
-      for J in Dim_Infos'Range loop
-         Array_Info.Append (Dim_Infos (J));
-      end loop;
-
-      --  If we must use a fake type, make one.  Otherwise loop through
-      --  the types making the LLVM type.
-
-      if Must_Use_Fake then
-         Typ := Array_Type (Typ, 0);
-      else
-         for J in reverse First_Info .. Array_Info.Last loop
-            declare
-               Idx      : constant Array_Info_Id :=
-                 (if   Convention (TE) = Convention_Fortran
-                  then Array_Info.Last + First_Info - J else J);
-               Dim_Info : constant Index_Bounds  := Array_Info.Table (Idx);
-               Low      : constant One_Bound     := Dim_Info.Low;
-               High     : constant One_Bound     := Dim_Info.High;
-               Dynamic  : constant Boolean       :=
-                 Low.Dynamic or High.Dynamic;
-               Rng      : unsigned               := 0;
-            begin
-               if not Dynamic and then Low.Cnst <= High.Cnst
-                 and then High.Cnst - Low.Cnst < Int'Last - 1
-               then
-                  Rng := unsigned (UI_To_Int (High.Cnst - Low.Cnst) + 1);
-               end if;
-
-               Typ := Array_Type (Typ, Rng);
-            end;
-         end loop;
-      end if;
-
-      --  Now set our results, either recording it as the information for
-      --  the original array type or as the primary info.  In the latter case,
-      --  we do a redundant-looking setting of the type to simplify handling
-      --  of the other sets.
-
-      if For_Orig then
-         Set_Orig_Array_Info (TE, First_Info);
-      else
-         Set_Type            (TE, Typ);
-         Set_Is_Dynamic_Size (TE, This_Dynamic_Size);
-         Set_Array_Info      (TE, First_Info);
-      end if;
-
-      return Typ;
-   end Create_Array_Type;
-
-   ------------------------------
-   -- Create_Array_Bounds_Type --
-   ------------------------------
-
-   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
-   is
-      Dims       : constant Nat           :=
-        Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
-                           then Full_Original_Array_Type (TE) else TE);
-      Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
-      First_Info : constant Array_Info_Id :=
-        (if   Is_Packed_Array_Impl_Type (TE) then Get_Orig_Array_Info (TE)
-         else Get_Array_Info (TE));
-      J          : Nat                    := 0;
-
-   begin
-      for I in Nat range 0 .. Dims - 1 loop
-         Fields (J) :=
-           Create_Type (Array_Info.Table (First_Info + I).Bound_Type);
-         Fields (J + 1) := Fields (J);
-         J := J + 2;
-      end loop;
-
-      return Build_Struct_Type (Fields);
-   end Create_Array_Bounds_Type;
 
    --------------------
    -- Get_Bound_Size --
@@ -728,17 +779,6 @@ package body GNATLLVM.Arrays is
                 Get (Dest, Reference_To_Bounds));
       end if;
    end Maybe_Store_Bounds;
-
-   -----------------------------------
-   -- Create_Array_Fat_Pointer_Type --
-   -----------------------------------
-
-   function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T is
-   begin
-      return Build_Struct_Type
-        ((1 => Pointer_Type (Create_Type (TE), 0),
-          2 => Pointer_Type (Create_Array_Bounds_Type (TE), 0)));
-   end Create_Array_Fat_Pointer_Type;
 
    ---------------------------
    -- Contains_Discriminant --
@@ -798,46 +838,6 @@ package body GNATLLVM.Arrays is
    begin
       return Scan (N) = Abandon;
    end Contains_Discriminant;
-
-   ------------------------
-   -- Get_Array_Elements --
-   ------------------------
-
-   function Get_Array_Elements
-     (V        : GL_Value;
-      TE       : Entity_Id;
-      Max_Size : Boolean := False) return GL_Value is
-   begin
-      return Size : GL_Value := Size_Const_Int (Uint_1) do
-
-        --  Go through every array dimension.  Get its size and
-        --  multiply all of them together.
-
-         for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
-            Size := Mul (Size, Get_Array_Length (TE, Dim, V, Max_Size));
-         end loop;
-      end return;
-   end Get_Array_Elements;
-
-   -------------------------
-   -- Get_Array_Type_Size --
-   -------------------------
-
-   function Get_Array_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value
-   is
-      Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
-      Comp_Size     : constant GL_Value  :=
-        Get_Type_Size (Comp_Type, Max_Size => True);
-      Num_Elements  : constant GL_Value  :=
-        Get_Array_Elements (V, TE, Max_Size);
-
-   begin
-      return Mul
-        (To_Size_Type (Comp_Size), To_Size_Type (Num_Elements), "size");
-   end Get_Array_Type_Size;
 
    ---------------------------
    -- Emit_Others_Aggregate --

@@ -136,18 +136,27 @@ package body GNATLLVM.Arrays is
       Val : Uint;
 
    begin
+      --  If this is an unconstrained array, indicate so
+
       if Unconstrained then
          return (Cnst => No_Uint, Value => Empty, Dynamic => True);
+
+      --  If this is a constant known to the front end, use that constant.
+      --  In case the constant is an Enum, use the representation value
+      --  for the original array type, otherwise use the enum value.
+
       elsif Compile_Time_Known_Value (N) then
          Val := (if For_Orig then Expr_Rep_Value (N) else Expr_Value (N));
          return (Cnst => Val, Value => Empty,
                  Dynamic => not UI_Is_In_Int_Range (Val));
+
+      --  Even if this isn't a constant known to the front end, see if we
+      --  can evaluate it at compile-time (without generating any code).
+      --  If so, see if that results in an integer (it might be a symbolic
+      --  value) and an integer that's in range of an Int.  If all that is
+      --  true, make a Uint out of it and use it as a constant bound.
+
       elsif Is_No_Elab_Needed (N) then
-
-         --  If this is can be evaluated at compile-time, do so and see if
-         --  it's an integer that's in range of an Int.  If so, make a Uint
-         --  out of it and use it as a constant.
-
          declare
             V   : constant GL_Value := Emit_Expression (N);
             Val : LLI;

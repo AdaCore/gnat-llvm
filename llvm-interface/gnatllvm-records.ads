@@ -57,6 +57,13 @@ package GNATLLVM.Records is
           Post => Present (Get_Record_Type_Size'Result);
    --  Like Get_Type_Size, but only for record types
 
+   function IDS_Record_Type_Size
+     (TE       : Entity_Id;
+      V        : IDS;
+      Max_Size : Boolean := False) return IDS
+     with Pre  => Is_Record_Type (TE),
+          Post => Present (IDS_Record_Type_Size'Result);
+
    function Emit_Record_Aggregate
      (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
      with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)

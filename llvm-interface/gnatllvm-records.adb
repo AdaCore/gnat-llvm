@@ -170,6 +170,17 @@ package body GNATLLVM.Records is
    --  Like Get_RI_Info, but for a fragment known to be a variant and
    --  where we're not getting the maximum size.
 
+   procedure IDS_RI_Info_For_Variant
+     (RI          : Record_Info;
+      V           : IDS;
+      Max_Size    : Boolean;
+      Size        : out IDS;
+      Must_Align  : out IDS;
+      Is_Align    : out IDS;
+      Return_Size : Boolean := True)
+     with Pre => Present (V);
+   --  Version of above for Is_Dynamic_Size
+
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -1536,7 +1547,7 @@ package body GNATLLVM.Records is
    --  the LLVM value the size and make those visible to clients.
 
    package LLVM_Size is
-      new Size (Result => GL_Value,
+      new Size (Result                 => GL_Value,
                 Empty_Result           => No_GL_Value,
                 Sz_Add_To_List         => Add_To_LValue_List,
                 Sz_Const               => Size_Const_Int,
@@ -1580,6 +1591,48 @@ package body GNATLLVM.Records is
    function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
      renames LLVM_Size.Align_To;
 
+   --  Here we instantiate the size routines with functions that compute
+   --  whether a size is dynamic or not and make those visible to clients.
+
+   package IDS_Size is
+      new Size (Result                 => IDS,
+                Empty_Result           => No_IDS,
+                Sz_Add_To_List         => IDS_Add_To_List,
+                Sz_Const               => IDS_Const,
+                Sz_Add                 => IDS_Add,
+                Sz_Sub                 => IDS_Sub,
+                Sz_And                 => IDS_And,
+                Sz_Neg                 => IDS_Neg,
+                Sz_I_Cmp               => IDS_I_Cmp,
+                Sz_Select              => IDS_Select,
+                Sz_Min                 => IDS_Min,
+                Sz_Max                 => IDS_Max,
+                Sz_Is_Const            => IDS_Is_Const,
+                Sz_Const_Val           => IDS_Const_Val,
+                Sz_Type_Size           => IDS_Type_Size,
+                Sz_RI_Info_For_Variant => IDS_RI_Info_For_Variant);
+
+   procedure IDS_Variant_Aligns
+     (S_Idx      : Record_Info_Id;
+      Must_Align : out IDS;
+      Is_Align   : out IDS;
+      V          : IDS;
+      Max_Size   : Boolean) renames IDS_Size.Get_Variant_Aligns;
+
+   function IDS_Record_Type_Size
+     (TE       : Entity_Id;
+      V        : IDS;
+      Max_Size : Boolean := False) return IDS
+     renames IDS_Size.Get_Record_Type_Size;
+
+   function IDS_Record_Size_So_Far
+     (TE        : Entity_Id;
+      V         : IDS;
+      Start_Idx : Record_Info_Id;
+      Idx       : Record_Info_Id;
+      Max_Size  : Boolean := False) return IDS
+     renames IDS_Size.Get_Record_Size_So_Far;
+
    -----------------------
    -- Get_Field_Ordinal --
    -----------------------
@@ -1620,7 +1673,7 @@ package body GNATLLVM.Records is
 
    begin
       --  We first go through each variant and compute the alignments and
-      --  sizes of each.  We store the GL_value's where we've computed
+      --  sizes of each.  We store the GL_Value's where we've computed
       --  those things along with the starting (for branching into the code)
       --  and ending (for use with Phi) basic blocks for each.
 
@@ -1665,6 +1718,70 @@ package body GNATLLVM.Records is
       Size := (if   Return_Size then Build_Phi (Sizes, From_BBs)
                else No_GL_Value);
    end Get_RI_Info_For_Variant;
+
+   -----------------------------
+   -- IDS_RI_Info_For_Variant --
+   -----------------------------
+
+   procedure IDS_RI_Info_For_Variant
+     (RI          : Record_Info;
+      V           : IDS;
+      Max_Size    : Boolean;
+      Size        : out IDS;
+      Must_Align  : out IDS;
+      Is_Align    : out IDS;
+      Return_Size : Boolean := True)
+   is
+      Our_Must_Align : IDS;
+      Our_Is_Align   : IDS;
+      Our_Size       : IDS;
+
+   begin
+      --  We first go through each variant and compute the alignments and
+      --  sizes of each, looking only at constant values.  If any alignment
+      --  or size differs from a previous size, it's not a constant.
+
+      Must_Align := No_IDS;
+      Is_Align   := No_IDS;
+      Size       := No_IDS;
+      for J in RI.Variants'Range loop
+         --  If this variant is empty, trivially get the values.  Otherwise,
+         --  compute each.
+
+         if No (RI.Variants (J)) then
+            Our_Must_Align := IDS_Const (1);
+            Our_Is_Align   := IDS_Const (1);
+            Our_Size       := IDS_Const (0);
+         else
+            IDS_Variant_Aligns (RI.Variants (J),
+                                Our_Must_Align, Our_Is_Align, V, Max_Size);
+            Our_Size := IDS_Record_Size_So_Far (Empty, V, RI.Variants (J),
+                                                Empty_Record_Info_Id,
+                                                Max_Size);
+         end if;
+
+         if Present (Must_Align) and then Must_Align /= Our_Must_Align then
+            Must_Align := (False, False, 0);
+         end if;
+         if Present (Is_Align) and then Is_Align /= Our_Is_Align then
+            Is_Align := (False, False, 0);
+         end if;
+         if Return_Size and then Present (Size) and then Size /= Our_Size then
+            Size := (False, False, 0);
+         end if;
+      end loop;
+
+      --  Now handle case where there were no variants.
+
+      if No (Must_Align) then
+         Must_Align := IDS_Const (1);
+         Is_Align   := IDS_Const (1);
+         if Return_Size then
+            Size    := IDS_Const (0);
+         end if;
+      end if;
+
+   end IDS_RI_Info_For_Variant;
 
    -------------------------
    -- Record_Field_Offset --

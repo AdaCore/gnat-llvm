@@ -27,6 +27,7 @@ with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
@@ -120,6 +121,13 @@ package body GNATLLVM.Types is
    --  This is used by both type of memory allocators.  Temp can be of any
    --  type, either an integer or pointer to anything.  Alloc_TE is the
    --  type that was used to allocate the memory.
+
+   function IDS_From_Const (V : GL_Value) return IDS is
+     (if   Is_A_Const_Int (V) then (False, True, Get_Const_Int_Value_ULL (V))
+      else (False, False, 0))
+     with Pre => Is_Constant (V), Post => Present (IDS_From_Const'Result);
+   --  V is a constant.  If it's a constant integer, return that value.
+   --  Otherwise, don't treat it as a constant.
 
    -----------------------
    -- Build_Struct_Type --
@@ -1785,5 +1793,44 @@ package body GNATLLVM.Types is
            (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
       end if;
    end Add_Type_Data_To_Instruction;
+
+   -------------------
+   -- IDS_Type_Size --
+   -------------------
+
+   function IDS_Type_Size
+     (TE       : Entity_Id;
+      V        : IDS := No_IDS;
+      Max_Size : Boolean := False) return IDS
+   is
+      pragma Unreferenced (V);
+      pragma Unreferenced (Max_Size); --  ??? for now
+
+   begin
+      return (if   Is_Dynamic_Size (TE) then (False, False, 0)
+              else IDS_From_Const (Get_Type_Size (TE)));
+   end IDS_Type_Size;
+
+   -------------------
+   -- IDS_Emit_Expr --
+   -------------------
+
+   function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS is
+      pragma Unreferenced (LHS);
+   begin
+      return (if   Is_No_Elab_Needed (V)
+              then IDS_From_Const (Emit_Expression (V))
+              else (False, False, 0));
+   end IDS_Emit_Expr;
+
+   ---------------------
+   -- IDS_Add_To_List --
+   ---------------------
+
+   procedure IDS_Add_To_List (V : IDS) is
+      pragma Unreferenced (V);
+   begin
+      null;
+   end IDS_Add_To_List;
 
 end GNATLLVM.Types;

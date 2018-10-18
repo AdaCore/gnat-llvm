@@ -453,6 +453,145 @@ package GNATLLVM.Types is
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
 
+   --  In order to use the generic functions that computing sizing information
+   --  to compute whether a size is dynamic, we need versions of the
+   --  routines that actually compute the size that instead just record
+   --  whether the size is a constant (in order to implement comparisons,
+   --  they also compute the size, if it is a constant).  We use the
+   --  data structure below.
+
+   type IDS is record
+      Is_None     : Boolean;
+      Is_Constant : Boolean;
+      Value       : ULL;
+   end record;
+
+   No_IDS : constant IDS := (True, False, 0);
+
+   function No      (V : IDS) return Boolean is (V =  No_IDS);
+   function Present (V : IDS) return Boolean is (V /= No_IDS);
+
+   type Logical is mod 2**64;
+
+   function IDS_Is_Const  (V : IDS) return Boolean is (V.Is_Constant);
+
+   function IDS_Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
+     ((False, True, C))
+     with Post => IDS_Is_Const (IDS_Const'Result);
+
+   function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS is
+     ((False, True, ULL (UI_To_Int (C))))
+     with Pre  => C /= No_Uint and then UI_Is_In_Int_Range (C),
+          Post => IDS_Is_Const (IDS_Const_Int'Result);
+
+   function IDS_Type_Size
+     (TE       : Entity_Id;
+      V        : IDS := No_IDS;
+      Max_Size : Boolean := False) return IDS
+     with Pre => Is_Type (TE), Post => Present (IDS_Type_Size'Result);
+
+   function IDS_I_Cmp
+     (Op : Int_Predicate_T; LHS, RHS : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (LHS) and then IDS_Is_Const (RHS)
+      then (False, True, (if LHS.Value = RHS.Value then 1 else 0))
+      else (False, False, 0))
+     with Pre  => Present (LHS) and then Present (RHS),
+          Post => Present (IDS_I_Cmp'Result);
+
+   function IDS_Add (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, True, V1.Value + V2.Value) else (False, False, 0))
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_Add'Result);
+
+   function IDS_Sub (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, True, V1.Value - V2.Value) else (False, False, 0))
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_Sub'Result);
+
+   function IDS_Mul (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, True, V1.Value * V2.Value) else (False, False, 0))
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_Mul'Result);
+
+   function IDS_Div (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, True, V1.Value / V2.Value) else (False, False, 0))
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_Div'Result);
+
+   function IDS_Min (V1, V2 : IDS) return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, True, ULL'Min (V1.Value, V2.Value)) else (False, False, 0))
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_Min'Result);
+
+   function IDS_Max (V1, V2 : IDS) return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, True, ULL'Max (V1.Value, V2.Value)) else (False, False, 0))
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_Max'Result);
+
+   function IDS_And (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+        then (False, True,
+              ULL (Logical (V1.Value) and Logical (V2.Value)))
+        else (False, False, 0))
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_And'Result);
+
+   function IDS_Neg (V : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (V) then (False, True, 0 - V.Value)
+      else (False, False, 0))
+     with Pre => Present (V), Post => Present (IDS_Neg'Result);
+
+   function IDS_Select
+     (V_If, V_Then, V_Else : IDS; Name : String := "") return IDS
+   is
+     (if    IDS_Is_Const (V_If) and then V_If.Value /= 0 then V_Then
+      elsif IDS_Is_Const (V_If) then V_Else else (False, False, 0))
+     with Pre => Present (V_If) and then Present (V_Then)
+                 and then Present (V_Else);
+
+   function IDS_Const_Val (V : IDS) return ULL is
+     (V.Value)
+     with Pre => IDS_Is_Const (V);
+
+   procedure IDS_Add_To_List (V : IDS)
+     with Pre => Present (V);
+
+   function IDS_Extract_Value
+     (TE      : Entity_Id;
+      V       : GL_Value;
+      Idx_Arr : Index_Array;
+      Name    : String := "") return IDS
+   is
+     ((False, False, 0))
+     with Pre  => Is_Type (TE) and then Present (V),
+          Post => Present (IDS_Extract_Value'Result);
+
+   function IDS_Convert
+     (V              : IDS;
+      TE             : Entity_Id;
+      Float_Truncate : Boolean := False) return IDS
+   is
+     ((V))
+     with Pre => Present (V) and then Is_Type (TE);
+
+   function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
+     with Pre => Present (V), Post => Present (IDS_Emit_Expr'Result);
+
+   function IDS_Emit_Convert (N : Node_Id; TE : Entity_Id) return IDS is
+     (IDS_Emit_Expr (N))
+     with Pre  => Present (N) and then Is_Type (TE),
+          Post => Present (IDS_Emit_Convert'Result);
+
+   function IDS_Undef (TE : Entity_Id) return IDS is
+     ((False, False, 0))
+     with Pre => Is_Type (TE), Post => Present (IDS_Undef'Result);
+
    Disable_LV_Append : Nat := 0;
    --  If nonzero, disable appending expressions to the LValue list.
 

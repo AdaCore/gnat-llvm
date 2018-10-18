@@ -124,6 +124,93 @@ package body GNATLLVM.Arrays is
    --  remaining.  Return an LLVM constant including all of the constants
    --  in that aggregate.
 
+   --  We put the routines used to compute sizes into a generic so that we
+   --  can instantiate them using various types of sizing.  The most common
+   --  case is an actual size computation, where we produce a GL_Value.
+   --  But we may also instantiate this package to generate the structure
+   --  needed for back-annotation.
+
+   generic
+      type Result is private;
+      Empty_Result : Result;
+      with function Sz_Const
+        (C : ULL; Sign_Extend : Boolean := False) return Result;
+      with function Sz_Const_Int (TE : Entity_Id; C : Uint) return Result;
+      with function Sz_Type_Size
+        (TE       : Entity_Id;
+         V        : Result := Empty_Result;
+         Max_Size : Boolean := False) return Result;
+      with function  Sz_I_Cmp
+        (Op : Int_Predicate_T;
+         LHS : Result;
+         RHS : Result;
+         Name : String := "") return Result;
+      with function  Sz_Add
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Sub
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Mul
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_U_Div
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_S_Div
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Neg (V : Result; Name : String := "") return Result;
+      with function  Sz_Select
+        (C_If, C_Then, C_Else : Result; Name : String := "") return Result;
+      with function  Sz_Min (V1, V2 : Result) return Result;
+      with function  Sz_Max (V1, V2 : Result) return Result;
+      with function  Sz_Extract_Value
+        (TE      : Entity_Id;
+         V       : GL_Value;
+         Idx_Arr : Index_Array;
+         Name    : String := "") return Result;
+      with function  Sz_Convert
+        (V              : Result;
+         TE             : Entity_Id;
+         Float_Truncate : Boolean := False) return Result;
+      with function  Sz_Emit_Expr
+        (V : Node_Id; LHS : Result := Empty_Result) return Result;
+      with function  Sz_Emit_Convert
+        (N : Node_Id; TE : Entity_Id) return Result;
+      with function  Sz_Undef (TE : Entity_Id) return Result;
+   package Size is
+
+      function No      (V : Result) return Boolean is (V = Empty_Result);
+      function Present (V : Result) return Boolean is (V /= Empty_Result);
+
+      function Bounds_To_Length
+        (In_Low, In_High : Result; TE : Entity_Id) return Result;
+
+      function Emit_Expr_For_Minmax
+        (N : Node_Id; Is_Low : Boolean) return Result;
+
+      function Get_Array_Bound
+        (TE       : Entity_Id;
+         Dim      : Nat;
+         Is_Low   : Boolean;
+         V        : GL_Value;
+         Max_Size : Boolean := False;
+         For_Orig : Boolean := False) return Result;
+
+      function Get_Array_Length
+        (TE       : Entity_Id;
+         Dim      : Nat;
+         V        : GL_Value;
+         Max_Size : Boolean := False) return Result;
+
+      function Get_Array_Elements
+        (V        : GL_Value;
+         TE       : Entity_Id;
+         Max_Size : Boolean := False) return Result;
+
+      function Get_Array_Type_Size
+        (TE       : Entity_Id;
+         V        : GL_Value;
+         Max_Size : Boolean := False) return Result;
+
+   end Size;
+
    ---------------------
    -- Build_One_Bound --
    ---------------------
@@ -405,10 +492,10 @@ package body GNATLLVM.Arrays is
         (if No (V) then Empty else Related_Type (V));
 
    begin
-      --  If only TE is around, use it.  Likewise if V_Type is not an
-      --  array type or not related to TE.  Otherwise, use the type
-      --  that's constrained, preferring V's type, but only if
-      --  TE is unconstrained.
+      --  If only TE is around, use it.  Likewise if V_Type is not an array
+      --  type or not related to TE.  Otherwise, use the type that's
+      --  constrained, preferring V's type, but only if TE is
+      --  unconstrained.
 
       if No (V_Type) or else not Is_Array_Type (V_Type)
         or else (Ultimate_Base_Type (V_Type) /= Ultimate_Base_Type (TE))
@@ -423,145 +510,342 @@ package body GNATLLVM.Arrays is
 
    end Type_For_Get_Bound;
 
-   ----------------------
-   -- Bounds_To_Length --
-   ----------------------
+   package body Size is
+
+      ----------------------
+      -- Bounds_To_Length --
+      ----------------------
+
+      function Bounds_To_Length
+        (In_Low, In_High : Result; TE : Entity_Id) return Result
+      is
+         Low      : constant Result          := Sz_Convert (In_Low, TE);
+         High     : constant Result          := Sz_Convert (In_High, TE);
+         Cmp_Kind : constant Int_Predicate_T :=
+           (if Is_Unsigned_Type (TE) then Int_UGT else Int_SGT);
+         Is_Empty : constant Result          :=
+           Sz_I_Cmp (Cmp_Kind, Low, High, "is-empty");
+         Const_1  : constant Result          := Sz_Const_Int (TE, Uint_1);
+      begin
+         return Sz_Select
+           (C_If   => Is_Empty,
+            C_Then => Sz_Const_Int (TE, Uint_0),
+            C_Else =>
+              (if   Low = Const_1 then High
+               else Sz_Add (Sz_Sub (High, Low), Const_1)));
+      end Bounds_To_Length;
+
+      --------------------------
+      -- Emit_Expr_For_Minmax --
+      --------------------------
+
+      function Emit_Expr_For_Minmax
+        (N : Node_Id; Is_Low : Boolean) return Result
+      is
+         Attr     : Attribute_Id;
+         RHS, LHS : Result;
+
+      begin
+         --  If N doesn't involve a discriminant, just evaluate it
+
+         if not Contains_Discriminant (N) then
+            return Sz_Emit_Expr (N);
+         end if;
+
+         case Nkind (N) is
+            when N_Identifier =>
+
+               --  If we get here, this must be a discriminant
+
+               pragma Assert (Ekind (Entity (N)) = E_Discriminant);
+               declare
+                  TE    : constant Entity_Id := Full_Etype (Entity (N));
+                  Limit : constant Node_Id   :=
+                    (if   Is_Low then Type_Low_Bound (TE)
+                     else Type_High_Bound (TE));
+
+               begin
+                  return Sz_Emit_Expr (Limit);
+               end;
+
+            when N_Attribute_Reference =>
+
+               --  The only ones we support are 'Range_Length, 'Min, and 'Max
+
+               Attr := Get_Attribute_Id (Attribute_Name (N));
+               if Attr = Attribute_Range_Length
+                 and then Is_Scalar_Type (Full_Etype (Prefix (N)))
+               then
+                  declare
+                     PT : constant Entity_Id := Full_Etype (Prefix (N));
+                     LB : constant Node_Id   := Type_Low_Bound  (PT);
+                     UB : constant Node_Id   := Type_High_Bound (PT);
+                  begin
+                     LHS := Emit_Expr_For_Minmax (LB, True);
+                     RHS := Emit_Expr_For_Minmax (UB, False);
+                     return Bounds_To_Length (LHS, RHS, Full_Etype (N));
+                  end;
+               else
+                  pragma Assert (Attr in Attribute_Min | Attribute_Max);
+                  LHS :=
+                    Emit_Expr_For_Minmax (First (Expressions (N)), Is_Low);
+                  RHS :=
+                    Emit_Expr_For_Minmax (Last  (Expressions (N)), Is_Low);
+                  return (if   Attr = Attribute_Min then Sz_Min (LHS, RHS)
+                          else Sz_Max (LHS, RHS));
+               end if;
+
+            when N_Op_Minus =>
+               LHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
+               return Sz_Neg (LHS);
+
+            when N_Op_Plus =>
+               return Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+
+            when N_Op_Add =>
+               LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+               RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+               return Sz_Add (LHS, RHS);
+
+            when N_Op_Subtract =>
+               LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+               RHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
+               return Sz_Sub (LHS, RHS);
+
+            when N_Op_Multiply =>
+               LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+               RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+               return Sz_Mul (LHS, RHS);
+
+            when N_Op_Divide =>
+               LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
+               RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
+               return (if   Is_Unsigned_Type (Full_Etype (N))
+                       then Sz_U_Div (LHS, RHS) else Sz_S_Div (LHS, RHS));
+
+            when N_Type_Conversion | N_Unchecked_Type_Conversion =>
+               LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
+               return Sz_Convert (LHS, Full_Etype (N));
+
+            when N_Function_Call =>
+
+               --  We assume here that what we have is a call to enumRP (disc)
+               --  and get the 'Pos of the first or last in the range.
+
+               declare
+                  Params : constant List_Id   := Parameter_Associations (N);
+                  Discr  : constant Entity_Id := Entity (First (Params));
+                  TE     : constant Entity_Id := Full_Etype (Discr);
+                  Bound  : constant Node_Id   :=
+                    Entity ((if   Is_Low then Type_Low_Bound (TE)
+                             else Type_High_Bound (TE)));
+
+               begin
+                  return Sz_Const_Int (Full_Etype (N),
+                                       Enumeration_Pos (Bound));
+               end;
+
+            when others =>
+               pragma Assert (False);
+               return Sz_Undef (Full_Etype (N));
+         end case;
+
+      end Emit_Expr_For_Minmax;
+
+      ---------------------
+      -- Get_Array_Bound --
+      ---------------------
+
+      function Get_Array_Bound
+        (TE       : Entity_Id;
+         Dim      : Nat;
+         Is_Low   : Boolean;
+         V        : GL_Value;
+         Max_Size : Boolean := False;
+         For_Orig : Boolean := False) return Result
+      is
+         Typ        : constant Entity_Id     := Type_For_Get_Bound (TE, V);
+         Info_Idx   : constant Array_Info_Id :=
+           (if   For_Orig then Get_Orig_Array_Info (Typ)
+            else Get_Array_Info (Typ));
+         Dim_Info   : constant Index_Bounds  :=
+           Array_Info.Table (Info_Idx + Dim);
+         Bound_Info : constant One_Bound     :=
+           (if Is_Low then Dim_Info.Low else Dim_Info.High);
+         Bound_Idx  : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
+         --  In the array fat pointer bounds structure, bounds are stored as a
+         --  sequence of (lower bound, upper bound) pairs.
+         Expr       : constant Node_Id       := Bound_Info.Value;
+         Res        : Result;
+
+      begin
+         Push_Debug_Freeze_Pos;
+
+         --  There are three cases: a constant size, in which case we
+         --  return that size, a value, in which case we compute that
+         --  value, which may involve a discriminant, and an unconstrained
+         --  array, in which case we have a fat pointer and extract the
+         --  bounds from it.
+
+         if Bound_Info.Cnst /= No_Uint then
+            Res := Sz_Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
+         elsif Present (Expr) then
+
+            --  If we're looking for the size of a type (meaning the max size)
+            --  and this expression involves a discriminant, we compute the
+            --  expression for its minimum or maximum value, depending on the
+            --  bound, and then minimize or maximize with the bounds of the
+            --  index type.
+
+            if Max_Size and then Contains_Discriminant (Expr) then
+               declare
+                  Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
+                  Bound_Limit : constant Node_Id   :=
+                    (if   Is_Low then Type_Low_Bound (Bound_Type)
+                     else Type_High_Bound (Bound_Type));
+                  Bound_Val   : constant Result  :=
+                    Sz_Convert (Emit_Expr_For_Minmax (Bound_Limit, Is_Low),
+                                Dim_Info.Bound_Type);
+
+               begin
+                  Res := Sz_Convert (Emit_Expr_For_Minmax (Expr, Is_Low),
+                                        Dim_Info.Bound_Type);
+                  Res := (if   Is_Low then Sz_Max (Bound_Val, Res)
+                          else Sz_Min (Bound_Val, Res));
+               end;
+            else
+               Res := Sz_Emit_Convert (Expr, Dim_Info.Bound_Type);
+            end if;
+
+         --  See if we're asking for the maximum size of an uncontrained
+         --  array.  If so, return the appropriate bound.
+
+         elsif Max_Size and then Is_Unconstrained_Array (TE) then
+            declare
+               Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
+               Bound_Limit : constant Node_Id   :=
+                 (if   Is_Low then Type_Low_Bound (Bound_Type)
+                  else Type_High_Bound (Bound_Type));
+
+            begin
+               Res := Sz_Convert (Sz_Emit_Expr (Bound_Limit),
+                                  Dim_Info.Bound_Type);
+            end;
+
+         else
+            --  We now should have the unconstrained case.  Make sure we do.
+            pragma Assert (Is_Unconstrained_Array (TE)
+                             and then Relationship (V) /= Reference);
+
+            Res := Sz_Extract_Value
+              (Dim_Info.Bound_Type, Get (V, Bounds),
+               (1 => unsigned (Bound_Idx)),
+               (if Is_Low then "low-bound" else "high-bound"));
+         end if;
+
+         Pop_Debug_Freeze_Pos;
+         return Res;
+      end Get_Array_Bound;
+
+      ----------------------
+      -- Get_Array_Length --
+      ----------------------
+
+      function Get_Array_Length
+        (TE       : Entity_Id;
+         Dim      : Nat;
+         V        : GL_Value;
+         Max_Size : Boolean := False) return Result
+      is
+         Low_Bound  : constant Result :=
+           Get_Array_Bound (TE, Dim, True, V, Max_Size);
+         High_Bound : constant Result :=
+           Get_Array_Bound (TE, Dim, False, V, Max_Size);
+
+      begin
+         --  The length of an array that has the maximum range of its type
+         --  is not representable in that type (it's one too high).  Rather
+         --  than trying to find some suitable type, we use Size_Type,
+         --  which will also make thing simpler for some of our callers.
+
+         return Bounds_To_Length (Low_Bound, High_Bound, Size_Type);
+      end Get_Array_Length;
+
+      ------------------------
+      -- Get_Array_Elements --
+      ------------------------
+
+      function Get_Array_Elements
+        (V        : GL_Value;
+         TE       : Entity_Id;
+         Max_Size : Boolean := False) return Result is
+      begin
+         return Size : Result := Sz_Const (1) do
+
+            --  Go through every array dimension.  Get its size and
+            --  multiply all of them together.
+
+            for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
+               Size := Sz_Mul (Size, Get_Array_Length (TE, Dim, V, Max_Size));
+            end loop;
+         end return;
+      end Get_Array_Elements;
+
+      -------------------------
+      -- Get_Array_Type_Size --
+      -------------------------
+
+      function Get_Array_Type_Size
+        (TE       : Entity_Id;
+         V        : GL_Value;
+         Max_Size : Boolean := False) return Result
+      is
+         Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
+         Comp_Size     : constant Result    :=
+           Sz_Type_Size (Comp_Type, Max_Size => True);
+         Num_Elements  : constant Result    :=
+           Get_Array_Elements (V, TE, Max_Size);
+
+      begin
+         return Sz_Mul
+           (Sz_Convert (Comp_Size, Size_Type),
+            Sz_Convert (Num_Elements, Size_Type), "size");
+      end Get_Array_Type_Size;
+
+   end Size;
+
+   --  Here we instantiate the size routines with functions that compute
+   --  the LLVM value the size and make those visible to clients.
+
+   package LLVM_Size is
+      new Size (Result           => GL_Value,
+                Empty_Result     => No_GL_Value,
+                Sz_Const         => Size_Const_Int,
+                Sz_Const_Int     => Const_Int,
+                Sz_Type_Size     => Get_Type_Size,
+                Sz_I_Cmp         => I_Cmp,
+                Sz_Add           => Add,
+                Sz_Sub           => Sub,
+                Sz_Mul           => Mul,
+                Sz_U_Div         => U_Div,
+                Sz_S_Div         => S_Div,
+                Sz_Neg           => Neg,
+                Sz_Select        => Build_Select,
+                Sz_Min           => Build_Min,
+                Sz_Max           => Build_Max,
+                Sz_Extract_Value => Extract_Value,
+                Sz_Convert       => Convert,
+                Sz_Emit_Expr     => Emit_Safe_Expr,
+                Sz_Emit_Convert  => Emit_Convert_Value,
+                Sz_Undef         => Get_Undef);
 
    function Bounds_To_Length
      (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
-   is
-      Low      : constant GL_Value := Convert (In_Low, TE);
-      High     : constant GL_Value := Convert (In_High, TE);
-      Cmp_Kind : constant Int_Predicate_T :=
-        (if Is_Unsigned_Type (TE) then Int_UGT else Int_SGT);
-      Is_Empty : constant GL_Value := I_Cmp (Cmp_Kind, Low, High, "is-empty");
-      Const_1  : constant GL_Value := Const_Int (TE, Uint_1);
-   begin
-      return Build_Select
-        (C_If   => Is_Empty,
-         C_Then => Const_Null (TE),
-         C_Else =>
-           (if   Low = Const_1 then High
-            else Add (Sub (High, Low), Const_1)));
-   end Bounds_To_Length;
-
-   --------------------------
-   -- Emit_Expr_For_Minmax --
-   --------------------------
+     renames LLVM_Size.Bounds_To_Length;
 
    function Emit_Expr_For_Minmax
      (N : Node_Id; Is_Low : Boolean) return GL_Value
-   is
-      Attr     : Attribute_Id;
-      RHS, LHS : GL_Value;
-
-   begin
-      --  If N doesn't involve a discriminant, just evaluate it
-
-      if not Contains_Discriminant (N) then
-         return Emit_Safe_Expr (N);
-      end if;
-
-      case Nkind (N) is
-         when N_Identifier =>
-
-            --  If we get here, this must be a discriminant
-
-            pragma Assert (Ekind (Entity (N)) = E_Discriminant);
-            declare
-               TE    : constant Entity_Id := Full_Etype (Entity (N));
-               Limit : constant Node_Id   :=
-                 (if Is_Low then Type_Low_Bound (TE)
-                  else Type_High_Bound (TE));
-
-            begin
-               return Emit_Safe_Expr (Limit);
-            end;
-
-         when N_Attribute_Reference =>
-
-            --  The only ones we support are 'Range_Length, 'Min, and 'Max
-
-            Attr := Get_Attribute_Id (Attribute_Name (N));
-            if Attr = Attribute_Range_Length
-              and then Is_Scalar_Type (Full_Etype (Prefix (N)))
-            then
-               declare
-                  PT : constant Entity_Id := Full_Etype (Prefix (N));
-                  LB : constant Node_Id   := Type_Low_Bound  (PT);
-                  UB : constant Node_Id   := Type_High_Bound (PT);
-               begin
-                  LHS := Emit_Expr_For_Minmax (LB, True);
-                  RHS := Emit_Expr_For_Minmax (UB, False);
-                  return Bounds_To_Length (LHS, RHS, Full_Etype (N));
-               end;
-            else
-               pragma Assert (Attr in Attribute_Min | Attribute_Max);
-               LHS := Emit_Expr_For_Minmax (First (Expressions (N)), Is_Low);
-               RHS := Emit_Expr_For_Minmax (Last  (Expressions (N)), Is_Low);
-               return (if   Attr = Attribute_Min then Build_Min (LHS, RHS)
-                       else Build_Max (LHS, RHS));
-            end if;
-
-         when N_Op_Minus =>
-            LHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
-            return Neg (LHS);
-
-         when N_Op_Plus =>
-            return Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-
-         when N_Op_Add =>
-            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
-            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-            return Add (LHS, RHS);
-
-         when N_Op_Subtract =>
-            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
-            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
-            return Sub (LHS, RHS);
-
-         when N_Op_Multiply =>
-            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
-            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-            return Mul (LHS, RHS);
-
-         when N_Op_Divide =>
-            LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
-            RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-            return (if   Is_Unsigned_Type (LHS) then U_Div (LHS, RHS)
-                    else S_Div (LHS, RHS));
-
-         when N_Type_Conversion | N_Unchecked_Type_Conversion =>
-            LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
-            return Convert (LHS, Full_Etype (N));
-
-         when N_Function_Call =>
-
-            --  We assume here that what we have is a call to enumRP (disc)
-            --  and get the 'Pos of the first or last in the range.
-
-            declare
-               Params : constant List_Id   := Parameter_Associations (N);
-               Discr  : constant Entity_Id := Entity (First (Params));
-               TE     : constant Entity_Id := Full_Etype (Discr);
-               Bound  : constant Node_Id   :=
-                 Entity ((if   Is_Low then Type_Low_Bound (TE)
-                          else Type_High_Bound (TE)));
-
-            begin
-               return Const_Int (Full_Etype (N), Enumeration_Pos (Bound));
-            end;
-
-         when others =>
-            pragma Assert (False);
-            return Get_Undef (Full_Etype (N));
-      end case;
-
-   end Emit_Expr_For_Minmax;
-
-   ---------------------
-   -- Get_Array_Bound --
-   ---------------------
+     renames LLVM_Size.Emit_Expr_For_Minmax;
 
    function Get_Array_Bound
      (TE       : Entity_Id;
@@ -570,149 +854,26 @@ package body GNATLLVM.Arrays is
       V        : GL_Value;
       Max_Size : Boolean := False;
       For_Orig : Boolean := False) return GL_Value
-   is
-      Typ        : constant Entity_Id     := Type_For_Get_Bound (TE, V);
-      Info_Idx   : constant Array_Info_Id :=
-        (if For_Orig then Get_Orig_Array_Info (Typ) else Get_Array_Info (Typ));
-      Dim_Info   : constant Index_Bounds  := Array_Info.Table (Info_Idx + Dim);
-      Bound_Info : constant One_Bound     :=
-        (if Is_Low then Dim_Info.Low else Dim_Info.High);
-      Bound_Idx  : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
-      --  In the array fat pointer bounds structure, bounds are stored as a
-      --  sequence of (lower bound, upper bound) pairs.
-      Expr       : constant Node_Id       := Bound_Info.Value;
-      Result     : GL_Value;
-
-   begin
-      Push_Debug_Freeze_Pos;
-
-      --  There are three cases: a constant size, in which case we return
-      --  that size, a value, in which case we compute that value, which
-      --  may involve a discriminant, and an unconstrained array, in which
-      --  case we have a fat pointer and extract the bounds from it.
-
-      if Bound_Info.Cnst /= No_Uint then
-         Result := Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
-      elsif Present (Expr) then
-
-         --  If we're looking for the size of a type (meaning the max size)
-         --  and this expression involves a discriminant, we compute the
-         --  expression for its minimum or maximum value, depending on the
-         --  bound, and then minimize or maximize with the bounds of the
-         --  index type.
-
-         if Max_Size and then Contains_Discriminant (Expr) then
-            declare
-               Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
-               Bound_Limit : constant Node_Id   :=
-                 (if   Is_Low then Type_Low_Bound (Bound_Type)
-                  else Type_High_Bound (Bound_Type));
-               Bound_Val   : constant GL_Value  :=
-                   Convert (Emit_Expr_For_Minmax (Bound_Limit, Is_Low),
-                            Dim_Info.Bound_Type);
-
-            begin
-               Result := Convert (Emit_Expr_For_Minmax (Expr, Is_Low),
-                                  Dim_Info.Bound_Type);
-               Result := (if   Is_Low then Build_Max (Bound_Val, Result)
-                          else Build_Min (Bound_Val, Result));
-            end;
-         else
-            Result := Emit_Convert_Value (Expr, Dim_Info.Bound_Type);
-         end if;
-
-      --  See if we're asking for the maximum size of an uncontrained
-      --  array.  If so, return the appropriate bound.
-
-      elsif Max_Size and then Is_Unconstrained_Array (TE) then
-         declare
-            Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
-            Bound_Limit : constant Node_Id   :=
-              (if Is_Low then Type_Low_Bound (Bound_Type)
-               else Type_High_Bound (Bound_Type));
-
-         begin
-            Result := Emit_Convert_Value (Bound_Limit, Dim_Info.Bound_Type);
-         end;
-
-      else
-         --  We now should have the unconstrained case.  Make sure we do.
-         pragma Assert (Is_Unconstrained_Array (TE)
-                          and then Relationship (V) /= Reference);
-
-         Result := Extract_Value
-           (Dim_Info.Bound_Type, Get (V, Bounds), (1 => unsigned (Bound_Idx)),
-            (if Is_Low then "low-bound" else "high-bound"));
-
-      end if;
-
-      Pop_Debug_Freeze_Pos;
-      return Result;
-   end Get_Array_Bound;
-
-   ----------------------
-   -- Get_Array_Length --
-   ----------------------
+     renames LLVM_Size.Get_Array_Bound;
 
    function Get_Array_Length
      (TE       : Entity_Id;
       Dim      : Nat;
       V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
-   is
-      Low_Bound  : constant GL_Value :=
-        Get_Array_Bound (TE, Dim, True, V, Max_Size);
-      High_Bound : constant GL_Value :=
-        Get_Array_Bound (TE, Dim, False, V, Max_Size);
-
-   begin
-      --  The length of an array that has the maximum range of its type is
-      --  not representable in that type (it's one too high).  Rather than
-      --  trying to find some suitable type, we use Size_Type, which will
-      --  also make thing simpler for some of our callers.
-
-      return Bounds_To_Length (Low_Bound, High_Bound, Size_Type);
-   end Get_Array_Length;
-
-   ------------------------
-   -- Get_Array_Elements --
-   ------------------------
+     renames LLVM_Size.Get_Array_Length;
 
    function Get_Array_Elements
      (V        : GL_Value;
       TE       : Entity_Id;
-      Max_Size : Boolean := False) return GL_Value is
-   begin
-      return Size : GL_Value := Size_Const_Int (Uint_1) do
-
-        --  Go through every array dimension.  Get its size and
-        --  multiply all of them together.
-
-         for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
-            Size := Mul (Size, Get_Array_Length (TE, Dim, V, Max_Size));
-         end loop;
-      end return;
-   end Get_Array_Elements;
-
-   -------------------------
-   -- Get_Array_Type_Size --
-   -------------------------
+      Max_Size : Boolean := False) return GL_Value
+     renames LLVM_Size.Get_Array_Elements;
 
    function Get_Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
-   is
-      Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
-      Comp_Size     : constant GL_Value  :=
-        Get_Type_Size (Comp_Type, Max_Size => True);
-      Num_Elements  : constant GL_Value  :=
-        Get_Array_Elements (V, TE, Max_Size);
-
-   begin
-      return Mul
-        (To_Size_Type (Comp_Size), To_Size_Type (Num_Elements), "size");
-   end Get_Array_Type_Size;
+     renames LLVM_Size.Get_Array_Type_Size;
 
    -------------------------------
    -- Get_Array_Size_Complexity --

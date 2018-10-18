@@ -875,6 +875,38 @@ package body GNATLLVM.Arrays is
       Max_Size : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Array_Type_Size;
 
+   --  Here we instantiate the size routines with functions that compute
+   --  whether a size is dynamic or not and make those visible to clients.
+
+   package IDS_Size is
+      new Size (Result           => IDS,
+                Empty_Result     => No_IDS,
+                Sz_Const         => IDS_Const,
+                Sz_Const_Int     => IDS_Const_Int,
+                Sz_Type_Size     => IDS_Type_Size,
+                Sz_I_Cmp         => IDS_I_Cmp,
+                Sz_Add           => IDS_Add,
+                Sz_Sub           => IDS_Sub,
+                Sz_Mul           => IDS_Mul,
+                Sz_U_Div         => IDS_Div,
+                Sz_S_Div         => IDS_Div,
+                Sz_Neg           => IDS_Neg,
+                Sz_Select        => IDS_Select,
+                Sz_Min           => IDS_Min,
+                Sz_Max           => IDS_Max,
+                Sz_Extract_Value => IDS_Extract_Value,
+                Sz_Convert       => IDS_Convert,
+                Sz_Emit_Expr     => IDS_Emit_Expr,
+                Sz_Emit_Convert  => IDS_Emit_Convert,
+                Sz_Undef         => IDS_Undef);
+
+   function IDS_Array_Length
+     (TE       : Entity_Id;
+      Dim      : Nat;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return IDS
+     renames IDS_Size.Get_Array_Length;
+
    -------------------------------
    -- Get_Array_Size_Complexity --
    -------------------------------

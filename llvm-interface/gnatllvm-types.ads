@@ -463,7 +463,7 @@ package GNATLLVM.Types is
    type IDS is record
       Is_None     : Boolean;
       Is_Constant : Boolean;
-      Value       : ULL;
+      Value       : LLI;
    end record;
 
    No_IDS : constant IDS := (True, False, 0);
@@ -476,11 +476,11 @@ package GNATLLVM.Types is
    function IDS_Is_Const  (V : IDS) return Boolean is (V.Is_Constant);
 
    function IDS_Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
-     ((False, True, C))
+     ((False, True, LLI (C)))
      with Post => IDS_Is_Const (IDS_Const'Result);
 
    function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS is
-     ((False, True, ULL (UI_To_Int (C))))
+     ((False, True, LLI (UI_To_Int (C))))
      with Pre  => C /= No_Uint and then UI_Is_In_Int_Range (C),
           Post => IDS_Is_Const (IDS_Const_Int'Result);
 
@@ -493,7 +493,9 @@ package GNATLLVM.Types is
    function IDS_I_Cmp
      (Op : Int_Predicate_T; LHS, RHS : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (LHS) and then IDS_Is_Const (RHS)
-      then (False, True, (if LHS.Value = RHS.Value then 1 else 0))
+      then (False, True,
+            Get_Const_Int_Value (I_Cmp (Op, Size_Const_Int (ULL (LHS.Value)),
+                                        Size_Const_Int (ULL (RHS.Value)))))
       else (False, False, 0))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (IDS_I_Cmp'Result);
@@ -524,20 +526,20 @@ package GNATLLVM.Types is
 
    function IDS_Min (V1, V2 : IDS) return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, ULL'Min (V1.Value, V2.Value)) else (False, False, 0))
+      then (False, True, LLI'Min (V1.Value, V2.Value)) else (False, False, 0))
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Min'Result);
 
    function IDS_Max (V1, V2 : IDS) return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, ULL'Max (V1.Value, V2.Value)) else (False, False, 0))
+      then (False, True, LLI'Max (V1.Value, V2.Value)) else (False, False, 0))
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Max'Result);
 
    function IDS_And (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
         then (False, True,
-              ULL (Logical (V1.Value) and Logical (V2.Value)))
+              LLI (Logical (V1.Value) and Logical (V2.Value)))
         else (False, False, 0))
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_And'Result);
@@ -556,7 +558,7 @@ package GNATLLVM.Types is
                  and then Present (V_Else);
 
    function IDS_Const_Val (V : IDS) return ULL is
-     (V.Value)
+     (ULL (V.Value))
      with Pre => IDS_Is_Const (V);
 
    procedure IDS_Add_To_List (V : IDS)

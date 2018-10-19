@@ -123,7 +123,7 @@ package body GNATLLVM.Types is
    --  type that was used to allocate the memory.
 
    function IDS_From_Const (V : GL_Value) return IDS is
-     (if   Is_A_Const_Int (V) then (False, True, Get_Const_Int_Value_ULL (V))
+     (if   Is_A_Const_Int (V) then (False, True, Get_Const_Int_Value (V))
       else (False, False, 0))
      with Pre => Is_Constant (V), Post => Present (IDS_From_Const'Result);
    --  V is a constant.  If it's a constant integer, return that value.

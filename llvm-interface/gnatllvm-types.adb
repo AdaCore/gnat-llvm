@@ -1669,8 +1669,7 @@ package body GNATLLVM.Types is
    function Get_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value := No_GL_Value;
-      Max_Size : Boolean  := False) return GL_Value
-   is
+      Max_Size : Boolean  := False) return GL_Value is
    begin
       --  If a value was specified and it's data, then it must be of a
       --  fixed size.  That's the size we're looking for.
@@ -1800,15 +1799,21 @@ package body GNATLLVM.Types is
 
    function IDS_Type_Size
      (TE       : Entity_Id;
-      V        : IDS := No_IDS;
-      Max_Size : Boolean := False) return IDS
-   is
-      pragma Unreferenced (V);
-      pragma Unreferenced (Max_Size); --  ??? for now
-
+      V        : GL_Value := No_GL_Value;
+      Max_Size : Boolean := False) return IDS is
    begin
-      return (if   Is_Dynamic_Size (TE) then (False, False, 0)
-              else IDS_From_Const (Get_Type_Size (TE)));
+      --  If a value was specified and it's data, then it must be of a
+      --  fixed size.  That's the size we're looking for.
+
+      if Present (V) and then Relationship (V) = Data then
+         return IDS_From_Const (Get_Type_Size (Type_Of (V)));
+      elsif Is_Record_Type (TE) then
+         return IDS_Record_Type_Size (TE, V, Max_Size);
+      elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
+         return IDS_Array_Type_Size (TE, V, Max_Size);
+      else
+         return IDS_From_Const (Get_Type_Size (Create_Type (TE)));
+      end if;
    end IDS_Type_Size;
 
    -------------------
@@ -1822,15 +1827,5 @@ package body GNATLLVM.Types is
               then IDS_From_Const (Emit_Expression (V))
               else (False, False, 0));
    end IDS_Emit_Expr;
-
-   ---------------------
-   -- IDS_Add_To_List --
-   ---------------------
-
-   procedure IDS_Add_To_List (V : IDS) is
-      pragma Unreferenced (V);
-   begin
-      null;
-   end IDS_Add_To_List;
 
 end GNATLLVM.Types;

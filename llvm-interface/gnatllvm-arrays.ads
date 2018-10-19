@@ -104,15 +104,6 @@ package GNATLLVM.Arrays is
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
 
-   function IDS_Array_Length
-     (TE      : Entity_Id;
-      Dim     : Nat;
-      V       : GL_Value;
-      Max_Size : Boolean := False) return IDS
-     with Pre => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
-                 and then (Present (V) or else Is_Constrained (TE)
-                             or else Max_Size);
-
    function Get_Array_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat
      with Pre => Is_Array_Type (TE);
@@ -172,6 +163,13 @@ package GNATLLVM.Arrays is
       Max_Size : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE),
           Post => Present (Get_Array_Type_Size'Result);
+
+   function IDS_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return IDS
+     with Pre  => Is_Array_Type (TE),
+          Post => Present (IDS_Array_Type_Size'Result);
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)
      with Pre => Present (LValue)

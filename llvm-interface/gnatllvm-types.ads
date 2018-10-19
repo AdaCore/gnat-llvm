@@ -486,7 +486,7 @@ package GNATLLVM.Types is
 
    function IDS_Type_Size
      (TE       : Entity_Id;
-      V        : IDS := No_IDS;
+      V        : GL_Value := No_GL_Value;
       Max_Size : Boolean := False) return IDS
      with Pre => Is_Type (TE), Post => Present (IDS_Type_Size'Result);
 
@@ -560,9 +560,6 @@ package GNATLLVM.Types is
    function IDS_Const_Val (V : IDS) return ULL is
      (ULL (V.Value))
      with Pre => IDS_Is_Const (V);
-
-   procedure IDS_Add_To_List (V : IDS)
-     with Pre => Present (V);
 
    function IDS_Extract_Value
      (TE      : Entity_Id;

@@ -59,7 +59,7 @@ package GNATLLVM.Records is
 
    function IDS_Record_Type_Size
      (TE       : Entity_Id;
-      V        : IDS;
+      V        : GL_Value;
       Max_Size : Boolean := False) return IDS
      with Pre  => Is_Record_Type (TE),
           Post => Present (IDS_Record_Type_Size'Result);

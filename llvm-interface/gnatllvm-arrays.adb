@@ -138,7 +138,7 @@ package body GNATLLVM.Arrays is
       with function Sz_Const_Int (TE : Entity_Id; C : Uint) return Result;
       with function Sz_Type_Size
         (TE       : Entity_Id;
-         V        : Result := Empty_Result;
+         V        : GL_Value := No_GL_Value;
          Max_Size : Boolean := False) return Result;
       with function  Sz_I_Cmp
         (Op : Int_Predicate_T;
@@ -900,12 +900,11 @@ package body GNATLLVM.Arrays is
                 Sz_Emit_Convert  => IDS_Emit_Convert,
                 Sz_Undef         => IDS_Undef);
 
-   function IDS_Array_Length
+   function IDS_Array_Type_Size
      (TE       : Entity_Id;
-      Dim      : Nat;
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
-     renames IDS_Size.Get_Array_Length;
+     renames IDS_Size.Get_Array_Type_Size;
 
    -------------------------------
    -- Get_Array_Size_Complexity --

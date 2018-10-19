@@ -172,13 +172,14 @@ package body GNATLLVM.Records is
 
    procedure IDS_RI_Info_For_Variant
      (RI          : Record_Info;
-      V           : IDS;
+      V           : GL_Value;
       Max_Size    : Boolean;
       Size        : out IDS;
       Must_Align  : out IDS;
       Is_Align    : out IDS;
       Return_Size : Boolean := True)
-     with Pre => Present (V);
+     with Pre  => RI.Variants /= null,
+          Post => not Return_Size or else Present (Size);
    --  Version of above for Is_Dynamic_Size
 
    --  We put the routines used to compute sizes into a generic so that we
@@ -194,11 +195,11 @@ package body GNATLLVM.Records is
         (C : ULL; Sign_Extend : Boolean := False) return Result;
       with function Sz_Type_Size
         (TE       : Entity_Id;
-         V        : Result := Empty_Result;
+         V        : GL_Value := No_GL_Value;
          Max_Size : Boolean := False) return Result;
       with procedure Sz_RI_Info_For_Variant
         (RI          : Record_Info;
-         V           : Result;
+         V           : GL_Value;
          Max_Size    : Boolean;
          Size        : out Result;
          Must_Align  : out Result;
@@ -222,15 +223,14 @@ package body GNATLLVM.Records is
       with function  Sz_Max (V1, V2 : Result) return Result;
       with function  Sz_Is_Const (V : Result) return Boolean;
       with function  Sz_Const_Val (V : Result) return ULL;
-      with procedure Sz_Add_To_List (V : Result);
    package Size is
 
-      function No      (V : Result) return Boolean is (V = Empty_Result);
+      function No      (V : Result) return Boolean is (V =  Empty_Result);
       function Present (V : Result) return Boolean is (V /= Empty_Result);
 
       procedure Get_RI_Info
         (RI          : Record_Info;
-         V           : Result;
+         V           : GL_Value;
          Max_Size    : Boolean;
          Size        : out Result;
          Must_Align  : out Result;
@@ -248,7 +248,7 @@ package body GNATLLVM.Records is
         (S_Idx      : Record_Info_Id;
          Must_Align : out Result;
          Is_Align   : out Result;
-         V          : Result;
+         V          : GL_Value;
          Max_Size   : Boolean)
         with Post => Present (Must_Align) and then Present (Is_Align);
       --  Compute the amount to which a variant must be align and the amount
@@ -256,7 +256,7 @@ package body GNATLLVM.Records is
 
       function Get_Variant_For_RI
         (In_RI    : Record_Info;
-         V        : Result;
+         V        : GL_Value;
          Max_Size : Boolean;
          Need_Idx : Record_Info_Id) return Record_Info_Id
         with Pre => Present (Need_Idx);
@@ -279,7 +279,7 @@ package body GNATLLVM.Records is
 
       function Get_Record_Size_So_Far
         (TE        : Entity_Id;
-         V         : Result;
+         V         : GL_Value;
          Start_Idx : Record_Info_Id;
          Idx       : Record_Info_Id;
          Max_Size  : Boolean := False) return Result
@@ -291,13 +291,13 @@ package body GNATLLVM.Records is
 
       function Get_Record_Type_Size
         (TE       : Entity_Id;
-         V        : Result;
+         V        : GL_Value;
          Max_Size : Boolean := False) return Result
         with Pre  => Is_Record_Type (TE),
             Post => Present (Get_Record_Type_Size'Result);
       --  Like Get_Type_Size, but only for record types
 
-      function Emit_Field_Position (E : Entity_Id; V : Result) return Result
+      function Emit_Field_Position (E : Entity_Id; V : GL_Value) return Result
         with Pre  => Ekind_In (E, E_Discriminant, E_Component);
       --  Compute and return the position in bytes of the field specified by E
       --  from the start of its type as a value of Size_Type.  If Present, V
@@ -1097,7 +1097,7 @@ package body GNATLLVM.Records is
 
       procedure Get_RI_Info
         (RI          : Record_Info;
-         V           : Result;
+         V           : GL_Value;
          Max_Size    : Boolean;
          Size        : out Result;
          Must_Align  : out Result;
@@ -1207,7 +1207,7 @@ package body GNATLLVM.Records is
         (S_Idx      : Record_Info_Id;
          Must_Align : out Result;
          Is_Align   : out Result;
-         V          : Result;
+         V          : GL_Value;
          Max_Size   : Boolean)
       is
          Junk1 : Result := Empty_Result;
@@ -1235,7 +1235,7 @@ package body GNATLLVM.Records is
 
       function Get_Variant_For_RI
         (In_RI    : Record_Info;
-         V        : Result;
+         V        : GL_Value;
          Max_Size : Boolean;
          Need_Idx : Record_Info_Id) return Record_Info_Id
       is
@@ -1304,12 +1304,12 @@ package body GNATLLVM.Records is
          for J in RI.Variants'Range loop
             if Present (RI.Variants (J)) then
                Get_Variant_Aligns (RI.Variants (J), Our_Must_Align,
-                                   Our_Is_Align, Empty_Result, True);
+                                   Our_Is_Align, No_GL_Value, True);
                Max_Must_Align := Sz_Max (Our_Must_Align, Max_Must_Align);
                Min_Is_Align   := Sz_Min (Our_Is_Align, Min_Is_Align);
 
                if Return_Size then
-                  Our_Size := Get_Record_Size_So_Far (Empty, Empty_Result,
+                  Our_Size := Get_Record_Size_So_Far (Empty, No_GL_Value,
                                                       RI.Variants (J),
                                                       Empty_Record_Info_Id,
                                                       True);
@@ -1346,7 +1346,7 @@ package body GNATLLVM.Records is
 
       function Get_Record_Size_So_Far
         (TE        : Entity_Id;
-         V         : Result;
+         V         : GL_Value;
          Start_Idx : Record_Info_Id;
          Idx       : Record_Info_Id;
          Max_Size  : Boolean := False) return Result
@@ -1372,7 +1372,7 @@ package body GNATLLVM.Records is
          --  computations below.
 
          if Present (V) then
-            Sz_Add_To_List (V);
+            Add_To_LValue_List (V);
          end if;
 
          --  If this is a subtype, push it onto the stack we use to search for
@@ -1445,7 +1445,7 @@ package body GNATLLVM.Records is
          --  alignment for the type.
 
          if Present (Idx) then
-            Get_RI_Info (Record_Info_Table.Table (Idx), Empty_Result, False,
+            Get_RI_Info (Record_Info_Table.Table (Idx), No_GL_Value, False,
                          This_Size, Must_Align, This_Align,
                          Return_Size => False);
          elsif Present (TE) then
@@ -1466,7 +1466,7 @@ package body GNATLLVM.Records is
 
       function Get_Record_Type_Size
         (TE       : Entity_Id;
-         V        : Result;
+         V        : GL_Value;
          Max_Size : Boolean := False) return Result is
 
       begin
@@ -1480,7 +1480,7 @@ package body GNATLLVM.Records is
       -------------------------
 
       function Emit_Field_Position
-        (E : Entity_Id; V : Result) return Result
+        (E : Entity_Id; V : GL_Value) return Result
       is
          TE     : constant Entity_Id      := Full_Scope (E);
          R_Idx  : constant Record_Info_Id := Get_Record_Info (TE);
@@ -1549,7 +1549,6 @@ package body GNATLLVM.Records is
    package LLVM_Size is
       new Size (Result                 => GL_Value,
                 Empty_Result           => No_GL_Value,
-                Sz_Add_To_List         => Add_To_LValue_List,
                 Sz_Const               => Size_Const_Int,
                 Sz_Add                 => Add,
                 Sz_Sub                 => Sub,
@@ -1597,7 +1596,6 @@ package body GNATLLVM.Records is
    package IDS_Size is
       new Size (Result                 => IDS,
                 Empty_Result           => No_IDS,
-                Sz_Add_To_List         => IDS_Add_To_List,
                 Sz_Const               => IDS_Const,
                 Sz_Add                 => IDS_Add,
                 Sz_Sub                 => IDS_Sub,
@@ -1616,18 +1614,18 @@ package body GNATLLVM.Records is
      (S_Idx      : Record_Info_Id;
       Must_Align : out IDS;
       Is_Align   : out IDS;
-      V          : IDS;
+      V          : GL_Value;
       Max_Size   : Boolean) renames IDS_Size.Get_Variant_Aligns;
 
    function IDS_Record_Type_Size
      (TE       : Entity_Id;
-      V        : IDS;
+      V        : GL_Value;
       Max_Size : Boolean := False) return IDS
      renames IDS_Size.Get_Record_Type_Size;
 
    function IDS_Record_Size_So_Far
      (TE        : Entity_Id;
-      V         : IDS;
+      V         : GL_Value;
       Start_Idx : Record_Info_Id;
       Idx       : Record_Info_Id;
       Max_Size  : Boolean := False) return IDS
@@ -1725,7 +1723,7 @@ package body GNATLLVM.Records is
 
    procedure IDS_RI_Info_For_Variant
      (RI          : Record_Info;
-      V           : IDS;
+      V           : GL_Value;
       Max_Size    : Boolean;
       Size        : out IDS;
       Must_Align  : out IDS;

@@ -372,12 +372,13 @@ package body GNATLLVM.Codegen is
          return True;
       end if;
 
-      --  For now we allow the -f/-m/-W/-w and -pipe switches, even though
-      --  most they will have no effect, though some are handled in
+      --  For now we allow the -f/-m/-W/-w, -nostdlib and -pipe switches,
+      --  even though they will have no effect, though some are handled in
       --  Scan_Command_Line above.  This permits compatibility with
       --  existing scripts.
 
       return Switch (First + 1) in 'f' | 'm' | 'W' | 'w'
+        or else Switch (First .. Last) = "-nostdlib"
         or else Switch (First .. Last) = "-pipe";
    end Is_Back_End_Switch;
 

@@ -45,7 +45,7 @@ package body GNATLLVM.GLValue is
    --  from one type to another.
 
    function Object_Can_Be_Data (V : GL_Value_Base) return Boolean is
-     (not Is_Dynamic_Size (V.Typ)
+     (not Is_Nonnative_Type (V.Typ)
         and then (Is_Loadable_Type (V.Typ)
                     or else (Is_Data (V.Relationship)
                                and then (Is_Constant (V.Value)
@@ -100,18 +100,22 @@ package body GNATLLVM.GLValue is
             --  size type, though.
 
             return Is_Type (TE) and then Ekind (TE) /= E_Subprogram_Type
-              and then not Is_Dynamic_Size (TE);
+              and then not Is_Nonnative_Type (TE);
 
          when Boolean_Data =>
             return TE = Standard_Boolean;
 
-         when Reference =>
+         when Component =>
+            return Is_Null (Val);
+
+         when Reference | Reference_To_Component =>
             --  ??? This should really only be non-array
             return Is_Type (TE)
               and then (Kind = Pointer_Type_Kind
                           or else Ekind (TE) = E_Subprogram_Type);
 
-         when Reference_To_Reference | Reference_To_Thin_Pointer =>
+         when Reference_To_Reference | Reference_To_Thin_Pointer
+            | Reference_To_Ref_To_Component =>
             return Is_Type (TE)
               and then Kind = Pointer_Type_Kind;
 
@@ -208,6 +212,13 @@ package body GNATLLVM.GLValue is
    function Is_Dynamic_Size (V : GL_Value) return Boolean is
      (Is_Data (V) and then Is_Dynamic_Size (Full_Etype (V)));
 
+   -----------------------
+   -- Is_Nonnative_Type --
+   -----------------------
+
+   function Is_Nonnative_Type (V : GL_Value) return Boolean is
+     (Is_Data (V) and then Is_Nonnative_Type (Full_Etype (V)));
+
    ----------------------
    -- Is_Loadable_Type --
    ----------------------
@@ -248,7 +259,7 @@ package body GNATLLVM.GLValue is
       --  convention, in which case it's a trampoline.
 
       elsif Ekind (TE) = E_Subprogram_Type then
-         return (if Has_Foreign_Convention (TE) then Trampoline
+         return (if   Has_Foreign_Convention (TE) then Trampoline
                  else Fat_Reference_To_Subprogram);
 
       --  Otherwise,  it's just a Reference
@@ -298,7 +309,7 @@ package body GNATLLVM.GLValue is
       R : constant GL_Relationship := Relationship_For_Ref (TE);
 
    begin
-      --  The only difference here is when we need to allocate both bounds
+      --  One difference here is when we need to allocate both bounds
       --  and data.  We do this for string literals because they are most
       --  commonly used in situations where they're passed as parameters
       --  where the formal is a String.
@@ -307,6 +318,16 @@ package body GNATLLVM.GLValue is
         or else Ekind (TE) = E_String_Literal_Subtype
       then
          return Reference_To_Bounds_And_Data;
+
+      --  The other differences is when the type is an unconstrained record
+      --  with a fixed maximum size or when the type's size is not dynamic
+      --  but isn't representable as a native LLVM type.
+
+      elsif (Is_Unconstrained_Record (TE)
+               and then not Is_Dynamic_Size (TE, Max_Size => True))
+        or else (not Is_Dynamic_Size (TE) and then Is_Nonnative_Type (TE))
+      then
+         return Reference_To_Component;
       else
          return R;
       end if;
@@ -325,6 +346,15 @@ package body GNATLLVM.GLValue is
       --  function knows when we actually need to elaborate the designated
       --  type, only call those functions when we know we need to.
 
+      --  If this is a reference to some other relationship, get the type for
+      --  that relationship and make a pointer to it.
+
+      if Deref (R) /= Invalid then
+         return Pointer_Type (Type_For_Relationship (TE, Deref (R)), 0);
+      end if;
+
+      --  Handle all other relationships here
+
       case R is
          when Data =>
             return Create_Type (TE);
@@ -332,15 +362,18 @@ package body GNATLLVM.GLValue is
          when Boolean_Data =>
             return Int_Ty (1);
 
+         when Component =>
+            return Create_Type_For_Component (TE);
+
          when Object =>
             return (if   Is_Loadable_Type (TE) then Create_Type (TE)
                     else Pointer_Type (Create_Type (TE), 0));
 
-         when Reference | Thin_Pointer | Any_Reference =>
+         when Thin_Pointer | Any_Reference =>
             return Pointer_Type (Create_Type (TE), 0);
 
-         when Reference_To_Reference | Reference_To_Thin_Pointer =>
-            return Pointer_Type (Pointer_Type (Create_Type (TE), 0), 0);
+         when Activation_Record =>
+            return Int_Ty (8);
 
          when Fat_Pointer =>
             return Create_Array_Fat_Pointer_Type (TE);
@@ -352,16 +385,7 @@ package body GNATLLVM.GLValue is
             return Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
                                        2 => Create_Type (TE)));
 
-         when Reference_To_Bounds =>
-            return Pointer_Type (Create_Array_Bounds_Type (TE), 0);
-
-         when Reference_To_Bounds_And_Data =>
-            return Pointer_Type
-              (Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
-                                   2 => Create_Type (TE))),
-               0);
-
-         when Reference_To_Activation_Record | Trampoline =>
+         when Trampoline =>
             return Void_Ptr_Type;
 
          when Fat_Reference_To_Subprogram =>
@@ -445,6 +469,19 @@ package body GNATLLVM.GLValue is
 
       elsif Equiv_Relationship (Deref (Deref (Our_R)), R) then
          return Load (Load (V));
+
+      --  If this is a double reference and we need something that's a
+      --  single reference (the above only checks that a need only do the
+      --  dereference), do a dereference and then get what we need.
+
+      elsif Is_Double_Reference (Our_R) and then Is_Single_Reference (R) then
+         return Get (Get (V, Deref (Our_R)), R);
+
+      --  If converting one double reference to another, just convert the
+      --  pointer.
+
+      elsif Is_Double_Reference (Our_R) and then Is_Double_Reference (R) then
+         return Ptr_To_Relationship (V, TE, R);
 
       --  If we just need to make this into a reference, we can store it
       --  into memory since we only have those relationships if this is a
@@ -535,6 +572,13 @@ package body GNATLLVM.GLValue is
                   V, 1);
             end if;
 
+         when Reference_To_Component =>
+            if Our_R /= Reference then
+               return Get (Get (V, Reference), R);
+            else
+               return Ptr_To_Relationship (V, TE, R);
+            end if;
+
          when Reference_To_Bounds =>
 
             --  If we have a fat pointer, part of it is a pointer to the
@@ -613,6 +657,11 @@ package body GNATLLVM.GLValue is
                return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 1));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
+
+            --  For a reference to a component, just use pointer punning
+
+            elsif Our_R = Reference_To_Component then
+               return Ptr_To_Relationship (V, TE, R);
             end if;
 
          when Thin_Pointer =>
@@ -691,12 +740,18 @@ package body GNATLLVM.GLValue is
 
          when Any_Reference =>
 
-            --  The only case where we have some GL_Value that's not already
-            --  handled by one of the cases above the "case" statement is if
-            --  it's a Reference_To_Bounds_And_Data, in which case the most
-            --  general thing to convert it to is a thin pointer.
+            --  Two cases where we have some GL_Value that's not already
+            --  handled by one of the cases above the "case" statement is
+            --  if it's a Reference_To_Bounds_And_Data, in which case the
+            --  most general thing to convert it to is a thin pointer,
+            --  or if it's a Reference_To_Component, in which case we
+            --  should make it a Reference.
 
-            return Get (V, Thin_Pointer);
+            if Our_R = Reference_To_Bounds_And_Data then
+               return Get (V, Thin_Pointer);
+            elsif Our_R = Reference_To_Component then
+               return Get (V, Reference);
+            end if;
 
          when others =>
             null;
@@ -735,7 +790,7 @@ package body GNATLLVM.GLValue is
       Name     : String := "") return GL_Value
    is
       Inst : constant Value_T :=
-        Array_Alloca (IR_Builder, Create_Type (TE),
+        Array_Alloca (IR_Builder, Create_Type_For_Component (TE),
                       LLVM_Value (Num_Elts), Name);
    begin
       Set_Alignment (Inst, unsigned (ULL'(Get_Type_Alignment (TE))));
@@ -771,7 +826,7 @@ package body GNATLLVM.GLValue is
    function Const_Null_Alloc (TE : Entity_Id) return GL_Value is
      (G (Const_Null (Type_For_Relationship
                        (TE, Deref (Relationship_For_Alloc (TE)))),
-         TE));
+         TE, Deref (Relationship_For_Alloc (TE))));
 
    --------------------
    -- Const_Null_Ref --
@@ -1196,7 +1251,8 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G_Ref (Result, Result_Type, Is_Pristine => Is_Pristine (Ptr));
+      return G (Result, Result_Type, Reference_To_Component,
+                Is_Pristine => Is_Pristine (Ptr));
    end GEP;
 
    -------------
@@ -1219,7 +1275,8 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G_Ref (Result, Result_Type, Is_Pristine => Is_Pristine (Ptr));
+      return G (Result, Result_Type, Reference_To_Component,
+                Is_Pristine => Is_Pristine (Ptr));
    end GEP_Idx;
 
    -------------------------
@@ -1520,8 +1577,8 @@ package body GNATLLVM.GLValue is
                    then Thin_Pointer else R);
       end if;
 
-      return G (Add_Global (Module,
-                            Type_For_Relationship (TE, Deref (R)), Name),
+      return G (Add_Global (Module, Type_For_Relationship (TE, Deref (R)),
+                            Name),
                 TE, R);
    end Add_Global;
 

@@ -47,8 +47,8 @@ package body GNATLLVM.Environment is
      (LI.Field_Info);
    function Raw_Get_Label (LI : Access_LLVM_Info) return Label_Info_Id is
      (LI.Label_Info);
-   function Raw_Get_Dyn    (LI : Access_LLVM_Info) return Boolean is
-     (LI.Is_Dynamic_Size);
+   function Raw_Get_NN     (LI : Access_LLVM_Info) return Boolean is
+     (LI.Is_Nonnative_Type);
    function Raw_Get_TBAA   (LI : Access_LLVM_Info) return Metadata_T is
      (LI.TBAA);
    function Raw_Get_Array  (LI : Access_LLVM_Info) return Array_Info_Id is
@@ -66,7 +66,7 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_Dummy  (LI : Access_LLVM_Info; Val : Boolean);
    procedure Raw_Set_Field  (LI : Access_LLVM_Info; Val : Field_Info_Id);
    procedure Raw_Set_Label  (LI : Access_LLVM_Info; Val : Label_Info_Id);
-   procedure Raw_Set_Dyn    (LI : Access_LLVM_Info; Val : Boolean);
+   procedure Raw_Set_NN     (LI : Access_LLVM_Info; Val : Boolean);
    procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T);
    procedure Raw_Set_Array  (LI : Access_LLVM_Info; Val : Array_Info_Id);
    procedure Raw_Set_O_A    (LI : Access_LLVM_Info; Val : Array_Info_Id);
@@ -78,7 +78,7 @@ package body GNATLLVM.Environment is
    pragma Inline (Raw_Set_Dummy);
    pragma Inline (Raw_Set_Field);
    pragma Inline (Raw_Set_Label);
-   pragma Inline (Raw_Set_Dyn);
+   pragma Inline (Raw_Set_NN);
    pragma Inline (Raw_Set_TBAA);
    pragma Inline (Raw_Set_Array);
    pragma Inline (Raw_Set_O_A);
@@ -102,8 +102,8 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_Label  (LI : Access_LLVM_Info; Val : Label_Info_Id) is
    begin LI.Label_Info := Val; end Raw_Set_Label;
 
-   procedure Raw_Set_Dyn    (LI : Access_LLVM_Info; Val : Boolean) is
-   begin LI.Is_Dynamic_Size := Val; end Raw_Set_Dyn;
+   procedure Raw_Set_NN     (LI : Access_LLVM_Info; Val : Boolean) is
+   begin LI.Is_Nonnative_Type := Val; end Raw_Set_NN;
 
    procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T) is
    begin LI.TBAA := Val; end Raw_Set_TBAA;
@@ -142,7 +142,7 @@ package body GNATLLVM.Environment is
          LLVM_Info_Table.Append ((Value               => No_GL_Value,
                                   Typ                 => No_Type_T,
                                   TBAA                => No_Metadata_T,
-                                  Is_Dynamic_Size     => False,
+                                  Is_Nonnative_Type   => False,
                                   Is_Being_Elaborated => False,
                                   Is_Dummy_Type       => False,
                                   Record_Info         => Empty_Record_Info_Id,
@@ -252,7 +252,7 @@ package body GNATLLVM.Environment is
    package Env_Label  is new Pkg_None (Label_Info_Id, Empty_Label_Info_Id,
                                        Raw_Get_Label, Raw_Set_Label);
 
-   package Env_Dyn    is new Pkg_Elab (Boolean, Raw_Get_Dyn, Raw_Set_Dyn);
+   package Env_NN     is new Pkg_Elab (Boolean, Raw_Get_NN, Raw_Set_NN);
    package Env_TBAA   is new Pkg_Elab (Metadata_T, Raw_Get_TBAA, Raw_Set_TBAA);
    package Env_Array  is new Pkg_Elab (Array_Info_Id,
                                        Raw_Get_Array, Raw_Set_Array);
@@ -293,10 +293,10 @@ package body GNATLLVM.Environment is
    procedure Set_Label_Info          (VE : Entity_Id; LI : Label_Info_Id)
      renames Env_Label.Set;
 
-   function  Is_Dynamic_Size         (TE : Entity_Id) return Boolean
-     renames Env_Dyn.Get;
-   procedure Set_Is_Dynamic_Size     (TE : Entity_Id; B : Boolean := True)
-     renames Env_Dyn.Set;
+   function  Is_Nonnative_Type       (TE : Entity_Id) return Boolean
+     renames Env_NN.Get;
+   procedure Set_Is_Nonnative_Type   (TE : Entity_Id; B : Boolean := True)
+     renames Env_NN.Set;
 
    function  Get_TBAA                (TE : Entity_Id) return Metadata_T
      renames Env_TBAA.Get;

@@ -809,7 +809,7 @@ package body GNATLLVM.Records is
 
             Variant := First_Non_Pragma (Variants (Var_Part));
             Flush_Current_Types;
-            Set_Is_Dynamic_Size (TE);
+            Set_Is_Nonnative_Type (TE);
             Saved_Cur_Idx   := Cur_Idx;
             Saved_Prev_Idx  := Prev_Idx;
             Saved_First_Idx := First_Idx;
@@ -1017,11 +1017,11 @@ package body GNATLLVM.Records is
          --  record info entry we're making, if there's anything in it
          --  and make a piece for this field.
 
-         elsif Is_Dynamic_Size (Typ) then
+         elsif Is_Dynamic_Size (Typ, Max_Size => not Is_Constrained (Typ)) then
             Flush_Current_Types;
             Add_FI (E, Cur_Idx, 0, False, Typ);
             Add_RI (Typ => Typ, Use_Max_Size => not Is_Constrained (Typ));
-            Set_Is_Dynamic_Size (TE);
+            Set_Is_Nonnative_Type (TE);
             Split_Align := Align;
 
          --  If it's of fixed size, add it to the current set of fields
@@ -1037,7 +1037,7 @@ package body GNATLLVM.Records is
                Split_Align := Align;
             end if;
 
-            Types (Next_Type) := Create_Type (Typ);
+            Types (Next_Type) := Type_For_Relationship (Typ, Component);
             Add_FI (E, Cur_Idx, Next_Type, Is_Dummy_Type (Typ), Typ);
             Next_Type := Next_Type + 1;
          end if;
@@ -1355,8 +1355,8 @@ package body GNATLLVM.Records is
          Cur_Align    : Result         :=
            Sz_Const (ULL (Get_Maximum_Alignment));
          Cur_Idx      : Record_Info_Id :=
-           (if Present (Start_Idx) then Start_Idx elsif Present (TE)
-           then Get_Record_Info (TE) else Empty_Record_Info_Id);
+           (if   Present (Start_Idx) then Start_Idx elsif Present (TE)
+            then Get_Record_Info (TE) else Empty_Record_Info_Id);
          This_Size    : Result         := Empty_Result;
          Must_Align   : Result         := Sz_Const (ULL (1));
          Pushed_Stack : Boolean        := False;
@@ -1606,7 +1606,7 @@ package body GNATLLVM.Records is
                 Sz_Min                 => IDS_Min,
                 Sz_Max                 => IDS_Max,
                 Sz_Is_Const            => IDS_Is_Const,
-                Sz_Const_Val           => IDS_Const_Val,
+                Sz_Const_Val           => IDS_Const_Val_ULL,
                 Sz_Type_Size           => IDS_Type_Size,
                 Sz_RI_Info_For_Variant => IDS_RI_Info_For_Variant);
 
@@ -1747,9 +1747,9 @@ package body GNATLLVM.Records is
          --  compute each.
 
          if No (RI.Variants (J)) then
-            Our_Must_Align := IDS_Const (1);
-            Our_Is_Align   := IDS_Const (1);
-            Our_Size       := IDS_Const (0);
+            Our_Must_Align := IDS_Const (ULL (1));
+            Our_Is_Align   := IDS_Const (ULL (1));
+            Our_Size       := IDS_Const (ULL (0));
          else
             IDS_Variant_Aligns (RI.Variants (J),
                                 Our_Must_Align, Our_Is_Align, V, Max_Size);
@@ -1758,24 +1758,24 @@ package body GNATLLVM.Records is
                                                 Max_Size);
          end if;
 
-         if Present (Must_Align) and then Must_Align /= Our_Must_Align then
-            Must_Align := (False, False, 0);
+         if No (Must_Align) or else Must_Align /= Our_Must_Align then
+            Must_Align := Var_IDS;
          end if;
-         if Present (Is_Align) and then Is_Align /= Our_Is_Align then
-            Is_Align := (False, False, 0);
+         if No (Is_Align) or else Is_Align /= Our_Is_Align then
+            Is_Align := Var_IDS;
          end if;
-         if Return_Size and then Present (Size) and then Size /= Our_Size then
-            Size := (False, False, 0);
+         if Return_Size and then (No (Size) or else Size /= Our_Size) then
+            Size := Var_IDS;
          end if;
       end loop;
 
       --  Now handle case where there were no variants.
 
       if No (Must_Align) then
-         Must_Align := IDS_Const (1);
-         Is_Align   := IDS_Const (1);
+         Must_Align := IDS_Const (ULL (1));
+         Is_Align   := IDS_Const (ULL (1));
          if Return_Size then
-            Size    := IDS_Const (0);
+            Size    := IDS_Const (ULL (0));
          end if;
       end if;
 
@@ -1857,10 +1857,10 @@ package body GNATLLVM.Records is
                         (1 => Offset));
       end if;
 
-      --  If the type is dynamic size, we have to convert the pointer to
-      --  the type of this piece (which has no corresponding GNAT type).
+      --  If the type is not native, we have to convert the pointer to the
+      --  type of this piece (which has no corresponding GNAT type).
 
-      if Is_Dynamic_Size (Rec_Type) then
+      if Is_Nonnative_Type (Rec_Type) then
          Result := G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (Result),
                                         Pointer_Type (RI.LLVM_Type, 0), ""),
                           Rec_Type);
@@ -1900,6 +1900,22 @@ package body GNATLLVM.Records is
       end return;
    end Get_Record_Size_Complexity;
 
+   -----------------------------------
+   -- Contains_Unconstrained_Record --
+   -----------------------------------
+
+   function Contains_Unconstrained_Record (TE : Entity_Id) return Boolean is
+      F : Entity_Id := First_Component_Or_Discriminant (TE);
+
+   begin
+      while Present (F) loop
+         exit when Is_Unconstrained_Record (Full_Etype (F));
+         Next_Component_Or_Discriminant (F);
+      end loop;
+
+      return Present (F);
+   end Contains_Unconstrained_Record;
+
    ---------------------------
    -- Emit_Record_Aggregate --
    ---------------------------
@@ -1929,8 +1945,10 @@ package body GNATLLVM.Records is
          --  of that type.
 
          if No (Result) then
-            if Is_Loadable_Type (TE)
-              or else (not Is_Dynamic_Size (TE) and then Is_No_Elab_Needed (N))
+            if (Is_Loadable_Type (TE)
+                  or else (not Is_Dynamic_Size (TE)
+                             and then Is_No_Elab_Needed (N)))
+              and then not Contains_Unconstrained_Record (TE)
             then
                Result := Get_Undef (TE);
             else

@@ -91,11 +91,13 @@ package GNATLLVM.Environment is
       --  An LLVM TBAA Metadata node corresponding to the type.  Set only
       --  For types that are sufficiently primitive.
 
-      Is_Dynamic_Size       : Boolean;
-      --  True if the size of this type is dynamic.  This is always the case
-      --  if the saved type is an opaque type, but if we have an array type
-      --  with zero size, we need to use this flag to disambiguate the cases
-      --  of a zero-length array and a variable-sized array.
+      Is_Nonnative_Type     : Boolean;
+      --  True if this GNAT type can't be fully represented as a single
+      --  LLVM type. This is always the case if the saved type is an opaque
+      --  type, but if we have an array type with zero size, we need to use
+      --  this flag to disambiguate the cases of a zero-length array and a
+      --  variable-sized array.  This usually, but not always, means that
+      --  the type's size is not known at compile time.
 
       Is_Being_Elaborated   : Boolean;
       --  True if we're in the process of elaborating this type.
@@ -147,7 +149,7 @@ package GNATLLVM.Environment is
    function Get_Type            (TE : Entity_Id) return Type_T
      with Pre => Is_Type (TE);
 
-   function Is_Dynamic_Size     (TE : Entity_Id) return Boolean
+   function Is_Nonnative_Type   (TE : Entity_Id) return Boolean
      with Pre => Is_Type (TE);
 
    function Is_Being_Elaborated (TE : Entity_Id) return Boolean
@@ -185,9 +187,9 @@ package GNATLLVM.Environment is
                               or else Is_Access_Type (TE)),
           Post => Get_Type (TE) = TL;
 
-   procedure Set_Is_Dynamic_Size (TE : Entity_Id; B : Boolean := True)
+   procedure Set_Is_Nonnative_Type (TE : Entity_Id; B : Boolean := True)
      with Pre  => Is_Type (TE) and then Present (Get_Type (TE)),
-          Post => Is_Dynamic_Size (TE) = B;
+          Post => Is_Nonnative_Type (TE) = B;
 
    procedure Set_Is_Being_Elaborated (TE : Entity_Id; B : Boolean)
      with Pre  => Is_Type (TE), Post => Is_Being_Elaborated (TE) = B;
@@ -237,7 +239,7 @@ package GNATLLVM.Environment is
           Post => Get_Label_Info (VE) = LI;
 
    pragma Inline (Get_Type);
-   pragma Inline (Is_Dynamic_Size);
+   pragma Inline (Is_Nonnative_Type);
    pragma Inline (Is_Being_Elaborated);
    pragma Inline (Is_Dummy_Type);
    pragma Inline (Get_TBAA);
@@ -247,7 +249,7 @@ package GNATLLVM.Environment is
    pragma Inline (Get_Record_Info);
    pragma Inline (Get_Label_Info);
    pragma Inline (Set_Type);
-   pragma Inline (Set_Is_Dynamic_Size);
+   pragma Inline (Set_Is_Nonnative_Type);
    pragma Inline (Set_Is_Being_Elaborated);
    pragma Inline (Set_Is_Dummy_Type);
    pragma Inline (Set_TBAA);

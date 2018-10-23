@@ -72,6 +72,10 @@ package GNATLLVM.Records is
    --  Emit code for a record aggregate at Node.  Result_So_Far, if
    --  Present, contain any fields already filled in for the record.
 
+   function Contains_Unconstrained_Record (TE : Entity_Id) return Boolean
+     with Pre => Is_Record_Type (TE);
+   --  True if TE has a field whose type if an unconstrained record.
+
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Ekind_In (E, E_Discriminant, E_Component),
           Post => No (Emit_Field_Position'Result)

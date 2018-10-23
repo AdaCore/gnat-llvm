@@ -315,12 +315,13 @@ package body GNATLLVM.Arrays is
       Base_Type         : constant Entity_Id     :=
         Full_Base_Type (A_TE, For_Orig);
       Must_Use_Fake     : Boolean                :=
-        Is_Dynamic_Size (Comp_Type);
-      This_Dynamic_Size : Boolean                :=
+        Is_Dynamic_Size (Comp_Type, Is_Unconstrained_Record (Comp_Type));
+      This_Nonnative    : Boolean                :=
         Must_Use_Fake or Unconstrained;
       CT_To_Use         : constant Entity_Id     :=
         (if Must_Use_Fake then Standard_Short_Short_Integer else Comp_Type);
-      Typ               : Type_T                 := Create_Type (CT_To_Use);
+      Typ               : Type_T                 :=
+        Type_For_Relationship (CT_To_Use, Component);
       Dim               : Nat                    := 0;
       Last_Dim          : constant Nat           :=
         (if   Ekind (A_TE) = E_String_Literal_Subtype
@@ -378,7 +379,7 @@ package body GNATLLVM.Arrays is
             --  a too-large constant as if it's of variable size.
 
             if Dim_Info.Low.Dynamic or else Dim_Info.High.Dynamic then
-               This_Dynamic_Size := True;
+               This_Nonnative := True;
                if Dim /= 0 then
                   Must_Use_Fake := True;
                end if;
@@ -434,11 +435,11 @@ package body GNATLLVM.Arrays is
       --  of the other sets.
 
       if For_Orig then
-         Set_Orig_Array_Info (TE, First_Info);
+         Set_Orig_Array_Info   (TE, First_Info);
       else
-         Set_Type            (TE, Typ);
-         Set_Is_Dynamic_Size (TE, This_Dynamic_Size);
-         Set_Array_Info      (TE, First_Info);
+         Set_Type              (TE, Typ);
+         Set_Is_Nonnative_Type (TE, This_Nonnative);
+         Set_Array_Info        (TE, First_Info);
       end if;
 
       return Typ;
@@ -888,8 +889,8 @@ package body GNATLLVM.Arrays is
                 Sz_Add           => IDS_Add,
                 Sz_Sub           => IDS_Sub,
                 Sz_Mul           => IDS_Mul,
-                Sz_U_Div         => IDS_Div,
-                Sz_S_Div         => IDS_Div,
+                Sz_U_Div         => IDS_U_Div,
+                Sz_S_Div         => IDS_S_Div,
                 Sz_Neg           => IDS_Neg,
                 Sz_Select        => IDS_Select,
                 Sz_Min           => IDS_Min,
@@ -1156,7 +1157,9 @@ package body GNATLLVM.Arrays is
          --  already handled the constant case above.
 
          if No (Cur_Value) then
-            if Is_Loadable_Type (TE) then
+            if Is_Loadable_Type (TE)
+              and then not Is_Unconstrained_Record (Full_Component_Type (TE))
+            then
                Cur_Value := Get_Undef (TE);
             else
                Cur_Value := Allocate_For_Type (TE, TE, N);
@@ -1354,7 +1357,7 @@ package body GNATLLVM.Arrays is
       Fortran    : constant Boolean   := Convention (TE) = Convention_Fortran;
 
    begin
-      if not Is_Dynamic_Size (TE) then
+      if not Is_Nonnative_Type (TE) then
          return GEP (Comp_Type, Array_Data, Idxs);
       end if;
 
@@ -1371,13 +1374,16 @@ package body GNATLLVM.Arrays is
       --  correct for the Fortran and non-Fortran cases are tricky.
 
       declare
-         Use_Comp  : constant Boolean   := not Is_Dynamic_Size (Comp_Type);
+         Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_Type);
+         Use_Comp  : constant Boolean   :=
+           not Is_Dynamic_Size (Comp_Type, Comp_Unc);
          Unit_Type : constant Entity_Id :=
            (if Use_Comp then Comp_Type else Standard_Short_Short_Integer);
-         Data      : constant GL_Value  := Ptr_To_Ref (Array_Data, Unit_Type);
+         Data      : constant GL_Value  :=
+           Get (Ptr_To_Ref (Array_Data, Unit_Type), Reference_To_Component);
          Unit_Mult : constant GL_Value  :=
-           (if Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_Type, Max_Size => True));
+           (if   Use_Comp then Size_Const_Int (Uint_1)
+            else Get_Type_Size (Comp_Type, Max_Size => Comp_Unc));
          Index     : GL_Value           := To_Size_Type (Idxs (2));
          Dim       : Int                := (if Fortran then N_Dim - 2 else 1);
 
@@ -1420,7 +1426,7 @@ package body GNATLLVM.Arrays is
       --  However, GEP's result type is a pointer to the component type, so
       --  we need to cast to the result (array) type in both cases.
 
-      if not Is_Dynamic_Size (Arr_Type) then
+      if not Is_Nonnative_Type (Arr_Type) then
          return Ptr_To_Ref (GEP (TE, Array_Data,
                                  (1 => Size_Const_Null, 2 => Index_Shift),
                                  "arr-lvalue"), TE);
@@ -1428,13 +1434,16 @@ package body GNATLLVM.Arrays is
 
       declare
          Comp_Type : constant Entity_Id := Full_Component_Type (Arr_Type);
-         Use_Comp  : constant Boolean   := not Is_Dynamic_Size (Comp_Type);
+         Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_Type);
+         Use_Comp  : constant Boolean   :=
+           not Is_Dynamic_Size (Comp_Type, Comp_Unc);
          Unit_Type : constant Entity_Id :=
            (if Use_Comp then Comp_Type else Standard_Short_Short_Integer);
-         Data      : constant GL_Value  := Ptr_To_Ref (Array_Data, Unit_Type);
+         Data      : constant GL_Value  :=
+           Get (Ptr_To_Ref (Array_Data, Unit_Type), Reference_To_Component);
          Unit_Mult : constant GL_Value  :=
-           (if Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_Type, Max_Size => True));
+           (if   Use_Comp then Size_Const_Int (Uint_1)
+            else Get_Type_Size (Comp_Type, Max_Size => Comp_Unc));
          Index         : constant GL_Value  :=
            Mul (To_Size_Type (Index_Shift), Unit_Mult);
 

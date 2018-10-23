@@ -49,6 +49,14 @@ package GNATLLVM.GLValue is
       --  of the normal i8 that we'd use for a Boolean type.  In this case,
       --  the type must be Standard_Boolean.
 
+      Component,
+      --  Like Data, but if this is of an unconstrained record type of
+      --  fixed size maximum size, we use a type that's a native LLVM type
+      --  (an array) corresponding to the maximum size of the type.  We
+      --  only allow an GL_Value to have this relationship if it's Null.
+      --  We mostly use this for Type_From_Representation.
+      --  ??? Maybe try  to find a better name.
+
       Reference,
       --  Value contains the address of an object of Typ.  This is always
       --  the case for types of variable size or for names corresponding to
@@ -61,6 +69,11 @@ package GNATLLVM.GLValue is
       --  'Address attribute was specifed or where an object of dynamic
       --  size was allocated because in both of those cases the global name
       --  is a pointer to a location containing the address of the object.
+
+      Reference_To_Component,
+      Reference_To_Ref_To_Component,
+      --  Like Reference and Reference_To_Reference except where the underlying
+      --  type may be an LLVM type for the maximum size of the type.
 
       Fat_Pointer,
       --  Value contains a "fat pointer", an object containing information
@@ -177,12 +190,21 @@ package GNATLLVM.GLValue is
       Boolean_Data                   =>
         (Is_Ref => False, Is_Any_Ref => False,
          Deref  => Invalid,          Ref => Invalid),
+      Component                      =>
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref  => Invalid,          Ref => Reference_To_Component),
       Reference                      =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref  => Data,             Ref => Reference_To_Reference),
       Reference_To_Reference         =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref  => Reference,        Ref => Invalid),
+      Reference_To_Component         =>
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref  => Component,         Ref => Reference_To_Ref_To_Component),
+      Reference_To_Ref_To_Component  =>
+        (Is_Ref => True,  Is_Any_Ref => False,
+         Deref  => Reference_To_Component, Ref => Invalid),
       Fat_Pointer                    =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref  => Invalid,          Ref => Invalid),
@@ -437,7 +459,7 @@ package GNATLLVM.GLValue is
    is
      (G (V, TE, Relationship_For_Ref (TE), Is_Pristine))
      with Pre  => Present (V) and then Is_Type (TE),
-          Post => Is_Access_Type (G_Ref'Result);
+          Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
    --  to type TE.
 
@@ -474,6 +496,11 @@ package GNATLLVM.GLValue is
       or else (not Is_Reference (V) and then Is_Access_Type (Etype (V))))
      with Pre => Present (V);
 
+   function Is_Pointer (V : GL_Value) return Boolean is
+     (Is_Reference (V)
+      or else (not Is_Reference (V) and then Is_Access_Type (Etype (V))))
+     with Pre => Present (V);
+
    function Full_Designated_Type (V : GL_Value) return Entity_Id
      with Pre  => Is_Access_Type (V) and then not Is_Subprogram_Reference (V),
           Post => Is_Type_Or_Void (Full_Designated_Type'Result);
@@ -483,6 +510,9 @@ package GNATLLVM.GLValue is
           Post => Is_Type (Full_Base_Type'Result);
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
+   function Is_Nonnative_Type (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function Is_Loadable_Type (V : GL_Value) return Boolean
@@ -908,7 +938,7 @@ package GNATLLVM.GLValue is
 
    function Ptr_To_Int
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (V)
+     with Pre  => Is_Pointer (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (TE),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
 
@@ -916,7 +946,7 @@ package GNATLLVM.GLValue is
      (V : GL_Value; Name : String := "") return GL_Value
    is
      (Ptr_To_Int (V, Size_Type, Name))
-     with Pre  => Is_Access_Type (V),
+     with Pre  => Is_Pointer (V),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Size_Type'Result);
 
    function Bit_Cast
@@ -932,8 +962,8 @@ package GNATLLVM.GLValue is
 
    function Pointer_Cast
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (V) and then Is_Access_Type (TE),
-          Post => Is_Access_Type (Pointer_Cast'Result);
+     with Pre  => Is_Pointer (V) and then Is_Access_Type (TE),
+          Post => Is_Pointer (Pointer_Cast'Result);
 
    function Pointer_Cast_To_Dummy
      (V : GL_Value; Name : String := "") return GL_Value
@@ -944,23 +974,23 @@ package GNATLLVM.GLValue is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (T), Name), T))
-     with Pre  => Is_Access_Type (V) and then Is_Access_Type (T),
-          Post => Is_Access_Type (Pointer_Cast'Result);
+     with Pre  => Is_Pointer (V) and then Is_Access_Type (T),
+          Post => Is_Pointer (Pointer_Cast'Result);
 
    function Pointer_Cast
      (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
    is
      (G_From (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name), V))
-     with Pre  => Is_Access_Type (V) and then Present (T),
-          Post => Is_Access_Type (Pointer_Cast'Result);
+     with Pre  => Is_Pointer (V) and then Present (T),
+          Post => Is_Pointer (Pointer_Cast'Result);
 
    function Ptr_To_Ref
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Ptr_To_Ref'Result);
+     with Pre  => Is_Pointer (V) and then Is_Type (TE),
+          Post => Is_Pointer (Ptr_To_Ref'Result);
 
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (V) and then Is_Access_Type (T),
+     with Pre  => Is_Pointer (V) and then Is_Access_Type (T),
           Post => Is_Access_Type (Ptr_To_Ref'Result);
 
    function Ptr_To_Relationship
@@ -968,15 +998,15 @@ package GNATLLVM.GLValue is
       TE   : Entity_Id;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Ptr_To_Relationship'Result);
+     with Pre  => Is_Pointer (V) and then Is_Type (TE),
+          Post => Is_Pointer (Ptr_To_Relationship'Result);
 
    function Ptr_To_Relationship
      (V, T : GL_Value;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (V) and then Present (T),
-          Post => Is_Access_Type (Ptr_To_Relationship'Result);
+     with Pre  => Is_Pointer (V) and then Present (T),
+          Post => Is_Pointer (Ptr_To_Relationship'Result);
 
    function Trunc
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
@@ -1044,7 +1074,7 @@ package GNATLLVM.GLValue is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (T), Name), T))
-     with Pre  => Is_Access_Type (V)
+     with Pre  => Is_Pointer (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
 
@@ -1364,7 +1394,7 @@ package GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Int_To_Relationship'Result);
+          Post => Is_Pointer (Int_To_Relationship'Result);
    --  Similar to Int_To_Ptr, but specify the relationship to TE
 
    function Atomic_RMW
@@ -1398,7 +1428,7 @@ package GNATLLVM.GLValue is
    is
      (G_Ref (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), Typ))
      with  Pre  => Present (Arg) and then Is_Type (Typ),
-           Post => Is_Access_Type (Extract_Value_To_Ref'Result);
+           Post => Is_Pointer (Extract_Value_To_Ref'Result);
 
    function Extract_Value_To_Relationship
      (Typ   : Entity_Id;
@@ -1410,7 +1440,7 @@ package GNATLLVM.GLValue is
      (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
          Typ, R))
      with  Pre  => Present (Arg) and then Is_Type (Typ),
-           Post => Is_Access_Type (Extract_Value_To_Relationship'Result);
+           Post => Is_Pointer (Extract_Value_To_Relationship'Result);
 
    function Insert_Value
      (Arg, Elt : GL_Value;

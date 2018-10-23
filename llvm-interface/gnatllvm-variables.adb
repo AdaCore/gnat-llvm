@@ -560,15 +560,15 @@ package body GNATLLVM.Variables is
 
         --  Or fixed-size record types with identical layout
 
-        or else (Is_Record_Type (In_TE) and then not Is_Dynamic_Size (In_TE)
+        or else (Is_Record_Type (In_TE) and then not Is_Nonnative_Type (In_TE)
                    and then Is_Record_Type (Out_TE)
-                   and then not Is_Dynamic_Size (Out_TE)
+                   and then not Is_Nonnative_Type (Out_TE)
                    and then Is_Layout_Identical (In_TE, Out_TE))
 
-        --  Or if neither type is dynamic and the LLVM types are the same
+        --  Or if both types are native and the LLVM types are the same
 
-        or else (not Is_Dynamic_Size (In_TE)
-                 and then not Is_Dynamic_Size (Out_TE)
+        or else (not Is_Nonnative_Type (In_TE)
+                 and then not Is_Nonnative_Type (Out_TE)
                  and then Create_Type (In_TE) = Create_Type (Out_TE));
 
    end Is_Static_Conversion;
@@ -656,10 +656,13 @@ package body GNATLLVM.Variables is
                --  form the resulting GL_Value.  But be careful not to
                --  be confused by having the unconstrained array as the type
                --  of inner aggregates of multi-dimensional arrays.
+               --  We also can't support an aggregate where the component
+               --  type is a unconstrained record.
 
                if (Number_Dimensions (TE) > 1
                      and then Convention (TE) = Convention_Fortran)
-                 or else (Is_Constrained (TE) and then Is_Dynamic_Size (TE))
+                 or else (Is_Constrained (TE) and then Is_Nonnative_Type (TE))
+                 or else Is_Unconstrained_Record (Full_Component_Type (TE))
                then
                   return False;
                end if;
@@ -671,6 +674,10 @@ package body GNATLLVM.Variables is
                end loop;
 
             elsif Is_Record_Type (TE) then
+               if Contains_Unconstrained_Record (TE) then
+                  return False;
+               end if;
+
                Expr := First (Component_Associations (N));
                while Present (Expr) loop
                   exit when not Box_Present (Expr)
@@ -736,7 +743,7 @@ package body GNATLLVM.Variables is
                   if Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N)))
                   then
-                     return not Is_Dynamic_Size (Full_Entity (Prefix (N)));
+                     return not Is_Nonnative_Type (Full_Entity (Prefix (N)));
                   else
 
                   --  We have to be careful here because even though we
@@ -744,7 +751,7 @@ package body GNATLLVM.Variables is
                   --  its size, we are required to, so it must be static
                   --  as well.
 
-                     return not Is_Dynamic_Size (Full_Etype (Prefix (N)))
+                     return not Is_Nonnative_Type (Full_Etype (Prefix (N)))
                        and then Is_No_Elab_Needed (Prefix (N));
                   end if;
 
@@ -1065,7 +1072,8 @@ package body GNATLLVM.Variables is
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_Ref   : constant Boolean     :=
-        Present (Addr_Expr) or else Is_Dynamic_Size (TE)
+        Present (Addr_Expr)
+          or else Is_Dynamic_Size (TE, Is_Unconstrained_Record (TE))
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
 
@@ -1170,7 +1178,7 @@ package body GNATLLVM.Variables is
       --  True if variable is not defined in this unit
 
       Is_Ref       : constant Boolean   :=
-        Present (Addr_Expr) or else Is_Dynamic_Size (TE);
+        Present (Addr_Expr) or else Is_Dynamic_Size (TE, Max_Size);
       --  True if we need to use an indirection for this variable
 
       Value        : GL_Value           :=
@@ -1323,7 +1331,7 @@ package body GNATLLVM.Variables is
          --  of the allocation in the elab proc if at library level.
 
          if Library_Level and then not Is_External
-           and then Is_Dynamic_Size (TE)
+           and then Is_Dynamic_Size (TE, Max_Size)
          then
             Add_To_Elab_Proc (N);
          end if;
@@ -1341,7 +1349,8 @@ package body GNATLLVM.Variables is
          if Present (Expr) then
             if Is_No_Elab_Needed (Expr)
               and then Is_A_Global_Variable (LLVM_Var)
-              and then not Is_Dynamic_Size (TE) and then No (Addr_Expr)
+              and then not Is_Dynamic_Size (TE, Max_Size)
+              and then No (Addr_Expr)
               and then Is_Static_Conversion (Full_Etype (Expr), TE)
             then
                if No (Value) then
@@ -1364,7 +1373,9 @@ package body GNATLLVM.Variables is
          --  we have no expression.  In that case, we still have to
          --  initialize the bounds.
 
-         elsif Type_Needs_Bounds (TE) and then not Is_Dynamic_Size (TE) then
+         elsif Type_Needs_Bounds (TE)
+           and then not Is_Dynamic_Size (TE, Max_Size)
+         then
             Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
                                             Bounds_And_Data));
             Set_Init := True;
@@ -1378,9 +1389,11 @@ package body GNATLLVM.Variables is
          if not Set_Init and then not Is_External
            and then Is_A_Global_Variable (LLVM_Var)
          then
-            Set_Initializer (LLVM_Var,
-                             (if Is_Ref then Const_Null_Ref (TE)
-                              else Const_Null_Alloc (TE)));
+            Set_Initializer
+              (LLVM_Var,
+               (if   Is_Ref
+                then Const_Null_Relationship (TE, Reference_To_Component)
+                else Const_Null_Alloc (TE)));
          end if;
       end if;
 
@@ -1432,7 +1445,7 @@ package body GNATLLVM.Variables is
       if Present (LLVM_Var) then
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
-         elsif Is_Dynamic_Size (TE) then
+         elsif Is_Dynamic_Size (TE, Max_Size) then
             Store (Get (Heap_Allocate_For_Type (TE, TE, Value,
                                                 Expr     => Expr,
                                                 N        => N,
@@ -1528,7 +1541,9 @@ package body GNATLLVM.Variables is
          pragma Assert (In_Elab_Proc);
 
          if Use_LHS then
-            Store (Convert_Ref (Emit_LValue (Name (N)), TE), LLVM_Var);
+            Store (Get (Convert_Ref (Emit_LValue (Name (N)), TE),
+                        Reference_To_Component),
+                   LLVM_Var);
          else
             Emit_Assignment (LLVM_Var,
                              Value => Emit_Convert_Value (Name (N), TE));
@@ -1560,9 +1575,11 @@ package body GNATLLVM.Variables is
          LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident),
                                  Need_Reference => Use_LHS);
          Set_Value (Def_Ident, LLVM_Var);
-         Set_Initializer (LLVM_Var,
-                          (if   Use_LHS then Const_Null_Ref (TE)
-                           else Const_Null (TE)));
+         Set_Initializer
+           (LLVM_Var,
+            (if   Use_LHS
+             then Const_Null_Relationship (TE, Reference_To_Component)
+             else Const_Null_Alloc (TE)));
          Add_To_Elab_Proc (N);
       end if;
    end Emit_Renaming_Declaration;
@@ -1632,9 +1649,10 @@ package body GNATLLVM.Variables is
 
             --  Now return what we got (if we didn't get anything by now,
             --  we have an internal error).  But avoid returning a double
-            --  reference.
+            --  reference or a reference to component.
 
             return (if   Is_Double_Reference (V)
+                      or else Relationship (V) = Reference_To_Component
                     then Get (V, Any_Reference) else V);
       end case;
    end Emit_Identifier;

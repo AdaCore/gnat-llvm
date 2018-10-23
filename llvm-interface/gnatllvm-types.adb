@@ -123,11 +123,37 @@ package body GNATLLVM.Types is
    --  type that was used to allocate the memory.
 
    function IDS_From_Const (V : GL_Value) return IDS is
-     (if   Is_A_Const_Int (V) then (False, True, Get_Const_Int_Value (V))
-      else (False, False, 0))
+     (if   Is_A_Const_Int (V) then (False, V) else Var_IDS)
      with Pre => Is_Constant (V), Post => Present (IDS_From_Const'Result);
    --  V is a constant.  If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
+
+   ----------------------
+   --  Is_Dynamic_Size --
+   ----------------------
+
+   function Is_Dynamic_Size
+     (TE : Entity_Id; Max_Size : Boolean := False) return Boolean
+   is
+      Size : IDS;
+   begin
+      --  If this is of elementary type, it's not of dynamic size.  We have
+      --  to do this test not just for efficiency, but also to avoid
+      --  infinite recursion if we are passed Size_Type.
+
+      if Is_Elementary_Type (TE) then
+         return False;
+      end if;
+
+      --  Otherwise get the size for our purposes.  If not a constant or not
+      --  something LLVM can use natively as an array bound, this is dynamic.
+
+      Size := IDS_Type_Size (TE, No_GL_Value, Max_Size);
+      return not IDS_Is_Const (Size)
+        or else IDS_Const_Int (Size) < 0
+        or else IDS_Const_Int (Size) > LLI (unsigned'Last);
+
+   end Is_Dynamic_Size;
 
    -----------------------
    -- Build_Struct_Type --
@@ -406,7 +432,7 @@ package body GNATLLVM.Types is
       --  Avoid confusing [0 x T] as both a zero-size constrained type and
       --  the type used for a variable-sized type.
 
-      elsif Is_Data (Result) and then not Is_Dynamic_Size (TE)
+      elsif Is_Data (Result) and then not Is_Nonnative_Type (TE)
         and then Type_Of (Result) = Create_Type (TE)
       then
          Result := G_Is (Result, TE);
@@ -427,7 +453,7 @@ package body GNATLLVM.Types is
 
       elsif R = Data and then Is_Constant (Result)
         and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
-        and then Is_Record_Type (TE) and then not Is_Dynamic_Size (TE)
+        and then Is_Record_Type (TE) and then not Is_Nonnative_Type (TE)
         and then Is_Layout_Identical (Result, TE)
       then
          return Convert_Struct_Constant (Result, TE);
@@ -478,29 +504,32 @@ package body GNATLLVM.Types is
    -------------------------------
 
    function Normalize_LValue_Reference (V : GL_Value) return GL_Value is
-      TE : constant Entity_Id       := Related_Type (V);
-      R  : constant GL_Relationship := Relationship (V);
-      T  : constant Type_T          := Type_For_Relationship (TE, R);
+      New_V : constant GL_Value        :=
+        Get (V, (if   Is_Double_Reference (V) then Reference_To_Reference
+                 else Any_Reference));
+      TE    : constant Entity_Id       := Related_Type (New_V);
+      R     : constant GL_Relationship := Relationship (New_V);
+      T     : constant Type_T          := Type_For_Relationship (TE, R);
 
    begin
-      --  If this a reference and the LLVM type doesn't agree with the
+      --  If this is a reference and the LLVM type doesn't agree with the
       --  proper type for TE and the relationship, convert it.
 
-      if Relationship (V) = Reference
-        and then Get_Element_Type (Type_Of (V)) /= T
+      if Relationship (New_V) = Reference
+        and then Get_Element_Type (Type_Of (New_V)) /= T
       then
-         return Ptr_To_Relationship (V, TE, R);
+         return Ptr_To_Relationship (New_V, TE, R);
 
       --  If it's an actual access type and the type differs, unpack it,
       --  convert to the proper type, and repack.
 
-      elsif Type_Of (V) /= T then
-         return To_Access (Convert_Pointer (From_Access (V),
+      elsif Type_Of (New_V) /= T then
+         return To_Access (Convert_Pointer (From_Access (New_V),
                                             Full_Designated_Type (TE)),
                            TE);
 
       else
-         return V;
+         return New_V;
       end if;
 
    end Normalize_LValue_Reference;
@@ -730,7 +759,7 @@ package body GNATLLVM.Types is
 
       elsif not Unc_Src and not Unc_Dest then
          if Full_Designated_Type (V) = TE then
-            return V;
+            return Get (V, Any_Reference);
          else
             --  If what we have is a reference to bounds and data or a
             --  thin pointer and have an array type that needs bounds,
@@ -952,7 +981,7 @@ package body GNATLLVM.Types is
 
    function Get_Type_Size_In_Bits (TE : Entity_Id) return GL_Value is
    begin
-      pragma Assert (not Is_Dynamic_Size (TE));
+      pragma Assert (not Is_Nonnative_Type (TE));
       return Get_Type_Size_In_Bits (Create_Type (TE));
    end Get_Type_Size_In_Bits;
 
@@ -1310,6 +1339,31 @@ package body GNATLLVM.Types is
       return T;
    end Create_Type;
 
+   -------------------------------
+   -- Create_Type_For_Component --
+   -------------------------------
+
+   function Create_Type_For_Component (TE : Entity_Id) return Type_T is
+      T    : constant Type_T := Create_Type (TE);
+      Size : GL_Value;
+   begin
+      --  If this is a dynamic size, even when looking at the maximum
+      --  size (when applicable), on the one hand, or already a native
+      --  type, on the other, return T.  Otherwise, make an array type
+      --  corresponding to the size.
+
+      if Is_Dynamic_Size (TE, Max_Size => Is_Unconstrained_Record (TE))
+        or else not Is_Nonnative_Type (TE)
+      then
+         return T;
+      end if;
+
+      Size := Get_Type_Size (TE, No_GL_Value,
+                             Max_Size => Is_Unconstrained_Record (TE));
+      pragma Assert (Is_A_Const_Int (Size));
+      return Array_Type (Int_Ty (8), unsigned (Get_Const_Int_Value (Size)));
+   end Create_Type_For_Component;
+
    -----------------
    -- Create_TBAA --
    -----------------
@@ -1420,10 +1474,10 @@ package body GNATLLVM.Types is
       Num_Elts   : GL_Value;
 
    begin
-      --  We have three cases.  If the object is not of a dynamic size,
-      --  we just do the alloca and that's all.
+      --  We have three cases.  If the object has a native type, we just do
+      --  the alloca and that's all.
 
-      if not Is_Dynamic_Size (Alloc_TE) then
+      if not Is_Nonnative_Type (Alloc_TE) then
          if Do_Stack_Check
            and then Get_Type_Size (Create_Type (Alloc_TE)) > Max_Alloc
          then
@@ -1451,7 +1505,9 @@ package body GNATLLVM.Types is
       end if;
 
       if Is_Array_Type (Alloc_TE)
-        and then not Is_Dynamic_Size (Full_Component_Type (Alloc_TE))
+        and then not Is_Dynamic_Size (Full_Component_Type (Alloc_TE),
+                                      not Is_Constrained
+                                        (Full_Component_Type (Alloc_TE)))
         and then not Is_Constr_Subt_For_UN_Aliased (Alloc_TE)
       then
          Element_TE := Full_Component_Type (Alloc_TE);
@@ -1678,7 +1734,7 @@ package body GNATLLVM.Types is
          return Get_Type_Size (Type_Of (V));
       elsif Is_Record_Type (TE) then
          return Get_Record_Type_Size (TE, V, Max_Size);
-      elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
+      elsif Is_Array_Type (TE) and then Is_Nonnative_Type (TE) then
          return Get_Array_Type_Size (TE, V, Max_Size);
       else
          return Get_Type_Size (Create_Type (TE));
@@ -1793,6 +1849,22 @@ package body GNATLLVM.Types is
       end if;
    end Add_Type_Data_To_Instruction;
 
+   -------------
+   -- IDS_Min --
+   -------------
+
+   function IDS_Min (V1, V2 : IDS) return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, Build_Min (V1.Value, V2.Value)) else Var_IDS);
+
+   -------------
+   -- IDS_Max --
+   -------------
+
+   function IDS_Max (V1, V2 : IDS) return IDS is
+     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+      then (False, Build_Max (V1.Value, V2.Value)) else Var_IDS);
+
    -------------------
    -- IDS_Type_Size --
    -------------------
@@ -1809,7 +1881,9 @@ package body GNATLLVM.Types is
          return IDS_From_Const (Get_Type_Size (Type_Of (V)));
       elsif Is_Record_Type (TE) then
          return IDS_Record_Type_Size (TE, V, Max_Size);
-      elsif Is_Array_Type (TE) and then Is_Dynamic_Size (TE) then
+      elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+         return Var_IDS;
+      elsif Is_Array_Type (TE) then
          return IDS_Array_Type_Size (TE, V, Max_Size);
       else
          return IDS_From_Const (Get_Type_Size (Create_Type (TE)));
@@ -1824,8 +1898,7 @@ package body GNATLLVM.Types is
       pragma Unreferenced (LHS);
    begin
       return (if   Is_No_Elab_Needed (V)
-              then IDS_From_Const (Emit_Expression (V))
-              else (False, False, 0));
+              then IDS_From_Const (Emit_Expression (V)) else Var_IDS);
    end IDS_Emit_Expr;
 
 end GNATLLVM.Types;

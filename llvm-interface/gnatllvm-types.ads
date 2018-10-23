@@ -15,14 +15,16 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Unchecked_Conversion;
+
 with Sinfo; use Sinfo;
 with Uintp; use Uintp;
 
-with LLVM.Core;   use LLVM.Core;
+with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Types is
 
@@ -67,6 +69,12 @@ package GNATLLVM.Types is
    --  of the size divided by the alignment.  ??? Perhaps we should make
    --  this a command-line operand.
 
+   function Is_Dynamic_Size
+     (TE : Entity_Id; Max_Size : Boolean := False) return Boolean
+     with Pre => Is_Type (TE);
+   --  Returns True if TE's size is not known at compile-time.  Max_Size
+   --  is True if we're to consider the maximum size of TE.
+
    function Create_Access_Type_To (TE : Entity_Id) return Type_T is
      (Type_For_Relationship (TE, Relationship_For_Ref (TE)))
      with Pre  => Is_Type (TE),
@@ -82,6 +90,13 @@ package GNATLLVM.Types is
           Post => Present (Create_Type'Result);
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it first if necessary.
+
+   function Create_Type_For_Component (TE : Entity_Id) return Type_T
+     with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
+     Post => Present (Create_Type_For_Component'Result);
+   --  Similarly, but if TE is an unconstrained record, the maximum
+   --  size of TE is fixed but it's not representable as a native LLVM
+   --  type, return a type (an array) to correspond to that size.
 
    function Create_Dummy_Access_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Access_Type (TE),
@@ -360,7 +375,7 @@ package GNATLLVM.Types is
    --  Used for the function below
 
    function Is_Loadable_Type (TE : Entity_Id) return Boolean is
-     (not Is_Dynamic_Size (TE) and then Is_Loadable_Type (Create_Type (TE)))
+     (not Is_Nonnative_Type (TE) and then Is_Loadable_Type (Create_Type (TE)))
      with Pre => Is_Type (TE);
    --  Returns True if we should use a load/store instruction to copy values
    --  of this type.  We can't do this if it's of dynamic size, but LLVM
@@ -453,36 +468,32 @@ package GNATLLVM.Types is
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
 
-   --  In order to use the generic functions that computing sizing information
-   --  to compute whether a size is dynamic, we need versions of the
-   --  routines that actually compute the size that instead just record
-   --  whether the size is a constant (in order to implement comparisons,
-   --  they also compute the size, if it is a constant).  We use the
-   --  data structure below.
+   --  In order to use the generic functions that computing sizing
+   --  information to compute whether a size is dynamic, we need versions
+   --  of the routines that actually compute the size that instead only
+   --  record the size if it's a constant.  We use the data structure
+   --  below.
 
    type IDS is record
       Is_None     : Boolean;
-      Is_Constant : Boolean;
-      Value       : LLI;
+      Value       : GL_Value;
    end record;
 
-   No_IDS : constant IDS := (True, False, 0);
+   No_IDS  : constant IDS := (True,  No_GL_Value);
+   Var_IDS : constant IDS := (False, No_GL_Value);
 
    function No      (V : IDS) return Boolean is (V =  No_IDS);
    function Present (V : IDS) return Boolean is (V /= No_IDS);
 
-   type Logical is mod 2**64;
-
-   function IDS_Is_Const  (V : IDS) return Boolean is (V.Is_Constant);
+   function IDS_Is_Const  (V : IDS) return Boolean is (Present (V.Value));
 
    function IDS_Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
-     ((False, True, LLI (C)))
+     ((False,  Size_Const_Int (C, Sign_Extend)))
      with Post => IDS_Is_Const (IDS_Const'Result);
 
    function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS is
-     ((False, True, LLI (UI_To_Int (C))))
-     with Pre  => C /= No_Uint and then UI_Is_In_Int_Range (C),
-          Post => IDS_Is_Const (IDS_Const_Int'Result);
+     ((False, Const_Int (TE, C)))
+     with Pre  => C /= No_Uint;
 
    function IDS_Type_Size
      (TE       : Entity_Id;
@@ -491,74 +502,76 @@ package GNATLLVM.Types is
      with Pre => Is_Type (TE), Post => Present (IDS_Type_Size'Result);
 
    function IDS_I_Cmp
-     (Op : Int_Predicate_T; LHS, RHS : IDS; Name : String := "") return IDS is
+     (Op       : Int_Predicate_T;
+      LHS, RHS : IDS;
+      Name     : String := "") return IDS is
      (if   IDS_Is_Const (LHS) and then IDS_Is_Const (RHS)
-      then (False, True,
-            Get_Const_Int_Value (I_Cmp (Op, Size_Const_Int (ULL (LHS.Value)),
-                                        Size_Const_Int (ULL (RHS.Value)))))
-      else (False, False, 0))
+      then (False, I_Cmp (Op, LHS.Value, RHS.Value, Name)) else Var_IDS)
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (IDS_I_Cmp'Result);
 
    function IDS_Add (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, V1.Value + V2.Value) else (False, False, 0))
+      then (False, Add (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Add'Result);
 
    function IDS_Sub (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, V1.Value - V2.Value) else (False, False, 0))
+      then (False, Sub (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Sub'Result);
 
    function IDS_Mul (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, V1.Value * V2.Value) else (False, False, 0))
+      then (False, Mul (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Mul'Result);
 
-   function IDS_Div (V1, V2 : IDS; Name : String := "") return IDS is
+   function IDS_U_Div (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, V1.Value / V2.Value) else (False, False, 0))
+      then (False, U_Div (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_Div'Result);
+          Post => Present (IDS_U_Div'Result);
 
-   function IDS_Min (V1, V2 : IDS) return IDS is
+   function IDS_S_Div (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, LLI'Min (V1.Value, V2.Value)) else (False, False, 0))
+      then (False, S_Div (V1.Value, V2.Value, Name)) else Var_IDS)
+     with Pre  => Present (V1) and then Present (V2),
+          Post => Present (IDS_S_Div'Result);
+
+   function IDS_Min (V1, V2 : IDS) return IDS
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Min'Result);
 
-   function IDS_Max (V1, V2 : IDS) return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, True, LLI'Max (V1.Value, V2.Value)) else (False, False, 0))
+   function IDS_Max (V1, V2 : IDS) return IDS
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Max'Result);
 
    function IDS_And (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-        then (False, True,
-              LLI (Logical (V1.Value) and Logical (V2.Value)))
-        else (False, False, 0))
+        then (False, Build_And (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_And'Result);
 
-   function IDS_Neg (V : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V) then (False, True, 0 - V.Value)
-      else (False, False, 0))
+   function IDS_Neg (V : IDS; Unused_Name : String := "") return IDS is
+     (if   IDS_Is_Const (V) then (False, Neg (V.Value)) else Var_IDS)
      with Pre => Present (V), Post => Present (IDS_Neg'Result);
 
    function IDS_Select
      (V_If, V_Then, V_Else : IDS; Name : String := "") return IDS
    is
-     (if    IDS_Is_Const (V_If) and then V_If.Value /= 0 then V_Then
-      elsif IDS_Is_Const (V_If) then V_Else else (False, False, 0))
+     (if    IDS_Is_Const (V_If) and then V_If.Value = Const_True then V_Then
+      elsif IDS_Is_Const (V_If) then V_Else else Var_IDS)
      with Pre => Present (V_If) and then Present (V_Then)
                  and then Present (V_Else);
 
-   function IDS_Const_Val (V : IDS) return ULL is
-     (ULL (V.Value))
+   function IDS_Const_Val_ULL (V : IDS) return ULL is
+     (Get_Const_Int_Value_ULL (V.Value))
+     with Pre => IDS_Is_Const (V);
+
+   function IDS_Const_Int (V : IDS) return LLI is
+     (Get_Const_Int_Value (V.Value))
      with Pre => IDS_Is_Const (V);
 
    function IDS_Extract_Value
@@ -567,7 +580,7 @@ package GNATLLVM.Types is
       Idx_Arr : Index_Array;
       Name    : String := "") return IDS
    is
-     ((False, False, 0))
+      (Var_IDS)
      with Pre  => Is_Type (TE) and then Present (V),
           Post => Present (IDS_Extract_Value'Result);
 
@@ -576,19 +589,20 @@ package GNATLLVM.Types is
       TE             : Entity_Id;
       Float_Truncate : Boolean := False) return IDS
    is
-     ((V))
+     (if   IDS_Is_Const (V) then (False, Convert (V.Value, TE, Float_Truncate))
+      else Var_IDS)
      with Pre => Present (V) and then Is_Type (TE);
 
    function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
      with Pre => Present (V), Post => Present (IDS_Emit_Expr'Result);
 
    function IDS_Emit_Convert (N : Node_Id; TE : Entity_Id) return IDS is
-     (IDS_Emit_Expr (N))
+     (IDS_Convert (IDS_Emit_Expr (N), TE))
      with Pre  => Present (N) and then Is_Type (TE),
           Post => Present (IDS_Emit_Convert'Result);
 
    function IDS_Undef (TE : Entity_Id) return IDS is
-     ((False, False, 0))
+     (Var_IDS)
      with Pre => Is_Type (TE), Post => Present (IDS_Undef'Result);
 
    Disable_LV_Append : Nat := 0;

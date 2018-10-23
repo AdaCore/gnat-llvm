@@ -372,7 +372,7 @@ package body GNATLLVM.Subprograms is
       Ptr_Size : constant ULL := Get_Type_Size (Void_Ptr_Type);
 
    begin
-      if Is_By_Reference_Type (TE) or else Is_Dynamic_Size (TE) then
+      if Is_By_Reference_Type (TE) or else Is_Nonnative_Type (TE) then
          return Must;
       elsif Get_Type_Size (Create_Type (TE)) > 2 * Ptr_Size then
          return Default_By_Ref;
@@ -454,7 +454,7 @@ package body GNATLLVM.Subprograms is
       --  By_Reference depends on the size of the type.
 
       if Mech > 0 then
-         if Is_Dynamic_Size (TE) then
+         if Is_Nonnative_Type (TE) then
             Mech := By_Reference;
          else
             Mech := (if   Get_Const_Int_Value (Get_Type_Size (TE)) > LLI (Mech)
@@ -544,7 +544,7 @@ package body GNATLLVM.Subprograms is
       --  return the value via an extra parameter.
 
       elsif not Is_Unconstrained_Array (TE)
-        and then (Is_Dynamic_Size (TE)
+        and then (Is_Nonnative_Type (TE)
                     or else (not Has_Foreign_Convention (Def_Ident)
                                and then Get_Type_Size (T) > 5 * Ptr_Size))
       then
@@ -1010,7 +1010,8 @@ package body GNATLLVM.Subprograms is
          pragma Assert (Present (First_Field)
                           and then Is_Access_Type (Full_Etype (First_Field)));
          return Get_Activation_Record_Ptr
-           (From_Access (Load (Record_Field_Offset (V, First_Field))),
+           (From_Access (Load (Get (Record_Field_Offset (V, First_Field),
+                                    Reference))),
             E);
       end if;
    end Get_Activation_Record_Ptr;
@@ -1042,7 +1043,7 @@ package body GNATLLVM.Subprograms is
             Activation_Rec : constant GL_Value  :=
               Get_Activation_Record_Ptr (Activation_Rec_Param, Component);
             Pointer       : constant GL_Value  :=
-              Record_Field_Offset (Activation_Rec, Component);
+              Get (Record_Field_Offset (Activation_Rec, Component), Reference);
             Value         : constant GL_Value  := Load (Pointer);
 
          begin
@@ -1475,11 +1476,11 @@ package body GNATLLVM.Subprograms is
             --  it points to.
 
             for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
-               Result :=
-                 Load (GEP (Full_Etype (First_Component_Or_Discriminant
+               Result := Load
+                 (Get (GEP (Full_Etype (First_Component_Or_Discriminant
                                           (Full_Designated_Type (Result))),
                             Result, (1 => Const_Null_32, 2 => Const_Null_32),
-                            "ARECnF.all.ARECnU"));
+                            "ARECnF.all.ARECnU"), Reference));
             end loop;
          end if;
 
@@ -2369,8 +2370,9 @@ package body GNATLLVM.Subprograms is
          return Const_Null (Standard_A_Char);
       else
          return Load
-           (GEP (Standard_A_Char, Emit_LValue (N),
-                 (1 => Const_Null_32, 2 => Const_Null_32)));
+           (Get (GEP (Standard_A_Char, Emit_LValue (N),
+                      (1 => Const_Null_32, 2 => Const_Null_32)),
+                 Reference));
 
       end if;
    end Subp_Ptr;

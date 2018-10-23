@@ -844,7 +844,8 @@ package body GNATLLVM.Compile is
 
                if Is_Data (Result) and then not For_LHS
                  and then not Prefer_LHS and then Present (F_Idx)
-                 and then not Is_Dynamic_Size (R_TE)
+                 and then not Is_Nonnative_Type (R_TE)
+                 and then not Is_Nonnative_Type (TE)
                  and then (Full_Etype (Result) = R_TE
                              or else Is_Layout_Identical (Result, R_TE))
                then
@@ -934,7 +935,7 @@ package body GNATLLVM.Compile is
          when N_Aggregate | N_Extension_Aggregate =>
 
             pragma Assert (not For_LHS);
-            if Null_Record_Present (N) and then not Is_Dynamic_Size (TE) then
+            if Null_Record_Present (N) and then not Is_Nonnative_Type (TE) then
                return Const_Null (TE);
 
             elsif Ekind (TE) in Record_Kind then

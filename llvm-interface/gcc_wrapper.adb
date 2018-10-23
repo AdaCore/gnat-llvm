@@ -65,6 +65,7 @@ procedure GCC_Wrapper is
    Verbose            : Boolean := False;
    Dash_O_Index       : Natural := 0;
    Dash_w_Index       : Natural := 0;
+   Dump_SCOs_Index    : Natural := 0;
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
@@ -160,6 +161,11 @@ begin
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
+         --  Recognize -fdump-scos specially
+
+         elsif Arg = "-fdump-scos" then
+            Dump_SCOs_Index := Arg_Count + 1;
+
          --  Recognize -o specially
 
          elsif Arg = "-o" then
@@ -181,6 +187,12 @@ begin
          end if;
       end;
    end loop;
+
+   --  Replace -fdump-scos by -gnateS when compiling Ada code
+
+   if Dump_SCOs_Index /= 0 and then Compile and then Compile_Ada then
+      Args (Dump_SCOs_Index) := new String'("-gnateS");
+   end if;
 
    --  Replace -o by -gnatO when compiling Ada code
 

@@ -88,20 +88,3 @@ llvm-interface which you can put in your PATH:
   See in particular: http://llvm.org/docs/LangRef.html and
   http://llvm.org/docs/Frontend/PerformanceTips.html
 
-- Use of gnatcoverage (not tested recently)
-
-  There is a facility to assess the source coverage of GNAT-LLVM using its
-  testsuite and GNATcoverage. To use it, make sure a GNATcoverage for a native
-  target is in your path. Then make sure to have a suitable build:
-
-    $ rm llvm-interface/obj/*
-    $ make -C llvm-interface USE_GNATCOV=y
-
-  Finally, run the testsuite with the dedicated flag (the source coverage level
-  is passed as-is to GNATcoverage):
-
-    $ (cd testsuite && ./testsuite.py --srccov-level=stmt+decision)
-
-  When the command completes, you can open testsuite/srccov/index.html in a Web
-  browser.
-

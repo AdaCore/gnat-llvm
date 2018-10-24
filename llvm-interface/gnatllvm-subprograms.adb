@@ -1944,7 +1944,9 @@ package body GNATLLVM.Subprograms is
          --  type of the LHS.  Otherwise, convert the type of the LHS to be
          --  a reference to the type of the RHS.
 
-         if Is_Elementary_Type (LHS_TE) then
+         if Is_Elementary_Type (LHS_TE)
+           and then not Is_Packed_Array_Impl_Type (LHS_TE)
+         then
             RHS := Convert (RHS, LHS_TE);
          else
             LHS := Convert_Ref (LHS, RHS_TE);

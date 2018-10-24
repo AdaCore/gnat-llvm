@@ -562,8 +562,8 @@ package GNATLLVM.Types is
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_And'Result);
 
-   function IDS_Neg (V : IDS; Unused_Name : String := "") return IDS is
-     (if   IDS_Is_Const (V) then (False, Neg (V.Value)) else Var_IDS)
+   function IDS_Neg (V : IDS; Name : String := "") return IDS is
+     (if   IDS_Is_Const (V) then (False, Neg (V.Value, Name)) else Var_IDS)
      with Pre => Present (V), Post => Present (IDS_Neg'Result);
 
    function IDS_Select
@@ -583,10 +583,10 @@ package GNATLLVM.Types is
      with Pre => IDS_Is_Const (V);
 
    function IDS_Extract_Value
-     (TE      : Entity_Id;
-      V       : GL_Value;
-      Idx_Arr : Index_Array;
-      Name    : String := "") return IDS
+     (TE             : Entity_Id;
+      V              : GL_Value;
+      Unused_Idx_Arr : Index_Array;
+      Unused_Name    : String := "") return IDS
    is
       (Var_IDS)
      with Pre  => Is_Type (TE) and then Present (V),

@@ -828,16 +828,20 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (N);
 
          when N_Selected_Component =>
+
+            --  Evaluate our prefix first in case that's what's causing
+            --  the elaboration of its type, which sets the Field_Info below.
+
+            Result := Emit (Prefix (N),
+                            For_LHS    => For_LHS,
+                            Prefer_LHS => Prefer_LHS);
+
             declare
                F     : constant Entity_Id     := Entity (Selector_Name (N));
                R_TE  : constant Entity_Id     := Full_Scope (F);
                F_Idx : constant Field_Info_Id := Get_Field_Info (F);
 
             begin
-               Result := Emit (Prefix (N),
-                               For_LHS    => For_LHS,
-                               Prefer_LHS => Prefer_LHS);
-
                --  If we have something in a data form and we're not requiring
                --  or preferring an LHS, and we have information about the
                --  field, we can and should do this with an Extract_Value.

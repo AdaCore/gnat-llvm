@@ -201,6 +201,11 @@ package GNATLLVM.Types is
      (Get_Fullest_View (Scope (E)))
      with Pre => Present (E), Post => Present (Full_Scope'Result);
 
+   function Full_Parent_Subtype (TE : Entity_Id) return Entity_Id is
+     (Get_Fullest_View (Parent_Subtype (TE)))
+     with Pre  => Is_Record_Type (TE),
+          Post => Is_Record_Type (Full_Parent_Subtype'Result);
+
    function Is_Unconstrained_Record (TE : Entity_Id) return Boolean is
      (Ekind (TE) = E_Record_Type and then Has_Discriminants (TE))
      with Pre => Is_Type_Or_Void (TE);

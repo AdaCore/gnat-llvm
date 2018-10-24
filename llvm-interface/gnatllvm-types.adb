@@ -908,7 +908,8 @@ package body GNATLLVM.Types is
         or else (Full_Etype (BT_Have) /= BT_Have
                    and then Is_Parent_Of (BT_Need, Full_Etype (BT_Have)))
         or else (Present (Parent_Subtype (BT_Have))
-                   and then Is_Parent_Of (BT_Need, Parent_Subtype (BT_Have)));
+                   and then Is_Parent_Of (BT_Need,
+                                          Full_Parent_Subtype (BT_Have)));
 
    end Is_Parent_Of;
 

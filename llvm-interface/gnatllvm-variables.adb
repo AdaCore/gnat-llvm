@@ -1320,7 +1320,9 @@ package body GNATLLVM.Variables is
                   Addr := Emit_Expression (Addr_Expr);
                end if;
 
-               Set_Initializer (LLVM_Var, Int_To_Ref (Addr,  TE));
+               Set_Initializer (LLVM_Var,
+                                Int_To_Relationship (Addr,  TE,
+                                                    Reference_To_Component));
                Set_Init := True;
             elsif Library_Level then
                Add_To_Elab_Proc (N);

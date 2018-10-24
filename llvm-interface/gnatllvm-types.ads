@@ -496,9 +496,6 @@ package GNATLLVM.Types is
 
    function IDS_Is_Const  (V : IDS) return Boolean is (Present (V.Value));
 
-   pragma Warnings (Off);
-   --  Shutdown warnings on unused parameters
-
    function IDS_Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
      ((False,  Size_Const_Int (C, Sign_Extend)))
      with Post => IDS_Is_Const (IDS_Const'Result);
@@ -604,7 +601,6 @@ package GNATLLVM.Types is
      (if   IDS_Is_Const (V) then (False, Convert (V.Value, TE, Float_Truncate))
       else Var_IDS)
      with Pre => Present (V) and then Is_Type (TE);
-   pragma Warnings (On);
 
    function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
      with Pre => Present (V), Post => Present (IDS_Emit_Expr'Result);

@@ -1,5 +1,8 @@
 Limitations and missing features (identified so far):
 
+- warn on UC of different size and use undef (see, e.g., 7816-003)
+  maybe related to next item
+- materialize bounds from 0 to 'Last for foreign array param (2315-001)
 - deal with recording positions for package bodies (can already do when
   generating code, but not when pushing for elab proc)
 - more __sync builtins and other atomic builtins
@@ -7,9 +10,9 @@ Limitations and missing features (identified so far):
 - representation clauses
 - back annotation
 - debug info (for variables, types and parameters)
-- restriction checks done by back end (other than no elab, which is done)
+- restriction checks done by back end (other than no elab and allocations,
+  which are done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - support for stack checking
-- materialize bounds from 0 to 'Last for foreign array param (2315-001)
 - See if can use .rodata (see I305-025)
 - pragma Weak_External (see IB12-009)

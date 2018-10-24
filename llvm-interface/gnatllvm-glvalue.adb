@@ -129,7 +129,7 @@ package body GNATLLVM.GLValue is
               and then Is_Array_Or_Packed_Array_Type (TE);
 
          when Activation_Record  | Fat_Reference_To_Subprogram =>
-            return Ekind (TE) = E_Subprogram_Type;
+            return Ekind_In (TE, E_Subprogram_Type, E_Access_Subprogram_Type);
 
          when Reference_To_Activation_Record =>
             return Ekind (TE) = E_Subprogram_Type

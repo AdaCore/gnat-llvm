@@ -2002,7 +2002,7 @@ package body GNATLLVM.Records is
                            --  expression into it.
 
                            if FI.Is_Dummy_Type then
-                              Val := Pointer_Cast_To_Dummy (Val);
+                              Val := Convert_Pointer_To_Dummy (Val);
                            end if;
 
                            Result :=

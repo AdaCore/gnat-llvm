@@ -965,11 +965,6 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Pointer (V) and then Is_Access_Type (TE),
           Post => Is_Pointer (Pointer_Cast'Result);
 
-   function Pointer_Cast_To_Dummy
-     (V : GL_Value; Name : String := "") return GL_Value
-     with Pre  => Is_Access_Type (Related_Type (V)),
-          Post => Present (Pointer_Cast_To_Dummy'Result);
-
    function Pointer_Cast
      (V, T : GL_Value; Name : String := "") return GL_Value
    is

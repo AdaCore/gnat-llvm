@@ -999,17 +999,6 @@ package body GNATLLVM.GLValue is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
          TE));
 
-   ----------------------------
-   --  Pointer_Cast_To_Dummy --
-   ----------------------------
-
-   function Pointer_Cast_To_Dummy
-     (V : GL_Value; Name : String := "") return GL_Value
-   is
-     (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                       Create_Dummy_Access_Type (Related_Type (V)), Name),
-         Related_Type (V), Unknown, Is_Pristine (V)));
-
    ----------------
    -- Ptr_To_Ref --
    ----------------

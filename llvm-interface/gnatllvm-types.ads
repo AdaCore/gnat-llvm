@@ -319,6 +319,10 @@ package GNATLLVM.Types is
    --  V is a reference to some object.  Convert it to a reference to TE
    --  with the same relationship.
 
+   function Convert_Pointer_To_Dummy (V : GL_Value) return GL_Value
+     with Pre  => Is_Access_Type (V);
+   --  Likewise, but convert to the dummy form of V's type.
+
    function Normalize_LValue_Reference (V : GL_Value) return GL_Value
      with Pre  => Present (V),
           Post => Present (Normalize_LValue_Reference'Result);

@@ -76,6 +76,16 @@ package body GNATLLVM.Types is
           Post => Present (Create_Access_Type'Result);
    --  Create an LLVM type for various GNAT types
 
+   function Convert_Pointer
+     (V  : GL_Value;
+      TE : Entity_Id;
+      R  : GL_Relationship;
+      T  : Type_T) return GL_Value
+     with Pre  => Present (V) and then Is_Type (TE) and then Present (T),
+          Post => Present (Convert_Pointer'Result);
+   --  Internal function for Convert_Pointer and Convert_Pointer_To_Dummy
+   --  to do actual conversion.
+
    function Is_In_LHS_Context (N : Node_Id) return Boolean;
    --  Return True if N's parent (if N is Present) is such that we need a
    --  LValue.
@@ -801,6 +811,34 @@ package body GNATLLVM.Types is
    function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value is
       R     : constant GL_Relationship := Relationship (V);
       T     : constant Type_T          := Type_For_Relationship (TE, R);
+
+   begin
+      return Convert_Pointer (V, TE, R, T);
+   end Convert_Pointer;
+
+   ------------------------------
+   -- Convert_Pointer_To_Dummy --
+   ------------------------------
+
+   function Convert_Pointer_To_Dummy (V : GL_Value) return GL_Value is
+      TE    : constant Entity_Id       := Related_Type (V);
+      R     : constant GL_Relationship := Relationship (V);
+      T     : constant Type_T          := Create_Dummy_Access_Type (TE);
+
+   begin
+      return Convert_Pointer (V, TE, R, T);
+   end Convert_Pointer_To_Dummy;
+
+   ---------------------
+   -- Convert_Pointer --
+   ---------------------
+
+   function Convert_Pointer
+     (V  : GL_Value;
+      TE : Entity_Id;
+      R  : GL_Relationship;
+      T  : Type_T) return GL_Value
+   is
       Value : Value_T;
 
    begin
@@ -810,7 +848,7 @@ package body GNATLLVM.Types is
       --  If the input is an actual pointer, convert it
 
       elsif Get_Type_Kind (T) = Pointer_Type_Kind then
-         return Ptr_To_Relationship (V, TE, R);
+         return G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, ""), TE, R);
       end if;
 
       --  Otherwise, we have a composite pointer and must make a new

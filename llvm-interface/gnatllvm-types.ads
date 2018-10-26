@@ -568,7 +568,7 @@ package GNATLLVM.Types is
      with Pre => Present (V), Post => Present (IDS_Neg'Result);
 
    function IDS_Select
-     (V_If, V_Then, V_Else : IDS; Name : String := "") return IDS
+     (V_If, V_Then, V_Else : IDS; Unused_Name : String := "") return IDS
    is
      (if    IDS_Is_Const (V_If) and then V_If.Value = Const_True then V_Then
       elsif IDS_Is_Const (V_If) then V_Else else Var_IDS)

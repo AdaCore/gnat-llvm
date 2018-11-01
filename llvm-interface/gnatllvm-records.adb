@@ -113,12 +113,18 @@ package body GNATLLVM.Records is
 
    --  When computing the size of a record subtype, we push the subtype so
    --  we can see if we run into a discriminant from its base type.  If we
-   --  do, we substitue the expression that corresponds to the discriminant
+   --  do, we substitute the expression that corresponds to the discriminant
    --  type.  In most cases, but not all, the front end already does this
-   --  substitution for us.
+   --  substitution for us.  However, we have to be sure that we don't use
+   --  the same entry more than once since this could cause infinite recursion.
+
+   type SS_Entry is record
+      TE   : Entity_Id;
+      Used : Boolean;
+   end record;
 
    package Subtype_Stack is new Table.Table
-     (Table_Component_Type => Entity_Id,
+     (Table_Component_Type => SS_Entry,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 5,
@@ -367,10 +373,16 @@ package body GNATLLVM.Records is
       --  that just repeats the discriminant.
 
       for J in reverse 1 .. Subtype_Stack.Last loop
-         if Full_Base_Type (Subtype_Stack.Table (J)) = Rec_Type then
-            return Emit_Convert_Value
-              (Get_Discriminant_Constraint (Subtype_Stack.Table (J), E), TE);
-         end if;
+         declare
+            SSE : SS_Entry renames Subtype_Stack.Table (J);
+
+         begin
+            if Full_Base_Type (SSE.TE) = Rec_Type and then not SSE.Used then
+               SSE.Used := True;
+               return Emit_Convert_Value
+                 (Get_Discriminant_Constraint (SSE.TE, E), TE);
+            end if;
+         end;
       end loop;
 
       --  Otherwise, use a value that we pushed onto the LValue stacka
@@ -1382,7 +1394,7 @@ package body GNATLLVM.Records is
            and then Has_Discriminants (Full_Base_Type (TE))
            and then Is_Constrained (TE)
          then
-            Subtype_Stack.Append (TE);
+            Subtype_Stack.Append ((TE, False));
             Pushed_Stack := True;
          end if;
 

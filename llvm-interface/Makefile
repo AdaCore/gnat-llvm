@@ -92,6 +92,12 @@ bugs-bins:
 	  rm -f $$f; ln bin/llvm-$$f bugs/bin/$$f; \
 	done
 
+# Bootstrap targets
+
+CXX_PREFIX=$(shell dirname $(dir $(shell which gcc)))
+LD_PATH=$(CXX_PREFIX)/libexec/gcc/x86_64-pc-linux-gnu/7.3.1
+LIBSTDCXX_PATH=$(CXX_PREFIX)/lib64
+
 stage1: 
 	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build gnatlib
 	$(RMDIR) stage1
@@ -99,13 +105,13 @@ stage1:
 	$(MV) obj obj-tools bin lib stage1
 
 stage2: stage1
-	PATH=$(pwd)/stage1/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib
+	PATH=$(pwd)/stage1/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build gnatlib
 	$(RMDIR) stage2
 	$(MKDIR) stage2
 	$(MV) obj obj-tools bin lib stage2
 
 stage3: stage2
-	PATH=$(pwd)/stage2/bin:$$PATH $(MAKE) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm" build gnatlib
+	PATH=$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build gnatlib
 	@echo "Comparing stage2 and stage3 objects"
 	@for f in `cd stage2/obj && echo *.o`; do \
 	  $(compare) stage2/obj/$$f obj/$$f || exit 1; \

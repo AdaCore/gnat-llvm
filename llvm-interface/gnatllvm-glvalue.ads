@@ -1299,7 +1299,10 @@ package GNATLLVM.GLValue is
    function Shl
      (V, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name), V))
+      (G_From (Set_Arith_Attrs
+                 (Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name),
+                  V),
+               V))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                    and then Is_Discrete_Or_Fixed_Point_Type (Count),
            Post => Is_Discrete_Or_Fixed_Point_Type (Shl'Result);

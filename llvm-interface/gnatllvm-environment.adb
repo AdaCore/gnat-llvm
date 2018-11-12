@@ -39,13 +39,15 @@ package body GNATLLVM.Environment is
      (LI.Typ);
    function Raw_Get_Value  (LI : Access_LLVM_Info) return GL_Value is
      (LI.Value);
+   function Raw_Get_SO     (LI : Access_LLVM_Info) return Dynamic_SO_Ref is
+     (LI.SO_Info);
    function Raw_Get_Elab   (LI : Access_LLVM_Info) return Boolean is
      (LI.Is_Being_Elaborated);
    function Raw_Get_Dummy  (LI : Access_LLVM_Info) return Boolean is
      (LI.Is_Dummy_Type);
    function Raw_Get_Field  (LI : Access_LLVM_Info) return Field_Info_Id is
      (LI.Field_Info);
-   function Raw_Get_Label (LI : Access_LLVM_Info) return Label_Info_Id is
+   function Raw_Get_Label  (LI : Access_LLVM_Info) return Label_Info_Id is
      (LI.Label_Info);
    function Raw_Get_NN     (LI : Access_LLVM_Info) return Boolean is
      (LI.Is_Nonnative_Type);
@@ -62,6 +64,7 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_Type   (LI : Access_LLVM_Info; Val : Type_T);
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value);
+   procedure Raw_Set_SO     (LI : Access_LLVM_Info; Val : Dynamic_SO_Ref);
    procedure Raw_Set_Elab   (LI : Access_LLVM_Info; Val : Boolean);
    procedure Raw_Set_Dummy  (LI : Access_LLVM_Info; Val : Boolean);
    procedure Raw_Set_Field  (LI : Access_LLVM_Info; Val : Field_Info_Id);
@@ -74,6 +77,7 @@ package body GNATLLVM.Environment is
 
    pragma Inline (Raw_Set_Type);
    pragma Inline (Raw_Set_Value);
+   pragma Inline (Raw_Set_SO);
    pragma Inline (Raw_Set_Elab);
    pragma Inline (Raw_Set_Dummy);
    pragma Inline (Raw_Set_Field);
@@ -89,6 +93,9 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value) is
    begin LI.Value := Val; end Raw_Set_Value;
+
+   procedure Raw_Set_SO     (LI : Access_LLVM_Info; Val : Dynamic_SO_Ref) is
+   begin LI.SO_Info := Val; end Raw_Set_SO;
 
    procedure Raw_Set_Elab   (LI : Access_LLVM_Info; Val : Boolean) is
    begin LI.Is_Being_Elaborated := Val; end Raw_Set_Elab;
@@ -149,7 +156,8 @@ package body GNATLLVM.Environment is
                                   Field_Info          => Empty_Field_Info_Id,
                                   Array_Info          => Empty_Array_Info_Id,
                                   Label_Info          => Empty_Label_Info_Id,
-                                  Orig_Array_Info     => Empty_Array_Info_Id));
+                                  Orig_Array_Info     => Empty_Array_Info_Id,
+                                  SO_Info             => No_Uint));
          Id := LLVM_Info_Table.Last;
          LLVM_Info_Map (E) := Id;
       end if;
@@ -243,6 +251,8 @@ package body GNATLLVM.Environment is
                                        Raw_Get_Type, Raw_Set_Type);
    package Env_Value  is new Pkg_None (GL_Value, No_GL_Value,
                                        Raw_Get_Value, Raw_Set_Value);
+   package Env_SO     is new Pkg_None (Dynamic_SO_Ref, No_Uint,
+                                       Raw_Get_SO, Raw_Set_SO);
    package Env_Elab   is new Pkg_None (Boolean, False,
                                        Raw_Get_Elab, Raw_Set_Elab);
    package Env_Dummy  is new Pkg_None (Boolean, False,
@@ -268,10 +278,15 @@ package body GNATLLVM.Environment is
    procedure Set_Type                (TE : Entity_Id; TL : Type_T)
      renames Env_Type.Set;
 
-   function  Get_Value                (VE : Entity_Id) return GL_Value
+   function  Get_Value               (VE : Entity_Id) return GL_Value
      renames Env_Value.Get;
-   procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)
+   procedure Set_Value_R             (VE : Entity_Id; VL : GL_Value)
      renames Env_Value.Set;
+
+   function  Get_SO_Ref_R            (N : Node_Id) return Dynamic_SO_Ref
+     renames Env_SO.Get;
+   procedure Set_SO_Ref              (N : Node_Id; U : Dynamic_SO_Ref)
+     renames Env_SO.Set;
 
    function  Is_Being_Elaborated     (TE : Entity_Id) return Boolean
      renames Env_Elab.Get;

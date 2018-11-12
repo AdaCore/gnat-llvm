@@ -15,7 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Table; use Table;
+with Repinfo; use Repinfo;
+with Table;   use Table;
+with Uintp;   use Uintp;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
@@ -124,6 +126,10 @@ package GNATLLVM.Environment is
       --  For a packed array implementation type, the bound information for
       --  the original array type.
 
+      SO_Info               : Dynamic_SO_Ref;
+      --  For an expression, the value returned by Create_Dynamic_SO_Ref,
+      --  used for back-annotation purposes.
+
    end record;
 
    LLVM_Info_Low_Bound  : constant := 200_000_000;
@@ -163,6 +169,9 @@ package GNATLLVM.Environment is
 
    function Get_Value           (VE : Entity_Id) return GL_Value
      with Pre => Present (VE);
+
+   function Get_SO_Ref_R        (N : Node_Id)    return Dynamic_SO_Ref
+     with Pre => Present (N);
 
    function Get_Array_Info      (TE : Entity_Id) return Array_Info_Id
      with Pre => Is_Array_Type (TE);
@@ -207,6 +216,12 @@ package GNATLLVM.Environment is
                   and then (No (Get_Value (VE)) or else Get_Value (VE) = VL),
           Post => Get_Value (VE) = VL;
 
+   procedure Set_SO_Ref          (N : Node_Id; U : Dynamic_SO_Ref)
+     with Pre  => Present (N) and then U /= No_Uint
+                  and then (Get_SO_Ref_R (N) = No_Uint
+                              or else Get_SO_Ref_R (N) = U),
+          Post => Get_SO_Ref_R (N) = U;
+
    procedure Set_Array_Info      (TE : Entity_Id; AI : Array_Info_Id)
      with Pre  => Is_Array_Type (TE) and then Present (Get_Type (TE))
                   and then (No (Get_Array_Info (TE))
@@ -244,6 +259,7 @@ package GNATLLVM.Environment is
    pragma Inline (Is_Dummy_Type);
    pragma Inline (Get_TBAA);
    pragma Inline (Get_Value);
+   pragma Inline (Get_SO_Ref_R);
    pragma Inline (Get_Array_Info);
    pragma Inline (Get_Orig_Array_Info);
    pragma Inline (Get_Record_Info);
@@ -254,6 +270,7 @@ package GNATLLVM.Environment is
    pragma Inline (Set_Is_Dummy_Type);
    pragma Inline (Set_TBAA);
    pragma Inline (Set_Value_R);
+   pragma Inline (Set_SO_Ref);
    pragma Inline (Set_Array_Info);
    pragma Inline (Set_Orig_Array_Info);
    pragma Inline (Set_Record_Info);

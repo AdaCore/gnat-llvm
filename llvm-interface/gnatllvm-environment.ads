@@ -170,7 +170,7 @@ package GNATLLVM.Environment is
    function Get_Value           (VE : Entity_Id) return GL_Value
      with Pre => Present (VE);
 
-   function Get_SO_Ref_R        (N : Node_Id)    return Dynamic_SO_Ref
+   function Get_SO_Ref          (N : Node_Id)    return Dynamic_SO_Ref
      with Pre => Present (N);
 
    function Get_Array_Info      (TE : Entity_Id) return Array_Info_Id
@@ -218,9 +218,9 @@ package GNATLLVM.Environment is
 
    procedure Set_SO_Ref          (N : Node_Id; U : Dynamic_SO_Ref)
      with Pre  => Present (N) and then U /= No_Uint
-                  and then (Get_SO_Ref_R (N) = No_Uint
-                              or else Get_SO_Ref_R (N) = U),
-          Post => Get_SO_Ref_R (N) = U;
+                  and then (Get_SO_Ref (N) = No_Uint
+                              or else Get_SO_Ref (N) = U),
+          Post => Get_SO_Ref (N) = U;
 
    procedure Set_Array_Info      (TE : Entity_Id; AI : Array_Info_Id)
      with Pre  => Is_Array_Type (TE) and then Present (Get_Type (TE))
@@ -259,7 +259,7 @@ package GNATLLVM.Environment is
    pragma Inline (Is_Dummy_Type);
    pragma Inline (Get_TBAA);
    pragma Inline (Get_Value);
-   pragma Inline (Get_SO_Ref_R);
+   pragma Inline (Get_SO_Ref);
    pragma Inline (Get_Array_Info);
    pragma Inline (Get_Orig_Array_Info);
    pragma Inline (Get_Record_Info);

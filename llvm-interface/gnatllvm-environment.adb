@@ -283,7 +283,7 @@ package body GNATLLVM.Environment is
    procedure Set_Value_R             (VE : Entity_Id; VL : GL_Value)
      renames Env_Value.Set;
 
-   function  Get_SO_Ref_R            (N : Node_Id) return Dynamic_SO_Ref
+   function  Get_SO_Ref              (N : Node_Id) return Dynamic_SO_Ref
      renames Env_SO.Get;
    procedure Set_SO_Ref              (N : Node_Id; U : Dynamic_SO_Ref)
      renames Env_SO.Set;

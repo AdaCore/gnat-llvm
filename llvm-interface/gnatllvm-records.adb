@@ -225,8 +225,10 @@ package body GNATLLVM.Records is
       with function  Sz_Neg (V : Result; Name : String := "") return Result;
       with function  Sz_Select
         (V_If, V_Then, V_Else : Result; Name : String := "") return Result;
-      with function  Sz_Min (V1, V2 : Result) return Result;
-      with function  Sz_Max (V1, V2 : Result) return Result;
+      with function  Sz_Min
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Max
+        (V1, V2 : Result; Name : String := "") return Result;
       with function  Sz_Is_Const (V : Result) return Boolean;
       with function  Sz_Const_Val (V : Result) return ULL;
    package Size is

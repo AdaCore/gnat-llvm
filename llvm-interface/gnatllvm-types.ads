@@ -549,11 +549,11 @@ package GNATLLVM.Types is
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_S_Div'Result);
 
-   function IDS_Min (V1, V2 : IDS) return IDS
+   function IDS_Min (V1, V2 : IDS; Name : String := "") return IDS
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Min'Result);
 
-   function IDS_Max (V1, V2 : IDS) return IDS
+   function IDS_Max (V1, V2 : IDS; Name : String := "") return IDS
      with Pre  => Present (V1) and then Present (V2),
           Post => Present (IDS_Max'Result);
 

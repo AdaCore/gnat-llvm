@@ -158,8 +158,10 @@ package body GNATLLVM.Arrays is
       with function  Sz_Neg (V : Result; Name : String := "") return Result;
       with function  Sz_Select
         (C_If, C_Then, C_Else : Result; Name : String := "") return Result;
-      with function  Sz_Min (V1, V2 : Result) return Result;
-      with function  Sz_Max (V1, V2 : Result) return Result;
+      with function  Sz_Min
+        (V1, V2 : Result; Name : String := "") return Result;
+      with function  Sz_Max
+        (V1, V2 : Result; Name : String := "") return Result;
       with function  Sz_Extract_Value
         (TE      : Entity_Id;
          V       : GL_Value;

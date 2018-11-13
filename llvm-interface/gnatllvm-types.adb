@@ -1892,17 +1892,17 @@ package body GNATLLVM.Types is
    -- IDS_Min --
    -------------
 
-   function IDS_Min (V1, V2 : IDS) return IDS is
+   function IDS_Min (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, Build_Min (V1.Value, V2.Value)) else Var_IDS);
+      then (False, Build_Min (V1.Value, V2.Value, Name)) else Var_IDS);
 
    -------------
    -- IDS_Max --
    -------------
 
-   function IDS_Max (V1, V2 : IDS) return IDS is
+   function IDS_Max (V1, V2 : IDS; Name : String := "") return IDS is
      (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
-      then (False, Build_Max (V1.Value, V2.Value)) else Var_IDS);
+      then (False, Build_Max (V1.Value, V2.Value, Name)) else Var_IDS);
 
    -------------------
    -- IDS_Type_Size --

@@ -83,12 +83,17 @@ package GNATLLVM.Exprs is
      with Pre => Nkind (N) = N_Code_Statement;
    --  Generate code for inline asm
 
-   function Build_Max (LHS, RHS : GL_Value) return GL_Value is
-     (Build_Select (I_Cmp (Int_SGT, LHS, RHS), LHS, RHS))
+   function Build_Max
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
+   is
+     (Build_Select (I_Cmp (Int_SGT, LHS, RHS), LHS, RHS, Name))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (Build_Max'Result);
-   function Build_Min (LHS, RHS : GL_Value) return GL_Value is
-     (Build_Select (I_Cmp (Int_SLT, LHS, RHS), LHS, RHS))
+
+   function Build_Min
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
+   is
+     (Build_Select (I_Cmp (Int_SLT, LHS, RHS), LHS, RHS, Name))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (Build_Min'Result);
 

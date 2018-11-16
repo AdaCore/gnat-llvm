@@ -49,29 +49,6 @@ llvm-interface which you can put in your PATH:
 
   $ gdb -args llvm-gnat1 -c file.adb
 
-- To build a complete native executable:
-
-  $ llvm-gnatmake main.adb
-
-- To generate LLVM byte code (will generate a .bc file):
-
-  $ llvm-gcc -c -emit-llvm file.adb
-
-- To dump LLVM representation in textual form (will dump on stderr):
-
-  $ llvm-gcc -c --dump-ir file.adb
-
-- To generate native assembly file (will generate a .s file):
-
-  $ llvm-gcc -S file.adb
-
-- To run the GNAT-LLVM testsuite:
-
-  $ make tests
-
-  The results will be found under testsuite/output/new, see e.g.
-  testsuite/output/new/report
-
 - To run the ACATS testsuite:
 
   $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/acats

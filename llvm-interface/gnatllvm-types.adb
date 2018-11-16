@@ -138,6 +138,11 @@ package body GNATLLVM.Types is
    --  V is a constant.  If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
 
+   function BA_From_Const (V : GL_Value) return BA_Data is
+     (if   Is_A_Const_Int (V) then (False, V, No_Uint) else No_BA)
+     with Pre => Is_Constant (V);
+   --  Likewise, for back-annotation
+
    ----------------------
    --  Is_Dynamic_Size --
    ----------------------
@@ -1305,9 +1310,12 @@ package body GNATLLVM.Types is
       TBAA : Metadata_T;
 
    begin
-      --  See if we already have a non-dummy type
+      --  See if we already have a non-dummy type or have a dummy type but
+      --  we're elaborating this type.
 
-      if Present (T) and then not Is_Dummy_Type (TE) then
+      if Present (T)
+        and then (not Is_Dummy_Type (TE) or Is_Being_Elaborated (TE))
+      then
          return T;
       end if;
 
@@ -1357,7 +1365,6 @@ package body GNATLLVM.Types is
               ("unsupported type kind: `" & Ekind (TE)'Image & "`", TE);
             T := Void_Type;
       end case;
-      Set_Is_Being_Elaborated (TE, False);
 
       --  Now save the result and any TBAA information
 
@@ -1375,6 +1382,29 @@ package body GNATLLVM.Types is
          Discard (Create_Array_Type (TE, For_Orig => True));
       end if;
 
+      --  Back-annotate sizes of non-scalar types if there isn't one.
+      --  ??? Don't do anything for access subprogram since this will cause
+      --  warnings for UC's in g-thread and g-spipat.
+
+      if not Is_Access_Subprogram_Type (TE)
+        and then not Is_Scalar_Type (TE)
+      then
+         declare
+            Size_In_Bytes : constant BA_Data :=
+              BA_Mul (BA_Type_Size (TE),
+                      (False, Size_Const_Int (Uint_8), No_Uint));
+
+         begin
+            if RM_Size (TE) = Uint_0 then
+               Set_RM_Size (TE, Annotated_Value (Size_In_Bytes));
+            end if;
+            if Esize (TE) = Uint_0 then
+               Set_Esize   (TE, Annotated_Value (Size_In_Bytes));
+            end if;
+         end;
+      end if;
+
+      Set_Is_Being_Elaborated (TE, False);
       return T;
    end Create_Type;
 
@@ -1665,7 +1695,7 @@ package body GNATLLVM.Types is
       --  type in this case since it may contain bound information and
       --  we need to record the bounds as well as their size.
 
-      if Is_Access_Type (V) and then Relationship (V) = Data then
+      if Is_Access_Type (V) and then Is_Data (V) then
          Conv_V   := From_Access (V);
          DT       := Full_Designated_Type (V);
          Alloc_TE := DT;
@@ -1939,5 +1969,304 @@ package body GNATLLVM.Types is
       return (if   Is_No_Elab_Needed (V)
               then IDS_From_Const (Emit_Expression (V)) else Var_IDS);
    end IDS_Emit_Expr;
+
+   ---------------------------
+   -- BA_To_Node_Ref_Or_Val --
+   ---------------------------
+
+   function BA_To_Node_Ref_Or_Val (V : BA_Data) return Node_Ref_Or_Val is
+   begin
+      --  If this isn't valid, return an invalid value
+
+      if No (V) then
+         return No_Uint;
+
+      --  If we already have a Node_Ref, return it.
+
+      elsif V.T_Value /= No_Uint then
+         return V.T_Value;
+
+      --  Otherwise, we have a constant.
+
+      else
+         declare
+            Cnst : constant LLI := Get_Const_Int_Value (V.C_Value);
+
+         begin
+            --  If it's a positive number that can fit in Int, convert
+            --  it to a Uint.
+
+            if Cnst in 0 .. LLI (Int'Last) then
+               return UI_From_Int (Int (Cnst));
+
+            --  If it's a negative number whose complement fits in Int,
+            --  convert the negative to Int and generate a Negate_Expr.
+
+            elsif -Cnst in 0 .. LLI (Int'Last) then
+               return Create_Node (Negate_Expr, UI_From_Int (-Int (Cnst)));
+
+               --  Otherwise, we can't convert
+
+            else
+               return No_Uint;
+            end if;
+         end;
+      end if;
+   end BA_To_Node_Ref_Or_Val;
+
+   ---------------------
+   -- Annotated_Value --
+   ---------------------
+
+   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val is
+      U : constant Uint := BA_To_Node_Ref_Or_Val (V);
+
+   begin
+      return (if U = No_Uint then Uint_0 else U);
+   end Annotated_Value;
+
+   -------------
+   -- BA_Unop --
+   -------------
+
+   function BA_Unop
+     (V    : BA_Data;
+      F    : Unop_Access;
+      C    : TCode;
+      Name : String := "") return BA_Data is
+
+   begin
+      --  If we don't have an input, propagate that to the output.
+      if No (V) then
+         return V;
+
+      --  If we have a constant, perform the operation on the constant and
+      --  return it.
+
+      elsif BA_Is_Const (V) then
+         return (False, F (V.C_Value, Name), No_Uint);
+
+      --  Otherwise, create a new representation tree node
+
+      else
+         return (False, No_GL_Value, Create_Node (C, V.T_Value));
+      end if;
+
+   end BA_Unop;
+
+   --------------
+   -- BA_Binop --
+   --------------
+
+   function BA_Binop
+     (V1, V2 : BA_Data;
+      F      : Binop_Access;
+      C      : TCode;
+      Name   : String := "") return BA_Data
+   is
+      Op1, Op2 : Node_Ref_Or_Val;
+
+   begin
+      --  If both are constants, do the operation as a constant and return
+      --  that value.
+
+      if BA_Is_Const (V1) and then BA_Is_Const (V2) then
+         return (False, F (V1.C_Value, V2.C_Value, Name), No_Uint);
+      end if;
+
+      --  Otherwise, get our two operands as a node reference or Uint
+
+      Op1 :=  BA_To_Node_Ref_Or_Val (V1);
+      Op2 :=  BA_To_Node_Ref_Or_Val (V2);
+
+      --  If either isn't valid, return invalid
+
+      if Op1 = No_Uint or else Op2 = No_Uint then
+         return No_BA;
+
+      --  Otherwise, build and return a node
+
+      else
+         return (False, No_GL_Value, Create_Node (C, Op1, Op2));
+      end if;
+
+   end BA_Binop;
+
+   --------------
+   -- BA_I_Cmp --
+   --------------
+
+   function BA_I_Cmp
+     (Op       : Int_Predicate_T;
+      LHS, RHS : BA_Data;
+      Name     : String := "") return BA_Data
+   is
+      LHS_Op, RHS_Op : Node_Ref_Or_Val;
+      TC             : TCode;
+
+   begin
+      --  If both are constants, do the operation as a constant and return
+      --  that value.
+
+      if BA_Is_Const (LHS) and then BA_Is_Const (RHS) then
+         return (False, I_Cmp (Op, LHS.C_Value, RHS.C_Value, Name), No_Uint);
+      end if;
+
+      --  Otherwise, get our two operands as a node reference or Uint
+
+      LHS_Op :=  BA_To_Node_Ref_Or_Val (LHS);
+      RHS_Op :=  BA_To_Node_Ref_Or_Val (RHS);
+
+      --  If either isn't valid, return invalid
+
+      if LHS_Op = No_Uint or else RHS_Op = No_Uint then
+         return No_BA;
+
+      --  Otherwise, build and return a node
+
+      else
+         case Op is
+            when Int_EQ =>
+               TC := Eq_Expr;
+            when Int_NE =>
+               TC := Ne_Expr;
+            when Int_UGT | Int_SGT =>
+               TC := Gt_Expr;
+            when Int_UGE | Int_SGE =>
+               TC := Ge_Expr;
+            when Int_ULT | Int_SLT =>
+               TC := Lt_Expr;
+            when Int_ULE | Int_SLE =>
+               TC := Le_Expr;
+            when others =>
+               pragma Assert (False);
+         end case;
+
+         return (False, No_GL_Value, Create_Node (TC, LHS_Op, RHS_Op));
+      end if;
+
+   end BA_I_Cmp;
+
+   ------------
+   -- BA_Min --
+   ------------
+
+   function BA_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, Build_Min'Access, Min_Expr, Name));
+
+   ------------
+   -- BA_Max --
+   ------------
+
+   function BA_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, Build_Max'Access, Max_Expr, Name));
+
+   ---------------
+   -- BA_Select --
+   ---------------
+
+   function BA_Select
+     (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data
+   is
+      If_Op, Then_Op, Else_Op : Node_Ref_Or_Val;
+
+   begin
+      --  If all are constants, do the operation as a constant and return
+      --  that value.
+
+      if BA_Is_Const (V_If) and then BA_Is_Const (V_Then)
+        and then BA_Is_Const (V_Else)
+      then
+         return (False, Build_Select (V_If.C_Value, V_Then.C_Value,
+                                      V_Else.C_Value, Name),
+                 No_Uint);
+      end if;
+
+      --  Otherwise, get our operands as a node reference or Uint
+
+      If_Op   :=  BA_To_Node_Ref_Or_Val (V_If);
+      Then_Op :=  BA_To_Node_Ref_Or_Val (V_Then);
+      Else_Op :=  BA_To_Node_Ref_Or_Val (V_Else);
+
+      --  If any isn't valid, return invalid
+
+      if If_Op = No_Uint or else Then_Op = No_Uint
+        or else Else_Op = No_Uint
+      then
+         return No_BA;
+
+      --  Otherwise, build and return a node
+
+      else
+         return (False, No_GL_Value,
+                 Create_Node (Cond_Expr, If_Op, Then_Op, Else_Op));
+      end if;
+
+   end BA_Select;
+
+   ------------------
+   -- BA_Type_Size --
+   ------------------
+
+   function BA_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value := No_GL_Value;
+      Max_Size : Boolean := False) return BA_Data is
+   begin
+      --  If a value was specified and it's data, then it must be of a
+      --  fixed size.  That's the size we're looking for.
+
+      if Present (V) and then Relationship (V) = Data then
+         return BA_From_Const (Get_Type_Size (Type_Of (V)));
+      elsif Is_Record_Type (TE) then
+         return BA_Record_Type_Size (TE, V, Max_Size);
+      elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+         return No_BA;
+      elsif Is_Array_Type (TE) then
+         return BA_Array_Type_Size (TE, V, Max_Size);
+      elsif Ekind (TE) = E_Subprogram_Type then
+         return No_BA;
+      else
+         return BA_From_Const (Get_Type_Size (Create_Type (TE)));
+      end if;
+
+   end BA_Type_Size;
+
+   ------------------
+   -- BA_Emit_Expr --
+   ------------------
+
+   function BA_Emit_Expr
+     (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
+   is
+      pragma Unreferenced (LHS);
+      SO_Info : Dynamic_SO_Ref := Get_SO_Ref (V);
+
+   begin
+      --  If we didn't already get an SO_Ref for this expression, get one
+
+      if SO_Info = No_Uint then
+         --  If this expression contains a discriminant, see if it's just the
+         --  discriminant.  If so, return a tree node for it.
+         --  ??? If not, for now return no value.
+
+         if Contains_Discriminant (V) then
+            if Nkind (V) = N_Identifier
+              and then Ekind (Entity (V)) = E_Discriminant
+            then
+               SO_Info := Create_Discrim_Ref (Entity (V));
+            else
+               return No_BA;
+            end if;
+         end if;
+
+         SO_Info := Create_Dynamic_SO_Ref (V);
+         Set_SO_Ref (V, SO_Info);
+      end if;
+
+      --  And now return the value
+
+      return (False, No_GL_Value, SO_Info);
+   end BA_Emit_Expr;
 
 end GNATLLVM.Types;

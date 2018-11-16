@@ -17,8 +17,9 @@
 
 with Ada.Unchecked_Conversion;
 
-with Sinfo; use Sinfo;
-with Uintp; use Uintp;
+with Repinfo; use Repinfo;
+with Sinfo;   use Sinfo;
+with Uintp;   use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -613,6 +614,142 @@ package GNATLLVM.Types is
    function IDS_Undef (TE : Entity_Id) return IDS is
      (Var_IDS)
      with Pre => Is_Type (TE), Post => Present (IDS_Undef'Result);
+
+   --  In order to use the generic functions that computing sizing
+   --  information to compute a size and position in the form needs for
+   --  back-annotation, we need versions of the routines that actually
+   --  compute the size that instead track whether it's a constant or
+   --  where we need a to use the tree structure that the front-end
+   --  provides.  We use the data structure below.
+
+   type BA_Data is record
+      Is_None     : Boolean;
+      C_Value     : GL_Value;
+      T_Value     : Node_Ref;
+   end record
+     with Predicate => Is_None or else Present (C_Value)
+                       or else T_Value /= No_Uint;
+
+   type Unop_Access is access
+     function (V : GL_Value; Name : String := "") return GL_Value;
+   type Binop_Access is access
+     function (V1, V2 : GL_Value; Name : String := "") return GL_Value;
+
+   No_BA   : constant BA_Data := (True,  No_GL_Value, No_Uint);
+
+   function No      (V : BA_Data) return Boolean is (V =  No_BA);
+   function Present (V : BA_Data) return Boolean is (V /= No_BA);
+
+   function BA_Is_Const  (V : BA_Data) return Boolean is (Present (V.C_Value));
+
+   function BA_To_Node_Ref_Or_Val (V : BA_Data) return Node_Ref_Or_Val;
+   --  Return a Node_Ref corresponding to BA_Data.  This may be either the
+   --  T_Value of that data, C_Value converted to a Uint, or No_Uint if
+   --  the conversion can't be done.
+
+   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
+   --  Similar, but for placing in the GNAT tree, so we use Uint_0 instead of
+   --  No_Uint for an unknown value.
+
+   function BA_Unop
+     (V    : BA_Data;
+      F    : Unop_Access;
+      C    : TCode;
+      Name : String := "") return BA_Data;
+   --  Perform the operation on V defined by F (which is how to modify the
+   --  GL_Value) and C (which is how to make a representation tree).;
+
+   function BA_Binop
+     (V1, V2 : BA_Data;
+      F      : Binop_Access;
+      C      : TCode;
+      Name   : String := "") return BA_Data;
+   --  Likewise, but for a binary operation.
+
+   function BA_Const
+     (C : ULL; Sign_Extend : Boolean := False) return BA_Data
+   is
+     ((False,  Size_Const_Int (C, Sign_Extend), No_Uint))
+     with Post => BA_Is_Const (BA_Const'Result);
+
+   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
+     ((False, Const_Int (TE, C), No_Uint))
+     with Pre  => C /= No_Uint;
+
+   function BA_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value := No_GL_Value;
+      Max_Size : Boolean := False) return BA_Data
+     with Pre => Is_Type (TE);
+
+   function BA_I_Cmp
+     (Op       : Int_Predicate_T;
+      LHS, RHS : BA_Data;
+      Name     : String := "") return BA_Data;
+
+   function BA_Add (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, Add'Access, Plus_Expr, Name));
+
+   function BA_Sub (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, Sub'Access, Minus_Expr, Name));
+
+   function BA_Mul (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, Mul'Access, Mult_Expr, Name));
+
+   function BA_U_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, U_Div'Access, Trunc_Div_Expr, Name));
+
+   function BA_S_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, S_Div'Access, Trunc_Div_Expr, Name));
+
+   function BA_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data;
+   function BA_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data;
+
+   function BA_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (BA_Binop (V1, V2, Build_And'Access, Bit_And_Expr, Name));
+
+   function BA_Neg (V : BA_Data; Name : String := "") return BA_Data is
+     (BA_Unop (V, Neg'Access, Negate_Expr, Name));
+
+   function BA_Select
+     (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data;
+
+   function BA_Const_Val_ULL (V : BA_Data) return ULL is
+     (Get_Const_Int_Value_ULL (V.C_Value))
+     with Pre => BA_Is_Const (V);
+
+   function BA_Const_Int (V : BA_Data) return LLI is
+     (Get_Const_Int_Value (V.C_Value))
+     with Pre => BA_Is_Const (V);
+
+   function BA_Extract_Value
+     (TE             : Entity_Id;
+      V              : GL_Value;
+      Unused_Idx_Arr : Index_Array;
+      Unused_Name    : String := "") return BA_Data
+   is
+      (No_BA)
+     with Pre => Is_Type (TE) and then Present (V);
+
+   function BA_Convert
+     (V              : BA_Data;
+      TE             : Entity_Id;
+      Float_Truncate : Boolean := False) return BA_Data
+   is
+     (if   BA_Is_Const (V)
+      then (False, Convert (V.C_Value, TE, Float_Truncate), No_Uint) else V)
+     with Pre => Is_Type (TE);
+
+   function BA_Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
+     with Pre => Present (V);
+
+   function BA_Emit_Convert (N : Node_Id; TE : Entity_Id) return BA_Data is
+     (BA_Convert (BA_Emit_Expr (N), TE))
+     with Pre => Is_Type (TE);
+
+   function BA_Undef (TE : Entity_Id) return BA_Data is
+     (No_BA)
+     with Pre => Is_Type (TE);
 
    Disable_LV_Append : Nat := 0;
    --  If nonzero, disable appending expressions to the LValue list.

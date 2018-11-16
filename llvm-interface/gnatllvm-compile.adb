@@ -19,6 +19,7 @@ with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
+with Repinfo;  use Repinfo;
 with Restrict; use Restrict;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
@@ -88,10 +89,9 @@ package body GNATLLVM.Compile is
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
 
-      Void_Ptr_Type  := Create_Type (Standard_A_Char);
-
       --  Find the integer type corresponding to the size of a pointer
-      --  and use that for our Size Type.
+      --  and use that for our Size Type.  Do this before we create any
+      --  other type.
 
       if Get_Pointer_Size = Get_Long_Long_Size then
          Size_Type := Standard_Long_Long_Integer;
@@ -112,6 +112,10 @@ package body GNATLLVM.Compile is
       else
          Int_32_Type := Standard_Integer;
       end if;
+
+      --  Create a "void" pointer, which is i8* in LLVM
+
+      Void_Ptr_Type  := Create_Type (Standard_A_Char);
 
       --  Initialize modules and handle duplicate globals
 
@@ -444,17 +448,19 @@ package body GNATLLVM.Compile is
             | N_Task_Type_Declaration
            =>
             declare
-               TE  : constant Entity_Id :=
+               TE : constant Entity_Id :=
                  Get_Fullest_View (Defining_Identifier (N));
-               T   : constant Type_T    := Create_Type (TE);
+               Sz : constant Uint      := Esize (TE);
 
             begin
-               if Esize (TE) /= Uint_0
+               Discard (Create_Type (TE));
+               if Sz /= Uint_0 and then Is_Static_SO_Ref (Sz)
                  and then (Is_Dynamic_Size (TE)
-                            or else (Nat (ULL'(Get_Type_Size_In_Bits (T)))
-                                       > Esize (TE)))
+                             or else (Nat (Get_Const_Int_Value
+                                             (Get_Type_Size (TE)))
+                                        > Sz))
                then
-                  Error_Msg_Uint_1 := Esize (TE);
+                  Error_Msg_Uint_1 := Sz;
                   Error_Msg_NE ("??type & does not fit into ^ bits", N, TE);
                end if;
             end;

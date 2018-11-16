@@ -818,7 +818,7 @@ package body GNATLLVM.Arrays is
    end Size;
 
    --  Here we instantiate the size routines with functions that compute
-   --  the LLVM value the size and make those visible to clients.
+   --  the LLVM value of size and make those visible to clients.
 
    package LLVM_Size is
       new Size (Result           => GL_Value,
@@ -908,6 +908,37 @@ package body GNATLLVM.Arrays is
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
      renames IDS_Size.Get_Array_Type_Size;
+
+   --  Here we instantiate the size routines with functions that compute
+   --  the tree value for back-annotation.
+
+   package BA_Size is
+      new Size (Result           => BA_Data,
+                Empty_Result     => No_BA,
+                Sz_Const         => BA_Const,
+                Sz_Const_Int     => BA_Const_Int,
+                Sz_Type_Size     => BA_Type_Size,
+                Sz_I_Cmp         => BA_I_Cmp,
+                Sz_Add           => BA_Add,
+                Sz_Sub           => BA_Sub,
+                Sz_Mul           => BA_Mul,
+                Sz_U_Div         => BA_U_Div,
+                Sz_S_Div         => BA_S_Div,
+                Sz_Neg           => BA_Neg,
+                Sz_Select        => BA_Select,
+                Sz_Min           => BA_Min,
+                Sz_Max           => BA_Max,
+                Sz_Extract_Value => BA_Extract_Value,
+                Sz_Convert       => BA_Convert,
+                Sz_Emit_Expr     => BA_Emit_Expr,
+                Sz_Emit_Convert  => BA_Emit_Convert,
+                Sz_Undef         => BA_Undef);
+
+   function BA_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return BA_Data
+     renames BA_Size.Get_Array_Type_Size;
 
    -------------------------------
    -- Get_Array_Size_Complexity --

@@ -171,6 +171,12 @@ package GNATLLVM.Arrays is
      with Pre  => Is_Array_Type (TE),
           Post => Present (IDS_Array_Type_Size'Result);
 
+   function BA_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return BA_Data
+     with Pre  => Is_Array_Type (TE);
+
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)
      with Pre => Present (LValue)
                  and then Nkind_In (N, N_Aggregate, N_Extension_Aggregate)

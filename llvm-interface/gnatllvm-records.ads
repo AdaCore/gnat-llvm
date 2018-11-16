@@ -64,6 +64,12 @@ package GNATLLVM.Records is
      with Pre  => Is_Record_Type (TE),
           Post => Present (IDS_Record_Type_Size'Result);
 
+   function BA_Record_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return BA_Data
+     with Pre  => Is_Record_Type (TE);
+
    function Emit_Record_Aggregate
      (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
      with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)

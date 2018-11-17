@@ -17,3 +17,4 @@ Limitations and missing features (identified so far):
 - support for stack checking
 - See if can use .rodata (see I305-025)
 - pragma Weak_External (see IB12-009)
+- -gnatc and back-annotation

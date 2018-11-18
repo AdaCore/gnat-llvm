@@ -642,6 +642,19 @@ package GNATLLVM.Types is
 
    function BA_Is_Const  (V : BA_Data) return Boolean is (Present (V.C_Value));
 
+   function BA_Const_Val_ULL (V : BA_Data) return ULL is
+     (Get_Const_Int_Value_ULL (V.C_Value))
+     with Pre => BA_Is_Const (V);
+
+   function BA_Const_Int (V : BA_Data) return LLI is
+     (Get_Const_Int_Value (V.C_Value))
+     with Pre => BA_Is_Const (V);
+
+   function BA_Is_Const_0 (V : BA_Data) return Boolean is
+     (BA_Is_Const (V) and then BA_Const_Int (V) = 0);
+   function BA_Is_Const_1 (V : BA_Data) return Boolean is
+     (BA_Is_Const (V) and then BA_Const_Int (V) = 1);
+
    function BA_To_Node_Ref_Or_Val (V : BA_Data) return Node_Ref_Or_Val;
    --  Return a Node_Ref corresponding to BA_Data.  This may be either the
    --  T_Value of that data, C_Value converted to a Uint, or No_Uint if
@@ -650,6 +663,16 @@ package GNATLLVM.Types is
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
    --  Similar, but for placing in the GNAT tree, so we use Uint_0 instead of
    --  No_Uint for an unknown value.
+
+   function BA_Const
+     (C : ULL; Sign_Extend : Boolean := False) return BA_Data
+   is
+     ((False,  Size_Const_Int (C, Sign_Extend), No_Uint))
+     with Post => BA_Is_Const (BA_Const'Result);
+
+   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
+     ((False, Const_Int (TE, C), No_Uint))
+     with Pre  => C /= No_Uint;
 
    function BA_Unop
      (V    : BA_Data;
@@ -666,15 +689,8 @@ package GNATLLVM.Types is
       Name   : String := "") return BA_Data;
    --  Likewise, but for a binary operation.
 
-   function BA_Const
-     (C : ULL; Sign_Extend : Boolean := False) return BA_Data
-   is
-     ((False,  Size_Const_Int (C, Sign_Extend), No_Uint))
-     with Post => BA_Is_Const (BA_Const'Result);
-
-   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
-     ((False, Const_Int (TE, C), No_Uint))
-     with Pre  => C /= No_Uint;
+   function BA_Neg (V : BA_Data; Name : String := "") return BA_Data is
+     (BA_Unop (V, Neg'Access, Negate_Expr, Name));
 
    function BA_Type_Size
      (TE       : Entity_Id;
@@ -688,39 +704,38 @@ package GNATLLVM.Types is
       Name     : String := "") return BA_Data;
 
    function BA_Add (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, Add'Access, Plus_Expr, Name));
+     ((if    BA_Is_Const_0 (V1) then V2
+       elsif BA_Is_Const_0 (V2) then V1
+       else BA_Binop (V1, V2, Add'Access, Plus_Expr, Name)));
 
    function BA_Sub (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, Sub'Access, Minus_Expr, Name));
+     ((if    BA_Is_Const_0 (V2) then V1
+       elsif BA_Is_Const_0 (V1) then BA_Neg (V2, Name)
+       else BA_Binop (V1, V2, Sub'Access, Minus_Expr, Name)));
 
    function BA_Mul (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, Mul'Access, Mult_Expr, Name));
+     ((if    BA_Is_Const_1 (V1) then V2
+       elsif BA_Is_Const_1 (V2) then V1
+       elsif BA_Is_Const_0 (V1) or else BA_Is_Const_0 (V2) then BA_Const (0)
+       else  BA_Binop (V1, V2, Mul'Access, Mult_Expr, Name)));
 
    function BA_U_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, U_Div'Access, Trunc_Div_Expr, Name));
+     ((if   BA_Is_Const_1 (V2) then V1
+       else BA_Binop (V1, V2, U_Div'Access, Trunc_Div_Expr, Name)));
 
    function BA_S_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, S_Div'Access, Trunc_Div_Expr, Name));
+     ((if   BA_Is_Const_1 (V2) then V1
+       else BA_Binop (V1, V2, S_Div'Access, Trunc_Div_Expr, Name)));
 
    function BA_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data;
    function BA_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data;
 
    function BA_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, Build_And'Access, Bit_And_Expr, Name));
-
-   function BA_Neg (V : BA_Data; Name : String := "") return BA_Data is
-     (BA_Unop (V, Neg'Access, Negate_Expr, Name));
+     ((if   BA_Is_Const_0 (V1) or else BA_Is_Const_0 (V2) then BA_Const (0)
+       else BA_Binop (V1, V2, Build_And'Access, Bit_And_Expr, Name)));
 
    function BA_Select
      (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data;
-
-   function BA_Const_Val_ULL (V : BA_Data) return ULL is
-     (Get_Const_Int_Value_ULL (V.C_Value))
-     with Pre => BA_Is_Const (V);
-
-   function BA_Const_Int (V : BA_Data) return LLI is
-     (Get_Const_Int_Value (V.C_Value))
-     with Pre => BA_Is_Const (V);
 
    function BA_Extract_Value
      (TE             : Entity_Id;

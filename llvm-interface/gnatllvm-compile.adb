@@ -455,9 +455,10 @@ package body GNATLLVM.Compile is
             begin
                Discard (Create_Type (TE));
                if Sz /= Uint_0 and then Is_Static_SO_Ref (Sz)
-                 and then (Is_Dynamic_Size (TE)
+                 and then (Is_Dynamic_Size (TE, Max_Size =>  True)
                              or else (Nat (Get_Const_Int_Value
-                                             (Get_Type_Size (TE)))
+                                             (Get_Type_Size
+                                                (TE, Max_Size => True)))
                                         > Sz))
                then
                   Error_Msg_Uint_1 := Sz;

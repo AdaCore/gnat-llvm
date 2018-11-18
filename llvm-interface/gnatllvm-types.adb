@@ -61,6 +61,9 @@ package body GNATLLVM.Types is
       Table_Increment      => 2,
       Table_Name           => "LValue_Stack");
 
+   Var_Idx_For_BA : Int := 1;
+   --  Index of variable used for Dynamic_Val in back-annotation.
+
    function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean
      with Pre => Is_Type_Or_Void (TE);
    --  Return True if TE or any type it depends on is being elaborated
@@ -1389,19 +1392,19 @@ package body GNATLLVM.Types is
       if not Is_Access_Subprogram_Type (TE)
         and then not Is_Scalar_Type (TE)
       then
-         declare
-            Size_In_Bytes : constant BA_Data :=
-              BA_Mul (BA_Type_Size (TE),
-                      (False, Size_Const_Int (Uint_8), No_Uint));
+         if Esize (TE) = Uint_0 then
+            Set_Esize   (TE, Annotated_Value
+                           (BA_Mul (BA_Type_Size (TE, Max_Size => True),
+                                    BA_Const (8))));
+         end if;
+         if RM_Size (TE) = Uint_0 then
+            Set_RM_Size (TE, Annotated_Value
+                           (BA_Mul (BA_Type_Size (TE), BA_Const (8))));
+         end if;
+      end if;
 
-         begin
-            if RM_Size (TE) = Uint_0 then
-               Set_RM_Size (TE, Annotated_Value (Size_In_Bytes));
-            end if;
-            if Esize (TE) = Uint_0 then
-               Set_Esize   (TE, Annotated_Value (Size_In_Bytes));
-            end if;
-         end;
+      if Alignment (TE) = Uint_0 then
+         Set_Alignment (TE, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
       end if;
 
       Set_Is_Being_Elaborated (TE, False);
@@ -1762,7 +1765,7 @@ package body GNATLLVM.Types is
       if Is_Array_Type (TE) then
          return Get_Type_Alignment (Full_Component_Type (TE));
 
-      --  Otherwise, if a record, use the highest alignment of any field
+      --  If a record, use the highest alignment of any field
 
       elsif Is_Record_Type (TE) then
          Field := First_Entity (TE);
@@ -1777,6 +1780,12 @@ package body GNATLLVM.Types is
          end loop;
 
          return Largest_Align;
+
+      --  If it's a subprogram type, there really isn't an alignment, but
+      --  indicate that code can be anywhere.
+
+      elsif Ekind (TE) = E_Subprogram_Type then
+         return 1;
 
       --  Otherwise, it must be an elementary type, so get the LLVM type's
       --  alignment
@@ -2068,10 +2077,36 @@ package body GNATLLVM.Types is
 
    begin
       --  If both are constants, do the operation as a constant and return
-      --  that value.
+      --  that value.  Unfortunately, LLVM doesn't check for overflow in
+      --  the constant case, so we have to do it.
 
       if BA_Is_Const (V1) and then BA_Is_Const (V2) then
-         return (False, F (V1.C_Value, V2.C_Value, Name), No_Uint);
+         declare
+            Res     : constant GL_Value := F (V1.C_Value, V2.C_Value, Name);
+            V1_Neg  : constant Boolean  := BA_Const_Int (V1) < 0;
+            V2_Neg  : constant Boolean  := BA_Const_Int (V2) < 0;
+            Res_Neg : constant Boolean  := Get_Const_Int_Value (Res) < 0;
+
+         begin
+            case C is
+               when Plus_Expr =>
+                  if V1_Neg = V2_Neg and then Res_Neg /= V1_Neg then
+                     return No_BA;
+                  end if;
+               when Minus_Expr =>
+                  if V1_Neg = not V2_Neg and then Res_Neg /= V1_Neg then
+                     return No_BA;
+                  end if;
+               when Mult_Expr =>
+                  if Res_Neg /= V1_Neg xor V2_Neg then
+                     return No_BA;
+                  end if;
+               when others =>
+                  null;
+            end case;
+
+            return (False, Res, No_Uint);
+         end;
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint
@@ -2168,18 +2203,14 @@ package body GNATLLVM.Types is
    function BA_Select
      (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data
    is
+      pragma Unreferenced (Name);
       If_Op, Then_Op, Else_Op : Node_Ref_Or_Val;
 
    begin
-      --  If all are constants, do the operation as a constant and return
-      --  that value.
+      --  If the first is a constant, return the appropriate leg
 
-      if BA_Is_Const (V_If) and then BA_Is_Const (V_Then)
-        and then BA_Is_Const (V_Else)
-      then
-         return (False, Build_Select (V_If.C_Value, V_Then.C_Value,
-                                      V_Else.C_Value, Name),
-                 No_Uint);
+      if BA_Is_Const (V_If) then
+         return (if BA_Is_Const_0 (V_If) then V_Else else V_Then);
       end if;
 
       --  Otherwise, get our operands as a node reference or Uint
@@ -2258,9 +2289,16 @@ package body GNATLLVM.Types is
             else
                return No_BA;
             end if;
+
+         --  Otherwise, see if this is a constant
+
+         elsif Is_No_Elab_Needed (V) then
+            return (False, Emit_Expression (V), No_Uint);
+         else
+            SO_Info := Create_Node (Dynamic_Val, UI_From_Int (Var_Idx_For_BA));
+            Var_Idx_For_BA := Var_Idx_For_BA + 1;
          end if;
 
-         SO_Info := Create_Dynamic_SO_Ref (V);
          Set_SO_Ref (V, SO_Info);
       end if;
 

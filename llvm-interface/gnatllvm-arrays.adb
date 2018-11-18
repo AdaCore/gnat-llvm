@@ -524,18 +524,27 @@ package body GNATLLVM.Arrays is
       is
          Low      : constant Result          := Sz_Convert (In_Low, TE);
          High     : constant Result          := Sz_Convert (In_High, TE);
+         Const_0  : constant Result          := Sz_Const_Int (TE, Uint_0);
+         Const_1  : constant Result          := Sz_Const_Int (TE, Uint_1);
          Cmp_Kind : constant Int_Predicate_T :=
            (if Is_Unsigned_Type (TE) then Int_UGT else Int_SGT);
-         Is_Empty : constant Result          :=
-           Sz_I_Cmp (Cmp_Kind, Low, High, "is-empty");
-         Const_1  : constant Result          := Sz_Const_Int (TE, Uint_1);
+
       begin
-         return Sz_Select
-           (C_If   => Is_Empty,
-            C_Then => Sz_Const_Int (TE, Uint_0),
-            C_Else =>
-              (if   Low = Const_1 then High
-               else Sz_Add (Sz_Sub (High, Low), Const_1)));
+         --  If the low bound is 1, then this is the max of zero and the
+         --  high bound.
+
+         if Low = Const_1 then
+            return Sz_Max (High, Const_0);
+         else
+            --  Otherwise, it's zero if this is flat or superflat and
+            --  High - Low + 1 otherwise.
+
+            return Sz_Select
+              (C_If   => Sz_I_Cmp (Cmp_Kind, Low, High, "is-empty"),
+               C_Then => Const_0,
+               C_Else => Sz_Add (Sz_Sub (High, Low), Const_1));
+         end if;
+
       end Bounds_To_Length;
 
       --------------------------
@@ -712,7 +721,7 @@ package body GNATLLVM.Arrays is
 
                begin
                   Res := Sz_Convert (Emit_Expr_For_Minmax (Expr, Is_Low),
-                                        Dim_Info.Bound_Type);
+                                     Dim_Info.Bound_Type);
                   Res := (if   Is_Low then Sz_Max (Bound_Val, Res)
                           else Sz_Min (Bound_Val, Res));
                end;

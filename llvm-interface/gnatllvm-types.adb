@@ -1984,6 +1984,8 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function BA_To_Node_Ref_Or_Val (V : BA_Data) return Node_Ref_Or_Val is
+      function UI_From_LLI is new UI_From_Integral (LLI);
+
    begin
       --  If this isn't valid, return an invalid value
 
@@ -1998,28 +2000,7 @@ package body GNATLLVM.Types is
       --  Otherwise, we have a constant.
 
       else
-         declare
-            Cnst : constant LLI := Get_Const_Int_Value (V.C_Value);
-
-         begin
-            --  If it's a positive number that can fit in Int, convert
-            --  it to a Uint.
-
-            if Cnst in 0 .. LLI (Int'Last) then
-               return UI_From_Int (Int (Cnst));
-
-            --  If it's a negative number whose complement fits in Int,
-            --  convert the negative to Int and generate a Negate_Expr.
-
-            elsif -Cnst in 0 .. LLI (Int'Last) then
-               return Create_Node (Negate_Expr, UI_From_Int (-Int (Cnst)));
-
-               --  Otherwise, we can't convert
-
-            else
-               return No_Uint;
-            end if;
-         end;
+         return UI_From_LLI (Get_Const_Int_Value (V.C_Value));
       end if;
    end BA_To_Node_Ref_Or_Val;
 

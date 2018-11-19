@@ -448,18 +448,28 @@ package body GNATLLVM.Compile is
             | N_Task_Type_Declaration
            =>
             declare
-               TE : constant Entity_Id :=
+               TE : constant Entity_Id     :=
                  Get_Fullest_View (Defining_Identifier (N));
-               Sz : constant Uint      := Esize (TE);
+               Sz : constant Uint          := Esize (TE);
 
             begin
+               --  Check that the type fits in the specified size, which
+               --  may have been set by back-annotation.  We don't consider
+               --  a type to be of fixed size if the byte size is larger
+               --  than unsigned'Last due to LLVM limitations, so we may
+               --  have a dynamic size that's actual a constant.  And if
+               --  the size is dynamic we can't know if it fits or not.
+               --  The best way to do the size comparison is to form a
+               --  GL_Value of the two constants and compare them since
+               --  this doesn't rely on the above behavior of Is_Dynamic_Size.
+
                Discard (Create_Type (TE));
                if Sz /= Uint_0 and then Is_Static_SO_Ref (Sz)
-                 and then (Is_Dynamic_Size (TE, Max_Size =>  True)
-                             or else (Nat (Get_Const_Int_Value
-                                             (Get_Type_Size
-                                                (TE, Max_Size => True)))
-                                        > Sz))
+                 and then not Is_Dynamic_Size (TE, Max_Size => True)
+                 and then (I_Cmp (Int_SGT, Get_Type_Size
+                                    (TE, Max_Size => True),
+                                  Size_Const_Int (Sz))
+                             = Const_True)
                then
                   Error_Msg_Uint_1 := Sz;
                   Error_Msg_NE ("??type & does not fit into ^ bits", N, TE);

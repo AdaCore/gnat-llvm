@@ -105,9 +105,9 @@ package GNATLLVM.Records is
    --  The following are debug procedures to print information about records
    --  and fields.
 
-   procedure Print_Field_Info (E : Entity_Id);
-   procedure Print_Record_Info (TE : Entity_Id);
-   pragma Export (Ada, Print_Field_Info,  "dfi");
-   pragma Export (Ada, Print_Record_Info, "dri");
+   procedure Print_Field_Info (E : Entity_Id)
+     with Export => True, External_Name => "dfi";
+   procedure Print_Record_Info (TE : Entity_Id)
+     with Export => True, External_Name => "dri";
 
 end GNATLLVM.Records;

@@ -32,9 +32,9 @@ package body GNATLLVM.Wrapper is
         (MDBld  : MD_Builder_T;
          Name   : String;
          Parent : Metadata_T)
-        return Metadata_T;
-      pragma Import (C, Create_TBAA_Scalar_Type_Node_C,
-                     "Create_TBAA_Scalar_Type_Node_C");
+        return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_TBAA_Scalar_Type_Node_C";
 
    begin
       return Create_TBAA_Scalar_Type_Node_C (MDBld, Name & ASCII.NUL, Parent);
@@ -56,8 +56,9 @@ package body GNATLLVM.Wrapper is
          Aggr     : Value_T;
          Idx_List : System.Address;
          Num_Idx  : unsigned;
-         Name     : String) return Value_T;
-      pragma Import (C, Build_Extract_Value_C, "Build_Extract_Value_C");
+         Name     : String) return Value_T
+        with Import => True, Convention => C,
+             External_Name =>  "Build_Extract_Value_C";
 
    begin
       return Build_Extract_Value_C (Bld, Aggr, Idx_List, Num_Idx,
@@ -82,8 +83,9 @@ package body GNATLLVM.Wrapper is
          Elt      : Value_T;
          Idx_List : System.Address;
          Num_Idx  : unsigned;
-         Name     : String) return Value_T;
-      pragma Import (C, Build_Insert_Value_C, "Build_Insert_Value_C");
+         Name     : String) return Value_T
+        with Import => True, Convention => C,
+             External_Name => "Build_Insert_Value_C";
 
    begin
       return Build_Insert_Value_C (Bld, Aggr, Elt, Idx_List, Num_Idx,
@@ -102,8 +104,9 @@ package body GNATLLVM.Wrapper is
       procedure LLVM_Init_Module_C
         (Module         : Module_T;
          Filename       : String;
-         Target_Machine : Target_Machine_T);
-      pragma Import (C, LLVM_Init_Module_C, "LLVM_Init_Module");
+         Target_Machine : Target_Machine_T)
+        with Import => True, Convention => C,
+             External_Name => "LLVM_Init_Module";
 
    begin
       LLVM_Init_Module_C (Module, Filename & ASCII.NUL, Target_Machine);
@@ -133,8 +136,9 @@ package body GNATLLVM.Wrapper is
          No_Unit_At_A_Time     : Bool_T;
          No_Unroll_Loops       : Bool_T;
          No_Loop_Vectorization : Bool_T;
-         No_SLP_Vectorization  : Bool_T);
-      pragma Import (C, LLVM_Optimize_Module_C, "LLVM_Optimize_Module");
+         No_SLP_Vectorization  : Bool_T)
+        with Import => True, Convention => C,
+             External_Name => "LLVM_Optimize_Module";
       No_Inlining_B  : constant Bool_T := Boolean'Pos (No_Inlining);
       No_Unit_B      : constant Bool_T := Boolean'Pos (No_Unit_At_A_Time);
       No_Unroll_B    : constant Bool_T := Boolean'Pos (No_Unroll_Loops);
@@ -163,9 +167,9 @@ package body GNATLLVM.Wrapper is
          Func           : Value_T;
          File           : Metadata_T;
          Name, Ext_Name : String;
-         Lineno         : Logical_Line_Number) return Metadata_T;
-      pragma Import (C, Create_Debug_Subprogram_C,
-                     "Create_Debug_Subprogram_C");
+         Lineno         : Logical_Line_Number) return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_Debug_Subprogram_C";
    begin
       return Create_Debug_Subprogram_C (Bld, Func, File, Name & ASCII.NUL,
                                         Ext_Name & ASCII.NUL, Lineno);

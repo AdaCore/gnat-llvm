@@ -199,6 +199,10 @@ package body GNATLLVM.Records is
      with Pre  => RI.Variants /= null;
    --  Version of above for back-annotation
 
+   function BA_Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
+     with Pre => Ekind_In (E, E_Component, E_Discriminant);
+   --  Back-annotation version of Emit_Field_Position
+
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -1098,6 +1102,36 @@ package body GNATLLVM.Records is
          Flush_Current_Types;
       end if;
 
+      --  Back-annotate all fields that exist in this record type
+
+      Cur_Field := First_Component_Or_Discriminant (TE);
+      while Present (Cur_Field) loop
+         declare
+            ORC : constant Entity_Id := Original_Record_Component (Cur_Field);
+            Typ : constant Entity_Id := Full_Etype (Cur_Field);
+
+         begin
+            if Full_Scope (Cur_Field) = TE
+              and then (Ekind (Cur_Field) = E_Component
+                          or else No (ORC)
+                          or else not Is_Completely_Hidden (ORC))
+            then
+               if Unknown_Esize (Cur_Field) then
+                  Set_Esize (Cur_Field, Annotated_Object_Size (Typ));
+               end if;
+               if Component_Bit_Offset (Cur_Field) = No_Uint then
+                  Set_Component_Bit_Offset
+                    (Cur_Field,
+                     Annotated_Value (BA_Mul (BA_Field_Position (Cur_Field,
+                                                                 No_GL_Value),
+                                              BA_Const (8))));
+               end if;
+            end if;
+         end;
+
+         Next_Component_Or_Discriminant (Cur_Field);
+      end loop;
+
       return LLVM_Type;
    end Create_Record_Type;
 
@@ -1660,6 +1694,9 @@ package body GNATLLVM.Records is
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data
      renames BA_Size.Get_Record_Type_Size;
+
+   function BA_Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
+     renames BA_Size.Emit_Field_Position;
 
    -----------------------
    -- Get_Field_Ordinal --

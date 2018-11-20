@@ -1392,18 +1392,16 @@ package body GNATLLVM.Types is
       if not Is_Access_Subprogram_Type (TE)
         and then not Is_Scalar_Type (TE)
       then
-         if Esize (TE) = Uint_0 then
-            Set_Esize   (TE, Annotated_Value
-                           (BA_Mul (BA_Type_Size (TE, Max_Size => True),
-                                    BA_Const (8))));
+         if Unknown_Esize (TE) then
+            Set_Esize   (TE, Annotated_Object_Size (TE));
          end if;
-         if RM_Size (TE) = Uint_0 then
+         if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
                            (BA_Mul (BA_Type_Size (TE), BA_Const (8))));
          end if;
       end if;
 
-      if Alignment (TE) = Uint_0 then
+      if Unknown_Alignment (TE) then
          Set_Alignment (TE, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
       end if;
 
@@ -2014,6 +2012,20 @@ package body GNATLLVM.Types is
    begin
       return (if U = No_Uint then Uint_0 else U);
    end Annotated_Value;
+
+   ---------------------------
+   -- Annotated_Object_Size --
+   ---------------------------
+
+   function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val is
+      Use_Max      : constant Boolean := Is_Unconstrained_Record (TE);
+      TE_Byte_Size : constant BA_Data :=
+        BA_Type_Size (TE, Max_Size => Use_Max);
+      TE_Bit_Size  : constant BA_Data := BA_Mul (TE_Byte_Size, BA_Const (8));
+
+   begin
+      return Annotated_Value (TE_Bit_Size);
+   end Annotated_Object_Size;
 
    -------------
    -- BA_Unop --

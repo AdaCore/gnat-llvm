@@ -664,6 +664,11 @@ package GNATLLVM.Types is
    --  Similar, but for placing in the GNAT tree, so we use Uint_0 instead of
    --  No_Uint for an unknown value.
 
+   function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val
+     with Pre => Is_Type (TE);
+   --  Given a type TE that's used for the type of an object, return the
+   --  SO_Ref corresponding to the object's size.
+
    function BA_Const
      (C : ULL; Sign_Extend : Boolean := False) return BA_Data
    is

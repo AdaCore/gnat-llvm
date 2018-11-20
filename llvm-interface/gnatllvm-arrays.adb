@@ -338,6 +338,10 @@ package body GNATLLVM.Arrays is
          return Create_String_Literal_Type (A_TE, Typ);
       end if;
 
+      if Is_Base_Type (A_TE) and then Unknown_Component_Size (A_TE) then
+         Set_Component_Size (A_TE, Annotated_Object_Size (Comp_Type));
+      end if;
+
       --  We loop through each dimension of the array creating the entries
       --  for Array_Info.  If the component type is of variable size or if
       --  either bound of an index is a dynamic size, this type is of

@@ -31,6 +31,7 @@ with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 with Table;    use Table;
+with Uintp;    use Uintp;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -1399,6 +1400,16 @@ package body GNATLLVM.Variables is
          end if;
       end if;
 
+      --  Back-annotate size and alignment
+
+      if Unknown_Esize (Def_Ident) then
+         Set_Esize (Def_Ident, Annotated_Object_Size (TE));
+      end if;
+      if Unknown_Alignment (Def_Ident) then
+         Set_Alignment
+           (Def_Ident, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
+      end if;
+
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.
 
@@ -1514,6 +1525,7 @@ package body GNATLLVM.Variables is
       if not Copied and then (Present (Expr) or else Present (Value)) then
          Emit_Assignment (Get (LLVM_Var, Any_Reference), Expr, Value);
       end if;
+
    end Emit_Declaration;
 
    -------------------------------
@@ -1584,6 +1596,19 @@ package body GNATLLVM.Variables is
              else Const_Null_Alloc (TE)));
          Add_To_Elab_Proc (N);
       end if;
+
+      --  Back-annotate size and alignment
+
+      if Unknown_Esize (Def_Ident) then
+         Set_Esize (Def_Ident, Annotated_Value
+                      (BA_Mul (BA_Type_Size (TE, Max_Size => True),
+                               BA_Const (8))));
+      end if;
+      if Unknown_Alignment (Def_Ident) then
+         Set_Alignment
+           (Def_Ident, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
+      end if;
+
    end Emit_Renaming_Declaration;
 
    ---------------------

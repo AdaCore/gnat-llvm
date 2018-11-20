@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
+with Output;   use Output;
 with Restrict; use Restrict;
 with Snames;   use Snames;
 with Stand;    use Stand;
@@ -1983,6 +1984,7 @@ package body GNATLLVM.Types is
 
    function BA_To_Node_Ref_Or_Val (V : BA_Data) return Node_Ref_Or_Val is
       function UI_From_LLI is new UI_From_Integral (LLI);
+      Ret : Uint;
 
    begin
       --  If this isn't valid, return an invalid value
@@ -1995,10 +1997,12 @@ package body GNATLLVM.Types is
       elsif V.T_Value /= No_Uint then
          return V.T_Value;
 
-      --  Otherwise, we have a constant.
+      --  Otherwise, we have a constant.  If negative, make a Negate_Expr.
 
       else
-         return UI_From_LLI (Get_Const_Int_Value (V.C_Value));
+         Ret := UI_From_LLI (Get_Const_Int_Value (V.C_Value));
+         return (if   Ret < 0 then Create_Node (Negate_Expr, UI_Negate (Ret))
+                 else Ret);
       end if;
    end BA_To_Node_Ref_Or_Val;
 
@@ -2112,10 +2116,13 @@ package body GNATLLVM.Types is
       if Op1 = No_Uint or else Op2 = No_Uint then
          return No_BA;
 
-      --  Otherwise, build and return a node
+         --  Otherwise build and return a node.  If there's a constant,
+         --  it should be in the second position.
 
       else
-         return (False, No_GL_Value, Create_Node (C, Op1, Op2));
+         return (False, No_GL_Value,
+                 Create_Node (C, (if Is_Static_SO_Ref (Op1) then Op2 else Op1),
+                              (if Is_Static_SO_Ref (Op1) then Op1 else Op2)));
       end if;
 
    end BA_Binop;
@@ -2299,5 +2306,16 @@ package body GNATLLVM.Types is
 
       return (False, No_GL_Value, SO_Info);
    end BA_Emit_Expr;
+
+   procedure Dump_BA_Data (V : BA_Data) is
+   begin
+      if No (V) then
+         Write_Line ("None");
+      elsif BA_Is_Const (V) then
+         Dump_LLVM_Value (LLVM_Value (V.C_Value));
+      else
+         lgx (V.T_Value);
+      end if;
+   end  Dump_BA_Data;
 
 end GNATLLVM.Types;

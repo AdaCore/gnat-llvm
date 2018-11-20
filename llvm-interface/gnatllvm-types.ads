@@ -771,6 +771,11 @@ package GNATLLVM.Types is
      (No_BA)
      with Pre => Is_Type (TE);
 
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+   procedure Dump_BA_Data (V : BA_Data)
+     with Export => True, External_Name => "dbad";
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
+
    Disable_LV_Append : Nat := 0;
    --  If nonzero, disable appending expressions to the LValue list.
 

@@ -1116,16 +1116,28 @@ package body GNATLLVM.Records is
                           or else No (ORC)
                           or else not Is_Completely_Hidden (ORC))
             then
-               if Unknown_Esize (Cur_Field) then
-                  Set_Esize (Cur_Field, Annotated_Object_Size (Typ));
-               end if;
-               if Component_Bit_Offset (Cur_Field) = No_Uint then
-                  Set_Component_Bit_Offset
-                    (Cur_Field,
-                     Annotated_Value (BA_Mul (BA_Field_Position (Cur_Field,
-                                                                 No_GL_Value),
-                                              BA_Const (8))));
-               end if;
+               declare
+                  Byte_Position : constant BA_Data :=
+                    BA_Field_Position (Cur_Field, No_GL_Value);
+                  Bit_Position  : constant BA_Data :=
+                    BA_Mul (Byte_Position, BA_Const (8));
+
+               begin
+                  if Unknown_Esize (Cur_Field) then
+                     Set_Esize (Cur_Field, Annotated_Object_Size (Typ));
+                  end if;
+                  if Component_Bit_Offset (Cur_Field) = No_Uint then
+                     Set_Component_Bit_Offset (Cur_Field,
+                                               Annotated_Value (Bit_Position));
+                  end if;
+                  if not BA_Is_Const (Byte_Position)
+                    and then Unknown_Normalized_Position (Cur_Field)
+                  then
+                     Set_Normalized_Position (Cur_Field,
+                                              Annotated_Value (Byte_Position));
+                     Set_Normalized_First_Bit (Cur_Field, Uint_0);
+                  end if;
+               end;
             end if;
          end;
 

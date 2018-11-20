@@ -445,12 +445,15 @@ package GNATLLVM.Types is
    --  Return the size of a GNAT type, in bits
 
    function Get_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value := No_GL_Value;
-      Max_Size : Boolean  := False) return GL_Value
+     (TE         : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean := False) return GL_Value
      with Pre => Is_Type (TE), Post => Present (Get_Type_Size'Result);
    --  Return the size of a type, in bytes, as a GL_Value.  If TE is
    --  an unconstrained array type, V must be the value of the array.
+   --  If Max_Size is true, we return the maximum size of the type.
+   --  If No_Padding is true, we don't count any padding of the type.
 
    function Compute_Size
      (Left_Type, Right_Type   : Entity_Id;
@@ -506,9 +509,10 @@ package GNATLLVM.Types is
      with Pre  => C /= No_Uint;
 
    function IDS_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value := No_GL_Value;
-      Max_Size : Boolean := False) return IDS
+     (TE         : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return IDS
      with Pre => Is_Type (TE), Post => Present (IDS_Type_Size'Result);
 
    function IDS_I_Cmp
@@ -698,9 +702,10 @@ package GNATLLVM.Types is
      (BA_Unop (V, Neg'Access, Negate_Expr, Name));
 
    function BA_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value := No_GL_Value;
-      Max_Size : Boolean := False) return BA_Data
+     (TE         : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return BA_Data
      with Pre => Is_Type (TE);
 
    function BA_I_Cmp

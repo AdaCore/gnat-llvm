@@ -215,9 +215,10 @@ package body GNATLLVM.Records is
       with function Sz_Const
         (C : ULL; Sign_Extend : Boolean := False) return Result;
       with function Sz_Type_Size
-        (TE       : Entity_Id;
-         V        : GL_Value := No_GL_Value;
-         Max_Size : Boolean := False) return Result;
+        (TE         : Entity_Id;
+         V          : GL_Value := No_GL_Value;
+         Max_Size   : Boolean := False;
+         No_Padding : Boolean := False) return Result;
       with procedure Sz_RI_Info_For_Variant
         (RI          : Record_Info;
          V           : GL_Value;
@@ -294,20 +295,22 @@ package body GNATLLVM.Records is
       --  described by In_RI.
 
       function Get_Record_Size_So_Far
-        (TE        : Entity_Id;
-         V         : GL_Value;
-         Start_Idx : Record_Info_Id;
-         Idx       : Record_Info_Id;
-         Max_Size  : Boolean := False) return Result;
+        (TE         : Entity_Id;
+         V          : GL_Value;
+         Start_Idx  : Record_Info_Id;
+         Idx        : Record_Info_Id;
+         Max_Size   : Boolean := False;
+         No_Padding : Boolean := False) return Result;
       --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
       --  or the last segment, whichever comes first.  If TE is Present, it
       --  provides the default for Start_Idx and also requests alignment to
       --  TE's alignment if we're looking for the size.
 
       function Get_Record_Type_Size
-        (TE       : Entity_Id;
-         V        : GL_Value;
-         Max_Size : Boolean := False) return Result
+        (TE         : Entity_Id;
+         V          : GL_Value;
+         Max_Size   : Boolean := False;
+         No_Padding : Boolean := False) return Result
         with Pre  => Is_Record_Type (TE);
       --  Like Get_Type_Size, but only for record types
 
@@ -1406,11 +1409,12 @@ package body GNATLLVM.Records is
       ----------------------------
 
       function Get_Record_Size_So_Far
-        (TE        : Entity_Id;
-         V         : GL_Value;
-         Start_Idx : Record_Info_Id;
-         Idx       : Record_Info_Id;
-         Max_Size  : Boolean := False) return Result
+        (TE         : Entity_Id;
+         V          : GL_Value;
+         Start_Idx  : Record_Info_Id;
+         Idx        : Record_Info_Id;
+         Max_Size   : Boolean := False;
+         No_Padding : Boolean := False) return Result
       is
          Total_Size   : Result         := Sz_Const (ULL (0));
          Cur_Align    : Result         :=
@@ -1507,7 +1511,8 @@ package body GNATLLVM.Records is
          end if;
 
          Pop_Debug_Freeze_Pos;
-         return Align_To (Total_Size, Cur_Align, Must_Align);
+         return (if   No_Padding then Total_Size
+                 else Align_To (Total_Size, Cur_Align, Must_Align));
       end Get_Record_Size_So_Far;
 
       --------------------------
@@ -1515,14 +1520,16 @@ package body GNATLLVM.Records is
       --------------------------
 
       function Get_Record_Type_Size
-        (TE       : Entity_Id;
-         V        : GL_Value;
-         Max_Size : Boolean := False) return Result is
+        (TE         : Entity_Id;
+         V          : GL_Value;
+         Max_Size   : Boolean := False;
+         No_Padding : Boolean := False) return Result is
 
       begin
          return Get_Record_Size_So_Far
            (TE, V, Empty_Record_Info_Id, Empty_Record_Info_Id,
-            Max_Size or else Is_Unchecked_Union (TE));
+            Max_Size   => Max_Size or else Is_Unchecked_Union (TE),
+            No_Padding => No_Padding);
       end Get_Record_Type_Size;
 
       -------------------------
@@ -1621,17 +1628,19 @@ package body GNATLLVM.Records is
       Max_Size   : Boolean) renames LLVM_Size.Get_Variant_Aligns;
 
    function Get_Record_Size_So_Far
-     (TE        : Entity_Id;
-      V         : GL_Value;
-      Start_Idx : Record_Info_Id;
-      Idx       : Record_Info_Id;
-      Max_Size  : Boolean := False) return GL_Value
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Start_Idx  : Record_Info_Id;
+      Idx        : Record_Info_Id;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Record_Size_So_Far;
 
    function Get_Record_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Record_Type_Size;
 
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
@@ -1668,17 +1677,19 @@ package body GNATLLVM.Records is
       Max_Size   : Boolean) renames IDS_Size.Get_Variant_Aligns;
 
    function IDS_Record_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return IDS
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return IDS
      renames IDS_Size.Get_Record_Type_Size;
 
    function IDS_Record_Size_So_Far
-     (TE        : Entity_Id;
-      V         : GL_Value;
-      Start_Idx : Record_Info_Id;
-      Idx       : Record_Info_Id;
-      Max_Size  : Boolean := False) return IDS
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Start_Idx  : Record_Info_Id;
+      Idx        : Record_Info_Id;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return IDS
      renames IDS_Size.Get_Record_Size_So_Far;
 
    --  Here we instantiate the size routines with functions that compute
@@ -1702,9 +1713,10 @@ package body GNATLLVM.Records is
                 Sz_RI_Info_For_Variant => BA_RI_Info_For_Variant);
 
    function BA_Record_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return BA_Data
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return BA_Data
      renames BA_Size.Get_Record_Type_Size;
 
    function BA_Field_Position (E : Entity_Id; V : GL_Value) return BA_Data

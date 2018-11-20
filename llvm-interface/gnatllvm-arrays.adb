@@ -137,9 +137,10 @@ package body GNATLLVM.Arrays is
         (C : ULL; Sign_Extend : Boolean := False) return Result;
       with function Sz_Const_Int (TE : Entity_Id; C : Uint) return Result;
       with function Sz_Type_Size
-        (TE       : Entity_Id;
-         V        : GL_Value := No_GL_Value;
-         Max_Size : Boolean := False) return Result;
+        (TE          : Entity_Id;
+         V           : GL_Value := No_GL_Value;
+         Max_Size    : Boolean := False;
+         No_Paddding : Boolean := False) return Result;
       with function  Sz_I_Cmp
         (Op : Int_Predicate_T;
          LHS : Result;

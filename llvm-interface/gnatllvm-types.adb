@@ -1398,7 +1398,8 @@ package body GNATLLVM.Types is
          end if;
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
-                           (BA_Mul (BA_Type_Size (TE), BA_Const (8))));
+                           (BA_Mul (BA_Type_Size (TE, No_Padding => True),
+                                    BA_Const (8))));
          end if;
       end if;
 
@@ -1800,9 +1801,10 @@ package body GNATLLVM.Types is
    -------------------
 
    function Get_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value := No_GL_Value;
-      Max_Size : Boolean  := False) return GL_Value is
+     (TE         : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean := False) return GL_Value is
    begin
       --  If a value was specified and it's data, then it must be of a
       --  fixed size.  That's the size we're looking for.
@@ -1810,7 +1812,9 @@ package body GNATLLVM.Types is
       if Present (V) and then Relationship (V) = Data then
          return Get_Type_Size (Type_Of (V));
       elsif Is_Record_Type (TE) then
-         return Get_Record_Type_Size (TE, V, Max_Size);
+         return Get_Record_Type_Size (TE, V,
+                                      Max_Size   => Max_Size,
+                                      No_Padding => No_Padding);
       elsif Is_Array_Type (TE) and then Is_Nonnative_Type (TE) then
          return Get_Array_Type_Size (TE, V, Max_Size);
       else
@@ -1871,20 +1875,23 @@ package body GNATLLVM.Types is
 
    function Compute_Size
      (Left_Type, Right_Type   : Entity_Id;
-      Left_Value, Right_Value : GL_Value) return GL_Value is
+      Left_Value, Right_Value : GL_Value) return GL_Value
+   is
+      LHS_Complex : constant Nat     := Get_Type_Size_Complexity (Left_Type);
+      RHS_Complex : constant Nat     := Get_Type_Size_Complexity (Right_Type);
+      Class_Wide  : constant Boolean :=
+        Is_Class_Wide_Equivalent_Type (Left_Type);
 
    begin
       --  Use the type of right side unless its complexity is more
       --  than that of the size of the type on the left side.  If the
       --  LHS is a class wide equivalent type, we must use it.
 
-      if Get_Type_Size_Complexity (Right_Type) >
-        Get_Type_Size_Complexity (Left_Type)
-        or else Is_Class_Wide_Equivalent_Type (Left_Type)
-      then
-         return Get_Type_Size (Left_Type, Left_Value);
+      if RHS_Complex > LHS_Complex or else Class_Wide then
+         return Get_Type_Size (Left_Type, Left_Value,
+                               No_Padding => not Class_Wide);
       else
-         return Get_Type_Size (Right_Type, Right_Value);
+         return Get_Type_Size (Right_Type, Right_Value, No_Padding => True);
       end if;
 
    end Compute_Size;
@@ -1947,17 +1954,22 @@ package body GNATLLVM.Types is
    -------------------
 
    function IDS_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value := No_GL_Value;
-      Max_Size : Boolean := False) return IDS is
+     (TE         : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return IDS is
    begin
       --  If a value was specified and it's data, then it must be of a
       --  fixed size.  That's the size we're looking for.
 
-      if Present (V) and then Relationship (V) = Data then
+      if Present (V) and then Relationship (V) = Data
+        and then not Max_Size and then not No_Padding
+      then
          return IDS_From_Const (Get_Type_Size (Type_Of (V)));
       elsif Is_Record_Type (TE) then
-         return IDS_Record_Type_Size (TE, V, Max_Size);
+         return IDS_Record_Type_Size (TE, V,
+                                      Max_Size   => Max_Size,
+                                      No_Padding => No_Padding);
       elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
          return Var_IDS;
       elsif Is_Array_Type (TE) then
@@ -2240,17 +2252,22 @@ package body GNATLLVM.Types is
    ------------------
 
    function BA_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value := No_GL_Value;
-      Max_Size : Boolean := False) return BA_Data is
+     (TE         : Entity_Id;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return BA_Data is
    begin
       --  If a value was specified and it's data, then it must be of a
       --  fixed size.  That's the size we're looking for.
 
-      if Present (V) and then Relationship (V) = Data then
+      if Present (V) and then Relationship (V) = Data
+        and then not Max_Size and then not No_Padding
+      then
          return BA_From_Const (Get_Type_Size (Type_Of (V)));
       elsif Is_Record_Type (TE) then
-         return BA_Record_Type_Size (TE, V, Max_Size);
+         return BA_Record_Type_Size (TE, V,
+                                     Max_Size   => Max_Size,
+                                     No_Padding => No_Padding);
       elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
          return No_BA;
       elsif Is_Array_Type (TE) then

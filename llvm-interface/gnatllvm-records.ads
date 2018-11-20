@@ -50,24 +50,27 @@ package GNATLLVM.Records is
    --  This returns zero iff the record type is of a constant size.
 
    function Get_Record_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return GL_Value
      with Pre  => Is_Record_Type (TE),
           Post => Present (Get_Record_Type_Size'Result);
    --  Like Get_Type_Size, but only for record types
 
    function IDS_Record_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return IDS
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return IDS
      with Pre  => Is_Record_Type (TE),
           Post => Present (IDS_Record_Type_Size'Result);
 
    function BA_Record_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return BA_Data
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return BA_Data
      with Pre  => Is_Record_Type (TE);
 
    function Emit_Record_Aggregate

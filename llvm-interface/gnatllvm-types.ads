@@ -778,7 +778,7 @@ package GNATLLVM.Types is
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_BA_Data (V : BA_Data)
-     with Export => True, External_Name => "dbad";
+     with Export, External_Name => "dbad";
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
    Disable_LV_Append : Nat := 0;

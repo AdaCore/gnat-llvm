@@ -109,8 +109,8 @@ package GNATLLVM.Records is
    --  and fields.
 
    procedure Print_Field_Info (E : Entity_Id)
-     with Export => True, External_Name => "dfi";
+     with Export, External_Name => "dfi";
    procedure Print_Record_Info (TE : Entity_Id)
-     with Export => True, External_Name => "dri";
+     with Export, External_Name => "dri";
 
 end GNATLLVM.Records;

@@ -157,17 +157,17 @@ package GNATLLVM.Utils is
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_LLVM_Value (V : Value_T)
-     with Export => True, External_Name => "dllv";
+     with Export, External_Name => "dllv";
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
    --  function that is usable in debugging sessions.
 
    procedure Dump_GL_Value (V : GL_Value)
-     with Export => True, External_Name => "dglv";
+     with Export, External_Name => "dglv";
 
    --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
 
    procedure Dump_LLVM_Type (T : Type_T)
-     with Export => True, External_Name => "dllt";
+     with Export, External_Name => "dllt";
    --  Likewise, for LLVM.Core.Dump_Type
 
    procedure Dump_LLVM_Module (M : Module_T);

@@ -22,11 +22,11 @@ with stdint_h;
 package GNATLLVM.Wrapper is
 
    function Create_MDBuilder_In_Context (Ctx : Context_T) return MD_Builder_T
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Create_MDBuilder_In_Context";
 
    function Create_TBAA_Root (MDBld : MD_Builder_T) return Metadata_T
-     with Import => True, Convention => C, External_Name => "Create_TBAA_Root";
+     with Import, Convention => C, External_Name => "Create_TBAA_Root";
    --  Create the root of the TBAA metadata tree
 
    function Create_TBAA_Scalar_Type_Node
@@ -39,61 +39,52 @@ package GNATLLVM.Wrapper is
      (MDBld                  : MD_Builder_T;
       Base_Type, Access_Type : Metadata_T;
       Offset                 : ULL) return Metadata_T
-     with Import => True, Convention => C,
-          External_Name => "Create_TBAA_Access_Tag";
+     with Import, Convention => C, External_Name => "Create_TBAA_Access_Tag";
 
    procedure Add_TBAA_Access (Value : Value_T; TBAA : Metadata_T)
-     with Import => True, Convention => C, External_Name => "Add_TBAA_Access";
+     with Import, Convention => C, External_Name => "Add_TBAA_Access";
 
    procedure Add_Cold_Attribute (Func : Value_T)
-     with Import => True, Convention => C,
-          External_Name => "Add_Cold_Attribute";
+     with Import, Convention => C, External_Name => "Add_Cold_Attribute";
 
    procedure Add_Dereferenceable_Attribute
      (Func : Value_T; Idx : unsigned; Bytes : ULL)
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Add_Dereferenceable_Attribute";
 
    procedure Add_Dereferenceable_Or_Null_Attribute
      (Func : Value_T; Idx : unsigned; Bytes : ULL)
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Add_Dereferenceable_Or_Null_Attribute";
 
    procedure Add_Inline_Always_Attribute (Func : Value_T)
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Add_Inline_Always_Attribute";
 
    procedure Add_Inline_Hint_Attribute (Func : Value_T)
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Add_Inline_Hint_Attribute";
 
    procedure Add_Inline_No_Attribute (Func : Value_T)
-     with Import => True, Convention => C,
-     External_Name => "Add_Inline_No_Attribute";
+     with Import, Convention => C, External_Name => "Add_Inline_No_Attribute";
 
    procedure Add_Nest_Attribute (Func : Value_T; Idx : unsigned)
-     with Import => True, Convention => C,
-     External_Name =>  "Add_Nest_Attribute";
+     with Import, Convention => C, External_Name =>  "Add_Nest_Attribute";
 
    procedure Add_Noalias_Attribute (Func : Value_T; Idx : unsigned)
-     with Import => True, Convention => C,
-          External_Name => "Add_Noalias_Attribute";
+     with Import, Convention => C, External_Name => "Add_Noalias_Attribute";
 
    procedure Add_Nocapture_Attribute (Func : Value_T; Idx : unsigned)
-     with Import => True, Convention => C,
-          External_Name => "Add_Nocapture_Attribute";
+     with Import, Convention => C, External_Name => "Add_Nocapture_Attribute";
 
    procedure Add_Non_Null_Attribute (Func : Value_T; Idx : unsigned)
-     with Import => True, Convention => C,
-          External_Name => "Add_Non_Null_Attribute";
+     with Import, Convention => C, External_Name => "Add_Non_Null_Attribute";
 
    procedure Add_Readonly_Attribute (Func : Value_T; Idx : unsigned)
-     with Import => True, Convention => C,
-          External_Name => "Add_Readonly_Attribute";
+     with Import, Convention => C, External_Name => "Add_Readonly_Attribute";
 
    procedure Add_Writeonly_Attribute (Func : Value_T; Idx : unsigned)
-     with Import => True, Convention => C,
-          External_Name => "Add_Writeonly_Attribute";
+     with Import, Convention => C, External_Name => "Add_Writeonly_Attribute";
 
    function Build_Extract_Value
      (Bld      : Builder_T;
@@ -111,26 +102,24 @@ package GNATLLVM.Wrapper is
       Name     : String) return Value_T;
 
    function Does_Not_Throw (Fn : Value_T) return Boolean
-     with Import => True, Convention => C, External_Name => "Does_Not_Throw",
+     with Import, Convention => C, External_Name => "Does_Not_Throw",
           Warnings => Off;
 
    procedure Set_Does_Not_Throw (Fn : Value_T)
-     with Import => True, Convention => C,
-          External_Name => "Set_Does_Not_Throw";
+     with Import, Convention => C, External_Name => "Set_Does_Not_Throw";
 
    procedure Set_Does_Not_Return (Fn : Value_T)
-     with Import => True, Convention => C,
-          External_Name => "Set_Does_Not_Return";
+     with Import, Convention => C, External_Name => "Set_Does_Not_Return";
 
    procedure Initialize_LLVM
-     with Import => True, Convention => C, External_Name => "Initialize_LLVM";
+     with Import, Convention => C, External_Name => "Initialize_LLVM";
    --  Initializes various parts of the LLVM infrastructure.
 
    procedure Set_NUW (V : Value_T)
-     with Import => True, Convention => C, External_Name => "Set_NUW";
+     with Import, Convention => C, External_Name => "Set_NUW";
 
    procedure Set_NSW (V : Value_T)
-     with Import => True, Convention => C, External_Name => "Set_NSW";
+     with Import, Convention => C, External_Name => "Set_NSW";
 
    procedure LLVM_Init_Module
      (Module         : Module_T;
@@ -151,12 +140,12 @@ package GNATLLVM.Wrapper is
    --  Perform optimizations on the module
 
    procedure Add_Debug_Flags (Module : Module_T)
-     with Import => True, Convention => C, External_Name => "Add_Debug_Flags";
+     with Import, Convention => C, External_Name => "Add_Debug_Flags";
    --  Create a DIBuilder and return it
 
    function Create_Debug_Compile_Unit
      (Bld : DI_Builder_T; File : Metadata_T) return Metadata_T
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Create_Debug_Compile_Unit";
 
    function Create_Debug_Subprogram
@@ -171,7 +160,7 @@ package GNATLLVM.Wrapper is
       Scope, File : Metadata_T;
       Line        : Logical_Line_Number;
       Column      : Column_Number) return Metadata_T
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Create_Debug_Lexical_Block";
 
    procedure Set_Debug_Loc
@@ -179,7 +168,7 @@ package GNATLLVM.Wrapper is
       Subp   : Metadata_T;
       Line   : Logical_Line_Number;
       Column : Column_Number)
-     with Import => True, Convention => C, External_Name => "Set_Debug_Loc";
+     with Import, Convention => C, External_Name => "Set_Debug_Loc";
 
    function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
@@ -187,12 +176,12 @@ package GNATLLVM.Wrapper is
       Exp       : Int;
       Num_Words : unsigned;
       Words     : access stdint_h.uint64_t) return Value_T
-     with Import => True, Convention => C,
+     with Import, Convention => C,
           External_Name => "Get_Float_From_Words_And_Exp";
 
    function Pred_FP
      (Context : Context_T; T : Type_T; V : Value_T) return Value_T
-     with Import => True, Convention => C, External_Name => "Pred_FP";
+     with Import, Convention => C, External_Name => "Pred_FP";
 
    function Is_Layout_Identical (T1, T2 : Type_T) return Boolean;
 end GNATLLVM.Wrapper;

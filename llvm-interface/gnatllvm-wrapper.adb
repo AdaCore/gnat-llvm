@@ -33,7 +33,7 @@ package body GNATLLVM.Wrapper is
          Name   : String;
          Parent : Metadata_T)
         return Metadata_T
-        with Import => True, Convention => C,
+        with Import, Convention => C,
              External_Name => "Create_TBAA_Scalar_Type_Node_C";
 
    begin
@@ -57,7 +57,7 @@ package body GNATLLVM.Wrapper is
          Idx_List : System.Address;
          Num_Idx  : unsigned;
          Name     : String) return Value_T
-        with Import => True, Convention => C,
+        with Import, Convention => C,
              External_Name =>  "Build_Extract_Value_C";
 
    begin
@@ -84,8 +84,7 @@ package body GNATLLVM.Wrapper is
          Idx_List : System.Address;
          Num_Idx  : unsigned;
          Name     : String) return Value_T
-        with Import => True, Convention => C,
-             External_Name => "Build_Insert_Value_C";
+        with Import, Convention => C, External_Name => "Build_Insert_Value_C";
 
    begin
       return Build_Insert_Value_C (Bld, Aggr, Elt, Idx_List, Num_Idx,
@@ -105,8 +104,7 @@ package body GNATLLVM.Wrapper is
         (Module         : Module_T;
          Filename       : String;
          Target_Machine : Target_Machine_T)
-        with Import => True, Convention => C,
-             External_Name => "LLVM_Init_Module";
+        with Import, Convention => C, External_Name => "LLVM_Init_Module";
 
    begin
       LLVM_Init_Module_C (Module, Filename & ASCII.NUL, Target_Machine);
@@ -137,8 +135,7 @@ package body GNATLLVM.Wrapper is
          No_Unroll_Loops       : Bool_T;
          No_Loop_Vectorization : Bool_T;
          No_SLP_Vectorization  : Bool_T)
-        with Import => True, Convention => C,
-             External_Name => "LLVM_Optimize_Module";
+        with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
       No_Inlining_B  : constant Bool_T := Boolean'Pos (No_Inlining);
       No_Unit_B      : constant Bool_T := Boolean'Pos (No_Unit_At_A_Time);
       No_Unroll_B    : constant Bool_T := Boolean'Pos (No_Unroll_Loops);
@@ -168,7 +165,7 @@ package body GNATLLVM.Wrapper is
          File           : Metadata_T;
          Name, Ext_Name : String;
          Lineno         : Logical_Line_Number) return Metadata_T
-        with Import => True, Convention => C,
+        with Import, Convention => C,
              External_Name => "Create_Debug_Subprogram_C";
    begin
       return Create_Debug_Subprogram_C (Bld, Func, File, Name & ASCII.NUL,
@@ -180,8 +177,8 @@ package body GNATLLVM.Wrapper is
    -------------------------
 
    function Is_Layout_Identical (T1, T2 : Type_T) return Boolean is
-      function Is_Layout_Identical_C (T1, T2 : Type_T) return Bool_T;
-      pragma Import (C, Is_Layout_Identical_C, "Is_Layout_Identical");
+      function Is_Layout_Identical_C (T1, T2 : Type_T) return Bool_T
+        with Import, Convention => C, External_Name => "Is_Layout_Identical";
    begin
       return Is_Layout_Identical_C (T1, T2) /= 0;
    end Is_Layout_Identical;

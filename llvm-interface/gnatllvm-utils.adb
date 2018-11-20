@@ -334,8 +334,7 @@ package body GNATLLVM.Utils is
 
    procedure Dump_LLVM_Type (T : Type_T) is
       procedure Dump_LLVM_Type_C (T : Type_T)
-        with Import => True, Convention => C,
-             External_Name => "Dump_LLVM_Type_C";
+        with Import, Convention => C, External_Name => "Dump_LLVM_Type_C";
 
    begin
       Dump_LLVM_Type_C (T);

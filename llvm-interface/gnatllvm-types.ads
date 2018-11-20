@@ -659,14 +659,10 @@ package GNATLLVM.Types is
    function BA_Is_Const_1 (V : BA_Data) return Boolean is
      (BA_Is_Const (V) and then BA_Const_Int (V) = 1);
 
-   function BA_To_Node_Ref_Or_Val (V : BA_Data) return Node_Ref_Or_Val;
+   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
    --  Return a Node_Ref corresponding to BA_Data.  This may be either the
    --  T_Value of that data, C_Value converted to a Uint, or No_Uint if
    --  the conversion can't be done.
-
-   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
-   --  Similar, but for placing in the GNAT tree, so we use Uint_0 instead of
-   --  No_Uint for an unknown value.
 
    function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val
      with Pre => Is_Type (TE);

@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
+with Nlists;   use Nlists;
 with Output;   use Output;
 with Restrict; use Restrict;
 with Snames;   use Snames;
@@ -1990,11 +1991,11 @@ package body GNATLLVM.Types is
               then IDS_From_Const (Emit_Expression (V)) else Var_IDS);
    end IDS_Emit_Expr;
 
-   ---------------------------
-   -- BA_To_Node_Ref_Or_Val --
-   ---------------------------
+   ---------------------
+   -- Annotated_Value --
+   ---------------------
 
-   function BA_To_Node_Ref_Or_Val (V : BA_Data) return Node_Ref_Or_Val is
+   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val is
       function UI_From_LLI is new UI_From_Integral (LLI);
       Ret : Uint;
 
@@ -2016,17 +2017,6 @@ package body GNATLLVM.Types is
          return (if   Ret < 0 then Create_Node (Negate_Expr, UI_Negate (Ret))
                  else Ret);
       end if;
-   end BA_To_Node_Ref_Or_Val;
-
-   ---------------------
-   -- Annotated_Value --
-   ---------------------
-
-   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val is
-      U : constant Uint := BA_To_Node_Ref_Or_Val (V);
-
-   begin
-      return (if U = No_Uint then Uint_0 else U);
    end Annotated_Value;
 
    ---------------------------
@@ -2120,8 +2110,8 @@ package body GNATLLVM.Types is
 
       --  Otherwise, get our two operands as a node reference or Uint
 
-      Op1 :=  BA_To_Node_Ref_Or_Val (V1);
-      Op2 :=  BA_To_Node_Ref_Or_Val (V2);
+      Op1 :=  Annotated_Value (V1);
+      Op2 :=  Annotated_Value (V2);
 
       --  If either isn't valid, return invalid
 
@@ -2161,8 +2151,8 @@ package body GNATLLVM.Types is
 
       --  Otherwise, get our two operands as a node reference or Uint
 
-      LHS_Op :=  BA_To_Node_Ref_Or_Val (LHS);
-      RHS_Op :=  BA_To_Node_Ref_Or_Val (RHS);
+      LHS_Op :=  Annotated_Value (LHS);
+      RHS_Op :=  Annotated_Value (RHS);
 
       --  If either isn't valid, return invalid
 
@@ -2227,9 +2217,9 @@ package body GNATLLVM.Types is
 
       --  Otherwise, get our operands as a node reference or Uint
 
-      If_Op   :=  BA_To_Node_Ref_Or_Val (V_If);
-      Then_Op :=  BA_To_Node_Ref_Or_Val (V_Then);
-      Else_Op :=  BA_To_Node_Ref_Or_Val (V_Else);
+      If_Op   :=  Annotated_Value (V_If);
+      Then_Op :=  Annotated_Value (V_Then);
+      Else_Op :=  Annotated_Value (V_Else);
 
       --  If any isn't valid, return invalid
 
@@ -2294,18 +2284,94 @@ package body GNATLLVM.Types is
       --  If we didn't already get an SO_Ref for this expression, get one
 
       if SO_Info = No_Uint then
-         --  If this expression contains a discriminant, see if it's just the
-         --  discriminant.  If so, return a tree node for it.
-         --  ??? If not, for now return no value.
+         --  If this expression contains a discriminant, build tree nodes
+         --  corresponding to that discriminant.  If we have an unsupported
+         --  node, return no value.
 
          if Contains_Discriminant (V) then
-            if Nkind (V) = N_Identifier
-              and then Ekind (Entity (V)) = E_Discriminant
-            then
-               SO_Info := Create_Discrim_Ref (Entity (V));
-            else
-               return No_BA;
-            end if;
+            declare
+               Result   : BA_Data := No_BA;
+               Attr     : Attribute_Id;
+               RHS, LHS : BA_Data;
+
+            begin
+               case Nkind (V) is
+                  when N_Identifier =>
+
+                     if  Ekind (Entity (V)) = E_Discriminant then
+                        SO_Info := Create_Discrim_Ref (Entity (V));
+                     end if;
+
+                  when N_Attribute_Reference =>
+
+                     --  The only ones we support are 'Range_Length,
+                     --  'Min, and 'Max
+
+                     Attr := Get_Attribute_Id (Attribute_Name (V));
+                     if Attr = Attribute_Range_Length
+                       and then Is_Scalar_Type (Full_Etype (Prefix (V)))
+                     then
+                        declare
+                           PT : constant Entity_Id := Full_Etype (Prefix (V));
+                           LB : constant Node_Id   := Type_Low_Bound  (PT);
+                           UB : constant Node_Id   := Type_High_Bound (PT);
+
+                        begin
+
+                           LHS := BA_Emit_Expr (LB);
+                           RHS := BA_Emit_Expr (UB);
+                           Result :=
+                             BA_Bounds_To_Length (LHS, RHS, Full_Etype (V));
+                        end;
+
+                     elsif Attr in Attribute_Min | Attribute_Max then
+                        LHS := BA_Emit_Expr (First (Expressions (V)));
+                        RHS := BA_Emit_Expr (Last  (Expressions (V)));
+                        Result := (if   Attr = Attribute_Min
+                                   then BA_Min (LHS, RHS)
+                                   else BA_Max (LHS, RHS));
+                     end if;
+
+                  when N_Op_Minus =>
+                     Result := BA_Neg (BA_Emit_Expr (Right_Opnd (V)));
+
+                  when N_Op_Plus =>
+                     Result := BA_Emit_Expr (Right_Opnd (V));
+
+                  when N_Op_Add =>
+                     LHS := BA_Emit_Expr (Left_Opnd  (V));
+                     RHS := BA_Emit_Expr (Right_Opnd (V));
+                     Result := BA_Add (LHS, RHS);
+
+                  when N_Op_Subtract =>
+                     LHS := BA_Emit_Expr (Left_Opnd  (V));
+                     RHS := BA_Emit_Expr (Right_Opnd (V));
+                     Result := BA_Sub (LHS, RHS);
+
+                  when N_Op_Multiply =>
+                     LHS := BA_Emit_Expr (Left_Opnd  (V));
+                     RHS := BA_Emit_Expr (Right_Opnd (V));
+                     Result := BA_Mul (LHS, RHS);
+
+                  when N_Op_Divide =>
+                     LHS := BA_Emit_Expr (Left_Opnd  (V));
+                     RHS := BA_Emit_Expr (Right_Opnd (V));
+                     Result := (if   Is_Unsigned_Type (Full_Etype (V))
+                                then BA_U_Div (LHS, RHS)
+                                else BA_S_Div (LHS, RHS));
+
+                  when N_Type_Conversion | N_Unchecked_Type_Conversion =>
+                     Result := BA_Emit_Convert (Expression (V),
+                                                Full_Etype (V));
+
+                  when others =>
+                     null;
+               end case;
+
+               if Present (Result) then
+                  SO_Info := Annotated_Value (Result);
+               end if;
+            end;
 
          --  Otherwise, see if this is a constant
 
@@ -2316,13 +2382,21 @@ package body GNATLLVM.Types is
             Var_Idx_For_BA := Var_Idx_For_BA + 1;
          end if;
 
-         Set_SO_Ref (V, SO_Info);
+         --  Save the computed value, if any
+
+         if SO_Info /= No_Uint then
+            Set_SO_Ref (V, SO_Info);
+         end if;
       end if;
 
       --  And now return the value
 
-      return (False, No_GL_Value, SO_Info);
+      return (SO_Info = No_Uint, No_GL_Value, SO_Info);
    end BA_Emit_Expr;
+
+   ------------------
+   -- Dump_BA_Data --
+   ------------------
 
    procedure Dump_BA_Data (V : BA_Data) is
    begin

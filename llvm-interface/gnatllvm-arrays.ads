@@ -177,6 +177,9 @@ package GNATLLVM.Arrays is
       Max_Size : Boolean := False) return BA_Data
      with Pre  => Is_Array_Type (TE);
 
+   function BA_Bounds_To_Length
+     (In_Low, In_High : BA_Data; TE : Entity_Id) return BA_Data;
+
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)
      with Pre => Present (LValue)
                  and then Nkind_In (N, N_Aggregate, N_Extension_Aggregate)

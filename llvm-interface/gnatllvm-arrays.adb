@@ -177,6 +177,8 @@ package body GNATLLVM.Arrays is
       with function  Sz_Emit_Convert
         (N : Node_Id; TE : Entity_Id) return Result;
       with function  Sz_Undef (TE : Entity_Id) return Result;
+      with function  Sz_Is_Const (V : Result) return Boolean;
+      with function  Sz_Const_Val (V : Result) return ULL;
    package Size is
 
       function No      (V : Result) return Boolean is (V = Empty_Result);
@@ -784,8 +786,20 @@ package body GNATLLVM.Arrays is
          --  is not representable in that type (it's one too high).  Rather
          --  than trying to find some suitable type, we use Size_Type,
          --  which will also make thing simpler for some of our callers.
+         --  But if this is the implementation type for a packed array type
+         --  with lower bound zero, we know it can't be super-flat, so we
+         --  can avoid the comparison.
 
-         return Bounds_To_Length (Low_Bound, High_Bound, Size_Type);
+         if Is_Packed_Array_Impl_Type (TE)
+           and then Sz_Is_Const (Low_Bound)
+           and then Sz_Const_Val (Low_Bound) = 0
+         then
+            return Sz_Add (Sz_Sub (Sz_Convert (High_Bound, Size_Type),
+                                   Sz_Convert (Low_Bound,  Size_Type)),
+                           Sz_Const_Int (Size_Type, Uint_1));
+         else
+            return Bounds_To_Length (Low_Bound, High_Bound, Size_Type);
+         end if;
       end Get_Array_Length;
 
       ------------------------
@@ -854,6 +868,8 @@ package body GNATLLVM.Arrays is
                 Sz_Convert       => Convert,
                 Sz_Emit_Expr     => Emit_Safe_Expr,
                 Sz_Emit_Convert  => Emit_Convert_Value,
+                Sz_Is_Const      => Is_A_Const_Int,
+                Sz_Const_Val     => Get_Const_Int_Value_ULL,
                 Sz_Undef         => Get_Undef);
 
    function Bounds_To_Length
@@ -915,6 +931,8 @@ package body GNATLLVM.Arrays is
                 Sz_Convert       => IDS_Convert,
                 Sz_Emit_Expr     => IDS_Emit_Expr,
                 Sz_Emit_Convert  => IDS_Emit_Convert,
+                Sz_Is_Const      => IDS_Is_Const,
+                Sz_Const_Val     => IDS_Const_Val_ULL,
                 Sz_Undef         => IDS_Undef);
 
    function IDS_Array_Type_Size
@@ -946,6 +964,8 @@ package body GNATLLVM.Arrays is
                 Sz_Convert       => BA_Convert,
                 Sz_Emit_Expr     => BA_Emit_Expr,
                 Sz_Emit_Convert  => BA_Emit_Convert,
+                Sz_Is_Const      => BA_Is_Const,
+                Sz_Const_Val     => BA_Const_Val_ULL,
                 Sz_Undef         => BA_Undef);
 
    function BA_Array_Type_Size
@@ -953,6 +973,10 @@ package body GNATLLVM.Arrays is
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data
      renames BA_Size.Get_Array_Type_Size;
+
+   function BA_Bounds_To_Length
+     (In_Low, In_High : BA_Data; TE : Entity_Id) return BA_Data
+     renames BA_Size.Bounds_To_Length;
 
    -------------------------------
    -- Get_Array_Size_Complexity --

@@ -693,9 +693,9 @@ package body GNATLLVM.Variables is
 
          when N_Binary_Op =>
 
-            --  LLVM doesn't allow comparisons of symbols to be considered
-            --  static, so we can only allow actual known values in that
-            --  case.  But there's one exception: if we're doing a
+            --  LLVM only allows adds and subtracts of symbols to be
+            --  considered static, so we can only allow actual known values
+            --  in that case.  But there's one exception: if we're doing a
             --  comparison of two values that are static addresses and the
             --  addresses as the same, the result is known to be true or
             --  false, respectively, and will constant fold to that.
@@ -705,7 +705,7 @@ package body GNATLLVM.Variables is
                RHS : constant Node_Id := Right_Opnd (N);
 
             begin
-               if Nkind (N) in N_Op_Compare then
+               if not Nkind_In (N, N_Op_Add, N_Op_Subtract) then
                   return (Is_Static_Address (LHS)
                             and then Is_Static_Address (RHS)
                             and then Emit_LValue (LHS) = Emit_LValue (RHS))
@@ -1118,7 +1118,7 @@ package body GNATLLVM.Variables is
          Set_Thread_Local (LLVM_Var,
                            Has_Pragma_Thread_Local_Storage (Def_Ident));
 
-         if not Is_Public (Def_Ident) then
+         if not Is_Public (Def_Ident) and not Is_Imported (Def_Ident) then
             Set_Linkage (LLVM_Var, Internal_Linkage);
          end if;
 

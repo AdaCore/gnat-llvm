@@ -1406,6 +1406,12 @@ package body GNATLLVM.Types is
 
       if Unknown_Alignment (TE) then
          Set_Alignment (TE, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
+         if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
+           and then Present (Original_Array_Type (TE))
+         then
+            Set_Alignment (Original_Array_Type (TE),
+                           UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
+         end if;
       end if;
 
       Set_Is_Being_Elaborated (TE, False);

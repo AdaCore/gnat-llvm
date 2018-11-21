@@ -896,9 +896,6 @@ package body GNATLLVM.Exprs is
                     Byte_Size),
                TE);
 
-         when Attribute_Null_Parameter =>
-            return Load (Const_Null_Ref (P_TE));
-
          when Attribute_Descriptor_Size =>
             pragma Assert (Is_Unconstrained_Array (P_TE));
 
@@ -915,6 +912,9 @@ package body GNATLLVM.Exprs is
          when Attribute_Mechanism_Code =>
             return Const_Int
               (TE, Get_Mechanism_Code (Entity (Prefix (N)), Expressions (N)));
+
+         when Attribute_Null_Parameter =>
+            return Load (Const_Null_Ref (P_TE));
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &

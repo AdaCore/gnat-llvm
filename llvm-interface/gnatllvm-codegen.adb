@@ -78,7 +78,7 @@ package body GNATLLVM.Codegen is
          Emit_LLVM := True;
       elsif Switch = "-S" then
          Output_Assembly := True;
-      elsif Switch = "-g" then
+      elsif Switch = "-g" or else Starts_With ("-g") then
          Emit_Debug_Info := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
@@ -354,8 +354,13 @@ package body GNATLLVM.Codegen is
    ------------------------
 
    function Is_Back_End_Switch (Switch : String) return Boolean is
-      First : constant Positive := Switch'First;
-      Last  : constant Natural  := Switch_Last (Switch);
+      First : constant Integer := Switch'First;
+      Last  : constant Integer  := Switch_Last (Switch);
+      Len   : constant Integer  := Last - First + 1;
+
+      function Starts_With (S : String) return Boolean is
+        (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
+      --  Return True if Switch starts with S
 
    begin
       if not Is_Switch (Switch) then
@@ -363,11 +368,8 @@ package body GNATLLVM.Codegen is
       elsif Switch = "--dump-ir"
         or else Switch = "--dump-bc" or else Switch = "--write-bc"
         or else Switch = "-emit-llvm" or else Switch = "-S"
-        or else Switch = "-g"
-        or else (Last > First + 8
-                   and then Switch (First .. First + 8) = "--target=")
-        or else (Last > First + 5
-                   and then Switch (First .. First + 5) = "-llvm-")
+        or else Switch = "-g" or else Starts_With ("-g")
+        or else Starts_With ("--target=") or else Starts_With ("-llvm-")
       then
          return True;
       end if;
@@ -378,8 +380,7 @@ package body GNATLLVM.Codegen is
       --  existing scripts.
 
       return Switch (First + 1) in 'f' | 'm' | 'W' | 'w'
-        or else Switch (First .. Last) = "-nostdlib"
-        or else Switch (First .. Last) = "-pipe";
+        or else Switch = "-nostdlib" or else Switch = "-pipe";
    end Is_Back_End_Switch;
 
    ----------------------

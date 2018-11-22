@@ -21,6 +21,7 @@ with Elists;   use Elists;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Output;   use Output;
+with Repinfo;  use Repinfo;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
@@ -162,6 +163,14 @@ package body GNATLLVM.Records is
      with Pre  => Ekind (TE) = E_Record_Subtype,
           Post => Present (Get_Discriminant_Constraint'Result);
    --  Get the expression that constrains the discriminant E of type TE
+
+   function Choices_To_SO_Ref
+     (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
+     with Pre => Present (Variant);
+   --  Given an alternative for a variant record, return an SO_Ref
+   --  corresponding to an expression that's True when that variant is
+   --  present.  This is a function of the discriminant (Discrim) and
+   --  constants.
 
    procedure Get_RI_Info_For_Variant
      (RI          : Record_Info;
@@ -755,14 +764,15 @@ package body GNATLLVM.Records is
          procedure Add_Component_List
            (List : Node_Id; From_Rec : Entity_Id; F_Name : Name_Id)
          is
-            Var_Part           : constant Node_Id :=
+            Var_Part           : constant Node_Id   :=
               (if Present (List) then Variant_Part (List) else Empty);
-            Constraining_Expr  : constant Node_Id :=
+            Discrim            : constant Entity_Id :=
+              (if Present (Var_Part) then Entity (Name (Var_Part)) else Empty);
+            Constraining_Expr  : constant Node_Id   :=
               (if   Present (From_Rec) and then Present (Var_Part)
-               then (Get_Discriminant_Constraint
-                       (From_Rec, Entity (Name (Var_Part))))
+               then (Get_Discriminant_Constraint (From_Rec, Discrim))
                else Empty);
-            Static_Constraint  : constant Boolean :=
+            Static_Constraint  : constant Boolean   :=
               Present (Constraining_Expr)
                 and then Is_Static_Expression (Constraining_Expr);
             Var_Array          : access Record_Info_Id_Array;
@@ -835,9 +845,9 @@ package body GNATLLVM.Records is
             Saved_Cur_Idx   := Cur_Idx;
             Saved_Prev_Idx  := Prev_Idx;
             Saved_First_Idx := First_Idx;
-            Saved_Align    := Last_Align;
-            J              := 1;
-            Var_Array      := new
+            Saved_Align     := Last_Align;
+            J               := 1;
+            Var_Array       := new
               Record_Info_Id_Array'(1 .. List_Length (Variants (Var_Part))
                                       => Empty_Record_Info_Id);
 
@@ -872,6 +882,8 @@ package body GNATLLVM.Records is
                end if;
 
                Var_Array (J) := First_Idx;
+               Set_Present_Expr (Variant,
+                                 Choices_To_SO_Ref (Variant, Discrim));
                J             := J + 1;
                Next_Non_Pragma (Variant);
             end loop;
@@ -1721,6 +1733,53 @@ package body GNATLLVM.Records is
 
    function BA_Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
      renames BA_Size.Emit_Field_Position;
+
+   -----------------------
+   -- Choices_To_SO_Ref --
+   -----------------------
+
+   function Choices_To_SO_Ref
+     (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
+   is
+      Discrim_SO : constant SO_Ref := Create_Discrim_Ref (Discrim);
+      Choice     : Node_Id;
+      Expr       : SO_Ref;
+      This_Expr  : SO_Ref;
+      Low, High  : Uint;
+
+   begin
+      Choice := First (Discrete_Choices (Variant));
+
+      --  For "others", this is always True
+
+      if Nkind (Choice) = N_Others_Choice then
+         return Uint_1;
+      end if;
+
+      --  Otherwise, start with an expression of False, then fill in
+      --  each choice.
+
+      Expr := Uint_0;
+      while Present (Choice) loop
+         Decode_Range (Choice, Low, High);
+         if Low = High then
+            This_Expr := Create_Node (Eq_Expr, Discrim_SO, Low);
+         elsif High > Low then
+            This_Expr := Create_Node (Truth_And_Expr,
+                                      Create_Node (Ge_Expr, Discrim_SO, Low),
+                                      Create_Node (Le_Expr, Discrim_SO, High));
+         else
+            This_Expr := Uint_0;
+         end if;
+
+         Expr := (if    Expr = Uint_0 then This_Expr
+                  elsif This_Expr = Uint_0 then Expr
+                  else  Create_Node (Truth_Or_Expr, Expr, This_Expr));
+         Next (Choice);
+      end loop;
+
+      return Expr;
+   end Choices_To_SO_Ref;
 
    -----------------------
    -- Get_Field_Ordinal --

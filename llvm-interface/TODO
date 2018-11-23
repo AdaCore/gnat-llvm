@@ -9,7 +9,6 @@ Limitations and missing features (identified so far):
 - more __sync builtins and other atomic builtins
 - call "_ext" version of raise routines
 - representation clauses
-- back annotation
 - debug info (for variables, types and parameters)
 - restriction checks done by back end (other than no elab and allocations,
   which are done)
@@ -17,4 +16,4 @@ Limitations and missing features (identified so far):
 - support for stack checking
 - See if can use .rodata (see I305-025)
 - pragma Weak_External (see IB12-009)
-- -gnatc
+- suport for -gnatc (when back-annotating)

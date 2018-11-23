@@ -628,21 +628,31 @@ package GNATLLVM.Types is
 
    type BA_Data is record
       Is_None     : Boolean;
+      --  True if this is to be treated as an empty entry
+
       C_Value     : GL_Value;
+      --  If a constant, the value of that constant
+
       T_Value     : Node_Ref;
+      --  If dynamic, the tree node reference of the expression
    end record
      with Predicate => Is_None or else Present (C_Value)
                        or else T_Value /= No_Uint;
 
-   type Unop_Access is access
-     function (V : GL_Value; Name : String := "") return GL_Value;
-   type Binop_Access is access
-     function (V1, V2 : GL_Value; Name : String := "") return GL_Value;
+   type BA_Data_Array is array (Nat range <>) of BA_Data;
 
    No_BA   : constant BA_Data := (True,  No_GL_Value, No_Uint);
 
    function No      (V : BA_Data) return Boolean is (V =  No_BA);
    function Present (V : BA_Data) return Boolean is (V /= No_BA);
+
+   --  To simplify the operations below, define access types for unary
+   --  and binary operations on GL_Values.
+
+   type Unop_Access is access
+     function (V : GL_Value; Name : String := "") return GL_Value;
+   type Binop_Access is access
+     function (V1, V2 : GL_Value; Name : String := "") return GL_Value;
 
    function BA_Is_Const  (V : BA_Data) return Boolean is (Present (V.C_Value));
 
@@ -659,16 +669,6 @@ package GNATLLVM.Types is
    function BA_Is_Const_1 (V : BA_Data) return Boolean is
      (BA_Is_Const (V) and then BA_Const_Int (V) = 1);
 
-   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
-   --  Return a Node_Ref corresponding to BA_Data.  This may be either the
-   --  T_Value of that data, C_Value converted to a Uint, or No_Uint if
-   --  the conversion can't be done.
-
-   function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val
-     with Pre => Is_Type (TE);
-   --  Given a type TE that's used for the type of an object, return the
-   --  SO_Ref corresponding to the object's size.
-
    function BA_Const
      (C : ULL; Sign_Extend : Boolean := False) return BA_Data
    is
@@ -678,6 +678,21 @@ package GNATLLVM.Types is
    function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
      ((False, Const_Int (TE, C), No_Uint))
      with Pre  => C /= No_Uint;
+
+   function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
+   --  Return a Node_Ref corresponding to BA_Data.  This may be either the
+   --  T_Value of that data, C_Value converted to a Uint, or No_Uint if
+   --  the conversion can't be done.
+
+   function SO_Ref_To_BA (V : SO_Ref) return BA_Data is
+     ((if   Is_Static_SO_Ref (V) then BA_Const_Int (Size_Type, V)
+       else (False, No_GL_Value, V)));
+   --  Likewise, but in the opposite direction
+
+   function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val
+     with Pre => Is_Type (TE);
+   --  Given a type TE that's used for the type of an object, return the
+   --  SO_Ref corresponding to the object's size.
 
    function BA_Unop
      (V    : BA_Data;
@@ -739,6 +754,12 @@ package GNATLLVM.Types is
    function BA_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
      ((if   BA_Is_Const_0 (V1) or else BA_Is_Const_0 (V2) then BA_Const (0)
        else BA_Binop (V1, V2, Build_And'Access, Bit_And_Expr, Name)));
+
+   function BA_Truth_Or
+         (V1, V2 : BA_Data; Name : String := "") return BA_Data
+   is
+     ((if   BA_Is_Const_0 (V1) then V2 elsif BA_Is_Const_0 (V2) then V1
+       else BA_Binop (V1, V2, Build_Or'Access, Truth_Or_Expr, Name)));
 
    function BA_Select
      (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data;

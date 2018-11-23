@@ -1773,6 +1773,22 @@ package body GNATLLVM.Records is
                 Sz_Type_Size           => BA_Type_Size,
                 Sz_RI_Info_For_Variant => BA_RI_Info_For_Variant);
 
+   procedure BA_Variant_Aligns
+     (S_Idx      : Record_Info_Id;
+      Must_Align : out BA_Data;
+      Is_Align   : out BA_Data;
+      V          : GL_Value;
+      Max_Size   : Boolean) renames BA_Size.Get_Variant_Aligns;
+
+   function BA_Record_Size_So_Far
+     (TE         : Entity_Id;
+      V          : GL_Value;
+      Start_Idx  : Record_Info_Id;
+      Idx        : Record_Info_Id;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return BA_Data
+     renames BA_Size.Get_Record_Size_So_Far;
+
    function BA_Record_Type_Size
      (TE         : Entity_Id;
       V          : GL_Value;
@@ -1946,14 +1962,122 @@ package body GNATLLVM.Records is
       Is_Align    : out BA_Data;
       Return_Size : Boolean := True)
    is
-      pragma Unreferenced (RI, V, Max_Size, Return_Size);
+      function BA_Get_Variant_Expr
+        (RI : Record_Info; In_Values : BA_Data_Array) return BA_Data
+        with Pre => List_Length (RI.Variant_List) = In_Values'Length;
+      --  Given an RI and a set of values, corresponding to the values
+      --  in the order of the variants in the RI, return a BA_Data that
+      --  represents an expression to compute which value is correct
+      --  for a specific record object.
+
+      Sizes       : BA_Data_Array (RI.Variants'Range) := (others => No_BA);
+      Must_Aligns : BA_Data_Array (RI.Variants'Range) := (others => No_BA);
+      Is_Aligns   : BA_Data_Array (RI.Variants'Range) := (others => No_BA);
+
+      -------------------------
+      -- BA_Get_Variant_Expr --
+      -------------------------
+
+      function BA_Get_Variant_Expr
+        (RI : Record_Info; In_Values : BA_Data_Array) return BA_Data
+      is
+         Values : BA_Data_Array := In_Values;
+         Expr   : BA_Data       := Values (Values'Last);
+
+      begin
+         --  We're building an expression of the form
+         --
+         --  (if C1 then V1 elsif C2 then V2 ... else VO)
+         --
+         --  where VO is the "others" alternative.  We rely on the fact that,
+         --  especially for alignments, that many of the values above are
+         --  the same and "strike out" those values that are the same as
+         --  ones we've already processed.  We rely on the others alternative
+         --  being last.
+         --
+         --  The initial expression is VO, so we start by removing any
+         --  values equal to it.
+
+         for J in Values'Range loop
+            if Values (J) = Expr then
+               Values (J) := No_BA;
+            end if;
+         end loop;
+
+         --  Now iterate over the list of values until we've removed all of
+         --  them.  This is a quadratic algorithm, but even in records with
+         --  large numbers of variants, the number of different sizes and
+         --  alignments should be small, so that shouldn't be an issue.
+
+         while (for some V of Values => Present (V)) loop
+            declare
+               Variant    : Node_Id := First_Non_Pragma (RI.Variant_List);
+               This_Cond  : BA_Data := BA_Const (0);
+               This_Value : BA_Data;
+
+            begin
+               --  Search backwards for the last value
+
+               for J in reverse Values'Range loop
+                  This_Value := Values (J);
+                  exit when Present (This_Value);
+               end loop;
+
+               --  Now build an OR of all the possibilities for this value.
+               --  We know this can't include the "others" choice because we've
+               --  removed that one above.
+
+               for J in Values'Range loop
+                  if Values (J) = This_Value then
+                     pragma Assert (Present_Expr (Variant) /= Uint_1);
+                     Values (J) := No_BA;
+                     This_Cond :=
+                       BA_Truth_Or (This_Cond,
+                                    SO_Ref_To_BA (Present_Expr (Variant)));
+                  end if;
+
+                  Next_Non_Pragma (Variant);
+               end loop;
+
+               --  Finally, make the conditional expression
+
+               Expr := BA_Select (This_Cond, This_Value, Expr);
+            end;
+         end loop;
+
+         return Expr;
+      end BA_Get_Variant_Expr;
 
    begin
-      --  ??? For the first version, just return unknown
+      --  We first go through each variant and compute the alignments and
+      --  sizes of each.
 
-      Size       := No_BA;
-      Must_Align := No_BA;
-      Is_Align   := No_BA;
+      for J in RI.Variants'Range loop
+
+         --  If this variant is empty, trivially get the values.  Otherwise,
+         --  compute each, computing the size only if needed.
+
+         if No (RI.Variants (J)) then
+            Must_Aligns (J) := BA_Const (1);
+            Is_Aligns   (J) := BA_Const (1);
+            Sizes       (J) := BA_Const (0);
+         else
+            BA_Variant_Aligns (RI.Variants (J),
+                                Must_Aligns (J), Is_Aligns (J), V, Max_Size);
+            if Return_Size then
+               Sizes (J) :=
+                 BA_Record_Size_So_Far (Empty, V, RI.Variants (J),
+                                        Empty_Record_Info_Id, Max_Size);
+            end if;
+         end if;
+      end loop;
+
+      --  Now compute the resulting values
+
+      Must_Align := BA_Get_Variant_Expr (RI, Must_Aligns);
+      Is_Align   := BA_Get_Variant_Expr (RI, Is_Aligns);
+      Size       := (if   Return_Size then BA_Get_Variant_Expr (RI, Sizes)
+                     else No_BA);
    end BA_RI_Info_For_Variant;
 
    -------------------------

@@ -78,7 +78,9 @@ package body GNATLLVM.Codegen is
          Emit_LLVM := True;
       elsif Switch = "-S" then
          Output_Assembly := True;
-      elsif Switch = "-g" or else Starts_With ("-g") then
+      elsif Switch = "-g"
+        or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
+      then
          Emit_Debug_Info := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
@@ -368,7 +370,8 @@ package body GNATLLVM.Codegen is
       elsif Switch = "--dump-ir"
         or else Switch = "--dump-bc" or else Switch = "--write-bc"
         or else Switch = "-emit-llvm" or else Switch = "-S"
-        or else Switch = "-g" or else Starts_With ("-g")
+        or else Switch = "-g"
+        or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
         or else Starts_With ("--target=") or else Starts_With ("-llvm-")
       then
          return True;

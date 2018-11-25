@@ -59,6 +59,7 @@ package body GNATLLVM.Arrays is
       Bound_Type    : Entity_Id;
       Bound_Subtype : Entity_Id;
       Low, High     : One_Bound;
+      Bound_Range   : GL_Value;
    end record
      with Predicate => Is_Discrete_Type (Bound_Type)
                        and then Is_Discrete_Type (Bound_Subtype);
@@ -288,7 +289,8 @@ package body GNATLLVM.Arrays is
         := (Bound_Type    => Standard_Integer,
             Bound_Subtype => Standard_Integer,
             Low           => Low_Bound,
-            High          => High_Bound);
+            High          => High_Bound,
+            Bound_Range   => Size_Const_Int (Length));
       Result_Typ : constant Type_T       :=
         Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
 
@@ -367,17 +369,21 @@ package body GNATLLVM.Arrays is
             Index_Base : constant Entity_Id    := Full_Base_Type (Index_Type);
             LB         : constant Node_Id      := Low_Bound (Idx_Range);
             HB         : constant Node_Id      := High_Bound (Idx_Range);
-            Dim_Info   : constant Index_Bounds :=
+            Dim_Info   : Index_Bounds          :=
               (Bound_Type    => Index_Base,
                Bound_Subtype => Full_Etype (Base_Index),
                Low           => Build_One_Bound (LB, Unconstrained, For_Orig),
-               High          => Build_One_Bound (HB, Unconstrained, For_Orig));
+               High          => Build_One_Bound (HB, Unconstrained, For_Orig),
+               Bound_Range   => No_GL_Value);
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges
             --  that are outside the base type if the subtype is superflat
             --  (see C37172C).  We also need to record the subtype of the
             --  index as it appears in the base array type since that's
             --  what's used to compute the min/max sizes of objects.
+            Idx_Const  : constant Boolean      :=
+              not Dim_Info.Low.Dynamic and then not Dim_Info.High.Dynamic;
+            Idx_Native : Boolean               := Idx_Const;
 
          begin
             --  Update whether or not this will be of dynamic size and
@@ -386,7 +392,19 @@ package body GNATLLVM.Arrays is
             --  array to be in the range of "unsigned".  So we have to treat
             --  a too-large constant as if it's of variable size.
 
-            if Dim_Info.Low.Dynamic or else Dim_Info.High.Dynamic then
+            if Idx_Const then
+               Dim_Info.Bound_Range :=
+                 Bounds_To_Length (Size_Const_Int (Dim_Info.Low.Cnst),
+                                   Size_Const_Int (Dim_Info.High.Cnst),
+                                   Size_Type);
+               if Get_Const_Int_Value (Dim_Info.Bound_Range)
+                 > LLI (unsigned'Last)
+               then
+                  Idx_Native := False;
+               end if;
+            end if;
+
+            if not Idx_Native then
                This_Nonnative := True;
                if Dim /= 0 then
                   Must_Use_Fake := True;
@@ -408,31 +426,27 @@ package body GNATLLVM.Arrays is
          Array_Info.Append (Dim_Infos (J));
       end loop;
 
-      --  If we must use a fake type, make one.  Otherwise loop through
-      --  the types making the LLVM type.
+      --  If not using a native types, then make a type with a zero
+      --  number of elements and the type we set above. Otherwise loop
+      --  through the types making the LLVM type.
 
-      if Must_Use_Fake then
+      if This_Nonnative then
          Typ := Array_Type (Typ, 0);
       else
          for J in reverse First_Info .. Array_Info.Last loop
             declare
-               Idx      : constant Array_Info_Id :=
+               Idx : constant Array_Info_Id :=
                  (if   Convention (TE) = Convention_Fortran
                   then Array_Info.Last + First_Info - J else J);
-               Dim_Info : constant Index_Bounds  := Array_Info.Table (Idx);
-               Low      : constant One_Bound     := Dim_Info.Low;
-               High     : constant One_Bound     := Dim_Info.High;
-               Dynamic  : constant Boolean       :=
-                 Low.Dynamic or High.Dynamic;
-               Rng      : unsigned               := 0;
-            begin
-               if not Dynamic and then Low.Cnst <= High.Cnst
-                 and then High.Cnst - Low.Cnst < Int'Last - 1
-               then
-                  Rng := unsigned (UI_To_Int (High.Cnst - Low.Cnst) + 1);
-               end if;
+               Rng  : constant GL_Value      :=
+                 Array_Info.Table (Idx).Bound_Range;
 
-               Typ := Array_Type (Typ, Rng);
+            begin
+               Typ :=
+                 Array_Type (Typ,
+                             (if   Present (Rng)
+                              then unsigned (Get_Const_Int_Value (Rng))
+                              else 0));
             end;
          end loop;
       end if;

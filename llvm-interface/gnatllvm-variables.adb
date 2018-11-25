@@ -31,7 +31,6 @@ with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 with Table;    use Table;
-with Uintp;    use Uintp;
 
 with LLVM.Core;  use LLVM.Core;
 

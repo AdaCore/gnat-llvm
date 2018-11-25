@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Sinfo; use Sinfo;
-with Uintp; use Uintp;
 
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;

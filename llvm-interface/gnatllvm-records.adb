@@ -28,7 +28,6 @@ with Snames;   use Snames;
 with Sprint;   use Sprint;
 with Stand;    use Stand;
 with Table;    use Table;
-with Uintp;    use Uintp;
 
 with LLVM.Core;  use LLVM.Core;
 

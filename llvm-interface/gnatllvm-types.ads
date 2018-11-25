@@ -19,7 +19,6 @@ with Ada.Unchecked_Conversion;
 
 with Repinfo; use Repinfo;
 with Sinfo;   use Sinfo;
-with Uintp;   use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 

@@ -2002,7 +2002,6 @@ package body GNATLLVM.Types is
    ---------------------
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val is
-      function UI_From_LLI is new UI_From_Integral (LLI);
       Ret : Uint;
 
    begin

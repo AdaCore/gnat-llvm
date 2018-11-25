@@ -18,7 +18,6 @@
 with Ada.Unchecked_Deallocation;
 
 with Stand; use Stand;
-with Uintp; use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 

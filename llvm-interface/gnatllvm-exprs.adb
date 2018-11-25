@@ -25,7 +25,6 @@ with Sem_Aggr;   use Sem_Aggr;
 with Snames;     use Snames;
 with Stand;      use Stand;
 with Stringt;    use Stringt;
-with Uintp;      use Uintp;
 with Uintp.LLVM; use Uintp.LLVM;
 with Urealp;     use Urealp;
 

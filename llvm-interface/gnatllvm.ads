@@ -26,6 +26,7 @@ with Atree; use Atree;
 with Einfo; use Einfo;
 with Namet; use Namet;
 with Types; use Types;
+with Uintp; use Uintp;
 
 with LLVM.Target;         use LLVM.Target;
 with LLVM.Target_Machine; use LLVM.Target_Machine;
@@ -78,6 +79,9 @@ package GNATLLVM is
    subtype long_long_integer is Interfaces.C.Extensions.long_long;
    subtype LLI is long_long_integer;
    --  Define shorter alias name for easier reading
+
+   function UI_From_LLI is new UI_From_Integral (LLI);
+   --  And conversion routine from it to UI
 
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us

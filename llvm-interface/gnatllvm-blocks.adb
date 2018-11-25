@@ -23,7 +23,6 @@ with Restrict; use Restrict;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Table;    use Table;
-with Uintp;    use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 

@@ -17,7 +17,6 @@
 
 with Nlists;     use Nlists;
 with Sinfo;      use Sinfo;
-with Uintp;      use Uintp;
 with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;

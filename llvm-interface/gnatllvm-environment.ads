@@ -17,7 +17,6 @@
 
 with Repinfo; use Repinfo;
 with Table;   use Table;
-with Uintp;   use Uintp;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 

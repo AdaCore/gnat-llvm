@@ -25,7 +25,6 @@ with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
-with Uintp;    use Uintp;
 
 with LLVM.Core; use LLVM.Core;
 

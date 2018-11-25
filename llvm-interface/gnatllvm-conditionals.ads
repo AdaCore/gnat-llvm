@@ -17,7 +17,6 @@
 
 with Nlists; use Nlists;
 with Sinfo;  use Sinfo;
-with Uintp;  use Uintp;
 
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;

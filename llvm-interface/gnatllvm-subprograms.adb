@@ -673,14 +673,17 @@ package body GNATLLVM.Subprograms is
          declare
             Param_Type : constant Node_Id    := Full_Etype (Param_Ent);
             PK         : constant Param_Kind := Get_Param_Kind (Param_Ent);
-
+            PK_By_Ref  : constant Boolean    := PK_Is_Reference (PK);
          begin
+            if Mechanism (Param_Ent) = By_Copy and then PK_By_Ref then
+               Error_Msg_N ("?cannot pass & by copy", Param_Ent);
+            end if;
+
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
                  (if    PK = Foreign_By_Ref
                   then  Pointer_Type (Create_Type (Param_Type), 0)
-                  elsif PK_Is_Reference (PK)
-                  then  Create_Access_Type_To (Param_Type)
+                  elsif PK_By_Ref then Create_Access_Type_To (Param_Type)
                   else  Create_Type (Param_Type));
 
                J := J + 1;

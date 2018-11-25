@@ -667,6 +667,13 @@ package body GNATLLVM.Subprograms is
          J := 2;
       end if;
 
+      --  Back-annotate the return mechanism
+
+      if Ekind (Def_Ident) = E_Function then
+         Set_Mechanism (Def_Ident, (if   RK =  Value_Return then By_Copy
+                                    else By_Reference));
+      end if;
+
       --  Associate an LLVM type with each Ada subprogram parameter
 
       while Present (Param_Ent) loop
@@ -675,9 +682,18 @@ package body GNATLLVM.Subprograms is
             PK         : constant Param_Kind := Get_Param_Kind (Param_Ent);
             PK_By_Ref  : constant Boolean    := PK_Is_Reference (PK);
          begin
+            --  If the mechanism requested was by-copy and we use by-ref,
+            --  give a warning.  If the mechanism was defaulted, set
+            --  what we used.
+
             if Mechanism (Param_Ent) = By_Copy and then PK_By_Ref then
                Error_Msg_N ("?cannot pass & by copy", Param_Ent);
+            elsif Mechanism (Param_Ent) = Default_Mechanism then
+               Set_Mechanism (Param_Ent,
+                              (if PK_By_Ref then By_Reference else By_Copy));
             end if;
+
+            --  If this is an input or reference, set the type for the param
 
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=

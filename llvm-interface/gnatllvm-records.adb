@@ -850,7 +850,8 @@ package body GNATLLVM.Records is
             Saved_Align     := Last_Align;
             J               := 1;
             Var_Array       := new
-              Record_Info_Id_Array'(1 .. List_Length (Variants (Var_Part))
+              Record_Info_Id_Array'(1 .. List_Length_Non_Pragma
+                                      (Variants (Var_Part))
                                       => Empty_Record_Info_Id);
 
             while Present (Variant) loop
@@ -1963,7 +1964,8 @@ package body GNATLLVM.Records is
    is
       function BA_Get_Variant_Expr
         (RI : Record_Info; In_Values : BA_Data_Array) return BA_Data
-        with Pre => List_Length (RI.Variant_List) = In_Values'Length;
+        with Pre => List_Length_Non_Pragma (RI.Variant_List) =
+                    In_Values'Length;
       --  Given an RI and a set of values, corresponding to the values
       --  in the order of the variants in the RI, return a BA_Data that
       --  represents an expression to compute which value is correct

@@ -1644,7 +1644,10 @@ package body GNATLLVM.Types is
       if Present (N)
         and then not (Nkind (N) = N_Allocator and then Comes_From_Source (N))
       then
-         Check_No_Implicit_Heap_Alloc (N);
+         if No (Pool) then
+            Check_No_Implicit_Heap_Alloc (N);
+         end if;
+
          if Has_Task (TE) then
             Check_No_Implicit_Task_Alloc (N);
          end if;

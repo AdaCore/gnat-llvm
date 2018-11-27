@@ -27,6 +27,12 @@ package GNATLLVM.Arrays is
    function Contains_Discriminant (N : Node_Id) return Boolean;
    --  Return True if N contains a reference to a discriminant
 
+   function Is_Self_Referential_Type (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+   --  Return True if TE is a type where computing the size of the type
+   --  requires an instance of the type.  This is true for an unconstrained
+   --  type or an array subtype that has a discriminant as a bound.
+
    function Create_Array_Type
      (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
      with Pre  => (if   For_Orig then Is_Packed_Array_Impl_Type (TE)

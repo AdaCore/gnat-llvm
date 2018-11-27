@@ -1116,6 +1116,44 @@ package body GNATLLVM.Arrays is
       return Scan (N) = Abandon;
    end Contains_Discriminant;
 
+   ------------------------------
+   -- Is_Self_Referential_Type --
+   ------------------------------
+
+   function Is_Self_Referential_Type (TE : Entity_Id) return Boolean is
+   begin
+      --  Unconstrained types are always self-referential
+
+      if not Is_Constrained (TE) then
+         return True;
+
+      --  If not array subtype, it isn't
+
+      elsif Ekind (TE) /= E_Array_Subtype then
+         return False;
+      end if;
+
+      --  Otherwise check each bound
+
+      for Dim in 0 .. Number_Dimensions (TE) - 1 loop
+         declare
+            Dim_Info  : constant Index_Bounds :=
+              Array_Info.Table (Get_Array_Info (TE) + Dim);
+            Low_Expr  : constant Node_Id      := Dim_Info.Low.Value;
+            High_Expr : constant Node_Id      := Dim_Info.High.Value;
+         begin
+            if (Present (Low_Expr) and then Contains_Discriminant (Low_Expr))
+              or else (Present (High_Expr)
+                         and then Contains_Discriminant (High_Expr))
+            then
+               return True;
+            end if;
+         end;
+      end loop;
+
+      return False;
+   end Is_Self_Referential_Type;
+
    ---------------------------
    -- Emit_Others_Aggregate --
    ---------------------------

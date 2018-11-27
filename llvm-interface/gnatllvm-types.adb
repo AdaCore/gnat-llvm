@@ -1631,7 +1631,7 @@ package body GNATLLVM.Types is
    is
       Value   : constant GL_Value  :=
         (if    Present (V) then V
-         elsif Is_Unconstrained_Type (Alloc_TE) and then Present (Expr)
+         elsif Is_Self_Referential_Type (Alloc_TE) and then Present (Expr)
          then  Emit (Expr) else No_GL_Value);
       Size    : constant GL_Value  :=
          Get_Alloc_Size (TE, Alloc_TE, Value, Max_Size);

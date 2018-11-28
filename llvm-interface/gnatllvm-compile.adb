@@ -628,8 +628,7 @@ package body GNATLLVM.Compile is
    function Emit_LValue
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False) return GL_Value is
+      For_LHS    : Boolean  := False) return GL_Value is
    begin
       --  We have an important special case here.  If N is an N_Identifier or
       --  N_Expanded_Name and its value is a Reference, always return that
@@ -646,7 +645,8 @@ package body GNATLLVM.Compile is
          return Get_Value (Entity (N));
       else
          return Get (Emit (N, LHS,
-                           For_LHS => For_LHS, Prefer_LHS => Prefer_LHS),
+                           For_LHS => For_LHS,
+                           Prefer_LHS => True),
                      Any_Reference);
       end if;
    end Emit_LValue;
@@ -658,17 +658,14 @@ package body GNATLLVM.Compile is
    function Emit_Safe_LValue
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False) return GL_Value
+      For_LHS    : Boolean  := False) return GL_Value
    is
       V : GL_Value;
 
    begin
       Push_LValue_List;
       Push_Debug_Freeze_Pos;
-      V := Emit_LValue (N, LHS     => LHS,
-                        For_LHS    => For_LHS,
-                        Prefer_LHS => Prefer_LHS);
+      V := Emit_LValue (N, LHS => LHS, For_LHS => For_LHS);
       Pop_Debug_Freeze_Pos;
       Pop_LValue_List;
       return V;
@@ -773,7 +770,7 @@ package body GNATLLVM.Compile is
             | N_Defining_Identifier
             | N_Defining_Operator_Symbol
             =>
-            return Emit_Identifier (N);
+            return Emit_Identifier (N, Prefer_LHS => Prefer_LHS);
 
          when N_Function_Call =>
             pragma Assert (not For_LHS);

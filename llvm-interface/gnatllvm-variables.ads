@@ -117,7 +117,8 @@ package GNATLLVM.Variables is
                            N_Exception_Renaming_Declaration);
    --  Emit an object or exception renaming declaration
 
-   function Emit_Identifier (N : Node_Id) return GL_Value
+   function Emit_Identifier
+     (N : Node_Id; Prefer_LHS : Boolean := False) return GL_Value
      with Pre => Nkind_In (N, N_Identifier, N_Expanded_Name, N_Operator_Symbol,
                            N_Defining_Identifier, N_Defining_Operator_Symbol);
    --  Evaluate an N_Identifier and similar

@@ -1618,7 +1618,9 @@ package body GNATLLVM.Variables is
    -- Emit_Identifier --
    ---------------------
 
-   function Emit_Identifier (N : Node_Id) return GL_Value is
+   function Emit_Identifier
+     (N : Node_Id; Prefer_LHS : Boolean := False) return GL_Value
+   is
       TE        : constant Entity_Id := Full_Etype (N);
       E         : constant Entity_Id :=
         (if Nkind (N) in N_Entity then N else Entity (N));
@@ -1641,9 +1643,7 @@ package body GNATLLVM.Variables is
       --  but if it's part of Standard, we have to use it even then.
 
       elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
-        and then not (Nkind_In (Parent (N), N_Attribute_Reference, N_Slice)
-                        and then Prefix (Parent (N)) = N
-                        and then Sloc (Def_Ident) > Standard_Location)
+        and then (not Prefer_LHS or else Sloc (Def_Ident) <= Standard_Location)
       then
          return Emit_Conversion (Expr, TE);
       end if;

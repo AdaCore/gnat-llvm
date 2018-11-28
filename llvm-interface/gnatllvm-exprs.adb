@@ -683,8 +683,7 @@ package body GNATLLVM.Exprs is
             --  We need a single-word pointer, then convert it to the
             --  desired integral type.
 
-            return Ptr_To_Int (Get (Emit_LValue (Prefix (N),
-                                                 Prefer_LHS => True),
+            return Ptr_To_Int (Get (Emit_LValue (Prefix (N)),
                                     Reference_For_Integer),
                                TE, "attr-address");
 

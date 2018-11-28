@@ -51,21 +51,19 @@ package GNATLLVM.Compile is
    function Emit_LValue
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False) return GL_Value
+      For_LHS    : Boolean  := False) return GL_Value
      with Pre => Present (N), Post => Present (Emit_LValue'Result);
    --  Compile an expression node to an LLVM value that's a reference.
    --  If N corresponds to an LValue in the language, then the result
-   --  will also be an LValue.  LHS, For_LHS, and Prefer_LHs are like for Emit.
+   --  will also be an LValue.  LHS, For_LHS is like for Emit.
 
    function Emit_Safe_LValue
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False) return GL_Value
+      For_LHS    : Boolean  := False) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Safe_LValue'Result);
    --  Likewise, but push the LValue pair table so we compute this as
-   --  a safe subexpression.  LHS and For_LHS are like for Emit.
+   --  a safe subexpression.  LHS is like for Emit.
 
    function Emit_Expression
      (N       : Node_Id;

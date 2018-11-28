@@ -20,3 +20,4 @@ Limitations and missing features (identified so far):
 - pragma Link_Contructor and Link_Destructor (see E519-019)
 - pragma Suppress_Exception_Locations (see E610-021)
 - pragma Linker_Alias (see E611-001)
+- must allocate aliased components of records early (GA23-024)

@@ -699,23 +699,25 @@ package body GNATLLVM.Variables is
             --  addresses as the same, the result is known to be true or
             --  false, respectively, and will constant fold to that.
 
-            declare
-               LHS : constant Node_Id := Left_Opnd  (N);
-               RHS : constant Node_Id := Right_Opnd (N);
+            --  We definitely can't do this if we need an overflow check
+            --  or if either side needs elaboration.
 
-            begin
-               if not Nkind_In (N, N_Op_Add, N_Op_Subtract) then
-                  return (Is_Static_Address (LHS)
-                            and then Is_Static_Address (RHS)
-                            and then Emit_LValue (LHS) = Emit_LValue (RHS))
-                    or else (Compile_Time_Known_Value (LHS)
-                               and then Compile_Time_Known_Value (RHS));
-               else
-                  return not Do_Overflow_Check (N)
-                    and then Is_No_Elab_Needed (LHS)
-                    and then Is_No_Elab_Needed (RHS);
-               end if;
-            end;
+            if Do_Overflow_Check (N)
+              or else not Is_No_Elab_Needed (Left_Opnd (N))
+              or else not Is_No_Elab_Needed (Right_Opnd (N))
+            then
+               return False;
+
+            --  If this is an add or subtract, that's all we need
+
+            elsif Nkind_In (N, N_Op_Add, N_Op_Subtract) then
+               return True;
+
+            --  Otherwise, it's static iff its value is a constant integer
+
+            else
+               return Is_A_Const_Int (Emit_Expression (N));
+            end if;
 
          when N_Unary_Op =>
             return not Do_Overflow_Check (N)

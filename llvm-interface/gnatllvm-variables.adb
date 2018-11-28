@@ -934,6 +934,7 @@ package body GNATLLVM.Variables is
 
                         if not Ekind_In (Def_Ident, E_Generic_Procedure,
                                          E_Generic_Function)
+                          and then not Is_Eliminated (Def_Ident)
                         then
                            Discard (Emit_Subprogram_Decl (N));
                         end if;
@@ -948,6 +949,7 @@ package body GNATLLVM.Variables is
 
                      if not Ekind_In (Def_Ident, E_Subprogram_Body,
                                       E_Generic_Procedure, E_Generic_Function)
+                       and then not Is_Eliminated (Def_Ident)
                      then
                         Discard (Emit_Subprogram_Decl (Specification (N)));
                      end if;

@@ -318,9 +318,11 @@ package body GNATLLVM.Compile is
          when N_Function_Specification | N_Procedure_Specification =>
 
             --  Ignore intrinsic subprograms as calls to those will be
-            --  expanded.
+            --  expanded.  Also ignore eliminated subprograms.
 
-            if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N)) then
+            if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N))
+              and then not Is_Eliminated (Unique_Defining_Entity (N))
+            then
                Discard (Emit_Subprogram_Decl (N, Frozen => False));
             end if;
 
@@ -1080,6 +1082,7 @@ package body GNATLLVM.Compile is
         and then not Is_Intrinsic_Subprogram (E)
         and then Nkind (Parent (Decl)) = N_Subprogram_Declaration
         and then Convention (E) /= Convention_Protected
+        and then not Is_Eliminated (E)
       then
          Discard (Emit_Subprogram_Decl (Decl));
       end if;

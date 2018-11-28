@@ -17,3 +17,6 @@ Limitations and missing features (identified so far):
 - See if can use .rodata (see I305-025)
 - pragma Weak_External (see IB12-009)
 - suport for -gnatc (when back-annotating)
+- pragma Link_Contructor and Link_Destructor (see E519-019)
+- pragma Suppress_Exception_Locations (see E610-021)
+- pragma Linker_Alias (see E611-001)

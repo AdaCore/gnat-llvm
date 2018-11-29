@@ -91,6 +91,9 @@ bugs-bins:
 	for f in gcc gnat1 gnat gnatbind gnatchop gnatclean gnatkr gnatlink gnatls gnatmake gnatname gnatprep; do \
 	  rm -f $$f; ln bin/llvm-$$f bugs/bin/$$f; \
 	done
+	echo "#!/bin/sh" > bugs/bin/gprbuild
+	echo "`which gprbuild` --target=llvm "\$$\@ >> bugs/bin/gprbuild
+	chmod +x bugs/bin/gprbuild
 
 # Bootstrap targets
 

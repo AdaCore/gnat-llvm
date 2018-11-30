@@ -1340,14 +1340,20 @@ package body GNATLLVM.Subprograms is
    --------------------------
 
    procedure Emit_Subprogram_Body (N : Node_Id) is
-      Nest_Table_First : constant Nat := Nested_Functions_Table.Last + 1;
+      Nest_Table_First : constant Nat     := Nested_Functions_Table.Last + 1;
+      Spec             : constant Node_Id := Get_Acting_Spec (N);
 
    begin
+      --  Do nothing if this is an eliminated subprogram
+
+      if Is_Eliminated (Defining_Entity (Spec)) then
+         return;
+
       --  If we're not at library level, this a nested function.  Defer it
       --  until we complete elaboration of the enclosing function.  But do
       --  ensure that the spec has been elaborated.
 
-      if not Library_Level then
+      elsif not Library_Level then
          Discard (Emit_Subprogram_Decl (Get_Acting_Spec (N)));
          Nested_Functions_Table.Append (N);
          return;

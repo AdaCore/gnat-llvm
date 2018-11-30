@@ -470,7 +470,8 @@ package body GNATLLVM.Variables is
               and then Ekind (N) /= E_Enumeration_Literal
               and then (Ekind (Full_Etype (N)) = E_Void
                           or else not Is_Dynamic_Size (Full_Etype (N)))
-              and then (Library_Level or else Is_Statically_Allocated (N)
+              and then (Library_Level or else In_Elab_Proc
+                          or else Is_Statically_Allocated (N)
                           or else not In_Extended_Main_Code_Unit (N));
 
          when N_Selected_Component =>
@@ -1126,6 +1127,25 @@ package body GNATLLVM.Variables is
          end if;
 
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
+
+         if Ekind (Def_Ident) /= E_Exception
+           and then Present (Linker_Section_Pragma (Def_Ident))
+         then
+            declare
+               P     : constant Node_Id   := Linker_Section_Pragma (Def_Ident);
+               List  : constant List_Id   := Pragma_Argument_Associations (P);
+               Str   : constant Node_Id   := Expression (Last (List));
+               S_Id  : constant String_Id := Strval (Expr_Value_S (Str));
+               S     : String (1 .. Integer (String_Length (S_Id)));
+
+            begin
+               for J in S'Range loop
+                  S (J) := Get_Character (Get_String_Char (S_Id, Nat (J)));
+               end loop;
+
+               Set_Section (LLVM_Var, S);
+            end;
+         end if;
       end if;
 
       --  Now save the value we've made for this variable
@@ -1325,8 +1345,9 @@ package body GNATLLVM.Variables is
                end if;
 
                Set_Initializer (LLVM_Var,
-                                Int_To_Relationship (Addr,  TE,
-                                                    Reference_To_Component));
+                                Int_To_Relationship (Addr, TE,
+                                                     Reference_To_Component));
+               Set_Global_Constant (LLVM_Var, True);
                Set_Init := True;
             elsif Library_Level then
                Add_To_Elab_Proc (N);
@@ -1368,6 +1389,8 @@ package body GNATLLVM.Variables is
                end if;
 
                Set_Initializer (LLVM_Var, Value);
+               Set_Global_Constant (LLVM_Var, Is_True_Constant (Def_Ident)
+                                      and then not Address_Taken (Def_Ident));
                Set_Init := True;
                Copied   := True;
             elsif Library_Level then
@@ -1384,6 +1407,9 @@ package body GNATLLVM.Variables is
          then
             Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
                                             Bounds_And_Data));
+            Set_Global_Constant
+              (LLVM_Var, (Is_True_Constant (Def_Ident)
+                            and then not Address_Taken (Def_Ident)));
             Set_Init := True;
             Copied   := True;
          end if;
@@ -1577,14 +1603,15 @@ package body GNATLLVM.Variables is
 
       elsif Is_True_Constant (Def_Ident) and then not Use_LHS
         and then not Is_Volatile (Def_Ident)
-        and then (not Library_Level
+        and then (not (Library_Level or else In_Elab_Proc)
                     or else Is_No_Elab_Needed (Name (N)))
       then
          Set_Value (Def_Ident, Emit_Conversion (Name (N), TE,
                                                Empty, False, False));
-      elsif Is_Static_Location (Name (N)) or else not Library_Level then
+      elsif Is_Static_Location (Name (N))
+        or else not (Library_Level or else In_Elab_Proc)
+      then
          Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
-
       else
          --  If this is a constant, we're going to put the actual value there;
          --  otherwise, we'll put the address of the expression.

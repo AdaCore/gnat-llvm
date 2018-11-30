@@ -161,6 +161,11 @@ begin
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
+         --  Ignore -Dxxx switches for compatibility with GCC
+
+         elsif Arg'Length >= 2 and then Arg (1 .. 2) = "-D" then
+            Skip := True;
+
          --  Recognize -fdump-scos specially
 
          elsif Arg = "-fdump-scos" then

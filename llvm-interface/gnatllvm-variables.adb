@@ -1670,10 +1670,23 @@ package body GNATLLVM.Variables is
             return Use_Discriminant_For_Bound (Def_Ident);
 
          when others =>
-            --  If we haven't seen this variable and it's not in our
-            --  code unit, make a global for it.
 
-            if No (V) and then not In_Extended_Main_Code_Unit (Def_Ident) then
+            --  If this has an address expression that's statically
+            --  elaborable, dereference that.
+
+            if No (V) and then Present (Address_Clause (Def_Ident))
+              and then Is_No_Elab_Needed (Expression
+                                            (Address_Clause (Def_Ident)))
+            then
+               V := Int_To_Ref (Emit_Expression
+                                  (Expression (Address_Clause (Def_Ident))),
+                                TE);
+
+            --  Otherwise, if we haven't seen this variable and it's
+            --  not in our code unit, make a global for it.
+
+            elsif No (V) and then not In_Extended_Main_Code_Unit (Def_Ident)
+            then
                V := Make_Global_Variable (Def_Ident);
             end if;
 

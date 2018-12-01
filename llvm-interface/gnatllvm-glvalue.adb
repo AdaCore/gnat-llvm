@@ -1732,6 +1732,15 @@ package body GNATLLVM.GLValue is
       Set_Thread_Local (LLVM_Value (V), Thread_Local);
    end Set_Thread_Local;
 
+   -----------------
+   -- Set_Section --
+   -----------------
+
+   procedure Set_Section (V : GL_Value; S : String) is
+   begin
+      Set_Section (LLVM_Value (V), S);
+   end Set_Section;
+
    ----------------------
    -- Set_Unnamed_Addr --
    ----------------------

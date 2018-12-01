@@ -1603,14 +1603,12 @@ package body GNATLLVM.Variables is
 
       elsif Is_True_Constant (Def_Ident) and then not Use_LHS
         and then not Is_Volatile (Def_Ident)
-        and then (not (Library_Level or else In_Elab_Proc)
+        and then (not Library_Level
                     or else Is_No_Elab_Needed (Name (N)))
       then
          Set_Value (Def_Ident, Emit_Conversion (Name (N), TE,
                                                Empty, False, False));
-      elsif Is_Static_Location (Name (N))
-        or else not (Library_Level or else In_Elab_Proc)
-      then
+      elsif Is_Static_Location (Name (N)) or else not Library_Level then
          Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
       else
          --  If this is a constant, we're going to put the actual value there;

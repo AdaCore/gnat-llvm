@@ -1546,8 +1546,13 @@ package body GNATLLVM.Variables is
    procedure Emit_Renaming_Declaration (N : Node_Id) is
       Def_Ident : constant Entity_Id := Defining_Identifier (N);
       TE        : constant Entity_Id := Full_Etype (Def_Ident);
-      Use_LHS   : constant Boolean   := Is_Name (Name (N));
+      Use_LHS   : constant Boolean   :=
+        Is_Name (Name (N))
+        and then (Nkind (Name (N)) not in N_Has_Entity
+                    or else (Ekind (Entity (Name (N))) /=
+                               E_Enumeration_Literal));
       LLVM_Var  : GL_Value           := Get_Value (Def_Ident);
+      V         : GL_Value;
 
    begin
       --  If this is just a macro substitution by the front end, omit
@@ -1579,17 +1584,24 @@ package body GNATLLVM.Variables is
       --  don't try to force it into memory since that would give us a
       --  copy, which isn't useful.  If this is not a constant, the front
       --  end will have verified that the renaming is an actual LValue.
-      --  Don't do this at library level both because we want to
-      --  materialize the value and because it may need run-time
-      --  computation.
+      --  Don't do this at library level if it needs run-time computation.
 
       elsif Is_True_Constant (Def_Ident) and then not Use_LHS
         and then not Is_Volatile (Def_Ident)
         and then (not Library_Level
                     or else Is_No_Elab_Needed (Name (N)))
       then
-         Set_Value (Def_Ident, Emit_Conversion (Name (N), TE,
-                                               Empty, False, False));
+         V := Emit_Conversion (Name (N), TE, Empty, False, False);
+         Set_Value (Def_Ident, V);
+
+         --  If we're at library level, materialize this
+
+         if Library_Level then
+            LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident));
+            Set_Initializer (LLVM_Var, V);
+            Set_Global_Constant (LLVM_Var, True);
+            Set_Linker_Section (LLVM_Var, Def_Ident);
+         end if;
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
          Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
       else

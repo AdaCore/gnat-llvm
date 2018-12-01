@@ -2301,9 +2301,10 @@ package body GNATLLVM.Subprograms is
          if not In_Extended_Main_Code_Unit (Def_Ident) then
             Set_Linkage (LLVM_Func, External_Linkage);
          elsif not Is_Public (Def_Ident) and then not Is_Imported then
-            Set_Linkage (LLVM_Value (LLVM_Func), Internal_Linkage);
+            Set_Linkage (LLVM_Func, Internal_Linkage);
          end if;
 
+         Set_Linker_Section (LLVM_Func, Def_Ident);
          Set_Dup_Global_Value (Def_Ident, LLVM_Func);
 
          --  Now deal with function and parameter attributes

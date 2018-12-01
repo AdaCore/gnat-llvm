@@ -1127,25 +1127,7 @@ package body GNATLLVM.Variables is
          end if;
 
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
-
-         if Ekind (Def_Ident) /= E_Exception
-           and then Present (Linker_Section_Pragma (Def_Ident))
-         then
-            declare
-               P     : constant Node_Id   := Linker_Section_Pragma (Def_Ident);
-               List  : constant List_Id   := Pragma_Argument_Associations (P);
-               Str   : constant Node_Id   := Expression (Last (List));
-               S_Id  : constant String_Id := Strval (Expr_Value_S (Str));
-               S     : String (1 .. Integer (String_Length (S_Id)));
-
-            begin
-               for J in S'Range loop
-                  S (J) := Get_Character (Get_String_Char (S_Id, Nat (J)));
-               end loop;
-
-               Set_Section (LLVM_Var, S);
-            end;
-         end if;
+         Set_Linker_Section (LLVM_Var, Def_Ident);
       end if;
 
       --  Now save the value we've made for this variable

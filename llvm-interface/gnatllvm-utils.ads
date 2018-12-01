@@ -89,11 +89,15 @@ package GNATLLVM.Utils is
                  and then Present (Expr) and then Present (Ptr);
    --  Similar, but allows annotating store
 
-   function Load_With_Type (TE : Entity_Id; Ptr : Value_T; Name : String := "")
-     return Value_T
+   function Load_With_Type
+     (TE : Entity_Id; Ptr : Value_T; Name : String := "") return Value_T
      with Pre  => Is_Type (TE) and then Present (Ptr),
           Post => Present (Load_With_Type'Result);
    --  Likewise for a load
+
+   procedure Set_Linker_Section (V : GL_Value; Def_Ident : Entity_Id)
+     with Pre => Present (V) and then Present (Def_Ident);
+   --  Add a linker section to V if one is specified for Def_Ident
 
    function GEP
      (Bld     : Builder_T;

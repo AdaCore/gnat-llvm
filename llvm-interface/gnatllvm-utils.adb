@@ -18,11 +18,12 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
-with Errout;  use Errout;
-with Output;  use Output;
-with Sem_Aux; use Sem_Aux;
-with Sprint;  use Sprint;
-with Stringt; use Stringt;
+with Errout;   use Errout;
+with Output;   use Output;
+with Sem_Aux;  use Sem_Aux;
+with Sem_Eval; use Sem_Eval;
+with Sprint;   use Sprint;
+with Stringt;  use Stringt;
 
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -416,8 +417,8 @@ package body GNATLLVM.Utils is
    -- Load_With_Type --
    --------------------
 
-   function Load_With_Type (TE : Entity_Id; Ptr : Value_T; Name : String := "")
-     return Value_T
+   function Load_With_Type
+     (TE : Entity_Id; Ptr : Value_T; Name : String := "") return Value_T
    is
       Load_Inst : constant Value_T := Load (IR_Builder, Ptr, Name);
 
@@ -447,5 +448,33 @@ package body GNATLLVM.Utils is
    begin
       Add_Type_Data_To_Instruction (Store_Inst, TE);
    end Store_With_Type;
+
+   ------------------------
+   -- Set_Linker_Section --
+   ------------------------
+
+   procedure Set_Linker_Section (V : GL_Value; Def_Ident : Entity_Id) is
+   begin
+      --  Exceptions don't support linker sections
+
+      if Ekind (Def_Ident) /= E_Exception
+        and then Present (Linker_Section_Pragma (Def_Ident))
+      then
+         declare
+            P     : constant Node_Id   := Linker_Section_Pragma (Def_Ident);
+            List  : constant List_Id   := Pragma_Argument_Associations (P);
+            Str   : constant Node_Id   := Expression (Last (List));
+            S_Id  : constant String_Id := Strval (Expr_Value_S (Str));
+            S     : String (1 .. Integer (String_Length (S_Id)));
+
+         begin
+            for J in S'Range loop
+               S (J) := Get_Character (Get_String_Char (S_Id, Nat (J)));
+            end loop;
+
+            Set_Section (V, S);
+         end;
+      end if;
+   end Set_Linker_Section;
 
 end GNATLLVM.Utils;

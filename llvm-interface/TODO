@@ -7,7 +7,7 @@ Limitations and missing features (identified so far):
 - deal with recording positions for package bodies (can already do when
   generating code, but not when pushing for elab proc)
 - more __sync builtins and other atomic builtins
-- call "_ext" version of raise routines
+- call "_ext" version of raise routines (e.g., J917-030)
 - representation clauses
 - debug info (for variables, types and parameters)
 - restriction checks done by back end (other than no elab and allocations,

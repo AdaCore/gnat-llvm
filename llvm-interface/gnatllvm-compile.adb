@@ -454,6 +454,8 @@ package body GNATLLVM.Compile is
                Sz : constant Uint          := Esize (TE);
 
             begin
+               Copy_Annotations (TE, Defining_Identifier (N));
+
                --  Check that the type fits in the specified size, which
                --  may have been set by back-annotation.  We don't consider
                --  a type to be of fixed size if the byte size is larger

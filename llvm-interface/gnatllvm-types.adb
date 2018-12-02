@@ -1418,6 +1418,39 @@ package body GNATLLVM.Types is
       return T;
    end Create_Type;
 
+   ----------------------
+   -- Copy_Annotations --
+   ----------------------
+
+   procedure Copy_Annotations (In_TE, Out_TE : Entity_Id) is
+   begin
+      --  Copy the annotations we made above (and elsewhere)
+
+      if not Is_Access_Subprogram_Type (Out_TE)
+        and then not Is_Scalar_Type (Out_TE)
+      then
+         if Unknown_Esize (Out_TE) then
+            Set_Esize   (Out_TE, Esize (In_TE));
+         end if;
+         if Unknown_RM_Size (Out_TE) then
+            Set_RM_Size (Out_TE, RM_Size (In_TE));
+
+         end if;
+      end if;
+
+      if Unknown_Alignment (Out_TE) then
+         Set_Alignment (Out_TE, Alignment (In_TE));
+      end if;
+
+      if Is_Array_Type (Out_TE) and then Is_Base_Type (Out_TE) then
+         Set_Component_Size (Out_TE, Component_Size (In_TE));
+      end if;
+
+      --  ??? Unclear what, if anything, we need to do about record field
+      --  positions.
+
+   end Copy_Annotations;
+
    -------------------------------
    -- Create_Type_For_Component --
    -------------------------------

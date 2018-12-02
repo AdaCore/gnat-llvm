@@ -91,6 +91,11 @@ package GNATLLVM.Types is
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it first if necessary.
 
+   procedure Copy_Annotations (In_TE, Out_TE : Entity_Id)
+     with Pre => Is_Type (In_TE) and then Is_Type (Out_TE)
+                 and then In_TE = Get_Fullest_View (Out_TE);
+   --  Copy any annotations we made from In_TE to Out_TE
+
    function Create_Type_For_Component (TE : Entity_Id) return Type_T
      with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
      Post => Present (Create_Type_For_Component'Result);

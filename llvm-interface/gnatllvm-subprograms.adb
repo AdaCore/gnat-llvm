@@ -1403,6 +1403,14 @@ package body GNATLLVM.Subprograms is
             if RK = Return_By_Parameter then
                Emit_Assignment (Return_Address_Param, Expr);
 
+            --  If we return by reference do just that.  We don't do this
+            --  if a Storage_Pool is specified
+
+            elsif By_Ref (N)
+              or else (RK = RK_By_Reference and then No (Storage_Pool (N)))
+            then
+               V := Convert_Ref (Emit_LValue (Expr), TE);
+
             --  If this function returns unconstrained, allocate memory for
             --  the return value, copy the data to be returned to there,
             --  and return an access (fat pointer) to the value.  If this
@@ -1422,8 +1430,7 @@ package body GNATLLVM.Subprograms is
                         Proc => Procedure_To_Call (N),
                         Pool => Storage_Pool (N)));
 
-            elsif RK = RK_By_Reference then
-               V := Convert_Ref (Emit_LValue (Expr), TE);
+            --  Otherwise, we just return data
 
             else
                V := Get (Emit_Conversion (Expr, TE), Data);

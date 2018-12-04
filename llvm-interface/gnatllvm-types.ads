@@ -482,6 +482,12 @@ package GNATLLVM.Types is
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the type is of a constant size.
 
+   function Get_Attribute_From_Annotation (N : Node_Id) return Uint
+     with Pre => Nkind (N) = N_Attribute_Reference;
+   --  If the attribute referenced by N is known statically (either by being
+   --  set by the front end or by us via back-annotation, return the value
+   --  as a Uint.  Otherwise, return No_Uint.
+
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
 

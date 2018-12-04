@@ -737,6 +737,14 @@ package body GNATLLVM.Variables is
               and then Is_No_Elab_Needed (Expression (N));
 
          when N_Attribute_Reference =>
+
+            --  If we can compute this from annotations in the tree, we
+            --  know it doesn't need elaboration.
+
+            if Get_Attribute_From_Annotation (N) /= No_Uint then
+               return True;
+            end if;
+
             case Get_Attribute_Id (Attribute_Name (N)) is
                when Attribute_Size | Attribute_Object_Size
                   | Attribute_Value_Size | Attribute_Component_Size
@@ -758,8 +766,25 @@ package body GNATLLVM.Variables is
                        and then Is_No_Elab_Needed (Prefix (N));
                   end if;
 
-               when others =>
+               when Attribute_Min | Attribute_Max =>
+                  return Is_No_Elab_Needed (First (Expressions (N)))
+                    and then Is_No_Elab_Needed (Last (Expressions (N)));
+
+               when Attribute_Pos | Attribute_Val | Attribute_Succ
+                  | Attribute_Pred | Attribute_Machine | Attribute_Model =>
+                  return Is_No_Elab_Needed (First (Expressions (N)));
+
+               when Attribute_Access | Attribute_Unchecked_Access
+                  | Attribute_Unrestricted_Access | Attribute_Address
+                  | Attribute_Code_Address | Attribute_Pool_Address =>
                   return Is_Static_Address (N);
+
+               when Attribute_Passed_By_Reference
+                  | Attribute_Mechanism_Code | Attribute_Null_Parameter =>
+                  return True;
+
+               when others =>
+                  return False;
             end case;
 
          when N_Identifier | N_Expanded_Name =>

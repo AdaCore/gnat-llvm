@@ -684,6 +684,10 @@ package GNATLLVM.GLValue is
      (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
      with Pre => Is_A_Const_Int (V);
 
+   function UI_From_GL_Value (V : GL_Value) return Uint is
+     (UI_From_LLI (Get_Const_Int_Value (V)))
+     with Pre => Is_A_Const_Int (V);
+
    function Get_Value_Name (V : GL_Value) return String is
      (Get_Value_Name (LLVM_Value (V)))
      with Pre => Present (V);

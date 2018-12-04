@@ -1960,6 +1960,95 @@ package body GNATLLVM.Types is
       end if;
    end Get_Type_Size_Complexity;
 
+   -----------------------------------
+   -- Get_Attribute_From_Annotation --
+   -----------------------------------
+
+   function Get_Attribute_From_Annotation (N : Node_Id) return Uint is
+      Attr   : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
+      TE     : constant Entity_Id    := Full_Etype (Prefix (N));
+      E      : constant Entity_Id    :=
+        (if    Is_Entity_Name (Prefix (N)) then Entity (Prefix (N))
+         elsif Nkind (Prefix (N)) = N_Selected_Component
+         then  Entity (Selector_Name (Prefix (N)))
+         else  Empty);
+      Our_E  : constant Entity_Id    := (if Present (E) then E else TE);
+      Ret    : Uint                  := No_Uint;
+
+   begin
+      --  We have to be careful here because even though we don't
+      --  usually need to evaluate the Prefix to get its size, we are
+      --  required to, so it must be static
+
+      if No (E) and then not Is_No_Elab_Needed (Prefix (N)) then
+         return No_Uint;
+      end if;
+
+      case Attr is
+         when Attribute_Size | Attribute_Object_Size =>
+            if not Unknown_Esize (Our_E) then
+               Ret := Esize (Our_E);
+            end if;
+
+         when Attribute_Value_Size =>
+            if not Unknown_RM_Size (Our_E) then
+               Ret := RM_Size (Our_E);
+            end if;
+
+         when Attribute_Max_Size_In_Storage_Elements =>
+            if not Unknown_Esize (Our_E)
+              and then Is_Static_SO_Ref (Esize (Our_E))
+            then
+               Ret := Esize (Our_E) / Uint_8;
+               if Is_Unconstrained_Array (TE) then
+                  Ret := Ret + UI_From_GL_Value (Get_Bound_Size (TE));
+               end if;
+
+               return Ret;
+            end if;
+
+         when Attribute_Descriptor_Size =>
+            return UI_From_GL_Value (Get_Bound_Size (TE)) * Uint_8;
+
+         when Attribute_Component_Size =>
+            if not Unknown_Component_Size (TE) then
+               Ret := Component_Size (TE);
+            end if;
+
+         when Attribute_Alignment =>
+            if not Unknown_Alignment (Our_E) then
+               return Alignment (Our_E);
+            end if;
+
+         when Attribute_Position | Attribute_Bit_Position =>
+            Ret := Component_Bit_Offset (Our_E);
+            if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
+              and then Attr = Attribute_Position
+            then
+               Ret := Ret / Uint_8;
+            end if;
+
+         when Attribute_First_Bit =>
+            if not Unknown_Normalized_Position (Our_E) then
+               Ret := Normalized_First_Bit (Our_E);
+            end if;
+
+         when Attribute_Last_Bit =>
+            Ret := Component_Bit_Offset (Our_E);
+            if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
+              and then not Unknown_Esize (Our_E)
+              and then Is_Static_SO_Ref (Ret)
+            then
+               Ret := Ret + Esize (Our_E) - Uint_1;
+            end if;
+
+         when others =>
+            null;
+      end case;
+
+      return (if Is_Static_SO_Ref (Ret) then Ret else No_Uint);
+   end Get_Attribute_From_Annotation;
+
    ----------------------------------
    -- Add_Type_Data_To_Instruction --
    ----------------------------------

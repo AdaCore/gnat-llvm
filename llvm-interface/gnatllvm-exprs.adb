@@ -664,9 +664,18 @@ package body GNATLLVM.Exprs is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
       TE   : constant Entity_Id    := Full_Etype (N);
       P_TE : Entity_Id             := Full_Etype (Prefix (N));
+      Ret  : Uint;
       V    : GL_Value;
 
    begin
+      --  First see if this is something we can compute from annotations
+      --  in the tree.
+
+      Ret := Get_Attribute_From_Annotation (N);
+      if Ret /= No_Uint then
+         return Const_Int (TE, Ret);
+      end if;
+
       case Attr is
          when Attribute_Access | Attribute_Unchecked_Access
             | Attribute_Unrestricted_Access =>

@@ -103,6 +103,11 @@ package body GNATLLVM.Types is
      with Pre => Is_Record_Type (T_Need) and then Is_Record_Type (T_Have);
    --  True if T_Have is a parent type of T_Need
 
+   function Is_Unsigned_For_Convert (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+   --  True if we are to treate TE as unsigned for the purpose of a
+   --  conversion.
+
    function Get_Alloc_Size
      (TE       : Entity_Id;
       Alloc_TE : Entity_Id;
@@ -321,6 +326,20 @@ package body GNATLLVM.Types is
       return True;
    end Is_Loadable_Type;
 
+   -----------------------------
+   -- Is_Unsigned_For_Convert --
+   -----------------------------
+
+   function Is_Unsigned_For_Convert (TE : Entity_Id) return Boolean is
+      BT : constant Entity_Id := Full_Base_Type (TE);
+
+   begin
+      --  If BT is narrower than TE, use its signedness, otherwise use BT's
+
+      return (if   RM_Size (BT) < RM_Size (TE) then Is_Unsigned_Type (BT)
+              else Is_Unsigned_Type (TE));
+   end Is_Unsigned_For_Convert;
+
    ---------------------
    -- Emit_Conversion --
    ---------------------
@@ -338,6 +357,9 @@ package body GNATLLVM.Types is
       Orig_Result : constant GL_Value        := Result;
       In_TE       : constant Entity_Id       := Related_Type (Result);
       R           : constant GL_Relationship := Relationship (Result);
+      TE_Uns      : constant Boolean         := Is_Unsigned_For_Convert (TE);
+      In_TE_Uns   : constant Boolean         :=
+        Is_Unsigned_For_Convert (In_TE);
 
    begin
       --  We have to be careful here.  There isn't as clear a distinction
@@ -489,17 +511,18 @@ package body GNATLLVM.Types is
       --  or zero-extend the result.  But we need not do this if the
       --  input is also an integral type and both are unsigned or both
       --  are signed and the output is not narrower than the input and
-      --  we can't do this in the case of nonbinary modulus.
+      --  we can't do this in the case of nonbinary modulus.  We can't do
+      --  this for modular integer types since LLVM already did it and
+      --  we'll generate bad shifts if we try to do it again.
 
       if Is_Unchecked and then Is_Discrete_Type (TE)
+        and then not Is_Modular_Integer_Type (TE)
         and then not Non_Binary_Modulus (TE)
         and then RM_Size (TE) /= Esize (TE)
         and then not (Is_Discrete_Or_Fixed_Point_Type (In_TE)
-                        and then Is_Unsigned_Type (TE)
-                        and then Is_Unsigned_Type (In_TE))
+                        and then TE_Uns and then In_TE_Uns)
         and then not (Is_Discrete_Or_Fixed_Point_Type (In_TE)
-                        and then not Is_Unsigned_Type (In_TE)
-                        and then not Is_Unsigned_Type (TE)
+                        and then not In_TE_Uns and then not TE_Uns
                         and then RM_Size (TE) >= RM_Size (In_TE))
       then
          declare
@@ -509,8 +532,7 @@ package body GNATLLVM.Types is
               Shl (Convert (Get (Result, Data), TE), Shift_Count);
 
          begin
-            Result := (if Is_Unsigned_Type (TE)
-                       then L_Shr (Left_Shift, Shift_Count)
+            Result := (if   TE_Uns then L_Shr (Left_Shift, Shift_Count)
                        else A_Shr (Left_Shift, Shift_Count));
          end;
       end if;
@@ -572,8 +594,9 @@ package body GNATLLVM.Types is
       Dest_Access : constant Boolean := Is_Access_Type (TE);
       Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
       Dest_FP     : constant Boolean := Is_Floating_Point_Type (TE);
-      Src_Uns     : constant Boolean := Is_Unsigned_Type (V);
-      Dest_Uns    : constant Boolean := Is_Unsigned_Type (TE);
+      Src_Uns     : constant Boolean :=
+        Is_Unsigned_For_Convert (Full_Etype (V));
+      Dest_Uns    : constant Boolean := Is_Unsigned_For_Convert (TE);
       Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
         (if   Is_Modular_Integer_Type (TE) then RM_Size (TE) else Esize (TE));

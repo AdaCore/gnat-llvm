@@ -727,14 +727,23 @@ package body GNATLLVM.Variables is
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
-            if Nkind (N) = N_Type_Conversion
-              and then Do_Overflow_Check (N)
-            then
-               return False;
-            end if;
 
-            return Is_Static_Conversion (Full_Etype (Expression (N)), TE)
-              and then Is_No_Elab_Needed (Expression (N));
+            return (Nkind (N) /= N_Type_Conversion
+                      or else not Do_Overflow_Check (N))
+              --  Must not have overflow check
+
+              and then Is_Static_Conversion (Full_Etype (Expression (N)), TE)
+              --  Must be able to do conversion statically
+
+              and then Is_No_Elab_Needed (Expression (N))
+              --  Operand must not need elaboration
+
+              and then (not Is_Scalar_Type (TE)
+                          or else Create_Type (TE) = LLVM_Size_Type
+                          or else Is_A_Const_Int (Emit_Expression (N))
+                          or else Is_A_Const_FP  (Emit_Expression (N)));
+              --  If converting to a scalar type other than Size_Type,
+              --  we can't have a relocatable expression.
 
          when N_Attribute_Reference =>
 

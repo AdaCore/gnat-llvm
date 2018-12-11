@@ -675,6 +675,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a constant integer
 
+   function Is_A_Const_FP (V : GL_Value) return Boolean is
+     (Present (Is_A_Constant_FP (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a constant floating point value
+
    function Get_Const_Int_Value (V : GL_Value) return LLI is
      (Const_Int_Get_S_Ext_Value (LLVM_Value (V)))
      with Pre => Is_A_Const_Int (V);

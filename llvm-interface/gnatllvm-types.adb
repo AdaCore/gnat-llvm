@@ -1610,7 +1610,9 @@ package body GNATLLVM.Types is
             New_V  := Get (New_V, Bounds_And_Data);
             Memory := Ptr_To_Relationship (Memory, New_V, R);
          else
-            if not Is_Constrained (TE) or else No (New_V) then
+            if not Is_Constrained (TE) or else No (New_V)
+              or else New_V = Memory
+            then
                Store (Get_Array_Bounds (TE, Alloc_TE, New_V),
                       Get (Memory, Reference_To_Bounds));
                Memory := Get (Memory, Thin_Pointer);
@@ -1623,6 +1625,9 @@ package body GNATLLVM.Types is
       if Present (New_V) and then New_V /= Memory then
          Emit_Assignment (Memory, Value => New_V);
       end if;
+
+      --  ??  This will convert Reference_To_Bounds_And_Data to Thin_Pointer
+      --  which pessimizes, so see if we can leave it.  Also above.
 
       return Convert_Ref (Memory, TE);
    end Move_Into_Memory;

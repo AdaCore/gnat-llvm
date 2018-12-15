@@ -652,6 +652,10 @@ package GNATLLVM.GLValue is
    --  Finally, we have versions of subprograms defined elsewhere that
    --  accept and/or return GL_Value.
 
+   function Get_Value_Kind (V : GL_Value) return Value_Kind_T is
+     (Get_Value_Kind (LLVM_Value (V)))
+     with Pre => Present (V);
+
    function Is_A_Global_Variable (V : GL_Value) return Boolean is
      (Present (Is_A_Global_Variable (LLVM_Value (V))))
      with Pre => Present (V);
@@ -1682,16 +1686,17 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Set the linkage type for a variable
 
-   procedure Set_Global_Constant (V : GL_Value; B : Boolean)
+   procedure Set_Global_Constant (V : GL_Value; B : Boolean := True)
      with Pre => Present (V);
 
-   procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean)
+   procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean := True)
      with Pre => Present (V);
 
    procedure Set_Section (V : GL_Value; S : String)
      with Pre => Present (V);
 
-   procedure Set_Unnamed_Addr (V : GL_Value; Has_Unnamed_Addr : Boolean)
+   procedure Set_Unnamed_Addr
+     (V : GL_Value; Has_Unnamed_Addr : Boolean := True)
      with Pre => Present (V);
 
    function Is_Layout_Identical (V : GL_Value; TE : Entity_Id) return Boolean

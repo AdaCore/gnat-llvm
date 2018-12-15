@@ -43,6 +43,7 @@ with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Variables is
 
@@ -1239,6 +1240,48 @@ package body GNATLLVM.Variables is
       LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
       --  The LLVM value for the variable
 
+      function Can_Initialize (V : GL_Value; TE : Entity_Id) return Boolean
+        with Pre => Present (V) and then Is_Type (TE);
+      --  Return True if we can build an initializer of type TE for V.
+      --  This handles the case of duplicate linker names and verifies
+      --  that if V is a conversion of such a global, that we can
+      --  convert to its referenced type.
+
+      --------------------
+      -- Can_Initialize --
+      --------------------
+
+      function Can_Initialize (V : GL_Value; TE : Entity_Id) return Boolean is
+      begin
+         --  If this is a global, we know we can initalize it
+
+         if Is_A_Global_Variable (V) then
+            return True;
+
+         --   If it's not a constant expression, we can't
+
+         elsif Get_Value_Kind (V) /= Constant_Expr_Value_Kind then
+            return False;
+         end if;
+
+         --  The remaining case is a constant bitcast to a pointer to a type
+
+         declare
+            Orig_V : constant Value_T := Get_Operand (LLVM_Value (V), 0);
+            V_P_T  : constant Type_T  := Type_Of (Orig_V);
+            V_T    : constant Type_T  := Get_Element_Type (V_P_T);
+            T      : constant Type_T  := Create_Type (TE);
+
+         begin
+            --  We can only do this if T and V_T are both structure types
+            --  with the same layout.
+
+            return Get_Type_Kind (T) = Struct_Type_Kind
+              and then Get_Type_Kind (V_T) = Struct_Type_Kind
+              and then Is_Layout_Identical (T, V_T);
+         end;
+      end Can_Initialize;
+
    begin
 
       --  Nothing to do if this is a debug renaming type
@@ -1391,7 +1434,7 @@ package body GNATLLVM.Variables is
 
          if Present (Expr) then
             if Is_No_Elab_Needed (Expr)
-              and then Is_A_Global_Variable (LLVM_Var)
+              and then Can_Initialize (LLVM_Var, TE)
               and then not Is_Dynamic_Size (TE, Max_Size)
               and then No (Addr_Expr)
               and then Is_Static_Conversion (Full_Etype (Expr), TE)
@@ -1405,10 +1448,21 @@ package body GNATLLVM.Variables is
                end if;
 
                Set_Initializer (LLVM_Var, Value);
-               Set_Global_Constant (LLVM_Var, Is_True_Constant (Def_Ident)
-                                      and then not Address_Taken (Def_Ident));
                Set_Init := True;
                Copied   := True;
+
+               --  If this is a true constant whose address is not taken and
+               --  this is not used via link name punning elsewhere, set it as
+               --  a global constant.  Do the test this way since LLVM_Var
+               --  may not be a globla if there is link name punning.
+
+               if No (Get_Dup_Global_Value (Def_Ident))
+                 and then Is_True_Constant (Def_Ident)
+                 and then not Address_Taken (Def_Ident)
+               then
+                  Set_Global_Constant (LLVM_Var);
+               end if;
+
             elsif Library_Level then
                Add_To_Elab_Proc (N);
             end if;

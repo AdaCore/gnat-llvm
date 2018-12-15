@@ -1701,8 +1701,20 @@ package body GNATLLVM.GLValue is
    ---------------------
 
    procedure Set_Initializer (V, Expr : GL_Value) is
+      VV : Value_T := LLVM_Value (V);
+      VE : Value_T := LLVM_Value (Expr);
+
    begin
-      Set_Initializer (LLVM_Value (V), LLVM_Value (Expr));
+      --  If VV is a conversion, its operand is the actual value and we
+      --  know that VE's type is a structure that we can convert to it.
+      --  See Can_Initialize in GNATLLVM.Variables.
+
+      if Get_Value_Kind (VV) = Constant_Expr_Value_Kind then
+         VV := Get_Operand (VV, 0);
+         VE := Convert_Struct_Constant (VE, Get_Element_Type (Type_Of (VV)));
+      end if;
+
+      Set_Initializer (VV, VE);
    end Set_Initializer;
 
    -----------------
@@ -1718,7 +1730,7 @@ package body GNATLLVM.GLValue is
    -- Set_Global_Constant --
    -------------------------
 
-   procedure Set_Global_Constant (V : GL_Value; B : Boolean) is
+   procedure Set_Global_Constant (V : GL_Value; B : Boolean := True) is
    begin
       Set_Global_Constant (LLVM_Value (V), B);
    end Set_Global_Constant;
@@ -1727,7 +1739,7 @@ package body GNATLLVM.GLValue is
    -- Set_Thread_Local --
    ----------------------
 
-   procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean) is
+   procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean := True) is
    begin
       Set_Thread_Local (LLVM_Value (V), Thread_Local);
    end Set_Thread_Local;
@@ -1745,7 +1757,8 @@ package body GNATLLVM.GLValue is
    -- Set_Unnamed_Addr --
    ----------------------
 
-   procedure Set_Unnamed_Addr (V : GL_Value; Has_Unnamed_Addr : Boolean) is
+   procedure Set_Unnamed_Addr
+     (V : GL_Value; Has_Unnamed_Addr : Boolean := True) is
    begin
       Set_Unnamed_Addr (LLVM_Value (V), Has_Unnamed_Addr);
    end Set_Unnamed_Addr;

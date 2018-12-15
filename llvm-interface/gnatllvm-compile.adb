@@ -755,7 +755,8 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
             return Emit_Conversion (Expression (N), TE, N,
-                                    Is_Unchecked => True);
+                                    Is_Unchecked  => True,
+                                    No_Truncation => No_Truncation (N));
 
          when N_Type_Conversion =>
             return Emit_Conversion

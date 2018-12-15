@@ -108,6 +108,12 @@ package body GNATLLVM.Types is
    --  True if we are to treate TE as unsigned for the purpose of a
    --  conversion.
 
+   function Is_Unsigned_For_RM (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+   --  Return true if TE has an unsigned representation.  This needs to be
+   --  used when the representation of types whose precision is not equal
+   --  to their size is manipulated based on the RM size.
+
    function Get_Alloc_Size
      (TE       : Entity_Id;
       Alloc_TE : Entity_Id;
@@ -334,11 +340,41 @@ package body GNATLLVM.Types is
       BT : constant Entity_Id := Full_Base_Type (TE);
 
    begin
-      --  If BT is narrower than TE, use its signedness, otherwise use BT's
+      --  If TE is narrower than BT, use its signedness, otherwise use BT's
 
-      return (if   RM_Size (BT) < RM_Size (TE) then Is_Unsigned_Type (BT)
-              else Is_Unsigned_Type (TE));
+      return (if   Esize (TE) < Esize (BT) then Is_Unsigned_Type (TE)
+              else Is_Unsigned_Type (BT));
    end Is_Unsigned_For_Convert;
+
+   ------------------------
+   -- Is_Unsigned_For_RM --
+   ------------------------
+
+   function Is_Unsigned_For_RM (TE : Entity_Id) return Boolean is
+   begin
+      --  If not scalar type or no range, say no; if unsigned say yes.
+
+      if not Is_Scalar_Type (TE) or else No (Scalar_Range (TE)) then
+         return False;
+      elsif Is_Unsigned_Type (TE) then
+         return True;
+
+      --  Otherwise it's unsigned iff the low bound is known to be
+      --  nonnegative.
+
+      elsif Is_No_Elab_Needed (Type_Low_Bound (TE)) then
+         declare
+            LB : constant GL_Value := Emit_Expression (Type_Low_Bound (TE));
+
+         begin
+            return Is_A_Const_Int (LB) and then Get_Const_Int_Value (LB) >= 0;
+         end;
+
+      else
+         return False;
+      end if;
+
+   end Is_Unsigned_For_RM;
 
    ---------------------
    -- Emit_Conversion --
@@ -351,15 +387,15 @@ package body GNATLLVM.Types is
       For_LHS             : Boolean := False;
       Is_Unchecked        : Boolean := False;
       Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False) return GL_Value
+      Float_Truncate      : Boolean := False;
+      No_Truncation       : Boolean := False) return GL_Value
    is
       Result      : GL_Value                 := Emit (N, For_LHS => For_LHS);
       Orig_Result : constant GL_Value        := Result;
       In_TE       : constant Entity_Id       := Related_Type (Result);
       R           : constant GL_Relationship := Relationship (Result);
-      TE_Uns      : constant Boolean         := Is_Unsigned_For_Convert (TE);
-      In_TE_Uns   : constant Boolean         :=
-        Is_Unsigned_For_Convert (In_TE);
+      TE_Uns      : constant Boolean         := Is_Unsigned_For_RM (TE);
+      In_TE_Uns   : constant Boolean         := Is_Unsigned_For_RM (In_TE);
 
    begin
       --  We have to be careful here.  There isn't as clear a distinction
@@ -515,15 +551,15 @@ package body GNATLLVM.Types is
       --  this for modular integer types since LLVM already did it and
       --  we'll generate bad shifts if we try to do it again.
 
-      if Is_Unchecked and then Is_Discrete_Type (TE)
+      if Is_Unchecked and then not No_Truncation
+        and then Is_Discrete_Or_Fixed_Point_Type (TE)
         and then not Is_Modular_Integer_Type (TE)
         and then not Non_Binary_Modulus (TE)
-        and then RM_Size (TE) /= Esize (TE)
+        and then RM_Size (TE) < Esize (TE)
         and then not (Is_Discrete_Or_Fixed_Point_Type (In_TE)
-                        and then TE_Uns and then In_TE_Uns)
-        and then not (Is_Discrete_Or_Fixed_Point_Type (In_TE)
-                        and then not In_TE_Uns and then not TE_Uns
-                        and then RM_Size (TE) >= RM_Size (In_TE))
+                        and then TE_Uns = In_TE_Uns
+                        and then (TE_Uns
+                                    or else RM_Size (TE) = RM_Size (In_TE)))
       then
          declare
             Shift_Count : constant GL_Value  :=
@@ -532,7 +568,8 @@ package body GNATLLVM.Types is
               Shl (Convert (Get (Result, Data), TE), Shift_Count);
 
          begin
-            Result := (if   TE_Uns then L_Shr (Left_Shift, Shift_Count)
+            Result := (if   Is_Unsigned_Type (TE)
+                       then L_Shr (Left_Shift, Shift_Count)
                        else A_Shr (Left_Shift, Shift_Count));
          end;
       end if;

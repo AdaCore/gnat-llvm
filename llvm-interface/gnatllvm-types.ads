@@ -302,7 +302,8 @@ package GNATLLVM.Types is
       For_LHS             : Boolean := False;
       Is_Unchecked        : Boolean := False;
       Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False) return GL_Value
+      Float_Truncate      : Boolean := False;
+      No_Truncation       : Boolean := False) return GL_Value
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE)
                   and then not (Is_Unchecked and Need_Overflow_Check),

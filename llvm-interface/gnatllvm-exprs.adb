@@ -1021,7 +1021,7 @@ package body GNATLLVM.Exprs is
             Src := Convert_Ref (Get (Src, Reference), Dest_Type);
          end if;
 
-         Store (Convert (Get (Src, Data), Dest_Type), Dest);
+         Store (Convert (Get (Src, Data), Dest_Type), Get (Dest, Reference));
 
       elsif (Present (E) and then Is_Loadable_Type (Full_Etype (E)))
          or else (Present (Value) and then Is_Loadable_Type (Value))

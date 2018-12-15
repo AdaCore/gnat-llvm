@@ -1615,7 +1615,6 @@ package body GNATLLVM.Types is
             then
                Store (Get_Array_Bounds (TE, Alloc_TE, New_V),
                       Get (Memory, Reference_To_Bounds));
-               Memory := Get (Memory, Thin_Pointer);
             end if;
          end if;
       end if;
@@ -1626,10 +1625,14 @@ package body GNATLLVM.Types is
          Emit_Assignment (Memory, Value => New_V);
       end if;
 
-      --  ??  This will convert Reference_To_Bounds_And_Data to Thin_Pointer
-      --  which pessimizes, so see if we can leave it.  Also above.
+      --  If we're not pointing to the correct type, fix that
 
-      return Convert_Ref (Memory, TE);
+      if Related_Type (Memory) /= TE then
+         Memory := Convert_Ref (Memory, TE);
+      end if;
+
+      return Memory;
+
    end Move_Into_Memory;
 
    -----------------------

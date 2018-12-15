@@ -1423,12 +1423,13 @@ package body GNATLLVM.Subprograms is
               or else (RK = RK_By_Reference
                          and then Present (Storage_Pool (N)))
             then
-               V := (Heap_Allocate_For_Type
-                       (TE, Full_Etype (Expr),
-                        Expr => Expr,
-                        N    => N,
-                        Proc => Procedure_To_Call (N),
-                        Pool => Storage_Pool (N)));
+               V := Get (Heap_Allocate_For_Type
+                           (TE, Full_Etype (Expr),
+                            Expr => Expr,
+                            N    => N,
+                            Proc => Procedure_To_Call (N),
+                            Pool => Storage_Pool (N)),
+                         Relationship_For_Ref (TE));
 
             --  Otherwise, we just return data
 
@@ -2024,10 +2025,11 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          Args (In_Idx) :=
-           Allocate_For_Type (Return_Typ, Return_Typ, Subp,
-                              Name     => "return",
-                              Max_Size =>
-                                Is_Unconstrained_Record (Return_Typ));
+           Get (Allocate_For_Type (Return_Typ, Return_Typ, Subp,
+                                   Name     => "return",
+                                   Max_Size =>
+                                     Is_Unconstrained_Record (Return_Typ)),
+                Relationship_For_Ref (Return_Typ));
          In_Idx        := In_Idx + 1;
       end if;
 

@@ -451,14 +451,19 @@ package body GNATLLVM.Blocks is
    -----------------
 
    procedure Call_At_End (Block : Block_Stack_Level) is
-      BI : constant Block_Info := Block_Stack.Table (Block);
+      BI          : Block_Info renames Block_Stack.Table (Block);
+      Unprotected : constant Boolean := BI.Unprotected;
+
    begin
       if Present (BI.At_End_Proc) then
+         BI.Unprotected := True;
          if Present (BI.At_End_Parameter) then
             Call (BI.At_End_Proc, (1 => BI.At_End_Parameter));
          else
             Call (BI.At_End_Proc, (1 .. 0 => <>));
          end if;
+
+         BI.Unprotected := Unprotected;
       end if;
    end Call_At_End;
 

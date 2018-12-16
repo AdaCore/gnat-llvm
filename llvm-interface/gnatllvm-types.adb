@@ -2127,7 +2127,7 @@ package body GNATLLVM.Types is
    begin
       Set_Volatile (Inst, Is_Volatile (TE));
 
-      if Present (TBAA) then
+      if Present (TBAA) and then not Universal_Aliasing (TE) then
          Add_TBAA_Access
            (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
       end if;

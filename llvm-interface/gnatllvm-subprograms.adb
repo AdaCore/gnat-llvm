@@ -239,6 +239,24 @@ package body GNATLLVM.Subprograms is
    Tramp_Adjust_Fn   : GL_Value := No_GL_Value;
    --  Functions to initialize and adjust a trampoline
 
+   --  Tables for recording global constructors and global destructors
+
+   package Global_Constructors is new Table.Table
+     (Table_Component_Type => Entity_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 20,
+      Table_Increment      => 5,
+      Table_Name           => "Global_Constructors");
+
+   package Global_Destructors is new Table.Table
+     (Table_Component_Type => Entity_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 20,
+      Table_Increment      => 5,
+      Table_Name           => "Global_Destructors");
+
    function Get_Activation_Record_Ptr
      (V : GL_Value; E : Entity_Id) return GL_Value
      with Pre  => Is_Record_Type (Full_Designated_Type (V))
@@ -2269,7 +2287,7 @@ package body GNATLLVM.Subprograms is
       --  make it.
 
       elsif No (Get_Value (Def_Ident)) then
-         Set_Value (Def_Ident, Create_Subprogram (Def_Ident));
+         Discard (Create_Subprogram (Def_Ident));
       end if;
 
       return Get_Value (Def_Ident);
@@ -2396,8 +2414,19 @@ package body GNATLLVM.Subprograms is
 
       Set_Value (Def_Ident, LLVM_Func);
 
+      --  ?? Handle the kludge if our subprogram name is that of an elab proc
+
       if Subp_Name = "ada_main___elabb" then
          Ada_Main_Elabb := LLVM_Func;
+      end if;
+
+      --  See if we're to make a global constructor or destructor entry for
+      --  this subprogram.
+
+      if Present (Get_Pragma (Def_Ident, Pragma_Linker_Constructor)) then
+         Global_Constructors.Append (Def_Ident);
+      elsif Present (Get_Pragma (Def_Ident, Pragma_Linker_Destructor)) then
+         Global_Destructors.Append (Def_Ident);
       end if;
 
       return LLVM_Func;
@@ -2458,6 +2487,49 @@ package body GNATLLVM.Subprograms is
       return Append_Basic_Block_In_Context
         (Context, LLVM_Value (Current_Func), Name);
    end Create_Basic_Block;
+
+   --------------------------------------------
+   -- Output_Global_Constructors_Destructors --
+   --------------------------------------------
+
+   procedure Output_Global_Constructors_Destructors is
+      Constructors : GL_Value_Array (1 .. Global_Constructors.Last);
+      Destructors  : GL_Value_Array (1 .. Global_Destructors.Last);
+      Val          : GL_Value;
+      Var          : Value_T;
+
+   begin
+      if Global_Constructors.Last > 0 then
+         for J in 1 .. Global_Constructors.Last loop
+            Constructors (J) :=
+              Const_Struct ((1 => Const_Int_32 (Uint_1),
+                             2 => Get_Value (Global_Constructors.Table (J))),
+                            Any_Composite, False);
+         end loop;
+
+         Val := Const_Array  (Constructors, Any_Array);
+         Var := Add_Global   (Module, Type_Of (Val), "llvm.global_ctors");
+         Set_Initializer     (Var, LLVM_Value (Val));
+         Set_Linkage         (Var, Appending_Linkage);
+         Set_Global_Constant (Var, True);
+      end if;
+
+      if Global_Destructors.Last > 0 then
+         for J in 1 .. Global_Destructors.Last loop
+            Destructors (J) :=
+              Const_Struct ((1 => Const_Int_32 (Uint_1),
+                             2 => Get_Value (Global_Destructors.Table (J))),
+                            Any_Composite, False);
+         end loop;
+
+         Val := Const_Array  (Destructors, Any_Array);
+         Var := Add_Global   (Module, Type_Of (Val), "llvm.global_dtors");
+         Set_Initializer     (Var, LLVM_Value (Val));
+         Set_Linkage         (Var, Appending_Linkage);
+         Set_Global_Constant (Var, True);
+      end if;
+
+   end Output_Global_Constructors_Destructors;
 
    ----------------
    -- Initialize --

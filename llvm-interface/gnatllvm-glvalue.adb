@@ -910,6 +910,32 @@ package body GNATLLVM.GLValue is
       return V;
    end Const_Array;
 
+   ------------------
+   -- Const_Struct --
+   ------------------
+
+   function Const_Struct
+     (Elmts : GL_Value_Array; TE : Entity_Id; Packed : Boolean) return GL_Value
+   is
+      Values  : Access_Value_Array := new Value_Array (Elmts'Range);
+      V       : GL_Value;
+      procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
+                                                        Access_Value_Array);
+   begin
+      for J in Elmts'Range loop
+         Values (J) := LLVM_Value (Elmts (J));
+      end loop;
+
+      --  We have a kludge here in the case of making a struct that's
+      --  not in the source.  In those cases, we pass Any_Composite
+      --  for the type, so we want use relationship "Unknown".
+
+      V := G (Const_Struct (Values.all'Address, Values.all'Length, Packed),
+              TE, (if TE = Any_Composite then Unknown else Data));
+      Free (Values);
+      return V;
+   end Const_Struct;
+
    ----------------------------------
    -- Get_Float_From_Words_And_Exp --
    ---------------------------------

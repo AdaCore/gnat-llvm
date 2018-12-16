@@ -212,6 +212,9 @@ package GNATLLVM.Subprograms is
      with Post => Present (Create_Basic_Block'Result);
    --  Create a basic block in the current function
 
+   procedure Output_Global_Constructors_Destructors;
+   --  Called at end of compilation to output variables for either of the above
+
    procedure Initialize;
    --  Initialize module
 

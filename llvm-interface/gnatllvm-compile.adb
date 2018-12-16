@@ -130,6 +130,8 @@ package body GNATLLVM.Compile is
       Emit (GNAT_Root);
 
       --   Now finalize things and generate code
+
+      Output_Global_Constructors_Destructors;
       Finalize_Debugging;
       LLVM_Generate_Code (GNAT_Root);
 

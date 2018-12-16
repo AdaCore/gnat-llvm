@@ -923,6 +923,10 @@ package GNATLLVM.GLValue is
      (G (Const_String (S, unsigned (S'Length), True), TE))
      with Pre => Is_Array_Type (TE), Post => Is_Constant (Const_String'Result);
 
+   function Const_Struct
+     (Elmts : GL_Value_Array; TE : Entity_Id; Packed : Boolean) return GL_Value
+     with Pre => Is_Array_Type (TE), Post => Present (Const_Struct'Result);
+
    function Get_Float_From_Words_And_Exp
      (TE : Entity_Id; Exp : Int; Words : Word_Array) return GL_Value
      with Pre  => Is_Type (TE),

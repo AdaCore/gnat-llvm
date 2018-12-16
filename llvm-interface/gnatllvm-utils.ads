@@ -99,6 +99,12 @@ package GNATLLVM.Utils is
      with Pre => Present (V) and then Present (Def_Ident);
    --  Add a linker section to V if one is specified for Def_Ident
 
+   procedure Process_Pragmas (Def_Ident : Entity_Id; V : GL_Value)
+     with Pre => not Is_Type (Def_Ident)
+                 and then (Is_A_Global_Variable (V)
+                             or else Is_A_Function (V));
+   --  Process any pragmas for V, whose corresponding tree node is Def_Ident.
+
    function GEP
      (Bld     : Builder_T;
       Ptr     : Value_T;

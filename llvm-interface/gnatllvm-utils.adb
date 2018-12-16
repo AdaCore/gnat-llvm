@@ -22,6 +22,7 @@ with Errout;   use Errout;
 with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
+with Snames;   use Snames;
 with Sprint;   use Sprint;
 with Stringt;  use Stringt;
 
@@ -476,5 +477,21 @@ package body GNATLLVM.Utils is
          end;
       end if;
    end Set_Linker_Section;
+
+   ---------------------
+   -- Process_Pragmas --
+   ---------------------
+
+   procedure Process_Pragmas (Def_Ident : Entity_Id; V : GL_Value) is
+   begin
+      --  We call Get_Pragma to see if an interesting pragma is present
+      --  instead of walking the loop.  This is quadratic, but the number
+      --  of pragma is small and makes the code easier to read.
+
+      if Present (Get_Pragma (Def_Ident, Pragma_Weak_External)) then
+         Set_Linkage (V, External_Weak_Linkage);
+      end if;
+
+   end Process_Pragmas;
 
 end GNATLLVM.Utils;

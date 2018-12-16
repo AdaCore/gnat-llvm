@@ -1715,6 +1715,9 @@ package body GNATLLVM.GLValue is
       end if;
 
       Set_Initializer (VV, VE);
+      if Get_Linkage (VV) = External_Weak_Linkage then
+         Set_Linkage (VV, Weak_Any_Linkage);
+      end if;
    end Set_Initializer;
 
    -----------------

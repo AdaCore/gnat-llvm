@@ -1,4 +1,4 @@
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
 --                     Copyright (C) 2013-2018, AdaCore                     --
@@ -1102,6 +1102,11 @@ package body GNATLLVM.Subprograms is
 
       if For_Inline then
          Set_Linkage (Func, Available_Externally_Linkage);
+
+      --  If the linkage was weak external, change to weak
+
+      elsif Get_Linkage (Func) = External_Weak_Linkage then
+         Set_Linkage (Func, Weak_Any_Linkage);
       end if;
 
       --  Now set up to process this subprogram
@@ -2313,7 +2318,8 @@ package body GNATLLVM.Subprograms is
             Set_Linkage (LLVM_Func, Internal_Linkage);
          end if;
 
-         Set_Linker_Section (LLVM_Func, Def_Ident);
+         Set_Linker_Section   (LLVM_Func, Def_Ident);
+         Process_Pragmas      (Def_Ident, LLVM_Func);
          Set_Dup_Global_Value (Def_Ident, LLVM_Func);
 
          --  Now deal with function and parameter attributes

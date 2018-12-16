@@ -1162,7 +1162,8 @@ package body GNATLLVM.Variables is
          end if;
 
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
-         Set_Linker_Section (LLVM_Var, Def_Ident);
+         Set_Linker_Section   (LLVM_Var, Def_Ident);
+         Process_Pragmas      (Def_Ident, LLVM_Var);
       end if;
 
       --  Now save the value we've made for this variable
@@ -1403,10 +1404,10 @@ package body GNATLLVM.Variables is
                   Addr := Emit_Expression (Addr_Expr);
                end if;
 
+               Set_Global_Constant (LLVM_Var);
                Set_Initializer (LLVM_Var,
                                 Int_To_Relationship (Addr, TE,
                                                      Reference_To_Component));
-               Set_Global_Constant (LLVM_Var, True);
                Set_Init := True;
             elsif Library_Level then
                Add_To_Elab_Proc (N);
@@ -1454,7 +1455,7 @@ package body GNATLLVM.Variables is
                --  If this is a true constant whose address is not taken and
                --  this is not used via link name punning elsewhere, set it as
                --  a global constant.  Do the test this way since LLVM_Var
-               --  may not be a globla if there is link name punning.
+               --  may not be a global if there is link name punning.
 
                if No (Get_Dup_Global_Value (Def_Ident))
                  and then Is_True_Constant (Def_Ident)
@@ -1475,11 +1476,11 @@ package body GNATLLVM.Variables is
          elsif Type_Needs_Bounds (TE)
            and then not Is_Dynamic_Size (TE, Max_Size)
          then
-            Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
-                                            Bounds_And_Data));
             Set_Global_Constant
               (LLVM_Var, (Is_True_Constant (Def_Ident)
                             and then not Address_Taken (Def_Ident)));
+            Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
+                                            Bounds_And_Data));
             Set_Init := True;
             Copied   := True;
          end if;

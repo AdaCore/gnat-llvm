@@ -15,7 +15,6 @@ Limitations and missing features (identified so far):
   which are done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - support for stack checking
-- pragma Weak_External (see IB12-009)
 - suport for -gnatc (when back-annotating)
 - pragma Link_Contructor and Link_Destructor (see E519-019)
 - pragma Linker_Alias (see E611-001)

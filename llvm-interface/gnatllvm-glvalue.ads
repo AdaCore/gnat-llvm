@@ -1682,22 +1682,27 @@ package GNATLLVM.GLValue is
      with Pre => Present (V) and then Present (Expr);
    --  Set the initializer for a global variable
 
+   function Get_Linkage (V : GL_Value) return Linkage_T is
+     (Get_Linkage (LLVM_Value (V)))
+     with Pre => Is_A_Global_Variable (V) or else Is_A_Function (V);
+   --  Get the linkage type for a variable or function
+
    procedure Set_Linkage (V : GL_Value; Linkage : Linkage_T)
-     with Pre => Present (V);
-   --  Set the linkage type for a variable
+     with Pre => Is_A_Global_Variable (V) or else Is_A_Function (V);
+   --  Set the linkage type for a variable or function
 
    procedure Set_Global_Constant (V : GL_Value; B : Boolean := True)
-     with Pre => Present (V);
+     with Pre => Is_A_Global_Variable (V);
 
    procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean := True)
-     with Pre => Present (V);
+     with Pre => Is_A_Global_Variable (V);
 
    procedure Set_Section (V : GL_Value; S : String)
-     with Pre => Present (V);
+     with Pre => Is_A_Global_Variable (V) or else Is_A_Function (V);
 
    procedure Set_Unnamed_Addr
      (V : GL_Value; Has_Unnamed_Addr : Boolean := True)
-     with Pre => Present (V);
+     with Pre => Is_A_Global_Variable (V);
 
    function Is_Layout_Identical (V : GL_Value; TE : Entity_Id) return Boolean
      with Pre => Present (V) and then Is_Type (TE);

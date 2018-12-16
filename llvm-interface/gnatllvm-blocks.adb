@@ -15,10 +15,12 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Debug;    use Debug;
 with Errout;   use Errout;
 with Exp_Ch11; use Exp_Ch11;
 with Exp_Unst; use Exp_Unst;
 with Nlists;   use Nlists;
+with Opt;      use Opt;
 with Restrict; use Restrict;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
@@ -627,15 +629,23 @@ package body GNATLLVM.Blocks is
    function Get_File_Name_Address
      (Index : Source_File_Index) return GL_Value is
    begin
+      --  If we haven't yet allocated the cache for our filename, strings
+      --  do it now.
+
       if File_Name_Strings = null then
          File_Name_Strings :=
            new File_GL_Value_Array'(1 .. Last_Source_File => No_GL_Value);
       end if;
 
+      --  If we haven't already computed a string literal for this filename,
+      --  do it now.  Take into account pragma Suppress_Exception_Location.
+
       if No (File_Name_Strings (Index)) then
          declare
-            File     : constant String
-              := Get_Name_String (Debug_Source_Name (Index));
+            File     : constant String :=
+              (if   Debug_Flag_NN or else Exception_Locations_Suppressed
+               then ""
+               else Get_Name_String (Debug_Source_Name (Index)));
             Elements : GL_Value_Array (1 .. File'Length + 1);
             V        : GL_Value;
             Str      : GL_Value;
@@ -675,7 +685,10 @@ package body GNATLLVM.Blocks is
       File : constant GL_Value :=
         Get_File_Name_Address (Get_Source_File_Index (Sloc (N)));
       Line : constant GL_Value :=
-        Const_Int (Standard_Integer, ULL (Get_Logical_Line_Number (Sloc (N))));
+        Const_Int (Standard_Integer,
+                   ULL (if   Debug_Flag_NN
+                          or else Exception_Locations_Suppressed
+                        then 0 else Get_Logical_Line_Number (Sloc (N))));
 
    begin
       --  Build a call to __gnat_xx (FILE, LINE)

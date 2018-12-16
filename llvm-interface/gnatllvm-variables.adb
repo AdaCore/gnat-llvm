@@ -130,7 +130,8 @@ package body GNATLLVM.Variables is
      with Pre => Present (E) and then not Is_Type (E);
    --  Return True if E may have a global name that we need to check for dups
 
-   function Make_Global_Variable (Def_Ident : Entity_Id) return GL_Value
+   function Make_Global_Variable
+     (Def_Ident : Entity_Id; Definition : Boolean) return GL_Value
      with Pre  => Present (Def_Ident) and then not Is_Type (Def_Ident),
           Post => Present (Make_Global_Variable'Result);
    --  Create a global variable for Def_Ident.  Definition is true if we
@@ -220,7 +221,7 @@ package body GNATLLVM.Variables is
          return Empty_Global_Dup_Value_Id;
       end if;
 
-      for J in Global_Dup_Id range 1 .. Global_Dup.Last loop
+      for J in 1 .. Global_Dup.Last loop
          if Global_Dup.Table (J).E = E then
             return Global_Dup.Table (J).Index;
          end if;
@@ -235,7 +236,7 @@ package body GNATLLVM.Variables is
 
    function Find_Dup_Entry (S : String) return Global_Dup_Value_Id is
    begin
-      for J in Interface_Names_Id range 1 .. Interface_Names.Last loop
+      for J in  1 .. Interface_Names.Last loop
          if String_Equal (Interface_Names.Table (J).S, S) then
             return Interface_Names.Table (J).Index;
          end if;
@@ -1105,17 +1106,21 @@ package body GNATLLVM.Variables is
    -- Make_Global_Variable --
    --------------------------
 
-   function Make_Global_Variable (Def_Ident : Entity_Id) return GL_Value is
-      TE       : constant Entity_Id   := Full_Etype (Def_Ident);
-      LLVM_Var : GL_Value             := Get_Dup_Global_Value (Def_Ident);
+   function Make_Global_Variable
+     (Def_Ident : Entity_Id; Definition : Boolean) return GL_Value
+   is
+      TE           : constant Entity_Id   := Full_Etype (Def_Ident);
+      LLVM_Var     : GL_Value             := Get_Dup_Global_Value (Def_Ident);
       Addr_Expr    : constant Node_Id :=
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
-      Is_Ref   : constant Boolean     :=
+      Is_Ref       : constant Boolean     :=
         Present (Addr_Expr)
           or else Is_Dynamic_Size (TE, Is_Unconstrained_Record (TE))
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
+      Linker_Alias : constant Node_Id     :=
+        Get_Pragma (Def_Ident, Pragma_Linker_Alias);
 
    begin
 
@@ -1146,6 +1151,42 @@ package body GNATLLVM.Variables is
         and then Is_Static_Location (Renamed_Object (Def_Ident))
       then
          LLVM_Var := Emit_LValue (Renamed_Object (Def_Ident));
+
+         --  Otherwise, if this is a linker alias and we're defining this
+         --  variable, set that up if we find a matching entity.
+
+      elsif Present (Linker_Alias) and then Definition and then not Is_Ref then
+         declare
+            Str_Id : constant String_Id :=
+              Strval (Expression (Last (Pragma_Argument_Associations
+                                          (Linker_Alias))));
+            E      : Entity_Id          := Empty;
+
+         begin
+            --  Look for a variable in this compilation that has its
+            --  Interface_Name the same as the string, with the same
+            --  type, and which has been defined.
+
+            for J in 1 .. Interface_Names.Last loop
+               if String_Equal (Str_Id, Interface_Names.Table (J).S)
+                 and then Full_Etype (Interface_Names.Table (J).E) = TE
+                 and then Present (Get_Value (Interface_Names.Table (J).E))
+               then
+                  E := Interface_Names.Table (J).E;
+               end if;
+            end loop;
+
+            if No (E) then
+               Error_Msg_NE ("No matching object found", Linker_Alias,
+                             Def_Ident);
+               LLVM_Var := Get_Undef (TE);
+            else
+               LLVM_Var := G (Add_Alias (Module, Create_Access_Type_To (TE),
+                                         LLVM_Value (Get_Value (E)),
+                                         Get_Ext_Name (Def_Ident)),
+                              TE, Reference);
+            end if;
+         end;
 
       --  Otherwise, make one here and properly set its linkage
       --  information.  Note that we don't set External_Linkage since
@@ -1391,7 +1432,7 @@ package body GNATLLVM.Variables is
       then
          pragma Assert (not In_Elab_Proc);
 
-         LLVM_Var := Make_Global_Variable (Def_Ident);
+         LLVM_Var := Make_Global_Variable (Def_Ident, True);
 
          --  If there's an Address clause with a static address, we can
          --  convert it to a pointer to us and make it a static
@@ -1795,7 +1836,7 @@ package body GNATLLVM.Variables is
 
             elsif No (V) and then not In_Extended_Main_Code_Unit (Def_Ident)
             then
-               V := Make_Global_Variable (Def_Ident);
+               V := Make_Global_Variable (Def_Ident, False);
             end if;
 
             --  Now return what we got (if we didn't get anything by now,

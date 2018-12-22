@@ -1097,7 +1097,7 @@ package body GNATLLVM.Records is
             return;
 
          --  If this field is dynamic size, we have to close out the last
-         --  record info entry we're making, if there's anything in it
+         --  record info entry we're making, if there's anything in it,
          --  and make a piece for this field.
 
          elsif Is_Dynamic_Size (Typ, Max_Size => not Is_Constrained (Typ)) then

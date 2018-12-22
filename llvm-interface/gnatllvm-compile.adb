@@ -1175,7 +1175,7 @@ package body GNATLLVM.Compile is
                LLVM_Var := Allocate_For_Type
                  (Var_Type, Var_Type, Def_Ident,
                   (if Reversed then High else Low),
-                  Name => Get_Name (Def_Ident));
+                  Def_Ident => Def_Ident);
                Set_Value (Def_Ident, LLVM_Var);
 
                --  Then go to the condition block if the range isn't empty.

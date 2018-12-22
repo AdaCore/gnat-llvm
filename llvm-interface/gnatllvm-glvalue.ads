@@ -935,14 +935,24 @@ package GNATLLVM.GLValue is
    function Pred_FP (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Pred_FP'Result);
 
+   procedure Set_Object_Align (Obj : Value_T; TE, E : Entity_Id)
+     with Pre => Present (Obj) and then Is_Type (TE);
+   --  Set the alignment of alloca inst or global from TE and E (if present)
+
    --  Define IR builder variants which take and/or return GL_Value
 
-   function Alloca (TE : Entity_Id; Name : String := "") return GL_Value
+   function Alloca
+     (TE        : Entity_Id;
+      Def_Ident : Entity_Id := Empty;
+      Name      : String    := "") return GL_Value
      with Pre  => Is_Type (TE),
           Post => Is_Access_Type (Alloca'Result);
 
    function Array_Alloca
-     (TE : Entity_Id; Num_Elts : GL_Value; Name : String := "") return GL_Value
+     (TE        : Entity_Id;
+      Num_Elts  : GL_Value;
+      Def_Ident : Entity_Id := Empty;
+      Name      : String    := "") return GL_Value
      with Pre  => Is_Type (TE) and then Present (Num_Elts),
           Post => Is_Access_Type (Array_Alloca'Result);
 

@@ -55,6 +55,13 @@ package body GNATLLVM.GLValue is
    --  GL_Value_Is_Valid, we have to be careful not to call any function
    --  that takes a GL_Value as an operand.
 
+   function Get_Alloca_Name
+     (Def_Ident : Entity_Id; Name : String) return String
+   is
+     (if   Name /= "" then Name elsif Present (Def_Ident)
+      then Get_Ext_Name (Def_Ident) else "");
+   --  Get name to be used for an alloc instruction
+
    -----------------------
    -- GL_Value_Is_Valid --
    -----------------------
@@ -763,19 +770,39 @@ package body GNATLLVM.GLValue is
       return No_GL_Value;
    end Get;
 
+   ----------------------
+   -- Set_Object_Align --
+   ----------------------
+
+   procedure Set_Object_Align (Obj : Value_T; TE, E : Entity_Id) is
+      TE_Align : constant ULL             := Get_Type_Alignment (TE);
+      E_Align  : constant ULL             :=
+        (if   Present (E) and then not Unknown_Alignment (E)
+         then ULL (UI_To_Int (Alignment (E)))
+         else 1);
+
+   begin
+      Set_Alignment (Obj, unsigned (ULL'Max (TE_Align, E_Align)));
+   end Set_Object_Align;
+
    ------------
    -- Alloca --
    ------------
 
-   function Alloca (TE : Entity_Id; Name : String := "") return GL_Value is
-      R       : constant GL_Relationship := Relationship_For_Alloc (TE);
-      PT      : constant Type_T          := Type_For_Relationship (TE, R);
-      T       : constant Type_T          := Get_Element_Type (PT);
-      Promote : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
-      Inst    : constant Value_T         := Alloca (IR_Builder, T, Name);
+   function Alloca
+     (TE        : Entity_Id;
+      Def_Ident : Entity_Id := Empty;
+      Name      : String    := "") return GL_Value
+   is
+      R       :  constant GL_Relationship := Relationship_For_Alloc (TE);
+      PT      : constant Type_T           := Type_For_Relationship (TE, R);
+      T       : constant Type_T           := Get_Element_Type (PT);
+      Promote : constant Basic_Block_T    := Maybe_Promote_Alloca (T);
+      Inst    : constant Value_T          :=
+        Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
 
    begin
-      Set_Alignment (Inst, unsigned (Get_Type_Alignment (T)));
+      Set_Object_Align (Inst, TE, Def_Ident);
       Done_Promoting_Alloca (Inst, Promote);
       return G (Inst, TE, R, Is_Pristine => True);
    end Alloca;
@@ -785,15 +812,18 @@ package body GNATLLVM.GLValue is
    ------------------
 
    function Array_Alloca
-     (TE       : Entity_Id;
-      Num_Elts : GL_Value;
-      Name     : String := "") return GL_Value
+     (TE        : Entity_Id;
+      Num_Elts  : GL_Value;
+      Def_Ident : Entity_Id := Empty;
+      Name      : String    := "") return GL_Value
    is
       Inst : constant Value_T :=
         Array_Alloca (IR_Builder, Create_Type_For_Component (TE),
-                      LLVM_Value (Num_Elts), Name);
+                      LLVM_Value (Num_Elts),
+                      Get_Alloca_Name (Def_Ident, Name));
+
    begin
-      Set_Alignment (Inst, unsigned (ULL'(Get_Type_Alignment (TE))));
+      Set_Object_Align (Inst, TE, Def_Ident);
       Save_Stack_Pointer;
       return G_Ref (Inst, TE, Is_Pristine => True);
    end Array_Alloca;

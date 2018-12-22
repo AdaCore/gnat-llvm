@@ -1009,7 +1009,7 @@ package body GNATLLVM.Subprograms is
    is
       Tramp  : constant GL_Value :=
         Array_Alloca (Standard_Short_Short_Integer, Size_Const_Int (ULL (72)),
-                      "tramp");
+                      Name => "tramp");
       Cvt_Fn : constant GL_Value := Pointer_Cast (Fn, Standard_A_Char);
 
    begin
@@ -1182,7 +1182,8 @@ package body GNATLLVM.Subprograms is
 
             if PK_Is_Out (PK) then
                LLVM_Param := Allocate_For_Type (TE, TE, Param, V,
-                                                Name => Name.all);
+                                                Def_Ident => Param,
+                                                Name      => Name.all);
             else
                LLVM_Param := V;
             end if;

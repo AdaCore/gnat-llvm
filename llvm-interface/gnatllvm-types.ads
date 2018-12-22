@@ -397,13 +397,14 @@ package GNATLLVM.Types is
    --  also doesn't do well with large load/store instructions.
 
    function Allocate_For_Type
-     (TE       : Entity_Id;
-      Alloc_TE : Entity_Id;
-      N        : Node_Id;
-      V        : GL_Value := No_GL_Value;
-      Expr     : Node_Id  := Empty;
-      Name     : String   := "";
-      Max_Size : Boolean  := False) return GL_Value
+     (TE        : Entity_Id;
+      Alloc_TE  : Entity_Id;
+      N         : Node_Id;
+      V         : GL_Value  := No_GL_Value;
+      Expr      : Node_Id   := Empty;
+      Def_Ident : Entity_Id := Empty;
+      Name      : String    := "";
+      Max_Size  : Boolean   := False) return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_TE),
           Post => Is_Access_Type (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type TE and return a
@@ -414,14 +415,15 @@ package GNATLLVM.Types is
    --  raise an exception.
 
    function Heap_Allocate_For_Type
-     (TE       : Entity_Id;
-      Alloc_TE : Entity_Id;
-      V        : GL_Value  := No_GL_Value;
-      N        : Node_Id   := Empty;
-      Expr     : Node_Id   := Empty;
-      Proc     : Entity_Id := Empty;
-      Pool     : Entity_Id := Empty;
-      Max_Size : Boolean   := False) return GL_Value
+     (TE        : Entity_Id;
+      Alloc_TE  : Entity_Id;
+      V         : GL_Value  := No_GL_Value;
+      N         : Node_Id   := Empty;
+      Expr      : Node_Id   := Empty;
+      Proc      : Entity_Id := Empty;
+      Pool      : Entity_Id := Empty;
+      Def_Ident : Entity_Id := Empty;
+      Max_Size  : Boolean   := False) return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_TE)
                   and then (No (Proc) or else Present (Pool)),
           Post => Is_Access_Type (Heap_Allocate_For_Type'Result);

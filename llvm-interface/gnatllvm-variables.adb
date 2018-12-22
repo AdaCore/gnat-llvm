@@ -1205,6 +1205,7 @@ package body GNATLLVM.Variables is
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
          Set_Linker_Section   (LLVM_Var, Def_Ident);
          Process_Pragmas      (Def_Ident, LLVM_Var);
+         Set_Object_Align     (LLVM_Value (LLVM_Var), TE, Def_Ident);
       end if;
 
       --  Now save the value we've made for this variable
@@ -1601,9 +1602,10 @@ package body GNATLLVM.Variables is
             Store (Addr, LLVM_Var);
          elsif Is_Dynamic_Size (TE, Max_Size) then
             Store (Get (Heap_Allocate_For_Type (TE, TE, Value,
-                                                Expr     => Expr,
-                                                N        => N,
-                                                Max_Size => Max_Size),
+                                                Expr      => Expr,
+                                                N         => N,
+                                                Def_Ident => Def_Ident,
+                                                Max_Size  => Max_Size),
                         Any_Reference),
                    LLVM_Var);
             Copied := True;
@@ -1649,8 +1651,8 @@ package body GNATLLVM.Variables is
 
       if No (LLVM_Var) then
          LLVM_Var := Allocate_For_Type (TE, TE, Def_Ident, Value, Expr,
-                                        Name     => Get_Name (Def_Ident),
-                                        Max_Size => Max_Size);
+                                        Def_Ident => Def_Ident,
+                                        Max_Size  => Max_Size);
          Copied := True;
       end if;
 

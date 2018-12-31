@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -90,25 +90,6 @@ package body GNATLLVM.Wrapper is
       return Build_Insert_Value_C (Bld, Aggr, Elt, Idx_List, Num_Idx,
                                    Name & ASCII.NUL);
    end Build_Insert_Value;
-
-   ----------------------
-   -- LLVM_Init_Module --
-   ----------------------
-
-   procedure LLVM_Init_Module
-     (Module         : Module_T;
-      Filename       : String;
-      Target_Machine : Target_Machine_T)
-   is
-      procedure LLVM_Init_Module_C
-        (Module         : Module_T;
-         Filename       : String;
-         Target_Machine : Target_Machine_T)
-        with Import, Convention => C, External_Name => "LLVM_Init_Module";
-
-   begin
-      LLVM_Init_Module_C (Module, Filename & ASCII.NUL, Target_Machine);
-   end LLVM_Init_Module;
 
    ---------------------------
    --  LLVM_Optimize_Module --

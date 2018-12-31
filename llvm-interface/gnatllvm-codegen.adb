@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -245,7 +245,8 @@ package body GNATLLVM.Codegen is
 
       Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       TBAA_Root          := Create_TBAA_Root (MD_Builder);
-      Set_Target (Module, Target_Triple.all);
+      Set_Target             (Module, Target_Triple.all);
+      Set_Module_Data_Layout (Module, Module_Data_Layout);
    end Initialize_LLVM_Target;
 
    ------------------------

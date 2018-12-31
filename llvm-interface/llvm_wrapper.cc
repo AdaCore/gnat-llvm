@@ -335,15 +335,6 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
 }
 
 extern "C"
-void
-LLVM_Init_Module (Module *TheModule, const char *Filename,
-		  TargetMachine *TheTargetMachine)
-{
-  TheModule->setSourceFileName(Filename);
-  TheModule->setDataLayout(TheTargetMachine->createDataLayout());
-}
-
-extern "C"
 Value *
 Get_Float_From_Words_And_Exp (LLVMContext *Context, Type *T, int Exp,
 			      unsigned NumWords, const uint64_t Words[])

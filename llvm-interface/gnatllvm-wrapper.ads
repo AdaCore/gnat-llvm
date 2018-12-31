@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -120,12 +120,6 @@ package GNATLLVM.Wrapper is
 
    procedure Set_NSW (V : Value_T)
      with Import, Convention => C, External_Name => "Set_NSW";
-
-   procedure LLVM_Init_Module
-     (Module         : Module_T;
-      Filename       : String;
-      Target_Machine : Target_Machine_T);
-   --  Initialize the LLVM module.
 
    procedure LLVM_Optimize_Module
      (Module                : Module_T;

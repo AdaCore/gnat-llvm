@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2018, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -118,6 +118,11 @@ package body Get_Targ is
 
    function Get_Maximum_Alignment return Pos is
    begin
+      --  This isn't the maximum supported alignment, which is 2 ** 29 in
+      --  LLVM, but the maximum default alignment for any datatype.  There's
+      --  no portable way of getting this in LLVM, so we use a reasonable
+      --  value.
+
       return 16;
    end Get_Maximum_Alignment;
 

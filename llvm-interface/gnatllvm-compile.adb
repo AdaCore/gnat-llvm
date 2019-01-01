@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -87,6 +87,8 @@ package body GNATLLVM.Compile is
 
       LLVM_Info_Table.Increment_Last;
       --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
+
+      Uint_Bits_Per_Unit := UI_From_Int (Get_Bits_Per_Unit);
 
       --  Find the integer type corresponding to the size of a pointer
       --  and use that for our Size Type.  Do this before we create any

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -157,6 +157,8 @@ package GNATLLVM is
 
    Int_32_Type        : Entity_Id;
    --  GNAT type for 32-bit integers (for GEP indexes)
+
+   Uint_Bits_Per_Unit : Uint;
 
    --  GNAT LLVM switches
 

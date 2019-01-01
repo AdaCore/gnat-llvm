@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -864,7 +864,7 @@ package GNATLLVM.GLValue is
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
    function Byte_Size return GL_Value is
-     (Size_Const_Int (Uint_8))
+     (Size_Const_Int (Uint_Bits_Per_Unit))
      with Post => Is_Constant (Byte_Size'Result);
 
    function Size_Const_Int

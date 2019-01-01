@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -823,15 +823,15 @@ package body GNATLLVM.Subprograms is
          when Memcpy =>
             Return_TE := Standard_Void_Type;
             Fun_Ty := Fn_Ty
-              ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
+              ((1 => Void_Ptr_Type,  2 => Void_Ptr_Type,
                 3 => LLVM_Size_Type, 4 => Int_Ty (1)),
                Void_Type);
 
          when Memset =>
             Return_TE := Standard_Void_Type;
             Fun_Ty := Fn_Ty
-              ((1 => Void_Ptr_Type, 2 => Int_Ty (8), 3 => LLVM_Size_Type,
-                4 => Int_Ty (1)),
+              ((1 => Void_Ptr_Type,  2 => Int_Ty (Uint_Bits_Per_Unit),
+                3 => LLVM_Size_Type, 4 => Int_Ty (1)),
                Void_Type);
       end case;
 

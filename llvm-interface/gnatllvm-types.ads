@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -172,6 +172,12 @@ package GNATLLVM.Types is
      (Get_Fullest_View (Implementation_Base_Type (TE), not For_Orig))
      with Pre  => Is_Type (TE),
           Post => Present (Full_Base_Type'Result);
+
+   function Is_Full_Base_Type (TE : Entity_Id) return Boolean is
+     (Full_Base_Type (TE) = TE)
+     with Pre => Is_Type (TE);
+   --  True when TE is its own base type.  Similar, but not identical to
+   --  the front-end function Is_Base_Type, which just tests the Ekind.
 
    function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id
      with Pre => Is_Type (TE), Post => Is_Type (Ultimate_Base_Type'Result);
@@ -447,9 +453,11 @@ package GNATLLVM.Types is
    --  Convert V to Size_Type.  This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 
-   function Get_Type_Alignment (TE : Entity_Id) return ULL
+   function Get_Type_Alignment
+     (TE : Entity_Id; Use_Specified : Boolean := True) return ULL
      with Pre => Is_Type (TE);
-   --  Return the size of a GNAT type, in bits
+   --  Return the size of a GNAT type, in bits.  If Use_Specified is False,
+   --  ignore a specified alignment.
 
    function Get_Type_Size
      (TE         : Entity_Id;
@@ -493,6 +501,16 @@ package GNATLLVM.Types is
 
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
+
+   procedure Validate_And_Set_Alignment
+     (E : Entity_Id; Align : Uint; Current_Align : Int)
+     with Pre => Present (E);
+   --  Current_Align is the current alignment of E, either because it's
+   --  the alignment of the LLVM type (if E is a type) or because it's the
+   --  alignment of E's type (if E if an object).  Align is a proposed
+   --  alignment for E.  See if it's valid (possibly issuing an error
+   --  message if not) and set the alignment of E to that value or an
+   --  acceptable value if Align isn't valid.
 
    --  In order to use the generic functions that computing sizing
    --  information to compute whether a size is dynamic, we need versions
@@ -688,9 +706,13 @@ package GNATLLVM.Types is
      ((False,  Size_Const_Int (C, Sign_Extend), No_Uint))
      with Post => BA_Is_Const (BA_Const'Result);
 
+   function BA_Const (C : Uint) return BA_Data is
+     ((False, Size_Const_Int (C), No_Uint))
+     with Pre => C /= No_Uint, Post => BA_Is_Const (BA_Const'Result);
+
    function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
      ((False, Const_Int (TE, C), No_Uint))
-     with Pre  => C /= No_Uint;
+     with Pre => C /= No_Uint, Post => BA_Is_Const (BA_Const_Int'Result);
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
    --  Return a Node_Ref corresponding to BA_Data.  This may be either the

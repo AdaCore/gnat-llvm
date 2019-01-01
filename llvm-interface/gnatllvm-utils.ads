@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -163,6 +163,11 @@ package GNATLLVM.Utils is
    function Get_Ext_Name (E : Entity_Id) return String
      with Pre => Present (E);
    --  Returns a string corresponding to the external name of E
+
+   procedure Error_Msg_NE_Num
+     (Msg : String; N : Node_Id; E : Entity_Id; Num : Int);
+   procedure Error_Msg_NE_Num
+     (Msg : String; N : Node_Id; E : Entity_Id; Num : Uint);
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_LLVM_Value (V : Value_T)

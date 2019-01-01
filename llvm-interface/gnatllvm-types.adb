@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -19,6 +19,7 @@ with Errout;   use Errout;
 with Nlists;   use Nlists;
 with Output;   use Output;
 with Restrict; use Restrict;
+with Sem_Aux;  use Sem_Aux;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Table;    use Table;
@@ -1252,7 +1253,7 @@ package body GNATLLVM.Types is
       elsif Esize (TE) /= Uint_0 then
          return Int_Ty (Esize (TE));
       else
-         return Int_Ty (8);
+         return Int_Ty (Uint_Bits_Per_Unit);
       end if;
    end Create_Discrete_Type;
 
@@ -1396,7 +1397,7 @@ package body GNATLLVM.Types is
       --  Before we do anything, see if this isn't a base type and
       --  process that if so.
 
-      if Full_Base_Type (TE) /= TE then
+      if not Is_Full_Base_Type (TE) then
          Discard (Create_Type (Full_Base_Type (TE)));
       end if;
 
@@ -1425,7 +1426,7 @@ package body GNATLLVM.Types is
             --  be an actual type in the case of an error, so use something
             --  that we can take the size an alignment of.
 
-            T := Int_Ty (8);
+            T := Int_Ty (Uint_Bits_Per_Unit);
 
          when others =>
             Error_Msg_N
@@ -1462,23 +1463,99 @@ package body GNATLLVM.Types is
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
                            (BA_Mul (BA_Type_Size (TE, No_Padding => True),
-                                    BA_Const (8))));
+                                    BA_Const (Uint_Bits_Per_Unit))));
          end if;
       end if;
 
-      if Unknown_Alignment (TE) then
-         Set_Alignment (TE, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
-         if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
-           and then Present (Original_Array_Type (TE))
-         then
-            Set_Alignment (Original_Array_Type (TE),
-                           UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
-         end if;
+      Validate_And_Set_Alignment
+        (TE, Alignment (TE),
+         Int (ULL'(Get_Type_Alignment (TE, Use_Specified => False))));
+      if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
+        and then Present (Original_Array_Type (TE))
+      then
+         Validate_And_Set_Alignment (Original_Array_Type (TE), Alignment (TE),
+                                     Int (ULL'(Get_Type_Alignment (TE))));
       end if;
 
       Set_Is_Being_Elaborated (TE, False);
       return T;
    end Create_Type;
+
+   --------------------------------
+   -- Validate_And_Set_Alignment --
+   --------------------------------
+
+   procedure Validate_And_Set_Alignment
+     (E : Entity_Id; Align : Uint; Current_Align : Int)
+   is
+      TE        : constant Entity_Id :=
+        (if Is_Type (E) then E else Full_Etype (E));
+      Max_Align : constant Uint      := UI_From_Int (2 ** 29);
+      --  This is the maximum permitted alignment, not the maximum default
+      --  alignment that's assigned to a type (which is
+      --  Get_Maximum_Alignment).
+
+      No_Error  : constant Boolean   :=
+        Error_Posted (E) and then not Has_Alignment_Clause (E);
+      --  If there's no user-specified alignment clause and we've already
+      --  posted an error, don't post another one.
+
+      N         : Node_Id            := E;
+      --  The initial location for an error message is the entity,
+      --  but we may override it below if we find a better one.
+
+      New_Align : Int                := Current_Align;
+      --  By default, the new alignment is the same as the old one
+
+   begin
+      --  Find a possibly better place to post an alignment error.  If
+      --  there's an alignment clause, use its expression.  However, for
+      --  the implicit base type of an array type, the alignment clause is
+      --  on the first subtype.
+
+      if Present (Alignment_Clause (E)) then
+         N := Expression (Alignment_Clause (E));
+      elsif Is_Array_Type (E) and then Is_Full_Base_Type (E)
+        and then Present (Alignment_Clause (First_Subtype (E)))
+      then
+         N := Expression (Alignment_Clause (First_Subtype (E)));
+      end if;
+
+      --  If the alignment either doesn't fit into an int or is larger than the
+      --  maximum allowed, give an error.  Otherwise, we try to use the new
+      --  alignment if one is specified.
+
+      if not UI_Is_In_Int_Range (Align) or else Align > Max_Align then
+         New_Align := UI_To_Int (Max_Align);
+         if not No_Error then
+            Error_Msg_NE_Num ("largest supported alignment for& is ^",
+                              N, E, Max_Align);
+         end if;
+      elsif Align /= Uint_0 and then Align /= No_Uint then
+         New_Align := UI_To_Int (Align);
+      end if;
+
+      --  If the alignment is too small, stick with the old alignment and give
+      --  an error if required.  ??? For now, we don't support under-alignment
+      --  of discrete types.  ??? And records and arrays have issues too.
+      --  (Yes, this is all types.)
+
+      if New_Align < Current_Align then
+         if not No_Error
+           and then not Is_Discrete_Type (TE)
+           and then not Is_Array_Type (TE)
+           and then not Is_Record_Type (TE)
+           and then (No (Alignment_Clause (E))
+                       or else not From_At_Mod (Alignment_Clause (E)))
+         then
+            Error_Msg_NE_Num ("alignment for& must be at least ^",
+                              N, E, Current_Align);
+            New_Align := Current_Align;
+         end if;
+      end if;
+
+      Set_Alignment (E, UI_From_Int (New_Align));
+   end Validate_And_Set_Alignment;
 
    ----------------------
    -- Copy_Annotations --
@@ -1535,7 +1612,8 @@ package body GNATLLVM.Types is
       Size := Get_Type_Size (TE, No_GL_Value,
                              Max_Size => Is_Unconstrained_Record (TE));
       pragma Assert (Is_A_Const_Int (Size));
-      return Array_Type (Int_Ty (8), unsigned (Get_Const_Int_Value (Size)));
+      return Array_Type (Int_Ty (Uint_Bits_Per_Unit),
+                         unsigned (Get_Const_Int_Value (Size)));
    end Create_Type_For_Component;
 
    -----------------
@@ -1873,7 +1951,9 @@ package body GNATLLVM.Types is
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (TE : Entity_Id) return ULL is
+   function Get_Type_Alignment
+     (TE : Entity_Id; Use_Specified : Boolean := True) return ULL
+   is
       Largest_Align : ULL  := 1;
       Field         : Entity_Id;
 
@@ -1881,7 +1961,7 @@ package body GNATLLVM.Types is
       --  If the alignment is specified (or back-annotated) in the tree,
       --  use that value.
 
-      if not Unknown_Alignment (TE) then
+      if not Unknown_Alignment (TE)  and Use_Specified then
          return ULL (UI_To_Int (Alignment (TE)));
 
       --  If it's an array, it's the alignment of the component type
@@ -2083,7 +2163,7 @@ package body GNATLLVM.Types is
             if not Unknown_Esize (Our_E)
               and then Is_Static_SO_Ref (Esize (Our_E))
             then
-               Ret := Esize (Our_E) / Uint_8;
+               Ret := Esize (Our_E) / Uint_Bits_Per_Unit;
                if Is_Unconstrained_Array (TE) then
                   Ret := Ret + UI_From_GL_Value (Get_Bound_Size (TE));
                end if;
@@ -2092,7 +2172,7 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_Descriptor_Size =>
-            return UI_From_GL_Value (Get_Bound_Size (TE)) * Uint_8;
+            return UI_From_GL_Value (Get_Bound_Size (TE)) * Uint_Bits_Per_Unit;
 
          when Attribute_Component_Size =>
             if not Unknown_Component_Size (TE) then
@@ -2109,7 +2189,7 @@ package body GNATLLVM.Types is
             if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
               and then Attr = Attribute_Position
             then
-               Ret := Ret / Uint_8;
+               Ret := Ret / Uint_Bits_Per_Unit;
             end if;
 
          when Attribute_First_Bit =>
@@ -2241,7 +2321,8 @@ package body GNATLLVM.Types is
       Use_Max      : constant Boolean := Is_Unconstrained_Record (TE);
       TE_Byte_Size : constant BA_Data :=
         BA_Type_Size (TE, Max_Size => Use_Max);
-      TE_Bit_Size  : constant BA_Data := BA_Mul (TE_Byte_Size, BA_Const (8));
+      TE_Bit_Size  : constant BA_Data :=
+        BA_Mul (TE_Byte_Size, BA_Const (Uint_Bits_Per_Unit));
 
    begin
       return Annotated_Value (TE_Bit_Size);

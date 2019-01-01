@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -1205,7 +1205,9 @@ package body GNATLLVM.Variables is
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
          Set_Linker_Section   (LLVM_Var, Def_Ident);
          Process_Pragmas      (Def_Ident, LLVM_Var);
-         Set_Object_Align     (LLVM_Value (LLVM_Var), TE, Def_Ident);
+         if not Is_Ref then
+            Set_Object_Align  (LLVM_Value (LLVM_Var), TE, Def_Ident);
+         end if;
       end if;
 
       --  Now save the value we've made for this variable
@@ -1547,10 +1549,9 @@ package body GNATLLVM.Variables is
       if Unknown_Esize (Def_Ident) then
          Set_Esize (Def_Ident, Annotated_Object_Size (TE));
       end if;
-      if Unknown_Alignment (Def_Ident) then
-         Set_Alignment
-           (Def_Ident, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
-      end if;
+
+      Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
+                                  Int (ULL'(Get_Type_Alignment (TE))));
 
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.
@@ -1756,12 +1757,11 @@ package body GNATLLVM.Variables is
       if Unknown_Esize (Def_Ident) then
          Set_Esize (Def_Ident, Annotated_Value
                       (BA_Mul (BA_Type_Size (TE, Max_Size => True),
-                               BA_Const (8))));
+                               BA_Const (Uint_Bits_Per_Unit))));
       end if;
-      if Unknown_Alignment (Def_Ident) then
-         Set_Alignment
-           (Def_Ident, UI_From_Int (Int (ULL'(Get_Type_Alignment (TE)))));
-      end if;
+
+      Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
+                                  Int (ULL'(Get_Type_Alignment (TE))));
 
    end Emit_Renaming_Declaration;
 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -380,7 +380,7 @@ package body GNATLLVM.GLValue is
             return Pointer_Type (Create_Type (TE), 0);
 
          when Activation_Record =>
-            return Int_Ty (8);
+            return Int_Ty (Uint_Bits_Per_Unit);
 
          when Fat_Pointer =>
             return Create_Array_Fat_Pointer_Type (TE);

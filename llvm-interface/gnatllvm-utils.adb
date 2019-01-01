@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -493,5 +493,27 @@ package body GNATLLVM.Utils is
       end if;
 
    end Process_Pragmas;
+
+   ----------------------
+   -- Error_Msg_NE_Num --
+   ----------------------
+
+   procedure Error_Msg_NE_Num
+     (Msg : String; N : Node_Id; E : Entity_Id; Num : Int) is
+   begin
+      Error_Msg_Uint_1 := UI_From_Int (Num);
+      Error_Msg_NE (Msg, N, E);
+   end Error_Msg_NE_Num;
+
+   ----------------------
+   -- Error_Msg_NE_Num --
+   ----------------------
+
+   procedure Error_Msg_NE_Num
+     (Msg : String; N : Node_Id; E : Entity_Id; Num : Uint) is
+   begin
+      Error_Msg_Uint_1 := Num;
+      Error_Msg_NE (Msg, N, E);
+   end Error_Msg_NE_Num;
 
 end GNATLLVM.Utils;

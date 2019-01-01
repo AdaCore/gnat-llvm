@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -1184,7 +1184,7 @@ package body GNATLLVM.Records is
                   Byte_Position : constant BA_Data :=
                     BA_Field_Position (Cur_Field, No_GL_Value);
                   Bit_Position  : constant BA_Data :=
-                    BA_Mul (Byte_Position, BA_Const (8));
+                    BA_Mul (Byte_Position, BA_Const (Uint_Bits_Per_Unit));
 
                begin
                   if Unknown_Esize (Cur_Field) then

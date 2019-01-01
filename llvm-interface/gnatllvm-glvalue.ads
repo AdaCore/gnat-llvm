@@ -1675,6 +1675,9 @@ package GNATLLVM.GLValue is
      with Pre  => Present (Func) and then Is_Type (TE),
           Post => Present (Get_Param'Result);
 
+   function Get_Stack_Alignment return unsigned is
+     (Get_Stack_Alignment (Module_Data_Layout));
+
    function Get_Insert_Block return Basic_Block_T is
      (Get_Insert_Block (IR_Builder))
      with Post => Present (Get_Insert_Block'Result);

@@ -188,6 +188,13 @@ Create_TBAA_Scalar_Type_Node_C (MDBuilder *MDHelper, const char *name,
 }
 
 extern "C"
+unsigned
+Get_Stack_Alignment (DataLayout *dl)
+{
+  return dl->getStackAlignment ();
+}
+
+extern "C"
 MDNode *
 Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
 			MDNode *AccessType, unsigned long long offset)

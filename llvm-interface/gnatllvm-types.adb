@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
+with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Output;   use Output;
 with Restrict; use Restrict;
@@ -1842,11 +1843,41 @@ package body GNATLLVM.Types is
          end if;
       end if;
 
-      --  If no function was specified, use the default memory allocation
-      --  function, where we just pass a size.
+      --  If no procedure was specified, use the default memory allocation
+      --  function, where we just pass a size.  But we can only do this
+      --  directly if the requested alignment is a constand and no larger
+      --  than the system allocator alignment.
 
-      if No (Proc) then
+      if No (Proc) and then Is_A_Const_Int (Align)
+        and then (Get_Const_Int_Value (Align) <=
+                    (LLI (Get_System_Allocator_Alignment)))
+      then
          Result := Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size));
+
+      --  Otherwise, if we can use the default memory allocation
+      --  function but have to overalign, increase the size by both
+      --  the alignment and the space needed for a pointer, align the
+      --  result (leaving space for the pointer) and store the obtained
+      --  address immediately before the value.
+
+      elsif No (Proc) then
+         declare
+            Ptr_Size   : constant GL_Value := Get_Type_Size (Void_Ptr_Type);
+            Total_Size : constant GL_Value :=
+              Add (Size, Add (Align, Ptr_Size));
+            Alloc      : constant GL_Value :=
+              Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Total_Size));
+            Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_Type);
+            Aligned    : constant GL_Value :=
+              Align_To (Add (Alloc_Int, Ptr_Size),
+                        Size_Const_Int (ULL (Get_System_Allocator_Alignment)),
+                        Align);
+            Ptr_Loc    : constant GL_Value := Sub (Aligned, Ptr_Size);
+
+         begin
+            Store (Alloc, Int_To_Ref (Ptr_Loc, Standard_A_Char));
+            Result := Convert (Aligned, Standard_A_Char);
+         end;
 
       --  If a procedure was specified (meaning that a pool must also have
       --  been specified) and the pool is a record, then it's a storage
@@ -1918,18 +1949,41 @@ package body GNATLLVM.Types is
          Size  : constant GL_Value := Get_Alloc_Size (DT, Alloc_TE, Conv_V);
 
       begin
-         --  If no subprogram was specified, use the default memory
-         --  deallocation procedure, where we just pass the object.
+         --  If no procedure was specified, use the default memory deallocation
+         --  procedure, where we just pass a size.  But we can only do this
+         --  directly if the requested alignment is a constand and no larger
+         --  than the system allocator alignment.
 
-         if No (Proc) then
+         if No (Proc) and then Is_A_Const_Int (Align)
+           and then (Get_Const_Int_Value (Align) <=
+                       (LLI (Get_System_Allocator_Alignment)))
+         then
             Call (Get_Default_Free_Fn,
                   (1 => Pointer_Cast (Conv_V, Standard_A_Char)));
 
-            --  If a procedure was specified (meaning that a pool must also
-            --  have been specified) and the pool is a record, then it's a
-            --  storage pool and we pass the pool, size, and alignment.  Be
-            --  sure that we convert the pool to actual type of the formal
-            --  of the deallocator function: it may be a derived type.
+         --  If we have to use the normal deallocation procedure to
+         --  deallocate an overaligned value, the actual address of the
+         --  memory to deallocate can be found in front of the value we're
+         --  passed.
+
+         elsif No (Proc) then
+            declare
+               Addr       : constant GL_Value :=
+                 Ptr_To_Int (Conv_V, Size_Type);
+               Ptr_Size   : constant GL_Value := Get_Type_Size (Void_Ptr_Type);
+               Ptr_Loc    : constant GL_Value := Sub (Addr, Ptr_Size);
+               Ptr_Ref    : constant GL_Value :=
+                 Int_To_Ref (Ptr_Loc, Standard_A_Char);
+
+            begin
+               Call (Get_Default_Free_Fn, (1 => Load (Ptr_Ref)));
+            end;
+
+         --  If a procedure was specified (meaning that a pool must also
+         --  have been specified) and the pool is a record, then it's a
+         --  storage pool and we pass the pool, size, and alignment.  Be
+         --  sure that we convert the pool to actual type of the formal of
+         --  the deallocator function: it may be a derived type.
 
          elsif Is_Record_Type (Full_Etype (Pool)) then
             Call_Dealloc (Proc,

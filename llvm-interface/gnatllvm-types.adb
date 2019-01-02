@@ -1730,16 +1730,23 @@ package body GNATLLVM.Types is
       Name      : String    := "";
       Max_Size  : Boolean   := False) return GL_Value
    is
-      Max_Alloc  : constant ULL := 10_000_000;
-      Value      : GL_Value     := V;
+      Max_Alloc  : constant ULL      := 10_000_000;
+      Align      : constant GL_Value :=
+        Get_Alloc_Alignment (TE, Alloc_TE, Def_Ident);
+      Overalign  : constant Boolean  :=
+        not Is_A_Const_Int (Align)
+        or else Get_Const_Int_Value (Align) > LLI (Get_Stack_Alignment);
+      Value      : GL_Value          := V;
       Element_TE : Entity_Id;
       Num_Elts   : GL_Value;
+      Result     : GL_Value;
 
    begin
-      --  We have three cases.  If the object has a native type, we just do
-      --  the alloca and that's all.
+      --  We have three cases.  If the object has a native type and we're
+      --  not trying to over-align it, we just do the alloca and that's
+      --  all.
 
-      if not Is_Nonnative_Type (Alloc_TE) then
+      if not Is_Nonnative_Type (Alloc_TE) and then not Overalign then
          if Do_Stack_Check
            and then Get_Type_Size (Create_Type (Alloc_TE)) > Max_Alloc
          then
@@ -1753,12 +1760,13 @@ package body GNATLLVM.Types is
 
       --  Otherwise, we probably have to do some sort of dynamic
       --  allocation.  If this is an array of a component that's not of
-      --  dynamic size, then we can allocate an array of the component type
-      --  corresponding to the array type and cast it to a pointer to the
-      --  actual type.  If not, we have to allocate it as an array of
-      --  bytes.  We must use an array of bytes if we have to include bounds.
-      --  If this is an unconstrained array, we need to find the bounds, so
-      --  evaluate Expr if Present and there's no Value.
+      --  dynamic size that we're not overaligning, we can allocate an
+      --  array of the component type corresponding to the array type and
+      --  cast it to a pointer to the actual type.  If not, we have to
+      --  allocate it as an array of bytes.  We must use an array of bytes
+      --  if we have to include bounds.  If this is an unconstrained array,
+      --  we need to find the bounds, so evaluate Expr if Present and
+      --  there's no Value.
 
       if Is_Unconstrained_Array (Alloc_TE) and then No (Value)
         and then Present (Expr)
@@ -1771,12 +1779,19 @@ package body GNATLLVM.Types is
                                       not Is_Constrained
                                         (Full_Component_Type (Alloc_TE)))
         and then not Is_Constr_Subt_For_UN_Aliased (Alloc_TE)
+        and then not Overalign
       then
          Element_TE := Full_Component_Type (Alloc_TE);
          Num_Elts   := Get_Array_Elements (Value, Alloc_TE);
       else
          Element_TE := Standard_Short_Short_Integer;
          Num_Elts   := Get_Alloc_Size (Alloc_TE, Alloc_TE, Value, Max_Size);
+      end if;
+
+      --  Handle overalignment by adding the alignment to the size
+
+      if Overalign then
+         Num_Elts := Add (Num_Elts, Align);
       end if;
 
       --  Check that we aren't trying to allocate too much memory.  Raise
@@ -1793,9 +1808,21 @@ package body GNATLLVM.Types is
                              N, SE_Object_Too_Large);
       end if;
 
-      return Move_Into_Memory (Array_Alloca (Element_TE, Num_Elts,
-                                             Def_Ident, Name),
-                               Value, Expr, TE, Alloc_TE);
+      --  Now allocate the object, align if necessary, and then move
+      --  any data into it.
+
+      Result := Array_Alloca (Element_TE, Num_Elts, Def_Ident,
+                              (if Overalign then "%%" else Name));
+      if Overalign then
+         Result := Ptr_To_Int (Result, Size_Type);
+         Result := Align_To (Result,
+                             Size_Const_Int (ULL (Get_Stack_Alignment)),
+                             Align);
+         Result := Int_To_Ptr (Result, Standard_A_Char);
+         Set_Value_Name (Result, Get_Alloca_Name (Def_Ident, Name));
+      end if;
+
+      return Move_Into_Memory (Result, Value, Expr, TE, Alloc_TE);
 
    end Allocate_For_Type;
 
@@ -1850,7 +1877,7 @@ package body GNATLLVM.Types is
 
       if No (Proc) and then Is_A_Const_Int (Align)
         and then (Get_Const_Int_Value (Align) <=
-                    (LLI (Get_System_Allocator_Alignment)))
+                    LLI (Get_System_Allocator_Alignment))
       then
          Result := Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size));
 

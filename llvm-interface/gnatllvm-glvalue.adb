@@ -55,13 +55,6 @@ package body GNATLLVM.GLValue is
    --  GL_Value_Is_Valid, we have to be careful not to call any function
    --  that takes a GL_Value as an operand.
 
-   function Get_Alloca_Name
-     (Def_Ident : Entity_Id; Name : String) return String
-   is
-     (if   Name /= "" then Name elsif Present (Def_Ident)
-      then Get_Ext_Name (Def_Ident) else "");
-   --  Get name to be used for an alloc instruction
-
    -----------------------
    -- GL_Value_Is_Valid --
    -----------------------
@@ -1925,5 +1918,16 @@ package body GNATLLVM.GLValue is
          end loop;
       end return;
    end Idxs_To_GL_Values;
+
+   ---------------------
+   -- Get_Alloca_Name --
+   ---------------------
+
+   function Get_Alloca_Name
+     (Def_Ident : Entity_Id; Name : String) return String
+   is
+     (if    Name = "%%" then "" elsif Name /= "" then Name
+      elsif Present (Def_Ident)
+      then  Get_Ext_Name (Def_Ident) else "");
 
 end GNATLLVM.GLValue;

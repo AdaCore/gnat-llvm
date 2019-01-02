@@ -1737,4 +1737,8 @@ package GNATLLVM.GLValue is
    --  Convert an array of integer indices into the corresponding constant
    --  GL_Values (of Size_Type).
 
+   function Get_Alloca_Name
+     (Def_Ident : Entity_Id; Name : String) return String;
+   --  Get name to be used for an alloc instruction
+
 end GNATLLVM.GLValue;

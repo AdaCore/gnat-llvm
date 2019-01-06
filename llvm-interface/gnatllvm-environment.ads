@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -28,28 +28,24 @@ package GNATLLVM.Environment is
    Record_Info_High_Bound : constant := 399_999_999;
    type Record_Info_Id is
      range Record_Info_Low_Bound .. Record_Info_High_Bound;
-   First_Record_Info_Id   : constant Record_Info_Id := Record_Info_Low_Bound;
-   Empty_Record_Info_Id   : constant Record_Info_Id := First_Record_Info_Id;
+   Empty_Record_Info_Id   : constant Record_Info_Id := Record_Info_Low_Bound;
 
    type Record_Info_Id_Array is array (Nat range <>) of Record_Info_Id;
 
    Field_Info_Low_Bound  : constant := 400_000_000;
    Field_Info_High_Bound : constant := 499_999_999;
    type Field_Info_Id is range Field_Info_Low_Bound .. Field_Info_High_Bound;
-   First_Field_Info_Id   : constant Field_Info_Id := Field_Info_Low_Bound;
-   Empty_Field_Info_Id   : constant Field_Info_Id := First_Field_Info_Id;
+   Empty_Field_Info_Id   : constant Field_Info_Id := Field_Info_Low_Bound;
 
    Array_Info_Low_Bound  : constant := 500_000_000;
    Array_Info_High_Bound : constant := 599_999_999;
    type Array_Info_Id is range Array_Info_Low_Bound .. Array_Info_High_Bound;
-   First_Array_Info_Id   : constant Array_Info_Id := Array_Info_Low_Bound;
-   Empty_Array_Info_Id   : constant Array_Info_Id := First_Array_Info_Id;
+   Empty_Array_Info_Id   : constant Array_Info_Id := Array_Info_Low_Bound;
 
    Label_Info_Low_Bound  : constant := 600_000_000;
    Label_Info_High_Bound : constant := 699_999_999;
    type Label_Info_Id is range Label_Info_Low_Bound .. Label_Info_High_Bound;
-   First_Label_Info_Id   : constant Label_Info_Id := Label_Info_Low_Bound;
-   Empty_Label_Info_Id   : constant Label_Info_Id := First_Label_Info_Id;
+   Empty_Label_Info_Id   : constant Label_Info_Id := Label_Info_Low_Bound;
 
    function "+" (A : Array_Info_Id; N : Nat) return Array_Info_Id is
      (Array_Info_Id (Nat (A) + N));

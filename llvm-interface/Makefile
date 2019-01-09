@@ -61,6 +61,10 @@ compare=cmp --ignore-initial=16
 all: setup build
 	$(MAKE) quicklib
 
+LOCAL_RT_FILES=s-rident.ads g-dynhta.ads g-dynhta.adb \
+  g-sets.ads g-sets.adb \
+  g-graphs.ads g-graphs.adb
+
 setup:
 	$(MKDIR) obj obj-tools bin
 	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt xoscons.adb xutil.ads xutil.adb`; \
@@ -71,7 +75,9 @@ setup:
 	./xtreeprs && ./xnmake && ./xsnamest && \
 	$(MV) nmake.ads nmake.adb treeprs.ads ../obj && \
 	$(MV) snames.ns ../obj/snames.ads && $(MV) snames.nb ../obj/snames.adb
-	$(LN_S) $(GNAT_SRC)/libgnat/s-rident.ads obj
+	for f in $(LOCAL_RT_FILES); do \
+	  $(LN_S) $(GNAT_SRC)/libgnat/$$f obj; \
+	done
 
 build: setup force
 	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \

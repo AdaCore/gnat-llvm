@@ -43,6 +43,13 @@ package body GNATLLVM.GLType is
       Max_Size  : Boolean;
       --  If True, this corresponds to the maxumum size of an unconstrained
       --  variant record with default discriminant values;
+
+      Primitive : Boolean;
+      --  Marks the GL_Type that corresponds to the "computational" type
+
+      Default   : Boolean;
+      --  Marks the default GL_Type
+
    end record;
 
    package GL_Type_Table is new Table.Table
@@ -119,12 +126,14 @@ package body GNATLLVM.GLType is
       --  TE when making the LLVM type for now.
 
       GL_Type_Table.Append ((GNAT_Type => TE,
-                             LLVM_Type => Create_Primary_Type (TE),
+                             LLVM_Type => Create_Primitive_Type (TE),
                              Next      => No_GL_Type,
                              Size      => Size_V,
                              Alignment => Align_V,
                              Bias      => No_GL_Value,
-                             Max_Size  => Max_Size));
+                             Max_Size  => Max_Size,
+                             Primitive => True,
+                             Default   => True));
       if No (Last) then
          Set_GL_Type (TE, GL_Type_Table.Last);
       else
@@ -142,8 +151,84 @@ package body GNATLLVM.GLType is
       GTI : GL_Type_Info renames GL_Type_Table.Table (GT);
 
    begin
-      GTI.LLVM_Type := Create_Primary_Type (GTI.GNAT_Type);
+      GTI.LLVM_Type := Create_Primitive_Type (GTI.GNAT_Type);
    end Update_GL_Type;
+
+   -----------------------
+   -- Primitive_GL_Type --
+   -----------------------
+
+   function Primitive_GL_Type (TE : Entity_Id) return GL_Type is
+      GT : GL_Type := Get_GL_Type (TE);
+
+   begin
+      --  If there's no GL_Type yet, make one
+
+      if No (GT) then
+         return Create_GL_Type (TE);
+      end if;
+
+      while Present (GT) loop
+         exit when GL_Type_Table.Table (GT).Primitive;
+         Next (GT);
+      end loop;
+
+      return GT;
+   end Primitive_GL_Type;
+
+   ---------------------
+   -- Default_GL_Type --
+   ---------------------
+
+   function Default_GL_Type (TE : Entity_Id) return GL_Type is
+      GT : GL_Type := Get_GL_Type (TE);
+
+   begin
+      --  If there's no GL_Type yet, make one
+
+      if No (GT) then
+         return Create_GL_Type (TE);
+      end if;
+
+      while Present (GT) loop
+         exit when GL_Type_Table.Table (GT).Default;
+         Next (GT);
+      end loop;
+
+      return GT;
+   end Default_GL_Type;
+
+   --------------------
+   -- Mark_Primitive --
+   --------------------
+
+   procedure Mark_Primitive (GT : GL_Type) is
+      All_GT : GL_Type := Get_GL_Type (Full_Etype (GT));
+
+   begin
+      --  Mark all GT's as primitive or not, depending on whether it's ours
+
+      while Present (All_GT) loop
+         GL_Type_Table.Table (All_GT).Primitive := All_GT = GT;
+         Next (All_GT);
+      end loop;
+   end Mark_Primitive;
+
+   ------------------
+   -- Mark_Default --
+   ------------------
+
+   procedure Mark_Default (GT : GL_Type) is
+      All_GT : GL_Type := Get_GL_Type (Full_Etype (GT));
+
+   begin
+      --  Mark all GT's as default or not, depending on whether it's ours
+
+      while Present (All_GT) loop
+         GL_Type_Table.Table (All_GT).Default := All_GT = GT;
+         Next (All_GT);
+      end loop;
+   end Mark_Default;
 
    ----------------
    -- Full_Etype --

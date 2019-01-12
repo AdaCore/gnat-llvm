@@ -91,9 +91,9 @@ package GNATLLVM.Types is
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it first if necessary.
 
-   function Create_Primary_Type (TE : Entity_Id) return Type_T
+   function Create_Primitive_Type (TE : Entity_Id) return Type_T
      with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
-          Post => Present (Create_Primary_Type'Result);
+          Post => Present (Create_Primitive_Type'Result);
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it first if necessary.
 

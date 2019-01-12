@@ -1431,11 +1431,11 @@ package body GNATLLVM.Types is
       return Type_Of (GT);
    end Create_Type;
 
-   -------------------------
-   -- Create_Primary_Type --
-   -------------------------
+   ---------------------------
+   -- Create_Primitive_Type --
+   ---------------------------
 
-   function Create_Primary_Type (TE : Entity_Id) return Type_T is
+   function Create_Primitive_Type (TE : Entity_Id) return Type_T is
       T    : Type_T := Get_Type (TE);
       TBAA : Metadata_T;
 
@@ -1517,7 +1517,7 @@ package body GNATLLVM.Types is
 
       Set_Is_Being_Elaborated (TE, False);
       return T;
-   end Create_Primary_Type;
+   end Create_Primitive_Type;
 
    --------------------------------
    -- Validate_And_Set_Alignment --

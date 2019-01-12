@@ -31,11 +31,11 @@ package GNATLLVM.GLType is
    --  table as a GL_Type.  Each table entry contains the GNAT Entity_Id of
    --  the type, the LLVM type, the size, alignment, and related flags, and
    --  a chain to record all the alternates for the GNAT type.  We create a
-   --  link from the GNAT type to its first GL_Type, which corresponds to
-   --  the default for that type.  That entry may omit the size and alignment,
-   --  which means that they are to come from the type, but other table
-   --  entries must have values for the size and alignment unless they
-   --  represent the maximum size of an unconstrained variant record.
+   --  link from the GNAT type to its first GL_Type.  One entry is
+   --  designated as "primitive", meaning it's the actual type used for the
+   --  value (in the case of scalar types) or the natural type (without any
+   --  padding) in the case of aggregates.  A GL_Type (possibly the same
+   --  one, but not necessarily) is the default for that type.
 
    function Create_GL_Type
      (TE       : Entity_Id;
@@ -51,8 +51,18 @@ package GNATLLVM.GLType is
      with Pre => Is_Dummy_Type (GT);
    --  If GT's type is dummy, try to update it with a real type
 
+   function Primitive_GL_Type (TE : Entity_Id) return GL_Type
+     with Pre => Is_Type (TE), Post => Present (Primitive_GL_Type'Result);
+   function Default_GL_Type (TE : Entity_Id) return GL_Type
+     with Pre => Is_Type (TE), Post => Present (Default_GL_Type'Result);
+
+   procedure Mark_Primitive (GT : GL_Type)
+     with Pre => Present (GT);
+   procedure Mark_Default (GT : GL_Type)
+     with Pre => Present (GT);
+
    --  Here are the access function to obtain fields from a GL_Type.
-   --  They're overloaded from the functions that obtain these fields from
+   --  Many are overloaded from the functions that obtain these fields from
    --  a GNAT type.
 
    function Full_Etype (GT : GL_Type) return Entity_Id

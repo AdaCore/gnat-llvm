@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -1013,8 +1013,9 @@ package body GNATLLVM.Conditionals is
       elsif Is_Reference (Then_Value) /= Is_Reference (Else_Value)
         or else Then_Type /= Else_Type
       then
-         R := (if Related_Type (Then_Value) = Related_Type (Else_Value)
-                 then Data else Any_Reference);
+         R := (if   GL_Type'(Related_Type (Then_Value)) =
+                    Related_Type (Else_Value)
+               then Data else Any_Reference);
          Position_Builder_At_End (Then_BB);
          Then_Value := Get (Then_Value, R);
          if R = Any_Reference then

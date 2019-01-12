@@ -26,7 +26,8 @@ with Snames;   use Snames;
 with Sprint;   use Sprint;
 with Stringt;  use Stringt;
 
-with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.GLType; use GNATLLVM.GLType;
+with GNATLLVM.Types;  use GNATLLVM.Types;
 
 package body GNATLLVM.Utils is
 
@@ -316,9 +317,9 @@ package body GNATLLVM.Utils is
          Write_Str ("Pristine ");
       end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
-      Write_Int (Int (V.Typ));
+      Write_Int (Int (Full_Etype (V.Typ)));
       Write_Str ("): ");
-      pg (Union_Id (V.Typ));
+      pg (Union_Id (Full_Etype (V.Typ)));
    end Dump_GL_Value;
 
    ----------------------

@@ -29,6 +29,7 @@ with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
@@ -296,7 +297,7 @@ package body GNATLLVM.Types is
 
       return Type_Of (V) = Pointer_Type (Create_Type (TE), 0)
         or else (not Is_Scalar_Type (TE)
-                   and then not Is_Scalar_Type (Related_Type (V)));
+                   and then not Is_Scalar_Type (GL_Type'(Related_Type (V))));
 
    end Is_Nop_Conversion;
 
@@ -1036,8 +1037,9 @@ package body GNATLLVM.Types is
       --  object will have been added last.
 
       for J in reverse LValue_Pair_First .. LValue_Pair_Table.Last loop
-         if Is_Parent_Of (TE, LValue_Pair_Table.Table (J).Typ)
-           or else Is_Parent_Of (LValue_Pair_Table.Table (J).Typ, TE)
+         if Is_Parent_Of (TE, Related_Type (LValue_Pair_Table.Table (J)))
+           or else Is_Parent_Of (Related_Type (LValue_Pair_Table.Table (J)),
+                                 TE)
          then
             return Convert_Ref (LValue_Pair_Table.Table (J), TE);
          end if;
@@ -1097,6 +1099,13 @@ package body GNATLLVM.Types is
       pragma Assert (not Is_Nonnative_Type (TE));
       return Get_Type_Size_In_Bits (Create_Type (TE));
    end Get_Type_Size_In_Bits;
+
+   ---------------------------
+   -- Get_Type_Size_In_Bits --
+   ---------------------------
+
+   function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value is
+     (Get_Type_Size_In_Bits (Full_Etype (V.Typ)));
 
    ------------------------
    -- Ultimate_Base_Type --
@@ -1375,6 +1384,58 @@ package body GNATLLVM.Types is
    -----------------
 
    function Create_Type (TE : Entity_Id) return Type_T is
+      GT : GL_Type := Get_GL_Type (TE);
+
+   begin
+      --  If we haven't already made a GL_Type for this type, make one now
+
+      if No (GT) then
+         GT := Create_GL_Type (TE);
+         Set_GL_Type (TE, GT);
+
+         --  Back-annotate sizes of non-scalar types if there isn't one.
+         --  ??? Don't do anything for access subprogram since this will cause
+         --  warnings for UC's in g-thread and g-spipat.
+
+         if not Is_Access_Subprogram_Type (TE)
+           and then not Is_Scalar_Type (TE)
+         then
+            if Unknown_Esize (TE) then
+               Set_Esize   (TE, Annotated_Object_Size (TE));
+            end if;
+            if Unknown_RM_Size (TE) then
+               Set_RM_Size (TE, Annotated_Value
+                              (BA_Mul (BA_Type_Size (TE, No_Padding => True),
+                                       BA_Const (Uint_Bits_Per_Unit))));
+            end if;
+         end if;
+
+         Validate_And_Set_Alignment
+           (TE, Alignment (TE),
+            Int (ULL'(Get_Type_Alignment (TE, Use_Specified => False))));
+         if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
+           and then Present (Original_Array_Type (TE))
+         then
+            Validate_And_Set_Alignment (Original_Array_Type (TE),
+                                        Alignment (TE),
+                                        Int (ULL'(Get_Type_Alignment (TE))));
+         end if;
+
+      --  If we've previously made a dummy type, this is our chance to
+      --  fix it.
+
+      elsif Is_Dummy_Type (GT) then
+         Update_GL_Type (GT);
+      end if;
+
+      return Type_Of (GT);
+   end Create_Type;
+
+   -------------------------
+   -- Create_Primary_Type --
+   -------------------------
+
+   function Create_Primary_Type (TE : Entity_Id) return Type_T is
       T    : Type_T := Get_Type (TE);
       TBAA : Metadata_T;
 
@@ -1403,6 +1464,9 @@ package body GNATLLVM.Types is
       end if;
 
       case Ekind (TE) is
+         when E_Void =>
+            T := Void_Type;
+
          when Discrete_Or_Fixed_Point_Kind =>
             T := Create_Discrete_Type (TE);
 
@@ -1451,36 +1515,9 @@ package body GNATLLVM.Types is
          Discard (Create_Array_Type (TE, For_Orig => True));
       end if;
 
-      --  Back-annotate sizes of non-scalar types if there isn't one.
-      --  ??? Don't do anything for access subprogram since this will cause
-      --  warnings for UC's in g-thread and g-spipat.
-
-      if not Is_Access_Subprogram_Type (TE)
-        and then not Is_Scalar_Type (TE)
-      then
-         if Unknown_Esize (TE) then
-            Set_Esize   (TE, Annotated_Object_Size (TE));
-         end if;
-         if Unknown_RM_Size (TE) then
-            Set_RM_Size (TE, Annotated_Value
-                           (BA_Mul (BA_Type_Size (TE, No_Padding => True),
-                                    BA_Const (Uint_Bits_Per_Unit))));
-         end if;
-      end if;
-
-      Validate_And_Set_Alignment
-        (TE, Alignment (TE),
-         Int (ULL'(Get_Type_Alignment (TE, Use_Specified => False))));
-      if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
-        and then Present (Original_Array_Type (TE))
-      then
-         Validate_And_Set_Alignment (Original_Array_Type (TE), Alignment (TE),
-                                     Int (ULL'(Get_Type_Alignment (TE))));
-      end if;
-
       Set_Is_Being_Elaborated (TE, False);
       return T;
-   end Create_Type;
+   end Create_Primary_Type;
 
    --------------------------------
    -- Validate_And_Set_Alignment --

@@ -21,7 +21,7 @@ with Stand; use Stand;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is
 
@@ -279,9 +279,20 @@ package GNATLLVM.GLValue is
    function Is_Data (R : GL_Relationship)                 return Boolean is
      (R in Data | Boolean_Data | Bounds_And_Data);
 
+   function Relationship_For_Ref (GT : GL_Type) return GL_Relationship
+     with Pre => Present (GT);
+   --  Return the relationship to use for a reference to GT
+
    function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship
      with Pre => Is_Type (TE);
    --  Return the relationship to use for a reference to TE
+
+   function Relationship_For_Access_Type (GT : GL_Type) return GL_Relationship
+     with Pre => Present (GT);
+   --  Given an access type, return the Relationship that a value of this
+   --  type would have with its Designated_Type.  Similar to
+   --  Relationship_For_Ref on the Designated_Type of GT, but takes into
+   --  account anything special about TE, such as its size.
 
    function Relationship_For_Access_Type
      (TE : Entity_Id) return GL_Relationship
@@ -298,6 +309,11 @@ package GNATLLVM.GLValue is
    --  also allocate space for bounds in some situations.
 
    function Type_For_Relationship
+     (GT : GL_Type; R : GL_Relationship) return Type_T
+     with Pre => Present (GT), Post => Present (Type_For_Relationship'Result);
+   --  Return the LLVM type corresponding to a value of relationship R to GT
+
+   function Type_For_Relationship
      (TE : Entity_Id; R : GL_Relationship) return Type_T
      with Pre => Is_Type (TE), Post => Present (Type_For_Relationship'Result);
    --  Return the LLVM type corresponding to a value of relationship R to TE
@@ -306,7 +322,7 @@ package GNATLLVM.GLValue is
       Value                : Value_T;
       --  The LLVM value that was generated
 
-      Typ                  : Entity_Id;
+      Typ                  : GL_Type;
       --  The GNAT type of this value
 
       Relationship         : GL_Relationship;
@@ -333,7 +349,7 @@ package GNATLLVM.GLValue is
    procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
                                                      Access_GL_Value_Array);
 
-   No_GL_Value : constant GL_Value := (No_Value_T, Empty, Data, False);
+   No_GL_Value : constant GL_Value := (No_Value_T, No_GL_Type, Data, False);
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
@@ -344,10 +360,15 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Present (LLVM_Value'Result);
    --  Return the LLVM value in the GL_Value
 
-   function Related_Type (V : GL_Value) return Entity_Id is
+   function Related_Type (V : GL_Value) return GL_Type is
      (V.Typ)
+     with Pre => Present (V), Post => Present (Related_Type'Result);
+   --  Return the GL_Type to which V is related, irrespective of the
+   --  relationship.
+
+   function Related_Type (V : GL_Value) return Entity_Id
      with Pre => Present (V), Post => Is_Type_Or_Void (Related_Type'Result);
-   --  Return the type to which V is related, irrespective of the
+   --  Return the GNAT type to which V is related, irrespective of the
    --  relationship.
 
    function Relationship (V : GL_Value) return GL_Relationship is
@@ -401,35 +422,56 @@ package GNATLLVM.GLValue is
 
    function G
      (V                    : Value_T;
-      TE                   : Entity_Id;
+      GT                   : GL_Type;
       Relationship         : GL_Relationship := Data;
       Is_Pristine          : Boolean := False) return GL_Value is
-     ((V, TE, Relationship, Is_Pristine))
+     ((V, GT, Relationship, Is_Pristine))
+     with Pre => Present (V) and then Present (GT);
+   --  Raw constructor that allow full specification of all fields
+
+   function G
+     (V                    : Value_T;
+      TE                   : Entity_Id;
+      Relationship         : GL_Relationship := Data;
+      Is_Pristine          : Boolean := False) return GL_Value
      with Pre => Present (V) and then Is_Type_Or_Void (TE);
    --  Raw constructor that allow full specification of all fields
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
-     (G (V, Related_Type (GV), Relationship (GV), Is_Pristine (GV)))
+     (G (V, GL_Type'(Related_Type (GV)), Relationship (GV), Is_Pristine (GV)))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing
    --  any typing information, so we just copy it from an existing value.
 
-   function G_Is (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), TE, Relationship (V), Is_Pristine (V)))
+   function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
+     (G (LLVM_Value (V), GT, Relationship (V), Is_Pristine (V)))
+     with Pre  => Present (V) and then Present (GT),
+          Post => Present (G_Is'Result);
+   --  Constructor for case where we want to show that V has a different type
+
+   function G_Is (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), Related_Type (T), Relationship (V), Is_Pristine (V)))
+     (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (V),
+         Is_Pristine (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
 
    function G_Is_Relationship
-     (V : GL_Value; TE : Entity_Id; R : GL_Relationship) return GL_Value
+     (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (G (LLVM_Value (V), TE, R, Is_Pristine (V)))
+     (G (LLVM_Value (V), GT, R, Is_Pristine (V)))
+     with Pre  => Present (V) and then Present (GT),
+          Post => Present (G_Is_Relationship'Result);
+   --  Constructor for case where we want to show that V has a different type
+   --  and relationship.
+
+   function G_Is_Relationship
+     (V : GL_Value; TE : Entity_Id; R : GL_Relationship) return GL_Value
      with Pre  => Present (V) and then Is_Type_Or_Void (TE),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -438,14 +480,15 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (G (LLVM_Value (V), Related_Type (T), R, Is_Pristine (V)))
+     (G (LLVM_Value (V), GL_Type'(Related_Type (T)), R, Is_Pristine (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
    --  and relationship.
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), Related_Type (T), Relationship (T), Is_Pristine (V)))
+      (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (T),
+          Is_Pristine (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -453,17 +496,26 @@ package GNATLLVM.GLValue is
 
    function G_Ref
      (V           : Value_T;
-      TE          : Entity_Id;
+      GT          : GL_Type;
       Is_Pristine : Boolean := False) return GL_Value
    is
-     (G (V, TE, Relationship_For_Ref (TE), Is_Pristine))
+     (G (V, GT, Relationship_For_Ref (GT), Is_Pristine))
+     with Pre  => Present (V) and then Present (GT),
+          Post => Is_Reference (G_Ref'Result);
+   --  Constructor for case where we create a value that's a pointer
+   --  to type GT.
+
+   function G_Ref
+     (V           : Value_T;
+      TE          : Entity_Id;
+      Is_Pristine : Boolean := False) return GL_Value
      with Pre  => Present (V) and then Is_Type (TE),
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
    --  to type TE.
 
    function Not_Pristine (V : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), Related_Type (V), Relationship (V), False))
+     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V), False))
      with Pre => Present (V), Post => not Is_Pristine (Not_Pristine'Result);
    --  Make a copy of V with the Is_Pristine flag cleared
 
@@ -777,7 +829,7 @@ package GNATLLVM.GLValue is
 
    function Get_Undef_Fn_Ret (V : GL_Value) return GL_Value is
      (G (Get_Undef (Get_Return_Type (Get_Element_Type (Type_Of (V)))),
-         Related_Type (V), Unknown, Is_Pristine => True))
+         GL_Type'(Related_Type (V)), Unknown, Is_Pristine => True))
      with Pre => Is_A_Function (V), Post => Is_Undef (Get_Undef_Fn_Ret'Result);
 
    function Const_Null (TE : Entity_Id) return GL_Value

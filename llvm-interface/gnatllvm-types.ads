@@ -91,6 +91,12 @@ package GNATLLVM.Types is
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it first if necessary.
 
+   function Create_Primary_Type (TE : Entity_Id) return Type_T
+     with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
+          Post => Present (Create_Primary_Type'Result);
+   --  Given a GNAT type TE, return the corresponding LLVM type, building
+   --  it first if necessary.
+
    procedure Copy_Annotations (In_TE, Out_TE : Entity_Id)
      with Pre => Is_Type (In_TE) and then Is_Type (Out_TE)
                  and then In_TE = Get_Fullest_View (Out_TE);
@@ -109,7 +115,7 @@ package GNATLLVM.Types is
    --  Make a type to be used as a dummy type for access type TE
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
 
    procedure Bounds_From_Type (TE : Entity_Id; Low, High : out GL_Value)
      with Pre  => Ekind (TE) in Discrete_Kind,
@@ -170,12 +176,12 @@ package GNATLLVM.Types is
      (TE : Entity_Id; For_Orig : Boolean := False) return Entity_Id
    is
      (Get_Fullest_View (Implementation_Base_Type (TE), not For_Orig))
-     with Pre  => Is_Type (TE),
+     with Pre  => Is_Type_Or_Void (TE),
           Post => Present (Full_Base_Type'Result);
 
    function Is_Full_Base_Type (TE : Entity_Id) return Boolean is
      (Full_Base_Type (TE) = TE)
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
    --  True when TE is its own base type.  Similar, but not identical to
    --  the front-end function Is_Base_Type, which just tests the Ekind.
 
@@ -380,8 +386,7 @@ package GNATLLVM.Types is
           Post => Present (Get_Type_Size_In_Bits'Result);
    --  Likewise, but convert from a GNAT type
 
-   function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value is
-     (Get_Type_Size_In_Bits (V.Typ))
+   function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value
      with Pre  => Present (V),
           Post => Present (Get_Type_Size_In_Bits'Result);
    --  Variant of above to get type from a GL_Value

@@ -84,6 +84,11 @@ package GNATLLVM.Environment is
       --  be an opaque type and we get the information from other fields of
       --  this record.
 
+      GLType                : GL_Type;
+      --  The head of the GL_Type chain for this type.  The first one is
+      --  the natural representation of the type and others, if any, are
+      --  the type with various representations (size and alignment) applied.
+
       TBAA                  : Metadata_T;
       --  An LLVM TBAA Metadata node corresponding to the type.  Set only
       --  For types that are sufficiently primitive.
@@ -148,19 +153,22 @@ package GNATLLVM.Environment is
    --  The mapping between a GNAT tree object and the corresponding LLVM data
 
    function Get_Type            (TE : Entity_Id) return Type_T
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
+
+   function Get_GL_Type         (TE : Entity_Id) return GL_Type
+     with Pre => Is_Type_Or_Void (TE);
 
    function Is_Nonnative_Type   (TE : Entity_Id) return Boolean
      with Pre => Is_Type (TE);
 
    function Is_Being_Elaborated (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
 
    function Is_Dummy_Type       (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
 
    function Get_TBAA            (TE : Entity_Id) return Metadata_T
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
 
    function Get_Value           (VE : Entity_Id) return GL_Value
      with Pre => Present (VE);
@@ -184,25 +192,33 @@ package GNATLLVM.Environment is
      with Pre => Present (VE);
 
    procedure Set_Type            (TE : Entity_Id; TL : Type_T)
-     with Pre  => Is_Type (TE)
+     with Pre  => Is_Type_Or_Void (TE)
                   and then (Present (TL) or else Present (Get_Type (TE)))
                   and then (No (Get_Type (TE)) or else Get_Type (TE) = TL
-                              or else TL = No_Type_T
+                              or else No (TL)
                               or else Is_Access_Type (TE)),
           Post => Get_Type (TE) = TL;
+
+   procedure Set_GL_Type         (TE : Entity_Id; GT : GL_Type)
+     with Pre  => Is_Type_Or_Void (TE)
+                  and then (Present (GT) or else Present (Get_GL_Type (TE)))
+                  and then (No (Get_GL_Type (TE)) or else Get_GL_Type (TE) = GT
+                              or else No (GT)
+                              or else Is_Access_Type (TE)),
+          Post => Get_GL_Type (TE) = GT;
 
    procedure Set_Is_Nonnative_Type (TE : Entity_Id; B : Boolean := True)
      with Pre  => Is_Type (TE) and then Present (Get_Type (TE)),
           Post => Is_Nonnative_Type (TE) = B;
 
    procedure Set_Is_Being_Elaborated (TE : Entity_Id; B : Boolean)
-     with Pre  => Is_Type (TE), Post => Is_Being_Elaborated (TE) = B;
+     with Pre  => Is_Type_Or_Void (TE), Post => Is_Being_Elaborated (TE) = B;
 
    procedure Set_Is_Dummy_Type   (TE : Entity_Id; B : Boolean)
-     with Pre  => Is_Type (TE), Post => Is_Dummy_Type (TE) = B;
+     with Pre  => Is_Type_Or_Void (TE), Post => Is_Dummy_Type (TE) = B;
 
    procedure Set_TBAA            (TE : Entity_Id; TBAA : Metadata_T)
-     with Pre  => Is_Type (TE) and then Present (TBAA)
+     with Pre  => Is_Type_Or_Void (TE) and then Present (TBAA)
                   and then Present (Get_Type (TE)),
           Post => Get_TBAA (TE) = TBAA;
 
@@ -249,6 +265,7 @@ package GNATLLVM.Environment is
           Post => Get_Label_Info (VE) = LI;
 
    pragma Inline (Get_Type);
+   pragma Inline (Get_GL_Type);
    pragma Inline (Is_Nonnative_Type);
    pragma Inline (Is_Being_Elaborated);
    pragma Inline (Is_Dummy_Type);
@@ -260,6 +277,7 @@ package GNATLLVM.Environment is
    pragma Inline (Get_Record_Info);
    pragma Inline (Get_Label_Info);
    pragma Inline (Set_Type);
+   pragma Inline (Set_GL_Type);
    pragma Inline (Set_Is_Nonnative_Type);
    pragma Inline (Set_Is_Being_Elaborated);
    pragma Inline (Set_Is_Dummy_Type);

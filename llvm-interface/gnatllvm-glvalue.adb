@@ -22,6 +22,7 @@ with Get_Targ; use Get_Targ;
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -74,7 +75,8 @@ package body GNATLLVM.GLValue is
    ----------------------------
 
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean is
-      TE   : constant Entity_Id   := V.Typ;
+      TE   : constant Entity_Id   :=
+        (if V = No_GL_Value then Empty else Full_Etype (V.Typ));
       Val  : constant Value_T     := V.Value;
       Kind : constant Type_Kind_T :=
         (if No (Val) then Void_Type_Kind else Get_Type_Kind (Type_Of (Val)));
@@ -154,12 +156,58 @@ package body GNATLLVM.GLValue is
       end case;
    end GL_Value_Is_Valid_Int;
 
+   ------------------
+   -- Related_Type --
+   ------------------
+
+   function Related_Type (V : GL_Value) return Entity_Id is
+     (Full_Etype (GL_Type'(Related_Type (V))));
+
+   -------
+   -- G --
+   -------
+
+   function G
+     (V                    : Value_T;
+      TE                   : Entity_Id;
+      Relationship         : GL_Relationship := Data;
+      Is_Pristine          : Boolean := False) return GL_Value is
+     (G (V, Create_GL_Type (TE), Relationship, Is_Pristine));
+
+   ----------
+   -- G_Is --
+   ----------
+
+   function G_Is (V : GL_Value; TE : Entity_Id) return GL_Value is
+     (G (LLVM_Value (V), Create_GL_Type (TE), Relationship (V),
+         Is_Pristine (V)));
+
+   ------------------------
+   --  G_Is_Relationship --
+   ------------------------
+
+   function G_Is_Relationship
+     (V : GL_Value; TE : Entity_Id; R : GL_Relationship) return GL_Value
+   is
+     (G (LLVM_Value (V), Create_GL_Type (TE), R, Is_Pristine (V)));
+
+   -----------
+   -- G_Ref --
+   -----------
+
+   function G_Ref
+     (V           : Value_T;
+      TE          : Entity_Id;
+      Is_Pristine : Boolean := False) return GL_Value
+   is
+     (G (V, Create_GL_Type (TE), Relationship_For_Ref (TE), Is_Pristine));
+
    ----------------------------
    -- Is_Unconstrained_Array --
    ----------------------------
 
    function Is_Unconstrained_Array (V : GL_Value) return Boolean is
-     (Is_Unconstrained_Array (Related_Type (V)));
+     (Is_Unconstrained_Array (GL_Type'(Related_Type (V))));
 
    -----------------------------------
    -- Is_Access_Unconstrained_Array --
@@ -175,35 +223,35 @@ package body GNATLLVM.GLValue is
    -----------------------------
 
    function Is_Unconstrained_Record (V : GL_Value) return Boolean is
-     (Is_Unconstrained_Record (Related_Type (V)));
+     (Is_Unconstrained_Record (GL_Type'(Related_Type (V))));
 
    ---------------------------
    -- Is_Unconstrained_Type --
    ---------------------------
 
    function Is_Unconstrained_Type (V : GL_Value) return Boolean is
-     (Is_Unconstrained_Type (Related_Type (V)));
+     (Is_Unconstrained_Type (GL_Type'(Related_Type (V))));
 
    -----------------------------------
    -- Is_Constr_Subt_For_UN_Aliased --
    -----------------------------------
 
    function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean is
-     (Is_Constr_Subt_For_UN_Aliased (Related_Type (V)));
+     (Is_Constr_Subt_For_UN_Aliased (GL_Type'(Related_Type (V))));
 
    -----------------------------------
    -- Is_Bit_Packed_Array_Impl_Type --
    -----------------------------------
 
    function Is_Bit_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
-     (Is_Bit_Packed_Array_Impl_Type (Related_Type (V)));
+     (Is_Bit_Packed_Array_Impl_Type (GL_Type'(Related_Type (V))));
 
    -----------------------
    -- Type_Needs_Bounds --
    -----------------------
 
    function Type_Needs_Bounds (V : GL_Value) return Boolean is
-     (Type_Needs_Bounds (Related_Type (V)));
+     (Type_Needs_Bounds (GL_Type'(Related_Type (V))));
 
    ---------------------
    -- Is_Dynamic_Size --
@@ -224,7 +272,7 @@ package body GNATLLVM.GLValue is
    ----------------------
 
    function Is_Loadable_Type (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Loadable_Type (Related_Type (V)));
+     (Is_Data (V) and then Is_Loadable_Type (GL_Type'(Related_Type (V))));
 
    -------------
    -- Discard --
@@ -235,6 +283,13 @@ package body GNATLLVM.GLValue is
    begin
       null;
    end Discard;
+
+   ---------------------------
+   --  Relationship_For_Ref --
+   ---------------------------
+
+   function Relationship_For_Ref (GT : GL_Type) return GL_Relationship is
+     (Relationship_For_Ref (Full_Etype (GT)));
 
    ---------------------------
    --  Relationship_For_Ref --
@@ -268,6 +323,14 @@ package body GNATLLVM.GLValue is
          return Reference;
       end if;
    end Relationship_For_Ref;
+
+   ----------------------------------
+   -- Relationship_For_Access_Type --
+   ----------------------------------
+
+   function Relationship_For_Access_Type (GT : GL_Type) return GL_Relationship
+   is
+     (Relationship_For_Access_Type (Full_Etype (GT)));
 
    ----------------------------------
    -- Relationship_For_Access_Type --
@@ -333,6 +396,15 @@ package body GNATLLVM.GLValue is
       end if;
 
    end Relationship_For_Alloc;
+
+   ---------------------------
+   -- Type_For_Relationship --
+   ---------------------------
+
+   function Type_For_Relationship
+     (GT : GL_Type; R : GL_Relationship) return Type_T
+   is
+     (Type_For_Relationship (Full_Etype (GT), R));
 
    ---------------------------
    -- Type_For_Relationship --
@@ -980,9 +1052,9 @@ package body GNATLLVM.GLValue is
 
    function Pred_FP (V : GL_Value) return GL_Value is
    begin
-      return G (Pred_FP (Context, Create_Type (Related_Type (V)),
+      return G (Pred_FP (Context, Create_Type (Entity_Id'(Related_Type (V))),
                          LLVM_Value (V)),
-                Related_Type (V));
+                GL_Type'(Related_Type (V)));
    end Pred_FP;
 
    ----------------
@@ -1093,8 +1165,9 @@ package body GNATLLVM.GLValue is
       Name : String := "") return GL_Value
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        Type_For_Relationship (Related_Type (T), R), Name),
-          Related_Type (T), R, Is_Pristine (V)));
+                        Type_For_Relationship (GL_Type'(Related_Type (T)), R),
+                        Name),
+          GL_Type'(Related_Type (T)), R, Is_Pristine (V)));
 
    -----------
    -- Trunc --
@@ -1362,7 +1435,7 @@ package body GNATLLVM.GLValue is
          --  ??? At some point, we need to deal with TBAA or similar for these.
 
          return G (Load (IR_Builder, LLVM_Value (Ptr), Name),
-                   Related_Type (Ptr), New_Relationship);
+                   GL_Type'(Related_Type (Ptr)), New_Relationship);
       end if;
    end Load;
 

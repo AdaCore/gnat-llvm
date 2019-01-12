@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -23,7 +23,7 @@ package body GNATLLVM.Environment is
    type Access_LLVM_Info is access all LLVM_Info;
 
    function Get_LLVM_Info         (TE : Entity_Id) return Access_LLVM_Info
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
    function Get_LLVM_Info_For_Set (E : Entity_Id)  return Access_LLVM_Info;
    --  Helpers for below to either create type and then return entry or
    --  or to allocate LLVM_Info_Table entry if needed (for set).  In either
@@ -37,6 +37,8 @@ package body GNATLLVM.Environment is
 
    function Raw_Get_Type   (LI : Access_LLVM_Info) return Type_T is
      (LI.Typ);
+   function Raw_Get_GLT    (LI : Access_LLVM_Info) return GL_Type is
+     (LI.GLType);
    function Raw_Get_Value  (LI : Access_LLVM_Info) return GL_Value is
      (LI.Value);
    function Raw_Get_SO     (LI : Access_LLVM_Info) return Dynamic_SO_Ref is
@@ -63,6 +65,7 @@ package body GNATLLVM.Environment is
    --  Define procedures to set values into LLVM_Info
 
    procedure Raw_Set_Type   (LI : Access_LLVM_Info; Val : Type_T);
+   procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type);
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value);
    procedure Raw_Set_SO     (LI : Access_LLVM_Info; Val : Dynamic_SO_Ref);
    procedure Raw_Set_Elab   (LI : Access_LLVM_Info; Val : Boolean);
@@ -76,6 +79,7 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id);
 
    pragma Inline (Raw_Set_Type);
+   pragma Inline (Raw_Set_GLT);
    pragma Inline (Raw_Set_Value);
    pragma Inline (Raw_Set_SO);
    pragma Inline (Raw_Set_Elab);
@@ -90,6 +94,9 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_Type   (LI : Access_LLVM_Info; Val : Type_T) is
    begin LI.Typ := Val; end Raw_Set_Type;
+
+   procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type) is
+   begin LI.GLType := Val; end Raw_Set_GLT;
 
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value) is
    begin LI.Value := Val; end Raw_Set_Value;
@@ -148,6 +155,7 @@ package body GNATLLVM.Environment is
       if Id = Empty_LLVM_Info_Id then
          LLVM_Info_Table.Append ((Value               => No_GL_Value,
                                   Typ                 => No_Type_T,
+                                  GLType              => No_GL_Type,
                                   TBAA                => No_Metadata_T,
                                   Is_Nonnative_Type   => False,
                                   Is_Being_Elaborated => False,
@@ -249,6 +257,8 @@ package body GNATLLVM.Environment is
 
    package Env_Type   is new Pkg_None (Type_T, No_Type_T,
                                        Raw_Get_Type, Raw_Set_Type);
+   package Env_GLT    is new Pkg_None (GL_Type, No_GL_Type,
+                                       Raw_Get_GLT, Raw_Set_GLT);
    package Env_Value  is new Pkg_None (GL_Value, No_GL_Value,
                                        Raw_Get_Value, Raw_Set_Value);
    package Env_SO     is new Pkg_None (Dynamic_SO_Ref, No_Uint,
@@ -277,6 +287,11 @@ package body GNATLLVM.Environment is
      renames Env_Type.Get;
    procedure Set_Type                (TE : Entity_Id; TL : Type_T)
      renames Env_Type.Set;
+
+   function  Get_GL_Type             (TE : Entity_Id) return GL_Type
+     renames Env_GLT.Get;
+   procedure Set_GL_Type             (TE : Entity_Id; GT : GL_Type)
+     renames Env_GLT.Set;
 
    function  Get_Value               (VE : Entity_Id) return GL_Value
      renames Env_Value.Get;

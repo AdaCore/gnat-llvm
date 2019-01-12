@@ -117,6 +117,17 @@ package GNATLLVM is
      (Ekind (E) = E_Void or else Is_Type (E));
    --  We can have Etype's that are E_Void for E_Procedure
 
+   --  We have to define GL_Type here so it can be used in GNATLLVM.GLValue,
+   --  which GNATLLVM.GLType must reference.
+
+   GL_Type_Low_Bound  : constant := 700_000_000;
+   GL_Type_High_Bound : constant := 799_999_999;
+   type GL_Type is range GL_Type_Low_Bound .. GL_Type_High_Bound;
+   No_GL_Type         : constant GL_Type := GL_Type_Low_Bound;
+
+   function No      (GT : GL_Type) return Boolean is (GT =  No_GL_Type);
+   function Present (GT : GL_Type) return Boolean is (GT /= No_GL_Type);
+
    type Word_Array is array (Nat range <>) of aliased stdint_h.uint64_t;
    --  Array of words for LLVM construction functions
 

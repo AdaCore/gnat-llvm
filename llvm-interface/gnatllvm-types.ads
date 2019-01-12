@@ -191,7 +191,7 @@ package GNATLLVM.Types is
    --  go up both base and parent types.
 
    function Full_Etype (N : Node_Id) return Entity_Id is
-     (if Ekind (Etype (N)) = E_Void then Etype (N)
+     (if   Ekind (Etype (N)) = E_Void then Etype (N)
       else Get_Fullest_View (Etype (N)))
      with Pre => Present (N), Post => Is_Type_Or_Void (Full_Etype'Result);
 

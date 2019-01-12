@@ -61,9 +61,11 @@ compare=cmp --ignore-initial=16
 all: setup build
 	$(MAKE) quicklib
 
-LOCAL_RT_FILES=s-rident.ads g-dynhta.ads g-dynhta.adb \
-  g-sets.ads g-sets.adb \
-  g-graphs.ads g-graphs.adb
+LOCAL_RT_FILES=s-rident.ads gnat.ads g-dynhta.ads g-dynhta.adb \
+  g-sets.ads g-sets.adb g-lists.ads g-lists.adb g-sets.ads \
+  g-graphs.ads g-graphs.adb g-htable.adb g-byorma.adb g-spchge.adb \
+  g-u3spch.adb g-comlin.ads g-comlin.adb g-dirope.adb g-os_lib.ads \
+  g-os_lib.adb g-regexp.ads g-string.ads g-io.adb g-casuti.adb g-hesora.adb
 
 setup:
 	$(MKDIR) obj obj-tools bin

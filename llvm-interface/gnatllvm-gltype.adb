@@ -273,8 +273,8 @@ package body GNATLLVM.GLType is
       GTI : constant GL_Type_Info := GL_Type_Table.Table (GT);
 
    begin
-      --  If we know the size of this alternative, use it.  Otherwise, get
-      --  the alignment of the GNAT type.
+      --  If we know the alignment of this alternative, use it.  Otherwise,
+      --  get the alignment of the GNAT type.
 
       if Present (GTI.Alignment) then
          return GTI.Alignment;

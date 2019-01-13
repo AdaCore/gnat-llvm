@@ -634,6 +634,13 @@ package body GNATLLVM.Variables is
          return Empty;
       else
          CV := Constant_Value (E);
+
+         --  ??? workaround for S112-007
+
+         if Present (CV) and then No (Etype (CV)) then
+            return Empty;
+         end if;
+
          return (if   Present (CV) and then Is_No_Elab_Needed (CV)
                  then CV else Empty);
       end if;
@@ -1238,7 +1245,7 @@ package body GNATLLVM.Variables is
       --  True if we aren't to initialize this object (ignore expression)
 
       Expr         : Node_Id            :=
-        (if No_Init then Empty else Expression (Parent (Full_Ident)));
+        (if No_Init then Empty else Expression (N));
       --  Initializing expression, if Present and we are to use one
 
       TE           : constant Entity_Id :=

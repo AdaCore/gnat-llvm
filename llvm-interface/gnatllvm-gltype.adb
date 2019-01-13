@@ -39,6 +39,12 @@ package body GNATLLVM.GLType is
       --  the GL_Type.  This should only be used when the primitive type is
       --  not a native LLVM type.
 
+      Max_Size,
+      --  We're denoting that the maximum size of the type is used, but
+      --  that maximum size is dynamic, so the LLVM type is actually that
+      --  of the primitive type.  This also implies that the LLVM type is
+      --  non-native.
+
       Aligning);
      --  This is the same LLVM type as for the primitive type, but recorded
      --  to indicate that we need to align it differently.  This should only
@@ -143,6 +149,9 @@ package body GNATLLVM.GLType is
               and then Get_Type_Kind (GTI.LLVM_Type) = Array_Type_Kind;
          when Aligning =>
             return Is_Nonnative_Type (GTI.GNAT_Type);
+         when Max_Size =>
+            return Is_Nonnative_Type (GTI.GNAT_Type)
+              and then Is_Unconstrained_Record (GTI.GNAT_Type);
       end case;
 
    end GL_Type_Info_Is_Valid_Int;
@@ -369,8 +378,25 @@ package body GNATLLVM.GLType is
       --  has a native representation or not.
 
       return GTI.Kind not in Padded | Byte_Array
+
         and then Is_Nonnative_Type (GTI.GNAT_Type);
    end Is_Nonnative_Type;
+
+   ---------------------
+   -- Is_Dynamic_Size --
+   ---------------------
+
+   function Is_Dynamic_Size (GT : GL_Type) return Boolean is
+      GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
+
+   begin
+      --  If we've built an LLVM type to do padding, then that's not of
+      --  dynamic size.  Otherwise, we have to look at whether the
+      --  underlying type has a native representation or not.
+
+      return GTI.Kind not in Padded | Byte_Array
+        and then Is_Dynamic_Size (GTI.GNAT_Type, Max_Size => GTI.Max_Size);
+   end Is_Dynamic_Size;
 
 begin
    --  Make a dummy entry in the table, so the "No" entry is never used.

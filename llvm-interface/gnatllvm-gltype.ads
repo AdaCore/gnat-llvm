@@ -40,11 +40,16 @@ package GNATLLVM.GLType is
      (TE       : Entity_Id;
       Size     : Uint    := No_Uint;
       Align    : Uint    := No_Uint;
+      For_Type : Boolean := False;
       Max_Size : Boolean := False;
       Biased   : Boolean := False) return GL_Type
      with Pre => Is_Type_Or_Void (TE), Post => Present (Create_GL_Type'Result);
-   --  Create a GL_Type with the specified parameters or return one with
-   --  those parameters if already created.
+   --  Return a GL_Type (creating one if necessary) with the specified
+   --  parameters.  For_Type is True if we're doing this for a type; in that
+   --  case the size needs to be rounded to the alignment.  Max_Size is True
+   --  if we're computing the maximum size of an unconstrained record and
+   --  Biased is True if we're using a biased representation to store this
+   --  integral value.
 
    procedure Update_GL_Type (GT : GL_Type)
      with Pre => Is_Dummy_Type (GT);

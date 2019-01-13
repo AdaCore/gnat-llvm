@@ -20,6 +20,7 @@ with Table;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.Records;     use GNATLLVM.Records;
 
 package body GNATLLVM.GLType is
 
@@ -180,28 +181,86 @@ package body GNATLLVM.GLType is
      (TE       : Entity_Id;
       Size     : Uint    := No_Uint;
       Align    : Uint    := No_Uint;
+      For_Type : Boolean := False;
       Max_Size : Boolean := False;
       Biased   : Boolean := False) return GL_Type
    is
-      pragma Unreferenced (Biased);
-      Size_V  : constant GL_Value :=
+      Size_V     : GL_Value :=
         (if   Size = No_Uint then No_GL_Value
          else Size_Const_Int ((Size + (Uint_Bits_Per_Unit - 1)) /
                                 Uint_Bits_Per_Unit));
-      Align_V : constant GL_Value :=
+      Align_V    :  GL_Value :=
         (if Align = No_Uint then No_GL_Value else Size_Const_Int (Align));
-      GT      : GL_Type           := Get_GL_Type (TE);
-      Last    : GL_Type           := GT;
+      GT         : GL_Type   := Get_GL_Type (TE);
+      Last       : GL_Type   := GT;
+      Prim       : GL_Type   := GT;
+      Prim_T     : Type_T    := No_Type_T;
+      pragma Unreferenced (Biased, Last);
 
    begin
-      --  See if we already have made a matching GL_Type
+      --  If we haven't made any GL_Type entries for this type, create the
+      --  entry for the primitive type.
+
+      if No (GT) then
+         GL_Type_Table.Append ((GNAT_Type => TE,
+                                LLVM_Type => Create_Primitive_Type (TE),
+                                Next      => No_GL_Type,
+                                Size      => No_GL_Value,
+                                Alignment => No_GL_Value,
+                                Bias      => No_GL_Value,
+                                Max_Size  => False,
+                                Kind      => Primitive,
+                                Default   => True));
+         GT   := GL_Type_Table.Last;
+         Last := GT;
+         Prim := GT;
+         Set_GL_Type (TE, GT);
+      else
+         --  Otherwise, find the primitive GL_Type
+
+         while Present (Prim) loop
+            exit when GL_Type_Table.Table (Prim).Kind = Primitive;
+            Next (Prim);
+         end loop;
+      end if;
+
+      --  If what we're looking for is just the primitive type, we're done.
+      --  The test below will do the same thing as we do, but we do this test
+      --  both for efficienty and to avoid referencing Size_Type while we're
+      --  trying to make it.
+
+      if No (Size_V) and then No (Align_V) and then not Max_Size then
+         return Prim;
+      end if;
+
+      --  If we can represent TE as a native LLVM type, get that type
+      --  and use its size and alignment as the values of the size and
+      --  alignment passed to us, if none were.
+
+      if not Is_Nonnative_Type (TE) then
+         Prim_T := GL_Type_Table.Table (Prim).LLVM_Type;
+
+         if No (Size_V) then
+            Size_V := Get_Type_Size (Prim_T);
+         end if;
+         if No (Align_V) then
+            Align_V := Get_Type_Alignment (Prim_T);
+         end if;
+      end if;
+
+      --  If this is for a type (as opposed to an object) and both a size and
+      --  an alignment is specified, we need to align the size.
+
+      if For_Type and then Present (Size_V) and then Present (Align_V) then
+         Size_V := Align_To (Size_V, Size_Const_Int (Uint_1), Align_V);
+      end if;
+
+      --  See if we already made a matching GL_Type
 
       while Present (GT) loop
          declare
             GTI : constant GL_Type_Info := GL_Type_Table.Table (GT);
          begin
-            --  For now, they're equal only if everything matches
-
             if Size_V = GTI.Size and then Align_V = GTI.Alignment
               and then Max_Size = GTI.Max_Size
             then
@@ -213,24 +272,9 @@ package body GNATLLVM.GLType is
          Next (GT);
       end loop;
 
-      --  Otherwise, we have to create an entry.  ??? Ignore everything but
-      --  TE when making the LLVM type for now.
+      --  Otherwise, we have to create an entry.
 
-      GL_Type_Table.Append ((GNAT_Type => TE,
-                             LLVM_Type => Create_Primitive_Type (TE),
-                             Next      => No_GL_Type,
-                             Size      => Size_V,
-                             Alignment => Align_V,
-                             Bias      => No_GL_Value,
-                             Max_Size  => Max_Size,
-                             Kind      => Primitive,
-                             Default   => True));
-      if No (Last) then
-         Set_GL_Type (TE, GL_Type_Table.Last);
-      else
-         GL_Type_Table.Table (Last).Next := GL_Type_Table.Last;
-      end if;
-
+      pragma Assert (False);
       return GL_Type_Table.Last;
    end Create_GL_Type;
 

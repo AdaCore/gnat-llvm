@@ -396,6 +396,10 @@ package GNATLLVM.Types is
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
+   function Get_Type_Alignment (T : Type_T) return GL_Value is
+     (Size_Const_Int (Get_Type_Alignment (T)));
+   --  Return the alignment of an LLVM type, in bytes, as an LLVM constant
+
    function Is_Loadable_Type (T : Type_T) return Boolean
      with Pre => Present (T);
    --  Used for the function below

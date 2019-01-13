@@ -17,11 +17,36 @@
 
 with Table;
 
+with LLVM.Core; use LLVM.Core;
+
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+
 package body GNATLLVM.GLType is
+
+   --  A GL_Type can be of various different kinds.  We list them here.
+
+   type GT_Kind is
+     (Primitive,
+      --  This is the actual type to perform computations in
+
+      Padded,
+      --  This is a record whose first field is the primitive type and
+      --  the second is padding to make the record the proper length.  This
+      --  can only be done if the primitive type is a native LLVM type.
+
+      Byte_Array,
+      --  This is an array of bytes (i8) whose length is the desired size of
+      --  the GL_Type.  This should only be used when the primitive type is
+      --  not a native LLVM type.
+
+      Aligning);
+     --  This is the same LLVM type as for the primitive type, but recorded
+     --  to indicate that we need to align it differently.  This should only
+     --  be used when the primitive type is not a native LLVM type.
 
    --  Define the fields in the table for GL_Type's
 
-   type GL_Type_Info is record
+   type GL_Type_Info_Base is record
       GNAT_Type : Entity_Id;
       --  GNAT type
 
@@ -44,13 +69,25 @@ package body GNATLLVM.GLType is
       --  If True, this corresponds to the maxumum size of an unconstrained
       --  variant record with default discriminant values;
 
-      Primitive : Boolean;
-      --  Marks the GL_Type that corresponds to the "computational" type
+      Kind      : GT_Kind;
+      --  Says what type of alternative type this is
 
       Default   : Boolean;
       --  Marks the default GL_Type
 
    end record;
+   --  We want to put a Predicate on this, but can't, so we need to make
+   --  a subtype for that purpose.
+
+   function GL_Type_Info_Is_Valid (GTI : GL_Type_Info_Base) return Boolean;
+   --  Return whether GT is a valid GL_Type or not
+
+   subtype GL_Type_Info is GL_Type_Info_Base
+     with Predicate => GL_Type_Info_Is_Valid (GL_Type_Info);
+   --  Subtype used by everybody except validation function
+
+   function GL_Type_Info_Is_Valid_Int (GTI : GL_Type_Info_Base) return Boolean;
+   --  Internal version of GL_Value_Is_Valid
 
    package GL_Type_Table is new Table.Table
      (Table_Component_Type => GL_Type_Info,
@@ -64,6 +101,51 @@ package body GNATLLVM.GLType is
      with Pre => Present (GT);
    procedure Next (GT : in out GL_Type)
      with Pre => Present (GT);
+
+   ---------------------------
+   -- GL_Type_Info_Is_Valid --
+   ---------------------------
+
+   function GL_Type_Info_Is_Valid (GTI : GL_Type_Info_Base) return Boolean is
+      Valid : constant Boolean := GL_Type_Info_Is_Valid_Int (GTI);
+   begin
+      --  This function exists so a conditional breakpoint can be set at
+      --  the following line to see the invalid value.  Otherwise, there
+      --  seems no other reasonable way to get to see it.
+
+      return Valid;
+   end GL_Type_Info_Is_Valid;
+
+   -------------------------------
+   -- GL_Type_Info_Is_Valid_Int --
+   -------------------------------
+
+   function GL_Type_Info_Is_Valid_Int
+     (GTI : GL_Type_Info_Base) return Boolean is
+   begin
+      if No (GTI.GNAT_Type) or else No (GTI.LLVM_Type)
+        or else (Present (GTI.Size) and then not Is_A_Const_Int (GTI.Size))
+        or else (Present (GTI.Bias) and then not Is_A_Const_Int (GTI.Bias))
+        or else (Present (GTI.Alignment)
+                   and then not Is_A_Const_Int (GTI.Alignment))
+      then
+         return False;
+      end if;
+
+      case GTI.Kind is
+         when Primitive =>
+            return True;
+         when Padded =>
+            return not Is_Nonnative_Type (GTI.GNAT_Type)
+              and then Get_Type_Kind (GTI.LLVM_Type) = Struct_Type_Kind;
+         when Byte_Array =>
+            return Is_Nonnative_Type (GTI.GNAT_Type)
+              and then Get_Type_Kind (GTI.LLVM_Type) = Array_Type_Kind;
+         when Aligning =>
+            return Is_Nonnative_Type (GTI.GNAT_Type);
+      end case;
+
+   end GL_Type_Info_Is_Valid_Int;
 
    ----------
    -- Next --
@@ -132,7 +214,7 @@ package body GNATLLVM.GLType is
                              Alignment => Align_V,
                              Bias      => No_GL_Value,
                              Max_Size  => Max_Size,
-                             Primitive => True,
+                             Kind      => Primitive,
                              Default   => True));
       if No (Last) then
          Set_GL_Type (TE, GL_Type_Table.Last);
@@ -169,7 +251,7 @@ package body GNATLLVM.GLType is
       end if;
 
       while Present (GT) loop
-         exit when GL_Type_Table.Table (GT).Primitive;
+         exit when GL_Type_Table.Table (GT).Kind = Primitive;
          Next (GT);
       end loop;
 
@@ -197,22 +279,6 @@ package body GNATLLVM.GLType is
 
       return GT;
    end Default_GL_Type;
-
-   --------------------
-   -- Mark_Primitive --
-   --------------------
-
-   procedure Mark_Primitive (GT : GL_Type) is
-      All_GT : GL_Type := Get_GL_Type (Full_Etype (GT));
-
-   begin
-      --  Mark all GT's as primitive or not, depending on whether it's ours
-
-      while Present (All_GT) loop
-         GL_Type_Table.Table (All_GT).Primitive := All_GT = GT;
-         Next (All_GT);
-      end loop;
-   end Mark_Primitive;
 
    ------------------
    -- Mark_Default --
@@ -289,6 +355,22 @@ package body GNATLLVM.GLType is
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean is
      (Is_Dummy_Type (Full_Etype (GT)));
+
+   -----------------------
+   -- Is_Nonnative_Type --
+   -----------------------
+
+   function Is_Nonnative_Type (GT : GL_Type) return Boolean is
+      GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
+
+   begin
+      --  If we've built an LLVM type to do padding, then that's a native
+      --  type.  Otherwise, we have to look at whether the underlying type
+      --  has a native representation or not.
+
+      return GTI.Kind not in Padded | Byte_Array
+        and then Is_Nonnative_Type (GTI.GNAT_Type);
+   end Is_Nonnative_Type;
 
 begin
    --  Make a dummy entry in the table, so the "No" entry is never used.

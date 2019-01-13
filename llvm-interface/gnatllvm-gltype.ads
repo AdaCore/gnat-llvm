@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -53,13 +52,19 @@ package GNATLLVM.GLType is
 
    function Primitive_GL_Type (TE : Entity_Id) return GL_Type
      with Pre => Is_Type (TE), Post => Present (Primitive_GL_Type'Result);
+   --  Return the GT_Type for TE that corresponds to its basic computational
+   --  form.
+
    function Default_GL_Type (TE : Entity_Id) return GL_Type
      with Pre => Is_Type (TE), Post => Present (Default_GL_Type'Result);
+   --  Return the GT_TYpe for TE that's to be used as the default for
+   --  objects or components of the type.  This may or may not be the
+   --  same as what Primitive_GL_Type returns.
 
-   procedure Mark_Primitive (GT : GL_Type)
-     with Pre => Present (GT);
    procedure Mark_Default (GT : GL_Type)
      with Pre => Present (GT);
+   --  Mark GT as the type to be used as the default representation of
+   --  its corresponding GNAT type.
 
    --  Here are the access function to obtain fields from a GL_Type.
    --  Many are overloaded from the functions that obtain these fields from
@@ -104,8 +109,7 @@ package GNATLLVM.GLType is
      (Is_Dynamic_Size (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Is_Nonnative_Type (GT : GL_Type) return Boolean is
-     (Is_Nonnative_Type (Full_Etype (GT)))
+   function Is_Nonnative_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
 
    function Is_Loadable_Type (GT : GL_Type) return Boolean is

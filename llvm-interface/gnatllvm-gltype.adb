@@ -130,7 +130,7 @@ package body GNATLLVM.GLType is
    function GL_Type_Info_Is_Valid_Int
      (GTI : GL_Type_Info_Base) return Boolean is
    begin
-      if No (GTI.GNAT_Type) or else No (GTI.LLVM_Type)
+      if not Is_Type_Or_Void (GTI.GNAT_Type) or else No (GTI.LLVM_Type)
         or else (Present (GTI.Size) and then not Is_A_Const_Int (GTI.Size))
         or else (Present (GTI.Bias) and then not Is_A_Const_Int (GTI.Bias))
         or else (Present (GTI.Alignment)

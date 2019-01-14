@@ -172,14 +172,14 @@ package body GNATLLVM.GLValue is
       TE                   : Entity_Id;
       Relationship         : GL_Relationship := Data;
       Is_Pristine          : Boolean := False) return GL_Value is
-     (G (V, Create_GL_Type (TE), Relationship, Is_Pristine));
+     (G (V, Primitive_GL_Type (TE), Relationship, Is_Pristine));
 
    ----------
    -- G_Is --
    ----------
 
    function G_Is (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), Create_GL_Type (TE), Relationship (V),
+     (G (LLVM_Value (V), Primitive_GL_Type (TE), Relationship (V),
          Is_Pristine (V)));
 
    ------------------------
@@ -189,7 +189,7 @@ package body GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; TE : Entity_Id; R : GL_Relationship) return GL_Value
    is
-     (G (LLVM_Value (V), Create_GL_Type (TE), R, Is_Pristine (V)));
+     (G (LLVM_Value (V), Primitive_GL_Type (TE), R, Is_Pristine (V)));
 
    -----------
    -- G_Ref --
@@ -200,7 +200,7 @@ package body GNATLLVM.GLValue is
       TE          : Entity_Id;
       Is_Pristine : Boolean := False) return GL_Value
    is
-     (G (V, Create_GL_Type (TE), Relationship_For_Ref (TE), Is_Pristine));
+     (G (V, Primitive_GL_Type (TE), Relationship_For_Ref (TE), Is_Pristine));
 
    ----------------------------
    -- Is_Unconstrained_Array --
@@ -258,14 +258,14 @@ package body GNATLLVM.GLValue is
    ---------------------
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Dynamic_Size (Full_Etype (V)));
+     (Is_Data (V) and then Is_Dynamic_Size (GL_Type'(Related_Type (V))));
 
    -----------------------
    -- Is_Nonnative_Type --
    -----------------------
 
    function Is_Nonnative_Type (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Nonnative_Type (Full_Etype (V)));
+     (Is_Data (V) and then Is_Nonnative_Type (GL_Type'(Related_Type (V))));
 
    ----------------------
    -- Is_Loadable_Type --
@@ -363,6 +363,13 @@ package body GNATLLVM.GLValue is
       end if;
 
    end Relationship_For_Access_Type;
+
+   ----------------------------
+   -- Relationship_For_Alloc --
+   ----------------------------
+
+   function Relationship_For_Alloc (GT : GL_Type) return GL_Relationship is
+     (Relationship_For_Alloc (Full_Etype (GT)));
 
    ----------------------------
    -- Relationship_For_Alloc --
@@ -872,6 +879,29 @@ package body GNATLLVM.GLValue is
       return G (Inst, TE, R, Is_Pristine => True);
    end Alloca;
 
+   ------------
+   -- Alloca --
+   ------------
+
+   function Alloca
+     (GT        : GL_Type;
+      Def_Ident : Entity_Id := Empty;
+      Name      : String    := "") return GL_Value
+   is
+      R       :  constant GL_Relationship := Relationship_For_Alloc (GT);
+      PT      : constant Type_T           := Type_For_Relationship (GT, R);
+      T       : constant Type_T           := Get_Element_Type (PT);
+      Promote : constant Basic_Block_T    := Maybe_Promote_Alloca (T);
+      Inst    : constant Value_T          :=
+        Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
+
+   begin
+      Set_Alignment (Inst,
+                     unsigned (Get_Const_Int_Value (Get_Type_Alignment (GT))));
+      Done_Promoting_Alloca (Inst, Promote);
+      return G (Inst, GT, R, Is_Pristine => True);
+   end Alloca;
+
    ------------------
    -- Array_Alloca --
    ------------------
@@ -893,12 +923,41 @@ package body GNATLLVM.GLValue is
       return G_Ref (Inst, TE, Is_Pristine => True);
    end Array_Alloca;
 
+   ------------------
+   -- Array_Alloca --
+   ------------------
+
+   function Array_Alloca
+     (GT        : GL_Type;
+      Num_Elts  : GL_Value;
+      Def_Ident : Entity_Id := Empty;
+      Name      : String    := "") return GL_Value
+   is
+      Inst : constant Value_T :=
+        Array_Alloca (IR_Builder, Type_Of (GT),
+                      LLVM_Value (Num_Elts),
+                      Get_Alloca_Name (Def_Ident, Name));
+
+   begin
+      Set_Alignment (Inst,
+                     unsigned (Get_Const_Int_Value (Get_Type_Alignment (GT))));
+      Save_Stack_Pointer;
+      return G_Ref (Inst, GT, Is_Pristine => True);
+   end Array_Alloca;
+
    ---------------
    -- Get_Undef --
    ---------------
 
    function Get_Undef (TE : Entity_Id) return GL_Value is
      (G (Get_Undef (Create_Type (TE)), TE));
+
+   ---------------
+   -- Get_Undef --
+   ---------------
+
+   function Get_Undef (GT : GL_Type) return GL_Value is
+     (G (Get_Undef (Type_Of (GT)), GT));
 
    -------------------
    -- Get_Undef_Ref --
@@ -907,12 +966,36 @@ package body GNATLLVM.GLValue is
    function Get_Undef_Ref (TE : Entity_Id) return GL_Value is
      (G_Ref (Get_Undef (Create_Access_Type_To (TE)), TE, Is_Pristine => True));
 
+   -------------------
+   -- Get_Undef_Ref --
+   -------------------
+
+   function Get_Undef_Ref (GT : GL_Type) return GL_Value is
+      (G_Ref (Get_Undef (Pointer_Type (Type_Of (GT), 0)), GT,
+              Is_Pristine => True));
+
    ----------------
    -- Const_Null --
    ----------------
 
    function Const_Null (TE : Entity_Id) return GL_Value is
      (G (Const_Null (Create_Type (TE)), TE));
+
+   ----------------
+   -- Const_Null --
+   ----------------
+
+   function Const_Null (GT : GL_Type) return GL_Value is
+     (G (Const_Null (Type_Of (GT)), GT));
+
+   ----------------------
+   -- Const_Null_Alloc --
+   ----------------------
+
+   function Const_Null_Alloc (GT : GL_Type) return GL_Value is
+     (G (Const_Null (Type_For_Relationship
+                       (GT, Deref (Relationship_For_Alloc (GT)))),
+         GT, Deref (Relationship_For_Alloc (GT))));
 
    ----------------------
    -- Const_Null_Alloc --
@@ -958,10 +1041,27 @@ package body GNATLLVM.GLValue is
    -- Const_Int --
    ---------------
 
+   function Const_Int (GT : GL_Type; N : Uint) return GL_Value
+   is
+     (G (Const_Int (Type_Of (GT), N), GT));
+
+   ---------------
+   -- Const_Int --
+   ---------------
+
    function Const_Int
      (TE : Entity_Id; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
      (G (Const_Int (Create_Type (TE), N, Sign_Extend => Sign_Extend), TE));
+
+   ---------------
+   -- Const_Int --
+   ---------------
+
+   function Const_Int
+     (GT : GL_Type; N : ULL; Sign_Extend : Boolean := False) return GL_Value
+   is
+     (G (Const_Int (Type_Of (GT), N, Sign_Extend => Sign_Extend), GT));
 
    ----------------
    -- Const_Real --
@@ -971,6 +1071,15 @@ package body GNATLLVM.GLValue is
      (TE : Entity_Id; V : Interfaces.C.double) return GL_Value
    is
      (G (Const_Real (Create_Type (TE), V), TE));
+
+   ----------------
+   -- Const_Real --
+   ----------------
+
+   function Const_Real
+     (GT : GL_Type; V : Interfaces.C.double) return GL_Value
+   is
+     (G (Const_Real (Type_Of (GT), V), GT));
 
    -----------------
    -- Const_Array --
@@ -1005,6 +1114,39 @@ package body GNATLLVM.GLValue is
       return V;
    end Const_Array;
 
+   -----------------
+   -- Const_Array --
+   -----------------
+
+   function Const_Array
+     (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value
+   is
+      T       : constant Type_T :=
+        (if   Elmts'Length = 0 then Create_Type (Component_Type (GT))
+         else Type_Of (Elmts (Elmts'First)));
+      --  Take the element type from what was passed, but if no elements
+      --  were passed, the only choice is from the component type of the array.
+      Values  : Access_Value_Array := new Value_Array (Elmts'Range);
+      V       : GL_Value;
+      procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
+                                                        Access_Value_Array);
+   begin
+      for J in Elmts'Range loop
+         Values (J) := LLVM_Value (Elmts (J));
+      end loop;
+
+      --  We have a kludge here in the case of making a string literal
+      --  that's not in the source (e.g., for a filename) or when
+      --  we're handling inner dimensions of a multi-dimensional
+      --  array.  In those cases, we pass Any_Array for the type, but
+      --  that's unconstrained, so we want use relationship "Unknown".
+
+      V := G (Const_Array (T, Values.all'Address, Values.all'Length),
+              GT, (if Full_Etype (GT) = Any_Array then Unknown else Data));
+      Free (Values);
+      return V;
+   end Const_Array;
+
    ------------------
    -- Const_Struct --
    ------------------
@@ -1027,6 +1169,32 @@ package body GNATLLVM.GLValue is
 
       V := G (Const_Struct (Values.all'Address, Values.all'Length, Packed),
               TE, (if TE = Any_Composite then Unknown else Data));
+      Free (Values);
+      return V;
+   end Const_Struct;
+
+   ------------------
+   -- Const_Struct --
+   ------------------
+
+   function Const_Struct
+     (Elmts : GL_Value_Array; GT : GL_Type; Packed : Boolean) return GL_Value
+   is
+      Values  : Access_Value_Array := new Value_Array (Elmts'Range);
+      V       : GL_Value;
+      procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
+                                                        Access_Value_Array);
+   begin
+      for J in Elmts'Range loop
+         Values (J) := LLVM_Value (Elmts (J));
+      end loop;
+
+      --  We have a kludge here in the case of making a struct that's
+      --  not in the source.  In those cases, we pass Any_Composite
+      --  for the type, so we want use relationship "Unknown".
+
+      V := G (Const_Struct (Values.all'Address, Values.all'Length, Packed),
+              GT, (if Full_Etype (GT) = Any_Composite then Unknown else Data));
       Free (Values);
       return V;
    end Const_Struct;
@@ -1067,29 +1235,13 @@ package body GNATLLVM.GLValue is
      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    ----------------
-   -- Int_To_Ref --
+   -- Int_To_Ptr --
    ----------------
 
-   function Int_To_Ref
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+   function Int_To_Ptr
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-      (G_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                          Pointer_Type (Create_Type (TE), 0),
-                          Name),
-              TE));
-
-   -------------------------
-   -- Int_To_Relationship --
-   -------------------------
-
-   function Int_To_Relationship
-     (V    : GL_Value; TE   : Entity_Id;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-   is
-      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                      Type_For_Relationship (TE, R), Name),
-          TE, R, Is_Pristine (V)));
+     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
 
    ----------------
    -- Ptr_To_Int --
@@ -1101,6 +1253,68 @@ package body GNATLLVM.GLValue is
       (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE,
           Data, Is_Pristine (V)));
 
+   ----------------
+   -- Ptr_To_Int --
+   ----------------
+
+   function Ptr_To_Int
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+      (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+          Data, Is_Pristine (V)));
+
+   ----------------
+   -- Int_To_Ref --
+   ----------------
+
+   function Int_To_Ref
+     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
+   is
+      (G_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                          Pointer_Type (Create_Type (TE), 0),
+                          Name),
+              TE));
+
+   ----------------
+   -- Int_To_Ref --
+   ----------------
+
+   function Int_To_Ref
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+      (G_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                          Pointer_Type (Type_Of (GT), 0),
+                          Name),
+              GT));
+
+   -------------------------
+   -- Int_To_Relationship --
+   -------------------------
+
+   function Int_To_Relationship
+     (V    : GL_Value;
+      TE   : Entity_Id;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+   is
+      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                      Type_For_Relationship (TE, R), Name),
+          TE, R, Is_Pristine (V)));
+
+   -------------------------
+   -- Int_To_Relationship --
+   -------------------------
+
+   function Int_To_Relationship
+     (V    : GL_Value;
+      GT   : GL_Type;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+   is
+      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                      Type_For_Relationship (GT, R), Name),
+          GT, R, Is_Pristine (V)));
+
    --------------
    -- Bit_Cast --
    --------------
@@ -1109,6 +1323,15 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
      (G (Bit_Cast (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
+
+   --------------
+   -- Bit_Cast --
+   --------------
+
+   function Bit_Cast
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
 
    ------------------
    -- Pointer_Cast --
@@ -1120,6 +1343,15 @@ package body GNATLLVM.GLValue is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Create_Type (TE), Name),
          TE));
 
+   ------------------
+   -- Pointer_Cast --
+   ------------------
+
+   function Pointer_Cast
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+
    ----------------
    -- Ptr_To_Ref --
    ----------------
@@ -1130,6 +1362,17 @@ package body GNATLLVM.GLValue is
      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                            Pointer_Type (Create_Type (TE), 0), Name),
              TE, Is_Pristine => Is_Pristine (V)));
+
+   ----------------
+   -- Ptr_To_Ref --
+   ----------------
+
+   function Ptr_To_Ref
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                           Pointer_Type (Type_Of (GT), 0), Name),
+             GT, Is_Pristine => Is_Pristine (V)));
 
    ----------------
    -- Ptr_To_Ref --
@@ -1160,6 +1403,20 @@ package body GNATLLVM.GLValue is
    -------------------------
 
    function Ptr_To_Relationship
+     (V    : GL_Value;
+      GT   : GL_Type;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+   is
+      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                        Type_For_Relationship (GT, R), Name),
+          GT, R, Is_Pristine (V)));
+
+   -------------------------
+   -- Ptr_To_Relationship --
+   -------------------------
+
+   function Ptr_To_Relationship
      (V, T : GL_Value;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
@@ -1179,6 +1436,15 @@ package body GNATLLVM.GLValue is
      (G (Trunc (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    -----------
+   -- Trunc --
+   -----------
+
+   function Trunc
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (Trunc (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+
+   -----------
    -- S_Ext --
    -----------
 
@@ -1186,6 +1452,15 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
      (G (S_Ext (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
+
+   -----------
+   -- S_Ext --
+   -----------
+
+   function S_Ext
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (S_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
 
    -----------
    -- Z_Ext --
@@ -1196,6 +1471,15 @@ package body GNATLLVM.GLValue is
    is
      (G (Z_Ext (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
+   -----------
+   -- Z_Ext --
+   -----------
+
+   function Z_Ext
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (Z_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+
    --------------
    -- FP_Trunc --
    --------------
@@ -1205,6 +1489,15 @@ package body GNATLLVM.GLValue is
    is
      (G (FP_Trunc (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
+   --------------
+   -- FP_Trunc --
+   --------------
+
+   function FP_Trunc
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (FP_Trunc (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+
    ------------
    -- FP_Ext --
    ------------
@@ -1213,6 +1506,15 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
      (G (FP_Ext (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
+
+   ------------
+   -- FP_Ext --
+   ------------
+
+   function FP_Ext
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (FP_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
 
    --------------
    -- FP_To_SI --
@@ -1224,6 +1526,15 @@ package body GNATLLVM.GLValue is
      (G (FP_To_SI (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
+   -- FP_To_SI --
+   --------------
+
+   function FP_To_SI
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (FP_To_SI (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+
+   --------------
    -- FP_To_UI --
    --------------
 
@@ -1231,6 +1542,15 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
      (G (FP_To_UI (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
+
+   --------------
+   -- FP_To_UI --
+   --------------
+
+   function FP_To_UI
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (FP_To_UI (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
 
    --------------
    -- UI_To_FP --
@@ -1242,6 +1562,15 @@ package body GNATLLVM.GLValue is
      (G (UI_To_FP (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
 
    --------------
+   -- UI_To_FP --
+   --------------
+
+   function UI_To_FP
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (UI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+
+   --------------
    -- SI_To_FP --
    --------------
 
@@ -1249,6 +1578,15 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
    is
      (G (SI_To_FP (IR_Builder, LLVM_Value (V), Create_Type (TE), Name), TE));
+
+   --------------
+   -- SI_To_FP --
+   --------------
+
+   function SI_To_FP
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (SI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
 
    -------------------
    -- Build_Cond_Br --
@@ -1347,13 +1685,13 @@ package body GNATLLVM.GLValue is
    ---------
 
    function GEP
-     (Result_Type : Entity_Id;
-      Ptr         : GL_Value;
-      Indices     : GL_Value_Array;
-      Name        : String := "") return GL_Value
+     (TE      : Entity_Id;
+      Ptr     : GL_Value;
+      Indices : GL_Value_Array;
+      Name    : String := "") return GL_Value
    is
-      Val_Idxs    : Value_Array (Indices'Range);
-      Result      : Value_T;
+      Val_Idxs : Value_Array (Indices'Range);
+      Result   : Value_T;
 
    begin
       for J in Indices'Range loop
@@ -1362,7 +1700,31 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, Result_Type, Reference_To_Component,
+      return G (Result, TE, Reference_To_Component,
+                Is_Pristine => Is_Pristine (Ptr));
+   end GEP;
+
+   ---------
+   -- GEP --
+   ---------
+
+   function GEP
+     (GT      : GL_Type;
+      Ptr     : GL_Value;
+      Indices : GL_Value_Array;
+      Name    : String := "") return GL_Value
+   is
+      Val_Idxs : Value_Array (Indices'Range);
+      Result   : Value_T;
+
+   begin
+      for J in Indices'Range loop
+         Val_Idxs (J) := LLVM_Value (Indices (J));
+      end loop;
+
+      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
+                               Val_Idxs'Length, Name);
+      return G (Result, GT, Reference_To_Component,
                 Is_Pristine => Is_Pristine (Ptr));
    end GEP;
 
@@ -1371,13 +1733,13 @@ package body GNATLLVM.GLValue is
    -------------
 
    function GEP_Idx
-     (Result_Type : Entity_Id;
-      Ptr         : GL_Value;
-      Indices     : Index_Array;
-      Name        : String := "") return GL_Value
+     (TE      : Entity_Id;
+      Ptr     : GL_Value;
+      Indices : Index_Array;
+      Name    : String := "") return GL_Value
    is
-      Val_Idxs    : Value_Array (Indices'Range);
-      Result      : Value_T;
+      Val_Idxs : Value_Array (Indices'Range);
+      Result   : Value_T;
 
    begin
       for J in Indices'Range loop
@@ -1386,7 +1748,31 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, Result_Type, Reference_To_Component,
+      return G (Result, TE, Reference_To_Component,
+                Is_Pristine => Is_Pristine (Ptr));
+   end GEP_Idx;
+
+   -------------
+   -- GEP_Idx --
+   -------------
+
+   function GEP_Idx
+     (GT      : GL_Type;
+      Ptr     : GL_Value;
+      Indices : Index_Array;
+      Name    : String := "") return GL_Value
+   is
+      Val_Idxs : Value_Array (Indices'Range);
+      Result   : Value_T;
+
+   begin
+      for J in Indices'Range loop
+         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
+      end loop;
+
+      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
+                               Val_Idxs'Length, Name);
+      return G (Result, GT, Reference_To_Component,
                 Is_Pristine => Is_Pristine (Ptr));
    end GEP_Idx;
 
@@ -1395,14 +1781,14 @@ package body GNATLLVM.GLValue is
    -------------------------
 
    function GEP_To_Relationship
-     (Result_Type : Entity_Id;
-      R           : GL_Relationship;
-      Ptr         : GL_Value;
-      Indices     : Index_Array;
-      Name        : String := "") return GL_Value
+     (TE      : Entity_Id;
+      R       : GL_Relationship;
+      Ptr     : GL_Value;
+      Indices : Index_Array;
+      Name    : String := "") return GL_Value
    is
-      Val_Idxs    : Value_Array (Indices'Range);
-      Result      : Value_T;
+      Val_Idxs : Value_Array (Indices'Range);
+      Result   : Value_T;
 
    begin
       for J in Indices'Range loop
@@ -1411,7 +1797,31 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, Result_Type, R, Is_Pristine => Is_Pristine (Ptr));
+      return G (Result, TE, R, Is_Pristine => Is_Pristine (Ptr));
+   end GEP_To_Relationship;
+
+   -------------------------
+   -- GEP_To_Relationship --
+   -------------------------
+
+   function GEP_To_Relationship
+     (GT      : GL_Type;
+      R       : GL_Relationship;
+      Ptr     : GL_Value;
+      Indices : Index_Array;
+      Name    : String := "") return GL_Value
+   is
+      Val_Idxs : Value_Array (Indices'Range);
+      Result   : Value_T;
+
+   begin
+      for J in Indices'Range loop
+         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
+      end loop;
+
+      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
+                               Val_Idxs'Length, Name);
+      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr));
    end GEP_To_Relationship;
 
    ----------
@@ -1508,13 +1918,27 @@ package body GNATLLVM.GLValue is
    ----------
 
    function Call
-     (Func        : GL_Value;
-      Result_Type : Entity_Id;
-      Args        : GL_Value_Array;
-      Name        : String := "") return GL_Value is
+     (Func : GL_Value;
+      TE   : Entity_Id;
+      Args : GL_Value_Array;
+      Name : String := "") return GL_Value is
 
    begin
-      return G (Call_Internal (Func, Args, Name), Result_Type);
+      return G (Call_Internal (Func, Args, Name), TE);
+   end Call;
+
+   ----------
+   -- Call --
+   ----------
+
+   function Call
+     (Func : GL_Value;
+      GT   : GL_Type;
+      Args : GL_Value_Array;
+      Name : String := "") return GL_Value is
+
+   begin
+      return G (Call_Internal (Func, Args, Name), GT);
    end Call;
 
    --------------
@@ -1522,13 +1946,27 @@ package body GNATLLVM.GLValue is
    --------------
 
    function Call_Ref
-     (Func        : GL_Value;
-      Result_Type : Entity_Id;
-      Args        : GL_Value_Array;
-      Name        : String := "") return GL_Value is
+     (Func : GL_Value;
+      TE   : Entity_Id;
+      Args : GL_Value_Array;
+      Name : String := "") return GL_Value is
 
    begin
-      return G_Ref (Call_Internal (Func, Args, Name), Result_Type);
+      return G_Ref (Call_Internal (Func, Args, Name), TE);
+   end Call_Ref;
+
+   --------------
+   -- Call_Ref --
+   --------------
+
+   function Call_Ref
+     (Func : GL_Value;
+      GT   : GL_Type;
+      Args : GL_Value_Array;
+      Name : String := "") return GL_Value is
+
+   begin
+      return G_Ref (Call_Internal (Func, Args, Name), GT);
    end Call_Ref;
 
    -----------------
@@ -1536,13 +1974,27 @@ package body GNATLLVM.GLValue is
    -----------------
 
    function Call_Struct
-     (Func        : GL_Value;
-      Result_Type : Entity_Id;
-      Args        : GL_Value_Array;
-      Name        : String := "") return GL_Value is
+     (Func : GL_Value;
+      TE   : Entity_Id;
+      Args : GL_Value_Array;
+      Name : String := "") return GL_Value is
 
    begin
-      return G (Call_Internal (Func, Args, Name), Result_Type, Unknown);
+      return G (Call_Internal (Func, Args, Name), TE, Unknown);
+   end Call_Struct;
+
+   -----------------
+   -- Call_Struct --
+   -----------------
+
+   function Call_Struct
+     (Func : GL_Value;
+      GT   : GL_Type;
+      Args : GL_Value_Array;
+      Name : String := "") return GL_Value is
+
+   begin
+      return G (Call_Internal (Func, Args, Name), GT, Unknown);
    end Call_Struct;
 
    ----------
@@ -1693,6 +2145,37 @@ package body GNATLLVM.GLValue is
                 TE, R);
    end Add_Global;
 
+   ----------------
+   -- Add_Global --
+   ----------------
+
+   function Add_Global
+     (GT             : GL_Type;
+      Name           : String;
+      Need_Reference : Boolean := False) return GL_Value
+   is
+      R : GL_Relationship := Relationship_For_Alloc (GT);
+
+   begin
+      --  The type we pass to Add_Global is the type of the actual data, but
+      --  since the global value in LLVM is a pointer, the relationship is
+      --  the reference.  So we compute the reference we want and then make the
+      --  type corresponding to a data of that reference.  But first handle
+      --  the case where we need an indirection (because of an address clause
+      --  or a dynamically-sized object).  In that case, if we would normally
+      --  have a pointer to the bounds and data, we actually store the thin
+      --  pointer (which points in the middle).
+
+      if Need_Reference then
+         R := Ref (if   R = Reference_To_Bounds_And_Data
+                   then Thin_Pointer else R);
+      end if;
+
+      return G (Add_Global (Module, Type_For_Relationship (GT, Deref (R)),
+                            Name),
+                GT, R);
+   end Add_Global;
+
    --------------------
    -- Set_Value_Name --
    --------------------
@@ -1733,6 +2216,28 @@ package body GNATLLVM.GLValue is
       end if;
    end Add_Dereferenceable_Attribute;
 
+   -----------------------------------
+   -- Add_Dereferenceable_Attribute --
+   ----------------------------------
+
+   procedure Add_Dereferenceable_Attribute
+     (V : GL_Value; Idx : Integer; GT : GL_Type)
+   is
+      T : constant Type_T := Type_Of (GT);
+
+   begin
+      --  We can only show this is dereferencable if we know its size.
+      --  But this implies non-null, so we can set that even if we don't
+      --  know the size.
+
+      if Type_Is_Sized (T) then
+         Add_Dereferenceable_Attribute (LLVM_Value (V), unsigned (Idx),
+                                        Get_Type_Size (T));
+      else
+         Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
+      end if;
+   end Add_Dereferenceable_Attribute;
+
    -------------------------------------------
    -- Add_Dereferenceable_Or_Null_Attribute --
    -------------------------------------------
@@ -1741,6 +2246,22 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; Idx : Integer; TE : Entity_Id)
    is
       T : constant Type_T := Create_Type (TE);
+
+   begin
+      if Type_Is_Sized (T) then
+         Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V), unsigned (Idx),
+                                                Get_Type_Size (T));
+      end if;
+   end Add_Dereferenceable_Or_Null_Attribute;
+
+   -------------------------------------------
+   -- Add_Dereferenceable_Or_Null_Attribute --
+   -------------------------------------------
+
+   procedure Add_Dereferenceable_Or_Null_Attribute
+     (V : GL_Value; Idx : Integer; GT : GL_Type)
+   is
+      T : constant Type_T := Type_Of (GT);
 
    begin
       if Type_Is_Sized (T) then
@@ -1924,8 +2445,24 @@ package body GNATLLVM.GLValue is
    -- Is_Layout_Identical --
    -------------------------
 
+   function Is_Layout_Identical
+     (V : GL_Value; GT : GL_Type) return Boolean
+   is
+     (Is_Layout_Identical (Type_Of (V), Type_Of (GT)));
+
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
    function Is_Layout_Identical (TE1, TE2 : Entity_Id) return Boolean is
      (Is_Layout_Identical (Create_Type (TE1), Create_Type (TE2)));
+
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Layout_Identical (GT1, GT2 : GL_Type) return Boolean is
+     (Is_Layout_Identical (Type_Of (GT1), Type_Of (GT2)));
 
    -----------------------------
    -- Convert_Struct_Constant --
@@ -1941,6 +2478,22 @@ package body GNATLLVM.GLValue is
       return G ((if   Is_Null (Val) then Const_Null (T)
                  else Convert_Struct_Constant (Val, T)),
                 TE, Data);
+   end Convert_Struct_Constant;
+
+   -----------------------------
+   -- Convert_Struct_Constant --
+   -----------------------------
+
+   function Convert_Struct_Constant
+     (V : GL_Value; GT : GL_Type) return GL_Value
+   is
+      T   : constant Type_T  := Type_Of (GT);
+      Val : constant Value_T := LLVM_Value (V);
+
+   begin
+      return G ((if   Is_Null (Val) then Const_Null (T)
+                 else Convert_Struct_Constant (Val, T)),
+                GT, Data);
    end Convert_Struct_Constant;
 
    -----------------------------

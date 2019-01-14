@@ -56,12 +56,14 @@ package GNATLLVM.GLType is
    --  If GT's type is dummy, try to update it with a real type
 
    function Primitive_GL_Type (TE : Entity_Id) return GL_Type
-     with Pre => Is_Type (TE), Post => Present (Primitive_GL_Type'Result);
+     with Pre => Is_Type_Or_Void (TE),
+          Post => Present (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
-   --  form.
+   --  form, greating it if it doesn't exist.
 
    function Default_GL_Type (TE : Entity_Id) return GL_Type
-     with Pre => Is_Type (TE), Post => Present (Default_GL_Type'Result);
+     with Pre => Is_Type_Or_Void (TE),
+          Post => Present (Default_GL_Type'Result);
    --  Return the GT_TYpe for TE that's to be used as the default for
    --  objects or components of the type.  This may or may not be the
    --  same as what Primitive_GL_Type returns.

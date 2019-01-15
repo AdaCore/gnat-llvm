@@ -39,6 +39,8 @@ package body GNATLLVM.Environment is
      (LI.Typ);
    function Raw_Get_GLT    (LI : Access_LLVM_Info) return GL_Type is
      (LI.GLType);
+   function Raw_Get_CGLT   (LI : Access_LLVM_Info) return GL_Type is
+     (LI.Component_GL_Type);
    function Raw_Get_Value  (LI : Access_LLVM_Info) return GL_Value is
      (LI.Value);
    function Raw_Get_SO     (LI : Access_LLVM_Info) return Dynamic_SO_Ref is
@@ -66,6 +68,7 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_Type   (LI : Access_LLVM_Info; Val : Type_T);
    procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type);
+   procedure Raw_Set_CGLT   (LI : Access_LLVM_Info; Val : GL_Type);
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value);
    procedure Raw_Set_SO     (LI : Access_LLVM_Info; Val : Dynamic_SO_Ref);
    procedure Raw_Set_Elab   (LI : Access_LLVM_Info; Val : Boolean);
@@ -80,6 +83,7 @@ package body GNATLLVM.Environment is
 
    pragma Inline (Raw_Set_Type);
    pragma Inline (Raw_Set_GLT);
+   pragma Inline (Raw_Set_CGLT);
    pragma Inline (Raw_Set_Value);
    pragma Inline (Raw_Set_SO);
    pragma Inline (Raw_Set_Elab);
@@ -97,6 +101,9 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type) is
    begin LI.GLType := Val; end Raw_Set_GLT;
+
+   procedure Raw_Set_CGLT   (LI : Access_LLVM_Info; Val : GL_Type) is
+   begin LI.Component_GL_Type := Val; end Raw_Set_CGLT;
 
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value) is
    begin LI.Value := Val; end Raw_Set_Value;
@@ -156,6 +163,7 @@ package body GNATLLVM.Environment is
          LLVM_Info_Table.Append ((Value               => No_GL_Value,
                                   Typ                 => No_Type_T,
                                   GLType              => No_GL_Type,
+                                  Component_GL_Type   => No_GL_Type,
                                   TBAA                => No_Metadata_T,
                                   Is_Nonnative_Type   => False,
                                   Is_Being_Elaborated => False,
@@ -273,6 +281,7 @@ package body GNATLLVM.Environment is
                                        Raw_Get_Label, Raw_Set_Label);
 
    package Env_NN     is new Pkg_Elab (Boolean, Raw_Get_NN, Raw_Set_NN);
+   package Env_CGLT   is new Pkg_Elab (GL_Type, Raw_Get_CGLT, Raw_Set_CGLT);
    package Env_TBAA   is new Pkg_Elab (Metadata_T, Raw_Get_TBAA, Raw_Set_TBAA);
    package Env_Array  is new Pkg_Elab (Array_Info_Id,
                                        Raw_Get_Array, Raw_Set_Array);
@@ -292,6 +301,11 @@ package body GNATLLVM.Environment is
      renames Env_GLT.Get;
    procedure Set_GL_Type             (TE : Entity_Id; GT : GL_Type)
      renames Env_GLT.Set;
+
+   function  Get_Component_GL_Type   (TE : Entity_Id) return GL_Type
+     renames Env_CGLT.Get;
+   procedure Set_Component_GL_Type   (TE : Entity_Id; GT : GL_Type)
+     renames Env_CGLT.Set;
 
    function  Get_Value               (VE : Entity_Id) return GL_Value
      renames Env_Value.Get;

@@ -35,6 +35,7 @@ with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
@@ -99,8 +100,19 @@ package body GNATLLVM.Records is
 
    type Field_Info is record
       Rec_Info_Idx  : Record_Info_Id;
+      --  Index into the record info table that contains this field
+
       Field_Ordinal : Nat;
+      --  Ordinal of this field within the contents of the record info table
+
+      GLType        : GL_Type;
+      --  The GL_Type correspond to this field, which takes into account
+      --  a possible change in size
+
       Is_Dummy_Type : Boolean;
+      --  True if we had a dummy version of the record's type when we
+      --  created this entry.
+
    end record;
 
    package Field_Info_Table is new Table.Table
@@ -644,9 +656,12 @@ package body GNATLLVM.Records is
          --
          --  If we're using a matching field, update F_TE to its type.
 
-         Field_Info_Table.Append ((Rec_Info_Idx  => RI_Idx,
-                                   Field_Ordinal => Ordinal,
-                                   Is_Dummy_Type => Is_Dummy_Type));
+         Field_Info_Table.Append
+           ((Rec_Info_Idx  => RI_Idx,
+             Field_Ordinal => Ordinal,
+             GLType        => Primitive_GL_Type (Full_Etype (E)),
+             Is_Dummy_Type => Is_Dummy_Type));
+
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
          else

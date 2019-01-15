@@ -572,7 +572,7 @@ package body GNATLLVM.Variables is
 
         or else (not Is_Nonnative_Type (In_TE)
                  and then not Is_Nonnative_Type (Out_TE)
-                 and then Create_Type (In_TE) = Create_Type (Out_TE));
+                 and then Type_Of (In_TE) = Type_Of (Out_TE));
 
    end Is_Static_Conversion;
 
@@ -748,7 +748,7 @@ package body GNATLLVM.Variables is
               --  Operand must not need elaboration
 
               and then (not Is_Scalar_Type (TE)
-                          or else Create_Type (TE) = LLVM_Size_Type
+                          or else Type_Of (TE) = LLVM_Size_Type
                           or else Is_A_Const_Int (Emit_Expression (N))
                           or else Is_A_Const_FP  (Emit_Expression (N)));
               --  If converting to a scalar type other than Size_Type,
@@ -1322,7 +1322,7 @@ package body GNATLLVM.Variables is
             Orig_V : constant Value_T := Get_Operand (LLVM_Value (V), 0);
             V_P_T  : constant Type_T  := Type_Of (Orig_V);
             V_T    : constant Type_T  := Get_Element_Type (V_P_T);
-            T      : constant Type_T  := Create_Type (TE);
+            T      : constant Type_T  := Type_Of (TE);
 
          begin
             --  We can only do this if T and V_T are both structure types

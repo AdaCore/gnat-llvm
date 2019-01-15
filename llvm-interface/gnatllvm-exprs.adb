@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -122,7 +122,7 @@ package body GNATLLVM.Exprs is
                --  If this is a normal string, where the size of a character
                --  is a byte, use Const_String to create the string.
 
-               if Get_Type_Size_In_Bits (Create_Type (Elmt_TE)) = 8 then
+               if Get_Type_Size_In_Bits (Type_Of (Elmt_TE)) = 8 then
                   declare
                      type String_Access is access String;
                      procedure Free is new Ada.Unchecked_Deallocation

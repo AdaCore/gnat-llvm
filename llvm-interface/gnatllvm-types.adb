@@ -222,15 +222,15 @@ package body GNATLLVM.Types is
       --  corresponding LLVM types differ, so that's all we check.
 
       if Ekind (T2) = E_String_Literal_Subtype then
-         return (Create_Type (Full_Etype (First_Index (T1)))
-                   /= Create_Type (Standard_Integer));
+         return (Type_Of (Full_Etype (First_Index (T1)))
+                   /= Type_Of (Standard_Integer));
       end if;
 
       Idx1 := First_Index (T1);
       Idx2 := First_Index (T2);
       while Present (Idx1) loop
          exit when
-           Create_Type (Full_Etype (Idx1)) /= Create_Type (Full_Etype (Idx2));
+           Type_Of (Full_Etype (Idx1)) /= Type_Of (Full_Etype (Idx2));
          Next_Index (Idx1);
          Next_Index (Idx2);
       end loop;
@@ -295,7 +295,7 @@ package body GNATLLVM.Types is
       --  This is a no-op if the two LLVM types are the same or if both
       --  GNAT types aren't scalar types.
 
-      return Type_Of (V) = Pointer_Type (Create_Type (TE), 0)
+      return Type_Of (V) = Pointer_Type (Type_Of (TE), 0)
         or else (not Is_Scalar_Type (TE)
                    and then not Is_Scalar_Type (GL_Type'(Related_Type (V))));
 
@@ -491,8 +491,8 @@ package body GNATLLVM.Types is
                      and then Is_Discrete_Or_Fixed_Point_Type (In_TE))
                   or else (Is_Discrete_Or_Fixed_Point_Type (TE)
                              and then Is_Floating_Point_Type (In_TE)))
-        and then (ULL'(Get_Type_Size_In_Bits (Create_Type (TE))) =
-                    ULL'(Get_Type_Size_In_Bits (Create_Type (In_TE))))
+        and then (ULL'(Get_Type_Size_In_Bits (Type_Of (TE))) =
+                    ULL'(Get_Type_Size_In_Bits (Type_Of (In_TE))))
       then
          return Bit_Cast (Get (Result, Data), TE);
 
@@ -516,7 +516,7 @@ package body GNATLLVM.Types is
       --  the type used for a variable-sized type.
 
       elsif Is_Data (Result) and then not Is_Nonnative_Type (TE)
-        and then Type_Of (Result) = Create_Type (TE)
+        and then Type_Of (Result) = Type_Of (TE)
       then
          Result := G_Is (Result, TE);
 
@@ -631,7 +631,7 @@ package body GNATLLVM.Types is
         (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value;
 
       Value       : GL_Value         := V;
-      T           : constant Type_T  := Create_Type (TE);
+      T           : constant Type_T  := Type_Of (TE);
       Src_Access  : constant Boolean := Is_Access_Type (V);
       Dest_Access : constant Boolean := Is_Access_Type (TE);
       Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
@@ -1097,7 +1097,7 @@ package body GNATLLVM.Types is
    function Get_Type_Size_In_Bits (TE : Entity_Id) return GL_Value is
    begin
       pragma Assert (not Is_Nonnative_Type (TE));
-      return Get_Type_Size_In_Bits (Create_Type (TE));
+      return Get_Type_Size_In_Bits (Type_Of (TE));
    end Get_Type_Size_In_Bits;
 
    ---------------------------
@@ -1379,11 +1379,11 @@ package body GNATLLVM.Types is
 
    end Create_Dummy_Access_Type;
 
-   -----------------
-   -- Create_Type --
-   -----------------
+   -------------
+   -- Type_Of --
+   -------------
 
-   function Create_Type (TE : Entity_Id) return Type_T is
+   function Type_Of (TE : Entity_Id) return Type_T is
       GT : GL_Type := Get_GL_Type (TE);
 
    begin
@@ -1429,7 +1429,7 @@ package body GNATLLVM.Types is
       end if;
 
       return Type_Of (GT);
-   end Create_Type;
+   end Type_Of;
 
    ---------------------------
    -- Create_Primitive_Type --
@@ -1460,7 +1460,7 @@ package body GNATLLVM.Types is
       --  process that if so.
 
       if not Is_Full_Base_Type (TE) then
-         Discard (Create_Type (Full_Base_Type (TE)));
+         Discard (Type_Of (Full_Base_Type (TE)));
       end if;
 
       case Ekind (TE) is
@@ -1633,8 +1633,9 @@ package body GNATLLVM.Types is
    -------------------------------
 
    function Create_Type_For_Component (TE : Entity_Id) return Type_T is
-      T    : constant Type_T := Create_Type (TE);
+      T    : constant Type_T := Type_Of (TE);
       Size : GL_Value;
+
    begin
       --  If this is a dynamic size, even when looking at the maximum
       --  size (when applicable), on the one hand, or already a native
@@ -1785,7 +1786,7 @@ package body GNATLLVM.Types is
 
       if not Is_Nonnative_Type (Alloc_TE) and then not Overalign then
          if Do_Stack_Check
-           and then Get_Type_Size (Create_Type (Alloc_TE)) > Max_Alloc
+           and then Get_Type_Size (Type_Of (Alloc_TE)) > Max_Alloc
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
             return Get_Undef_Ref (TE);
@@ -2113,7 +2114,7 @@ package body GNATLLVM.Types is
       --  alignment
 
       else
-         return Get_Type_Alignment (Create_Type (TE));
+         return Get_Type_Alignment (Type_Of (TE));
 
       end if;
    end Get_Type_Alignment;
@@ -2140,7 +2141,7 @@ package body GNATLLVM.Types is
       elsif Is_Array_Type (TE) and then Is_Nonnative_Type (TE) then
          return Get_Array_Type_Size (TE, V, Max_Size);
       else
-         return Get_Type_Size (Create_Type (TE));
+         return Get_Type_Size (Type_Of (TE));
       end if;
 
    end Get_Type_Size;
@@ -2389,7 +2390,7 @@ package body GNATLLVM.Types is
       elsif Is_Array_Type (TE) then
          return IDS_Array_Type_Size (TE, V, Max_Size);
       else
-         return IDS_From_Const (Get_Type_Size (Create_Type (TE)));
+         return IDS_From_Const (Get_Type_Size (Type_Of (TE)));
       end if;
    end IDS_Type_Size;
 
@@ -2678,7 +2679,7 @@ package body GNATLLVM.Types is
       elsif Ekind (TE) = E_Subprogram_Type then
          return No_BA;
       else
-         return BA_From_Const (Get_Type_Size (Create_Type (TE)));
+         return BA_From_Const (Get_Type_Size (Type_Of (TE)));
       end if;
 
    end BA_Type_Size;

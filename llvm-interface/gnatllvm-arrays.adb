@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -484,8 +484,7 @@ package body GNATLLVM.Arrays is
 
    begin
       for I in Nat range 0 .. Dims - 1 loop
-         Fields (J) :=
-           Create_Type (Array_Info.Table (First_Info + I).Bound_Type);
+         Fields (J) := Type_Of (Array_Info.Table (First_Info + I).Bound_Type);
          Fields (J + 1) := Fields (J);
          J := J + 2;
       end loop;
@@ -500,7 +499,7 @@ package body GNATLLVM.Arrays is
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T is
    begin
       return Build_Struct_Type
-        ((1 => Pointer_Type (Create_Type (TE), 0),
+        ((1 => Pointer_Type (Type_Of (TE), 0),
           2 => Pointer_Type (Create_Array_Bounds_Type (TE), 0)));
    end Create_Array_Fat_Pointer_Type;
 

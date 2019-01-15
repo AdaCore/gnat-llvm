@@ -83,13 +83,13 @@ package GNATLLVM.Types is
    --  access types are not just pointers, this is the abstraction bridge
    --  between the two.  Note that we need not have a GNAT type corresponding
    --  to this access type, which makes this different than calling
-   --  Create_Type on an access to TE.
+   --  Type_Of on an access to TE.
 
-   function Create_Type (TE : Entity_Id) return Type_T
+   function Type_Of (TE : Entity_Id) return Type_T
      with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
-          Post => Present (Create_Type'Result);
+          Post => Present (Type_Of'Result);
    --  Given a GNAT type TE, return the corresponding LLVM type, building
-   --  it first if necessary.
+   --  it and a GL_Type first if necessary.
 
    function Create_Primitive_Type (TE : Entity_Id) return Type_T
      with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
@@ -405,7 +405,7 @@ package GNATLLVM.Types is
    --  Used for the function below
 
    function Is_Loadable_Type (TE : Entity_Id) return Boolean is
-     (not Is_Nonnative_Type (TE) and then Is_Loadable_Type (Create_Type (TE)))
+     (not Is_Nonnative_Type (TE) and then Is_Loadable_Type (Type_Of (TE)))
      with Pre => Is_Type (TE);
    --  Returns True if we should use a load/store instruction to copy values
    --  of this type.  We can't do this if it's of dynamic size, but LLVM

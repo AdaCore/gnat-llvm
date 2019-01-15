@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -580,7 +580,7 @@ package body GNATLLVM.Blocks is
 
    function Get_Raise_Fn (Kind : RT_Exception_Code) return GL_Value is
       Fun_Type : constant Type_T :=
-        Fn_Ty ((1 => LLVM_Size_Type, 2 => Create_Type (Standard_Integer)),
+        Fn_Ty ((1 => LLVM_Size_Type, 2 => Type_Of (Standard_Integer)),
                Void_Type);
 
    begin

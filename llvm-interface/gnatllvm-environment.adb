@@ -144,8 +144,8 @@ package body GNATLLVM.Environment is
 
    function Get_LLVM_Info (TE : Entity_Id) return Access_LLVM_Info is
    begin
-      if No (Get_Type (TE)) then
-         Discard (Create_Type (TE));
+      if No (Get_GL_Type (TE)) then
+         Discard (Type_Of (TE));
       end if;
 
       return LLVM_Info_Table.Table (LLVM_Info_Map (TE))'Unrestricted_Access;

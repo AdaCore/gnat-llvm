@@ -2250,7 +2250,7 @@ package body GNATLLVM.Records is
       --  Record_Field_Offset to do the reference.  First, ensure that
       --  the type has been elaborated so field indices exist.
 
-      Discard (Create_Type (TE));
+      Discard (Type_Of (TE));
       Expr := First (Component_Associations (N));
       return Result : GL_Value := Result_So_Far do
 

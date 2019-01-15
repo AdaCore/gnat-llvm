@@ -99,7 +99,7 @@ package body GNATLLVM.Compile is
          Size_Type := Standard_Integer;
       end if;
 
-      LLVM_Size_Type := Create_Type (Size_Type);
+      LLVM_Size_Type := Type_Of (Size_Type);
 
       --  Likewise for the 32-bit integer type
 
@@ -113,7 +113,7 @@ package body GNATLLVM.Compile is
 
       --  Create a "void" pointer, which is i8* in LLVM
 
-      Void_Ptr_Type  := Create_Type (Standard_A_Char);
+      Void_Ptr_Type  := Type_Of (Standard_A_Char);
 
       --  Initialize modules and handle duplicate globals
 
@@ -467,7 +467,7 @@ package body GNATLLVM.Compile is
                --  GL_Value of the two constants and compare them since
                --  this doesn't rely on the above behavior of Is_Dynamic_Size.
 
-               Discard (Create_Type (TE));
+               Discard (Type_Of (TE));
                if Sz /= Uint_0 and then Is_Static_SO_Ref (Sz)
                  and then not Is_Dynamic_Size (TE, Max_Size => True)
                  and then (I_Cmp (Int_SGT, Get_Type_Size

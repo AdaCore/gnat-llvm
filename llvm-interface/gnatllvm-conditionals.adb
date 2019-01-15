@@ -532,7 +532,7 @@ package body GNATLLVM.Conditionals is
 
       Max_Cost       : constant Nat    := 10_000;
       Num_Alts       : constant Nat    := List_Length_Non_Pragma (In_Alts);
-      Typ            : constant Type_T := Create_Type (Full_Etype (LHS));
+      Typ            : constant Type_T := Type_Of (Full_Etype (LHS));
       First_Choice   : Nat             := 1;
       Current_Alt    : Nat             := 1;
       Current_Choice : Nat             := 1;

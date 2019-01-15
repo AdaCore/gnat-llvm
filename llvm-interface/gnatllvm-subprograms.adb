@@ -392,7 +392,7 @@ package body GNATLLVM.Subprograms is
    begin
       if Is_By_Reference_Type (TE) or else Is_Nonnative_Type (TE) then
          return Must;
-      elsif Get_Type_Size (Create_Type (TE)) > 2 * Ptr_Size then
+      elsif Get_Type_Size (Type_Of (TE)) > 2 * Ptr_Size then
          return Default_By_Ref;
       else
          return Default_By_Copy;
@@ -541,7 +541,7 @@ package body GNATLLVM.Subprograms is
    function Get_Return_Kind (Def_Ident : Entity_Id) return Return_Kind is
       TE       : constant Entity_Id := Full_Etype (Def_Ident);
       T        : constant Type_T    :=
-        (if Ekind (TE) /= E_Void then Create_Type (TE) else No_Type_T);
+        (if Ekind (TE) /= E_Void then Type_Of (TE) else No_Type_T);
       Ptr_Size : constant ULL       := Get_Type_Size (Void_Ptr_Type);
 
    begin
@@ -661,7 +661,7 @@ package body GNATLLVM.Subprograms is
       LLVM_Ret_Typ    : Type_T               :=
         (if    RK in None | Return_By_Parameter then Void_Type
          elsif RK = RK_By_Reference then Create_Access_Type_To (Return_Type)
-         else  Create_Type (Return_Type));
+         else  Type_Of (Return_Type));
       In_Args_Count   : constant Nat         :=
         Count_In_Params (Def_Ident) + (if Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);
@@ -716,9 +716,9 @@ package body GNATLLVM.Subprograms is
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
                  (if    PK = Foreign_By_Ref
-                  then  Pointer_Type (Create_Type (Param_Type), 0)
+                  then  Pointer_Type (Type_Of (Param_Type), 0)
                   elsif PK_By_Ref then Create_Access_Type_To (Param_Type)
-                  else  Create_Type (Param_Type));
+                  else  Type_Of (Param_Type));
 
                J := J + 1;
             end if;
@@ -742,7 +742,7 @@ package body GNATLLVM.Subprograms is
 
          when Out_Return =>
             LLVM_Result_Typ :=
-              Create_Type (Full_Etype (First_Out_Param (Def_Ident)));
+              Type_Of (Full_Etype (First_Out_Param (Def_Ident)));
 
          when Struct_Out | Struct_Out_Subprog =>
             J := 1;
@@ -753,7 +753,7 @@ package body GNATLLVM.Subprograms is
 
             Param_Ent := First_Out_Param (Def_Ident);
             while Present (Param_Ent) loop
-               Out_Arg_Types (J) := Create_Type (Full_Etype (Param_Ent));
+               Out_Arg_Types (J) := Type_Of (Full_Etype (Param_Ent));
                J := J + 1;
                Next_Out_Param (Param_Ent);
             end loop;
@@ -788,7 +788,7 @@ package body GNATLLVM.Subprograms is
       Name : String;
       TE   : Entity_Id) return GL_Value
    is
-      T         : constant Type_T := Create_Type (TE);
+      T         : constant Type_T := Type_Of (TE);
       Width     : constant ULL    := Get_Type_Size_In_Bits (T);
       --  We need to use Get_Type_Size_In_Bits instead of Esize (TE)
       --  so that we handle FP types properly.
@@ -926,7 +926,7 @@ package body GNATLLVM.Subprograms is
            ("memcmp",
             Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
                     3 => LLVM_Size_Type),
-                   Create_Type (Standard_Integer)),
+                   Type_Of (Standard_Integer)),
             Standard_Integer);
       end if;
 
@@ -1708,7 +1708,7 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      Type_Size := Get_Type_Size (Create_Type (TE));
+      Type_Size := Get_Type_Size (Type_Of (TE));
       if not (S (Index .. Index + 1) = "_1" and then Type_Size = 1)
         and then not (S (Index .. Index + 1) = "_2" and then Type_Size = 2)
         and then not (S (Index .. Index + 1) = "_4" and then Type_Size = 4)
@@ -1782,7 +1782,7 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      Type_Size := Get_Type_Size_In_Bits (Create_Type (TE));
+      Type_Size := Get_Type_Size_In_Bits (Type_Of (TE));
       if not (S (S'Last - 1 .. S'Last) = "16" and then Type_Size = 16)
         and then not (S (S'Last - 1 .. S'Last) = "32" and then Type_Size = 32)
         and then not (S (S'Last - 1 .. S'Last) = "64" and then Type_Size = 64)

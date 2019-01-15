@@ -85,9 +85,6 @@ package body GNATLLVM.Compile is
          LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
       end loop;
 
-      LLVM_Info_Table.Increment_Last;
-      --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
-
       Uint_Bits_Per_Unit := UI_From_Int (Get_Bits_Per_Unit);
 
       --  Find the integer type corresponding to the size of a pointer

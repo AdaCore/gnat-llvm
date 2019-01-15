@@ -348,4 +348,9 @@ package body GNATLLVM.Environment is
    procedure Set_Record_Info         (TE : Entity_Id; RI : Record_Info_Id)
      renames Env_Record.Set;
 
+begin
+
+   LLVM_Info_Table.Increment_Last;
+   --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
+
 end GNATLLVM.Environment;

@@ -32,6 +32,10 @@ In order to build GNAT-LLVM from sources, you need to follow these steps:
   $ cd /path/to/gnat-llvm
   $ make llvm
 
+- Add llvm/llvm-obj/bin in your PATH:
+
+  $ export PATH=`pwd`/llvm/llvm-obj/bin:$PATH
+
 - Finally build GNAT-LLVM:
 
   $ make

@@ -109,11 +109,6 @@ package GNATLLVM.Types is
    --  size of TE is fixed but it's not representable as a native LLVM
    --  type, return a type (an array) to correspond to that size.
 
-   function Create_Dummy_Access_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Access_Type (TE),
-          Post => Present (Create_Dummy_Access_Type'Result);
-   --  Make a type to be used as a dummy type for access type TE
-
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);
 

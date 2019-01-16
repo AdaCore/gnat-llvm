@@ -84,6 +84,11 @@ package body GNATLLVM.Types is
           Post => Present (Create_Access_Type'Result);
    --  Create an LLVM type for various GNAT types
 
+   function Create_Dummy_Access_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Access_Type (TE),
+          Post => Present (Create_Dummy_Access_Type'Result);
+   --  Make a type to be used as a dummy type for access type TE
+
    function Convert_Pointer
      (V  : GL_Value;
       TE : Entity_Id;

@@ -59,7 +59,7 @@ package GNATLLVM.GLType is
      with Pre => Is_Type_Or_Void (TE),
           Post => Present (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
-   --  form, greating it if it doesn't exist.
+   --  form, creating it if it doesn't exist.
 
    function Default_GL_Type (TE : Entity_Id) return GL_Type
      with Pre => Is_Type_Or_Void (TE),

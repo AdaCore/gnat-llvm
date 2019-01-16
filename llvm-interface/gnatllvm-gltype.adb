@@ -27,18 +27,24 @@ package body GNATLLVM.GLType is
    --  A GL_Type can be of various different kinds.  We list them here.
 
    type GT_Kind is
-     (Primitive,
-      --  This is the actual type to perform computations in
+     (None,
+      --  A so-far-unused entry
+
+      Primitive,
+      --  The actual type to perform computations in
+
+      Dummy,
+      --  A dummy type, made due to a chain of access types
 
       Padded,
-      --  This is a record whose first field is the primitive type and
-      --  the second is padding to make the record the proper length.  This
-      --  can only be done if the primitive type is a native LLVM type.
+      --  a record whose first field is the primitive type and the second
+      --  is padding to make the record the proper length.  This can only
+      --  be done if the primitive type is a native LLVM type.
 
       Byte_Array,
-      --  This is an array of bytes (i8) whose length is the desired size of
-      --  the GL_Type.  This should only be used when the primitive type is
-      --  not a native LLVM type.
+      --  An array of bytes (i8) whose length is the desired size of the
+      --  GL_Type.  This should only be used when the primitive type is not
+      --  a native LLVM type.
 
       Max_Size,
       --  We're denoting that the maximum size of the type is used, but
@@ -47,8 +53,8 @@ package body GNATLLVM.GLType is
       --  non-native.
 
       Aligning);
-     --  This is the same LLVM type as for the primitive type, but recorded
-     --  to indicate that we need to align it differently.  This should only
+     --  The same LLVM type as for the primitive type, but recorded to
+     --  indicate that we need to align it differently.  This should only
      --  be used when the primitive type is not a native LLVM type.
 
    --  Define the fields in the table for GL_Type's
@@ -130,7 +136,9 @@ package body GNATLLVM.GLType is
    function GL_Type_Info_Is_Valid_Int
      (GTI : GL_Type_Info_Base) return Boolean is
    begin
-      if not Is_Type_Or_Void (GTI.GNAT_Type) or else No (GTI.LLVM_Type)
+      if GTI.Kind = None then
+         return True;
+      elsif not Is_Type_Or_Void (GTI.GNAT_Type) or else No (GTI.LLVM_Type)
         or else (Present (GTI.Size) and then not Is_A_Const_Int (GTI.Size))
         or else (Present (GTI.Bias) and then not Is_A_Const_Int (GTI.Bias))
         or else (Present (GTI.Alignment)
@@ -140,7 +148,7 @@ package body GNATLLVM.GLType is
       end if;
 
       case GTI.Kind is
-         when Primitive =>
+         when None | Dummy | Primitive =>
             return True;
          when Padded =>
             return not Is_Nonnative_Type (GTI.GNAT_Type)
@@ -303,10 +311,21 @@ package body GNATLLVM.GLType is
          return Create_GL_Type (TE);
       end if;
 
+      --  First look for a primitive type.  If there isn't one, then a
+      --  dummy type is the best we have.
+
       while Present (GT) loop
          exit when GL_Type_Table.Table (GT).Kind = Primitive;
          Next (GT);
       end loop;
+
+      if No (GT) then
+         GT := Get_GL_Type (TE);
+         while Present (GT) loop
+            exit when GL_Type_Table.Table (GT).Kind = Dummy;
+            Next (GT);
+         end loop;
+      end if;
 
       return GT;
    end Primitive_GL_Type;
@@ -407,7 +426,7 @@ package body GNATLLVM.GLType is
    --------------------
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean is
-     (Is_Dummy_Type (Full_Etype (GT)));
+     (GL_Type_Table.Table (GT).Kind = Dummy);
 
    -----------------------
    -- Is_Nonnative_Type --

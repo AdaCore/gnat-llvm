@@ -34,7 +34,20 @@ package body GNATLLVM.GLType is
       --  The actual type to perform computations in
 
       Dummy,
-      --  A dummy type, made due to a chain of access types
+      --  A dummy type, made due to a chain of access types.  There are two
+      --  cases, each handled differently.  The most common case is an access
+      --  type pointing to a record.  In that case, we can make an opaque
+      --  record that we can actually use for the record.  In that case,
+      --  that's the same type that we really be used for the record, so the
+      --  access type is "real" and the record type will only be considered
+      --  "dummy" for a transitory period after which we'll change this entry
+      --  to Primitive kind.
+      --
+      --  The other case is when we have an access to something else. In that
+      --  case, we have to make a completely fake access type that points to
+      --  something else.  In that case, we'll keep this entry around as a
+      --  GL_Type because things will have that type and we'll have to convert
+      --  as appropriate.
 
       Padded,
       --  a record whose first field is the primitive type and the second
@@ -134,11 +147,16 @@ package body GNATLLVM.GLType is
    -------------------------------
 
    function GL_Type_Info_Is_Valid_Int
-     (GTI : GL_Type_Info_Base) return Boolean is
+     (GTI : GL_Type_Info_Base) return Boolean
+   is
+      TE : constant Entity_Id := GTI.GNAT_Type;
+      T  : constant Type_T    := GTI.LLVM_Type;
+
    begin
       if GTI.Kind = None then
          return True;
-      elsif not Is_Type_Or_Void (GTI.GNAT_Type) or else No (GTI.LLVM_Type)
+
+      elsif not Is_Type_Or_Void (TE) or else No (T)
         or else (Present (GTI.Size) and then not Is_A_Const_Int (GTI.Size))
         or else (Present (GTI.Bias) and then not Is_A_Const_Int (GTI.Bias))
         or else (Present (GTI.Alignment)
@@ -148,19 +166,21 @@ package body GNATLLVM.GLType is
       end if;
 
       case GTI.Kind is
-         when None | Dummy | Primitive =>
+         when None  | Primitive =>
             return True;
+         when Dummy =>
+            return Is_Record_Type (TE) or else Is_Access_Type (TE);
          when Padded =>
-            return not Is_Nonnative_Type (GTI.GNAT_Type)
-              and then Get_Type_Kind (GTI.LLVM_Type) = Struct_Type_Kind;
+            return not Is_Nonnative_Type (TE)
+              and then Get_Type_Kind (T) = Struct_Type_Kind;
          when Byte_Array =>
-            return Is_Nonnative_Type (GTI.GNAT_Type)
-              and then Get_Type_Kind (GTI.LLVM_Type) = Array_Type_Kind;
+            return Is_Nonnative_Type (TE)
+              and then Get_Type_Kind (T) = Array_Type_Kind;
          when Aligning =>
-            return Is_Nonnative_Type (GTI.GNAT_Type);
+            return Is_Nonnative_Type (TE);
          when Max_Size =>
-            return Is_Nonnative_Type (GTI.GNAT_Type)
-              and then Is_Unconstrained_Record (GTI.GNAT_Type);
+            return Is_Nonnative_Type (TE)
+              and then Is_Unconstrained_Record (TE);
       end case;
 
    end GL_Type_Info_Is_Valid_Int;

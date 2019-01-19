@@ -3,12 +3,6 @@ GPRBUILD=gprbuild -v
 # number of processors
 PROCS=0
 
-# Set to 0 to disable debug mode, 1 to enable it
-DEBUG=1
-
-# Set to 1 to enable automated (as opposed to manual) builds
-AUTOMATED=0
-
 uname=$(shell uname)
 
 RM=rm -f
@@ -25,13 +19,7 @@ endif
 
 GNATMAKE=gnatmake
 
-ifeq ($(AUTOMATED),1)
-  GPRARGS=-XBuild=Production
-endif
-
-ifeq ($(DEBUG),0)
-  GPRARGS=-XBuild=Production
-endif
+GPROPT=-XBuild=Production
 
 GNAT_SRC=$(pwd)/gnat_src
 ADAINCLUDE=lib/rts-llvm/adainclude
@@ -82,15 +70,15 @@ setup:
 	done
 
 build: setup force
-	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
+	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
-	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
+	$(GPRBUILD) -Ptools -j$(PROCS)
 	$(MAKE) bugs-bins
 
 build-opt: setup force
-	$(GPRBUILD) $(GPRARGS) -Pgnat_llvm -j$(PROCS) \
+	$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS) -DLINK_WITH_OPT
-	$(GPRBUILD) $(GPRARGS) -Ptools -j$(PROCS)
+	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
 	$(MAKE) bugs-bins
 
 bugs-bins:

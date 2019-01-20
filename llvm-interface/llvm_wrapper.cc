@@ -206,7 +206,9 @@ extern "C"
 void
 Dump_LLVM_Type_C (Type *type)
 {
+#ifndef LINK_WITH_OPT
     type->dump ();
+#endif
 }
 
 extern "C"

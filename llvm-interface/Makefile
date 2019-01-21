@@ -75,6 +75,12 @@ build: setup force
 	$(GPRBUILD) -Ptools -j$(PROCS)
 	$(MAKE) bugs-bins
 
+build-uninit: setup force
+	$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \
+	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
+	$(GPRBUILD) -Ptools -j$(PROCS)
+	$(MAKE) bugs-bins
+
 build-opt: setup force
 	$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS) -DLINK_WITH_OPT

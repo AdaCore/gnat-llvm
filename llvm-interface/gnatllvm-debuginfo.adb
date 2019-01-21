@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -90,9 +90,9 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Pop_Debug_Scope;
 
-   --------------------------
-   -- Initialize_Debugging --
-   --------------------------
+   ----------------
+   -- Initialize --
+   ----------------
 
    procedure Initialize is
    begin

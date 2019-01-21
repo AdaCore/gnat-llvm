@@ -434,7 +434,7 @@ package body GNATLLVM.Arrays is
                Idx : constant Array_Info_Id :=
                  (if   Convention (TE) = Convention_Fortran
                   then Array_Info.Last + First_Info - J else J);
-               Rng  : constant GL_Value      :=
+               Rng : constant GL_Value      :=
                  Array_Info.Table (Idx).Bound_Range;
 
             begin
@@ -466,8 +466,7 @@ package body GNATLLVM.Arrays is
    -- Create_Array_Bounds_Type --
    ------------------------------
 
-   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
-   is
+   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T is
       Dims       : constant Nat           :=
         Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
                            then Full_Original_Array_Type (TE) else TE);
@@ -478,8 +477,8 @@ package body GNATLLVM.Arrays is
       J          : Nat                    := 0;
 
    begin
-      for I in Nat range 0 .. Dims - 1 loop
-         Fields (J) := Type_Of (Array_Info.Table (First_Info + I).Bound_Type);
+      for K in Nat range 0 .. Dims - 1 loop
+         Fields (J) := Type_Of (Array_Info.Table (First_Info + K).Bound_Type);
          Fields (J + 1) := Fields (J);
          J := J + 2;
       end loop;

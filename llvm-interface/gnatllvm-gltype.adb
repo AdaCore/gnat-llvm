@@ -15,12 +15,15 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Output;   use Output;
+with Sprint;   use Sprint;
 with Table;
 
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Records;     use GNATLLVM.Records;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.GLType is
 
@@ -128,6 +131,11 @@ package body GNATLLVM.GLType is
    procedure Next (GT : in out GL_Type)
      with Pre => Present (GT);
 
+   function Get_Or_Create_GL_Type
+     (TE : Entity_Id; Create : Boolean) return GL_Type
+     with Pre  => Is_Type_Or_Void (TE),
+          Post => not Create or else Present (Get_Or_Create_GL_Type'Result);
+
    ---------------------------
    -- GL_Type_Info_Is_Valid --
    ---------------------------
@@ -185,6 +193,17 @@ package body GNATLLVM.GLType is
 
    end GL_Type_Info_Is_Valid_Int;
 
+   -------------
+   -- Discard --
+   -------------
+
+   procedure Discard (GT : GL_Type) is
+      pragma Unreferenced (GT);
+
+   begin
+      null;
+   end Discard;
+
    ----------
    -- Next --
    ----------
@@ -200,6 +219,48 @@ package body GNATLLVM.GLType is
    begin
       GT := GL_Type_Table.Table (GT).Next;
    end Next;
+
+   ---------------------------
+   -- Get_Or_Create_GL_Type --
+   ---------------------------
+
+   function Get_Or_Create_GL_Type
+     (TE : Entity_Id; Create : Boolean) return GL_Type
+   is
+      GT : GL_Type := Get_GL_Type (TE);
+
+   begin
+      if No (GT) and then Create then
+         Discard (Type_Of (TE));
+         GT := Get_GL_Type (TE);
+      end if;
+
+      return GT;
+   end Get_Or_Create_GL_Type;
+
+   ------------
+   -- New_GT --
+   ------------
+
+   function New_GT (TE : Entity_Id) return GL_Type is
+      GT   : GL_Type;
+
+   begin
+      GL_Type_Table.Append ((GNAT_Type => TE,
+                             LLVM_Type => No_Type_T,
+                             Next      => Get_GL_Type (TE),
+                             Size      => No_GL_Value,
+                             Alignment => No_GL_Value,
+                             Bias      => No_GL_Value,
+                             Max_Size  => False,
+                             Kind      => None,
+                             Default   => True));
+
+      GT := GL_Type_Table.Last;
+      Set_GL_Type (TE, GT);
+      Mark_Default (GT);
+      return GT;
+   end New_GT;
 
    --------------------
    -- Create_GL_Type --
@@ -226,31 +287,10 @@ package body GNATLLVM.GLType is
       pragma Unreferenced (Biased, Last);
 
    begin
-      --  If we haven't made any GL_Type entries for this type, create the
-      --  entry for the primitive type.
-
-      if No (GT) then
-         GL_Type_Table.Append ((GNAT_Type => TE,
-                                LLVM_Type => Create_Primitive_Type (TE),
-                                Next      => No_GL_Type,
-                                Size      => No_GL_Value,
-                                Alignment => No_GL_Value,
-                                Bias      => No_GL_Value,
-                                Max_Size  => False,
-                                Kind      => Primitive,
-                                Default   => True));
-         GT   := GL_Type_Table.Last;
-         Last := GT;
-         Prim := GT;
-         Set_GL_Type (TE, GT);
-      else
-         --  Otherwise, find the primitive GL_Type
-
-         while Present (Prim) loop
-            exit when GL_Type_Table.Table (Prim).Kind = Primitive;
-            Next (Prim);
-         end loop;
-      end if;
+      while Present (Prim) loop
+         exit when GL_Type_Table.Table (Prim).Kind = Primitive;
+         Next (Prim);
+      end loop;
 
       --  If what we're looking for is just the primitive type, we're done.
       --  The test below will do the same thing as we do, but we do this test
@@ -310,11 +350,12 @@ package body GNATLLVM.GLType is
    -- Update_GL_Type --
    --------------------
 
-   procedure Update_GL_Type (GT : GL_Type) is
+   procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean) is
       GTI : GL_Type_Info renames GL_Type_Table.Table (GT);
 
    begin
-      GTI.LLVM_Type := Create_Primitive_Type (GTI.GNAT_Type);
+      GTI.LLVM_Type := T;
+      GTI.Kind      := (if Is_Dummy then Dummy else Primitive);
    end Update_GL_Type;
 
    -----------------------
@@ -322,15 +363,9 @@ package body GNATLLVM.GLType is
    -----------------------
 
    function Primitive_GL_Type (TE : Entity_Id) return GL_Type is
-      GT : GL_Type := Get_GL_Type (TE);
+      GT : GL_Type := Get_Or_Create_GL_Type (TE, True);
 
    begin
-      --  If there's no GL_Type yet, make one
-
-      if No (GT) then
-         return Create_GL_Type (TE);
-      end if;
-
       --  First look for a primitive type.  If there isn't one, then a
       --  dummy type is the best we have.
 
@@ -350,20 +385,32 @@ package body GNATLLVM.GLType is
       return GT;
    end Primitive_GL_Type;
 
+   -------------------
+   -- Dummy_GL_Type --
+   -------------------
+
+   function Dummy_GL_Type (TE : Entity_Id) return GL_Type is
+      GT : GL_Type := Get_Or_Create_GL_Type (TE, False);
+
+   begin
+      while Present (GT) loop
+         exit when GL_Type_Table.Table (GT).Kind = Dummy;
+         Next (GT);
+      end loop;
+
+      return GT;
+   end Dummy_GL_Type;
+
    ---------------------
    -- Default_GL_Type --
    ---------------------
 
-   function Default_GL_Type (TE : Entity_Id) return GL_Type is
-      GT : GL_Type := Get_GL_Type (TE);
+   function Default_GL_Type
+     (TE : Entity_Id; Create : Boolean := True) return GL_Type
+   is
+      GT : GL_Type := Get_Or_Create_GL_Type (TE, Create);
 
    begin
-      --  If there's no GL_Type yet, make one
-
-      if No (GT) then
-         return Create_GL_Type (TE);
-      end if;
-
       while Present (GT) loop
          exit when GL_Type_Table.Table (GT).Default;
          Next (GT);
@@ -380,7 +427,7 @@ package body GNATLLVM.GLType is
       All_GT : GL_Type := Get_GL_Type (Full_Etype (GT));
 
    begin
-      --  Mark all GT's as default or not, depending on whether it's ours
+      --  Mark each GT as default or not, depending on whether it's ours
 
       while Present (All_GT) loop
          GL_Type_Table.Table (All_GT).Default := All_GT = GT;
@@ -448,6 +495,13 @@ package body GNATLLVM.GLType is
    function Is_Dummy_Type (GT : GL_Type) return Boolean is
      (GL_Type_Table.Table (GT).Kind = Dummy);
 
+   ----------------------
+   -- Is_Empty_GL_Type --
+   ----------------------
+
+   function Is_Empty_GL_Type (GT : GL_Type) return Boolean is
+     (GL_Type_Table.Table (GT).Kind = None);
+
    -----------------------
    -- Is_Nonnative_Type --
    -----------------------
@@ -480,6 +534,26 @@ package body GNATLLVM.GLType is
       return GTI.Kind not in Padded | Byte_Array
         and then Is_Dynamic_Size (GTI.GNAT_Type, Max_Size => GTI.Max_Size);
    end Is_Dynamic_Size;
+
+   ----------------------
+   -- Dump_GL_Type_Int --
+   ----------------------
+
+   procedure Dump_GL_Type_Int (GT : GL_Type; Full_Dump : Boolean) is
+      GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
+
+   begin
+      Write_Str (GT_Kind'Image (GTI.Kind) & "(");
+      Write_Int (Int (GTI.GNAT_Type));
+      Write_Str ("): ");
+      if Full_Dump then
+         if Present (GTI.LLVM_Type) then
+            Dump_LLVM_Type (GTI.LLVM_Type);
+         end if;
+
+         pg (Union_Id (GTI.GNAT_Type));
+      end if;
+   end Dump_GL_Type_Int;
 
 begin
    --  Make a dummy entry in the table, so the "No" entry is never used.

@@ -295,10 +295,6 @@ package body GNATLLVM.Arrays is
         Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
 
    begin
-      --  It's redundant to set the type here, since our caller will set it,
-      --  but we have to set it in order to set the array info.
-
-      Set_Type (TE, Result_Typ);
       Array_Info.Append (Dim_Info);
       Set_Array_Info (TE, Array_Info.Last);
       return Result_Typ;
@@ -459,7 +455,6 @@ package body GNATLLVM.Arrays is
       if For_Orig then
          Set_Orig_Array_Info   (TE, First_Info);
       else
-         Set_Type              (TE, Typ);
          Set_Is_Nonnative_Type (TE, This_Nonnative);
          Set_Array_Info        (TE, First_Info);
       end if;

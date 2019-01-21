@@ -79,15 +79,11 @@ package body GNATLLVM.Types is
    function Create_Floating_Point_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Floating_Point_Type (TE),
           Post => Present (Create_Floating_Point_Type'Result);
-   function Create_Access_Type (TE : Entity_Id) return Type_T
+   function Create_Access_Type
+     (TE : Entity_Id; Dummy : out Boolean) return Type_T
      with Pre  => Is_Access_Type (TE),
           Post => Present (Create_Access_Type'Result);
    --  Create an LLVM type for various GNAT types
-
-   function Create_Dummy_Access_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Access_Type (TE),
-          Post => Present (Create_Dummy_Access_Type'Result);
-   --  Make a type to be used as a dummy type for access type TE
 
    function Convert_Pointer
      (V  : GL_Value;
@@ -903,7 +899,7 @@ package body GNATLLVM.Types is
    function Convert_Pointer_To_Dummy (V : GL_Value) return GL_Value is
       TE    : constant Entity_Id       := Related_Type (V);
       R     : constant GL_Relationship := Relationship (V);
-      T     : constant Type_T          := Create_Dummy_Access_Type (TE);
+      T     : constant Type_T          := Type_Of (Dummy_GL_Type (TE));
 
    begin
       return Convert_Pointer (V, TE, R, T);
@@ -1218,11 +1214,11 @@ package body GNATLLVM.Types is
       --  on something being elaborated.
 
       elsif Is_Being_Elaborated (TE)
-           or else (BT /= TE and then Depends_On_Being_Elaborated (BT))
-           or else (Is_Array_Type (TE)
-                      and then Is_Aggregate_Type (Full_Component_Type (TE))
-                      and then (Depends_On_Being_Elaborated
-                                  (Full_Component_Type (TE))))
+        or else (BT /= TE and then Depends_On_Being_Elaborated (BT))
+        or else (Is_Array_Type (TE)
+                   and then Is_Aggregate_Type (Full_Component_Type (TE))
+                   and then (Depends_On_Being_Elaborated
+                               (Full_Component_Type (TE))))
       then
          return True;
 
@@ -1311,32 +1307,35 @@ package body GNATLLVM.Types is
    -- Create_Access_Type --
    ------------------------
 
-   function Create_Access_Type (TE : Entity_Id) return Type_T is
+   function Create_Access_Type
+     (TE : Entity_Id; Dummy : out Boolean) return Type_T
+   is
       DT : constant Entity_Id       := Full_Designated_Type (TE);
       R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
+      GT : GL_Type                  := Default_GL_Type (DT, Create => False);
 
    begin
-      --  If DT is a subprogram type (since the access type to it is always
-      --  the same type) or if it doesn't depend on something that's being
-      --  elaborated, handle this normally.
-
-      if Ekind (DT) = E_Subprogram_Type
-        or else not Depends_On_Being_Elaborated (DT)
-      then
-         Set_Is_Dummy_Type (TE, False);
-         return Type_For_Relationship (DT, R);
-
       --  If this is a record type, we can get the actual type that will be
       --  used here. If it hasn't been done yet, set it for the record
       --  type, and mark it dummy.
 
-      elsif Is_Record_Type (DT) then
-         if No (Get_Type (DT)) then
-            Set_Type (DT, Struct_Create_Named (Context, Get_Name (DT)));
-            Set_Is_Dummy_Type (DT, True);
+      if Is_Record_Type (DT) then
+         if No (GT) then
+            GT := New_GT (DT);
+            Update_GL_Type (GT, Struct_Create_Named (Context, Get_Name (DT)),
+                            True);
          end if;
 
-         return Pointer_Type (Get_Type (DT), 0);
+         return Pointer_Type (Type_Of (GT), 0);
+
+      --  If DT is a subprogram type (since the access type to it is always
+      --  the same type) or if it doesn't depend on something that's being
+      --  elaborated, handle this normally.
+
+      elsif Ekind (DT) = E_Subprogram_Type
+        or else not Depends_On_Being_Elaborated (DT)
+      then
+         return Type_For_Relationship (DT, R);
 
       --  Otherwise, if DT is currently being elaborated, we have to make a
       --  dummy type that we know will be the same width of an access to
@@ -1347,111 +1346,57 @@ package body GNATLLVM.Types is
       --  other access types are quite rare).
 
       else
-         Set_Is_Dummy_Type (TE, True);
-         return Create_Dummy_Access_Type (TE);
+         Dummy := True;
+         if Is_Array_Type (DT) then
+
+            --  For arrays, a pointer to void will work for all but a fat
+            --  pointer.  For a fat pointer, use two pointers to void (we
+            --  could make an array bound type without actually fully
+            --  elaborating the array type, but it's not worth the trouble).
+
+            return (if   R /= Fat_Pointer then Void_Ptr_Type
+                    else Build_Struct_Type ((1 => Void_Ptr_Type,
+                                             2 => Void_Ptr_Type)));
+
+         elsif Ekind (DT) = E_Subprogram_Type then
+            return Void_Ptr_Type;
+
+         else
+            --  Access type is the only case left.  We use a void pointer.
+
+            pragma Assert (Is_Access_Type (DT) and then R = Reference);
+            return Void_Ptr_Type;
+         end if;
       end if;
    end Create_Access_Type;
-
-   ------------------------------
-   -- Create_Dummy_Access_Type --
-   ------------------------------
-
-   function Create_Dummy_Access_Type (TE : Entity_Id) return Type_T is
-      DT : constant Entity_Id       := Full_Designated_Type (TE);
-      R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
-
-   begin
-      if Is_Array_Type (DT) then
-
-         --  For arrays, a pointer to void will work for all but a fat
-         --  pointer.  For a fat pointer, use two pointers to void (we
-         --  could make an array bound type without actually fully
-         --  elaborating the array type, but it's not worth the trouble).
-
-         return (if   R /= Fat_Pointer then Void_Ptr_Type
-                 else Build_Struct_Type ((1 => Void_Ptr_Type,
-                                          2 => Void_Ptr_Type)));
-
-      elsif Ekind (DT) = E_Subprogram_Type then
-         return Void_Ptr_Type;
-
-      else
-         --  Access type is the only case left.  We use a void pointer.
-
-         pragma Assert (Is_Access_Type (DT) and then R = Reference);
-         return Void_Ptr_Type;
-      end if;
-
-   end Create_Dummy_Access_Type;
 
    -------------
    -- Type_Of --
    -------------
 
    function Type_Of (TE : Entity_Id) return Type_T is
-      GT : GL_Type := Get_GL_Type (TE);
+      GT    : GL_Type;
+      T     : Type_T;
+      Dummy : Boolean := False;
+      TBAA  : Metadata_T;
 
    begin
-      --  If we haven't already made a GL_Type for this type, make one now
+      --  Before we do anything, see if this isn't a base type and
+      --  process that if so.
 
-      if No (GT) then
-         GT := Create_GL_Type (TE);
-         Set_GL_Type (TE, GT);
-
-         --  Back-annotate sizes of non-scalar types if there isn't one.
-         --  ??? Don't do anything for access subprogram since this will cause
-         --  warnings for UC's in g-thread and g-spipat.
-
-         if not Is_Access_Subprogram_Type (TE)
-           and then not Is_Scalar_Type (TE)
-         then
-            if Unknown_Esize (TE) then
-               Set_Esize   (TE, Annotated_Object_Size (TE));
-            end if;
-            if Unknown_RM_Size (TE) then
-               Set_RM_Size (TE, Annotated_Value
-                              (BA_Mul (BA_Type_Size (TE, No_Padding => True),
-                                       BA_Const (Uint_Bits_Per_Unit))));
-            end if;
-         end if;
-
-         Validate_And_Set_Alignment
-           (TE, Alignment (TE),
-            Int (ULL'(Get_Type_Alignment (TE, Use_Specified => False))));
-         if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
-           and then Present (Original_Array_Type (TE))
-         then
-            Validate_And_Set_Alignment (Original_Array_Type (TE),
-                                        Alignment (TE),
-                                        Int (ULL'(Get_Type_Alignment (TE))));
-         end if;
-
-      --  If we've previously made a dummy type, this is our chance to
-      --  fix it.
-
-      elsif Is_Dummy_Type (GT) then
-         Update_GL_Type (GT);
+      if not Is_Full_Base_Type (TE) then
+         Discard (Type_Of (Full_Base_Type (TE)));
       end if;
 
-      return Type_Of (GT);
-   end Type_Of;
+      --  Next see if we already have a suitable type.
 
-   ---------------------------
-   -- Create_Primitive_Type --
-   ---------------------------
+      GT := Default_GL_Type (TE, Create => False);
 
-   function Create_Primitive_Type (TE : Entity_Id) return Type_T is
-      T    : Type_T := Get_Type (TE);
-      TBAA : Metadata_T;
+      --  If we've already made a non-dummy GL_Type for this type, we
+      --  can just return its LLVM type.
 
-   begin
-      --  See if we already have a non-dummy type or have a dummy type but
-      --  we're elaborating this type.
-
-      if Present (T)
-        and then (not Is_Dummy_Type (TE) or Is_Being_Elaborated (TE))
-      then
-         return T;
+      if Present (GT) and then not Is_Dummy_Type (GT) then
+         return Type_Of (GT);
       end if;
 
       --  Set that we're elaborating the type.  Note that we have to do this
@@ -1460,13 +1405,6 @@ package body GNATLLVM.Types is
       --  base type.
 
       Set_Is_Being_Elaborated (TE, True);
-
-      --  Before we do anything, see if this isn't a base type and
-      --  process that if so.
-
-      if not Is_Full_Base_Type (TE) then
-         Discard (Type_Of (Full_Base_Type (TE)));
-      end if;
 
       case Ekind (TE) is
          when E_Void =>
@@ -1479,7 +1417,7 @@ package body GNATLLVM.Types is
             T := Create_Floating_Point_Type (TE);
 
          when Access_Kind =>
-            T := Create_Access_Type (TE);
+            T := Create_Access_Type (TE, Dummy);
 
          when Record_Kind =>
             T := Create_Record_Type (TE);
@@ -1504,9 +1442,41 @@ package body GNATLLVM.Types is
             T := Void_Type;
       end case;
 
-      --  Now save the result and any TBAA information
+      --  Now save the result.  If we don't have a GT already made, make one.
 
-      Set_Type (TE, T);
+      if No (GT) then
+         GT := New_GT (TE);
+      end if;
+
+      --  GT is either a new type (Kind = None) or a
+      --  dummy.  If all we were able to return is a dummy type and GT is
+      --  also a dummy type, its type should be the same as ours.
+
+      if Dummy and then Is_Dummy_Type (GT) then
+         pragma Assert (Type_Of (GT) = T);
+         return T;
+
+      --  If we're not a dummy type and GT is a dummy type, we need to
+      --  create a new GL_Type for the real type.  This can only happen
+      --  for access types.
+
+      elsif not Dummy and then Is_Dummy_Type (GT) then
+         pragma Assert (Is_Access_Type (TE));
+         GT := New_GT (TE);
+      end if;
+
+      --  Set the LLVM type and status of the new GL_Type we made and show
+      --  that this type is no longer being elaborated.  If all we have is
+      --  a dummy type or if this is a void type, do no more.
+
+      Update_GL_Type (GT, T, Dummy);
+      Set_Is_Being_Elaborated (TE, False);
+      if Dummy or else Ekind (TE) = E_Void then
+         return T;
+      end if;
+
+      --  Now make and record the TBAA for the type, if any
+
       TBAA := Create_TBAA (TE);
       if Present (TBAA) then
          Set_TBAA (TE, TBAA);
@@ -1520,9 +1490,36 @@ package body GNATLLVM.Types is
          Discard (Create_Array_Type (TE, For_Orig => True));
       end if;
 
-      Set_Is_Being_Elaborated (TE, False);
+      --  Back-annotate sizes of non-scalar types if there isn't one.  ???
+      --  Don't do anything for access subprogram since this will cause
+      --  warnings for UC's in g-thread and g-spipat.
+
+      if not Is_Access_Subprogram_Type (TE)
+        and then not Is_Scalar_Type (TE)
+      then
+         if Unknown_Esize (TE) then
+            Set_Esize   (TE, Annotated_Object_Size (TE));
+         end if;
+         if Unknown_RM_Size (TE) then
+            Set_RM_Size (TE, Annotated_Value
+                           (BA_Mul (BA_Type_Size (TE, No_Padding => True),
+                                    BA_Const (Uint_Bits_Per_Unit))));
+         end if;
+      end if;
+
+      Validate_And_Set_Alignment
+        (TE, Alignment (TE),
+         Int (ULL'(Get_Type_Alignment (TE, Use_Specified => False))));
+      if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
+        and then Present (Original_Array_Type (TE))
+      then
+         Validate_And_Set_Alignment (Original_Array_Type (TE),
+                                     Alignment (TE),
+                                     Int (ULL'(Get_Type_Alignment (TE))));
+      end if;
+
       return T;
-   end Create_Primitive_Type;
+   end Type_Of;
 
    --------------------------------
    -- Validate_And_Set_Alignment --

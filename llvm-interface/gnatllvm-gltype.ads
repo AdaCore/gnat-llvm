@@ -33,8 +33,19 @@ package GNATLLVM.GLType is
    --  link from the GNAT type to its first GL_Type.  One entry is
    --  designated as "primitive", meaning it's the actual type used for the
    --  value (in the case of scalar types) or the natural type (without any
-   --  padding) in the case of aggregates.  A GL_Type (possibly the same
+   --  padding) in the case of aggregates.  One GL_Type (possibly the same
    --  one, but not necessarily) is the default for that type.
+
+   procedure Dump_GL_Type_Int (GT : GL_Type; Full_Dump : Boolean);
+
+   procedure Discard (GT : GL_Type)
+     with Pre => Present (GT);
+
+   function New_GT (TE : Entity_Id) return GL_Type
+     with Pre  => Is_Type_Or_Void (TE),
+          Post => Default_GL_Type (TE) = New_GT'Result;
+   --  Create a new GL_Type with None kind for type TE.  It will be the
+   --  new default type for TE
 
    function Create_GL_Type
      (TE       : Entity_Id;
@@ -51,22 +62,30 @@ package GNATLLVM.GLType is
    --  Biased is True if we're using a biased representation to store this
    --  integral value.
 
-   procedure Update_GL_Type (GT : GL_Type)
-     with Pre => Is_Dummy_Type (GT);
-   --  If GT's type is dummy, try to update it with a real type
+   procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean)
+     with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)
+                 or else T = Type_Of (GT);
+   --  Update GT with a new type and dummy status
 
    function Primitive_GL_Type (TE : Entity_Id) return GL_Type
-     with Pre => Is_Type_Or_Void (TE),
+     with Pre  => Is_Type_Or_Void (TE),
           Post => Present (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
    --  form, creating it if it doesn't exist.
 
-   function Default_GL_Type (TE : Entity_Id) return GL_Type
-     with Pre => Is_Type_Or_Void (TE),
-          Post => Present (Default_GL_Type'Result);
+   function Dummy_GL_Type (TE : Entity_Id) return GL_Type
+     with Pre  => Is_Type_Or_Void (TE),
+          Post => Present (Dummy_GL_Type'Result);
+   --  Return the GT_Type for TE that corresponds to a dummy form
+
+   function Default_GL_Type
+     (TE : Entity_Id; Create : Boolean := True) return GL_Type
+     with Pre  => Is_Type_Or_Void (TE),
+          Post => not Create or else Present (Default_GL_Type'Result);
    --  Return the GT_TYpe for TE that's to be used as the default for
-   --  objects or components of the type.  This may or may not be the
-   --  same as what Primitive_GL_Type returns.
+   --  objects or components of the type.  If Create is True, make one if
+   --  it doesn't already exist.  This may or may not be the same as what
+   --  Primitive_GL_Type returns.
 
    procedure Mark_Default (GT : GL_Type)
      with Pre => Present (GT);
@@ -81,7 +100,7 @@ package GNATLLVM.GLType is
      with Pre => Present (GT), Post => Is_Type_Or_Void (Full_Etype'Result);
 
    function Type_Of (GT : GL_Type) return Type_T
-     with Pre => Present (GT), Post => Present (Type_Of'Result);
+     with Pre => Present (GT);
 
    function Get_Type_Size (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Type_Size'Result);
@@ -91,6 +110,10 @@ package GNATLLVM.GLType is
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
+
+   function Is_Empty_GL_Type (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+   --  Return True if GT is a GL_Type created by New_GT and never updated
 
    --  Now define functions that operate on GNAT types that we want to
    --  also operate on GL_Type's.

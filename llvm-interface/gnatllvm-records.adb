@@ -95,8 +95,8 @@ package body GNATLLVM.Records is
 
    --  The information for a field is the index of the piece in the
    --  record information and optionally the index within the piece in the
-   --  case when its an LLVM_type.  We also record if the type of this
-   --  field when the record was created was a dummy type.
+   --  case when its an LLVM_type.  We also record the GL_Type used to
+   --  represent the field.
 
    type Field_Info is record
       Rec_Info_Idx  : Record_Info_Id;
@@ -108,11 +108,6 @@ package body GNATLLVM.Records is
       GLType        : GL_Type;
       --  The GL_Type correspond to this field, which takes into account
       --  a possible change in size
-
-      Is_Dummy_Type : Boolean;
-      --  True if we had a dummy version of the record's type when we
-      --  created this entry.
-
    end record;
 
    package Field_Info_Table is new Table.Table
@@ -537,30 +532,33 @@ package body GNATLLVM.Records is
       Types       : Type_Array (0 .. Count_Entities (TE));
       --  Array of all field types that are going into the current piece
 
-      Next_Type   : Nat := 0;
+      Next_Type   : Nat            := 0;
       --  Ordinal of next entry in Types
 
-      Cur_Field   : Entity_Id := Empty;
+      Cur_Field   : Entity_Id      := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
+
+      Last_Align  : ULL            := ULL (Get_Maximum_Alignment);
+      --  The last known alignment for this record
+
+      Split_Align : ULL            := ULL (Get_Maximum_Alignment);
+      --  We need to split an LLVM fragment type if the alignment of the
+      --  next field is greater than both this and Last_Align.  This occurs
+      --  for variant records; see details there.  It also occurs for the
+      --  same reason after a variable-size field.
+
+      GT          :  GL_Type       := Default_GL_Type (TE, Create => False);
+      --  The GL_Type for this record type
+
+      LLVM_Type   : Type_T;
+      --  The LLVM type for this record type
 
       Discrim_FIs : Field_Info_Id_Array :=
         (1 .. Count_Entities (TE) + 1 => Empty_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
       --  discriminant number J.  We use this for record subtypes of
       --  derived types.
-
-      Last_Align  : ULL       := ULL (Get_Maximum_Alignment);
-      --  The last known alignment for this record
-
-      Split_Align : ULL       := ULL (Get_Maximum_Alignment);
-      --  We need to split an LLVM fragment type if the alignment of the
-      --  next field is greater than both this and Last_Align.  This occurs
-      --  for variant records; see details there.  It also occurs for the
-      --  same reason after a variable-size field.
-
-      LLVM_Type : Type_T      := Get_Type (TE);
-      --  The LLVM type for this record type
 
       procedure Add_RI
         (T            : Type_T                      := No_Type_T;
@@ -575,7 +573,6 @@ package body GNATLLVM.Records is
         (E             : Entity_Id;
          RI_Idx        : Record_Info_Id;
          Ordinal       : Nat;
-         Is_Dummy_Type : Boolean;
          F_TE    : in out Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
@@ -638,7 +635,6 @@ package body GNATLLVM.Records is
         (E             : Entity_Id;
          RI_Idx        : Record_Info_Id;
          Ordinal       : Nat;
-         Is_Dummy_Type : Boolean;
          F_TE    : in out Entity_Id)
       is
          Matching_Field : Entity_Id;
@@ -659,8 +655,7 @@ package body GNATLLVM.Records is
          Field_Info_Table.Append
            ((Rec_Info_Idx  => RI_Idx,
              Field_Ordinal => Ordinal,
-             GLType        => Primitive_GL_Type (Full_Etype (E)),
-             Is_Dummy_Type => Is_Dummy_Type));
+             GLType        => Default_GL_Type (Full_Etype (E))));
 
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
@@ -1108,7 +1103,7 @@ package body GNATLLVM.Records is
          --  it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info (TE), 0, False, Typ);
+            Add_FI (E, Get_Record_Info_N (TE), 0, Typ);
             return;
 
          --  If this field is dynamic size, we have to close out the last
@@ -1117,7 +1112,7 @@ package body GNATLLVM.Records is
 
          elsif Is_Dynamic_Size (Typ, Max_Size => not Is_Constrained (Typ)) then
             Flush_Current_Types;
-            Add_FI (E, Cur_Idx, 0, False, Typ);
+            Add_FI (E, Cur_Idx, 0, Typ);
             Add_RI (Typ => Typ, Use_Max_Size => not Is_Constrained (Typ));
             Set_Is_Nonnative_Type (TE);
             Split_Align := Align;
@@ -1136,7 +1131,7 @@ package body GNATLLVM.Records is
             end if;
 
             Types (Next_Type) := Type_For_Relationship (Typ, Component);
-            Add_FI (E, Cur_Idx, Next_Type, Is_Dummy_Type (Typ), Typ);
+            Add_FI (E, Cur_Idx, Next_Type, Typ);
             Next_Type := Next_Type + 1;
          end if;
 
@@ -1151,17 +1146,22 @@ package body GNATLLVM.Records is
       --  Then initialize our first record info table entry, which we know
       --  will be used.  But first see if the dummy type was already made.
 
-      if Present (LLVM_Type) then
-         Set_Is_Dummy_Type (TE, False);
-      else
-         LLVM_Type := Struct_Create_Named (Context, Get_Name (TE));
-         Set_Type (TE, LLVM_Type);
+      if No (GT) then
+         GT := New_GT (TE);
       end if;
 
+      LLVM_Type := Type_Of (GT);
+      if No (LLVM_Type) then
+         pragma Assert (Is_Empty_GL_Type (GT));
+         LLVM_Type := Struct_Create_Named (Context, Get_Name (TE));
+      end if;
+
+      Update_GL_Type (GT, LLVM_Type, True);
       Record_Info_Table.Increment_Last;
       Cur_Idx := Record_Info_Table.Last;
       Set_Record_Info (TE, Cur_Idx);
       Add_Fields (TE);
+      Update_GL_Type (GT, LLVM_Type, False);
 
       --  If we haven't yet made any record info entries, it means that
       --  this is a fixed-size record that can be just an LLVM type,
@@ -2316,7 +2316,7 @@ package body GNATLLVM.Records is
                            --  If this field had a dummy type, convert our
                            --  expression into it.
 
-                           if FI.Is_Dummy_Type then
+                           if Is_Dummy_Type (FI.GLType) then
                               Val := Convert_Pointer_To_Dummy (Val);
                            end if;
 

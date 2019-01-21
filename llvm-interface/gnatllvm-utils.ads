@@ -177,6 +177,8 @@ package GNATLLVM.Utils is
 
    procedure Dump_GL_Value (V : GL_Value)
      with Export, External_Name => "dglv";
+   procedure Dump_GL_Type (GT : GL_Type)
+     with Export, External_Name => "dglt";
 
    --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
 

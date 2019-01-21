@@ -317,10 +317,19 @@ package body GNATLLVM.Utils is
          Write_Str ("Pristine ");
       end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
-      Write_Int (Int (Full_Etype (V.Typ)));
+      Dump_GL_Type_Int (V.Typ, False);
       Write_Str ("): ");
       pg (Union_Id (Full_Etype (V.Typ)));
    end Dump_GL_Value;
+
+   ------------------
+   -- Dump_GL_Type --
+   ------------------
+
+   procedure Dump_GL_Type (GT : GL_Type) is
+   begin
+      Dump_GL_Type_Int (GT, True);
+   end Dump_GL_Type;
 
    ----------------------
    -- Dump_LLVM_Module --

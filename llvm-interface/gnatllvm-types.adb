@@ -1315,6 +1315,8 @@ package body GNATLLVM.Types is
       GT : GL_Type                  := Default_GL_Type (DT, Create => False);
 
    begin
+      Dummy := False;
+
       --  If this is a record type, we can get the actual type that will be
       --  used here. If it hasn't been done yet, set it for the record
       --  type, and mark it dummy.

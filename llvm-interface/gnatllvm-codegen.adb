@@ -347,7 +347,10 @@ package body GNATLLVM.Codegen is
 
       --  Release the environment
 
-      Dispose_DI_Builder (DI_Builder);
+      if Emit_Debug_Info then
+         Dispose_DI_Builder (DI_Builder);
+      end if;
+
       Dispose_Builder (IR_Builder);
       Dispose_Module (Module);
    end LLVM_Generate_Code;

@@ -1,5 +1,7 @@
 Limitations and missing features (identified so far):
 
+- must position extensions fields after padding of parent;
+  shows up in c460005 with -O2 and optimizing build
 - when have convention C and array, change to pointer to element type
   this causes cxb3008 to fail in the optimizer with -O2 and an optimizing build
 - look at shouldAssumeDSOLocal in clang to see what we should do

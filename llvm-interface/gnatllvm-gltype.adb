@@ -435,6 +435,72 @@ package body GNATLLVM.GLType is
       end loop;
    end Mark_Default;
 
+   -------------
+   -- Convert --
+   -------------
+
+   function Convert
+     (V              : GL_Value;
+      GT             : GL_Type;
+      Float_Truncate : Boolean := False) return GL_Value is
+
+   begin
+      --  ??? For now, only allow GT to be the primitive type, so this is
+      --  just a conversion to its type.
+
+      pragma Assert (Is_Primitive_GL_Type (GT));
+      return Convert (V, Full_Etype (GT), Float_Truncate);
+   end Convert;
+
+   -----------------
+   -- Convert_Ref --
+   -----------------
+
+   function Convert_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
+   begin
+      --  ??? For now, only allow GT to be the primitive type, so this is
+      --  just a conversion to its type.
+
+      pragma Assert (Is_Primitive_GL_Type (GT));
+      return Convert_Ref (V, Full_Etype (GT));
+   end Convert_Ref;
+
+   ---------------------
+   -- Emit_Conversion --
+   ---------------------
+
+   function Emit_Conversion
+     (N                   : Node_Id;
+      GT                  : GL_Type;
+      From_N              : Node_Id := Empty;
+      For_LHS             : Boolean := False;
+      Is_Unchecked        : Boolean := False;
+      Need_Overflow_Check : Boolean := False;
+      Float_Truncate      : Boolean := False;
+      No_Truncation       : Boolean := False) return GL_Value is
+   begin
+      --  ??? For now, only allow GT to be the primitive type, so this is
+      --  just a conversion to its type.
+
+      pragma Assert (Is_Primitive_GL_Type (GT));
+      return Emit_Conversion (N, Full_Etype (GT), From_N, For_LHS,
+                              Is_Unchecked, Need_Overflow_Check,
+                              Float_Truncate, No_Truncation);
+   end Emit_Conversion;
+
+   ---------------------
+   -- Convert_Pointer --
+   ---------------------
+
+   function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value is
+   begin
+      --  ??? For now, only allow GT to be the primitive type, so this is
+      --  just a conversion to its type.
+
+      pragma Assert (Is_Primitive_GL_Type (GT));
+      return Convert_Pointer (V, Full_Etype (GT));
+   end Convert_Pointer;
+
    ----------------
    -- Full_Etype --
    ----------------
@@ -494,6 +560,13 @@ package body GNATLLVM.GLType is
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean is
      (GL_Type_Table.Table (GT).Kind = Dummy);
+
+   ---------------------------
+   --  Is_Primitive_GL_Type --
+   ---------------------------
+
+   function Is_Primitive_GL_Type (GT : GL_Type) return Boolean is
+     (GL_Type_Table.Table (GT).Kind = Primitive);
 
    ----------------------
    -- Is_Empty_GL_Type --

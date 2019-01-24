@@ -253,8 +253,8 @@ package GNATLLVM.Types is
                   and then Is_Elementary_Type (V),
           Post => Is_Data (Convert'Result)
                   and then Is_Elementary_Type (Convert'Result);
-   --  Convert Expr to the type TE, with both the types of Expr and TE
-   --  being elementary.
+   --  Convert V to the type TE, with both the types of V and TE being
+   --  elementary.
 
    function Convert
      (V, T : GL_Value; Float_Truncate : Boolean := False) return GL_Value is
@@ -268,7 +268,7 @@ package GNATLLVM.Types is
    function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Reference (V) and then Is_Type (TE),
           Post => Is_Reference (Convert_Ref'Result);
-   --  Convert Src, which should be a reference, into a reference to TE
+   --  Convert V, which should be a reference, into a reference to TE
 
    function Convert_Ref
      (V : GL_Value; T : GL_Value) return GL_Value is
@@ -309,7 +309,7 @@ package GNATLLVM.Types is
                   and then TE = Get_Fullest_View (TE)
                   and then not (Is_Unchecked and Need_Overflow_Check),
           Post => Present (Emit_Conversion'Result);
-   --  Emit code to convert Expr to Dest_Type, optionally in unchecked mode
+   --  Emit code to convert N to TE, optionally in unchecked mode
    --  and optionally with an overflow check.  From_N is the conversion node,
    --  if there is a corresponding source node.
 
@@ -318,10 +318,10 @@ package GNATLLVM.Types is
      with Pre  => Is_Type (TE) and then Present (N)
                   and then TE = Get_Fullest_View (TE),
           Post => Present (Emit_Convert_Value'Result);
-   --  Emit code to convert Expr to Dest_Type and get it as a value
+   --  Emit code to convert N to TE and get it as a value
 
    function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Is_Access_Type (V),
+     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
           Post => Is_Access_Type (Convert_Pointer'Result);
    --  V is a reference to some object.  Convert it to a reference to TE
    --  with the same relationship.

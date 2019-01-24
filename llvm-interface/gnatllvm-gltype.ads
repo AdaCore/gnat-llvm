@@ -15,6 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Sem_Aux;  use Sem_Aux;
+with Sem_Util; use Sem_Util;
+
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -92,6 +95,54 @@ package GNATLLVM.GLType is
    --  Mark GT as the type to be used as the default representation of
    --  its corresponding GNAT type.
 
+   function Convert
+     (V              : GL_Value;
+      GT             : GL_Type;
+      Float_Truncate : Boolean := False) return GL_Value
+     with Pre  => Is_Data (V) and then Is_Elementary_Type (GT)
+                  and then Is_Elementary_Type (V),
+          Post => Is_Data (Convert'Result)
+                  and then Is_Elementary_Type (Convert'Result);
+   --  Convert V to the type GT, with both the types of V and GT being
+   --  elementary.
+
+   function Convert_Ref (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Reference (V),
+          Post => Is_Reference (Convert_Ref'Result);
+   --  Convert V, which should be a reference, into a reference to GT
+
+   function Emit_Conversion
+     (N                   : Node_Id;
+      GT                  : GL_Type;
+      From_N              : Node_Id := Empty;
+      For_LHS             : Boolean := False;
+      Is_Unchecked        : Boolean := False;
+      Need_Overflow_Check : Boolean := False;
+      Float_Truncate      : Boolean := False;
+      No_Truncation       : Boolean := False) return GL_Value
+     with Pre  => Present (GT) and then Present (N)
+                  and then not (Is_Unchecked and Need_Overflow_Check),
+          Post => Present (Emit_Conversion'Result);
+   --  Emit code to convert N to GT, optionally in unchecked mode
+   --  and optionally with an overflow check.  From_N is the conversion node,
+   --  if there is a corresponding source node.
+
+   function Emit_Convert_Value (N : Node_Id; GT : GL_Type) return GL_Value is
+     (Get (Emit_Conversion (N, GT), Object))
+     with Pre  => Present (GT) and then Present (N),
+          Post => Present (Emit_Convert_Value'Result);
+   --  Emit code to convert N to GL and get it as a value
+
+   function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Access_Type (V) and then Present (GT),
+          Post => Is_Access_Type (Convert_Pointer'Result);
+   --  V is a reference to some object.  Convert it to a reference to GT
+   --  with the same relationship.
+
+   function Full_GL_Type (N : Node_Id) return GL_Type is
+     (Default_GL_Type (Full_Etype (N)))
+     with Pre => Present (N), Post => Present (Full_GL_Type'Result);
+
    --  Here are the access function to obtain fields from a GL_Type.
    --  Many are overloaded from the functions that obtain these fields from
    --  a GNAT type.
@@ -109,6 +160,9 @@ package GNATLLVM.GLType is
      with Pre => Present (GT), Post => Present (Get_Type_Alignment'Result);
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+
+   function Is_Primitive_GL_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
 
    function Is_Empty_GL_Type (GT : GL_Type) return Boolean
@@ -232,6 +286,14 @@ package GNATLLVM.GLType is
 
    function Is_Constr_Subt_For_UN_Aliased (GT : GL_Type) return Boolean is
      (Is_Constr_Subt_For_UN_Aliased (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Is_By_Reference_Type (GT : GL_Type) return Boolean is
+     (Is_By_Reference_Type (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Requires_Transient_Scope (GT : GL_Type) return Boolean is
+     (Requires_Transient_Scope (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Type_Needs_Bounds (GT : GL_Type) return Boolean is

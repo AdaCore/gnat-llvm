@@ -32,6 +32,7 @@ with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
@@ -913,7 +914,8 @@ package body GNATLLVM.Exprs is
             --  Return 1 if must pass by reference or if default to pass by ref
 
             return Const_Int
-              (TE, (if   Get_Param_By_Ref_Mech (P_TE) = Default_By_Copy
+              (TE, (if   Get_Param_By_Ref_Mech (Default_GL_Type (P_TE))
+                            = Default_By_Copy
                     then Uint_0 else Uint_1));
 
          when Attribute_Mechanism_Code =>

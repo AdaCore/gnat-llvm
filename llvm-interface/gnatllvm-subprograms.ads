@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -34,8 +34,8 @@ package GNATLLVM.Subprograms is
 
    type Param_By_Ref_Mech is (Must, Default_By_Ref, Default_By_Copy);
 
-   function Get_Param_By_Ref_Mech (TE : Entity_Id) return Param_By_Ref_Mech
-     with Pre => Is_Type (TE);
+   function Get_Param_By_Ref_Mech (GT : GL_Type) return Param_By_Ref_Mech
+     with Pre => Present (GT);
 
    function Get_Mechanism_Code (E : Entity_Id; Exprs : List_Id) return Uint
      with Pre => Ekind_In (E, E_Function, E_Procedure);

@@ -20,7 +20,6 @@ with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
 with Restrict; use Restrict;
-with Sem_Aux;  use Sem_Aux;
 with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
@@ -33,9 +32,10 @@ with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
@@ -386,13 +386,13 @@ package body GNATLLVM.Subprograms is
    -- Get_Param_By_Ref_Mech --
    ---------------------------
 
-   function Get_Param_By_Ref_Mech (TE : Entity_Id) return Param_By_Ref_Mech is
+   function Get_Param_By_Ref_Mech (GT : GL_Type) return Param_By_Ref_Mech is
       Ptr_Size : constant ULL := Get_Type_Size (Void_Ptr_Type);
 
    begin
-      if Is_By_Reference_Type (TE) or else Is_Nonnative_Type (TE) then
+      if Is_By_Reference_Type (GT) or else Is_Nonnative_Type (GT) then
          return Must;
-      elsif Get_Type_Size (Type_Of (TE)) > 2 * Ptr_Size then
+      elsif Get_Type_Size (Type_Of (GT)) > 2 * Ptr_Size then
          return Default_By_Ref;
       else
          return Default_By_Copy;
@@ -404,25 +404,26 @@ package body GNATLLVM.Subprograms is
    --------------------
 
    function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
-      TE           : constant Entity_Id         := Full_Etype (Param);
+      GT           : constant GL_Type           := Full_GL_Type (Param);
       Subp         : constant Entity_Id         := Scope (Param);
-      By_Ref_Mech  : constant Param_By_Ref_Mech := Get_Param_By_Ref_Mech (TE);
+      By_Ref_Mech  : constant Param_By_Ref_Mech := Get_Param_By_Ref_Mech (GT);
       Param_Mode   : Entity_Kind                := Ekind (Param);
       Mech         : Int                        := Mechanism (Param);
       By_Copy_Kind : Param_Kind;
       By_Ref_Kind  : Param_Kind;
 
-      function Is_Initialized (TE : Entity_Id) return Boolean
-        with Pre => Is_Type (TE);
-      --  Returns True if TE has a subcomponent with an implicit
+      function Is_Initialized (GT : GL_Type) return Boolean
+        with Pre => Present (GT);
+      --  Returns True if GT's type has a subcomponent with an implicit
       --  initial value.  See RM 6.4.1(14) and RM 3.1.1.
 
       --------------------
       -- Is_Initialized --
       --------------------
 
-      function Is_Initialized (TE : Entity_Id) return Boolean is
-         F : Entity_Id;
+      function Is_Initialized (GT : GL_Type) return Boolean is
+         TE : constant Entity_Id := Full_Etype (GT);
+         F  : Entity_Id;
 
       begin
          if Is_Access_Type (TE)
@@ -434,14 +435,15 @@ package body GNATLLVM.Subprograms is
             return True;
 
          elsif Is_Array_Type (TE) then
-            return Is_Initialized (Full_Component_Type (TE));
+            return Is_Initialized (Default_GL_Type (Full_Component_Type (TE)));
 
          elsif Is_Record_Type (TE) then
             F := First_Component_Or_Discriminant (Full_Base_Type (TE));
             while Present (F) loop
                exit when Present (Parent (F))
                  and then Present (Expression (Parent (F)));
-               exit when Is_Initialized (Full_Base_Type (Full_Etype (F)));
+               exit when Is_Initialized (Default_GL_Type
+                                           (Full_Base_Type (Full_Etype (F))));
                Next_Component_Or_Discriminant (F);
             end loop;
 
@@ -464,7 +466,7 @@ package body GNATLLVM.Subprograms is
       --  There are some case where an out parameter needs to be
       --  viewed as in out.  These are detailed at 6.4.1(12).
 
-      elsif Param_Mode = E_Out_Parameter and then Is_Initialized (TE) then
+      elsif Param_Mode = E_Out_Parameter and then Is_Initialized (GT) then
          Param_Mode := E_In_Out_Parameter;
       end if;
 
@@ -472,10 +474,10 @@ package body GNATLLVM.Subprograms is
       --  By_Reference depends on the size of the type.
 
       if Mech > 0 then
-         if Is_Nonnative_Type (TE) then
+         if Is_Nonnative_Type (GT) then
             Mech := By_Reference;
          else
-            Mech := (if   Get_Const_Int_Value (Get_Type_Size (TE)) > LLI (Mech)
+            Mech := (if   Get_Const_Int_Value (Get_Type_Size (GT)) > LLI (Mech)
                      then By_Reference else By_Copy);
          end if;
       elsif Mech not in Default_Mechanism | By_Reference | By_Copy then
@@ -507,7 +509,7 @@ package body GNATLLVM.Subprograms is
       then
          return (if   Param_Mode = E_In_Parameter
                         and then (Mech = By_Copy
-                                    or else (Is_Elementary_Type (TE)
+                                    or else (Is_Elementary_Type (GT)
                                                and then Mech /= By_Reference))
                  then In_Value else Foreign_By_Ref);
 
@@ -539,21 +541,21 @@ package body GNATLLVM.Subprograms is
    ---------------------
 
    function Get_Return_Kind (Def_Ident : Entity_Id) return Return_Kind is
-      TE       : constant Entity_Id := Full_Etype (Def_Ident);
+      GT       : constant GL_Type   := Full_GL_Type (Def_Ident);
       T        : constant Type_T    :=
-        (if Ekind (TE) /= E_Void then Type_Of (TE) else No_Type_T);
+        (if Ekind (GT) /= E_Void then Type_Of (GT) else No_Type_T);
       Ptr_Size : constant ULL       := Get_Type_Size (Void_Ptr_Type);
 
    begin
       --  If there's no return type, that's simple
 
-      if Ekind (TE) = E_Void then
+      if Ekind (GT) = E_Void then
          return None;
 
       --  Otherwise, we return by reference if we're required to
 
-      elsif Returns_By_Ref (Def_Ident) or else Is_By_Reference_Type (TE)
-        or else Requires_Transient_Scope (TE)
+      elsif Returns_By_Ref (Def_Ident) or else Is_By_Reference_Type (GT)
+        or else Requires_Transient_Scope (GT)
       then
          return RK_By_Reference;
 
@@ -561,8 +563,8 @@ package body GNATLLVM.Subprograms is
       --  size or a Convention Ada subprogram with a large return, we
       --  return the value via an extra parameter.
 
-      elsif not Is_Unconstrained_Array (TE)
-        and then (Is_Nonnative_Type (TE)
+      elsif not Is_Unconstrained_Array (GT)
+        and then (Is_Nonnative_Type (GT)
                     or else (not Has_Foreign_Convention (Def_Ident)
                                and then Get_Type_Size (T) > 5 * Ptr_Size))
       then
@@ -1400,7 +1402,7 @@ package body GNATLLVM.Subprograms is
    ---------------------------
 
    procedure Emit_Return_Statement (N : Node_Id) is
-      TE  : constant Entity_Id   := Full_Etype (Current_Subp);
+      GT  : constant GL_Type     := Full_GL_Type (Current_Subp);
       RK  : constant Return_Kind := Get_Return_Kind (Current_Subp);
       LRK : constant L_Ret_Kind  := Get_L_Ret_Kind (Current_Subp);
       V   : GL_Value             := No_GL_Value;
@@ -1433,7 +1435,7 @@ package body GNATLLVM.Subprograms is
             elsif By_Ref (N)
               or else (RK = RK_By_Reference and then No (Storage_Pool (N)))
             then
-               V := Convert_Ref (Emit_LValue (Expr), TE);
+               V := Convert_Ref (Emit_LValue (Expr), GT);
 
             --  If this function returns unconstrained, allocate memory for
             --  the return value, copy the data to be returned to there,
@@ -1443,22 +1445,22 @@ package body GNATLLVM.Subprograms is
             --  a Storage_Pool, that means we must allocate memory in that
             --  pool, copy the return value to it, and return that address.
 
-            elsif Is_Unconstrained_Array (TE)
+            elsif Is_Unconstrained_Array (GT)
               or else (RK = RK_By_Reference
                          and then Present (Storage_Pool (N)))
             then
                V := Get (Heap_Allocate_For_Type
-                           (TE, Full_Etype (Expr),
+                           (Full_Etype (GT), Full_Etype (Expr),
                             Expr => Expr,
                             N    => N,
                             Proc => Procedure_To_Call (N),
                             Pool => Storage_Pool (N)),
-                         Relationship_For_Ref (TE));
+                         Relationship_For_Ref (GT));
 
             --  Otherwise, we just return data
 
             else
-               V := Get (Emit_Conversion (Expr, TE), Data);
+               V := Get (Emit_Conversion (Expr, GT), Data);
             end if;
          end;
       else
@@ -1980,10 +1982,10 @@ package body GNATLLVM.Subprograms is
       ----------------
 
       procedure Write_Back (In_LHS, In_RHS : GL_Value) is
-         LHS      : GL_Value           := In_LHS;
-         RHS      : GL_Value           := In_RHS;
-         LHS_TE   : constant Entity_Id := Related_Type (LHS);
-         RHS_TE   : constant Entity_Id := Related_Type (RHS);
+         LHS      : GL_Value         := In_LHS;
+         RHS      : GL_Value         := In_RHS;
+         LHS_GT   : constant GL_Type := Related_Type (LHS);
+         RHS_GT   : constant GL_Type := Related_Type (RHS);
 
       begin
          --  Handle the case of an undef as our arg.  See below in Emit_Call.
@@ -2001,12 +2003,12 @@ package body GNATLLVM.Subprograms is
          --  type of the LHS.  Otherwise, convert the type of the LHS to be
          --  a reference to the type of the RHS.
 
-         if Is_Elementary_Type (LHS_TE)
-           and then not Is_Packed_Array_Impl_Type (LHS_TE)
+         if Is_Elementary_Type (LHS_GT)
+           and then not Is_Packed_Array_Impl_Type (LHS_GT)
          then
-            RHS := Convert (RHS, LHS_TE);
+            RHS := Convert (RHS, LHS_GT);
          else
-            LHS := Convert_Ref (LHS, RHS_TE);
+            LHS := Convert_Ref (LHS, RHS_GT);
          end if;
 
          --  Now do the assignment.  We could call Emit_Assignment, but

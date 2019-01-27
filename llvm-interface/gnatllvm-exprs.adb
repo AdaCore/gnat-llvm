@@ -44,15 +44,15 @@ package body GNATLLVM.Exprs is
    -- Emit_Undef --
    ----------------
 
-   function Emit_Undef (TE : Entity_Id) return GL_Value is
-     ((if Is_Loadable_Type (TE) then Get_Undef (TE) else Get_Undef_Ref (TE)));
+   function Emit_Undef (GT : GL_Type) return GL_Value is
+     ((if Is_Loadable_Type (GT) then Get_Undef (GT) else Get_Undef_Ref (GT)));
 
    ------------------
    -- Emit_Literal --
    ------------------
 
    function Emit_Literal (N : Node_Id) return GL_Value is
-      TE : constant Entity_Id := Full_Etype (N);
+      GT : constant GL_Type := Full_GL_Type (N);
       V  : GL_Value;
 
    begin
@@ -62,16 +62,16 @@ package body GNATLLVM.Exprs is
             --  If a Entity is present, it means that this was one of the
             --  literals in a user-defined character type.
 
-            return Const_Int (TE, (if Present (Entity (N))
+            return Const_Int (GT, (if Present (Entity (N))
                                    then Enumeration_Rep (Entity (N))
                                    else Char_Literal_Value (N)));
 
          when N_Integer_Literal =>
-            return Const_Int (TE, Intval (N));
+            return Const_Int (GT, Intval (N));
 
          when N_Real_Literal =>
-            if Is_Fixed_Point_Type (TE) then
-               return Const_Int (TE, Corresponding_Integer_Value (N));
+            if Is_Fixed_Point_Type (GT) then
+               return Const_Int (GT, Corresponding_Integer_Value (N));
             else
                declare
                   Val : Ureal := Realval (N);
@@ -81,7 +81,7 @@ package body GNATLLVM.Exprs is
                   --  get the proper sign for zero.
 
                   if UR_Is_Zero (Val) then
-                     V := Const_Real (TE, 0.0);
+                     V := Const_Real (GT, 0.0);
                      return (if UR_Is_Negative (Val) then F_Neg (V) else V);
                   end if;
 
@@ -90,7 +90,7 @@ package body GNATLLVM.Exprs is
                   --  values and simplify the rest of the logic.
 
                   if not Is_Machine_Number (N) then
-                     Val := Machine (Full_Base_Type (TE), Val, Round_Even, N);
+                     Val := Machine (Full_Base_Type (GT), Val, Round_Even, N);
                   end if;
 
                   pragma Assert (Rbase (Val) = 2);
@@ -107,7 +107,7 @@ package body GNATLLVM.Exprs is
 
                   begin
                      V := Get_Float_From_Words_And_Exp
-                       (TE, -UI_To_Int (Denominator (Val)), Words);
+                       (GT, -UI_To_Int (Denominator (Val)), Words);
                      return (if UR_Is_Negative (Val) then F_Neg (V) else V);
                   end;
                end;
@@ -117,13 +117,14 @@ package body GNATLLVM.Exprs is
             declare
                Str_Id  : constant String_Id := Strval (N);
                Length  : constant Nat       := String_Length (Str_Id);
-               Elmt_TE : constant Entity_Id := Full_Component_Type (TE);
+               Elmt_GT : constant GL_Type   :=
+                 Default_GL_Type (Full_Component_Type (GT));
 
             begin
                --  If this is a normal string, where the size of a character
                --  is a byte, use Const_String to create the string.
 
-               if Get_Type_Size_In_Bits (Type_Of (Elmt_TE)) = 8 then
+               if Get_Type_Size_In_Bits (Type_Of (Elmt_GT)) = 8 then
                   declare
                      type String_Access is access String;
                      procedure Free is new Ada.Unchecked_Deallocation
@@ -137,7 +138,7 @@ package body GNATLLVM.Exprs is
                           Get_Character (Get_String_Char (Str_Id, Nat (J)));
                      end loop;
 
-                     V := Const_String (Str.all, TE);
+                     V := Const_String (Str.all, GT);
                      Free (Str);
                      return V;
                   end;
@@ -154,11 +155,11 @@ package body GNATLLVM.Exprs is
                   begin
                      for J in Elements'Range loop
                         Elements (J) :=
-                          Const_Int (Elmt_TE,
+                          Const_Int (Elmt_GT,
                                      ULL (Get_String_Char (Str_Id, Nat (J))));
                      end loop;
 
-                     V := Const_Array (Elements.all, TE);
+                     V := Const_Array (Elements.all, GT);
                      Free (Elements);
                      return V;
                   end;
@@ -167,7 +168,7 @@ package body GNATLLVM.Exprs is
 
          when others =>
             Error_Msg_N ("unhandled literal node", N);
-            return Get_Undef (TE);
+            return Get_Undef (GT);
 
       end case;
    end Emit_Literal;
@@ -180,18 +181,18 @@ package body GNATLLVM.Exprs is
       type Opf is access function
         (LHS, RHS : GL_Value; Name : String := "") return GL_Value;
 
-      LHS_Node   : constant Node_Id   := Left_Opnd (N);
-      RHS_Node   : constant Node_Id   := Right_Opnd (N);
-      Left_Type  : constant Entity_Id := Full_Etype (LHS_Node);
-      Right_Type : constant Entity_Id := Full_Etype (RHS_Node);
-      LHS_BT     : constant Entity_Id := Full_Base_Type (Left_Type);
-      RHS_BT     : constant Entity_Id := Full_Base_Type (Right_Type);
-      LVal       : constant GL_Value  := Emit_Convert_Value (LHS_Node, LHS_BT);
-      RVal       : constant GL_Value  := Emit_Convert_Value (RHS_Node, RHS_BT);
-      FP         : constant Boolean   := Is_Floating_Point_Type (LHS_BT);
-      Ovfl_Check : constant Boolean   := Do_Overflow_Check (N);
-      Unsign     : constant Boolean   := Is_Unsigned_Type (LHS_BT);
-      Subp       : Opf                := null;
+      LHS_Node   : constant Node_Id  := Left_Opnd (N);
+      RHS_Node   : constant Node_Id  := Right_Opnd (N);
+      LHS_GT     : constant GL_Type  := Full_GL_Type (LHS_Node);
+      RHS_GT     : constant GL_Type  := Full_GL_Type (RHS_Node);
+      LHS_BT     : constant GL_Type  := Base_GL_Type (LHS_GT);
+      RHS_BT     : constant GL_Type  := Base_GL_Type (RHS_GT);
+      LVal       : constant GL_Value := Emit_Convert_Value (LHS_Node, LHS_BT);
+      RVal       : constant GL_Value := Emit_Convert_Value (RHS_Node, RHS_BT);
+      FP         : constant Boolean  := Is_Floating_Point_Type (LHS_BT);
+      Ovfl_Check : constant Boolean  := Do_Overflow_Check (N);
+      Unsign     : constant Boolean  := Is_Unsigned_Type (LHS_BT);
+      Subp       : Opf               := null;
       Result     : GL_Value;
       Ovfl_Name  : String (1 .. 4);
 
@@ -372,9 +373,9 @@ package body GNATLLVM.Exprs is
    --------------------------
 
    function Emit_Unary_Operation (N : Node_Id) return GL_Value is
-      Result : constant GL_Value  := Emit_Expression (Right_Opnd (N));
-      TE     : constant Entity_Id := Full_Etype (Result);
-      BT     : constant Entity_Id := Full_Base_Type (TE);
+      Result : constant GL_Value := Emit_Expression (Right_Opnd (N));
+      GT     : constant GL_Type  := Related_Type (Result);
+      BT     : constant GL_Type  := Base_GL_Type (GT);
 
    begin
       case Nkind (N) is
@@ -421,7 +422,7 @@ package body GNATLLVM.Exprs is
                      Func      : constant GL_Value := Build_Intrinsic
                        (Overflow, "llvm.ssub.with.overflow.i", BT);
                      Fn_Ret    : constant GL_Value :=
-                       Call (Func, TE, (1 => Const_Null (BT), 2 => V));
+                       Call (Func, GT, (1 => Const_Null (BT), 2 => V));
                      Overflow  : constant GL_Value :=
                        Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
                      Label_Ent : constant Entity_Id :=
@@ -447,7 +448,7 @@ package body GNATLLVM.Exprs is
 
          when others =>
             pragma Assert (False);
-            return Emit_Undef (TE);
+            return Emit_Undef (GT);
       end case;
 
    end Emit_Unary_Operation;
@@ -457,12 +458,12 @@ package body GNATLLVM.Exprs is
    -------------------------
 
    procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id) is
-      In_TE      : constant Entity_Id := Full_Etype (V);
-      Out_TE     : constant Entity_Id := Full_Etype (N);
-      In_BT      : constant Entity_Id := Full_Base_Type (In_TE);
-      Out_BT     : constant Entity_Id := Full_Base_Type (Out_TE);
-      In_FP      : constant Boolean   := Is_Floating_Point_Type (In_TE);
-      Out_FP     : constant Boolean   := Is_Floating_Point_Type (Out_TE);
+      In_GT      : constant GL_Type := Related_Type (V);
+      Out_GT     : constant GL_Type := Full_GL_Type (N);
+      In_BT      : constant GL_Type := Base_GL_Type (In_GT);
+      Out_BT     : constant GL_Type := Base_GL_Type (Out_GT);
+      In_FP      : constant Boolean   := Is_Floating_Point_Type (In_GT);
+      Out_FP     : constant Boolean   := Is_Floating_Point_Type (Out_GT);
       In_LB      : constant Node_Id   := Type_Low_Bound  (In_BT);
       In_UB      : constant Node_Id   := Type_High_Bound (In_BT);
       Out_LB     : constant Node_Id   := Type_Low_Bound  (Out_BT);
@@ -486,14 +487,14 @@ package body GNATLLVM.Exprs is
         or else Get_Uint_Value (Out_LB) > Get_Uint_Value (In_LB)
       then
          Compare_LB := Emit_Elementary_Comparison
-           (N_Op_Ge, V, Emit_Convert_Value (Out_LB, In_TE));
+           (N_Op_Ge, V, Emit_Convert_Value (Out_LB, In_GT));
       end if;
 
       if In_FP or else Out_FP
         or else Get_Uint_Value (Out_UB) < Get_Uint_Value (In_UB)
       then
          Compare_UB := Emit_Elementary_Comparison
-           (N_Op_Le, V, Emit_Convert_Value (Out_UB, In_TE));
+           (N_Op_Le, V, Emit_Convert_Value (Out_UB, In_GT));
       end if;
 
       --  If neither comparison is needed, we're done

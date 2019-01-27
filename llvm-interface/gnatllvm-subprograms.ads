@@ -17,6 +17,7 @@
 
 with Sinfo; use Sinfo;
 
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -58,10 +59,18 @@ package GNATLLVM.Subprograms is
      (Kind : Overloaded_Intrinsic_Kind;
       Name : String;
       TE   : Entity_Id) return GL_Value
-     with Pre => Is_Type (TE) and then RM_Size (TE) /= No_Uint,
+     with Pre  => Is_Type (TE) and then not Unknown_RM_Size (TE),
           Post => Present (Build_Intrinsic'Result);
    --  Build an intrinsic function of the specified type, name, and kind
 
+   function Build_Intrinsic
+     (Kind : Overloaded_Intrinsic_Kind;
+      Name : String;
+      GT   : GL_Type) return GL_Value
+     with Pre  => Is_Primitive_GL_Type (GT) and then not Unknown_RM_Size (GT),
+          Post => Present (Build_Intrinsic'Result);
+
+   --  Build an intrinsic function of the specified type, name, and kind
    function Add_Global_Function
      (S          : String;
       Subp_Type  : Type_T;

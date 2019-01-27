@@ -515,6 +515,20 @@ package body GNATLLVM.GLType is
    function Type_Of (GT : GL_Type) return Type_T is
      (GL_Type_Table.Table (GT).LLVM_Type);
 
+   ------------------
+   -- Base_GL_Type --
+   -----------------
+
+   function Base_GL_Type (TE : Entity_Id) return GL_Type is
+     (Primitive_GL_Type (Full_Base_Type (TE)));
+
+   ------------------
+   -- Base_GL_Type --
+   -----------------
+
+   function Base_GL_Type (GT : GL_Type) return GL_Type is
+     (Primitive_GL_Type (Full_Base_Type (GT)));
+
    -------------------
    -- Get_Type_Size --
    -------------------
@@ -618,8 +632,9 @@ package body GNATLLVM.GLType is
    begin
       Write_Str (GT_Kind'Image (GTI.Kind) & "(");
       Write_Int (Int (GTI.GNAT_Type));
-      Write_Str ("): ");
+      Write_Str (")");
       if Full_Dump then
+         Write_Str (": ");
          if Present (GTI.LLVM_Type) then
             Dump_LLVM_Type (GTI.LLVM_Type);
          end if;

@@ -142,6 +142,21 @@ package GNATLLVM.GLType is
    function Full_GL_Type (N : Node_Id) return GL_Type is
      (Default_GL_Type (Full_Etype (N)))
      with Pre => Present (N), Post => Present (Full_GL_Type'Result);
+   --  Return the default GL_Type corresponding to the type of N
+
+   function Base_GL_Type (TE : Entity_Id) return GL_Type
+     with Pre  => Is_Type (TE),
+          Post => Is_Primitive_GL_Type (Base_GL_Type'Result);
+   function Base_GL_Type (GT : GL_Type) return GL_Type
+     with Pre  => Present (GT),
+          Post => Is_Primitive_GL_Type (Base_GL_Type'Result);
+   function Base_GL_Type (V : GL_Value) return GL_Type is
+     (Base_GL_Type (GL_Type'(Related_Type (V))))
+     with Pre  => Present (V),
+          Post => Is_Primitive_GL_Type (Base_GL_Type'Result);
+   --  Given a or GL_Type, return a GL_Type that corresponds to the
+   --  primitive GL_Type of the base type of a type.  This is used to perform
+   --  computation on a type.
 
    --  Here are the access function to obtain fields from a GL_Type.
    --  Many are overloaded from the functions that obtain these fields from
@@ -167,7 +182,6 @@ package GNATLLVM.GLType is
 
    function Is_Empty_GL_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
-   --  Return True if GT is a GL_Type created by New_GT and never updated
 
    --  Now define functions that operate on GNAT types that we want to
    --  also operate on GL_Type's.
@@ -183,7 +197,12 @@ package GNATLLVM.GLType is
    function Full_Designated_Type (GT : GL_Type) return Entity_Id is
      (Full_Designated_Type (Full_Etype (GT)))
      with Pre  => Is_Access_Type (GT),
-          Post => Is_Type_Or_Void (Full_Designated_Type'Result);
+          Post => Is_Type (Full_Designated_Type'Result);
+
+   function Full_Component_Type (GT : GL_Type) return Entity_Id is
+     (Full_Component_Type (Full_Etype (GT)))
+     with Pre  => Is_Array_Type (GT),
+          Post => Is_Type (Full_Component_Type'Result);
 
    function Full_Base_Type (GT : GL_Type) return Entity_Id is
      (Full_Base_Type (Full_Etype (GT)))
@@ -292,6 +311,10 @@ package GNATLLVM.GLType is
      (Is_By_Reference_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Has_Foreign_Convention (GT : GL_Type) return Boolean is
+     (Has_Foreign_Convention (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Requires_Transient_Scope (GT : GL_Type) return Boolean is
      (Requires_Transient_Scope (Full_Etype (GT)))
      with Pre => Present (GT);
@@ -306,6 +329,22 @@ package GNATLLVM.GLType is
 
    function Esize (GT : GL_Type) return Uint is
      (Esize (Full_Etype (GT)))
+     with Pre => not Is_Access_Type (GT);
+
+   function Unknown_Esize (GT : GL_Type) return Boolean is
+     (Unknown_Esize (Full_Etype (GT)))
+     with Pre => not Is_Access_Type (GT);
+
+   function Unknown_RM_Size (GT : GL_Type) return Boolean is
+     (Unknown_RM_Size (Full_Etype (GT)))
+     with Pre => not Is_Access_Type (GT);
+
+   function Type_Low_Bound (GT : GL_Type) return Node_Id is
+     (Type_Low_Bound (Full_Etype (GT)))
+     with Pre => not Is_Access_Type (GT);
+
+   function Type_High_Bound (GT : GL_Type) return Node_Id is
+     (Type_High_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
    function Component_Type (GT : GL_Type) return Entity_Id is

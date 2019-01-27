@@ -39,6 +39,7 @@ with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -1385,7 +1386,7 @@ package body GNATLLVM.Variables is
          --  can detect that.
 
          if Full_Ident /= Def_Ident then
-            Set_Value (Full_Ident, Emit_Undef (TE));
+            Set_Value (Full_Ident, Emit_Undef (Default_GL_Type (TE)));
          end if;
 
          if Present (Expr)

@@ -35,6 +35,7 @@ with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
@@ -889,8 +890,9 @@ package body GNATLLVM.Compile is
             --  type of a packed array type.  In that case, convert it to
             --  the result type.
 
-            if Is_Integer_Type (Related_Type (Result))
-              and then Is_Packed_Array_Impl_Type (Related_Type (Result))
+            if Is_Integer_Type (GL_Type'(Related_Type (Result)))
+              and then Is_Packed_Array_Impl_Type
+                 (GL_Type'(Related_Type (Result)))
             then
                --  Evaluate any expressions in case they have side-effects
 
@@ -1016,13 +1018,13 @@ package body GNATLLVM.Compile is
             pragma Assert (not For_LHS);
             pragma Assert (No (Condition (N)));
             Emit_Raise (N);
-            return Emit_Undef (TE);
+            return Emit_Undef (Default_GL_Type (TE));
 
          when others =>
             Error_Msg_N
               ("unsupported node kind: `" &
                  Node_Kind'Image (Nkind (N)) & "`", N);
-            return Emit_Undef (TE);
+            return Emit_Undef (Default_GL_Type (TE));
       end case;
    end Emit_Internal;
 

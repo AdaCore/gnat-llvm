@@ -22,6 +22,7 @@ with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -89,28 +90,28 @@ package body GNATLLVM.Conditionals is
      (Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
    is
       Operation : constant Pred_Mapping := Get_Preds (Kind);
-      TE        : constant Entity_Id    := Full_Etype (LHS);
-      BT        : constant Entity_Id    := Full_Base_Type (TE);
+      GT        : constant GL_Type      := Full_GL_Type (LHS);
+      BT        : constant GL_Type      := Base_GL_Type (GT);
 
    begin
       --  LLVM treats pointers as integers regarding comparison.  But we first
       --  have to see if the pointer has an activation record.  If so,
       --  we just compare the functions, not the activation record.
 
-      if Is_Access_Subprogram_Type (TE)
-        and then not Has_Foreign_Convention (TE)
+      if Is_Access_Subprogram_Type (GT)
+        and then not Has_Foreign_Convention (GT)
       then
          return I_Cmp
            (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
 
-      elsif Is_Elementary_Type (TE) then
+      elsif Is_Elementary_Type (GT) then
          return Emit_Elementary_Comparison
            (Kind, Emit_Convert_Value (LHS, BT), Emit_Convert_Value (RHS, BT));
 
       --  We'll see some simple record comparisons, typically if they're
       --  Equivalent_Types of, e.g., an E_Access_Protected_Subprogram_Type.
 
-      elsif Is_Record_Type (TE) then
+      elsif Is_Record_Type (GT) then
          declare
             --  Now we need to get the size of the record (in bytes) to do
             --  the memory comparison.  Memcmp is defined as returning zero
@@ -133,7 +134,7 @@ package body GNATLLVM.Conditionals is
                           Const_Null (Standard_Integer));
          end;
       else
-         pragma Assert (Is_Array_Type (TE)
+         pragma Assert (Is_Array_Type (GT)
                           and then Operation.Signed in Int_EQ | Int_NE);
          --  The front end expands record type comparisons and array
          --  comparisons for other than equality.
@@ -408,9 +409,9 @@ package body GNATLLVM.Conditionals is
    function Emit_And_Or_Xor
      (Kind : Node_Kind; LHS_Node, RHS_Node : Node_Id) return GL_Value
    is
-      BT  : constant Entity_Id := Full_Base_Type (Full_Etype (LHS_Node));
-      LHS : GL_Value           := Emit (LHS_Node);
-      RHS : GL_Value           := Emit (RHS_Node);
+      BT  : constant GL_Type := Base_GL_Type (Full_GL_Type (LHS_Node));
+      LHS : GL_Value         := Emit (LHS_Node);
+      RHS : GL_Value         := Emit (RHS_Node);
 
    begin
       --  If both are Boolean_Data, we can compute our result in that
@@ -914,7 +915,7 @@ package body GNATLLVM.Conditionals is
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
    is
-      LHS_BT   : constant Entity_Id := Full_Base_Type (LHS);
+      LHS_BT   : constant GL_Type := Base_GL_Type (LHS);
       LHS_Base : GL_Value;
       Cond     : GL_Value;
       Inner_BB : Basic_Block_T;
@@ -950,11 +951,11 @@ package body GNATLLVM.Conditionals is
 
    function Emit_If_Expression (N : Node_Id) return GL_Value
    is
-      TE         : constant Entity_Id     := Full_Etype (N);
+      GT         : constant GL_Type       := Full_GL_Type (N);
       Condition  : constant Node_Id       := First (Expressions (N));
       Then_Expr  : constant Node_Id       := Next (Condition);
       Else_Expr  : constant Node_Id       := Next (Then_Expr);
-      Elementary : constant Boolean       := Is_Elementary_Type (TE);
+      Elementary : constant Boolean       := Is_Elementary_Type (GT);
       Next_BB    : constant Basic_Block_T := Create_Basic_Block ("if-next");
       Then_BB    : Basic_Block_T          := Create_Basic_Block ("if-then");
       Else_BB    : Basic_Block_T          := Create_Basic_Block ("if-else");
@@ -993,14 +994,14 @@ package body GNATLLVM.Conditionals is
          Position_Builder_At_End (Then_BB);
          Then_Value := Get (Then_Value, Data);
          if Type_Of (Then_Value) /= Type_Of (Else_Value) then
-            Then_Value := Convert (Then_Value, TE);
+            Then_Value := Convert (Then_Value, GT);
          end if;
          Then_BB    := Get_Insert_Block;
 
          Position_Builder_At_End (Else_BB);
          Else_Value := Get (Else_Value, Data);
          if Type_Of (Then_Value) /= Type_Of (Else_Value) then
-            Else_Value := Convert (Else_Value, TE);
+            Else_Value := Convert (Else_Value, GT);
          end if;
          Else_BB    := Get_Insert_Block;
 
@@ -1019,14 +1020,14 @@ package body GNATLLVM.Conditionals is
          Position_Builder_At_End (Then_BB);
          Then_Value := Get (Then_Value, R);
          if R = Any_Reference then
-            Then_Value := Convert_Ref (Then_Value, TE);
+            Then_Value := Convert_Ref (Then_Value, GT);
          end if;
          Then_BB    := Get_Insert_Block;
 
          Position_Builder_At_End (Else_BB);
          Else_Value := Get (Else_Value, R);
          if R = Any_Reference then
-            Else_Value := Convert_Ref (Else_Value, TE);
+            Else_Value := Convert_Ref (Else_Value, GT);
          end if;
          Else_BB    := Get_Insert_Block;
       end if;
@@ -1044,7 +1045,7 @@ package body GNATLLVM.Conditionals is
       Result := Build_Phi ((1 => Then_Value, 2 => Else_Value),
                            (1 => Then_BB,    2 => Else_BB));
       if Elementary then
-         return Convert (Result, TE);
+         return Convert (Result, GT);
       else
          return Get (Result, Object);
       end if;
@@ -1058,11 +1059,11 @@ package body GNATLLVM.Conditionals is
    function Emit_Min_Max
      (Exprs : List_Id; Compute_Max : Boolean) return GL_Value
    is
-      LHS_N      : constant Node_Id   := First (Exprs);
-      BT         : constant Entity_Id := Full_Base_Type (Full_Etype (LHS_N));
-      LHS        : constant GL_Value  := Emit_Convert_Value (LHS_N, BT);
-      RHS        : constant GL_Value  := Emit_Convert_Value (Last (Exprs), BT);
-      Choose     : constant GL_Value  :=
+      LHS_N      : constant Node_Id  := First (Exprs);
+      BT         : constant GL_Type  := Base_GL_Type (Full_GL_Type (LHS_N));
+      LHS        : constant GL_Value := Emit_Convert_Value (LHS_N, BT);
+      RHS        : constant GL_Value := Emit_Convert_Value (Last (Exprs), BT);
+      Choose     : constant GL_Value :=
         Emit_Elementary_Comparison
         ((if Compute_Max then N_Op_Gt else N_Op_Lt), LHS, RHS);
       RHS_No_Nan : constant GL_Value :=

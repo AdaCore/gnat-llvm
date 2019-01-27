@@ -35,7 +35,6 @@ with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
@@ -780,6 +779,17 @@ package body GNATLLVM.Subprograms is
 
       return Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
    end Create_Subprogram_Access_Type;
+
+   ---------------------
+   -- Build_Intrinsic --
+   ---------------------
+
+   function Build_Intrinsic
+     (Kind : Overloaded_Intrinsic_Kind;
+      Name : String;
+      GT   : GL_Type) return GL_Value
+   is
+     (Build_Intrinsic (Kind, Name, Full_Etype (GT)));
 
    ---------------------
    -- Build_Intrinsic --

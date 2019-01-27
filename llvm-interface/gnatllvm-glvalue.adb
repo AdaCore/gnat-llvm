@@ -971,8 +971,8 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Undef_Ref (GT : GL_Type) return GL_Value is
-      (G_Ref (Get_Undef (Pointer_Type (Type_Of (GT), 0)), GT,
-              Is_Pristine => True));
+      (Get_Undef_Ref (Full_Etype (GT)));
+   --  ?? This is a bit of a kludge, but what's correct isn't clear
 
    ----------------
    -- Const_Null --
@@ -1204,14 +1204,14 @@ package body GNATLLVM.GLValue is
    ---------------------------------
 
    function Get_Float_From_Words_And_Exp
-     (TE : Entity_Id; Exp : Int; Words : Word_Array) return GL_Value
+     (GT : GL_Type; Exp : Int; Words : Word_Array) return GL_Value
    is
       Our_Words : Word_Array := Words;
    begin
       return G (Get_Float_From_Words_And_Exp
-                  (Context, Type_Of (TE), Exp, Our_Words'Length,
+                  (Context, Type_Of (GT), Exp, Our_Words'Length,
                    Our_Words (Our_Words'First)'Access),
-                TE);
+                GT);
    end Get_Float_From_Words_And_Exp;
 
    -------------

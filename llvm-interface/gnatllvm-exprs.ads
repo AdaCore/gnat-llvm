@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -60,8 +60,8 @@ package GNATLLVM.Exprs is
      with Pre => Present (N), Post => Present (Emit_Literal'Result);
    --  Generate code for a literal
 
-   function Emit_Undef (TE : Entity_Id) return GL_Value
-     with Pre => Is_Type (TE), Post => Present (Emit_Undef'Result);
+   function Emit_Undef (GT : GL_Type) return GL_Value
+     with Pre => Present (GT), Post => Present (Emit_Undef'Result);
    --  Emit an undef appropriate for a return value of type TE
 
    function Emit_Attribute_Reference (N : Node_Id) return GL_Value

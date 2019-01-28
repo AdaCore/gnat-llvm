@@ -1575,7 +1575,7 @@ package body GNATLLVM.Subprograms is
          --  needed type, and then create the new argument list.
 
          S_Link := Pointer_Cast (Get_Static_Link (Proc),
-                                 Full_Etype (Extra_Formals (Proc)));
+                                 Full_GL_Type (Extra_Formals (Proc)));
          Args_With_Link (Args'Range) := Args;
          Args_With_Link (Args_With_Link'Last) := S_Link;
          return Args_With_Link;
@@ -1914,7 +1914,7 @@ package body GNATLLVM.Subprograms is
          begin
             if Is_Access_Type (Ref_GT) then
                declare
-                  DT     : constant GL_Type := Full_Designated_Type (Ref_GT);
+                  DT : constant GL_Type := Full_Designated_GL_Type (Ref_GT);
 
                begin
                   if Has_Foreign_Convention (Ref_GT) then

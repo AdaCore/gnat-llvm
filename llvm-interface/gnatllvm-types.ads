@@ -468,9 +468,9 @@ package GNATLLVM.Types is
    --  If No_Padding is true, we don't count any padding of the type.
 
    function Compute_Size
-     (Left_Type, Right_Type   : Entity_Id;
+     (Left_GT, Right_GT       : GL_Type;
       Left_Value, Right_Value : GL_Value) return GL_Value
-     with Pre  => Is_Type (Left_Type) and then Present (Right_Type)
+     with Pre  => Present (Left_GT) and then Present (Right_GT)
                   and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
    --  Used for comparison and assignment: compute the size to be used in

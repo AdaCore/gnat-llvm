@@ -2210,13 +2210,13 @@ package body GNATLLVM.Types is
    ------------------
 
    function Compute_Size
-     (Left_Type, Right_Type   : Entity_Id;
+     (Left_GT, Right_GT       : GL_Type;
       Left_Value, Right_Value : GL_Value) return GL_Value
    is
-      LHS_Complex : constant Nat     := Get_Type_Size_Complexity (Left_Type);
-      RHS_Complex : constant Nat     := Get_Type_Size_Complexity (Right_Type);
+      LHS_Complex : constant Nat     := Get_Type_Size_Complexity (Left_GT);
+      RHS_Complex : constant Nat     := Get_Type_Size_Complexity (Right_GT);
       Class_Wide  : constant Boolean :=
-        Is_Class_Wide_Equivalent_Type (Left_Type);
+        Is_Class_Wide_Equivalent_Type (Left_GT);
 
    begin
       --  Use the type of right side unless its complexity is more
@@ -2224,10 +2224,10 @@ package body GNATLLVM.Types is
       --  LHS is a class wide equivalent type, we must use it.
 
       if RHS_Complex > LHS_Complex or else Class_Wide then
-         return Get_Type_Size (Left_Type, Left_Value,
+         return Get_Type_Size (Left_GT, Left_Value,
                                No_Padding => not Class_Wide);
       else
-         return Get_Type_Size (Right_Type, Right_Value, No_Padding => True);
+         return Get_Type_Size (Right_GT, Right_Value, No_Padding => True);
       end if;
 
    end Compute_Size;

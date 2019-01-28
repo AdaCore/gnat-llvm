@@ -174,13 +174,21 @@ package GNATLLVM.GLType is
    function Type_Of (GT : GL_Type) return Type_T
      with Pre => Present (GT);
 
-   function Get_Type_Size (GT : GL_Type) return GL_Value
+   function Get_Type_Size
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Type_Size'Result);
 
    function Get_Type_Alignment (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Type_Alignment'Result);
 
    function Get_Type_Alignment (GT : GL_Type) return ULL
+     with Pre => Present (GT);
+
+   function Get_Type_Size_Complexity
+     (GT : GL_Type; Max_Size : Boolean := False) return Nat
      with Pre => Present (GT);
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean
@@ -208,10 +216,15 @@ package GNATLLVM.GLType is
      with Pre  => Is_Access_Type (GT),
           Post => Is_Type (Full_Designated_Type'Result);
 
-   function Full_Designated_Type (GT : GL_Type) return GL_Type is
+   function Full_Designated_GL_Type (GT : GL_Type) return GL_Type is
      (Default_GL_Type (Full_Designated_Type (Full_Etype (GT))))
      with Pre  => Is_Access_Type (GT),
-          Post => Present (Full_Designated_Type'Result);
+          Post => Present (Full_Designated_GL_Type'Result);
+
+   function Full_Designated_GL_Type (V : GL_Value) return GL_Type is
+     (Default_GL_Type (Full_Designated_Type (V)))
+     with Pre  => Is_Access_Type (V),
+          Post => Present (Full_Designated_GL_Type'Result);
 
    function Full_Component_Type (GT : GL_Type) return Entity_Id is
      (Full_Component_Type (Full_Etype (GT)))
@@ -243,8 +256,7 @@ package GNATLLVM.GLType is
 
    function Is_Access_Subprogram_Type (GT : GL_Type) return Boolean is
     (Is_Access_Type (GT)
-       and then Ekind (GL_Type'(Full_Designated_Type (GT))) =
-                  E_Subprogram_Type)
+       and then Ekind (Full_Designated_GL_Type (GT)) = E_Subprogram_Type)
      with Pre => Present (GT);
 
    function Is_Constrained (GT : GL_Type) return Boolean is
@@ -325,6 +337,10 @@ package GNATLLVM.GLType is
 
    function Is_Constr_Subt_For_UN_Aliased (GT : GL_Type) return Boolean is
      (Is_Constr_Subt_For_UN_Aliased (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Is_Class_Wide_Equivalent_Type (GT : GL_Type) return Boolean is
+     (Is_Class_Wide_Equivalent_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Is_By_Reference_Type (GT : GL_Type) return Boolean is

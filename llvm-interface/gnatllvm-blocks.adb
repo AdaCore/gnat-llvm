@@ -415,7 +415,7 @@ package body GNATLLVM.Blocks is
          then
             BI.At_End_Parameter :=
               Pointer_Cast (Get_Static_Link (Subp),
-                            Full_Etype (Extra_Formals (Subp)));
+                            Full_GL_Type (Extra_Formals (Subp)));
          end if;
       end if;
 

@@ -1332,16 +1332,6 @@ package body GNATLLVM.GLValue is
    ------------------
 
    function Pointer_Cast
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (TE), Name),
-         TE));
-
-   ------------------
-   -- Pointer_Cast --
-   ------------------
-
-   function Pointer_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));

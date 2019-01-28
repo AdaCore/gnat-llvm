@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -208,12 +208,12 @@ package GNATLLVM.Arrays is
    --  we went through.
 
    procedure Maybe_Store_Bounds
-     (Dest, Src : GL_Value; Src_Type : Entity_Id; For_Unconstrained : Boolean)
-     with Pre => Present (Dest) and then Is_Type (Src_Type);
+     (Dest, Src : GL_Value; Src_GT : GL_Type; For_Unconstrained : Boolean)
+     with Pre => Present (Dest) and then Present (Src_GT);
    --  If the type of Dest is a nominal constrained type for an aliased
    --  unconstrained array or if For_Unconstrained is True and the type of
    --  Dest is an unconstrained array, store bounds into Dest, taking them
-   --  from Src_Type and Src, if the latter is Present.
+   --  from Src_GT and Src, if the latter is Present.
 
    function Get_Array_Bounds
      (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value

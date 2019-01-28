@@ -1138,11 +1138,6 @@ package GNATLLVM.GLValue is
           Post => Present (Bit_Cast'Result);
 
    function Pointer_Cast
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Is_Access_Type (TE),
-          Post => Is_Pointer (Pointer_Cast'Result);
-
-   function Pointer_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Pointer (Pointer_Cast'Result);

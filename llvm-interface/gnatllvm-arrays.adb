@@ -1035,18 +1035,19 @@ package body GNATLLVM.Arrays is
    ------------------------
 
    procedure Maybe_Store_Bounds
-     (Dest, Src : GL_Value; Src_Type : Entity_Id; For_Unconstrained : Boolean)
+     (Dest, Src : GL_Value; Src_GT : GL_Type; For_Unconstrained : Boolean)
    is
-      Dest_Type : constant Entity_Id := Related_Type (Dest);
+      Dest_GT : constant GL_Type := Related_Type (Dest);
 
    begin
       --  Only do anything if the destination has a nominal constrained
       --  subtype or (if we're asked) if it has an unconstrained type.
 
-      if Type_Needs_Bounds (Dest_Type)
-        or else (For_Unconstrained and then not Is_Constrained (Dest_Type))
+      if Type_Needs_Bounds (Dest_GT)
+        or else (For_Unconstrained and then not Is_Constrained (Dest_GT))
       then
-         Store (Get_Array_Bounds (Src_Type, Src_Type, Src),
+         Store (Get_Array_Bounds (Full_Etype (Src_GT),
+                                  Full_Etype (Src_GT), Src),
                 Get (Dest, Reference_To_Bounds));
       end if;
    end Maybe_Store_Bounds;

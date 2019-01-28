@@ -120,8 +120,8 @@ package body GNATLLVM.Conditionals is
             LHS_Val : constant GL_Value := Emit_LValue (LHS);
             RHS_Val : constant GL_Value := Emit_LValue (RHS);
             Size    : constant GL_Value :=
-              Compute_Size (Full_Designated_Type (LHS_Val),
-                            Full_Designated_Type (RHS_Val),
+              Compute_Size (Full_Designated_GL_Type (LHS_Val),
+                            Full_Designated_GL_Type (RHS_Val),
                             LHS_Val, RHS_Val);
             Memcmp  : constant GL_Value :=
               Call (Get_Memory_Compare_Fn, Integer_GL_Type,
@@ -304,8 +304,8 @@ package body GNATLLVM.Conditionals is
                --  about testing for that case.
 
                Size   : constant GL_Value :=
-                 Compute_Size (Full_Designated_Type (LHS_Val),
-                               Full_Designated_Type (RHS_Val),
+                 Compute_Size (Full_Designated_GL_Type (LHS_Val),
+                               Full_Designated_GL_Type (RHS_Val),
                                LHS_Val, RHS_Val);
                Memcmp : constant GL_Value := Call
                  (Get_Memory_Compare_Fn, Integer_GL_Type,

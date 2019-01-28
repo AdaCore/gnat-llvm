@@ -943,14 +943,14 @@ package body GNATLLVM.Exprs is
       Forwards_OK  : Boolean  := True;
       Backwards_OK : Boolean  := True)
    is
-      E         : constant Node_Id   := Strip_Complex_Conversions (Expr);
-      Dest_Type : constant Entity_Id := Full_Designated_Type (LValue);
-      Src_Type  : constant Entity_Id :=
-        (if Present (Value) then Related_Type (Value) else Full_Etype (E));
-      Dest      : GL_Value           := LValue;
-      Src       : GL_Value           := Value;
-      Dest_R    : GL_Relationship;
-      Src_R     : GL_Relationship;
+      E       : constant Node_Id := Strip_Complex_Conversions (Expr);
+      Dest_GT : constant GL_Type := Full_Designated_GL_Type (LValue);
+      Src_GT  : constant GL_Type :=
+        (if Present (Value) then Related_Type (Value) else Full_GL_Type (E));
+      Dest    : GL_Value         := LValue;
+      Src     : GL_Value         := Value;
+      Dest_R  : GL_Relationship;
+      Src_R   : GL_Relationship;
 
    begin
       --  The back-end supports exactly two types of array aggregates.
@@ -962,11 +962,11 @@ package body GNATLLVM.Exprs is
       --  aggregate will always be the RHS of an assignment, so we'll see
       --  it here.
 
-      if Is_Array_Type (Dest_Type) and then Present (E)
+      if Is_Array_Type (Dest_GT) and then Present (E)
         and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
         and then Is_Others_Aggregate (E)
       then
-         Maybe_Store_Bounds (Dest, No_GL_Value, Full_Etype (E), False);
+         Maybe_Store_Bounds (Dest, No_GL_Value, Full_GL_Type (E), False);
          Emit_Others_Aggregate (Dest, E);
          return;
       end if;
@@ -979,7 +979,7 @@ package body GNATLLVM.Exprs is
          Src := Emit (E, LHS => Dest);
          if Src = Dest then
             return;
-         elsif not Is_Data (Src) and then Is_Loadable_Type (Src_Type) then
+         elsif not Is_Data (Src) and then Is_Loadable_Type (Src_GT) then
             Src := Get (Src, Object);
          end if;
       end if;
@@ -995,14 +995,14 @@ package body GNATLLVM.Exprs is
       --  we can get the value and bounds together and store them.  If we
       --  can, do so and we're done.  Otherwise, store the bounds.
 
-      if Type_Needs_Bounds (Dest_Type) and then Src_R /= Bounds_And_Data then
-         if Is_Data (Src) and then Is_Loadable_Type (Dest_Type) then
+      if Type_Needs_Bounds (Dest_GT) and then Src_R /= Bounds_And_Data then
+         if Is_Data (Src) and then Is_Loadable_Type (Dest_GT) then
             Store (Get (Src, Bounds_And_Data),
                    Get (LValue, Reference_To_Bounds_And_Data));
             return;
          end if;
 
-         Maybe_Store_Bounds (LValue, Src, Src_Type, False);
+         Maybe_Store_Bounds (LValue, Src, Src_GT, False);
       end if;
 
       --  We now have three case: we're copying an object of an elementary
@@ -1010,22 +1010,22 @@ package body GNATLLVM.Exprs is
       --  copied with a Store instruction, or we're copying an object of
       --  variable size.
 
-      if Is_Elementary_Type (Dest_Type) and then Src_R /= Bounds_And_Data then
+      if Is_Elementary_Type (Dest_GT) and then Src_R /= Bounds_And_Data then
 
          --  The easy case: convert the source to the destination type and
          --  store it.  However, we may have a packed array implementation
          --  type on the LHS and an array on the RHS.  Convert it to the LHS
          --  type if so.
 
-         if Is_Packed_Array_Impl_Type (Dest_Type)
-           and then not Is_Elementary_Type (Src_Type)
+         if Is_Packed_Array_Impl_Type (Dest_GT)
+           and then not Is_Elementary_Type (Src_GT)
          then
-            Src := Convert_Ref (Get (Src, Reference), Dest_Type);
+            Src := Convert_Ref (Get (Src, Reference), Dest_GT);
          end if;
 
-         Store (Convert (Get (Src, Data), Dest_Type), Get (Dest, Reference));
+         Store (Convert (Get (Src, Data), Dest_GT), Get (Dest, Reference));
 
-      elsif (Present (E) and then Is_Loadable_Type (Full_Etype (E)))
+      elsif (Present (E) and then Is_Loadable_Type (Full_GL_Type (E)))
          or else (Present (Value) and then Is_Loadable_Type (Value))
       then
          --  Here, the source is of an LLVM value small enough to store,
@@ -1037,7 +1037,8 @@ package body GNATLLVM.Exprs is
 
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            Dest := Ptr_To_Ref (Get (Dest, Reference), Full_Etype (Src));
+            Dest := Ptr_To_Ref (Get (Dest, Reference),
+                                GL_Type'(Related_Type (Src)));
          end if;
 
          Store (Src, Dest);
@@ -1050,7 +1051,7 @@ package body GNATLLVM.Exprs is
               (if Forwards_OK and then Backwards_OK
                then "memcpy" else "memmove");
             Size      : GL_Value          := Compute_Size
-              (Dest_Type, Related_Type (Src), Dest, Src);
+              (Dest_GT, Related_Type (Src), Dest, Src);
 
          begin
             --  Get the proper relationship.  If we're copying both bounds
@@ -1081,7 +1082,7 @@ package body GNATLLVM.Exprs is
                 2 => Pointer_Cast (Get (Src,  Src_R),  A_Char_GL_Type),
                 3 => Size,
                 4 => Const_False), -- Is_Volatile
-               Get_Type_Alignment (Dest_Type),
+               Get_Type_Alignment (Dest_GT),
                Get_Type_Alignment (GL_Type'(Related_Type (Src))));
          end;
       end if;

@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Exp_Util; use Exp_Util;
-with Stand;    use Stand;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -125,13 +124,13 @@ package body GNATLLVM.Conditionals is
                             Full_Designated_Type (RHS_Val),
                             LHS_Val, RHS_Val);
             Memcmp  : constant GL_Value :=
-              Call (Get_Memory_Compare_Fn, Standard_Integer,
-                    (1 => Pointer_Cast (LHS_Val, Standard_A_Char),
-                     2 => Pointer_Cast (RHS_Val, Standard_A_Char),
+              Call (Get_Memory_Compare_Fn, Integer_GL_Type,
+                    (1 => Pointer_Cast (LHS_Val, A_Char_GL_Type),
+                     2 => Pointer_Cast (RHS_Val, A_Char_GL_Type),
                      3 => Size));
          begin
             return I_Cmp (Operation.Signed, Memcmp,
-                          Const_Null (Standard_Integer));
+                          Const_Null (Integer_GL_Type));
          end;
       else
          pragma Assert (Is_Array_Type (GT)
@@ -309,14 +308,14 @@ package body GNATLLVM.Conditionals is
                                Full_Designated_Type (RHS_Val),
                                LHS_Val, RHS_Val);
                Memcmp : constant GL_Value := Call
-                 (Get_Memory_Compare_Fn, Standard_Integer,
+                 (Get_Memory_Compare_Fn, Integer_GL_Type,
                   (1 => Pointer_Cast (Get (LHS_Val, Reference),
-                                      Standard_A_Char),
+                                      A_Char_GL_Type),
                    2 => Pointer_Cast (Get (RHS_Val, Reference),
-                                      Standard_A_Char),
+                                      A_Char_GL_Type),
                    3 => Size));
                Cond   : constant GL_Value :=
-                 I_Cmp (Int_EQ, Memcmp, Const_Null (Standard_Integer));
+                 I_Cmp (Int_EQ, Memcmp, Const_Null (Integer_GL_Type));
 
             begin
                Build_Cond_Br (Cond, BB_T, BB_F);

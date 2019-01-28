@@ -31,6 +31,7 @@ with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
@@ -377,7 +378,7 @@ package body GNATLLVM.Blocks is
 
       if No (BI.Stack_Save) and then Block_Stack.Last > 1 then
          Set_Current_Position (BI.Starting_Position);
-         BI.Stack_Save := Call (Get_Stack_Save_Fn, Standard_A_Char,
+         BI.Stack_Save := Call (Get_Stack_Save_Fn, A_Char_GL_Type,
                                 (1 .. 0 => <>));
          Position_Builder_At_End (Our_BB);
       end if;
@@ -522,34 +523,32 @@ package body GNATLLVM.Blocks is
       Personality_Fn  :=
         Add_Global_Function ("__gnat_personality_v0",
                              Fn_Ty ((1 .. 0 => <>), Int_Ty (32), True),
-                             Standard_Void_Type);
+                             Void_GL_Type);
 
       Begin_Handler_Fn :=
         Add_Global_Function ("__gnat_begin_handler",
                              Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                             Standard_Void_Type);
+                             Void_GL_Type);
 
       End_Handler_Fn   :=
         Add_Global_Function ("__gnat_end_handler",
                              Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                             Standard_Void_Type);
+                             Void_GL_Type);
 
       Reraise_Fn       :=
         Add_Global_Function ("__gnat_reraise_zcx",
                              Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                             Standard_Void_Type,
+                             Void_GL_Type,
                              Can_Return => False, Can_Throw => True);
 
       EH_Slot_Id_Fn    :=
         Add_Function ("llvm.eh.typeid.for",
-                      Fn_Ty ((1 => Void_Ptr_Type), Int_Ty (32)), Int_32_Type);
+                      Fn_Ty ((1 => Void_Ptr_Type), Int_Ty (32)),
+                      Int_32_GL_Type);
       Set_Does_Not_Throw (EH_Slot_Id_Fn);
 
-      Others_Value     := Add_Global (Standard_Short_Short_Integer,
-                                      "__gnat_others_value");
-      All_Others_Value := Add_Global (Standard_Short_Short_Integer,
-                                      "__gnat_all_others_value");
-
+      Others_Value     := Add_Global (SSI_GL_Type, "__gnat_others_value");
+      All_Others_Value := Add_Global (SSI_GL_Type, "__gnat_all_others_value");
       Predefines_Set   := True;
 
    end Initialize_Predefines;
@@ -568,7 +567,7 @@ package body GNATLLVM.Blocks is
            ("__gnat_set_exception_parameter",
             Fn_Ty ((1 => Create_Access_Type_To (Exc_Type), 2 => Void_Ptr_Type),
                    Void_Type),
-            Standard_Void_Type);
+            Void_GL_Type);
       end if;
 
       return Set_Exception_Param_Fn;
@@ -580,7 +579,7 @@ package body GNATLLVM.Blocks is
 
    function Get_Raise_Fn (Kind : RT_Exception_Code) return GL_Value is
       Fun_Type : constant Type_T :=
-        Fn_Ty ((1 => LLVM_Size_Type, 2 => Type_Of (Standard_Integer)),
+        Fn_Ty ((1 => LLVM_Size_Type, 2 => Type_Of (Integer_GL_Type)),
                Void_Type);
 
    begin
@@ -588,7 +587,7 @@ package body GNATLLVM.Blocks is
          if No (LCH_Fn) then
             LCH_Fn := Add_Global_Function
               ("__gnat_last_chance_handler", Fun_Type,
-               Standard_Void_Type, Can_Throw => True, Can_Return => False);
+               Void_GL_Type, Can_Throw => True, Can_Return => False);
          end if;
 
          return LCH_Fn;
@@ -596,7 +595,7 @@ package body GNATLLVM.Blocks is
          if No (Rcheck_FNs (Kind)) then
             Rcheck_FNs (Kind) := Add_Global_Function
               (Rcheck_Names (Kind).all, Fun_Type,
-               Standard_Void_Type, Can_Throw => True, Can_Return => False);
+               Void_GL_Type, Can_Throw => True, Can_Return => False);
          end if;
 
          return Rcheck_FNs (Kind);
@@ -655,22 +654,19 @@ package body GNATLLVM.Blocks is
 
             for J in File'Range loop
                Elements (Nat (J)) :=
-                 Const_Int (Standard_Short_Short_Integer,
-                            ULL (Character'Pos (File (J))));
+                 Const_Int (SSI_GL_Type, ULL (Character'Pos (File (J))));
             end loop;
 
             --  Append NUL character
 
-            Elements (Elements'Last)
-              := Const_Null (Standard_Short_Short_Integer);
-
+            Elements (Elements'Last) := Const_Null (SSI_GL_Type);
             Str := Const_Array (Elements, Any_Array);
             V   := G_Ref (Add_Global (Module, Type_Of (Str), "fname"),
                           Any_Array);
             Set_Initializer (V, Str);
             Set_Linkage (V, Private_Linkage);
             Set_Global_Constant (LLVM_Value (V), True);
-            File_Name_Strings (Index) := Ptr_To_Int (V, Size_Type);
+            File_Name_Strings (Index) := Ptr_To_Int (V, Size_GL_Type);
          end;
       end if;
 
@@ -685,7 +681,7 @@ package body GNATLLVM.Blocks is
       File : constant GL_Value :=
         Get_File_Name_Address (Get_Source_File_Index (Sloc (N)));
       Line : constant GL_Value :=
-        Const_Int (Standard_Integer,
+        Const_Int (Integer_GL_Type,
                    ULL (if   Debug_Flag_NN
                           or else Exception_Locations_Suppressed
                         then 0 else Get_Logical_Line_Number (Sloc (N))));
@@ -817,7 +813,7 @@ package body GNATLLVM.Blocks is
                Exceptions_Seen.Append (Exc);
                Clauses.Append ((BB    => BB,
                                 Exc   => Convert_To_Access (Exc,
-                                                            Standard_A_Char),
+                                                            A_Char_GL_Type),
                                 Param => Choice_Parameter (Handler),
                                 Stmts => Statements (Handler)));
                if Present (LP_Inst) then
@@ -916,8 +912,8 @@ package body GNATLLVM.Blocks is
 
          --  Extract the selector and the exception pointer
 
-         Exc_Ptr    := Extract_Value (Standard_A_Char,  EH_Data, 0);
-         Selector   := Extract_Value (Standard_Integer, EH_Data, 1);
+         Exc_Ptr    := Extract_Value (A_Char_GL_Type,  EH_Data, 0);
+         Selector   := Extract_Value (Integer_GL_Type, EH_Data, 1);
          BI.Exc_Ptr := Exc_Ptr;
 
          --  Generate code for the handlers, taking into account that we
@@ -949,7 +945,7 @@ package body GNATLLVM.Blocks is
                      V       : constant GL_Value  :=
                        Allocate_For_Type (Typ, Typ, Param, Def_Ident => Param);
                      Cvt_Ptr : constant GL_Value  :=
-                       Convert_To_Access (Exc_Ptr, Standard_A_Char);
+                       Convert_To_Access (Exc_Ptr, A_Char_GL_Type);
 
                   begin
                      Call (Get_Set_EH_Param_Fn (Typ), (1 => V, 2 => Cvt_Ptr));

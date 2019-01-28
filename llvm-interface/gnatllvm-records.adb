@@ -26,7 +26,6 @@ with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
 with Sprint;   use Sprint;
-with Stand;    use Stand;
 with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
@@ -2155,8 +2154,7 @@ package body GNATLLVM.Records is
       --  make sure we're pointing to Rec_Type.
 
       elsif Present (RI.GNAT_Type) then
-         return Ptr_To_Ref (GEP (Standard_Short_Short_Integer,
-                                 Pointer_Cast (V, Standard_A_Char),
+         return Ptr_To_Ref (GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
                                  (1 => Offset)),
                             F_Type);
       end if;
@@ -2167,8 +2165,7 @@ package body GNATLLVM.Records is
       if Our_Idx = First_Idx then
          Result := V;
       else
-         Result := GEP (Standard_Short_Short_Integer,
-                        Pointer_Cast (V, Standard_A_Char),
+         Result := GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
                         (1 => Offset));
       end if;
 

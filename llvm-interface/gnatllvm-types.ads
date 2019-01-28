@@ -365,7 +365,7 @@ package GNATLLVM.Types is
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Size_In_Bits (T : Type_T) return GL_Value is
-     (Const_Int (Size_Type, Get_Type_Size_In_Bits (T), False))
+     (Const_Int (Size_GL_Type, Get_Type_Size_In_Bits (T), False))
      with Pre  => Present (T),
           Post => Present (Get_Type_Size_In_Bits'Result);
    --  Return the size of an LLVM type, in bits, as an LLVM constant
@@ -444,8 +444,7 @@ package GNATLLVM.Types is
                  and then (No (Desig_TE) or else Is_Type (Desig_TE));
    --  Free memory allocated by Heap_Allocate_For_Type
 
-   function To_Size_Type (V : GL_Value) return GL_Value is
-     (Convert (V, Size_Type))
+   function To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),
           Post => Type_Of (To_Size_Type'Result) = LLVM_Size_Type;
    --  Convert V to Size_Type.  This is always Size_Type's width, but may

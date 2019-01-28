@@ -58,27 +58,20 @@ package GNATLLVM.Subprograms is
    function Build_Intrinsic
      (Kind : Overloaded_Intrinsic_Kind;
       Name : String;
-      TE   : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE) and then not Unknown_RM_Size (TE),
-          Post => Present (Build_Intrinsic'Result);
-   --  Build an intrinsic function of the specified type, name, and kind
-
-   function Build_Intrinsic
-     (Kind : Overloaded_Intrinsic_Kind;
-      Name : String;
       GT   : GL_Type) return GL_Value
      with Pre  => Is_Primitive_GL_Type (GT) and then not Unknown_RM_Size (GT),
           Post => Present (Build_Intrinsic'Result);
+   --  Build an intrinsic function of the specified type, name, and kind
 
    --  Build an intrinsic function of the specified type, name, and kind
    function Add_Global_Function
      (S          : String;
       Subp_Type  : Type_T;
-      TE         : Entity_Id;
+      GT         : GL_Type;
       Can_Throw  : Boolean := False;
       Can_Return : Boolean := True) return GL_Value
      with Pre => S'Length > 0 and then Present (Subp_Type)
-                 and then Present (TE);
+                 and then Present (GT);
    --  Create a function with the give name and type, but handling the case
    --  where we're also compiling a function with that name.  By default,
    --  these functions can return, but will not throw an exception, but
@@ -114,23 +107,14 @@ package GNATLLVM.Subprograms is
           Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Subp
 
-   function Make_Trampoline
-     (TE : Entity_Id; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
-     with Pre  => Is_Type_Or_Void (TE) and then Present (Fn)
-                  and then Present (Static_Link) and then Present (N),
-          Post => Present (Make_Trampoline'Result);
-   --  Given the type of a function, a pointer to it, a static link 9and the
-   --  location of the reference, make a trampoline that combines the
-   --  static link and function.
-
    function Has_Activation_Record (Def_Ident : Entity_Id) return Boolean
      with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
    --  Return True if Def_Ident is a nested subprogram or a subprogram type
    --  that needs an activation record.
 
    function Emit_Subprogram_Identifier
-     (Def_Ident : Entity_Id; N : Node_Id; TE : Entity_Id) return GL_Value
-     with Pre  => not Is_Type (Def_Ident) and then Is_Type_Or_Void (TE)
+     (Def_Ident : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
+     with Pre  => not Is_Type (Def_Ident) and then Present (GT)
                   and then (N = Def_Ident or else Nkind (N) in N_Has_Entity),
           Post => Present (Emit_Subprogram_Identifier'Result);
    --  Emit the value (creating the subprogram if needed) of the N_Identifier

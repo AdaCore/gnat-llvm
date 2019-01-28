@@ -23,7 +23,6 @@ with Exp_Code;   use Exp_Code;
 with Nlists;     use Nlists;
 with Sem_Aggr;   use Sem_Aggr;
 with Snames;     use Snames;
-with Stand;      use Stand;
 with Stringt;    use Stringt;
 with Uintp.LLVM; use Uintp.LLVM;
 with Urealp;     use Urealp;
@@ -257,7 +256,7 @@ package body GNATLLVM.Exprs is
             Fn_Ret    : constant GL_Value  :=
               Call (Func, LHS_BT, (1 => LVal, 2 => RVal));
             Overflow  : constant GL_Value  :=
-              Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
+              Extract_Value (Boolean_GL_Type, Fn_Ret, 1, "overflow");
             Label_Ent : constant Entity_Id :=
               Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
             BB_Next   : Basic_Block_T;
@@ -424,7 +423,7 @@ package body GNATLLVM.Exprs is
                      Fn_Ret    : constant GL_Value :=
                        Call (Func, GT, (1 => Const_Null (BT), 2 => V));
                      Overflow  : constant GL_Value :=
-                       Extract_Value (Standard_Boolean, Fn_Ret, 1, "overflow");
+                       Extract_Value (Boolean_GL_Type, Fn_Ret, 1, "overflow");
                      Label_Ent : constant Entity_Id :=
                        Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
                      BB_Next   : Basic_Block_T;
@@ -798,7 +797,7 @@ package body GNATLLVM.Exprs is
             end if;
 
             if No (V) then
-               V := Get_Undef (Size_Type);
+               V := Get_Undef (Size_GL_Type);
             end if;
             if Attr = Attribute_Bit_Position then
                V := Mul (V, Byte_Size);
@@ -1077,13 +1076,13 @@ package body GNATLLVM.Exprs is
 
             Call_With_Align_2
               (Build_Intrinsic
-                 (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_Type),
-               (1 => Pointer_Cast (Get (Dest, Dest_R), Standard_A_Char),
-                2 => Pointer_Cast (Get (Src,  Src_R),  Standard_A_Char),
+                 (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_GL_Type),
+               (1 => Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type),
+                2 => Pointer_Cast (Get (Src,  Src_R),  A_Char_GL_Type),
                 3 => Size,
                 4 => Const_False), -- Is_Volatile
                Get_Type_Alignment (Dest_Type),
-               Get_Type_Alignment (Related_Type (Src)));
+               Get_Type_Alignment (GL_Type'(Related_Type (Src))));
          end;
       end if;
    end Emit_Assignment;

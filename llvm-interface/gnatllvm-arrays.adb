@@ -26,6 +26,7 @@ with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -1152,8 +1153,8 @@ package body GNATLLVM.Arrays is
    ---------------------------
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
-      TE    : constant Entity_Id := Full_Etype (N);
-      E     : Node_Id            :=
+      GT    : constant GL_Type := Full_GL_Type (N);
+      E     : Node_Id          :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
 
@@ -1169,18 +1170,18 @@ package body GNATLLVM.Arrays is
       --  convert it to 8 bits.
 
       if Is_Floating_Point_Type (Full_Etype (E)) then
-         Value := Const_Null (Standard_Short_Short_Integer);
+         Value := Const_Null (SSI_GL_Type);
       else
-         Value := Emit_Convert_Value (E, Standard_Short_Short_Integer);
+         Value := Emit_Convert_Value (E, SSI_GL_Type);
       end if;
 
       Call_With_Align
-        (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_Type),
-         (1 => Pointer_Cast (Get (LValue, Reference), Standard_A_Char),
+        (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
+         (1 => Pointer_Cast (Get (LValue, Reference), A_Char_GL_Type),
           2 => Value,
-          3 => Get_Type_Size (TE),
+          3 => Get_Type_Size (GT),
           4 => Const_False),  --  Is_Volatile
-         Get_Type_Alignment (TE));
+         Get_Type_Alignment (GT));
    end Emit_Others_Aggregate;
 
    -----------------------------

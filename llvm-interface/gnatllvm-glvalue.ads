@@ -972,7 +972,7 @@ package GNATLLVM.GLValue is
      with Pre  => Present (GT), Post => Present (Const_Real'Result);
 
    function Size_Const_Int (N : Uint) return GL_Value is
-     (Const_Int (Size_Type, N))
+     (Const_Int (Size_GL_Type, N))
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
    function Byte_Size return GL_Value is
@@ -982,13 +982,13 @@ package GNATLLVM.GLValue is
    function Size_Const_Int
      (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Size_Type, ULL (N), Sign_Extend))
+     (Const_Int (Size_GL_Type, ULL (N), Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
      (N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Size_Type, N, Sign_Extend))
+     (Const_Int (Size_GL_Type, N, Sign_Extend))
      with Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Null return GL_Value is
@@ -1055,9 +1055,9 @@ package GNATLLVM.GLValue is
    function Pred_FP (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Pred_FP'Result);
 
-   procedure Set_Object_Align (Obj : Value_T; TE, E : Entity_Id)
-     with Pre => Present (Obj) and then Is_Type (TE);
-   --  Set the alignment of alloca inst or global from TE and E (if present)
+   procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id)
+     with Pre => Present (Obj) and then Present (GT);
+   --  Set the alignment of alloca inst or global from GT and E (if present)
 
    --  Define IR builder variants which take and/or return GL_Value
 
@@ -1116,7 +1116,7 @@ package GNATLLVM.GLValue is
    function Ptr_To_Size_Type
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (Ptr_To_Int (V, Size_Type, Name))
+     (Ptr_To_Int (V, Size_GL_Type, Name))
      with Pre  => Is_Pointer (V),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Size_Type'Result);
 
@@ -1996,16 +1996,7 @@ package GNATLLVM.GLValue is
 
    function Get_Type_Alignment (TE : Entity_Id) return GL_Value
      with Pre  => Is_Type (TE),
-          Post => Full_Etype (Get_Type_Alignment'Result) = Size_Type;
-
-   function Add_Function
-     (Name : String; T : Type_T; Return_TE : Entity_Id) return GL_Value
-   is
-     (G (Add_Function (Module, Name, T),
-         Return_TE, Reference_To_Subprogram))
-     with Pre  => Present (T) and then Is_Type_Or_Void (Return_TE),
-          Post => Present (Add_Function'Result);
-   --  Add a function to the environment
+          Post => Type_Of (Get_Type_Alignment'Result) = LLVM_Size_Type;
 
    function Add_Function
      (Name : String; T : Type_T; Return_GT : GL_Type) return GL_Value
@@ -2015,14 +2006,6 @@ package GNATLLVM.GLValue is
      with Pre  => Present (T) and then Present (Return_GT),
           Post => Present (Add_Function'Result);
    --  Add a function to the environment
-
-   function Add_Global
-     (TE             : Entity_Id;
-      Name           : String;
-      Need_Reference : Boolean := False) return GL_Value
-     with Pre  => Is_Type (TE), Post => Present (Add_Global'Result);
-     --  Add a global to the environment which is of type TE, so the global
-     --  itself represents the address of TE.
 
    function Add_Global
      (GT             : GL_Type;

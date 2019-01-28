@@ -121,6 +121,15 @@ package body GNATLLVM.Subprograms is
           Post => No (E) or else (Ekind_In (E, E_Out_Parameter,
                                             E_In_Out_Parameter));
 
+   function Make_Trampoline
+     (GT : GL_Type; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
+     with Pre  => Present (GT) and then Present (Fn)
+                  and then Present (Static_Link) and then Present (N),
+          Post => Present (Make_Trampoline'Result);
+   --  Given the type of a function, a pointer to it, a static link 9and the
+   --  location of the reference, make a trampoline that combines the
+   --  static link and function.
+
    --  For subprogram return, we have the mechanism for handling the
    --  subprogram return value, if any, and what the actual LLVM function
    --  returns, which is a combination of any return value and any scalar
@@ -789,25 +798,14 @@ package body GNATLLVM.Subprograms is
       Name : String;
       GT   : GL_Type) return GL_Value
    is
-     (Build_Intrinsic (Kind, Name, Full_Etype (GT)));
-
-   ---------------------
-   -- Build_Intrinsic --
-   ---------------------
-
-   function Build_Intrinsic
-     (Kind : Overloaded_Intrinsic_Kind;
-      Name : String;
-      TE   : Entity_Id) return GL_Value
-   is
-      T         : constant Type_T := Type_Of (TE);
+      T         : constant Type_T := Type_Of (GT);
       Width     : constant ULL    := Get_Type_Size_In_Bits (T);
       --  We need to use Get_Type_Size_In_Bits instead of Esize (TE)
       --  so that we handle FP types properly.
 
       W         : constant String := Int'Image (Int (Width));
       Full_Name : constant String := Name & W (W'First + 1 .. W'Last);
-      Return_TE : Entity_Id       := TE;
+      Return_GT : GL_Type         := GT;
       Fun_Ty    : Type_T;
       Result    : GL_Value;
 
@@ -833,21 +831,21 @@ package body GNATLLVM.Subprograms is
                              Build_Struct_Type ((1 => T, 2 => Int_Ty (1))));
 
          when Memcpy =>
-            Return_TE := Standard_Void_Type;
+            Return_GT := Void_GL_Type;
             Fun_Ty := Fn_Ty
               ((1 => Void_Ptr_Type,  2 => Void_Ptr_Type,
                 3 => LLVM_Size_Type, 4 => Int_Ty (1)),
                Void_Type);
 
          when Memset =>
-            Return_TE := Standard_Void_Type;
+            Return_GT := Void_GL_Type;
             Fun_Ty := Fn_Ty
               ((1 => Void_Ptr_Type,  2 => Int_Ty (Uint_Bits_Per_Unit),
                 3 => LLVM_Size_Type, 4 => Int_Ty (1)),
                Void_Type);
       end case;
 
-      Result := Add_Function (Full_Name, Fun_Ty, Return_TE);
+      Result := Add_Function (Full_Name, Fun_Ty, Return_GT);
       Set_Does_Not_Throw (Result);
       Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
       return Result;
@@ -860,7 +858,7 @@ package body GNATLLVM.Subprograms is
    function Add_Global_Function
      (S          : String;
       Subp_Type  : Type_T;
-      TE         : Entity_Id;
+      GT         : GL_Type;
       Can_Throw  : Boolean := False;
       Can_Return : Boolean := True) return GL_Value
    is
@@ -876,7 +874,7 @@ package body GNATLLVM.Subprograms is
                                       Pointer_Type (Subp_Type, 0), S),
                         Func);
       else
-         Func := Add_Function (S, Subp_Type, TE);
+         Func := Add_Function (S, Subp_Type, GT);
          if not Can_Throw then
             Set_Does_Not_Throw (Func);
          end if;
@@ -905,7 +903,7 @@ package body GNATLLVM.Subprograms is
          Default_Alloc_Fn :=
            Add_Global_Function ("__gnat_malloc", Fn_Ty ((1 => LLVM_Size_Type),
                                                         Void_Ptr_Type),
-                                Standard_A_Char);
+                                A_Char_GL_Type);
       end if;
 
       return Default_Alloc_Fn;
@@ -921,7 +919,7 @@ package body GNATLLVM.Subprograms is
          Default_Free_Fn :=
            Add_Global_Function ("__gnat_free",
                                 Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                                Standard_Void_Type);
+                                Void_GL_Type);
       end if;
 
       return Default_Free_Fn;
@@ -938,8 +936,8 @@ package body GNATLLVM.Subprograms is
            ("memcmp",
             Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
                     3 => LLVM_Size_Type),
-                   Type_Of (Standard_Integer)),
-            Standard_Integer);
+                   Type_Of (Integer_GL_Type)),
+            Integer_GL_Type);
       end if;
 
       return Memory_Compare_Fn;
@@ -954,7 +952,7 @@ package body GNATLLVM.Subprograms is
       if No (Stack_Save_Fn) then
          Stack_Save_Fn := Add_Function
            ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type),
-            Standard_A_Char);
+            A_Char_GL_Type);
          Set_Does_Not_Throw (Stack_Save_Fn);
       end if;
 
@@ -970,7 +968,7 @@ package body GNATLLVM.Subprograms is
       if No (Stack_Restore_Fn) then
          Stack_Restore_Fn := Add_Function
            ("llvm.stackrestore",
-            Fn_Ty ((1 => Void_Ptr_Type), Void_Type), Standard_Void_Type);
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Type), Void_GL_Type);
          Set_Does_Not_Throw (Stack_Restore_Fn);
       end if;
 
@@ -989,7 +987,7 @@ package body GNATLLVM.Subprograms is
             Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
                     3 => Void_Ptr_Type),
                    Void_Type),
-            Standard_Void_Type);
+            Void_GL_Type);
          Set_Does_Not_Throw (Tramp_Init_Fn);
       end if;
 
@@ -1005,7 +1003,7 @@ package body GNATLLVM.Subprograms is
       if No (Tramp_Adjust_Fn) then
          Tramp_Adjust_Fn := Add_Function
            ("llvm.adjust.trampoline",
-            Fn_Ty ((1 => Void_Ptr_Type), Void_Ptr_Type), Standard_A_Char);
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Ptr_Type), A_Char_GL_Type);
          Set_Does_Not_Throw (Tramp_Adjust_Fn);
       end if;
 
@@ -1017,12 +1015,12 @@ package body GNATLLVM.Subprograms is
    ---------------------
 
    function Make_Trampoline
-     (TE : Entity_Id; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
+     (GT : GL_Type; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
    is
       Tramp  : constant GL_Value :=
-        Array_Alloca (Standard_Short_Short_Integer, Size_Const_Int (ULL (72)),
+        Array_Alloca (SSI_GL_Type, Size_Const_Int (ULL (72)),
                       Name => "tramp");
-      Cvt_Fn : constant GL_Value := Pointer_Cast (Fn, Standard_A_Char);
+      Cvt_Fn : constant GL_Value := Pointer_Cast (Fn, A_Char_GL_Type);
 
    begin
       --  We have to initialize the trampoline and then adjust it and return
@@ -1031,8 +1029,8 @@ package body GNATLLVM.Subprograms is
       Check_Implicit_Dynamic_Code_Allowed (N);
       Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Cvt_Fn, 3 => Static_Link));
       return G_Is_Relationship
-        (Call (Get_Tramp_Adjust_Fn, Standard_A_Char, (1 => Tramp)),
-         TE, Trampoline);
+        (Call (Get_Tramp_Adjust_Fn, A_Char_GL_Type, (1 => Tramp)),
+         GT, Trampoline);
 
    end Make_Trampoline;
 
@@ -1309,7 +1307,7 @@ package body GNATLLVM.Subprograms is
       if Name = "ada_main___elabb" and Present (Ada_Main_Elabb) then
          LLVM_Func := Ada_Main_Elabb;
       else
-         LLVM_Func := Add_Function (Name, Elab_Type, Standard_Void_Type);
+         LLVM_Func := Add_Function (Name, Elab_Type, Void_GL_Type);
       end if;
 
       Enter_Subp (LLVM_Func);
@@ -1534,9 +1532,9 @@ package body GNATLLVM.Subprograms is
          if Parent = Current_Subp then
             Result := (if Present (Ent.ARECnP)
                        then Get (Get_Value (Ent.ARECnP), Data)
-                       else Get_Undef (Standard_A_Char));
+                       else Get_Undef (A_Char_GL_Type));
          elsif No (Ent_Caller.ARECnF) then
-            return Get_Undef (Standard_A_Char);
+            return Get_Undef (A_Char_GL_Type);
          else
             Result := Get_Value (Ent_Caller.ARECnF);
 
@@ -1553,9 +1551,9 @@ package body GNATLLVM.Subprograms is
             end loop;
          end if;
 
-         return Pointer_Cast (Result, Standard_A_Char, "static-link");
+         return Pointer_Cast (Result, A_Char_GL_Type, "static-link");
       else
-         return Get_Undef (Standard_A_Char);
+         return Get_Undef (A_Char_GL_Type);
       end if;
    end Get_Static_Link;
 
@@ -1593,7 +1591,7 @@ package body GNATLLVM.Subprograms is
    function Call_Alloc
      (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value is
    begin
-      return Call (Emit_Safe_LValue (Proc), Size_Type,
+      return Call (Emit_Safe_LValue (Proc), Size_GL_Type,
                    Add_Static_Link (Proc, Args));
    end Call_Alloc;
 
@@ -1778,7 +1776,7 @@ package body GNATLLVM.Subprograms is
 
    function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value is
       Val       : constant Node_Id := First_Actual (N);
-      TE        : Entity_Id;
+      GT        : GL_Type;
       Type_Size : ULL;
 
    begin
@@ -1789,12 +1787,12 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      TE := Full_Etype (Val);
-      if not Is_Elementary_Type (TE) then
+      GT := Full_GL_Type (Val);
+      if not Is_Elementary_Type (GT) then
          return No_GL_Value;
       end if;
 
-      Type_Size := Get_Type_Size_In_Bits (Type_Of (TE));
+      Type_Size := Get_Type_Size_In_Bits (Type_Of (GT));
       if not (S (S'Last - 1 .. S'Last) = "16" and then Type_Size = 16)
         and then not (S (S'Last - 1 .. S'Last) = "32" and then Type_Size = 32)
         and then not (S (S'Last - 1 .. S'Last) = "64" and then Type_Size = 64)
@@ -1802,7 +1800,7 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      return Call (Build_Intrinsic (Unary, "llvm.bswap.i", TE), TE,
+      return Call (Build_Intrinsic (Unary, "llvm.bswap.i", GT), GT,
                    (1 => Emit_Expression (Val)));
    end Emit_Bswap_Call;
 
@@ -1866,7 +1864,7 @@ package body GNATLLVM.Subprograms is
    --------------------------------
 
    function Emit_Subprogram_Identifier
-     (Def_Ident : Entity_Id; N : Node_Id; TE : Entity_Id) return GL_Value
+     (Def_Ident : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
    is
       V  : GL_Value := Get_Value (Def_Ident);
 
@@ -1904,22 +1902,22 @@ package body GNATLLVM.Subprograms is
 
       if Nkind (Parent (N)) = N_Attribute_Reference then
          declare
-            Ref    : constant Node_Id      := Parent (N);
-            Typ    : constant Entity_Id    := Full_Etype (Ref);
-            S_Link : constant GL_Value     :=
+            Ref    : constant Node_Id  := Parent (N);
+            Ref_GT : constant GL_Type  := Full_GL_Type (Ref);
+            S_Link : constant GL_Value :=
               (if   Has_Activation_Record (Def_Ident)
                then Get_Static_Link (Def_Ident)
-               else Get_Undef (Standard_A_Char));
+               else Get_Undef (A_Char_GL_Type));
             Attr   : constant Attribute_Id :=
               Get_Attribute_Id (Attribute_Name (Ref));
 
          begin
-            if Is_Access_Type (Typ) then
+            if Is_Access_Type (Ref_GT) then
                declare
-                  DT     : constant Entity_Id := Full_Designated_Type (Typ);
+                  DT     : constant GL_Type := Full_Designated_Type (Ref_GT);
 
                begin
-                  if Has_Foreign_Convention (Typ) then
+                  if Has_Foreign_Convention (Ref_GT) then
                      return (if   Has_Activation_Record (Def_Ident)
                              then Make_Trampoline (DT, V, S_Link, N)
                              else G_Is_Relationship (V, DT, Trampoline));
@@ -1928,12 +1926,12 @@ package body GNATLLVM.Subprograms is
                        (Insert_Value (Get_Undef_Relationship
                                         (DT, Fat_Reference_To_Subprogram),
                                       S_Link, 1),
-                        Pointer_Cast (V, Standard_A_Char), 0);
+                        Pointer_Cast (V, A_Char_GL_Type), 0);
                   end if;
                end;
             elsif Attr = Attribute_Address then
                return (if   Has_Activation_Record (Def_Ident)
-                       then Make_Trampoline (TE, V, S_Link, N) else V);
+                       then Make_Trampoline (GT, V, S_Link, N) else V);
             end if;
          end;
       end if;
@@ -2340,7 +2338,7 @@ package body GNATLLVM.Subprograms is
                               LLVM_Func);
       elsif No (LLVM_Func) then
          LLVM_Func := Add_Function (Actual_Name,
-                                    Subp_Type, Full_Etype (Def_Ident));
+                                    Subp_Type, Full_GL_Type (Def_Ident));
          --  Define the appropriate linkage
 
          if not In_Extended_Main_Code_Unit (Def_Ident) then
@@ -2452,10 +2450,10 @@ package body GNATLLVM.Subprograms is
    function Subp_Ptr (N : Node_Id) return GL_Value is
    begin
       if Nkind (N) = N_Null then
-         return Const_Null (Standard_A_Char);
+         return Const_Null (A_Char_GL_Type);
       else
          return Load
-           (Get (GEP (Standard_A_Char, Emit_LValue (N),
+           (Get (GEP (A_Char_GL_Type, Emit_LValue (N),
                       (1 => Const_Null_32, 2 => Const_Null_32)),
                  Reference));
 

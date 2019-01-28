@@ -159,6 +159,7 @@ package GNATLLVM is
    --  LLVM current module data layout.
 
    Size_Type          : Entity_Id;
+   Size_GL_Type       : GL_Type;
    LLVM_Size_Type     : Type_T;
    --  Types to use for sizes
 
@@ -166,8 +167,16 @@ package GNATLLVM is
    --  Pointer to arbitrary memory (we use i8 *); equivalent of
    --  Standard_A_Char.
 
+   A_Char_GL_Type     : GL_Type;
+   Boolean_GL_Type    : GL_Type;
+   Integer_GL_Type    : GL_Type;
+   SSI_GL_Type        : GL_Type;
+   Void_GL_Type       : GL_Type;
+   --  GL_Types for builtin types
+
+   Int_32_GL_Type     : GL_Type;
    Int_32_Type        : Entity_Id;
-   --  GNAT type for 32-bit integers (for GEP indexes)
+   --  Type for 32-bit integers (for GEP indexes)
 
    Uint_Bits_Per_Unit : Uint;
 

@@ -100,6 +100,7 @@ package body GNATLLVM.Compile is
          Size_Type := Standard_Integer;
       end if;
 
+      Size_GL_Type   := Primitive_GL_Type (Size_Type);
       LLVM_Size_Type := Type_Of (Size_Type);
 
       --  Likewise for the 32-bit integer type
@@ -111,6 +112,16 @@ package body GNATLLVM.Compile is
       else
          Int_32_Type := Standard_Integer;
       end if;
+
+      Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
+
+      --  Create GL_Types for builtin types
+
+      A_Char_GL_Type  := Primitive_GL_Type (Standard_A_Char);
+      Boolean_GL_Type := Primitive_GL_Type (Standard_Boolean);
+      Integer_GL_Type := Primitive_GL_Type (Standard_Integer);
+      SSI_GL_Type     := Primitive_GL_Type (Standard_Short_Short_Integer);
+      Void_GL_Type    := Primitive_GL_Type (Standard_Void_Type);
 
       --  Create a "void" pointer, which is i8* in LLVM
 

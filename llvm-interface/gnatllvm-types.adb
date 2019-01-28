@@ -133,7 +133,7 @@ package body GNATLLVM.Types is
       Alloc_TE : Entity_Id;
       E        : Entity_Id := Empty) return GL_Value
      with Pre  => Is_Type (TE) and then Is_Type (Alloc_TE),
-          Post => Full_Etype (Get_Alloc_Alignment'Result) = Size_Type;
+          Post => Type_Of (Get_Alloc_Alignment'Result) = LLVM_Size_Type;
    --  Like Get_Type_Size, but used for the alignment in an allocator, so we
    --  include the alignment of the bounds in some array cases.  It also
    --  may take into account the alignment of E, if present.
@@ -224,7 +224,7 @@ package body GNATLLVM.Types is
 
       if Ekind (T2) = E_String_Literal_Subtype then
          return (Type_Of (Full_Etype (First_Index (T1)))
-                   /= Type_Of (Standard_Integer));
+                   /= Type_Of (Integer_GL_Type));
       end if;
 
       Idx1 := First_Index (T1);
@@ -460,7 +460,7 @@ package body GNATLLVM.Types is
       then
          Result := Get (From_Access (Get (Result, Data)),
                         Reference_For_Integer);
-         Result := Convert (Ptr_To_Int (Result, Size_Type), TE);
+         Result := Convert (Ptr_To_Int (Result, Size_GL_Type), TE);
       elsif Is_Unchecked and then Is_Discrete_Or_Fixed_Point_Type (In_TE)
         and then Is_Access_Type (TE)
       then
@@ -477,8 +477,7 @@ package body GNATLLVM.Types is
                                            Full_Designated_Type (TE),
                                            Reference);
          else
-            Result := Int_To_Ref (Get (Result, Data),
-                                  Standard_Short_Short_Integer);
+            Result := Int_To_Ref (Get (Result, Data), SSI_GL_Type);
          end if;
 
          Result := Convert_To_Access (Result, TE);
@@ -1856,11 +1855,11 @@ package body GNATLLVM.Types is
       Result := Array_Alloca (Element_TE, Num_Elts, Def_Ident,
                               (if Overalign then "%%" else Name));
       if Overalign then
-         Result := Ptr_To_Int (Result, Size_Type);
+         Result := Ptr_To_Int (Result, Size_GL_Type);
          Result := Align_To (Result,
                              Size_Const_Int (ULL (Get_Stack_Alignment)),
                              Align);
-         Result := Int_To_Ptr (Result, Standard_A_Char);
+         Result := Int_To_Ptr (Result, A_Char_GL_Type);
          Set_Value_Name (Result, Get_Alloca_Name (Def_Ident, Name));
       end if;
 
@@ -1921,7 +1920,7 @@ package body GNATLLVM.Types is
         and then (Get_Const_Int_Value (Align) <=
                     LLI (Get_System_Allocator_Alignment))
       then
-         Result := Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Size));
+         Result := Call (Get_Default_Alloc_Fn, A_Char_GL_Type, (1 => Size));
 
       --  Otherwise, if we can use the default memory allocation
       --  function but have to overalign, increase the size by both
@@ -1935,8 +1934,8 @@ package body GNATLLVM.Types is
             Total_Size : constant GL_Value :=
               Add (Size, Add (Align, Ptr_Size));
             Alloc      : constant GL_Value :=
-              Call (Get_Default_Alloc_Fn, Standard_A_Char, (1 => Total_Size));
-            Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_Type);
+              Call (Get_Default_Alloc_Fn, A_Char_GL_Type, (1 => Total_Size));
+            Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_GL_Type);
             Aligned    : constant GL_Value :=
               Align_To (Add (Alloc_Int, Ptr_Size),
                         Size_Const_Int (ULL (Get_System_Allocator_Alignment)),
@@ -1944,8 +1943,8 @@ package body GNATLLVM.Types is
             Ptr_Loc    : constant GL_Value := Sub (Aligned, Ptr_Size);
 
          begin
-            Store (Alloc, Int_To_Ref (Ptr_Loc, Standard_A_Char));
-            Result := Convert (Aligned, Standard_A_Char);
+            Store (Alloc, Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
+            Result := Convert (Aligned, A_Char_GL_Type);
          end;
 
       --  If a procedure was specified (meaning that a pool must also have
@@ -2028,7 +2027,7 @@ package body GNATLLVM.Types is
                        (LLI (Get_System_Allocator_Alignment)))
          then
             Call (Get_Default_Free_Fn,
-                  (1 => Pointer_Cast (Conv_V, Standard_A_Char)));
+                  (1 => Pointer_Cast (Conv_V, A_Char_GL_Type)));
 
          --  If we have to use the normal deallocation procedure to
          --  deallocate an overaligned value, the actual address of the
@@ -2038,11 +2037,11 @@ package body GNATLLVM.Types is
          elsif No (Proc) then
             declare
                Addr       : constant GL_Value :=
-                 Ptr_To_Int (Conv_V, Size_Type);
+                 Ptr_To_Int (Conv_V, Size_GL_Type);
                Ptr_Size   : constant GL_Value := Get_Type_Size (Void_Ptr_Type);
                Ptr_Loc    : constant GL_Value := Sub (Addr, Ptr_Size);
                Ptr_Ref    : constant GL_Value :=
-                 Int_To_Ref (Ptr_Loc, Standard_A_Char);
+                 Int_To_Ref (Ptr_Loc, A_Char_GL_Type);
 
             begin
                Call (Get_Default_Free_Fn, (1 => Load (Ptr_Ref)));
@@ -2069,6 +2068,13 @@ package body GNATLLVM.Types is
          end if;
       end;
    end Heap_Deallocate;
+
+   ------------------
+   -- To_Size_Type --
+   ------------------
+
+   function To_Size_Type (V : GL_Value) return GL_Value is
+     (Convert (V, Size_GL_Type));
 
    ------------------------
    -- Get_Type_Alignment --

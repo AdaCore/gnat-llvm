@@ -75,8 +75,8 @@ package body GNATLLVM.GLValue is
    ----------------------------
 
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean is
-      TE   : constant Entity_Id   :=
-        (if V = No_GL_Value then Empty else Full_Etype (V.Typ));
+      GT   : constant GL_Type     :=
+        (if V = No_GL_Value then No_GL_Type else V.Typ);
       Val  : constant Value_T     := V.Value;
       Kind : constant Type_Kind_T :=
         (if No (Val) then Void_Type_Kind else Get_Type_Kind (Type_Of (Val)));
@@ -88,7 +88,7 @@ package body GNATLLVM.GLValue is
 
       if V = No_GL_Value then
          return True;
-      elsif No (Val) or else No (TE) then
+      elsif No (Val) or else No (GT) then
          return False;
       end if;
 
@@ -101,40 +101,37 @@ package body GNATLLVM.GLValue is
             --  to make it invalid.  We can't use Data for a dynamic
             --  size type, though.
 
-            return Is_Type (TE) and then Ekind (TE) /= E_Subprogram_Type
-              and then not Is_Nonnative_Type (TE);
+            return Ekind (GT) /= E_Subprogram_Type
+              and then not Is_Nonnative_Type (GT);
 
          when Boolean_Data =>
-            return TE = Standard_Boolean;
+            return GT = Boolean_GL_Type;
 
          when Component =>
             return Is_Null (Val);
 
          when Reference | Reference_To_Component =>
             --  ??? This should really only be non-array
-            return Is_Type (TE)
-              and then (Kind = Pointer_Type_Kind
-                          or else Ekind (TE) = E_Subprogram_Type);
+            return (Kind = Pointer_Type_Kind
+                      or else Ekind (GT) = E_Subprogram_Type);
 
          when Reference_To_Reference | Reference_To_Thin_Pointer
             | Reference_To_Ref_To_Component =>
-            return Is_Type (TE)
-              and then Kind = Pointer_Type_Kind;
+            return Kind = Pointer_Type_Kind;
 
          when Fat_Pointer | Bounds | Bounds_And_Data =>
-            return Is_Array_Or_Packed_Array_Type (TE);
+            return Is_Array_Or_Packed_Array_Type (GT);
 
          when  Thin_Pointer
             | Reference_To_Bounds | Reference_To_Bounds_And_Data =>
-            return Is_Type (TE)
-              and then Kind = Pointer_Type_Kind
-              and then Is_Array_Or_Packed_Array_Type (TE);
+            return Kind = Pointer_Type_Kind
+              and then Is_Array_Or_Packed_Array_Type (GT);
 
          when Activation_Record  | Fat_Reference_To_Subprogram =>
-            return Ekind_In (TE, E_Subprogram_Type, E_Access_Subprogram_Type);
+            return Ekind (GT) in E_Subprogram_Type | E_Access_Subprogram_Type;
 
          when Reference_To_Activation_Record =>
-            return Ekind (TE) = E_Subprogram_Type
+            return Ekind (GT) = E_Subprogram_Type
               and then Kind = Pointer_Type_Kind;
 
          when Reference_To_Subprogram | Reference_To_Ref_To_Subprogram =>
@@ -800,7 +797,7 @@ package body GNATLLVM.GLValue is
 
             if Our_R in Reference | Trampoline then
                return Insert_Value (Get_Undef_Relationship (TE, R),
-                                    Convert_To_Access (V, Standard_A_Char), 0);
+                                    Convert_To_Access (V, A_Char_GL_Type), 0);
             end if;
 
          when Trampoline =>
@@ -846,15 +843,15 @@ package body GNATLLVM.GLValue is
    -- Set_Object_Align --
    ----------------------
 
-   procedure Set_Object_Align (Obj : Value_T; TE, E : Entity_Id) is
-      TE_Align : constant ULL             := Get_Type_Alignment (TE);
+   procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id) is
+      GT_Align : constant ULL             := Get_Type_Alignment (GT);
       E_Align  : constant ULL             :=
         (if   Present (E) and then not Unknown_Alignment (E)
          then ULL (UI_To_Int (Alignment (E)))
          else 1);
 
    begin
-      Set_Alignment (Obj, unsigned (ULL'Max (TE_Align, E_Align)));
+      Set_Alignment (Obj, unsigned (ULL'Max (GT_Align, E_Align)));
    end Set_Object_Align;
 
    ------------
@@ -866,7 +863,7 @@ package body GNATLLVM.GLValue is
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "") return GL_Value
    is
-      R       :  constant GL_Relationship := Relationship_For_Alloc (TE);
+      R       : constant GL_Relationship  := Relationship_For_Alloc (TE);
       PT      : constant Type_T           := Type_For_Relationship (TE, R);
       T       : constant Type_T           := Get_Element_Type (PT);
       Promote : constant Basic_Block_T    := Maybe_Promote_Alloca (T);
@@ -874,7 +871,7 @@ package body GNATLLVM.GLValue is
         Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
 
    begin
-      Set_Object_Align (Inst, TE, Def_Ident);
+      Set_Object_Align (Inst, Default_GL_Type (TE), Def_Ident);
       Done_Promoting_Alloca (Inst, Promote);
       return G (Inst, TE, R, Is_Pristine => True);
    end Alloca;
@@ -888,7 +885,7 @@ package body GNATLLVM.GLValue is
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "") return GL_Value
    is
-      R       :  constant GL_Relationship := Relationship_For_Alloc (GT);
+      R       : constant GL_Relationship  := Relationship_For_Alloc (GT);
       PT      : constant Type_T           := Type_For_Relationship (GT, R);
       T       : constant Type_T           := Get_Element_Type (PT);
       Promote : constant Basic_Block_T    := Maybe_Promote_Alloca (T);
@@ -896,8 +893,7 @@ package body GNATLLVM.GLValue is
         Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
 
    begin
-      Set_Alignment (Inst,
-                     unsigned (Get_Const_Int_Value (Get_Type_Alignment (GT))));
+      Set_Object_Align (Inst, GT, Def_Ident);
       Done_Promoting_Alloca (Inst, Promote);
       return G (Inst, GT, R, Is_Pristine => True);
    end Alloca;
@@ -918,7 +914,7 @@ package body GNATLLVM.GLValue is
                       Get_Alloca_Name (Def_Ident, Name));
 
    begin
-      Set_Object_Align (Inst, TE, Def_Ident);
+      Set_Object_Align (Inst, Default_GL_Type (TE), Def_Ident);
       Save_Stack_Pointer;
       return G_Ref (Inst, TE, Is_Pristine => True);
    end Array_Alloca;
@@ -939,8 +935,7 @@ package body GNATLLVM.GLValue is
                       Get_Alloca_Name (Def_Ident, Name));
 
    begin
-      Set_Alignment (Inst,
-                     unsigned (Get_Const_Int_Value (Get_Type_Alignment (GT))));
+      Set_Object_Align (Inst, GT, Def_Ident);
       Save_Stack_Pointer;
       return G_Ref (Inst, GT, Is_Pristine => True);
    end Array_Alloca;
@@ -1018,7 +1013,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_True return GL_Value is
-     (G (Const_Int (Int_Ty (1), ULL (1), False), Standard_Boolean,
+     (G (Const_Int (Int_Ty (1), ULL (1), False), Boolean_GL_Type,
          Boolean_Data));
 
    -----------------
@@ -1026,7 +1021,7 @@ package body GNATLLVM.GLValue is
    -----------------
 
    function Const_False return GL_Value is
-     (G (Const_Int (Int_Ty (1), ULL (0), False), Standard_Boolean,
+     (G (Const_Int (Int_Ty (1), ULL (0), False), Boolean_GL_Type,
          Boolean_Data));
 
    ---------------
@@ -2075,11 +2070,11 @@ package body GNATLLVM.GLValue is
       Is_Volatile    : Boolean := False;
       Is_Stack_Align : Boolean := False) return GL_Value
    is
-      TE        : constant Entity_Id :=
-        (if Present (Output_Value) then Full_Etype (Output_Value)
-         else Standard_Void_Type);
+      GT        : constant GL_Type :=
+        (if   Present (Output_Value) then Full_GL_Type (Output_Value)
+         else Void_GL_Type);
       T         : constant Type_T :=
-        (if Present (Output_Value) then Type_Of (TE) else Void_Type);
+        (if Present (Output_Value) then Type_Of (GT) else Void_Type);
       Arg_Types : Type_Array (Args'Range);
 
    begin
@@ -2089,7 +2084,7 @@ package body GNATLLVM.GLValue is
 
       return G (Const_Inline_Asm (Fn_Ty (Arg_Types, T), Template,
                                   Constraints, Is_Volatile, Is_Stack_Align),
-                TE, Reference_To_Subprogram);
+                GT, Reference_To_Subprogram);
    end Inline_Asm;
 
    -------------------
@@ -2112,37 +2107,6 @@ package body GNATLLVM.GLValue is
 
    function Get_Type_Alignment (TE : Entity_Id) return GL_Value is
       (Size_Const_Int (Get_Type_Alignment (TE)));
-
-   ----------------
-   -- Add_Global --
-   ----------------
-
-   function Add_Global
-     (TE             : Entity_Id;
-      Name           : String;
-      Need_Reference : Boolean := False) return GL_Value
-   is
-      R : GL_Relationship := Relationship_For_Alloc (TE);
-
-   begin
-      --  The type we pass to Add_Global is the type of the actual data, but
-      --  since the global value in LLVM is a pointer, the relationship is
-      --  the reference.  So we compute the reference we want and then make the
-      --  type corresponding to a data of that reference.  But first handle
-      --  the case where we need an indirection (because of an address clause
-      --  or a dynamically-sized object).  In that case, if we would normally
-      --  have a pointer to the bounds and data, we actually store the thin
-      --  pointer (which points in the middle).
-
-      if Need_Reference then
-         R := Ref (if   R = Reference_To_Bounds_And_Data
-                   then Thin_Pointer else R);
-      end if;
-
-      return G (Add_Global (Module, Type_For_Relationship (TE, Deref (R)),
-                            Name),
-                TE, R);
-   end Add_Global;
 
    ----------------
    -- Add_Global --

@@ -111,6 +111,12 @@ package GNATLLVM.GLType is
           Post => Is_Reference (Convert_Ref'Result);
    --  Convert V, which should be a reference, into a reference to GT
 
+   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Present (V) and then Present (GT),
+          Post => Is_Access_Type (Convert_To_Access'Result);
+   --  Convert Src, which should be an access or reference, into an access
+   --  type TE
+
    function Emit_Conversion
      (N                   : Node_Id;
       GT                  : GL_Type;
@@ -174,6 +180,9 @@ package GNATLLVM.GLType is
    function Get_Type_Alignment (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Type_Alignment'Result);
 
+   function Get_Type_Alignment (GT : GL_Type) return ULL
+     with Pre => Present (GT);
+
    function Is_Dummy_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
 
@@ -199,6 +208,11 @@ package GNATLLVM.GLType is
      with Pre  => Is_Access_Type (GT),
           Post => Is_Type (Full_Designated_Type'Result);
 
+   function Full_Designated_Type (GT : GL_Type) return GL_Type is
+     (Default_GL_Type (Full_Designated_Type (Full_Etype (GT))))
+     with Pre  => Is_Access_Type (GT),
+          Post => Present (Full_Designated_Type'Result);
+
    function Full_Component_Type (GT : GL_Type) return Entity_Id is
      (Full_Component_Type (Full_Etype (GT)))
      with Pre  => Is_Array_Type (GT),
@@ -208,7 +222,8 @@ package GNATLLVM.GLType is
      (Full_Base_Type (Full_Etype (GT)))
      with Pre  => Present (GT), Post => Is_Type (Full_Base_Type'Result);
 
-   function Is_Dynamic_Size (GT : GL_Type) return Boolean
+   function Is_Dynamic_Size
+     (GT : GL_Type; Max_Size : Boolean := False) return Boolean
      with Pre => Present (GT);
 
    function Is_Nonnative_Type (GT : GL_Type) return Boolean
@@ -222,9 +237,14 @@ package GNATLLVM.GLType is
      (Is_Array_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Array_Or_Packed_Array_Type (GT : GL_Type) return Boolean is
+     (Is_Array_Or_Packed_Array_Type (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Is_Access_Subprogram_Type (GT : GL_Type) return Boolean is
     (Is_Access_Type (GT)
-       and then Ekind (Full_Designated_Type (GT)) = E_Subprogram_Type)
+       and then Ekind (GL_Type'(Full_Designated_Type (GT))) =
+                  E_Subprogram_Type)
      with Pre => Present (GT);
 
    function Is_Constrained (GT : GL_Type) return Boolean is

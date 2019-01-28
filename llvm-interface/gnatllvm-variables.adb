@@ -1117,17 +1117,17 @@ package body GNATLLVM.Variables is
    function Make_Global_Variable
      (Def_Ident : Entity_Id; Definition : Boolean) return GL_Value
    is
-      TE           : constant Entity_Id   := Full_Etype (Def_Ident);
-      LLVM_Var     : GL_Value             := Get_Dup_Global_Value (Def_Ident);
+      GT           : constant GL_Type := Full_GL_Type (Def_Ident);
+      LLVM_Var     : GL_Value         := Get_Dup_Global_Value (Def_Ident);
       Addr_Expr    : constant Node_Id :=
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
-      Is_Ref       : constant Boolean     :=
+      Is_Ref       : constant Boolean :=
         Present (Addr_Expr)
-          or else Is_Dynamic_Size (TE, Is_Unconstrained_Record (TE))
+          or else Is_Dynamic_Size (GT, Is_Unconstrained_Record (GT))
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
-      Linker_Alias : constant Node_Id     :=
+      Linker_Alias : constant Node_Id :=
         Get_Pragma (Def_Ident, Pragma_Linker_Alias);
 
    begin
@@ -1141,16 +1141,16 @@ package body GNATLLVM.Variables is
          --  on whether the type's size is dynamic, rather than requiring
          --  that neither be, but it's not worth the trouble.
 
-         if Is_Double_Reference (LLVM_Var) or else Is_Dynamic_Size (TE)
-           or else Type_Needs_Bounds (TE)
+         if Is_Double_Reference (LLVM_Var) or else Is_Dynamic_Size (GT)
+           or else Type_Needs_Bounds (GT)
          then
             Error_Msg_N
               ("All uses of same interface name must have static size",
                Def_Ident);
             LLVM_Var := Get_Undef_Relationship
-              (TE, (if Is_Ref then Reference_To_Reference else Reference));
+              (GT, (if Is_Ref then Reference_To_Reference else Reference));
          else
-            LLVM_Var := Convert_Ref (LLVM_Var, TE);
+            LLVM_Var := Convert_Ref (LLVM_Var, GT);
          end if;
 
       --  Otherwise, see if this is a simple renaming
@@ -1177,7 +1177,7 @@ package body GNATLLVM.Variables is
 
             for J in 1 .. Interface_Names.Last loop
                if String_Equal (Str_Id, Interface_Names.Table (J).S)
-                 and then Full_Etype (Interface_Names.Table (J).E) = TE
+                 and then Full_GL_Type (Interface_Names.Table (J).E) = GT
                  and then Present (Get_Value (Interface_Names.Table (J).E))
                then
                   E := Interface_Names.Table (J).E;
@@ -1187,12 +1187,14 @@ package body GNATLLVM.Variables is
             if No (E) then
                Error_Msg_NE ("No matching object found", Linker_Alias,
                              Def_Ident);
-               LLVM_Var := Get_Undef (TE);
+               LLVM_Var := Get_Undef (GT);
             else
-               LLVM_Var := G (Add_Alias (Module, Create_Access_Type_To (TE),
+               LLVM_Var := G (Add_Alias (Module,
+                                         Create_Access_Type_To
+                                           (Full_Etype (GT)),
                                          LLVM_Value (Get_Value (E)),
                                          Get_Ext_Name (Def_Ident)),
-                              TE, Reference);
+                              GT, Reference);
             end if;
          end;
 
@@ -1202,7 +1204,7 @@ package body GNATLLVM.Variables is
 
       else
          LLVM_Var := Add_Global
-           (TE, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref);
+           (GT, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref);
          Set_Thread_Local (LLVM_Var,
                            Has_Pragma_Thread_Local_Storage (Def_Ident));
 
@@ -1214,7 +1216,7 @@ package body GNATLLVM.Variables is
          Set_Linker_Section   (LLVM_Var, Def_Ident);
          Process_Pragmas      (Def_Ident, LLVM_Var);
          if not Is_Ref then
-            Set_Object_Align  (LLVM_Value (LLVM_Var), TE, Def_Ident);
+            Set_Object_Align  (LLVM_Value (LLVM_Var), GT, Def_Ident);
          end if;
       end if;
 
@@ -1686,7 +1688,7 @@ package body GNATLLVM.Variables is
 
    procedure Emit_Renaming_Declaration (N : Node_Id) is
       Def_Ident : constant Entity_Id := Defining_Identifier (N);
-      TE        : constant Entity_Id := Full_Etype (Def_Ident);
+      GT        : constant GL_Type   := Full_GL_Type (Def_Ident);
       Use_LHS   : constant Boolean   :=
         Is_Name (Name (N))
         and then (Nkind (Name (N)) not in N_Has_Entity
@@ -1712,12 +1714,12 @@ package body GNATLLVM.Variables is
          pragma Assert (In_Elab_Proc);
 
          if Use_LHS then
-            Store (Get (Convert_Ref (Emit_LValue (Name (N)), TE),
+            Store (Get (Convert_Ref (Emit_LValue (Name (N)), GT),
                         Reference_To_Component),
                    LLVM_Var);
          else
             Emit_Assignment (LLVM_Var,
-                             Value => Emit_Convert_Value (Name (N), TE));
+                             Value => Emit_Convert_Value (Name (N), GT));
          end if;
 
       --  If this is a constant, just use the value of the expression for
@@ -1732,31 +1734,31 @@ package body GNATLLVM.Variables is
         and then (not Library_Level
                     or else Is_No_Elab_Needed (Name (N)))
       then
-         V := Emit_Conversion (Name (N), TE, Empty, False, False);
+         V := Emit_Conversion (Name (N), GT, Empty, False, False);
          Set_Value (Def_Ident, V);
 
          --  If we're at library level, materialize this
 
          if Library_Level then
-            LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident));
+            LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident));
             Set_Initializer (LLVM_Var, V);
             Set_Global_Constant (LLVM_Var, True);
             Set_Linker_Section (LLVM_Var, Def_Ident);
          end if;
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
-         Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), TE));
+         Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), GT));
       else
          --  If this is a constant, we're going to put the actual value there;
          --  otherwise, we'll put the address of the expression.
 
-         LLVM_Var := Add_Global (TE, Get_Ext_Name (Def_Ident),
+         LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident),
                                  Need_Reference => Use_LHS);
          Set_Value (Def_Ident, LLVM_Var);
          Set_Initializer
            (LLVM_Var,
             (if   Use_LHS
-             then Const_Null_Relationship (TE, Reference_To_Component)
-             else Const_Null_Alloc (TE)));
+             then Const_Null_Relationship (GT, Reference_To_Component)
+             else Const_Null_Alloc (GT)));
          Add_To_Elab_Proc (N);
       end if;
 
@@ -1764,12 +1766,13 @@ package body GNATLLVM.Variables is
 
       if Unknown_Esize (Def_Ident) then
          Set_Esize (Def_Ident, Annotated_Value
-                      (BA_Mul (BA_Type_Size (TE, Max_Size => True),
+                      (BA_Mul (BA_Type_Size (Full_Etype (GT),
+                                             Max_Size => True),
                                BA_Const (Uint_Bits_Per_Unit))));
       end if;
 
       Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  Int (ULL'(Get_Type_Alignment (TE))));
+                                  Int (ULL'(Get_Type_Alignment (GT))));
 
    end Emit_Renaming_Declaration;
 
@@ -1780,7 +1783,7 @@ package body GNATLLVM.Variables is
    function Emit_Identifier
      (N : Node_Id; Prefer_LHS : Boolean := False) return GL_Value
    is
-      TE        : constant Entity_Id := Full_Etype (N);
+      GT        : constant GL_Type   := Full_GL_Type (N);
       E         : constant Entity_Id :=
         (if Nkind (N) in N_Entity then N else Entity (N));
       Def_Ident : constant Entity_Id :=
@@ -1804,7 +1807,7 @@ package body GNATLLVM.Variables is
       elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
         and then (not Prefer_LHS or else Sloc (Def_Ident) <= Standard_Location)
       then
-         return Emit_Conversion (Expr, TE);
+         return Emit_Conversion (Expr, GT);
       end if;
 
       --  Otherwise, see if we have any special cases
@@ -1815,13 +1818,13 @@ package body GNATLLVM.Variables is
             --  N_Defining_Identifier nodes for enumeration literals are not
             --  stored in the environment. Handle them here.
 
-            return Const_Int (TE, Enumeration_Rep (Def_Ident));
+            return Const_Int (GT, Enumeration_Rep (Def_Ident));
 
          when E_Label =>
             return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
 
          when Subprogram_Kind =>
-            return Emit_Subprogram_Identifier (Def_Ident, N, TE);
+            return Emit_Subprogram_Identifier (Def_Ident, N, GT);
 
          when E_Discriminant =>
             --  If this is a bare discriminant, it's a reference to the
@@ -1839,7 +1842,7 @@ package body GNATLLVM.Variables is
             then
                V := Int_To_Ref (Emit_Expression
                                   (Expression (Address_Clause (Def_Ident))),
-                                TE);
+                                GT);
 
             --  Otherwise, if we haven't seen this variable and it's
             --  not in our code unit, make a global for it.

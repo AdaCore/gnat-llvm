@@ -23,7 +23,6 @@ with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Restrict; use Restrict;
 with Sinput;   use Sinput;
-with Stand;    use Stand;
 with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
@@ -660,9 +659,9 @@ package body GNATLLVM.Blocks is
             --  Append NUL character
 
             Elements (Elements'Last) := Const_Null (SSI_GL_Type);
-            Str := Const_Array (Elements, Any_Array);
+            Str := Const_Array (Elements, Any_Array_GL_Type);
             V   := G_Ref (Add_Global (Module, Type_Of (Str), "fname"),
-                          Any_Array);
+                          Any_Array_GL_Type);
             Set_Initializer (V, Str);
             Set_Linkage (V, Private_Linkage);
             Set_Global_Constant (LLVM_Value (V), True);

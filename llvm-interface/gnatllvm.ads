@@ -172,6 +172,7 @@ package GNATLLVM is
    Integer_GL_Type    : GL_Type;
    SSI_GL_Type        : GL_Type;
    Void_GL_Type       : GL_Type;
+   Any_Array_GL_Type  : GL_Type;
    --  GL_Types for builtin types
 
    Int_32_GL_Type     : GL_Type;

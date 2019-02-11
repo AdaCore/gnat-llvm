@@ -891,17 +891,12 @@ package GNATLLVM.GLValue is
    function Const_Null_Alloc (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Const_Null_Alloc'Result);
 
-   function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE) and then N /= No_Uint,
-          Post => Present (Const_Int'Result);
-
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value
      with Pre  => Present (GT) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
-   function Const_Int
-     (TE : Entity_Id; N : ULL; Sign_Extend : Boolean := False) return GL_Value
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
+   function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
+     with Pre  => Is_Type (TE) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
    function Const_Int
@@ -910,18 +905,9 @@ package GNATLLVM.GLValue is
    --  ?? This should really test Is_Discrete_Or_Fixed_Point_Type, but we
    --  have a circular elaboration if we try.
 
-   function Const_Int
-     (TE          : Entity_Id;
-      N           : unsigned;
-      Sign_Extend : Boolean := False) return GL_Value is
-     (Const_Int (TE, ULL (N), Sign_Extend))
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
-          Post => Present (Const_Int'Result);
-
-   function Const_Ones (TE : Entity_Id) return GL_Value is
-     (Const_Int (TE, ULL'Last, Sign_Extend => True))
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
-          Post => Present (Const_Ones'Result);
+   function Const_Ones (GT : GL_Type) return GL_Value is
+     (Const_Int (GT, ULL'Last, Sign_Extend => True))
+     with Pre => Present (GT), Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
 
    function Get_Undef (V : GL_Value) return GL_Value is
@@ -932,18 +918,15 @@ package GNATLLVM.GLValue is
      (Const_Null (Etype (V)))
      with Pre  => Present (V), Post => Present (Const_Null'Result);
 
-   function Const_Null_Ref (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE), Post => Is_Reference (Const_Null_Ref'Result);
+   function Const_Null_Ref (GT : GL_Type) return GL_Value
+     with Pre  => Present (GT), Post => Is_Reference (Const_Null_Ref'Result);
 
-   function Const_Int (V : GL_Value; N : Uint) return GL_Value is
-     (Const_Int (Etype (V), N))
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then N /= No_Uint,
+   function Const_Int (V : GL_Value; N : Uint) return GL_Value
+     with Pre  => Present (V) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
    function Const_Int
      (V : GL_Value; N : ULL; Sign_Extend : Boolean := False) return GL_Value
-   is
-     (Const_Int (Etype (V), N, Sign_Extend))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
           Post => Present (Const_Int'Result);
 
@@ -951,21 +934,13 @@ package GNATLLVM.GLValue is
      (V           : GL_Value;
       N           : unsigned;
       Sign_Extend : Boolean := False) return GL_Value
-   is
-     (Const_Int (Etype (V), ULL (N), Sign_Extend))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
           Post => Present (Const_Int'Result);
 
-   function Const_Ones (V : GL_Value) return GL_Value is
-     (Const_Ones (Etype (V)))
+   function Const_Ones (V : GL_Value) return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
           Post => Present (Const_Ones'Result);
    --  Return an LLVM value for the given type where all bits are set
-
-   function Const_Real
-     (TE : Entity_Id; V : Interfaces.C.double) return GL_Value
-     with Pre  => Is_Floating_Point_Type (TE),
-          Post => Present (Const_Real'Result);
 
    function Const_Real
      (GT : GL_Type; V : Interfaces.C.double) return GL_Value
@@ -996,19 +971,19 @@ package GNATLLVM.GLValue is
      with Post => Present (Size_Const_Null'Result);
 
    function Const_Int_32 (N : Uint) return GL_Value is
-     (Const_Int (Int_32_Type, N))
+     (Const_Int (Int_32_GL_Type, N))
      with Pre  => N /= No_Uint, Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
      (N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Int_32_Type, N, Sign_Extend))
+     (Const_Int (Int_32_GL_Type, N, Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
      (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Int_32_Type, unsigned_long_long (N), Sign_Extend))
+     (Const_Int (Int_32_GL_Type, unsigned_long_long (N), Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
    function Const_Null_32 return GL_Value is
@@ -1026,10 +1001,6 @@ package GNATLLVM.GLValue is
      with Post => Relationship (Const_True'Result) = Boolean_Data;
    function Const_False return GL_Value
      with Post => Relationship (Const_False'Result) = Boolean_Data;
-
-   function Const_Array
-     (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
-     with Pre => Is_Array_Type (TE), Post => Present (Const_Array'Result);
 
    function Const_Array
      (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value

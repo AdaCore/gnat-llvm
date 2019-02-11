@@ -115,11 +115,11 @@ package body GNATLLVM.Arrays is
    --  a pointer and is unsigned, we must return a wider type.
 
    function Emit_Constant_Aggregate
-     (N : Node_Id; Comp_Type, TE : Entity_Id; Dims_Left : Nat) return GL_Value
+     (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
      with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
-                  and then Is_Array_Type (TE) and then Present (Comp_Type),
+                  and then Is_Array_Type (GT) and then Present (Comp_Type),
           Post => Is_Constant (Emit_Constant_Aggregate'Result);
-   --  N is a constant aggregate.  TE is either the array type (at the
+   --  N is a constant aggregate.  GT is either the array type (at the
    --  outer level) or Any_Array (if not).  Comp_Type is the underlying
    --  component type of the array, and Dims_Left are the number of dimensions
    --  remaining.  Return an LLVM constant including all of the constants
@@ -1190,7 +1190,7 @@ package body GNATLLVM.Arrays is
    -----------------------------
 
    function Emit_Constant_Aggregate
-     (N : Node_Id; Comp_Type, TE : Entity_Id; Dims_Left : Nat) return GL_Value
+     (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
    is
       Vals : GL_Value_Array (1 .. List_Length (Expressions (N)));
       Idx  : Int := 1;
@@ -1201,13 +1201,13 @@ package body GNATLLVM.Arrays is
       while Present (Expr) loop
          Vals (Idx) :=
            (if   Dims_Left = 1 then Emit_Convert_Value (Expr, Comp_Type)
-            else Emit_Constant_Aggregate (Expr, Comp_Type, Any_Array,
+            else Emit_Constant_Aggregate (Expr, Comp_Type, Any_Array_GL_Type,
                                           Dims_Left - 1));
          Idx        := Idx + 1;
          Next (Expr);
       end loop;
 
-      return Const_Array (Vals, TE);
+      return Const_Array (Vals, GT);
    end Emit_Constant_Aggregate;
 
    ------------------
@@ -1240,10 +1240,10 @@ package body GNATLLVM.Arrays is
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
    is
-      TE        : constant Entity_Id := Full_Etype (N);
-      Comp_Type : constant Entity_Id := Full_Component_Type (TE);
-      Cur_Index : unsigned           := 0;
-      Expr      : Node_Id;
+      GT           : constant GL_Type := Full_GL_Type (N);
+      Comp_GL_Type : constant GL_Type := Full_Component_GL_Type (GT);
+      Cur_Index    : unsigned         := 0;
+      Expr         : Node_Id;
 
    begin
       --  The back-end supports exactly two types of array aggregates.
@@ -1259,10 +1259,10 @@ package body GNATLLVM.Arrays is
       --  top level of the array or the type is loadable.
 
       if Is_No_Elab_Needed (N)
-        and then (Is_Loadable_Type (TE)
-                    or else Dims_Left = Number_Dimensions (TE))
+        and then (Is_Loadable_Type (GT)
+                    or else Dims_Left = Number_Dimensions (GT))
       then
-         return Emit_Constant_Aggregate (N, Comp_Type, TE, Dims_Left);
+         return Emit_Constant_Aggregate (N, Comp_GL_Type, GT, Dims_Left);
       end if;
 
       Expr := First (Expressions (N));
@@ -1274,12 +1274,13 @@ package body GNATLLVM.Arrays is
          --  already handled the constant case above.
 
          if No (Cur_Value) then
-            if Is_Loadable_Type (TE)
-              and then not Is_Unconstrained_Record (Full_Component_Type (TE))
+            if Is_Loadable_Type (GT)
+              and then not Is_Unconstrained_Record (Comp_GL_Type)
             then
-               Cur_Value := Get_Undef (TE);
+               Cur_Value := Get_Undef (GT);
             else
-               Cur_Value := Allocate_For_Type (TE, TE, N);
+               Cur_Value :=
+                 Allocate_For_Type (Full_Etype (GT), Full_Etype (GT), N);
             end if;
          end if;
 
@@ -1309,7 +1310,7 @@ package body GNATLLVM.Arrays is
                   if Is_Data (Cur_Value) then
                      Cur_Value :=
                        Insert_Value (Cur_Value,
-                                     Emit_Convert_Value (Expr, Comp_Type),
+                                     Emit_Convert_Value (Expr, Comp_GL_Type),
                                      Swap_Indices (Indices, Cur_Value));
                   else
                      declare

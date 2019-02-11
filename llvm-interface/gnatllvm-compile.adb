@@ -117,11 +117,12 @@ package body GNATLLVM.Compile is
 
       --  Create GL_Types for builtin types
 
-      A_Char_GL_Type  := Primitive_GL_Type (Standard_A_Char);
-      Boolean_GL_Type := Primitive_GL_Type (Standard_Boolean);
-      Integer_GL_Type := Primitive_GL_Type (Standard_Integer);
-      SSI_GL_Type     := Primitive_GL_Type (Standard_Short_Short_Integer);
-      Void_GL_Type    := Primitive_GL_Type (Standard_Void_Type);
+      A_Char_GL_Type    := Primitive_GL_Type (Standard_A_Char);
+      Boolean_GL_Type   := Primitive_GL_Type (Standard_Boolean);
+      Integer_GL_Type   := Primitive_GL_Type (Standard_Integer);
+      SSI_GL_Type       := Primitive_GL_Type (Standard_Short_Short_Integer);
+      Void_GL_Type      := Primitive_GL_Type (Standard_Void_Type);
+      Any_Array_GL_Type := Primitive_GL_Type (Any_Array);
 
       --  Create a "void" pointer, which is i8* in LLVM
 
@@ -1171,10 +1172,10 @@ package body GNATLLVM.Compile is
                  Loop_Parameter_Specification (Iter_Scheme);
                Def_Ident  : constant Node_Id   := Defining_Identifier (Spec);
                Reversed   : constant Boolean   := Reverse_Present (Spec);
-               Var_Type   : constant Entity_Id := Full_Etype (Def_Ident);
-               Var_BT     : constant Entity_Id := Full_Base_Type (Var_Type);
+               Var_GT     : constant GL_Type   := Full_GL_Type (Def_Ident);
+               Var_BT     : constant GL_Type   := Base_GL_Type (Var_GT);
                Uns_BT     : constant Boolean   := Is_Unsigned_Type (Var_BT);
-               One        : constant GL_Value  := Const_Int (Var_Type, Uint_1);
+               One        : constant GL_Value  := Const_Int (Var_GT, Uint_1);
                LLVM_Var   : GL_Value;
                Low, High  : GL_Value;
                Prev       : GL_Value;
@@ -1183,9 +1184,9 @@ package body GNATLLVM.Compile is
                --  Initialization block: create the loop variable and
                --  initialize it.
 
-               Bounds_From_Type (Var_Type, Low, High);
+               Bounds_From_Type (Full_Etype (Var_GT), Low, High);
                LLVM_Var := Allocate_For_Type
-                 (Var_Type, Var_Type, Def_Ident,
+                 (Full_Etype (Var_GT), Full_Etype (Var_GT), Def_Ident,
                   (if Reversed then High else Low),
                   Def_Ident => Def_Ident);
                Set_Value (Def_Ident, LLVM_Var);

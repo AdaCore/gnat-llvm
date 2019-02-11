@@ -970,6 +970,13 @@ package body GNATLLVM.GLValue is
    --  ?? This is a bit of a kludge, but what's correct isn't clear
 
    ----------------
+   -- Const_Ones --
+   ----------------
+
+   function Const_Ones (V : GL_Value) return GL_Value is
+     (Const_Ones (Related_Type (V)));
+
+   ----------------
    -- Const_Null --
    ----------------
 
@@ -1005,8 +1012,8 @@ package body GNATLLVM.GLValue is
    -- Const_Null_Ref --
    --------------------
 
-   function Const_Null_Ref (TE : Entity_Id) return GL_Value is
-     (G_Ref (Const_Null (Create_Access_Type_To (TE)), TE));
+   function Const_Null_Ref (GT : GL_Type) return GL_Value is
+     (G_Ref (Const_Null (Create_Access_Type_To (Full_Etype (GT))), GT));
 
    ----------------
    -- Const_True --
@@ -1028,9 +1035,24 @@ package body GNATLLVM.GLValue is
    -- Const_Int --
    ---------------
 
-   function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
+   function Const_Int (V : GL_Value; N : Uint) return GL_Value is
+     (Const_Int (GL_Type'(Related_Type (V)), N));
+
+   ---------------
+   -- Const_Int --
+   ---------------
+
+   function Const_Int (TE : Entity_Id; N : Uint) return GL_Value is
+     (Const_Int (Default_GL_Type (TE), N));
+
+   ---------------
+   -- Const_Int --
+   ---------------
+
+   function Const_Int
+     (V : GL_Value; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
-     (G (Const_Int (Type_Of (TE), N), TE));
+     (Const_Int (Related_Type (V), N, Sign_Extend));
 
    ---------------
    -- Const_Int --
@@ -1045,9 +1067,11 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function Const_Int
-     (TE : Entity_Id; N : ULL; Sign_Extend : Boolean := False) return GL_Value
+     (V           : GL_Value;
+      N           : unsigned;
+      Sign_Extend : Boolean := False) return GL_Value
    is
-     (G (Const_Int (Type_Of (TE), N, Sign_Extend => Sign_Extend), TE));
+     (Const_Int (Related_Type (V), ULL (N), Sign_Extend));
 
    ---------------
    -- Const_Int --
@@ -1063,51 +1087,9 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_Real
-     (TE : Entity_Id; V : Interfaces.C.double) return GL_Value
-   is
-     (G (Const_Real (Type_Of (TE), V), TE));
-
-   ----------------
-   -- Const_Real --
-   ----------------
-
-   function Const_Real
      (GT : GL_Type; V : Interfaces.C.double) return GL_Value
    is
      (G (Const_Real (Type_Of (GT), V), GT));
-
-   -----------------
-   -- Const_Array --
-   -----------------
-
-   function Const_Array
-     (Elmts : GL_Value_Array; TE : Entity_Id) return GL_Value
-   is
-      T       : constant Type_T :=
-        (if   Elmts'Length = 0 then Type_Of (Component_Type (TE))
-         else Type_Of (Elmts (Elmts'First)));
-      --  Take the element type from what was passed, but if no elements
-      --  were passed, the only choice is from the component type of the array.
-      Values  : Access_Value_Array := new Value_Array (Elmts'Range);
-      V       : GL_Value;
-      procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
-                                                        Access_Value_Array);
-   begin
-      for J in Elmts'Range loop
-         Values (J) := LLVM_Value (Elmts (J));
-      end loop;
-
-      --  We have a kludge here in the case of making a string literal
-      --  that's not in the source (e.g., for a filename) or when
-      --  we're handling inner dimensions of a multi-dimensional
-      --  array.  In those cases, we pass Any_Array for the type, but
-      --  that's unconstrained, so we want use relationship "Unknown".
-
-      V := G (Const_Array (T, Values.all'Address, Values.all'Length),
-              TE, (if TE = Any_Array then Unknown else Data));
-      Free (Values);
-      return V;
-   end Const_Array;
 
    -----------------
    -- Const_Array --
@@ -1133,11 +1115,11 @@ package body GNATLLVM.GLValue is
       --  We have a kludge here in the case of making a string literal
       --  that's not in the source (e.g., for a filename) or when
       --  we're handling inner dimensions of a multi-dimensional
-      --  array.  In those cases, we pass Any_Array for the type, but
+      --  array.  In those cases, we use Any_Array for the type, but
       --  that's unconstrained, so we want use relationship "Unknown".
 
       V := G (Const_Array (T, Values.all'Address, Values.all'Length),
-              GT, (if Full_Etype (GT) = Any_Array then Unknown else Data));
+              GT, (if GT = Any_Array_GL_Type then Unknown else Data));
       Free (Values);
       return V;
    end Const_Array;

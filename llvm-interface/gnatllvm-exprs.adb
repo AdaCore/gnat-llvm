@@ -457,10 +457,10 @@ package body GNATLLVM.Exprs is
    -------------------------
 
    procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id) is
-      In_GT      : constant GL_Type := Related_Type (V);
-      Out_GT     : constant GL_Type := Full_GL_Type (N);
-      In_BT      : constant GL_Type := Base_GL_Type (In_GT);
-      Out_BT     : constant GL_Type := Base_GL_Type (Out_GT);
+      In_GT      : constant GL_Type   := Related_Type (V);
+      Out_GT     : constant GL_Type   := Full_GL_Type (N);
+      In_BT      : constant GL_Type   := Base_GL_Type (In_GT);
+      Out_BT     : constant GL_Type   := Base_GL_Type (Out_GT);
       In_FP      : constant Boolean   := Is_Floating_Point_Type (In_GT);
       Out_FP     : constant Boolean   := Is_Floating_Point_Type (Out_GT);
       In_LB      : constant Node_Id   := Type_Low_Bound  (In_BT);
@@ -663,8 +663,8 @@ package body GNATLLVM.Exprs is
    function Emit_Attribute_Reference (N : Node_Id) return GL_Value
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
-      TE   : constant Entity_Id    := Full_Etype (N);
-      P_TE : Entity_Id             := Full_Etype (Prefix (N));
+      GT   : constant GL_Type      := Full_GL_Type (N);
+      P_GT : GL_Type               := Full_GL_Type (Prefix (N));
       Ret  : Uint;
       V    : GL_Value;
 
@@ -674,7 +674,7 @@ package body GNATLLVM.Exprs is
 
       Ret := Get_Attribute_From_Annotation (N);
       if Ret /= No_Uint then
-         return Const_Int (TE, Ret);
+         return Const_Int (GT, Ret);
       end if;
 
       case Attr is
@@ -686,7 +686,7 @@ package body GNATLLVM.Exprs is
             --  same constraints.  But we do have to be sure that it's of
             --  the right type.
 
-            return Convert_To_Access (Emit_LValue (Prefix (N)), TE);
+            return Convert_To_Access (Emit_LValue (Prefix (N)), GT);
 
          when Attribute_Address | Attribute_Code_Address =>
 
@@ -695,7 +695,7 @@ package body GNATLLVM.Exprs is
 
             return Ptr_To_Int (Get (Emit_LValue (Prefix (N)),
                                     Reference_For_Integer),
-                               TE, "attr-address");
+                               GT, "attr-address");
 
          when Attribute_Pool_Address =>
 
@@ -705,7 +705,7 @@ package body GNATLLVM.Exprs is
             --  it to a reference.
 
             V := Emit (Prefix (N), Prefer_LHS => True);
-            if Is_Access_Type (P_TE) then
+            if Is_Access_Type (P_GT) then
                V := From_Access (Get (V, Data));
             end if;
 
@@ -714,7 +714,7 @@ package body GNATLLVM.Exprs is
 
             V := Get (V, (if   Is_Unconstrained_Array (V)
                           then Reference_To_Bounds_And_Data else Reference));
-            return Ptr_To_Int (V, TE, "pool-address");
+            return Ptr_To_Int (V, GT, "pool-address");
 
          when Attribute_Deref =>
             declare
@@ -722,15 +722,15 @@ package body GNATLLVM.Exprs is
                pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
 
             begin
-               return Int_To_Ref (Emit_Expression (Expr), TE, "attr-deref");
+               return Int_To_Ref (Emit_Expression (Expr), GT, "attr-deref");
             end;
 
          when Attribute_First  | Attribute_Last
             | Attribute_Length | Attribute_Range_Length =>
 
             declare
-               BT          : constant Entity_Id := Full_Base_Type (P_TE);
-               Dim         : constant Nat       :=
+               BT          : constant GL_Type := Base_GL_Type (P_GT);
+               Dim         : constant Nat     :=
                  (if   Present (Expressions (N))
                   then UI_To_Int (Intval (First (Expressions (N)))) - 1
                   else 0);
@@ -738,23 +738,23 @@ package body GNATLLVM.Exprs is
                Low, High   : GL_Value;
 
             begin
-               if Is_Scalar_Type (P_TE) then
-                  Low  := Emit_Convert_Value (Type_Low_Bound  (P_TE), BT);
-                  High := Emit_Convert_Value (Type_High_Bound (P_TE), BT);
+               if Is_Scalar_Type (P_GT) then
+                  Low  := Emit_Convert_Value (Type_Low_Bound  (P_GT), BT);
+                  High := Emit_Convert_Value (Type_High_Bound (P_GT), BT);
 
                   if Attr = Attribute_First then
                      V := Low;
                   elsif Attr = Attribute_Last then
                      V := High;
                   elsif Attr = Attribute_Range_Length then
-                     V := Bounds_To_Length (Low, High, TE);
+                     V := Bounds_To_Length (Low, High, Full_Etype (GT));
                   else
                      Error_Msg_N ("unsupported attribute: `" &
                                     Attribute_Id'Image (Attr) & "`", N);
-                     V := Get_Undef (TE);
+                     V := Get_Undef (GT);
                   end if;
 
-               elsif Is_Array_Type (P_TE) then
+               elsif Is_Array_Type (P_GT) then
 
                   --  If what we're taking the prefix of is a type, we can't
                   --  evaluate it as an expression.
@@ -765,23 +765,25 @@ package body GNATLLVM.Exprs is
                      Array_Descr := No_GL_Value;
                   else
                      Array_Descr := Emit_LValue (Prefix (N));
-                     P_TE        := Related_Type (Array_Descr);
+                     P_GT        := Related_Type (Array_Descr);
                   end if;
 
                   if Attr = Attribute_Length then
-                     V := Get_Array_Length (P_TE, Dim, Array_Descr);
+                     V := Get_Array_Length (Full_Etype (P_GT), Dim,
+                                            Array_Descr);
                   else
                      V := Get_Array_Bound
-                       (P_TE, Dim, Attr = Attribute_First, Array_Descr,
-                        For_Orig => Is_Bit_Packed_Array_Impl_Type (P_TE));
+                       (Full_Etype (P_GT), Dim,
+                        Attr = Attribute_First, Array_Descr,
+                        For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
                   end if;
                else
                   Error_Msg_N ("unsupported attribute: `" &
                                  Attribute_Id'Image (Attr) & "`", N);
-                  V := Get_Undef (TE);
+                  V := Get_Undef (GT);
                end if;
 
-               return Convert (V, TE);
+               return Convert (V, GT);
             end;
 
          when Attribute_Position | Attribute_Bit_Position =>
@@ -803,29 +805,29 @@ package body GNATLLVM.Exprs is
                V := Mul (V, Byte_Size);
             end if;
 
-            return Convert (V, TE);
+            return Convert (V, GT);
 
          when Attribute_First_Bit | Attribute_Bit =>
 
             --  We don't support packing, so this is always zero
 
-            return Const_Null (TE);
+            return Const_Null (GT);
 
          when Attribute_Last_Bit =>
 
             --  We don't support packing, so this is always the size minus 1
 
             return Convert
-              (Sub (Mul (Get_Type_Size (P_TE), Byte_Size),
+              (Sub (Mul (Get_Type_Size (P_GT), Byte_Size),
                     Size_Const_Int (Uint_1)),
-               TE);
+               GT);
 
          when Attribute_Max | Attribute_Min =>
             pragma Assert (List_Length (Expressions (N)) = 2);
             return Emit_Min_Max (Expressions (N), Attr = Attribute_Max);
 
          when Attribute_Pos | Attribute_Val =>
-            return Emit_Conversion (First (Expressions (N)), TE, N);
+            return Emit_Conversion (First (Expressions (N)), GT, N);
 
          when Attribute_Succ | Attribute_Pred =>
             declare
@@ -842,11 +844,11 @@ package body GNATLLVM.Exprs is
                --  If this is a modular type, we have to check for wrap
                --  and adjust if so.
 
-               if Non_Binary_Modulus (TE) then
+               if Non_Binary_Modulus (GT) then
                   declare
                      C_0  : constant GL_Value := Const_Null (Base);
                      C_M1 : constant GL_Value :=
-                       Const_Int (Base, Modulus (TE) - 1);
+                       Const_Int (Base, Modulus (GT) - 1);
 
                   begin
                      if Attr = Attribute_Succ then
@@ -868,7 +870,7 @@ package body GNATLLVM.Exprs is
             return Emit_Expression (First (Expressions (N)));
 
          when Attribute_Alignment =>
-            return Const_Int (TE, Get_Type_Alignment (P_TE),
+            return Const_Int (GT, Get_Type_Alignment (P_GT),
                               Sign_Extend => False);
 
          when Attribute_Size | Attribute_Object_Size
@@ -880,55 +882,54 @@ package body GNATLLVM.Exprs is
                  (Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N))));
                Max_Size    : constant Boolean   :=
-                 Is_A_Type and then not Is_Constrained (P_TE);
+                 Is_A_Type and then not Is_Constrained (P_GT);
 
             begin
                V := (if Is_A_Type then No_GL_Value
                                   else Emit_LValue (Prefix (N)));
-               V := Get_Type_Size (P_TE, V, Max_Size);
+               V := Get_Type_Size (P_GT, V, Max_Size);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
-                  if Is_Unconstrained_Array (P_TE) then
-                     V := Add (V, Get_Bound_Size (P_TE));
+                  if Is_Unconstrained_Array (P_GT) then
+                     V := Add (V, Get_Bound_Size (Full_Etype (P_GT)));
                   end if;
 
-                  return Convert (V, TE);
+                  return Convert (V, GT);
                else
-                  return Convert (Mul (V, Byte_Size), TE);
+                  return Convert (Mul (V, Byte_Size), GT);
                end if;
             end;
 
          when Attribute_Component_Size =>
             return Convert
               (Mul (Get_Type_Size
-                      (Full_Component_Type (P_TE), Max_Size => True),
+                      (Full_Component_Type (P_GT), Max_Size => True),
                     Byte_Size),
-               TE);
+               GT);
 
          when Attribute_Descriptor_Size =>
-            pragma Assert (Is_Unconstrained_Array (P_TE));
+            pragma Assert (Is_Unconstrained_Array (P_GT));
 
-            return Mul (Get_Bound_Size (P_TE), Byte_Size);
+            return Mul (Get_Bound_Size (Full_Etype (P_GT)), Byte_Size);
 
          when Attribute_Passed_By_Reference =>
 
             --  Return 1 if must pass by reference or if default to pass by ref
 
             return Const_Int
-              (TE, (if   Get_Param_By_Ref_Mech (Default_GL_Type (P_TE))
-                            = Default_By_Copy
+              (GT, (if   Get_Param_By_Ref_Mech (P_GT) = Default_By_Copy
                     then Uint_0 else Uint_1));
 
          when Attribute_Mechanism_Code =>
             return Const_Int
-              (TE, Get_Mechanism_Code (Entity (Prefix (N)), Expressions (N)));
+              (GT, Get_Mechanism_Code (Entity (Prefix (N)), Expressions (N)));
 
          when Attribute_Null_Parameter =>
-            return Load (Const_Null_Ref (P_TE));
+            return Load (Const_Null_Ref (P_GT));
 
          when others =>
             Error_Msg_N ("unsupported attribute: `" &
                            Attribute_Id'Image (Attr) & "`", N);
-            return Get_Undef (TE);
+            return Get_Undef (GT);
       end case;
    end Emit_Attribute_Reference;
 

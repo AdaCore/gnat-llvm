@@ -154,16 +154,38 @@ package body GNATLLVM.Types is
    --  type, either an integer or pointer to anything.  Alloc_TE is the
    --  type that was used to allocate the memory.
 
+   --------------------
+   -- IDS_From_Const --
+   --------------------
+
    function IDS_From_Const (V : GL_Value) return IDS is
      (if   Is_A_Const_Int (V) then (False, V) else Var_IDS)
      with Pre => Is_Constant (V), Post => Present (IDS_From_Const'Result);
    --  V is a constant.  If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
 
+   -------------------
+   -- IDS_Const_Int --
+   -------------------
+
+   function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS is
+     ((False, Const_Int (Default_GL_Type (TE), C)));
+
+   -------------------
+   -- BA_From_Const --
+   -------------------
+
    function BA_From_Const (V : GL_Value) return BA_Data is
      (if   Is_A_Const_Int (V) then (False, V, No_Uint) else No_BA)
      with Pre => Is_Constant (V);
    --  Likewise, for back-annotation
+
+   ------------------
+   -- BA_Const_Int --
+   ------------------
+
+   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
+     ((False, Const_Int (Default_GL_Type (TE), C), No_Uint));
 
    ----------------------
    --  Is_Dynamic_Size --

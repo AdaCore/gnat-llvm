@@ -2518,7 +2518,7 @@ package body GNATLLVM.Subprograms is
                             Any_Composite, False);
          end loop;
 
-         Val := Const_Array  (Constructors, Any_Array);
+         Val := Const_Array  (Constructors, Any_Array_GL_Type);
          Var := Add_Global   (Module, Type_Of (Val), "llvm.global_ctors");
          Set_Initializer     (Var, LLVM_Value (Val));
          Set_Linkage         (Var, Appending_Linkage);
@@ -2533,7 +2533,7 @@ package body GNATLLVM.Subprograms is
                             Any_Composite, False);
          end loop;
 
-         Val := Const_Array  (Destructors, Any_Array);
+         Val := Const_Array  (Destructors, Any_Array_GL_Type);
          Var := Add_Global   (Module, Type_Of (Val), "llvm.global_dtors");
          Set_Initializer     (Var, LLVM_Value (Val));
          Set_Linkage         (Var, Appending_Linkage);

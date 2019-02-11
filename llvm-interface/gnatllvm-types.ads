@@ -532,8 +532,7 @@ package GNATLLVM.Types is
      ((False,  Size_Const_Int (C, Sign_Extend)))
      with Post => IDS_Is_Const (IDS_Const'Result);
 
-   function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS is
-     ((False, Const_Int (TE, C)))
+   function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS
      with Pre  => C /= No_Uint;
 
    function IDS_Type_Size
@@ -707,8 +706,7 @@ package GNATLLVM.Types is
      ((False, Size_Const_Int (C), No_Uint))
      with Pre => C /= No_Uint, Post => BA_Is_Const (BA_Const'Result);
 
-   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
-     ((False, Const_Int (TE, C), No_Uint))
+   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data
      with Pre => C /= No_Uint, Post => BA_Is_Const (BA_Const_Int'Result);
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;

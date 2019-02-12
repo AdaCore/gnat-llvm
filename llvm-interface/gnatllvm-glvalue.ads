@@ -895,10 +895,6 @@ package GNATLLVM.GLValue is
      with Pre  => Present (GT) and then N /= No_Uint,
           Post => Present (Const_Int'Result);
 
-   function Const_Int (TE : Entity_Id; N : Uint) return GL_Value
-     with Pre  => Is_Type (TE) and then N /= No_Uint,
-          Post => Present (Const_Int'Result);
-
    function Const_Int
      (GT : GL_Type; N : ULL; Sign_Extend : Boolean := False) return GL_Value
      with Pre  => Present (GT), Post => Present (Const_Int'Result);

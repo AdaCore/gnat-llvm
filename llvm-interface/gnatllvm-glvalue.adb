@@ -1042,13 +1042,6 @@ package body GNATLLVM.GLValue is
    -- Const_Int --
    ---------------
 
-   function Const_Int (TE : Entity_Id; N : Uint) return GL_Value is
-     (Const_Int (Default_GL_Type (TE), N));
-
-   ---------------
-   -- Const_Int --
-   ---------------
-
    function Const_Int
      (V : GL_Value; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is

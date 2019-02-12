@@ -747,7 +747,7 @@ package body GNATLLVM.Exprs is
                   elsif Attr = Attribute_Last then
                      V := High;
                   elsif Attr = Attribute_Range_Length then
-                     V := Bounds_To_Length (Low, High, Full_Etype (GT));
+                     V := Bounds_To_Length (Low, High, GT);
                   else
                      Error_Msg_N ("unsupported attribute: `" &
                                     Attribute_Id'Image (Attr) & "`", N);

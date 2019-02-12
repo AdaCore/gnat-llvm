@@ -164,12 +164,29 @@ package body GNATLLVM.Types is
    --  V is a constant.  If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
 
-   -------------------
-   -- IDS_Const_Int --
-   -------------------
+   -----------------
+   -- IDS_Convert --
+   -----------------
 
-   function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS is
-     ((False, Const_Int (Default_GL_Type (TE), C)));
+   function IDS_Convert
+     (V              : IDS;
+      GT             : GL_Type;
+      Float_Truncate : Boolean := False) return IDS
+   is
+     (if   IDS_Is_Const (V) then (False, Convert (V.Value, GT, Float_Truncate))
+      else Var_IDS);
+
+   ----------------
+   -- BA_Convert --
+   ----------------
+
+   function BA_Convert
+     (V              : BA_Data;
+      GT             : GL_Type;
+      Float_Truncate : Boolean := False) return BA_Data
+   is
+     (if   BA_Is_Const (V)
+      then (False, Convert (V.C_Value, GT, Float_Truncate), No_Uint) else V);
 
    -------------------
    -- BA_From_Const --
@@ -179,13 +196,6 @@ package body GNATLLVM.Types is
      (if   Is_A_Const_Int (V) then (False, V, No_Uint) else No_BA)
      with Pre => Is_Constant (V);
    --  Likewise, for back-annotation
-
-   ------------------
-   -- BA_Const_Int --
-   ------------------
-
-   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data is
-     ((False, Const_Int (Default_GL_Type (TE), C), No_Uint));
 
    ----------------------
    --  Is_Dynamic_Size --
@@ -590,7 +600,7 @@ package body GNATLLVM.Types is
       then
          declare
             Shift_Count : constant GL_Value  :=
-              Const_Int (TE, Esize (TE) - RM_Size (TE));
+              Const_Int (Default_GL_Type (TE), Esize (TE) - RM_Size (TE));
             Left_Shift  : constant GL_Value :=
               Shl (Convert (Get (Result, Data), TE), Shift_Count);
 
@@ -2767,7 +2777,7 @@ package body GNATLLVM.Types is
                            LHS := BA_Emit_Expr (LB);
                            RHS := BA_Emit_Expr (UB);
                            Result :=
-                             BA_Bounds_To_Length (LHS, RHS, Full_Etype (V));
+                             BA_Bounds_To_Length (LHS, RHS, Full_GL_Type (V));
                         end;
 
                      elsif Attr in Attribute_Min | Attribute_Max then
@@ -2808,7 +2818,7 @@ package body GNATLLVM.Types is
 
                   when N_Type_Conversion | N_Unchecked_Type_Conversion =>
                      Result := BA_Emit_Convert (Expression (V),
-                                                Full_Etype (V));
+                                                Full_GL_Type (V));
 
                   when others =>
                      null;

@@ -532,8 +532,9 @@ package GNATLLVM.Types is
      ((False,  Size_Const_Int (C, Sign_Extend)))
      with Post => IDS_Is_Const (IDS_Const'Result);
 
-   function IDS_Const_Int (TE : Entity_Id; C : Uint) return IDS
-     with Pre  => C /= No_Uint;
+   function IDS_Const_Int (GT : GL_Type; C : Uint) return IDS is
+     ((False, Const_Int (GT, C)))
+     with Pre  => Present (GT) and then C /= No_Uint;
 
    function IDS_Type_Size
      (TE         : Entity_Id;
@@ -616,35 +617,32 @@ package GNATLLVM.Types is
      with Pre => IDS_Is_Const (V);
 
    function IDS_Extract_Value
-     (TE             : Entity_Id;
+     (GT             : GL_Type;
       V              : GL_Value;
       Unused_Idx_Arr : Index_Array;
       Unused_Name    : String := "") return IDS
    is
       (Var_IDS)
-     with Pre  => Is_Type (TE) and then Present (V),
+     with Pre  => Present (GT) and then Present (V),
           Post => Present (IDS_Extract_Value'Result);
 
    function IDS_Convert
      (V              : IDS;
-      TE             : Entity_Id;
+      GT             : GL_Type;
       Float_Truncate : Boolean := False) return IDS
-   is
-     (if   IDS_Is_Const (V) then (False, Convert (V.Value, TE, Float_Truncate))
-      else Var_IDS)
-     with Pre => Present (V) and then Is_Type (TE);
+     with Pre => Present (V) and then Present (GT);
 
    function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
      with Pre => Present (V), Post => Present (IDS_Emit_Expr'Result);
 
-   function IDS_Emit_Convert (N : Node_Id; TE : Entity_Id) return IDS is
-     (IDS_Convert (IDS_Emit_Expr (N), TE))
-     with Pre  => Present (N) and then Is_Type (TE),
+   function IDS_Emit_Convert (N : Node_Id; GT : GL_Type) return IDS is
+     (IDS_Convert (IDS_Emit_Expr (N), GT))
+     with Pre  => Present (N) and then Present (GT),
           Post => Present (IDS_Emit_Convert'Result);
 
-   function IDS_Undef (TE : Entity_Id) return IDS is
+   function IDS_Undef (GT : GL_Type) return IDS is
      (Var_IDS)
-     with Pre => Is_Type (TE), Post => Present (IDS_Undef'Result);
+     with Pre => Present (GT), Post => Present (IDS_Undef'Result);
 
    --  In order to use the generic functions that computing sizing
    --  information to compute a size and position in the form needs for
@@ -706,8 +704,10 @@ package GNATLLVM.Types is
      ((False, Size_Const_Int (C), No_Uint))
      with Pre => C /= No_Uint, Post => BA_Is_Const (BA_Const'Result);
 
-   function BA_Const_Int (TE : Entity_Id; C : Uint) return BA_Data
-     with Pre => C /= No_Uint, Post => BA_Is_Const (BA_Const_Int'Result);
+   function BA_Const_Int (GT : GL_Type; C : Uint) return BA_Data is
+     ((False, Const_Int (GT, C), No_Uint))
+     with Pre  => Present (GT) and then C /= No_Uint,
+          Post => BA_Is_Const (BA_Const_Int'Result);
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
    --  Return a Node_Ref corresponding to BA_Data.  This may be either the
@@ -715,7 +715,7 @@ package GNATLLVM.Types is
    --  the conversion can't be done.
 
    function SO_Ref_To_BA (V : SO_Ref) return BA_Data is
-     ((if   Is_Static_SO_Ref (V) then BA_Const_Int (Size_Type, V)
+     ((if   Is_Static_SO_Ref (V) then BA_Const_Int (Size_GL_Type, V)
        else (False, No_GL_Value, V)));
    --  Likewise, but in the opposite direction
 
@@ -795,33 +795,30 @@ package GNATLLVM.Types is
      (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data;
 
    function BA_Extract_Value
-     (TE             : Entity_Id;
+     (GT             : GL_Type;
       V              : GL_Value;
       Unused_Idx_Arr : Index_Array;
       Unused_Name    : String := "") return BA_Data
    is
       (No_BA)
-     with Pre => Is_Type (TE) and then Present (V);
+     with Pre => Present (GT) and then Present (V);
 
    function BA_Convert
      (V              : BA_Data;
-      TE             : Entity_Id;
+      GT             : GL_Type;
       Float_Truncate : Boolean := False) return BA_Data
-   is
-     (if   BA_Is_Const (V)
-      then (False, Convert (V.C_Value, TE, Float_Truncate), No_Uint) else V)
-     with Pre => Is_Type (TE);
+     with Pre => Present (GT);
 
    function BA_Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
      with Pre => Present (V);
 
-   function BA_Emit_Convert (N : Node_Id; TE : Entity_Id) return BA_Data is
-     (BA_Convert (BA_Emit_Expr (N), TE))
-     with Pre => Is_Type (TE);
+   function BA_Emit_Convert (N : Node_Id; GT : GL_Type) return BA_Data is
+     (BA_Convert (BA_Emit_Expr (N), GT))
+     with Pre => Present (GT);
 
-   function BA_Undef (TE : Entity_Id) return BA_Data is
+   function BA_Undef (GT : GL_Type) return BA_Data is
      (No_BA)
-     with Pre => Is_Type (TE);
+     with Pre => Present (GT);
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
    procedure Dump_BA_Data (V : BA_Data)

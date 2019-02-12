@@ -57,13 +57,13 @@ package body GNATLLVM.Arrays is
                        and then (No (Value) or else Dynamic);
 
    type Index_Bounds is record
-      Bound_Type    : Entity_Id;
-      Bound_Subtype : Entity_Id;
-      Low, High     : One_Bound;
-      Bound_Range   : GL_Value;
+      Bound_GT     : GL_Type;
+      Bound_Sub_GT : GL_Type;
+      Low, High    : One_Bound;
+      Bound_Range  : GL_Value;
    end record
-     with Predicate => Is_Discrete_Type (Bound_Type)
-                       and then Is_Discrete_Type (Bound_Subtype);
+     with Predicate => Is_Discrete_Type (Bound_GT)
+                       and then Is_Discrete_Type (Bound_Sub_GT);
 
    package Array_Info is new Table.Table
      (Table_Component_Type => Index_Bounds,
@@ -136,7 +136,7 @@ package body GNATLLVM.Arrays is
       Empty_Result : Result;
       with function Sz_Const
         (C : ULL; Sign_Extend : Boolean := False) return Result;
-      with function Sz_Const_Int (TE : Entity_Id; C : Uint) return Result;
+      with function Sz_Const_Int (GT : GL_Type; C : Uint) return Result;
       with function Sz_Type_Size
         (TE          : Entity_Id;
          V           : GL_Value := No_GL_Value;
@@ -165,19 +165,19 @@ package body GNATLLVM.Arrays is
       with function  Sz_Max
         (V1, V2 : Result; Name : String := "") return Result;
       with function  Sz_Extract_Value
-        (TE      : Entity_Id;
+        (GT      : GL_Type;
          V       : GL_Value;
          Idx_Arr : Index_Array;
          Name    : String := "") return Result;
       with function  Sz_Convert
         (V              : Result;
-         TE             : Entity_Id;
+         GT             : GL_Type;
          Float_Truncate : Boolean := False) return Result;
       with function  Sz_Emit_Expr
         (V : Node_Id; LHS : Result := Empty_Result) return Result;
       with function  Sz_Emit_Convert
-        (N : Node_Id; TE : Entity_Id) return Result;
-      with function  Sz_Undef (TE : Entity_Id) return Result;
+        (N : Node_Id; GT : GL_Type) return Result;
+      with function  Sz_Undef (GT : GL_Type) return Result;
       with function  Sz_Is_Const (V : Result) return Boolean;
       with function  Sz_Const_Val (V : Result) return ULL;
    package Size is
@@ -186,7 +186,7 @@ package body GNATLLVM.Arrays is
       function Present (V : Result) return Boolean is (V /= Empty_Result);
 
       function Bounds_To_Length
-        (In_Low, In_High : Result; TE : Entity_Id) return Result;
+        (In_Low, In_High : Result; GT : GL_Type) return Result;
 
       function Emit_Expr_For_Minmax
         (N : Node_Id; Is_Low : Boolean) return Result;
@@ -287,11 +287,11 @@ package body GNATLLVM.Arrays is
       High_Bound : constant One_Bound    :=
         (Cnst => Last, Value => Empty, Dynamic => False);
       Dim_Info   : constant Index_Bounds
-        := (Bound_Type    => Standard_Integer,
-            Bound_Subtype => Standard_Integer,
-            Low           => Low_Bound,
-            High          => High_Bound,
-            Bound_Range   => Size_Const_Int (Length));
+        := (Bound_GT     => Integer_GL_Type,
+            Bound_Sub_GT => Integer_GL_Type,
+            Low          => Low_Bound,
+            High         => High_Bound,
+            Bound_Range  => Size_Const_Int (Length));
       Result_Typ : constant Type_T       :=
         Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
 
@@ -362,16 +362,16 @@ package body GNATLLVM.Arrays is
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 
-            Index_Type : constant Entity_Id    := Full_Etype (Index);
-            Index_Base : constant Entity_Id    := Full_Base_Type (Index_Type);
-            LB         : constant Node_Id      := Low_Bound (Idx_Range);
-            HB         : constant Node_Id      := High_Bound (Idx_Range);
-            Dim_Info   : Index_Bounds          :=
-              (Bound_Type    => Index_Base,
-               Bound_Subtype => Full_Etype (Base_Index),
-               Low           => Build_One_Bound (LB, Unconstrained, For_Orig),
-               High          => Build_One_Bound (HB, Unconstrained, For_Orig),
-               Bound_Range   => No_GL_Value);
+            Index_GT : constant GL_Type := Full_GL_Type (Index);
+            Index_BT : constant GL_Type := Base_GL_Type (Index_GT);
+            LB       : constant Node_Id := Low_Bound (Idx_Range);
+            HB       : constant Node_Id := High_Bound (Idx_Range);
+            Dim_Info : Index_Bounds     :=
+              (Bound_GT     => Index_BT,
+               Bound_Sub_GT => Full_GL_Type (Base_Index),
+               Low          => Build_One_Bound (LB, Unconstrained, For_Orig),
+               High         => Build_One_Bound (HB, Unconstrained, For_Orig),
+               Bound_Range  => No_GL_Value);
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges
             --  that are outside the base type if the subtype is superflat
@@ -393,7 +393,7 @@ package body GNATLLVM.Arrays is
                Dim_Info.Bound_Range :=
                  Bounds_To_Length (Size_Const_Int (Dim_Info.Low.Cnst),
                                    Size_Const_Int (Dim_Info.High.Cnst),
-                                   Size_Type);
+                                   Size_GL_Type);
                if Get_Const_Int_Value (Dim_Info.Bound_Range)
                  > LLI (unsigned'Last)
                then
@@ -479,7 +479,7 @@ package body GNATLLVM.Arrays is
 
    begin
       for K in Nat range 0 .. Dims - 1 loop
-         Fields (J) := Type_Of (Array_Info.Table (First_Info + K).Bound_Type);
+         Fields (J) := Type_Of (Array_Info.Table (First_Info + K).Bound_GT);
          Fields (J + 1) := Fields (J);
          J := J + 2;
       end loop;
@@ -534,14 +534,14 @@ package body GNATLLVM.Arrays is
       ----------------------
 
       function Bounds_To_Length
-        (In_Low, In_High : Result; TE : Entity_Id) return Result
+        (In_Low, In_High : Result; GT : GL_Type) return Result
       is
-         Low      : constant Result          := Sz_Convert (In_Low, TE);
-         High     : constant Result          := Sz_Convert (In_High, TE);
-         Const_0  : constant Result          := Sz_Const_Int (TE, Uint_0);
-         Const_1  : constant Result          := Sz_Const_Int (TE, Uint_1);
+         Low      : constant Result          := Sz_Convert (In_Low, GT);
+         High     : constant Result          := Sz_Convert (In_High, GT);
+         Const_0  : constant Result          := Sz_Const_Int (GT, Uint_0);
+         Const_1  : constant Result          := Sz_Const_Int (GT, Uint_1);
          Cmp_Kind : constant Int_Predicate_T :=
-           (if Is_Unsigned_Type (TE) then Int_UGT else Int_SGT);
+           (if Is_Unsigned_Type (GT) then Int_UGT else Int_SGT);
 
       begin
          --  If the low bound is 1, then this is the max of zero and the
@@ -585,10 +585,10 @@ package body GNATLLVM.Arrays is
 
                pragma Assert (Ekind (Entity (N)) = E_Discriminant);
                declare
-                  TE    : constant Entity_Id := Full_Etype (Entity (N));
-                  Limit : constant Node_Id   :=
-                    (if   Is_Low then Type_Low_Bound (TE)
-                     else Type_High_Bound (TE));
+                  GT    : constant GL_Type := Full_GL_Type (Entity (N));
+                  Limit : constant Node_Id :=
+                    (if   Is_Low then Type_Low_Bound (GT)
+                     else Type_High_Bound (GT));
 
                begin
                   return Sz_Emit_Expr (Limit);
@@ -603,13 +603,14 @@ package body GNATLLVM.Arrays is
                  and then Is_Scalar_Type (Full_Etype (Prefix (N)))
                then
                   declare
-                     PT : constant Entity_Id := Full_Etype (Prefix (N));
-                     LB : constant Node_Id   := Type_Low_Bound  (PT);
-                     UB : constant Node_Id   := Type_High_Bound (PT);
+                     PT : constant GL_Type := Full_GL_Type (Prefix (N));
+                     LB : constant Node_Id := Type_Low_Bound  (PT);
+                     UB : constant Node_Id := Type_High_Bound (PT);
+
                   begin
                      LHS := Emit_Expr_For_Minmax (LB, True);
                      RHS := Emit_Expr_For_Minmax (UB, False);
-                     return Bounds_To_Length (LHS, RHS, Full_Etype (N));
+                     return Bounds_To_Length (LHS, RHS, Full_GL_Type (N));
                   end;
                else
                   pragma Assert (Attr in Attribute_Min | Attribute_Max);
@@ -651,7 +652,7 @@ package body GNATLLVM.Arrays is
 
             when N_Type_Conversion | N_Unchecked_Type_Conversion =>
                LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
-               return Sz_Convert (LHS, Full_Etype (N));
+               return Sz_Convert (LHS, Full_GL_Type (N));
 
             when N_Function_Call =>
 
@@ -661,19 +662,19 @@ package body GNATLLVM.Arrays is
                declare
                   Params : constant List_Id   := Parameter_Associations (N);
                   Discr  : constant Entity_Id := Entity (First (Params));
-                  TE     : constant Entity_Id := Full_Etype (Discr);
+                  GT     : constant GL_Type   := Full_GL_Type (Discr);
                   Bound  : constant Node_Id   :=
-                    Entity ((if   Is_Low then Type_Low_Bound (TE)
-                             else Type_High_Bound (TE)));
+                    Entity ((if   Is_Low then Type_Low_Bound (GT)
+                             else Type_High_Bound (GT)));
 
                begin
-                  return Sz_Const_Int (Full_Etype (N),
+                  return Sz_Const_Int (Full_GL_Type (N),
                                        Enumeration_Pos (Bound));
                end;
 
             when others =>
                pragma Assert (False);
-               return Sz_Undef (Full_Etype (N));
+               return Sz_Undef (Full_GL_Type (N));
          end case;
 
       end Emit_Expr_For_Minmax;
@@ -714,7 +715,7 @@ package body GNATLLVM.Arrays is
          --  bounds from it.
 
          if Bound_Info.Cnst /= No_Uint then
-            Res := Sz_Const_Int (Dim_Info.Bound_Type, Bound_Info.Cnst);
+            Res := Sz_Const_Int (Dim_Info.Bound_GT, Bound_Info.Cnst);
          elsif Present (Expr) then
 
             --  If we're looking for the size of a type (meaning the max size)
@@ -725,22 +726,22 @@ package body GNATLLVM.Arrays is
 
             if Max_Size and then Contains_Discriminant (Expr) then
                declare
-                  Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
+                  Bound_GT    : constant GL_Type := Dim_Info.Bound_Sub_GT;
                   Bound_Limit : constant Node_Id   :=
-                    (if   Is_Low then Type_Low_Bound (Bound_Type)
-                     else Type_High_Bound (Bound_Type));
+                    (if   Is_Low then Type_Low_Bound (Bound_GT)
+                     else Type_High_Bound (Bound_GT));
                   Bound_Val   : constant Result  :=
                     Sz_Convert (Emit_Expr_For_Minmax (Bound_Limit, Is_Low),
-                                Dim_Info.Bound_Type);
+                                Dim_Info.Bound_GT);
 
                begin
                   Res := Sz_Convert (Emit_Expr_For_Minmax (Expr, Is_Low),
-                                     Dim_Info.Bound_Type);
+                                     Dim_Info.Bound_GT);
                   Res := (if   Is_Low then Sz_Max (Bound_Val, Res)
                           else Sz_Min (Bound_Val, Res));
                end;
             else
-               Res := Sz_Emit_Convert (Expr, Dim_Info.Bound_Type);
+               Res := Sz_Emit_Convert (Expr, Dim_Info.Bound_GT);
             end if;
 
          --  See if we're asking for the maximum size of an uncontrained
@@ -748,14 +749,14 @@ package body GNATLLVM.Arrays is
 
          elsif Max_Size and then Is_Unconstrained_Array (TE) then
             declare
-               Bound_Type  : constant Entity_Id := Dim_Info.Bound_Subtype;
+               Bound_GT    : constant GL_Type := Dim_Info.Bound_Sub_GT;
                Bound_Limit : constant Node_Id   :=
-                 (if   Is_Low then Type_Low_Bound (Bound_Type)
-                  else Type_High_Bound (Bound_Type));
+                 (if   Is_Low then Type_Low_Bound (Bound_GT)
+                  else Type_High_Bound (Bound_GT));
 
             begin
                Res := Sz_Convert (Sz_Emit_Expr (Bound_Limit),
-                                  Dim_Info.Bound_Type);
+                                  Dim_Info.Bound_GT);
             end;
 
          else
@@ -764,7 +765,7 @@ package body GNATLLVM.Arrays is
                              and then Relationship (V) /= Reference);
 
             Res := Sz_Extract_Value
-              (Dim_Info.Bound_Type, Get (V, Bounds),
+              (Dim_Info.Bound_GT, Get (V, Bounds),
                (1 => unsigned (Bound_Idx)),
                (if Is_Low then "low-bound" else "high-bound"));
          end if;
@@ -801,11 +802,11 @@ package body GNATLLVM.Arrays is
            and then Sz_Is_Const (Low_Bound)
            and then Sz_Const_Val (Low_Bound) = 0
          then
-            return Sz_Add (Sz_Sub (Sz_Convert (High_Bound, Size_Type),
-                                   Sz_Convert (Low_Bound,  Size_Type)),
-                           Sz_Const_Int (Size_Type, Uint_1));
+            return Sz_Add (Sz_Sub (Sz_Convert (High_Bound, Size_GL_Type),
+                                   Sz_Convert (Low_Bound,  Size_GL_Type)),
+                           Sz_Const_Int (Size_GL_Type, Uint_1));
          else
-            return Bounds_To_Length (Low_Bound, High_Bound, Size_Type);
+            return Bounds_To_Length (Low_Bound, High_Bound, Size_GL_Type);
          end if;
       end Get_Array_Length;
 
@@ -846,8 +847,8 @@ package body GNATLLVM.Arrays is
 
       begin
          return Sz_Mul
-           (Sz_Convert (Comp_Size, Size_Type),
-            Sz_Convert (Num_Elements, Size_Type), "size");
+           (Sz_Convert (Comp_Size, Size_GL_Type),
+            Sz_Convert (Num_Elements, Size_GL_Type), "size");
       end Get_Array_Type_Size;
 
    end Size;
@@ -880,7 +881,7 @@ package body GNATLLVM.Arrays is
                 Sz_Undef         => Get_Undef);
 
    function Bounds_To_Length
-     (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
+     (In_Low, In_High : GL_Value; GT : GL_Type) return GL_Value
      renames LLVM_Size.Bounds_To_Length;
 
    function Emit_Expr_For_Minmax
@@ -982,7 +983,7 @@ package body GNATLLVM.Arrays is
      renames BA_Size.Get_Array_Type_Size;
 
    function BA_Bounds_To_Length
-     (In_Low, In_High : BA_Data; TE : Entity_Id) return BA_Data
+     (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data
      renames BA_Size.Bounds_To_Length;
 
    -------------------------------
@@ -1358,8 +1359,8 @@ package body GNATLLVM.Arrays is
                --  the unconstrained array, so be sure to convert
                --  (C46042A).
 
-               Bound_Type           : constant Entity_Id :=
-                 Array_Info.Table (Info_Idx + Dim).Bound_Type;
+               Bound_GT             : constant GL_Type :=
+                 Array_Info.Table (Info_Idx + Dim).Bound_GT;
                Low_Bound            : constant GL_Value  :=
                  Get_Array_Bound (V_Type, Dim, True, V,
                                   For_Orig =>
@@ -1369,9 +1370,9 @@ package body GNATLLVM.Arrays is
                                   For_Orig =>
                                     Is_Packed_Array_Impl_Type (V_Type));
                Converted_Low_Bound  : constant GL_Value  :=
-                 Convert (Low_Bound, Bound_Type);
+                 Convert (Low_Bound, Bound_GT);
                Converted_High_Bound : constant GL_Value  :=
-                 Convert (High_Bound, Bound_Type);
+                 Convert (High_Bound, Bound_GT);
 
             begin
                Bound_Val := Insert_Value

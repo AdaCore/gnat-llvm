@@ -62,14 +62,14 @@ package GNATLLVM.Arrays is
    --  and TE.
 
    function Bounds_To_Length
-     (In_Low, In_High : GL_Value; TE : Entity_Id) return GL_Value
+     (In_Low, In_High : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Present (In_Low) and then Present (In_High)
-                  and then Is_Type (TE)
+                  and then Present (GT)
                   and then Type_Of (In_Low) = Type_Of (In_High),
-          Post => Full_Etype (Bounds_To_Length'Result) = TE;
+          Post => Related_Type (Bounds_To_Length'Result) = GT;
    --  Low and High are bounds of a discrete type.  Compute the length of
    --  that type, taking into account the superflat case, and do that
-   --  computation in TE.  We would like to have the above test be that the
+   --  computation in GT.  We would like to have the above test be that the
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
@@ -184,7 +184,7 @@ package GNATLLVM.Arrays is
      with Pre  => Is_Array_Type (TE);
 
    function BA_Bounds_To_Length
-     (In_Low, In_High : BA_Data; TE : Entity_Id) return BA_Data;
+     (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data;
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)
      with Pre => Present (LValue)

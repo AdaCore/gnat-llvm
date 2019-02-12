@@ -115,18 +115,21 @@ package body GNATLLVM.Compile is
 
       Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
 
+      --  Create a "void" pointer, which is i8* in LLVM
+
+      Void_Ptr_Type  := Type_Of (Standard_A_Char);
+
       --  Create GL_Types for builtin types
 
       A_Char_GL_Type    := Primitive_GL_Type (Standard_A_Char);
       Boolean_GL_Type   := Primitive_GL_Type (Standard_Boolean);
-      Integer_GL_Type   := Primitive_GL_Type (Standard_Integer);
       SSI_GL_Type       := Primitive_GL_Type (Standard_Short_Short_Integer);
+      SI_GL_Type        := Primitive_GL_Type (Standard_Short_Integer);
+      Integer_GL_Type   := Primitive_GL_Type (Standard_Integer);
+      LI_GL_Type        := Primitive_GL_Type (Standard_Long_Integer);
+      LLI_GL_Type       := Primitive_GL_Type (Standard_Long_Long_Integer);
       Void_GL_Type      := Primitive_GL_Type (Standard_Void_Type);
       Any_Array_GL_Type := Primitive_GL_Type (Any_Array);
-
-      --  Create a "void" pointer, which is i8* in LLVM
-
-      Void_Ptr_Type  := Type_Of (Standard_A_Char);
 
       --  Initialize modules and handle duplicate globals
 
@@ -466,6 +469,7 @@ package body GNATLLVM.Compile is
                TE : constant Entity_Id     :=
                  Get_Fullest_View (Defining_Identifier (N));
                Sz : constant Uint          := Esize (TE);
+               GT : GL_Type;
 
             begin
                Copy_Annotations (TE, Defining_Identifier (N));
@@ -481,10 +485,11 @@ package body GNATLLVM.Compile is
                --  this doesn't rely on the above behavior of Is_Dynamic_Size.
 
                Discard (Type_Of (TE));
+               GT := Default_GL_Type (TE);
                if Sz /= Uint_0 and then Is_Static_SO_Ref (Sz)
                  and then not Is_Dynamic_Size (TE, Max_Size => True)
                  and then (I_Cmp (Int_SGT, Get_Type_Size
-                                    (TE, Max_Size => True),
+                                    (GT, Max_Size => True),
                                   Size_Const_Int (Sz))
                              = Const_True)
                then

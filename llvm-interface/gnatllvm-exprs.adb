@@ -902,7 +902,7 @@ package body GNATLLVM.Exprs is
          when Attribute_Component_Size =>
             return Convert
               (Mul (Get_Type_Size
-                      (Full_Component_Type (P_GT), Max_Size => True),
+                      (Full_Component_GL_Type (P_GT), Max_Size => True),
                     Byte_Size),
                GT);
 

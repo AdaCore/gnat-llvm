@@ -903,34 +903,14 @@ package body GNATLLVM.GLValue is
    ------------------
 
    function Array_Alloca
-     (TE        : Entity_Id;
-      Num_Elts  : GL_Value;
-      Def_Ident : Entity_Id := Empty;
-      Name      : String    := "") return GL_Value
-   is
-      Inst : constant Value_T :=
-        Array_Alloca (IR_Builder, Create_Type_For_Component (TE),
-                      LLVM_Value (Num_Elts),
-                      Get_Alloca_Name (Def_Ident, Name));
-
-   begin
-      Set_Object_Align (Inst, Default_GL_Type (TE), Def_Ident);
-      Save_Stack_Pointer;
-      return G_Ref (Inst, TE, Is_Pristine => True);
-   end Array_Alloca;
-
-   ------------------
-   -- Array_Alloca --
-   ------------------
-
-   function Array_Alloca
      (GT        : GL_Type;
       Num_Elts  : GL_Value;
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "") return GL_Value
    is
+      --  ?? Below show be Type_Of (GT) once we're done
       Inst : constant Value_T :=
-        Array_Alloca (IR_Builder, Type_Of (GT),
+        Array_Alloca (IR_Builder, Create_Type_For_Component (Full_Etype (GT)),
                       LLVM_Value (Num_Elts),
                       Get_Alloca_Name (Def_Ident, Name));
 
@@ -2057,21 +2037,21 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Type_Size (V : GL_Value) return GL_Value is
-      (Get_Type_Size (Full_Etype (V), V));
+      (Get_Type_Size (GL_Type'(Related_Type (V)), V));
 
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
 
    function Get_Type_Alignment (V : GL_Value) return ULL is
-      (Get_Type_Alignment (Full_Etype (V)));
+      (Get_Type_Alignment (GL_Type'(Related_Type (V))));
 
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (TE : Entity_Id) return GL_Value is
-      (Size_Const_Int (Get_Type_Alignment (TE)));
+   function Get_Type_Alignment (GT : GL_Type) return GL_Value is
+      (Size_Const_Int (Get_Type_Alignment (GT)));
 
    ----------------
    -- Add_Global --

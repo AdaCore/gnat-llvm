@@ -167,12 +167,15 @@ package GNATLLVM is
    --  Pointer to arbitrary memory (we use i8 *); equivalent of
    --  Standard_A_Char.
 
-   A_Char_GL_Type     : GL_Type;
-   Boolean_GL_Type    : GL_Type;
-   Integer_GL_Type    : GL_Type;
-   SSI_GL_Type        : GL_Type;
-   Void_GL_Type       : GL_Type;
-   Any_Array_GL_Type  : GL_Type;
+   A_Char_GL_Type    : GL_Type;
+   Boolean_GL_Type   : GL_Type;
+   SSI_GL_Type       : GL_Type;
+   SI_GL_Type        : GL_Type;
+   Integer_GL_Type   : GL_Type;
+   LI_GL_Type        : GL_Type;
+   LLI_GL_Type       : GL_Type;
+   Void_GL_Type      : GL_Type;
+   Any_Array_GL_Type : GL_Type;
    --  GL_Types for builtin types
 
    Int_32_GL_Type     : GL_Type;

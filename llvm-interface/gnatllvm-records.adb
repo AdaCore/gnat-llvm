@@ -221,7 +221,7 @@ package body GNATLLVM.Records is
       with function Sz_Const
         (C : ULL; Sign_Extend : Boolean := False) return Result;
       with function Sz_Type_Size
-        (TE         : Entity_Id;
+        (GT         : GL_Type;
          V          : GL_Value := No_GL_Value;
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result;
@@ -1094,25 +1094,27 @@ package body GNATLLVM.Records is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
-         Typ   : Entity_Id    := Full_Etype (E);
-         Align : constant ULL := Get_Type_Alignment (Typ);
+         F_TE  : Entity_Id    := Full_Etype (E);
+         Align : constant ULL := Get_Type_Alignment (Default_GL_Type (F_TE));
 
       begin
          --  If this is the '_parent' field, we make a dummy entry and handle
          --  it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info_N (TE), 0, Typ);
+            Add_FI (E, Get_Record_Info_N (TE), 0, F_TE);
             return;
 
          --  If this field is dynamic size, we have to close out the last
          --  record info entry we're making, if there's anything in it,
          --  and make a piece for this field.
 
-         elsif Is_Dynamic_Size (Typ, Max_Size => not Is_Constrained (Typ)) then
+         elsif Is_Dynamic_Size (F_TE,
+                                Max_Size => not Is_Constrained (F_TE))
+         then
             Flush_Current_Types;
-            Add_FI (E, Cur_Idx, 0, Typ);
-            Add_RI (Typ => Typ, Use_Max_Size => not Is_Constrained (Typ));
+            Add_FI (E, Cur_Idx, 0, F_TE);
+            Add_RI (Typ => F_TE, Use_Max_Size => not Is_Constrained (F_TE));
             Set_Is_Nonnative_Type (TE);
             Split_Align := Align;
 
@@ -1129,8 +1131,8 @@ package body GNATLLVM.Records is
                Split_Align := Align;
             end if;
 
-            Types (Next_Type) := Type_For_Relationship (Typ, Component);
-            Add_FI (E, Cur_Idx, Next_Type, Typ);
+            Types (Next_Type) := Type_For_Relationship (F_TE, Component);
+            Add_FI (E, Cur_Idx, Next_Type, F_TE);
             Next_Type := Next_Type + 1;
          end if;
 
@@ -1313,10 +1315,12 @@ package body GNATLLVM.Records is
             --  The GNAT type case is easy
 
          elsif Present (TE) then
-            Must_Align := Sz_Const (Get_Type_Alignment (TE));
+            Must_Align := Sz_Const (Get_Type_Alignment (Default_GL_Type (TE)));
             Is_Align   := Must_Align;
             if Return_Size then
-               This_Size  := Sz_Type_Size (TE, V, Max_Size or RI.Use_Max_Size);
+               This_Size  := Sz_Type_Size (Default_GL_Type (TE), V,
+                                           Max_Size =>
+                                             Max_Size or else RI.Use_Max_Size);
             end if;
 
          elsif RI.Variants /= null then
@@ -1578,7 +1582,7 @@ package body GNATLLVM.Records is
                          This_Size, Must_Align, This_Align,
                          Return_Size => False);
          elsif Present (TE) then
-            Must_Align := Sz_Const (Get_Type_Alignment (TE));
+            Must_Align := Sz_Const (Get_Type_Alignment (Default_GL_Type (TE)));
          end if;
 
          if Pushed_Stack then
@@ -2204,7 +2208,7 @@ package body GNATLLVM.Records is
             RI := Record_Info_Table.Table (Cur_Idx);
             if Present (RI.GNAT_Type) then
                Complexity := Complexity + Get_Type_Size_Complexity
-                 (RI.GNAT_Type, Max_Size or RI.Use_Max_Size);
+                 (Default_GL_Type (RI.GNAT_Type), Max_Size or RI.Use_Max_Size);
             end if;
 
             Cur_Idx := RI.Next;

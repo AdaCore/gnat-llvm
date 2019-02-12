@@ -1043,14 +1043,6 @@ package GNATLLVM.GLValue is
           Post => Is_Access_Type (Alloca'Result);
 
    function Array_Alloca
-     (TE        : Entity_Id;
-      Num_Elts  : GL_Value;
-      Def_Ident : Entity_Id := Empty;
-      Name      : String    := "") return GL_Value
-     with Pre  => Is_Type (TE) and then Present (Num_Elts),
-          Post => Is_Access_Type (Array_Alloca'Result);
-
-   function Array_Alloca
      (GT        : GL_Type;
       Num_Elts  : GL_Value;
       Def_Ident : Entity_Id := Empty;
@@ -1956,8 +1948,8 @@ package GNATLLVM.GLValue is
    function Get_Type_Alignment (V : GL_Value) return ULL
      with Pre => Present (V);
 
-   function Get_Type_Alignment (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE),
+   function Get_Type_Alignment (GT : GL_Type) return GL_Value
+     with Pre  => Present (GT),
           Post => Type_Of (Get_Type_Alignment'Result) = LLVM_Size_Type;
 
    function Add_Function

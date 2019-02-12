@@ -370,8 +370,8 @@ package GNATLLVM.Types is
           Post => Present (Get_Type_Size_In_Bits'Result);
    --  Return the size of an LLVM type, in bits, as an LLVM constant
 
-   function Get_Type_Size_In_Bits (TE : Entity_Id) return GL_Value
-     with Pre  => Present (TE),
+   function Get_Type_Size_In_Bits (GT : GL_Type) return GL_Value
+     with Pre  => Present (GT),
           Post => Present (Get_Type_Size_In_Bits'Result);
    --  Likewise, but convert from a GNAT type
 
@@ -451,17 +451,17 @@ package GNATLLVM.Types is
    --  actually be a different GNAT type.
 
    function Get_Type_Alignment
-     (TE : Entity_Id; Use_Specified : Boolean := True) return ULL
-     with Pre => Is_Type (TE);
-   --  Return the size of a GNAT type, in bits.  If Use_Specified is False,
+     (GT : GL_Type; Use_Specified : Boolean := True) return ULL
+     with Pre => Present (GT);
+   --  Return the size of a type, in bits.  If Use_Specified is False,
    --  ignore a specified alignment.
 
    function Get_Type_Size
-     (TE         : Entity_Id;
+     (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
-      No_Padding : Boolean := False) return GL_Value
-     with Pre => Is_Type (TE), Post => Present (Get_Type_Size'Result);
+      No_Padding : Boolean  := False) return GL_Value
+     with Pre => Present (GT), Post => Present (Get_Type_Size'Result);
    --  Return the size of a type, in bytes, as a GL_Value.  If TE is
    --  an unconstrained array type, V must be the value of the array.
    --  If Max_Size is true, we return the maximum size of the type.
@@ -484,8 +484,8 @@ package GNATLLVM.Types is
    --  use Get_Matching_Value.
 
    function Get_Type_Size_Complexity
-     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
-     with Pre  => Is_Type (TE);
+     (GT : GL_Type; Max_Size : Boolean := False) return Nat
+     with Pre  => Present (GT);
    --  Return the complexity of computing the size of a type.  This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the type is of a constant size.
@@ -537,11 +537,11 @@ package GNATLLVM.Types is
      with Pre  => Present (GT) and then C /= No_Uint;
 
    function IDS_Type_Size
-     (TE         : Entity_Id;
+     (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean := False;
-      No_Padding : Boolean := False) return IDS
-     with Pre => Is_Type (TE), Post => Present (IDS_Type_Size'Result);
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return IDS
+     with Pre => Present (GT), Post => Present (IDS_Type_Size'Result);
 
    function IDS_I_Cmp
      (Op       : Int_Predicate_T;
@@ -743,11 +743,11 @@ package GNATLLVM.Types is
      (BA_Unop (V, Neg'Access, Negate_Expr, Name));
 
    function BA_Type_Size
-     (TE         : Entity_Id;
+     (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean := False;
-      No_Padding : Boolean := False) return BA_Data
-     with Pre => Is_Type (TE);
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return BA_Data
+     with Pre => Present (GT);
 
    function BA_I_Cmp
      (Op       : Int_Predicate_T;

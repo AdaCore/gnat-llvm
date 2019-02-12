@@ -22,7 +22,6 @@ with Output;   use Output;
 with Restrict; use Restrict;
 with Sem_Aux;  use Sem_Aux;
 with Snames;   use Snames;
-with Stand;    use Stand;
 with Table;    use Table;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
@@ -217,7 +216,7 @@ package body GNATLLVM.Types is
       --  Otherwise get the size for our purposes.  If not a constant or not
       --  something LLVM can use natively as an array bound, this is dynamic.
 
-      Size := IDS_Type_Size (TE, No_GL_Value, Max_Size);
+      Size := IDS_Type_Size (Default_GL_Type (TE), No_GL_Value, Max_Size);
       return not IDS_Is_Const (Size)
         or else IDS_Const_Int (Size) < 0
         or else IDS_Const_Int (Size) > LLI (unsigned'Last);
@@ -1096,8 +1095,8 @@ package body GNATLLVM.Types is
                                  N_Qualified_Expression);
          exit when Is_Elementary_Type (Full_Etype (E));
          exit when Is_Elementary_Type (Full_Etype (Expression (E)));
-         exit when Get_Type_Size_Complexity (Full_Etype (E))
-           <= Get_Type_Size_Complexity (Full_Etype (Expression (E)));
+         exit when Get_Type_Size_Complexity (Full_GL_Type (E))
+           <= Get_Type_Size_Complexity (Full_GL_Type (Expression (E)));
          E := Expression (E);
       end loop;
 
@@ -1126,10 +1125,10 @@ package body GNATLLVM.Types is
    -- Get_Type_Size_In_Bits --
    ---------------------------
 
-   function Get_Type_Size_In_Bits (TE : Entity_Id) return GL_Value is
+   function Get_Type_Size_In_Bits (GT : GL_Type) return GL_Value is
    begin
-      pragma Assert (not Is_Nonnative_Type (TE));
-      return Get_Type_Size_In_Bits (Type_Of (TE));
+      pragma Assert (not Is_Nonnative_Type (GT));
+      return Get_Type_Size_In_Bits (Type_Of (GT));
    end Get_Type_Size_In_Bits;
 
    ---------------------------
@@ -1137,7 +1136,7 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value is
-     (Get_Type_Size_In_Bits (Full_Etype (V.Typ)));
+     (Get_Type_Size_In_Bits (GL_Type'(Related_Type (V))));
 
    ------------------------
    -- Ultimate_Base_Type --
@@ -1535,20 +1534,20 @@ package body GNATLLVM.Types is
          end if;
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
-                           (BA_Mul (BA_Type_Size (TE, No_Padding => True),
+                           (BA_Mul (BA_Type_Size (GT, No_Padding => True),
                                     BA_Const (Uint_Bits_Per_Unit))));
          end if;
       end if;
 
       Validate_And_Set_Alignment
         (TE, Alignment (TE),
-         Int (ULL'(Get_Type_Alignment (TE, Use_Specified => False))));
+         Int (ULL'(Get_Type_Alignment (GT, Use_Specified => False))));
       if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
         and then Present (Original_Array_Type (TE))
       then
          Validate_And_Set_Alignment (Original_Array_Type (TE),
                                      Alignment (TE),
-                                     Int (ULL'(Get_Type_Alignment (TE))));
+                                     Int (ULL'(Get_Type_Alignment (GT))));
       end if;
 
       return T;
@@ -1668,7 +1667,8 @@ package body GNATLLVM.Types is
    -------------------------------
 
    function Create_Type_For_Component (TE : Entity_Id) return Type_T is
-      T    : constant Type_T := Type_Of (TE);
+      GT   : constant GL_Type := Default_GL_Type (TE);
+      T    : constant Type_T  := Type_Of (TE);
       Size : GL_Value;
 
    begin
@@ -1677,14 +1677,14 @@ package body GNATLLVM.Types is
       --  type, on the other, return T.  Otherwise, make an array type
       --  corresponding to the size.
 
-      if Is_Dynamic_Size (TE, Max_Size => Is_Unconstrained_Record (TE))
-        or else not Is_Nonnative_Type (TE)
+      if Is_Dynamic_Size (GT, Max_Size => Is_Unconstrained_Record (GT))
+        or else not Is_Nonnative_Type (GT)
       then
          return T;
       end if;
 
-      Size := Get_Type_Size (TE, No_GL_Value,
-                             Max_Size => Is_Unconstrained_Record (TE));
+      Size := Get_Type_Size (GT, No_GL_Value,
+                             Max_Size => Is_Unconstrained_Record (GT));
       pragma Assert (Is_A_Const_Int (Size));
       return Array_Type (Int_Ty (Uint_Bits_Per_Unit),
                          unsigned (Get_Const_Int_Value (Size)));
@@ -1810,7 +1810,7 @@ package body GNATLLVM.Types is
         not Is_A_Const_Int (Align)
         or else Get_Const_Int_Value (Align) > LLI (Get_Stack_Alignment);
       Value      : GL_Value          := V;
-      Element_TE : Entity_Id;
+      Element_GT : GL_Type;
       Num_Elts   : GL_Value;
       Result     : GL_Value;
 
@@ -1854,10 +1854,10 @@ package body GNATLLVM.Types is
         and then not Is_Constr_Subt_For_UN_Aliased (Alloc_TE)
         and then not Overalign
       then
-         Element_TE := Full_Component_Type (Alloc_TE);
+         Element_GT := Full_Component_GL_Type (Alloc_TE);
          Num_Elts   := Get_Array_Elements (Value, Alloc_TE);
       else
-         Element_TE := Standard_Short_Short_Integer;
+         Element_GT := SSI_GL_Type;
          Num_Elts   := Get_Alloc_Size (Alloc_TE, Alloc_TE, Value, Max_Size);
       end if;
 
@@ -1873,18 +1873,18 @@ package body GNATLLVM.Types is
       --  will constant-fold, but make sure we aren't dividing by zero.
 
       if Do_Stack_Check
-        and then Get_Type_Size (Element_TE) /= Size_Const_Null
+        and then Get_Type_Size (Element_GT) /= Size_Const_Null
       then
          Emit_Raise_Call_If (I_Cmp (Int_UGT, Num_Elts,
                                     U_Div (Size_Const_Int (Max_Alloc),
-                                           Get_Type_Size (Element_TE))),
+                                           Get_Type_Size (Element_GT))),
                              N, SE_Object_Too_Large);
       end if;
 
       --  Now allocate the object, align if necessary, and then move
       --  any data into it.
 
-      Result := Array_Alloca (Element_TE, Num_Elts, Def_Ident,
+      Result := Array_Alloca (Element_GT, Num_Elts, Def_Ident,
                               (if Overalign then "%%" else Name));
       if Overalign then
          Result := Ptr_To_Int (Result, Size_GL_Type);
@@ -1962,7 +1962,7 @@ package body GNATLLVM.Types is
 
       elsif No (Proc) then
          declare
-            Ptr_Size   : constant GL_Value := Get_Type_Size (Void_Ptr_Type);
+            Ptr_Size   : constant GL_Value := Get_Type_Size (A_Char_GL_Type);
             Total_Size : constant GL_Value :=
               Add (Size, Add (Align, Ptr_Size));
             Alloc      : constant GL_Value :=
@@ -2070,7 +2070,8 @@ package body GNATLLVM.Types is
             declare
                Addr       : constant GL_Value :=
                  Ptr_To_Int (Conv_V, Size_GL_Type);
-               Ptr_Size   : constant GL_Value := Get_Type_Size (Void_Ptr_Type);
+               Ptr_Size   : constant GL_Value :=
+                 Get_Type_Size (A_Char_GL_Type);
                Ptr_Loc    : constant GL_Value := Sub (Addr, Ptr_Size);
                Ptr_Ref    : constant GL_Value :=
                  Int_To_Ref (Ptr_Loc, A_Char_GL_Type);
@@ -2113,22 +2114,29 @@ package body GNATLLVM.Types is
    ------------------------
 
    function Get_Type_Alignment
-     (TE : Entity_Id; Use_Specified : Boolean := True) return ULL
+     (GT : GL_Type; Use_Specified : Boolean := True) return ULL
    is
+      Align         : constant GL_Value  := GT_Alignment (GT);
+      TE            : constant Entity_Id := Full_Etype (GT);
       Largest_Align : ULL  := 1;
       Field         : Entity_Id;
 
    begin
+      --  If there's a known alignment in this GL_Type, use it
+
+      if Present (Align) and then Is_A_Const_Int (Align) then
+         return Get_Const_Int_Value_ULL (Align);
+
       --  If the alignment is specified (or back-annotated) in the tree,
       --  use that value.
 
-      if not Unknown_Alignment (TE)  and Use_Specified then
+      elsif not Unknown_Alignment (TE)  and Use_Specified then
          return ULL (UI_To_Int (Alignment (TE)));
 
       --  If it's an array, it's the alignment of the component type
 
       elsif Is_Array_Type (TE) then
-         return Get_Type_Alignment (Full_Component_Type (TE));
+         return Get_Type_Alignment (Full_Component_GL_Type (TE));
 
       --  If a record, use the highest alignment of any field
 
@@ -2138,7 +2146,7 @@ package body GNATLLVM.Types is
             if Ekind_In (Field, E_Discriminant, E_Component) then
                Largest_Align
                  := ULL'Max (Largest_Align,
-                             Get_Type_Alignment (Full_Etype (Field)));
+                             Get_Type_Alignment (Full_GL_Type (Field)));
             end if;
 
             Next_Entity (Field);
@@ -2166,24 +2174,38 @@ package body GNATLLVM.Types is
    -------------------
 
    function Get_Type_Size
-     (TE         : Entity_Id;
+     (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
-      No_Padding : Boolean := False) return GL_Value is
+      No_Padding : Boolean  := False) return GL_Value is
    begin
       --  If a value was specified and it's data, then it must be of a
       --  fixed size.  That's the size we're looking for.
 
       if Present (V) and then Relationship (V) = Data then
          return Get_Type_Size (Type_Of (V));
-      elsif Is_Record_Type (TE) then
-         return Get_Record_Type_Size (TE, V,
-                                      Max_Size   => Max_Size,
+
+      --  If this isn't a non-native type, then the size is the size of the
+      --  LLVM type and unless we aren't to remove padding and this is a
+      --  record type.
+
+      elsif not Is_Nonnative_Type (GT)
+        and then (not Is_Record_Type (GT) or else not No_Padding)
+      then
+         return Get_Type_Size (Type_Of (GT));
+
+      elsif Is_Record_Type (GT) then
+         return Get_Record_Type_Size (Full_Etype (GT), V,
+                                      Max_Size   =>
+                                        Max_Size or else Is_Max_Size (GT),
                                       No_Padding => No_Padding);
-      elsif Is_Array_Type (TE) and then Is_Nonnative_Type (TE) then
-         return Get_Array_Type_Size (TE, V, Max_Size);
+      elsif Is_Array_Type (GT) then
+         return Get_Array_Type_Size (Full_Etype (GT), V,
+                                     Max_Size   =>
+                                       Max_Size or else Is_Max_Size (GT));
       else
-         return Get_Type_Size (Type_Of (TE));
+         pragma Assert (False);
+         return No_GL_Value;
       end if;
 
    end Get_Type_Size;
@@ -2199,7 +2221,7 @@ package body GNATLLVM.Types is
       Max_Size : Boolean := False) return GL_Value
    is
       Size : GL_Value :=
-        Get_Type_Size (Alloc_TE,
+        Get_Type_Size (Default_GL_Type (Alloc_TE),
                        (if   Is_Class_Wide_Equivalent_Type (Alloc_TE)
                         then No_GL_Value else V),
                        Max_Size => Max_Size);
@@ -2210,7 +2232,8 @@ package body GNATLLVM.Types is
 
       if Is_Unconstrained_Array (TE) or else Type_Needs_Bounds (Alloc_TE) then
          Size := Align_To (Add (Size, Get_Bound_Size (TE)),
-                           Get_Type_Alignment (TE), Get_Bound_Alignment (TE));
+                           Get_Type_Alignment (Default_GL_Type (TE)),
+                           Get_Bound_Alignment (TE));
       end if;
 
       return Size;
@@ -2225,7 +2248,8 @@ package body GNATLLVM.Types is
       Alloc_TE : Entity_Id;
       E        : Entity_Id := Empty) return GL_Value
    is
-      TE_Align : constant GL_Value    := Get_Type_Alignment (Alloc_TE);
+      TE_Align : constant GL_Value    :=
+        Get_Type_Alignment (Default_GL_Type (Alloc_TE));
       E_Align  : constant GL_Value    :=
         (if   Present (E) and then not Unknown_Alignment (E)
          then Size_Const_Int (Alignment (E)) else Size_Const_Int (Uint_1));
@@ -2269,13 +2293,13 @@ package body GNATLLVM.Types is
    ------------------------------
 
    function Get_Type_Size_Complexity
-     (TE : Entity_Id; Max_Size : Boolean := False) return Nat is
+     (GT : GL_Type; Max_Size : Boolean := False) return Nat is
    begin
 
-      if Is_Record_Type (TE) then
-         return Get_Record_Size_Complexity (TE, Max_Size);
-      elsif Is_Array_Type (TE) then
-         return Get_Array_Size_Complexity  (TE, Max_Size);
+      if Is_Record_Type (GT) then
+         return Get_Record_Size_Complexity (Full_Etype (GT), Max_Size);
+      elsif Is_Array_Type (GT) then
+         return Get_Array_Size_Complexity  (Full_Etype (GT), Max_Size);
 
       else
          --  All other types are constant size
@@ -2411,7 +2435,7 @@ package body GNATLLVM.Types is
    -------------------
 
    function IDS_Type_Size
-     (TE         : Entity_Id;
+     (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return IDS is
@@ -2423,16 +2447,23 @@ package body GNATLLVM.Types is
         and then not Max_Size and then not No_Padding
       then
          return IDS_From_Const (Get_Type_Size (Type_Of (V)));
-      elsif Is_Record_Type (TE) then
-         return IDS_Record_Type_Size (TE, V,
+
+      elsif not Is_Nonnative_Type (GT)
+        and then (not Is_Record_Type (GT) or else not No_Padding)
+      then
+         return IDS_From_Const (Get_Type_Size (Type_Of (GT)));
+
+      elsif Is_Record_Type (GT) then
+         return IDS_Record_Type_Size (Full_Etype (GT), V,
                                       Max_Size   => Max_Size,
                                       No_Padding => No_Padding);
-      elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
          return Var_IDS;
-      elsif Is_Array_Type (TE) then
-         return IDS_Array_Type_Size (TE, V, Max_Size);
+      elsif Is_Array_Type (GT) then
+         return IDS_Array_Type_Size (Full_Etype (GT), V, Max_Size);
       else
-         return IDS_From_Const (Get_Type_Size (Type_Of (TE)));
+         pragma Assert (False);
+         return No_IDS;
       end if;
    end IDS_Type_Size;
 
@@ -2481,7 +2512,7 @@ package body GNATLLVM.Types is
    function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val is
       Use_Max      : constant Boolean := Is_Unconstrained_Record (TE);
       TE_Byte_Size : constant BA_Data :=
-        BA_Type_Size (TE, Max_Size => Use_Max);
+        BA_Type_Size (Default_GL_Type (TE), Max_Size => Use_Max);
       TE_Bit_Size  : constant BA_Data :=
         BA_Mul (TE_Byte_Size, BA_Const (Uint_Bits_Per_Unit));
 
@@ -2698,10 +2729,10 @@ package body GNATLLVM.Types is
    ------------------
 
    function BA_Type_Size
-     (TE         : Entity_Id;
+     (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean := False;
-      No_Padding : Boolean := False) return BA_Data is
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return BA_Data is
    begin
       --  If a value was specified and it's data, then it must be of a
       --  fixed size.  That's the size we're looking for.
@@ -2710,18 +2741,26 @@ package body GNATLLVM.Types is
         and then not Max_Size and then not No_Padding
       then
          return BA_From_Const (Get_Type_Size (Type_Of (V)));
-      elsif Is_Record_Type (TE) then
-         return BA_Record_Type_Size (TE, V,
+
+      elsif Ekind (GT) = E_Subprogram_Type then
+         return No_BA;
+
+      elsif not Is_Nonnative_Type (GT)
+        and then (not Is_Record_Type (GT) or else not No_Padding)
+      then
+         return BA_From_Const (Get_Type_Size (Type_Of (GT)));
+
+      elsif Is_Record_Type (GT) then
+         return BA_Record_Type_Size (Full_Etype (GT), V,
                                      Max_Size   => Max_Size,
                                      No_Padding => No_Padding);
-      elsif Is_Array_Type (TE) and then not Is_Constrained (TE) then
+      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
          return No_BA;
-      elsif Is_Array_Type (TE) then
-         return BA_Array_Type_Size (TE, V, Max_Size);
-      elsif Ekind (TE) = E_Subprogram_Type then
-         return No_BA;
+      elsif Is_Array_Type (GT) then
+         return BA_Array_Type_Size (Full_Etype (GT), V, Max_Size);
       else
-         return BA_From_Const (Get_Type_Size (Type_Of (TE)));
+         pragma Assert (False);
+         return No_BA;
       end if;
 
    end BA_Type_Size;

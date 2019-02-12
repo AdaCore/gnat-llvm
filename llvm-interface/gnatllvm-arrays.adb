@@ -106,7 +106,7 @@ package body GNATLLVM.Arrays is
       (if    B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
        elsif Max_Size then 1 else 2);
 
-   function Get_GEP_Safe_Type (V : GL_Value) return Entity_Id
+   function Get_GEP_Safe_Type (V : GL_Value) return GL_Type
      with Pre  => Is_Data (V),
           Post => Is_Integer_Type (Get_GEP_Safe_Type'Result);
    --  GEP treats array indices as signed values.  If the type is unsigned
@@ -138,7 +138,7 @@ package body GNATLLVM.Arrays is
         (C : ULL; Sign_Extend : Boolean := False) return Result;
       with function Sz_Const_Int (GT : GL_Type; C : Uint) return Result;
       with function Sz_Type_Size
-        (TE          : Entity_Id;
+        (GT          : GL_Type;
          V           : GL_Value := No_GL_Value;
          Max_Size    : Boolean := False;
          No_Paddding : Boolean := False) return Result;
@@ -839,10 +839,10 @@ package body GNATLLVM.Arrays is
          V        : GL_Value;
          Max_Size : Boolean := False) return Result
       is
-         Comp_Type     : constant Entity_Id := Full_Component_Type (TE);
-         Comp_Size     : constant Result    :=
-           Sz_Type_Size (Comp_Type, Max_Size => True);
-         Num_Elements  : constant Result    :=
+         Comp_GT      : constant GL_Type := Full_Component_GL_Type (TE);
+         Comp_Size    : constant Result  :=
+           Sz_Type_Size (Comp_GT, Max_Size => True);
+         Num_Elements : constant Result  :=
            Get_Array_Elements (V, TE, Max_Size);
 
       begin
@@ -997,7 +997,7 @@ package body GNATLLVM.Arrays is
 
    begin
       return Complexity : Nat :=
-        Get_Type_Size_Complexity (Full_Component_Type (TE), True)
+        Get_Type_Size_Complexity (Full_Component_GL_Type (TE), True)
       do
          for Dim in 0 .. Number_Dimensions (TE) - 1 loop
             declare
@@ -1021,7 +1021,8 @@ package body GNATLLVM.Arrays is
    begin
       return Align_To (Get_Type_Size (T),
                        Size_Const_Int (Get_Type_Alignment (T)),
-                       Size_Const_Int (Get_Type_Alignment (TE)));
+                       Size_Const_Int (Get_Type_Alignment
+                                         (Default_GL_Type (TE))));
    end Get_Bound_Size;
 
    -------------------------
@@ -1221,7 +1222,7 @@ package body GNATLLVM.Arrays is
       Result : Index_Array (Idxs'Range);
 
    begin
-      if Convention (Related_Type (V)) /= Convention_Fortran then
+      if Convention (GL_Type'(Related_Type (V))) /= Convention_Fortran then
          return Idxs;
       end if;
 
@@ -1390,29 +1391,28 @@ package body GNATLLVM.Arrays is
    -- Get_GEP_Safe_Type --
    -----------------------
 
-   function Get_GEP_Safe_Type (V : GL_Value) return Entity_Id is
-      Int_Types : constant array (Nat range <>) of Entity_Id :=
-        (Standard_Short_Short_Integer, Standard_Short_Integer,
-         Standard_Integer, Standard_Long_Integer, Standard_Long_Long_Integer);
-      Our_Type  : constant Entity_Id := Full_Etype (V);
+   function Get_GEP_Safe_Type (V : GL_Value) return GL_Type is
+      Int_Types : constant array (Nat range <>) of GL_Type :=
+        (SSI_GL_Type, SI_GL_Type, Integer_GL_Type, LI_GL_Type, LLI_GL_Type);
+      Our_GT  : constant GL_Type := Related_Type (V);
 
    begin
       --  If we are of an unsigned type narrower than Size_Type, we must find
       --  a wider type to use.  We use the first, which will be the narrowest.
 
-      if not Is_Unsigned_Type (Our_Type)
-        or else RM_Size (Our_Type) >= RM_Size (Size_Type)
+      if not Is_Unsigned_Type (Our_GT)
+        or else RM_Size (Our_GT) >= RM_Size (Size_GL_Type)
       then
-         return Our_Type;
+         return Our_GT;
       end if;
 
-      for Typ of Int_Types loop
-         if RM_Size (Typ) > RM_Size (Our_Type) then
-            return Typ;
+      for GT of Int_Types loop
+         if RM_Size (GT) > RM_Size (Our_GT) then
+            return GT;
          end if;
       end loop;
 
-      return Empty;
+      return No_GL_Type;
    end Get_GEP_Safe_Type;
 
    -----------------
@@ -1422,11 +1422,11 @@ package body GNATLLVM.Arrays is
    function Get_Indices
      (Indices : List_Id; V : GL_Value) return GL_Value_Array
    is
-      TE         : constant Entity_Id := Related_Type (V);
-      N_Dim      : constant Int       := Number_Dimensions (TE);
-      Fortran    : constant Boolean   := Convention (TE) = Convention_Fortran;
-      Idx        : Nat                := (if Fortran then N_Dim + 1 else 2);
-      Dim        : Nat                := 0;
+      GT         : constant GL_Type := Related_Type (V);
+      N_Dim      : constant Int     := Number_Dimensions (GT);
+      Fortran    : constant Boolean := Convention (GT) = Convention_Fortran;
+      Idx        : Nat              := (if Fortran then N_Dim + 1 else 2);
+      Dim        : Nat              := 0;
       N          : Node_Id;
       Idxs       : GL_Value_Array (1 .. N_Dim + 1) :=
         (1 => Size_Const_Null, others => <>);
@@ -1440,15 +1440,15 @@ package body GNATLLVM.Arrays is
          --  Adjust the index according to the range lower bound
 
          declare
-            User_Index          : constant GL_Value  := Emit_Safe_Expr (N);
-            Dim_Low_Bound       : constant GL_Value  :=
-              Get_Array_Bound (TE, Dim, True, V);
-            Dim_Op_Type         : constant Entity_Id :=
+            User_Index          : constant GL_Value := Emit_Safe_Expr (N);
+            Dim_Low_Bound       : constant GL_Value :=
+              Get_Array_Bound (Full_Etype (GT), Dim, True, V);
+            Dim_Op_GT           : constant GL_Type  :=
               Get_GEP_Safe_Type (Dim_Low_Bound);
-            Converted_Index     : constant GL_Value  :=
-              Convert (User_Index, Dim_Op_Type);
-            Converted_Low_Bound : constant GL_Value  :=
-              Convert (Dim_Low_Bound, Dim_Op_Type);
+            Converted_Index     : constant GL_Value :=
+              Convert (User_Index, Dim_Op_GT);
+            Converted_Low_Bound : constant GL_Value :=
+              Convert (Dim_Low_Bound, Dim_Op_GT);
 
          begin
             Idxs (Idx) := Sub (Converted_Index, Converted_Low_Bound, "index");
@@ -1469,15 +1469,15 @@ package body GNATLLVM.Arrays is
    function Get_Indexed_LValue
      (Idxs : GL_Value_Array; V : GL_Value) return GL_Value
    is
-      TE         : constant Entity_Id := Related_Type (V);
-      N_Dim      : constant Int       := Number_Dimensions (TE);
-      Comp_Type  : constant Entity_Id := Full_Component_Type (TE);
-      Array_Data : constant GL_Value  := Get (V, Reference);
-      Fortran    : constant Boolean   := Convention (TE) = Convention_Fortran;
+      GT         : constant GL_Type  := Related_Type (V);
+      N_Dim      : constant Int      := Number_Dimensions (GT);
+      Comp_GT    : constant GL_Type  := Full_Component_GL_Type (GT);
+      Array_Data : constant GL_Value := Get (V, Reference);
+      Fortran    : constant Boolean  := Convention (GT) = Convention_Fortran;
 
    begin
-      if not Is_Nonnative_Type (TE) then
-         return GEP (Comp_Type, Array_Data, Idxs);
+      if not Is_Nonnative_Type (GT) then
+         return GEP (Comp_GT, Array_Data, Idxs);
       end if;
 
       --  Otherwise, we choose a type to use for the indexing.  If the
@@ -1493,29 +1493,30 @@ package body GNATLLVM.Arrays is
       --  correct for the Fortran and non-Fortran cases are tricky.
 
       declare
-         Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_Type);
-         Use_Comp  : constant Boolean   :=
-           not Is_Dynamic_Size (Comp_Type, Comp_Unc);
-         Unit_Type : constant Entity_Id :=
-           (if Use_Comp then Comp_Type else Standard_Short_Short_Integer);
-         Data      : constant GL_Value  :=
-           Get (Ptr_To_Ref (Array_Data, Unit_Type), Reference_To_Component);
-         Unit_Mult : constant GL_Value  :=
+         Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
+         Use_Comp  : constant Boolean  :=
+           not Is_Dynamic_Size (Comp_GT, Comp_Unc);
+         Unit_GT   : constant GL_Type  :=
+           (if Use_Comp then Comp_GT else SSI_GL_Type);
+         Data      : constant GL_Value :=
+           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference_To_Component);
+         Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_Type, Max_Size => Comp_Unc));
-         Index     : GL_Value           := To_Size_Type (Idxs (2));
-         Dim       : Int                := (if Fortran then N_Dim - 2 else 1);
+            else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));
+         Index     : GL_Value          := To_Size_Type (Idxs (2));
+         Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
 
       begin
          for Idx in 3 .. Idxs'Last loop
-            Index := Add (Mul (Index, Get_Array_Length (TE, Dim, V)),
+            Index := Add (Mul (Index, Get_Array_Length (Full_Etype (GT),
+                                                        Dim, V)),
                           To_Size_Type (Idxs (Idx)));
             Dim   := (if Fortran then Dim - 1 else Dim + 1);
          end loop;
 
          Index := Mul (Index, Unit_Mult);
          return Ptr_To_Ref
-           (GEP (Unit_Type, Data, (1 => Index), "arr-lvalue"), Comp_Type);
+           (GEP (Unit_GT, Data, (1 => Index), "arr-lvalue"), Comp_GT);
       end;
 
    end Get_Indexed_LValue;
@@ -1526,16 +1527,17 @@ package body GNATLLVM.Arrays is
 
    function Get_Slice_LValue (TE : Entity_Id; V : GL_Value) return GL_Value
    is
-      Rng         : constant Node_Id   := Get_Dim_Range (First_Index (TE));
-      Array_Data  : constant GL_Value  := Get (V, Reference);
-      Arr_Type    : constant Entity_Id := Full_Designated_Type (V);
-      Idx_LB      : constant GL_Value  :=
-        Get_Array_Bound (Arr_Type, 0, True, V);
-      Index_Val   : constant GL_Value  := Emit_Safe_Expr (Low_Bound (Rng));
-      Dim_Op_Type : constant Entity_Id := Get_GEP_Safe_Type (Idx_LB);
-      Cvt_Index   : constant GL_Value  := Convert (Index_Val, Dim_Op_Type);
-      Cvt_LB      : constant GL_Value  := Convert (Idx_LB, Dim_Op_Type);
-      Index_Shift : constant GL_Value  := Sub (Cvt_Index, Cvt_LB);
+      GT          : constant GL_Type  := Default_GL_Type (TE);
+      Rng         : constant Node_Id  := Get_Dim_Range (First_Index (GT));
+      Array_Data  : constant GL_Value := Get (V, Reference);
+      Arr_GT      : constant GL_Type  := Full_Designated_GL_Type (V);
+      Idx_LB      : constant GL_Value :=
+        Get_Array_Bound (Full_Etype (Arr_GT), 0, True, V);
+      Index_Val   : constant GL_Value := Emit_Safe_Expr (Low_Bound (Rng));
+      Dim_Op_GT   : constant GL_Type  := Get_GEP_Safe_Type (Idx_LB);
+      Cvt_Index   : constant GL_Value := Convert (Index_Val, Dim_Op_GT);
+      Cvt_LB      : constant GL_Value := Convert (Idx_LB, Dim_Op_GT);
+      Index_Shift : constant GL_Value := Sub (Cvt_Index, Cvt_LB);
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
@@ -1545,30 +1547,31 @@ package body GNATLLVM.Arrays is
       --  However, GEP's result type is a pointer to the component type, so
       --  we need to cast to the result (array) type in both cases.
 
-      if not Is_Nonnative_Type (Arr_Type) then
-         return Ptr_To_Ref (GEP (TE, Array_Data,
+      if not Is_Nonnative_Type (Arr_GT) then
+         return Ptr_To_Ref (GEP (GT, Array_Data,
                                  (1 => Size_Const_Null, 2 => Index_Shift),
-                                 "arr-lvalue"), TE);
+                                 "arr-lvalue"),
+                            GT);
       end if;
 
       declare
-         Comp_Type : constant Entity_Id := Full_Component_Type (Arr_Type);
-         Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_Type);
+         Comp_GT   : constant GL_Type := Full_Component_GL_Type (Arr_GT);
+         Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_GT);
          Use_Comp  : constant Boolean   :=
-           not Is_Dynamic_Size (Comp_Type, Comp_Unc);
-         Unit_Type : constant Entity_Id :=
-           (if Use_Comp then Comp_Type else Standard_Short_Short_Integer);
+           not Is_Dynamic_Size (Full_Etype (Comp_GT), Comp_Unc);
+         Unit_GT   : constant GL_Type   :=
+           (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value  :=
-           Get (Ptr_To_Ref (Array_Data, Unit_Type), Reference_To_Component);
+           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference_To_Component);
          Unit_Mult : constant GL_Value  :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_Type, Max_Size => Comp_Unc));
+            else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));
          Index         : constant GL_Value  :=
            Mul (To_Size_Type (Index_Shift), Unit_Mult);
 
       begin
          return Ptr_To_Ref
-           (GEP (Arr_Type, Data, (1 => Index), "arr-lvalue"), TE);
+           (GEP (Arr_GT, Data, (1 => Index), "arr-lvalue"), GT);
       end;
 
    end Get_Slice_LValue;

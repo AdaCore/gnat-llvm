@@ -220,6 +220,27 @@ package body GNATLLVM.GLType is
       GT := GL_Type_Table.Table (GT).Next;
    end Next;
 
+   -------------
+   -- GT_Size --
+   -------------
+
+   function GT_Size (GT : GL_Type) return GL_Value is
+     (GL_Type_Table.Table (GT).Size);
+
+   -----------------
+   -- Is_Max_Size --
+   -----------------
+
+   function Is_Max_Size (GT : GL_Type) return Boolean is
+     (GL_Type_Table.Table (GT).Max_Size);
+
+   ------------------
+   -- GT_Alignment --
+   ------------------
+
+   function GT_Alignment (GT : GL_Type) return GL_Value is
+     (GL_Type_Table.Table (GT).Alignment);
+
    ---------------------------
    -- Get_Or_Create_GL_Type --
    ---------------------------
@@ -541,75 +562,6 @@ package body GNATLLVM.GLType is
 
    function Base_GL_Type (GT : GL_Type) return GL_Type is
      (Primitive_GL_Type (Full_Base_Type (GT)));
-
-   -------------------
-   -- Get_Type_Size --
-   -------------------
-
-   function Get_Type_Size
-     (GT         : GL_Type;
-      V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean  := False;
-      No_Padding : Boolean  := False) return GL_Value
-   is
-      GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
-      Size : GL_Value              := GTI.Size;
-
-   begin
-      --  If we know the size of this alternative, use it.  Otherwise, get
-      --  the size of the GNAT type, taking into account a request for
-      --  the maximum size.
-
-      if No (Size) then
-         Size := Get_Type_Size (GTI.GNAT_Type,
-                                V          => V,
-                                Max_Size   => GTI.Max_Size or else Max_Size,
-                                No_Padding => No_Padding);
-      end if;
-
-      return Size;
-
-   end Get_Type_Size;
-
-   ------------------------
-   -- Get_Type_Alignment --
-   ------------------------
-
-   function Get_Type_Alignment (GT : GL_Type) return GL_Value is
-      GTI : constant GL_Type_Info := GL_Type_Table.Table (GT);
-
-   begin
-      --  If we know the alignment of this alternative, use it.  Otherwise,
-      --  get the alignment of the GNAT type.
-
-      if Present (GTI.Alignment) then
-         return GTI.Alignment;
-      else
-         return Get_Type_Alignment (GTI.GNAT_Type);
-      end if;
-   end Get_Type_Alignment;
-
-   ------------------------------
-   -- Get_Type_Size_Complexity --
-   ------------------------------
-
-   function Get_Type_Size_Complexity
-     (GT : GL_Type; Max_Size : Boolean := False) return Nat
-   is
-      GTI : constant GL_Type_Info := GL_Type_Table.Table (GT);
-
-   begin
-      return
-        Get_Type_Size_Complexity (GTI.GNAT_Type,
-                                  Max_Size => GTI.Max_Size or else Max_Size);
-   end Get_Type_Size_Complexity;
-
-   ------------------------
-   -- Get_Type_Alignment --
-   ------------------------
-
-   function Get_Type_Alignment (GT : GL_Type) return ULL is
-     (Get_Const_Int_Value_ULL (Get_Type_Alignment (GT)));
 
    --------------------
    --  Is_Dummy_Type --

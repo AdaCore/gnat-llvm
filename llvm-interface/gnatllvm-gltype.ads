@@ -17,6 +17,7 @@
 
 with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
+with Snames;   use Snames;
 
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -174,21 +175,13 @@ package GNATLLVM.GLType is
    function Type_Of (GT : GL_Type) return Type_T
      with Pre => Present (GT);
 
-   function Get_Type_Size
-     (GT         : GL_Type;
-      V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean  := False;
-      No_Padding : Boolean  := False) return GL_Value
-     with Pre => Present (GT), Post => Present (Get_Type_Size'Result);
-
-   function Get_Type_Alignment (GT : GL_Type) return GL_Value
-     with Pre => Present (GT), Post => Present (Get_Type_Alignment'Result);
-
-   function Get_Type_Alignment (GT : GL_Type) return ULL
+   function GT_Size (GT : GL_Type) return GL_Value
      with Pre => Present (GT);
 
-   function Get_Type_Size_Complexity
-     (GT : GL_Type; Max_Size : Boolean := False) return Nat
+   function Is_Max_Size (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+
+   function GT_Alignment (GT : GL_Type) return GL_Value
      with Pre => Present (GT);
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean
@@ -234,6 +227,11 @@ package GNATLLVM.GLType is
    function Full_Component_GL_Type (GT : GL_Type) return GL_Type is
      (Default_GL_Type (Full_Component_Type (Full_Etype (GT))))
      with Pre  => Is_Array_Type (GT),
+          Post => Present (Full_Component_GL_Type'Result);
+
+   function Full_Component_GL_Type (TE : Entity_Id) return GL_Type is
+     (Default_GL_Type (Full_Component_Type (TE)))
+     with Pre  => Is_Array_Type (TE),
           Post => Present (Full_Component_GL_Type'Result);
 
    function Full_Base_Type (GT : GL_Type) return Entity_Id is
@@ -395,6 +393,14 @@ package GNATLLVM.GLType is
    function Type_High_Bound (GT : GL_Type) return Node_Id is
      (Type_High_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
+
+   function First_Index (GT : GL_Type) return Entity_Id is
+     (First_Index (Full_Etype (GT)))
+     with Pre => Is_Array_Type (GT);
+
+   function Convention (GT : GL_Type) return Convention_Id is
+     (Convention (Full_Etype (GT)))
+     with Pre => Present (GT);
 
    function Component_Type (GT : GL_Type) return Entity_Id is
      (Component_Type (Full_Etype (GT)))

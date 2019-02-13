@@ -358,6 +358,14 @@ package GNATLLVM.GLType is
      (Requires_Transient_Scope (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Has_Task (GT : GL_Type) return Boolean is
+     (Has_Task (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Has_Protected (GT : GL_Type) return Boolean is
+     (Has_Protected (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Type_Needs_Bounds (GT : GL_Type) return Boolean is
      (Type_Needs_Bounds (Full_Etype (GT)))
      with Pre => Present (GT);

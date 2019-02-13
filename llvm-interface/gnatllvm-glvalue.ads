@@ -834,24 +834,11 @@ package GNATLLVM.GLValue is
    --  Set NUW and/or NSW on Inst depending on the type and relationship
    --  of V and return Inst.
 
-   function Get_Undef (TE : Entity_Id) return GL_Value
-     with Pre => Is_Type (TE), Post => Present (Get_Undef'Result);
-
    function Get_Undef (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Undef'Result);
 
-   function Get_Undef_Ref (TE : Entity_Id) return GL_Value
-     with Pre => Is_Type (TE), Post => Is_Reference (Get_Undef_Ref'Result);
-
    function Get_Undef_Ref (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Is_Reference (Get_Undef_Ref'Result);
-
-   function Get_Undef_Relationship
-     (TE : Entity_Id; R : GL_Relationship) return GL_Value
-   is
-     (G (Get_Undef (Type_For_Relationship (TE, R)), TE, R, True))
-     with Pre  => Is_Type (TE),
-          Post => Present (Get_Undef_Relationship'Result);
 
    function Get_Undef_Relationship
      (GT : GL_Type; R : GL_Relationship) return GL_Value
@@ -865,18 +852,8 @@ package GNATLLVM.GLValue is
          GL_Type'(Related_Type (V)), Unknown, Is_Pristine => True))
      with Pre => Is_A_Function (V), Post => Is_Undef (Get_Undef_Fn_Ret'Result);
 
-   function Const_Null (TE : Entity_Id) return GL_Value
-     with Pre => Is_Type (TE), Post => Present (Const_Null'Result);
-
    function Const_Null (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Const_Null'Result);
-
-   function Const_Null_Relationship
-     (TE : Entity_Id; R : GL_Relationship) return GL_Value
-   is
-     (G (Const_Null (Type_For_Relationship (TE, R)), TE, R))
-     with Pre  => Is_Type (TE),
-          Post => Present (Const_Null_Relationship'Result);
 
    function Const_Null_Relationship
      (GT : GL_Type; R : GL_Relationship) return GL_Value
@@ -884,9 +861,6 @@ package GNATLLVM.GLValue is
      (G (Const_Null (Type_For_Relationship (GT, R)), GT, R))
      with Pre  => Present (GT),
           Post => Present (Const_Null_Relationship'Result);
-
-   function Const_Null_Alloc (TE : Entity_Id) return GL_Value
-     with Pre => Is_Type (TE), Post => Present (Const_Null_Alloc'Result);
 
    function Const_Null_Alloc (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Const_Null_Alloc'Result);
@@ -907,11 +881,11 @@ package GNATLLVM.GLValue is
    --  Return an LLVM value for the given type where all bits are set
 
    function Get_Undef (V : GL_Value) return GL_Value is
-     (Get_Undef (Etype (V)))
+     (Get_Undef (Related_Type (V)))
      with  Pre  => Present (V), Post => Present (Get_Undef'Result);
 
    function Const_Null (V : GL_Value) return GL_Value is
-     (Const_Null (Etype (V)))
+     (Const_Null (Related_Type (V)))
      with Pre  => Present (V), Post => Present (Const_Null'Result);
 
    function Const_Null_Ref (GT : GL_Type) return GL_Value
@@ -1620,16 +1594,6 @@ package GNATLLVM.GLValue is
            Post => Present (Atomic_RMW'Result);
 
    function Extract_Value
-     (TE    : Entity_Id;
-      Arg   : GL_Value;
-      Index : unsigned;
-      Name  : String := "") return GL_Value
-   is
-     (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), TE))
-     with  Pre  => Present (Arg) and then Is_Type (TE),
-           Post => Present (Extract_Value'Result);
-
-   function Extract_Value
      (GT    : GL_Type;
       Arg   : GL_Value;
       Index : unsigned;
@@ -1640,16 +1604,6 @@ package GNATLLVM.GLValue is
            Post => Present (Extract_Value'Result);
 
    function Extract_Value_To_Ref
-     (TE    : Entity_Id;
-      Arg   : GL_Value;
-      Index : unsigned;
-      Name  : String := "") return GL_Value
-   is
-     (G_Ref (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), TE))
-     with  Pre  => Present (Arg) and then Is_Type (TE),
-           Post => Is_Pointer (Extract_Value_To_Ref'Result);
-
-   function Extract_Value_To_Ref
      (GT    : GL_Type;
       Arg   : GL_Value;
       Index : unsigned;
@@ -1658,18 +1612,6 @@ package GNATLLVM.GLValue is
      (G_Ref (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), GT))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Is_Pointer (Extract_Value_To_Ref'Result);
-
-   function Extract_Value_To_Relationship
-     (TE    : Entity_Id;
-      Arg   : GL_Value;
-      Index : unsigned;
-      R     : GL_Relationship;
-      Name  : String := "") return GL_Value
-   is
-     (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
-         TE, R))
-     with  Pre  => Present (Arg) and then Is_Type (TE),
-           Post => Is_Pointer (Extract_Value_To_Relationship'Result);
 
    function Extract_Value_To_Relationship
      (GT    : GL_Type;
@@ -1697,18 +1639,6 @@ package GNATLLVM.GLValue is
    type Index_Array is array (Nat range <>) of unsigned;
 
    function Extract_Value
-     (TE      : Entity_Id;
-      Arg     : GL_Value;
-      Idx_Arr : Index_Array;
-      Name    : String := "") return GL_Value
-   is
-     (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                              Idx_Arr'Address, Idx_Arr'Length, Name),
-         TE))
-     with  Pre  => Is_Type (TE) and then Present (Arg),
-           Post => Present (Extract_Value'Result);
-
-   function Extract_Value
      (GT      : GL_Type;
       Arg     : GL_Value;
       Idx_Arr : Index_Array;
@@ -1721,17 +1651,6 @@ package GNATLLVM.GLValue is
            Post => Present (Extract_Value'Result);
 
    function Extract_Value_To_Ref
-     (TE      : Entity_Id;
-      Arg     : GL_Value;
-      Idx_Arr : Index_Array;
-      Name    : String := "") return GL_Value
-   is
-     (G_Ref (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                                  Idx_Arr'Address, Idx_Arr'Length, Name), TE))
-     with  Pre  => Is_Type (TE) and then Present (Arg),
-           Post => Present (Extract_Value_To_Ref'Result);
-
-   function Extract_Value_To_Ref
      (GT      : GL_Type;
       Arg     : GL_Value;
       Idx_Arr : Index_Array;
@@ -1741,19 +1660,6 @@ package GNATLLVM.GLValue is
                                   Idx_Arr'Address, Idx_Arr'Length, Name), GT))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value_To_Ref'Result);
-
-   function Extract_Value_To_Relationship
-     (TE      : Entity_Id;
-      Arg     : GL_Value;
-      Idx_Arr : Index_Array;
-      R       : GL_Relationship;
-      Name    : String := "") return GL_Value
-   is
-     (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                              Idx_Arr'Address, Idx_Arr'Length, Name),
-         TE, R))
-     with  Pre  => Is_Type (TE) and then Present (Arg),
-           Post => Present (Extract_Value_To_Relationship'Result);
 
    function Extract_Value_To_Relationship
      (GT      : GL_Type;
@@ -1781,29 +1687,12 @@ package GNATLLVM.GLValue is
            Post => Present (Insert_Value'Result);
 
    function GEP
-     (TE      : Entity_Id;
-      Ptr     : GL_Value;
-      Indices : GL_Value_Array;
-      Name    : String := "") return GL_Value
-     with Pre  => Is_Access_Type (Ptr) and then Is_Type (TE),
-          Post => Is_Access_Type (GEP'Result);
-
-   function GEP
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
      with Pre  => Is_Access_Type (Ptr) and then Present (GT),
           Post => Is_Access_Type (GEP'Result);
-
-   function GEP_Idx
-     (TE      : Entity_Id;
-      Ptr     : GL_Value;
-      Indices : Index_Array;
-      Name    : String := "") return GL_Value
-     with Pre  => Is_Access_Type (Ptr) and then Is_Type (TE),
-          Post => Is_Access_Type (GEP_Idx'Result);
-   --  ??? Why can't this overload GEP?
 
    function GEP_Idx
      (GT      : GL_Type;
@@ -1813,15 +1702,6 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Access_Type (Ptr) and then Present (GT),
           Post => Is_Access_Type (GEP_Idx'Result);
    --  ??? Why can't this overload GEP?
-
-   function GEP_To_Relationship
-     (TE      : Entity_Id;
-      R       : GL_Relationship;
-      Ptr     : GL_Value;
-      Indices : Index_Array;
-      Name    : String := "") return GL_Value
-     with Pre  => Is_Access_Type (Ptr) and then Is_Type (TE),
-          Post => Is_Access_Type (GEP_To_Relationship'Result);
 
    function GEP_To_Relationship
      (GT      : GL_Type;
@@ -1834,14 +1714,6 @@ package GNATLLVM.GLValue is
 
    function Call
      (Func : GL_Value;
-      TE   : Entity_Id;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Is_Type_Or_Void (TE),
-          Post => Present (Call'Result);
-
-   function Call
-     (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
@@ -1850,29 +1722,11 @@ package GNATLLVM.GLValue is
 
    function Call_Ref
      (Func : GL_Value;
-      TE   : Entity_Id;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Is_Type (TE),
-          Post => Is_Reference (Call_Ref'Result);
-
-   function Call_Ref
-     (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
      with Pre  => Present (Func) and then Present (GT),
           Post => Is_Reference (Call_Ref'Result);
-
-   function Call_Struct
-     (Func : GL_Value;
-      TE   : Entity_Id;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Is_Type_Or_Void (TE),
-          Post => Present (Call_Struct'Result);
-   --  Used when an LLVM function is returning a structure for multiple
-   --  values.
 
    function Call_Struct
      (Func : GL_Value;
@@ -1968,16 +1822,6 @@ package GNATLLVM.GLValue is
      with Pre  => Present (GT), Post => Present (Add_Global'Result);
      --  Add a global to the environment which is of type TE, so the global
      --  itself represents the address of TE.
-
-   function Get_Param
-     (Func      : GL_Value;
-      Param_Num : Nat;
-      TE        : Entity_Id;
-      R         : GL_Relationship) return GL_Value
-   is
-     (G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)), TE, R))
-     with Pre  => Present (Func) and then Is_Type (TE),
-          Post => Present (Get_Param'Result);
 
    function Get_Param
      (Func      : GL_Value;

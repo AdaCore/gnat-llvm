@@ -560,7 +560,7 @@ package body GNATLLVM.Types is
       elsif Is_Undef (Result) and then R = Data
         and then Is_Loadable_Type (TE)
       then
-         return Get_Undef (TE);
+         return Get_Undef (Default_GL_Type (TE));
 
       --  If we have a constant of a struct type that we're converting to
       --  a struct of the same layout, we can make a new constant.
@@ -846,7 +846,7 @@ package body GNATLLVM.Types is
       then
          declare
             New_FP : constant GL_Value :=
-              Get_Undef_Relationship (TE, Fat_Pointer);
+              Get_Undef_Relationship (Default_GL_Type (TE), Fat_Pointer);
             Bounds : constant GL_Value :=
               Get_Array_Bounds (Default_GL_Type (TE), Default_GL_Type (V_Type),
                                 V);

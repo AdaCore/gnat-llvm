@@ -1120,7 +1120,7 @@ package body GNATLLVM.Subprograms is
       Spec            : constant Node_Id     := Get_Acting_Spec (N);
       Func            : constant GL_Value    := Emit_Subprogram_Decl (Spec);
       Def_Ident       : constant Entity_Id   := Defining_Entity      (Spec);
-      Return_Typ      : constant Entity_Id   := Full_Etype      (Def_Ident);
+      Return_GT       : constant GL_Type     := Full_GL_Type      (Def_Ident);
       RK              : constant Return_Kind := Get_Return_Kind (Def_Ident);
       LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (Def_Ident);
       Param_Num       : Nat                  := 0;
@@ -1155,8 +1155,8 @@ package body GNATLLVM.Subprograms is
       --  value.
 
       if RK = Return_By_Parameter then
-         LLVM_Param := Get_Param (Func, Param_Num, Return_Typ,
-                                  (if Is_Unconstrained_Array (Return_Typ)
+         LLVM_Param := Get_Param (Func, Param_Num, Return_GT,
+                                  (if Is_Unconstrained_Array (Return_GT)
                                    then Fat_Pointer else Reference));
          Set_Value_Name (LLVM_Value (LLVM_Param), "_return");
          Return_Address_Param := LLVM_Param;
@@ -1228,13 +1228,13 @@ package body GNATLLVM.Subprograms is
 
             when Subprog_Return =>
                if RK = RK_By_Reference then
-                  Build_Ret (Get_Undef_Ref (Return_Typ));
+                  Build_Ret (Get_Undef_Ref (Return_GT));
                else
-                  Build_Ret (Get_Undef (Return_Typ));
+                  Build_Ret (Get_Undef (Return_GT));
                end if;
 
             when Out_Return =>
-               Build_Ret (Get_Undef (Full_Etype
+               Build_Ret (Get_Undef (Full_GL_Type
                                        (First_Out_Param (Current_Subp))));
 
             when Struct_Out | Struct_Out_Subprog =>
@@ -1546,7 +1546,7 @@ package body GNATLLVM.Subprograms is
 
             for J in 1 .. Ent_Caller.Lev - Ent.Lev - 1 loop
                Result := Load
-                 (Get (GEP (Full_Etype (First_Component_Or_Discriminant
+                 (Get (GEP (Full_GL_Type (First_Component_Or_Discriminant
                                           (Full_Designated_Type (Result))),
                             Result, (1 => Const_Null_32, 2 => Const_Null_32),
                             "ARECnF.all.ARECnU"), Reference));
@@ -2168,7 +2168,7 @@ package body GNATLLVM.Subprograms is
             --  Write back the single out parameter to our saved LHS
 
             Write_Back
-              (Out_LHSs (1), Call (LLVM_Func, Full_Etype (Out_Param), Args));
+              (Out_LHSs (1), Call (LLVM_Func, Full_GL_Type (Out_Param), Args));
 
          when Struct_Out | Struct_Out_Subprog =>
             Actual_Return := Call_Struct (LLVM_Func, Return_GT, Args);
@@ -2193,7 +2193,7 @@ package body GNATLLVM.Subprograms is
             Out_Idx := 1;
             while Present (Out_Param) loop
                Write_Back (Out_LHSs (Out_Idx),
-                           Extract_Value (Full_Etype (Out_Param),
+                           Extract_Value (Full_GL_Type (Out_Param),
                                           Actual_Return, unsigned (Ret_Idx)));
                Ret_Idx := Ret_Idx + 1;
                Out_Idx := Out_Idx + 1;

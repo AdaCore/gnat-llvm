@@ -721,7 +721,7 @@ package body GNATLLVM.Compile is
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False) return GL_Value
    is
-      TE     : constant Entity_Id := Full_Etype (N);
+      GT     : constant GL_Type := Full_GL_Type (N);
       Expr   : Node_Id;
       Result : GL_Value;
 
@@ -737,7 +737,7 @@ package body GNATLLVM.Compile is
             elsif Nkind (N) in N_Op_Shift then
                return Emit_Shift (Nkind (N), Left_Opnd (N), Right_Opnd (N));
             elsif Nkind_In (N, N_Op_And, N_Op_Or, N_Op_Xor)
-              and then Is_Boolean_Type (TE)
+              and then Is_Boolean_Type (GT)
             then
                return
                  Emit_And_Or_Xor (Nkind (N), Left_Opnd (N), Right_Opnd (N));
@@ -777,18 +777,18 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Unchecked_Type_Conversion =>
-            return Emit_Conversion (Expression (N), TE, N,
+            return Emit_Conversion (Expression (N), GT, N,
                                     Is_Unchecked  => True,
                                     No_Truncation => No_Truncation (N));
 
          when N_Type_Conversion =>
             return Emit_Conversion
-              (Expression (N), TE, N,
+              (Expression (N), GT, N,
                Need_Overflow_Check => Do_Overflow_Check (N),
                Float_Truncate      => Float_Truncate (N));
 
          when N_Qualified_Expression =>
-            return Emit_Conversion (Expression (N), TE, N);
+            return Emit_Conversion (Expression (N), GT, N);
 
          when N_Identifier
             | N_Expanded_Name
@@ -841,20 +841,20 @@ package body GNATLLVM.Compile is
                   Value := Emit_Expression (Expression (Expr));
                end if;
 
-               --  If TE's designated type is a record with discriminants
+               --  If GT's designated type is a record with discriminants
                --  and there's no Value, we're usually passed a subtype as
-               --  Typ.  But in some cases (such as where it's limited), we
+               --  A_GT.  But in some cases (such as where it's limited), we
                --  aren't.
 
                Result := Heap_Allocate_For_Type
-                 (Full_Designated_GL_Type (TE), A_GT,
+                 (Full_Designated_GL_Type (GT), A_GT,
                   V        => Value,
                   N        => N,
                   Proc     => Procedure_To_Call (N),
                   Pool     => Storage_Pool (N),
                   Max_Size => (Is_Unconstrained_Record (A_GT)
                                  and then No (Value)));
-               return Convert_To_Access (Result, TE);
+               return Convert_To_Access (Result, GT);
             end;
 
          when N_Reference =>
@@ -863,7 +863,7 @@ package body GNATLLVM.Compile is
             --  do allow taking 'Reference of something that's not an LValue
             --  (though an assignment to it will fail in that case).
 
-            return Convert_To_Access (Emit_LValue (Prefix (N)), TE);
+            return Convert_To_Access (Emit_LValue (Prefix (N)), GT);
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (N);
@@ -890,11 +890,11 @@ package body GNATLLVM.Compile is
                if Is_Data (Result) and then not For_LHS
                  and then not Prefer_LHS and then Present (F_Idx)
                  and then not Is_Nonnative_Type (R_TE)
-                 and then not Is_Nonnative_Type (TE)
+                 and then not Is_Nonnative_Type (GT)
                  and then (Full_Etype (Result) = R_TE
                              or else Is_Layout_Identical (Result, R_TE))
                then
-                  return Extract_Value (TE, Result,
+                  return Extract_Value (GT, Result,
                                         Get_Field_Ordinal (F_Idx, R_TE));
                else
                   return Normalize_LValue_Reference
@@ -926,8 +926,8 @@ package body GNATLLVM.Compile is
                   Next (Expr);
                end loop;
 
-               return (if   Is_Reference (Result) then Convert_Ref (Result, TE)
-                       else Convert (Result, TE));
+               return (if   Is_Reference (Result) then Convert_Ref (Result, GT)
+                       else Convert (Result, GT));
 
             elsif Nkind (N) = N_Indexed_Component then
 
@@ -964,7 +964,7 @@ package body GNATLLVM.Compile is
                         C_Idxs (J) := unsigned (Bound);
                      end loop;
 
-                     return Extract_Value (TE, Result,
+                     return Extract_Value (GT, Result,
                                            Swap_Indices (C_Idxs, Result));
                   else
                      --  Otherwise, get a reference and do this using GEP.
@@ -975,22 +975,22 @@ package body GNATLLVM.Compile is
                   end if;
                end;
             else
-               return Get_Slice_LValue (TE, Get (Result, Any_Reference));
+               return Get_Slice_LValue (GT, Get (Result, Any_Reference));
             end if;
 
          when N_Aggregate | N_Extension_Aggregate =>
 
             pragma Assert (not For_LHS);
-            if Null_Record_Present (N) and then not Is_Nonnative_Type (TE) then
-               return Const_Null (TE);
+            if Null_Record_Present (N) and then not Is_Nonnative_Type (GT) then
+               return Const_Null (GT);
 
-            elsif Ekind (TE) in Record_Kind then
+            elsif Ekind (GT) in Record_Kind then
                return Emit_Record_Aggregate
                  (N, (if   Present (LHS) and then Is_Safe_From (LHS, N)
                       then LHS else No_GL_Value));
 
             else
-               pragma Assert (Is_Array_Type (TE));
+               pragma Assert (Is_Array_Type (GT));
                --  The back-end supports exactly two types of array
                --  aggregates.  One, which we handle here, is for a
                --  fixed-size aggregate.  The other are very special cases
@@ -999,7 +999,7 @@ package body GNATLLVM.Compile is
                --  them in Emit_Assignment.
 
                return Emit_Array_Aggregate
-                 (N, Number_Dimensions (TE), (1 .. 0 => <>),
+                 (N, Number_Dimensions (GT), (1 .. 0 => <>),
                   (if   Present (LHS) and then Is_Safe_From (LHS, N) then LHS
                    else No_GL_Value));
             end if;
@@ -1010,7 +1010,7 @@ package body GNATLLVM.Compile is
 
          when N_Null =>
             pragma Assert (not For_LHS);
-            return Const_Null (TE);
+            return Const_Null (GT);
 
          when N_In =>
             declare
@@ -1039,13 +1039,13 @@ package body GNATLLVM.Compile is
             pragma Assert (not For_LHS);
             pragma Assert (No (Condition (N)));
             Emit_Raise (N);
-            return Emit_Undef (Default_GL_Type (TE));
+            return Emit_Undef (GT);
 
          when others =>
             Error_Msg_N
               ("unsupported node kind: `" &
                  Node_Kind'Image (Nkind (N)) & "`", N);
-            return Emit_Undef (Default_GL_Type (TE));
+            return Emit_Undef (GT);
       end case;
    end Emit_Internal;
 

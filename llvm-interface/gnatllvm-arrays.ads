@@ -142,11 +142,11 @@ package GNATLLVM.Arrays is
    --  in Idxs.  This list is the constant zero followed by the actual indices
    --  (i.e., with the lower bound already subtracted).
 
-   function Get_Slice_LValue (TE : Entity_Id; V : GL_Value) return GL_Value
+   function Get_Slice_LValue (GT : GL_Type; V : GL_Value) return GL_Value
      with Pre  => Is_Array_Type (Full_Designated_Type (V))
                   and then Number_Dimensions (Full_Designated_Type (V)) = 1,
           Post => Present (Get_Slice_LValue'Result);
-   --  Similar, but we get the position from the First_Index of TE
+   --  Similar, but we get the position from the First_Index of GT
 
    function Get_Array_Elements
      (V        : GL_Value;

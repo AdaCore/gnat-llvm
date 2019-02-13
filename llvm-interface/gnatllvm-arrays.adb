@@ -1524,9 +1524,8 @@ package body GNATLLVM.Arrays is
    -- Get_Slice_LValue --
    ----------------------
 
-   function Get_Slice_LValue (TE : Entity_Id; V : GL_Value) return GL_Value
+   function Get_Slice_LValue (GT : GL_Type; V : GL_Value) return GL_Value
    is
-      GT          : constant GL_Type  := Default_GL_Type (TE);
       Rng         : constant Node_Id  := Get_Dim_Range (First_Index (GT));
       Array_Data  : constant GL_Value := Get (V, Reference);
       Arr_GT      : constant GL_Type  := Full_Designated_GL_Type (V);

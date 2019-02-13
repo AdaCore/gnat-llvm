@@ -509,7 +509,7 @@ package body GNATLLVM.GLValue is
    ---------
 
    function Get (V : GL_Value; Rel : GL_Relationship) return GL_Value is
-      TE     : constant Entity_Id       := Related_Type (V);
+      GT     : constant GL_Type         := Related_Type (V);
       Our_R  : constant GL_Relationship := Relationship (V);
       R      : GL_Relationship          := Rel;
       Result : GL_Value;
@@ -557,7 +557,7 @@ package body GNATLLVM.GLValue is
       --  pointer.
 
       elsif Is_Double_Reference (Our_R) and then Is_Double_Reference (R) then
-         return Ptr_To_Relationship (V, TE, R);
+         return Ptr_To_Relationship (V, GT, R);
 
       --  If we just need to make this into a reference, we can store it
       --  into memory since we only have those relationships if this is a
@@ -579,7 +579,7 @@ package body GNATLLVM.GLValue is
                Promote : constant Basic_Block_T := Maybe_Promote_Alloca (T);
 
             begin
-               Result := G (Alloca (IR_Builder, T, ""), TE, Ref (Our_R));
+               Result := G (Alloca (IR_Builder, T, ""), GT, Ref (Our_R));
                Done_Promoting_Alloca (LLVM_Value (Result), Promote);
                Store (V, Result);
                return Result;
@@ -597,7 +597,7 @@ package body GNATLLVM.GLValue is
             --  If we have bounds and data, extract the data
 
             if Our_R = Bounds_And_Data then
-               return Extract_Value (TE, V, 1);
+               return Extract_Value (GT, V, 1);
 
                --  If we have a reference to something else, try to convert
                --  to a normal reference and then get the data.  If this
@@ -611,7 +611,7 @@ package body GNATLLVM.GLValue is
                --  If we have Boolean_Data, extend it
 
             elsif Our_R = Boolean_Data then
-               return Z_Ext (V, TE);
+               return Z_Ext (V, GT);
             end if;
 
          when Bounds =>
@@ -627,15 +627,14 @@ package body GNATLLVM.GLValue is
             --  If we have both bounds and data, extract the bounds
 
             elsif Our_R = Bounds_And_Data then
-               return Extract_Value_To_Relationship (TE, V, 0, R);
+               return Extract_Value_To_Relationship (GT, V, 0, R);
 
             --  Otherwise, compute the bounds from the type (pass in V
             --  just in case, though we should have handled all the cases
             --  where it's useful above).
 
             else
-               return Get_Array_Bounds (Default_GL_Type (TE),
-                                        Default_GL_Type (TE), V);
+               return Get_Array_Bounds (GT, GT, V);
             end if;
 
          when Bounds_And_Data =>
@@ -644,10 +643,8 @@ package body GNATLLVM.GLValue is
 
             if Our_R = Data then
                return Insert_Value
-                 (Insert_Value (Get_Undef_Relationship (TE, R),
-                                Get_Array_Bounds (Default_GL_Type (TE),
-                                                  Default_GL_Type (TE), V),
-                                0),
+                 (Insert_Value (Get_Undef_Relationship (GT, R),
+                                Get_Array_Bounds (GT, GT, V), 0),
                   V, 1);
             end if;
 
@@ -655,7 +652,7 @@ package body GNATLLVM.GLValue is
             if Our_R /= Reference then
                return Get (Get (V, Reference), R);
             else
-               return Ptr_To_Relationship (V, TE, R);
+               return Ptr_To_Relationship (V, GT, R);
             end if;
 
          when Reference_To_Bounds =>
@@ -664,19 +661,20 @@ package body GNATLLVM.GLValue is
             --  bounds.
 
             if Our_R = Fat_Pointer then
-               return Extract_Value_To_Relationship (TE, V, 1, R);
+               return Extract_Value_To_Relationship (GT, V, 1, R);
 
             --  A reference to bounds and data is a reference to bounds;
             --  we just get the address of the first field.
 
             elsif Our_R = Reference_To_Bounds_And_Data then
-               return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 0));
+               return GEP_To_Relationship (GT, R, V, (1 => 0, 2 => 0));
 
             --  The bounds are in front of the data for a thin pointer
 
             elsif Our_R = Thin_Pointer then
-               Result := Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
-               return Int_To_Relationship (Result, TE, R);
+               Result := Sub (Ptr_To_Size_Type (V),
+                              Get_Bound_Size (Full_Etype (GT)));
+               return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
 
@@ -696,14 +694,15 @@ package body GNATLLVM.GLValue is
             if Our_R = Fat_Pointer then
                return Ptr_To_Relationship
                  (Extract_Value_To_Relationship
-                    (TE, V, 1, Reference_To_Bounds),
-                  TE, R);
+                    (GT, V, 1, Reference_To_Bounds),
+                  GT, R);
 
             --  The bounds are in front of the data for a thin pointer
 
             elsif Our_R = Thin_Pointer then
-               Result := Sub (Ptr_To_Size_Type (V), Get_Bound_Size (TE));
-               return Int_To_Relationship (Result, TE, R);
+               Result := Sub (Ptr_To_Size_Type (V),
+                              Get_Bound_Size (Full_Etype (GT)));
+               return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
 
@@ -719,28 +718,28 @@ package body GNATLLVM.GLValue is
             --  converting it.  For fat pointer, we can extract it.
 
             if Our_R in Thin_Pointer | Trampoline then
-               return Ptr_To_Relationship (V, TE, R);
+               return Ptr_To_Relationship (V, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
             elsif Our_R = Fat_Pointer then
-               return Extract_Value_To_Relationship (TE, V, 0, R);
+               return Extract_Value_To_Relationship (GT, V, 0, R);
             elsif Our_R = Fat_Reference_To_Subprogram then
                return
-                 Ptr_To_Relationship (Extract_Value_To_Ref (TE, V, 0), TE, R);
+                 Ptr_To_Relationship (Extract_Value_To_Ref (GT, V, 0), GT, R);
 
             --  If we have a reference to both bounds and data, we can
             --  compute where the data starts.  If we have the actual
             --  bounds and data, we can store them and proceed as above.
 
             elsif Our_R = Reference_To_Bounds_And_Data then
-               return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 1));
+               return GEP_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
 
             --  For a reference to a component, just use pointer punning
 
             elsif Our_R = Reference_To_Component then
-               return Ptr_To_Relationship (V, TE, R);
+               return Ptr_To_Relationship (V, GT, R);
             end if;
 
          when Thin_Pointer =>
@@ -753,11 +752,11 @@ package body GNATLLVM.GLValue is
             --  Ada language rules guarantee that it will be.
 
             if Our_R = Reference_To_Bounds_And_Data then
-               return GEP_To_Relationship (TE, R, V, (1 => 0, 2 => 1));
+               return GEP_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             elsif Our_R = Fat_Pointer then
-               return Extract_Value_To_Relationship (TE, V, 0, R);
+               return Extract_Value_To_Relationship (GT, V, 0, R);
             elsif Our_R = Data then
                return Get (Get (V, Bounds_And_Data), R);
             end if;
@@ -775,7 +774,7 @@ package body GNATLLVM.GLValue is
 
                Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
                Data    : constant GL_Value  := Get (Val, Reference);
-               Fat_Ptr : constant GL_Value  := Get_Undef_Relationship (TE, R);
+               Fat_Ptr : constant GL_Value  := Get_Undef_Relationship (GT, R);
 
             begin
                return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),
@@ -788,9 +787,9 @@ package body GNATLLVM.GLValue is
             --  subprogram.  Otherwise, we make an undefined one.
 
             if Our_R = Fat_Reference_To_Subprogram then
-               return Extract_Value_To_Relationship (TE, V, 1, R);
+               return Extract_Value_To_Relationship (GT, V, 1, R);
             elsif Our_R = Reference then
-               return Get_Undef_Relationship (TE, R);
+               return Get_Undef_Relationship (GT, R);
             end if;
 
          when Fat_Reference_To_Subprogram =>
@@ -799,7 +798,7 @@ package body GNATLLVM.GLValue is
             --  an undefined static link.
 
             if Our_R in Reference | Trampoline then
-               return Insert_Value (Get_Undef_Relationship (TE, R),
+               return Insert_Value (Get_Undef_Relationship (GT, R),
                                     Convert_To_Access (V, A_Char_GL_Type), 0);
             end if;
 
@@ -812,7 +811,7 @@ package body GNATLLVM.GLValue is
             --  may be an issue if people do wierd stuff.
 
             if Our_R = Fat_Reference_To_Subprogram then
-               return Extract_Value_To_Relationship (TE, V, 0, R);
+               return Extract_Value_To_Relationship (GT, V, 0, R);
             elsif Our_R = Reference then
                return Get (Get (V, Fat_Reference_To_Subprogram), R);
             end if;
@@ -927,13 +926,6 @@ package body GNATLLVM.GLValue is
    -- Get_Undef --
    ---------------
 
-   function Get_Undef (TE : Entity_Id) return GL_Value is
-     (G (Get_Undef (Type_Of (TE)), TE));
-
-   ---------------
-   -- Get_Undef --
-   ---------------
-
    function Get_Undef (GT : GL_Type) return GL_Value is
      (G (Get_Undef (Type_Of (GT)), GT));
 
@@ -941,16 +933,9 @@ package body GNATLLVM.GLValue is
    -- Get_Undef_Ref --
    -------------------
 
-   function Get_Undef_Ref (TE : Entity_Id) return GL_Value is
-     (G_Ref (Get_Undef (Create_Access_Type_To (TE)), TE, Is_Pristine => True));
-
-   -------------------
-   -- Get_Undef_Ref --
-   -------------------
-
    function Get_Undef_Ref (GT : GL_Type) return GL_Value is
-      (Get_Undef_Ref (Full_Etype (GT)));
-   --  ?? This is a bit of a kludge, but what's correct isn't clear
+     (G_Ref (Get_Undef (Create_Access_Type_To (Full_Etype (GT))),
+             GT, Is_Pristine => True));
 
    ----------------
    -- Const_Ones --
@@ -958,13 +943,6 @@ package body GNATLLVM.GLValue is
 
    function Const_Ones (V : GL_Value) return GL_Value is
      (Const_Ones (Related_Type (V)));
-
-   ----------------
-   -- Const_Null --
-   ----------------
-
-   function Const_Null (TE : Entity_Id) return GL_Value is
-     (G (Const_Null (Type_Of (TE)), TE));
 
    ----------------
    -- Const_Null --
@@ -981,15 +959,6 @@ package body GNATLLVM.GLValue is
      (G (Const_Null (Type_For_Relationship
                        (GT, Deref (Relationship_For_Alloc (GT)))),
          GT, Deref (Relationship_For_Alloc (GT))));
-
-   ----------------------
-   -- Const_Null_Alloc --
-   ----------------------
-
-   function Const_Null_Alloc (TE : Entity_Id) return GL_Value is
-     (G (Const_Null (Type_For_Relationship
-                       (TE, Deref (Relationship_For_Alloc (TE)))),
-         TE, Deref (Relationship_For_Alloc (TE))));
 
    --------------------
    -- Const_Null_Ref --
@@ -1627,30 +1596,6 @@ package body GNATLLVM.GLValue is
    ---------
 
    function GEP
-     (TE      : Entity_Id;
-      Ptr     : GL_Value;
-      Indices : GL_Value_Array;
-      Name    : String := "") return GL_Value
-   is
-      Val_Idxs : Value_Array (Indices'Range);
-      Result   : Value_T;
-
-   begin
-      for J in Indices'Range loop
-         Val_Idxs (J) := LLVM_Value (Indices (J));
-      end loop;
-
-      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
-                               Val_Idxs'Length, Name);
-      return G (Result, TE, Reference_To_Component,
-                Is_Pristine => Is_Pristine (Ptr));
-   end GEP;
-
-   ---------
-   -- GEP --
-   ---------
-
-   function GEP
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : GL_Value_Array;
@@ -1675,30 +1620,6 @@ package body GNATLLVM.GLValue is
    -------------
 
    function GEP_Idx
-     (TE      : Entity_Id;
-      Ptr     : GL_Value;
-      Indices : Index_Array;
-      Name    : String := "") return GL_Value
-   is
-      Val_Idxs : Value_Array (Indices'Range);
-      Result   : Value_T;
-
-   begin
-      for J in Indices'Range loop
-         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
-      end loop;
-
-      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
-                               Val_Idxs'Length, Name);
-      return G (Result, TE, Reference_To_Component,
-                Is_Pristine => Is_Pristine (Ptr));
-   end GEP_Idx;
-
-   -------------
-   -- GEP_Idx --
-   -------------
-
-   function GEP_Idx
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : Index_Array;
@@ -1717,30 +1638,6 @@ package body GNATLLVM.GLValue is
       return G (Result, GT, Reference_To_Component,
                 Is_Pristine => Is_Pristine (Ptr));
    end GEP_Idx;
-
-   -------------------------
-   -- GEP_To_Relationship --
-   -------------------------
-
-   function GEP_To_Relationship
-     (TE      : Entity_Id;
-      R       : GL_Relationship;
-      Ptr     : GL_Value;
-      Indices : Index_Array;
-      Name    : String := "") return GL_Value
-   is
-      Val_Idxs : Value_Array (Indices'Range);
-      Result   : Value_T;
-
-   begin
-      for J in Indices'Range loop
-         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
-      end loop;
-
-      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
-                               Val_Idxs'Length, Name);
-      return G (Result, TE, R, Is_Pristine => Is_Pristine (Ptr));
-   end GEP_To_Relationship;
 
    -------------------------
    -- GEP_To_Relationship --
@@ -1861,20 +1758,6 @@ package body GNATLLVM.GLValue is
 
    function Call
      (Func : GL_Value;
-      TE   : Entity_Id;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value is
-
-   begin
-      return G (Call_Internal (Func, Args, Name), TE);
-   end Call;
-
-   ----------
-   -- Call --
-   ----------
-
-   function Call
-     (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value is
@@ -1889,20 +1772,6 @@ package body GNATLLVM.GLValue is
 
    function Call_Ref
      (Func : GL_Value;
-      TE   : Entity_Id;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value is
-
-   begin
-      return G_Ref (Call_Internal (Func, Args, Name), TE);
-   end Call_Ref;
-
-   --------------
-   -- Call_Ref --
-   --------------
-
-   function Call_Ref
-     (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value is
@@ -1910,20 +1779,6 @@ package body GNATLLVM.GLValue is
    begin
       return G_Ref (Call_Internal (Func, Args, Name), GT);
    end Call_Ref;
-
-   -----------------
-   -- Call_Struct --
-   -----------------
-
-   function Call_Struct
-     (Func : GL_Value;
-      TE   : Entity_Id;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value is
-
-   begin
-      return G (Call_Internal (Func, Args, Name), TE, Unknown);
-   end Call_Struct;
 
    -----------------
    -- Call_Struct --

@@ -1534,7 +1534,7 @@ package body GNATLLVM.Variables is
             Set_Global_Constant
               (LLVM_Var, (Is_True_Constant (Def_Ident)
                             and then not Address_Taken (Def_Ident)));
-            Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (TE, Data),
+            Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (GT, Data),
                                             Bounds_And_Data));
             Set_Init := True;
             Copied   := True;
@@ -1550,8 +1550,8 @@ package body GNATLLVM.Variables is
             Set_Initializer
               (LLVM_Var,
                (if   Is_Ref
-                then Const_Null_Relationship (TE, Reference_To_Component)
-                else Const_Null_Alloc (TE)));
+                then Const_Null_Relationship (GT, Reference_To_Component)
+                else Const_Null_Alloc (GT)));
          end if;
       end if;
 
@@ -1562,8 +1562,7 @@ package body GNATLLVM.Variables is
       end if;
 
       Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  Int (ULL'(Get_Type_Alignment
-                                              (Default_GL_Type (TE)))));
+                                  Int (ULL'(Get_Type_Alignment (GT))));
 
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.

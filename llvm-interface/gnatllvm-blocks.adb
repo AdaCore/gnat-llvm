@@ -966,7 +966,7 @@ package body GNATLLVM.Blocks is
             Position_Builder_At_End (BB);
             BB := Create_Basic_Block;
             Build_Cond_Br (I_Cmp (Int_EQ, Selector,
-                                  Call (EH_Slot_Id_Fn, Int_32_Type,
+                                  Call (EH_Slot_Id_Fn, Int_32_GL_Type,
                                         (1 => Clauses.Table (J).Exc))),
                            Clauses.Table (J).BB, BB);
          end loop;

@@ -2106,11 +2106,11 @@ package body GNATLLVM.Records is
    function Record_Field_Offset
      (V : GL_Value; Field : Entity_Id) return GL_Value
    is
-      F_Type     : constant Entity_Id      := Full_Etype (Field);
+      F_GT       : constant GL_Type        := Full_GL_Type (Field);
       CRC        : constant Entity_Id      :=
         Corresponding_Record_Component (Field);
       Our_Field  : constant Entity_Id      :=
-        (if Present (CRC) and then Full_Etype (CRC) = F_Type
+        (if Present (CRC) and then Full_Etype (CRC) = Full_Etype (F_GT)
          then CRC else Field);
       Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
       First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
@@ -2135,7 +2135,7 @@ package body GNATLLVM.Records is
          end if;
 
          if No (F_Idx) then
-            return Get_Undef_Ref (F_Type);
+            return Get_Undef_Ref (F_GT);
          end if;
       end if;
 
@@ -2149,7 +2149,7 @@ package body GNATLLVM.Records is
       --  a reference to its discrminant.
 
       if Chars (Our_Field) = Name_uParent then
-         Result := Ptr_To_Ref (V, F_Type);
+         Result := Ptr_To_Ref (V, F_GT);
          Add_To_LValue_List (Result);
          return Result;
 
@@ -2160,7 +2160,7 @@ package body GNATLLVM.Records is
       elsif Present (RI.GNAT_Type) then
          return Ptr_To_Ref (GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
                                  (1 => Offset)),
-                            F_Type);
+                            F_GT);
       end if;
 
       --  Otherwise, if this is not the first piece, we have to offset to
@@ -2186,7 +2186,7 @@ package body GNATLLVM.Records is
 
       --  Finally, do a regular GEP for the field and we're done
 
-      return GEP (F_Type, Result,
+      return GEP (F_GT, Result,
                   (1 => Const_Null_32,
                    2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
 

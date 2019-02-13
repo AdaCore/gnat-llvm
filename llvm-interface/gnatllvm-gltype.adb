@@ -437,6 +437,19 @@ package body GNATLLVM.GLType is
          Next (GT);
       end loop;
 
+      --  If what we got was a dummy type, try again to make a type.  Not that
+      --  we may not have succeded, so we may get the dummy type back.
+
+      if Create and then Present (GT) and then Is_Dummy_Type (GT) then
+         Discard (Type_Of (TE));
+         GT := Get_GL_Type (TE);
+
+         while Present (GT) loop
+            exit when GL_Type_Table.Table (GT).Default;
+            Next (GT);
+         end loop;
+      end if;
+
       return GT;
    end Default_GL_Type;
 

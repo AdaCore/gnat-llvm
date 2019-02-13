@@ -83,20 +83,18 @@ package GNATLLVM.Arrays is
    --  Return the N_Range for an array type
 
    function Get_Array_Bound
-     (TE       : Entity_Id;
+     (GT       : GL_Type;
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
       Max_Size : Boolean := False;
       For_Orig : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE)
-                  and then (Present (V) or else Is_Constrained (TE)
-                              or else Max_Size),
+     with Pre  => Present (GT),
           Post => Present (Get_Array_Bound'Result);
    --  Get the bound (lower if Is_Low, else upper) for dimension number
    --  Dim (0-origin) of an array whose LValue is Value and is of type
    --  Arr_Typ.  If For_Orig is True, get the information from
-   --  Original_Array_Type of TE.
+   --  Original_Array_Type of GT.
 
    function Get_Array_Length
      (TE      : Entity_Id;
@@ -216,11 +214,10 @@ package GNATLLVM.Arrays is
    --  from Src_GT and Src, if the latter is Present.
 
    function Get_Array_Bounds
-     (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE)
-                  and then Is_Array_Or_Packed_Array_Type (V_Type),
+     (GT, V_GT : GL_Type; V : GL_Value) return GL_Value
+     with Pre  => Present (GT) and then Present (V_GT),
           Post => Present (Get_Array_Bounds'Result);
-   --  Get the bounds of the array type V_Type using V if necessary.  TE
+   --  Get the bounds of the array type V_GT using V if necessary.  GT
    --  is the type of the array we're getting the bounds for, in case they're
    --  different.
 

@@ -74,8 +74,8 @@ package body GNATLLVM.Arrays is
    --  Table of representation of arrays indices
 
    function Type_For_Get_Bound
-     (TE : Entity_Id; V : GL_Value) return Entity_Id
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
+     (GT : GL_Type; V : GL_Value) return GL_Type
+     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
           Post => Is_Array_Or_Packed_Array_Type (Type_For_Get_Bound'Result);
    --  Get the best type to use to search for a bound of an arrray
 
@@ -191,7 +191,7 @@ package body GNATLLVM.Arrays is
         (N : Node_Id; Is_Low : Boolean) return Result;
 
       function Get_Array_Bound
-        (TE       : Entity_Id;
+        (GT       : GL_Type;
          Dim      : Nat;
          Is_Low   : Boolean;
          V        : GL_Value;
@@ -502,26 +502,26 @@ package body GNATLLVM.Arrays is
    ------------------------
 
    function Type_For_Get_Bound
-     (TE : Entity_Id; V : GL_Value) return Entity_Id
+     (GT : GL_Type; V : GL_Value) return GL_Type
    is
-      V_Type : constant Entity_Id :=
-        (if No (V) then Empty else Related_Type (V));
+      V_GT : constant GL_Type :=
+        (if No (V) then No_GL_Type else Related_Type (V));
 
    begin
-      --  If only TE is around, use it.  Likewise if V_Type is not an array
-      --  type or not related to TE.  Otherwise, use the type that's
-      --  constrained, preferring V's type, but only if TE is
+      --  If only GT is around, use it.  Likewise if V_Type is not an array
+      --  type or not related to GT.  Otherwise, use the type that's
+      --  constrained, preferring V's type, but only if GT is
       --  unconstrained.
 
-      if No (V_Type) or else not Is_Array_Type (V_Type)
-        or else (Ultimate_Base_Type (V_Type) /= Ultimate_Base_Type (TE))
-        or else not Is_Unconstrained_Array (TE)
+      if No (V_GT) or else not Is_Array_Type (V_GT)
+        or else (Ultimate_Base_Type (V_GT) /= Ultimate_Base_Type (GT))
+        or else not Is_Unconstrained_Array (GT)
       then
-         return TE;
-      elsif not Is_Constrained (V_Type) and then Is_Constrained (TE) then
-         return TE;
+         return GT;
+      elsif not Is_Constrained (V_GT) and then Is_Constrained (GT) then
+         return GT;
       else
-         return V_Type;
+         return V_GT;
       end if;
 
    end Type_For_Get_Bound;
@@ -683,17 +683,17 @@ package body GNATLLVM.Arrays is
       ---------------------
 
       function Get_Array_Bound
-        (TE       : Entity_Id;
+        (GT       : GL_Type;
          Dim      : Nat;
          Is_Low   : Boolean;
          V        : GL_Value;
          Max_Size : Boolean := False;
          For_Orig : Boolean := False) return Result
       is
-         Typ        : constant Entity_Id     := Type_For_Get_Bound (TE, V);
+         Our_GT     : constant GL_Type       := Type_For_Get_Bound (GT, V);
          Info_Idx   : constant Array_Info_Id :=
-           (if   For_Orig then Get_Orig_Array_Info (Typ)
-            else Get_Array_Info (Typ));
+           (if   For_Orig then Get_Orig_Array_Info (Full_Etype (Our_GT))
+            else Get_Array_Info (Full_Etype (Our_GT)));
          Dim_Info   : constant Index_Bounds  :=
            Array_Info.Table (Info_Idx + Dim);
          Bound_Info : constant One_Bound     :=
@@ -746,7 +746,7 @@ package body GNATLLVM.Arrays is
          --  See if we're asking for the maximum size of an uncontrained
          --  array.  If so, return the appropriate bound.
 
-         elsif Max_Size and then Is_Unconstrained_Array (TE) then
+         elsif Max_Size and then Is_Unconstrained_Array (GT) then
             declare
                Bound_GT    : constant GL_Type := Dim_Info.Bound_Sub_GT;
                Bound_Limit : constant Node_Id   :=
@@ -760,7 +760,7 @@ package body GNATLLVM.Arrays is
 
          else
             --  We now should have the unconstrained case.  Make sure we do.
-            pragma Assert (Is_Unconstrained_Array (TE)
+            pragma Assert (Is_Unconstrained_Array (GT)
                              and then Relationship (V) /= Reference);
 
             Res := Sz_Extract_Value
@@ -784,9 +784,9 @@ package body GNATLLVM.Arrays is
          Max_Size : Boolean := False) return Result
       is
          Low_Bound  : constant Result :=
-           Get_Array_Bound (TE, Dim, True, V, Max_Size);
+           Get_Array_Bound (Default_GL_Type (TE), Dim, True, V, Max_Size);
          High_Bound : constant Result :=
-           Get_Array_Bound (TE, Dim, False, V, Max_Size);
+           Get_Array_Bound (Default_GL_Type (TE), Dim, False, V, Max_Size);
 
       begin
          --  The length of an array that has the maximum range of its type
@@ -888,7 +888,7 @@ package body GNATLLVM.Arrays is
      renames LLVM_Size.Emit_Expr_For_Minmax;
 
    function Get_Array_Bound
-     (TE       : Entity_Id;
+     (GT       : GL_Type;
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
@@ -1047,8 +1047,7 @@ package body GNATLLVM.Arrays is
       if Type_Needs_Bounds (Dest_GT)
         or else (For_Unconstrained and then not Is_Constrained (Dest_GT))
       then
-         Store (Get_Array_Bounds (Full_Etype (Src_GT),
-                                  Full_Etype (Src_GT), Src),
+         Store (Get_Array_Bounds (Src_GT, Src_GT, Src),
                 Get (Dest, Reference_To_Bounds));
       end if;
    end Maybe_Store_Bounds;
@@ -1340,17 +1339,19 @@ package body GNATLLVM.Arrays is
    ----------------------
 
    function Get_Array_Bounds
-     (TE, V_Type : Entity_Id; V : GL_Value) return GL_Value
+     (GT, V_GT : GL_Type; V : GL_Value) return GL_Value
    is
       Info_Idx : constant Array_Info_Id :=
-        (if   Is_Packed_Array_Impl_Type (TE) then Get_Orig_Array_Info (TE)
-         else Get_Array_Info (TE));
+        (if   Is_Packed_Array_Impl_Type (GT)
+         then Get_Orig_Array_Info (Full_Etype (GT))
+         else Get_Array_Info (Full_Etype (GT)));
       N_Dim    : constant Nat           :=
-        (Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
-                            then Full_Original_Array_Type (TE) else TE));
+        (Number_Dimensions (if   Is_Packed_Array_Impl_Type (GT)
+                            then Full_Original_Array_Type (GT)
+                            else Full_Etype (GT)));
 
    begin
-      return Bound_Val : GL_Value := Get_Undef_Relationship (TE, Bounds) do
+      return Bound_Val : GL_Value := Get_Undef_Relationship (GT, Bounds) do
          for Dim in Nat range 0 .. N_Dim - 1 loop
             declare
                --  The type of the bound of the array we're using for the
@@ -1361,13 +1362,13 @@ package body GNATLLVM.Arrays is
                Bound_GT             : constant GL_Type :=
                  Array_Info.Table (Info_Idx + Dim).Bound_GT;
                Low_Bound            : constant GL_Value  :=
-                 Get_Array_Bound (V_Type, Dim, True, V,
+                 Get_Array_Bound (V_GT, Dim, True, V,
                                   For_Orig =>
-                                    Is_Packed_Array_Impl_Type (V_Type));
+                                    Is_Packed_Array_Impl_Type (V_GT));
                High_Bound           : constant GL_Value  :=
-                 Get_Array_Bound (V_Type, Dim, False, V,
+                 Get_Array_Bound (V_GT, Dim, False, V,
                                   For_Orig =>
-                                    Is_Packed_Array_Impl_Type (V_Type));
+                                    Is_Packed_Array_Impl_Type (V_GT));
                Converted_Low_Bound  : constant GL_Value  :=
                  Convert (Low_Bound, Bound_GT);
                Converted_High_Bound : constant GL_Value  :=
@@ -1440,7 +1441,7 @@ package body GNATLLVM.Arrays is
          declare
             User_Index          : constant GL_Value := Emit_Safe_Expr (N);
             Dim_Low_Bound       : constant GL_Value :=
-              Get_Array_Bound (Full_Etype (GT), Dim, True, V);
+              Get_Array_Bound (GT, Dim, True, V);
             Dim_Op_GT           : constant GL_Type  :=
               Get_GEP_Safe_Type (Dim_Low_Bound);
             Converted_Index     : constant GL_Value :=
@@ -1529,8 +1530,7 @@ package body GNATLLVM.Arrays is
       Rng         : constant Node_Id  := Get_Dim_Range (First_Index (GT));
       Array_Data  : constant GL_Value := Get (V, Reference);
       Arr_GT      : constant GL_Type  := Full_Designated_GL_Type (V);
-      Idx_LB      : constant GL_Value :=
-        Get_Array_Bound (Full_Etype (Arr_GT), 0, True, V);
+      Idx_LB      : constant GL_Value := Get_Array_Bound (Arr_GT, 0, True, V);
       Index_Val   : constant GL_Value := Emit_Safe_Expr (Low_Bound (Rng));
       Dim_Op_GT   : constant GL_Type  := Get_GEP_Safe_Type (Idx_LB);
       Cvt_Index   : constant GL_Value := Convert (Index_Val, Dim_Op_GT);

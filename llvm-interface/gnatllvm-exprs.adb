@@ -773,8 +773,7 @@ package body GNATLLVM.Exprs is
                                             Array_Descr);
                   else
                      V := Get_Array_Bound
-                       (Full_Etype (P_GT), Dim,
-                        Attr = Attribute_First, Array_Descr,
+                       (P_GT, Dim, Attr = Attribute_First, Array_Descr,
                         For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
                   end if;
                else

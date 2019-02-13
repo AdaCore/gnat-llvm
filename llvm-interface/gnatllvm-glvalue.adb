@@ -634,7 +634,8 @@ package body GNATLLVM.GLValue is
             --  where it's useful above).
 
             else
-               return Get_Array_Bounds (TE, TE, V);
+               return Get_Array_Bounds (Default_GL_Type (TE),
+                                        Default_GL_Type (TE), V);
             end if;
 
          when Bounds_And_Data =>
@@ -644,7 +645,9 @@ package body GNATLLVM.GLValue is
             if Our_R = Data then
                return Insert_Value
                  (Insert_Value (Get_Undef_Relationship (TE, R),
-                                Get_Array_Bounds (TE, TE, V), 0),
+                                Get_Array_Bounds (Default_GL_Type (TE),
+                                                  Default_GL_Type (TE), V),
+                                0),
                   V, 1);
             end if;
 

@@ -204,6 +204,11 @@ package GNATLLVM.GLType is
      (Is_Access_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Full_Original_Array_Type (GT : GL_Type) return Entity_Id is
+     (Full_Original_Array_Type (Full_Etype (GT)))
+     with Pre  => Is_Array_Type (GT),
+          Post => Is_Type (Full_Original_Array_Type'Result);
+
    function Full_Designated_Type (GT : GL_Type) return Entity_Id is
      (Full_Designated_Type (Full_Etype (GT)))
      with Pre  => Is_Access_Type (GT),
@@ -242,6 +247,10 @@ package GNATLLVM.GLType is
    function Full_Base_Type (GT : GL_Type) return Entity_Id is
      (Full_Base_Type (Full_Etype (GT)))
      with Pre  => Present (GT), Post => Is_Type (Full_Base_Type'Result);
+
+   function Ultimate_Base_Type (GT : GL_Type) return Entity_Id is
+     (Ultimate_Base_Type (Full_Etype (GT)))
+     with Pre  => Present (GT), Post => Is_Type (Ultimate_Base_Type'Result);
 
    function Is_Nonnative_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);

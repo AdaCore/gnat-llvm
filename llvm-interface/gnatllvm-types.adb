@@ -847,7 +847,9 @@ package body GNATLLVM.Types is
          declare
             New_FP : constant GL_Value :=
               Get_Undef_Relationship (TE, Fat_Pointer);
-            Bounds : constant GL_Value := Get_Array_Bounds (TE, V_Type, V);
+            Bounds : constant GL_Value :=
+              Get_Array_Bounds (Default_GL_Type (TE), Default_GL_Type (V_Type),
+                                V);
             Data   : constant GL_Value :=
               Ptr_To_Relationship (Get (V, Reference), TE, Reference);
 
@@ -1767,8 +1769,7 @@ package body GNATLLVM.Types is
             if not Is_Constrained (GT) or else No (New_V)
               or else New_V = Memory
             then
-               Store (Get_Array_Bounds (Full_Etype (GT),
-                                        Full_Etype (Alloc_GT), New_V),
+               Store (Get_Array_Bounds (GT, Alloc_GT, New_V),
                       Get (Memory, Reference_To_Bounds));
             end if;
          end if;

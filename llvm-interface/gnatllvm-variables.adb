@@ -472,7 +472,7 @@ package body GNATLLVM.Variables is
                           or else Is_Static_Location (Renamed_Object (N)))
               and then Ekind (N) /= E_Enumeration_Literal
               and then (Ekind (Full_Etype (N)) = E_Void
-                          or else not Is_Dynamic_Size (Full_Etype (N)))
+                          or else not Is_Dynamic_Size (Full_GL_Type (N)))
               and then (Library_Level or else In_Elab_Proc
                           or else Is_Statically_Allocated (N)
                           or else not In_Extended_Main_Code_Unit (N));
@@ -1260,7 +1260,8 @@ package body GNATLLVM.Variables is
       --  unless we have a qualified expression initializing a class wide
       --  type.
 
-      Max_Size     : constant Boolean   := Is_Unconstrained_Record (TE);
+      GT           : constant GL_Type   := Default_GL_Type (TE);
+      Max_Size     : constant Boolean   := Is_Unconstrained_Record (GT);
       --  True if our allocation should be of the maximum size.
 
       Addr_Expr    : constant Node_Id   :=
@@ -1274,7 +1275,7 @@ package body GNATLLVM.Variables is
       --  True if variable is not defined in this unit
 
       Is_Ref       : constant Boolean   :=
-        Present (Addr_Expr) or else Is_Dynamic_Size (TE, Max_Size);
+        Present (Addr_Expr) or else Is_Dynamic_Size (GT, Max_Size);
       --  True if we need to use an indirection for this variable
 
       Value        : GL_Value           :=
@@ -1295,9 +1296,9 @@ package body GNATLLVM.Variables is
       LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
       --  The LLVM value for the variable
 
-      function Can_Initialize (V : GL_Value; TE : Entity_Id) return Boolean
-        with Pre => Present (V) and then Is_Type (TE);
-      --  Return True if we can build an initializer of type TE for V.
+      function Can_Initialize (V : GL_Value; GT : GL_Type) return Boolean
+        with Pre => Present (V) and then Present (GT);
+      --  Return True if we can build an initializer of type GT for V.
       --  This handles the case of duplicate linker names and verifies
       --  that if V is a conversion of such a global, that we can
       --  convert to its referenced type.
@@ -1306,7 +1307,7 @@ package body GNATLLVM.Variables is
       -- Can_Initialize --
       --------------------
 
-      function Can_Initialize (V : GL_Value; TE : Entity_Id) return Boolean is
+      function Can_Initialize (V : GL_Value; GT : GL_Type) return Boolean is
       begin
          --  If this is a global, we know we can initalize it
 
@@ -1325,7 +1326,7 @@ package body GNATLLVM.Variables is
             Orig_V : constant Value_T := Get_Operand (LLVM_Value (V), 0);
             V_P_T  : constant Type_T  := Type_Of (Orig_V);
             V_T    : constant Type_T  := Get_Element_Type (V_P_T);
-            T      : constant Type_T  := Type_Of (TE);
+            T      : constant Type_T  := Type_Of (GT);
 
          begin
             --  We can only do this if T and V_T are both structure types
@@ -1472,7 +1473,7 @@ package body GNATLLVM.Variables is
          --  of the allocation in the elab proc if at library level.
 
          if Library_Level and then not Is_External
-           and then Is_Dynamic_Size (TE, Max_Size)
+           and then Is_Dynamic_Size (GT, Max_Size)
          then
             Add_To_Elab_Proc (N);
          end if;
@@ -1489,8 +1490,8 @@ package body GNATLLVM.Variables is
 
          if Present (Expr) then
             if Is_No_Elab_Needed (Expr)
-              and then Can_Initialize (LLVM_Var, TE)
-              and then not Is_Dynamic_Size (TE, Max_Size)
+              and then Can_Initialize (LLVM_Var, GT)
+              and then not Is_Dynamic_Size (GT, Max_Size)
               and then No (Addr_Expr)
               and then Is_Static_Conversion (Full_Etype (Expr), TE)
             then
@@ -1527,8 +1528,8 @@ package body GNATLLVM.Variables is
          --  we have no expression.  In that case, we still have to
          --  initialize the bounds.
 
-         elsif Type_Needs_Bounds (TE)
-           and then not Is_Dynamic_Size (TE, Max_Size)
+         elsif Type_Needs_Bounds (GT)
+           and then not Is_Dynamic_Size (GT, Max_Size)
          then
             Set_Global_Constant
               (LLVM_Var, (Is_True_Constant (Def_Ident)
@@ -1612,7 +1613,7 @@ package body GNATLLVM.Variables is
       if Present (LLVM_Var) then
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
-         elsif Is_Dynamic_Size (TE, Max_Size) then
+         elsif Is_Dynamic_Size (GT, Max_Size) then
             Store (Get (Heap_Allocate_For_Type (TE, TE, Value,
                                                 Expr      => Expr,
                                                 N         => N,

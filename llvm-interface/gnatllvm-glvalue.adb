@@ -373,16 +373,16 @@ package body GNATLLVM.GLValue is
    ----------------------------
 
    function Relationship_For_Alloc (TE : Entity_Id) return GL_Relationship is
-      R : constant GL_Relationship := Relationship_For_Ref (TE);
-
+      R  : constant GL_Relationship := Relationship_For_Ref (TE);
+      GT : constant GL_Type         := Default_GL_Type (TE);
    begin
       --  One difference here is when we need to allocate both bounds
       --  and data.  We do this for string literals because they are most
       --  commonly used in situations where they're passed as parameters
       --  where the formal is a String.
 
-      if Is_Unconstrained_Array (TE) or else Type_Needs_Bounds (TE)
-        or else Ekind (TE) = E_String_Literal_Subtype
+      if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (GT)
+        or else Ekind (GT) = E_String_Literal_Subtype
       then
          return Reference_To_Bounds_And_Data;
 
@@ -390,9 +390,9 @@ package body GNATLLVM.GLValue is
       --  with a fixed maximum size or when the type's size is not dynamic
       --  but isn't representable as a native LLVM type.
 
-      elsif (Is_Unconstrained_Record (TE)
-               and then not Is_Dynamic_Size (TE, Max_Size => True))
-        or else (not Is_Dynamic_Size (TE) and then Is_Nonnative_Type (TE))
+      elsif (Is_Unconstrained_Record (GT)
+               and then not Is_Dynamic_Size (GT, Max_Size => True))
+        or else (not Is_Dynamic_Size (GT) and then Is_Nonnative_Type (GT))
       then
          return Reference_To_Component;
       else

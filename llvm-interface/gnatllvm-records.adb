@@ -569,9 +569,9 @@ package body GNATLLVM.Records is
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
-        (E             : Entity_Id;
-         RI_Idx        : Record_Info_Id;
-         Ordinal       : Nat;
+        (E       : Entity_Id;
+         RI_Idx  : Record_Info_Id;
+         Ordinal : Nat;
          F_TE    : in out Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
@@ -631,9 +631,9 @@ package body GNATLLVM.Records is
       ------------
 
       procedure Add_FI
-        (E             : Entity_Id;
-         RI_Idx        : Record_Info_Id;
-         Ordinal       : Nat;
+        (E       : Entity_Id;
+         RI_Idx  : Record_Info_Id;
+         Ordinal : Nat;
          F_TE    : in out Entity_Id)
       is
          Matching_Field : Entity_Id;
@@ -1095,7 +1095,8 @@ package body GNATLLVM.Records is
 
       procedure Add_Field (E : Entity_Id) is
          F_TE  : Entity_Id    := Full_Etype (E);
-         Align : constant ULL := Get_Type_Alignment (Default_GL_Type (F_TE));
+         F_GT  : GL_Type      := Default_GL_Type (F_TE);
+         Align : constant ULL := Get_Type_Alignment (F_GT);
 
       begin
          --  If this is the '_parent' field, we make a dummy entry and handle
@@ -1109,12 +1110,12 @@ package body GNATLLVM.Records is
          --  record info entry we're making, if there's anything in it,
          --  and make a piece for this field.
 
-         elsif Is_Dynamic_Size (F_TE,
-                                Max_Size => not Is_Constrained (F_TE))
+         elsif Is_Dynamic_Size (F_GT, Max_Size => not Is_Constrained (F_GT))
          then
             Flush_Current_Types;
             Add_FI (E, Cur_Idx, 0, F_TE);
-            Add_RI (Typ => F_TE, Use_Max_Size => not Is_Constrained (F_TE));
+            F_GT := Default_GL_Type (F_TE);
+            Add_RI (Typ => F_TE, Use_Max_Size => not Is_Constrained (F_GT));
             Set_Is_Nonnative_Type (TE);
             Split_Align := Align;
 
@@ -2262,7 +2263,7 @@ package body GNATLLVM.Records is
 
          if No (Result) then
             if (Is_Loadable_Type (TE)
-                  or else (not Is_Dynamic_Size (TE)
+                  or else (not Is_Dynamic_Size (Default_GL_Type (TE))
                              and then Is_No_Elab_Needed (N)))
               and then not Contains_Unconstrained_Record (TE)
             then

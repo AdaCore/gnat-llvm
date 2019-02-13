@@ -70,10 +70,10 @@ package GNATLLVM.Types is
    --  this a command-line operand.
 
    function Is_Dynamic_Size
-     (TE : Entity_Id; Max_Size : Boolean := False) return Boolean
-     with Pre => Is_Type (TE);
-   --  Returns True if TE's size is not known at compile-time.  Max_Size
-   --  is True if we're to consider the maximum size of TE.
+     (GT : GL_Type; Max_Size : Boolean := False) return Boolean
+     with Pre => Present (GT);
+   --  Returns True if GT's size is not known at compile-time.  Max_Size
+   --  is True if we're to consider the maximum size of GT's type.
 
    function Create_Access_Type_To (TE : Entity_Id) return Type_T is
      (Type_For_Relationship (TE, Relationship_For_Ref (TE)))

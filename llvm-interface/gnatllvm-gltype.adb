@@ -601,26 +601,6 @@ package body GNATLLVM.GLType is
         and then Is_Nonnative_Type (GTI.GNAT_Type);
    end Is_Nonnative_Type;
 
-   ---------------------
-   -- Is_Dynamic_Size --
-   ---------------------
-
-   function Is_Dynamic_Size
-     (GT : GL_Type; Max_Size : Boolean := False) return Boolean
-   is
-      GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
-
-   begin
-      --  If we've built an LLVM type to do padding, then that's not of
-      --  dynamic size.  Otherwise, we have to look at whether the
-      --  underlying type has a native representation or not.
-      --  ??? Max_Size above will go away soon.
-
-      return GTI.Kind not in Padded | Byte_Array
-        and then Is_Dynamic_Size (GTI.GNAT_Type,
-                                  Max_Size => GTI.Max_Size or else Max_Size);
-   end Is_Dynamic_Size;
-
    ----------------------
    -- Dump_GL_Type_Int --
    ----------------------

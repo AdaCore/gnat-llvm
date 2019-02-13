@@ -201,7 +201,7 @@ package body GNATLLVM.Types is
    ----------------------
 
    function Is_Dynamic_Size
-     (TE : Entity_Id; Max_Size : Boolean := False) return Boolean
+     (GT : GL_Type; Max_Size : Boolean := False) return Boolean
    is
       Size : IDS;
    begin
@@ -209,14 +209,14 @@ package body GNATLLVM.Types is
       --  to do this test not just for efficiency, but also to avoid
       --  infinite recursion if we are passed Size_Type.
 
-      if Is_Elementary_Type (TE) then
+      if Is_Elementary_Type (GT) then
          return False;
       end if;
 
       --  Otherwise get the size for our purposes.  If not a constant or not
       --  something LLVM can use natively as an array bound, this is dynamic.
 
-      Size := IDS_Type_Size (Default_GL_Type (TE), No_GL_Value, Max_Size);
+      Size := IDS_Type_Size (GT, No_GL_Value, Max_Size);
       return not IDS_Is_Const (Size)
         or else IDS_Const_Int (Size) < 0
         or else IDS_Const_Int (Size) > LLI (unsigned'Last);
@@ -1848,7 +1848,7 @@ package body GNATLLVM.Types is
       end if;
 
       if Is_Array_Type (Alloc_TE)
-        and then not Is_Dynamic_Size (Full_Component_Type (Alloc_TE),
+        and then not Is_Dynamic_Size (Full_Component_GL_Type (Alloc_TE),
                                       not Is_Constrained
                                         (Full_Component_Type (Alloc_TE)))
         and then not Is_Constr_Subt_For_UN_Aliased (Alloc_TE)

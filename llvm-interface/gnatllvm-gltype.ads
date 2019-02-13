@@ -238,10 +238,6 @@ package GNATLLVM.GLType is
      (Full_Base_Type (Full_Etype (GT)))
      with Pre  => Present (GT), Post => Is_Type (Full_Base_Type'Result);
 
-   function Is_Dynamic_Size
-     (GT : GL_Type; Max_Size : Boolean := False) return Boolean
-     with Pre => Present (GT);
-
    function Is_Nonnative_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
 

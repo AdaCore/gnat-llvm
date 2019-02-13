@@ -17,7 +17,6 @@
 
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
-with Stand;    use Stand;
 with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
@@ -311,22 +310,21 @@ package body GNATLLVM.Arrays is
    is
       type Dim_Info_Array is array (Nat range <>) of Index_Bounds;
 
-      A_TE              : constant Entity_Id     :=
+      A_TE              : constant Entity_Id :=
         (if For_Orig then Full_Original_Array_Type (TE) else TE);
-      Unconstrained     : constant Boolean       := not Is_Constrained (A_TE);
-      Comp_Type         : constant Entity_Id     := Full_Component_Type (A_TE);
-      Base_Type         : constant Entity_Id     :=
+      Unconstrained     : constant Boolean   := not Is_Constrained (A_TE);
+      Comp_GT           : constant GL_Type   := Full_Component_GL_Type (A_TE);
+      Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);
-      Must_Use_Fake     : Boolean                :=
-        Is_Dynamic_Size (Comp_Type, Is_Unconstrained_Record (Comp_Type));
-      This_Nonnative    : Boolean                :=
-        Must_Use_Fake or Unconstrained;
-      CT_To_Use         : constant Entity_Id     :=
-        (if Must_Use_Fake then Standard_Short_Short_Integer else Comp_Type);
-      Typ               : Type_T                 :=
+      Must_Use_Fake     : Boolean            :=
+        Is_Dynamic_Size (Comp_GT, Is_Unconstrained_Record (Comp_GT));
+      This_Nonnative    : Boolean            := Must_Use_Fake or Unconstrained;
+      CT_To_Use         : constant GL_Type   :=
+        (if Must_Use_Fake then SSI_GL_Type else Comp_GT);
+      Typ               : Type_T             :=
         Type_For_Relationship (CT_To_Use, Component);
-      Dim               : Nat                    := 0;
-      Last_Dim          : constant Nat           :=
+      Dim               : Nat                := 0;
+      Last_Dim          : constant Nat       :=
         (if   Ekind (A_TE) = E_String_Literal_Subtype
          then 1 else Number_Dimensions (A_TE) - 1);
       Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
@@ -340,7 +338,8 @@ package body GNATLLVM.Arrays is
       end if;
 
       if Is_Base_Type (A_TE) and then Unknown_Component_Size (A_TE) then
-         Set_Component_Size (A_TE, Annotated_Object_Size (Comp_Type));
+         Set_Component_Size (A_TE,
+                             Annotated_Object_Size (Full_Etype (Comp_GT)));
       end if;
 
       --  We loop through each dimension of the array creating the entries
@@ -1558,7 +1557,7 @@ package body GNATLLVM.Arrays is
          Comp_GT   : constant GL_Type := Full_Component_GL_Type (Arr_GT);
          Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_GT);
          Use_Comp  : constant Boolean   :=
-           not Is_Dynamic_Size (Full_Etype (Comp_GT), Comp_Unc);
+           not Is_Dynamic_Size (Comp_GT, Comp_Unc);
          Unit_GT   : constant GL_Type   :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value  :=

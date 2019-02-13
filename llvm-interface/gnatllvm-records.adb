@@ -34,7 +34,6 @@ with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
@@ -2221,8 +2220,8 @@ package body GNATLLVM.Records is
    -- Contains_Unconstrained_Record --
    -----------------------------------
 
-   function Contains_Unconstrained_Record (TE : Entity_Id) return Boolean is
-      F : Entity_Id := First_Component_Or_Discriminant (TE);
+   function Contains_Unconstrained_Record (GT : GL_Type) return Boolean is
+      F : Entity_Id := First_Component_Or_Discriminant (GT);
 
    begin
       while Present (F) loop
@@ -2240,7 +2239,7 @@ package body GNATLLVM.Records is
    function Emit_Record_Aggregate
      (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
    is
-      TE       : constant Entity_Id := Full_Etype (N);
+      GT       : constant GL_Type := Full_GL_Type (N);
       Expr     : Node_Id;
 
    begin
@@ -2249,10 +2248,8 @@ package body GNATLLVM.Records is
       --  structure, so we just go through each of the part of the
       --  aggregate and use the offset for that field, skipping a
       --  discriminant of an unchecked union.  If not, we use
-      --  Record_Field_Offset to do the reference.  First, ensure that
-      --  the type has been elaborated so field indices exist.
+      --  Record_Field_Offset to do the reference.
 
-      Discard (Type_Of (TE));
       Expr := First (Component_Associations (N));
       return Result : GL_Value := Result_So_Far do
 
@@ -2262,14 +2259,14 @@ package body GNATLLVM.Records is
          --  of that type.
 
          if No (Result) then
-            if (Is_Loadable_Type (TE)
-                  or else (not Is_Dynamic_Size (Default_GL_Type (TE))
+            if (Is_Loadable_Type (GT)
+                  or else (not Is_Dynamic_Size (GT)
                              and then Is_No_Elab_Needed (N)))
-              and then not Contains_Unconstrained_Record (TE)
+              and then not Contains_Unconstrained_Record (GT)
             then
-               Result := Get_Undef (TE);
+               Result := Get_Undef (GT);
             else
-               Result := Allocate_For_Type (TE, TE, N);
+               Result := Allocate_For_Type (GT, GT, N);
             end if;
          end if;
 
@@ -2279,13 +2276,13 @@ package body GNATLLVM.Records is
             declare
                Field  : constant Entity_Id     :=
                  Find_Matching_Field
-                 (TE, Entity (First (Choices (Expr))));
+                 (Full_Etype (GT), Entity (First (Choices (Expr))));
                F_Type : constant Entity_Id     := Full_Etype (Field);
                F_Idx  : constant Field_Info_Id := Get_Field_Info (Field);
 
             begin
                if Ekind (Field) = E_Discriminant
-                 and then Is_Unchecked_Union (TE)
+                 and then Is_Unchecked_Union (GT)
                then
                   null;
                elsif Chars (Field) = Name_uParent then
@@ -2334,8 +2331,8 @@ package body GNATLLVM.Records is
                   else
                      --  Ensure we understand this case
 
-                     pragma Assert (Ekind (TE) = E_Record_Subtype
-                                      and then Has_Discriminants (TE)
+                     pragma Assert (Ekind (GT) = E_Record_Subtype
+                                      and then Has_Discriminants (GT)
                                       and then (Ekind (Field) = E_Component));
                   end if;
                end if;

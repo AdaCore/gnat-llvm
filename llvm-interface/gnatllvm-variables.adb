@@ -685,7 +685,7 @@ package body GNATLLVM.Variables is
                end loop;
 
             elsif Is_Record_Type (TE) then
-               if Contains_Unconstrained_Record (TE) then
+               if Contains_Unconstrained_Record (Default_GL_Type (TE)) then
                   return False;
                end if;
 
@@ -1614,7 +1614,8 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Dynamic_Size (GT, Max_Size) then
-            Store (Get (Heap_Allocate_For_Type (TE, TE, Value,
+            Store (Get (Heap_Allocate_For_Type (Default_GL_Type (TE),
+                                                Default_GL_Type (TE), Value,
                                                 Expr      => Expr,
                                                 N         => N,
                                                 Def_Ident => Def_Ident,
@@ -1663,7 +1664,9 @@ package body GNATLLVM.Variables is
       --  on the stack, copying in any value.
 
       if No (LLVM_Var) then
-         LLVM_Var := Allocate_For_Type (TE, TE, Def_Ident, Value, Expr,
+         LLVM_Var := Allocate_For_Type (Default_GL_Type (TE),
+                                        Default_GL_Type (TE),
+                                        Def_Ident, Value, Expr,
                                         Def_Ident => Def_Ident,
                                         Max_Size  => Max_Size);
          Copied := True;

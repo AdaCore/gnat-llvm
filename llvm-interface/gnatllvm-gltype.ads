@@ -214,6 +214,11 @@ package GNATLLVM.GLType is
      with Pre  => Is_Access_Type (GT),
           Post => Present (Full_Designated_GL_Type'Result);
 
+   function Full_Designated_GL_Type (TE : Entity_Id) return GL_Type is
+     (Default_GL_Type (Full_Designated_Type (TE)))
+     with Pre  => Is_Access_Type (TE),
+          Post => Present (Full_Designated_GL_Type'Result);
+
    function Full_Designated_GL_Type (V : GL_Value) return GL_Type is
      (Default_GL_Type (Full_Designated_Type (V)))
      with Pre  => Is_Access_Type (V),
@@ -350,8 +355,16 @@ package GNATLLVM.GLType is
      (Is_By_Reference_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Unchecked_Union (GT : GL_Type) return Boolean is
+     (Is_Unchecked_Union (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Has_Foreign_Convention (GT : GL_Type) return Boolean is
      (Has_Foreign_Convention (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Has_Discriminants (GT : GL_Type) return Boolean is
+     (Has_Discriminants (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Requires_Transient_Scope (GT : GL_Type) return Boolean is
@@ -401,6 +414,10 @@ package GNATLLVM.GLType is
    function First_Index (GT : GL_Type) return Entity_Id is
      (First_Index (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT);
+
+   function First_Component_Or_Discriminant (GT : GL_Type) return Entity_Id is
+     (First_Component_Or_Discriminant (Full_Etype (GT)))
+     with Pre => Is_Record_Type (GT);
 
    function Convention (GT : GL_Type) return Convention_Id is
      (Convention (Full_Etype (GT)))

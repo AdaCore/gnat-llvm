@@ -89,9 +89,9 @@ package body GNATLLVM.Subprograms is
    --  Return the parameter kind for Param
 
    function Relationship_For_PK
-     (PK : Param_Kind; TE : Entity_Id) return GL_Relationship
-     with Pre => Is_Type (TE);
-   --  Return the Relationship for a parameter of type TE and kind PK
+     (PK : Param_Kind; GT : GL_Type) return GL_Relationship
+     with Pre => Present (GT);
+   --  Return the Relationship for a parameter of type GT and kind PK
 
    function Count_In_Params (E : Entity_Id) return Nat
      with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
@@ -645,10 +645,10 @@ package body GNATLLVM.Subprograms is
    -------------------------
 
    function Relationship_For_PK
-     (PK : Param_Kind; TE : Entity_Id) return GL_Relationship is
+     (PK : Param_Kind; GT : GL_Type) return GL_Relationship is
    begin
       if PK_Is_Reference (PK) then
-         return (if Is_Unconstrained_Array (TE)
+         return (if Is_Unconstrained_Array (GT)
                    and then PK /= Foreign_By_Ref
                  then Fat_Pointer else Reference);
       else
@@ -1169,11 +1169,11 @@ package body GNATLLVM.Subprograms is
             type String_Access is access constant String;
 
             PK     : constant Param_Kind      := Get_Param_Kind (Param);
-            TE     : constant Entity_Id       := Full_Etype (Param);
-            R      : constant GL_Relationship := Relationship_For_PK (PK, TE);
+            GT     : constant GL_Type         := Full_GL_Type (Param);
+            R      : constant GL_Relationship := Relationship_For_PK (PK, GT);
             V      : constant GL_Value        :=
               (if   PK_Is_In_Or_Ref (PK)
-               then Get_Param (Func, Param_Num, TE, R) else No_GL_Value);
+               then Get_Param (Func, Param_Num, GT, R) else No_GL_Value);
             P_Name : aliased constant String  := Get_Name (Param);
             A_Name : aliased constant String  := P_Name & ".addr";
             Name   : String_Access            := P_Name'Access;
@@ -1191,7 +1191,7 @@ package body GNATLLVM.Subprograms is
             --  unchanged.
 
             if PK_Is_Out (PK) then
-               LLVM_Param := Allocate_For_Type (TE, TE, Param, V,
+               LLVM_Param := Allocate_For_Type (GT, GT, Param, V,
                                                 Def_Ident => Param,
                                                 Name      => Name.all);
             else
@@ -1458,7 +1458,7 @@ package body GNATLLVM.Subprograms is
                          and then Present (Storage_Pool (N)))
             then
                V := Get (Heap_Allocate_For_Type
-                           (Full_Etype (GT), Full_Etype (Expr),
+                           (GT, Full_GL_Type (Expr),
                             Expr => Expr,
                             N    => N,
                             Proc => Procedure_To_Call (N),
@@ -1954,14 +1954,14 @@ package body GNATLLVM.Subprograms is
       --  Write the value in In_RHS to the location In_LHS
 
       Subp             : Node_Id              := Name (N);
-      Our_Return_Typ   : constant Entity_Id   := Full_Etype (N);
+      Our_Return_GT    : constant GL_Type     := Full_GL_Type (N);
       Direct_Call      : constant Boolean     :=
         Nkind (Subp) /= N_Explicit_Dereference;
       Subp_Typ         : constant Entity_Id   :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
       RK               : constant Return_Kind := Get_Return_Kind  (Subp_Typ);
       LRK              : constant L_Ret_Kind  := Get_L_Ret_Kind   (Subp_Typ);
-      Return_Typ       : constant Entity_Id   := Full_Etype       (Subp_Typ);
+      Return_GT        : constant GL_Type     := Full_GL_Type     (Subp_Typ);
       Orig_Arg_Count   : constant Nat         := Count_In_Params  (Subp_Typ);
       Out_Arg_Count    : constant Nat         := Count_Out_Params (Subp_Typ);
       Out_Param        : Entity_Id            := First_Out_Param  (Subp_Typ);
@@ -2059,11 +2059,11 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          Args (In_Idx) :=
-           Get (Allocate_For_Type (Return_Typ, Return_Typ, Subp,
+           Get (Allocate_For_Type (Return_GT, Return_GT, Subp,
                                    Name     => "return",
                                    Max_Size =>
-                                     Is_Unconstrained_Record (Return_Typ)),
-                Relationship_For_Ref (Return_Typ));
+                                     Is_Unconstrained_Record (Return_GT)),
+                Relationship_For_Ref (Return_GT));
          In_Idx        := In_Idx + 1;
       end if;
 
@@ -2080,9 +2080,9 @@ package body GNATLLVM.Subprograms is
       while Present (Actual) loop
 
          declare
-            TE  : constant Entity_Id       := Full_Etype (Param);
+            GT  : constant GL_Type         := Full_GL_Type (Param);
             PK  : constant Param_Kind      := Get_Param_Kind (Param);
-            R   : constant GL_Relationship := Relationship_For_PK (PK, TE);
+            R   : constant GL_Relationship := Relationship_For_PK (PK, GT);
             Arg : GL_Value;
 
          begin
@@ -2103,10 +2103,10 @@ package body GNATLLVM.Subprograms is
                if PK_Is_Reference (PK) then
                   Arg := Emit_LValue (Actual);
                   Arg := (if   PK = Foreign_By_Ref
-                          then Ptr_To_Relationship (Get (Arg, R), TE, R)
-                          else Convert_Ref (Arg, TE));
+                          then Ptr_To_Relationship (Get (Arg, R), GT, R)
+                          else Convert_Ref (Arg, GT));
                else
-                  Arg := Get (Emit_Conversion (Actual, TE), Data);
+                  Arg := Get (Emit_Conversion (Actual, GT), Data);
                end if;
 
                Args (In_Idx) := Arg;
@@ -2124,7 +2124,7 @@ package body GNATLLVM.Subprograms is
             if PK_Is_Out (PK) then
                Out_LHSs (Out_Idx) :=
                  (if   PK_Is_In_Or_Ref (PK) and then Is_Undef (Arg)
-                  then Get_Undef_Ref (TE)
+                  then Get_Undef_Ref (GT)
                   else Emit_LValue (Strip_Conversions (Actual)));
                Out_Idx := Out_Idx + 1;
             end if;
@@ -2156,9 +2156,9 @@ package body GNATLLVM.Subprograms is
 
          when Subprog_Return =>
             if RK = RK_By_Reference then
-               return Call_Ref (LLVM_Func, Return_Typ, Args);
+               return Call_Ref (LLVM_Func, Return_GT, Args);
             else
-               return Call (LLVM_Func, Return_Typ, Args);
+               return Call (LLVM_Func, Return_GT, Args);
             end if;
 
          when Out_Return =>
@@ -2169,17 +2169,17 @@ package body GNATLLVM.Subprograms is
               (Out_LHSs (1), Call (LLVM_Func, Full_Etype (Out_Param), Args));
 
          when Struct_Out | Struct_Out_Subprog =>
-            Actual_Return := Call_Struct (LLVM_Func, Return_Typ, Args);
+            Actual_Return := Call_Struct (LLVM_Func, Return_GT, Args);
 
             --  First extract the return value (possibly returned by-ref)
 
             Ret_Idx := 0;
             if LRK = Struct_Out_Subprog then
                if RK = RK_By_Reference then
-                  Result := Extract_Value_To_Ref (Return_Typ, Actual_Return,
+                  Result := Extract_Value_To_Ref (Return_GT, Actual_Return,
                                                   unsigned (Ret_Idx));
                else
-                  Result := Extract_Value (Return_Typ, Actual_Return,
+                  Result := Extract_Value (Return_GT, Actual_Return,
                                            unsigned (Ret_Idx));
                end if;
 
@@ -2200,7 +2200,7 @@ package body GNATLLVM.Subprograms is
       end case;
 
       if RK = Return_By_Parameter then
-         return Convert_Ref (Args (1), Our_Return_Typ);
+         return Convert_Ref (Args (1), Our_Return_GT);
       else
          return Result;
       end if;

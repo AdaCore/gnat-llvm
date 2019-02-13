@@ -344,9 +344,13 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Free_Statement =>
-            Heap_Deallocate (Emit_Expression (Expression (N)),
-                             Actual_Designated_Subtype (N),
-                             Procedure_To_Call (N), Storage_Pool (N));
+            Heap_Deallocate
+              (Emit_Expression (Expression (N)),
+               (if   Present (Actual_Designated_Subtype (N))
+                then Default_GL_Type (Get_Fullest_View
+                                        (Actual_Designated_Subtype (N)))
+                else No_GL_Type),
+               Procedure_To_Call (N), Storage_Pool (N));
 
          when N_Code_Statement =>
             Emit_Code_Statement (N);
@@ -816,9 +820,9 @@ package body GNATLLVM.Compile is
          when N_Allocator =>
 
             declare
-               Expr   : constant Node_Id := Expression (N);
-               Value  : GL_Value         := No_GL_Value;
-               Typ    : Entity_Id;
+               Expr  : constant Node_Id := Expression (N);
+               Value : GL_Value         := No_GL_Value;
+               A_GT  : GL_Type;
 
             begin
                --  There are two cases: the Expression operand can
@@ -829,11 +833,11 @@ package body GNATLLVM.Compile is
 
                pragma Assert (not For_LHS);
                if Is_Entity_Name (Expr) then
-                  Typ   := Get_Fullest_View (Entity (Expr));
+                  A_GT  := Default_GL_Type (Get_Fullest_View (Entity (Expr)));
                   Value := No_GL_Value;
                else
                   pragma Assert (Nkind (Expr) = N_Qualified_Expression);
-                  Typ   := Full_Etype (Expression (Expr));
+                  A_GT  := Full_GL_Type (Expression (Expr));
                   Value := Emit_Expression (Expression (Expr));
                end if;
 
@@ -843,12 +847,12 @@ package body GNATLLVM.Compile is
                --  aren't.
 
                Result := Heap_Allocate_For_Type
-                 (Full_Designated_Type (TE), Typ,
+                 (Full_Designated_GL_Type (TE), A_GT,
                   V        => Value,
                   N        => N,
                   Proc     => Procedure_To_Call (N),
                   Pool     => Storage_Pool (N),
-                  Max_Size => (Is_Unconstrained_Record (Typ)
+                  Max_Size => (Is_Unconstrained_Record (A_GT)
                                  and then No (Value)));
                return Convert_To_Access (Result, TE);
             end;
@@ -1190,10 +1194,9 @@ package body GNATLLVM.Compile is
                --  initialize it.
 
                Bounds_From_Type (Full_Etype (Var_GT), Low, High);
-               LLVM_Var := Allocate_For_Type
-                 (Full_Etype (Var_GT), Full_Etype (Var_GT), Def_Ident,
-                  (if Reversed then High else Low),
-                  Def_Ident => Def_Ident);
+               LLVM_Var := Allocate_For_Type (Var_GT, Var_GT, Def_Ident,
+                                              (if Reversed then High else Low),
+                                              Def_Ident => Def_Ident);
                Set_Value (Def_Ident, LLVM_Var);
 
                --  Then go to the condition block if the range isn't empty.

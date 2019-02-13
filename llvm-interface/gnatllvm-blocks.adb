@@ -290,8 +290,8 @@ package body GNATLLVM.Blocks is
      with Post => Present (Get_Raise_Fn'Result);
    --  Get function for raising a builtin exception of Kind
 
-   function Get_Set_EH_Param_Fn (Exc_Type : Entity_Id) return GL_Value
-     with Pre  => Is_Type (Exc_Type),
+   function Get_Set_EH_Param_Fn (Exc_GT : GL_Type) return GL_Value
+     with Pre  => Present (Exc_GT),
           Post => Present (Get_Set_EH_Param_Fn'Result);
    --  Get (and create if needed) the function that sets the exception
    --  parameter.  This can only be called once we have an exception parameter
@@ -556,7 +556,7 @@ package body GNATLLVM.Blocks is
    -- Get_Set_EH_Param_Fn --
    --------------------------
 
-   function Get_Set_EH_Param_Fn (Exc_Type : Entity_Id) return GL_Value is
+   function Get_Set_EH_Param_Fn (Exc_GT : GL_Type) return GL_Value is
    begin
       --  If we haven't already made the function to set the
       --  choice parameter, make it now that we have the type.
@@ -564,7 +564,8 @@ package body GNATLLVM.Blocks is
       if No (Set_Exception_Param_Fn) then
          Set_Exception_Param_Fn := Add_Global_Function
            ("__gnat_set_exception_parameter",
-            Fn_Ty ((1 => Create_Access_Type_To (Exc_Type), 2 => Void_Ptr_Type),
+            Fn_Ty ((1 => Create_Access_Type_To (Full_Etype (Exc_GT)),
+                    2 => Void_Ptr_Type),
                    Void_Type),
             Void_GL_Type);
       end if;
@@ -939,15 +940,15 @@ package body GNATLLVM.Blocks is
                Call (Begin_Handler_Fn, (1 => Exc_Ptr));
                if Present (Clauses.Table (J).Param) then
                   declare
-                     Param   : constant Entity_Id := Clauses.Table (J).Param;
-                     Typ     : constant Entity_Id := Full_Etype (Param);
-                     V       : constant GL_Value  :=
-                       Allocate_For_Type (Typ, Typ, Param, Def_Ident => Param);
+                     Param : constant Entity_Id := Clauses.Table (J).Param;
+                     GT    : constant GL_Type   := Full_GL_Type (Param);
+                     V     : constant GL_Value  :=
+                       Allocate_For_Type (GT, GT, Param, Def_Ident => Param);
                      Cvt_Ptr : constant GL_Value  :=
                        Convert_To_Access (Exc_Ptr, A_Char_GL_Type);
 
                   begin
-                     Call (Get_Set_EH_Param_Fn (Typ), (1 => V, 2 => Cvt_Ptr));
+                     Call (Get_Set_EH_Param_Fn (GT), (1 => V, 2 => Cvt_Ptr));
                      Set_Value (Param, V);
                   end;
                end if;

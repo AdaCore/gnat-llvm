@@ -1116,25 +1116,25 @@ package body GNATLLVM.Arrays is
    -- Is_Self_Referential_Type --
    ------------------------------
 
-   function Is_Self_Referential_Type (TE : Entity_Id) return Boolean is
+   function Is_Self_Referential_Type (GT : GL_Type) return Boolean is
    begin
       --  Unconstrained types are always self-referential
 
-      if not Is_Constrained (TE) then
+      if not Is_Constrained (GT) then
          return True;
 
       --  If not array subtype, it isn't
 
-      elsif Ekind (TE) /= E_Array_Subtype then
+      elsif Ekind (GT) /= E_Array_Subtype then
          return False;
       end if;
 
       --  Otherwise check each bound
 
-      for Dim in 0 .. Number_Dimensions (TE) - 1 loop
+      for Dim in 0 .. Number_Dimensions (GT) - 1 loop
          declare
             Dim_Info  : constant Index_Bounds :=
-              Array_Info.Table (Get_Array_Info (TE) + Dim);
+              Array_Info.Table (Get_Array_Info (Full_Etype (GT)) + Dim);
             Low_Expr  : constant Node_Id      := Dim_Info.Low.Value;
             High_Expr : constant Node_Id      := Dim_Info.High.Value;
          begin
@@ -1280,8 +1280,7 @@ package body GNATLLVM.Arrays is
             then
                Cur_Value := Get_Undef (GT);
             else
-               Cur_Value :=
-                 Allocate_For_Type (Full_Etype (GT), Full_Etype (GT), N);
+               Cur_Value := Allocate_For_Type (GT, GT, N);
             end if;
          end if;
 

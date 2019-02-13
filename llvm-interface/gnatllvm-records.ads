@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -18,6 +18,7 @@
 with Sinfo;  use Sinfo;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -81,8 +82,8 @@ package GNATLLVM.Records is
    --  Emit code for a record aggregate at Node.  Result_So_Far, if
    --  Present, contain any fields already filled in for the record.
 
-   function Contains_Unconstrained_Record (TE : Entity_Id) return Boolean
-     with Pre => Is_Record_Type (TE);
+   function Contains_Unconstrained_Record (GT : GL_Type) return Boolean
+     with Pre => Is_Record_Type (GT);
    --  True if TE has a field whose type if an unconstrained record.
 
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value

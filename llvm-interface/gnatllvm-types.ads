@@ -401,17 +401,17 @@ package GNATLLVM.Types is
    --  also doesn't do well with large load/store instructions.
 
    function Allocate_For_Type
-     (TE        : Entity_Id;
-      Alloc_TE  : Entity_Id;
+     (GT        : GL_Type;
+      Alloc_GT  : GL_Type;
       N         : Node_Id;
       V         : GL_Value  := No_GL_Value;
       Expr      : Node_Id   := Empty;
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "";
       Max_Size  : Boolean   := False) return GL_Value
-     with Pre  => Is_Type (TE) and then Is_Type (Alloc_TE),
+     with Pre  => Present (GT) and then Present (Alloc_GT),
           Post => Is_Access_Type (Allocate_For_Type'Result);
-   --  Allocate space on the stack for an object of type TE and return a
+   --  Allocate space on the stack for an object of type GT and return a
    --  pointer to the space.  Name is the name to use for the LLVM value.
    --  V, if Present, is a value to be copyied to the temporary and can be
    --  used to size the allocated space.  Likewise For Expr, but both Expr
@@ -419,8 +419,8 @@ package GNATLLVM.Types is
    --  raise an exception.
 
    function Heap_Allocate_For_Type
-     (TE        : Entity_Id;
-      Alloc_TE  : Entity_Id;
+     (GT        : GL_Type;
+      Alloc_GT  : GL_Type;
       V         : GL_Value  := No_GL_Value;
       N         : Node_Id   := Empty;
       Expr      : Node_Id   := Empty;
@@ -428,7 +428,7 @@ package GNATLLVM.Types is
       Pool      : Entity_Id := Empty;
       Def_Ident : Entity_Id := Empty;
       Max_Size  : Boolean   := False) return GL_Value
-     with Pre  => Is_Type (TE) and then Is_Type (Alloc_TE)
+     with Pre  => Present (GT) and then Present (Alloc_GT)
                   and then (No (Proc) or else Present (Pool)),
           Post => Is_Access_Type (Heap_Allocate_For_Type'Result);
    --  Similarly, but allocate storage on the heap.  This handles default
@@ -436,12 +436,11 @@ package GNATLLVM.Types is
 
    procedure Heap_Deallocate
      (V        : GL_Value;
-      Desig_TE : Entity_Id;
+      Desig_GT : GL_Type;
       Proc     : Entity_Id;
       Pool     : Entity_Id)
      with Pre => Present (V)
-                 and then (No (Proc) or else Present (Pool))
-                 and then (No (Desig_TE) or else Is_Type (Desig_TE));
+                 and then (No (Proc) or else Present (Pool));
    --  Free memory allocated by Heap_Allocate_For_Type
 
    function To_Size_Type (V : GL_Value) return GL_Value

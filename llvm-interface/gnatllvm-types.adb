@@ -141,16 +141,16 @@ package body GNATLLVM.Types is
      (Temp     : GL_Value;
       V        : GL_Value;
       Expr     : Node_Id;
-      TE       : Entity_Id;
-      Alloc_TE : Entity_Id) return GL_Value
-     with Pre  => Present (Temp) and then Is_Type (TE)
-                  and then Is_Type (Alloc_TE),
+      GT       : GL_Type;
+      Alloc_GT : GL_Type) return GL_Value
+     with Pre  => Present (Temp) and then Present (GT)
+                  and then Present (Alloc_GT),
           Post => Is_Access_Type (Move_Into_Memory'Result);
    --  Temp is memory that was recently allocated.  Move V, if Present, or
    --  the evaluation of Expr if Present and V isn't, into that allocated
-   --  memory and return the allocated memory as a reference to type TE.
+   --  memory and return the allocated memory as a reference to type GT
    --  This is used by both type of memory allocators.  Temp can be of any
-   --  type, either an integer or pointer to anything.  Alloc_TE is the
+   --  type, either an integer or pointer to anything.  Alloc_GT is the
    --  type that was used to allocate the memory.
 
    --------------------
@@ -1739,15 +1739,15 @@ package body GNATLLVM.Types is
      (Temp     : GL_Value;
       V        : GL_Value;
       Expr     : Node_Id;
-      TE       : Entity_Id;
-      Alloc_TE : Entity_Id) return GL_Value
+      GT       : GL_Type;
+      Alloc_GT : GL_Type) return GL_Value
    is
-      R        : constant GL_Relationship := Relationship_For_Alloc (TE);
+      R        : constant GL_Relationship := Relationship_For_Alloc (GT);
       New_Expr : constant Node_Id         := Strip_Complex_Conversions (Expr);
       Memory : GL_Value                   :=
         (if Is_Access_Type (Temp)
-         then Ptr_To_Relationship (Temp, Alloc_TE, R)
-         else Int_To_Relationship (Temp, Alloc_TE, R));
+         then Ptr_To_Relationship (Temp, Alloc_GT, R)
+         else Int_To_Relationship (Temp, Alloc_GT, R));
       New_V  : GL_Value                   :=
         (if   Present (V) then V elsif Present (New_Expr)
          then Emit (New_Expr, LHS => Memory) else No_GL_Value);
@@ -1764,10 +1764,11 @@ package body GNATLLVM.Types is
             New_V  := Get (New_V, Bounds_And_Data);
             Memory := Ptr_To_Relationship (Memory, New_V, R);
          else
-            if not Is_Constrained (TE) or else No (New_V)
+            if not Is_Constrained (GT) or else No (New_V)
               or else New_V = Memory
             then
-               Store (Get_Array_Bounds (TE, Alloc_TE, New_V),
+               Store (Get_Array_Bounds (Full_Etype (GT),
+                                        Full_Etype (Alloc_GT), New_V),
                       Get (Memory, Reference_To_Bounds));
             end if;
          end if;
@@ -1781,8 +1782,8 @@ package body GNATLLVM.Types is
 
       --  If we're not pointing to the correct type, fix that
 
-      if Related_Type (Memory) /= TE then
-         Memory := Convert_Ref (Memory, TE);
+      if Related_Type (Memory) /= GT then
+         Memory := Convert_Ref (Memory, GT);
       end if;
 
       return Memory;
@@ -1794,8 +1795,8 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Allocate_For_Type
-     (TE        : Entity_Id;
-      Alloc_TE  : Entity_Id;
+     (GT        : GL_Type;
+      Alloc_GT  : GL_Type;
       N         : Node_Id;
       V         : GL_Value  := No_GL_Value;
       Expr      : Node_Id   := Empty;
@@ -1803,8 +1804,6 @@ package body GNATLLVM.Types is
       Name      : String    := "";
       Max_Size  : Boolean   := False) return GL_Value
    is
-      GT         : constant GL_Type  := Default_GL_Type (TE);
-      Alloc_GT   : constant GL_Type  := Default_GL_Type (Alloc_TE);
       Max_Alloc  : constant ULL      := 10_000_000;
       Align      : constant GL_Value :=
         Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
@@ -1829,7 +1828,7 @@ package body GNATLLVM.Types is
             return Get_Undef_Ref (GT);
          else
             return Move_Into_Memory (Alloca (Alloc_GT, Def_Ident, Name),
-                                     Value, Expr, TE, Alloc_TE);
+                                     Value, Expr, GT, Alloc_GT);
          end if;
       end if;
 
@@ -1897,7 +1896,7 @@ package body GNATLLVM.Types is
          Set_Value_Name (Result, Get_Alloca_Name (Def_Ident, Name));
       end if;
 
-      return Move_Into_Memory (Result, Value, Expr, TE, Alloc_TE);
+      return Move_Into_Memory (Result, Value, Expr, GT, Alloc_GT);
 
    end Allocate_For_Type;
 
@@ -1906,8 +1905,8 @@ package body GNATLLVM.Types is
    ----------------------------
 
    function Heap_Allocate_For_Type
-     (TE        : Entity_Id;
-      Alloc_TE  : Entity_Id;
+     (GT        : GL_Type;
+      Alloc_GT  : GL_Type;
       V         : GL_Value  := No_GL_Value;
       N         : Node_Id   := Empty;
       Expr      : Node_Id   := Empty;
@@ -1916,11 +1915,9 @@ package body GNATLLVM.Types is
       Def_Ident : Entity_Id := Empty;
       Max_Size  : Boolean   := False) return GL_Value
    is
-      GT         : constant GL_Type := Default_GL_Type (TE);
-      Alloc_GT   : constant GL_Type := Default_GL_Type (Alloc_TE);
       Value   : constant GL_Value   :=
         (if    Present (V) then V
-         elsif Is_Self_Referential_Type (Alloc_TE) and then Present (Expr)
+         elsif Is_Self_Referential_Type (Alloc_GT) and then Present (Expr)
          then  Emit (Expr) else No_GL_Value);
       Size    : constant GL_Value   :=
         Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size);
@@ -2005,7 +2002,7 @@ package body GNATLLVM.Types is
       --  If we're doing this for an unconstrained array, we have the pointer
       --  to the raw array, not a fat pointer.
 
-      return Move_Into_Memory (Result, Value, Expr, TE, Alloc_TE);
+      return Move_Into_Memory (Result, Value, Expr, GT, Alloc_GT);
    end Heap_Allocate_For_Type;
 
    ---------------------
@@ -2014,7 +2011,7 @@ package body GNATLLVM.Types is
 
    procedure Heap_Deallocate
      (V        : GL_Value;
-      Desig_TE : Entity_Id;
+      Desig_GT : GL_Type;
       Proc     : Entity_Id;
       Pool     : Entity_Id)
    is
@@ -2037,8 +2034,8 @@ package body GNATLLVM.Types is
       --  If we have a designated type, that's the type we use for
       --  computing size and alignment.
 
-      if Present (Desig_TE) then
-         Alloc_GT := Default_GL_Type (Get_Fullest_View (Desig_TE));
+      if Present (Desig_GT) then
+         Alloc_GT := Desig_GT;
       end if;
 
       --  If V is an unconstrained array, we want a pointer to the bounds

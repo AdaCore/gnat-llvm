@@ -64,7 +64,7 @@ package body GNATLLVM.Records is
       Variant_Expr : Node_Id;
       --  Expression to evaluate to determine which variant is present
 
-      Variants     : access Record_Info_Id_Array;
+      Variants     : Record_Info_Id_Array_Access;
       --  Pointer to array of Record_Info_Ids representing the variants,
       --  which must be in the same order as in Variant_List.
 
@@ -563,7 +563,7 @@ package body GNATLLVM.Records is
          Typ          : Entity_Id                   := Empty;
          Variant_List : List_Id                     := No_List;
          Variant_Expr : Node_Id                     := Empty;
-         Variants     : access Record_Info_Id_Array := null;
+         Variants     : Record_Info_Id_Array_Access := null;
          Use_Max_Size : Boolean                     := False);
       --  Add a Record_Info into the table, chaining it as appropriate
 
@@ -598,7 +598,7 @@ package body GNATLLVM.Records is
          Typ          : Entity_Id                   := Empty;
          Variant_List : List_Id                     := No_List;
          Variant_Expr : Node_Id                     := Empty;
-         Variants     : access Record_Info_Id_Array := null;
+         Variants     : Record_Info_Id_Array_Access := null;
          Use_Max_Size : Boolean                     := False) is
 
       begin
@@ -785,7 +785,7 @@ package body GNATLLVM.Records is
             Static_Constraint  : constant Boolean   :=
               Present (Constraining_Expr)
                 and then Is_Static_Expression (Constraining_Expr);
-            Var_Array          : access Record_Info_Id_Array;
+            Var_Array          : Record_Info_Id_Array_Access;
             Saved_Cur_Idx      : Record_Info_Id;
             Saved_Prev_Idx     : Record_Info_Id;
             Saved_First_Idx    : Record_Info_Id;

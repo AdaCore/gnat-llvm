@@ -328,7 +328,8 @@ package body GNATLLVM.Blocks is
    --  Last-chance handler.  We only initialize this if needed
 
    type File_GL_Value_Array is array (Source_File_Index range <>) of GL_Value;
-   File_Name_Strings : access File_GL_Value_Array := null;
+   type File_GL_Value_Array_Access is access all File_GL_Value_Array;
+   File_Name_Strings : File_GL_Value_Array_Access := null;
    --  Array of GL_Values corresponding to 'Address of the string literal
    --  representing the name of the file.
 

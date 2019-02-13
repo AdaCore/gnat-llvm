@@ -29,6 +29,8 @@ with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNAT.Strings; use GNAT.Strings;
+
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
@@ -212,7 +214,7 @@ package body GNATLLVM.Subprograms is
    --  Table of nested functions to elaborate
 
    type Intrinsic is record
-      Name  : access String;
+      Name  : String_Access;
       Width : ULL;
       Func  : GL_Value;
    end record;

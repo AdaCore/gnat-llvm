@@ -52,8 +52,8 @@ package body GNATLLVM.Records is
       LLVM_Type    : Type_T;
       --  The LLVM type corresponding to this fragment, if any
 
-      GNAT_Type    : Entity_Id;
-      --  The GNAT type corresponding to this fragment, if any
+      GT           : GL_Type;
+      --  The GL_Type corresponding to this fragment, if any
 
       Next         : Record_Info_Id;
       --  Link to the next Record_Info entry for this record or variant
@@ -103,7 +103,7 @@ package body GNATLLVM.Records is
       Field_Ordinal : Nat;
       --  Ordinal of this field within the contents of the record info table
 
-      GLType        : GL_Type;
+      GT            : GL_Type;
       --  The GL_Type correspond to this field, which takes into account
       --  a possible change in size
    end record;
@@ -338,13 +338,13 @@ package body GNATLLVM.Records is
 
    function RI_Value_Is_Valid (RI : Record_Info_Base) return Boolean is
    begin
-      --  This must be an LLVM Type, which is a struct, a GNAT type, or a
+      --  This must be an LLVM Type, which is a struct, a GL_Type, or a
       --  variant and only one of those.
 
       if Present (RI.LLVM_Type) then
-         return No (RI.GNAT_Type) and then RI.Variants = null
+         return No (RI.GT) and then RI.Variants = null
            and then Get_Type_Kind (RI.LLVM_Type) = Struct_Type_Kind;
-      elsif Present (RI.GNAT_Type) then
+      elsif Present (RI.GT) then
          --  We already know that LLVM_Type isn't Present
 
          return RI.Variants = null;
@@ -560,7 +560,7 @@ package body GNATLLVM.Records is
 
       procedure Add_RI
         (T            : Type_T                      := No_Type_T;
-         Typ          : Entity_Id                   := Empty;
+         F_GT         : GL_Type                     := No_GL_Type;
          Variant_List : List_Id                     := No_List;
          Variant_Expr : Node_Id                     := Empty;
          Variants     : Record_Info_Id_Array_Access := null;
@@ -571,10 +571,10 @@ package body GNATLLVM.Records is
         (E       : Entity_Id;
          RI_Idx  : Record_Info_Id;
          Ordinal : Nat;
-         F_TE    : in out Entity_Id)
+         F_GT    : in out GL_Type)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
-      --  the field to point to it.  Update F_TE if we used a matching field.
+      --  the field to point to it.  Update F_GT if we used a matching field.
 
       procedure Add_Field (E : Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
@@ -595,7 +595,7 @@ package body GNATLLVM.Records is
 
       procedure Add_RI
         (T            : Type_T                      := No_Type_T;
-         Typ          : Entity_Id                   := Empty;
+         F_GT         : GL_Type                     := No_GL_Type;
          Variant_List : List_Id                     := No_List;
          Variant_Expr : Node_Id                     := Empty;
          Variants     : Record_Info_Id_Array_Access := null;
@@ -607,7 +607,7 @@ package body GNATLLVM.Records is
 
          Record_Info_Table.Table (Cur_Idx) :=
            (LLVM_Type    => T,
-            GNAT_Type    => Typ,
+            GT           => F_GT,
             Next         => Empty_Record_Info_Id,
             Variant_List => Variant_List,
             Variant_Expr => Variant_Expr,
@@ -633,7 +633,7 @@ package body GNATLLVM.Records is
         (E       : Entity_Id;
          RI_Idx  : Record_Info_Id;
          Ordinal : Nat;
-         F_TE    : in out Entity_Id)
+         F_GT    : in out GL_Type)
       is
          Matching_Field : Entity_Id;
 
@@ -648,12 +648,12 @@ package body GNATLLVM.Records is
          --  if this is a hidden discriminant and we haven't yet found a
          --  place to save the value, save it in Discriminant_FIs.
          --
-         --  If we're using a matching field, update F_TE to its type.
+         --  If we're using a matching field, update F_GT to its type.
 
          Field_Info_Table.Append
            ((Rec_Info_Idx  => RI_Idx,
              Field_Ordinal => Ordinal,
-             GLType        => Default_GL_Type (Full_Etype (E))));
+             GT            => Full_GL_Type (E)));
 
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
@@ -661,7 +661,7 @@ package body GNATLLVM.Records is
             Matching_Field := Find_Field_In_Entity_List (E, TE, Cur_Field);
             if Present (Matching_Field) then
                Set_Field_Info (Matching_Field, Field_Info_Table.Last);
-               F_TE := Full_Etype (Matching_Field);
+               F_GT := Full_GL_Type (Matching_Field);
             elsif Ekind (E) = E_Discriminant
               and then Is_Completely_Hidden (E)
             then
@@ -1093,8 +1093,7 @@ package body GNATLLVM.Records is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
-         F_TE  : Entity_Id    := Full_Etype (E);
-         F_GT  : GL_Type      := Default_GL_Type (F_TE);
+         F_GT  : GL_Type      := Full_GL_Type (E);
          Align : constant ULL := Get_Type_Alignment (F_GT);
 
       begin
@@ -1102,7 +1101,7 @@ package body GNATLLVM.Records is
          --  it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info_N (TE), 0, F_TE);
+            Add_FI (E, Get_Record_Info_N (TE), 0, F_GT);
             return;
 
          --  If this field is dynamic size, we have to close out the last
@@ -1112,9 +1111,8 @@ package body GNATLLVM.Records is
          elsif Is_Dynamic_Size (F_GT, Max_Size => not Is_Constrained (F_GT))
          then
             Flush_Current_Types;
-            Add_FI (E, Cur_Idx, 0, F_TE);
-            F_GT := Default_GL_Type (F_TE);
-            Add_RI (Typ => F_TE, Use_Max_Size => not Is_Constrained (F_GT));
+            Add_FI (E, Cur_Idx, 0, F_GT);
+            Add_RI (F_GT => F_GT, Use_Max_Size => not Is_Constrained (F_GT));
             Set_Is_Nonnative_Type (TE);
             Split_Align := Align;
 
@@ -1131,8 +1129,8 @@ package body GNATLLVM.Records is
                Split_Align := Align;
             end if;
 
-            Types (Next_Type) := Type_For_Relationship (F_TE, Component);
-            Add_FI (E, Cur_Idx, Next_Type, F_TE);
+            Types (Next_Type) := Type_For_Relationship (F_GT, Component);
+            Add_FI (E, Cur_Idx, Next_Type, F_GT);
             Next_Type := Next_Type + 1;
          end if;
 
@@ -1245,9 +1243,9 @@ package body GNATLLVM.Records is
          Is_Align    : out Result;
          Return_Size : Boolean := True)
       is
-         T         : constant Type_T      := RI.LLVM_Type;
-         TE        : constant Entity_Id   := RI.GNAT_Type;
-         This_Size : Result               := Empty_Result;
+         T         : constant Type_T  := RI.LLVM_Type;
+         GT        : constant GL_Type := RI.GT;
+         This_Size : Result           := Empty_Result;
 
       begin
          --  First check for zero length LLVM type since the code below will
@@ -1314,11 +1312,11 @@ package body GNATLLVM.Records is
 
             --  The GNAT type case is easy
 
-         elsif Present (TE) then
-            Must_Align := Sz_Const (Get_Type_Alignment (Default_GL_Type (TE)));
+         elsif Present (GT) then
+            Must_Align := Sz_Const (Get_Type_Alignment (GT));
             Is_Align   := Must_Align;
             if Return_Size then
-               This_Size  := Sz_Type_Size (Default_GL_Type (TE), V,
+               This_Size  := Sz_Type_Size (GT, V,
                                            Max_Size =>
                                              Max_Size or else RI.Use_Max_Size);
             end if;
@@ -1640,11 +1638,11 @@ package body GNATLLVM.Records is
          Offset := Get_Record_Size_So_Far (TE, V, R_Idx, Idx);
 
          --  Offset now gives the offset from the start of the record to the
-         --  piece that this field is in.  If this piece has a GNAT type, then
+         --  piece that this field is in.  If this piece has a GL_Type, then
          --  the field is the entire piece and we have the offset.  If it's an
          --  LLVM type, we need to compute the offset within that type.
 
-         if Present (RI.GNAT_Type) then
+         if Present (RI.GT) then
             return Offset;
          else
             declare
@@ -2106,7 +2104,7 @@ package body GNATLLVM.Records is
    function Record_Field_Offset
      (V : GL_Value; Field : Entity_Id) return GL_Value
    is
-      F_GT       : constant GL_Type        := Full_GL_Type (Field);
+      F_GT       : GL_Type                 := Full_GL_Type (Field);
       CRC        : constant Entity_Id      :=
         Corresponding_Record_Component (Field);
       Our_Field  : constant Entity_Id      :=
@@ -2140,6 +2138,7 @@ package body GNATLLVM.Records is
       end if;
 
       FI       := Field_Info_Table.Table (F_Idx);
+      F_GT     := FI.GT;
       Our_Idx  := FI.Rec_Info_Idx;
       Offset   := Get_Record_Size_So_Far (Rec_Type, V, First_Idx, Our_Idx);
       RI       := Record_Info_Table.Table (Our_Idx);
@@ -2157,7 +2156,7 @@ package body GNATLLVM.Records is
       --  to that object and make a pointer to its type.  Otherwise,
       --  make sure we're pointing to Rec_Type.
 
-      elsif Present (RI.GNAT_Type) then
+      elsif Present (RI.GT) then
          return Ptr_To_Ref (GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
                                  (1 => Offset)),
                             F_GT);
@@ -2206,9 +2205,9 @@ package body GNATLLVM.Records is
       return Complexity : Nat := 0 do
          while Present (Cur_Idx) loop
             RI := Record_Info_Table.Table (Cur_Idx);
-            if Present (RI.GNAT_Type) then
+            if Present (RI.GT) then
                Complexity := Complexity + Get_Type_Size_Complexity
-                 (Default_GL_Type (RI.GNAT_Type), Max_Size or RI.Use_Max_Size);
+                 (RI.GT, Max_Size or RI.Use_Max_Size);
             end if;
 
             Cur_Idx := RI.Next;
@@ -2315,7 +2314,7 @@ package body GNATLLVM.Records is
                            --  If this field had a dummy type, convert our
                            --  expression into it.
 
-                           if Is_Dummy_Type (FI.GLType) then
+                           if Is_Dummy_Type (FI.GT) then
                               Val := Convert_Pointer_To_Dummy (Val);
                            end if;
 
@@ -2355,11 +2354,8 @@ package body GNATLLVM.Records is
       RI : constant Record_Info := Record_Info_Table.Table (Ridx);
 
    begin
-      if Present (RI.GNAT_Type) then
-         Write_Str ("GNAT Type = ");
-         Write_Int (Nat (RI.GNAT_Type));
-         Write_Str (": ");
-         pg (Union_Id (RI.GNAT_Type));
+      if Present (RI.GT) then
+         Dump_GL_Type (RI.GT);
       elsif Present (RI.LLVM_Type) then
          Dump_LLVM_Type (RI.LLVM_Type);
       end if;
@@ -2388,6 +2384,7 @@ package body GNATLLVM.Records is
          Write_Int (Nat (FI.Rec_Info_Idx));
          Write_Str (", Ordinal = ");
          Write_Int (FI.Field_Ordinal);
+         Dump_GL_Type (FI.GT);
          Write_Eol;
          Print_RI_Briefly (FI.Rec_Info_Idx);
       end if;
@@ -2473,14 +2470,9 @@ package body GNATLLVM.Records is
             Write_Str ("RI ");
             Write_Int (Nat (Ridx));
             Write_Eol;
-            if Present (RI.GNAT_Type) then
+            if Present (RI.GT) then
                Write_Str (Prefix);
-               Write_Str ("GNAT Type = ");
-               Write_Int (Nat (RI.GNAT_Type));
-               Write_Eol;
-               Write_Str (Prefix);
-               Sprint_Node (RI.GNAT_Type);
-               Write_Eol;
+               Dump_GL_Type (RI.GT);
             elsif Present (RI.LLVM_Type) then
                Dump_LLVM_Type (RI.LLVM_Type);
             end if;

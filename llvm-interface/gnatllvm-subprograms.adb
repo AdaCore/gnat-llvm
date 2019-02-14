@@ -190,7 +190,7 @@ package body GNATLLVM.Subprograms is
       N         : Node_Id;
       --  Note to elaborate, possibly as an exppression
 
-      For_Type  : Entity_Id;
+      For_GT    : GL_Type;
       --  If Present, compute N as a value, convert it to this type, and
       --  save the result as the value corresponding to it.
    end record;
@@ -1262,12 +1262,12 @@ package body GNATLLVM.Subprograms is
    -- Add_To_Elab_Proc --
    ----------------------
 
-   procedure Add_To_Elab_Proc (N : Node_Id; For_Type : Entity_Id := Empty) is
+   procedure Add_To_Elab_Proc (N : Node_Id; For_GT : GL_Type := No_GL_Type) is
    begin
       if Elaboration_Table.Last = 0
         or else Elaboration_Table.Table (Elaboration_Table.Last).N /= N
       then
-         Elaboration_Table.Append ((N => N, For_Type => For_Type));
+         Elaboration_Table.Append ((N => N, For_GT => For_GT));
       end if;
    end Add_To_Elab_Proc;
 
@@ -1323,12 +1323,12 @@ package body GNATLLVM.Subprograms is
 
       for J in 1 .. Elaboration_Table.Last loop
          declare
-            Stmt : constant Node_Id   := Elaboration_Table.Table (J).N;
-            Typ  : constant Entity_Id := Elaboration_Table.Table (J).For_Type;
+            Stmt : constant Node_Id := Elaboration_Table.Table (J).N;
+            GT   : constant GL_Type := Elaboration_Table.Table (J).For_GT;
 
          begin
-            if Present (Typ) then
-               Set_Value (Stmt, Emit_Convert_Value (Stmt, Typ));
+            if Present (GT) then
+               Set_Value (Stmt, Emit_Convert_Value (Stmt, GT));
             else
                --  If Stmt is an N_Handled_Sequence_Of_Statements, it
                --  must have come from a package body.  Make a block around

@@ -118,28 +118,6 @@ package GNATLLVM.GLType is
    --  Convert Src, which should be an access or reference, into an access
    --  type TE
 
-   function Emit_Conversion
-     (N                   : Node_Id;
-      GT                  : GL_Type;
-      From_N              : Node_Id := Empty;
-      For_LHS             : Boolean := False;
-      Is_Unchecked        : Boolean := False;
-      Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False;
-      No_Truncation       : Boolean := False) return GL_Value
-     with Pre  => Present (GT) and then Present (N)
-                  and then not (Is_Unchecked and Need_Overflow_Check),
-          Post => Present (Emit_Conversion'Result);
-   --  Emit code to convert N to GT, optionally in unchecked mode
-   --  and optionally with an overflow check.  From_N is the conversion node,
-   --  if there is a corresponding source node.
-
-   function Emit_Convert_Value (N : Node_Id; GT : GL_Type) return GL_Value is
-     (Get (Emit_Conversion (N, GT), Object))
-     with Pre  => Present (GT) and then Present (N),
-          Post => Present (Emit_Convert_Value'Result);
-   --  Emit code to convert N to GL and get it as a value
-
    function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Access_Type (V) and then Present (GT),
           Post => Is_Access_Type (Convert_Pointer'Result);
@@ -394,7 +372,7 @@ package GNATLLVM.GLType is
 
    function RM_Size (GT : GL_Type) return Uint is
      (RM_Size (Full_Etype (GT)))
-     with Pre => not Is_Access_Type (GT);
+     with Pre => Present (GT);
 
    function Modulus (GT : GL_Type) return Uint is
      (Modulus (Full_Etype (GT)))
@@ -402,14 +380,18 @@ package GNATLLVM.GLType is
 
    function Esize (GT : GL_Type) return Uint is
      (Esize (Full_Etype (GT)))
-     with Pre => not Is_Access_Type (GT);
+     with Pre => Present (GT);
 
    function Unknown_Esize (GT : GL_Type) return Boolean is
      (Unknown_Esize (Full_Etype (GT)))
-     with Pre => not Is_Access_Type (GT);
+     with Pre => Present (GT);
 
    function Unknown_RM_Size (GT : GL_Type) return Boolean is
      (Unknown_RM_Size (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Scalar_Range (GT : GL_Type) return Node_Id is
+     (Scalar_Range (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
    function Type_Low_Bound (GT : GL_Type) return Node_Id is

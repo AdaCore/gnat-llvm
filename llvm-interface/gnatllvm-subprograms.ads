@@ -141,13 +141,12 @@ package GNATLLVM.Subprograms is
    --  Proc is a Procedure_To_Call for a deallocation and Args are its
    --  arguments.  See if Proc needs a static link and pass one, if so.
 
-   procedure Add_To_Elab_Proc (N : Node_Id; For_Type : Entity_Id := Empty)
-     with Pre => Library_Level and then Present (N)
-                 and then (No (For_Type) or else Is_Type (For_Type));
+   procedure Add_To_Elab_Proc (N : Node_Id; For_GT : GL_Type := No_GL_Type)
+     with Pre => Library_Level and then Present (N);
    --  Add N to the elaboration table if it's not already there.  We assume
    --  here that if it's already there, it was the last one added.  If
-   --  For_Type is Present, elaborate N as an expression, convert to
-   --  For_Type, and save it as the value for N.
+   --  For_GT is Present, elaborate N as an expression, convert to
+   --  For_GT, and save it as the value for N.
 
    procedure Emit_Elab_Proc
      (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)

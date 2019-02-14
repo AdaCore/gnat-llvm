@@ -106,9 +106,8 @@ package GNATLLVM.Types is
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);
 
-   procedure Bounds_From_Type (TE : Entity_Id; Low, High : out GL_Value)
-     with Pre  => Ekind (TE) in Discrete_Kind,
-          Post => Present (Low) and then Present (High);
+   procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value)
+     with Pre => Present (GT), Post => Present (Low) and then Present (High);
 
    procedure Push_LValue_List;
    procedure Pop_LValue_List;
@@ -298,27 +297,25 @@ package GNATLLVM.Types is
 
    function Emit_Conversion
      (N                   : Node_Id;
-      TE                  : Entity_Id;
+      GT                  : GL_Type;
       From_N              : Node_Id := Empty;
       For_LHS             : Boolean := False;
       Is_Unchecked        : Boolean := False;
       Need_Overflow_Check : Boolean := False;
       Float_Truncate      : Boolean := False;
       No_Truncation       : Boolean := False) return GL_Value
-     with Pre  => Is_Type (TE) and then Present (N)
-                  and then TE = Get_Fullest_View (TE)
+     with Pre  => Present (GT) and then Present (N)
                   and then not (Is_Unchecked and Need_Overflow_Check),
           Post => Present (Emit_Conversion'Result);
-   --  Emit code to convert N to TE, optionally in unchecked mode
+   --  Emit code to convert N to GT, optionally in unchecked mode
    --  and optionally with an overflow check.  From_N is the conversion node,
    --  if there is a corresponding source node.
 
-   function Emit_Convert_Value (N : Node_Id; TE : Entity_Id) return GL_Value is
-     (Get (Emit_Conversion (N, TE), Object))
-     with Pre  => Is_Type (TE) and then Present (N)
-                  and then TE = Get_Fullest_View (TE),
+   function Emit_Convert_Value (N : Node_Id; GT : GL_Type) return GL_Value is
+     (Get (Emit_Conversion (N, GT), Object))
+     with Pre  => Present (GT) and then Present (N),
           Post => Present (Emit_Convert_Value'Result);
-   --  Emit code to convert N to TE and get it as a value
+   --  Emit code to convert N to GT and get it as a value
 
    function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Access_Type (V) and then Is_Type (TE),

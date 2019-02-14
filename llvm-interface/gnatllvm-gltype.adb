@@ -513,29 +513,6 @@ package body GNATLLVM.GLType is
    end Convert_To_Access;
 
    ---------------------
-   -- Emit_Conversion --
-   ---------------------
-
-   function Emit_Conversion
-     (N                   : Node_Id;
-      GT                  : GL_Type;
-      From_N              : Node_Id := Empty;
-      For_LHS             : Boolean := False;
-      Is_Unchecked        : Boolean := False;
-      Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False;
-      No_Truncation       : Boolean := False) return GL_Value is
-   begin
-      --  ??? For now, only allow GT to be the primitive type, so this is
-      --  just a conversion to its type.
-
-      pragma Assert (Is_Primitive_GL_Type (GT));
-      return Emit_Conversion (N, Full_Etype (GT), From_N, For_LHS,
-                              Is_Unchecked, Need_Overflow_Check,
-                              Float_Truncate, No_Truncation);
-   end Emit_Conversion;
-
-   ---------------------
    -- Convert_Pointer --
    ---------------------
 

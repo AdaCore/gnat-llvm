@@ -614,7 +614,7 @@ package body GNATLLVM.Compile is
 
                begin
                   if Library_Level and then not Is_Static_Address (Expr) then
-                     Add_To_Elab_Proc (Expr, For_Type => Full_Etype (Expr));
+                     Add_To_Elab_Proc (Expr, For_GT => Full_GL_Type (Expr));
                   else
                      Set_Value (Expr, Emit_Expression (Expr));
                   end if;
@@ -1193,7 +1193,7 @@ package body GNATLLVM.Compile is
                --  Initialization block: create the loop variable and
                --  initialize it.
 
-               Bounds_From_Type (Full_Etype (Var_GT), Low, High);
+               Bounds_From_Type (Var_GT, Low, High);
                LLVM_Var := Allocate_For_Type (Var_GT, Var_GT, Def_Ident,
                                               (if Reversed then High else Low),
                                               Def_Ident => Def_Ident);

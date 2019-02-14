@@ -98,22 +98,22 @@ package body GNATLLVM.Types is
    --  Return True if N's parent (if N is Present) is such that we need a
    --  LValue.
 
-   function Is_Nop_Conversion (V : GL_Value; TE : Entity_Id) return Boolean
-     with Pre => Is_Reference (V) and then Is_Type (TE);
-   --  Return True if converting V to type TE won't change any bits
+   function Is_Nop_Conversion (V : GL_Value; GT : GL_Type) return Boolean
+     with Pre => Is_Reference (V) and then Present (GT);
+   --  Return True if converting V to type GT won't change any bits
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
      with Pre => Is_Record_Type (T_Need) and then Is_Record_Type (T_Have);
    --  True if T_Have is a parent type of T_Need
 
-   function Is_Unsigned_For_Convert (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
-   --  True if we are to treate TE as unsigned for the purpose of a
+   function Is_Unsigned_For_Convert (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+   --  True if we are to treate GT as unsigned for the purpose of a
    --  conversion.
 
-   function Is_Unsigned_For_RM (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
-   --  Return true if TE has an unsigned representation.  This needs to be
+   function Is_Unsigned_For_RM (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+   --  Return true if GT has an unsigned representation.  This needs to be
    --  used when the representation of types whose precision is not equal
    --  to their size is manipulated based on the RM size.
 
@@ -322,13 +322,13 @@ package body GNATLLVM.Types is
    -- Is_Nop_Conversion --
    -----------------------
 
-   function Is_Nop_Conversion (V : GL_Value; TE : Entity_Id) return Boolean is
+   function Is_Nop_Conversion (V : GL_Value; GT : GL_Type) return Boolean is
    begin
       --  This is a no-op if the two LLVM types are the same or if both
       --  GNAT types aren't scalar types.
 
-      return Type_Of (V) = Pointer_Type (Type_Of (TE), 0)
-        or else (not Is_Scalar_Type (TE)
+      return Type_Of (V) = Pointer_Type (Type_Of (GT), 0)
+        or else (not Is_Scalar_Type (GT)
                    and then not Is_Scalar_Type (GL_Type'(Related_Type (V))));
 
    end Is_Nop_Conversion;
@@ -373,13 +373,13 @@ package body GNATLLVM.Types is
    -- Is_Unsigned_For_Convert --
    -----------------------------
 
-   function Is_Unsigned_For_Convert (TE : Entity_Id) return Boolean is
-      BT : constant Entity_Id := Full_Base_Type (TE);
+   function Is_Unsigned_For_Convert (GT : GL_Type) return Boolean is
+      BT : constant GL_Type := Base_GL_Type (GT);
 
    begin
-      --  If TE is narrower than BT, use its signedness, otherwise use BT's
+      --  If GT is narrower than BT, use its signedness, otherwise use BT's
 
-      return (if   Esize (TE) < Esize (BT) then Is_Unsigned_Type (TE)
+      return (if   Esize (GT) < Esize (BT) then Is_Unsigned_Type (GT)
               else Is_Unsigned_Type (BT));
    end Is_Unsigned_For_Convert;
 
@@ -387,21 +387,21 @@ package body GNATLLVM.Types is
    -- Is_Unsigned_For_RM --
    ------------------------
 
-   function Is_Unsigned_For_RM (TE : Entity_Id) return Boolean is
+   function Is_Unsigned_For_RM (GT : GL_Type) return Boolean is
    begin
       --  If not scalar type or no range, say no; if unsigned say yes.
 
-      if not Is_Scalar_Type (TE) or else No (Scalar_Range (TE)) then
+      if not Is_Scalar_Type (GT) or else No (Scalar_Range (GT)) then
          return False;
-      elsif Is_Unsigned_Type (TE) then
+      elsif Is_Unsigned_Type (GT) then
          return True;
 
       --  Otherwise it's unsigned iff the low bound is known to be
       --  nonnegative.
 
-      elsif Is_No_Elab_Needed (Type_Low_Bound (TE)) then
+      elsif Is_No_Elab_Needed (Type_Low_Bound (GT)) then
          declare
-            LB : constant GL_Value := Emit_Expression (Type_Low_Bound (TE));
+            LB : constant GL_Value := Emit_Expression (Type_Low_Bound (GT));
 
          begin
             return Is_A_Const_Int (LB) and then Get_Const_Int_Value (LB) >= 0;
@@ -419,7 +419,7 @@ package body GNATLLVM.Types is
 
    function Emit_Conversion
      (N                   : Node_Id;
-      TE                  : Entity_Id;
+      GT                  : GL_Type;
       From_N              : Node_Id := Empty;
       For_LHS             : Boolean := False;
       Is_Unchecked        : Boolean := False;
@@ -429,10 +429,10 @@ package body GNATLLVM.Types is
    is
       Result      : GL_Value                 := Emit (N, For_LHS => For_LHS);
       Orig_Result : constant GL_Value        := Result;
-      In_TE       : constant Entity_Id       := Related_Type (Result);
+      In_GT       : constant GL_Type         := Related_Type (Result);
       R           : constant GL_Relationship := Relationship (Result);
-      TE_Uns      : constant Boolean         := Is_Unsigned_For_RM (TE);
-      In_TE_Uns   : constant Boolean         := Is_Unsigned_For_RM (In_TE);
+      GT_Uns      : constant Boolean         := Is_Unsigned_For_RM (GT);
+      In_GT_Uns   : constant Boolean         := Is_Unsigned_For_RM (In_GT);
 
    begin
       --  We have to be careful here.  There isn't as clear a distinction
@@ -451,16 +451,16 @@ package body GNATLLVM.Types is
       --  an overflow check is required, we know this is NOT an unchecked
       --  conversion.
 
-      --  If we're converting between two access subprogram access types
-      --  and one is a foreign convention and one isn't, issue a warning
-      --  since that can cause issues with nested subprograms.
+      --  First, if we're converting between two access subprogram access
+      --  types and one is a foreign convention and one isn't, issue a
+      --  warning since that can cause issues with nested subprograms.
 
-      if Is_Access_Subprogram_Type (TE)
-        and then Is_Access_Subprogram_Type (In_TE)
-        and then Has_Foreign_Convention (TE) /= Has_Foreign_Convention (In_TE)
+      if Is_Access_Subprogram_Type (GT)
+        and then Is_Access_Subprogram_Type (In_GT)
+        and then Has_Foreign_Convention (GT) /= Has_Foreign_Convention (In_GT)
       then
-         Error_Msg_Node_1 := In_TE;
-         Error_Msg_Node_2 := TE;
+         Error_Msg_Node_1 := Full_Etype (In_GT);
+         Error_Msg_Node_2 := Full_Etype (GT);
          Error_Msg
            ("??conversion between subprogram access types of different",
             Sloc (N));
@@ -471,70 +471,76 @@ package body GNATLLVM.Types is
            ("\to a subprogram that references parent variables.", Sloc (N));
       end if;
 
-      if Is_Elementary_Type (TE) and then Need_Overflow_Check then
+      --  If we're converting to an elementary type and need an overflow
+      --  check, do that.
+
+      if Is_Elementary_Type (GT) and then Need_Overflow_Check then
          Result := Get (Result, Data);
          Emit_Overflow_Check (Result, From_N);
-         Result := Convert (Result, TE, Float_Truncate => Float_Truncate);
+         Result := Convert (Result, GT, Float_Truncate => Float_Truncate);
+
+      --  If we have a reference in a LHS context and the conversion won't
+      --  do anything, just convert the pointer.
 
       elsif Is_Reference (Result) and then Is_In_LHS_Context (From_N)
-        and then Is_Nop_Conversion (Result, TE)
+        and then Is_Nop_Conversion (Result, GT)
       then
-         Result := Convert_Ref (Get (Result, Any_Reference), TE);
+         Result := Convert_Ref (Get (Result, Any_Reference), GT);
 
       --  For unchecked conversion between pointer and integer, just copy
       --  the bits.  But use Size_Type and generic pointers to make sure
       --  that any size changes are taken into account (they shouldn't be
       --  because of the rules of UC, but let's be conservative).
 
-      elsif Is_Unchecked and then Is_Access_Type (In_TE)
-        and then Is_Discrete_Or_Fixed_Point_Type (TE)
+      elsif Is_Unchecked and then Is_Access_Type (In_GT)
+        and then Is_Discrete_Or_Fixed_Point_Type (GT)
       then
          Result := Get (From_Access (Get (Result, Data)),
                         Reference_For_Integer);
-         Result := Convert (Ptr_To_Int (Result, Size_GL_Type), TE);
-      elsif Is_Unchecked and then Is_Discrete_Or_Fixed_Point_Type (In_TE)
-        and then Is_Access_Type (TE)
+         Result := Convert (Ptr_To_Int (Result, Size_GL_Type), GT);
+      elsif Is_Unchecked and then Is_Discrete_Or_Fixed_Point_Type (In_GT)
+        and then Is_Access_Type (GT)
       then
-         --  If TE is an access to unconstrained, this means that the
+         --  If GT is an access to unconstrained, this means that the
          --  address is to be taken as a thin pointer.  We also need special
          --  code in the case of access to subprogram.
 
-         if Is_Unconstrained_Array (Full_Designated_Type (TE)) then
+         if Is_Unconstrained_Array (Full_Designated_Type (GT)) then
             Result :=
               Int_To_Relationship (Get (Result, Data),
-                                   Full_Designated_Type (TE), Thin_Pointer);
-         elsif Ekind (TE) = E_Access_Subprogram_Type then
+                                   Full_Designated_Type (GT), Thin_Pointer);
+         elsif Ekind (GT) = E_Access_Subprogram_Type then
             Result := Int_To_Relationship (Get (Result, Data),
-                                           Full_Designated_Type (TE),
+                                           Full_Designated_GL_Type (GT),
                                            Reference);
          else
             Result := Int_To_Ref (Get (Result, Data), SSI_GL_Type);
          end if;
 
-         Result := Convert_To_Access (Result, TE);
+         Result := Convert_To_Access (Result, GT);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
       --  instruction.
 
       elsif Is_Unchecked
-        and then ((Is_Floating_Point_Type (TE)
-                     and then Is_Discrete_Or_Fixed_Point_Type (In_TE))
-                  or else (Is_Discrete_Or_Fixed_Point_Type (TE)
-                             and then Is_Floating_Point_Type (In_TE)))
-        and then (ULL'(Get_Type_Size_In_Bits (Type_Of (TE))) =
-                    ULL'(Get_Type_Size_In_Bits (Type_Of (In_TE))))
+        and then ((Is_Floating_Point_Type (GT)
+                     and then Is_Discrete_Or_Fixed_Point_Type (In_GT))
+                  or else (Is_Discrete_Or_Fixed_Point_Type (GT)
+                             and then Is_Floating_Point_Type (In_GT)))
+        and then (ULL'(Get_Type_Size_In_Bits (Type_Of (GT))) =
+                    ULL'(Get_Type_Size_In_Bits (Type_Of (In_GT))))
       then
-         return Bit_Cast (Get (Result, Data), TE);
+         Result := Bit_Cast (Get (Result, Data), GT);
 
       --  If both types are elementary, hand that off to our helper, but
       --  raise a Constraint_Error if this conversion overflowed by producing
       --  an undef.
 
-      elsif Is_Elementary_Type (In_TE)
-        and then Is_Elementary_Type (TE)
+      elsif Is_Elementary_Type (In_GT)
+        and then Is_Elementary_Type (GT)
       then
-         Result := Convert (Get (Result, Data), TE,
+         Result := Convert (Get (Result, Data), GT,
                             Float_Truncate => Float_Truncate);
          if Is_Undef (Result) and then not Is_Undef (Orig_Result) then
             Error_Msg_N ("?`Constraint_Error` will be raised at run time",
@@ -546,10 +552,10 @@ package body GNATLLVM.Types is
       --  Avoid confusing [0 x T] as both a zero-size constrained type and
       --  the type used for a variable-sized type.
 
-      elsif Is_Data (Result) and then not Is_Nonnative_Type (TE)
-        and then Type_Of (Result) = Type_Of (TE)
+      elsif Is_Data (Result) and then not Is_Nonnative_Type (GT)
+        and then Type_Of (Result) = Type_Of (GT)
       then
-         Result := G_Is (Result, TE);
+         Result := G_Is (Result, GT);
 
       --  If we have an undefined value that we're converting to another
       --  type, just get an undefined value of that type.  But watch for
@@ -558,24 +564,24 @@ package body GNATLLVM.Types is
       --  cases below since we may have to deal with materializing bounds.
 
       elsif Is_Undef (Result) and then R = Data
-        and then Is_Loadable_Type (TE)
+        and then Is_Loadable_Type (GT)
       then
-         return Get_Undef (Default_GL_Type (TE));
+         return Get_Undef (GT);
 
       --  If we have a constant of a struct type that we're converting to
       --  a struct of the same layout, we can make a new constant.
 
       elsif R = Data and then Is_Constant (Result)
         and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
-        and then Is_Record_Type (TE) and then not Is_Nonnative_Type (TE)
-        and then Is_Layout_Identical (Result, TE)
+        and then Is_Record_Type (GT) and then not Is_Nonnative_Type (GT)
+        and then Is_Layout_Identical (Result, GT)
       then
-         return Convert_Struct_Constant (Result, TE);
+         Result := Convert_Struct_Constant (Result, GT);
 
       --  Otherwise, we do the same as an unchecked conversion.
 
       else
-         Result := Convert_Ref (Get (Result, Any_Reference), TE);
+         Result := Convert_Ref (Get (Result, Any_Reference), GT);
       end if;
 
       --  For unchecked conversion, if the result is a non-biased
@@ -588,23 +594,23 @@ package body GNATLLVM.Types is
       --  we'll generate bad shifts if we try to do it again.
 
       if Is_Unchecked and then not No_Truncation
-        and then Is_Discrete_Or_Fixed_Point_Type (TE)
-        and then not Is_Modular_Integer_Type (TE)
-        and then not Non_Binary_Modulus (TE)
-        and then RM_Size (TE) < Esize (TE)
-        and then not (Is_Discrete_Or_Fixed_Point_Type (In_TE)
-                        and then TE_Uns = In_TE_Uns
-                        and then (TE_Uns
-                                    or else RM_Size (TE) = RM_Size (In_TE)))
+        and then Is_Discrete_Or_Fixed_Point_Type (GT)
+        and then not Is_Modular_Integer_Type (GT)
+        and then not Non_Binary_Modulus (GT)
+        and then RM_Size (GT) < Esize (GT)
+        and then not (Is_Discrete_Or_Fixed_Point_Type (In_GT)
+                        and then GT_Uns = In_GT_Uns
+                        and then (GT_Uns
+                                    or else RM_Size (GT) = RM_Size (In_GT)))
       then
          declare
             Shift_Count : constant GL_Value  :=
-              Const_Int (Default_GL_Type (TE), Esize (TE) - RM_Size (TE));
+              Const_Int (GT, Esize (GT) - RM_Size (GT));
             Left_Shift  : constant GL_Value :=
-              Shl (Convert (Get (Result, Data), TE), Shift_Count);
+              Shl (Convert (Get (Result, Data), GT), Shift_Count);
 
          begin
-            Result := (if   Is_Unsigned_Type (TE)
+            Result := (if   Is_Unsigned_Type (GT)
                        then L_Shr (Left_Shift, Shift_Count)
                        else A_Shr (Left_Shift, Shift_Count));
          end;
@@ -668,8 +674,9 @@ package body GNATLLVM.Types is
       Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
       Dest_FP     : constant Boolean := Is_Floating_Point_Type (TE);
       Src_Uns     : constant Boolean :=
-        Is_Unsigned_For_Convert (Full_Etype (V));
-      Dest_Uns    : constant Boolean := Is_Unsigned_For_Convert (TE);
+        Is_Unsigned_For_Convert (Related_Type (V));
+      Dest_Uns    : constant Boolean :=
+        Is_Unsigned_For_Convert (Default_GL_Type (TE));
       Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
         (if   Is_Modular_Integer_Type (TE) then RM_Size (TE) else Esize (TE));
@@ -1720,16 +1727,16 @@ package body GNATLLVM.Types is
    -- Bounds_From_Type --
    ----------------------
 
-   procedure Bounds_From_Type (TE : Entity_Id; Low, High : out GL_Value)
+   procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value)
    is
-      SRange : constant Node_Id := Scalar_Range (TE);
+      SRange : constant Node_Id := Scalar_Range (GT);
 
    begin
       pragma Assert (Nkind_In (SRange, N_Range,
                                N_Signed_Integer_Type_Definition));
 
-      Low  := Emit_Convert_Value (Low_Bound (SRange), TE);
-      High := Emit_Convert_Value (High_Bound (SRange), TE);
+      Low  := Emit_Convert_Value (Low_Bound (SRange), GT);
+      High := Emit_Convert_Value (High_Bound (SRange), GT);
 
    end Bounds_From_Type;
 

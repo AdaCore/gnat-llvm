@@ -395,7 +395,8 @@ package body GNATLLVM.Records is
             if Full_Base_Type (SSE.TE) = Rec_Type and then not SSE.Used then
                SSE.Used := True;
                return Emit_Convert_Value
-                 (Get_Discriminant_Constraint (SSE.TE, E), TE);
+                 (Get_Discriminant_Constraint (SSE.TE, E),
+                  Default_GL_Type (TE));
             end if;
          end;
       end loop;
@@ -2276,7 +2277,7 @@ package body GNATLLVM.Records is
                Field  : constant Entity_Id     :=
                  Find_Matching_Field
                  (Full_Etype (GT), Entity (First (Choices (Expr))));
-               F_Type : constant Entity_Id     := Full_Etype (Field);
+               F_GT   : constant GL_Type       := Full_GL_Type (Field);
                F_Idx  : constant Field_Info_Id := Get_Field_Info (Field);
 
             begin
@@ -2306,7 +2307,7 @@ package body GNATLLVM.Records is
                           Field_Info_Table.Table (F_Idx);
                         Idx : constant Nat        := FI.Field_Ordinal;
                         Val : GL_Value            :=
-                          Emit_Convert_Value (Expression (Expr), F_Type);
+                          Emit_Convert_Value (Expression (Expr), F_GT);
 
                      begin
                         if Is_Data (Result) then

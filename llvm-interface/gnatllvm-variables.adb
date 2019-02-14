@@ -142,9 +142,9 @@ package body GNATLLVM.Variables is
      with Pre => Present (N);
    --  Return True if N represent an object with constant address
 
-   function Is_Static_Conversion (In_TE, Out_TE : Entity_Id) return Boolean
-     with Pre => Is_Type (In_TE) and then Is_Type (Out_TE);
-   --  Return True if we can statically convert from In_TE to Out_TE
+   function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean
+     with Pre => Present (In_GT) and then Present (Out_GT);
+   --  Return True if we can statically convert from In_GT to Out_GT
 
    function Initialized_Value (E : Entity_Id) return Node_Id
      with Pre => Present (E);
@@ -552,28 +552,29 @@ package body GNATLLVM.Variables is
    -- Is_Static_Conversion --
    --------------------------
 
-   function Is_Static_Conversion (In_TE, Out_TE : Entity_Id) return Boolean is
+   function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean is
    begin
+      --  ?? At some point, actually check the GT, not just the type
       --  We can do the conversion statically if both types are elementary
 
-      return (Is_Elementary_Type (In_TE) and then Is_Elementary_Type (Out_TE))
+      return (Is_Elementary_Type (In_GT) and then Is_Elementary_Type (Out_GT))
 
         --  Or if they're the same type
 
-        or else In_TE = Out_TE
+        or else In_GT = Out_GT
 
         --  Or fixed-size record types with identical layout
 
-        or else (Is_Record_Type (In_TE) and then not Is_Nonnative_Type (In_TE)
-                   and then Is_Record_Type (Out_TE)
-                   and then not Is_Nonnative_Type (Out_TE)
-                   and then Is_Layout_Identical (In_TE, Out_TE))
+        or else (Is_Record_Type (In_GT) and then not Is_Nonnative_Type (In_GT)
+                   and then Is_Record_Type (Out_GT)
+                   and then not Is_Nonnative_Type (Out_GT)
+                   and then Is_Layout_Identical (In_GT, Out_GT))
 
         --  Or if both types are native and the LLVM types are the same
 
-        or else (not Is_Nonnative_Type (In_TE)
-                 and then not Is_Nonnative_Type (Out_TE)
-                 and then Type_Of (In_TE) = Type_Of (Out_TE));
+        or else (not Is_Nonnative_Type (In_GT)
+                 and then not Is_Nonnative_Type (Out_GT)
+                 and then Type_Of (In_GT) = Type_Of (Out_GT));
 
    end Is_Static_Conversion;
 
@@ -582,14 +583,14 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Is_Static_Address (N : Node_Id) return Boolean is
-      TE : constant Entity_Id := Full_Etype (N);
+      GT : constant GL_Type := Full_GL_Type (N);
 
    begin
       case Nkind (N) is
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
-            return Is_Static_Conversion (Full_Etype (Expression (N)), TE)
+            return Is_Static_Conversion (Full_GL_Type (Expression (N)), GT)
               and then Is_Static_Address (Expression (N));
 
          when N_Attribute_Reference =>
@@ -742,7 +743,8 @@ package body GNATLLVM.Variables is
                       or else not Do_Overflow_Check (N))
               --  Must not have overflow check
 
-              and then Is_Static_Conversion (Full_Etype (Expression (N)), TE)
+              and then Is_Static_Conversion (Full_GL_Type (Expression (N)),
+                                             Default_GL_Type (TE))
               --  Must be able to do conversion statically
 
               and then Is_No_Elab_Needed (Expression (N))
@@ -824,20 +826,24 @@ package body GNATLLVM.Variables is
                  and then No (Address_Clause (N))
                then
                   return Is_No_Elab_Needed (Full_View (N))
-                    and then Is_Static_Conversion (Full_Etype (Full_View (N)),
-                                                   TE);
+                    and then Is_Static_Conversion (Full_GL_Type
+                                                     (Full_View (N)),
+                                                   Default_GL_Type (TE));
                else
                   return Ekind (N) = E_Constant and then Present (CV)
                     and then Is_No_Elab_Needed (CV)
-                    and then Is_Static_Conversion (Full_Etype (CV), TE);
+                    and then Is_Static_Conversion (Full_GL_Type (CV),
+                                                   Default_GL_Type (TE));
                end if;
             end;
 
          when N_Selected_Component =>
             return Is_No_Elab_Needed (Prefix (N))
-              and then Is_Static_Conversion (Full_Etype (Prefix (N)),
-                                             Full_Scope
-                                               (Entity (Selector_Name (N))));
+              and then Is_Static_Conversion (Full_GL_Type (Prefix (N)),
+                                             Default_GL_Type
+                                               (Full_Scope
+                                                  (Entity
+                                                     (Selector_Name (N)))));
 
          --  If this is extracting constant offsets from something that we
          --  can elaborate statically, we can elaborate this statically.
@@ -1395,12 +1401,13 @@ package body GNATLLVM.Variables is
          if Present (Expr)
            and then (not Is_No_Elab_Needed (Expr)
                        or else not Is_Static_Conversion
-                       (Full_Etype (Expr), TE))
+                       (Full_GL_Type (Expr), Default_GL_Type (TE)))
          then
             if Library_Level then
-               Add_To_Elab_Proc (Expr, For_Type => TE);
+               Add_To_Elab_Proc (Expr, For_GT => Default_GL_Type (TE));
             else
-               Set_Value (Expr, Emit_Convert_Value (Expr, TE));
+               Set_Value (Expr, Emit_Convert_Value (Expr,
+                                                    Default_GL_Type (TE)));
             end if;
          end if;
 
@@ -1493,10 +1500,10 @@ package body GNATLLVM.Variables is
               and then Can_Initialize (LLVM_Var, GT)
               and then not Is_Dynamic_Size (GT, Max_Size)
               and then No (Addr_Expr)
-              and then Is_Static_Conversion (Full_Etype (Expr), TE)
+              and then Is_Static_Conversion (Full_GL_Type (Expr), GT)
             then
                if No (Value) then
-                  Value := Emit_Convert_Value (Expr, TE);
+                  Value := Emit_Convert_Value (Expr, GT);
                end if;
 
                if Type_Needs_Bounds (TE) then
@@ -1575,7 +1582,7 @@ package body GNATLLVM.Variables is
       --  conversions, since we have to ignore its type when doing the
       --  initializing.
 
-      if Present (Expr) and then Is_Class_Wide_Equivalent_Type (TE) then
+      if Present (Expr) and then Is_Class_Wide_Equivalent_Type (GT) then
          Expr := Strip_Conversions (Expr);
       end if;
 
@@ -1592,14 +1599,14 @@ package body GNATLLVM.Variables is
          --  the data.
 
          declare
-            R : GL_Relationship := Relationship_For_Alloc (TE);
+            R : GL_Relationship := Relationship_For_Alloc (GT);
 
          begin
             if R = Reference_To_Bounds_And_Data then
                R := Thin_Pointer;
             end if;
 
-            Addr := Int_To_Relationship (Addr, TE, R);
+            Addr := Int_To_Relationship (Addr, GT, R);
          end;
       end if;
 
@@ -1613,8 +1620,7 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Dynamic_Size (GT, Max_Size) then
-            Store (Get (Heap_Allocate_For_Type (Default_GL_Type (TE),
-                                                Default_GL_Type (TE), Value,
+            Store (Get (Heap_Allocate_For_Type (GT, GT, Value,
                                                 Expr      => Expr,
                                                 N         => N,
                                                 Def_Ident => Def_Ident,
@@ -1639,10 +1645,10 @@ package body GNATLLVM.Variables is
         and then (Present (Expr) or else Present (Value))
       then
          if No (Value) then
-            Value := Emit_Conversion (Expr, TE);
+            Value := Emit_Conversion (Expr, GT);
          end if;
 
-         if Is_Elementary_Type (TE) and then not Is_Packed_Array_Impl_Type (TE)
+         if Is_Elementary_Type (GT) and then not Is_Packed_Array_Impl_Type (GT)
          then
             LLVM_Var := Get (Value, Data);
             Copied := True;
@@ -1663,9 +1669,7 @@ package body GNATLLVM.Variables is
       --  on the stack, copying in any value.
 
       if No (LLVM_Var) then
-         LLVM_Var := Allocate_For_Type (Default_GL_Type (TE),
-                                        Default_GL_Type (TE),
-                                        Def_Ident, Value, Expr,
+         LLVM_Var := Allocate_For_Type (GT, GT, Def_Ident, Value, Expr,
                                         Def_Ident => Def_Ident,
                                         Max_Size  => Max_Size);
          Copied := True;

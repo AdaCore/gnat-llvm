@@ -1241,15 +1241,6 @@ package body GNATLLVM.GLValue is
    --------------
 
    function Bit_Cast
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
-
-   --------------
-   -- Bit_Cast --
-   --------------
-
-   function Bit_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
@@ -1342,27 +1333,9 @@ package body GNATLLVM.GLValue is
    -----------
 
    function Trunc
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (Trunc (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
-
-   -----------
-   -- Trunc --
-   -----------
-
-   function Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (Trunc (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
-
-   -----------
-   -- S_Ext --
-   -----------
-
-   function S_Ext
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (S_Ext (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
 
    -----------
    -- S_Ext --
@@ -1378,27 +1351,9 @@ package body GNATLLVM.GLValue is
    -----------
 
    function Z_Ext
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (Z_Ext (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
-
-   -----------
-   -- Z_Ext --
-   -----------
-
-   function Z_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (Z_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
-
-   --------------
-   -- FP_Trunc --
-   --------------
-
-   function FP_Trunc
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (FP_Trunc (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
 
    --------------
    -- FP_Trunc --
@@ -1414,27 +1369,9 @@ package body GNATLLVM.GLValue is
    ------------
 
    function FP_Ext
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (FP_Ext (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
-
-   ------------
-   -- FP_Ext --
-   ------------
-
-   function FP_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (FP_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
-
-   --------------
-   -- FP_To_SI --
-   --------------
-
-   function FP_To_SI
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (FP_To_SI (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
 
    --------------
    -- FP_To_SI --
@@ -1450,15 +1387,6 @@ package body GNATLLVM.GLValue is
    --------------
 
    function FP_To_UI
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (FP_To_UI (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
-
-   --------------
-   -- FP_To_UI --
-   --------------
-
-   function FP_To_UI
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (FP_To_UI (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
@@ -1468,27 +1396,9 @@ package body GNATLLVM.GLValue is
    --------------
 
    function UI_To_FP
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (UI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
-
-   --------------
-   -- UI_To_FP --
-   --------------
-
-   function UI_To_FP
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (UI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
-
-   --------------
-   -- SI_To_FP --
-   --------------
-
-   function SI_To_FP
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-   is
-     (G (SI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (TE), Name), TE));
 
    --------------
    -- SI_To_FP --
@@ -2203,15 +2113,6 @@ package body GNATLLVM.GLValue is
    -------------------------
 
    function Is_Layout_Identical
-     (V : GL_Value; TE : Entity_Id) return Boolean
-   is
-     (Is_Layout_Identical (Type_Of (V), Type_Of (TE)));
-
-   -------------------------
-   -- Is_Layout_Identical --
-   -------------------------
-
-   function Is_Layout_Identical
      (V : GL_Value; GT : GL_Type) return Boolean
    is
      (Is_Layout_Identical (Type_Of (V), Type_Of (GT)));
@@ -2220,31 +2121,8 @@ package body GNATLLVM.GLValue is
    -- Is_Layout_Identical --
    -------------------------
 
-   function Is_Layout_Identical (TE1, TE2 : Entity_Id) return Boolean is
-     (Is_Layout_Identical (Type_Of (TE1), Type_Of (TE2)));
-
-   -------------------------
-   -- Is_Layout_Identical --
-   -------------------------
-
    function Is_Layout_Identical (GT1, GT2 : GL_Type) return Boolean is
      (Is_Layout_Identical (Type_Of (GT1), Type_Of (GT2)));
-
-   -----------------------------
-   -- Convert_Struct_Constant --
-   -----------------------------
-
-   function Convert_Struct_Constant
-     (V : GL_Value; TE : Entity_Id) return GL_Value
-   is
-      T   : constant Type_T  := Type_Of (TE);
-      Val : constant Value_T := LLVM_Value (V);
-
-   begin
-      return G ((if   Is_Null (Val) then Const_Null (T)
-                 else Convert_Struct_Constant (Val, T)),
-                TE, Data);
-   end Convert_Struct_Constant;
 
    -----------------------------
    -- Convert_Struct_Constant --

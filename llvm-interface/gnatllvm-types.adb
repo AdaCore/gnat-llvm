@@ -661,25 +661,23 @@ package body GNATLLVM.Types is
 
    function Convert
      (V              : GL_Value;
-      TE             : Entity_Id;
+      GT             : GL_Type;
       Float_Truncate : Boolean := False) return GL_Value
    is
       type Cvtf is access function
-        (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value;
+        (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
+      In_GT       : constant GL_Type := Related_Type (V);
       Value       : GL_Value         := V;
-      T           : constant Type_T  := Type_Of (TE);
       Src_Access  : constant Boolean := Is_Access_Type (V);
-      Dest_Access : constant Boolean := Is_Access_Type (TE);
+      Dest_Access : constant Boolean := Is_Access_Type (GT);
       Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
-      Dest_FP     : constant Boolean := Is_Floating_Point_Type (TE);
-      Src_Uns     : constant Boolean :=
-        Is_Unsigned_For_Convert (Related_Type (V));
-      Dest_Uns    : constant Boolean :=
-        Is_Unsigned_For_Convert (Default_GL_Type (TE));
+      Dest_FP     : constant Boolean := Is_Floating_Point_Type (GT);
+      Src_Uns     : constant Boolean := Is_Unsigned_For_Convert (In_GT);
+      Dest_Uns    : constant Boolean := Is_Unsigned_For_Convert (GT);
       Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
-        (if   Is_Modular_Integer_Type (TE) then RM_Size (TE) else Esize (TE));
+        (if   Is_Modular_Integer_Type (GT) then RM_Size (GT) else Esize (GT));
       Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
       Subp        : Cvtf             := null;
@@ -687,21 +685,21 @@ package body GNATLLVM.Types is
    begin
       --  If the value is already of the desired LLVM type, we're done.
 
-      if Type_Of (V) = T then
-         return G_Is (V, TE);
+      if Type_Of (V) = Type_Of (GT) then
+         return G_Is (V, GT);
 
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
 
       elsif Dest_Access and then Is_Integer_Type (V) then
          Subp := Int_To_Ptr'Access;
-      elsif Is_Integer_Type (TE) and then Src_Access then
+      elsif Is_Integer_Type (GT) and then Src_Access then
          Subp := Ptr_To_Int'Access;
 
       --  For pointer to pointer, call our helper
 
       elsif Src_Access and then Dest_Access then
-         return Convert_To_Access (V, TE);
+         return Convert_To_Access (V, GT);
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int.  We already know that this isn't
@@ -761,7 +759,7 @@ package body GNATLLVM.Types is
 
       --  Here all that's left to do is generate the IR instruction
 
-      return Subp (Value, TE);
+      return Subp (Value, GT);
 
    end Convert;
 

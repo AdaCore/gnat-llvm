@@ -348,8 +348,8 @@ package body GNATLLVM.Conditionals is
       --  its base type.
 
       if Is_Scalar_Type (LHS) then
-         LHS := Convert (LHS, Full_Base_Type (LHS));
-         RHS := Convert (RHS, Full_Base_Type (RHS));
+         LHS := Convert (LHS, Base_GL_Type (LHS));
+         RHS := Convert (RHS, Base_GL_Type (RHS));
       end if;
 
       --  If we're comparing two access types, first get the values as

@@ -469,23 +469,6 @@ package body GNATLLVM.GLType is
       end loop;
    end Mark_Default;
 
-   -------------
-   -- Convert --
-   -------------
-
-   function Convert
-     (V              : GL_Value;
-      GT             : GL_Type;
-      Float_Truncate : Boolean := False) return GL_Value is
-
-   begin
-      --  ??? For now, only allow GT to be the primitive type, so this is
-      --  just a conversion to its type.
-
-      pragma Assert (Is_Primitive_GL_Type (GT));
-      return Convert (V, Full_Etype (GT), Float_Truncate);
-   end Convert;
-
    -----------------
    -- Convert_Ref --
    -----------------

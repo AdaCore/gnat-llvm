@@ -892,7 +892,8 @@ package body GNATLLVM.Compile is
                  and then not Is_Nonnative_Type (R_TE)
                  and then not Is_Nonnative_Type (GT)
                  and then (Full_Etype (Result) = R_TE
-                             or else Is_Layout_Identical (Result, R_TE))
+                             or else Is_Layout_Identical
+                                       (Result, Default_GL_Type (R_TE)))
                then
                   return Extract_Value (GT, Result,
                                         Get_Field_Ordinal (F_Idx, R_TE));

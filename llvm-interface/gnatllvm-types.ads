@@ -246,9 +246,9 @@ package GNATLLVM.Types is
 
    function Convert
      (V              : GL_Value;
-      TE             : Entity_Id;
+      GT             : GL_Type;
       Float_Truncate : Boolean := False) return GL_Value
-     with Pre  => Is_Data (V) and then Is_Elementary_Type (TE)
+     with Pre  => Is_Data (V) and then Present (GT)
                   and then Is_Elementary_Type (V),
           Post => Is_Data (Convert'Result)
                   and then Is_Elementary_Type (Convert'Result);
@@ -257,7 +257,7 @@ package GNATLLVM.Types is
 
    function Convert
      (V, T : GL_Value; Float_Truncate : Boolean := False) return GL_Value is
-     (Convert (V, Full_Etype (T), Float_Truncate))
+     (Convert (V, Related_Type (T), Float_Truncate))
      with Pre  => Is_Data (V) and then Is_Elementary_Type (V)
                   and then Is_Elementary_Type (T),
           Post => Is_Data (Convert'Result)

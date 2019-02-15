@@ -96,17 +96,6 @@ package GNATLLVM.GLType is
    --  Mark GT as the type to be used as the default representation of
    --  its corresponding GNAT type.
 
-   function Convert
-     (V              : GL_Value;
-      GT             : GL_Type;
-      Float_Truncate : Boolean := False) return GL_Value
-     with Pre  => Is_Data (V) and then Is_Elementary_Type (GT)
-                  and then Is_Elementary_Type (V),
-          Post => Is_Data (Convert'Result)
-                  and then Is_Elementary_Type (Convert'Result);
-   --  Convert V to the type GT, with both the types of V and GT being
-   --  elementary.
-
    function Convert_Ref (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Reference (V),
           Post => Is_Reference (Convert_Ref'Result);

@@ -1284,8 +1284,11 @@ package body GNATLLVM.Types is
    --------------------------
 
    function Create_Discrete_Type (TE : Entity_Id) return Type_T is
+      Max_Size : constant Uint := UI_From_Int (Get_Long_Long_Size);
+      Size     : Uint          := Esize (TE);
+
    begin
-      --  It's tempting to use i1 for boolean types, but that causes issue.
+      --  It's tempting to use i1 for boolean types, but that causes issues.
       --  First, we'd have to handle booleans with rep clauses specially,
       --  but, perhaps more importantly, LLVM treats a boolean as being true
       --  if it's 1 (interpreted as an 8-bit value) and zero otherwise, but
@@ -1297,12 +1300,14 @@ package body GNATLLVM.Types is
       --  of a comparison) and for a 1-bit modular type.
 
       if Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= Uint_0 then
-         return Int_Ty (RM_Size (TE));
-      elsif Esize (TE) /= Uint_0 then
-         return Int_Ty (Esize (TE));
-      else
-         return Int_Ty (Uint_Bits_Per_Unit);
+         Size := RM_Size (TE);
+      elsif Esize (TE) = Uint_0 then
+         Size := Uint_Bits_Per_Unit;
       end if;
+
+      return
+        Int_Ty (if Size <= Max_Size then Size else Max_Size);
+
    end Create_Discrete_Type;
 
    --------------------------------

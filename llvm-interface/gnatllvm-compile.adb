@@ -913,9 +913,8 @@ package body GNATLLVM.Compile is
             --  type of a packed array type.  In that case, convert it to
             --  the result type.
 
-            if Is_Integer_Type (GL_Type'(Related_Type (Result)))
-              and then Is_Packed_Array_Impl_Type
-                 (GL_Type'(Related_Type (Result)))
+            if Is_Integer_Type (Related_Type (Result))
+              and then Is_Packed_Array_Impl_Type (Related_Type (Result))
             then
                --  Evaluate any expressions in case they have side-effects
 

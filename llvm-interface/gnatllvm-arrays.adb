@@ -25,7 +25,6 @@ with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -1015,13 +1014,12 @@ package body GNATLLVM.Arrays is
    -- Get_Bound_Size --
    --------------------
 
-   function Get_Bound_Size (TE : Entity_Id) return GL_Value is
-      T : constant Type_T := Create_Array_Bounds_Type (TE);
+   function Get_Bound_Size (GT : GL_Type) return GL_Value is
+      T : constant Type_T := Create_Array_Bounds_Type (Full_Etype (GT));
    begin
       return Align_To (Get_Type_Size (T),
                        Size_Const_Int (Get_Type_Alignment (T)),
-                       Size_Const_Int (Get_Type_Alignment
-                                         (Default_GL_Type (TE))));
+                       Size_Const_Int (Get_Type_Alignment (GT)));
    end Get_Bound_Size;
 
    -------------------------
@@ -1220,7 +1218,7 @@ package body GNATLLVM.Arrays is
       Result : Index_Array (Idxs'Range);
 
    begin
-      if Convention (GL_Type'(Related_Type (V))) /= Convention_Fortran then
+      if Convention (Related_Type (V)) /= Convention_Fortran then
          return Idxs;
       end if;
 

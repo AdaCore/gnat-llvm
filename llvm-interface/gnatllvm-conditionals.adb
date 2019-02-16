@@ -960,8 +960,8 @@ package body GNATLLVM.Conditionals is
       Else_BB    : Basic_Block_T          := Create_Basic_Block ("if-else");
       Then_Value : GL_Value;
       Else_Value : GL_Value;
-      Then_Type  : Entity_Id;
-      Else_Type  : Entity_Id;
+      Then_GT    : GL_Type;
+      Else_GT    : GL_Type;
       R          : GL_Relationship;
       Result     : GL_Value;
 
@@ -972,11 +972,11 @@ package body GNATLLVM.Conditionals is
       Emit_If_Cond (Condition, Then_BB, Else_BB);
       Position_Builder_At_End (Then_BB);
       Then_Value := Emit (Then_Expr);
-      Then_Type  := Related_Type (Then_Value);
+      Then_GT    := Related_Type (Then_Value);
       Then_BB    := Get_Insert_Block;
       Position_Builder_At_End (Else_BB);
       Else_Value := Emit (Else_Expr);
-      Else_Type  := Related_Type (Else_Value);
+      Else_GT    := Related_Type (Else_Value);
       Else_BB    := Get_Insert_Block;
 
       --  We need to be sure that the operands are either both data or both
@@ -1011,10 +1011,9 @@ package body GNATLLVM.Conditionals is
       --  references because that's the way we convert composite types.
 
       elsif Is_Reference (Then_Value) /= Is_Reference (Else_Value)
-        or else Then_Type /= Else_Type
+        or else Then_GT /= Else_GT
       then
-         R := (if   GL_Type'(Related_Type (Then_Value)) =
-                    Related_Type (Else_Value)
+         R := (if   Related_Type (Then_Value) = Related_Type (Else_Value)
                then Data else Any_Reference);
          Position_Builder_At_End (Then_BB);
          Then_Value := Get (Then_Value, R);

@@ -19,6 +19,7 @@ with Nlists;   use Nlists;
 with Sem_Aggr; use Sem_Aggr;
 with Sinfo;    use Sinfo;
 
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -54,12 +55,11 @@ package GNATLLVM.Arrays is
    --  structure that that follows the following pattern: { LB0, UB0, LB1,
    --  UB1, ... }
 
-   function Get_Bound_Size (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
-          Post => Present (Get_Bound_Size'Result);
-   --  Get the size of the Bounds part of array and data of TE, taking into
+   function Get_Bound_Size (GT : GL_Type) return GL_Value
+     with Pre => Present (GT), Post => Present (Get_Bound_Size'Result);
+   --  Get the size of the Bounds part of array and data of GT, taking into
    --  account both the size of the bounds and the alignment of the bounds
-   --  and TE.
+   --  and GT.
 
    function Bounds_To_Length
      (In_Low, In_High : GL_Value; GT : GL_Type) return GL_Value

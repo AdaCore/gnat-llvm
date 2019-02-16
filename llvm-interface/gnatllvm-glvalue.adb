@@ -153,19 +153,19 @@ package body GNATLLVM.GLValue is
       end case;
    end GL_Value_Is_Valid_Int;
 
-   ------------------
-   -- Related_Type --
-   ------------------
+   -----------
+   -- Etype --
+   -----------
 
-   function Related_Type (V : GL_Value) return Entity_Id is
-     (Full_Etype (GL_Type'(Related_Type (V))));
+   function Etype (V : GL_Value) return Entity_Id is
+     (Full_Etype (Related_Type (V)));
 
    ----------------------------
    -- Is_Unconstrained_Array --
    ----------------------------
 
    function Is_Unconstrained_Array (V : GL_Value) return Boolean is
-     (Is_Unconstrained_Array (GL_Type'(Related_Type (V))));
+     (Is_Unconstrained_Array (Related_Type (V)));
 
    -----------------------------------
    -- Is_Access_Unconstrained_Array --
@@ -176,61 +176,68 @@ package body GNATLLVM.GLValue is
         and then Is_Unconstrained_Array (Full_Designated_Type (V))
         and then Relationship (V) /= Reference);
 
+   -------------------------------
+   -- Is_Packed_Array_Impl_Type --
+   -------------------------------
+
+   function Is_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
+     (Is_Packed_Array_Impl_Type (Related_Type (V)));
+
    -----------------------------
    -- Is_Unconstrained_Record --
    -----------------------------
 
    function Is_Unconstrained_Record (V : GL_Value) return Boolean is
-     (Is_Unconstrained_Record (GL_Type'(Related_Type (V))));
+     (Is_Unconstrained_Record (Related_Type (V)));
 
    ---------------------------
    -- Is_Unconstrained_Type --
    ---------------------------
 
    function Is_Unconstrained_Type (V : GL_Value) return Boolean is
-     (Is_Unconstrained_Type (GL_Type'(Related_Type (V))));
+     (Is_Unconstrained_Type (Related_Type (V)));
 
    -----------------------------------
    -- Is_Constr_Subt_For_UN_Aliased --
    -----------------------------------
 
    function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean is
-     (Is_Constr_Subt_For_UN_Aliased (GL_Type'(Related_Type (V))));
+     (Is_Constr_Subt_For_UN_Aliased (Related_Type (V)));
 
    -----------------------------------
    -- Is_Bit_Packed_Array_Impl_Type --
    -----------------------------------
 
    function Is_Bit_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
-     (Is_Bit_Packed_Array_Impl_Type (GL_Type'(Related_Type (V))));
+     (Is_Bit_Packed_Array_Impl_Type (Related_Type (V)));
 
    -----------------------
    -- Type_Needs_Bounds --
    -----------------------
 
    function Type_Needs_Bounds (V : GL_Value) return Boolean is
-     (Type_Needs_Bounds (GL_Type'(Related_Type (V))));
+     (Type_Needs_Bounds (Related_Type (V)));
 
    ---------------------
    -- Is_Dynamic_Size --
    ---------------------
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Dynamic_Size (GL_Type'(Related_Type (V))));
+     (Is_Data (V) and then Is_Dynamic_Size (Related_Type (V)));
 
    -----------------------
    -- Is_Nonnative_Type --
    -----------------------
 
    function Is_Nonnative_Type (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Nonnative_Type (GL_Type'(Related_Type (V))));
+     (Is_Data (V) and then Is_Nonnative_Type (Related_Type (V)));
 
    ----------------------
    -- Is_Loadable_Type --
    ----------------------
 
    function Is_Loadable_Type (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Loadable_Type (GL_Type'(Related_Type (V))));
+     (Is_Data (V) and then Is_Loadable_Type (Related_Type (V)));
 
    -------------
    -- Discard --
@@ -633,8 +640,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Our_R = Thin_Pointer then
-               Result := Sub (Ptr_To_Size_Type (V),
-                              Get_Bound_Size (Full_Etype (GT)));
+               Result := Sub (Ptr_To_Size_Type (V), Get_Bound_Size (GT));
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -661,8 +667,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Our_R = Thin_Pointer then
-               Result := Sub (Ptr_To_Size_Type (V),
-                              Get_Bound_Size (Full_Etype (GT)));
+               Result := Sub (Ptr_To_Size_Type (V), Get_Bound_Size (GT));
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -942,7 +947,7 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function Const_Int (V : GL_Value; N : Uint) return GL_Value is
-     (Const_Int (GL_Type'(Related_Type (V)), N));
+     (Const_Int (Related_Type (V), N));
 
    ---------------
    -- Const_Int --
@@ -1070,9 +1075,8 @@ package body GNATLLVM.GLValue is
 
    function Pred_FP (V : GL_Value) return GL_Value is
    begin
-      return G (Pred_FP (Context, Type_Of (Entity_Id'(Related_Type (V))),
-                         LLVM_Value (V)),
-                GL_Type'(Related_Type (V)));
+      return G (Pred_FP (Context, Type_Of (V), LLVM_Value (V)),
+                Related_Type (V));
    end Pred_FP;
 
    ----------------
@@ -1182,9 +1186,8 @@ package body GNATLLVM.GLValue is
       Name : String := "") return GL_Value
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        Type_For_Relationship (GL_Type'(Related_Type (T)), R),
-                        Name),
-          GL_Type'(Related_Type (T)), R, Is_Pristine (V)));
+                        Type_For_Relationship (Related_Type (T), R), Name),
+          Related_Type (T), R, Is_Pristine (V)));
 
    -----------
    -- Trunc --
@@ -1349,7 +1352,8 @@ package body GNATLLVM.GLValue is
    --------------------------
 
    function Full_Designated_Type (V : GL_Value) return Entity_Id is
-     ((if Is_Reference (V) then Get_Fullest_View (Related_Type (V))
+     ((if   Is_Reference (V)
+       then Get_Fullest_View (Full_Etype (Related_Type (V)))
        else Full_Designated_Type (Etype (V))));
 
    --------------------
@@ -1452,7 +1456,7 @@ package body GNATLLVM.GLValue is
          --  ??? At some point, we need to deal with TBAA or similar for these.
 
          return G (Load (IR_Builder, LLVM_Value (Ptr), Name),
-                   GL_Type'(Related_Type (Ptr)), New_Relationship);
+                   Related_Type (Ptr), New_Relationship);
       end if;
    end Load;
 
@@ -1663,14 +1667,14 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Type_Size (V : GL_Value) return GL_Value is
-      (Get_Type_Size (GL_Type'(Related_Type (V)), V));
+      (Get_Type_Size (Related_Type (V), V));
 
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
 
    function Get_Type_Alignment (V : GL_Value) return ULL is
-      (Get_Type_Alignment (GL_Type'(Related_Type (V))));
+      (Get_Type_Alignment (Related_Type (V)));
 
    ------------------------
    -- Get_Type_Alignment --

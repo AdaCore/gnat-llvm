@@ -370,11 +370,6 @@ package GNATLLVM.GLValue is
    --  Return the GL_Type to which V is related, irrespective of the
    --  relationship.
 
-   function Related_Type (V : GL_Value) return Entity_Id
-     with Pre => Present (V), Post => Is_Type_Or_Void (Related_Type'Result);
-   --  Return the GNAT type to which V is related, irrespective of the
-   --  relationship.
-
    function Relationship (V : GL_Value) return GL_Relationship is
      (V.Relationship)
      with Pre => Present (V);
@@ -417,8 +412,7 @@ package GNATLLVM.GLValue is
      (Is_Data (Relationship (V)))
      with Pre => Present (V);
 
-   function Etype (V : GL_Value) return Entity_Id is
-     (Related_Type (V))
+   function Etype (V : GL_Value) return Entity_Id
      with Pre  => Present (V) and then Is_Data (V),
           Post => Is_Type_Or_Void (Etype'Result);
 
@@ -618,8 +612,7 @@ package GNATLLVM.GLValue is
    function Is_Access_Unconstrained_Array (V : GL_Value) return Boolean
      with Pre => Present (V);
 
-   function Is_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
-     (Is_Packed_Array_Impl_Type (Related_Type (V)))
+   function Is_Packed_Array_Impl_Type (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function Is_Bit_Packed_Array_Impl_Type (V : GL_Value) return Boolean

@@ -1426,12 +1426,12 @@ package body GNATLLVM.Variables is
       then
          declare
             Other_Id : constant Entity_Id := Entity (Prefix (Addr_Expr));
-            Other_TE : constant Entity_Id := Full_Etype (Other_Id);
+            Other_GT : constant GL_Type := Full_GL_Type (Other_Id);
 
          begin
-            if not Is_Constr_Subt_For_UN_Aliased (Other_TE)
-              or else not Is_Array_Type (Other_TE)
-              or else Get_Bound_Size (TE) /= Get_Bound_Size (Other_TE)
+            if not Is_Constr_Subt_For_UN_Aliased (Other_GT)
+              or else not Is_Array_Type (Other_GT)
+              or else Get_Bound_Size (GT) /= Get_Bound_Size (Other_GT)
             then
                Error_Msg_NE ("aliased object& with unconstrained array " &
                                "nominal subtype", Address_Clause (Def_Ident),

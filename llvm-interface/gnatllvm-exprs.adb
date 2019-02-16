@@ -889,7 +889,7 @@ package body GNATLLVM.Exprs is
                V := Get_Type_Size (P_GT, V, Max_Size);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
                   if Is_Unconstrained_Array (P_GT) then
-                     V := Add (V, Get_Bound_Size (Full_Etype (P_GT)));
+                     V := Add (V, Get_Bound_Size (P_GT));
                   end if;
 
                   return Convert (V, GT);
@@ -908,7 +908,7 @@ package body GNATLLVM.Exprs is
          when Attribute_Descriptor_Size =>
             pragma Assert (Is_Unconstrained_Array (P_GT));
 
-            return Mul (Get_Bound_Size (Full_Etype (P_GT)), Byte_Size);
+            return Mul (Get_Bound_Size (P_GT), Byte_Size);
 
          when Attribute_Passed_By_Reference =>
 
@@ -1037,8 +1037,7 @@ package body GNATLLVM.Exprs is
 
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            Dest := Ptr_To_Ref (Get (Dest, Reference),
-                                GL_Type'(Related_Type (Src)));
+            Dest := Ptr_To_Ref (Get (Dest, Reference), Related_Type (Src));
          end if;
 
          Store (Src, Dest);
@@ -1083,7 +1082,7 @@ package body GNATLLVM.Exprs is
                 3 => Size,
                 4 => Const_False), -- Is_Volatile
                Get_Type_Alignment (Dest_GT),
-               Get_Type_Alignment (GL_Type'(Related_Type (Src))));
+               Get_Type_Alignment (Related_Type (Src)));
          end;
       end if;
    end Emit_Assignment;

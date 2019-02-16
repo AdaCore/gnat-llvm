@@ -329,7 +329,7 @@ package body GNATLLVM.Types is
 
       return Type_Of (V) = Pointer_Type (Type_Of (GT), 0)
         or else (not Is_Scalar_Type (GT)
-                   and then not Is_Scalar_Type (GL_Type'(Related_Type (V))));
+                   and then not Is_Scalar_Type (Related_Type (V)));
 
    end Is_Nop_Conversion;
 
@@ -628,7 +628,7 @@ package body GNATLLVM.Types is
       New_V : constant GL_Value        :=
         Get (V, (if   Is_Double_Reference (V) then Reference_To_Reference
                  else Any_Reference));
-      TE    : constant Entity_Id       := Related_Type (New_V);
+      TE    : constant Entity_Id       := Full_Etype (Related_Type (New_V));
       R     : constant GL_Relationship := Relationship (New_V);
       T     : constant Type_T          := Type_For_Relationship (TE, R);
 
@@ -770,7 +770,7 @@ package body GNATLLVM.Types is
    function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
       DT     : constant GL_Type         := Full_Designated_GL_Type (TE);
       In_R   : constant GL_Relationship := Relationship (V);
-      In_TE  : constant Entity_Id       := Related_Type (V);
+      In_TE  : constant Entity_Id       := Full_Etype (Related_Type (V));
       As_Ref : constant GL_Value        :=
         (if   Is_Data (V) and then Is_Access_Type (In_TE)
          then From_Access (V) else V);
@@ -932,7 +932,7 @@ package body GNATLLVM.Types is
    ------------------------------
 
    function Convert_Pointer_To_Dummy (V : GL_Value) return GL_Value is
-      TE    : constant Entity_Id       := Related_Type (V);
+      TE    : constant Entity_Id       := Full_Etype (Related_Type (V));
       R     : constant GL_Relationship := Relationship (V);
       T     : constant Type_T          := Type_Of (Dummy_GL_Type (TE));
 
@@ -1017,15 +1017,13 @@ package body GNATLLVM.Types is
    -------------------------
 
    procedure Add_To_LValue_List (V : GL_Value) is
-      TE : constant Entity_Id := Related_Type (V);
-
    begin
       --  Only add to the LValue list if this is a record type.  We might
       --  be tempted to do this only if the type has discriminants, but
       --  that doesn't work because a parent might and it's not worth
       --  checking.
 
-      if Is_Record_Type (TE) and then Disable_LV_Append = 0 then
+      if Is_Record_Type (Related_Type (V)) and then Disable_LV_Append = 0 then
          LValue_Pair_Table.Append (V);
       end if;
    end Add_To_LValue_List;
@@ -1073,8 +1071,11 @@ package body GNATLLVM.Types is
       --  object will have been added last.
 
       for J in reverse LValue_Pair_First .. LValue_Pair_Table.Last loop
-         if Is_Parent_Of (TE, Related_Type (LValue_Pair_Table.Table (J)))
-           or else Is_Parent_Of (Related_Type (LValue_Pair_Table.Table (J)),
+         if Is_Parent_Of (TE,
+                          Full_Etype (Related_Type
+                                        (LValue_Pair_Table.Table (J))))
+           or else Is_Parent_Of (Full_Etype (Related_Type
+                                               (LValue_Pair_Table.Table (J))),
                                  TE)
          then
             return Convert_Ref (LValue_Pair_Table.Table (J),
@@ -1142,7 +1143,7 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value is
-     (Get_Type_Size_In_Bits (GL_Type'(Related_Type (V))));
+     (Get_Type_Size_In_Bits (Related_Type (V)));
 
    ------------------------
    -- Ultimate_Base_Type --
@@ -2243,7 +2244,7 @@ package body GNATLLVM.Types is
       --  for unconstrained itself.
 
       if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT) then
-         Size := Align_To (Add (Size, Get_Bound_Size (Full_Etype (GT))),
+         Size := Align_To (Add (Size, Get_Bound_Size (GT)),
                            Get_Type_Alignment (GT),
                            Get_Bound_Alignment (Full_Etype (GT)));
       end if;
@@ -2362,14 +2363,16 @@ package body GNATLLVM.Types is
             then
                Ret := Esize (Our_E) / Uint_Bits_Per_Unit;
                if Is_Unconstrained_Array (TE) then
-                  Ret := Ret + UI_From_GL_Value (Get_Bound_Size (TE));
+                  Ret := Ret + UI_From_GL_Value
+                    (Get_Bound_Size (Default_GL_Type (TE)));
                end if;
 
                return Ret;
             end if;
 
          when Attribute_Descriptor_Size =>
-            return UI_From_GL_Value (Get_Bound_Size (TE)) * Uint_Bits_Per_Unit;
+            return UI_From_GL_Value (Get_Bound_Size (Default_GL_Type (TE))) *
+              Uint_Bits_Per_Unit;
 
          when Attribute_Component_Size =>
             if not Unknown_Component_Size (TE) then

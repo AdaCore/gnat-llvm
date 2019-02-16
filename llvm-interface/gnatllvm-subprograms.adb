@@ -24,7 +24,6 @@ with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Snames;   use Snames;
-with Stand;    use Stand;
 with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
@@ -1086,7 +1085,7 @@ package body GNATLLVM.Subprograms is
         and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func
       then
          declare
-            TE             : constant Entity_Id := Full_Etype (E);
+            GT             : constant GL_Type   := Full_GL_Type (E);
             Component      : constant Entity_Id :=
               Activation_Record_Component (E);
             Activation_Rec : constant GL_Value  :=
@@ -1101,10 +1100,10 @@ package body GNATLLVM.Subprograms is
             --  type.  Otherwise, this is a System.Address which needs to
             --  be converted to a pointer.
 
-            if Is_Unconstrained_Array (TE) then
+            if Is_Unconstrained_Array (GT) then
                return From_Access (Value);
             else
-               return Int_To_Ref (Value, TE);
+               return Int_To_Ref (Value, GT);
             end if;
          end;
       else
@@ -2238,14 +2237,14 @@ package body GNATLLVM.Subprograms is
          declare
             Subp_T    : constant Type_T          :=
               Pointer_Type (Create_Subprogram_Type (Def_Ident), 0);
-            TE        : constant Entity_Id       := Full_Etype (Def_Ident);
+            GT        : constant GL_Type         := Full_GL_Type (Def_Ident);
             Addr_Expr : constant Node_Id         := Expression (Addr_Clause);
             R         : constant GL_Relationship := Reference_To_Subprogram;
             Addr      : GL_Value                 := Get_Value (Addr_Expr);
 
             function Int_To_Subp (V : GL_Value) return GL_Value is
               (G (Int_To_Ptr (IR_Builder, LLVM_Value (Addr), Subp_T, ""),
-                  TE, R))
+                  GT, R))
               with Pre => Present (V), Post => Present (Int_To_Subp'Result);
 
          begin
@@ -2253,7 +2252,7 @@ package body GNATLLVM.Subprograms is
                if No (V) then
                   V := G (Add_Global (Module, Subp_T,
                                       Get_Ext_Name (Def_Ident)),
-                          TE, Ref (R));
+                          GT, Ref (R));
                   Set_Value (Def_Ident, V);
                end if;
 
@@ -2278,7 +2277,7 @@ package body GNATLLVM.Subprograms is
                --  Otherwise, initialize this to null and add to elab proc
 
                else
-                  Set_Initializer (V, G (Const_Null (Subp_T), TE, R));
+                  Set_Initializer (V, G (Const_Null (Subp_T), GT, R));
                   Add_To_Elab_Proc (N);
                end if;
 
@@ -2517,7 +2516,7 @@ package body GNATLLVM.Subprograms is
             Constructors (J) :=
               Const_Struct ((1 => Const_Int_32 (Uint_1),
                              2 => Get_Value (Global_Constructors.Table (J))),
-                            Any_Composite, False);
+                            Any_Array_GL_Type, False);
          end loop;
 
          Val := Const_Array  (Constructors, Any_Array_GL_Type);
@@ -2532,7 +2531,7 @@ package body GNATLLVM.Subprograms is
             Destructors (J) :=
               Const_Struct ((1 => Const_Int_32 (Uint_1),
                              2 => Get_Value (Global_Destructors.Table (J))),
-                            Any_Composite, False);
+                            Any_Array_GL_Type, False);
          end loop;
 
          Val := Const_Array  (Destructors, Any_Array_GL_Type);

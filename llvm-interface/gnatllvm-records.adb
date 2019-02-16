@@ -2112,6 +2112,7 @@ package body GNATLLVM.Records is
         (if Present (CRC) and then Full_Etype (CRC) = Full_Etype (F_GT)
          then CRC else Field);
       Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
+      Rec_GT     : constant GL_Type        := Default_GL_Type (Rec_Type);
       First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
       F_Idx      : Field_Info_Id           := Get_Field_Info (Our_Field);
       FI         : Field_Info;
@@ -2179,9 +2180,9 @@ package body GNATLLVM.Records is
       if Is_Nonnative_Type (Rec_Type) then
          Result := G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (Result),
                                         Pointer_Type (RI.LLVM_Type, 0), ""),
-                          Rec_Type);
+                          Rec_GT);
       else
-         Result := Convert_Ref (Result, Rec_Type);
+         Result := Convert_Ref (Result, Rec_GT);
       end if;
 
       --  Finally, do a regular GEP for the field and we're done

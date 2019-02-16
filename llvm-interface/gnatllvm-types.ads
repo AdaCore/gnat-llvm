@@ -264,14 +264,14 @@ package GNATLLVM.Types is
                   and then Is_Elementary_Type (Convert'Result);
    --  Variant of above where the type is that of another value (T)
 
-   function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Is_Reference (V) and then Is_Type (TE),
+   function Convert_Ref (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Reference (V) and then Present (GT),
           Post => Is_Reference (Convert_Ref'Result);
-   --  Convert V, which should be a reference, into a reference to TE
+   --  Convert V, which should be a reference, into a reference to GT
 
    function Convert_Ref
      (V : GL_Value; T : GL_Value) return GL_Value is
-     (Convert_Ref (V, Full_Etype (T)))
+     (Convert_Ref (V, Related_Type (T)))
      with Pre  => Present (V) and then Present (T),
           Post => Is_Access_Type (Convert_Ref'Result);
    --  Likewise, but get type from V
@@ -290,10 +290,11 @@ package GNATLLVM.Types is
    --  Likewise, but get type from V
 
    function Are_Arrays_With_Different_Index_Types
-     (T1, T2 : Entity_Id) return Boolean
-     with Pre => Is_Unconstrained_Array (T1) and then Is_Array_Type (T2);
-   --  Return True iff T1 and T2 are array types that have at least
-   --  one index for whose LLVM types are different.  T1 must be unconstrained.
+     (GT1, GT2 : GL_Type) return Boolean
+     with Pre => Present (GT1) and then Present (GT2);
+   --  Return True iff GT1 and GT2 are array types that have at least
+   --  one index for whose LLVM types are different.  GT1 must be
+   --  unconstrained.
 
    function Emit_Conversion
      (N                   : Node_Id;
@@ -317,10 +318,10 @@ package GNATLLVM.Types is
           Post => Present (Emit_Convert_Value'Result);
    --  Emit code to convert N to GT and get it as a value
 
-   function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Is_Access_Type (V) and then Is_Type (TE),
+   function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Access_Type (V) and then Present (GT),
           Post => Is_Access_Type (Convert_Pointer'Result);
-   --  V is a reference to some object.  Convert it to a reference to TE
+   --  V is a reference to some object.  Convert it to a reference to GT
    --  with the same relationship.
 
    function Convert_Pointer_To_Dummy (V : GL_Value) return GL_Value

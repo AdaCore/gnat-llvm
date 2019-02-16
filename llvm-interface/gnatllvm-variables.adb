@@ -1086,15 +1086,15 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Make_Global_Constant (V : GL_Value) return GL_Value is
-      TE      : constant Entity_Id := Related_Type (V);
-      In_V    : GL_Value           := V;
+      GT      : constant GL_Type := Related_Type (V);
+      In_V    : GL_Value        := V;
       Out_Val : Value_T;
 
    begin
       --  If we're making a constant for a string literal, we want
       --  both the bounds and data.
 
-      if Ekind (TE) = E_String_Literal_Subtype then
+      if Ekind (GT) = E_String_Literal_Subtype then
          In_V := Get (In_V, Bounds_And_Data);
       end if;
 
@@ -1113,7 +1113,7 @@ package body GNATLLVM.Variables is
       --  literals may have different types (i.e., bounds).
 
       return G (Const_Map.Element (LLVM_Value (In_V)),
-                TE, Ref (Relationship (In_V)));
+                GT, Ref (Relationship (In_V)));
    end Make_Global_Constant;
 
    --------------------------
@@ -1468,7 +1468,7 @@ package body GNATLLVM.Variables is
 
                Set_Global_Constant (LLVM_Var);
                Set_Initializer (LLVM_Var,
-                                Int_To_Relationship (Addr, TE,
+                                Int_To_Relationship (Addr, GT,
                                                      Reference_To_Component));
                Set_Init := True;
             elsif Library_Level then

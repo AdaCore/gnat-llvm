@@ -811,8 +811,9 @@ package body GNATLLVM.Compile is
               (From_Access (Emit_Expression (Prefix (N))));
             if Present (Actual_Designated_Subtype (N)) then
                Result := Convert_Ref (Get (Result, Reference),
-                                      Get_Fullest_View
-                                        (Actual_Designated_Subtype (N)));
+                                      Default_GL_Type
+                                        (Get_Fullest_View
+                                           (Actual_Designated_Subtype (N))));
             end if;
 
             return Result;

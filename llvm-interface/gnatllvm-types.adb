@@ -86,10 +86,10 @@ package body GNATLLVM.Types is
 
    function Convert_Pointer
      (V  : GL_Value;
-      TE : Entity_Id;
+      GT : GL_Type;
       R  : GL_Relationship;
       T  : Type_T) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE) and then Present (T),
+     with Pre  => Present (V) and then Present (GT) and then Present (T),
           Post => Present (Convert_Pointer'Result);
    --  Internal function for Convert_Pointer and Convert_Pointer_To_Dummy
    --  to do actual conversion.
@@ -239,7 +239,7 @@ package body GNATLLVM.Types is
    -----------------------------------------------
 
    function Are_Arrays_With_Different_Index_Types
-     (T1, T2 : Entity_Id) return Boolean
+     (GT1, GT2 : GL_Type) return Boolean
    is
       Idx1, Idx2 : Entity_Id;
 
@@ -248,18 +248,18 @@ package body GNATLLVM.Types is
       --  The front end should not have gotten us here if the number
       --  of dimensions differ.
 
-      pragma Assert (Number_Dimensions (T1) = Number_Dimensions (T2));
+      pragma Assert (Number_Dimensions (GT1) = Number_Dimensions (GT2));
 
       --  We don't need to do anything if the index types differ unless the
       --  corresponding LLVM types differ, so that's all we check.
 
-      if Ekind (T2) = E_String_Literal_Subtype then
-         return (Type_Of (Full_Etype (First_Index (T1)))
+      if Ekind (GT2) = E_String_Literal_Subtype then
+         return (Type_Of (Full_Etype (First_Index (GT1)))
                    /= Type_Of (Integer_GL_Type));
       end if;
 
-      Idx1 := First_Index (T1);
-      Idx2 := First_Index (T2);
+      Idx1 := First_Index (GT1);
+      Idx2 := First_Index (GT2);
       while Present (Idx1) loop
          exit when
            Type_Of (Full_Etype (Idx1)) /= Type_Of (Full_Etype (Idx2));
@@ -508,7 +508,7 @@ package body GNATLLVM.Types is
          if Is_Unconstrained_Array (Full_Designated_Type (GT)) then
             Result :=
               Int_To_Relationship (Get (Result, Data),
-                                   Full_Designated_Type (GT), Thin_Pointer);
+                                   Full_Designated_GL_Type (GT), Thin_Pointer);
          elsif Ekind (GT) = E_Access_Subprogram_Type then
             Result := Int_To_Relationship (Get (Result, Data),
                                            Full_Designated_GL_Type (GT),
@@ -639,14 +639,14 @@ package body GNATLLVM.Types is
       if Relationship (New_V) = Reference
         and then Get_Element_Type (Type_Of (New_V)) /= T
       then
-         return Ptr_To_Relationship (New_V, TE, R);
+         return Ptr_To_Relationship (New_V, Default_GL_Type (TE), R);
 
       --  If it's an actual access type and the type differs, unpack it,
       --  convert to the proper type, and repack.
 
       elsif Type_Of (New_V) /= T then
          return To_Access (Convert_Pointer (From_Access (New_V),
-                                            Full_Designated_Type (TE)),
+                                            Full_Designated_GL_Type (TE)),
                            TE);
 
       else
@@ -768,7 +768,7 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
-      DT     : constant Entity_Id       := Full_Designated_Type (TE);
+      DT     : constant GL_Type         := Full_Designated_GL_Type (TE);
       In_R   : constant GL_Relationship := Relationship (V);
       In_TE  : constant Entity_Id       := Related_Type (V);
       As_Ref : constant GL_Value        :=
@@ -805,16 +805,16 @@ package body GNATLLVM.Types is
    -- Convert_Ref --
    -----------------
 
-   function Convert_Ref (V : GL_Value; TE : Entity_Id) return GL_Value is
-      V_Type   : constant Entity_Id := Related_Type (V);
-      Unc_Src  : constant Boolean   := Is_Access_Unconstrained_Array (V);
-      Unc_Dest : constant Boolean   := Is_Unconstrained_Array (TE);
+   function Convert_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
+      V_GT     : constant GL_Type := Related_Type (V);
+      Unc_Src  : constant Boolean := Is_Access_Unconstrained_Array (V);
+      Unc_Dest : constant Boolean := Is_Unconstrained_Array (GT);
 
    begin
       --  V is some type of reference to some type.  We want to
-      --  convert it to be some type of reference to TE, which may be
+      --  convert it to be some type of reference to GT, which may be
       --  some other type (if it's the same, we have no work to do).  The
-      --  relationship of the result to TE may or may not be the same as
+      --  relationship of the result to GT may or may not be the same as
       --  the relationship of V to its type.
       --
       --  We want to do as little work here as possible because we don't
@@ -822,14 +822,14 @@ package body GNATLLVM.Types is
       --  avoid a situation where what we do has to be undone by our caller.
       --  However, the following must be true:
       --
-      --  (1) The result must be SOME valid representation of TE
+      --  (1) The result must be SOME valid representation of GT
       --  (2) We must not lose any information, especially information that
       --      we can't recover, but should also not discard any information
       --      that we might conceivable need later if we can keep it
       --
       --  These principles dictate our behavior in all cases.  For example,
       --  if the input is a fat pointer, we should try to retain it as a
-      --  fat pointer even if TE is constrained because we may want those
+      --  fat pointer even if GT is constrained because we may want those
       --  bounds if we later convert to an unconstrained type.  However, if
       --  we're converting to a constrained array with an index type that
       --  has a different LLVM type, we discard the bounds rather than
@@ -843,20 +843,18 @@ package body GNATLLVM.Types is
       --  ??? Need to rewrite to implement the above
 
       --  First deal with the case where we're converting between two arrays
-      --  with different index types and TE is unconstrained.  In that case,
+      --  with different index types and GT is unconstrained.  In that case,
       --  we have to materialize the bounds in the new index types.
 
-      if Unc_Dest and then Is_Array_Type (V_Type)
-        and then Are_Arrays_With_Different_Index_Types (TE, V_Type)
+      if Unc_Dest and then Is_Array_Type (V_GT)
+        and then Are_Arrays_With_Different_Index_Types (GT, V_GT)
       then
          declare
             New_FP : constant GL_Value :=
-              Get_Undef_Relationship (Default_GL_Type (TE), Fat_Pointer);
-            Bounds : constant GL_Value :=
-              Get_Array_Bounds (Default_GL_Type (TE), Default_GL_Type (V_Type),
-                                V);
+              Get_Undef_Relationship (GT, Fat_Pointer);
+            Bounds : constant GL_Value := Get_Array_Bounds (GT, V_GT, V);
             Data   : constant GL_Value :=
-              Ptr_To_Relationship (Get (V, Reference), TE, Reference);
+              Ptr_To_Relationship (Get (V, Reference), GT, Reference);
 
          begin
             return Insert_Value (Insert_Value (New_FP, Data, 0),
@@ -871,7 +869,7 @@ package body GNATLLVM.Types is
       --  undefined on such objects.
 
       if Is_Subprogram_Reference (V) then
-         return Ptr_To_Relationship (V, TE, Reference);
+         return Ptr_To_Relationship (V, GT, Reference);
 
       --  If neither is constrained, but they aren't the same type, just do
       --  a pointer cast unless we have to convert between function access
@@ -881,7 +879,7 @@ package body GNATLLVM.Types is
       --  converting between fat and raw pointers.
 
       elsif not Unc_Src and not Unc_Dest then
-         if Full_Designated_Type (V) = TE then
+         if Full_Designated_GL_Type (V) = GT then
             return Get (V, Any_Reference);
          else
             --  If what we have is a reference to bounds and data or a
@@ -890,11 +888,11 @@ package body GNATLLVM.Types is
             --  convert to a Reference and then to the new type.
 
             if Relationship (V) in Reference_To_Bounds_And_Data | Thin_Pointer
-              and then Type_Needs_Bounds (TE)
+              and then Type_Needs_Bounds (GT)
             then
-               return Ptr_To_Relationship (V, TE, Relationship (V));
+               return Ptr_To_Relationship (V, GT, Relationship (V));
             else
-               return Ptr_To_Ref (Get (V, Reference), TE);
+               return Ptr_To_Ref (Get (V, Reference), GT);
             end if;
          end if;
 
@@ -902,7 +900,7 @@ package body GNATLLVM.Types is
          return Get (V, Fat_Pointer);
 
       elsif Unc_Src and then not Unc_Dest then
-         return Convert_Ref (Get (V, Reference), TE);
+         return Convert_Ref (Get (V, Reference), GT);
       else
          pragma Assert (not Unc_Src and then Unc_Dest);
 
@@ -913,7 +911,7 @@ package body GNATLLVM.Types is
          --  to be an obvious way to fix it at the moment and this
          --  whole function needs to be rewritten anyway.
 
-         return Convert_Pointer (Get (V, Fat_Pointer), TE);
+         return Convert_Pointer (Get (V, Fat_Pointer), GT);
       end if;
    end Convert_Ref;
 
@@ -921,12 +919,12 @@ package body GNATLLVM.Types is
    -- Convert_Pointer --
    ---------------------
 
-   function Convert_Pointer (V : GL_Value; TE : Entity_Id) return GL_Value is
+   function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value is
       R     : constant GL_Relationship := Relationship (V);
-      T     : constant Type_T          := Type_For_Relationship (TE, R);
+      T     : constant Type_T          := Type_For_Relationship (GT, R);
 
    begin
-      return Convert_Pointer (V, TE, R, T);
+      return Convert_Pointer (V, GT, R, T);
    end Convert_Pointer;
 
    ------------------------------
@@ -939,7 +937,7 @@ package body GNATLLVM.Types is
       T     : constant Type_T          := Type_Of (Dummy_GL_Type (TE));
 
    begin
-      return Convert_Pointer (V, TE, R, T);
+      return Convert_Pointer (V, Default_GL_Type (TE), R, T);
    end Convert_Pointer_To_Dummy;
 
    ---------------------
@@ -948,7 +946,7 @@ package body GNATLLVM.Types is
 
    function Convert_Pointer
      (V  : GL_Value;
-      TE : Entity_Id;
+      GT : GL_Type;
       R  : GL_Relationship;
       T  : Type_T) return GL_Value
    is
@@ -956,12 +954,12 @@ package body GNATLLVM.Types is
 
    begin
       if Type_Of (V) = T then
-         return G_Is_Relationship (V, TE, R);
+         return G_Is_Relationship (V, GT, R);
 
       --  If the input is an actual pointer, convert it
 
       elsif Get_Type_Kind (T) = Pointer_Type_Kind then
-         return G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, ""), TE, R);
+         return G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, ""), GT, R);
       end if;
 
       --  Otherwise, we have a composite pointer and must make a new
@@ -981,7 +979,7 @@ package body GNATLLVM.Types is
          end;
       end loop;
 
-      return G (Value, TE, R);
+      return G (Value, GT, R);
    end Convert_Pointer;
 
    ----------------------
@@ -1079,7 +1077,8 @@ package body GNATLLVM.Types is
            or else Is_Parent_Of (Related_Type (LValue_Pair_Table.Table (J)),
                                  TE)
          then
-            return Convert_Ref (LValue_Pair_Table.Table (J), TE);
+            return Convert_Ref (LValue_Pair_Table.Table (J),
+                                Default_GL_Type (TE));
          end if;
       end loop;
 
@@ -2001,7 +2000,7 @@ package body GNATLLVM.Types is
          Result :=
            Call_Alloc (Proc,
                        (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
-                                         Full_Etype (First_Formal (Proc))),
+                                         Full_GL_Type (First_Formal (Proc))),
                         2 => Size, 3 => Align));
 
       --  Otherwise, this is the secondary stack and we just call with size
@@ -2101,7 +2100,8 @@ package body GNATLLVM.Types is
          elsif Is_Record_Type (Full_Etype (Pool)) then
             Call_Dealloc (Proc,
                           (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
-                                            Full_Etype (First_Formal (Proc))),
+                                            Full_GL_Type
+                                              (First_Formal (Proc))),
                            2 => Ptr_To_Size_Type (Conv_V),
                            3 => Size, 4 => Align));
 

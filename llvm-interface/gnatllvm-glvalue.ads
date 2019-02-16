@@ -17,8 +17,6 @@
 
 with Ada.Unchecked_Deallocation;
 
-with Stand; use Stand;
-
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -435,14 +433,6 @@ package GNATLLVM.GLValue is
      with Pre => Present (V) and then Present (GT);
    --  Raw constructor that allow full specification of all fields
 
-   function G
-     (V                    : Value_T;
-      TE                   : Entity_Id;
-      Relationship         : GL_Relationship := Data;
-      Is_Pristine          : Boolean := False) return GL_Value
-     with Pre => Present (V) and then Is_Type_Or_Void (TE);
-   --  Raw constructor that allow full specification of all fields
-
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
      (G (V, GL_Type'(Related_Type (GV)), Relationship (GV), Is_Pristine (GV)))
      with Pre  => Present (V) and then Present (GV),
@@ -453,11 +443,6 @@ package GNATLLVM.GLValue is
    function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
      (G (LLVM_Value (V), GT, Relationship (V), Is_Pristine (V)))
      with Pre  => Present (V) and then Present (GT),
-          Post => Present (G_Is'Result);
-   --  Constructor for case where we want to show that V has a different type
-
-   function G_Is (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
@@ -472,13 +457,6 @@ package GNATLLVM.GLValue is
    is
      (G (LLVM_Value (V), GT, R, Is_Pristine (V)))
      with Pre  => Present (V) and then Present (GT),
-          Post => Present (G_Is_Relationship'Result);
-   --  Constructor for case where we want to show that V has a different type
-   --  and relationship.
-
-   function G_Is_Relationship
-     (V : GL_Value; TE : Entity_Id; R : GL_Relationship) return GL_Value
-     with Pre  => Present (V) and then Is_Type_Or_Void (TE),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
    --  and relationship.
@@ -510,15 +488,6 @@ package GNATLLVM.GLValue is
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
    --  to type GT.
-
-   function G_Ref
-     (V           : Value_T;
-      TE          : Entity_Id;
-      Is_Pristine : Boolean := False) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
-          Post => Is_Reference (G_Ref'Result);
-   --  Constructor for case where we create a value that's a pointer
-   --  to type TE.
 
    function Not_Pristine (V : GL_Value) return GL_Value is
      (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V), False))
@@ -685,8 +654,7 @@ package GNATLLVM.GLValue is
    --  Produce a GL_Value from V whose relationship to its type is given
    --  by Rel.
 
-   function To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), TE))
+   function To_Access (V : GL_Value; TE : Entity_Id) return GL_Value
      with Pre  => Is_Access_Type (TE) and then Is_Reference (V),
           Post => Relationship (To_Access'Result) = Data
                   and then Full_Etype (To_Access'Result) = TE;
@@ -701,9 +669,7 @@ package GNATLLVM.GLValue is
    --  V is a reference to an object whose type is the designated type of
    --  TE.  Convert it to being viewed as an object of type GT.
 
-   function From_Access (V : GL_Value) return GL_Value is
-      (G (LLVM_Value (V), Full_Designated_Type (V),
-          Relationship_For_Access_Type (Full_Etype (V))))
+   function From_Access (V : GL_Value) return GL_Value
      with Pre  => Is_Data (V) and then Is_Access_Type (Full_Etype (V)),
           Post => Is_Reference (From_Access'Result);
    --  V is a value of an access type.  Instead, represent it as a reference
@@ -981,10 +947,6 @@ package GNATLLVM.GLValue is
      with Pre => Present (GT), Post => Is_Constant (Const_String'Result);
 
    function Const_Struct
-     (Elmts : GL_Value_Array; TE : Entity_Id; Packed : Boolean) return GL_Value
-     with Pre => Is_Record_Type (TE), Post => Present (Const_Struct'Result);
-
-   function Const_Struct
      (Elmts : GL_Value_Array; GT : GL_Type; Packed : Boolean) return GL_Value
      with Pre => Present (GT), Post => Present (Const_Struct'Result);
 
@@ -1003,13 +965,6 @@ package GNATLLVM.GLValue is
    --  Define IR builder variants which take and/or return GL_Value
 
    function Alloca
-     (TE        : Entity_Id;
-      Def_Ident : Entity_Id := Empty;
-      Name      : String    := "") return GL_Value
-     with Pre  => Is_Type (TE),
-          Post => Is_Access_Type (Alloca'Result);
-
-   function Alloca
      (GT        : GL_Type;
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "") return GL_Value
@@ -1024,22 +979,10 @@ package GNATLLVM.GLValue is
      with Pre  => Present (GT) and then Present (Num_Elts),
           Post => Is_Access_Type (Array_Alloca'Result);
 
-   function Int_To_Ptr (V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
-                  and then Is_Access_Type (TE),
-          Post => Is_Access_Type (Int_To_Ptr'Result);
-
    function Int_To_Ptr (V : GL_Value; GT : GL_Type; Name : String := "")
      return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
           Post => Is_Access_Type (Int_To_Ptr'Result);
-
-   function Ptr_To_Int
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V)
-                  and then Is_Discrete_Or_Fixed_Point_Type (TE),
-          Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
 
    function Ptr_To_Int
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
@@ -1084,11 +1027,6 @@ package GNATLLVM.GLValue is
           Post => Is_Pointer (Pointer_Cast'Result);
 
    function Ptr_To_Ref
-     (V : GL_Value; TE : Entity_Id; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Is_Type (TE),
-          Post => Is_Pointer (Ptr_To_Ref'Result);
-
-   function Ptr_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Pointer (Ptr_To_Ref'Result);
@@ -1096,14 +1034,6 @@ package GNATLLVM.GLValue is
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Is_Access_Type (T),
           Post => Is_Access_Type (Ptr_To_Ref'Result);
-
-   function Ptr_To_Relationship
-     (V    : GL_Value;
-      TE   : Entity_Id;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Is_Type (TE),
-          Post => Is_Pointer (Ptr_To_Relationship'Result);
 
    function Ptr_To_Relationship
      (V    : GL_Value;
@@ -1249,7 +1179,7 @@ package GNATLLVM.GLValue is
       Name     : String := "") return GL_Value
    is
      (G (I_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Standard_Boolean, Boolean_Data))
+         Boolean_GL_Type, Boolean_Data))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (I_Cmp'Result);
 
@@ -1259,7 +1189,7 @@ package GNATLLVM.GLValue is
       Name     : String := "") return GL_Value
    is
      (G (F_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Standard_Boolean, Boolean_Data))
+         Boolean_GL_Type, Boolean_Data))
      with Pre  => Is_Floating_Point_Type (LHS)
                   and then Is_Floating_Point_Type (RHS),
           Post => Present (F_Cmp'Result);
@@ -1487,29 +1417,12 @@ package GNATLLVM.GLValue is
           Post => Present (Build_Phi'Result);
 
    function Int_To_Ref
-     (V : GL_Value; TE : Entity_Id; Name : String := "")
-     return GL_Value
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
-          Post => Is_Access_Type (Int_To_Ref'Result);
-   --  Similar to Int_To_Ptr, but TE is the Designed_Type, not the
-   --  access type.
-
-   function Int_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "")
      return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
           Post => Is_Access_Type (Int_To_Ref'Result);
    --  Similar to Int_To_Ptr, but GT is the Designed_Type, not the
    --  access type.
-
-   function Int_To_Relationship
-     (V    : GL_Value;
-      TE   : Entity_Id;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Is_Type (TE),
-          Post => Is_Pointer (Int_To_Relationship'Result);
-   --  Similar to Int_To_Ptr, but specify the relationship to TE
 
    function Int_To_Relationship
      (V    : GL_Value;
@@ -1701,7 +1614,7 @@ package GNATLLVM.GLValue is
    is
       (G (Landing_Pad (IR_Builder, T, LLVM_Value (Personality_Func),
                        unsigned (Num_Clauses), Name),
-         Standard_A_Char, Unknown))
+         A_Char_GL_Type, Unknown))
      with Pre  => Present (T) and then Present (Personality_Func),
           Post => Present (Landing_Pad'Result);
 
@@ -1725,7 +1638,7 @@ package GNATLLVM.GLValue is
    function Block_Address
      (Func : GL_Value; BB : Basic_Block_T) return GL_Value
    is
-      (G (Block_Address (LLVM_Value (Func), BB), Standard_A_Char))
+      (G (Block_Address (LLVM_Value (Func), BB), A_Char_GL_Type))
      with Pre  => Present (Func) and then Present (BB),
           Post => Present (Block_Address'Result);
 

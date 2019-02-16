@@ -52,8 +52,13 @@ package body GNATLLVM.GLType is
       --  GL_Type because things will have that type and we'll have to convert
       --  as appropriate.
 
+      Biased,
+      --  An integral type narrower than the primitive type and for which
+      --  a bias is added value of the type to obtain a value of the
+      --  primitive type.
+
       Padded,
-      --  a record whose first field is the primitive type and the second
+      --  A record whose first field is the primitive type and the second
       --  is padding to make the record the proper length.  This can only
       --  be done if the primitive type is a native LLVM type.
 
@@ -178,6 +183,8 @@ package body GNATLLVM.GLType is
             return True;
          when Dummy =>
             return Is_Record_Type (TE) or else Is_Access_Type (TE);
+         when Biased =>
+            return Present (GTI.Bias) and then Is_Integer_Type (TE);
          when Padded =>
             return not Is_Nonnative_Type (TE)
               and then Get_Type_Kind (T) = Struct_Type_Kind;
@@ -510,6 +517,20 @@ package body GNATLLVM.GLType is
 
    function Is_Primitive_GL_Type (GT : GL_Type) return Boolean is
      (GL_Type_Table.Table (GT).Kind = Primitive);
+
+   ------------------------
+   --  Is_Biased_GL_Type --
+   ------------------------
+
+   function Is_Biased_GL_Type (GT : GL_Type) return Boolean is
+     (GL_Type_Table.Table (GT).Kind = Biased);
+
+   ---------------------------
+   --  Is_Bye_Array_GL_Type --
+   ---------------------------
+
+   function Is_Byte_Array_GL_Type (GT : GL_Type) return Boolean is
+     (GL_Type_Table.Table (GT).Kind = Byte_Array);
 
    ----------------------
    -- Is_Empty_GL_Type --

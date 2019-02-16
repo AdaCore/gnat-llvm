@@ -119,28 +119,34 @@ package GNATLLVM.GLType is
    --  Many are overloaded from the functions that obtain these fields from
    --  a GNAT type.
 
-   function Full_Etype (GT : GL_Type) return Entity_Id
+   function Full_Etype (GT : GL_Type)            return Entity_Id
      with Pre => Present (GT), Post => Is_Type_Or_Void (Full_Etype'Result);
 
-   function Type_Of (GT : GL_Type) return Type_T
+   function Type_Of (GT : GL_Type)               return Type_T
      with Pre => Present (GT);
 
-   function GT_Size (GT : GL_Type) return GL_Value
+   function GT_Size (GT : GL_Type)               return GL_Value
      with Pre => Present (GT);
 
-   function Is_Max_Size (GT : GL_Type) return Boolean
+   function Is_Max_Size (GT : GL_Type)           return Boolean
      with Pre => Present (GT);
 
-   function GT_Alignment (GT : GL_Type) return GL_Value
+   function GT_Alignment (GT : GL_Type)          return GL_Value
      with Pre => Present (GT);
 
-   function Is_Dummy_Type (GT : GL_Type) return Boolean
+   function Is_Dummy_Type (GT : GL_Type)         return Boolean
      with Pre => Present (GT);
 
-   function Is_Primitive_GL_Type (GT : GL_Type) return Boolean
+   function Is_Primitive_GL_Type (GT : GL_Type)  return Boolean
      with Pre => Present (GT);
 
-   function Is_Empty_GL_Type (GT : GL_Type) return Boolean
+   function Is_Biased_GL_Type (GT : GL_Type)     return Boolean
+     with Pre => Present (GT);
+
+   function Is_Byte_Array_GL_Type (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+
+   function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
      with Pre => Present (GT);
 
    --  Now define functions that operate on GNAT types that we want to

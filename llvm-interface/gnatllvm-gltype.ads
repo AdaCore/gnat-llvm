@@ -96,12 +96,6 @@ package GNATLLVM.GLType is
    --  Mark GT as the type to be used as the default representation of
    --  its corresponding GNAT type.
 
-   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value
-     with Pre  => Present (V) and then Present (GT),
-          Post => Is_Access_Type (Convert_To_Access'Result);
-   --  Convert Src, which should be an access or reference, into an access
-   --  type TE
-
    function Full_GL_Type (N : Node_Id) return GL_Type is
      (Default_GL_Type (Full_Etype (N)))
      with Pre => Present (N), Post => Present (Full_GL_Type'Result);

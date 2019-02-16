@@ -767,14 +767,14 @@ package body GNATLLVM.Types is
    -- Convert_To_Access --
    -----------------------
 
-   function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
-      DT     : constant GL_Type         := Full_Designated_GL_Type (TE);
+   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
+      DT     : constant GL_Type         := Full_Designated_GL_Type (GT);
       In_R   : constant GL_Relationship := Relationship (V);
-      In_TE  : constant Entity_Id       := Full_Etype (Related_Type (V));
+      In_GT  : constant GL_Type         := Related_Type (V);
       As_Ref : constant GL_Value        :=
-        (if   Is_Data (V) and then Is_Access_Type (In_TE)
+        (if   Is_Data (V) and then Is_Access_Type (In_GT)
          then From_Access (V) else V);
-      R      : constant GL_Relationship := Relationship_For_Access_Type (TE);
+      R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
       Result : GL_Value;
 
    begin
@@ -791,14 +791,14 @@ package body GNATLLVM.Types is
       --  specially here.
 
       if In_R = Reference_To_Subprogram
-        and then Ekind (TE) = E_Access_Subprogram_Type
+        and then Ekind (GT) = E_Access_Subprogram_Type
       then
          Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
       else
          Result := Convert_Pointer (Get (As_Ref, R), DT);
       end if;
 
-      return To_Access (Result, TE);
+      return To_Access (Result, GT);
    end Convert_To_Access;
 
    -----------------

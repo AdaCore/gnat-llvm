@@ -276,15 +276,15 @@ package GNATLLVM.Types is
           Post => Is_Access_Type (Convert_Ref'Result);
    --  Likewise, but get type from V
 
-   function Convert_To_Access (V : GL_Value; TE : Entity_Id) return GL_Value
-     with Pre  => Present (V) and then Is_Type (TE),
+   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Present (V) and then Present (GT),
           Post => Is_Access_Type (Convert_To_Access'Result);
    --  Convert Src, which should be an access or reference, into an access
-   --  type TE
+   --  type GT
 
    function Convert_To_Access
      (V : GL_Value; T : GL_Value) return GL_Value is
-     (Convert_To_Access (V, Full_Etype (T)))
+     (Convert_To_Access (V, Related_Type (T)))
      with Pre  => Present (V) and then Present (T),
           Post => Is_Access_Type (Convert_To_Access'Result);
    --  Likewise, but get type from V

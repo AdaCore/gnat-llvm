@@ -469,19 +469,6 @@ package body GNATLLVM.GLType is
       end loop;
    end Mark_Default;
 
-   -----------------------
-   -- Convert_To_Access --
-   -----------------------
-
-   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
-   begin
-      --  ??? For now, only allow GT to be the primitive type, so this is
-      --  just a conversion to its type.
-
-      pragma Assert (Is_Primitive_GL_Type (GT));
-      return Convert_To_Access (V, Full_Etype (GT));
-   end Convert_To_Access;
-
    ----------------
    -- Full_Etype --
    ----------------

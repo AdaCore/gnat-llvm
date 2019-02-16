@@ -69,9 +69,9 @@ package body GNATLLVM.GLType is
       --  non-native.
 
       Aligning);
-     --  The same LLVM type as for the primitive type, but recorded to
-     --  indicate that we need to align it differently.  This should only
-     --  be used when the primitive type is not a native LLVM type.
+      --  The same LLVM type as for the primitive type, but recorded to
+      --  indicate that we need to align it differently.  This should only
+      --  be used when the primitive type is not a native LLVM type.
 
    --  Define the fields in the table for GL_Type's
 

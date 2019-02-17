@@ -158,9 +158,9 @@ package GNATLLVM is
    Module_Data_Layout : Target_Data_T;
    --  LLVM current module data layout.
 
-   Size_Type          : Entity_Id;
-   Size_GL_Type       : GL_Type;
-   LLVM_Size_Type     : Type_T;
+   Size_Type          : Entity_Id := Empty;
+   Size_GL_Type       : GL_Type   := No_GL_Type;
+   LLVM_Size_Type     : Type_T    := No_Type_T;
    --  Types to use for sizes
 
    Void_Ptr_Type      : Type_T;

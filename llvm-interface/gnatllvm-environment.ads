@@ -153,10 +153,10 @@ package GNATLLVM.Environment is
      with Pre => Is_Array_Type (TE);
 
    function Is_Nonnative_Type       (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
 
    function Is_Nonnative_Type_N     (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
+     with Pre => Is_Type_Or_Void (TE);
 
    function Is_Being_Elaborated     (TE : Entity_Id) return Boolean
      with Pre => Is_Type_Or_Void (TE);

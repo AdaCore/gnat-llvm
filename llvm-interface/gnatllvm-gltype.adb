@@ -67,7 +67,7 @@ package body GNATLLVM.GLType is
       --  GL_Type.  This should only be used when the primitive type is not
       --  a native LLVM type.
 
-      Max_Size,
+      Max_Size_Type,
       --  We're denoting that the maximum size of the type is used, but
       --  that maximum size is dynamic, so the LLVM type is actually that
       --  of the primitive type.  This also implies that the LLVM type is
@@ -91,10 +91,10 @@ package body GNATLLVM.GLType is
       --  If Present, link to next alternative
 
       Size      : GL_Value;
-      --  If Present, size of this alternative
+      --  If Present, size of this alternative in bits
 
       Alignment : GL_Value;
-      --  If Present, alignment of this alternative
+      --  If Present, alignment of this alternative in bytes
 
       Bias      : GL_Value;
       --  If Present, the amount of bias for integral types
@@ -193,7 +193,7 @@ package body GNATLLVM.GLType is
               and then Get_Type_Kind (T) = Array_Type_Kind;
          when Aligning =>
             return Is_Nonnative_Type (TE);
-         when Max_Size =>
+         when Max_Size_Type =>
             return Is_Nonnative_Type (TE)
               and then Is_Unconstrained_Record (TE);
       end case;
@@ -271,7 +271,7 @@ package body GNATLLVM.GLType is
    ------------
 
    function New_GT (TE : Entity_Id) return GL_Type is
-      GT   : GL_Type;
+      GT : GL_Type;
 
    begin
       GL_Type_Table.Append ((GNAT_Type => TE,
@@ -290,58 +290,41 @@ package body GNATLLVM.GLType is
       return GT;
    end New_GT;
 
-   --------------------
-   -- Create_GL_Type --
-   --------------------
+   -------------------------
+   -- Make_GL_Alternative --
+   -------------------------
 
-   function Create_GL_Type
-     (TE       : Entity_Id;
-      Size     : Uint    := No_Uint;
-      Align    : Uint    := No_Uint;
-      For_Type : Boolean := False;
-      Max_Size : Boolean := False;
-      Biased   : Boolean := False) return GL_Type
+   function Make_GL_Alternative
+     (GT        : GL_Type;
+      Size      : Uint    := No_Uint;
+      Align     : Uint    := No_Uint;
+      For_Type  : Boolean := False;
+      Max_Size  : Boolean := False;
+      Is_Biased : Boolean := False) return GL_Type
    is
-      Size_V     : GL_Value :=
-        (if   Size = No_Uint then No_GL_Value
-         else Size_Const_Int ((Size + (Uint_Bits_Per_Unit - 1)) /
-                                Uint_Bits_Per_Unit));
-      Align_V    :  GL_Value :=
-        (if Align = No_Uint then No_GL_Value else Size_Const_Int (Align));
-      GT         : GL_Type   := Get_GL_Type (TE);
-      Last       : GL_Type   := GT;
-      Prim       : GL_Type   := GT;
-      Prim_T     : Type_T    := No_Type_T;
-      pragma Unreferenced (Biased, Last);
+      TE          : constant Entity_Id := Full_Etype (GT);
+      Prim_GT     : constant GL_Type   := Primitive_GL_Type (TE);
+      Prim_Native : constant Boolean   := not Is_Nonnative_Type (TE);
+      Prim_T      : constant Type_T    :=
+        (if Prim_Native then Type_Of (Prim_GT) else No_Type_T);
+      Prim_Size   : constant GL_Value  :=
+        (if Prim_Native then Get_Type_Size (Prim_GT) else No_GL_Value);
+      Prim_Align  : constant GL_Value  :=
+        (if Prim_Native then Get_Type_Alignment (Prim_GT) else No_GL_Value);
+      Size_V      : GL_Value           :=
+        (if Size = No_Uint then Prim_Size else Size_Const_Int (Size));
+      Align_V     : constant GL_Value  :=
+        (if Align = No_Uint then Prim_Align else Size_Const_Int (Align));
+      Found_GT    : GL_Type            := Get_GL_Type (TE);
 
    begin
-      while Present (Prim) loop
-         exit when GL_Type_Table.Table (Prim).Kind = Primitive;
-         Next (Prim);
-      end loop;
+      --  If we're asking for the maximum size, the maximum size is a
+      --  constant, and we don't have a specified size, use the maximum size.
 
-      --  If what we're looking for is just the primitive type, we're done.
-      --  The test below will do the same thing as we do, but we do this test
-      --  both for efficienty and to avoid referencing Size_Type while we're
-      --  trying to make it.
-
-      if No (Size_V) and then No (Align_V) and then not Max_Size then
-         return Prim;
-      end if;
-
-      --  If we can represent TE as a native LLVM type, get that type
-      --  and use its size and alignment as the values of the size and
-      --  alignment passed to us, if none were.
-
-      if not Is_Nonnative_Type (TE) then
-         Prim_T := GL_Type_Table.Table (Prim).LLVM_Type;
-
-         if No (Size_V) then
-            Size_V := Get_Type_Size (Prim_T);
-         end if;
-         if No (Align_V) then
-            Align_V := Get_Type_Alignment (Prim_T);
-         end if;
+      if Max_Size and then not Is_Dynamic_Size (Prim_GT, Max_Size => True)
+        and then No (Size_V)
+      then
+         Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
       end if;
 
       --  If this is for a type (as opposed to an object) and both a size and
@@ -353,26 +336,101 @@ package body GNATLLVM.GLType is
 
       --  See if we already made a matching GL_Type
 
-      while Present (GT) loop
+      while Present (Found_GT) loop
          declare
-            GTI : constant GL_Type_Info := GL_Type_Table.Table (GT);
+            GTI : constant GL_Type_Info := GL_Type_Table.Table (Found_GT);
          begin
-            if Size_V = GTI.Size and then Align_V = GTI.Alignment
-              and then Max_Size = GTI.Max_Size
+            --  If the size and alignment are the same, this must be the
+            --  same type (this takes into account Biased since if the
+            --  type is narrower than the primitive type, it must be biased).
+            --  It's also the same type even if there's no match if we want
+            --  the maximum size and we have an entry where we got the maximum
+            --  size.
+
+            if (Size_V = GTI.Size and then Align_V = GTI.Alignment)
+              or else (Max_Size and then GTI.Max_Size)
             then
-               return GT;
+               return Found_GT;
             end if;
          end;
 
-         Last := GT;
-         Next (GT);
+         Next (Found_GT);
       end loop;
 
-      --  Otherwise, we have to create an entry.
+      --  Otherwise, we have to create a new GL_Type.  We know that the
+      --  size, alignment, or both differ from that of the primitive type.
 
-      pragma Assert (False);
-      return GL_Type_Table.Last;
-   end Create_GL_Type;
+      declare
+         Ret_GT  : constant GL_Type := New_GT (TE);
+         GTI     : GL_Type_Info renames GL_Type_Table.Table (Ret_GT);
+
+      begin
+         --  Record the basic parameters of what we're making
+
+         GTI.Size      := Size_V;
+         GTI.Alignment := Align_V;
+         GTI.Max_Size  := Max_Size;
+
+         --  If this is a biased type, make a narrower integer and set the
+         --  bias.
+
+         if Is_Biased then
+            declare
+               LB, HB : GL_Value;
+
+            begin
+               Bounds_From_Type (Prim_GT, LB, HB);
+               GTI.LLVM_Type := Int_Ty (Size);
+               GTI.Kind      := Biased;
+               GTI.Bias      := LB;
+            end;
+
+         --  If we have a native primitive type, we specified a size, and
+         --  the size is different that that of the primitive size, we make
+         --  a padded type.
+
+         elsif Prim_Native and then Present (Size_V)
+           and then Prim_Size /= Size_V
+         then
+            declare
+               Pad_Size  : constant GL_Value := Sub (Size_V, Prim_Size);
+               Pad_Count : constant LLI      := Get_Const_Int_Value (Pad_Size);
+               Arr_T     : constant Type_T   :=
+                 Array_Type (Int_Ty (8), unsigned (Pad_Count));
+
+            begin
+               GTI.LLVM_Type := Build_Struct_Type ((1 => Prim_T, 2 => Arr_T),
+                                                   Packed => True);
+               GTI.Kind      := Padded;
+            end;
+
+         --  If we're making a fixed-size version of something of dynamic
+         --  size (possibly because Max_Size is True), we need a Byte_Array.
+
+         elsif not Prim_Native and then Present (Size_V) then
+            GTI.LLVM_Type := Array_Type (Int_Ty (8),
+                                         unsigned (Get_Const_Int_Value
+                                                     (Size_V)));
+            GTI.Kind      := Byte_Array;
+
+         --  If we're looking for the maximum size and none of the above cases
+         --  are true, we just make a GT showing that's what we need.
+
+         elsif Max_Size then
+            GTI.LLVM_Type := Prim_T;
+            GTI.Kind      := Max_Size_Type;
+
+         --  Othewise, we must just be changing the alignment of a
+         --  variable-size type.
+
+         else
+            GTI.LLVM_Type := Prim_T;
+            GTI.Kind      := Aligning;
+         end if;
+
+         return Ret_GT;
+      end;
+   end Make_GL_Alternative;
 
    --------------------
    -- Update_GL_Type --
@@ -384,6 +442,15 @@ package body GNATLLVM.GLType is
    begin
       GTI.LLVM_Type := T;
       GTI.Kind      := (if Is_Dummy then Dummy else Primitive);
+
+      --  If Size_Type has already been elaborated and this is a native type,
+      --  that has a size, set the size and alignment.
+
+      if Present (Size_GL_Type) and then Type_Is_Sized (T) then
+         GTI.Size      := Get_Type_Size (T);
+         GTI.Alignment := Get_Type_Alignment (T);
+      end if;
+
    end Update_GL_Type;
 
    -----------------------
@@ -412,6 +479,13 @@ package body GNATLLVM.GLType is
 
       return GT;
    end Primitive_GL_Type;
+
+   -----------------------
+   -- Primitive_GL_Type --
+   -----------------------
+
+   function Primitive_GL_Type (V : GL_Value) return GL_Type is
+     (Primitive_GL_Type (Full_Etype (Related_Type (V))));
 
    -------------------
    -- Dummy_GL_Type --
@@ -475,6 +549,133 @@ package body GNATLLVM.GLType is
          Next (All_GT);
       end loop;
    end Mark_Default;
+
+   ------------------
+   -- To_Primitive --
+   ------------------
+
+   function To_Primitive   (V : GL_Value) return GL_Value is
+      In_GT  : constant GL_Type      := Related_Type (V);
+      In_GTI : constant GL_Type_Info := GL_Type_Table.Table (In_GT);
+      Out_GT : constant GL_Type      := Primitive_GL_Type (Full_Etype (In_GT));
+      Is_Ref : constant Boolean      := Is_Reference (V);
+      Result : GL_Value              := V;
+
+   begin
+      --  If this is a double reference, convert it to a single reference
+
+      if Is_Double_Reference (Result) then
+         Result := Load (Result);
+      end if;
+
+      --  If we're already primitive, done
+
+      if Is_Primitive_GL_Type (In_GT) then
+         return Result;
+
+      --  Unless this is Biased or Padded, if this is a reference,
+      --  just convert the pointer.
+
+      elsif In_GTI.Kind not in Biased | Padded and Is_Ref then
+         return Convert_Ref (Result, Out_GT);
+
+      --  If this is Aligning or Max_Size, the object is the same, we
+      --  just note that it now has the right type.
+
+      elsif In_GTI.Kind in Aligning | Max_Size_Type then
+         return G_Is (Result, Out_GT);
+
+      --  For Biased, we need to be sure we have data, then convert to
+      --  the underlying type, then add the bias.
+
+      elsif In_GTI.Kind = Biased then
+         return Add (S_Ext (Get (Result, Data), Out_GT), In_GTI.Bias);
+
+      --  For Dummy, this must be an access type, so just convert to the
+      --  proper pointer.
+
+      elsif In_GTI.Kind = Dummy then
+         return Convert_Pointer (Result, Out_GT);
+
+      --  For Padded, use either GEP or Extract_Value, depending on whether
+      --  this is a reference or not.
+
+      elsif In_GTI.Kind = Padded then
+         return (if   Is_Ref then GEP (Out_GT, Result, (1 => Const_Null_32))
+                 else Extract_Value (Out_GT, Result, 0));
+
+      --  The remaining case must be a byte array where we have data, not
+      --  a reference.  In this case, we have to store the data into memory
+      --  and convert the memory pointer to the proper type.
+
+      else
+         pragma Assert (In_GTI.Kind = Byte_Array and not Is_Ref);
+         return Convert_Ref (Get (Result, Reference), Out_GT);
+      end if;
+
+   end To_Primitive;
+
+   --------------------
+   -- From_Primitive --
+   --------------------
+
+   function From_Primitive (V : GL_Value; GT : GL_Type) return GL_Value is
+      GTI    : constant GL_Type_Info := GL_Type_Table.Table (GT);
+      Is_Ref : constant Boolean      := Is_Reference (V);
+      Result : GL_Value              := V;
+
+   begin
+      --  If this is a double reference, convert it to a single reference
+
+      if Is_Double_Reference (Result) then
+         Result := Load (Result);
+      end if;
+
+      --  If we're already the requested type, done
+
+      if Related_Type (V) = GT then
+         return Result;
+
+      --  Unless the result is Biased, if this is a reference, just
+      --  convert the pointer.
+
+      elsif GTI.Kind /= Biased and Is_Ref then
+         return Convert_Ref (Result, GT);
+
+      --  If the result is Aligning or Max_Size, the object is the
+      --  same, we just note that it now has the right type.
+
+      elsif GTI.Kind in Aligning | Max_Size_Type then
+         return G_Is (Result, GT);
+
+      --  For Biased, we need to be sure we have data, then subtract
+      --  the bias, then convert to the underlying type.
+
+      elsif GTI.Kind = Biased then
+         return Trunc (Sub (Get (Result, Data), GTI.Bias), GT);
+
+      --  For Dummy, this must be an access type, so just convert to the
+      --  proper pointer.
+
+      elsif GTI.Kind = Dummy then
+         return Convert_Pointer (Result, GT);
+
+      --  For Padded, we know this is data, so use Insert_Value to
+      --  make the padded version.
+
+      elsif GTI.Kind = Padded then
+         return Insert_Value (Get_Undef (GT), V, 0);
+
+      --  The remaining case must be a byte array where we have data, not
+      --  a reference.  In this case, we have to store the data into memory
+      --  and convert the memory pointer to the proper type.
+
+      else
+         pragma Assert (GTI.Kind = Byte_Array and not Is_Ref);
+         return Convert_Ref (Get (Result, Reference), GT);
+      end if;
+
+   end From_Primitive;
 
    ----------------
    -- Full_Etype --
@@ -552,7 +753,6 @@ package body GNATLLVM.GLType is
       --  has a native representation or not.
 
       return GTI.Kind not in Padded | Byte_Array
-
         and then Is_Nonnative_Type (GTI.GNAT_Type);
    end Is_Nonnative_Type;
 

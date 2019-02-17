@@ -99,10 +99,12 @@ package body GNATLLVM.GLValue is
             --  such as passing large objects by value.  We don't want to
             --  generate such unless we have to, but we also don't want
             --  to make it invalid.  We can't use Data for a dynamic
-            --  size type, though.
+            --  size type, though.  We have to be careful below and not call
+            --  anything that will cause a validation of a GL_Type because
+            --  that will cause mutual recursion with us.
 
             return Ekind (GT) /= E_Subprogram_Type
-              and then not Is_Nonnative_Type (GT);
+              and then not Is_Nonnative_Type (Full_Etype (GT));
 
          when Boolean_Data =>
             return GT = Boolean_GL_Type;

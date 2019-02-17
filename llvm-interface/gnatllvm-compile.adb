@@ -100,8 +100,14 @@ package body GNATLLVM.Compile is
          Size_Type := Standard_Integer;
       end if;
 
+      --  We must elaborate Size_Type first because its needed to elaborate
+      --  all other types and we need to have a kludge here to set the sizes
+      --  of the GL_Type only when the below variables have been set.
+
       Size_GL_Type   := Primitive_GL_Type (Size_Type);
       LLVM_Size_Type := Type_Of (Size_Type);
+      Update_GL_Type (Size_GL_Type, LLVM_Size_Type, False);
+      Update_GL_Type (Base_GL_Type (Size_Type), LLVM_Size_Type, False);
 
       --  Likewise for the 32-bit integer type
 

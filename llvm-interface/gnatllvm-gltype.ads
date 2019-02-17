@@ -51,14 +51,15 @@ package GNATLLVM.GLType is
    --  Create a new GL_Type with None kind for type TE.  It will be the
    --  new default type for TE
 
-   function Create_GL_Type
-     (TE       : Entity_Id;
-      Size     : Uint    := No_Uint;
-      Align    : Uint    := No_Uint;
-      For_Type : Boolean := False;
-      Max_Size : Boolean := False;
-      Biased   : Boolean := False) return GL_Type
-     with Pre => Is_Type_Or_Void (TE), Post => Present (Create_GL_Type'Result);
+   function Make_GL_Alternative
+     (GT        : GL_Type;
+      Size      : Uint    := No_Uint;
+      Align     : Uint    := No_Uint;
+      For_Type  : Boolean := False;
+      Max_Size  : Boolean := False;
+      Is_Biased : Boolean := False) return GL_Type
+     with Pre  => Present (GT),
+          Post => Full_Etype (Make_GL_Alternative'Result) = Full_Etype (GT);
    --  Return a GL_Type (creating one if necessary) with the specified
    --  parameters.  For_Type is True if we're doing this for a type; in that
    --  case the size needs to be rounded to the alignment.  Max_Size is True
@@ -73,9 +74,16 @@ package GNATLLVM.GLType is
 
    function Primitive_GL_Type (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
-          Post => Present (Primitive_GL_Type'Result);
+          Post => Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+                  and then TE = Full_Etype (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
    --  form, creating it if it doesn't exist.
+
+   function Primitive_GL_Type (V : GL_Value) return GL_Type
+     with Pre  => Present (V),
+          Post => Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+                  and then Full_Etype (V) = Full_Etype
+                             (Primitive_GL_Type'Result);
 
    function Dummy_GL_Type (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
@@ -148,6 +156,17 @@ package GNATLLVM.GLType is
 
    function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
      with Pre => Present (GT);
+
+   function To_Primitive   (V : GL_Value) return GL_Value
+     with Pre  => Present (V),
+          Post => Is_Primitive_GL_Type (Related_Type (To_Primitive'Result));
+   --  Convert V to its primitive GL_Type
+
+   function From_Primitive (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Primitive_GL_Type (Related_Type (V))
+                  and then Full_Etype (Related_Type (V)) = Full_Etype (GT),
+          Post => Related_Type (From_Primitive'Result) = GT;
+   --  Convert V, which must be of a primitive GL_Type, to GT
 
    --  Now define functions that operate on GNAT types that we want to
    --  also operate on GL_Type's.

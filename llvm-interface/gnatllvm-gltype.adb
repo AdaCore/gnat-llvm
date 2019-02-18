@@ -484,6 +484,13 @@ package body GNATLLVM.GLType is
    -- Primitive_GL_Type --
    -----------------------
 
+   function Primitive_GL_Type (GT : GL_Type) return GL_Type is
+     (Primitive_GL_Type (Full_Etype (GT)));
+
+   -----------------------
+   -- Primitive_GL_Type --
+   -----------------------
+
    function Primitive_GL_Type (V : GL_Value) return GL_Type is
      (Primitive_GL_Type (Full_Etype (Related_Type (V))));
 

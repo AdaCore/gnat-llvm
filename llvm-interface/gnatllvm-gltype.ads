@@ -79,6 +79,14 @@ package GNATLLVM.GLType is
    --  Return the GT_Type for TE that corresponds to its basic computational
    --  form, creating it if it doesn't exist.
 
+   function Primitive_GL_Type (GT : GL_Type) return GL_Type
+     with Pre  => Present (GT),
+          Post => Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+                  and then Full_Etype (GT) =
+                      Full_Etype (Primitive_GL_Type'Result);
+   --  Return the GT_Type for TE that corresponds to its basic computational
+   --  form, creating it if it doesn't exist.
+
    function Primitive_GL_Type (V : GL_Value) return GL_Type
      with Pre  => Present (V),
           Post => Is_Primitive_GL_Type (Primitive_GL_Type'Result)

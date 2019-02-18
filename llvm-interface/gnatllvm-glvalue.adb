@@ -813,16 +813,22 @@ package body GNATLLVM.GLValue is
    -- To_Access --
    ---------------
 
-   function To_Access (V : GL_Value; TE : Entity_Id) return GL_Value is
-     (G (LLVM_Value (V), Default_GL_Type (TE)));
+   function To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
+     (From_Primitive (G (LLVM_Value (V), Primitive_GL_Type (GT)), GT));
 
    -----------------
    -- From_Access --
    -----------------
 
    function From_Access (V : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), Full_Designated_GL_Type (V),
-         Relationship_For_Access_Type (Full_Etype (V))));
+      Prim_V : constant GL_Value        := To_Primitive (V);
+      GT     : constant GL_Type         := Related_Type (V);
+      Acc_GT : constant GL_Type         := Full_Designated_GL_Type (V);
+      R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
+
+   begin
+      return G (LLVM_Value (Prim_V), Acc_GT, R);
+   end From_Access;
 
    ----------------------
    -- Set_Object_Align --

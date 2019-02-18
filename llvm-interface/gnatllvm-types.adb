@@ -262,7 +262,8 @@ package body GNATLLVM.Types is
       Idx2 := First_Index (GT2);
       while Present (Idx1) loop
          exit when
-           Type_Of (Full_Etype (Idx1)) /= Type_Of (Full_Etype (Idx2));
+           Type_Of (Full_Base_Type (Full_Etype (Idx1))) /=
+           Type_Of (Full_Base_Type (Full_Etype (Idx2)));
          Next_Index (Idx1);
          Next_Index (Idx2);
       end loop;
@@ -475,7 +476,7 @@ package body GNATLLVM.Types is
       --  check, do that.
 
       if Is_Elementary_Type (GT) and then Need_Overflow_Check then
-         Result := Get (Result, Data);
+         Result := To_Primitive (Get (Result, Data));
          Emit_Overflow_Check (Result, From_N);
          Result := Convert (Result, GT, Float_Truncate => Float_Truncate);
 
@@ -607,12 +608,14 @@ package body GNATLLVM.Types is
             Shift_Count : constant GL_Value  :=
               Const_Int (GT, Esize (GT) - RM_Size (GT));
             Left_Shift  : constant GL_Value :=
-              Shl (Convert (Get (Result, Data), GT), Shift_Count);
+              Shl (Convert (Get (Result, Data), Primitive_GL_Type (GT)),
+                   Shift_Count);
 
          begin
-            Result := (if   Is_Unsigned_Type (GT)
-                       then L_Shr (Left_Shift, Shift_Count)
-                       else A_Shr (Left_Shift, Shift_Count));
+            Result := From_Primitive ((if   Is_Unsigned_Type (GT)
+                                       then L_Shr (Left_Shift, Shift_Count)
+                                       else A_Shr (Left_Shift, Shift_Count)),
+                                      GT);
          end;
       end if;
 
@@ -647,7 +650,7 @@ package body GNATLLVM.Types is
       elsif Type_Of (New_V) /= T then
          return To_Access (Convert_Pointer (From_Access (New_V),
                                             Full_Designated_GL_Type (TE)),
-                           TE);
+                           Default_GL_Type (TE));
 
       else
          return New_V;
@@ -668,16 +671,18 @@ package body GNATLLVM.Types is
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
       In_GT       : constant GL_Type := Related_Type (V);
+      Prim_GT     : constant GL_Type := Primitive_GL_Type (GT);
       Value       : GL_Value         := V;
       Src_Access  : constant Boolean := Is_Access_Type (V);
-      Dest_Access : constant Boolean := Is_Access_Type (GT);
+      Dest_Access : constant Boolean := Is_Access_Type (Prim_GT);
       Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
-      Dest_FP     : constant Boolean := Is_Floating_Point_Type (GT);
+      Dest_FP     : constant Boolean := Is_Floating_Point_Type (Prim_GT);
       Src_Uns     : constant Boolean := Is_Unsigned_For_Convert (In_GT);
-      Dest_Uns    : constant Boolean := Is_Unsigned_For_Convert (GT);
+      Dest_Uns    : constant Boolean := Is_Unsigned_For_Convert (Prim_GT);
       Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
       Dest_Usize  : constant Uint    :=
-        (if   Is_Modular_Integer_Type (GT) then RM_Size (GT) else Esize (GT));
+        (if   Is_Modular_Integer_Type (Prim_GT) then RM_Size (Prim_GT)
+         else Esize (Prim_GT));
       Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
       Subp        : Cvtf             := null;
@@ -687,6 +692,13 @@ package body GNATLLVM.Types is
 
       if Type_Of (V) = Type_Of (GT) then
          return G_Is (V, GT);
+
+      --  If we're converting between two GL_Types corresponding to the same
+      --  GNAT type, convert to the primitive type and the to the desired
+      --  GL_Type (one of those will likely be a nop).
+
+      elsif Full_Etype (In_GT) = Full_Etype (GT) then
+         return From_Primitive (To_Primitive (V), GT);
 
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
@@ -735,11 +747,12 @@ package body GNATLLVM.Types is
             --  conversion of the input to the calc_type (if necessary).
 
             declare
-               Pred_Half  : constant GL_Value := Pred_FP (Const_Real (V, 0.5));
+               Prim_V     : constant GL_Value := To_Primitive (V);
+               Half       : constant GL_Value := Pred_FP (Const_Real (V, 0.5));
                Val_Is_Neg : constant GL_Value :=
                  F_Cmp (Real_OLT, V, Const_Null (V));
-               Add_Amt    : constant GL_Value := F_Add (V, Pred_Half, "round");
-               Sub_Amt    : constant GL_Value := F_Sub (V, Pred_Half, "round");
+               Add_Amt    : constant GL_Value := F_Add (Prim_V, Half, "round");
+               Sub_Amt    : constant GL_Value := F_Sub (Prim_V, Half, "round");
 
             begin
                Value := Build_Select (Val_Is_Neg, Sub_Amt, Add_Amt);
@@ -757,9 +770,10 @@ package body GNATLLVM.Types is
          Subp := (if Src_Uns then Z_Ext'Access else S_Ext'Access);
       end if;
 
-      --  Here all that's left to do is generate the IR instruction
+      --  Here all that's left to do is deal with non-primitive types and
+      --  generate the IR instruction.
 
-      return Subp (Value, GT);
+      return From_Primitive (Subp (To_Primitive (Value), Prim_GT), GT);
 
    end Convert;
 

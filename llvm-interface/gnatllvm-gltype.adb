@@ -91,7 +91,7 @@ package body GNATLLVM.GLType is
       --  If Present, link to next alternative
 
       Size      : GL_Value;
-      --  If Present, size of this alternative in bits
+      --  If Present, size of this alternative in bytes
 
       Alignment : GL_Value;
       --  If Present, alignment of this alternative in bytes
@@ -311,8 +311,10 @@ package body GNATLLVM.GLType is
         (if Prim_Native then Get_Type_Size (Prim_GT) else No_GL_Value);
       Prim_Align  : constant GL_Value  :=
         (if Prim_Native then Get_Type_Alignment (Prim_GT) else No_GL_Value);
+      Size_Bytes  : constant Uint      :=
+        (Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit;
       Size_V      : GL_Value           :=
-        (if Size = No_Uint then Prim_Size else Size_Const_Int (Size));
+        (if Size = No_Uint then Prim_Size else Size_Const_Int (Size_Bytes));
       Align_V     : constant GL_Value  :=
         (if Align = No_Uint then Prim_Align else Size_Const_Int (Align));
       Found_GT    : GL_Type            := Get_GL_Type (TE);

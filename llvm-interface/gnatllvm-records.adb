@@ -1161,7 +1161,6 @@ package body GNATLLVM.Records is
       Cur_Idx := Record_Info_Table.Last;
       Set_Record_Info (TE, Cur_Idx);
       Add_Fields (TE);
-      Update_GL_Type (GT, LLVM_Type, False);
 
       --  If we haven't yet made any record info entries, it means that
       --  this is a fixed-size record that can be just an LLVM type,
@@ -1180,6 +1179,10 @@ package body GNATLLVM.Records is
 
          Flush_Current_Types;
       end if;
+
+      --  Show that the type is no longer a dummy
+
+      Update_GL_Type (GT, LLVM_Type, False);
 
       --  Back-annotate all fields that exist in this record type
 
@@ -1203,7 +1206,8 @@ package body GNATLLVM.Records is
 
                begin
                   if Unknown_Esize (Cur_Field) then
-                     Set_Esize (Cur_Field, Annotated_Object_Size (Typ));
+                     Set_Esize (Cur_Field,
+                                Annotated_Object_Size (Default_GL_Type (Typ)));
                   end if;
                   if Component_Bit_Offset (Cur_Field) = No_Uint then
                      Set_Component_Bit_Offset (Cur_Field,
@@ -2112,7 +2116,7 @@ package body GNATLLVM.Records is
         (if Present (CRC) and then Full_Etype (CRC) = Full_Etype (F_GT)
          then CRC else Field);
       Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
-      Rec_GT     : constant GL_Type        := Default_GL_Type (Rec_Type);
+      Rec_GT     : constant GL_Type        := Primitive_GL_Type (Rec_Type);
       First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
       F_Idx      : Field_Info_Id           := Get_Field_Info (Our_Field);
       FI         : Field_Info;
@@ -2168,9 +2172,10 @@ package body GNATLLVM.Records is
       --  the field (in bytes).
 
       if Our_Idx = First_Idx then
-         Result := V;
+         Result := To_Primitive (V);
       else
-         Result := GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
+         Result := GEP (SSI_GL_Type,
+                        Pointer_Cast (To_Primitive (V), A_Char_GL_Type),
                         (1 => Offset));
       end if;
 
@@ -2240,7 +2245,7 @@ package body GNATLLVM.Records is
    function Emit_Record_Aggregate
      (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
    is
-      GT       : constant GL_Type := Full_GL_Type (N);
+      GT       : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
       Expr     : Node_Id;
 
    begin

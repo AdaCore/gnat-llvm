@@ -394,6 +394,8 @@ package GNATLLVM.Types is
    function Is_Loadable_Type (TE : Entity_Id) return Boolean is
      (not Is_Nonnative_Type (TE) and then Is_Loadable_Type (Type_Of (TE)))
      with Pre => Is_Type (TE);
+   function Is_Loadable_Type (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
    --  Returns True if we should use a load/store instruction to copy values
    --  of this type.  We can't do this if it's of dynamic size, but LLVM
    --  also doesn't do well with large load/store instructions.
@@ -716,9 +718,9 @@ package GNATLLVM.Types is
        else (False, No_GL_Value, V)));
    --  Likewise, but in the opposite direction
 
-   function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val
-     with Pre => Is_Type (TE);
-   --  Given a type TE that's used for the type of an object, return the
+   function Annotated_Object_Size (GT : GL_Type) return Node_Ref_Or_Val
+     with Pre => Present (GT);
+   --  Given a type that's used for the type of an object, return the
    --  SO_Ref corresponding to the object's size.
 
    function BA_Unop

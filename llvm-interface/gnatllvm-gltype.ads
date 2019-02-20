@@ -47,9 +47,8 @@ package GNATLLVM.GLType is
 
    function New_GT (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
-          Post => Default_GL_Type (TE) = New_GT'Result;
-   --  Create a new GL_Type with None kind for type TE.  It will be the
-   --  new default type for TE
+          Post => Present (New_GT'Result);
+   --  Create a new GL_Type with None kind for type TE
 
    function Make_GL_Alternative
      (GT        : GL_Type;
@@ -156,11 +155,23 @@ package GNATLLVM.GLType is
    function Is_Primitive_GL_Type (GT : GL_Type)  return Boolean
      with Pre => Present (GT);
 
+   function Is_Primitive_GL_Type (V : GL_Value)  return Boolean is
+     (Is_Primitive_GL_Type (Related_Type (V)))
+     with Pre => Present (V);
+
    function Is_Biased_GL_Type (GT : GL_Type)     return Boolean
      with Pre => Present (GT);
 
+   function Is_Biased_GL_Type (V : GL_Value)     return Boolean is
+     (Is_Biased_GL_Type (Related_Type (V)))
+     with Pre => Present (V);
+
    function Is_Byte_Array_GL_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
+
+   function Is_Byte_Array_GL_Type (V : GL_Value) return Boolean is
+     (Is_Byte_Array_GL_Type (Related_Type (V)))
+     with Pre => Present (V);
 
    function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
      with Pre => Present (GT);
@@ -236,10 +247,6 @@ package GNATLLVM.GLType is
      with Pre  => Present (GT), Post => Is_Type (Ultimate_Base_Type'Result);
 
    function Is_Nonnative_Type (GT : GL_Type) return Boolean
-     with Pre => Present (GT);
-
-   function Is_Loadable_Type (GT : GL_Type) return Boolean is
-     (Is_Loadable_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Is_Array_Type (GT : GL_Type) return Boolean is

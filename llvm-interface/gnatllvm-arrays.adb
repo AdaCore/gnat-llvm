@@ -337,8 +337,7 @@ package body GNATLLVM.Arrays is
       end if;
 
       if Is_Base_Type (A_TE) and then Unknown_Component_Size (A_TE) then
-         Set_Component_Size (A_TE,
-                             Annotated_Object_Size (Full_Etype (Comp_GT)));
+         Set_Component_Size (A_TE, Annotated_Object_Size (Comp_GT));
       end if;
 
       --  We loop through each dimension of the array creating the entries
@@ -1152,7 +1151,7 @@ package body GNATLLVM.Arrays is
    ---------------------------
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
-      GT    : constant GL_Type := Full_GL_Type (N);
+      GT    : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
       E     : Node_Id          :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
@@ -1176,7 +1175,8 @@ package body GNATLLVM.Arrays is
 
       Call_With_Align
         (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
-         (1 => Pointer_Cast (Get (LValue, Reference), A_Char_GL_Type),
+         (1 => Pointer_Cast (To_Primitive (Get (LValue, Reference)),
+                             A_Char_GL_Type),
           2 => Value,
           3 => Get_Type_Size (GT),
           4 => Const_False),  --  Is_Volatile
@@ -1190,9 +1190,10 @@ package body GNATLLVM.Arrays is
    function Emit_Constant_Aggregate
      (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
    is
-      Vals : GL_Value_Array (1 .. List_Length (Expressions (N)));
-      Idx  : Int := 1;
-      Expr : Node_Id;
+      Prim_GT : constant GL_Type := Primitive_GL_Type (GT);
+      Vals    : GL_Value_Array (1 .. List_Length (Expressions (N)));
+      Idx     : Int := 1;
+      Expr    : Node_Id;
 
    begin
       Expr := First (Expressions (N));
@@ -1205,7 +1206,7 @@ package body GNATLLVM.Arrays is
          Next (Expr);
       end loop;
 
-      return Const_Array (Vals, GT);
+      return From_Primitive (Const_Array (Vals, Prim_GT), GT);
    end Emit_Constant_Aggregate;
 
    ------------------
@@ -1238,7 +1239,7 @@ package body GNATLLVM.Arrays is
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
    is
-      GT           : constant GL_Type := Full_GL_Type (N);
+      GT           : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
       Comp_GL_Type : constant GL_Type := Full_Component_GL_Type (GT);
       Cur_Index    : unsigned         := 0;
       Expr         : Node_Id;
@@ -1469,7 +1470,7 @@ package body GNATLLVM.Arrays is
       GT         : constant GL_Type  := Related_Type (V);
       N_Dim      : constant Int      := Number_Dimensions (GT);
       Comp_GT    : constant GL_Type  := Full_Component_GL_Type (GT);
-      Array_Data : constant GL_Value := Get (V, Reference);
+      Array_Data : constant GL_Value := Get (To_Primitive (V), Reference);
       Fortran    : constant Boolean  := Convention (GT) = Convention_Fortran;
 
    begin
@@ -1525,7 +1526,7 @@ package body GNATLLVM.Arrays is
    function Get_Slice_LValue (GT : GL_Type; V : GL_Value) return GL_Value
    is
       Rng         : constant Node_Id  := Get_Dim_Range (First_Index (GT));
-      Array_Data  : constant GL_Value := Get (V, Reference);
+      Array_Data  : constant GL_Value := Get (To_Primitive (V), Reference);
       Arr_GT      : constant GL_Type  := Full_Designated_GL_Type (V);
       Idx_LB      : constant GL_Value := Get_Array_Bound (Arr_GT, 0, True, V);
       Index_Val   : constant GL_Value := Emit_Safe_Expr (Low_Bound (Rng));

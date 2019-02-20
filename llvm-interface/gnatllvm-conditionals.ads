@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -18,6 +18,7 @@
 with Nlists; use Nlists;
 with Sinfo;  use Sinfo;
 
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -100,7 +101,7 @@ package GNATLLVM.Conditionals is
 
    procedure Emit_Case_Code
      (In_Alts : List_Id; LHS : GL_Value; In_BBs : Basic_Block_Array)
-     with Pre => Present (In_Alts) and then Present (LHS);
+     with Pre => Present (In_Alts) and then Is_Primitive_GL_Type (LHS);
    --  Emit the code for a case-like part, which can be either a case
    --  statement or a computation related to a variant part of a record.
    --  Alts is a list of alternates whose values are to be compared with

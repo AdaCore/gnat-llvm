@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -17,6 +17,7 @@
 
 with Sinfo; use Sinfo;
 
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
@@ -69,18 +70,19 @@ package GNATLLVM.Compile is
      (N       : Node_Id;
       LHS     : GL_Value := No_GL_Value) return GL_Value
    is
-     (Get (Emit (N, LHS => LHS), Object))
+     (To_Primitive (Get (Emit (N, LHS => LHS), Object)))
      with Pre  => Present (N),
-          Post => Present (Emit_Expression'Result);
+          Post => Is_Primitive_GL_Type (Emit_Expression'Result);
    --  Likewise, but return something that's to be used as a value (but
    --  may nevertheless be a reference if its type is of variable size).
-   --  LHS is like for Emit.
+   --  LHS is like for Emit.  It will always be the primitive form.
 
    function Emit_Safe_Expr
      (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Safe_Expr'Result);
-   --  Likewise, but push the LValue pair table so we compute this as
-   --  a safe subexpression.  LHS is like for Emit.
+   --  Like Emit_Primitive_Expression, but push the LValue pair table
+   --  so we compute this as a safe subexpression.  LHS is like for
+   --  Emit.
 
    procedure Process_Freeze_Entity (N : Node_Id)
      with Pre => Nkind (N) = N_Freeze_Entity;

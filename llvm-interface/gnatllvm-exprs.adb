@@ -51,8 +51,9 @@ package body GNATLLVM.Exprs is
    ------------------
 
    function Emit_Literal (N : Node_Id) return GL_Value is
-      GT : constant GL_Type := Full_GL_Type (N);
-      V  : GL_Value;
+      GT      : constant GL_Type := Full_GL_Type (N);
+      Prim_GT : constant GL_Type := Primitive_GL_Type (GT);
+      V       : GL_Value;
 
    begin
       case Nkind (N) is
@@ -61,16 +62,16 @@ package body GNATLLVM.Exprs is
             --  If a Entity is present, it means that this was one of the
             --  literals in a user-defined character type.
 
-            return Const_Int (GT, (if Present (Entity (N))
-                                   then Enumeration_Rep (Entity (N))
-                                   else Char_Literal_Value (N)));
+            V := Const_Int (Prim_GT, (if Present (Entity (N))
+                                      then Enumeration_Rep (Entity (N))
+                                      else Char_Literal_Value (N)));
 
          when N_Integer_Literal =>
-            return Const_Int (GT, Intval (N));
+            V := Const_Int (Prim_GT, Intval (N));
 
          when N_Real_Literal =>
             if Is_Fixed_Point_Type (GT) then
-               return Const_Int (GT, Corresponding_Integer_Value (N));
+               V := Const_Int (Prim_GT, Corresponding_Integer_Value (N));
             else
                declare
                   Val : Ureal := Realval (N);
@@ -80,35 +81,38 @@ package body GNATLLVM.Exprs is
                   --  get the proper sign for zero.
 
                   if UR_Is_Zero (Val) then
-                     V := Const_Real (GT, 0.0);
-                     return (if UR_Is_Negative (Val) then F_Neg (V) else V);
+                     V := Const_Real (Prim_GT, 0.0);
+                     V := (if UR_Is_Negative (Val) then F_Neg (V) else V);
+
+                  else
+                     --  First convert the value to a machine number
+                     --  if it isn't already. That will force the base
+                     --  to 2 for non-zero values and simplify the
+                     --  rest of the logic.
+
+                     if not Is_Machine_Number (N) then
+                        Val := Machine (Full_Base_Type (GT), Val, Round_Even,
+                                        N);
+                     end if;
+
+                     pragma Assert (Rbase (Val) = 2);
+
+                     --  Next get the bits for the numerator from its Uint
+                     --  value and the value of the denominator (which we know
+                     --  must fit into an integer) and call LLVM routines to
+                     --  convert it to the desired FP value and then negate it
+                     --  if needed.
+
+                     declare
+                        Words : constant Word_Array :=
+                          UI_To_Words (Numerator (Val));
+
+                     begin
+                        V := Get_Float_From_Words_And_Exp
+                          (Prim_GT, -UI_To_Int (Denominator (Val)), Words);
+                        V := (if UR_Is_Negative (Val) then F_Neg (V) else V);
+                     end;
                   end if;
-
-                  --  First convert the value to a machine number if it isn't
-                  --  already. That will force the base to 2 for non-zero
-                  --  values and simplify the rest of the logic.
-
-                  if not Is_Machine_Number (N) then
-                     Val := Machine (Full_Base_Type (GT), Val, Round_Even, N);
-                  end if;
-
-                  pragma Assert (Rbase (Val) = 2);
-
-                  --  Next get the bits for the numerator from its Uint
-                  --  value and the value of the denominator (which we know
-                  --  must fit into an integer) and call LLVM routines to
-                  --  convert it to the desired FP value and then negate it
-                  --  if needed.
-
-                  declare
-                     Words : constant Word_Array :=
-                       UI_To_Words (Numerator (Val));
-
-                  begin
-                     V := Get_Float_From_Words_And_Exp
-                       (GT, -UI_To_Int (Denominator (Val)), Words);
-                     return (if UR_Is_Negative (Val) then F_Neg (V) else V);
-                  end;
                end;
             end if;
 
@@ -137,9 +141,8 @@ package body GNATLLVM.Exprs is
                           Get_Character (Get_String_Char (Str_Id, Nat (J)));
                      end loop;
 
-                     V := Const_String (Str.all, GT);
+                     V := Const_String (Str.all, Prim_GT);
                      Free (Str);
-                     return V;
                   end;
 
                else
@@ -158,18 +161,18 @@ package body GNATLLVM.Exprs is
                                      ULL (Get_String_Char (Str_Id, Nat (J))));
                      end loop;
 
-                     V := Const_Array (Elements.all, GT);
+                     V := Const_Array (Elements.all, Prim_GT);
                      Free (Elements);
-                     return V;
                   end;
                end if;
             end;
 
          when others =>
             Error_Msg_N ("unhandled literal node", N);
-            return Get_Undef (GT);
-
+            V := Get_Undef (Prim_GT);
       end case;
+
+      return From_Primitive (V, Prim_GT);
    end Emit_Literal;
 
    ---------------------------
@@ -831,7 +834,8 @@ package body GNATLLVM.Exprs is
          when Attribute_Succ | Attribute_Pred =>
             declare
                Exprs : constant List_Id  := Expressions (N);
-               Base  : constant GL_Value := Emit_Expression (First (Exprs));
+               Expr  : constant Node_Id  := First (Exprs);
+               Base  : constant GL_Value := Emit_Expression (Expr);
                One   : constant GL_Value := Const_Int (Base, Uint_1);
 
             begin

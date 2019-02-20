@@ -99,12 +99,10 @@ package body GNATLLVM.GLValue is
             --  such as passing large objects by value.  We don't want to
             --  generate such unless we have to, but we also don't want
             --  to make it invalid.  We can't use Data for a dynamic
-            --  size type, though.  We have to be careful below and not call
-            --  anything that will cause a validation of a GL_Type because
-            --  that will cause mutual recursion with us.
+            --  size type, though.
 
             return Ekind (GT) /= E_Subprogram_Type
-              and then not Is_Nonnative_Type (Full_Etype (GT));
+              and then not Is_Nonnative_Type (GT);
 
          when Boolean_Data =>
             return GT = Boolean_GL_Type;
@@ -378,7 +376,60 @@ package body GNATLLVM.GLValue is
    function Type_For_Relationship
      (GT : GL_Type; R : GL_Relationship) return Type_T
    is
-     (Type_For_Relationship (Full_Etype (GT), R));
+      T   : constant Type_T    := Type_Of (GT);
+      P_T : constant Type_T    := Pointer_Type (T, 0);
+      TE  : constant Entity_Id := Full_Etype (GT);
+
+   begin
+      --  If this is a reference to some other relationship, get the type for
+      --  that relationship and make a pointer to it.
+
+      if Deref (R) /= Invalid then
+         return Pointer_Type (Type_For_Relationship (GT, Deref (R)), 0);
+      end if;
+
+      --  Handle all other relationships here
+
+      case R is
+         when Data =>
+            return T;
+
+         when Boolean_Data =>
+            return Int_Ty (1);
+
+         when Component =>
+            return Create_Type_For_Component (TE);
+
+         when Object =>
+            return (if Is_Loadable_Type (GT) then T else P_T);
+
+         when Thin_Pointer | Any_Reference =>
+            return P_T;
+
+         when Activation_Record =>
+            return Int_Ty (Uint_Bits_Per_Unit);
+
+         when Fat_Pointer =>
+            return Create_Array_Fat_Pointer_Type (TE);
+
+         when Bounds =>
+            return Create_Array_Bounds_Type (TE);
+
+         when Bounds_And_Data =>
+            return Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
+                                       2 => T));
+
+         when Trampoline =>
+            return Void_Ptr_Type;
+
+         when Fat_Reference_To_Subprogram =>
+            return Create_Subprogram_Access_Type;
+
+         when others =>
+            pragma Assert (False);
+            return Void_Ptr_Type;
+      end case;
+   end Type_For_Relationship;
 
    ---------------------------
    -- Type_For_Relationship --

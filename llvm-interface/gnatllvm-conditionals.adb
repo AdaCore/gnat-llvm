@@ -21,7 +21,6 @@ with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -530,12 +529,12 @@ package body GNATLLVM.Conditionals is
          If_Cost, Switch_Cost      : Nat;
       end record;
 
-      Max_Cost       : constant Nat    := 10_000;
-      Num_Alts       : constant Nat    := List_Length_Non_Pragma (In_Alts);
-      Typ            : constant Type_T := Type_Of (Full_Etype (LHS));
-      First_Choice   : Nat             := 1;
-      Current_Alt    : Nat             := 1;
-      Current_Choice : Nat             := 1;
+      Max_Cost       : constant Nat      := 10_000;
+      Num_Alts       : constant Nat      := List_Length_Non_Pragma (In_Alts);
+      Typ            : constant Type_T   := Type_Of (Related_Type (LHS));
+      First_Choice   : Nat               := 1;
+      Current_Alt    : Nat               := 1;
+      Current_Choice : Nat               := 1;
       Alts           : array (1 .. Num_Alts) of One_Alt;
       Choices        : array (1 .. Count_Choices (In_Alts)) of One_Choice;
       BB             : Basic_Block_T;

@@ -35,7 +35,6 @@ with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
@@ -879,6 +878,8 @@ package body GNATLLVM.Compile is
 
             --  Evaluate our prefix first in case that's what's causing
             --  the elaboration of its type, which sets the Field_Info below.
+            --  ??? Need to deal with field GT vs GT and similarly for
+            --  N_Indexed_Component.
 
             Result := Emit (Prefix (N),
                             For_LHS    => For_LHS,
@@ -902,7 +903,7 @@ package body GNATLLVM.Compile is
                              or else Is_Layout_Identical
                                        (Result, Default_GL_Type (R_TE)))
                then
-                  return Extract_Value (GT, Result,
+                  return Extract_Value (GT, To_Primitive (Result),
                                         Get_Field_Ordinal (F_Idx, R_TE));
                else
                   return Normalize_LValue_Reference
@@ -971,7 +972,7 @@ package body GNATLLVM.Compile is
                         C_Idxs (J) := unsigned (Bound);
                      end loop;
 
-                     return Extract_Value (GT, Result,
+                     return Extract_Value (GT, To_Primitive (Result),
                                            Swap_Indices (C_Idxs, Result));
                   else
                      --  Otherwise, get a reference and do this using GEP.
@@ -1188,7 +1189,8 @@ package body GNATLLVM.Compile is
                  Loop_Parameter_Specification (Iter_Scheme);
                Def_Ident  : constant Node_Id   := Defining_Identifier (Spec);
                Reversed   : constant Boolean   := Reverse_Present (Spec);
-               Var_GT     : constant GL_Type   := Full_GL_Type (Def_Ident);
+               Var_GT     : constant GL_Type   :=
+                 Primitive_GL_Type (Full_GL_Type (Def_Ident));
                Var_BT     : constant GL_Type   := Base_GL_Type (Var_GT);
                Uns_BT     : constant Boolean   := Is_Unsigned_Type (Var_BT);
                One        : constant GL_Value  := Const_Int (Var_GT, Uint_1);

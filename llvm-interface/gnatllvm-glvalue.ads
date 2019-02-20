@@ -1155,7 +1155,7 @@ package GNATLLVM.GLValue is
                  and then Present (Ptr) and then Is_Reference (Ptr);
 
    function Load (Ptr : GL_Value; Name : String := "") return GL_Value
-     with Pre  => Present (Ptr) and then Is_Reference (Ptr),
+     with Pre  => Is_Reference (Ptr),
           Post => Present (Load'Result);
 
    function I_Cmp

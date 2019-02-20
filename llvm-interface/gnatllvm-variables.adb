@@ -554,27 +554,35 @@ package body GNATLLVM.Variables is
 
    function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean is
    begin
-      --  ?? At some point, actually check the GT, not just the type
+      --  If either GT is a Byte_Array type, we can only do the
+      --  conversion if both types are the same.
+
+      if In_GT = Out_GT then
+         return True;
+      elsif Is_Byte_Array_GL_Type (In_GT)
+        or else Is_Byte_Array_GL_Type (Out_GT)
+      then
+         return True;
+
       --  We can do the conversion statically if both types are elementary
 
-      return (Is_Elementary_Type (In_GT) and then Is_Elementary_Type (Out_GT))
+      else
+         return (Is_Elementary_Type (In_GT)
+                   and then Is_Elementary_Type (Out_GT))
+           --  Or fixed-size record types with identical layout
 
-        --  Or if they're the same type
+           or else (Is_Record_Type (In_GT)
+                      and then not Is_Nonnative_Type (In_GT)
+                      and then Is_Record_Type (Out_GT)
+                      and then not Is_Nonnative_Type (Out_GT)
+                      and then Is_Layout_Identical (In_GT, Out_GT))
 
-        or else In_GT = Out_GT
+           --  Or if both types are native and the LLVM types are the same
 
-        --  Or fixed-size record types with identical layout
-
-        or else (Is_Record_Type (In_GT) and then not Is_Nonnative_Type (In_GT)
-                   and then Is_Record_Type (Out_GT)
-                   and then not Is_Nonnative_Type (Out_GT)
-                   and then Is_Layout_Identical (In_GT, Out_GT))
-
-        --  Or if both types are native and the LLVM types are the same
-
-        or else (not Is_Nonnative_Type (In_GT)
-                 and then not Is_Nonnative_Type (Out_GT)
-                 and then Type_Of (In_GT) = Type_Of (Out_GT));
+           or else (not Is_Nonnative_Type (In_GT)
+                      and then not Is_Nonnative_Type (Out_GT)
+                      and then Type_Of (In_GT) = Type_Of (Out_GT));
+      end if;
 
    end Is_Static_Conversion;
 
@@ -1565,7 +1573,7 @@ package body GNATLLVM.Variables is
       --  Back-annotate size and alignment
 
       if Unknown_Esize (Def_Ident) then
-         Set_Esize (Def_Ident, Annotated_Object_Size (TE));
+         Set_Esize (Def_Ident, Annotated_Object_Size (GT));
       end if;
 
       Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),

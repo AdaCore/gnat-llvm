@@ -223,6 +223,12 @@ package body GNATLLVM.Types is
 
    end Is_Dynamic_Size;
 
+   ----------------------
+   -- Is_Loadable_Type --
+   ----------------------
+   function Is_Loadable_Type (GT : GL_Type) return Boolean is
+     (not Is_Nonnative_Type (GT) and then Is_Loadable_Type (Type_Of (GT)));
+
    -----------------------
    -- Build_Struct_Type --
    -----------------------
@@ -581,8 +587,18 @@ package body GNATLLVM.Types is
 
       --  Otherwise, we do the same as an unchecked conversion.
 
+      --  If we're converting between two GL_Types corresponding to the same
+      --  GNAT type, convert to the primitive type and the to the desired
+      --  GL_Type (one of those will likely be a nop).
+
+      elsif Full_Etype (Related_Type (Result)) = Full_Etype (GT) then
+         return From_Primitive (To_Primitive (Result), GT);
+
       else
-         Result := Convert_Ref (Get (Result, Any_Reference), GT);
+         Result := From_Primitive (Convert_Ref (Get (To_Primitive (Result),
+                                                     Any_Reference),
+                                                Primitive_GL_Type (GT)),
+                                   GT);
       end if;
 
       --  For unchecked conversion, if the result is a non-biased
@@ -605,14 +621,14 @@ package body GNATLLVM.Types is
                                     or else RM_Size (GT) = RM_Size (In_GT)))
       then
          declare
-            Shift_Count : constant GL_Value  :=
-              Const_Int (GT, Esize (GT) - RM_Size (GT));
+            Prim_GT     : constant GL_Type  := Primitive_GL_Type (GT);
+            Shift_Count : constant GL_Value :=
+              Const_Int (Prim_GT, Esize (Prim_GT) - RM_Size (Prim_GT));
             Left_Shift  : constant GL_Value :=
-              Shl (Convert (Get (Result, Data), Primitive_GL_Type (GT)),
-                   Shift_Count);
+              Shl (Convert (Get (Result, Data), Prim_GT), Shift_Count);
 
          begin
-            Result := From_Primitive ((if   Is_Unsigned_Type (GT)
+            Result := From_Primitive ((if   Is_Unsigned_Type (Prim_GT)
                                        then L_Shr (Left_Shift, Shift_Count)
                                        else A_Shr (Left_Shift, Shift_Count)),
                                       GT);
@@ -893,7 +909,7 @@ package body GNATLLVM.Types is
       --  converting between fat and raw pointers.
 
       elsif not Unc_Src and not Unc_Dest then
-         if Full_Designated_GL_Type (V) = GT then
+         if Related_Type (V) = GT then
             return Get (V, Any_Reference);
          else
             --  If what we have is a reference to bounds and data or a
@@ -911,7 +927,7 @@ package body GNATLLVM.Types is
          end if;
 
       elsif Unc_Src and then Unc_Dest then
-         return Get (V, Fat_Pointer);
+         return Convert_Pointer (Get (V, Fat_Pointer), GT);
 
       elsif Unc_Src and then not Unc_Dest then
          return Convert_Ref (Get (V, Reference), GT);
@@ -1298,8 +1314,16 @@ package body GNATLLVM.Types is
    --------------------------
 
    function Create_Discrete_Type (TE : Entity_Id) return Type_T is
-      Max_Size : constant Uint := UI_From_Int (Get_Long_Long_Size);
-      Size     : Uint          := Esize (TE);
+      Max_Size : constant Uint      := UI_From_Int (Get_Long_Long_Size);
+      Size_TE  : constant Entity_Id :=
+        (if Has_Biased_Representation (TE) then Full_Base_Type (TE) else TE);
+      --  Normally, we want to use an integer representation for a type
+      --  that's a different (usually larger) size than it's base type, but
+      --  if this is a biased representation, the base type is the primitive
+      --  type and we'll use a biased representation as the default
+      --  representation of the type.
+
+      Size     : Uint               := Esize (Size_TE);
 
    begin
       --  It's tempting to use i1 for boolean types, but that causes issues.
@@ -1548,6 +1572,21 @@ package body GNATLLVM.Types is
          Discard (Create_Array_Type (TE, For_Orig => True));
       end if;
 
+      --  Make a GL_Type corresponding to any specified sizes and
+      --  alignments, as well as for biased repesentation.  But don't
+      --  do this for void or subprogram types or if we haven't
+      --  elaborated Size_Type yet.
+
+      if Ekind (GT) not in E_Void | E_Subprogram_Type
+        and then Present (Size_GL_Type)
+      then
+         GT := Make_GL_Alternative
+           (GT, (if   Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
+                 then RM_Size (TE) else No_Uint),
+                (if Unknown_Alignment (TE) then No_Uint else Alignment (TE)),
+                  True, False, Has_Biased_Representation (TE));
+      end if;
+
       --  Back-annotate sizes of non-scalar types if there isn't one.  ???
       --  Don't do anything for access subprogram since this will cause
       --  warnings for UC's in g-thread and g-spipat.
@@ -1556,7 +1595,7 @@ package body GNATLLVM.Types is
         and then not Is_Scalar_Type (TE)
       then
          if Unknown_Esize (TE) then
-            Set_Esize   (TE, Annotated_Object_Size (TE));
+            Set_Esize   (TE, Annotated_Object_Size (GT));
          end if;
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
@@ -1576,7 +1615,7 @@ package body GNATLLVM.Types is
                                      Int (ULL'(Get_Type_Alignment (GT))));
       end if;
 
-      return T;
+      return Type_Of (GT);
    end Type_Of;
 
    --------------------------------
@@ -2538,10 +2577,10 @@ package body GNATLLVM.Types is
    -- Annotated_Object_Size --
    ---------------------------
 
-   function Annotated_Object_Size (TE : Entity_Id) return Node_Ref_Or_Val is
-      Use_Max      : constant Boolean := Is_Unconstrained_Record (TE);
+   function Annotated_Object_Size (GT : GL_Type) return Node_Ref_Or_Val is
+      Use_Max      : constant Boolean := Is_Unconstrained_Record (GT);
       TE_Byte_Size : constant BA_Data :=
-        BA_Type_Size (Default_GL_Type (TE), Max_Size => Use_Max);
+        BA_Type_Size (GT, Max_Size => Use_Max);
       TE_Bit_Size  : constant BA_Data :=
         BA_Mul (TE_Byte_Size, BA_Const (Uint_Bits_Per_Unit));
 

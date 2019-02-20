@@ -103,7 +103,7 @@ package body GNATLLVM.Conditionals is
            (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
 
       elsif Is_Elementary_Type (GT) then
-         return Emit_Elementary_Comparison
+         return Build_Elementary_Comparison
            (Kind, Emit_Convert_Value (LHS, BT), Emit_Convert_Value (RHS, BT));
 
       --  We'll see some simple record comparisons, typically if they're
@@ -253,7 +253,7 @@ package body GNATLLVM.Conditionals is
                      BB_Next :=
                        (if Dim = Last_Dim then BB_Continue
                         else Create_Basic_Block);
-                     Cond := Emit_Elementary_Comparison
+                     Cond := Build_Elementary_Comparison
                        (N_Op_Eq, RHS_Lengths (Dim),
                         Const_Null (RHS_Lengths (Dim)));
                      Build_Cond_Br (Cond, BB_RHS_Has_Zero_Dim, BB_Next);
@@ -268,7 +268,7 @@ package body GNATLLVM.Conditionals is
                      BB_Next :=
                        (if Dim = Last_Dim then BB_Continue
                         else Create_Basic_Block);
-                     Cond    := Emit_Elementary_Comparison
+                     Cond    := Build_Elementary_Comparison
                        (N_Op_Eq, LHS_Lengths (Dim),
                         Const_Null (LHS_Lengths (Dim)));
                      Build_Cond_Br (Cond, BB_T, BB_Next);
@@ -289,7 +289,7 @@ package body GNATLLVM.Conditionals is
 
             for Dim in 0 .. Number_Dimensions (Full_Etype (LHS)) - 1 loop
                BB_Next := Create_Basic_Block;
-               Cond    := Emit_Elementary_Comparison
+               Cond    := Build_Elementary_Comparison
                  (N_Op_Eq, LHS_Lengths (Dim), RHS_Lengths (Dim));
                Build_Cond_Br (Cond, BB_Next, BB_F);
                Position_Builder_At_End (BB_Next);
@@ -330,11 +330,11 @@ package body GNATLLVM.Conditionals is
       end if;
    end Emit_Comparison_And_Branch;
 
-   --------------------------------
-   -- Emit_Elementary_Comparison --
-   --------------------------------
+   ---------------------------------
+   -- Build_Elementary_Comparison --
+   ---------------------------------
 
-   function Emit_Elementary_Comparison
+   function Build_Elementary_Comparison
      (Kind               : Node_Kind;
       Orig_LHS, Orig_RHS : GL_Value) return GL_Value
    is
@@ -398,7 +398,7 @@ package body GNATLLVM.Conditionals is
             LHS, RHS);
 
       end if;
-   end Emit_Elementary_Comparison;
+   end Build_Elementary_Comparison;
 
    ---------------------
    -- Emit_And_Or_Xor --
@@ -702,8 +702,8 @@ package body GNATLLVM.Conditionals is
                      BB := Create_Basic_Block ("case-when");
                   end if;
 
-                  Emit_If_Range (LHS, Choices (K).Low, Choices (K).High,
-                                 Alts (J).BB, BB);
+                  Build_If_Range (LHS, Choices (K).Low, Choices (K).High,
+                                  Alts (J).BB, BB);
                   Position_Builder_At_End (BB);
                end if;
             end loop;
@@ -875,7 +875,7 @@ package body GNATLLVM.Conditionals is
             begin
                Decode_Range (Right_Opnd (N), Low, High);
                if Low /= No_Uint and then High /= No_Uint then
-                  Emit_If_Range
+                  Build_If_Range
                     (Emit_Expression (Left_Opnd (N)), Low, High,
                      (if Nkind (N) = N_In then BB_True else BB_False),
                      (if Nkind (N) = N_In then BB_False else BB_True));
@@ -904,11 +904,11 @@ package body GNATLLVM.Conditionals is
 
    end Emit_If_Cond;
 
-   -------------------
-   -- Emit_If_Range --
-   -------------------
+   --------------------
+   -- Build_If_Range --
+   --------------------
 
-   procedure Emit_If_Range
+   procedure Build_If_Range
      (LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)
@@ -927,21 +927,21 @@ package body GNATLLVM.Conditionals is
       --  base type in case the subtype is unsigned and the base type isn't.
 
       if Low = High then
-         Cond := Emit_Elementary_Comparison
+         Cond := Build_Elementary_Comparison
            (N_Op_Eq, LHS, Const_Int (LHS, Low));
          Build_Cond_Br (Cond, BB_True, BB_False);
       else
          Inner_BB := Create_Basic_Block ("range-test");
          LHS_Base := Convert (LHS, LHS_BT);
-         Cond     := Emit_Elementary_Comparison (N_Op_Ge, LHS_Base,
+         Cond     := Build_Elementary_Comparison (N_Op_Ge, LHS_Base,
                                                  Const_Int (LHS_BT, Low));
          Build_Cond_Br (Cond, Inner_BB, BB_False);
          Position_Builder_At_End (Inner_BB);
-         Cond := Emit_Elementary_Comparison (N_Op_Le, LHS_Base,
+         Cond := Build_Elementary_Comparison (N_Op_Le, LHS_Base,
                                              Const_Int (LHS_BT, High));
          Build_Cond_Br (Cond, BB_True, BB_False);
       end if;
-   end Emit_If_Range;
+   end Build_If_Range;
 
    ------------------------
    -- Emit_If_Expression --
@@ -1061,7 +1061,7 @@ package body GNATLLVM.Conditionals is
       LHS        : constant GL_Value := Emit_Convert_Value (LHS_N, BT);
       RHS        : constant GL_Value := Emit_Convert_Value (Last (Exprs), BT);
       Choose     : constant GL_Value :=
-        Emit_Elementary_Comparison
+        Build_Elementary_Comparison
         ((if Compute_Max then N_Op_Gt else N_Op_Lt), LHS, RHS);
       RHS_No_Nan : constant GL_Value :=
         (if   Is_Floating_Point_Type (RHS) then F_Cmp (Real_OEQ, RHS, RHS)

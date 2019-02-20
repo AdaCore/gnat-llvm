@@ -394,7 +394,7 @@ package body GNATLLVM.Exprs is
             declare
                Zero      : constant GL_Value := Const_Null (Result);
                Compare   : constant GL_Value :=
-                 Emit_Elementary_Comparison (N_Op_Ge, Result, Zero);
+                 Build_Elementary_Comparison (N_Op_Ge, Result, Zero);
                Neg_Expr  : constant GL_Value :=
                  (if   Is_Floating_Point_Type (Result)
                   then F_Neg (Result) else Neg (Result));
@@ -488,14 +488,14 @@ package body GNATLLVM.Exprs is
       if In_FP or else Out_FP
         or else Get_Uint_Value (Out_LB) > Get_Uint_Value (In_LB)
       then
-         Compare_LB := Emit_Elementary_Comparison
+         Compare_LB := Build_Elementary_Comparison
            (N_Op_Ge, V, Emit_Convert_Value (Out_LB, In_GT));
       end if;
 
       if In_FP or else Out_FP
         or else Get_Uint_Value (Out_UB) < Get_Uint_Value (In_UB)
       then
-         Compare_UB := Emit_Elementary_Comparison
+         Compare_UB := Build_Elementary_Comparison
            (N_Op_Le, V, Emit_Convert_Value (Out_UB, In_GT));
       end if;
 

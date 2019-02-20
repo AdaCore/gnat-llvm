@@ -1035,10 +1035,10 @@ package body GNATLLVM.Compile is
                   Rng := Scalar_Range (Full_Etype (Rng));
                end if;
 
-               return Build_And (Emit_Elementary_Comparison
+               return Build_And (Build_Elementary_Comparison
                                    (N_Op_Ge, Left,
                                     Emit_Expression (Low_Bound (Rng))),
-                                 Emit_Elementary_Comparison
+                                 Build_Elementary_Comparison
                                    (N_Op_Le, Left,
                                     Emit_Expression (High_Bound (Rng))));
             end;

@@ -55,13 +55,13 @@ package GNATLLVM.Conditionals is
    --  Similar, but generate comparison and branch to one of the basic
    --  blocks depending on the result
 
-   function Emit_Elementary_Comparison
+   function Build_Elementary_Comparison
      (Kind               : Node_Kind;
       Orig_LHS, Orig_RHS : GL_Value) return GL_Value
      with Pre  => Is_Elementary_Type (Orig_LHS)
                   and then Is_Elementary_Type (Orig_RHS)
                   and then Kind in N_Op_Compare,
-          Post => Present (Emit_Elementary_Comparison'Result);
+          Post => Present (Build_Elementary_Comparison'Result);
    --  Helpers for Emit_Expression: handle comparison operations for
    --  elementary types.  The second form only supports discrete or pointer
    --  types.
@@ -86,7 +86,7 @@ package GNATLLVM.Conditionals is
           Post => Present (Emit_If_Expression'Result);
    --  Helper for Emit_Expression: handle if expressions
 
-   procedure Emit_If_Range
+   procedure Build_If_Range
      (LHS               : GL_Value;
       Low, High         : Uint;
       BB_True, BB_False : Basic_Block_T)

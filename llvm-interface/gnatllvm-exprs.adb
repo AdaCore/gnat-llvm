@@ -948,7 +948,7 @@ package body GNATLLVM.Exprs is
       Backwards_OK : Boolean  := True)
    is
       E       : constant Node_Id := Strip_Complex_Conversions (Expr);
-      Dest_GT : constant GL_Type := Full_Designated_GL_Type (LValue);
+      Dest_GT : constant GL_Type := Related_Type (LValue);
       Src_GT  : constant GL_Type :=
         (if Present (Value) then Related_Type (Value) else Full_GL_Type (E));
       Dest    : GL_Value         := LValue;

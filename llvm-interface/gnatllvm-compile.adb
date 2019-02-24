@@ -1189,14 +1189,14 @@ package body GNATLLVM.Compile is
                  Loop_Parameter_Specification (Iter_Scheme);
                Def_Ident  : constant Node_Id   := Defining_Identifier (Spec);
                Reversed   : constant Boolean   := Reverse_Present (Spec);
-               Var_GT     : constant GL_Type   :=
-                 Primitive_GL_Type (Full_GL_Type (Def_Ident));
+               Var_GT     : constant GL_Type   := Full_GL_Type (Def_Ident);
+               Prim_GT    : constant GL_Type   := Primitive_GL_Type (Var_GT);
                Var_BT     : constant GL_Type   := Base_GL_Type (Var_GT);
                Uns_BT     : constant Boolean   := Is_Unsigned_Type (Var_BT);
-               One        : constant GL_Value  := Const_Int (Var_GT, Uint_1);
+               One        : constant GL_Value  := Const_Int (Prim_GT, Uint_1);
                LLVM_Var   : GL_Value;
                Low, High  : GL_Value;
-               Prev       : GL_Value;
+               Prev, Next : GL_Value;
 
             begin
                --  Initialization block: create the loop variable and
@@ -1222,16 +1222,17 @@ package body GNATLLVM.Compile is
 
                BB_Cond := Create_Basic_Block ("loop-cond-iter");
                Position_Builder_At_End (BB_Cond);
-               Prev := Load (LLVM_Var);
+               Prev := To_Primitive (Get (LLVM_Var, Data));
                Build_Cond_Br
                  (I_Cmp (Int_EQ, Prev,
-                         (if Reversed then Low else High), "loop-iter-cond"),
+                         To_Primitive ((if Reversed then Low else High)),
+                         "loop-iter-cond"),
                  BB_Next, BB_Iter);
 
                Position_Builder_At_End (BB_Iter);
-               Store ((if   Reversed then Sub (Prev, One, "next-loop-var")
-                       else Add (Prev, One, "next-loop-var")),
-                      LLVM_Var);
+               Next :=  (if   Reversed then Sub (Prev, One, "next-loop-var")
+                         else Add (Prev, One, "next-loop-var"));
+               Store (From_Primitive (Next, Var_GT), LLVM_Var);
                Build_Br (BB_Stmts);
 
                --  The ITER step starts at this special COND step

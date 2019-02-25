@@ -38,8 +38,8 @@ package body GNATLLVM.Environment is
 
    function Raw_Get_GLT    (LI : Access_LLVM_Info) return GL_Type is
      (LI.GLType);
-   function Raw_Get_CGLT   (LI : Access_LLVM_Info) return GL_Type is
-     (LI.Component_GL_Type);
+   function Raw_Get_AGLT   (LI : Access_LLVM_Info) return GL_Type is
+     (LI.Associated_GL_Type);
    function Raw_Get_Value  (LI : Access_LLVM_Info) return GL_Value is
      (LI.Value);
    function Raw_Get_SO     (LI : Access_LLVM_Info) return Dynamic_SO_Ref is
@@ -64,7 +64,7 @@ package body GNATLLVM.Environment is
    --  Define procedures to set values into LLVM_Info
 
    procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type);
-   procedure Raw_Set_CGLT   (LI : Access_LLVM_Info; Val : GL_Type);
+   procedure Raw_Set_AGLT   (LI : Access_LLVM_Info; Val : GL_Type);
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value);
    procedure Raw_Set_SO     (LI : Access_LLVM_Info; Val : Dynamic_SO_Ref);
    procedure Raw_Set_Elab   (LI : Access_LLVM_Info; Val : Boolean);
@@ -77,7 +77,7 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id);
 
    pragma Inline (Raw_Set_GLT);
-   pragma Inline (Raw_Set_CGLT);
+   pragma Inline (Raw_Set_AGLT);
    pragma Inline (Raw_Set_Value);
    pragma Inline (Raw_Set_SO);
    pragma Inline (Raw_Set_Elab);
@@ -92,8 +92,8 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type) is
    begin LI.GLType := Val; end Raw_Set_GLT;
 
-   procedure Raw_Set_CGLT   (LI : Access_LLVM_Info; Val : GL_Type) is
-   begin LI.Component_GL_Type := Val; end Raw_Set_CGLT;
+   procedure Raw_Set_AGLT   (LI : Access_LLVM_Info; Val : GL_Type) is
+   begin LI.Associated_GL_Type := Val; end Raw_Set_AGLT;
 
    procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value) is
    begin LI.Value := Val; end Raw_Set_Value;
@@ -156,7 +156,7 @@ package body GNATLLVM.Environment is
       if Id = Empty_LLVM_Info_Id then
          LLVM_Info_Table.Append ((Value               => No_GL_Value,
                                   GLType              => No_GL_Type,
-                                  Component_GL_Type   => No_GL_Type,
+                                  Associated_GL_Type  => No_GL_Type,
                                   TBAA                => No_Metadata_T,
                                   Is_Nonnative_Type   => False,
                                   Is_Being_Elaborated => False,
@@ -267,8 +267,8 @@ package body GNATLLVM.Environment is
                                          Raw_Get_Field, Raw_Set_Field);
    package Env_Label    is new Pkg_None (Label_Info_Id, Empty_Label_Info_Id,
                                          Raw_Get_Label, Raw_Set_Label);
-   package Env_CGLT_N   is new Pkg_None (GL_Type, No_GL_Type,
-                                         Raw_Get_CGLT, Raw_Set_CGLT);
+   package Env_AGLT_N   is new Pkg_None (GL_Type, No_GL_Type,
+                                         Raw_Get_AGLT, Raw_Set_AGLT);
    package Env_TBAA_N   is new Pkg_None (Metadata_T, No_Metadata_T,
                                          Raw_Get_TBAA, Raw_Set_TBAA);
    package Env_O_A_N    is new Pkg_None (Array_Info_Id, Empty_Array_Info_Id,
@@ -280,7 +280,7 @@ package body GNATLLVM.Environment is
    package Env_NN_N     is new Pkg_None (Boolean, False,
                                          Raw_Get_NN, Raw_Set_NN);
 
-   package Env_CGLT   is new Pkg_Elab (GL_Type, Raw_Get_CGLT, Raw_Set_CGLT);
+   package Env_AGLT   is new Pkg_Elab (GL_Type, Raw_Get_AGLT, Raw_Set_AGLT);
    package Env_TBAA   is new Pkg_Elab (Metadata_T, Raw_Get_TBAA, Raw_Set_TBAA);
    package Env_O_A    is new Pkg_Elab (Array_Info_Id,
                                        Raw_Get_O_A, Raw_Set_O_A);
@@ -292,76 +292,76 @@ package body GNATLLVM.Environment is
 
    --  Now complete our job by renaming the subprograms created above
 
-   function  Get_GL_Type             (TE : Entity_Id) return GL_Type
+   function  Get_GL_Type              (TE : Entity_Id) return GL_Type
      renames Env_GLT.Get;
-   procedure Set_GL_Type             (TE : Entity_Id; GT : GL_Type)
+   procedure Set_GL_Type              (TE : Entity_Id; GT : GL_Type)
      renames Env_GLT.Set;
 
-   function  Get_Component_GL_Type   (TE : Entity_Id) return GL_Type
-     renames Env_CGLT.Get;
-   function  Get_Component_GL_Type_N (TE : Entity_Id) return GL_Type
-     renames Env_CGLT_N.Get;
-   procedure Set_Component_GL_Type   (TE : Entity_Id; GT : GL_Type)
-     renames Env_CGLT.Set;
+   function  Get_Associated_GL_Type   (TE : Entity_Id) return GL_Type
+     renames Env_AGLT.Get;
+   function  Get_Associated_GL_Type_N (TE : Entity_Id) return GL_Type
+     renames Env_AGLT_N.Get;
+   procedure Set_Associated_GL_Type   (TE : Entity_Id; GT : GL_Type)
+     renames Env_AGLT.Set;
 
-   function  Get_Value               (VE : Entity_Id) return GL_Value
+   function  Get_Value                (VE : Entity_Id) return GL_Value
      renames Env_Value.Get;
-   procedure Set_Value_R             (VE : Entity_Id; VL : GL_Value)
+   procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)
      renames Env_Value.Set;
 
-   function  Get_SO_Ref              (N : Node_Id) return Dynamic_SO_Ref
+   function  Get_SO_Ref               (N : Node_Id) return Dynamic_SO_Ref
      renames Env_SO.Get;
-   procedure Set_SO_Ref              (N : Node_Id; U : Dynamic_SO_Ref)
+   procedure Set_SO_Ref               (N : Node_Id; U : Dynamic_SO_Ref)
      renames Env_SO.Set;
 
-   function  Is_Being_Elaborated     (TE : Entity_Id) return Boolean
+   function  Is_Being_Elaborated      (TE : Entity_Id) return Boolean
      renames Env_Elab.Get;
-   procedure Set_Is_Being_Elaborated (TE : Entity_Id; B : Boolean)
+   procedure Set_Is_Being_Elaborated  (TE : Entity_Id; B : Boolean)
      renames Env_Elab.Set;
 
-   function  Get_Field_Info          (VE : Entity_Id) return Field_Info_Id
+   function  Get_Field_Info           (VE : Entity_Id) return Field_Info_Id
      renames Env_Field.Get;
-   procedure Set_Field_Info          (VE : Entity_Id; FI : Field_Info_Id)
+   procedure Set_Field_Info           (VE : Entity_Id; FI : Field_Info_Id)
      renames Env_Field.Set;
 
-   function  Get_Label_Info          (VE : Entity_Id) return Label_Info_Id
+   function  Get_Label_Info           (VE : Entity_Id) return Label_Info_Id
      renames Env_Label.Get;
-   procedure Set_Label_Info          (VE : Entity_Id; LI : Label_Info_Id)
+   procedure Set_Label_Info           (VE : Entity_Id; LI : Label_Info_Id)
      renames Env_Label.Set;
 
-   function  Is_Nonnative_Type       (TE : Entity_Id) return Boolean
+   function  Is_Nonnative_Type        (TE : Entity_Id) return Boolean
      renames Env_NN.Get;
-   function  Is_Nonnative_Type_N     (TE : Entity_Id) return Boolean
+   function  Is_Nonnative_Type_N      (TE : Entity_Id) return Boolean
      renames Env_NN_N.Get;
-   procedure Set_Is_Nonnative_Type   (TE : Entity_Id; B : Boolean := True)
+   procedure Set_Is_Nonnative_Type    (TE : Entity_Id; B : Boolean := True)
      renames Env_NN.Set;
 
-   function  Get_TBAA                (TE : Entity_Id) return Metadata_T
+   function  Get_TBAA                 (TE : Entity_Id) return Metadata_T
      renames Env_TBAA.Get;
-   function  Get_TBAA_N              (TE : Entity_Id) return Metadata_T
+   function  Get_TBAA_N               (TE : Entity_Id) return Metadata_T
      renames Env_TBAA_N.Get;
-   procedure Set_TBAA                (TE : Entity_Id; TBAA : Metadata_T)
+   procedure Set_TBAA                 (TE : Entity_Id; TBAA : Metadata_T)
      renames Env_TBAA.Set;
 
-   function  Get_Array_Info          (TE : Entity_Id) return Array_Info_Id
+   function  Get_Array_Info           (TE : Entity_Id) return Array_Info_Id
      renames Env_Array.Get;
-   function  Get_Array_Info_N        (TE : Entity_Id) return Array_Info_Id
+   function  Get_Array_Info_N         (TE : Entity_Id) return Array_Info_Id
      renames Env_Array_N.Get;
-   procedure Set_Array_Info          (TE : Entity_Id; AI : Array_Info_Id)
+   procedure Set_Array_Info           (TE : Entity_Id; AI : Array_Info_Id)
      renames Env_Array.Set;
 
-   function  Get_Orig_Array_Info     (TE : Entity_Id) return Array_Info_Id
+   function  Get_Orig_Array_Info      (TE : Entity_Id) return Array_Info_Id
      renames Env_O_A.Get;
-   function  Get_Orig_Array_Info_N   (TE : Entity_Id) return Array_Info_Id
+   function  Get_Orig_Array_Info_N    (TE : Entity_Id) return Array_Info_Id
      renames Env_O_A_N.Get;
-   procedure Set_Orig_Array_Info     (TE : Entity_Id; AI : Array_Info_Id)
+   procedure Set_Orig_Array_Info      (TE : Entity_Id; AI : Array_Info_Id)
      renames Env_O_A.Set;
 
-   function  Get_Record_Info         (TE : Entity_Id) return Record_Info_Id
+   function  Get_Record_Info          (TE : Entity_Id) return Record_Info_Id
      renames Env_Record.Get;
-   function  Get_Record_Info_N       (TE : Entity_Id) return Record_Info_Id
+   function  Get_Record_Info_N        (TE : Entity_Id) return Record_Info_Id
      renames Env_Record_N.Get;
-   procedure Set_Record_Info         (TE : Entity_Id; RI : Record_Info_Id)
+   procedure Set_Record_Info          (TE : Entity_Id; RI : Record_Info_Id)
      renames Env_Record.Set;
 
 begin

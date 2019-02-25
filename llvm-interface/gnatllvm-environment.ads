@@ -81,9 +81,10 @@ package GNATLLVM.Environment is
       GLType                : GL_Type;
       --  The head of the GL_Type chain for this entity, if a type
 
-      Component_GL_Type     : GL_Type;
-      --  For arrays, the GL_Type for the component of the array.  This takes
-      --  into account any Component_Size clause.
+      Associated_GL_Type    : GL_Type;
+      --  For arrays, the GL_Type for the component of the array.  For
+      --  access types, the GL_Type of the Designated type.  In both cases,
+      --  this takes into account any Component_Size clause.
 
       TBAA                  : Metadata_T;
       --  An LLVM TBAA Metadata node corresponding to the type.  Set only
@@ -143,71 +144,71 @@ package GNATLLVM.Environment is
    LLVM_Info_Map             : Ptr_LLVM_Info_Array;
    --  The mapping between a GNAT tree object and the corresponding LLVM data
 
-   function Get_GL_Type             (TE : Entity_Id) return GL_Type
+   function Get_GL_Type               (TE : Entity_Id) return GL_Type
      with Pre => Is_Type_Or_Void (TE);
 
-   function Get_Component_GL_Type   (TE : Entity_Id) return GL_Type
-     with Pre => Is_Array_Type (TE);
+   function Get_Associated_GL_Type    (TE : Entity_Id) return GL_Type
+     with Pre => Is_Array_Type (TE) or else Is_Access_Type (TE);
 
-   function Get_Component_GL_Type_N (TE : Entity_Id) return GL_Type
-     with Pre => Is_Array_Type (TE);
+   function Get_Associated_GL_Type_N (TE : Entity_Id) return GL_Type
+     with Pre => Is_Array_Type (TE) or else Is_Access_Type (TE);
 
-   function Is_Nonnative_Type       (TE : Entity_Id) return Boolean
+   function Is_Nonnative_Type         (TE : Entity_Id) return Boolean
      with Pre => Is_Type_Or_Void (TE);
 
-   function Is_Nonnative_Type_N     (TE : Entity_Id) return Boolean
+   function Is_Nonnative_Type_N       (TE : Entity_Id) return Boolean
      with Pre => Is_Type_Or_Void (TE);
 
-   function Is_Being_Elaborated     (TE : Entity_Id) return Boolean
+   function Is_Being_Elaborated       (TE : Entity_Id) return Boolean
      with Pre => Is_Type_Or_Void (TE);
 
-   function Get_TBAA                (TE : Entity_Id) return Metadata_T
+   function Get_TBAA                  (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);
 
-   function Get_TBAA_N              (TE : Entity_Id) return Metadata_T
+   function Get_TBAA_N                (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);
 
-   function Get_Value               (VE : Entity_Id) return GL_Value
+   function Get_Value                 (VE : Entity_Id) return GL_Value
      with Pre => Present (VE);
 
-   function Get_SO_Ref              (N : Node_Id)    return Dynamic_SO_Ref
+   function Get_SO_Ref                (N : Node_Id)    return Dynamic_SO_Ref
      with Pre => Present (N);
 
-   function Get_Array_Info          (TE : Entity_Id) return Array_Info_Id
+   function Get_Array_Info            (TE : Entity_Id) return Array_Info_Id
      with Pre => Is_Array_Type (TE);
 
-   function Get_Array_Info_N        (TE : Entity_Id) return Array_Info_Id
+   function Get_Array_Info_N          (TE : Entity_Id) return Array_Info_Id
      with Pre => Is_Array_Type (TE);
 
-   function Get_Orig_Array_Info     (TE : Entity_Id) return Array_Info_Id
+   function Get_Orig_Array_Info       (TE : Entity_Id) return Array_Info_Id
      with Pre => Is_Packed_Array_Impl_Type (TE);
 
-   function Get_Orig_Array_Info_N   (TE : Entity_Id) return Array_Info_Id
+   function Get_Orig_Array_Info_N     (TE : Entity_Id) return Array_Info_Id
      with Pre => Is_Packed_Array_Impl_Type (TE);
 
-   function Get_Record_Info         (TE : Entity_Id) return Record_Info_Id
+   function Get_Record_Info           (TE : Entity_Id) return Record_Info_Id
      with Pre => Is_Record_Type (TE);
 
-   function Get_Record_Info_N       (TE : Entity_Id) return Record_Info_Id
+   function Get_Record_Info_N         (TE : Entity_Id) return Record_Info_Id
      with Pre => Is_Record_Type (TE);
 
-   function Get_Field_Info          (VE : Entity_Id)  return Field_Info_Id
+   function Get_Field_Info            (VE : Entity_Id)  return Field_Info_Id
      with Pre => Ekind_In (VE, E_Discriminant, E_Component);
 
-   function Get_Label_Info          (VE : Entity_Id)  return Label_Info_Id
+   function Get_Label_Info            (VE : Entity_Id)  return Label_Info_Id
      with Pre => Present (VE);
 
-   procedure Set_GL_Type             (TE : Entity_Id; GT : GL_Type)
+   procedure Set_GL_Type              (TE : Entity_Id; GT : GL_Type)
      with Pre => Is_Type_Or_Void (TE), Post => Get_GL_Type (TE) = GT;
 
-   procedure Set_Component_GL_Type   (TE : Entity_Id; GT : GL_Type)
-     with Pre  => Is_Array_Type (TE)
+   procedure Set_Associated_GL_Type   (TE : Entity_Id; GT : GL_Type)
+     with Pre  => (Is_Array_Type (TE) or else Is_Access_Type (TE))
                   and then (Present (GT)
-                              or else Present (Get_Component_GL_Type_N (TE)))
-                  and then (No (Get_Component_GL_Type_N (TE))
-                              or else Get_Component_GL_Type_N (TE) = GT
+                              or else Present (Get_Associated_GL_Type_N (TE)))
+                  and then (No (Get_Associated_GL_Type_N (TE))
+                              or else Get_Associated_GL_Type_N (TE) = GT
                               or else No (GT)),
-          Post => Get_Component_GL_Type (TE) = GT;
+          Post => Get_Associated_GL_Type (TE) = GT;
 
    procedure Set_Is_Nonnative_Type   (TE : Entity_Id; B : Boolean := True)
      with Pre => Is_Type (TE), Post => Is_Nonnative_Type_N (TE) = B;
@@ -261,7 +262,7 @@ package GNATLLVM.Environment is
           Post => Get_Label_Info (VE) = LI;
 
    pragma Inline (Get_GL_Type);
-   pragma Inline (Get_Component_GL_Type);
+   pragma Inline (Get_Associated_GL_Type);
    pragma Inline (Is_Nonnative_Type);
    pragma Inline (Is_Being_Elaborated);
    pragma Inline (Get_TBAA);

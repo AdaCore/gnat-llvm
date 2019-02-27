@@ -791,9 +791,10 @@ package body GNATLLVM.GLValue is
                --  If we have something that isn't a reference, start by
                --  getting a reference to it.
 
-               Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
-               Data    : constant GL_Value  := Get (Val, Reference);
                Fat_Ptr : constant GL_Value  := Get_Undef_Relationship (GT, R);
+               Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
+               Data    : constant GL_Value  :=
+                   To_Primitive (Get (Val, Reference));
 
             begin
                return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),

@@ -1408,15 +1408,25 @@ package body GNATLLVM.Types is
                             True);
          end if;
 
+         Set_Associated_GL_Type (TE, GT);
          return Pointer_Type (Type_Of (GT), 0);
 
       --  If DT is a subprogram type (since the access type to it is always
-      --  the same type) or if it doesn't depend on something that's being
+      --  the same type), handle this normally, but don't try to record an
+      --  associated type.
+
+      elsif Ekind (DT) = E_Subprogram_Type then
+         return Type_For_Relationship (DT, R);
+
+      --  If DT doesn't depend on something that's being
       --  elaborated, handle this normally.
 
-      elsif Ekind (DT) = E_Subprogram_Type
-        or else not Depends_On_Being_Elaborated (DT)
-      then
+      elsif not Depends_On_Being_Elaborated (DT) then
+         if No (GT) then
+            GT := Default_GL_Type (DT);
+         end if;
+
+         Set_Associated_GL_Type (TE, GT);
          return Type_For_Relationship (DT, R);
 
       --  Otherwise, if DT is currently being elaborated, we have to make a

@@ -19,6 +19,7 @@ with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 
+with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
@@ -208,18 +209,16 @@ package GNATLLVM.GLType is
      with Pre  => Is_Access_Type (GT),
           Post => Is_Type (Full_Designated_Type'Result);
 
-   function Full_Designated_GL_Type (GT : GL_Type) return GL_Type is
-     (Default_GL_Type (Full_Designated_Type (Full_Etype (GT))))
+   function Full_Designated_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Is_Access_Type (GT),
           Post => Present (Full_Designated_GL_Type'Result);
 
    function Full_Designated_GL_Type (TE : Entity_Id) return GL_Type is
-     (Default_GL_Type (Full_Designated_Type (TE)))
+     (Get_Associated_GL_Type (TE))
      with Pre  => Is_Access_Type (TE),
           Post => Present (Full_Designated_GL_Type'Result);
 
-   function Full_Designated_GL_Type (V : GL_Value) return GL_Type is
-     (Default_GL_Type (Full_Designated_Type (V)))
+   function Full_Designated_GL_Type (V : GL_Value) return GL_Type
      with Pre  => Is_Access_Type (V),
           Post => Present (Full_Designated_GL_Type'Result);
 

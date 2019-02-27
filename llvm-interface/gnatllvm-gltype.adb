@@ -21,9 +21,8 @@ with Table;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Records;     use GNATLLVM.Records;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Records; use GNATLLVM.Records;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 
 package body GNATLLVM.GLType is
 
@@ -823,6 +822,47 @@ package body GNATLLVM.GLType is
       return GTI.Kind not in Padded | Byte_Array
         and then Is_Nonnative_Type (GTI.GNAT_Type);
    end Is_Nonnative_Type;
+
+   -----------------------------
+   -- Full_Designated_GL_Type --
+   -----------------------------
+
+   function Full_Designated_GL_Type (GT : GL_Type) return GL_Type is
+      TE : constant Entity_Id := Full_Etype (GT);
+      DT : constant GL_Type   := Get_Associated_GL_Type (TE);
+
+   begin
+      --  Normally, we've saved the associated GL_Type.  But we don't do
+      --  this in the E_Subprogram_Type case.
+
+      return (if   Present (DT) then DT
+              else Default_GL_Type (Full_Designated_Type (TE)));
+
+   end Full_Designated_GL_Type;
+
+   -----------------------------
+   -- Full_Designated_GL_Type --
+   -----------------------------
+
+   function Full_Designated_GL_Type (V : GL_Value) return GL_Type is
+      TE : constant Entity_Id := Full_Etype (Related_Type (V));
+
+   begin
+      --  If this isn't an actual access type, but a reference to
+      --  something, get the default_GL_Type of what it points to. Likeiwse
+      --  if we haven't associated a GL_Type with it (the E_Subprogram_Type
+      --  case).
+
+      if Is_Reference (V) or else No (Get_Associated_GL_Type (TE)) then
+         return Default_GL_Type (Full_Designated_Type (V));
+
+      --  Otherwise, return the associated type
+
+      else
+         return Get_Associated_GL_Type (TE);
+      end if;
+
+   end Full_Designated_GL_Type;
 
    ----------------------
    -- Dump_GL_Type_Int --

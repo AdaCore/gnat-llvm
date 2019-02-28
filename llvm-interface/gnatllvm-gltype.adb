@@ -641,10 +641,13 @@ package body GNATLLVM.GLType is
          return Result;
 
       --  Unless this is Biased or Padded, if this is a reference,
-      --  just convert the pointer.
+      --  just convert the pointer.  But if it's a reference to bounds and
+      --  data, always do it this way.
 
-      elsif In_GTI.Kind not in Biased | Padded and Is_Ref then
-         return Convert_Ref (Result, Out_GT);
+      elsif Relationship (V) = Reference_To_Bounds_And_Data
+        or else (In_GTI.Kind not in Biased | Padded and Is_Ref)
+      then
+         return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
 
       --  If this is Aligning or Max_Size, the object is the same, we
       --  just note that it now has the right type.
@@ -679,7 +682,8 @@ package body GNATLLVM.GLType is
 
       else
          pragma Assert (In_GTI.Kind = Byte_Array and not Is_Ref);
-         return Convert_Ref (Get (Result, Reference), Out_GT);
+         Result := Get (Result, Any_Reference);
+         return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
       end if;
 
    end To_Primitive;
@@ -709,7 +713,7 @@ package body GNATLLVM.GLType is
       --  convert the pointer.
 
       elsif GTI.Kind /= Biased and Is_Ref then
-         return Convert_Ref (Result, GT);
+         return Ptr_To_Relationship (Result, GT, Relationship (Result));
 
       --  If the result is Aligning or Max_Size, the object is the
       --  same, we just note that it now has the right type.
@@ -741,7 +745,8 @@ package body GNATLLVM.GLType is
 
       else
          pragma Assert (GTI.Kind = Byte_Array and not Is_Ref);
-         return Convert_Ref (Get (Result, Reference), GT);
+         Result := Get (Result, Any_Reference);
+         return Ptr_To_Relationship (Result, GT, Relationship (Result));
       end if;
 
    end From_Primitive;

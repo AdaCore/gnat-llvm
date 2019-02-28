@@ -200,6 +200,11 @@ gnatlib: build
 	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
 	$(MAKE) quicklib
 
+gnatlib-automated: build
+	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
+	$(MAKE) quicklib LN_S="cp -p"
+	$(RMDIR) $(RTSOBJ)
+
 quicklib: $(RTSDIR)
 	if [ -d $(RTSOBJ) ]; then \
 	  $(MV) $(RTSOBJ)/*.o $(RTSLIB); \
@@ -226,10 +231,12 @@ $(RTSDIR): bin/llvm-gnat1
 	$(MAKE) setup-rts
 	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
 	  $(pwd)/obj-tools/xoscons s-oscons && \
-	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR)
-	mv $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
+	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
+	  $(RM) s-oscons-tmplt.*
+	$(MV) $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
 	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
+	$(RM) a-numaux.adb.orig
 
 tracebak.o: tracebak.c tb-gcc.c
 	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \

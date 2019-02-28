@@ -17,9 +17,9 @@ build-be:
 build-be-opt:
 	$(MAKE) -C llvm-interface build-opt
 
-nightly:
+automated:
 	$(MAKE) -C llvm-interface build
-	$(MAKE) -C llvm-interface gnatlib
+	$(MAKE) -C llvm-interface gnatlib-automated
 
 llvm:
 	$(MAKE) -C llvm

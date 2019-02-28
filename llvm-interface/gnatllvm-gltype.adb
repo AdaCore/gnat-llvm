@@ -189,7 +189,7 @@ package body GNATLLVM.GLType is
          when Dummy =>
             return Is_Record_Type (TE) or else Is_Access_Type (TE);
          when Biased =>
-            return GTI.Bias /= No_GL_Value and then Is_Integer_Type (TE);
+            return GTI.Bias /= No_GL_Value and then Is_Discrete_Type (TE);
          when Padded =>
             return not Is_Nonnative_Type (TE)
               and then Get_Type_Kind (T) = Struct_Type_Kind;
@@ -406,11 +406,13 @@ package body GNATLLVM.GLType is
 
          if Is_Biased then
             declare
+               Int_Sz : constant Uint :=
+                 (if Size = Uint_0 then Uint_1 else Size);
                LB, HB : GL_Value;
 
             begin
                Bounds_From_Type (Prim_GT, LB, HB);
-               GTI.LLVM_Type := Int_Ty (Size);
+               GTI.LLVM_Type := Int_Ty (Int_Sz);
                GTI.Kind      := Biased;
                GTI.Bias      := LB;
             end;
@@ -654,7 +656,7 @@ package body GNATLLVM.GLType is
       --  the underlying type, then add the bias.
 
       elsif In_GTI.Kind = Biased then
-         return Add (S_Ext (Get (Result, Data), Out_GT), In_GTI.Bias);
+         return Add (Z_Ext (Get (Result, Data), Out_GT), In_GTI.Bias);
 
       --  For Dummy, this must be an access type, so just convert to the
       --  proper pointer.

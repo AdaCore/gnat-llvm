@@ -436,6 +436,7 @@ package body GNATLLVM.Types is
    is
       Result      : GL_Value                 := Emit (N, For_LHS => For_LHS);
       Orig_Result : constant GL_Value        := Result;
+      Prim_GT     : constant GL_Type         := Primitive_GL_Type (GT);
       In_GT       : constant GL_Type         := Related_Type (Result);
       R           : constant GL_Relationship := Relationship (Result);
       GT_Uns      : constant Boolean         := Is_Unsigned_For_RM (GT);
@@ -555,50 +556,53 @@ package body GNATLLVM.Types is
             Emit_Raise_Call (From_N, CE_Overflow_Check_Failed);
          end if;
 
-      --  If both types are the same, just change the type of the result.
-      --  Avoid confusing [0 x T] as both a zero-size constrained type and
-      --  the type used for a variable-sized type.
-
-      elsif Is_Data (Result) and then not Is_Nonnative_Type (GT)
-        and then Type_Of (Result) = Type_Of (GT)
-      then
-         Result := G_Is (Result, GT);
-
-      --  If we have an undefined value that we're converting to another
-      --  type, just get an undefined value of that type.  But watch for
-      --  the case where we have Data of some fixed-size type and we're
-      --  converting to a dynamic-sized type.  We handle the reference
-      --  cases below since we may have to deal with materializing bounds.
-
-      elsif Is_Undef (Result) and then R = Data
-        and then Is_Loadable_Type (GT)
-      then
-         return Get_Undef (GT);
-
-      --  If we have a constant of a struct type that we're converting to
-      --  a struct of the same layout, we can make a new constant.
-
-      elsif R = Data and then Is_Constant (Result)
-        and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
-        and then Is_Record_Type (GT) and then not Is_Nonnative_Type (GT)
-        and then Is_Layout_Identical (Result, GT)
-      then
-         Result := Convert_Struct_Constant (Result, GT);
-
-      --  Otherwise, we do the same as an unchecked conversion.
-
-      --  If we're converting between two GL_Types corresponding to the same
-      --  GNAT type, convert to the primitive type and the to the desired
-      --  GL_Type (one of those will likely be a nop).
-
-      elsif Full_Etype (Related_Type (Result)) = Full_Etype (GT) then
-         return From_Primitive (To_Primitive (Result), GT);
+      --  Otherwise, convert to the primitive type, do any require
+      --  conversion (as an unchecked conversion, meaning pointer
+      --  punning or equivalent) and then convert to the result type.
+      --  Some of these operations will likely be nops.
 
       else
-         Result := From_Primitive (Convert_Ref (Get (To_Primitive (Result),
-                                                     Any_Reference),
-                                                Primitive_GL_Type (GT)),
-                                   GT);
+         Result := To_Primitive (Result);
+
+         --  If both types are the same, just change the type of the result.
+         --  Avoid confusing [0 x T] as both a zero-size constrained type and
+         --  the type used for a variable-sized type.
+
+         if Is_Data (Result) and then not Is_Nonnative_Type (Prim_GT)
+           and then Type_Of (Result) = Type_Of (Prim_GT)
+         then
+            Result := G_Is (Result, Prim_GT);
+
+         --  If we have an undefined value that we're converting to another
+         --  type, just get an undefined value of that type.  But watch for
+         --  the case where we have Data of some fixed-size type and we're
+         --  converting to a dynamic-sized type.  We handle the reference
+         --  cases below since we may have to deal with materializing
+         --  bounds.
+
+         elsif Is_Undef (Result) and then R = Data
+           and then Is_Loadable_Type (Prim_GT)
+         then
+            Result := Get_Undef (Prim_GT);
+
+         --  If we have a constant of a struct type that we're converting
+         --  to a struct of the same layout, we can make a new constant.
+
+         elsif Is_Data (Result) and then Is_Constant (Result)
+           and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
+           and then Is_Record_Type (Prim_GT)
+           and then not Is_Nonnative_Type (Prim_GT)
+           and then Is_Layout_Identical (Result, Prim_GT)
+         then
+            Result := Convert_Struct_Constant (Result, Prim_GT);
+
+         --  Otherwise, do an actual pointer pun
+
+         else
+            Result := Convert_Ref (Get (Result, Any_Reference), Prim_GT);
+         end if;
+
+         Result := From_Primitive (Result, GT);
       end if;
 
       --  For unchecked conversion, if the result is a non-biased
@@ -941,7 +945,7 @@ package body GNATLLVM.Types is
          --  to be an obvious way to fix it at the moment and this
          --  whole function needs to be rewritten anyway.
 
-         return Convert_Pointer (Get (V, Fat_Pointer), GT);
+         return Convert_Pointer (Get (To_Primitive (V), Fat_Pointer), GT);
       end if;
    end Convert_Ref;
 

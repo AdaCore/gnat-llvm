@@ -170,9 +170,11 @@ package body GNATLLVM.Types is
    function IDS_Convert
      (V              : IDS;
       GT             : GL_Type;
-      Float_Truncate : Boolean := False) return IDS
+      Float_Truncate : Boolean := False;
+      Is_Unchecked   : Boolean := False) return IDS
    is
-     (if   IDS_Is_Const (V) then (False, Convert (V.Value, GT, Float_Truncate))
+     (if   IDS_Is_Const (V)
+      then (False, Convert (V.Value, GT, Float_Truncate, Is_Unchecked))
       else Var_IDS);
 
    ----------------
@@ -182,10 +184,13 @@ package body GNATLLVM.Types is
    function BA_Convert
      (V              : BA_Data;
       GT             : GL_Type;
-      Float_Truncate : Boolean := False) return BA_Data
+      Float_Truncate : Boolean := False;
+      Is_Unchecked   : Boolean := False) return BA_Data
    is
      (if   BA_Is_Const (V)
-      then (False, Convert (V.C_Value, GT, Float_Truncate), No_Uint) else V);
+      then (False, Convert (V.C_Value, GT, Float_Truncate, Is_Unchecked),
+            No_Uint)
+      else V);
 
    -------------------
    -- BA_From_Const --
@@ -485,7 +490,9 @@ package body GNATLLVM.Types is
       if Is_Elementary_Type (GT) and then Need_Overflow_Check then
          Result := To_Primitive (Get (Result, Data));
          Emit_Overflow_Check (Result, From_N);
-         Result := Convert (Result, GT, Float_Truncate => Float_Truncate);
+         Result := Convert (Result, GT,
+                            Float_Truncate => Float_Truncate,
+                            Is_Unchecked   => Is_Unchecked);
 
       --  If we have a reference in a LHS context and the conversion won't
       --  do anything, just convert the pointer.
@@ -549,7 +556,8 @@ package body GNATLLVM.Types is
         and then Is_Elementary_Type (GT)
       then
          Result := Convert (Get (Result, Data), GT,
-                            Float_Truncate => Float_Truncate);
+                            Float_Truncate => Float_Truncate,
+                            Is_Unchecked   => Is_Unchecked);
          if Is_Undef (Result) and then not Is_Undef (Orig_Result) then
             Error_Msg_N ("?`Constraint_Error` will be raised at run time",
                          From_N);
@@ -685,13 +693,19 @@ package body GNATLLVM.Types is
    function Convert
      (V              : GL_Value;
       GT             : GL_Type;
-      Float_Truncate : Boolean := False) return GL_Value
+      Float_Truncate : Boolean := False;
+      Is_Unchecked   : Boolean := False) return GL_Value
    is
       type Cvtf is access function
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
       In_GT       : constant GL_Type := Related_Type (V);
-      Prim_GT     : constant GL_Type := Primitive_GL_Type (GT);
+      Is_Unc_Bias : constant Boolean :=
+        Is_Unchecked and then (Is_Biased_GL_Type (GT)
+                                 or else Is_Biased_GL_Type (In_GT));
+      Prim_GT     : constant GL_Type :=
+        (if   Is_Unchecked and then Is_Biased_GL_Type (GT) then GT
+         else Primitive_GL_Type (GT));
       Value       : GL_Value         := V;
       Src_Access  : constant Boolean := Is_Access_Type (V);
       Dest_Access : constant Boolean := Is_Access_Type (Prim_GT);
@@ -706,6 +720,7 @@ package body GNATLLVM.Types is
       Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
       Subp        : Cvtf             := null;
+      Result      : GL_Value;
 
    begin
       --  If the value is already of the desired LLVM type, we're done.
@@ -715,9 +730,10 @@ package body GNATLLVM.Types is
 
       --  If we're converting between two GL_Types corresponding to the same
       --  GNAT type, convert to the primitive type and the to the desired
-      --  GL_Type (one of those will likely be a nop).
+      --  GL_Type (one of those will likely be a nop).  Don't do this if
+      --  we have a UC to or from a biased type.
 
-      elsif Full_Etype (In_GT) = Full_Etype (GT) then
+      elsif Full_Etype (In_GT) = Full_Etype (GT) and then not Is_Unc_Bias then
          return From_Primitive (To_Primitive (V), GT);
 
       --  If converting pointer to/from integer, copy the bits using the
@@ -791,9 +807,21 @@ package body GNATLLVM.Types is
       end if;
 
       --  Here all that's left to do is deal with non-primitive types and
-      --  generate the IR instruction.
+      --  generate the IR instruction.  Deal with the possibility of one
+      --  of the GL_Types being a biased type and this being an unchecked
+      --  conversion.
 
-      return From_Primitive (Subp (To_Primitive (Value), Prim_GT), GT);
+      Result := Value;
+      if not Is_Unchecked or else not Is_Biased_GL_Type (Result) then
+         Result := To_Primitive (Value);
+      end if;
+
+      Result := Subp (Result, Prim_GT);
+      if Related_Type (Result) /= GT then
+         Result := From_Primitive (Result, GT);
+      end if;
+
+      return Result;
 
    end Convert;
 

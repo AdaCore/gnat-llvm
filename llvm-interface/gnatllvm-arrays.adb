@@ -170,7 +170,8 @@ package body GNATLLVM.Arrays is
       with function  Sz_Convert
         (V              : Result;
          GT             : GL_Type;
-         Float_Truncate : Boolean := False) return Result;
+         Float_Truncate : Boolean := False;
+         Is_Unsigned    : Boolean := False) return Result;
       with function  Sz_Emit_Expr
         (V : Node_Id; LHS : Result := Empty_Result) return Result;
       with function  Sz_Emit_Convert

@@ -247,7 +247,8 @@ package GNATLLVM.Types is
    function Convert
      (V              : GL_Value;
       GT             : GL_Type;
-      Float_Truncate : Boolean := False) return GL_Value
+      Float_Truncate : Boolean := False;
+      Is_Unchecked   : Boolean := False) return GL_Value
      with Pre  => Is_Data (V) and then Present (GT)
                   and then Is_Elementary_Type (V),
           Post => Is_Data (Convert'Result)
@@ -256,8 +257,10 @@ package GNATLLVM.Types is
    --  elementary.
 
    function Convert
-     (V, T : GL_Value; Float_Truncate : Boolean := False) return GL_Value is
-     (Convert (V, Related_Type (T), Float_Truncate))
+     (V, T           : GL_Value;
+      Float_Truncate : Boolean := False;
+      Is_Unchecked   : Boolean := False) return GL_Value is
+     (Convert (V, Related_Type (T), Float_Truncate, Is_Unchecked))
      with Pre  => Is_Data (V) and then Is_Elementary_Type (V)
                   and then Is_Elementary_Type (T),
           Post => Is_Data (Convert'Result)
@@ -628,7 +631,8 @@ package GNATLLVM.Types is
    function IDS_Convert
      (V              : IDS;
       GT             : GL_Type;
-      Float_Truncate : Boolean := False) return IDS
+      Float_Truncate : Boolean := False;
+      Is_Unchecked   : Boolean := False) return IDS
      with Pre => Present (V) and then Present (GT);
 
    function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
@@ -805,7 +809,8 @@ package GNATLLVM.Types is
    function BA_Convert
      (V              : BA_Data;
       GT             : GL_Type;
-      Float_Truncate : Boolean := False) return BA_Data
+      Float_Truncate : Boolean := False;
+      Is_Unchecked   : Boolean := False) return BA_Data
      with Pre => Present (GT);
 
    function BA_Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data

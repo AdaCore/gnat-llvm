@@ -2312,19 +2312,11 @@ package body GNATLLVM.Records is
                         FI  : constant Field_Info :=
                           Field_Info_Table.Table (F_Idx);
                         Idx : constant Nat        := FI.Field_Ordinal;
-                        Val : GL_Value            :=
+                        Val : constant GL_Value   :=
                           Emit_Convert_Value (Expression (Expr), F_GT);
 
                      begin
                         if Is_Data (Result) then
-
-                           --  If this field had a dummy type, convert our
-                           --  expression into it.
-
-                           if Is_Dummy_Type (FI.GT) then
-                              Val := Convert_Pointer_To_Dummy (Val);
-                           end if;
-
                            Result :=
                              Insert_Value (Result, Val, unsigned (Idx));
                         else

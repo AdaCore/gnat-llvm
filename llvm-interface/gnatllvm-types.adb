@@ -84,16 +84,6 @@ package body GNATLLVM.Types is
           Post => Present (Create_Access_Type'Result);
    --  Create an LLVM type for various GNAT types
 
-   function Convert_Pointer
-     (V  : GL_Value;
-      GT : GL_Type;
-      R  : GL_Relationship;
-      T  : Type_T) return GL_Value
-     with Pre  => Present (V) and then Present (GT) and then Present (T),
-          Post => Present (Convert_Pointer'Result);
-   --  Internal function for Convert_Pointer and Convert_Pointer_To_Dummy
-   --  to do actual conversion.
-
    function Is_In_LHS_Context (N : Node_Id) return Boolean;
    --  Return True if N's parent (if N is Present) is such that we need a
    --  LValue.
@@ -984,34 +974,6 @@ package body GNATLLVM.Types is
    function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value is
       R     : constant GL_Relationship := Relationship (V);
       T     : constant Type_T          := Type_For_Relationship (GT, R);
-
-   begin
-      return Convert_Pointer (V, GT, R, T);
-   end Convert_Pointer;
-
-   ------------------------------
-   -- Convert_Pointer_To_Dummy --
-   ------------------------------
-
-   function Convert_Pointer_To_Dummy (V : GL_Value) return GL_Value is
-      TE    : constant Entity_Id       := Full_Etype (Related_Type (V));
-      R     : constant GL_Relationship := Relationship (V);
-      T     : constant Type_T          := Type_Of (Dummy_GL_Type (TE));
-
-   begin
-      return Convert_Pointer (V, Default_GL_Type (TE), R, T);
-   end Convert_Pointer_To_Dummy;
-
-   ---------------------
-   -- Convert_Pointer --
-   ---------------------
-
-   function Convert_Pointer
-     (V  : GL_Value;
-      GT : GL_Type;
-      R  : GL_Relationship;
-      T  : Type_T) return GL_Value
-   is
       Value : Value_T;
 
    begin

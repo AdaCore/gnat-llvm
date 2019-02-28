@@ -491,7 +491,7 @@ package body GNATLLVM.Arrays is
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T is
    begin
       return Build_Struct_Type
-        ((1 => Pointer_Type (Type_Of (TE), 0),
+        ((1 => Pointer_Type (Type_Of (Primitive_GL_Type (TE)), 0),
           2 => Pointer_Type (Create_Array_Bounds_Type (TE), 0)));
    end Create_Array_Fat_Pointer_Type;
 

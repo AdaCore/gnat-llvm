@@ -562,7 +562,7 @@ package body GNATLLVM.Variables is
       elsif Is_Byte_Array_GL_Type (In_GT)
         or else Is_Byte_Array_GL_Type (Out_GT)
       then
-         return True;
+         return False;
 
       --  We can do the conversion statically if both types are elementary
 

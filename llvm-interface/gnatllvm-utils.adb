@@ -311,6 +311,11 @@ package body GNATLLVM.Utils is
 
    procedure Dump_GL_Value (V : GL_Value) is
    begin
+      if No (V) then
+         Write_Line ("None");
+         return;
+      end if;
+
       Dump_LLVM_Value (V.Value);
       Dump_LLVM_Type (Type_Of (V.Value));
       if Is_Pristine (V) then

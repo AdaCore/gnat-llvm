@@ -131,9 +131,22 @@ package body GNATLLVM.Variables is
      with Pre => Present (E) and then not Is_Type (E);
    --  Return True if E may have a global name that we need to check for dups
 
+   function Variable_GL_Type
+     (Def_Ident : Entity_Id;
+      Expr      : Node_Id) return GL_Type
+     with Pre  => Ekind_In (Def_Ident, E_Variable, E_Constant,
+                            E_Loop_Parameter, E_Exception),
+          Post => Present (Variable_GL_Type'Result);
+   --  Determine the proper GL_Type to use for Def_Ident.  If Expr is Present,
+   --  it's an initializing expression for Def_Ident.
+
    function Make_Global_Variable
-     (Def_Ident : Entity_Id; Definition : Boolean) return GL_Value
-     with Pre  => Present (Def_Ident) and then not Is_Type (Def_Ident),
+     (Def_Ident  : Entity_Id;
+      GT         : GL_Type;
+      Definition : Boolean) return GL_Value
+     with Pre  => Ekind_In (Def_Ident, E_Variable, E_Constant,
+                            E_Loop_Parameter, E_Exception)
+                  and then Present (GT),
           Post => Present (Make_Global_Variable'Result);
    --  Create a global variable for Def_Ident.  Definition is true if we
    --  are doing this for a declaration.
@@ -1089,6 +1102,38 @@ package body GNATLLVM.Variables is
                         rem Hash_Type'Modulus);
    end Hash_Value_T;
 
+   -----------------------
+   --  Variable_GL_Type --
+   -----------------------
+
+   function Variable_GL_Type
+     (Def_Ident : Entity_Id;
+      Expr      : Node_Id) return GL_Type
+   is
+      TE       : constant Entity_Id :=
+        (if   Ekind (Etype (Def_Ident)) = E_Class_Wide_Type
+              and then Present (Expr)
+              and then Nkind (Expr) = N_Qualified_Expression
+         then Full_Etype (Expression (Expr)) else Full_Etype (Def_Ident));
+      --  Type to use for allocation.  Normally, the type of the identifier
+      --  unless we have a qualified expression initializing a class wide
+      --  type.
+
+      GT       : constant GL_Type   := Default_GL_Type (TE);
+      Size     : constant Uint      :=
+        (if   Has_Size_Clause (Def_Ident) or not Unknown_Esize (Def_Ident)
+         then Esize (Def_Ident) else No_Uint);
+      Align    : constant Uint      :=
+        (if   Unknown_Alignment (Def_Ident) then No_Uint
+         else Alignment (Def_Ident));
+      Max_Size : constant Boolean   := Is_Unconstrained_Record (GT);
+      Biased   : constant Boolean   := Has_Biased_Representation (Def_Ident);
+
+   begin
+      return Make_GL_Alternative (GT, Size, Align, False, Max_Size, Biased);
+
+   end Variable_GL_Type;
+
    --------------------------
    -- Make_Global_Constant --
    --------------------------
@@ -1129,16 +1174,16 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Make_Global_Variable
-     (Def_Ident : Entity_Id; Definition : Boolean) return GL_Value
+     (Def_Ident  : Entity_Id;
+      GT         : GL_Type;
+      Definition : Boolean) return GL_Value
    is
-      GT           : constant GL_Type := Full_GL_Type (Def_Ident);
       LLVM_Var     : GL_Value         := Get_Dup_Global_Value (Def_Ident);
       Addr_Expr    : constant Node_Id :=
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_Ref       : constant Boolean :=
-        Present (Addr_Expr)
-          or else Is_Dynamic_Size (GT, Is_Unconstrained_Record (GT))
+        Present (Addr_Expr) or else Is_Dynamic_Size (GT)
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
       Linker_Alias : constant Node_Id :=
@@ -1265,19 +1310,7 @@ package body GNATLLVM.Variables is
         (if No_Init then Empty else Expression (N));
       --  Initializing expression, if Present and we are to use one
 
-      TE           : constant Entity_Id :=
-        (if   Ekind (Etype (Def_Ident)) = E_Class_Wide_Type
-              and then Present (Expr)
-              and then Nkind (Expr) = N_Qualified_Expression
-         then Full_Etype (Expression (Expr)) else Full_Etype (Def_Ident));
-      --  Type to use for allocation.  Normally, the type of the identifier
-      --  unless we have a qualified expression initializing a class wide
-      --  type.
-
-      GT           : constant GL_Type   := Default_GL_Type (TE);
-      Max_Size     : constant Boolean   := Is_Unconstrained_Record (GT);
-      --  True if our allocation should be of the maximum size.
-
+      GT           : constant GL_Type   := Variable_GL_Type (Def_Ident, Expr);
       Addr_Expr    : constant Node_Id   :=
         (if   Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
@@ -1289,7 +1322,7 @@ package body GNATLLVM.Variables is
       --  True if variable is not defined in this unit
 
       Is_Ref       : constant Boolean   :=
-        Present (Addr_Expr) or else Is_Dynamic_Size (GT, Max_Size);
+        Present (Addr_Expr) or else Is_Dynamic_Size (GT);
       --  True if we need to use an indirection for this variable
 
       Value        : GL_Value           :=
@@ -1356,7 +1389,7 @@ package body GNATLLVM.Variables is
 
       --  Nothing to do if this is a debug renaming type
 
-      if TE = Standard_Debug_Renaming_Type then
+      if Full_Etype (GT) = Standard_Debug_Renaming_Type then
          return;
       end if;
 
@@ -1403,19 +1436,18 @@ package body GNATLLVM.Variables is
          --  can detect that.
 
          if Full_Ident /= Def_Ident then
-            Set_Value (Full_Ident, Emit_Undef (Default_GL_Type (TE)));
+            Set_Value (Full_Ident, Emit_Undef (GT));
          end if;
 
          if Present (Expr)
            and then (not Is_No_Elab_Needed (Expr)
                        or else not Is_Static_Conversion
-                       (Full_GL_Type (Expr), Default_GL_Type (TE)))
+                       (Full_GL_Type (Expr), GT))
          then
             if Library_Level then
-               Add_To_Elab_Proc (Expr, For_GT => Default_GL_Type (TE));
+               Add_To_Elab_Proc (Expr, For_GT => GT);
             else
-               Set_Value (Expr, Emit_Convert_Value (Expr,
-                                                    Default_GL_Type (TE)));
+               Set_Value (Expr, Emit_Convert_Value (Expr, GT));
             end if;
          end if;
 
@@ -1427,7 +1459,7 @@ package body GNATLLVM.Variables is
       --  unconstrained array nominal subtype and compatible template.
 
       if Present (Addr_Expr)
-        and then Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE)
+        and then Is_Constr_Subt_For_UN_Aliased (GT) and then Is_Array_Type (GT)
         and then Nkind (Addr_Expr) = N_Attribute_Reference
         and then (Get_Attribute_Id (Attribute_Name (Addr_Expr))
                     = Attribute_Address)
@@ -1461,7 +1493,7 @@ package body GNATLLVM.Variables is
       then
          pragma Assert (not In_Elab_Proc);
 
-         LLVM_Var := Make_Global_Variable (Def_Ident, True);
+         LLVM_Var := Make_Global_Variable (Def_Ident, GT, True);
 
          --  If there's an Address clause with a static address, we can
          --  convert it to a pointer to us and make it a static
@@ -1488,7 +1520,7 @@ package body GNATLLVM.Variables is
          --  of the allocation in the elab proc if at library level.
 
          if Library_Level and then not Is_External
-           and then Is_Dynamic_Size (GT, Max_Size)
+           and then Is_Dynamic_Size (GT)
          then
             Add_To_Elab_Proc (N);
          end if;
@@ -1506,7 +1538,7 @@ package body GNATLLVM.Variables is
          if Present (Expr) then
             if Is_No_Elab_Needed (Expr)
               and then Can_Initialize (LLVM_Var, GT)
-              and then not Is_Dynamic_Size (GT, Max_Size)
+              and then not Is_Dynamic_Size (GT)
               and then No (Addr_Expr)
               and then Is_Static_Conversion (Full_GL_Type (Expr), GT)
             then
@@ -1514,7 +1546,7 @@ package body GNATLLVM.Variables is
                   Value := Emit_Convert_Value (Expr, GT);
                end if;
 
-               if Type_Needs_Bounds (TE) then
+               if Type_Needs_Bounds (GT) then
                   Value := Get (Value, Bounds_And_Data);
                end if;
 
@@ -1543,9 +1575,7 @@ package body GNATLLVM.Variables is
          --  we have no expression.  In that case, we still have to
          --  initialize the bounds.
 
-         elsif Type_Needs_Bounds (GT)
-           and then not Is_Dynamic_Size (GT, Max_Size)
-         then
+         elsif Type_Needs_Bounds (GT) and then not Is_Dynamic_Size (GT) then
             Set_Global_Constant
               (LLVM_Var, (Is_True_Constant (Def_Ident)
                             and then not Address_Taken (Def_Ident)));
@@ -1627,12 +1657,12 @@ package body GNATLLVM.Variables is
       if Present (LLVM_Var) then
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
-         elsif Is_Dynamic_Size (GT, Max_Size) then
+         elsif Is_Dynamic_Size (GT) then
             Store (Get (Heap_Allocate_For_Type (GT, GT, Value,
                                                 Expr      => Expr,
                                                 N         => N,
                                                 Def_Ident => Def_Ident,
-                                                Max_Size  => Max_Size),
+                                                Max_Size  => Is_Max_Size (GT)),
                         Any_Reference),
                    LLVM_Var);
             Copied := True;
@@ -1679,7 +1709,7 @@ package body GNATLLVM.Variables is
       if No (LLVM_Var) then
          LLVM_Var := Allocate_For_Type (GT, GT, Def_Ident, Value, Expr,
                                         Def_Ident => Def_Ident,
-                                        Max_Size  => Max_Size);
+                                        Max_Size  => Is_Max_Size (GT));
          Copied := True;
       end if;
 
@@ -1864,7 +1894,8 @@ package body GNATLLVM.Variables is
 
             elsif No (V) and then not In_Extended_Main_Code_Unit (Def_Ident)
             then
-               V := Make_Global_Variable (Def_Ident, False);
+               V := Make_Global_Variable
+                 (Def_Ident, Variable_GL_Type (Def_Ident, Empty), False);
             end if;
 
             --  Now return what we got (if we didn't get anything by now,

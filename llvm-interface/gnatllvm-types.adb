@@ -1587,8 +1587,8 @@ package body GNATLLVM.Types is
          GT := Make_GL_Alternative
            (GT, (if   Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
                  then RM_Size (TE) else No_Uint),
-                (if Unknown_Alignment (TE) then No_Uint else Alignment (TE)),
-                  True, False, Has_Biased_Representation (TE));
+           (if Unknown_Alignment (TE) then No_Uint else Alignment (TE)),
+           True, False, Has_Biased_Representation (TE));
       end if;
 
       --  Back-annotate sizes of non-scalar types if there isn't one.  ???

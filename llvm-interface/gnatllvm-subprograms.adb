@@ -707,7 +707,7 @@ package body GNATLLVM.Subprograms is
 
       while Present (Param_Ent) loop
          declare
-            Param_Type : constant Node_Id    := Full_Etype (Param_Ent);
+            Param_GT   : constant GL_Type    := Full_GL_Type (Param_Ent);
             PK         : constant Param_Kind := Get_Param_Kind (Param_Ent);
             PK_By_Ref  : constant Boolean    := PK_Is_Reference (PK);
          begin
@@ -723,13 +723,15 @@ package body GNATLLVM.Subprograms is
             end if;
 
             --  If this is an input or reference, set the type for the param
+            --  ??? Should probably make a Create_Access_Type for GT.
 
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
                  (if    PK = Foreign_By_Ref
-                  then  Pointer_Type (Type_Of (Param_Type), 0)
-                  elsif PK_By_Ref then Create_Access_Type_To (Param_Type)
-                  else  Type_Of (Param_Type));
+                  then  Pointer_Type (Type_Of (Param_GT), 0)
+                  elsif PK_By_Ref
+                  then  Create_Access_Type_To (Full_Etype (Param_GT))
+                  else  Type_Of (Param_GT));
 
                J := J + 1;
             end if;

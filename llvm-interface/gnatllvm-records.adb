@@ -652,9 +652,7 @@ package body GNATLLVM.Records is
          --  If we're using a matching field, update F_GT to its type.
 
          Field_Info_Table.Append
-           ((Rec_Info_Idx  => RI_Idx,
-             Field_Ordinal => Ordinal,
-             GT            => Full_GL_Type (E)));
+           ((Rec_Info_Idx  => RI_Idx, Field_Ordinal => Ordinal, GT => F_GT));
 
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
@@ -1094,8 +1092,14 @@ package body GNATLLVM.Records is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
-         F_GT  : GL_Type      := Full_GL_Type (E);
-         Align : constant ULL := Get_Type_Alignment (F_GT);
+         Def_GT   : constant GL_Type := Default_GL_Type (Full_Etype (E));
+         Size     : constant Uint    :=
+           (if   Unknown_Esize (E) then No_Uint else Esize (E));
+         Max_Sz   : constant Boolean := Is_Unconstrained_Record (Def_GT);
+         Biased   : constant Boolean := Has_Biased_Representation (E);
+         F_GT     : GL_Type          :=
+           Make_GL_Alternative (Def_GT, Size, No_Uint, False, Max_Sz, Biased);
+         Align    : constant ULL     := Get_Type_Alignment (F_GT);
 
       begin
          --  If this is the '_parent' field, we make a dummy entry and handle
@@ -1105,19 +1109,21 @@ package body GNATLLVM.Records is
             Add_FI (E, Get_Record_Info_N (TE), 0, F_GT);
             return;
 
-         --  If this field is dynamic size, we have to close out the last
+         --  If this field is a non-native type, we have to close out the last
          --  record info entry we're making, if there's anything in it,
          --  and make a piece for this field.
 
-         elsif Is_Dynamic_Size (F_GT, Max_Size => not Is_Constrained (F_GT))
-         then
+         elsif Is_Nonnative_Type (F_GT) then
+            --  ??  This is the only case where we use an F_GT that might have
+            --  been modified by Add_FI.  We need to be sure that's OK.
+
             Flush_Current_Types;
             Add_FI (E, Cur_Idx, 0, F_GT);
             Add_RI (F_GT => F_GT, Use_Max_Size => not Is_Constrained (F_GT));
             Set_Is_Nonnative_Type (TE);
             Split_Align := Align;
 
-         --  If it's of fixed size, add it to the current set of fields
+         --  If it's a native type, add it to the current set of fields
          --  and make a field descriptor.
 
          else
@@ -1130,7 +1136,7 @@ package body GNATLLVM.Records is
                Split_Align := Align;
             end if;
 
-            Types (Next_Type) := Type_For_Relationship (F_GT, Component);
+            Types (Next_Type) := Type_Of (F_GT);
             Add_FI (E, Cur_Idx, Next_Type, F_GT);
             Next_Type := Next_Type + 1;
          end if;
@@ -1834,6 +1840,20 @@ package body GNATLLVM.Records is
       return unsigned (FI.Field_Ordinal);
    end Get_Field_Ordinal;
 
+   --------------------
+   -- Get_Field_Type --
+   --------------------
+
+   function Get_Field_Type
+     (F_Idx : Field_Info_Id; TE : Entity_Id) return GL_Type
+   is
+      FI     : constant Field_Info := Field_Info_Table.Table (F_Idx);
+
+   begin
+      pragma Assert (FI.Rec_Info_Idx = Get_Record_Info (TE));
+      return FI.GT;
+   end Get_Field_Type;
+
    -----------------------------
    -- Get_RI_Info_For_Variant --
    -----------------------------
@@ -2280,11 +2300,10 @@ package body GNATLLVM.Records is
 
          while Present (Expr) loop
             declare
-               Field  : constant Entity_Id     :=
+               Field : constant Entity_Id     :=
                  Find_Matching_Field
                  (Full_Etype (GT), Entity (First (Choices (Expr))));
-               F_GT   : constant GL_Type       := Full_GL_Type (Field);
-               F_Idx  : constant Field_Info_Id := Get_Field_Info (Field);
+               F_Idx : constant Field_Info_Id := Get_Field_Info (Field);
 
             begin
                if Ekind (Field) = E_Discriminant
@@ -2309,10 +2328,11 @@ package body GNATLLVM.Records is
 
                   if Present (F_Idx) then
                      declare
-                        FI  : constant Field_Info :=
+                        FI    : constant Field_Info :=
                           Field_Info_Table.Table (F_Idx);
-                        Idx : constant Nat        := FI.Field_Ordinal;
-                        Val : constant GL_Value   :=
+                        F_GT  : constant GL_Type    := FI.GT;
+                        Idx : constant Nat          := FI.Field_Ordinal;
+                        Val : constant GL_Value     :=
                           Emit_Convert_Value (Expression (Expr), F_GT);
 
                      begin

@@ -903,7 +903,8 @@ package body GNATLLVM.Compile is
                              or else Is_Layout_Identical
                                        (Result, Default_GL_Type (R_TE)))
                then
-                  return Extract_Value (GT, To_Primitive (Result),
+                  return Extract_Value (Get_Field_Type (F_Idx, R_TE),
+                                        To_Primitive (Result),
                                         Get_Field_Ordinal (F_Idx, R_TE));
                else
                   return Normalize_LValue_Reference

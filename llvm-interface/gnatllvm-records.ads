@@ -101,6 +101,12 @@ package GNATLLVM.Records is
    with Pre => Present (F_Idx) and then Is_Record_Type (TE);
    --  Return the index of the field denoted by F_Idx in type TE.
 
+   function Get_Field_Type
+     (F_Idx : Field_Info_Id; TE : Entity_Id) return GL_Type
+   with Pre  => Present (F_Idx) and then Is_Record_Type (TE),
+        Post => Present (Get_Field_Type'Result);
+   --  Return the GL_Type of the field denoted by F_Idx in type TE.
+
    function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);
    --  V is a value aligned to Cur_Align.  Ensure that it's aligned to

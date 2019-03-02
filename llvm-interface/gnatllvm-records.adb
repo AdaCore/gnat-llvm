@@ -2300,17 +2300,16 @@ package body GNATLLVM.Records is
 
          while Present (Expr) loop
             declare
-               Field : constant Entity_Id     :=
+               F     : constant Entity_Id     :=
                  Find_Matching_Field
                  (Full_Etype (GT), Entity (First (Choices (Expr))));
-               F_Idx : constant Field_Info_Id := Get_Field_Info (Field);
+               F_Idx : constant Field_Info_Id := Get_Field_Info (F);
 
             begin
-               if Ekind (Field) = E_Discriminant
-                 and then Is_Unchecked_Union (GT)
+               if Ekind (F) = E_Discriminant and then Is_Unchecked_Union (GT)
                then
                   null;
-               elsif Chars (Field) = Name_uParent then
+               elsif Chars (F) = Name_uParent then
 
                   --  If this is "_parent", its fields are our fields too.
                   --  Assume Expression is also an N_Aggregate.
@@ -2340,9 +2339,7 @@ package body GNATLLVM.Records is
                            Result :=
                              Insert_Value (Result, Val, unsigned (Idx));
                         else
-                           Emit_Assignment (Normalize_LValue_Reference
-                                              (Record_Field_Offset (Result,
-                                                                    Field)),
+                           Emit_Assignment (Record_Field_Offset (Result, F),
                                             Empty, Val);
                         end if;
                      end;
@@ -2351,7 +2348,7 @@ package body GNATLLVM.Records is
 
                      pragma Assert (Ekind (GT) = E_Record_Subtype
                                       and then Has_Discriminants (GT)
-                                      and then (Ekind (Field) = E_Component));
+                                      and then (Ekind (F) = E_Component));
                   end if;
                end if;
             end;

@@ -327,13 +327,6 @@ package GNATLLVM.Types is
    --  V is a reference to some object.  Convert it to a reference to GT
    --  with the same relationship.
 
-   function Normalize_LValue_Reference (V : GL_Value) return GL_Value
-     with Pre  => Present (V),
-          Post => Present (Normalize_LValue_Reference'Result);
-   --  There are times when the component of an object or a dereference may
-   --  have a different LLVM type than the proper type for the type.
-   --  Check here for that situation and convert the LValue if required.
-
    function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
    --  Remove any conversion from N, if Present, if they are record or array
    --  conversions that increase the complexity of the size of the

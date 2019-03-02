@@ -812,8 +812,7 @@ package body GNATLLVM.Compile is
             --  Dereference the value, then see if we have an
             --  Actual_Designated_Subtype that we have to convert to.
 
-            Result := Normalize_LValue_Reference
-              (From_Access (Emit_Expression (Prefix (N))));
+            Result := From_Access (Emit_Expression (Prefix (N)));
             if Present (Actual_Designated_Subtype (N)) then
                Result := Convert_Ref (Get (Result, Reference),
                                       Default_GL_Type
@@ -907,8 +906,7 @@ package body GNATLLVM.Compile is
                                         To_Primitive (Result),
                                         Get_Field_Ordinal (F_Idx, R_TE));
                else
-                  return Normalize_LValue_Reference
-                    (Record_Field_Offset (Get (Result, Any_Reference), F));
+                  return Record_Field_Offset (Get (Result, Any_Reference), F);
                end if;
             end;
 
@@ -978,9 +976,8 @@ package body GNATLLVM.Compile is
                   else
                      --  Otherwise, get a reference and do this using GEP.
 
-                     return Normalize_LValue_Reference
-                       (Get_Indexed_LValue (Idxs,
-                                            Get (Result, Any_Reference)));
+                     return Get_Indexed_LValue (Idxs,
+                                                Get (Result, Any_Reference));
                   end if;
                end;
             else

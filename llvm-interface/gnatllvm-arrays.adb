@@ -1342,8 +1342,7 @@ package body GNATLLVM.Arrays is
                           Get_Indexed_LValue (GL_Idxs, Cur_Value);
 
                      begin
-                        Emit_Assignment (Normalize_LValue_Reference (LValue),
-                                         Expr, No_GL_Value);
+                        Emit_Assignment (LValue, Expr, No_GL_Value);
                      end;
                   end if;
                end;

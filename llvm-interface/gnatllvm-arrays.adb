@@ -313,16 +313,25 @@ package body GNATLLVM.Arrays is
       A_TE              : constant Entity_Id :=
         (if For_Orig then Full_Original_Array_Type (TE) else TE);
       Unconstrained     : constant Boolean   := not Is_Constrained (A_TE);
-      Comp_GT           : constant GL_Type   := Full_Component_GL_Type (A_TE);
+      CT                : constant Entity_Id := Full_Component_Type (A_TE);
+      Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
+      Size              : constant Uint      :=
+        (if   Unknown_Component_Size (TE) then No_Uint
+         else Component_Size (TE));
+      Max_Size          : constant Boolean   :=
+        Is_Unconstrained_Record (Comp_Def_GT);
+      Biased            : constant Boolean   :=
+        Has_Biased_Representation (A_TE);
+      Comp_GT           : constant GL_Type   :=
+        Make_GL_Alternative (Comp_Def_GT, Size, No_Uint, False,
+                             Max_Size, Biased);
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);
-      Must_Use_Fake     : Boolean            :=
-        Is_Dynamic_Size (Comp_GT, Is_Unconstrained_Record (Comp_GT));
+      Must_Use_Fake     : Boolean            := Is_Dynamic_Size (Comp_GT);
       This_Nonnative    : Boolean            := Must_Use_Fake or Unconstrained;
       CT_To_Use         : constant GL_Type   :=
         (if Must_Use_Fake then SSI_GL_Type else Comp_GT);
-      Typ               : Type_T             :=
-        Type_For_Relationship (CT_To_Use, Component);
+      Typ               : Type_T             := Type_Of (CT_To_Use);
       Dim               : Nat                := 0;
       Last_Dim          : constant Nat       :=
         (if   Ekind (A_TE) = E_String_Literal_Subtype
@@ -333,9 +342,21 @@ package body GNATLLVM.Arrays is
       Base_Index        : Entity_Id;
 
    begin
+      --  String literal subtypes are simple, so handle then here
+
       if Ekind (A_TE) = E_String_Literal_Subtype then
+         Set_Associated_GL_Type (A_TE, SSI_GL_Type);
          return Create_String_Literal_Type (A_TE, Typ);
       end if;
+
+      --  Set the associated component type unless doing this for an
+      --  original type of a packed array type.
+
+      if not For_Orig then
+         Set_Associated_GL_Type (A_TE, Comp_GT);
+      end if;
+
+      --  If this is a base type, back-annotate the component size
 
       if Is_Base_Type (A_TE) and then Unknown_Component_Size (A_TE) then
          Set_Component_Size (A_TE, Annotated_Object_Size (Comp_GT));

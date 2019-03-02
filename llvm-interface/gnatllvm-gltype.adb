@@ -356,12 +356,17 @@ package body GNATLLVM.GLType is
             GTI : constant GL_Type_Info := GL_Type_Table.Table (Found_GT);
          begin
             if (Size_V = GTI.Size and then Align_V = GTI.Alignment
-                  and then not (Max_Size and then No (Size_V)))
+                  and then not (Max_Size
+                                  and then (No (Size_V)
+                                              or else not Prim_Native)))
+
               --  If the size and alignment are the same, this must be the
               --  same type (this takes into account Biased since if the
               --  type is narrower than the primitive type, it must be biased).
               --  But this isn't the case if Max_Size is specified and there's
-              --  no size for the type.
+              --  no size for the type or the primitive type isn't native
+              --  (the latter can happen for a variant record where all
+              --  the variants are the same size.)
 
               or else (Max_Size and then GTI.Max_Size)
               --  It's also the same type even if there's no match if

@@ -74,14 +74,16 @@ package GNATLLVM.GLType is
 
    function Primitive_GL_Type (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
-          Post => Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+          Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+                     or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then TE = Full_Etype (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
    --  form, creating it if it doesn't exist.
 
    function Primitive_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Present (GT),
-          Post => Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+          Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+                     or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then Full_Etype (GT) =
                       Full_Etype (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
@@ -89,7 +91,8 @@ package GNATLLVM.GLType is
 
    function Primitive_GL_Type (V : GL_Value) return GL_Type
      with Pre  => Present (V),
-          Post => Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+          Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+                     or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then Full_Etype (V) = Full_Etype
                              (Primitive_GL_Type'Result);
 
@@ -228,12 +231,12 @@ package GNATLLVM.GLType is
           Post => Is_Type (Full_Component_Type'Result);
 
    function Full_Component_GL_Type (GT : GL_Type) return GL_Type is
-     (Default_GL_Type (Full_Component_Type (Full_Etype (GT))))
+     (Get_Associated_GL_Type (Full_Etype (GT)))
      with Pre  => Is_Array_Type (GT),
           Post => Present (Full_Component_GL_Type'Result);
 
    function Full_Component_GL_Type (TE : Entity_Id) return GL_Type is
-     (Default_GL_Type (Full_Component_Type (TE)))
+     (Get_Associated_GL_Type (TE))
      with Pre  => Is_Array_Type (TE),
           Post => Present (Full_Component_GL_Type'Result);
 

@@ -496,7 +496,7 @@ package body GNATLLVM.Compile is
                Discard (Type_Of (TE));
                GT := Default_GL_Type (TE);
                if Sz /= Uint_0 and then Is_Static_SO_Ref (Sz)
-                 and then not Is_Dynamic_Size (GT, Max_Size => True)
+                 and then not Is_Dynamic_Size (GT)
                  and then (I_Cmp (Int_SGT, Get_Type_Size
                                     (GT, Max_Size => True),
                                   Size_Const_Int (Sz))

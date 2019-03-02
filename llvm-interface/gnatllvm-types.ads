@@ -96,13 +96,6 @@ package GNATLLVM.Types is
                  and then In_TE = Get_Fullest_View (Out_TE);
    --  Copy any annotations we made from In_TE to Out_TE
 
-   function Create_Type_For_Component (TE : Entity_Id) return Type_T
-     with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
-     Post => Present (Create_Type_For_Component'Result);
-   --  Similarly, but if TE is an unconstrained record, the maximum
-   --  size of TE is fixed but it's not representable as a native LLVM
-   --  type, return a type (an array) to correspond to that size.
-
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);
 

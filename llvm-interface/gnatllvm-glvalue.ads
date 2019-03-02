@@ -46,14 +46,6 @@ package GNATLLVM.GLValue is
       --  of the normal i8 that we'd use for a Boolean type.  In this case,
       --  the type must be Standard_Boolean.
 
-      Component,
-      --  Like Data, but if this is of an unconstrained record type of
-      --  fixed size maximum size, we use a type that's a native LLVM type
-      --  (an array) corresponding to the maximum size of the type.  We
-      --  only allow an GL_Value to have this relationship if it's Null.
-      --  We mostly use this for Type_From_Representation.
-      --  ??? Maybe try  to find a better name.
-
       Reference,
       --  Value contains the address of an object of Typ.  This is always
       --  the case for types of variable size or for names corresponding to
@@ -66,11 +58,6 @@ package GNATLLVM.GLValue is
       --  'Address attribute was specifed or where an object of dynamic
       --  size was allocated because in both of those cases the global name
       --  is a pointer to a location containing the address of the object.
-
-      Reference_To_Component,
-      Reference_To_Ref_To_Component,
-      --  Like Reference and Reference_To_Reference except where the underlying
-      --  type may be an LLVM type for the maximum size of the type.
 
       Fat_Pointer,
       --  Value contains a "fat pointer", an object containing information
@@ -187,21 +174,12 @@ package GNATLLVM.GLValue is
       Boolean_Data                   =>
         (Is_Ref => False, Is_Any_Ref => False,
          Deref  => Invalid,          Ref => Invalid),
-      Component                      =>
-        (Is_Ref => False, Is_Any_Ref => False,
-         Deref  => Invalid,          Ref => Reference_To_Component),
       Reference                      =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref  => Data,             Ref => Reference_To_Reference),
       Reference_To_Reference         =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref  => Reference,        Ref => Invalid),
-      Reference_To_Component         =>
-        (Is_Ref => True,  Is_Any_Ref => False,
-         Deref  => Component,         Ref => Reference_To_Ref_To_Component),
-      Reference_To_Ref_To_Component  =>
-        (Is_Ref => True,  Is_Any_Ref => False,
-         Deref  => Reference_To_Component, Ref => Invalid),
       Fat_Pointer                    =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref  => Invalid,          Ref => Invalid),

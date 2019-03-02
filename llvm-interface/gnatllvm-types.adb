@@ -1696,34 +1696,6 @@ package body GNATLLVM.Types is
 
    end Copy_Annotations;
 
-   -------------------------------
-   -- Create_Type_For_Component --
-   -------------------------------
-
-   function Create_Type_For_Component (TE : Entity_Id) return Type_T is
-      GT   : constant GL_Type := Default_GL_Type (TE);
-      T    : constant Type_T  := Type_Of (TE);
-      Size : GL_Value;
-
-   begin
-      --  If this is a dynamic size, even when looking at the maximum
-      --  size (when applicable), on the one hand, or already a native
-      --  type, on the other, return T.  Otherwise, make an array type
-      --  corresponding to the size.
-
-      if Is_Dynamic_Size (GT, Max_Size => Is_Unconstrained_Record (GT))
-        or else not Is_Nonnative_Type (GT)
-      then
-         return T;
-      end if;
-
-      Size := Get_Type_Size (GT, No_GL_Value,
-                             Max_Size => Is_Unconstrained_Record (GT));
-      pragma Assert (Is_A_Const_Int (Size));
-      return Array_Type (Int_Ty (Uint_Bits_Per_Unit),
-                         unsigned (Get_Const_Int_Value (Size)));
-   end Create_Type_For_Component;
-
    -----------------
    -- Create_TBAA --
    -----------------

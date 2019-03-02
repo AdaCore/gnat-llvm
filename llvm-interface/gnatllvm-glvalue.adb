@@ -107,16 +107,12 @@ package body GNATLLVM.GLValue is
          when Boolean_Data =>
             return GT = Boolean_GL_Type;
 
-         when Component =>
-            return Is_Null (Val);
-
-         when Reference | Reference_To_Component =>
+         when Reference =>
             --  ??? This should really only be non-array
             return (Kind = Pointer_Type_Kind
                       or else Ekind (GT) = E_Subprogram_Type);
 
-         when Reference_To_Reference | Reference_To_Thin_Pointer
-            | Reference_To_Ref_To_Component =>
+         when Reference_To_Reference | Reference_To_Thin_Pointer =>
             return Kind = Pointer_Type_Kind;
 
          when Fat_Pointer | Bounds | Bounds_And_Data =>
@@ -344,7 +340,7 @@ package body GNATLLVM.GLValue is
       R  : constant GL_Relationship := Relationship_For_Ref (TE);
       GT : constant GL_Type         := Default_GL_Type (TE);
    begin
-      --  One difference here is when we need to allocate both bounds
+      --  The difference here is when we need to allocate both bounds
       --  and data.  We do this for string literals because they are most
       --  commonly used in situations where they're passed as parameters
       --  where the formal is a String.
@@ -353,16 +349,6 @@ package body GNATLLVM.GLValue is
         or else Ekind (GT) = E_String_Literal_Subtype
       then
          return Reference_To_Bounds_And_Data;
-
-      --  The other differences is when the type is an unconstrained record
-      --  with a fixed maximum size or when the type's size is not dynamic
-      --  but isn't representable as a native LLVM type.
-
-      elsif (Is_Unconstrained_Record (GT)
-               and then not Is_Dynamic_Size (GT, Max_Size => True))
-        or else (not Is_Dynamic_Size (GT) and then Is_Nonnative_Type (GT))
-      then
-         return Reference_To_Component;
       else
          return R;
       end if;
@@ -396,9 +382,6 @@ package body GNATLLVM.GLValue is
 
          when Boolean_Data =>
             return Int_Ty (1);
-
-         when Component =>
-            return Create_Type_For_Component (TE);
 
          when Object =>
             return (if Is_Loadable_Type (GT) then T else P_T);
@@ -458,9 +441,6 @@ package body GNATLLVM.GLValue is
 
          when Boolean_Data =>
             return Int_Ty (1);
-
-         when Component =>
-            return Create_Type_For_Component (TE);
 
          when Object =>
             return (if   Is_Loadable_Type (TE) then Type_Of (TE)
@@ -669,13 +649,6 @@ package body GNATLLVM.GLValue is
                   V, 1);
             end if;
 
-         when Reference_To_Component =>
-            if Our_R /= Reference then
-               return Get (Get (V, Reference), R);
-            else
-               return Ptr_To_Relationship (V, GT, R);
-            end if;
-
          when Reference_To_Bounds =>
 
             --  If we have a fat pointer, part of it is a pointer to the
@@ -754,11 +727,6 @@ package body GNATLLVM.GLValue is
                return GEP_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
-
-            --  For a reference to a component, just use pointer punning
-
-            elsif Our_R = Reference_To_Component then
-               return Ptr_To_Relationship (V, GT, R);
             end if;
 
          when Thin_Pointer =>
@@ -840,14 +808,10 @@ package body GNATLLVM.GLValue is
             --  Two cases where we have some GL_Value that's not already
             --  handled by one of the cases above the "case" statement is
             --  if it's a Reference_To_Bounds_And_Data, in which case the
-            --  most general thing to convert it to is a thin pointer,
-            --  or if it's a Reference_To_Component, in which case we
-            --  should make it a Reference.
+            --  most general thing to convert it to is a thin pointer.
 
             if Our_R = Reference_To_Bounds_And_Data then
                return Get (V, Thin_Pointer);
-            elsif Our_R = Reference_To_Component then
-               return Get (V, Reference);
             end if;
 
          when others =>
@@ -928,10 +892,8 @@ package body GNATLLVM.GLValue is
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "") return GL_Value
    is
-      --  ?? Below show be Type_Of (GT) once we're done
       Inst : constant Value_T :=
-        Array_Alloca (IR_Builder, Create_Type_For_Component (Full_Etype (GT)),
-                      LLVM_Value (Num_Elts),
+        Array_Alloca (IR_Builder, Type_Of (GT), LLVM_Value (Num_Elts),
                       Get_Alloca_Name (Def_Ident, Name));
 
    begin
@@ -1442,8 +1404,7 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, GT, Reference_To_Component,
-                Is_Pristine => Is_Pristine (Ptr));
+      return G (Result, GT, Reference, Is_Pristine => Is_Pristine (Ptr));
    end GEP;
 
    -------------
@@ -1466,8 +1427,7 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, GT, Reference_To_Component,
-                Is_Pristine => Is_Pristine (Ptr));
+      return G (Result, GT, Reference, Is_Pristine => Is_Pristine (Ptr));
    end GEP_Idx;
 
    -------------------------

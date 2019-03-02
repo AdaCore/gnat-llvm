@@ -1518,7 +1518,7 @@ package body GNATLLVM.Arrays is
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
-           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference_To_Component);
+           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));
@@ -1579,7 +1579,7 @@ package body GNATLLVM.Arrays is
          Unit_GT   : constant GL_Type   :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value  :=
-           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference_To_Component);
+           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
          Unit_Mult : constant GL_Value  :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));

@@ -1507,9 +1507,7 @@ package body GNATLLVM.Variables is
                end if;
 
                Set_Global_Constant (LLVM_Var);
-               Set_Initializer (LLVM_Var,
-                                Int_To_Relationship (Addr, GT,
-                                                     Reference_To_Component));
+               Set_Initializer (LLVM_Var, Int_To_Ref (Addr, GT));
                Set_Init := True;
             elsif Library_Level then
                Add_To_Elab_Proc (N);
@@ -1594,8 +1592,7 @@ package body GNATLLVM.Variables is
          then
             Set_Initializer
               (LLVM_Var,
-               (if   Is_Ref
-                then Const_Null_Relationship (GT, Reference_To_Component)
+               (if   Is_Ref then Const_Null_Ref (GT)
                 else Const_Null_Alloc (GT)));
          end if;
       end if;
@@ -1760,8 +1757,7 @@ package body GNATLLVM.Variables is
          pragma Assert (In_Elab_Proc);
 
          if Use_LHS then
-            Store (Get (Convert_Ref (Emit_LValue (Name (N)), GT),
-                        Reference_To_Component),
+            Store (Get (Convert_Ref (Emit_LValue (Name (N)), GT), Reference),
                    LLVM_Var);
          else
             Emit_Assignment (LLVM_Var,
@@ -1802,8 +1798,7 @@ package body GNATLLVM.Variables is
          Set_Value (Def_Ident, LLVM_Var);
          Set_Initializer
            (LLVM_Var,
-            (if   Use_LHS
-             then Const_Null_Relationship (GT, Reference_To_Component)
+            (if   Use_LHS then Const_Null_Ref (GT)
              else Const_Null_Alloc (GT)));
          Add_To_Elab_Proc (N);
       end if;
@@ -1900,11 +1895,10 @@ package body GNATLLVM.Variables is
 
             --  Now return what we got (if we didn't get anything by now,
             --  we have an internal error).  But avoid returning a double
-            --  reference or a reference to component.
+            --  reference.
 
-            return (if   Is_Double_Reference (V)
-                      or else Relationship (V) = Reference_To_Component
-                    then Get (V, Any_Reference) else V);
+            return (if   Is_Double_Reference (V) then Get (V, Any_Reference)
+                    else V);
       end case;
    end Emit_Identifier;
 

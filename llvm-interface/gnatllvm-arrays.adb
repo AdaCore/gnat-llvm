@@ -315,7 +315,7 @@ package body GNATLLVM.Arrays is
       Unconstrained     : constant Boolean   := not Is_Constrained (A_TE);
       CT                : constant Entity_Id := Full_Component_Type (A_TE);
       Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
-      Size              : constant Uint      :=
+      Comp_Size         : constant Uint      :=
         (if   Unknown_Component_Size (TE) then No_Uint
          else Component_Size (TE));
       Max_Size          : constant Boolean   :=
@@ -323,7 +323,7 @@ package body GNATLLVM.Arrays is
       Biased            : constant Boolean   :=
         Has_Biased_Representation (A_TE);
       Comp_GT           : constant GL_Type   :=
-        Make_GL_Alternative (Comp_Def_GT, Size, No_Uint, False,
+        Make_GL_Alternative (Comp_Def_GT, Comp_Size, No_Uint, False,
                              Max_Size, Biased);
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);

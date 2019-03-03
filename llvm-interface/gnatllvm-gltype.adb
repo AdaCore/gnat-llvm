@@ -333,6 +333,11 @@ package body GNATLLVM.GLType is
       if No (Size_V) and then No (Align_V) and then not Max_Size then
          return GT;
 
+      --  If the best type we had is a dummy type, don't make any alternatives
+
+      elsif Is_Dummy_Type (Prim_GT) then
+         return Prim_GT;
+
       --  If we're asking for the maximum size, the maximum size is a
       --  constant, and we don't have a specified size, use the maximum size.
 

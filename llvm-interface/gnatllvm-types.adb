@@ -1069,7 +1069,11 @@ package body GNATLLVM.Types is
                                                (LValue_Pair_Table.Table (J))),
                                  TE)
          then
-            return Convert_Ref (LValue_Pair_Table.Table (J),
+            --  ?? It would be more efficient to not convert to a reference
+            --  here, but that might be quite a lot of work (see 8802-007).
+
+            return Convert_Ref (Get (LValue_Pair_Table.Table (J),
+                                     Any_Reference),
                                 Default_GL_Type (TE));
          end if;
       end loop;

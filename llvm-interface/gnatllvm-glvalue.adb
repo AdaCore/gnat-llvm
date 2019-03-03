@@ -914,7 +914,7 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Undef_Ref (GT : GL_Type) return GL_Value is
-     (G_Ref (Get_Undef (Create_Access_Type_To (Full_Etype (GT))),
+     (G_Ref (Get_Undef (Create_Access_Type_To (GT)),
              GT, Is_Pristine => True));
 
    ----------------
@@ -945,7 +945,7 @@ package body GNATLLVM.GLValue is
    --------------------
 
    function Const_Null_Ref (GT : GL_Type) return GL_Value is
-     (G_Ref (Const_Null (Create_Access_Type_To (Full_Etype (GT))), GT));
+     (G_Ref (Const_Null (Create_Access_Type_To (GT)), GT));
 
    ----------------
    -- Const_True --

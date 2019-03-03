@@ -75,15 +75,14 @@ package GNATLLVM.Types is
    --  Returns True if GT's size is not known at compile-time.  Max_Size
    --  is True if we're to consider the maximum size of GT's type.
 
-   function Create_Access_Type_To (TE : Entity_Id) return Type_T is
-     (Type_For_Relationship (TE, Relationship_For_Ref (TE)))
-     with Pre  => Is_Type (TE),
-          Post => Present (Create_Access_Type_To'Result);
+   function Create_Access_Type_To (GT : GL_Type) return Type_T is
+     (Type_For_Relationship (GT, Relationship_For_Ref (GT)))
+     with Pre => Present (GT), Post => Present (Create_Access_Type_To'Result);
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
    --  between the two.  Note that we need not have a GNAT type corresponding
    --  to this access type, which makes this different than calling
-   --  Type_Of on an access to TE.
+   --  Type_Of on an access to GT.
 
    function Type_Of (TE : Entity_Id) return Type_T
      with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),

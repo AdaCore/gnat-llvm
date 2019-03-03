@@ -1249,8 +1249,7 @@ package body GNATLLVM.Variables is
                LLVM_Var := Get_Undef (GT);
             else
                LLVM_Var := G (Add_Alias (Module,
-                                         Create_Access_Type_To
-                                           (Full_Etype (GT)),
+                                         Create_Access_Type_To (GT),
                                          LLVM_Value (Get_Value (E)),
                                          Get_Ext_Name (Def_Ident)),
                               GT, Reference);

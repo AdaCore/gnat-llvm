@@ -44,15 +44,12 @@ package body GNATLLVM.Arrays is
    type One_Bound is record
       Cnst    : Uint;
       Value   : Node_Id;
-      Dynamic : Boolean;
    end record
-     --  Only one item can be specified and the specification of Value
-     --  means that Dynamic must be true.  We might think that exactly one
+     --  Only one item can be specified.  We might think that exactly one
      --  item must be specified, but that's not the case for an
      --  unconstrained array.
      with Predicate => ((if Cnst = No_Uint then 0 else 1) +
-                        (if No (Value) then 0 else 1)) <= 1
-                       and then (No (Value) or else Dynamic);
+                        (if No (Value) then 0 else 1)) <= 1;
 
    type Index_Bounds is record
       Bound_GT     : GL_Type;
@@ -231,7 +228,7 @@ package body GNATLLVM.Arrays is
       --  If this is an unconstrained array, indicate so
 
       if Unconstrained then
-         return (Cnst => No_Uint, Value => Empty, Dynamic => True);
+         return (Cnst => No_Uint, Value => Empty);
 
       --  If this is a constant known to the front end, use that constant.
       --  In case the constant is an Enum, use the representation value
@@ -239,8 +236,7 @@ package body GNATLLVM.Arrays is
 
       elsif Compile_Time_Known_Value (N) then
          Val := (if For_Orig then Expr_Rep_Value (N) else Expr_Value (N));
-         return (Cnst => Val, Value => Empty,
-                 Dynamic => not UI_Is_In_Int_Range (Val));
+         return (Cnst => Val, Value => Empty);
 
       --  Even if this isn't a constant known to the front end, see if we
       --  can evaluate it at compile-time (without generating any code).
@@ -257,8 +253,7 @@ package body GNATLLVM.Arrays is
             if Is_A_Const_Int (V) then
                Val := Get_Const_Int_Value (V);
                if Val in LLI (Int'First) .. LLI (Int'Last) then
-                  return (Cnst => UI_From_Int (Int (Val)),
-                          Value => Empty, Dynamic => False);
+                  return (Cnst => UI_From_Int (Int (Val)), Value => Empty);
                end if;
             end if;
          end;
@@ -266,7 +261,7 @@ package body GNATLLVM.Arrays is
 
       --  If we reach here, this must be a dynamic case
 
-      return (Cnst => No_Uint, Value => N, Dynamic => True);
+      return (Cnst => No_Uint, Value => N);
 
    end Build_One_Bound;
 
@@ -281,10 +276,8 @@ package body GNATLLVM.Arrays is
         Get_Uint_Value (String_Literal_Low_Bound (TE));
       Length     : constant Uint         := String_Literal_Length (TE);
       Last       : constant Uint         := First + Length - 1;
-      Low_Bound  : constant One_Bound    :=
-        (Cnst => First, Value => Empty, Dynamic => False);
-      High_Bound : constant One_Bound    :=
-        (Cnst => Last, Value => Empty, Dynamic => False);
+      Low_Bound  : constant One_Bound    := (Cnst => First, Value => Empty);
+      High_Bound : constant One_Bound    := (Cnst => Last, Value => Empty);
       Dim_Info   : constant Index_Bounds
         := (Bound_GT     => Integer_GL_Type,
             Bound_Sub_GT => Integer_GL_Type,
@@ -377,15 +370,15 @@ package body GNATLLVM.Arrays is
       Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
-            Idx_Range  : constant Node_Id      := Get_Dim_Range (Index);
+            Idx_Range : constant Node_Id      := Get_Dim_Range (Index);
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 
-            Index_GT : constant GL_Type := Full_GL_Type (Index);
-            Index_BT : constant GL_Type := Base_GL_Type (Index_GT);
-            LB       : constant Node_Id := Low_Bound (Idx_Range);
-            HB       : constant Node_Id := High_Bound (Idx_Range);
-            Dim_Info : Index_Bounds     :=
+            Index_GT  : constant GL_Type := Full_GL_Type (Index);
+            Index_BT  : constant GL_Type := Base_GL_Type (Index_GT);
+            LB        : constant Node_Id := Low_Bound (Idx_Range);
+            HB        : constant Node_Id := High_Bound (Idx_Range);
+            Dim_Info  : Index_Bounds     :=
               (Bound_GT     => Index_BT,
                Bound_Sub_GT => Full_GL_Type (Base_Index),
                Low          => Build_One_Bound (LB, Unconstrained, For_Orig),
@@ -397,30 +390,23 @@ package body GNATLLVM.Arrays is
             --  (see C37172C).  We also need to record the subtype of the
             --  index as it appears in the base array type since that's
             --  what's used to compute the min/max sizes of objects.
-            Idx_Const  : constant Boolean      :=
-              not Dim_Info.Low.Dynamic and then not Dim_Info.High.Dynamic;
-            Idx_Native : Boolean               := Idx_Const;
+            LB_Uint   : constant Uint    := Dim_Info.Low.Cnst;
+            HB_Uint   : constant Uint    := Dim_Info.High.Cnst;
+            Idx_Const : constant Boolean :=
+              LB_Uint /= No_Uint and then HB_Uint /= No_Uint
+              and then UI_Is_In_Int_Range (HB_Uint - LB_Uint + 1);
 
          begin
             --  Update whether or not this will be of dynamic size and
             --  whether we must use a fake type based on this dimension.
-            --  Then record it.  Note that LLVM only allows the range of an
-            --  array to be in the range of "unsigned".  So we have to treat
-            --  a too-large constant as if it's of variable size.
+            --  Then record it.
 
             if Idx_Const then
                Dim_Info.Bound_Range :=
                  Bounds_To_Length (Size_Const_Int (Dim_Info.Low.Cnst),
                                    Size_Const_Int (Dim_Info.High.Cnst),
                                    Size_GL_Type);
-               if Get_Const_Int_Value (Dim_Info.Bound_Range)
-                 > LLI (unsigned'Last)
-               then
-                  Idx_Native := False;
-               end if;
-            end if;
-
-            if not Idx_Native then
+            else
                This_Nonnative := True;
                if Dim /= 0 then
                   Must_Use_Fake := True;

@@ -210,11 +210,13 @@ package body GNATLLVM.Types is
 
       --  Otherwise get the size for our purposes.  If not a constant or not
       --  something LLVM can use natively as an array bound, this is dynamic.
+      --  But we conservatively test for the range of Int to be consistent
+      --  with how we create arrays.
 
       Size := IDS_Type_Size (GT, No_GL_Value, Max_Size);
       return not IDS_Is_Const (Size)
         or else IDS_Const_Int (Size) < 0
-        or else IDS_Const_Int (Size) > LLI (unsigned'Last);
+        or else IDS_Const_Int (Size) > LLI (Int'Last);
 
    end Is_Dynamic_Size;
 

@@ -485,7 +485,7 @@ package body GNATLLVM.Variables is
                           or else Is_Static_Location (Renamed_Object (N)))
               and then Ekind (N) /= E_Enumeration_Literal
               and then (Ekind (Full_Etype (N)) = E_Void
-                          or else not Is_Dynamic_Size (Full_GL_Type (N)))
+                          or else not Is_Nonnative_Type (Full_GL_Type (N)))
               and then (Library_Level or else In_Elab_Proc
                           or else Is_Statically_Allocated (N)
                           or else not In_Extended_Main_Code_Unit (N));
@@ -1183,7 +1183,7 @@ package body GNATLLVM.Variables is
         (if Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_Ref       : constant Boolean :=
-        Present (Addr_Expr) or else Is_Dynamic_Size (GT)
+        Present (Addr_Expr) or else Is_Nonnative_Type (GT)
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
       Linker_Alias : constant Node_Id :=
@@ -1197,10 +1197,10 @@ package body GNATLLVM.Variables is
       if Present (LLVM_Var) then
 
          --  We could do this if both the previous and our entities agree
-         --  on whether the type's size is dynamic, rather than requiring
+         --  on whether the type is nonnative, rather than requiring
          --  that neither be, but it's not worth the trouble.
 
-         if Is_Double_Reference (LLVM_Var) or else Is_Dynamic_Size (GT)
+         if Is_Double_Reference (LLVM_Var) or else Is_Nonnative_Type (GT)
            or else Type_Needs_Bounds (GT)
          then
             Error_Msg_N
@@ -1322,7 +1322,7 @@ package body GNATLLVM.Variables is
       --  True if variable is not defined in this unit
 
       Is_Ref       : constant Boolean   :=
-        Present (Addr_Expr) or else Is_Dynamic_Size (GT);
+        Present (Addr_Expr) or else Is_Nonnative_Type (GT);
       --  True if we need to use an indirection for this variable
 
       Value        : GL_Value           :=
@@ -1514,11 +1514,11 @@ package body GNATLLVM.Variables is
             end if;
          end if;
 
-         --  If this is an object of dynamic size, we have to take care
+         --  If this is an object of non-native type, we have to take care
          --  of the allocation in the elab proc if at library level.
 
          if Library_Level and then not Is_External
-           and then Is_Dynamic_Size (GT)
+           and then Is_Nonnative_Type (GT)
          then
             Add_To_Elab_Proc (N);
          end if;
@@ -1526,7 +1526,7 @@ package body GNATLLVM.Variables is
          --  If we have an initial value, we can set an initializer if this
          --  is a compile-time known expression, we have the actual global,
          --  not a type-converted value, and the variable is not of a
-         --  dynamic size or has an address clause.
+         --  non-native type or has an address clause.
          --
          --  Note that the code below relies on the fact that if we execute
          --  this case, we won't be added to the elab proc for any other
@@ -1536,7 +1536,7 @@ package body GNATLLVM.Variables is
          if Present (Expr) then
             if Is_No_Elab_Needed (Expr)
               and then Can_Initialize (LLVM_Var, GT)
-              and then not Is_Dynamic_Size (GT)
+              and then not Is_Nonnative_Type (GT)
               and then No (Addr_Expr)
               and then Is_Static_Conversion (Full_GL_Type (Expr), GT)
             then
@@ -1569,11 +1569,11 @@ package body GNATLLVM.Variables is
             end if;
 
          --  If this is a constrained subtype for a unconstrained
-         --  actual array subtype of fixed size, this is aliased, and
+         --  actual array subtype of native type, this is aliased, and
          --  we have no expression.  In that case, we still have to
          --  initialize the bounds.
 
-         elsif Type_Needs_Bounds (GT) and then not Is_Dynamic_Size (GT) then
+         elsif Type_Needs_Bounds (GT) and then not Is_Nonnative_Type (GT) then
             Set_Global_Constant
               (LLVM_Var, (Is_True_Constant (Def_Ident)
                             and then not Address_Taken (Def_Ident)));
@@ -1654,7 +1654,7 @@ package body GNATLLVM.Variables is
       if Present (LLVM_Var) then
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
-         elsif Is_Dynamic_Size (GT) then
+         elsif Is_Nonnative_Type (GT) then
             Store (Get (Heap_Allocate_For_Type (GT, GT, Value,
                                                 Expr      => Expr,
                                                 N         => N,

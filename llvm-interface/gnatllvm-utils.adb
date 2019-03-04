@@ -293,6 +293,66 @@ package body GNATLLVM.Utils is
       end case;
    end Is_Name;
 
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Layout_Identical (T1, T2 : Type_T) return Boolean is
+      Kind1 : constant Type_Kind_T := Get_Type_Kind (T1);
+      Kind2 : constant Type_Kind_T := Get_Type_Kind (T2);
+
+   begin
+      --  If the types are the same, they're identical, but if they have
+      --  different kinds, they aren't.
+
+      if T1 = T2 then
+         return True;
+      elsif Kind1 /= Kind2 then
+         return False;
+      end if;
+
+      --  Otherwise, it's kind-specific
+
+      case Kind1 is
+         when Array_Type_Kind =>
+
+            --  Arrays are identifical if their lengths are the same and
+            --  component types are identical.
+
+            return Get_Array_Length (T1) = Get_Array_Length (T2)
+              and then Is_Layout_Identical (Get_Element_Type (T1),
+                                            Get_Element_Type (T2));
+         when Struct_Type_Kind =>
+
+            --  Structures are identical if their packed status is the
+            --  same, they have the same number of fields, and each field
+            --  is identical.
+
+            if Is_Packed_Struct (T1) /= Is_Packed_Struct (T2)
+              or else (Count_Struct_Element_Types (T1) /=
+                         Count_Struct_Element_Types (T2))
+            then
+               return False;
+            end if;
+
+            for J in 0 .. Count_Struct_Element_Types (T1) - 1 loop
+               if not Is_Layout_Identical (Struct_Get_Type_At_Index (T1, J),
+                                           Struct_Get_Type_At_Index (T2, J))
+               then
+                  return False;
+               end if;
+            end loop;
+
+            return True;
+
+         when others =>
+            --  Otherwise, types are only identical if they're the same
+            --  and that was checked above.
+
+            return False;
+      end case;
+   end Is_Layout_Identical;
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    ---------------------

@@ -180,5 +180,4 @@ package GNATLLVM.Wrapper is
      (Context : Context_T; T : Type_T; V : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Pred_FP";
 
-   function Is_Layout_Identical (T1, T2 : Type_T) return Boolean;
 end GNATLLVM.Wrapper;

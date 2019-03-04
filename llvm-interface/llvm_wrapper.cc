@@ -369,10 +369,3 @@ Pred_FP (LLVMContext *Context, Type *T, Value *Val)
   apf.multiply(one, APFloat::rmTowardZero);
   return ConstantFP:: get (*Context, apf);
 }
-
-extern "C"
-bool
-Is_Layout_Identical (StructType *T1, StructType *T2)
-{
-  return T1->isLayoutIdentical(T2);
-}

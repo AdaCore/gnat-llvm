@@ -1557,8 +1557,9 @@ package body GNATLLVM.Types is
         and then Present (Size_GL_Type)
       then
          GT := Make_GL_Alternative
-           (GT, (if   Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
-                 then RM_Size (TE) else No_Uint),
+           (GT, (if    Has_Biased_Representation (TE) then Esize (TE)
+                 elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
+                 then  RM_Size (TE) else No_Uint),
            (if Unknown_Alignment (TE) then No_Uint else Alignment (TE)),
            True, False, Has_Biased_Representation (TE));
       end if;

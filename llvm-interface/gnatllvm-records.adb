@@ -1133,6 +1133,7 @@ package body GNATLLVM.Records is
 
             if Align > Split_Align then
                Flush_Current_Types;
+               Set_Is_Nonnative_Type (TE);
                Split_Align := Align;
             end if;
 

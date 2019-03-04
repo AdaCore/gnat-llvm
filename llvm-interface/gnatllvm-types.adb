@@ -108,10 +108,11 @@ package body GNATLLVM.Types is
    --  to their size is manipulated based on the RM size.
 
    function Get_Alloc_Size
-     (GT       : GL_Type;
-      Alloc_GT : GL_Type;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value
+     (GT          : GL_Type;
+      Alloc_GT    : GL_Type;
+      V           : GL_Value;
+      Max_Size    : Boolean := False;
+      For_Dealloc : Boolean := False) return GL_Value
      with Pre  => Present (GT) and then Present (Alloc_GT),
           Post => Present (Get_Alloc_Size'Result);
    --  Like Get_Type_Size, but used for the size to be allocated, so we
@@ -2058,7 +2059,8 @@ package body GNATLLVM.Types is
       declare
          Align : constant GL_Value :=
            Get_Alloc_Alignment (DT, Alloc_GT, Empty);
-         Size  : constant GL_Value := Get_Alloc_Size (DT, Alloc_GT, Conv_V);
+         Size  : constant GL_Value :=
+           Get_Alloc_Size (DT, Alloc_GT, Conv_V, For_Dealloc => True);
 
       begin
          --  If no procedure was specified, use the default memory deallocation
@@ -2235,14 +2237,19 @@ package body GNATLLVM.Types is
    --------------------
 
    function Get_Alloc_Size
-     (GT       : GL_Type;
-      Alloc_GT : GL_Type;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value
+     (GT          : GL_Type;
+      Alloc_GT    : GL_Type;
+      V           : GL_Value;
+      Max_Size    : Boolean := False;
+      For_Dealloc : Boolean := False) return GL_Value
    is
+      --  If we're allocating a classwide equivalent type, we want to ignore
+      --  the initial value, but not if deallocating one.
+
       Size : GL_Value :=
         Get_Type_Size (Alloc_GT,
-                       (if   Is_Class_Wide_Equivalent_Type (Alloc_GT)
+                       (if   not For_Dealloc
+                             and then Is_Class_Wide_Equivalent_Type (Alloc_GT)
                         then No_GL_Value else V),
                        Max_Size => Max_Size);
 

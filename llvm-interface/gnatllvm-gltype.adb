@@ -307,8 +307,8 @@ package body GNATLLVM.GLType is
       Is_Biased : Boolean := False) return GL_Type
    is
       TE          : constant Entity_Id := Full_Etype (GT);
-      Prim_GT     : constant GL_Type   := Primitive_GL_Type (TE);
-      Prim_Native : constant Boolean   := not Is_Nonnative_Type (TE);
+      Prim_GT     : constant GL_Type   := Primitive_GL_Type (GT);
+      Prim_Native : constant Boolean   := not Is_Nonnative_Type (Prim_GT);
       Prim_T      : constant Type_T    := Type_Of (Prim_GT);
       Prim_Fixed  : constant Boolean   := not Is_Dynamic_Size (Prim_GT);
       Prim_Size   : constant GL_Value  :=
@@ -318,8 +318,8 @@ package body GNATLLVM.GLType is
         (if   Size = No_Uint or else Is_Dynamic_SO_Ref (Size) then No_Uint
          else (Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit);
       Size_V      : GL_Value           :=
-        (if   Size_Bytes = No_Uint then Prim_Size
-         else Size_Const_Int (Size_Bytes));
+        (if   Size_Bytes = No_Uint or else not UI_Is_In_Int_Range (Size_Bytes)
+         then Prim_Size else Size_Const_Int (Size_Bytes));
       Align_V     : constant GL_Value  :=
         (if   Align = No_Uint or else Is_Dynamic_SO_Ref (Align) then Prim_Align
          else Size_Const_Int (Align));

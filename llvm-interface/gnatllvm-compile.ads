@@ -70,7 +70,7 @@ package GNATLLVM.Compile is
      (N       : Node_Id;
       LHS     : GL_Value := No_GL_Value) return GL_Value
    is
-     (To_Primitive (Get (Emit (N, LHS => LHS), Object)))
+     (Get (To_Primitive (Emit (N, LHS => LHS)), Object))
      with Pre  => Present (N),
           Post => Is_Primitive_GL_Type (Emit_Expression'Result);
    --  Likewise, but return something that's to be used as a value (but

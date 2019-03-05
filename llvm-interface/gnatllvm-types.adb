@@ -96,11 +96,6 @@ package body GNATLLVM.Types is
      with Pre => Is_Record_Type (T_Need) and then Is_Record_Type (T_Have);
    --  True if T_Have is a parent type of T_Need
 
-   function Is_Unsigned_For_Convert (GT : GL_Type) return Boolean
-     with Pre => Present (GT);
-   --  True if we are to treate GT as unsigned for the purpose of a
-   --  conversion.
-
    function Is_Unsigned_For_RM (GT : GL_Type) return Boolean
      with Pre => Present (GT);
    --  Return true if GT has an unsigned representation.  This needs to be
@@ -384,7 +379,9 @@ package body GNATLLVM.Types is
    begin
       --  If GT is narrower than BT, use its signedness, otherwise use BT's
 
-      return (if   Esize (GT) < Esize (BT) then Is_Unsigned_Type (GT)
+      return (if   Get_Type_Size_In_Bits (Type_Of (GT)) <
+                      Get_Type_Size_In_Bits (Type_Of (BT))
+              then Is_Unsigned_Type (GT)
               else Is_Unsigned_Type (BT));
    end Is_Unsigned_For_Convert;
 
@@ -657,34 +654,38 @@ package body GNATLLVM.Types is
       type Cvtf is access function
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
-      In_GT       : constant GL_Type := Related_Type (V);
-      Is_Unc_Bias : constant Boolean :=
+      In_V        : constant GL_Value :=
+        (if   Is_Unchecked and then Is_Biased_GL_Type (V) then V
+         else To_Primitive (V));
+      In_GT       : constant GL_Type  := Related_Type (In_V);
+      Is_Unc_Bias : constant Boolean  :=
         Is_Unchecked and then (Is_Biased_GL_Type (GT)
                                  or else Is_Biased_GL_Type (In_GT));
-      Prim_GT     : constant GL_Type :=
+      Prim_GT     : constant GL_Type  :=
         (if   Is_Unchecked and then Is_Biased_GL_Type (GT) then GT
          else Primitive_GL_Type (GT));
-      Value       : GL_Value         := V;
-      Src_Access  : constant Boolean := Is_Access_Type (V);
-      Dest_Access : constant Boolean := Is_Access_Type (Prim_GT);
-      Src_FP      : constant Boolean := Is_Floating_Point_Type (V);
-      Dest_FP     : constant Boolean := Is_Floating_Point_Type (Prim_GT);
-      Src_Uns     : constant Boolean := Is_Unsigned_For_Convert (In_GT);
-      Dest_Uns    : constant Boolean := Is_Unsigned_For_Convert (Prim_GT);
-      Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
-      Dest_Usize  : constant Uint    :=
+      Value       : GL_Value          := In_V;
+      Src_Access  : constant Boolean  := Is_Access_Type (V);
+      Dest_Access : constant Boolean  := Is_Access_Type (Prim_GT);
+      Src_FP      : constant Boolean  := Is_Floating_Point_Type (V);
+      Dest_FP     : constant Boolean  := Is_Floating_Point_Type (Prim_GT);
+      Src_Uns     : constant Boolean  := Is_Unsigned_For_Convert (In_GT);
+      Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
+      Src_Size    : constant Nat      :=
+        Nat (ULL'(Get_Type_Size_In_Bits (In_V)));
+      Dest_Usize  : constant Uint     :=
         (if   Is_Modular_Integer_Type (Prim_GT) then RM_Size (Prim_GT)
          else Esize (Prim_GT));
-      Dest_Size   : constant Nat     := UI_To_Int (Dest_Usize);
-      Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
-      Subp        : Cvtf             := null;
+      Dest_Size   : constant Nat      := UI_To_Int (Dest_Usize);
+      Is_Trunc    : constant Boolean  := Dest_Size < Src_Size;
+      Subp        : Cvtf              := null;
       Result      : GL_Value;
 
    begin
       --  If the value is already of the desired LLVM type, we're done.
 
-      if Type_Of (V) = Type_Of (GT) then
-         return G_Is (V, GT);
+      if Type_Of (In_V) = Type_Of (GT) then
+         return G_Is (In_V, GT);
 
       --  If we're converting between two GL_Types corresponding to the same
       --  GNAT type, convert to the primitive type and the to the desired
@@ -692,12 +693,12 @@ package body GNATLLVM.Types is
       --  we have a UC to or from a biased type.
 
       elsif Full_Etype (In_GT) = Full_Etype (GT) and then not Is_Unc_Bias then
-         return From_Primitive (To_Primitive (V), GT);
+         return From_Primitive (In_V, GT);
 
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
 
-      elsif Dest_Access and then Is_Integer_Type (V) then
+      elsif Dest_Access and then Is_Integer_Type (In_V) then
          Subp := Int_To_Ptr'Access;
       elsif Is_Integer_Type (GT) and then Src_Access then
          Subp := Ptr_To_Int'Access;
@@ -705,7 +706,7 @@ package body GNATLLVM.Types is
       --  For pointer to pointer, call our helper
 
       elsif Src_Access and then Dest_Access then
-         return Convert_To_Access (V, GT);
+         return Convert_To_Access (Value, GT);
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int.  We already know that this isn't
@@ -741,12 +742,11 @@ package body GNATLLVM.Types is
             --  conversion of the input to the calc_type (if necessary).
 
             declare
-               Prim_V     : constant GL_Value := To_Primitive (V);
                Half       : constant GL_Value := Pred_FP (Const_Real (V, 0.5));
                Val_Is_Neg : constant GL_Value :=
-                 F_Cmp (Real_OLT, V, Const_Null (V));
-               Add_Amt    : constant GL_Value := F_Add (Prim_V, Half, "round");
-               Sub_Amt    : constant GL_Value := F_Sub (Prim_V, Half, "round");
+                 F_Cmp (Real_OLT, In_V, Const_Null (In_V));
+               Add_Amt    : constant GL_Value := F_Add (In_V, Half, "round");
+               Sub_Amt    : constant GL_Value := F_Sub (In_V, Half, "round");
 
             begin
                Value := Build_Select (Val_Is_Neg, Sub_Amt, Add_Amt);
@@ -765,16 +765,9 @@ package body GNATLLVM.Types is
       end if;
 
       --  Here all that's left to do is deal with non-primitive types and
-      --  generate the IR instruction.  Deal with the possibility of one
-      --  of the GL_Types being a biased type and this being an unchecked
-      --  conversion.
+      --  generate the IR instruction.
 
-      Result := Value;
-      if not Is_Unchecked or else not Is_Biased_GL_Type (Result) then
-         Result := To_Primitive (Value);
-      end if;
-
-      Result := Subp (Result, Prim_GT);
+      Result := Subp (Value, Prim_GT);
       if Related_Type (Result) /= GT then
          Result := From_Primitive (Result, GT);
       end if;
@@ -1557,7 +1550,7 @@ package body GNATLLVM.Types is
         and then Present (Size_GL_Type)
       then
          GT := Make_GL_Alternative
-           (GT, (if    Has_Biased_Representation (TE) then Esize (TE)
+           (GT, (if    Is_Discrete_Or_Fixed_Point_Type (GT) then Esize (TE)
                  elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
                  then  RM_Size (TE) else No_Uint),
            (if Unknown_Alignment (TE) then No_Uint else Alignment (TE)),

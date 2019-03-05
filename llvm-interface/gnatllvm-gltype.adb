@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Get_Targ; use Get_Targ;
 with Output;   use Output;
 with Repinfo;  use Repinfo;
 with Sprint;   use Sprint;
@@ -51,6 +52,10 @@ package body GNATLLVM.GLType is
       --  something else.  In that case, we'll keep this entry around as a
       --  GL_Type because things will have that type and we'll have to convert
       --  as appropriate.
+
+      Int_Alt,
+      --  An integral type of a different width then the primitive type
+      --  (either wider or narrower), but not a biased type.
 
       Biased,
       --  An integral type narrower than the primitive type and for which
@@ -140,8 +145,15 @@ package body GNATLLVM.GLType is
    function Get_Or_Create_GL_Type
      (TE : Entity_Id; Create : Boolean) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
-          Post => not Create or else Present (Get_Or_Create_GL_Type'Result);
+     Post => not Create or else Present (Get_Or_Create_GL_Type'Result);
 
+   function Convert_Int (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Data (V) and then Is_Discrete_Or_Fixed_Point_Type (V)
+                  and then Is_Discrete_Or_Fixed_Point_Type (GT)
+                  and then Full_Etype (Related_Type (V)) = Full_Etype (GT),
+          Post => Related_Type (Convert_Int'Result) = GT;
+   --  Convert V, which is of one integral type, to GT, an alternative
+   --  of that type.
    ---------------------------
    -- GL_Type_Info_Is_Valid --
    ---------------------------
@@ -190,6 +202,8 @@ package body GNATLLVM.GLType is
             return True;
          when Dummy =>
             return Is_Record_Type (TE) or else Is_Access_Type (TE);
+         when Int_Alt =>
+            return Is_Discrete_Or_Fixed_Point_Type (TE);
          when Biased =>
             return GTI.Bias /= No_GL_Value and then Is_Discrete_Type (TE);
          when Padded =>
@@ -306,6 +320,7 @@ package body GNATLLVM.GLType is
       Max_Size  : Boolean := False;
       Is_Biased : Boolean := False) return GL_Type
    is
+      Max_Int_Sz  : constant Uint      := UI_From_Int (Get_Long_Long_Size);
       TE          : constant Entity_Id := Full_Etype (GT);
       Prim_GT     : constant GL_Type   := Primitive_GL_Type (GT);
       Prim_Native : constant Boolean   := not Is_Nonnative_Type (Prim_GT);
@@ -314,6 +329,8 @@ package body GNATLLVM.GLType is
       Prim_Size   : constant GL_Value  :=
         (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
       Prim_Align  : constant GL_Value  := Get_Type_Alignment (Prim_GT);
+      Int_Sz      : constant Uint      :=
+        (if Size = Uint_0 then Uint_1 else Size);
       Size_Bytes  : constant Uint      :=
         (if   Size = No_Uint or else Is_Dynamic_SO_Ref (Size) then No_Uint
          else (Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit);
@@ -347,10 +364,13 @@ package body GNATLLVM.GLType is
          Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
       end if;
 
-      --  If this is for a type (as opposed to an object) and both a size and
-      --  an alignment is specified, we need to align the size.
+      --  If this is for an object (as opposed to a type) and both a size
+      --  and an alignment is specified, we need to align the size if
+      --  not an integral type.
 
-      if For_Type and then Present (Size_V) and then Present (Align_V) then
+      if not For_Type and then Present (Size_V) and then Present (Align_V)
+        and then not Is_Discrete_Or_Fixed_Point_Type (GT)
+      then
          Size_V := Align_To (Size_V, Size_Const_Int (Uint_1), Align_V);
       end if;
 
@@ -378,21 +398,14 @@ package body GNATLLVM.GLType is
               --  we want the maximum size and we have an entry where
               --  we got the maximum size.
 
-              or else (Is_Elementary_Type (GT) and then not Is_Biased
-                         and then Present (Size_V) and then Present (GTI.Size)
-                         and then I_Cmp (Int_SLT, Size_V, GTI.Size) =
-                                     Const_True)
-              --  or if this is an elementary unbiased type and the size
-              --  is smaller than the primitive type
-              --  ??? There may be an issue here with a different alignment
-
-              or else (Is_Composite_Type (GT) and then not Is_Biased
+              or else (not Is_Discrete_Or_Fixed_Point_Type (GT)
+                         and then not Is_Biased
                          and then not Max_Size
                          and then Present (Size_V) and then Present (GTI.Size)
                          and then I_Cmp (Int_SLT, Size_V, GTI.Size) =
                                      Const_True)
               --  ??? Until we support field rep clauses, don't try to make
-              --  composite types smaller either
+              --  non-integer types smaller.
 
             then
                return Found_GT;
@@ -421,8 +434,6 @@ package body GNATLLVM.GLType is
 
          if Is_Biased then
             declare
-               Int_Sz : constant Uint :=
-                 (if Size = Uint_0 then Uint_1 else Size);
                LB, HB : GL_Value;
 
             begin
@@ -431,6 +442,16 @@ package body GNATLLVM.GLType is
                GTI.Kind      := Biased;
                GTI.Bias      := LB;
             end;
+
+         --  If this is a discrete or fixed-point type and a size was
+         --  specified that's no larger than the largest integral type,
+         --  make an alternate integer type.
+
+         elsif Is_Discrete_Or_Fixed_Point_Type (GT)
+           and then Size /= No_Uint and then Size <= Max_Int_Sz
+         then
+            GTI.LLVM_Type := Int_Ty (Int_Sz);
+            GTI.Kind      := Int_Alt;
 
          --  If we have a native primitive type, we specified a size, and
          --  the size or alignment is different that that of the primitive,
@@ -646,6 +667,37 @@ package body GNATLLVM.GLType is
       end loop;
    end Mark_Default;
 
+   -----------------
+   -- Convert_Int --
+   -----------------
+
+   function Convert_Int (V : GL_Value; GT : GL_Type) return GL_Value is
+      type Cvtf is access function
+        (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
+
+      T           : constant Type_T  := Type_Of (GT);
+      In_GT       : constant GL_Type := Related_Type (V);
+      Src_Uns     : constant Boolean := Is_Unsigned_For_Convert (In_GT);
+      Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
+      Dest_Size   : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (T)));
+      Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
+      Subp        : Cvtf             := null;
+
+   begin
+      --  If the value is already of the desired LLVM type, we're done.
+
+      if Type_Of (V) = Type_Of (GT) then
+         return G_Is (V, GT);
+
+      elsif Is_Trunc then
+         Subp := Trunc'Access;
+      else
+         Subp := (if Src_Uns then Z_Ext'Access else S_Ext'Access);
+      end if;
+
+      return Subp (V, GT);
+   end Convert_Int;
+
    ------------------
    -- To_Primitive --
    ------------------
@@ -688,13 +740,19 @@ package body GNATLLVM.GLType is
       --  the underlying type, then add the bias.
 
       elsif In_GTI.Kind = Biased then
-         return Add (Z_Ext (Get (Result, Data), Out_GT), In_GTI.Bias);
+         return Add (Convert_Int (Get (Result, Data), Out_GT), In_GTI.Bias);
 
       --  For Dummy, this must be an access type, so just convert to the
       --  proper pointer.
 
       elsif In_GTI.Kind = Dummy then
          return Convert_Pointer (Result, Out_GT);
+
+      --  For Int_Alt, this must be an integral type, so convert it to
+      --  the desired alternative.
+
+      elsif In_GTI.Kind = Int_Alt then
+         return Convert_Int (Result, Out_GT);
 
       --  For Padded, use either GEP or Extract_Value, depending on whether
       --  this is a reference or not.
@@ -761,6 +819,12 @@ package body GNATLLVM.GLType is
 
       elsif GTI.Kind = Dummy then
          return Convert_Pointer (Result, GT);
+
+      --  For Int_Alt, this must be an integral type, so convert it to
+      --  the desired alternative.
+
+      elsif GTI.Kind = Int_Alt then
+         return Convert_Int (Result, GT);
 
       --  For Padded, we know this is data, so use Insert_Value to
       --  make the padded version.

@@ -170,6 +170,11 @@ package GNATLLVM.Types is
    --  Go up TE's Etype chain until it points to itself, which will
    --  go up both base and parent types.
 
+   function Is_Unsigned_For_Convert (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+   --  True if we are to treate GT as unsigned for the purpose of a
+   --  conversion.
+
    function Full_Etype (N : Node_Id) return Entity_Id is
      (if   Ekind (Etype (N)) = E_Void then Etype (N)
       else Get_Fullest_View (Etype (N)))

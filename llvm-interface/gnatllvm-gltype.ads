@@ -305,7 +305,7 @@ package GNATLLVM.GLType is
      with Pre => Present (GT);
 
    function Is_Unsigned_Type (GT : GL_Type) return Boolean is
-     (Is_Unsigned_Type (Full_Etype (GT)))
+     (Is_Biased_GL_Type (GT) or else Is_Unsigned_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Is_Discrete_Or_Fixed_Point_Type (GT : GL_Type) return Boolean is

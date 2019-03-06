@@ -377,10 +377,10 @@ package body GNATLLVM.Types is
       BT : constant GL_Type := Base_GL_Type (GT);
 
    begin
-      --  If GT is narrower than BT, use its signedness, otherwise use BT's
+      --  If GT isn't wider than BT, use its signedness, otherwise use BT's
 
-      return (if   Get_Type_Size_In_Bits (Type_Of (GT)) <
-                      Get_Type_Size_In_Bits (Type_Of (BT))
+      return (if   Get_Type_Size_In_Bits (Type_Of (GT)) <=
+                   Get_Type_Size_In_Bits (Type_Of (BT))
               then Is_Unsigned_Type (GT)
               else Is_Unsigned_Type (BT));
    end Is_Unsigned_For_Convert;

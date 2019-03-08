@@ -1129,7 +1129,7 @@ package body GNATLLVM.Variables is
       Biased   : constant Boolean   := Has_Biased_Representation (Def_Ident);
 
    begin
-      return Make_GL_Alternative (GT, Size, Align, False, Max_Size, Biased);
+      return Make_GT_Alternative (GT, Size, Align, False, Max_Size, Biased);
 
    end Variable_GL_Type;
 

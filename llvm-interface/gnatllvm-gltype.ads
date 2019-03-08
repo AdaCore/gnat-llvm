@@ -51,7 +51,7 @@ package GNATLLVM.GLType is
           Post => Present (New_GT'Result);
    --  Create a new GL_Type with None kind for type TE
 
-   function Make_GL_Alternative
+   function Make_GT_Alternative
      (GT        : GL_Type;
       Size      : Uint    := No_Uint;
       Align     : Uint    := No_Uint;
@@ -59,7 +59,7 @@ package GNATLLVM.GLType is
       Max_Size  : Boolean := False;
       Is_Biased : Boolean := False) return GL_Type
      with Pre  => Present (GT),
-          Post => Full_Etype (Make_GL_Alternative'Result) = Full_Etype (GT);
+          Post => Full_Etype (Make_GT_Alternative'Result) = Full_Etype (GT);
    --  Return a GL_Type (creating one if necessary) with the specified
    --  parameters.  For_Type is True if we're doing this for a type; in that
    --  case the size needs to be rounded to the alignment.  Max_Size is True

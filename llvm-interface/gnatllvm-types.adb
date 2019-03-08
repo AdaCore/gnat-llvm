@@ -1552,7 +1552,7 @@ package body GNATLLVM.Types is
       if Ekind (GT) not in E_Void | E_Subprogram_Type
         and then Present (Size_GL_Type)
       then
-         GT := Make_GL_Alternative
+         GT := Make_GT_Alternative
            (GT, (if    Is_Discrete_Or_Fixed_Point_Type (GT) then Esize (TE)
                  elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
                  then  RM_Size (TE) else No_Uint),

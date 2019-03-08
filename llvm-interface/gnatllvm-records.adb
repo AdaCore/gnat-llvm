@@ -1098,7 +1098,7 @@ package body GNATLLVM.Records is
          Max_Sz   : constant Boolean := Is_Unconstrained_Record (Def_GT);
          Biased   : constant Boolean := Has_Biased_Representation (E);
          F_GT     : GL_Type          :=
-           Make_GL_Alternative (Def_GT, Size, No_Uint, False, Max_Sz, Biased);
+           Make_GT_Alternative (Def_GT, Size, No_Uint, False, Max_Sz, Biased);
          Align    : constant ULL     := Get_Type_Alignment (F_GT);
 
       begin

@@ -309,10 +309,10 @@ package body GNATLLVM.GLType is
    end New_GT;
 
    -------------------------
-   -- Make_GL_Alternative --
+   -- Make_GT_Alternative --
    -------------------------
 
-   function Make_GL_Alternative
+   function Make_GT_Alternative
      (GT        : GL_Type;
       Size      : Uint    := No_Uint;
       Align     : Uint    := No_Uint;
@@ -514,7 +514,7 @@ package body GNATLLVM.GLType is
 
          return Ret_GT;
       end;
-   end Make_GL_Alternative;
+   end Make_GT_Alternative;
 
    --------------------
    -- Update_GL_Type --

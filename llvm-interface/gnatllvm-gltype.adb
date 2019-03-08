@@ -320,6 +320,8 @@ package body GNATLLVM.GLType is
       Max_Size  : Boolean := False;
       Is_Biased : Boolean := False) return GL_Type
    is
+      Needs_Bias  : constant Boolean   :=
+        Is_Biased or else Is_Biased_GL_Type (GT);
       Max_Int_Sz  : constant Uint      := UI_From_Int (Get_Long_Long_Size);
       TE          : constant Entity_Id := Full_Etype (GT);
       Prim_GT     : constant GL_Type   := Primitive_GL_Type (GT);
@@ -381,7 +383,7 @@ package body GNATLLVM.GLType is
             GTI : constant GL_Type_Info := GL_Type_Table.Table (Found_GT);
          begin
             if (Size_V = GTI.Size and then Align_V = GTI.Alignment
-                  and then Is_Biased = (GTI.Kind = Biased)
+                  and then Needs_Bias = (GTI.Kind = Biased)
                   and then not (Max_Size
                                   and then (No (Size_V)
                                               or else not Prim_Native)))
@@ -398,7 +400,7 @@ package body GNATLLVM.GLType is
               --  we got the maximum size.
 
               or else (not Is_Discrete_Or_Fixed_Point_Type (GT)
-                         and then not Is_Biased
+                         and then not Needs_Bias
                          and then not Max_Size
                          and then Present (Size_V) and then Present (GTI.Size)
                          and then I_Cmp (Int_SLT, Size_V, GTI.Size) =
@@ -431,13 +433,14 @@ package body GNATLLVM.GLType is
          --  If this is a biased type, make a narrower integer and set the
          --  bias.
 
-         if Is_Biased then
+         if Needs_Bias then
             declare
                LB, HB : GL_Value;
 
             begin
                Bounds_From_Type (Prim_GT, LB, HB);
-               GTI.LLVM_Type := Int_Ty (Int_Sz);
+               GTI.LLVM_Type :=
+                 (if Int_Sz = No_Uint then Prim_T else Int_Ty (Int_Sz));
                GTI.Kind      := Biased;
                GTI.Bias      := LB;
             end;

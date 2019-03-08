@@ -682,9 +682,12 @@ package body GNATLLVM.Types is
       Result      : GL_Value;
 
    begin
-      --  If the value is already of the desired LLVM type, we're done.
+      --  If the value is already of the desired LLVM type, we're done
+      --  unless one type is biased.
 
-      if Type_Of (In_V) = Type_Of (GT) then
+      if Type_Of (In_V) = Type_Of (GT) and then not Is_Biased_GL_Type (In_V)
+        and then not Is_Biased_GL_Type (GT)
+      then
          return G_Is (In_V, GT);
 
       --  If we're converting between two GL_Types corresponding to the same

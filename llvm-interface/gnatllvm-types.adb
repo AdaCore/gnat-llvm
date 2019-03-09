@@ -2358,12 +2358,12 @@ package body GNATLLVM.Types is
       end if;
 
       case Attr is
-         when Attribute_Size | Attribute_Object_Size =>
+         when Attribute_Object_Size =>
             if not Unknown_Esize (Our_E) then
                Ret := Esize (Our_E);
             end if;
 
-         when Attribute_Value_Size =>
+         when Attribute_Size | Attribute_Value_Size =>
             if not Unknown_RM_Size (Our_E) then
                Ret := RM_Size (Our_E);
             end if;

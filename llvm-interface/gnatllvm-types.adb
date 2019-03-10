@@ -2319,8 +2319,11 @@ package body GNATLLVM.Types is
    function Get_Type_Size_Complexity
      (GT : GL_Type; Max_Size : Boolean := False) return Nat is
    begin
+      --  If the size of the GL_Type is known, then it's a constant
 
-      if Is_Record_Type (GT) then
+      if Present (GT_Size (GT)) then
+         return 0;
+      elsif Is_Record_Type (GT) then
          return Get_Record_Size_Complexity (Full_Etype (GT), Max_Size);
       elsif Is_Array_Type (GT) then
          return Get_Array_Size_Complexity  (Full_Etype (GT), Max_Size);

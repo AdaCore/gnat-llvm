@@ -655,15 +655,13 @@ package body GNATLLVM.Types is
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
       In_V        : constant GL_Value :=
-        (if   Is_Unchecked and then Is_Biased_GL_Type (V) then V
-         else To_Primitive (V));
+        (if Is_Unchecked then V else To_Primitive (V));
       In_GT       : constant GL_Type  := Related_Type (In_V);
       Is_Unc_Bias : constant Boolean  :=
         Is_Unchecked and then (Is_Biased_GL_Type (GT)
                                  or else Is_Biased_GL_Type (In_GT));
       Prim_GT     : constant GL_Type  :=
-        (if   Is_Unchecked and then Is_Biased_GL_Type (GT) then GT
-         else Primitive_GL_Type (GT));
+        (if Is_Unchecked then GT else Primitive_GL_Type (GT));
       Value       : GL_Value          := In_V;
       Src_Access  : constant Boolean  := Is_Access_Type (V);
       Dest_Access : constant Boolean  := Is_Access_Type (Prim_GT);

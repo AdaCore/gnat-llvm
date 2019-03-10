@@ -21,3 +21,4 @@ Limitations and missing features (identified so far):
 - support for stack checking
 - suport for -gnatc (when back-annotating)
 - must allocate aliased components of records early (GA23-024)
+- support for builtings such as sqrt (C903-006)

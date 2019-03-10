@@ -663,13 +663,12 @@ package body GNATLLVM.Exprs is
    -- Emit_Attribute_Reference --
    ------------------------------
 
-   function Emit_Attribute_Reference (N : Node_Id) return GL_Value
-   is
+   function Emit_Attribute_Reference (N : Node_Id) return GL_Value is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
       GT   : constant GL_Type      := Full_GL_Type (N);
+      V    : GL_Value              := No_GL_Value;
       P_GT : GL_Type               := Full_GL_Type (Prefix (N));
       Ret  : Uint;
-      V    : GL_Value;
 
    begin
       --  First see if this is something we can compute from annotations
@@ -888,8 +887,15 @@ package body GNATLLVM.Exprs is
                  Is_A_Type and then not Is_Constrained (P_GT);
 
             begin
-               V := (if Is_A_Type then No_GL_Value
-                                  else Emit_LValue (Prefix (N)));
+               --  If this is a value we want to use that value to help
+               --  find the size of the type and also to get the actual
+               --  GL_Type.
+
+               if not Is_A_Type then
+                  V    := Emit_LValue (Prefix (N));
+                  P_GT := Related_Type (V);
+               end if;
+
                V := Get_Type_Size (P_GT, V, Max_Size);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
                   if Is_Unconstrained_Array (P_GT) then

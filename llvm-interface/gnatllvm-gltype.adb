@@ -320,36 +320,38 @@ package body GNATLLVM.GLType is
       Max_Size  : Boolean := False;
       Is_Biased : Boolean := False) return GL_Type
    is
-      Needs_Bias  : constant Boolean   :=
-        Is_Biased or else Is_Biased_GL_Type (GT);
-      Max_Int_Sz  : constant Uint      := UI_From_Int (Get_Long_Long_Size);
-      TE          : constant Entity_Id := Full_Etype (GT);
-      Prim_GT     : constant GL_Type   := Primitive_GL_Type (GT);
-      Prim_Native : constant Boolean   := not Is_Nonnative_Type (Prim_GT);
-      Prim_T      : constant Type_T    := Type_Of (Prim_GT);
-      Prim_Fixed  : constant Boolean   := not Is_Dynamic_Size (Prim_GT);
-      Prim_Size   : constant GL_Value  :=
+      In_GTI      : constant GL_Type_Info := GL_Type_Table.Table (GT);
+      Needs_Bias  : constant Boolean      :=
+        Is_Biased or else In_GTI.Kind = Biased;
+      Needs_Max   : constant Boolean      := Max_Size or else In_GTI.Max_Size;
+      Max_Int_Sz  : constant Uint         := UI_From_Int (Get_Long_Long_Size);
+      TE          : constant Entity_Id    := Full_Etype (GT);
+      Prim_GT     : constant GL_Type      := Primitive_GL_Type (GT);
+      Prim_Native : constant Boolean      := not Is_Nonnative_Type (Prim_GT);
+      Prim_T      : constant Type_T       := Type_Of (Prim_GT);
+      Prim_Fixed  : constant Boolean      := not Is_Dynamic_Size (Prim_GT);
+      Prim_Size   : constant GL_Value     :=
         (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
-      Prim_Align  : constant GL_Value  := Get_Type_Alignment (Prim_GT);
-      Int_Sz      : constant Uint      :=
+      Prim_Align  : constant GL_Value     := Get_Type_Alignment (Prim_GT);
+      Int_Sz      : constant Uint         :=
         (if Size = Uint_0 then Uint_1 else Size);
-      Size_Bytes  : constant Uint      :=
+      Size_Bytes  : constant Uint         :=
         (if   Size = No_Uint or else Is_Dynamic_SO_Ref (Size) then No_Uint
          else (Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit);
-      Size_V      : GL_Value           :=
+      Size_V      : GL_Value              :=
         (if   Size_Bytes = No_Uint or else not UI_Is_In_Int_Range (Size_Bytes)
-         then Prim_Size else Size_Const_Int (Size_Bytes));
-      Align_V     : constant GL_Value  :=
-        (if   Align = No_Uint or else Is_Dynamic_SO_Ref (Align) then Prim_Align
-         else Size_Const_Int (Align));
-      Found_GT    : GL_Type            := Get_GL_Type (TE);
+         then In_GTI.Size else Size_Const_Int (Size_Bytes));
+      Align_V     : constant GL_Value     :=
+        (if   Align = No_Uint or else Is_Dynamic_SO_Ref (Align)
+         then In_GTI.Alignment else Size_Const_Int (Align));
+      Found_GT    : GL_Type               := Get_GL_Type (TE);
 
    begin
       --  If we're not specifying a size, alignment, or a request for
       --  maximum size, we want the original type.  This isn't quite the
       --  same test as below since it will get confused with 0-sized types.
 
-      if No (Size_V) and then No (Align_V) and then not Max_Size then
+      if No (Size_V) and then No (Align_V) and then not Needs_Max then
          return GT;
 
       --  If the best type we had is a dummy type, don't make any alternatives
@@ -360,7 +362,7 @@ package body GNATLLVM.GLType is
       --  If we're asking for the maximum size, the maximum size is a
       --  constant, and we don't have a specified size, use the maximum size.
 
-      elsif Max_Size and then not Is_Dynamic_Size (Prim_GT, Max_Size => True)
+      elsif Needs_Max and then not Is_Dynamic_Size (Prim_GT, Max_Size => True)
         and then No (Size_V)
       then
          Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
@@ -384,24 +386,24 @@ package body GNATLLVM.GLType is
          begin
             if (Size_V = GTI.Size and then Align_V = GTI.Alignment
                   and then Needs_Bias = (GTI.Kind = Biased)
-                  and then not (Max_Size
+                  and then not (Needs_Max
                                   and then (No (Size_V)
                                               or else not Prim_Native)))
 
               --  If the size and alignment are the same, this must be the
-              --  same type.  But this isn't the case if Max_Size is
-              --  specified and there's no size for the type or the
+              --  same type.  But this isn't the case if we need the
+              --  maximim size and there's no size for the type or the
               --  primitive type isn't native (the latter can happen for a
               --  variant record where all the variants are the same size.)
 
-              or else (Max_Size and then GTI.Max_Size)
+              or else (Needs_Max and then GTI.Max_Size)
               --  It's also the same type even if there's no match if
               --  we want the maximum size and we have an entry where
               --  we got the maximum size.
 
               or else (not Is_Discrete_Or_Fixed_Point_Type (GT)
                          and then not Needs_Bias
-                         and then not Max_Size
+                         and then not Needs_Max
                          and then Present (Size_V) and then Present (GTI.Size)
                          and then I_Cmp (Int_SLT, Size_V, GTI.Size) =
                                      Const_True)
@@ -428,7 +430,7 @@ package body GNATLLVM.GLType is
 
          GTI.Size      := Size_V;
          GTI.Alignment := Align_V;
-         GTI.Max_Size  := Max_Size;
+         GTI.Max_Size  := Needs_Max;
 
          --  If this is a biased type, make a narrower integer and set the
          --  bias.
@@ -485,7 +487,8 @@ package body GNATLLVM.GLType is
             end;
 
          --  If we're making a fixed-size version of something of dynamic
-         --  size (possibly because Max_Size is True), we need a Byte_Array.
+         --  size (possibly because we need the maximim size), we need a
+         --  Byte_Array.
 
          elsif not Prim_Native and then Present (Size_V) then
             GTI.LLVM_Type := Array_Type (Int_Ty (8),
@@ -496,7 +499,7 @@ package body GNATLLVM.GLType is
          --  If we're looking for the maximum size and none of the above cases
          --  are true, we just make a GT showing that's what we need.
 
-         elsif Max_Size then
+         elsif Needs_Max then
             GTI.LLVM_Type := Prim_T;
             GTI.Kind      := Max_Size_Type;
 

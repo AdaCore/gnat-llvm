@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---                     Copyright (C) 1998-2018, AdaCore                     --
+--                     Copyright (C) 1998-2019, AdaCore                     --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -134,11 +134,8 @@ begin
    for J in Args'Range loop
       declare
          Arg  : constant String := Argument (J);
-         Skip : Boolean := False;
       begin
-         if Arg'Length > 0
-           and then Arg (1) /= '-'
-         then
+         if Arg'Length > 0 and then Arg (1) /= '-' then
             if (Arg'Length > 2
                 and then Arg (Arg'Last - 1 .. Arg'Last) = ".c")
               or else (Arg'Length > 3
@@ -149,6 +146,17 @@ begin
                Compile_With_Clang := True;
                Compile_Ada := False;
             end if;
+         end if;
+      end;
+   end loop;
+
+   for J in Args'Range loop
+      declare
+         Arg  : constant String := Argument (J);
+         Skip : Boolean := False;
+      begin
+         if Arg'Length > 0 and then Arg (1) /= '-' then
+            null;
 
          elsif Arg = "-x" then
             if J < Args'Last
@@ -161,9 +169,11 @@ begin
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
-         --  Ignore -Dxxx switches for compatibility with GCC
+         --  If compiling Ada, Ignore -Dxxx switches for compatibility with GCC
 
-         elsif Arg'Length >= 2 and then Arg (1 .. 2) = "-D" then
+         elsif Arg'Length >= 2 and then Arg (1 .. 2) = "-D"
+           and then Compile_Ada
+         then
             Skip := True;
 
          --  Recognize -fdump-scos specially

@@ -84,14 +84,13 @@ package GNATLLVM.Utils is
      with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
    --  Helper for LLVM's Build_Store
 
-   procedure Store_With_Type (TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
-     with Pre => Is_Type (TE)
-                 and then Present (Expr) and then Present (Ptr);
+   procedure Store_With_Type (GT : GL_Type; Expr : Value_T; Ptr : Value_T)
+     with Pre => Present (GT) and then Present (Expr) and then Present (Ptr);
    --  Similar, but allows annotating store
 
    function Load_With_Type
-     (TE : Entity_Id; Ptr : Value_T; Name : String := "") return Value_T
-     with Pre  => Is_Type (TE) and then Present (Ptr),
+     (GT : GL_Type; Ptr : Value_T; Name : String := "") return Value_T
+     with Pre  => Present (GT) and then Present (Ptr),
           Post => Present (Load_With_Type'Result);
    --  Likewise for a load
 

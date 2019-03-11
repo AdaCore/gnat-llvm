@@ -484,7 +484,7 @@ package GNATLLVM.Types is
    --  set by the front end or by us via back-annotation, return the value
    --  as a Uint.  Otherwise, return No_Uint.
 
-   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id);
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; GT : GL_Type);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
 
    procedure Validate_And_Set_Alignment

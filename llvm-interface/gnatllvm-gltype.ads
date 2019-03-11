@@ -360,6 +360,14 @@ package GNATLLVM.GLType is
      (Is_Unchecked_Union (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Volatile (GT : GL_Type) return Boolean is
+     (Is_Volatile (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Universal_Aliasing (GT : GL_Type) return Boolean is
+     (Universal_Aliasing (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Has_Foreign_Convention (GT : GL_Type) return Boolean is
      (Has_Foreign_Convention (Full_Etype (GT)))
      with Pre => Present (GT);
@@ -382,6 +390,10 @@ package GNATLLVM.GLType is
 
    function Type_Needs_Bounds (GT : GL_Type) return Boolean is
      (Type_Needs_Bounds (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Can_Never_Be_Null (GT : GL_Type) return Boolean is
+     (Can_Never_Be_Null (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function RM_Size (GT : GL_Type) return Uint is
@@ -431,6 +443,10 @@ package GNATLLVM.GLType is
    function Component_Type (GT : GL_Type) return Entity_Id is
      (Component_Type (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT), Post => Present (Component_Type'Result);
+
+   function Default_Aspect_Value (GT : GL_Type) return Node_Id is
+     (Default_Aspect_Value (Full_Etype (GT)))
+     with Pre => Present (GT);
 
    function Number_Dimensions (GT : GL_Type) return Pos is
      (Number_Dimensions (Full_Etype (GT)))

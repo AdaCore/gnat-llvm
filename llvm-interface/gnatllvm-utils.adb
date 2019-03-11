@@ -494,12 +494,12 @@ package body GNATLLVM.Utils is
    --------------------
 
    function Load_With_Type
-     (TE : Entity_Id; Ptr : Value_T; Name : String := "") return Value_T
+     (GT : GL_Type; Ptr : Value_T; Name : String := "") return Value_T
    is
       Load_Inst : constant Value_T := Load (IR_Builder, Ptr, Name);
 
    begin
-      Add_Type_Data_To_Instruction (Load_Inst, TE);
+      Add_Type_Data_To_Instruction (Load_Inst, GT);
       return Load_Inst;
    end Load_With_Type;
 
@@ -517,12 +517,12 @@ package body GNATLLVM.Utils is
    ---------------------
    -- Store_With_Type --
    ---------------------
-   procedure Store_With_Type (TE : Entity_Id; Expr : Value_T; Ptr : Value_T)
+   procedure Store_With_Type (GT : GL_Type; Expr : Value_T; Ptr : Value_T)
    is
       Store_Inst : constant Value_T := Build_Store (IR_Builder, Expr, Ptr);
 
    begin
-      Add_Type_Data_To_Instruction (Store_Inst, TE);
+      Add_Type_Data_To_Instruction (Store_Inst, GT);
    end Store_With_Type;
 
    ------------------------

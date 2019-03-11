@@ -704,19 +704,9 @@ package GNATLLVM.GLValue is
    --  Add the Cold attribute to function V
 
    procedure Add_Dereferenceable_Attribute
-     (V : GL_Value; Idx : Integer; TE : Entity_Id)
-     with Pre => Is_A_Function (V) and then Is_Type (TE);
-   --  Add the Dereferenceable attribute to parameter with index Idx
-
-   procedure Add_Dereferenceable_Attribute
      (V : GL_Value; Idx : Integer; GT : GL_Type)
      with Pre => Is_A_Function (V) and then Present (GT);
    --  Add the Dereferenceable attribute to parameter with index Idx
-
-   procedure Add_Dereferenceable_Or_Null_Attribute
-     (V : GL_Value; Idx : Integer; TE : Entity_Id)
-     with Pre => Is_A_Function (V) and then Is_Type (TE);
-   --  Add the Dereferenceableornull attribute to parameter with index Idx
 
    procedure Add_Dereferenceable_Or_Null_Attribute
      (V : GL_Value; Idx : Integer; GT : GL_Type)

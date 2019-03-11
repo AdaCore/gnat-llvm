@@ -500,7 +500,7 @@ package body GNATLLVM.Variables is
          when N_Indexed_Component =>
 
             declare
-               TE : constant Entity_Id := Full_Etype (Prefix (N));
+               GT : constant GL_Type := Full_GL_Type (Prefix (N));
 
             begin
                --  Not static if prefix not static, a lower bound isn't
@@ -511,13 +511,13 @@ package body GNATLLVM.Variables is
 
                if not Is_Static_Location (Prefix (N)) then
                   return False;
-               elsif not Is_Array_Type (TE)
-                 or else Ekind (TE) = E_String_Literal_Subtype
+               elsif not Is_Array_Type (GT)
+                 or else Ekind (GT) = E_String_Literal_Subtype
                then
                   return True;
                end if;
 
-               Index := First_Index (TE);
+               Index := First_Index (GT);
                Expr  := First (Expressions (N));
                while Present (Index) loop
                   exit when not Is_Static_Expression
@@ -546,13 +546,13 @@ package body GNATLLVM.Variables is
             --  is always static.
 
             declare
-               TE : constant Entity_Id := Full_Etype (Prefix (N));
+               GT : constant GL_Type := Full_GL_Type (Prefix (N));
 
             begin
-               return not Is_Array_Type (TE)
-                 or else Ekind (TE) = E_String_Literal_Subtype
+               return not Is_Array_Type (GT)
+                 or else Ekind (GT) = E_String_Literal_Subtype
                  or else (Is_Static_Expression
-                            (Low_Bound (Get_Dim_Range (First_Index (TE)))));
+                            (Low_Bound (Get_Dim_Range (First_Index (GT)))));
             end;
 
          when others =>
@@ -673,13 +673,13 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Is_No_Elab_Needed (N : Node_Id) return Boolean is
-      TE   : constant Entity_Id := Full_Etype (N);
+      GT   : constant GL_Type := Full_GL_Type (N);
       Expr : Node_Id;
 
    begin
       case Nkind (N) is
          when N_Aggregate | N_Extension_Aggregate =>
-            if Is_Array_Type (TE) then
+            if Is_Array_Type (GT) then
 
                --  We don't support constant aggregates of multi-dimensional
                --  Fortran arrays because it's too complex.  And we also
@@ -691,10 +691,10 @@ package body GNATLLVM.Variables is
                --  We also can't support an aggregate where the component
                --  type is a unconstrained record.
 
-               if (Number_Dimensions (TE) > 1
-                     and then Convention (TE) = Convention_Fortran)
-                 or else (Is_Constrained (TE) and then Is_Nonnative_Type (TE))
-                 or else Is_Unconstrained_Record (Full_Component_Type (TE))
+               if (Number_Dimensions (GT) > 1
+                     and then Convention (GT) = Convention_Fortran)
+                 or else (Is_Constrained (GT) and then Is_Nonnative_Type (GT))
+                 or else Is_Unconstrained_Record (Full_Component_Type (GT))
                then
                   return False;
                end if;
@@ -705,8 +705,8 @@ package body GNATLLVM.Variables is
                   Next (Expr);
                end loop;
 
-            elsif Is_Record_Type (TE) then
-               if Contains_Unconstrained_Record (Default_GL_Type (TE)) then
+            elsif Is_Record_Type (GT) then
+               if Contains_Unconstrained_Record (GT) then
                   return False;
                end if;
 
@@ -763,15 +763,14 @@ package body GNATLLVM.Variables is
                       or else not Do_Overflow_Check (N))
               --  Must not have overflow check
 
-              and then Is_Static_Conversion (Full_GL_Type (Expression (N)),
-                                             Default_GL_Type (TE))
+              and then Is_Static_Conversion (Full_GL_Type (Expression (N)), GT)
               --  Must be able to do conversion statically
 
               and then Is_No_Elab_Needed (Expression (N))
               --  Operand must not need elaboration
 
-              and then (not Is_Scalar_Type (TE)
-                          or else Type_Of (TE) = LLVM_Size_Type
+              and then (not Is_Scalar_Type (GT)
+                          or else Type_Of (GT) = LLVM_Size_Type
                           or else Is_A_Const_Int (Emit_Expression (N))
                           or else Is_A_Const_FP  (Emit_Expression (N)));
               --  If converting to a scalar type other than Size_Type,
@@ -848,12 +847,11 @@ package body GNATLLVM.Variables is
                   return Is_No_Elab_Needed (Full_View (N))
                     and then Is_Static_Conversion (Full_GL_Type
                                                      (Full_View (N)),
-                                                   Default_GL_Type (TE));
+                                                   GT);
                else
                   return Ekind (N) = E_Constant and then Present (CV)
                     and then Is_No_Elab_Needed (CV)
-                    and then Is_Static_Conversion (Full_GL_Type (CV),
-                                                   Default_GL_Type (TE));
+                    and then Is_Static_Conversion (Full_GL_Type (CV), GT);
                end if;
             end;
 

@@ -431,23 +431,22 @@ package body GNATLLVM.Subprograms is
       --------------------
 
       function Is_Initialized (GT : GL_Type) return Boolean is
-         TE : constant Entity_Id := Full_Etype (GT);
          F  : Entity_Id;
 
       begin
-         if Is_Access_Type (TE)
-           or else (Is_Scalar_Type (TE)
-                      and then Present (Default_Aspect_Value (TE)))
-           or else (Has_Discriminants (TE)
-                      and not Is_Unchecked_Union (TE))
+         if Is_Access_Type (GT)
+           or else (Is_Scalar_Type (GT)
+                      and then Present (Default_Aspect_Value (GT)))
+           or else (Has_Discriminants (GT)
+                      and not Is_Unchecked_Union (GT))
          then
             return True;
 
-         elsif Is_Array_Type (TE) then
-            return Is_Initialized (Default_GL_Type (Full_Component_Type (TE)));
+         elsif Is_Array_Type (GT) then
+            return Is_Initialized (Full_Component_GL_Type (GT));
 
-         elsif Is_Record_Type (TE) then
-            F := First_Component_Or_Discriminant (Full_Base_Type (TE));
+         elsif Is_Record_Type (GT) then
+            F := First_Component_Or_Discriminant (Full_Base_Type (GT));
             while Present (F) loop
                exit when Present (Parent (F))
                  and then Present (Expression (Parent (F)));
@@ -802,7 +801,7 @@ package body GNATLLVM.Subprograms is
    is
       T         : constant Type_T := Type_Of (GT);
       Width     : constant ULL    := Get_Type_Size_In_Bits (T);
-      --  We need to use Get_Type_Size_In_Bits instead of Esize (TE)
+      --  We need to use Get_Type_Size_In_Bits instead of Esize (GT)
       --  so that we handle FP types properly.
 
       W         : constant String := Int'Image (Int (Width));
@@ -1096,7 +1095,7 @@ package body GNATLLVM.Subprograms is
             Value         : constant GL_Value  := Load (Pointer);
 
          begin
-            --  If TE is unconstrained, we have an access type, which is a
+            --  If GT is unconstrained, we have an access type, which is a
             --  fat pointer.  Convert it to a reference to the underlying
             --  type.  Otherwise, this is a System.Address which needs to
             --  be converted to a pointer.
@@ -1665,7 +1664,7 @@ package body GNATLLVM.Subprograms is
       Op         : Atomic_RMW_Bin_Op_T;
       Op_Back    : Boolean;
       New_Index  : Integer;
-      TE, BT, PT : Entity_Id;
+      GT, BT, PT : GL_Type;
       Type_Size  : ULL;
       Value      : GL_Value;
       Result     : GL_Value;
@@ -1705,12 +1704,12 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      TE  := Full_Etype (Val);
-      PT  := Full_Etype (Ptr);
-      BT  := Full_Base_Type (TE);
-      if not Is_Elementary_Type (TE)
+      GT  := Full_GL_Type (Val);
+      PT  := Full_GL_Type (Ptr);
+      BT  := Base_GL_Type (GT);
+      if not Is_Elementary_Type (GT)
         or else not Is_Access_Type (PT)
-        or else Full_Base_Type (Full_Designated_Type (PT)) /= BT
+        or else Base_GL_Type (Full_Designated_GL_Type (PT)) /= BT
       then
          return No_GL_Value;
       end if;
@@ -1720,7 +1719,7 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      Type_Size := Get_Type_Size (Type_Of (TE));
+      Type_Size := Get_Type_Size (Type_Of (GT));
       if not (S (Index .. Index + 1) = "_1" and then Type_Size = 1)
         and then not (S (Index .. Index + 1) = "_2" and then Type_Size = 2)
         and then not (S (Index .. Index + 1) = "_4" and then Type_Size = 4)
@@ -1897,7 +1896,7 @@ package body GNATLLVM.Subprograms is
 
       --  If we're elaborating this for 'Access or 'Address, we want the
       --  actual subprogram type here, not the type of the return value,
-      --  which is what TE is set to.  We also may have to make a
+      --  which is what GT is set to.  We also may have to make a
       --  trampoline or Fat_Reference_To_Subprogram here since it's too
       --  late to make it in Get because it doesn't know what subprogram it
       --  was for.
@@ -2322,7 +2321,7 @@ package body GNATLLVM.Subprograms is
          then "_ada_" & Subp_Name else Subp_Name);
       LLVM_Func   : GL_Value             := Get_Dup_Global_Value (Def_Ident);
       RK          : constant Return_Kind := Get_Return_Kind (Def_Ident);
-      Return_Typ  : constant Entity_Id   := Full_Etype (Def_Ident);
+      Return_GT   : constant GL_Type     := Full_GL_Type (Def_Ident);
       Param_Num   : Natural              := 0;
       Formal      : Entity_Id;
 
@@ -2363,7 +2362,7 @@ package body GNATLLVM.Subprograms is
          end if;
 
          if RK = Return_By_Parameter then
-            Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, Return_Typ);
+            Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, Return_GT);
             Add_Noalias_Attribute         (LLVM_Func, Param_Num);
             Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
             Param_Num := Param_Num + 1;
@@ -2373,10 +2372,10 @@ package body GNATLLVM.Subprograms is
          while Present (Formal) loop
             declare
                PK : constant Param_Kind := Get_Param_Kind (Formal);
-               TE : constant Entity_Id  := Full_Etype (Formal);
-               DT : constant Entity_Id  :=
-                 (if   Is_Access_Type (TE) then Full_Designated_Type (TE)
-                  else Empty);
+               GT : constant GL_Type    := Full_GL_Type (Formal);
+               DT : constant GL_Type  :=
+                 (if   Is_Access_Type (GT) then Full_Designated_GL_Type (GT)
+                  else No_GL_Type);
 
             begin
                if PK = Activation_Record then
@@ -2387,14 +2386,14 @@ package body GNATLLVM.Subprograms is
                   Add_Nest_Attribute            (LLVM_Func, Param_Num);
 
                elsif PK_Is_Reference (PK)
-                 and then (not Is_Unconstrained_Array (TE)
+                 and then (not Is_Unconstrained_Array (GT)
                              or else PK = Foreign_By_Ref)
                then
                   --  Technically, we can take 'Address of a parameter
                   --  and put the address someplace, but that's undefined,
                   --  so we can set this as nocapture.
 
-                  Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, TE);
+                  Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, GT);
                   Add_Noalias_Attribute         (LLVM_Func, Param_Num);
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
                   if Ekind (Formal) = E_In_Parameter then
@@ -2403,11 +2402,11 @@ package body GNATLLVM.Subprograms is
                      Add_Writeonly_Attribute    (LLVM_Func, Param_Num);
                   end if;
 
-               elsif PK_Is_In_Or_Ref (PK) and then Is_Access_Type (TE)
+               elsif PK_Is_In_Or_Ref (PK) and then Is_Access_Type (GT)
                  and then not Is_Unconstrained_Array (DT)
                  and then Ekind (DT) /= E_Subprogram_Type
                then
-                  if Can_Never_Be_Null (TE) then
+                  if Can_Never_Be_Null (GT) then
                      Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   else
                      Add_Dereferenceable_Or_Null_Attribute

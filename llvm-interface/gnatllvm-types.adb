@@ -2429,13 +2429,13 @@ package body GNATLLVM.Types is
    -- Add_Type_Data_To_Instruction --
    ----------------------------------
 
-   procedure Add_Type_Data_To_Instruction (Inst : Value_T; TE : Entity_Id)
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; GT : GL_Type)
    is
-      TBAA : constant Metadata_T := Get_TBAA (TE);
+      TBAA : constant Metadata_T := Get_TBAA (Full_Etype (GT));
    begin
-      Set_Volatile (Inst, Is_Volatile (TE));
+      Set_Volatile (Inst, Is_Volatile (GT));
 
-      if Present (TBAA) and then not Universal_Aliasing (TE) then
+      if Present (TBAA) and then not Universal_Aliasing (GT) then
          Add_TBAA_Access
            (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
       end if;

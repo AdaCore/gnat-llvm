@@ -1467,7 +1467,7 @@ package body GNATLLVM.GLValue is
       --  type, indicate that we're loading an object of that type.
 
       if Is_Data (New_Relationship) then
-         return G (Load_With_Type (Full_Designated_Type (Ptr),
+         return G (Load_With_Type (Full_Designated_GL_Type (Ptr),
                                    LLVM_Value (Ptr), Name),
                    Full_Designated_GL_Type (Ptr));
       else
@@ -1486,7 +1486,8 @@ package body GNATLLVM.GLValue is
    procedure Store (Expr : GL_Value; Ptr : GL_Value) is
    begin
       if Is_Data (Expr) then
-         Store_With_Type (Etype (Expr), LLVM_Value (Expr), LLVM_Value (Ptr));
+         Store_With_Type (Related_Type (Expr), LLVM_Value (Expr),
+                          LLVM_Value (Ptr));
       else
          Discard (Build_Store (IR_Builder, LLVM_Value (Expr),
                                LLVM_Value (Ptr)));
@@ -1756,28 +1757,6 @@ package body GNATLLVM.GLValue is
    ----------------------------------
 
    procedure Add_Dereferenceable_Attribute
-     (V : GL_Value; Idx : Integer; TE : Entity_Id)
-   is
-      T : constant Type_T := Type_Of (TE);
-
-   begin
-      --  We can only show this is dereferencable if we know its size.
-      --  But this implies non-null, so we can set that even if we don't
-      --  know the size.
-
-      if Type_Is_Sized (T) then
-         Add_Dereferenceable_Attribute (LLVM_Value (V), unsigned (Idx),
-                                        Get_Type_Size (T));
-      else
-         Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
-      end if;
-   end Add_Dereferenceable_Attribute;
-
-   -----------------------------------
-   -- Add_Dereferenceable_Attribute --
-   ----------------------------------
-
-   procedure Add_Dereferenceable_Attribute
      (V : GL_Value; Idx : Integer; GT : GL_Type)
    is
       T : constant Type_T := Type_Of (GT);
@@ -1794,22 +1773,6 @@ package body GNATLLVM.GLValue is
          Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
       end if;
    end Add_Dereferenceable_Attribute;
-
-   -------------------------------------------
-   -- Add_Dereferenceable_Or_Null_Attribute --
-   -------------------------------------------
-
-   procedure Add_Dereferenceable_Or_Null_Attribute
-     (V : GL_Value; Idx : Integer; TE : Entity_Id)
-   is
-      T : constant Type_T := Type_Of (TE);
-
-   begin
-      if Type_Is_Sized (T) then
-         Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V), unsigned (Idx),
-                                                Get_Type_Size (T));
-      end if;
-   end Add_Dereferenceable_Or_Null_Attribute;
 
    -------------------------------------------
    -- Add_Dereferenceable_Or_Null_Attribute --

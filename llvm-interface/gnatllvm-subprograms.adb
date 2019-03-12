@@ -307,6 +307,9 @@ package body GNATLLVM.Subprograms is
    function Get_Tramp_Init_Fn   return GL_Value;
    function Get_Tramp_Adjust_Fn return GL_Value;
 
+   function Is_Binder_Elab_Proc (Name : String) return Boolean;
+   --  Return True if Name is the name of the elab proc for Ada_Main
+
    Ada_Main_Elabb : GL_Value := No_GL_Value;
    --  ???  This a kludge.  We sometimes need an elab proc for Ada_Main and
    --  this can cause confusion with global names.  So if we made it as
@@ -1270,6 +1273,18 @@ package body GNATLLVM.Subprograms is
       end if;
    end Add_To_Elab_Proc;
 
+   -------------------------
+   -- Is_Binder_Elab_Proc --
+   -------------------------
+
+   function Is_Binder_Elab_Proc (Name : String) return Boolean is
+      pragma Assert (Name'First = 1);
+   begin
+      return Name'Length >= 16
+        and then Name (1 .. 9) = "ada_main_"
+        and then Name (Name'Last - 7 .. Name'Last) = "___elabb";
+   end Is_Binder_Elab_Proc;
+
    --------------------
    -- Emit_Elab_Proc --
    --------------------
@@ -1305,7 +1320,7 @@ package body GNATLLVM.Subprograms is
          Set_Has_No_Elaboration_Code (CU, False);
       end if;
 
-      if Name = "ada_main___elabb" and Present (Ada_Main_Elabb) then
+      if Present (Ada_Main_Elabb) and then Is_Binder_Elab_Proc (Name) then
          LLVM_Func := Ada_Main_Elabb;
       else
          LLVM_Func := Add_Function (Name, Elab_Type, Void_GL_Type);
@@ -2426,9 +2441,9 @@ package body GNATLLVM.Subprograms is
 
       Set_Value (Def_Ident, LLVM_Func);
 
-      --  ?? Handle the kludge if our subprogram name is that of an elab proc
+      --  ??? Handle the kludge if our subprogram name is that of an elab proc
 
-      if Subp_Name = "ada_main___elabb" then
+      if Is_Binder_Elab_Proc (Subp_Name) then
          Ada_Main_Elabb := LLVM_Func;
       end if;
 

@@ -1434,10 +1434,19 @@ package body GNATLLVM.Types is
 
    begin
       --  Before we do anything, see if this isn't a base type and
-      --  process that if so.
+      --  process that if so.  Copy sizes from the base type if a size
+      --  clause was present.
 
       if not Is_Full_Base_Type (TE) then
          Discard (Type_Of (Full_Base_Type (TE)));
+
+         if Has_Size_Clause (Full_Base_Type (TE)) then
+            Set_RM_Size (TE, RM_Size (Full_Base_Type (TE)));
+         end if;
+
+         if Has_Object_Size_Clause (Full_Base_Type (TE)) then
+            Set_Esize (TE, Esize (Full_Base_Type (TE)));
+         end if;
       end if;
 
       --  Next see if we already have a suitable type.
@@ -1551,11 +1560,15 @@ package body GNATLLVM.Types is
         and then Present (Size_GL_Type)
       then
          GT := Make_GT_Alternative
-           (GT, (if    Is_Discrete_Or_Fixed_Point_Type (GT) then Esize (TE)
-                 elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
-                 then  RM_Size (TE) else No_Uint),
+           (GT, TE,
+           (if    Is_Discrete_Or_Fixed_Point_Type (GT) then Esize (TE)
+                     elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
+                     then  RM_Size (TE) else No_Uint),
            (if Unknown_Alignment (TE) then No_Uint else Alignment (TE)),
-           True, False, Has_Biased_Representation (TE));
+           For_Type      => True,
+           For_Component => False,
+           Max_Size      => False,
+           Is_Biased     => Has_Biased_Representation (TE));
       end if;
 
       --  Back-annotate sizes of non-scalar types if there isn't one.  ???

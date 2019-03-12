@@ -15,15 +15,17 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
+with Lib;      use Lib;
 with Output;   use Output;
 with Repinfo;  use Repinfo;
+with Sinfo;    use Sinfo;
 with Sprint;   use Sprint;
 with Table;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Records; use GNATLLVM.Records;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 
 package body GNATLLVM.GLType is
@@ -154,6 +156,19 @@ package body GNATLLVM.GLType is
           Post => Related_Type (Convert_Int'Result) = GT;
    --  Convert V, which is of one integral type, to GT, an alternative
    --  of that type.
+
+   function Make_GT_Alternative_Internal
+     (GT        : GL_Type;
+      Size      : Uint;
+      Align     : Uint;
+      For_Type  : Boolean;
+      Max_Size  : Boolean;
+      Is_Biased : Boolean) return GL_Type
+     with Pre  => Present (GT),
+          Post => Full_Etype (Make_GT_Alternative_Internal'Result)
+                   = Full_Etype (GT);
+   --  Internal version of Make_GT_Alternative to actually make the GL_Type
+
    ---------------------------
    -- GL_Type_Info_Is_Valid --
    ---------------------------
@@ -313,12 +328,83 @@ package body GNATLLVM.GLType is
    -------------------------
 
    function Make_GT_Alternative
+     (GT            : GL_Type;
+      Def_Ident     : Entity_Id;
+      Size          : Uint    := No_Uint;
+      Align         : Uint    := No_Uint;
+      For_Type      : Boolean := False;
+      For_Component : Boolean := False;
+      Max_Size      : Boolean := False;
+      Is_Biased     : Boolean := False) return GL_Type
+   is
+      Out_GT : constant GL_Type  :=
+        Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
+                                      Is_Biased);
+   begin
+      --  If this is an entity that comes from source, is in the unit being
+      --  compiled, and we've made a padded type, set a warning saying how
+      --  many bits are unused.
+
+      if Comes_From_Source (Def_Ident)
+        and then In_Extended_Main_Code_Unit (Def_Ident)
+        and then Is_Padded_GL_Type (Out_GT)
+      then
+         declare
+            Out_Sz    : constant GL_Value := GT_Size (Out_GT);
+            In_Sz     : constant GL_Value := GT_Size (GT);
+            Pad_Sz    : constant GL_Value :=
+              (if   Present (Out_Sz) and then Present (In_Sz)
+               then Sub (Out_Sz, In_Sz) else No_GL_Value);
+            Err_Ident : Entity_Id         := Def_Ident;
+            Err_Node  : Entity_Id         := Empty;
+
+         begin
+            if Present (Pad_Sz) and then Get_Const_Int_Value (Pad_Sz) > 0 then
+               if Is_Packed_Array_Impl_Type (Err_Ident) then
+                  Err_Ident := Original_Array_Type (Err_Ident);
+               end if;
+
+               if Ekind_In (Err_Ident, E_Component, E_Discriminant)
+                 and then Present (Component_Clause (Err_Ident))
+               then
+                  Err_Node := Last_Bit (Component_Clause (Err_Ident));
+               elsif Has_Size_Clause (Err_Ident) then
+                  Err_Node := Expression (Size_Clause (Err_Ident));
+               elsif Is_Type (Err_Ident)
+                 and then Has_Object_Size_Clause (Err_Ident)
+               then
+                  Err_Node := Expression (Object_Size_Clause (Err_Ident));
+               end if;
+
+               Error_Msg_Uint_1 :=
+                 UI_From_Int (Int (Get_Const_Int_Value (Pad_Sz)) *
+                                Get_Bits_Per_Unit);
+
+               if For_Component then
+                  Error_Msg_NE ("component of& padded by ^ bits?",
+                                Err_Node, Err_Ident);
+               elsif Present (Err_Node) then
+                  Error_Msg_NE ("^ bits of & unused?", Err_Node,
+                                Err_Ident);
+               end if;
+            end if;
+         end;
+      end if;
+
+      return Out_GT;
+   end Make_GT_Alternative;
+
+   ----------------------------------
+   -- Make_GT_Alternative_Internal --
+   ----------------------------------
+
+   function Make_GT_Alternative_Internal
      (GT        : GL_Type;
-      Size      : Uint    := No_Uint;
-      Align     : Uint    := No_Uint;
-      For_Type  : Boolean := False;
-      Max_Size  : Boolean := False;
-      Is_Biased : Boolean := False) return GL_Type
+      Size      : Uint;
+      Align     : Uint;
+      For_Type  : Boolean;
+      Max_Size  : Boolean;
+      Is_Biased : Boolean) return GL_Type
    is
       In_GTI      : constant GL_Type_Info := GL_Type_Table.Table (GT);
       Needs_Bias  : constant Boolean      :=
@@ -366,16 +452,6 @@ package body GNATLLVM.GLType is
         and then No (Size_V)
       then
          Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
-      end if;
-
-      --  If this is for an object (as opposed to a type) and both a size
-      --  and an alignment is specified, we need to align the size if
-      --  not an integral type.
-
-      if not For_Type and then Present (Size_V) and then Present (Align_V)
-        and then not Is_Discrete_Or_Fixed_Point_Type (GT)
-      then
-         Size_V := Align_To (Size_V, Size_Const_Int (Uint_1), Align_V);
       end if;
 
       --  See if we already made a matching GL_Type
@@ -517,7 +593,7 @@ package body GNATLLVM.GLType is
 
          return Ret_GT;
       end;
-   end Make_GT_Alternative;
+   end Make_GT_Alternative_Internal;
 
    --------------------
    -- Update_GL_Type --
@@ -897,6 +973,13 @@ package body GNATLLVM.GLType is
 
    function Is_Biased_GL_Type (GT : GL_Type) return Boolean is
      (GL_Type_Table.Table (GT).Kind = Biased);
+
+   ------------------------
+   --  Is_Padded_GL_Type --
+   ------------------------
+
+   function Is_Padded_GL_Type (GT : GL_Type) return Boolean is
+     (GL_Type_Table.Table (GT).Kind = Padded);
 
    ---------------------------
    --  Is_Bye_Array_GL_Type --

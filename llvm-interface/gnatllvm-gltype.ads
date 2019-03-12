@@ -52,20 +52,25 @@ package GNATLLVM.GLType is
    --  Create a new GL_Type with None kind for type TE
 
    function Make_GT_Alternative
-     (GT        : GL_Type;
-      Size      : Uint    := No_Uint;
-      Align     : Uint    := No_Uint;
-      For_Type  : Boolean := False;
-      Max_Size  : Boolean := False;
-      Is_Biased : Boolean := False) return GL_Type
-     with Pre  => Present (GT),
+     (GT            : GL_Type;
+      Def_Ident     : Entity_Id;
+      Size          : Uint    := No_Uint;
+      Align         : Uint    := No_Uint;
+      For_Type      : Boolean := False;
+      For_Component : Boolean := False;
+      Max_Size      : Boolean := False;
+      Is_Biased     : Boolean := False) return GL_Type
+     with Pre  => Present (GT) and then Present (Def_Ident),
           Post => Full_Etype (Make_GT_Alternative'Result) = Full_Etype (GT);
    --  Return a GL_Type (creating one if necessary) with the specified
    --  parameters.  For_Type is True if we're doing this for a type; in that
    --  case the size needs to be rounded to the alignment.  Max_Size is True
    --  if we're computing the maximum size of an unconstrained record and
    --  Biased is True if we're using a biased representation to store this
-   --  integral value.
+   --  integral value.  Def_Ident is the identifier that we're doing this
+   --  for and is used for a warning message if we're padding.  For_Component
+   --  is true if we're changing the component size and is used for
+   --  any warning message.
 
    procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)
@@ -168,6 +173,13 @@ package GNATLLVM.GLType is
 
    function Is_Biased_GL_Type (V : GL_Value)     return Boolean is
      (Is_Biased_GL_Type (Related_Type (V)))
+     with Pre => Present (V);
+
+   function Is_Padded_GL_Type (GT : GL_Type)     return Boolean
+     with Pre => Present (GT);
+
+   function Is_Padded_GL_Type (V : GL_Value)     return Boolean is
+     (Is_Padded_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
    function Is_Byte_Array_GL_Type (GT : GL_Type) return Boolean

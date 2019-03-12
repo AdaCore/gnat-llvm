@@ -316,8 +316,13 @@ package body GNATLLVM.Arrays is
       Biased            : constant Boolean   :=
         Has_Biased_Representation (A_TE);
       Comp_GT           : constant GL_Type   :=
-        Make_GT_Alternative (Comp_Def_GT, Comp_Size, No_Uint, False,
-                             Max_Size, Biased);
+        Make_GT_Alternative (Comp_Def_GT, TE,
+                             Size          => Comp_Size,
+                             Align         => No_Uint,
+                             For_Type      => False,
+                             For_Component => True,
+                             Max_Size      => Max_Size,
+                             Is_Biased     => Biased);
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);
       Must_Use_Fake     : Boolean            := Is_Dynamic_Size (Comp_GT);

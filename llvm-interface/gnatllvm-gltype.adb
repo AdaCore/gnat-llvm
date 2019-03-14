@@ -345,7 +345,7 @@ package body GNATLLVM.GLType is
       --  compiled, and we've made a padded type, set a warning saying how
       --  many bits are unused.
 
-      if Comes_From_Source (Def_Ident)
+      if Present (Def_Ident) and then Comes_From_Source (Def_Ident)
         and then In_Extended_Main_Code_Unit (Def_Ident)
         and then Is_Padded_GL_Type (Out_GT)
       then

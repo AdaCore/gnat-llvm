@@ -21,6 +21,7 @@ with Ada.Unchecked_Conversion;
 with System.Storage_Elements;    use System.Storage_Elements;
 
 with Errout;   use Errout;
+with Get_Targ; use Get_Targ;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
 with Sem;      use Sem;
@@ -1116,7 +1117,7 @@ package body GNATLLVM.Variables is
       --  unless we have a qualified expression initializing a class wide
       --  type.
 
-      GT       : constant GL_Type   := Default_GL_Type (TE);
+      GT       : GL_Type             := Default_GL_Type (TE);
       Size     : constant Uint      :=
         (if   Has_Size_Clause (Def_Ident) or not Unknown_Esize (Def_Ident)
          then Esize (Def_Ident) else No_Uint);
@@ -1127,11 +1128,26 @@ package body GNATLLVM.Variables is
       Biased   : constant Boolean   := Has_Biased_Representation (Def_Ident);
 
    begin
-      return Make_GT_Alternative (GT, Def_Ident, Size, Align,
-                                  For_Type      => False,
-                                  For_Component => False,
-                                  Max_Size      => Max_Size,
-                                  Is_Biased     => Biased);
+      GT := Make_GT_Alternative (GT, Def_Ident, Size, Align,
+                                 For_Type      => False,
+                                 For_Component => False,
+                                 Max_Size      => Max_Size,
+                                 Is_Biased     => Biased);
+
+      --  To avoid linker issues, pad a zero-size object to one byte, but
+      --  don't get confused for cases where we need to store bounds.
+      --  ??? We do this for non-file-level objects too.
+
+      if not Is_Nonnative_Type (GT)
+        and then Get_Type_Size (GT) = Size_Const_Null
+        and then not (Is_Constr_Subt_For_UN_Aliased (GT)
+                        and then Is_Array_Type (GT))
+      then
+         GT := Make_GT_Alternative (GT, Empty, UI_From_Int (Get_Bits_Per_Unit),
+                                    No_Uint);
+      end if;
+
+      return GT;
 
    end Variable_GL_Type;
 

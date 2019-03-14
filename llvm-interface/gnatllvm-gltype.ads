@@ -60,7 +60,7 @@ package GNATLLVM.GLType is
       For_Component : Boolean := False;
       Max_Size      : Boolean := False;
       Is_Biased     : Boolean := False) return GL_Type
-     with Pre  => Present (GT) and then Present (Def_Ident),
+     with Pre  => Present (GT),
           Post => Full_Etype (Make_GT_Alternative'Result) = Full_Etype (GT);
    --  Return a GL_Type (creating one if necessary) with the specified
    --  parameters.  For_Type is True if we're doing this for a type; in that

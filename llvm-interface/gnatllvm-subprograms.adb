@@ -518,7 +518,7 @@ package body GNATLLVM.Subprograms is
       elsif Has_Foreign_Convention (Param)
         or else Has_Foreign_Convention (Subp)
       then
-         return (if   Param_Mode = E_In_Parameter
+         return (if   Param_Mode = E_In_Parameter and then By_Ref_Mech /= Must
                         and then (Mech = By_Copy
                                     or else (Is_Elementary_Type (GT)
                                                and then Mech /= By_Reference))

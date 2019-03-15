@@ -1667,7 +1667,8 @@ package body GNATLLVM.GLValue is
       Is_Stack_Align : Boolean := False) return GL_Value
    is
       GT        : constant GL_Type :=
-        (if   Present (Output_Value) then Full_GL_Type (Output_Value)
+        (if   Present (Output_Value)
+         then Primitive_GL_Type (Full_Etype (Output_Value))
          else Void_GL_Type);
       T         : constant Type_T :=
         (if Present (Output_Value) then Type_Of (GT) else Void_Type);

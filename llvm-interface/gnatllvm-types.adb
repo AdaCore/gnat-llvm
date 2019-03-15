@@ -743,7 +743,8 @@ package body GNATLLVM.Types is
             --  conversion of the input to the calc_type (if necessary).
 
             declare
-               Half       : constant GL_Value := Pred_FP (Const_Real (V, 0.5));
+               Half       : constant GL_Value :=
+                 Pred_FP (Const_Real (In_V, 0.5));
                Val_Is_Neg : constant GL_Value :=
                  F_Cmp (Real_OLT, In_V, Const_Null (In_V));
                Add_Amt    : constant GL_Value := F_Add (In_V, Half, "round");

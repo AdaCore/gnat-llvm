@@ -333,9 +333,14 @@ package GNATLLVM.Types is
    --  Likewise, but remove all conversions
 
    function Get_Type_Size (T : Type_T) return ULL is
-     (ABI_Size_Of_Type (Module_Data_Layout, T))
+     (if   Get_Type_Kind (T) = Struct_Type_Kind
+      then Store_Size_Of_Type (Module_Data_Layout, T)
+      else ABI_Size_Of_Type (Module_Data_Layout, T))
      with Pre => Present (T);
-   --  Return the size of an LLVM type, in bytes
+     --  Return the size of an LLVM type, in bytes.  For structures, we want
+     --  to return the actual size, not including padding, but for other types
+     --  we need the size, including padding.  This is important for some
+     --  of the FP types.
 
    function Get_Type_Size (T : Type_T) return GL_Value is
      (Size_Const_Int (Get_Type_Size (T)));

@@ -554,7 +554,8 @@ package body GNATLLVM.GLType is
 
                if Pad_Count > 0 then
                   GTI.LLVM_Type := Build_Struct_Type ((1 => Prim_T,
-                                                       2 => Arr_T));
+                                                       2 => Arr_T),
+                                                      Packed => True);
                   GTI.Kind      := Padded;
                else
                   GTI.LLVM_Type := Prim_T;

@@ -1505,6 +1505,7 @@ package body GNATLLVM.Types is
 
       --  Now save the result.  If we don't have a GT already made, make one.
 
+      GT := Default_GL_Type (TE, Create => False);
       if No (GT) then
          GT := New_GT (TE);
       end if;

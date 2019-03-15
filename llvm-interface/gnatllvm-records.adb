@@ -2140,7 +2140,8 @@ package body GNATLLVM.Records is
       CRC        : constant Entity_Id      :=
         Corresponding_Record_Component (Field);
       Our_Field  : constant Entity_Id      :=
-        (if Present (CRC) and then Full_Etype (CRC) = Full_Etype (F_GT)
+        (if   No (Get_Field_Info (Field)) and then Present (CRC)
+              and then Full_Etype (CRC) = Full_Etype (F_GT)
          then CRC else Field);
       Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
       Rec_GT     : constant GL_Type        := Primitive_GL_Type (Rec_Type);

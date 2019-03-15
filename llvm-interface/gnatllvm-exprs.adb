@@ -992,6 +992,13 @@ package body GNATLLVM.Exprs is
          elsif not Is_Data (Src) and then Is_Loadable_Type (Src_GT) then
             Src := Get (Src, Object);
          end if;
+
+         --  If we have the proper GNAT type, but a different alternative,
+         --  make sure it's the right alternative.
+
+         if Full_Etype (Src_GT) = Full_Etype (Related_Type (Src)) then
+            Src := From_Primitive (To_Primitive (Src), Src_GT);
+         end if;
       end if;
 
       --  See what relationships we have for the source and destination to

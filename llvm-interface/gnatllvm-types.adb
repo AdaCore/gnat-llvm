@@ -139,6 +139,37 @@ package body GNATLLVM.Types is
    --  type, either an integer or pointer to anything.  Alloc_GT is the
    --  type that was used to allocate the memory.
 
+   --  We put the function used to compute sizes into a generic so that we
+   --  can instantiate it using various types of sizing.  The most common
+   --  case is an actual size computation, where we produce a GL_Value.
+   --  But we may also instantiate this package to generate the structure
+   --  needed for back-annotation.
+
+   generic
+      type Result is private;
+      Empty_Result : Result;
+      with function Sz_From_Const (V : GL_Value) return Result;
+      with function Sz_Record_Type_Size
+        (TE         : Entity_Id;
+         V          : GL_Value;
+         Max_Size   : Boolean := False;
+         No_Padding : Boolean := False) return Result;
+      with function Sz_Unc_Array_Type_Size
+        (TE         : Entity_Id;
+         V          : GL_Value;
+         Max_Size   : Boolean := False) return Result;
+      with function Sz_Array_Type_Size
+        (TE         : Entity_Id;
+         V          : GL_Value;
+         Max_Size   : Boolean := False) return Result;
+   package Size is
+      function Get_Type_Size
+        (GT         : GL_Type;
+         V          : GL_Value := No_GL_Value;
+         Max_Size   : Boolean  := False;
+         No_Padding : Boolean  := False) return Result;
+   end Size;
+
    ----------------
    -- From_Const --
    ----------------
@@ -2199,140 +2230,103 @@ package body GNATLLVM.Types is
       end if;
    end Get_Type_Alignment;
 
-   -------------------
-   -- Get_Type_Size --
-   -------------------
+   package body Size is
+
+      -------------------
+      -- Get_Type_Size --
+      -------------------
+
+      function Get_Type_Size
+        (GT         : GL_Type;
+         V          : GL_Value := No_GL_Value;
+         Max_Size   : Boolean  := False;
+         No_Padding : Boolean  := False) return Result
+      is
+         Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
+
+      begin
+         --  If a value was specified and it's data, then it must be of a
+         --  fixed size.  That's the size we're looking for.
+
+         if Present (V) and then Is_Data (V)
+           and then not Use_Max_Size and then not No_Padding
+         then
+            return Sz_From_Const (Get_Type_Size (Type_Of (V)));
+
+         --  If this is a subprogram type, it doesn't have a size
+
+         elsif Ekind (GT) = E_Subprogram_Type then
+            return Empty_Result;
+
+         --  If this isn't a non-native type, then the size is the size of the
+         --  LLVM type and unless we aren't to remove padding and this is a
+         --  record type.
+
+         elsif not Is_Nonnative_Type (GT)
+              and then (not Is_Record_Type (GT) or else not No_Padding)
+         then
+            return Sz_From_Const (Get_Type_Size (Type_Of (GT)));
+
+         elsif Is_Record_Type (GT) then
+            return Sz_Record_Type_Size (Full_Etype (GT), V,
+                                        Max_Size   => Use_Max_Size,
+                                        No_Padding => No_Padding);
+         elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
+            return Sz_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+         elsif Is_Array_Type (GT) then
+            return Sz_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+         else
+            pragma Assert (False);
+            return Empty_Result;
+         end if;
+
+      end Get_Type_Size;
+   end Size;
+
+   package LLVM_Size is
+      new Size (Result                 => GL_Value,
+                Empty_Result           => No_GL_Value,
+                Sz_From_Const          => From_Const,
+                Sz_Record_Type_Size    => Get_Record_Type_Size,
+                Sz_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
+                Sz_Array_Type_Size     => Get_Array_Type_Size);
 
    function Get_Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return GL_Value
-   is
-      Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
+     renames LLVM_Size.Get_Type_Size;
 
-   begin
-      --  If a value was specified and it's data, then it must be of a
-      --  fixed size.  That's the size we're looking for.
-
-      if Present (V) and then Is_Data (V)
-        and then not Use_Max_Size and then not No_Padding
-      then
-         return From_Const (Get_Type_Size (Type_Of (V)));
-
-      --  If this is a subprogram type, it doesn't have a size
-
-      elsif Ekind (GT) = E_Subprogram_Type then
-         return No_GL_Value;
-
-      --  If this isn't a non-native type, then the size is the size of the
-      --  LLVM type and unless we aren't to remove padding and this is a
-      --  record type.
-
-      elsif not Is_Nonnative_Type (GT)
-        and then (not Is_Record_Type (GT) or else not No_Padding)
-      then
-         return Get_Type_Size (Type_Of (GT));
-
-      elsif Is_Record_Type (GT) then
-         return Get_Record_Type_Size (Full_Etype (GT), V,
-                                      Max_Size   => Use_Max_Size,
-                                      No_Padding => No_Padding);
-      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
-         return Get_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      elsif Is_Array_Type (GT) then
-         return Get_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      else
-         pragma Assert (False);
-         return No_GL_Value;
-      end if;
-
-   end Get_Type_Size;
-
-   -------------------
-   -- Get_Type_Size --
-   -------------------
+   package IDS_Size is
+      new Size (Result                 => IDS,
+                Empty_Result           => No_IDS,
+                Sz_From_Const          => From_Const,
+                Sz_Record_Type_Size    => Get_Record_Type_Size,
+                Sz_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
+                Sz_Array_Type_Size     => Get_Array_Type_Size);
 
    function Get_Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean := False;
-      No_Padding : Boolean := False) return IDS
-   is
-      Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return IDS
+     renames IDS_Size.Get_Type_Size;
 
-   begin
-      --  If a value was specified and it's data, then it must be of a
-      --  fixed size.  That's the size we're looking for.
-
-      if Present (V) and then Is_Data (V)
-        and then not Use_Max_Size and then not No_Padding
-      then
-         return From_Const (Get_Type_Size (Type_Of (V)));
-
-      elsif Ekind (GT) = E_Subprogram_Type then
-         return No_IDS;
-
-      elsif not Is_Nonnative_Type (GT)
-        and then (not Is_Record_Type (GT) or else not No_Padding)
-      then
-         return From_Const (Get_Type_Size (Type_Of (GT)));
-
-      elsif Is_Record_Type (GT) then
-         return Get_Record_Type_Size (Full_Etype (GT), V,
-                                      Max_Size   => Use_Max_Size,
-                                      No_Padding => No_Padding);
-      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
-         return Get_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      elsif Is_Array_Type (GT) then
-         return Get_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      else
-         pragma Assert (False);
-         return No_IDS;
-      end if;
-   end Get_Type_Size;
-
-   -------------------
-   -- Get_Type_Size --
-   -------------------
+   package BA_Size is
+      new Size (Result                 => BA_Data,
+                Empty_Result           => No_BA,
+                Sz_From_Const          => From_Const,
+                Sz_Record_Type_Size    => Get_Record_Type_Size,
+                Sz_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
+                Sz_Array_Type_Size     => Get_Array_Type_Size);
 
    function Get_Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return BA_Data
-   is
-      Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
-
-   begin
-      if Present (V) and then Relationship (V) = Data
-        and then not Use_Max_Size and then not No_Padding
-      then
-         return From_Const (Get_Type_Size (Type_Of (V)));
-
-      elsif Ekind (GT) = E_Subprogram_Type then
-         return No_BA;
-
-      elsif not Is_Nonnative_Type (GT)
-        and then (not Is_Record_Type (GT) or else not No_Padding)
-      then
-         return From_Const (Get_Type_Size (Type_Of (GT)));
-
-      elsif Is_Record_Type (GT) then
-         return Get_Record_Type_Size (Full_Etype (GT), V,
-                                  Max_Size   => Use_Max_Size,
-                                  No_Padding => No_Padding);
-
-      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
-         return Get_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      elsif Is_Array_Type (GT) then
-         return Get_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      else
-         pragma Assert (False);
-         return No_BA;
-      end if;
-
-   end Get_Type_Size;
+     renames BA_Size.Get_Type_Size;
 
    --------------------
    -- Get_Alloc_Size --

@@ -1768,7 +1768,7 @@ package body GNATLLVM.Records is
       V          : GL_Value;
       Max_Size   : Boolean) renames IDS_Size.Get_Variant_Aligns;
 
-   function Record_Type_Size
+   function Get_Record_Type_Size
      (TE         : Entity_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
@@ -1820,7 +1820,7 @@ package body GNATLLVM.Records is
       No_Padding : Boolean := False) return BA_Data
      renames BA_Size.Get_Record_Size_So_Far;
 
-   function Record_Type_Size
+   function Get_Record_Type_Size
      (TE         : Entity_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;

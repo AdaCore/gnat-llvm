@@ -948,7 +948,7 @@ package body GNATLLVM.Arrays is
                 Sz_Const_Val     => Const_Val_ULL,
                 Sz_Undef         => Undef);
 
-   function Array_Type_Size
+   function Get_Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
@@ -981,7 +981,7 @@ package body GNATLLVM.Arrays is
                 Sz_Const_Val     => Const_Val_ULL,
                 Sz_Undef         => Undef);
 
-   function Array_Type_Size
+   function Get_Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data

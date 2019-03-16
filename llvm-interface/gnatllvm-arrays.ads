@@ -168,17 +168,40 @@ package GNATLLVM.Arrays is
      with Pre  => Is_Array_Type (TE),
           Post => Present (Get_Array_Type_Size'Result);
 
-   function Array_Type_Size
+   function Get_Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
      with Pre  => Is_Array_Type (TE),
-          Post => Present (Array_Type_Size'Result);
+          Post => Present (Get_Array_Type_Size'Result);
 
-   function Array_Type_Size
+   function Get_Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data
+     with Pre  => Is_Array_Type (TE);
+
+   function Get_Unc_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return GL_Value is
+     (Get_Array_Type_Size (TE, V, Max_Size))
+     with Pre  => Is_Array_Type (TE),
+          Post => Present (Get_Unc_Array_Type_Size'Result);
+
+   function Get_Unc_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return IDS is
+     (Var_IDS)
+     with Pre  => Is_Array_Type (TE),
+          Post => Present (Get_Unc_Array_Type_Size'Result);
+
+   function Get_Unc_Array_Type_Size
+     (TE       : Entity_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return BA_Data is
+     (No_BA)
      with Pre  => Is_Array_Type (TE);
 
    function Bounds_To_Length

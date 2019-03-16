@@ -537,12 +537,12 @@ package GNATLLVM.Types is
      (Get_Const_Int_Value (V.Value))
      with Pre => Is_Const (V);
 
-   function Type_Size
+   function Get_Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return IDS
-     with Pre => Present (GT), Post => Present (Type_Size'Result);
+     with Pre => Present (GT), Post => Present (Get_Type_Size'Result);
 
    function I_Cmp
      (Op       : Int_Predicate_T;
@@ -749,7 +749,7 @@ package GNATLLVM.Types is
    function Neg (V : BA_Data; Name : String := "") return BA_Data is
      (Unop (V, Neg'Access, Negate_Expr, Name));
 
-   function Type_Size
+   function Get_Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;

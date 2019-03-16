@@ -1758,7 +1758,7 @@ package body GNATLLVM.Records is
                 Sz_Max                 => Build_Max,
                 Sz_Is_Const            => Is_Const,
                 Sz_Const_Val           => Const_Val_ULL,
-                Sz_Type_Size           => Type_Size,
+                Sz_Type_Size           => Get_Type_Size,
                 Sz_RI_Info_For_Variant => RI_Info_For_Variant);
 
    procedure Variant_Aligns
@@ -1801,7 +1801,7 @@ package body GNATLLVM.Records is
                 Sz_Max                 => Build_Max,
                 Sz_Is_Const            => Is_Const,
                 Sz_Const_Val           => Const_Val_ULL,
-                Sz_Type_Size           => Type_Size,
+                Sz_Type_Size           => Get_Type_Size,
                 Sz_RI_Info_For_Variant => RI_Info_For_Variant);
 
    procedure Variant_Aligns

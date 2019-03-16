@@ -1823,7 +1823,7 @@ package body GNATLLVM.Variables is
 
       if Unknown_Esize (Def_Ident) then
          Set_Esize (Def_Ident, Annotated_Value
-                      (Type_Size (GT, Max_Size => True) *
+                      (Get_Type_Size (GT, Max_Size => True) *
                          Const (Uint_Bits_Per_Unit)));
       end if;
 

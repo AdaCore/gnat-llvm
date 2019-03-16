@@ -209,7 +209,7 @@ package body GNATLLVM.Types is
       --  But we conservatively test for the range of Int to be consistent
       --  with how we create arrays.
 
-      Size := Type_Size (GT, No_GL_Value, Max_Size);
+      Size := Get_Type_Size (GT, No_GL_Value, Max_Size);
       return not Is_Const (Size)
         or else Const_Int (Size) < 0
         or else Const_Int (Size) > LLI (Int'Last);
@@ -1585,7 +1585,7 @@ package body GNATLLVM.Types is
          end if;
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
-                           (Type_Size (GT, No_Padding => True) *
+                           (Get_Type_Size (GT, No_Padding => True) *
                               Const (Uint_Bits_Per_Unit)));
          end if;
       end if;
@@ -2241,6 +2241,93 @@ package body GNATLLVM.Types is
 
    end Get_Type_Size;
 
+   -------------------
+   -- Get_Type_Size --
+   -------------------
+
+   function Get_Type_Size
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return IDS
+   is
+      Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
+
+   begin
+      --  If a value was specified and it's data, then it must be of a
+      --  fixed size.  That's the size we're looking for.
+
+      if Present (V) and then Is_Data (V)
+        and then not Use_Max_Size and then not No_Padding
+      then
+         return From_Const (Get_Type_Size (Type_Of (V)));
+
+      elsif Ekind (GT) = E_Subprogram_Type then
+         return No_IDS;
+
+      elsif not Is_Nonnative_Type (GT)
+        and then (not Is_Record_Type (GT) or else not No_Padding)
+      then
+         return From_Const (Get_Type_Size (Type_Of (GT)));
+
+      elsif Is_Record_Type (GT) then
+         return Record_Type_Size (Full_Etype (GT), V,
+                                  Max_Size   => Use_Max_Size,
+                                  No_Padding => No_Padding);
+      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
+         return Var_IDS;
+      elsif Is_Array_Type (GT) then
+         return Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+      else
+         pragma Assert (False);
+         return No_IDS;
+      end if;
+   end Get_Type_Size;
+
+   -------------------
+   -- Get_Type_Size --
+   -------------------
+
+   function Get_Type_Size
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return BA_Data
+   is
+      Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
+
+   begin
+      --  If a value was specified and it's data, then it must be of a
+      --  fixed size.  That's the size we're looking for.
+
+      if Present (V) and then Relationship (V) = Data
+        and then not Use_Max_Size and then not No_Padding
+      then
+         return From_Const (Get_Type_Size (Type_Of (V)));
+
+      elsif Ekind (GT) = E_Subprogram_Type then
+         return No_BA;
+
+      elsif not Is_Nonnative_Type (GT)
+        and then (not Is_Record_Type (GT) or else not No_Padding)
+      then
+         return From_Const (Get_Type_Size (Type_Of (GT)));
+
+      elsif Is_Record_Type (GT) then
+         return Record_Type_Size (Full_Etype (GT), V,
+                                  Max_Size   => Use_Max_Size,
+                                  No_Padding => No_Padding);
+      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
+         return No_BA;
+      elsif Is_Array_Type (GT) then
+         return Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+      else
+         pragma Assert (False);
+         return No_BA;
+      end if;
+
+   end Get_Type_Size;
+
    --------------------
    -- Get_Alloc_Size --
    --------------------
@@ -2472,49 +2559,6 @@ package body GNATLLVM.Types is
       then (False, Build_Max (V1.Value, V2.Value, Name)) else Var_IDS);
 
    ---------------
-   -- Type_Size --
-   ---------------
-
-   function Type_Size
-     (GT         : GL_Type;
-      V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean := False;
-      No_Padding : Boolean := False) return IDS
-   is
-      Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
-
-   begin
-      --  If a value was specified and it's data, then it must be of a
-      --  fixed size.  That's the size we're looking for.
-
-      if Present (V) and then Is_Data (V)
-        and then not Use_Max_Size and then not No_Padding
-      then
-         return From_Const (Get_Type_Size (Type_Of (V)));
-
-      elsif Ekind (GT) = E_Subprogram_Type then
-         return No_IDS;
-
-      elsif not Is_Nonnative_Type (GT)
-        and then (not Is_Record_Type (GT) or else not No_Padding)
-      then
-         return From_Const (Get_Type_Size (Type_Of (GT)));
-
-      elsif Is_Record_Type (GT) then
-         return Record_Type_Size (Full_Etype (GT), V,
-                                  Max_Size   => Use_Max_Size,
-                                  No_Padding => No_Padding);
-      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
-         return Var_IDS;
-      elsif Is_Array_Type (GT) then
-         return Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      else
-         pragma Assert (False);
-         return No_IDS;
-      end if;
-   end Type_Size;
-
-   ---------------
    -- Emit_Expr --
    ---------------
 
@@ -2559,7 +2603,7 @@ package body GNATLLVM.Types is
    function Annotated_Object_Size (GT : GL_Type) return Node_Ref_Or_Val is
       Use_Max      : constant Boolean := Is_Unconstrained_Record (GT);
       TE_Byte_Size : constant BA_Data :=
-        Type_Size (GT, Max_Size => Use_Max);
+        Get_Type_Size (GT, Max_Size => Use_Max);
       TE_Bit_Size  : constant BA_Data :=
         TE_Byte_Size * Const (Uint_Bits_Per_Unit);
 
@@ -2770,50 +2814,6 @@ package body GNATLLVM.Types is
       end if;
 
    end Build_Select;
-
-   ---------------
-   -- Type_Size --
-   ---------------
-
-   function Type_Size
-     (GT         : GL_Type;
-      V          : GL_Value := No_GL_Value;
-      Max_Size   : Boolean  := False;
-      No_Padding : Boolean  := False) return BA_Data
-   is
-      Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
-
-   begin
-      --  If a value was specified and it's data, then it must be of a
-      --  fixed size.  That's the size we're looking for.
-
-      if Present (V) and then Relationship (V) = Data
-        and then not Use_Max_Size and then not No_Padding
-      then
-         return From_Const (Get_Type_Size (Type_Of (V)));
-
-      elsif Ekind (GT) = E_Subprogram_Type then
-         return No_BA;
-
-      elsif not Is_Nonnative_Type (GT)
-        and then (not Is_Record_Type (GT) or else not No_Padding)
-      then
-         return From_Const (Get_Type_Size (Type_Of (GT)));
-
-      elsif Is_Record_Type (GT) then
-         return Record_Type_Size (Full_Etype (GT), V,
-                                  Max_Size   => Use_Max_Size,
-                                  No_Padding => No_Padding);
-      elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
-         return No_BA;
-      elsif Is_Array_Type (GT) then
-         return Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
-      else
-         pragma Assert (False);
-         return No_BA;
-      end if;
-
-   end Type_Size;
 
    ----------------
    -- _Emit_Expr --

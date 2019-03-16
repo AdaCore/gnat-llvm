@@ -481,8 +481,7 @@ package body GNATLLVM.GLType is
                          and then not Needs_Bias
                          and then not Needs_Max
                          and then Present (Size_V) and then Present (GTI.Size)
-                         and then I_Cmp (Int_SLT, Size_V, GTI.Size) =
-                                     Const_True)
+                         and then Size_V < GTI.Size)
               --  ??? Until we support field rep clauses, don't try to make
               --  non-integer types smaller.
 

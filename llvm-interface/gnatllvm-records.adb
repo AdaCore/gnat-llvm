@@ -181,7 +181,7 @@ package body GNATLLVM.Records is
    --  Like Get_RI_Info, but for a fragment known to be a variant and
    --  where we're not getting the maximum size.
 
-   procedure IDS_RI_Info_For_Variant
+   procedure RI_Info_For_Variant
      (RI          : Record_Info;
       V           : GL_Value;
       Max_Size    : Boolean;
@@ -193,7 +193,7 @@ package body GNATLLVM.Records is
           Post => not Return_Size or else Present (Size);
    --  Version of above for Is_Dynamic_Size
 
-   procedure BA_RI_Info_For_Variant
+   procedure RI_Info_For_Variant
      (RI          : Record_Info;
       V           : GL_Value;
       Max_Size    : Boolean;
@@ -204,7 +204,7 @@ package body GNATLLVM.Records is
      with Pre  => RI.Variants /= null;
    --  Version of above for back-annotation
 
-   function BA_Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
+   function Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
      with Pre => Ekind_In (E, E_Component, E_Discriminant);
    --  Back-annotation version of Emit_Field_Position
 
@@ -237,13 +237,11 @@ package body GNATLLVM.Records is
          LHS : Result;
          RHS : Result;
          Name : String := "") return Result;
-      with function  Sz_Add
-        (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Sub
-        (V1, V2 : Result; Name : String := "") return Result;
+      with function  "+" (V1, V2 : Result) return Result;
+      with function  "-" (V1, V2 : Result) return Result;
+      with function  Sz_Neg (V : Result; Name : String := "") return Result;
       with function  Sz_And
         (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Neg (V : Result; Name : String := "") return Result;
       with function  Sz_Select
         (V_If, V_Then, V_Else : Result; Name : String := "") return Result;
       with function  Sz_Min
@@ -914,7 +912,7 @@ package body GNATLLVM.Records is
            (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
          is
             Discrim_SO : constant SO_Ref
-              := Annotated_Value (BA_Emit_Expr (Discrim));
+              := Annotated_Value (Emit_Expr (Discrim));
             Choice     : Node_Id;
             Expr       : SO_Ref;
             This_Expr  : SO_Ref;
@@ -1213,9 +1211,9 @@ package body GNATLLVM.Records is
             then
                declare
                   Byte_Position : constant BA_Data :=
-                    BA_Field_Position (Cur_Field, No_GL_Value);
+                    Field_Position (Cur_Field, No_GL_Value);
                   Bit_Position  : constant BA_Data :=
-                    BA_Mul (Byte_Position, BA_Const (Uint_Bits_Per_Unit));
+                    Byte_Position * Const (Uint_Bits_Per_Unit);
 
                begin
                   if Unknown_Esize (Cur_Field) then
@@ -1226,7 +1224,7 @@ package body GNATLLVM.Records is
                      Set_Component_Bit_Offset (Cur_Field,
                                                Annotated_Value (Bit_Position));
                   end if;
-                  if not BA_Is_Const (Byte_Position)
+                  if not Is_Const (Byte_Position)
                     and then Unknown_Normalized_Position (Cur_Field)
                   then
                      Set_Normalized_Position (Cur_Field,
@@ -1568,9 +1566,8 @@ package body GNATLLVM.Records is
             else
                Get_RI_Info (RI, V, Max_Size, This_Size,
                             Must_Align, This_Align);
-               Total_Size := Sz_Add (Align_To (Total_Size, Cur_Align,
-                                               Must_Align),
-                                     This_Size);
+               Total_Size := Align_To (Total_Size, Cur_Align, Must_Align) +
+                               This_Size;
 
                --  The resulting alignment is the minimum of this alignment
                --  and the maximum of the current alignment and what we had
@@ -1669,7 +1666,7 @@ package body GNATLLVM.Records is
                  Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
 
             begin
-               return Sz_Add (Offset, Sz_Const (This_Offset));
+               return Offset + Sz_Const (This_Offset);
             end;
          end if;
       end Emit_Field_Position;
@@ -1688,7 +1685,7 @@ package body GNATLLVM.Records is
          then
             return V;
          else
-            return Sz_And (Sz_Add (V, Sz_Sub (Must_Align, Sz_Const (ULL (1)))),
+            return Sz_And (V + Must_Align - Sz_Const (ULL (1)),
                            Sz_Neg (Must_Align));
          end if;
       end Align_To;
@@ -1702,8 +1699,8 @@ package body GNATLLVM.Records is
       new Size (Result                 => GL_Value,
                 Empty_Result           => No_GL_Value,
                 Sz_Const               => Size_Const_Int,
-                Sz_Add                 => Add,
-                Sz_Sub                 => Sub,
+                "+"                    => "+",
+                "-"                    => "-",
                 Sz_And                 => Build_And,
                 Sz_Neg                 => Neg,
                 Sz_I_Cmp               => I_Cmp,
@@ -1750,35 +1747,35 @@ package body GNATLLVM.Records is
    package IDS_Size is
       new Size (Result                 => IDS,
                 Empty_Result           => No_IDS,
-                Sz_Const               => IDS_Const,
-                Sz_Add                 => IDS_Add,
-                Sz_Sub                 => IDS_Sub,
-                Sz_And                 => IDS_And,
-                Sz_Neg                 => IDS_Neg,
-                Sz_I_Cmp               => IDS_I_Cmp,
-                Sz_Select              => IDS_Select,
-                Sz_Min                 => IDS_Min,
-                Sz_Max                 => IDS_Max,
-                Sz_Is_Const            => IDS_Is_Const,
-                Sz_Const_Val           => IDS_Const_Val_ULL,
-                Sz_Type_Size           => IDS_Type_Size,
-                Sz_RI_Info_For_Variant => IDS_RI_Info_For_Variant);
+                Sz_Const               => Const,
+                "+"                    => "+",
+                "-"                    => "-",
+                Sz_And                 => Build_And,
+                Sz_Neg                 => Neg,
+                Sz_I_Cmp               => I_Cmp,
+                Sz_Select              => Build_Select,
+                Sz_Min                 => Build_Min,
+                Sz_Max                 => Build_Max,
+                Sz_Is_Const            => Is_Const,
+                Sz_Const_Val           => Const_Val_ULL,
+                Sz_Type_Size           => Type_Size,
+                Sz_RI_Info_For_Variant => RI_Info_For_Variant);
 
-   procedure IDS_Variant_Aligns
+   procedure Variant_Aligns
      (S_Idx      : Record_Info_Id;
       Must_Align : out IDS;
       Is_Align   : out IDS;
       V          : GL_Value;
       Max_Size   : Boolean) renames IDS_Size.Get_Variant_Aligns;
 
-   function IDS_Record_Type_Size
+   function Record_Type_Size
      (TE         : Entity_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return IDS
      renames IDS_Size.Get_Record_Type_Size;
 
-   function IDS_Record_Size_So_Far
+   function Record_Size_So_Far
      (TE         : Entity_Id;
       V          : GL_Value;
       Start_Idx  : Record_Info_Id;
@@ -1793,28 +1790,28 @@ package body GNATLLVM.Records is
    package BA_Size is
       new Size (Result                 => BA_Data,
                 Empty_Result           => No_BA,
-                Sz_Const               => BA_Const,
-                Sz_Add                 => BA_Add,
-                Sz_Sub                 => BA_Sub,
-                Sz_And                 => BA_And,
-                Sz_Neg                 => BA_Neg,
-                Sz_I_Cmp               => BA_I_Cmp,
-                Sz_Select              => BA_Select,
-                Sz_Min                 => BA_Min,
-                Sz_Max                 => BA_Max,
-                Sz_Is_Const            => BA_Is_Const,
-                Sz_Const_Val           => BA_Const_Val_ULL,
-                Sz_Type_Size           => BA_Type_Size,
-                Sz_RI_Info_For_Variant => BA_RI_Info_For_Variant);
+                Sz_Const               => Const,
+                "+"                    => "+",
+                "-"                    => "-",
+                Sz_And                 => Build_And,
+                Sz_Neg                 => Neg,
+                Sz_I_Cmp               => I_Cmp,
+                Sz_Select              => Build_Select,
+                Sz_Min                 => Build_Min,
+                Sz_Max                 => Build_Max,
+                Sz_Is_Const            => Is_Const,
+                Sz_Const_Val           => Const_Val_ULL,
+                Sz_Type_Size           => Type_Size,
+                Sz_RI_Info_For_Variant => RI_Info_For_Variant);
 
-   procedure BA_Variant_Aligns
+   procedure Variant_Aligns
      (S_Idx      : Record_Info_Id;
       Must_Align : out BA_Data;
       Is_Align   : out BA_Data;
       V          : GL_Value;
       Max_Size   : Boolean) renames BA_Size.Get_Variant_Aligns;
 
-   function BA_Record_Size_So_Far
+   function Record_Size_So_Far
      (TE         : Entity_Id;
       V          : GL_Value;
       Start_Idx  : Record_Info_Id;
@@ -1823,14 +1820,14 @@ package body GNATLLVM.Records is
       No_Padding : Boolean := False) return BA_Data
      renames BA_Size.Get_Record_Size_So_Far;
 
-   function BA_Record_Type_Size
+   function Record_Type_Size
      (TE         : Entity_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return BA_Data
      renames BA_Size.Get_Record_Type_Size;
 
-   function BA_Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
+   function Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
      renames BA_Size.Emit_Field_Position;
 
    -----------------------
@@ -1933,11 +1930,11 @@ package body GNATLLVM.Records is
                else No_GL_Value);
    end Get_RI_Info_For_Variant;
 
-   -----------------------------
-   -- IDS_RI_Info_For_Variant --
-   -----------------------------
+   -------------------------
+   -- RI_Info_For_Variant --
+   -------------------------
 
-   procedure IDS_RI_Info_For_Variant
+   procedure RI_Info_For_Variant
      (RI          : Record_Info;
       V           : GL_Value;
       Max_Size    : Boolean;
@@ -1963,15 +1960,14 @@ package body GNATLLVM.Records is
          --  compute each.
 
          if No (RI.Variants (J)) then
-            Our_Must_Align := IDS_Const (ULL (1));
-            Our_Is_Align   := IDS_Const (ULL (1));
-            Our_Size       := IDS_Const (ULL (0));
+            Our_Must_Align := Const (ULL (1));
+            Our_Is_Align   := Const (ULL (1));
+            Our_Size       := Const (ULL (0));
          else
-            IDS_Variant_Aligns (RI.Variants (J),
-                                Our_Must_Align, Our_Is_Align, V, Max_Size);
-            Our_Size := IDS_Record_Size_So_Far (Empty, V, RI.Variants (J),
-                                                Empty_Record_Info_Id,
-                                                Max_Size);
+            Variant_Aligns (RI.Variants (J),
+                            Our_Must_Align, Our_Is_Align, V, Max_Size);
+            Our_Size := Record_Size_So_Far (Empty, V, RI.Variants (J),
+                                            Empty_Record_Info_Id, Max_Size);
          end if;
 
          if No (Must_Align) or else Must_Align /= Our_Must_Align then
@@ -1988,20 +1984,20 @@ package body GNATLLVM.Records is
       --  Now handle case where there were no variants.
 
       if No (Must_Align) then
-         Must_Align := IDS_Const (ULL (1));
-         Is_Align   := IDS_Const (ULL (1));
+         Must_Align := Const (ULL (1));
+         Is_Align   := Const (ULL (1));
          if Return_Size then
-            Size    := IDS_Const (ULL (0));
+            Size    := Const (ULL (0));
          end if;
       end if;
 
-   end IDS_RI_Info_For_Variant;
+   end RI_Info_For_Variant;
 
-   ----------------------------
-   -- BA_RI_Info_For_Variant --
-   ----------------------------
+   -------------------------
+   -- RI_Info_For_Variant --
+   -------------------------
 
-   procedure BA_RI_Info_For_Variant
+   procedure RI_Info_For_Variant
      (RI          : Record_Info;
       V           : GL_Value;
       Max_Size    : Boolean;
@@ -2010,7 +2006,7 @@ package body GNATLLVM.Records is
       Is_Align    : out BA_Data;
       Return_Size : Boolean := True)
    is
-      function BA_Get_Variant_Expr
+      function Get_Variant_Expr
         (RI : Record_Info; In_Values : BA_Data_Array) return BA_Data
         with Pre => List_Length_Non_Pragma (RI.Variant_List) =
                     In_Values'Length;
@@ -2023,11 +2019,11 @@ package body GNATLLVM.Records is
       Must_Aligns : BA_Data_Array (RI.Variants'Range) := (others => No_BA);
       Is_Aligns   : BA_Data_Array (RI.Variants'Range) := (others => No_BA);
 
-      -------------------------
-      -- BA_Get_Variant_Expr --
-      -------------------------
+      ----------------------
+      -- Get_Variant_Expr --
+      ----------------------
 
-      function BA_Get_Variant_Expr
+      function Get_Variant_Expr
         (RI : Record_Info; In_Values : BA_Data_Array) return BA_Data
       is
          Values : BA_Data_Array := In_Values;
@@ -2061,7 +2057,7 @@ package body GNATLLVM.Records is
          while (for some V of Values => Present (V)) loop
             declare
                Variant    : Node_Id := First_Non_Pragma (RI.Variant_List);
-               This_Cond  : BA_Data := BA_Const (0);
+               This_Cond  : BA_Data := Const (0);
                This_Value : BA_Data;
 
             begin
@@ -2081,8 +2077,8 @@ package body GNATLLVM.Records is
                      pragma Assert (Present_Expr (Variant) /= Uint_1);
                      Values (J) := No_BA;
                      This_Cond :=
-                       BA_Truth_Or (This_Cond,
-                                    SO_Ref_To_BA (Present_Expr (Variant)));
+                       Truth_Or (This_Cond,
+                                 SO_Ref_To_BA (Present_Expr (Variant)));
                   end if;
 
                   Next_Non_Pragma (Variant);
@@ -2090,12 +2086,12 @@ package body GNATLLVM.Records is
 
                --  Finally, make the conditional expression
 
-               Expr := BA_Select (This_Cond, This_Value, Expr);
+               Expr := Build_Select (This_Cond, This_Value, Expr);
             end;
          end loop;
 
          return Expr;
-      end BA_Get_Variant_Expr;
+      end Get_Variant_Expr;
 
    begin
       --  We first go through each variant and compute the alignments and
@@ -2107,27 +2103,27 @@ package body GNATLLVM.Records is
          --  compute each, computing the size only if needed.
 
          if No (RI.Variants (J)) then
-            Must_Aligns (J) := BA_Const (1);
-            Is_Aligns   (J) := BA_Const (1);
-            Sizes       (J) := BA_Const (0);
+            Must_Aligns (J) := Const (1);
+            Is_Aligns   (J) := Const (1);
+            Sizes       (J) := Const (0);
          else
-            BA_Variant_Aligns (RI.Variants (J),
-                                Must_Aligns (J), Is_Aligns (J), V, Max_Size);
+            Variant_Aligns (RI.Variants (J), Must_Aligns (J), Is_Aligns (J),
+                            V, Max_Size);
             if Return_Size then
                Sizes (J) :=
-                 BA_Record_Size_So_Far (Empty, V, RI.Variants (J),
-                                        Empty_Record_Info_Id, Max_Size);
+                 Record_Size_So_Far (Empty, V, RI.Variants (J),
+                                     Empty_Record_Info_Id, Max_Size);
             end if;
          end if;
       end loop;
 
       --  Now compute the resulting values
 
-      Must_Align := BA_Get_Variant_Expr (RI, Must_Aligns);
-      Is_Align   := BA_Get_Variant_Expr (RI, Is_Aligns);
-      Size       := (if   Return_Size then BA_Get_Variant_Expr (RI, Sizes)
+      Must_Align := Get_Variant_Expr (RI, Must_Aligns);
+      Is_Align   := Get_Variant_Expr (RI, Is_Aligns);
+      Size       := (if   Return_Size then Get_Variant_Expr (RI, Sizes)
                      else No_BA);
-   end BA_RI_Info_For_Variant;
+   end RI_Info_For_Variant;
 
    -------------------------
    -- Record_Field_Offset --

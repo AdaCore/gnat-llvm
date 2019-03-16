@@ -139,50 +139,50 @@ package body GNATLLVM.Types is
    --  type, either an integer or pointer to anything.  Alloc_GT is the
    --  type that was used to allocate the memory.
 
-   --------------------
-   -- IDS_From_Const --
-   --------------------
+   ----------------
+   -- From_Const --
+   ----------------
 
-   function IDS_From_Const (V : GL_Value) return IDS is
+   function From_Const (V : GL_Value) return IDS is
      (if   Is_A_Const_Int (V) then (False, V) else Var_IDS)
-     with Pre => Is_Constant (V), Post => Present (IDS_From_Const'Result);
+     with Pre => Is_Constant (V), Post => Present (From_Const'Result);
    --  V is a constant.  If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
 
-   -----------------
-   -- IDS_Convert --
-   -----------------
+   -------------
+   -- Convert --
+   -------------
 
-   function IDS_Convert
+   function Convert
      (V              : IDS;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
       Is_Unchecked   : Boolean := False) return IDS
    is
-     (if   IDS_Is_Const (V)
+     (if   Is_Const (V)
       then (False, Convert (V.Value, GT, Float_Truncate, Is_Unchecked))
       else Var_IDS);
 
-   ----------------
-   -- BA_Convert --
-   ----------------
+   -------------
+   -- Convert --
+   -------------
 
-   function BA_Convert
+   function Convert
      (V              : BA_Data;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
       Is_Unchecked   : Boolean := False) return BA_Data
    is
-     (if   BA_Is_Const (V)
+     (if   Is_Const (V)
       then (False, Convert (V.C_Value, GT, Float_Truncate, Is_Unchecked),
             No_Uint)
       else V);
 
-   -------------------
-   -- BA_From_Const --
-   -------------------
+   ----------------
+   -- From_Const --
+   ----------------
 
-   function BA_From_Const (V : GL_Value) return BA_Data is
+   function From_Const (V : GL_Value) return BA_Data is
      (if   Is_A_Const_Int (V) then (False, V, No_Uint) else No_BA)
      with Pre => Is_Constant (V);
    --  Likewise, for back-annotation
@@ -209,10 +209,10 @@ package body GNATLLVM.Types is
       --  But we conservatively test for the range of Int to be consistent
       --  with how we create arrays.
 
-      Size := IDS_Type_Size (GT, No_GL_Value, Max_Size);
-      return not IDS_Is_Const (Size)
-        or else IDS_Const_Int (Size) < 0
-        or else IDS_Const_Int (Size) > LLI (Int'Last);
+      Size := Type_Size (GT, No_GL_Value, Max_Size);
+      return not Is_Const (Size)
+        or else Const_Int (Size) < 0
+        or else Const_Int (Size) > LLI (Int'Last);
 
    end Is_Dynamic_Size;
 
@@ -379,8 +379,8 @@ package body GNATLLVM.Types is
    begin
       --  If GT is narrower than BT, use its signedness, otherwise use BT's
 
-      return (if   Get_Type_Size_In_Bits (Type_Of (GT)) <
-                   Get_Type_Size_In_Bits (Type_Of (BT))
+      return (if   ULL'(Get_Type_Size_In_Bits (Type_Of (GT))) <
+                   ULL'(Get_Type_Size_In_Bits (Type_Of (BT)))
               then Is_Unsigned_Type (GT)
               else Is_Unsigned_Type (BT));
    end Is_Unsigned_For_Convert;
@@ -1585,8 +1585,8 @@ package body GNATLLVM.Types is
          end if;
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
-                           (BA_Mul (BA_Type_Size (GT, No_Padding => True),
-                                    BA_Const (Uint_Bits_Per_Unit))));
+                           (Type_Size (GT, No_Padding => True) *
+                              Const (Uint_Bits_Per_Unit)));
          end if;
       end if;
 
@@ -1887,7 +1887,7 @@ package body GNATLLVM.Types is
       --  Handle overalignment by adding the alignment to the size
 
       if Overalign then
-         Num_Elts := Add (Num_Elts, Align);
+         Num_Elts := Num_Elts + Align;
       end if;
 
       --  Check that we aren't trying to allocate too much memory.  Raise
@@ -1986,16 +1986,15 @@ package body GNATLLVM.Types is
       elsif No (Proc) then
          declare
             Ptr_Size   : constant GL_Value := Get_Type_Size (A_Char_GL_Type);
-            Total_Size : constant GL_Value :=
-              Add (Size, Add (Align, Ptr_Size));
+            Total_Size : constant GL_Value := Size + Align + Ptr_Size;
             Alloc      : constant GL_Value :=
               Call (Get_Default_Alloc_Fn, A_Char_GL_Type, (1 => Total_Size));
             Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_GL_Type);
             Aligned    : constant GL_Value :=
-              Align_To (Add (Alloc_Int, Ptr_Size),
+              Align_To (Alloc_Int + Ptr_Size,
                         Size_Const_Int (ULL (Get_System_Allocator_Alignment)),
                         Align);
-            Ptr_Loc    : constant GL_Value := Sub (Aligned, Ptr_Size);
+            Ptr_Loc    : constant GL_Value := Aligned - Ptr_Size;
 
          begin
             Store (Alloc, Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
@@ -2096,7 +2095,7 @@ package body GNATLLVM.Types is
                  Ptr_To_Int (Conv_V, Size_GL_Type);
                Ptr_Size   : constant GL_Value :=
                  Get_Type_Size (A_Char_GL_Type);
-               Ptr_Loc    : constant GL_Value := Sub (Addr, Ptr_Size);
+               Ptr_Loc    : constant GL_Value := Addr - Ptr_Size;
                Ptr_Ref    : constant GL_Value :=
                  Int_To_Ref (Ptr_Loc, A_Char_GL_Type);
 
@@ -2268,7 +2267,7 @@ package body GNATLLVM.Types is
       --  for unconstrained itself.
 
       if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT) then
-         Size := Align_To (Add (Size, Get_Bound_Size (GT)),
+         Size := Align_To (Size + Get_Bound_Size (GT),
                            Get_Type_Alignment (GT),
                            Get_Bound_Alignment (Full_Etype (GT)));
       end if;
@@ -2456,27 +2455,27 @@ package body GNATLLVM.Types is
       end if;
    end Add_Type_Data_To_Instruction;
 
-   -------------
-   -- IDS_Min --
-   -------------
+   ----------------
+   -- Builld_Min --
+   ----------------
 
-   function IDS_Min (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function Build_Min (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
       then (False, Build_Min (V1.Value, V2.Value, Name)) else Var_IDS);
 
-   -------------
-   -- IDS_Max --
-   -------------
+   ---------------
+   -- Build_Max --
+   ---------------
 
-   function IDS_Max (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function Build_Max (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
       then (False, Build_Max (V1.Value, V2.Value, Name)) else Var_IDS);
 
-   -------------------
-   -- IDS_Type_Size --
-   -------------------
+   ---------------
+   -- Type_Size --
+   ---------------
 
-   function IDS_Type_Size
+   function Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean := False;
@@ -2491,7 +2490,7 @@ package body GNATLLVM.Types is
       if Present (V) and then Is_Data (V)
         and then not Use_Max_Size and then not No_Padding
       then
-         return IDS_From_Const (Get_Type_Size (Type_Of (V)));
+         return From_Const (Get_Type_Size (Type_Of (V)));
 
       elsif Ekind (GT) = E_Subprogram_Type then
          return No_IDS;
@@ -2499,32 +2498,32 @@ package body GNATLLVM.Types is
       elsif not Is_Nonnative_Type (GT)
         and then (not Is_Record_Type (GT) or else not No_Padding)
       then
-         return IDS_From_Const (Get_Type_Size (Type_Of (GT)));
+         return From_Const (Get_Type_Size (Type_Of (GT)));
 
       elsif Is_Record_Type (GT) then
-         return IDS_Record_Type_Size (Full_Etype (GT), V,
-                                      Max_Size   => Use_Max_Size,
-                                      No_Padding => No_Padding);
+         return Record_Type_Size (Full_Etype (GT), V,
+                                  Max_Size   => Use_Max_Size,
+                                  No_Padding => No_Padding);
       elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
          return Var_IDS;
       elsif Is_Array_Type (GT) then
-         return IDS_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+         return Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
       else
          pragma Assert (False);
          return No_IDS;
       end if;
-   end IDS_Type_Size;
+   end Type_Size;
 
-   -------------------
-   -- IDS_Emit_Expr --
-   -------------------
+   ---------------
+   -- Emit_Expr --
+   ---------------
 
-   function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS is
+   function Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS is
       pragma Unreferenced (LHS);
    begin
       return (if   Is_No_Elab_Needed (V)
-              then IDS_From_Const (Emit_Expression (V)) else Var_IDS);
-   end IDS_Emit_Expr;
+              then From_Const (Emit_Expression (V)) else Var_IDS);
+   end Emit_Expr;
 
    ---------------------
    -- Annotated_Value --
@@ -2560,19 +2559,19 @@ package body GNATLLVM.Types is
    function Annotated_Object_Size (GT : GL_Type) return Node_Ref_Or_Val is
       Use_Max      : constant Boolean := Is_Unconstrained_Record (GT);
       TE_Byte_Size : constant BA_Data :=
-        BA_Type_Size (GT, Max_Size => Use_Max);
+        Type_Size (GT, Max_Size => Use_Max);
       TE_Bit_Size  : constant BA_Data :=
-        BA_Mul (TE_Byte_Size, BA_Const (Uint_Bits_Per_Unit));
+        TE_Byte_Size * Const (Uint_Bits_Per_Unit);
 
    begin
       return Annotated_Value (TE_Bit_Size);
    end Annotated_Object_Size;
 
-   -------------
-   -- BA_Unop --
-   -------------
+   ----------
+   -- Unop --
+   ----------
 
-   function BA_Unop
+   function Unop
      (V    : BA_Data;
       F    : Unop_Access;
       C    : TCode;
@@ -2586,7 +2585,7 @@ package body GNATLLVM.Types is
       --  If we have a constant, perform the operation on the constant and
       --  return it.
 
-      elsif BA_Is_Const (V) then
+      elsif Is_Const (V) then
          return (False, F (V.C_Value, Name), No_Uint);
 
       --  Otherwise, create a new representation tree node
@@ -2595,13 +2594,13 @@ package body GNATLLVM.Types is
          return (False, No_GL_Value, Create_Node (C, V.T_Value));
       end if;
 
-   end BA_Unop;
+   end Unop;
 
-   --------------
-   -- BA_Binop --
-   --------------
+   -----------
+   -- Binop --
+   -----------
 
-   function BA_Binop
+   function Binop
      (V1, V2 : BA_Data;
       F      : Binop_Access;
       C      : TCode;
@@ -2614,11 +2613,11 @@ package body GNATLLVM.Types is
       --  that value.  Unfortunately, LLVM doesn't check for overflow in
       --  the constant case, so we have to do it.
 
-      if BA_Is_Const (V1) and then BA_Is_Const (V2) then
+      if Is_Const (V1) and then Is_Const (V2) then
          declare
             Res     : constant GL_Value := F (V1.C_Value, V2.C_Value, Name);
-            V1_Neg  : constant Boolean  := BA_Const_Int (V1) < 0;
-            V2_Neg  : constant Boolean  := BA_Const_Int (V2) < 0;
+            V1_Neg  : constant Boolean  := Const_Int (V1) < 0;
+            V2_Neg  : constant Boolean  := Const_Int (V2) < 0;
             Res_Neg : constant Boolean  := Get_Const_Int_Value (Res) < 0;
 
          begin
@@ -2662,13 +2661,13 @@ package body GNATLLVM.Types is
                               (if Is_Static_SO_Ref (Op1) then Op1 else Op2)));
       end if;
 
-   end BA_Binop;
+   end Binop;
 
-   --------------
-   -- BA_I_Cmp --
-   --------------
+   -----------
+   -- I_Cmp --
+   -----------
 
-   function BA_I_Cmp
+   function I_Cmp
      (Op       : Int_Predicate_T;
       LHS, RHS : BA_Data;
       Name     : String := "") return BA_Data
@@ -2680,7 +2679,7 @@ package body GNATLLVM.Types is
       --  If both are constants, do the operation as a constant and return
       --  that value.
 
-      if BA_Is_Const (LHS) and then BA_Is_Const (RHS) then
+      if Is_Const (LHS) and then Is_Const (RHS) then
          return (False, I_Cmp (Op, LHS.C_Value, RHS.C_Value, Name), No_Uint);
       end if;
 
@@ -2717,27 +2716,27 @@ package body GNATLLVM.Types is
          return (False, No_GL_Value, Create_Node (TC, LHS_Op, RHS_Op));
       end if;
 
-   end BA_I_Cmp;
-
-   ------------
-   -- BA_Min --
-   ------------
-
-   function BA_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, Build_Min'Access, Min_Expr, Name));
-
-   ------------
-   -- BA_Max --
-   ------------
-
-   function BA_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (BA_Binop (V1, V2, Build_Max'Access, Max_Expr, Name));
+   end I_Cmp;
 
    ---------------
-   -- BA_Select --
+   -- Build_Min --
    ---------------
 
-   function BA_Select
+   function Build_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (Binop (V1, V2, Build_Min'Access, Min_Expr, Name));
+
+   ---------------
+   -- Build_Max --
+   ---------------
+
+   function Build_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     (Binop (V1, V2, Build_Max'Access, Max_Expr, Name));
+
+   ------------------
+   -- Build_Select --
+   ------------------
+
+   function Build_Select
      (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data
    is
       pragma Unreferenced (Name);
@@ -2746,8 +2745,8 @@ package body GNATLLVM.Types is
    begin
       --  If the first is a constant, return the appropriate leg
 
-      if BA_Is_Const (V_If) then
-         return (if BA_Is_Const_0 (V_If) then V_Else else V_Then);
+      if Is_Const (V_If) then
+         return (if Is_Const_0 (V_If) then V_Else else V_Then);
       end if;
 
       --  Otherwise, get our operands as a node reference or Uint
@@ -2770,13 +2769,13 @@ package body GNATLLVM.Types is
                  Create_Node (Cond_Expr, If_Op, Then_Op, Else_Op));
       end if;
 
-   end BA_Select;
+   end Build_Select;
 
-   ------------------
-   -- BA_Type_Size --
-   ------------------
+   ---------------
+   -- Type_Size --
+   ---------------
 
-   function BA_Type_Size
+   function Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
@@ -2791,7 +2790,7 @@ package body GNATLLVM.Types is
       if Present (V) and then Relationship (V) = Data
         and then not Use_Max_Size and then not No_Padding
       then
-         return BA_From_Const (Get_Type_Size (Type_Of (V)));
+         return From_Const (Get_Type_Size (Type_Of (V)));
 
       elsif Ekind (GT) = E_Subprogram_Type then
          return No_BA;
@@ -2799,28 +2798,28 @@ package body GNATLLVM.Types is
       elsif not Is_Nonnative_Type (GT)
         and then (not Is_Record_Type (GT) or else not No_Padding)
       then
-         return BA_From_Const (Get_Type_Size (Type_Of (GT)));
+         return From_Const (Get_Type_Size (Type_Of (GT)));
 
       elsif Is_Record_Type (GT) then
-         return BA_Record_Type_Size (Full_Etype (GT), V,
-                                     Max_Size   => Use_Max_Size,
-                                     No_Padding => No_Padding);
+         return Record_Type_Size (Full_Etype (GT), V,
+                                  Max_Size   => Use_Max_Size,
+                                  No_Padding => No_Padding);
       elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
          return No_BA;
       elsif Is_Array_Type (GT) then
-         return BA_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+         return Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
       else
          pragma Assert (False);
          return No_BA;
       end if;
 
-   end BA_Type_Size;
+   end Type_Size;
 
-   ------------------
-   -- BA_Emit_Expr --
-   ------------------
+   ----------------
+   -- _Emit_Expr --
+   ----------------
 
-   function BA_Emit_Expr
+   function Emit_Expr
      (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
    is
       pragma Unreferenced (LHS);
@@ -2864,51 +2863,50 @@ package body GNATLLVM.Types is
 
                         begin
 
-                           LHS := BA_Emit_Expr (LB);
-                           RHS := BA_Emit_Expr (UB);
-                           Result :=
-                             BA_Bounds_To_Length (LHS, RHS, Full_GL_Type (V));
+                           LHS    := Emit_Expr (LB);
+                           RHS    := Emit_Expr (UB);
+                           Result := Bounds_To_Length (LHS, RHS,
+                                                       Full_GL_Type (V));
                         end;
 
                      elsif Attr in Attribute_Min | Attribute_Max then
-                        LHS := BA_Emit_Expr (First (Expressions (V)));
-                        RHS := BA_Emit_Expr (Last  (Expressions (V)));
+                        LHS    := Emit_Expr (First (Expressions (V)));
+                        RHS    := Emit_Expr (Last  (Expressions (V)));
                         Result := (if   Attr = Attribute_Min
-                                   then BA_Min (LHS, RHS)
-                                   else BA_Max (LHS, RHS));
+                                   then Build_Min (LHS, RHS)
+                                   else Build_Max (LHS, RHS));
                      end if;
 
                   when N_Op_Minus =>
-                     Result := BA_Neg (BA_Emit_Expr (Right_Opnd (V)));
+                     Result := Neg (Emit_Expr (Right_Opnd (V)));
 
                   when N_Op_Plus =>
-                     Result := BA_Emit_Expr (Right_Opnd (V));
+                     Result := Emit_Expr (Right_Opnd (V));
 
                   when N_Op_Add =>
-                     LHS := BA_Emit_Expr (Left_Opnd  (V));
-                     RHS := BA_Emit_Expr (Right_Opnd (V));
-                     Result := BA_Add (LHS, RHS);
+                     LHS    := Emit_Expr (Left_Opnd  (V));
+                     RHS    := Emit_Expr (Right_Opnd (V));
+                     Result := LHS + RHS;
 
                   when N_Op_Subtract =>
-                     LHS := BA_Emit_Expr (Left_Opnd  (V));
-                     RHS := BA_Emit_Expr (Right_Opnd (V));
-                     Result := BA_Sub (LHS, RHS);
+                     LHS    := Emit_Expr (Left_Opnd  (V));
+                     RHS    := Emit_Expr (Right_Opnd (V));
+                     Result := LHS - RHS;
 
                   when N_Op_Multiply =>
-                     LHS := BA_Emit_Expr (Left_Opnd  (V));
-                     RHS := BA_Emit_Expr (Right_Opnd (V));
-                     Result := BA_Mul (LHS, RHS);
+                     LHS    := Emit_Expr (Left_Opnd  (V));
+                     RHS    := Emit_Expr (Right_Opnd (V));
+                     Result := LHS * RHS;
 
                   when N_Op_Divide =>
-                     LHS := BA_Emit_Expr (Left_Opnd  (V));
-                     RHS := BA_Emit_Expr (Right_Opnd (V));
+                     LHS    := Emit_Expr (Left_Opnd  (V));
+                     RHS    := Emit_Expr (Right_Opnd (V));
                      Result := (if   Is_Unsigned_Type (Full_Etype (V))
-                                then BA_U_Div (LHS, RHS)
-                                else BA_S_Div (LHS, RHS));
+                                then U_Div (LHS, RHS)
+                                else LHS / RHS);
 
                   when N_Type_Conversion | N_Unchecked_Type_Conversion =>
-                     Result := BA_Emit_Convert (Expression (V),
-                                                Full_GL_Type (V));
+                     Result := Emit_Convert (Expression (V), Full_GL_Type (V));
 
                   when others =>
                      null;
@@ -2938,7 +2936,7 @@ package body GNATLLVM.Types is
       --  And now return the value
 
       return (SO_Info = No_Uint, No_GL_Value, SO_Info);
-   end BA_Emit_Expr;
+   end Emit_Expr;
 
    ------------------
    -- Dump_BA_Data --
@@ -2948,7 +2946,7 @@ package body GNATLLVM.Types is
    begin
       if No (V) then
          Write_Line ("None");
-      elsif BA_Is_Const (V) then
+      elsif Is_Const (V) then
          Dump_LLVM_Value (LLVM_Value (V.C_Value));
       else
          lgx (V.T_Value);

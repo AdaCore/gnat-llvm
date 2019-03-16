@@ -519,97 +519,110 @@ package GNATLLVM.Types is
    function No      (V : IDS) return Boolean is (V =  No_IDS);
    function Present (V : IDS) return Boolean is (V /= No_IDS);
 
-   function IDS_Is_Const  (V : IDS) return Boolean is (Present (V.Value));
+   function Is_Const  (V : IDS) return Boolean is (Present (V.Value));
 
-   function IDS_Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
+   function Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
      ((False,  Size_Const_Int (C, Sign_Extend)))
-     with Post => IDS_Is_Const (IDS_Const'Result);
+     with Post => Is_Const (Const'Result);
 
-   function IDS_Const_Int (GT : GL_Type; C : Uint) return IDS is
+   function Const_Int (GT : GL_Type; C : Uint) return IDS is
      ((False, Const_Int (GT, C)))
      with Pre  => Present (GT) and then C /= No_Uint;
 
-   function IDS_Type_Size
+   function Const_Val_ULL (V : IDS) return ULL is
+     (Get_Const_Int_Value_ULL (V.Value))
+     with Pre => Is_Const (V);
+
+   function Const_Int (V : IDS) return LLI is
+     (Get_Const_Int_Value (V.Value))
+     with Pre => Is_Const (V);
+
+   function Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return IDS
-     with Pre => Present (GT), Post => Present (IDS_Type_Size'Result);
+     with Pre => Present (GT), Post => Present (Type_Size'Result);
 
-   function IDS_I_Cmp
+   function I_Cmp
      (Op       : Int_Predicate_T;
       LHS, RHS : IDS;
       Name     : String := "") return IDS is
-     (if   IDS_Is_Const (LHS) and then IDS_Is_Const (RHS)
+     (if   Is_Const (LHS) and then Is_Const (RHS)
       then (False, I_Cmp (Op, LHS.Value, RHS.Value, Name)) else Var_IDS)
      with Pre  => Present (LHS) and then Present (RHS),
-          Post => Present (IDS_I_Cmp'Result);
+          Post => Present (I_Cmp'Result);
 
-   function IDS_Add (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function Add (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
       then (False, Add (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_Add'Result);
+          Post => Present (Add'Result);
 
-   function IDS_Sub (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function Sub (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
       then (False, Sub (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_Sub'Result);
+          Post => Present (Sub'Result);
 
-   function IDS_Mul (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function Mul (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
       then (False, Mul (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_Mul'Result);
+          Post => Present (Mul'Result);
 
-   function IDS_U_Div (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function U_Div (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
       then (False, U_Div (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_U_Div'Result);
+          Post => Present (U_Div'Result);
 
-   function IDS_S_Div (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function S_Div (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
       then (False, S_Div (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_S_Div'Result);
+          Post => Present (S_Div'Result);
 
-   function IDS_Min (V1, V2 : IDS; Name : String := "") return IDS
+   function Build_Min (V1, V2 : IDS; Name : String := "") return IDS
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_Min'Result);
+          Post => Present (Build_Min'Result);
 
-   function IDS_Max (V1, V2 : IDS; Name : String := "") return IDS
+   function Build_Max (V1, V2 : IDS; Name : String := "") return IDS
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_Max'Result);
+          Post => Present (Build_Max'Result);
 
-   function IDS_And (V1, V2 : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V1) and then IDS_Is_Const (V2)
+   function Build_And (V1, V2 : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V1) and then Is_Const (V2)
         then (False, Build_And (V1.Value, V2.Value, Name)) else Var_IDS)
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (IDS_And'Result);
+          Post => Present (Build_And'Result);
 
-   function IDS_Neg (V : IDS; Name : String := "") return IDS is
-     (if   IDS_Is_Const (V) then (False, Neg (V.Value, Name)) else Var_IDS)
-     with Pre => Present (V), Post => Present (IDS_Neg'Result);
+   function Neg (V : IDS; Name : String := "") return IDS is
+     (if   Is_Const (V) then (False, Neg (V.Value, Name)) else Var_IDS)
+     with Pre => Present (V), Post => Present (Neg'Result);
 
-   function IDS_Select
+   function "+" (LHS, RHS : IDS) return IDS is
+     (Add (LHS, RHS));
+   function "-" (LHS, RHS : IDS) return IDS is
+     (Sub (LHS, RHS));
+   function "-" (V : IDS) return IDS is
+     (Neg (V));
+   function "*" (LHS, RHS : IDS) return IDS is
+     (Mul (LHS, RHS));
+   function "/" (LHS, RHS : IDS) return IDS is
+     (S_Div (LHS, RHS));
+   function "<" (LHS, RHS : IDS) return Boolean is
+     (Const_Val_ULL (I_Cmp (Int_SLT, LHS, RHS)) = 1);
+
+   function Build_Select
      (V_If, V_Then, V_Else : IDS; Unused_Name : String := "") return IDS
    is
-     (if    IDS_Is_Const (V_If) and then V_If.Value = Const_True then V_Then
-      elsif IDS_Is_Const (V_If) then V_Else else Var_IDS)
+     (if    Is_Const (V_If) and then V_If.Value = Const_True then V_Then
+      elsif Is_Const (V_If) then V_Else else Var_IDS)
      with Pre => Present (V_If) and then Present (V_Then)
                  and then Present (V_Else);
 
-   function IDS_Const_Val_ULL (V : IDS) return ULL is
-     (Get_Const_Int_Value_ULL (V.Value))
-     with Pre => IDS_Is_Const (V);
-
-   function IDS_Const_Int (V : IDS) return LLI is
-     (Get_Const_Int_Value (V.Value))
-     with Pre => IDS_Is_Const (V);
-
-   function IDS_Extract_Value
+   function Extract_Value
      (GT             : GL_Type;
       V              : GL_Value;
       Unused_Idx_Arr : Index_Array;
@@ -617,26 +630,26 @@ package GNATLLVM.Types is
    is
       (Var_IDS)
      with Pre  => Present (GT) and then Present (V),
-          Post => Present (IDS_Extract_Value'Result);
+          Post => Present (Extract_Value'Result);
 
-   function IDS_Convert
+   function Convert
      (V              : IDS;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
       Is_Unchecked   : Boolean := False) return IDS
      with Pre => Present (V) and then Present (GT);
 
-   function IDS_Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
-     with Pre => Present (V), Post => Present (IDS_Emit_Expr'Result);
+   function Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
+     with Pre => Present (V), Post => Present (Emit_Expr'Result);
 
-   function IDS_Emit_Convert (N : Node_Id; GT : GL_Type) return IDS is
-     (IDS_Convert (IDS_Emit_Expr (N), GT))
+   function Emit_Convert (N : Node_Id; GT : GL_Type) return IDS is
+     (Convert (Emit_Expr (N), GT))
      with Pre  => Present (N) and then Present (GT),
-          Post => Present (IDS_Emit_Convert'Result);
+          Post => Present (Emit_Convert'Result);
 
-   function IDS_Undef (GT : GL_Type) return IDS is
+   function Undef (GT : GL_Type) return IDS is
      (Var_IDS)
-     with Pre => Present (GT), Post => Present (IDS_Undef'Result);
+     with Pre => Present (GT), Post => Present (Undef'Result);
 
    --  In order to use the generic functions that computing sizing
    --  information to compute a size and position in the form needs for
@@ -673,35 +686,35 @@ package GNATLLVM.Types is
    type Binop_Access is access
      function (V1, V2 : GL_Value; Name : String := "") return GL_Value;
 
-   function BA_Is_Const  (V : BA_Data) return Boolean is (Present (V.C_Value));
+   function Is_Const  (V : BA_Data) return Boolean is (Present (V.C_Value));
 
-   function BA_Const_Val_ULL (V : BA_Data) return ULL is
+   function Const_Val_ULL (V : BA_Data) return ULL is
      (Get_Const_Int_Value_ULL (V.C_Value))
-     with Pre => BA_Is_Const (V);
+     with Pre => Is_Const (V);
 
-   function BA_Const_Int (V : BA_Data) return LLI is
+   function Const_Int (V : BA_Data) return LLI is
      (Get_Const_Int_Value (V.C_Value))
-     with Pre => BA_Is_Const (V);
+     with Pre => Is_Const (V);
 
-   function BA_Is_Const_0 (V : BA_Data) return Boolean is
-     (BA_Is_Const (V) and then BA_Const_Int (V) = 0);
-   function BA_Is_Const_1 (V : BA_Data) return Boolean is
-     (BA_Is_Const (V) and then BA_Const_Int (V) = 1);
+   function Is_Const_0 (V : BA_Data) return Boolean is
+     (Is_Const (V) and then Const_Int (V) = 0);
+   function Is_Const_1 (V : BA_Data) return Boolean is
+     (Is_Const (V) and then Const_Int (V) = 1);
 
-   function BA_Const
+   function Const
      (C : ULL; Sign_Extend : Boolean := False) return BA_Data
    is
      ((False,  Size_Const_Int (C, Sign_Extend), No_Uint))
-     with Post => BA_Is_Const (BA_Const'Result);
+     with Post => Is_Const (Const'Result);
 
-   function BA_Const (C : Uint) return BA_Data is
+   function Const (C : Uint) return BA_Data is
      ((False, Size_Const_Int (C), No_Uint))
-     with Pre => C /= No_Uint, Post => BA_Is_Const (BA_Const'Result);
+     with Pre => C /= No_Uint, Post => Is_Const (Const'Result);
 
-   function BA_Const_Int (GT : GL_Type; C : Uint) return BA_Data is
+   function Const_Int (GT : GL_Type; C : Uint) return BA_Data is
      ((False, Const_Int (GT, C), No_Uint))
      with Pre  => Present (GT) and then C /= No_Uint,
-          Post => BA_Is_Const (BA_Const_Int'Result);
+          Post => Is_Const (Const_Int'Result);
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
    --  Return a Node_Ref corresponding to BA_Data.  This may be either the
@@ -709,7 +722,7 @@ package GNATLLVM.Types is
    --  the conversion can't be done.
 
    function SO_Ref_To_BA (V : SO_Ref) return BA_Data is
-     ((if   Is_Static_SO_Ref (V) then BA_Const_Int (Size_GL_Type, V)
+     ((if   Is_Static_SO_Ref (V) then Const_Int (Size_GL_Type, V)
        else (False, No_GL_Value, V)));
    --  Likewise, but in the opposite direction
 
@@ -718,7 +731,7 @@ package GNATLLVM.Types is
    --  Given a type that's used for the type of an object, return the
    --  SO_Ref corresponding to the object's size.
 
-   function BA_Unop
+   function Unop
      (V    : BA_Data;
       F    : Unop_Access;
       C    : TCode;
@@ -726,69 +739,82 @@ package GNATLLVM.Types is
    --  Perform the operation on V defined by F (which is how to modify the
    --  GL_Value) and C (which is how to make a representation tree).;
 
-   function BA_Binop
+   function Binop
      (V1, V2 : BA_Data;
       F      : Binop_Access;
       C      : TCode;
       Name   : String := "") return BA_Data;
    --  Likewise, but for a binary operation.
 
-   function BA_Neg (V : BA_Data; Name : String := "") return BA_Data is
-     (BA_Unop (V, Neg'Access, Negate_Expr, Name));
+   function Neg (V : BA_Data; Name : String := "") return BA_Data is
+     (Unop (V, Neg'Access, Negate_Expr, Name));
 
-   function BA_Type_Size
+   function Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return BA_Data
      with Pre => Present (GT);
 
-   function BA_I_Cmp
+   function I_Cmp
      (Op       : Int_Predicate_T;
       LHS, RHS : BA_Data;
       Name     : String := "") return BA_Data;
 
-   function BA_Add (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if    BA_Is_Const_0 (V1) then V2
-       elsif BA_Is_Const_0 (V2) then V1
-       else BA_Binop (V1, V2, Add'Access, Plus_Expr, Name)));
+   function Add (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     ((if    Is_Const_0 (V1) then V2
+       elsif Is_Const_0 (V2) then V1
+       else  Binop (V1, V2, Add'Access, Plus_Expr, Name)));
 
-   function BA_Sub (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if    BA_Is_Const_0 (V2) then V1
-       elsif BA_Is_Const_0 (V1) then BA_Neg (V2, Name)
-       else BA_Binop (V1, V2, Sub'Access, Minus_Expr, Name)));
+   function Sub (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     ((if    Is_Const_0 (V2) then V1
+       elsif Is_Const_0 (V1) then Neg (V2, Name)
+       else  Binop (V1, V2, Sub'Access, Minus_Expr, Name)));
 
-   function BA_Mul (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if    BA_Is_Const_1 (V1) then V2
-       elsif BA_Is_Const_1 (V2) then V1
-       elsif BA_Is_Const_0 (V1) or else BA_Is_Const_0 (V2) then BA_Const (0)
-       else  BA_Binop (V1, V2, Mul'Access, Mult_Expr, Name)));
+   function Mul (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     ((if    Is_Const_1 (V1) then V2
+       elsif Is_Const_1 (V2) then V1
+       elsif Is_Const_0 (V1) or else Is_Const_0 (V2) then Const (0)
+       else  Binop (V1, V2, Mul'Access, Mult_Expr, Name)));
 
-   function BA_U_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if   BA_Is_Const_1 (V2) then V1
-       else BA_Binop (V1, V2, U_Div'Access, Trunc_Div_Expr, Name)));
+   function U_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     ((if   Is_Const_1 (V2) then V1
+       else Binop (V1, V2, U_Div'Access, Trunc_Div_Expr, Name)));
 
-   function BA_S_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if   BA_Is_Const_1 (V2) then V1
-       else BA_Binop (V1, V2, S_Div'Access, Trunc_Div_Expr, Name)));
+   function S_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     ((if   Is_Const_1 (V2) then V1
+       else Binop (V1, V2, S_Div'Access, Trunc_Div_Expr, Name)));
 
-   function BA_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data;
-   function BA_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data;
+   function "+" (LHS, RHS : BA_Data) return BA_Data is
+     (Add (LHS, RHS));
+   function "-" (LHS, RHS : BA_Data) return BA_Data is
+     (Sub (LHS, RHS));
+   function "-" (V : BA_Data) return BA_Data is
+     (Neg (V));
+   function "*" (LHS, RHS : BA_Data) return BA_Data is
+     (Mul (LHS, RHS));
+   function "/" (LHS, RHS : BA_Data) return BA_Data is
+     (S_Div (LHS, RHS));
+   function "<" (LHS, RHS : BA_Data) return Boolean is
+     (Is_Const_1 (I_Cmp (Int_SLT, LHS, RHS)));
 
-   function BA_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if   BA_Is_Const_0 (V1) or else BA_Is_Const_0 (V2) then BA_Const (0)
-       else BA_Binop (V1, V2, Build_And'Access, Bit_And_Expr, Name)));
+   function Build_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data;
+   function Build_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data;
 
-   function BA_Truth_Or
+   function Build_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+     ((if   Is_Const_0 (V1) or else Is_Const_0 (V2) then Const (0)
+       else Binop (V1, V2, Build_And'Access, Bit_And_Expr, Name)));
+
+   function Truth_Or
          (V1, V2 : BA_Data; Name : String := "") return BA_Data
    is
-     ((if   BA_Is_Const_0 (V1) then V2 elsif BA_Is_Const_0 (V2) then V1
-       else BA_Binop (V1, V2, Build_Or'Access, Truth_Or_Expr, Name)));
+     ((if   Is_Const_0 (V1) then V2 elsif Is_Const_0 (V2) then V1
+       else Binop (V1, V2, Build_Or'Access, Truth_Or_Expr, Name)));
 
-   function BA_Select
+   function Build_Select
      (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data;
 
-   function BA_Extract_Value
+   function Extract_Value
      (GT             : GL_Type;
       V              : GL_Value;
       Unused_Idx_Arr : Index_Array;
@@ -797,21 +823,21 @@ package GNATLLVM.Types is
       (No_BA)
      with Pre => Present (GT) and then Present (V);
 
-   function BA_Convert
+   function Convert
      (V              : BA_Data;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
       Is_Unchecked   : Boolean := False) return BA_Data
      with Pre => Present (GT);
 
-   function BA_Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
+   function Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
      with Pre => Present (V);
 
-   function BA_Emit_Convert (N : Node_Id; GT : GL_Type) return BA_Data is
-     (BA_Convert (BA_Emit_Expr (N), GT))
+   function Emit_Convert (N : Node_Id; GT : GL_Type) return BA_Data is
+     (Convert (Emit_Expr (N), GT))
      with Pre => Present (GT);
 
-   function BA_Undef (GT : GL_Type) return BA_Data is
+   function Undef (GT : GL_Type) return BA_Data is
      (No_BA)
      with Pre => Present (GT);
 

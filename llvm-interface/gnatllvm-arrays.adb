@@ -142,17 +142,13 @@ package body GNATLLVM.Arrays is
          LHS : Result;
          RHS : Result;
          Name : String := "") return Result;
-      with function  Sz_Add
-        (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Sub
-        (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Mul
-        (V1, V2 : Result; Name : String := "") return Result;
+      with function  "+" (V1, V2 : Result) return Result;
+      with function  "-" (V1, V2 : Result) return Result;
+      with function  "*" (V1, V2 : Result) return Result;
+      with function  "/" (V1, V2 : Result) return Result;
+      with function  Sz_Neg (V : Result; Name : String := "") return Result;
       with function  Sz_U_Div
         (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_S_Div
-        (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Neg (V : Result; Name : String := "") return Result;
       with function  Sz_Select
         (C_If, C_Then, C_Else : Result; Name : String := "") return Result;
       with function  Sz_Min
@@ -566,7 +562,7 @@ package body GNATLLVM.Arrays is
             return Sz_Select
               (C_If   => Sz_I_Cmp (Cmp_Kind, Low, High, "is-empty"),
                C_Then => Const_0,
-               C_Else => Sz_Add (Sz_Sub (High, Low), Const_1));
+               C_Else => High - Low + Const_1);
          end if;
 
       end Bounds_To_Length;
@@ -634,7 +630,7 @@ package body GNATLLVM.Arrays is
 
             when N_Op_Minus =>
                LHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
-               return Sz_Neg (LHS);
+               return Sz_Neg (RHS);
 
             when N_Op_Plus =>
                return Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
@@ -642,23 +638,23 @@ package body GNATLLVM.Arrays is
             when N_Op_Add =>
                LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
                RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-               return Sz_Add (LHS, RHS);
+               return LHS + RHS;
 
             when N_Op_Subtract =>
                LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
                RHS := Emit_Expr_For_Minmax (Right_Opnd (N), not Is_Low);
-               return Sz_Sub (LHS, RHS);
+               return LHS - RHS;
 
             when N_Op_Multiply =>
                LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
                RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
-               return Sz_Mul (LHS, RHS);
+               return LHS * RHS;
 
             when N_Op_Divide =>
                LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
                RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
                return (if   Is_Unsigned_Type (Full_Etype (N))
-                       then Sz_U_Div (LHS, RHS) else Sz_S_Div (LHS, RHS));
+                       then Sz_U_Div (LHS, RHS) else LHS / RHS);
 
             when N_Type_Conversion | N_Unchecked_Type_Conversion =>
                LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
@@ -812,9 +808,9 @@ package body GNATLLVM.Arrays is
            and then Sz_Is_Const (Low_Bound)
            and then Sz_Const_Val (Low_Bound) = 0
          then
-            return Sz_Add (Sz_Sub (Sz_Convert (High_Bound, Size_GL_Type),
-                                   Sz_Convert (Low_Bound,  Size_GL_Type)),
-                           Sz_Const_Int (Size_GL_Type, Uint_1));
+            return Sz_Convert (High_Bound, Size_GL_Type) -
+                     Sz_Convert (Low_Bound,  Size_GL_Type) +
+                     Sz_Const_Int (Size_GL_Type, Uint_1);
          else
             return Bounds_To_Length (Low_Bound, High_Bound, Size_GL_Type);
          end if;
@@ -835,7 +831,7 @@ package body GNATLLVM.Arrays is
             --  multiply all of them together.
 
             for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
-               Size := Sz_Mul (Size, Get_Array_Length (TE, Dim, V, Max_Size));
+               Size := Size * Get_Array_Length (TE, Dim, V, Max_Size);
             end loop;
          end return;
       end Get_Array_Elements;
@@ -856,9 +852,8 @@ package body GNATLLVM.Arrays is
            Get_Array_Elements (V, TE, Max_Size);
 
       begin
-         return Sz_Mul
-           (Sz_Convert (Comp_Size, Size_GL_Type),
-            Sz_Convert (Num_Elements, Size_GL_Type), "size");
+         return Sz_Convert (Comp_Size, Size_GL_Type) *
+           Sz_Convert (Num_Elements, Size_GL_Type);
       end Get_Array_Type_Size;
 
    end Size;
@@ -873,12 +868,12 @@ package body GNATLLVM.Arrays is
                 Sz_Const_Int     => Const_Int,
                 Sz_Type_Size     => Get_Type_Size,
                 Sz_I_Cmp         => I_Cmp,
-                Sz_Add           => Add,
-                Sz_Sub           => Sub,
-                Sz_Mul           => Mul,
-                Sz_U_Div         => U_Div,
-                Sz_S_Div         => S_Div,
+                "+"              => "+",
+                "-"              => "-",
+                "*"              => "*",
+                "/"              => "/",
                 Sz_Neg           => Neg,
+                Sz_U_Div         => U_Div,
                 Sz_Select        => Build_Select,
                 Sz_Min           => Build_Min,
                 Sz_Max           => Build_Max,
@@ -932,28 +927,28 @@ package body GNATLLVM.Arrays is
    package IDS_Size is
       new Size (Result           => IDS,
                 Empty_Result     => No_IDS,
-                Sz_Const         => IDS_Const,
-                Sz_Const_Int     => IDS_Const_Int,
-                Sz_Type_Size     => IDS_Type_Size,
-                Sz_I_Cmp         => IDS_I_Cmp,
-                Sz_Add           => IDS_Add,
-                Sz_Sub           => IDS_Sub,
-                Sz_Mul           => IDS_Mul,
-                Sz_U_Div         => IDS_U_Div,
-                Sz_S_Div         => IDS_S_Div,
-                Sz_Neg           => IDS_Neg,
-                Sz_Select        => IDS_Select,
-                Sz_Min           => IDS_Min,
-                Sz_Max           => IDS_Max,
-                Sz_Extract_Value => IDS_Extract_Value,
-                Sz_Convert       => IDS_Convert,
-                Sz_Emit_Expr     => IDS_Emit_Expr,
-                Sz_Emit_Convert  => IDS_Emit_Convert,
-                Sz_Is_Const      => IDS_Is_Const,
-                Sz_Const_Val     => IDS_Const_Val_ULL,
-                Sz_Undef         => IDS_Undef);
+                Sz_Const         => Const,
+                Sz_Const_Int     => Const_Int,
+                Sz_Type_Size     => Type_Size,
+                "+"              => "+",
+                "-"              => "-",
+                "*"              => "*",
+                "/"              => "/",
+                Sz_I_Cmp         => I_Cmp,
+                Sz_U_Div         => U_Div,
+                Sz_Neg           => Neg,
+                Sz_Select        => Build_Select,
+                Sz_Min           => Build_Min,
+                Sz_Max           => Build_Max,
+                Sz_Extract_Value => Extract_Value,
+                Sz_Convert       => Convert,
+                Sz_Emit_Expr     => Emit_Expr,
+                Sz_Emit_Convert  => Emit_Convert,
+                Sz_Is_Const      => Is_Const,
+                Sz_Const_Val     => Const_Val_ULL,
+                Sz_Undef         => Undef);
 
-   function IDS_Array_Type_Size
+   function Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
@@ -965,34 +960,34 @@ package body GNATLLVM.Arrays is
    package BA_Size is
       new Size (Result           => BA_Data,
                 Empty_Result     => No_BA,
-                Sz_Const         => BA_Const,
-                Sz_Const_Int     => BA_Const_Int,
-                Sz_Type_Size     => BA_Type_Size,
-                Sz_I_Cmp         => BA_I_Cmp,
-                Sz_Add           => BA_Add,
-                Sz_Sub           => BA_Sub,
-                Sz_Mul           => BA_Mul,
-                Sz_U_Div         => BA_U_Div,
-                Sz_S_Div         => BA_S_Div,
-                Sz_Neg           => BA_Neg,
-                Sz_Select        => BA_Select,
-                Sz_Min           => BA_Min,
-                Sz_Max           => BA_Max,
-                Sz_Extract_Value => BA_Extract_Value,
-                Sz_Convert       => BA_Convert,
-                Sz_Emit_Expr     => BA_Emit_Expr,
-                Sz_Emit_Convert  => BA_Emit_Convert,
-                Sz_Is_Const      => BA_Is_Const,
-                Sz_Const_Val     => BA_Const_Val_ULL,
-                Sz_Undef         => BA_Undef);
+                Sz_Const         => Const,
+                Sz_Const_Int     => Const_Int,
+                Sz_Type_Size     => Type_Size,
+                "+"              => "+",
+                "-"              => "-",
+                "*"              => "*",
+                "/"              => "/",
+                Sz_I_Cmp         => I_Cmp,
+                Sz_U_Div         => U_Div,
+                Sz_Neg           => Neg,
+                Sz_Select        => Build_Select,
+                Sz_Min           => Build_Min,
+                Sz_Max           => Build_Max,
+                Sz_Extract_Value => Extract_Value,
+                Sz_Convert       => Convert,
+                Sz_Emit_Expr     => Emit_Expr,
+                Sz_Emit_Convert  => Emit_Convert,
+                Sz_Is_Const      => Is_Const,
+                Sz_Const_Val     => Const_Val_ULL,
+                Sz_Undef         => Undef);
 
-   function BA_Array_Type_Size
+   function Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data
      renames BA_Size.Get_Array_Type_Size;
 
-   function BA_Bounds_To_Length
+   function Bounds_To_Length
      (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data
      renames BA_Size.Bounds_To_Length;
 
@@ -1461,7 +1456,7 @@ package body GNATLLVM.Arrays is
               Convert (Dim_Low_Bound, Dim_Op_GT);
 
          begin
-            Idxs (Idx) := Sub (Converted_Index, Converted_Low_Bound, "index");
+            Idxs (Idx) := Converted_Index - Converted_Low_Bound;
          end;
 
          Idx := (if Fortran then Idx - 1 else Idx + 1);
@@ -1517,13 +1512,12 @@ package body GNATLLVM.Arrays is
 
       begin
          for Idx in 3 .. Idxs'Last loop
-            Index := Add (Mul (Index, Get_Array_Length (Full_Etype (GT),
-                                                        Dim, V)),
-                          To_Size_Type (Idxs (Idx)));
+            Index := Index * Get_Array_Length (Full_Etype (GT), Dim, V) +
+                      To_Size_Type (Idxs (Idx));
             Dim   := (if Fortran then Dim - 1 else Dim + 1);
          end loop;
 
-         Index := Mul (Index, Unit_Mult);
+         Index := Index * Unit_Mult;
          return Ptr_To_Ref
            (GEP (Unit_GT, Data, (1 => Index), "arr-lvalue"), Comp_GT);
       end;
@@ -1544,7 +1538,7 @@ package body GNATLLVM.Arrays is
       Dim_Op_GT   : constant GL_Type  := Get_GEP_Safe_Type (Idx_LB);
       Cvt_Index   : constant GL_Value := Convert (Index_Val, Dim_Op_GT);
       Cvt_LB      : constant GL_Value := Convert (Idx_LB, Dim_Op_GT);
-      Index_Shift : constant GL_Value := Sub (Cvt_Index, Cvt_LB);
+      Index_Shift : constant GL_Value := Cvt_Index - Cvt_LB;
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
 
@@ -1573,7 +1567,7 @@ package body GNATLLVM.Arrays is
            (if   Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));
          Index         : constant GL_Value  :=
-           Mul (To_Size_Type (Index_Shift), Unit_Mult);
+           To_Size_Type (Index_Shift) * Unit_Mult;
 
       begin
          return Ptr_To_Ref

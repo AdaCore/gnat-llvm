@@ -168,20 +168,20 @@ package GNATLLVM.Arrays is
      with Pre  => Is_Array_Type (TE),
           Post => Present (Get_Array_Type_Size'Result);
 
-   function IDS_Array_Type_Size
+   function Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
      with Pre  => Is_Array_Type (TE),
-          Post => Present (IDS_Array_Type_Size'Result);
+          Post => Present (Array_Type_Size'Result);
 
-   function BA_Array_Type_Size
+   function Array_Type_Size
      (TE       : Entity_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data
      with Pre  => Is_Array_Type (TE);
 
-   function BA_Bounds_To_Length
+   function Bounds_To_Length
      (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data;
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)

@@ -1335,6 +1335,19 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Floating_Point_Type (V),
           Post => Is_Floating_Point_Type (F_Neg'Result);
 
+   function "+" (LHS, RHS : GL_Value) return GL_Value is
+     (Add (LHS, RHS));
+   function "-" (LHS, RHS : GL_Value) return GL_Value is
+     (Sub (LHS, RHS));
+   function "-" (V : GL_Value) return GL_Value is
+     (Neg (V));
+   function "*" (LHS, RHS : GL_Value) return GL_Value is
+     (Mul (LHS, RHS));
+   function "/" (LHS, RHS : GL_Value) return GL_Value is
+     (S_Div (LHS, RHS));
+   function "<" (LHS, RHS : GL_Value) return Boolean is
+     (I_Cmp (Int_SLT, LHS, RHS) = Const_True);
+
    function Build_Select
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")
      return GL_Value

@@ -1823,8 +1823,8 @@ package body GNATLLVM.Variables is
 
       if Unknown_Esize (Def_Ident) then
          Set_Esize (Def_Ident, Annotated_Value
-                      (BA_Mul (BA_Type_Size (GT, Max_Size => True),
-                               BA_Const (Uint_Bits_Per_Unit))));
+                      (Type_Size (GT, Max_Size => True) *
+                         Const (Uint_Bits_Per_Unit)));
       end if;
 
       Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),

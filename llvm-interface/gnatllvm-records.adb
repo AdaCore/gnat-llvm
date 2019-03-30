@@ -40,13 +40,86 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Records is
 
-   --  We represent a record by one or more fragments describing the
-   --  record.  Each piece points to the next piece, if any.  Each can
-   --  contain an LLVM type, which contains one or more fields or an GNAT
-   --  type, which is used when the field's type is of dynamic size.  If
-   --  neither is present, this fragment doesn't represent a component of
-   --  the record, but is used for chaining purposes, for example for
-   --  variant record.
+   --  We can't represent all records by a single native LLVM type, so we
+   --  create two data structures to represent records and the positions of
+   --  fields within the record.
+   --
+   --  The Record_Info type is the format of an entry in the
+   --  Record_Info_Table, indexed by the Record_Info_Id type.  The
+   --  Field_Info type is the format of an entry in the Field_Info_Table,
+   --  indexed by the Field_Info_Id type.  Get_Record_Info applied to a
+   --  record type points to a Record_Info_Id, which is the start of the
+   --  description of the record. Get_Field_Info for each field points to a
+   --  Field_Info_Id, which contains information about how to locate that
+   --  field within the record.  Record_Info objects are chained.  For
+   --  variant records, we use one chain for the common part of the record
+   --  and chain for each variant.
+   --
+   --  The Record_Info data is used to compute the size of a record and, in
+   --  conjunction with the Field_Info data, to determine the offset of a
+   --  field from the start of an object of that record type.  We record
+   --  information for each subtype separately.
+   --
+   --  A single Record_Info item can represent one of the following:
+   --
+   --      nothing, meaning that either the record or part of a variant
+   --      record is empty
+   --
+   --      the variant part of a record
+   --
+   --      a single GL_Type, which must be a non-native (and hence usually
+   --      of dynamic size)
+   --
+   --      a single LLVM type, which is a struct containing one or more
+   --      fields
+   --
+   --  A Field_Info type locates a record by saying in which Record_Info
+   --  piece it's located and, in the case where that piece contains an
+   --  LLVM type, how to locate the field within that type.
+   --
+   --  A simple record (unpacked, with just scalar components) is
+   --  represented by a single Record_Info item which points to the LLVM
+   --  struct type corresponding to the Ada record.  More complex but
+   --  non-variant cases containing variable-sized objects require a mix of
+   --  Record_Info items corresponding to LLVM and GL types.  Note that a
+   --  reference to a discriminant is handled within the description of
+   --  array types.
+   --
+   --  For more complex records, the LLVM type generated may not directly
+   --  correspond to that of the Ada type for two reasons.  First, the
+   --  GL_Type of a field may have an alignment larger than the alignment
+   --  of the native LLVM type of that field or there may be record rep
+   --  clauses that creates holes either at the start of a record or
+   --  between Ada fields.  In both of those cases, we add extra fields to
+   --  the LLVM type to reflect the padding.
+   --
+   --  Secondly, LLVM doesn't support bitfields, so we have to do the work
+   --  of generating the corresponding operations directly.  We make a
+   --  field corresponding to a primitive scalar type with the proper size
+   --  and alignments to represent one or more bit fields.  In the
+   --  Field_Info item corresponding to each bitfield, we identify the
+   --  ordinal of the field in the LLVM type as well as the starting bit
+   --  position and bit size.
+   --
+   --  For packed records, we use a packed LLVM struct type and also
+   --  manually lay out fields that become bitfields.
+   --
+   --  For a variant part, we record the following in the corresponding
+   --  Record_Info item:
+   --
+   --      A pointer to the GNAT tree for the variant part (to obtain the
+   --      discriminant value corresponding to each variant)
+   --
+   --      The expression to be evaluated (which may be a reference to a
+   --      discriminant) to determine which variant is present
+   --
+   --      An array of Record_Info chains (corresponding to the order in
+   --      the GNAT tree) for each variant.  The offset of each of these
+   --      chains starts at the offset of the variant Record_Info item.
+   --
+   --      An array of Record_Info items (in the same order) corresponding
+   --      to any fields that are repped into a fixed position.  The
+   --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
       LLVM_Type    : Type_T;
@@ -91,10 +164,10 @@ package body GNATLLVM.Records is
       Table_Increment      => 50,
       Table_Name           => "Record_Info_Table");
 
-   --  The information for a field is the index of the piece in the
-   --  record information and optionally the index within the piece in the
-   --  case when its an LLVM_type.  We also record the GL_Type used to
-   --  represent the field.
+   --  The information for a field is the index of the piece in the record
+   --  information and optionally the location within the piece in the case
+   --  when the Record_Info is an LLVM_type.  We also record the GL_Type
+   --  used to represent the field.
 
    type Field_Info is record
       Rec_Info_Idx  : Record_Info_Id;

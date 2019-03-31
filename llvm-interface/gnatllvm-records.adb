@@ -140,12 +140,6 @@ package body GNATLLVM.Records is
       Variants     : Record_Info_Id_Array_Access;
       --  Pointer to array of Record_Info_Ids representing the variants,
       --  which must be in the same order as in Variant_List.
-
-      Use_Max_Size : Boolean;
-      --  In the case where a record's type is a record type (as opposed to
-      --  a record subtype), True means that we are to use the maximum type
-      --  of that size for allocation purpose, so we need to flag that
-      --  here.
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -635,8 +629,7 @@ package body GNATLLVM.Records is
          F_GT         : GL_Type                     := No_GL_Type;
          Variant_List : List_Id                     := No_List;
          Variant_Expr : Node_Id                     := Empty;
-         Variants     : Record_Info_Id_Array_Access := null;
-         Use_Max_Size : Boolean                     := False);
+         Variants     : Record_Info_Id_Array_Access := null);
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
@@ -670,8 +663,7 @@ package body GNATLLVM.Records is
          F_GT         : GL_Type                     := No_GL_Type;
          Variant_List : List_Id                     := No_List;
          Variant_Expr : Node_Id                     := Empty;
-         Variants     : Record_Info_Id_Array_Access := null;
-         Use_Max_Size : Boolean                     := False) is
+         Variants     : Record_Info_Id_Array_Access := null) is
 
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
@@ -683,8 +675,7 @@ package body GNATLLVM.Records is
             Next         => Empty_Record_Info_Id,
             Variant_List => Variant_List,
             Variant_Expr => Variant_Expr,
-            Variants     => Variants,
-            Use_Max_Size => Use_Max_Size);
+            Variants     => Variants);
 
          if Present (Prev_Idx) then
             Record_Info_Table.Table (Prev_Idx).Next := Cur_Idx;
@@ -1196,7 +1187,7 @@ package body GNATLLVM.Records is
 
             Flush_Current_Types;
             Add_FI (E, Cur_Idx, 0, F_GT);
-            Add_RI (F_GT => F_GT, Use_Max_Size => not Is_Constrained (F_GT));
+            Add_RI (F_GT => F_GT);
             Set_Is_Nonnative_Type (TE);
             Split_Align := Align;
 
@@ -1405,9 +1396,7 @@ package body GNATLLVM.Records is
             Must_Align := Sz_Const (Get_Type_Alignment (GT));
             Is_Align   := Must_Align;
             if Return_Size then
-               This_Size  := Sz_Type_Size (GT, V,
-                                           Max_Size =>
-                                             Max_Size or else RI.Use_Max_Size);
+               This_Size  := Sz_Type_Size (GT, V, Max_Size);
             end if;
 
          elsif RI.Variants /= null then
@@ -2310,8 +2299,8 @@ package body GNATLLVM.Records is
          while Present (Cur_Idx) loop
             RI := Record_Info_Table.Table (Cur_Idx);
             if Present (RI.GT) then
-               Complexity := Complexity + Get_Type_Size_Complexity
-                 (RI.GT, Max_Size or RI.Use_Max_Size);
+               Complexity := Complexity +
+                 Get_Type_Size_Complexity (RI.GT, Max_Size);
             end if;
 
             Cur_Idx := RI.Next;
@@ -2568,11 +2557,6 @@ package body GNATLLVM.Records is
                Dump_GL_Type (RI.GT);
             elsif Present (RI.LLVM_Type) then
                Dump_LLVM_Type (RI.LLVM_Type);
-            end if;
-
-            if RI.Use_Max_Size then
-               Write_Str  (Prefix);
-               Write_Line ("Use max size");
             end if;
 
             for F of Our_Fields loop

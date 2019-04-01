@@ -101,6 +101,10 @@ package body GNATLLVM.Records is
    --  ordinal of the field in the LLVM type as well as the starting bit
    --  position and bit size.
    --
+   --  A fixed-size field may have an alignment requirement that's stricter
+   --  than the alignment of the corresponding LLVM type, so we need to record
+   --  the requested alignment in the Record_Info object.
+   --
    --  For packed records, we use a packed LLVM struct type and also
    --  manually lay out fields that become bitfields.
    --
@@ -122,24 +126,32 @@ package body GNATLLVM.Records is
    --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
-      LLVM_Type    : Type_T;
+      LLVM_Type        : Type_T;
       --  The LLVM type corresponding to this fragment, if any
 
-      GT           : GL_Type;
+      GT               : GL_Type;
       --  The GL_Type corresponding to this fragment, if any
 
-      Next         : Record_Info_Id;
+      Align            : ULL;
+      --  If specified, the alignment of this piece
+
+      Next             : Record_Info_Id;
       --  Link to the next Record_Info entry for this record or variant
 
-      Variant_List : List_Id;
+      Variant_List     : List_Id;
       --  List in GNAT tree of the variants for this fragment
 
-      Variant_Expr : Node_Id;
+      Variant_Expr     : Node_Id;
       --  Expression to evaluate to determine which variant is present
 
-      Variants     : Record_Info_Id_Array_Access;
+      Variants         : Record_Info_Id_Array_Access;
       --  Pointer to array of Record_Info_Ids representing the variants,
       --  which must be in the same order as in Variant_List.
+
+      Overlap_Variants : Record_Info_Id_Array_Access;
+      --  Likewise for any part of the variant who offset starts at
+      --  the beginning of a record (for field with record rep
+      --  clauses).
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -412,7 +424,7 @@ package body GNATLLVM.Records is
       elsif Present (RI.GT) then
          --  We already know that LLVM_Type isn't Present
 
-         return RI.Variants = null;
+         return RI.Variants = null and then RI.Overlap_Variants = null;
       else
          --  Here we know that neither type is Present
 
@@ -625,11 +637,13 @@ package body GNATLLVM.Records is
       --  derived types.
 
       procedure Add_RI
-        (T            : Type_T                      := No_Type_T;
-         F_GT         : GL_Type                     := No_GL_Type;
-         Variant_List : List_Id                     := No_List;
-         Variant_Expr : Node_Id                     := Empty;
-         Variants     : Record_Info_Id_Array_Access := null);
+        (T                : Type_T                      := No_Type_T;
+         F_GT             : GL_Type                     := No_GL_Type;
+         Align            : ULL                         := 0;
+         Variant_List     : List_Id                     := No_List;
+         Variant_Expr     : Node_Id                     := Empty;
+         Variants         : Record_Info_Id_Array_Access := null;
+          Overlap_Variants : Record_Info_Id_Array_Access := null);
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
@@ -659,23 +673,27 @@ package body GNATLLVM.Records is
       ------------
 
       procedure Add_RI
-        (T            : Type_T                      := No_Type_T;
-         F_GT         : GL_Type                     := No_GL_Type;
-         Variant_List : List_Id                     := No_List;
-         Variant_Expr : Node_Id                     := Empty;
-         Variants     : Record_Info_Id_Array_Access := null) is
+        (T                : Type_T                      := No_Type_T;
+         F_GT             : GL_Type                     := No_GL_Type;
+         Align            : ULL                         := 0;
+         Variant_List     : List_Id                     := No_List;
+         Variant_Expr     : Node_Id                     := Empty;
+         Variants         : Record_Info_Id_Array_Access := null;
+         Overlap_Variants : Record_Info_Id_Array_Access := null) is
 
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
          --  but we may not actually end up using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (LLVM_Type    => T,
-            GT           => F_GT,
-            Next         => Empty_Record_Info_Id,
-            Variant_List => Variant_List,
-            Variant_Expr => Variant_Expr,
-            Variants     => Variants);
+           (LLVM_Type        => T,
+            GT               => F_GT,
+            Align            => Align,
+            Next             => Empty_Record_Info_Id,
+            Variant_List     => Variant_List,
+            Variant_Expr     => Variant_Expr,
+            Variants         => Variants,
+            Overlap_Variants => Overlap_Variants);
 
          if Present (Prev_Idx) then
             Record_Info_Table.Table (Prev_Idx).Next := Cur_Idx;

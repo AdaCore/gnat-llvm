@@ -2478,6 +2478,11 @@ package body GNATLLVM.Records is
             Write_Str (Prefix);
             Write_Str ("RI ");
             Write_Int (Nat (Ridx));
+            if Present (RI.Next) then
+               Write_Str (" => ");
+               Write_Int (Nat (RI.Next));
+            end if;
+
             if RI.Align /= 0 then
                Write_Str (" align ");
                Write_Int (Nat (RI.Align));
@@ -2511,7 +2516,6 @@ package body GNATLLVM.Records is
             end loop;
 
             if RI.Variants /= null then
-               Write_Eol;
                Write_Str   (Prefix);
                Write_Str   ("Variants for ");
                Sprint_Node (RI.Variant_Expr);
@@ -2535,7 +2539,7 @@ package body GNATLLVM.Records is
                      Write_Str (" | ");
                   end loop;
 
-                  Write_Eol;
+                  Write_Line (" =>");
                   if Present (Variant) then
                      Print_RI_Chain (Variant, New_Prefix);
                   end if;

@@ -1465,9 +1465,10 @@ package body GNATLLVM.Types is
    -------------
 
    function Type_Of (TE : Entity_Id) return Type_T is
+      Dummy : Boolean := False;
+      Align : Uint    := No_Uint;
       GT    : GL_Type;
       T     : Type_T;
-      Dummy : Boolean := False;
       TBAA  : Metadata_T;
 
    begin
@@ -1593,17 +1594,27 @@ package body GNATLLVM.Types is
       --  Make a GL_Type corresponding to any specified sizes and
       --  alignments, as well as for biased repesentation.  But don't
       --  do this for void or subprogram types or if we haven't
-      --  elaborated Size_Type yet.
+      --  elaborated Size_Type yet.  If there's no alignment specified
+      --  for this type and it's not a base type, use the alignment of the
+      --  base type.
 
       if Ekind (GT) not in E_Void | E_Subprogram_Type
         and then Present (Size_GL_Type)
       then
+         if not Unknown_Alignment (TE) then
+            Align := Alignment (TE);
+         elsif not Is_Full_Base_Type (TE)
+           and then not Unknown_Alignment (Full_Base_Type (TE))
+         then
+            Align := Alignment (Full_Base_Type (TE));
+         end if;
+
          GT := Make_GT_Alternative
            (GT, TE,
            (if    Is_Discrete_Or_Fixed_Point_Type (GT) then Esize (TE)
-                     elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
-                     then  RM_Size (TE) else No_Uint),
-           (if Unknown_Alignment (TE) then No_Uint else Alignment (TE)),
+                  elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
+                  then  RM_Size (TE) else No_Uint),
+           Align         => Align,
            For_Type      => True,
            For_Component => False,
            Max_Size      => False,
@@ -1618,7 +1629,7 @@ package body GNATLLVM.Types is
         and then not Is_Scalar_Type (TE)
       then
          if Unknown_Esize (TE) then
-            Set_Esize   (TE, Annotated_Object_Size (GT));
+            Set_Esize   (TE, Annotated_Object_Size (GT, True));
          end if;
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
@@ -1908,9 +1919,7 @@ package body GNATLLVM.Types is
       end if;
 
       if Is_Array_Type (Alloc_GT)
-        and then not Is_Dynamic_Size (Full_Component_GL_Type (Alloc_GT),
-                                      not Is_Constrained
-                                        (Full_Component_Type (Alloc_GT)))
+        and then not Is_Nonnative_Type (Full_Component_GL_Type (Alloc_GT))
         and then not Is_Constr_Subt_For_UN_Aliased (Alloc_GT)
         and then not Overalign
       then
@@ -2600,15 +2609,31 @@ package body GNATLLVM.Types is
    -- Annotated_Object_Size --
    ---------------------------
 
-   function Annotated_Object_Size (GT : GL_Type) return Node_Ref_Or_Val is
-      Use_Max      : constant Boolean := Is_Unconstrained_Record (GT);
-      TE_Byte_Size : constant BA_Data :=
+   function Annotated_Object_Size
+     (GT : GL_Type; Align : Boolean := False) return Node_Ref_Or_Val
+   is
+      Use_Max       : constant Boolean := Is_Unconstrained_Record (GT);
+      Bits_Per_Unit : constant BA_Data := Const (Uint_Bits_Per_Unit);
+      TE_Byte_Size  : constant BA_Data :=
         Get_Type_Size (GT, Max_Size => Use_Max);
-      TE_Bit_Size  : constant BA_Data :=
-        TE_Byte_Size * Const (Uint_Bits_Per_Unit);
+      TE_Bit_Size   : constant BA_Data := TE_Byte_Size * Bits_Per_Unit;
+      Align_Bytes   : constant BA_Data := Const (Get_Type_Alignment (GT));
+      Align_Bits    : constant BA_Data := Align_Bytes * Bits_Per_Unit;
+      Size          : BA_Data          := TE_Bit_Size;
 
    begin
-      return Annotated_Value (TE_Bit_Size);
+      --  We need to return a size that's a muliple of the alignment.
+      --  If the alignment is 1, it already is.  It's possible that it
+      --  already is and we can't detect it.  This isn't a problem
+      --  for constant sizes, but may cause an extra computation for
+      --  dynamic sizes.  For now, we won't worry about that.
+
+      if  Align and then Align_Bytes /= Const (Uint_1) then
+         Size := Build_And (Size + Align_Bits - (Bits_Per_Unit - Const (1)),
+                            -Align_Bits);
+      end if;
+
+      return Annotated_Value (Size);
    end Annotated_Object_Size;
 
    ----------

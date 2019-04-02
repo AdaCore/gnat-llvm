@@ -726,7 +726,8 @@ package GNATLLVM.Types is
        else (False, No_GL_Value, V)));
    --  Likewise, but in the opposite direction
 
-   function Annotated_Object_Size (GT : GL_Type) return Node_Ref_Or_Val
+   function Annotated_Object_Size
+     (GT : GL_Type; Align : Boolean := False) return Node_Ref_Or_Val
      with Pre => Present (GT);
    --  Given a type that's used for the type of an object, return the
    --  SO_Ref corresponding to the object's size.

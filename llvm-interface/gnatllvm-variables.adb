@@ -676,11 +676,18 @@ package body GNATLLVM.Variables is
    function Is_No_Elab_Needed (N : Node_Id) return Boolean is
       GT   : constant GL_Type := Full_GL_Type (N);
       Expr : Node_Id;
+      F    : Entity_Id;
 
    begin
       case Nkind (N) is
          when N_Aggregate | N_Extension_Aggregate =>
-            if Is_Array_Type (GT) then
+
+            --  We never can create an aggregate in a byte array GT
+
+            if Is_Byte_Array_GL_Type (GT) then
+               return False;
+
+            elsif Is_Array_Type (GT) then
 
                --  We don't support constant aggregates of multi-dimensional
                --  Fortran arrays because it's too complex.  And we also
@@ -712,10 +719,15 @@ package body GNATLLVM.Variables is
                end if;
 
                Expr := First (Component_Associations (N));
+               F    := First_Component_Or_Discriminant (Full_Etype (GT));
                while Present (Expr) loop
                   exit when not Box_Present (Expr)
-                    and then not Is_No_Elab_Needed (Expression (Expr));
+                    and then (not Is_No_Elab_Needed (Expression (Expr))
+                                or else not Is_Static_Conversion
+                                (Full_GL_Type (Expression (Expr)),
+                                 Full_GL_Type (F)));
                   Next (Expr);
+                  Next_Component_Or_Discriminant (F);
                end loop;
             else
                return False;

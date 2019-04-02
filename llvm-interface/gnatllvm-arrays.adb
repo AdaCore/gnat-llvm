@@ -321,7 +321,7 @@ package body GNATLLVM.Arrays is
                              Is_Biased     => Biased);
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);
-      Must_Use_Fake     : Boolean            := Is_Dynamic_Size (Comp_GT);
+      Must_Use_Fake     : Boolean            := Is_Nonnative_Type (Comp_GT);
       This_Nonnative    : Boolean            := Must_Use_Fake or Unconstrained;
       CT_To_Use         : constant GL_Type   :=
         (if Must_Use_Fake then SSI_GL_Type else Comp_GT);
@@ -1499,7 +1499,7 @@ package body GNATLLVM.Arrays is
 
       declare
          Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
-         Use_Comp  : constant Boolean  := not Is_Dynamic_Size (Comp_GT);
+         Use_Comp  : constant Boolean  := not Is_Nonnative_Type (Comp_GT);
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
@@ -1558,7 +1558,7 @@ package body GNATLLVM.Arrays is
       declare
          Comp_GT   : constant GL_Type := Full_Component_GL_Type (Arr_GT);
          Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_GT);
-         Use_Comp  : constant Boolean   := not Is_Dynamic_Size (Comp_GT);
+         Use_Comp  : constant Boolean   := not Is_Nonnative_Type (Comp_GT);
          Unit_GT   : constant GL_Type   :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value  :=

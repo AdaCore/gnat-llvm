@@ -65,6 +65,9 @@ package GNATLLVM is
    function "*"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."*";
    function "/"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."/";
 
+   function "mod"  (L, R : ULL)  return ULL
+     renames Interfaces.C.Extensions."mod";
+
    function "="  (L, R : ULL)  return Boolean
      renames Interfaces.C.Extensions."=";
    function ">"  (L, R : ULL)  return Boolean

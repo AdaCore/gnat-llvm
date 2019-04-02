@@ -1430,8 +1430,10 @@ package body GNATLLVM.Records is
             end if;
 
          --  For a variant, we've already set the variant alignment, so use
-         --  that for Must_Align.  There's never a field after the variant,
-         --  so nobody will ever look at Is_Align.
+         --  that for Must_Align.  We can have fields after the variants
+         --  in the case of extension records, so we care about Is_Align.
+         --  But pessimize it rather than calculate it since the saving
+         --  isn't worth it in this obscure case.
 
          elsif RI.Variants /= null or else RI.Overlap_Variants /= null then
 
@@ -1440,7 +1442,7 @@ package body GNATLLVM.Records is
             --  This means passing the current size into the functions below.
 
             Must_Align := Sz_Const (RI.Align);
-            Is_Align   := Sz_Const (ULL (Get_Maximum_Alignment));
+            Is_Align   := Sz_Const (ULL (1));
             if Return_Size then
                This_Size := (if   Max_Size then Get_Variant_Max_Size (RI)
                              else Sz_Variant_Size (RI, V));

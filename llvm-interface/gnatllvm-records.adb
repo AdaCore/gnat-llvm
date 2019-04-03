@@ -203,7 +203,7 @@ package body GNATLLVM.Records is
    --  the same entry more than once since this could cause infinite recursion.
 
    type SS_Entry is record
-      TE   : Entity_Id;
+     TE   : Entity_Id;
       Used : Boolean;
    end record;
 
@@ -599,6 +599,37 @@ package body GNATLLVM.Records is
       --  field is located in the record.  We then compute any information
       --  we need on the fly, mostly in Get_Record_Size_So_Far.
 
+      --  For each "piece" of the record (for variant records, the common
+      --  portion and each variant), we first list all the fields in that
+      --  part, then sort the list to deal with record rep clauses and
+      --  the few cases when we reorder records, then lay out the fields
+      --  into Record_Info pieces.  We start with a simple data structure
+      --  that records information about the field to add and its location
+      --  within the record.  We record the sequence in which we add a
+      --  field because, all else being equal, we want to keep fields in
+      --  that order.  We also record the depth of static variants (for the
+      --  subtype case) that we are because we must not move non-repped
+      --  field across that boundary.  And we record the alignment of the
+      --  variant, if that depth is nonzero.
+
+      type Added_Field is record
+         F         : Entity_Id;
+         Seq       : Int;
+         Var_Depth : Int;
+         Var_Align : ULL;
+      end record;
+
+      package Added_Field_Table is new Table.Table
+        (Table_Component_Type => Added_Field,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Added_Fieldd_Info_Table");
+
+      Var_Depth   : Int            := 0;
+      Var_Align   : ULL            := 0;
+
       Prev_Idx    : Record_Info_Id := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
@@ -637,6 +668,9 @@ package body GNATLLVM.Records is
       LLVM_Type   : Type_T;
       --  The LLVM type for this record type
 
+      Field       : Entity_Id;
+      --  Temporary for loop over discriminants
+
       Discrim_FIs : Field_Info_Id_Array :=
         (1 .. Count_Entities (TE) + 1 => Empty_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
@@ -665,6 +699,9 @@ package body GNATLLVM.Records is
       procedure Add_Field (E : Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add one field to the above data
+
+      procedure Process_Fields_To_Add;
+      --  Create RI entries for the fields we've added above
 
       procedure Add_Fields (Def_Ident : Entity_Id)
         with Pre => Is_Record_Type (Def_Ident);
@@ -930,17 +967,8 @@ package body GNATLLVM.Records is
             if Static_Constraint then
                Variant := Find_Choice (Constraining_Expr, Variants (Var_Part));
                if Present (Variant) then
-
-                  --  For now, split if we aren't properly aligned
-
-                  if Cur_RI_Pos mod Variant_Align /= 0
-                    and then not Null_Present (Component_List (Variant))
-                  then
-                     Flush_Current_Types;
-                     RI_Align := Variant_Align;
-                     Set_Is_Nonnative_Type (TE);
-                  end if;
-
+                  Var_Depth := Var_Depth + 1;
+                  Var_Align := Variant_Align;
                   Add_Component_List (Component_List (Variant), From_Rec,
                                       No_Name);
                end if;
@@ -948,6 +976,7 @@ package body GNATLLVM.Records is
             end if;
 
             Variant := First_Non_Pragma (Variants (Var_Part));
+            Process_Fields_To_Add;
             Flush_Current_Types;
             Set_Is_Nonnative_Type (TE);
             Saved_Cur_Idx   := Cur_Idx;
@@ -966,16 +995,9 @@ package body GNATLLVM.Records is
                   Prev_Idx      := Empty_Record_Info_Id;
                   Cur_Idx       := Record_Info_Table.Last;
                   Split_Align   := Variant_Align;
-
-                  --  For now, split if we aren't properly aligned
-
-                  if Cur_RI_Pos mod Variant_Align /= 0 then
-                     Flush_Current_Types;
-                     Set_Is_Nonnative_Type (TE);
-                  end if;
-
-                  Add_Component_List (Component_List (Variant),
-                                      From_Rec, No_Name);
+                  Add_Component_List (Component_List (Variant), From_Rec,
+                                      No_Name);
+                  Process_Fields_To_Add;
                   Flush_Current_Types;
                end if;
 
@@ -1114,48 +1136,6 @@ package body GNATLLVM.Records is
 
                Next_Stored_Discriminant (Field);
             end loop;
-
-            --  If we have a new discriminant that renames one from
-            --  our parent, we need to mark which field the discriminant
-            --  corresponds to.  So make a pass over the discriminants
-            --  of this type seeing if any haven't had field information
-            --  set.  If we find any, copy it from the orginal field.
-
-            Field := First_Discriminant (Rec_Type);
-            while Present (Field) loop
-               declare
-                  ORC         : constant Entity_Id :=
-                    Original_Record_Component (Field);
-                  Discrim_Num : constant Nat       :=
-                    UI_To_Int (Discriminant_Number (ORC));
-                  Outer_Orig : constant Entity_Id :=
-                    Find_Field_In_Entity_List (ORC, TE, Cur_Field);
-
-               begin
-                  Outer_Field
-                    := Find_Field_In_Entity_List (Field, TE, Cur_Field);
-
-                  if Present (Outer_Field)
-                    and then No (Get_Field_Info (Outer_Field))
-                    and then Scope (ORC) = Rec_Type
-                    and then Is_Completely_Hidden (ORC)
-                  then
-                     if Present (Outer_Field)
-                       and then Present (Outer_Orig)
-                     then
-                        Set_Field_Info (Outer_Field,
-                                        Get_Field_Info
-                                          (Original_Record_Component
-                                             (Outer_Orig)));
-                     elsif Present (Discrim_FIs (Discrim_Num)) then
-                        Set_Field_Info (Outer_Field,
-                                        Discrim_FIs (Discrim_Num));
-                     end if;
-                  end if;
-               end;
-
-               Next_Discriminant (Field);
-            end loop;
          end if;
 
          --  Then add everything else
@@ -1185,63 +1165,101 @@ package body GNATLLVM.Records is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
-         Def_GT   : constant GL_Type := Default_GL_Type (Full_Etype (E));
-         Size     : constant Uint    :=
-           (if   Unknown_Esize (E) then No_Uint else Esize (E));
-         Max_Sz   : constant Boolean := Is_Unconstrained_Record (Def_GT);
-         Biased   : constant Boolean := Has_Biased_Representation (E);
-         F_GT     : GL_Type          :=
-           Make_GT_Alternative (Def_GT, E,
-                                Size          => Size,
-                                Align         => No_Uint,
-                                For_Type      => False,
-                                For_Component => False,
-                                Max_Size      => Max_Sz,
-                                Is_Biased     => Biased);
-         Align    : constant ULL     := Get_Type_Alignment (F_GT);
+      begin
+         Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Var_Depth,
+                                    Var_Align));
+      end Add_Field;
+
+      ---------------------------
+      -- Process_Fields_To_Add --
+      ---------------------------
+
+      procedure Process_Fields_To_Add is
+         Last_Var_Depth : Int := 0;
 
       begin
-         --  If this is the '_parent' field, we make a dummy entry and handle
-         --  it specially later.
+         for J in 1 .. Added_Field_Table.Last loop
+            declare
+               AF       : constant Added_Field := Added_Field_Table.Table (J);
+               E        : constant Entity_Id   := AF.F;
+               Def_GT   : constant GL_Type     :=
+                 Default_GL_Type (Full_Etype (E));
+               Size     : constant Uint        :=
+                 (if   Unknown_Esize (E) then No_Uint else Esize (E));
+               Max_Sz   : constant Boolean     :=
+                 Is_Unconstrained_Record (Def_GT);
+               Biased   : constant Boolean     :=
+                 Has_Biased_Representation (E);
+               F_GT     : GL_Type              :=
+                   Make_GT_Alternative (Def_GT, E,
+                                        Size          => Size,
+                                        Align         => No_Uint,
+                                        For_Type      => False,
+                                        For_Component => False,
+                                        Max_Size      => Max_Sz,
+                                        Is_Biased     => Biased);
+               Align    : constant ULL     := Get_Type_Alignment (F_GT);
 
-         if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info_N (TE), 0, F_GT);
-            return;
+            begin
+               --  If we've pushed into a new static variant, see if
+               --  we need to align it.
 
-         --  If this field is a non-native type, we have to close out the last
-         --  record info entry we're making, if there's anything in it,
-         --  and make a piece for this field.
+               if AF.Var_Depth /= Last_Var_Depth then
+                  Last_Var_Depth := AF.Var_Depth;
+                  if Cur_RI_Pos mod AF.Var_Align /= 0 then
+                     Flush_Current_Types;
+                     RI_Align := AF.Var_Align;
+                     Set_Is_Nonnative_Type (TE);
+                  end if;
+               end if;
 
-         elsif Is_Nonnative_Type (F_GT) then
-            --  ??  This is the only case where we use an F_GT that might have
-            --  been modified by Add_FI.  We need to be sure that's OK.
+               --  If this is the '_parent' field, we make a dummy entry
+               --  and handle it specially later.
 
-            Flush_Current_Types;
-            Add_FI (E, Cur_Idx, 0, F_GT);
-            Add_RI (F_GT => F_GT);
-            Set_Is_Nonnative_Type (TE);
-            Split_Align := Align;
+               if Chars (E) = Name_uParent then
+                  Add_FI (E, Get_Record_Info_N (TE), 0, F_GT);
 
-         --  If it's a native type, add it to the current set of fields
-         --  and make a field descriptor.
+               --  If this field is a non-native type, we have to close out
+               --  the last record info entry we're making, if there's
+               --  anything in it, and make a piece for this field.
 
-         else
-            --  We need to flush the previous types if required by the
-            --  alignment.  We assume here that if Add_FI updates our type
-            --  that it has the same alignment.
+               elsif Is_Nonnative_Type (F_GT) then
+                  --  ??  This is the only case where we use an F_GT that
+                  --  might have been modified by Add_FI.  We need to be
+                  --  sure that's OK.
 
-            if Align > Split_Align then
-               Flush_Current_Types;
-               Set_Is_Nonnative_Type (TE);
-               Split_Align := Align;
-            end if;
+                  Flush_Current_Types;
+                  Add_FI (E, Cur_Idx, 0, F_GT);
+                  Add_RI (F_GT => F_GT);
+                  Set_Is_Nonnative_Type (TE);
+                  Split_Align := Align;
 
-            Types (Next_Type) := Type_Of (F_GT);
-            Cur_RI_Pos        := Cur_RI_Pos + Get_Type_Size (Type_Of (F_GT));
-            Add_FI (E, Cur_Idx, Next_Type, F_GT);
-            Next_Type         := Next_Type + 1;
-         end if;
-      end Add_Field;
+               --  If it's a native type, add it to the current set of
+               --  fields and make a field descriptor.
+
+               else
+                  --  We need to flush the previous types if required by
+                  --  the alignment.  We assume here that if Add_FI updates
+                  --  our type that it has the same alignment.
+
+                  if Align > Split_Align then
+                     Flush_Current_Types;
+                     Set_Is_Nonnative_Type (TE);
+                     Split_Align := Align;
+                  end if;
+
+                  Types (Next_Type) := Type_Of (F_GT);
+                  Cur_RI_Pos        :=
+                    Cur_RI_Pos + Get_Type_Size (Type_Of (F_GT));
+                  Add_FI (E, Cur_Idx, Next_Type, F_GT);
+                  Next_Type         := Next_Type + 1;
+               end if;
+            end;
+         end loop;
+
+         Var_Depth := 0;
+         Added_Field_Table.Set_Last (0);
+      end Process_Fields_To_Add;
 
    --  Start of processing for Create_Record_Type
 
@@ -1266,6 +1284,7 @@ package body GNATLLVM.Records is
       Cur_Idx := Record_Info_Table.Last;
       Set_Record_Info (TE, Cur_Idx);
       Add_Fields (TE);
+      Process_Fields_To_Add;
 
       --  If we haven't yet made any record info entries, it means that
       --  this is a fixed-size record that can be just an LLVM type,
@@ -1283,6 +1302,50 @@ package body GNATLLVM.Records is
          --  risky.
 
          Flush_Current_Types;
+      end if;
+
+      --  If we have a new discriminant that renames one from our parent,
+      --  we need to mark which field the discriminant corresponds to.  So
+      --  make a pass over the discriminants of this type seeing if any
+      --  haven't had field information set.  If we find any, copy it from
+      --  the orginal field.
+
+      if Has_Discriminants (Full_Base_Type (TE))
+        and then not Is_Unchecked_Union (Full_Base_Type (TE))
+      then
+         Field := First_Discriminant (Full_Base_Type (TE));
+         while Present (Field) loop
+            declare
+               ORC         : constant Entity_Id :=
+                 Original_Record_Component (Field);
+               Discrim_Num : constant Nat       :=
+                 UI_To_Int (Discriminant_Number (ORC));
+               Outer_Orig  : constant Entity_Id :=
+                 Find_Field_In_Entity_List (ORC, TE, Cur_Field);
+               Outer_Field : Entity_Id;
+
+            begin
+               Outer_Field
+                 := Find_Field_In_Entity_List (Field, TE, Cur_Field);
+
+               if Present (Outer_Field)
+                 and then No (Get_Field_Info (Outer_Field))
+                 and then Scope (ORC) = Full_Base_Type (TE)
+                 and then Is_Completely_Hidden (ORC)
+               then
+                  if Present (Outer_Field) and then Present (Outer_Orig) then
+                     Set_Field_Info (Outer_Field,
+                                     Get_Field_Info
+                                       (Original_Record_Component
+                                          (Outer_Orig)));
+                  elsif Present (Discrim_FIs (Discrim_Num)) then
+                     Set_Field_Info (Outer_Field, Discrim_FIs (Discrim_Num));
+                  end if;
+               end if;
+            end;
+
+            Next_Discriminant (Field);
+         end loop;
       end if;
 
       --  Show that the type is no longer a dummy

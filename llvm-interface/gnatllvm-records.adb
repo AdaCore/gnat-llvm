@@ -204,7 +204,7 @@ package body GNATLLVM.Records is
    --  the same entry more than once since this could cause infinite recursion.
 
    type SS_Entry is record
-     TE   : Entity_Id;
+      TE   : Entity_Id;
       Used : Boolean;
    end record;
 

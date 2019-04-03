@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Ada.Containers.Generic_Constrained_Array_Sort;
+with Ada.Containers.Generic_Sort;
 
 with Elists;   use Elists;
 with Get_Targ; use Get_Targ;
@@ -1182,7 +1183,42 @@ package body GNATLLVM.Records is
       procedure Process_Fields_To_Add is
          Last_Var_Depth : Int := 0;
 
+         function Field_Before (Left, Right : Int) return Boolean;
+         --  Determine the sort order of two fields in Added_Field_Table
+
+         procedure Swap_Fields (Left, Right : Int);
+         --  Swap the fields in Added_Field_Table with the above indices
+
+         procedure Sort is new Ada.Containers.Generic_Sort
+           (Index_Type => Int, Before => Field_Before, Swap => Swap_Fields);
+
+         ------------------
+         -- Field_Before --
+         ------------------
+
+         function Field_Before (Left, Right : Int) return Boolean is
+            AF_Left  : constant Added_Field := Added_Field_Table.Table (Left);
+            AF_Right : constant Added_Field := Added_Field_Table.Table (Right);
+
+         begin
+            return AF_Left.Seq < AF_Right.Seq;
+         end Field_Before;
+
+         -----------------
+         -- Swap_Fields --
+         -----------------
+
+         procedure Swap_Fields (Left, Right : Int) is
+            Temp : constant Added_Field := Added_Field_Table.Table (Left);
+
+         begin
+            Added_Field_Table.Table (Left)  := Added_Field_Table.Table (Right);
+            Added_Field_Table.Table (Right) := Temp;
+         end Swap_Fields;
+
       begin
+         Sort (1, Added_Field_Table.Last);
+
          for J in 1 .. Added_Field_Table.Last loop
             declare
                AF       : constant Added_Field := Added_Field_Table.Table (J);

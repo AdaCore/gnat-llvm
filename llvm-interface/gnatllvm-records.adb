@@ -602,22 +602,24 @@ package body GNATLLVM.Records is
 
       --  For each "piece" of the record (for variant records, the common
       --  portion and each variant), we first list all the fields in that
-      --  part, then sort the list to deal with record rep clauses and
-      --  the few cases when we reorder records, then lay out the fields
-      --  into Record_Info pieces.  We start with a simple data structure
-      --  that records information about the field to add and its location
+      --  part, then sort the list to deal with record rep clauses and the
+      --  few cases when we reorder records, then lay out the fields into
+      --  Record_Info pieces.  We start with a simple data structure that
+      --  records information about the field to add and its location
       --  within the record.  We record the sequence in which we add a
       --  field because, all else being equal, we want to keep fields in
-      --  that order.  We also record the depth of static variants (for the
-      --  subtype case) that we are because we must not move non-repped
-      --  field across that boundary.  And we record the alignment of the
-      --  variant, if that depth is nonzero.
+      --  that order.  We also record the depth of parent reference and
+      --  depth of static variants (for the subtype case) that we are
+      --  because we must not move non-repped field across that boundary.
+      --  And we record the alignment of the variant, if that depth is
+      --  nonzero.
 
       type Added_Field is record
-         F         : Entity_Id;
-         Seq       : Int;
-         Var_Depth : Int;
-         Var_Align : ULL;
+         F            : Entity_Id;
+         Seq          : Int;
+         Par_Depth    : Int;
+         Var_Depth    : Int;
+         Var_Align    : ULL;
       end record;
 
       package Added_Field_Table is new Table.Table
@@ -628,6 +630,7 @@ package body GNATLLVM.Records is
          Table_Increment      => 5,
          Table_Name           => "Added_Field_Info_Table");
 
+      Par_Depth   : Int            := 0;
       Var_Depth   : Int            := 0;
       Var_Align   : ULL            := 0;
 
@@ -812,25 +815,20 @@ package body GNATLLVM.Records is
          Rec_Field : Entity_Id := Empty;
          --  Cache used to limit quadratic behavior
 
-         function Matches_Name (F : Entity_Id; Name : Name_Id) return Boolean
-           with Pre => Ekind_In (F, E_Component, E_Discriminant);
-         --  See if the field F matches Name, either because Name is
-         --  specified and matches F or name is not specified and F is not
-         --  a special name.
-
          function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
            with Pre => Is_Static_Expression (N) and then Present (Alts);
          --  N is a static expression and Alts is a list of alternatives.
          --  Return which alternate has a Choice that covers N.
 
          procedure Add_Component_List
-           (List : Node_Id; From_Rec : Entity_Id; F_Name : Name_Id)
+           (List : Node_Id; From_Rec : Entity_Id; Parent : Boolean := False)
            with Pre => (No (List) or else Nkind (List) = N_Component_List)
                        and then (No (From_Rec)
                                    or else Is_Record_Type (From_Rec));
-         --  Add all fields in List matching Name.  If From_Rec is Present,
-         --  instead of adding the actual field, add the field of the same
-         --  name from From_Rec.
+         --  Add fields in List.  If From_Rec is Present, instead
+         --  of adding the actual field, add the field of the same
+         --  name from From_Rec.  If Parent is true, only add the
+         --  parent record, otherwise, add all records except the parent.
 
          function Choices_To_SO_Ref
            (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
@@ -839,24 +837,6 @@ package body GNATLLVM.Records is
          --  corresponding to an expression that's True when that variant
          --  is present.  This is a function of the discriminant (Discrim)
          --  and constants.
-
-         ------------------
-         -- Matches_Name --
-         ------------------
-
-         function Matches_Name
-           (F : Entity_Id; Name : Name_Id) return Boolean is
-         begin
-
-            if Chars (F) = Name then
-               return True;
-
-            else
-               return (No (Name) and then Chars (F) /= Name_uTag
-                         and then Chars (F) /= Name_uParent
-                         and then Chars (F) /= Name_uController);
-            end if;
-         end Matches_Name;
 
          -----------------
          -- Find_Choice --
@@ -895,7 +875,7 @@ package body GNATLLVM.Records is
          ------------------------
 
          procedure Add_Component_List
-           (List : Node_Id; From_Rec : Entity_Id; F_Name : Name_Id)
+           (List : Node_Id; From_Rec : Entity_Id; Parent : Boolean := False)
          is
             Var_Part           : constant Node_Id   :=
               (if Present (List) then Variant_Part (List) else Empty);
@@ -917,6 +897,7 @@ package body GNATLLVM.Records is
             Saved_Cur_Idx      : Record_Info_Id;
             Saved_Prev_Idx     : Record_Info_Id;
             Saved_First_Idx    : Record_Info_Id;
+            Saved_Var_Align    : ULL;
             Component_Def      : Node_Id;
             Field              : Entity_Id;
             Field_To_Add       : Entity_Id;
@@ -924,8 +905,8 @@ package body GNATLLVM.Records is
             J                  : Nat;
 
          begin
-            --  Return quickly if nothing to do.  Otherwise, walk the component
-            --  list looking for a field matching the name given to us.
+            --  Return quickly if nothing to do.  Otherwise, walk the
+            --  component list.
 
             if No (List) then
                return;
@@ -934,7 +915,7 @@ package body GNATLLVM.Records is
             Component_Def := First_Non_Pragma (Component_Items (List));
             while Present (Component_Def) loop
                Field := Defining_Identifier (Component_Def);
-               if Matches_Name (Field, F_Name) then
+               if Parent = (Chars (Field) = Name_uParent) then
                   Field_To_Add := Field;
                   if Present (From_Rec) then
                      Field_To_Add :=
@@ -943,7 +924,9 @@ package body GNATLLVM.Records is
 
                   if Present (Field_To_Add) then
                      if Chars (Field_To_Add) = Name_uParent then
+                        Par_Depth := Par_Depth + 1;
                         Add_Fields (Full_Etype (Field_To_Add));
+                        Par_Depth := Par_Depth - 1;
                      end if;
 
                      Add_Field (Field_To_Add);
@@ -953,10 +936,10 @@ package body GNATLLVM.Records is
                Next_Non_Pragma (Component_Def);
             end loop;
 
-            --  Done if either we're doing special names or there are no
-            --  variants in this record.
+            --  Done if we're just asking for the parent field or if
+            --  there are no variants in this record.
 
-            if Present (F_Name) or else No (Var_Part) then
+            if Parent or else No (Var_Part) then
                return;
             end if;
 
@@ -970,10 +953,12 @@ package body GNATLLVM.Records is
             if Static_Constraint then
                Variant := Find_Choice (Constraining_Expr, Variants (Var_Part));
                if Present (Variant) then
-                  Var_Depth := Var_Depth + 1;
-                  Var_Align := Variant_Align;
-                  Add_Component_List (Component_List (Variant), From_Rec,
-                                      No_Name);
+                  Saved_Var_Align := Var_Align;
+                  Var_Depth       := Var_Depth + 1;
+                  Var_Align       := Variant_Align;
+                  Add_Component_List (Component_List (Variant), From_Rec);
+                  Var_Depth       := Var_Depth - 1;
+                  Var_Align       := Saved_Var_Align;
                end if;
                return;
             end if;
@@ -998,8 +983,7 @@ package body GNATLLVM.Records is
                   Prev_Idx      := Empty_Record_Info_Id;
                   Cur_Idx       := Record_Info_Table.Last;
                   Split_Align   := Variant_Align;
-                  Add_Component_List (Component_List (Variant), From_Rec,
-                                      No_Name);
+                  Add_Component_List (Component_List (Variant), From_Rec);
                   Process_Fields_To_Add;
                   Flush_Current_Types;
                end if;
@@ -1078,7 +1062,7 @@ package body GNATLLVM.Records is
       --  Start of processing for Add_Fields
 
       begin
-         --  Get the record definition
+         --  Get the record definition and component list
 
          Record_Definition :=
            Type_Definition (Declaration_Node (Rec_Type));
@@ -1086,14 +1070,15 @@ package body GNATLLVM.Records is
             Record_Definition := Record_Extension_Part (Record_Definition);
          end if;
 
-         --  Add special components
-
          Components := Component_List (Record_Definition);
-         Add_Component_List (Components, Sub_Rec_Type, Name_uTag);
-         Add_Component_List (Components, Sub_Rec_Type, Name_uParent);
-         Add_Component_List (Components, Sub_Rec_Type, Name_uController);
 
-         --  Next, if there are discriminants, process them.  But
+         --  Add the parent field, which means adding all subfields of the
+         --  parent.  We can't just rely on field sorting to do this because
+         --  the parent record might have variants.
+
+         Add_Component_List (Components, Sub_Rec_Type, True);
+
+         --  If there are discriminants, process them.  But
          --  ignore discriminants that are already in a parent type.
 
          if Has_Discriminants (Rec_Type)
@@ -1143,7 +1128,7 @@ package body GNATLLVM.Records is
 
          --  Then add everything else
 
-         Add_Component_List (Components, Sub_Rec_Type, No_Name);
+         Add_Component_List (Components, Sub_Rec_Type);
 
       end Add_Fields;
 
@@ -1172,8 +1157,8 @@ package body GNATLLVM.Records is
 
       procedure Add_Field (E : Entity_Id) is
       begin
-         Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Var_Depth,
-                                    Var_Align));
+         Added_Field_Table.Append ((E, Added_Field_Table.Last + 1,
+                                    Par_Depth, Var_Depth, Var_Align));
       end Add_Field;
 
       ---------------------------
@@ -1183,10 +1168,10 @@ package body GNATLLVM.Records is
       procedure Process_Fields_To_Add is
          Last_Var_Depth : Int := 0;
 
-         function Field_Before (Left, Right : Int) return Boolean;
+         function Field_Before (L, R : Int) return Boolean;
          --  Determine the sort order of two fields in Added_Field_Table
 
-         procedure Swap_Fields (Left, Right : Int);
+         procedure Swap_Fields (L, R : Int);
          --  Swap the fields in Added_Field_Table with the above indices
 
          procedure Sort is new Ada.Containers.Generic_Sort
@@ -1196,24 +1181,113 @@ package body GNATLLVM.Records is
          -- Field_Before --
          ------------------
 
-         function Field_Before (Left, Right : Int) return Boolean is
-            AF_Left  : constant Added_Field := Added_Field_Table.Table (Left);
-            AF_Right : constant Added_Field := Added_Field_Table.Table (Right);
+         function Field_Before (L, R : Int) return Boolean is
+
+            --  When we look at properties of a component, we need to
+            --  look at them on the field of the base type to be sure that
+            --  we sort fields the same way for base types and its subtypes.
+
+            AF_Left  : constant Added_Field := Added_Field_Table.Table (L);
+            AF_Right : constant Added_Field := Added_Field_Table.Table (R);
+            Left_F   : constant Entity_Id   :=
+              Original_Record_Component (AF_Left.F);
+            Right_F  : constant Entity_Id   :=
+              Original_Record_Component (AF_Right.F);
+            Left_GT  : constant GL_Type     := Full_GL_Type (Left_F);
+            Right_GT : constant GL_Type     := Full_GL_Type (Right_F);
+            Left_BO  : constant Uint        := Component_Bit_Offset (Left_F);
+            Right_BO : constant Uint        := Component_Bit_Offset (Right_F);
+            Is_Pos_L : constant Boolean     :=
+              Present (Component_Clause (Left_F));
+            Is_Pos_R : constant Boolean     :=
+              Present (Component_Clause (Right_F));
 
          begin
-            return AF_Left.Seq < AF_Right.Seq;
+            --  The tag field is always the first field
+
+            if Chars (Left_F) = Name_uTag then
+               return True;
+            elsif Chars (Right_F) = Name_uTag then
+               return False;
+
+            --  Otherwise, don't move outside of a parent part
+
+            elsif AF_Left.Par_Depth /= AF_Right.Par_Depth then
+               return AF_Left.Par_Depth > AF_Right.Par_Depth;
+
+            --  Otherwise, the controller field is always before any
+            --  non-parent field.
+
+            elsif Chars (Left_F) = Name_uController
+              and then AF_Right.Par_Depth = 0
+            then
+               return True;
+            elsif Chars (Right_F) = Name_uController
+              and then AF_Left.Par_Depth = 0
+            then
+               return False;
+
+            --  A discriminant is always in front of a non-discriminant
+
+            elsif Ekind (Left_F) = E_Discriminant
+              and then Ekind (Right_F) = E_Component
+            then
+               return True;
+            elsif Ekind (Right_F) = E_Discriminant
+              and then Ekind (Left_F) = E_Component
+            then
+               return False;
+
+            --  For all other cases, don't move outside of a variant part
+            --  ??? We'll change this later.
+
+            elsif AF_Left.Var_Depth /= AF_Right.Var_Depth then
+               return AF_Left.Var_Depth < AF_Right.Var_Depth;
+
+            --  If one field has a specified bit position and the other
+            --  doesn't, the field with the position is first.
+
+            elsif Is_Pos_L and then not Is_Pos_R then
+               return True;
+            elsif Is_Pos_R and then not Is_Pos_L then
+               return False;
+
+            --  If both have positions, the one with the lower position is
+            --  first.
+
+            elsif Is_Pos_L and then Is_Pos_R then
+               return Left_BO < Right_BO;
+
+            --  Aliased components come after variable-sized components
+
+            elsif Is_Aliased (Left_F)
+              and then Is_Dynamic_Size (Right_GT,
+                                        Is_Unconstrained_Record (Right_GT))
+            then
+               return True;
+            elsif Is_Aliased (Right_F)
+              and then Is_Dynamic_Size (Left_GT,
+                                        Is_Unconstrained_Record (Left_GT))
+            then
+               return False;
+
+            --  Otherwise, keep the original sequence intact
+
+            else
+               return AF_Left.Seq < AF_Right.Seq;
+            end if;
          end Field_Before;
 
          -----------------
          -- Swap_Fields --
          -----------------
 
-         procedure Swap_Fields (Left, Right : Int) is
-            Temp : constant Added_Field := Added_Field_Table.Table (Left);
+         procedure Swap_Fields (L, R : Int) is
+            Temp : constant Added_Field := Added_Field_Table.Table (L);
 
          begin
-            Added_Field_Table.Table (Left)  := Added_Field_Table.Table (Right);
-            Added_Field_Table.Table (Right) := Temp;
+            Added_Field_Table.Table (L) := Added_Field_Table.Table (R);
+            Added_Field_Table.Table (R) := Temp;
          end Swap_Fields;
 
       begin
@@ -1247,7 +1321,9 @@ package body GNATLLVM.Records is
 
                if AF.Var_Depth /= Last_Var_Depth then
                   Last_Var_Depth := AF.Var_Depth;
-                  if Cur_RI_Pos mod AF.Var_Align /= 0 then
+                  if AF.Var_Align /= 0
+                    and then Cur_RI_Pos mod AF.Var_Align /= 0
+                  then
                      Flush_Current_Types;
                      RI_Align := AF.Var_Align;
                      Set_Is_Nonnative_Type (TE);

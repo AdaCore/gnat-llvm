@@ -101,7 +101,7 @@ bugs-bins:
 # Bootstrap targets
 
 CXX_PREFIX=$(shell dirname $(dir $(shell which gcc)))
-LD_PATH=$(CXX_PREFIX)/libexec/gcc/x86_64-pc-linux-gnu/7.3.1
+LD_PATH=$(shell dirname $(shell gcc --print-prog-name=cc1))
 LIBSTDCXX_PATH=$(CXX_PREFIX)/lib64
 
 stage1: 
@@ -119,8 +119,8 @@ stage2: stage1
 stage3: stage2
 	PATH=$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build gnatlib
 	@echo "Comparing stage2 and stage3 objects"
-	@for f in `cd stage2/obj && echo *.o`; do \
-	  $(compare) stage2/obj/$$f obj/$$f || exit 1; \
+	@for f in `cd stage2 && echo obj/*.o`; do \
+	  $(compare) stage2/$$f $$f || exit 1; \
 	done
 	@echo "Comparison successful."
 

@@ -25,6 +25,9 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Arrays is
 
+   pragma Warnings (Off, "formal parameter *");
+   --  Workaround bug in GNAT warning machinery
+
    function Contains_Discriminant (N : Node_Id) return Boolean;
    --  Return True if N contains a reference to a discriminant
 

@@ -625,10 +625,18 @@ package body GNATLLVM.Records is
          Table_Low_Bound      => 1,
          Table_Initial        => 20,
          Table_Increment      => 5,
-         Table_Name           => "Added_Fieldd_Info_Table");
+         Table_Name           => "Added_Field_Info_Table");
 
       Var_Depth   : Int            := 0;
       Var_Align   : ULL            := 0;
+
+      package LLVM_Types is new Table.Table
+        (Table_Component_Type => Type_T,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 0,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "LLVM_Types_Table");
 
       Prev_Idx    : Record_Info_Id := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
@@ -645,12 +653,6 @@ package body GNATLLVM.Records is
       RI_Align    : ULL            := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
-
-      Types       : Type_Array (0 .. Count_Entities (TE));
-      --  Array of all field types that are going into the current piece
-
-      Next_Type   : Nat            := 0;
-      --  Ordinal of next entry in Types
 
       Cur_Field   : Entity_Id      := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
@@ -672,7 +674,7 @@ package body GNATLLVM.Records is
       --  Temporary for loop over discriminants
 
       Discrim_FIs : Field_Info_Id_Array :=
-        (1 .. Count_Entities (TE) + 1 => Empty_Field_Info_Id);
+        (1 .. Count_Entities (TE) => Empty_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
       --  discriminant number J.  We use this for record subtypes of
       --  derived types.
@@ -1149,12 +1151,15 @@ package body GNATLLVM.Records is
       -------------------------
 
       procedure Flush_Current_Types is
+         Last_Type : constant Int := LLVM_Types.Last;
+
       begin
-         if Next_Type /= 0 then
-            Add_RI (T => Build_Struct_Type (Types (0 .. Next_Type - 1)),
+         if Last_Type >= 0 then
+            Add_RI (T => Build_Struct_Type
+                      (Type_Array (LLVM_Types.Table (0 .. Last_Type))),
                     Align => RI_Align);
             RI_Align  := 0;
-            Next_Type := 0;
+            LLVM_Types.Set_Last (-1);
          end if;
 
          Cur_RI_Pos := 0;
@@ -1248,11 +1253,9 @@ package body GNATLLVM.Records is
                      Split_Align := Align;
                   end if;
 
-                  Types (Next_Type) := Type_Of (F_GT);
-                  Cur_RI_Pos        :=
-                    Cur_RI_Pos + Get_Type_Size (Type_Of (F_GT));
-                  Add_FI (E, Cur_Idx, Next_Type, F_GT);
-                  Next_Type         := Next_Type + 1;
+                  LLVM_Types.Append (Type_Of (F_GT));
+                  Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Type_Of (F_GT));
+                  Add_FI (E, Cur_Idx, LLVM_Types.Last, F_GT);
                end if;
             end;
          end loop;
@@ -1291,8 +1294,8 @@ package body GNATLLVM.Records is
       --  so use the one we made.
 
       if No (Prev_Idx) then
-         Struct_Set_Body (LLVM_Type, Types'Address,
-                          unsigned (Next_Type), False);
+         Struct_Set_Body (LLVM_Type, LLVM_Types.Table (0)'Address,
+                          unsigned (LLVM_Types.Last + 1), False);
          Add_RI (T => LLVM_Type);
 
       else

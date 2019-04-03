@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -23,7 +23,8 @@ package GNATLLVM.DebugInfo is
    --  DICompilleUnit metadata for the main compile unit
 
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
-   DI_Cache : access DI_File_Cache := null;
+   type DI_File_Cache_Access is access all DI_File_Cache;
+   DI_Cache : DI_File_Cache_Access := null;
 
    procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T)
      with Pre => not Emit_Debug_Info or else Present (Scope);

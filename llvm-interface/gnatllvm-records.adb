@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers.Generic_Constrained_Array_Sort;
 with Ada.Containers.Generic_Sort;
 
 with Debug;    use Debug;
@@ -2588,13 +2587,30 @@ package body GNATLLVM.Records is
 
    procedure Print_Record_Info (TE : Entity_Id) is
 
-      function  Compare_FI     (E1, E2 : Entity_Id) return Boolean;
+      package Field_Table is new Table.Table
+        (Table_Component_Type => Entity_Id,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Field_Table");
 
-      ----------------
-      -- Compare_FI --
-      ----------------
+      function  FI_Before (J1, J2 : Int) return Boolean;
+      --  Indicates the ordering of two entries in the above table
 
-      function Compare_FI (E1, E2 : Entity_Id) return Boolean is
+      procedure Swap_Fields (J1, J2 : Int);
+      --  Swap fields in above table
+
+      procedure Sort is new Ada.Containers.Generic_Sort
+        (Index_Type => Int, Before => FI_Before, Swap => Swap_Fields);
+
+      ---------------
+      -- FI_Before --
+      ---------------
+
+      function FI_Before (J1, J2 : Int) return Boolean is
+         E1     : constant Entity_Id      := Field_Table.Table (J1);
+         E2     : constant Entity_Id      := Field_Table.Table (J2);
          F1_Idx : constant Field_Info_Id  := Get_Field_Info (E1);
          F2_Idx : constant Field_Info_Id  := Get_Field_Info (E2);
          FI1    : Field_Info;
@@ -2617,28 +2633,29 @@ package body GNATLLVM.Records is
          else
             return FI1.Field_Ordinal < FI2.Field_Ordinal;
          end if;
-      end Compare_FI;
+      end FI_Before;
 
-      type Entity_Array is array (Nat range <>) of Entity_Id;
-      Fields         : Entity_Array (0 .. Count_Entities (TE));
-      Next_Field_Idx : Nat       := Fields'First;
+      -----------------
+      -- Swap_Fields --
+      -----------------
+
+      procedure Swap_Fields (J1, J2 : Int) is
+         Temp : constant Entity_Id := Field_Table.Table (J1);
+
+      begin
+         Field_Table.Table (J1) := Field_Table.Table (J2);
+         Field_Table.Table (J2) := Temp;
+      end Swap_Fields;
+
       Field          : Entity_Id := First_Component_Or_Discriminant (TE);
 
    begin
       while Present (Field) loop
-         Fields (Next_Field_Idx) := Field;
-         Next_Field_Idx          := Next_Field_Idx + 1;
+         Field_Table.Append (Field);
          Next_Component_Or_Discriminant (Field);
       end loop;
 
       declare
-         subtype Our_Index is Nat range 0 .. Next_Field_Idx - 1;
-         subtype Our_Fields_Type is Entity_Array (Our_Index);
-         Our_Fields : Our_Fields_Type := Fields (Our_Fields_Type'Range);
-
-         procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort
-           (Our_Index, Entity_Id, Our_Fields_Type, Compare_FI);
-
          procedure Print_One_RI
            (Ridx : Record_Info_Id; Prefix : String := "");
          procedure Print_RI_Chain
@@ -2652,6 +2669,7 @@ package body GNATLLVM.Records is
          is
             RI                 : constant Record_Info :=
               Record_Info_Table.Table (Ridx);
+            F                  : Entity_Id;
             F_Idx              : Field_Info_Id;
             FI                 : Field_Info;
             New_Prefix         : String (Prefix'First .. Prefix'Last + 4);
@@ -2679,9 +2697,10 @@ package body GNATLLVM.Records is
                Dump_LLVM_Type (RI.LLVM_Type);
             end if;
 
-            for F of Our_Fields loop
+            for J in 1 .. Field_Table.Last loop
+               F     := Field_Table.Table (J);
                F_Idx := Get_Field_Info (F);
-               FI := Field_Info_Table.Table (F_Idx);
+               FI    := Field_Info_Table.Table (F_Idx);
                if Ridx = FI.Rec_Info_Idx then
                   Write_Str (Prefix);
                   Write_Str ("    Field");
@@ -2749,7 +2768,7 @@ package body GNATLLVM.Records is
          end Print_RI_Chain;
 
       begin
-         Sort (Our_Fields);
+         Sort (1, Field_Table.Last);
          Print_RI_Chain (Get_Record_Info (TE));
       end;
 

@@ -1488,17 +1488,11 @@ package body GNATLLVM.Records is
                     Byte_Position * Const (Uint_Bits_Per_Unit);
 
                begin
-                  if Unknown_Esize (Cur_Field) then
-                     Set_Esize (Cur_Field,
-                                Annotated_Object_Size (Default_GL_Type (Typ)));
-                  end if;
-                  if Component_Bit_Offset (Cur_Field) = No_Uint then
-                     Set_Component_Bit_Offset (Cur_Field,
-                                               Annotated_Value (Bit_Position));
-                  end if;
-                  if not Is_Const (Byte_Position)
-                    and then Unknown_Normalized_Position (Cur_Field)
-                  then
+                  Set_Esize (Cur_Field,
+                             Annotated_Object_Size (Default_GL_Type (Typ)));
+                  Set_Component_Bit_Offset (Cur_Field,
+                                            Annotated_Value (Bit_Position));
+                  if not Is_Const (Byte_Position) then
                      Set_Normalized_Position (Cur_Field,
                                               Annotated_Value (Byte_Position));
                      Set_Normalized_First_Bit (Cur_Field, Uint_0);

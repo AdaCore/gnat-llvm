@@ -2520,7 +2520,9 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_Last_Bit =>
-            Ret := Component_Bit_Offset (Our_E);
+            if not Unknown_Normalized_Position (Our_E) then
+               Ret := Normalized_First_Bit (Our_E);
+            end if;
             if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
               and then not Unknown_Esize (Our_E)
               and then Is_Static_SO_Ref (Ret)

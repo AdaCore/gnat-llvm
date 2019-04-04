@@ -1178,6 +1178,10 @@ package body GNATLLVM.Records is
          procedure Sort is new Ada.Containers.Generic_Sort
            (Index_Type => Int, Before => Field_Before, Swap => Swap_Fields);
 
+         function Align_Pos (Pos, Align : ULL) return ULL is
+           (((Pos + Align - 1) / Align)  * Align);
+         --  Given a position and an alignment, align the position
+
          ------------------
          -- Field_Before --
          ------------------
@@ -1296,46 +1300,61 @@ package body GNATLLVM.Records is
 
          for J in 1 .. Added_Field_Table.Last loop
             declare
-               AF       : constant Added_Field := Added_Field_Table.Table (J);
-               E        : constant Entity_Id   := AF.F;
-               Def_GT   : constant GL_Type     :=
-                 Default_GL_Type (Full_Etype (E));
-               Size     : constant Uint        :=
-                 (if   Unknown_Esize (E) then No_Uint else Esize (E));
-               Max_Sz   : constant Boolean     :=
+               AF        : constant Added_Field := Added_Field_Table.Table (J);
+               F        : constant Entity_Id   := AF.F;
+               --  The field to add
+
+               Def_GT    : constant GL_Type     :=
+                 Default_GL_Type (Full_Etype (F));
+               --  The default GL_Type for that field
+
+               Size      : constant Uint        :=
+                 (if   Unknown_Esize (F) then No_Uint else Esize (F));
+               --  An optional size to force the field to
+
+               Max_Sz    : constant Boolean     :=
                  Is_Unconstrained_Record (Def_GT);
-               Biased   : constant Boolean     :=
-                 Has_Biased_Representation (E);
-               F_GT     : GL_Type              :=
-                   Make_GT_Alternative (Def_GT, E,
+               --  True if this is an object for which we have to use
+               --  the maximum possible size.
+
+               Biased    : constant Boolean     :=
+                 Has_Biased_Representation (F);
+               --  True if we need a biased representation for this field
+
+               F_GT      : GL_Type              :=
+                   Make_GT_Alternative (Def_GT, F,
                                         Size          => Size,
                                         Align         => No_Uint,
                                         For_Type      => False,
                                         For_Component => False,
                                         Max_Size      => Max_Sz,
                                         Is_Biased     => Biased);
-               Align    : constant ULL     := Get_Type_Alignment (F_GT);
+               --  The GL_Type that we'll use for this field, taking
+               --  into account any specified size and if we have to
+               --  use the max size.
+
+               Need_Align :  ULL                := Get_Type_Alignment (F_GT);
+               --  The alignment we need this field to have
 
             begin
                --  If we've pushed into a new static variant, see if
-               --  we need to align it.
+               --  we need to align it.  But update our level anyway.
+               --  ??? Eventually need to ignore if has rep clause.
 
                if AF.Var_Depth /= Last_Var_Depth then
-                  Last_Var_Depth := AF.Var_Depth;
-                  if AF.Var_Align /= 0
-                    and then Cur_RI_Pos mod AF.Var_Align /= 0
+                  if AF.Var_Depth > Last_Var_Depth and then AF.Var_Align /= 0
                   then
-                     Flush_Current_Types;
-                     RI_Align := AF.Var_Align;
-                     Set_Is_Nonnative_Type (TE);
+                     Need_Align  := AF.Var_Align;
                   end if;
+
+                  Last_Var_Depth := AF.Var_Depth;
                end if;
 
                --  If this is the '_parent' field, we make a dummy entry
                --  and handle it specially later.
 
-               if Chars (E) = Name_uParent then
-                  Add_FI (E, Get_Record_Info_N (TE), 0, F_GT);
+               if Chars (F) = Name_uParent then
+                  Add_FI (F, Get_Record_Info_N (TE), 0, F_GT);
 
                --  If this field is a non-native type, we have to close out
                --  the last record info entry we're making, if there's
@@ -1347,28 +1366,70 @@ package body GNATLLVM.Records is
                   --  sure that's OK.
 
                   Flush_Current_Types;
-                  Add_FI (E, Cur_Idx, 0, F_GT);
-                  Add_RI (F_GT => F_GT);
+                  Add_FI (F, Cur_Idx, 0, F_GT);
+                  Add_RI (F_GT => F_GT, Align => Need_Align);
                   Set_Is_Nonnative_Type (TE);
-                  Split_Align := Align;
+                  Split_Align := Need_Align;
 
                --  If it's a native type, add it to the current set of
                --  fields and make a field descriptor.
 
                else
-                  --  We need to flush the previous types if required by
-                  --  the alignment.  We assume here that if Add_FI updates
-                  --  our type that it has the same alignment.
+                  --  We need to flush the previous types if required
+                  --  by the alignment.  We assume here that if Add_FI
+                  --  updates our type that it has the same alignment.
 
-                  if Align > Split_Align then
+                  if Need_Align > Split_Align then
                      Flush_Current_Types;
                      Set_Is_Nonnative_Type (TE);
-                     Split_Align := Align;
+                     RI_Align    := Need_Align;
+                     Split_Align := Need_Align;
                   end if;
 
-                  LLVM_Types.Append (Type_Of (F_GT));
-                  Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Type_Of (F_GT));
-                  Add_FI (E, Cur_Idx, LLVM_Types.Last, F_GT);
+                  declare
+                     Pos         : constant Uint :=
+                       (if   No (Prev_Idx)
+                             and then Present (Component_Clause (F))
+                        then Normalized_Position (F) else No_Uint);
+                     --  If this is the first RI for the type, honor the
+                     --  requested position.
+
+                     T           : constant Type_T := Type_Of (F_GT);
+                     --  LLVM type to use
+
+                     T_Align     : constant ULL    :=
+                       Get_Type_Alignment (T);
+                     --  The native alignment of the LLVM type
+
+                     Pos_Aligned : constant ULL    :=
+                       Align_Pos (Cur_RI_Pos, T_Align);
+                     --  The position we'll be at when applying the natural
+                     --  alignment of the type.
+
+                     Needed_Pos  : constant ULL    :=
+                       (if   Pos /= No_Uint then ULL (UI_To_Int (Pos))
+                        else Align_Pos (Cur_RI_Pos, Need_Align));
+                     --  The position we need to be at, either by virtue of
+                     --  a specified position or specified alignment.
+
+                  begin
+                     --  If the position we need to be at is beyond where
+                     --  we'd be given the native alignment of the type,
+                     --  make an explicit padding type.
+
+                     if Needed_Pos > Pos_Aligned then
+                        LLVM_Types.Append
+                          (Array_Type (Int_Ty (8),
+                                       unsigned (Needed_Pos - Cur_RI_Pos)));
+                        Cur_RI_Pos := Needed_Pos;
+                     else
+                        Cur_RI_Pos := Pos_Aligned;
+                     end if;
+
+                     LLVM_Types.Append (T);
+                     Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (T);
+                     Add_FI (F, Cur_Idx, LLVM_Types.Last, F_GT);
+                  end;
                end if;
             end;
          end loop;

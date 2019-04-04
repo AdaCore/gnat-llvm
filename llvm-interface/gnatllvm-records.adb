@@ -18,6 +18,7 @@
 with Ada.Containers.Generic_Constrained_Array_Sort;
 with Ada.Containers.Generic_Sort;
 
+with Debug;    use Debug;
 with Elists;   use Elists;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
@@ -1503,6 +1504,14 @@ package body GNATLLVM.Records is
 
          Next_Component_Or_Discriminant (Cur_Field);
       end loop;
+
+      --  If requested, dump the structure of this record
+
+      if Debug_Flag_Underscore_RR then
+         pg (Union_Id (TE));
+         Print_Record_Info (TE);
+         Write_Eol;
+      end if;
 
       return LLVM_Type;
    end Create_Record_Type;

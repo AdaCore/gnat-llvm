@@ -216,12 +216,9 @@ package body GNATLLVM.Records is
       Table_Increment      => 2,
       Table_Name           => "Subtype_Stack");
 
-   function Count_Entities (E : Entity_Id) return Nat
-     with Pre => Present (E);
-   --  Return the number of entities of E.  This value will be used only
-   --  to allocate an array that we know is large enough to contain all
-   --  the fields, so we can overestimate the number of fields (even
-   --  greatly), but can't underestimate.
+   function Max_Discriminant (TE : Entity_Id) return Int
+     with Pre => Is_Record_Type (TE);
+   --  Return the highest value of Discriminant_Number
 
    function Variant_Alignment (Var_Part : Node_Id) return ULL
      with Pre => Present (Var_Part);
@@ -401,22 +398,26 @@ package body GNATLLVM.Records is
       end if;
    end RI_Value_Is_Valid;
 
-   ---------------------
-   --  Count_Entities --
-   ---------------------
+   -----------------------
+   --  Max_Discriminant --
+   -----------------------
 
-   function Count_Entities (E : Entity_Id) return Nat is
-      Elmt    : Entity_Id := First_Component_Or_Discriminant (E);
+   function Max_Discriminant (TE : Entity_Id) return Int is
+      F     : Entity_Id := First_Component_Or_Discriminant (TE);
+      Max   : Uint      := Uint_0;
 
    begin
-      return Count : Nat := 0 do
-         while Present (Elmt) loop
-            Count := Count + (if Chars (Elmt) = Name_uParent
-                              then Count_Entities (Full_Etype (Elmt)) else 1);
-                              Next_Component_Or_Discriminant (Elmt);
-         end loop;
-      end return;
-   end Count_Entities;
+      while Present (F) loop
+         if Ekind (F) = E_Discriminant and then Discriminant_Number (F) > Max
+         then
+            Max := Discriminant_Number (F);
+         end if;
+
+         Next_Component_Or_Discriminant (F);
+      end loop;
+
+      return UI_To_Int (Max);
+   end Max_Discriminant;
 
    -----------------------
    -- Variant_Alignment --
@@ -678,7 +679,7 @@ package body GNATLLVM.Records is
       --  Temporary for loop over discriminants
 
       Discrim_FIs : Field_Info_Id_Array :=
-        (1 .. Count_Entities (TE) => Empty_Field_Info_Id);
+        (1 .. Max_Discriminant (Full_Base_Type (TE)) => Empty_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
       --  discriminant number J.  We use this for record subtypes of
       --  derived types.

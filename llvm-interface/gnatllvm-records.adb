@@ -1192,20 +1192,24 @@ package body GNATLLVM.Records is
             --  look at them on the field of the base type to be sure that
             --  we sort fields the same way for base types and its subtypes.
 
-            AF_Left  : constant Added_Field := Added_Field_Table.Table (L);
-            AF_Right : constant Added_Field := Added_Field_Table.Table (R);
-            Left_F   : constant Entity_Id   :=
+            AF_Left   : constant Added_Field := Added_Field_Table.Table (L);
+            AF_Right  : constant Added_Field := Added_Field_Table.Table (R);
+            Left_F    : constant Entity_Id   :=
               Original_Record_Component (AF_Left.F);
-            Right_F  : constant Entity_Id   :=
+            Right_F   : constant Entity_Id   :=
               Original_Record_Component (AF_Right.F);
-            Left_GT  : constant GL_Type     := Full_GL_Type (Left_F);
-            Right_GT : constant GL_Type     := Full_GL_Type (Right_F);
-            Left_BO  : constant Uint        := Component_Bit_Offset (Left_F);
-            Right_BO : constant Uint        := Component_Bit_Offset (Right_F);
-            Is_Pos_L : constant Boolean     :=
+            Left_GT   : constant GL_Type     := Full_GL_Type (Left_F);
+            Right_GT  : constant GL_Type     := Full_GL_Type (Right_F);
+            Left_BO   : constant Uint        := Component_Bit_Offset (Left_F);
+            Right_BO  : constant Uint        := Component_Bit_Offset (Right_F);
+            Is_Pos_L  : constant Boolean     :=
               Present (Component_Clause (Left_F));
-            Is_Pos_R : constant Boolean     :=
+            Is_Pos_R  : constant Boolean     :=
               Present (Component_Clause (Right_F));
+            Dynamic_L : constant Boolean     :=
+              Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
+            Dynamic_R : constant Boolean     :=
+              Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
 
          begin
             --  The tag field is always the first field
@@ -1263,17 +1267,11 @@ package body GNATLLVM.Records is
             elsif Is_Pos_L and then Is_Pos_R then
                return Left_BO < Right_BO;
 
-            --  Aliased components come after variable-sized components
+            --  Fixed-size fields come before variable-sized ones
 
-            elsif Is_Aliased (Left_F)
-              and then Is_Dynamic_Size (Right_GT,
-                                        Is_Unconstrained_Record (Right_GT))
-            then
+            elsif not Dynamic_L and then Dynamic_R then
                return True;
-            elsif Is_Aliased (Right_F)
-              and then Is_Dynamic_Size (Left_GT,
-                                        Is_Unconstrained_Record (Left_GT))
-            then
+            elsif not Dynamic_R and then Dynamic_L then
                return False;
 
             --  Otherwise, keep the original sequence intact

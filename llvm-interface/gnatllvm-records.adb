@@ -1423,7 +1423,7 @@ package body GNATLLVM.Records is
       --  we need to mark which field the discriminant corresponds to.  So
       --  make a pass over the discriminants of this type seeing if any
       --  haven't had field information set.  If we find any, copy it from
-      --  the orginal field.
+      --  the original field.
 
       if Has_Discriminants (Full_Base_Type (TE))
         and then not Is_Unchecked_Union (Full_Base_Type (TE))

@@ -633,7 +633,11 @@ package body GNATLLVM.Records is
          Table_Low_Bound      => 1,
          Table_Initial        => 20,
          Table_Increment      => 5,
-         Table_Name           => "Added_Field_Info_Table");
+         Table_Name           => "Added_Field_Table");
+
+      --  We maintain a table of all the LLVM types that will be put in a
+      --  LLVM struct type in an RI.  These are both for actual and padding
+      --  fields.
 
       package LLVM_Types is new Table.Table
         (Table_Component_Type => Type_T,
@@ -641,7 +645,26 @@ package body GNATLLVM.Records is
          Table_Low_Bound      => 0,
          Table_Initial        => 20,
          Table_Increment      => 5,
-         Table_Name           => "LLVM_Types_Table");
+         Table_Name           => "LLVM_Types");
+
+      --  We maintain a stack for the depth of variants that we're in.
+      --  For each, we indicate whether we're in a dynamic or static variant.
+      --  By "static", we mean the case where we have a static subtype,
+      --  so we know which fields will be present in the record.
+
+      type Variant_Stack_Info is record
+         Align      : ULL;
+         Overlap_RI : Record_Info_Id;
+         Is_Static  : Boolean;
+      end record;
+
+      package Variant_Stack is new Table.Table
+        (Table_Component_Type => Variant_Stack_Info,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 2,
+         Table_Increment      => 1,
+         Table_Name           => "Variant_Stack");
 
       Prev_Idx    : Record_Info_Id := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
@@ -657,15 +680,6 @@ package body GNATLLVM.Records is
 
       Par_Depth   : Int            := 0;
       --  Nesting depth into parent records
-
-      Var_Depth   : Int            := 0;
-      --  Nesting depth into static variants
-
-      Var_Align   : ULL            := 0;
-      --  Alignment needed for static variant
-
-      In_Variant  : Int            := 0;
-      --  Nonzero if processing a (dynamic) variant part (indicates depth)
 
       RI_Align    : ULL            := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
@@ -907,10 +921,10 @@ package body GNATLLVM.Records is
             Variant_Align      : constant ULL       :=
               (if Present (Var_Part) then Variant_Alignment (Var_Part) else 0);
             Var_Array          : Record_Info_Id_Array_Access;
+            Overlap_Var_Array  : Record_Info_Id_Array_Access;
             Saved_Cur_Idx      : Record_Info_Id;
             Saved_Prev_Idx     : Record_Info_Id;
             Saved_First_Idx    : Record_Info_Id;
-            Saved_Var_Align    : ULL;
             Component_Def      : Node_Id;
             Field              : Entity_Id;
             Field_To_Add       : Entity_Id;
@@ -966,12 +980,10 @@ package body GNATLLVM.Records is
             if Static_Constraint then
                Variant := Find_Choice (Constraining_Expr, Variants (Var_Part));
                if Present (Variant) then
-                  Saved_Var_Align := Var_Align;
-                  Var_Depth       := Var_Depth + 1;
-                  Var_Align       := Variant_Align;
+                  Variant_Stack.Append
+                    ((Variant_Align, Empty_Record_Info_Id, True));
                   Add_Component_List (Component_List (Variant), From_Rec);
-                  Var_Depth       := Var_Depth - 1;
-                  Var_Align       := Saved_Var_Align;
+                  Variant_Stack.Decrement_Last;
                end if;
                return;
             end if;
@@ -980,17 +992,22 @@ package body GNATLLVM.Records is
             Process_Fields_To_Add;
             Flush_Current_Types;
             Set_Is_Nonnative_Type (TE);
-            Saved_Cur_Idx   := Cur_Idx;
-            Saved_Prev_Idx  := Prev_Idx;
-            Saved_First_Idx := First_Idx;
-            J               := 1;
-            Var_Array       := new
+            Saved_Cur_Idx     := Cur_Idx;
+            Saved_Prev_Idx    := Prev_Idx;
+            Saved_First_Idx   := First_Idx;
+            J                 := 1;
+            Var_Array         := new
+              Record_Info_Id_Array'(1 .. List_Length_Non_Pragma
+                                      (Variants (Var_Part))
+                                      => Empty_Record_Info_Id);
+            Overlap_Var_Array := new
               Record_Info_Id_Array'(1 .. List_Length_Non_Pragma
                                       (Variants (Var_Part))
                                       => Empty_Record_Info_Id);
 
-            In_Variant := In_Variant + 1;
             while Present (Variant) loop
+               Variant_Stack.Append
+                 ((Variant_Align, Empty_Record_Info_Id, False));
                First_Idx := Empty_Record_Info_Id;
                if Present (Component_Items (Component_List (Variant))) then
                   Record_Info_Table.Increment_Last;
@@ -1002,10 +1019,13 @@ package body GNATLLVM.Records is
                   Flush_Current_Types;
                end if;
 
-               Var_Array (J) := First_Idx;
+               Var_Array (J)         := First_Idx;
+               Overlap_Var_Array (J) :=
+                 Variant_Stack.Table (Variant_Stack.Last).Overlap_RI;
                Set_Present_Expr (Variant,
                                  Choices_To_SO_Ref (Variant, Variant_Expr));
-               J             := J + 1;
+               J                     := J + 1;
+               Variant_Stack.Decrement_Last;
                Next_Non_Pragma (Variant);
             end loop;
 
@@ -1016,7 +1036,6 @@ package body GNATLLVM.Records is
                     Variants     => Var_Array,
                     Variant_Expr => Variant_Expr,
                     Align        => Variant_Align);
-            In_Variant := In_Variant - 1;
          end Add_Component_List;
 
          -----------------------
@@ -1171,9 +1190,22 @@ package body GNATLLVM.Records is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
+         Var_Depth : Int := 0;
+         Var_Align : ULL := 0;
+
       begin
-         Added_Field_Table.Append ((E, Added_Field_Table.Last + 1,
-                                    Par_Depth, Var_Depth, Var_Align));
+         --  If we've pushed the variant stack and the top entry is static,
+         --  record the depth and alignment.
+
+         if Variant_Stack.Last /= 0
+           and then Variant_Stack.Table (Variant_Stack.Last).Is_Static
+         then
+            Var_Depth := Variant_Stack.Last;
+            Var_Align := Variant_Stack.Table (Variant_Stack.Last).Align;
+         end if;
+
+         Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Par_Depth,
+                                    Var_Depth, Var_Align));
       end Add_Field;
 
       ---------------------------
@@ -1181,7 +1213,10 @@ package body GNATLLVM.Records is
       ---------------------------
 
       procedure Process_Fields_To_Add is
-         Last_Var_Depth : Int := 0;
+         In_Variant     : constant Boolean :=
+           Variant_Stack.Last /= 0
+           and then not Variant_Stack.Table (Variant_Stack.Last).Is_Static;
+         Last_Var_Depth : Int              := 0;
 
          function Field_Before (L, R : Int) return Boolean;
          --  Determine the sort order of two fields in Added_Field_Table
@@ -1286,13 +1321,13 @@ package body GNATLLVM.Records is
             --  do this if we aren't to reorder fields.
 
             elsif not No_Reordering (TE)
-              and then (Is_Aliased (Left_F) or else In_Variant /= 0
+              and then (Is_Aliased (Left_F) or else In_Variant
                           or else AF_Left.Var_Depth /= 0)
               and then not Dynamic_L and then Dynamic_R
             then
                return True;
             elsif not No_Reordering (TE)
-              and then (Is_Aliased (Right_F) or else In_Variant /= 0
+              and then (Is_Aliased (Right_F) or else In_Variant
                           or else AF_Right.Var_Depth /= 0)
               and then not Dynamic_R and then Dynamic_L
             then
@@ -1410,7 +1445,7 @@ package body GNATLLVM.Records is
 
                   declare
                      Pos         : constant Uint :=
-                       (if   No (Prev_Idx) and then In_Variant = 0
+                       (if   No (Prev_Idx) and then not In_Variant
                              and then Present (Component_Clause (F))
                         then Normalized_Position (F) else No_Uint);
                      --  If this is the first RI for the type, honor the
@@ -1456,7 +1491,6 @@ package body GNATLLVM.Records is
             end;
          end loop;
 
-         Var_Depth := 0;
          Added_Field_Table.Set_Last (0);
       end Process_Fields_To_Add;
 

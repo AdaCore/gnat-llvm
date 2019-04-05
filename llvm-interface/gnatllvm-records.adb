@@ -631,10 +631,6 @@ package body GNATLLVM.Records is
          Table_Increment      => 5,
          Table_Name           => "Added_Field_Info_Table");
 
-      Par_Depth   : Int            := 0;
-      Var_Depth   : Int            := 0;
-      Var_Align   : ULL            := 0;
-
       package LLVM_Types is new Table.Table
         (Table_Component_Type => Type_T,
          Table_Index_Type     => Int,
@@ -654,6 +650,18 @@ package body GNATLLVM.Records is
 
       Cur_RI_Pos  : ULL            := 0;
       --  Current position into this RI
+
+      Par_Depth   : Int            := 0;
+      --  Nesting depth into parent records
+
+      Var_Depth   : Int            := 0;
+      --  Nesting depth into static variants
+
+      Var_Align   : ULL            := 0;
+      --  Alignment needed for static variant
+
+      In_Variant  : Int            := 0;
+      --  Nonzero if processing a (dynamic) variant part (indicates depth)
 
       RI_Align    : ULL            := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
@@ -977,6 +985,7 @@ package body GNATLLVM.Records is
                                       (Variants (Var_Part))
                                       => Empty_Record_Info_Id);
 
+            In_Variant := In_Variant + 1;
             while Present (Variant) loop
                First_Idx := Empty_Record_Info_Id;
                if Present (Component_Items (Component_List (Variant))) then
@@ -1003,6 +1012,7 @@ package body GNATLLVM.Records is
                     Variants     => Var_Array,
                     Variant_Expr => Variant_Expr,
                     Align        => Variant_Align);
+            In_Variant := In_Variant - 1;
          end Add_Component_List;
 
          -----------------------
@@ -1267,11 +1277,21 @@ package body GNATLLVM.Records is
             elsif Is_Pos_L and then Is_Pos_R then
                return Left_BO < Right_BO;
 
-            --  Fixed-size fields come before variable-sized ones
+            --  Fixed-size fields come before variable-sized ones if the
+            --  fixed field is aliases or if we're in a variant.  But don't
+            --  do this if we aren't to reorder fields.
 
-            elsif not Dynamic_L and then Dynamic_R then
+            elsif not No_Reordering (TE)
+              and then (Is_Aliased (Left_F) or else In_Variant /= 0
+                          or else AF_Left.Var_Depth /= 0)
+              and then not Dynamic_L and then Dynamic_R
+            then
                return True;
-            elsif not Dynamic_R and then Dynamic_L then
+            elsif not No_Reordering (TE)
+              and then (Is_Aliased (Right_F) or else In_Variant /= 0
+                          or else AF_Right.Var_Depth /= 0)
+              and then not Dynamic_R and then Dynamic_L
+            then
                return False;
 
             --  Otherwise, keep the original sequence intact
@@ -1386,7 +1406,7 @@ package body GNATLLVM.Records is
 
                   declare
                      Pos         : constant Uint :=
-                       (if   No (Prev_Idx)
+                       (if   No (Prev_Idx) and then In_Variant = 0
                              and then Present (Component_Clause (F))
                         then Normalized_Position (F) else No_Uint);
                      --  If this is the first RI for the type, honor the

@@ -315,14 +315,17 @@ package body GNATLLVM.Records is
         (RI          : Record_Info;
          V           : GL_Value;
          Max_Size    : Boolean;
-         Size        : out Result;
+         Cur_Align   : Result;
+         Total_Size  : in out Result;
          Must_Align  : out Result;
          Is_Align    : out Result;
          Return_Size : Boolean := True);
-      --  Return information about a record fragment RI.  This
-      --  includes its size, the amount to which this fragment must be
-      --  aligned, and the amout to which the resulting size is known
-      --  to be aligned.  If the size isn't wanted, don't compute it.
+      --  Return information about a record fragment RI.  This includes the
+      --  amount to which this fragment must be aligned and the amout to
+      --  which the resulting size is known to be aligned.  Also update the
+      --  total size with the size of the fragment. If the size isn't
+      --  wanted, don't compute it.  Cur_Align is the known alignment of
+      --  the size so far.
 
       function Get_Variant_For_RI
         (In_RI       : Record_Info;
@@ -1608,7 +1611,8 @@ package body GNATLLVM.Records is
         (RI          : Record_Info;
          V           : GL_Value;
          Max_Size    : Boolean;
-         Size        : out Result;
+         Cur_Align   : Result;
+         Total_Size  : in out Result;
          Must_Align  : out Result;
          Is_Align    : out Result;
          Return_Size : Boolean := True)
@@ -1723,7 +1727,11 @@ package body GNATLLVM.Records is
             Must_Align := Sz_Const (RI.Align);
          end if;
 
-         Size := (if Return_Size then This_Size else Empty_Result);
+         --  Now update the total size given what we've computed above
+         if Return_Size then
+            Total_Size
+              := Align_To (Total_Size, Cur_Align, Must_Align) + This_Size;
+         end if;
       end Get_RI_Info;
 
       ------------------------
@@ -1842,7 +1850,6 @@ package body GNATLLVM.Records is
          Cur_Idx      : Record_Info_Id :=
            (if   Present (Start_Idx) then Start_Idx elsif Present (TE)
             then Get_Record_Info (TE) else Empty_Record_Info_Id);
-         This_Size    : Result         := Empty_Result;
          Must_Align   : Result         := Sz_Const (ULL (1));
          Pushed_Stack : Boolean        := False;
          This_Align   : Result;
@@ -1902,10 +1909,8 @@ package body GNATLLVM.Records is
             if Present (New_Idx) then
                Cur_Idx := New_Idx;
             else
-               Get_RI_Info (RI, V, Max_Size, This_Size,
+               Get_RI_Info (RI, V, Max_Size, Cur_Align, Total_Size,
                             Must_Align, This_Align);
-               Total_Size := Align_To (Total_Size, Cur_Align, Must_Align) +
-                               This_Size;
 
                --  The resulting alignment is the minimum of this alignment
                --  and the maximum of the current alignment and what we had
@@ -1930,7 +1935,7 @@ package body GNATLLVM.Records is
 
          if Present (Idx) then
             Get_RI_Info (Record_Info_Table.Table (Idx), No_GL_Value, False,
-                         This_Size, Must_Align, This_Align,
+                         Cur_Align, Total_Size, Must_Align, This_Align,
                          Return_Size => False);
          elsif Present (TE) then
             Must_Align := Sz_Const (Get_Type_Alignment (Default_GL_Type (TE)));

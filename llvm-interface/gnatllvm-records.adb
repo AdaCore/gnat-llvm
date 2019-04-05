@@ -315,10 +315,10 @@ package body GNATLLVM.Records is
         (RI          : Record_Info;
          V           : GL_Value;
          Max_Size    : Boolean;
-         Cur_Align   : Result;
+         Cur_Align   : ULL;
          Total_Size  : in out Result;
-         Must_Align  : out Result;
-         Is_Align    : out Result;
+         Must_Align  : out ULL;
+         Is_Align    : out ULL;
          Return_Size : Boolean := True);
       --  Return information about a record fragment RI.  This includes the
       --  amount to which this fragment must be aligned and the amout to
@@ -371,7 +371,8 @@ package body GNATLLVM.Records is
       --  is a value of that type, which is used in the case of a
       --  discriminated record.
 
-      function Align_To (V, Cur_Align, Must_Align : Result) return Result;
+      function Align_To
+        (V : Result; Cur_Align, Must_Align : ULL) return Result;
       --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
       --  Align_To.
 
@@ -1611,10 +1612,10 @@ package body GNATLLVM.Records is
         (RI          : Record_Info;
          V           : GL_Value;
          Max_Size    : Boolean;
-         Cur_Align   : Result;
+         Cur_Align   : ULL;
          Total_Size  : in out Result;
-         Must_Align  : out Result;
-         Is_Align    : out Result;
+         Must_Align  : out ULL;
+         Is_Align    : out ULL;
          Return_Size : Boolean := True)
       is
          T         : constant Type_T  := RI.LLVM_Type;
@@ -1627,8 +1628,8 @@ package body GNATLLVM.Records is
 
          if Present (T) and then Get_Type_Size (T) = ULL (0) then
             This_Size  := Sz_Const (ULL (0));
-            Must_Align := Sz_Const (Get_Type_Alignment (T));
-            Is_Align   := Sz_Const (Get_Type_Alignment (T));
+            Must_Align := Get_Type_Alignment (T);
+            Is_Align   := Get_Type_Alignment (T);
 
          elsif Present (T) then
 
@@ -1679,15 +1680,15 @@ package body GNATLLVM.Records is
                  Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
 
             begin
-               Must_Align := Sz_Const (Get_Type_Alignment (T));
-               Is_Align   := Sz_Const (Get_Type_Alignment (Last_Type));
+               Must_Align := Get_Type_Alignment (T);
+               Is_Align   := Get_Type_Alignment (Last_Type);
                This_Size  := Sz_Const (Last_Offset + Last_Size);
             end;
 
          --  The GNAT type case is easy
 
          elsif Present (GT) then
-            Must_Align   := Sz_Const (Get_Type_Alignment (GT));
+            Must_Align   := Get_Type_Alignment (GT);
             Is_Align     := Must_Align;
             if Return_Size then
                This_Size := Sz_Type_Size (GT, V, Max_Size);
@@ -1705,8 +1706,8 @@ package body GNATLLVM.Records is
             --  the record size shouldn't be aligned to the variant alignment.
             --  This means passing the current size into the functions below.
 
-            Must_Align := Sz_Const (RI.Align);
-            Is_Align   := Sz_Const (ULL (1));
+            Must_Align := RI.Align;
+            Is_Align   := 1;
             if Return_Size then
                This_Size := (if   Max_Size then Get_Variant_Max_Size (RI)
                              else Sz_Variant_Size (RI, V));
@@ -1715,8 +1716,8 @@ package body GNATLLVM.Records is
          --  Otherwise, this is a null entry
 
          else
-            Must_Align := Sz_Const (ULL (1));
-            Is_Align   := Sz_Const (ULL (Get_Maximum_Alignment));
+            Must_Align := 1;
+            Is_Align   := ULL (Get_Maximum_Alignment);
             This_Size  := Sz_Const (ULL (0));
          end if;
 
@@ -1724,7 +1725,7 @@ package body GNATLLVM.Records is
          --  computation we did above.
 
          if RI.Align /= 0 then
-            Must_Align := Sz_Const (RI.Align);
+            Must_Align := RI.Align;
          end if;
 
          --  Now update the total size given what we've computed above
@@ -1845,14 +1846,13 @@ package body GNATLLVM.Records is
          No_Padding : Boolean := False) return Result
       is
          Total_Size   : Result         := Sz_Const (ULL (0));
-         Cur_Align    : Result         :=
-           Sz_Const (ULL (Get_Maximum_Alignment));
+         Cur_Align    : ULL            := ULL (Get_Maximum_Alignment);
          Cur_Idx      : Record_Info_Id :=
            (if   Present (Start_Idx) then Start_Idx elsif Present (TE)
             then Get_Record_Info (TE) else Empty_Record_Info_Id);
-         Must_Align   : Result         := Sz_Const (ULL (1));
+         Must_Align   : ULL            := 1;
          Pushed_Stack : Boolean        := False;
-         This_Align   : Result;
+         This_Align   : ULL;
          New_Idx      : Record_Info_Id;
          RI           : Record_Info;
 
@@ -1894,8 +1894,7 @@ package body GNATLLVM.Records is
             if RI.Variants /= null and then Present (Idx) then
                New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx);
                if Present (New_Idx) and then RI.Align /= 0 then
-                  Total_Size := Align_To (Total_Size, Cur_Align,
-                                          Sz_Const (RI.Align));
+                  Total_Size := Align_To (Total_Size, Cur_Align, RI.Align);
                end if;
             end if;
 
@@ -1916,8 +1915,8 @@ package body GNATLLVM.Records is
                --  and the maximum of the current alignment and what we had
                --  to align to.
 
-               Cur_Align := Sz_Min (This_Align,
-                                    Sz_Max (Cur_Align, Must_Align));
+               Cur_Align := ULL'Min (This_Align,
+                                     ULL'Max (Cur_Align, Must_Align));
                Cur_Idx := RI.Next;
             end if;
          end loop;
@@ -1938,7 +1937,7 @@ package body GNATLLVM.Records is
                          Cur_Align, Total_Size, Must_Align, This_Align,
                          Return_Size => False);
          elsif Present (TE) then
-            Must_Align := Sz_Const (Get_Type_Alignment (Default_GL_Type (TE)));
+            Must_Align := Get_Type_Alignment (Default_GL_Type (TE));
          end if;
 
          if Pushed_Stack then
@@ -2018,18 +2017,17 @@ package body GNATLLVM.Records is
       -- Align_To --
       --------------
 
-      function Align_To (V, Cur_Align, Must_Align : Result) return Result is
+      function Align_To
+        (V : Result; Cur_Align, Must_Align : ULL) return Result is
       begin
-         --  If both alignments are constant and we can determine that we
-         --  needn't do any alignment, do nothing.  Otherwise, align.
+         --  If we can determine that we needn't do any alignment, do
+         --  nothing.  Otherwise, align.
 
-         if Sz_Is_Const (Cur_Align) and then Sz_Is_Const (Must_Align)
-           and then Sz_Const_Val (Must_Align) <= Sz_Const_Val (Cur_Align)
-         then
+         if Must_Align <= Cur_Align then
             return V;
          else
-            return Sz_And (V + Must_Align - Sz_Const (ULL (1)),
-                           Sz_Neg (Must_Align));
+            return Sz_And (V + Sz_Const (Must_Align - 1),
+                           Sz_Neg (Sz_Const (Must_Align)));
          end if;
       end Align_To;
 
@@ -2074,7 +2072,8 @@ package body GNATLLVM.Records is
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      renames LLVM_Size.Emit_Field_Position;
 
-   function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
+   function Align_To
+     (V : GL_Value; Cur_Align, Must_Align : ULL) return GL_Value
      renames LLVM_Size.Align_To;
 
    --  Here we instantiate the size routines with functions that compute

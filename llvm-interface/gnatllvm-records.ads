@@ -107,7 +107,8 @@ package GNATLLVM.Records is
         Post => Present (Get_Field_Type'Result);
    --  Return the GL_Type of the field denoted by F_Idx in type TE.
 
-   function Align_To (V, Cur_Align, Must_Align : GL_Value) return GL_Value
+   function Align_To
+     (V : GL_Value; Cur_Align, Must_Align : ULL) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);
    --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
    --  Align_To.

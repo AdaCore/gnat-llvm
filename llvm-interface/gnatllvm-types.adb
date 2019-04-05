@@ -116,9 +116,8 @@ package body GNATLLVM.Types is
    function Get_Alloc_Alignment
      (GT       : GL_Type;
       Alloc_GT : GL_Type;
-      E        : Entity_Id := Empty) return GL_Value
-     with Pre  => Present (GT) and then Present (Alloc_GT),
-          Post => Type_Of (Get_Alloc_Alignment'Result) = LLVM_Size_Type;
+      E        : Entity_Id := Empty) return ULL
+     with Pre  => Present (GT) and then Present (Alloc_GT);
    --  Like Get_Type_Size, but used for the alignment in an allocator, so we
    --  include the alignment of the bounds in some array cases.  It also
    --  may take into account the alignment of E, if present.
@@ -1874,13 +1873,11 @@ package body GNATLLVM.Types is
       Name      : String    := "";
       Max_Size  : Boolean   := False) return GL_Value
    is
-      Max_Alloc  : constant ULL      := 10_000_000;
-      Align      : constant GL_Value :=
+      Max_Alloc  : constant ULL     := 10_000_000;
+      Align      : constant ULL     :=
         Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
-      Overalign  : constant Boolean  :=
-        not Is_A_Const_Int (Align)
-        or else Get_Const_Int_Value (Align) > LLI (Get_Stack_Alignment);
-      Value      : GL_Value          := V;
+      Overalign  : constant Boolean := Align > ULL (Get_Stack_Alignment);
+      Value      : GL_Value         := V;
       Element_GT : GL_Type;
       Num_Elts   : GL_Value;
       Result     : GL_Value;
@@ -1933,7 +1930,7 @@ package body GNATLLVM.Types is
       --  Handle overalignment by adding the alignment to the size
 
       if Overalign then
-         Num_Elts := Num_Elts + Align;
+         Num_Elts := Num_Elts + Size_Const_Int (Align);
       end if;
 
       --  Check that we aren't trying to allocate too much memory.  Raise
@@ -1957,9 +1954,7 @@ package body GNATLLVM.Types is
                               (if Overalign then "%%" else Name));
       if Overalign then
          Result := Ptr_To_Int (Result, Size_GL_Type);
-         Result := Align_To (Result,
-                             Size_Const_Int (ULL (Get_Stack_Alignment)),
-                             Align);
+         Result := Align_To (Result, ULL (Get_Stack_Alignment), Align);
          Result := Int_To_Ptr (Result, A_Char_GL_Type);
          Set_Value_Name (Result, Get_Alloca_Name (Def_Ident, Name));
       end if;
@@ -1983,14 +1978,15 @@ package body GNATLLVM.Types is
       Def_Ident : Entity_Id := Empty;
       Max_Size  : Boolean   := False) return GL_Value
    is
-      Value   : constant GL_Value   :=
+      Value   : constant GL_Value    :=
         (if    Present (V) then V
          elsif Is_Self_Referential_Type (Alloc_GT) and then Present (Expr)
          then  Emit (Expr) else No_GL_Value);
-      Size    : constant GL_Value   :=
+      Size    : constant GL_Value    :=
         Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size);
-      Align   : constant GL_Value   :=
+      Align   : constant ULL         :=
         Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
+      Align_V    : constant GL_Value := Size_Const_Int (Align);
       Result  : GL_Value;
 
    begin
@@ -2017,10 +2013,7 @@ package body GNATLLVM.Types is
       --  directly if the requested alignment is a constand and no larger
       --  than the system allocator alignment.
 
-      if No (Proc) and then Is_A_Const_Int (Align)
-        and then (Get_Const_Int_Value (Align) <=
-                    LLI (Get_System_Allocator_Alignment))
-      then
+      if No (Proc) and then Align <= ULL (Get_System_Allocator_Alignment) then
          Result := Call (Get_Default_Alloc_Fn, A_Char_GL_Type, (1 => Size));
 
       --  Otherwise, if we can use the default memory allocation
@@ -2032,14 +2025,13 @@ package body GNATLLVM.Types is
       elsif No (Proc) then
          declare
             Ptr_Size   : constant GL_Value := Get_Type_Size (A_Char_GL_Type);
-            Total_Size : constant GL_Value := Size + Align + Ptr_Size;
+            Total_Size : constant GL_Value := Size + Align_V + Ptr_Size;
             Alloc      : constant GL_Value :=
               Call (Get_Default_Alloc_Fn, A_Char_GL_Type, (1 => Total_Size));
             Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_GL_Type);
             Aligned    : constant GL_Value :=
               Align_To (Alloc_Int + Ptr_Size,
-                        Size_Const_Int (ULL (Get_System_Allocator_Alignment)),
-                        Align);
+                        ULL (Get_System_Allocator_Alignment), Align);
             Ptr_Loc    : constant GL_Value := Aligned - Ptr_Size;
 
          begin
@@ -2058,7 +2050,7 @@ package body GNATLLVM.Types is
            Call_Alloc (Proc,
                        (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
                                          Full_GL_Type (First_Formal (Proc))),
-                        2 => Size, 3 => Align));
+                        2 => Size, 3 => Align_V));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
@@ -2112,10 +2104,11 @@ package body GNATLLVM.Types is
       Conv_V := Get (Conv_V, Relationship_For_Alloc (DT));
 
       declare
-         Align : constant GL_Value :=
-           Get_Alloc_Alignment (DT, Alloc_GT, Empty);
-         Size  : constant GL_Value :=
+         Size    : constant GL_Value :=
            Get_Alloc_Size (DT, Alloc_GT, Conv_V, For_Dealloc => True);
+         Align   : constant ULL      :=
+           Get_Alloc_Alignment (DT, Alloc_GT, Empty);
+         Align_V : constant GL_Value := Size_Const_Int (Align);
 
       begin
          --  If no procedure was specified, use the default memory deallocation
@@ -2123,9 +2116,7 @@ package body GNATLLVM.Types is
          --  directly if the requested alignment is a constand and no larger
          --  than the system allocator alignment.
 
-         if No (Proc) and then Is_A_Const_Int (Align)
-           and then (Get_Const_Int_Value (Align) <=
-                       (LLI (Get_System_Allocator_Alignment)))
+         if No (Proc) and then Align <= ULL (Get_System_Allocator_Alignment)
          then
             Call (Get_Default_Free_Fn,
                   (1 => Pointer_Cast (Conv_V, A_Char_GL_Type)));
@@ -2161,7 +2152,7 @@ package body GNATLLVM.Types is
                                             Full_GL_Type
                                               (First_Formal (Proc))),
                            2 => Ptr_To_Size_Type (Conv_V),
-                           3 => Size, 4 => Align));
+                           3 => Size, 4 => Align_V));
 
             --  Otherwise, this is the secondary stack and we just call
             --  it with the size.
@@ -2378,19 +2369,18 @@ package body GNATLLVM.Types is
    function Get_Alloc_Alignment
      (GT       : GL_Type;
       Alloc_GT : GL_Type;
-      E        : Entity_Id := Empty) return GL_Value
+      E        : Entity_Id := Empty) return ULL
    is
-      GT_Align : constant GL_Value    := Get_Type_Alignment (Alloc_GT);
-      E_Align  : constant GL_Value    :=
+      GT_Align    : constant ULL := Get_Type_Alignment (Alloc_GT);
+      E_Align     : constant ULL :=
         (if   Present (E) and then not Unknown_Alignment (E)
-         then Size_Const_Int (Alignment (E)) else Size_Const_Int (Uint_1));
-      Bound_Align : constant GL_Value :=
+         then ULL (UI_To_Int (Alignment (E))) else 1);
+      Bound_Align : constant ULL :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
-         then Get_Bound_Alignment (Full_Etype (GT))
-         else Size_Const_Int (Uint_1));
+         then Get_Bound_Alignment (Full_Etype (GT)) else 1);
 
    begin
-      return Build_Max (Build_Max (GT_Align, Bound_Align), E_Align);
+      return ULL'Max (ULL'Max (GT_Align, Bound_Align), E_Align);
    end Get_Alloc_Alignment;
 
    ------------------

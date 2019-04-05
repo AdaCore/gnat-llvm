@@ -76,9 +76,8 @@ package GNATLLVM.Arrays is
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
-   function Get_Bound_Alignment (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
-          Post => Full_Etype (Get_Bound_Alignment'Result) = Size_Type;
+   function Get_Bound_Alignment (TE : Entity_Id) return ULL
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE);
    --  Get the alignment of the Bounds part of array and data of TE
 
    function Get_Dim_Range (N : Node_Id) return Node_Id

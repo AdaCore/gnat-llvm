@@ -1024,17 +1024,16 @@ package body GNATLLVM.Arrays is
    function Get_Bound_Size (GT : GL_Type) return GL_Value is
       T : constant Type_T := Create_Array_Bounds_Type (Full_Etype (GT));
    begin
-      return Align_To (Get_Type_Size (T),
-                       Size_Const_Int (Get_Type_Alignment (T)),
-                       Size_Const_Int (Get_Type_Alignment (GT)));
+      return Align_To (Get_Type_Size (T), Get_Type_Alignment (T),
+                       Get_Type_Alignment (GT));
    end Get_Bound_Size;
 
    -------------------------
    -- Get_Bound_Alignment --
    -------------------------
 
-   function Get_Bound_Alignment (TE : Entity_Id) return GL_Value is
-      (Size_Const_Int (Get_Type_Alignment (Create_Array_Bounds_Type (TE))));
+   function Get_Bound_Alignment (TE : Entity_Id) return ULL is
+      (Get_Type_Alignment (Create_Array_Bounds_Type (TE)));
 
    ------------------------
    -- Maybe_Store_Bounds --

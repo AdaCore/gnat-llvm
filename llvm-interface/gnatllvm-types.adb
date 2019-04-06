@@ -691,13 +691,15 @@ package body GNATLLVM.Types is
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
       In_V        : constant GL_Value :=
-        (if Is_Unchecked then V else To_Primitive (V));
+        (if   Is_Unchecked and then not Has_Padding (V) then V
+         else To_Primitive (V));
       In_GT       : constant GL_Type  := Related_Type (In_V);
       Is_Unc_Bias : constant Boolean  :=
         Is_Unchecked and then (Is_Biased_GL_Type (GT)
                                  or else Is_Biased_GL_Type (In_GT));
       Prim_GT     : constant GL_Type  :=
-        (if Is_Unchecked then GT else Primitive_GL_Type (GT));
+        (if   Is_Unchecked and then not Has_Padding (GT) then GT
+         else Primitive_GL_Type (GT));
       Value       : GL_Value          := In_V;
       Src_Access  : constant Boolean  := Is_Access_Type (V);
       Dest_Access : constant Boolean  := Is_Access_Type (Prim_GT);
@@ -1608,16 +1610,27 @@ package body GNATLLVM.Types is
             Align := Alignment (Full_Base_Type (TE));
          end if;
 
-         GT := Make_GT_Alternative
-           (GT, TE,
-           (if    Is_Discrete_Or_Fixed_Point_Type (GT) then Esize (TE)
-                  elsif Has_Size_Clause (TE) or not Unknown_RM_Size (TE)
-                  then  RM_Size (TE) else No_Uint),
-           Align         => Align,
-           For_Type      => True,
-           For_Component => False,
-           Max_Size      => False,
-           Is_Biased     => Has_Biased_Representation (TE));
+         declare
+            Size_TE : constant Entity_Id :=
+              (if   Is_Packed_Array_Impl_Type (TE)
+               then Original_Array_Type (TE) else TE);
+            Size    : constant Uint      :=
+               (if    Is_Discrete_Or_Fixed_Point_Type (Size_TE)
+                then  Esize (Size_TE)
+                elsif Has_Size_Clause (Size_TE)
+                      or not Unknown_RM_Size (Size_TE)
+                then  RM_Size (Size_TE) else No_Uint);
+
+         begin
+            GT := Make_GT_Alternative
+              (GT, TE,
+               Size          => Size,
+               Align         => Align,
+               For_Type      => True,
+               For_Component => False,
+               Max_Size      => False,
+               Is_Biased     => Has_Biased_Representation (TE));
+         end;
       end if;
 
       --  Back-annotate sizes of non-scalar types if there isn't one.  ???

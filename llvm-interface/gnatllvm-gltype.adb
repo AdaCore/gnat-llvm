@@ -337,16 +337,21 @@ package body GNATLLVM.GLType is
       Max_Size      : Boolean := False;
       Is_Biased     : Boolean := False) return GL_Type
    is
-      Out_GT : constant GL_Type  :=
+      Out_GT    : constant GL_Type  :=
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
                                       Is_Biased);
+      Err_Ident : constant Entity_Id :=
+        (if   Present (Def_Ident)
+              and then Is_Packed_Array_Impl_Type (Def_Ident)
+         then Original_Array_Type (Def_Ident) else Def_Ident);
+
    begin
       --  If this is an entity that comes from source, is in the unit being
       --  compiled, and we've made a padded type, set a warning saying how
       --  many bits are unused.
 
-      if Present (Def_Ident) and then Comes_From_Source (Def_Ident)
-        and then In_Extended_Main_Code_Unit (Def_Ident)
+      if Present (Err_Ident) and then Comes_From_Source (Err_Ident)
+        and then In_Extended_Main_Code_Unit (Err_Ident)
         and then Is_Padded_GL_Type (Out_GT)
       then
          declare
@@ -355,15 +360,10 @@ package body GNATLLVM.GLType is
             Pad_Sz    : constant GL_Value :=
               (if   Present (Out_Sz) and then Present (In_Sz)
                then Sub (Out_Sz, In_Sz) else No_GL_Value);
-            Err_Ident : Entity_Id         := Def_Ident;
             Err_Node  : Entity_Id         := Empty;
 
          begin
             if Present (Pad_Sz) and then Get_Const_Int_Value (Pad_Sz) > 0 then
-               if Is_Packed_Array_Impl_Type (Err_Ident) then
-                  Err_Ident := Original_Array_Type (Err_Ident);
-               end if;
-
                if Ekind_In (Err_Ident, E_Component, E_Discriminant)
                  and then Present (Component_Clause (Err_Ident))
                then

@@ -189,6 +189,14 @@ package GNATLLVM.GLType is
      (Is_Byte_Array_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
+   function Has_Padding (GT : GL_Type)           return Boolean is
+     (Is_Padded_GL_Type (GT) or else Is_Byte_Array_GL_Type (GT))
+     with Pre => Present (GT);
+
+   function Has_Padding (V : GL_Value)     return Boolean is
+     (Has_Padding (Related_Type (V)))
+     with Pre => Present (V);
+
    function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
      with Pre => Present (GT);
 

@@ -256,7 +256,7 @@ package body GNATLLVM.Records is
       V          : GL_Value;
       Total_Size : in out GL_Value;
       Cur_Align  : ULL)
-     with Pre  => (RI.Variants /= null or else RI.Overlap_Variants /= null)
+     with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
                   and then Present (Total_Size),
           Post => Present (Total_Size);
    --  Update the total size of a record with the information from a
@@ -268,7 +268,7 @@ package body GNATLLVM.Records is
       V          : GL_Value;
       Total_Size : in out IDS;
       Cur_Align  : ULL)
-     with Pre  => (RI.Variants /= null or else RI.Overlap_Variants /= null)
+     with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
                   and then Present (Total_Size),
           Post => Present (Total_Size);
    --  Version of above for Is_Dynamic_Size
@@ -278,7 +278,41 @@ package body GNATLLVM.Records is
       V          : GL_Value;
       Total_Size : in out BA_Data;
       Cur_Align  : ULL)
-     with Pre  => RI.Variants /= null or else RI.Overlap_Variants /= null;
+     with Pre => RI.Variants /= null and then RI.Overlap_Variants /= null;
+   --  Version of above for back-annotation
+
+   function Variant_Part_Size
+     (RI            : Record_Info;
+      V             : GL_Value;
+      J             : Int;
+      In_Size       : GL_Value;
+      Cur_Align     : ULL) return GL_Value
+     with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
+                  and then J in RI.Variants'Range and then Present (In_Size),
+          Post => Present (Variant_Part_Size'Result);
+   --  Computes the contribution to Total_Size of the variant part with index
+   --  J in RI.  In_Size and Cur_Align are the total size not considering the
+   --  variant and the known alignment at that point.
+
+   function Variant_Part_Size
+     (RI            : Record_Info;
+      V             : GL_Value;
+      J             : Int;
+      In_Size       : IDS;
+      Cur_Align     : ULL) return IDS
+     with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
+                  and then J in RI.Variants'Range and then Present (In_Size),
+          Post => Present (Variant_Part_Size'Result);
+   --  Version of above for computing if something is dynamic size
+
+   function Variant_Part_Size
+     (RI            : Record_Info;
+      V             : GL_Value;
+      J             : Int;
+      In_Size       : BA_Data;
+      Cur_Align     : ULL) return BA_Data
+     with Pre => RI.Variants /= null and then RI.Overlap_Variants /= null
+                 and then J in RI.Variants'Range;
    --  Version of above for back-annotation
 
    function Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
@@ -404,6 +438,14 @@ package body GNATLLVM.Records is
       --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
       --  Align_To.
 
+      function Variant_Part_Size
+        (RI            : Record_Info;
+         V             : GL_Value;
+         J             : Int;
+         In_Size       : Result;
+         Cur_Align     : ULL) return Result
+        with Pre => RI.Variants /= null and then RI.Overlap_Variants /= null
+             and then J in RI.Variants'Range;
    end Size;
 
    ------------------------
@@ -1060,10 +1102,11 @@ package body GNATLLVM.Records is
             Prev_Idx  := Saved_Prev_Idx;
             Cur_Idx   := Saved_Cur_Idx;
             First_Idx := Saved_First_Idx;
-            Add_RI (Variant_List => Variants (Var_Part),
-                    Variants     => Var_Array,
-                    Variant_Expr => Variant_Expr,
-                    Align        => Variant_Align);
+            Add_RI (Variant_List     => Variants (Var_Part),
+                    Variants         => Var_Array,
+                    Overlap_Variants => Overlap_Var_Array,
+                    Variant_Expr     => Variant_Expr,
+                    Align            => Variant_Align);
          end Add_Component_List;
 
          -----------------------
@@ -1689,7 +1732,7 @@ package body GNATLLVM.Records is
          --  fail if we have no fields.
 
          if Present (T) and then Get_Type_Size (T) = ULL (0) then
-            This_Size  := Sz_Const (ULL (0));
+            This_Size  := Sz_Const (0);
             Must_Align := Get_Type_Alignment (T);
             Is_Align   := Get_Type_Alignment (T);
 
@@ -1786,7 +1829,7 @@ package body GNATLLVM.Records is
          else
             Must_Align := 1;
             Is_Align   := ULL (Get_Maximum_Alignment);
-            This_Size  := Sz_Const (ULL (0));
+            This_Size  := Sz_Const (0);
          end if;
 
          --  If we've set an alignment for this RI, it overrides any
@@ -1841,14 +1884,14 @@ package body GNATLLVM.Records is
                if RI.Variants /= null then
                   New_Idx := Get_Variant_For_RI (RI, V, Max_Size,
                                                  Need_Idx, False);
-               end if;
-               if RI.Overlap_Variants /= null then
-                  New_Idx := Get_Variant_For_RI (RI, V, Max_Size,
-                                                 Need_Idx, True);
-               end if;
+                  if No (New_Idx) then
+                     New_Idx := Get_Variant_For_RI (RI, V, Max_Size,
+                                                    Need_Idx, True);
+                  end if;
 
-               if Present (New_Idx) then
-                  return Variant_Idx;
+                  if Present (New_Idx) then
+                     return Variant_Idx;
+                  end if;
                end if;
 
                Idx := RI.Next;
@@ -1913,7 +1956,7 @@ package body GNATLLVM.Records is
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result
       is
-         Total_Size   : Result         := Sz_Const (ULL (0));
+         Total_Size   : Result         := Sz_Const (0);
          Cur_Align    : ULL            := ULL (Get_Maximum_Alignment);
          Cur_Idx      : Record_Info_Id :=
            (if   Present (Start_Idx) then Start_Idx elsif Present (TE)
@@ -1960,16 +2003,16 @@ package body GNATLLVM.Records is
             --  we're looking to compute the size of the record.
 
             if RI.Variants /= null and then Present (Idx) then
-               New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx);
+               New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx, False);
                if Present (New_Idx) and then RI.Align /= 0 then
                   Total_Size := Align_To (Total_Size, Cur_Align, RI.Align);
                end if;
-            end if;
 
-            if RI.Overlap_Variants /= null and then Present (Idx) then
-               New_Idx    := Get_Variant_For_RI (RI, V, Max_Size, Idx);
-               if Present (New_Idx) then
-                  Total_Size := Sz_Const (ULL (0));
+               if No (New_Idx) then
+                  New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx, True);
+                  if Present (New_Idx) then
+                     Total_Size := Sz_Const (0);
+                  end if;
                end if;
             end if;
 
@@ -2099,6 +2142,46 @@ package body GNATLLVM.Records is
          end if;
       end Align_To;
 
+      -----------------------
+      -- Variant_Part_Size --
+      -----------------------
+
+      function Variant_Part_Size
+        (RI            : Record_Info;
+         V             : GL_Value;
+         J             : Int;
+         In_Size       : Result;
+         Cur_Align     : ULL) return Result
+      is
+         Align        : constant ULL    := RI.Align;
+         Variant_Size : constant Result :=
+           Get_Record_Size_So_Far (Empty, V, RI.Variants (J),
+                                   Empty_Record_Info_Id, False);
+         Overlap_Size : constant Result :=
+           Get_Record_Size_So_Far (Empty, V, RI.Overlap_Variants (J),
+                                   Empty_Record_Info_Id, False);
+         Our_Size      : Result         := In_Size;
+
+      begin
+         --  If this variant isn't of zero size, align the input and add
+         --  its size.
+
+         if Variant_Size /= Sz_Const (0) then
+            Our_Size := Align_To (Our_Size, Cur_Align, Align) + Variant_Size;
+         end if;
+
+         --  The resulting size is the maximum of that and the size of the
+         --  overlap portion (but special-case zero).
+
+         if Our_Size = Sz_Const (0) then
+            return Overlap_Size;
+         elsif Overlap_Size = Sz_Const (0) then
+            return Our_Size;
+         else
+            return Sz_Max (Our_Size, Overlap_Size);
+         end if;
+      end Variant_Part_Size;
+
    end Size;
 
    --  Here we instantiate the size routines with functions that compute
@@ -2144,6 +2227,14 @@ package body GNATLLVM.Records is
      (V : GL_Value; Cur_Align, Must_Align : ULL) return GL_Value
      renames LLVM_Size.Align_To;
 
+   function Variant_Part_Size
+     (RI            : Record_Info;
+      V             : GL_Value;
+      J             : Int;
+      In_Size       : GL_Value;
+      Cur_Align     : ULL) return GL_Value
+     renames LLVM_Size.Variant_Part_Size;
+
    --  Here we instantiate the size routines with functions that compute
    --  whether a size is dynamic or not and make those visible to clients.
 
@@ -2171,7 +2262,7 @@ package body GNATLLVM.Records is
       No_Padding : Boolean := False) return IDS
      renames IDS_Size.Get_Record_Type_Size;
 
-   function Record_Size_So_Far
+   function Get_Record_Size_So_Far
      (TE         : Entity_Id;
       V          : GL_Value;
       Start_Idx  : Record_Info_Id;
@@ -2182,6 +2273,14 @@ package body GNATLLVM.Records is
 
    function Align_To (V : IDS; Cur_Align, Must_Align : ULL) return IDS
      renames IDS_Size.Align_To;
+
+   function Variant_Part_Size
+     (RI            : Record_Info;
+      V             : GL_Value;
+      J             : Int;
+      In_Size       : IDS;
+      Cur_Align     : ULL) return IDS
+     renames IDS_Size.Variant_Part_Size;
 
    --  Here we instantiate the size routines with functions that compute
    --  back-annotation trees.
@@ -2203,15 +2302,6 @@ package body GNATLLVM.Records is
                 Sz_Type_Size    => Get_Type_Size,
                 Sz_Update_Size  => Update_Size_From_Variant);
 
-   function Record_Size_So_Far
-     (TE         : Entity_Id;
-      V          : GL_Value;
-      Start_Idx  : Record_Info_Id;
-      Idx        : Record_Info_Id;
-      Max_Size   : Boolean := False;
-      No_Padding : Boolean := False) return BA_Data
-     renames BA_Size.Get_Record_Size_So_Far;
-
    function Get_Record_Type_Size
      (TE         : Entity_Id;
       V          : GL_Value;
@@ -2224,6 +2314,14 @@ package body GNATLLVM.Records is
 
    function Align_To (V : BA_Data; Cur_Align, Must_Align : ULL) return BA_Data
      renames BA_Size.Align_To;
+
+   function Variant_Part_Size
+     (RI            : Record_Info;
+      V             : GL_Value;
+      J             : Int;
+      In_Size       : BA_Data;
+      Cur_Align     : ULL) return BA_Data
+     renames BA_Size.Variant_Part_Size;
 
    -----------------------
    -- Get_Field_Ordinal --
@@ -2283,15 +2381,12 @@ package body GNATLLVM.Records is
 
       if Is_A_Const_Int (Total_Size) then
          for J in RI.Variants'Range loop
-            if No (RI.Variants (J)) then
-               Sizes (J) := Total_Size;
-            elsif Is_Const (IDS'(Record_Size_So_Far (Empty, No_GL_Value,
-                                                     RI.Variants (J),
-                                                     Empty_Record_Info_Id)))
+            if Is_Const (IDS'(Get_Record_Size_So_Far
+                                (Empty, No_GL_Value, RI.Variants (J),
+                                 Empty_Record_Info_Id)))
             then
-               Sizes (J) := Align_To (Total_Size, Cur_Align, RI.Align) +
-                 Get_Record_Size_So_Far (Empty, No_GL_Value, RI.Variants (J),
-                                         Empty_Record_Info_Id, False);
+               Sizes (J) := Variant_Part_Size (RI, No_GL_Value, J,
+                                               Total_Size, Cur_Align);
             end if;
          end loop;
       end if;
@@ -2321,9 +2416,7 @@ package body GNATLLVM.Records is
          --  Otherwise, align the size coming in and add our size to it.
 
          if No (Sizes (J)) then
-            Sizes (J) := Align_To (Total_Size, Cur_Align, RI.Align) +
-              Get_Record_Size_So_Far (Empty, V, RI.Variants (J),
-                                      Empty_Record_Info_Id, False);
+            Sizes (J) := Variant_Part_Size (RI, V, J, Total_Size, Cur_Align);
          end if;
 
          From_BBs (J) := Get_Insert_Block;
@@ -2369,16 +2462,7 @@ package body GNATLLVM.Records is
       --  previous size, it's not a constant.
 
       for J in RI.Variants'Range loop
-         --  If this variant is empty, trivially get the size.  Otherwise,
-         --  compute it.
-
-         if No (RI.Variants (J)) then
-            Our_Size := Total_Size;
-         else
-            Our_Size := Align_To (Total_Size, Cur_Align, RI.Align) +
-              Record_Size_So_Far (Empty, V, RI.Variants (J),
-                                  Empty_Record_Info_Id, False);
-         end if;
+         Our_Size := Variant_Part_Size (RI, V, J, Total_Size, Cur_Align);
 
          --  If we haven't already set a size, set it.  Otherwise, if our
          --  size differs from the size we saved, the size is variable.
@@ -2496,17 +2580,7 @@ package body GNATLLVM.Records is
       --  We first go through each variant and compute the size of each
 
       for J in RI.Variants'Range loop
-
-         --  If this variant is empty, trivially get the size.  Otherwise,
-         --  compute it.
-
-         if No (RI.Variants (J)) then
-            Sizes (J) := Total_Size;
-         else
-            Sizes (J) := Align_To (Total_Size, Cur_Align, RI.Align) +
-              Record_Size_So_Far (Empty, V, RI.Variants (J),
-                                  Empty_Record_Info_Id, False);
-         end if;
+         Sizes (J) := Variant_Part_Size (RI, V, J, Total_Size, Cur_Align);
       end loop;
 
       --  Now compute the resulting size

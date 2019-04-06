@@ -2965,7 +2965,6 @@ package body GNATLLVM.Records is
             F                  : Entity_Id;
             F_Idx              : Field_Info_Id;
             FI                 : Field_Info;
-            New_Prefix         : String (Prefix'First .. Prefix'Last + 4);
             Var_Node, Choice   : Node_Id;
 
          begin
@@ -3016,15 +3015,9 @@ package body GNATLLVM.Records is
                Sprint_Node (RI.Variant_Expr);
                Write_Eol;
 
-               New_Prefix (Prefix'Range)   := Prefix;
-               New_Prefix (Prefix'Last + 1) := ' ';
-               New_Prefix (Prefix'Last + 2) := ' ';
-               New_Prefix (Prefix'Last + 3) := ' ';
-               New_Prefix (Prefix'Last + 4) := ' ';
-
                Var_Node := First (RI.Variant_List);
-               for Variant of RI.Variants.all loop
-                  Write_Str (New_Prefix);
+               for J in RI.Variants'Range loop
+                  Write_Str (Prefix & "    ");
                   Write_Str ("when ");
                   Choice := First (Discrete_Choices (Var_Node));
                   loop
@@ -3035,8 +3028,12 @@ package body GNATLLVM.Records is
                   end loop;
 
                   Write_Line (" =>");
-                  if Present (Variant) then
-                     Print_RI_Chain (Variant, New_Prefix);
+                  if Present (RI.Variants (J)) then
+                     Print_RI_Chain (RI.Variants (J), Prefix & "    ");
+                  end if;
+                  if Present (RI.Overlap_Variants (J)) then
+                     Print_One_RI (RI.Overlap_Variants (J),
+                                   Prefix & "   overlap ");
                   end if;
 
                   Next (Var_Node);

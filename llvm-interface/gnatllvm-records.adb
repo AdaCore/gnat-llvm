@@ -724,7 +724,6 @@ package body GNATLLVM.Records is
 
       type Variant_Stack_Info is record
          Align      : ULL;
-         Overlap_RI : Record_Info_Id;
          Is_Static  : Boolean;
       end record;
 
@@ -740,7 +739,10 @@ package body GNATLLVM.Records is
       --  The previous index of the record table entry, if any
 
       First_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-      --  The first index used by the current call
+      --  The first index used by the current record fragment construction
+
+      Overlap_Idx : Record_Info_Id := Empty_Record_Info_Id;
+      --  The index of the overlap component of this variant part, if any
 
       Cur_Idx     : Record_Info_Id;
       --  The index of the record table entry we're building
@@ -995,6 +997,7 @@ package body GNATLLVM.Records is
             Saved_Cur_Idx      : Record_Info_Id;
             Saved_Prev_Idx     : Record_Info_Id;
             Saved_First_Idx    : Record_Info_Id;
+            Saved_Overlap_Idx  : Record_Info_Id;
             Component_Def      : Node_Id;
             Field              : Entity_Id;
             Field_To_Add       : Entity_Id;
@@ -1050,8 +1053,7 @@ package body GNATLLVM.Records is
             if Static_Constraint then
                Variant := Find_Choice (Constraining_Expr, Variants (Var_Part));
                if Present (Variant) then
-                  Variant_Stack.Append
-                    ((Variant_Align, Empty_Record_Info_Id, True));
+                  Variant_Stack.Append ((Variant_Align, True));
                   Add_Component_List (Component_List (Variant), From_Rec);
                   Variant_Stack.Decrement_Last;
                end if;
@@ -1065,6 +1067,7 @@ package body GNATLLVM.Records is
             Saved_Cur_Idx     := Cur_Idx;
             Saved_Prev_Idx    := Prev_Idx;
             Saved_First_Idx   := First_Idx;
+            Saved_Overlap_Idx := Overlap_Idx;
             J                 := 1;
             Var_Array         := new
               Record_Info_Id_Array'(1 .. List_Length_Non_Pragma
@@ -1076,9 +1079,9 @@ package body GNATLLVM.Records is
                                       => Empty_Record_Info_Id);
 
             while Present (Variant) loop
-               Variant_Stack.Append
-                 ((Variant_Align, Empty_Record_Info_Id, False));
-               First_Idx := Empty_Record_Info_Id;
+               Variant_Stack.Append ((Variant_Align, False));
+               First_Idx   := Empty_Record_Info_Id;
+               Overlap_Idx := Empty_Record_Info_Id;
                if Present (Component_Items (Component_List (Variant))) then
                   Record_Info_Table.Increment_Last;
                   Prev_Idx      := Empty_Record_Info_Id;
@@ -1089,19 +1092,19 @@ package body GNATLLVM.Records is
                   Flush_Current_Types;
                end if;
 
-               Var_Array (J)         := First_Idx;
-               Overlap_Var_Array (J) :=
-                 Variant_Stack.Table (Variant_Stack.Last).Overlap_RI;
                Set_Present_Expr (Variant,
                                  Choices_To_SO_Ref (Variant, Variant_Expr));
+               Var_Array (J)         := First_Idx;
+               Overlap_Var_Array (J) := Overlap_Idx;
                J                     := J + 1;
                Variant_Stack.Decrement_Last;
                Next_Non_Pragma (Variant);
             end loop;
 
-            Prev_Idx  := Saved_Prev_Idx;
-            Cur_Idx   := Saved_Cur_Idx;
-            First_Idx := Saved_First_Idx;
+            Prev_Idx    := Saved_Prev_Idx;
+            Cur_Idx     := Saved_Cur_Idx;
+            First_Idx   := Saved_First_Idx;
+            Overlap_Idx := Saved_Overlap_Idx;
             Add_RI (Variant_List     => Variants (Var_Part),
                     Variants         => Var_Array,
                     Overlap_Variants => Overlap_Var_Array,

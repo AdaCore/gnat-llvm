@@ -735,48 +735,51 @@ package body GNATLLVM.Records is
          Table_Increment      => 1,
          Table_Name           => "Variant_Stack");
 
-      Prev_Idx    : Record_Info_Id := Empty_Record_Info_Id;
+      Prev_Idx      : Record_Info_Id := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
-      First_Idx   : Record_Info_Id := Empty_Record_Info_Id;
+      First_Idx     : Record_Info_Id := Empty_Record_Info_Id;
       --  The first index used by the current record fragment construction
 
-      Overlap_Idx : Record_Info_Id := Empty_Record_Info_Id;
+      Overlap_Idx   : Record_Info_Id := Empty_Record_Info_Id;
       --  The index of the overlap component of this variant part, if any
 
-      Cur_Idx     : Record_Info_Id;
+      Cur_Idx       : Record_Info_Id;
       --  The index of the record table entry we're building
 
-      Cur_RI_Pos  : ULL            := 0;
+      Cur_RI_Pos    : ULL            := 0;
       --  Current position into this RI
 
-      Par_Depth   : Int            := 0;
+      Par_Depth     : Int            := 0;
       --  Nesting depth into parent records
 
-      RI_Align    : ULL            := 0;
+      RI_Align      : ULL            := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
-      Cur_Field   : Entity_Id      := Empty;
+      RI_Is_Overlap : Boolean        := False;
+      --  If True, the next RI built is an overlap RI for a variant
+
+      Cur_Field     : Entity_Id      := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
-      Split_Align : ULL            := ULL (Get_Maximum_Alignment);
+      Split_Align   : ULL            := ULL (Get_Maximum_Alignment);
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the
       --  same reason after a variable-size field.
 
-      GT          :  GL_Type       := Default_GL_Type (TE, Create => False);
+      GT            :  GL_Type       := Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
 
-      LLVM_Type   : Type_T;
+      LLVM_Type     : Type_T;
       --  The LLVM type for this record type
 
-      Field       : Entity_Id;
+      Field         : Entity_Id;
       --  Temporary for loop over discriminants
 
-      Discrim_FIs : Field_Info_Id_Array :=
+      Discrim_FIs   : Field_Info_Id_Array :=
         (1 .. Max_Discriminant (Full_Base_Type (TE)) => Empty_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
       --  discriminant number J.  We use this for record subtypes of
@@ -844,10 +847,19 @@ package body GNATLLVM.Records is
             Variants         => Variants,
             Overlap_Variants => Overlap_Variants);
 
+         --  If we've had a previous RI for this part, link us to it.
+         --  Otherwise, if this is an overlap RI, indicate it as so and
+         --  start the chain over.  If not, indicate the first index in our
+         --  chain.
+
          if Present (Prev_Idx) then
             Record_Info_Table.Table (Prev_Idx).Next := Cur_Idx;
+         elsif RI_Is_Overlap then
+            Overlap_Idx   := Cur_Idx;
+            Cur_Idx       := Empty_Record_Info_Id;
+            RI_Is_Overlap := False;
          else
-            First_Idx := Cur_Idx;
+            First_Idx     := Cur_Idx;
          end if;
 
          Prev_Idx := Cur_Idx;
@@ -1287,10 +1299,10 @@ package body GNATLLVM.Records is
       ---------------------------
 
       procedure Process_Fields_To_Add is
-         In_Variant     : constant Boolean :=
-           Variant_Stack.Last /= 0
+         In_Variant         : constant Boolean := Variant_Stack.Last /= 0;
+         In_Dynamic_Variant : constant Boolean := In_Variant
            and then not Variant_Stack.Table (Variant_Stack.Last).Is_Static;
-         Last_Var_Depth : Int              := 0;
+         Last_Var_Depth     : Int              := 0;
 
          function Field_Before (L, R : Int) return Boolean;
          --  Determine the sort order of two fields in Added_Field_Table
@@ -1359,23 +1371,6 @@ package body GNATLLVM.Records is
             then
                return False;
 
-            --  A discriminant is always in front of a non-discriminant
-
-            elsif Ekind (Left_F) = E_Discriminant
-              and then Ekind (Right_F) = E_Component
-            then
-               return True;
-            elsif Ekind (Right_F) = E_Discriminant
-              and then Ekind (Left_F) = E_Component
-            then
-               return False;
-
-            --  For all other cases, don't move outside of a variant part
-            --  ??? We'll change this later.
-
-            elsif AF_Left.Var_Depth /= AF_Right.Var_Depth then
-               return AF_Left.Var_Depth < AF_Right.Var_Depth;
-
             --  If one field has a specified bit position and the other
             --  doesn't, the field with the position is first.
 
@@ -1390,8 +1385,24 @@ package body GNATLLVM.Records is
             elsif Is_Pos_L and then Is_Pos_R then
                return Left_BO < Right_BO;
 
+            --  A discriminant is in front of a non-discriminant
+
+            elsif Ekind (Left_F) = E_Discriminant
+              and then Ekind (Right_F) = E_Component
+            then
+               return True;
+            elsif Ekind (Right_F) = E_Discriminant
+              and then Ekind (Left_F) = E_Component
+            then
+               return False;
+
+            --  For all other cases, don't move outside of a variant part
+
+            elsif AF_Left.Var_Depth /= AF_Right.Var_Depth then
+               return AF_Left.Var_Depth < AF_Right.Var_Depth;
+
             --  Fixed-size fields come before variable-sized ones if the
-            --  fixed field is aliases or if we're in a variant.  But don't
+            --  fixed field is aliased or if we're in a variant.  But don't
             --  do this if we aren't to reorder fields.
 
             elsif not No_Reordering (TE)
@@ -1464,15 +1475,22 @@ package body GNATLLVM.Records is
                --  into account any specified size and if we have to
                --  use the max size.
 
-               Need_Align :  ULL                := Get_Type_Alignment (F_GT);
+               Pos         : constant Uint :=
+                 (if   No (Prev_Idx) and then Present (Component_Clause (F))
+                  then Normalized_Position (F) else No_Uint);
+               --  If this is the first RI for the type, honor the
+               --  requested position.
+
+               Need_Align :  ULL                :=
+                 (if Pos /= No_Uint then 1 else Get_Type_Alignment (F_GT));
                --  The alignment we need this field to have
 
             begin
                --  If we've pushed into a new static variant, see if
                --  we need to align it.  But update our level anyway.
-               --  ??? Eventually need to ignore if has rep clause.
+               --  Ignore if there's a position specified.
 
-               if AF.Var_Depth /= Last_Var_Depth then
+               if AF.Var_Depth /= Last_Var_Depth and then Pos = No_Uint then
                   if AF.Var_Depth > Last_Var_Depth and then AF.Var_Align /= 0
                   then
                      Need_Align  := AF.Var_Align;
@@ -1515,16 +1533,23 @@ package body GNATLLVM.Records is
                      Set_Is_Nonnative_Type (TE);
                      RI_Align    := Need_Align;
                      Split_Align := Need_Align;
+
+                  --  If we're in the overlap section of a variant and we've
+                  --  run out of components that have a position, end the
+                  --  overlap section.
+
+                  elsif Pos = No_Uint and then RI_Is_Overlap then
+                     Flush_Current_Types;
+                     RI_Is_Overlap := False;
+
+                  --  If we're in a dynamic variant and have a position,
+                  --  show that we're building a overlap RI.
+
+                  elsif In_Dynamic_Variant and then Pos /= No_Uint then
+                     RI_Is_Overlap := True;
                   end if;
 
                   declare
-                     Pos         : constant Uint :=
-                       (if   No (Prev_Idx) and then not In_Variant
-                             and then Present (Component_Clause (F))
-                        then Normalized_Position (F) else No_Uint);
-                     --  If this is the first RI for the type, honor the
-                     --  requested position.
-
                      T           : constant Type_T := Type_Of (F_GT);
                      --  LLVM type to use
 
@@ -1904,9 +1929,9 @@ package body GNATLLVM.Records is
          return Empty_Record_Info_Id;
       end Get_Variant_For_RI;
 
-      ----------------------------------
-      -- Get_Variant_Max_Size_Variant --
-      ----------------------------------
+      --------------------------
+      -- Get_Variant_Max_Size --
+      --------------------------
 
       function Get_Variant_Max_Size (RI : Record_Info) return Result is
          Max_Const_Size : ULL    := 0;

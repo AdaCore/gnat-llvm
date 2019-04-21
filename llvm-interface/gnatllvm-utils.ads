@@ -80,20 +80,6 @@ package GNATLLVM.Utils is
    --  Return True if N is an expression that represents a variable or
    --  something else that can be used in an LHS context.
 
-   procedure Store (Bld : Builder_T; Expr : Value_T; Ptr : Value_T)
-     with Pre => Present (Bld) and then Present (Expr) and then Present (Ptr);
-   --  Helper for LLVM's Build_Store
-
-   procedure Store_With_Type (GT : GL_Type; Expr : Value_T; Ptr : Value_T)
-     with Pre => Present (GT) and then Present (Expr) and then Present (Ptr);
-   --  Similar, but allows annotating store
-
-   function Load_With_Type
-     (GT : GL_Type; Ptr : Value_T; Name : String := "") return Value_T
-     with Pre  => Present (GT) and then Present (Ptr),
-          Post => Present (Load_With_Type'Result);
-   --  Likewise for a load
-
    procedure Set_Linker_Section (V : GL_Value; Def_Ident : Entity_Id)
      with Pre => Present (V) and then Present (Def_Ident);
    --  Add a linker section to V if one is specified for Def_Ident

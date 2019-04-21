@@ -1460,24 +1460,33 @@ package body GNATLLVM.GLValue is
    ----------
 
    function Load (Ptr : GL_Value; Name : String := "") return GL_Value is
-      New_Relationship : constant GL_Relationship :=
+      New_R     : constant GL_Relationship :=
         Relation_Props (Relationship (Ptr)).Deref;
+      --  Get the resulting relation after the load
+
+      Load_GT   : constant GL_Type         :=
+        (if   Is_Data (New_R) then Full_Designated_GL_Type (Ptr)
+         else Related_Type (Ptr));
+      --  If our result is data, the resulting type may be the designated
+      --  type of an access type. Otherwise, it's the same type.
+
+      Load_Inst : constant Value_T         :=
+        Load (IR_Builder, LLVM_Value (Ptr), Name);
+      --  The actual load instruction
 
    begin
       --  If this is going to actually be pointing to data of the related
       --  type, indicate that we're loading an object of that type.
+      --  ??? At some point, we need to deal with TBAA or similar when
+      --  this isn't true.
 
-      if Is_Data (New_Relationship) then
-         return G (Load_With_Type (Full_Designated_GL_Type (Ptr),
-                                   LLVM_Value (Ptr), Name),
-                   Full_Designated_GL_Type (Ptr));
-      else
-         --  Otherwise, do a load with no type indication.
-         --  ??? At some point, we need to deal with TBAA or similar for these.
-
-         return G (Load (IR_Builder, LLVM_Value (Ptr), Name),
-                   Related_Type (Ptr), New_Relationship);
+      if Is_Data (New_R) then
+         Add_Type_Data_To_Instruction (Load_Inst, Related_Type (Ptr));
       end if;
+
+      --  Now build the result, with the proper GT and relationship
+
+      return G (Load_Inst, Load_GT, New_R);
    end Load;
 
    -----------
@@ -1485,14 +1494,14 @@ package body GNATLLVM.GLValue is
    -----------
 
    procedure Store (Expr : GL_Value; Ptr : GL_Value) is
+      Store_Inst : constant Value_T :=
+        Build_Store (IR_Builder, LLVM_Value (Expr), LLVM_Value (Ptr));
+
    begin
       if Is_Data (Expr) then
-         Store_With_Type (Related_Type (Expr), LLVM_Value (Expr),
-                          LLVM_Value (Ptr));
-      else
-         Discard (Build_Store (IR_Builder, LLVM_Value (Expr),
-                               LLVM_Value (Ptr)));
+         Add_Type_Data_To_Instruction (Store_Inst, Related_Type (Expr));
       end if;
+
    end Store;
 
    -------------------

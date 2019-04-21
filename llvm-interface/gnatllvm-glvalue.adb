@@ -2039,7 +2039,7 @@ package body GNATLLVM.GLValue is
    begin
       return GL_Idxs : GL_Value_Array (Idxs'Range) do
          for J in Idxs'Range loop
-            GL_Idxs (J) := Size_Const_Int (Idxs (J));
+            GL_Idxs (J) := Size_Const_Int (ULL (Idxs (J)));
          end loop;
       end return;
    end Idxs_To_GL_Values;

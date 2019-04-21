@@ -1632,7 +1632,7 @@ package body GNATLLVM.Variables is
       end if;
 
       Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  Int (ULL'(Get_Type_Alignment (GT))));
+                                  Get_Type_Alignment (GT));
 
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.
@@ -1840,7 +1840,7 @@ package body GNATLLVM.Variables is
       end if;
 
       Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  Int (ULL'(Get_Type_Alignment (GT))));
+                                  Get_Type_Alignment (GT));
 
    end Emit_Renaming_Declaration;
 

@@ -844,12 +844,6 @@ package GNATLLVM.GLValue is
      with Post => Is_Constant (Byte_Size'Result);
 
    function Size_Const_Int
-     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
-   is
-     (Const_Int (Size_GL_Type, ULL (N), Sign_Extend))
-     with Post => Present (Size_Const_Int'Result);
-
-   function Size_Const_Int
      (N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
      (Const_Int (Size_GL_Type, N, Sign_Extend))
@@ -1619,6 +1613,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Present (Get_Type_Size'Result);
 
    function Get_Type_Alignment (V : GL_Value) return ULL
+     with Pre => Present (V);
+
+   function Get_Type_Alignment (V : GL_Value) return unsigned is
+     (unsigned (ULL'(Get_Type_Alignment (V))))
      with Pre => Present (V);
 
    function Get_Type_Alignment (GT : GL_Type) return GL_Value

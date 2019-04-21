@@ -449,6 +449,12 @@ package GNATLLVM.Types is
    --  Return the size of a type, in bits.  If Use_Specified is False,
    --  ignore a specified alignment.
 
+   function Get_Type_Alignment
+     (GT : GL_Type; Use_Specified : Boolean := True) return unsigned
+   is
+     (unsigned (ULL'(Get_Type_Alignment (GT, Use_Specified))))
+     with Pre => Present (GT);
+
    function Get_Type_Size
      (GT         : GL_Type;
       V          : GL_Value := No_GL_Value;
@@ -493,7 +499,7 @@ package GNATLLVM.Types is
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
 
    procedure Validate_And_Set_Alignment
-     (E : Entity_Id; Align : Uint; Current_Align : Int)
+     (E : Entity_Id; Align : Uint; Current_Align : ULL)
      with Pre => Present (E);
    --  Current_Align is the current alignment of E, either because it's
    --  the alignment of the LLVM type (if E is a type) or because it's the

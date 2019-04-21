@@ -1652,13 +1652,12 @@ package body GNATLLVM.Types is
 
       Validate_And_Set_Alignment
         (TE, Alignment (TE),
-         Int (ULL'(Get_Type_Alignment (GT, Use_Specified => False))));
+         (Get_Type_Alignment (GT, Use_Specified => False)));
       if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
         and then Present (Original_Array_Type (TE))
       then
          Validate_And_Set_Alignment (Original_Array_Type (TE),
-                                     Alignment (TE),
-                                     Int (ULL'(Get_Type_Alignment (GT))));
+                                     Alignment (TE), Get_Type_Alignment (GT));
       end if;
 
       return Type_Of (GT);
@@ -1669,7 +1668,7 @@ package body GNATLLVM.Types is
    --------------------------------
 
    procedure Validate_And_Set_Alignment
-     (E : Entity_Id; Align : Uint; Current_Align : Int)
+     (E : Entity_Id; Align : Uint; Current_Align : ULL)
    is
       TE        : constant Entity_Id :=
         (if Is_Type (E) then E else Full_Etype (E));
@@ -1687,7 +1686,7 @@ package body GNATLLVM.Types is
       --  The initial location for an error message is the entity,
       --  but we may override it below if we find a better one.
 
-      New_Align : Int                := Current_Align;
+      New_Align : Int                := Int (Current_Align);
       --  By default, the new alignment is the same as the old one
 
    begin
@@ -1723,7 +1722,7 @@ package body GNATLLVM.Types is
       --  of discrete types.  ??? And records and arrays have issues too.
       --  (Yes, this is all types.)
 
-      if New_Align < Current_Align then
+      if New_Align < Int (Current_Align) then
          if not No_Error
            and then not Is_Discrete_Type (TE)
            and then not Is_Array_Type (TE)
@@ -1732,8 +1731,8 @@ package body GNATLLVM.Types is
                        or else not From_At_Mod (Alignment_Clause (E)))
          then
             Error_Msg_NE_Num ("alignment for& must be at least ^",
-                              N, E, Current_Align);
-            New_Align := Current_Align;
+                              N, E, Int (Current_Align));
+            New_Align := Int (Current_Align);
          end if;
       end if;
 
@@ -2548,7 +2547,8 @@ package body GNATLLVM.Types is
    is
       TBAA : constant Metadata_T := Get_TBAA (Full_Etype (GT));
    begin
-      Set_Volatile (Inst, Is_Volatile (GT));
+      Set_Volatile  (Inst, Is_Volatile (GT));
+      Set_Alignment (Inst, Get_Type_Alignment (GT));
 
       if Present (TBAA) and then not Universal_Aliasing (GT) then
          Add_TBAA_Access

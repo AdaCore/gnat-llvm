@@ -28,6 +28,7 @@ with Table;    use Table;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;

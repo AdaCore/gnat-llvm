@@ -170,11 +170,6 @@ package GNATLLVM.Types is
    --  Go up TE's Etype chain until it points to itself, which will
    --  go up both base and parent types.
 
-   function Is_Unsigned_For_Convert (GT : GL_Type) return Boolean
-     with Pre => Present (GT);
-   --  True if we are to treate GT as unsigned for the purpose of a
-   --  conversion.
-
    function Full_Etype (N : Node_Id) return Entity_Id is
      (if   Ekind (Etype (N)) = E_Void then Etype (N)
       else Get_Fullest_View (Etype (N)))
@@ -240,97 +235,6 @@ package GNATLLVM.Types is
                  and then Type_Needs_Bounds (Original_Array_Type (TE))))
      with Pre => Is_Type (TE);
    --  True is TE is a type that needs bounds stored with data
-
-   function Convert
-     (V              : GL_Value;
-      GT             : GL_Type;
-      Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return GL_Value
-     with Pre  => Is_Data (V) and then Present (GT)
-                  and then Is_Elementary_Type (V),
-          Post => Is_Data (Convert'Result)
-                  and then Is_Elementary_Type (Convert'Result);
-   --  Convert V to the type TE, with both the types of V and TE being
-   --  elementary.
-
-   function Convert
-     (V, T           : GL_Value;
-      Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return GL_Value is
-     (Convert (V, Related_Type (T), Float_Truncate, Is_Unchecked))
-     with Pre  => Is_Data (V) and then Is_Elementary_Type (V)
-                  and then Is_Elementary_Type (T),
-          Post => Is_Data (Convert'Result)
-                  and then Is_Elementary_Type (Convert'Result);
-   --  Variant of above where the type is that of another value (T)
-
-   function Convert_Ref (V : GL_Value; GT : GL_Type) return GL_Value
-     with Pre  => Is_Reference (V) and then Present (GT),
-          Post => Is_Reference (Convert_Ref'Result);
-   --  Convert V, which should be a reference, into a reference to GT
-
-   function Convert_Ref
-     (V : GL_Value; T : GL_Value) return GL_Value is
-     (Convert_Ref (V, Related_Type (T)))
-     with Pre  => Present (V) and then Present (T),
-          Post => Is_Access_Type (Convert_Ref'Result);
-   --  Likewise, but get type from V
-
-   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value
-     with Pre  => Present (V) and then Present (GT),
-          Post => Is_Access_Type (Convert_To_Access'Result);
-   --  Convert Src, which should be an access or reference, into an access
-   --  type GT
-
-   function Convert_To_Access
-     (V : GL_Value; T : GL_Value) return GL_Value is
-     (Convert_To_Access (V, Related_Type (T)))
-     with Pre  => Present (V) and then Present (T),
-          Post => Is_Access_Type (Convert_To_Access'Result);
-   --  Likewise, but get type from V
-
-   function Are_Arrays_With_Different_Index_Types
-     (GT1, GT2 : GL_Type) return Boolean
-     with Pre => Present (GT1) and then Present (GT2);
-   --  Return True iff GT1 and GT2 are array types that have at least
-   --  one index for whose LLVM types are different.  GT1 must be
-   --  unconstrained.
-
-   function Emit_Conversion
-     (N                   : Node_Id;
-      GT                  : GL_Type;
-      From_N              : Node_Id := Empty;
-      For_LHS             : Boolean := False;
-      Is_Unchecked        : Boolean := False;
-      Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False;
-      No_Truncation       : Boolean := False) return GL_Value
-     with Pre  => Present (GT) and then Present (N)
-                  and then not (Is_Unchecked and Need_Overflow_Check),
-          Post => Present (Emit_Conversion'Result);
-   --  Emit code to convert N to GT, optionally in unchecked mode
-   --  and optionally with an overflow check.  From_N is the conversion node,
-   --  if there is a corresponding source node.
-
-   function Emit_Convert_Value (N : Node_Id; GT : GL_Type) return GL_Value is
-     (Get (Emit_Conversion (N, GT), Object))
-     with Pre  => Present (GT) and then Present (N),
-          Post => Present (Emit_Convert_Value'Result);
-   --  Emit code to convert N to GT and get it as a value
-
-   function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value
-     with Pre  => Is_Access_Type (V) and then Present (GT),
-          Post => Is_Access_Type (Convert_Pointer'Result);
-   --  V is a reference to some object.  Convert it to a reference to GT
-   --  with the same relationship.
-
-   function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
-   --  Remove any conversion from N, if Present, if they are record or array
-   --  conversions that increase the complexity of the size of the
-   --  type because the caller will be doing any needed conversions.
-
-   function Strip_Conversions (N : Node_Id) return Node_Id;
-   --  Likewise, but remove all conversions
 
    function Get_Type_Size (T : Type_T) return ULL is
      (if   Get_Type_Kind (T) = Struct_Type_Kind

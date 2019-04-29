@@ -32,6 +32,7 @@ with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;

@@ -38,6 +38,7 @@ with LLVM.Core;  use LLVM.Core;
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;

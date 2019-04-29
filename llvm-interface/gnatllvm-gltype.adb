@@ -26,7 +26,8 @@ with Table;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
+with GNATLLVM.Conversions; use GNATLLVM.Conversions;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.GLType is
 

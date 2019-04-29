@@ -31,6 +31,7 @@ with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;

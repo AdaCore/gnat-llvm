@@ -20,6 +20,7 @@ with Snames;   use Snames;
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;

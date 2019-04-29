@@ -35,17 +35,18 @@ with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Conversions; use GNATLLVM.Conversions;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
-with GNATLLVM.Records;     use GNATLLVM.Records;
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
+with GNATLLVM.Records;      use GNATLLVM.Records;
+with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Variables is
 

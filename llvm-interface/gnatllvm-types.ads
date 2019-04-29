@@ -402,16 +402,6 @@ package GNATLLVM.Types is
    procedure Add_Type_Data_To_Instruction (Inst : Value_T; GT : GL_Type);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
 
-   procedure Validate_And_Set_Alignment
-     (E : Entity_Id; Align : Uint; Current_Align : ULL)
-     with Pre => Present (E);
-   --  Current_Align is the current alignment of E, either because it's
-   --  the alignment of the LLVM type (if E is a type) or because it's the
-   --  alignment of E's type (if E if an object).  Align is a proposed
-   --  alignment for E.  See if it's valid (possibly issuing an error
-   --  message if not) and set the alignment of E to that value or an
-   --  acceptable value if Align isn't valid.
-
    --  In order to use the generic functions that computing sizing
    --  information to compute whether a size is dynamic, we need versions
    --  of the routines that actually compute the size that instead only

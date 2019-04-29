@@ -1,0 +1,503 @@
+------------------------------------------------------------------------------
+--                             G N A T - L L V M                            --
+--                                                                          --
+--                     Copyright (C) 2013-2019, AdaCore                     --
+--                                                                          --
+-- This is free software;  you can redistribute it  and/or modify it  under --
+-- terms of the  GNU General Public License as published  by the Free Soft- --
+-- ware  Foundation;  either version 3,  or (at your option) any later ver- --
+-- sion.  This software is distributed in the hope  that it will be useful, --
+-- but WITHOUT ANY WARRANTY;  without even the implied warranty of MERCHAN- --
+-- TABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public --
+-- License for  more details.  You should have  received  a copy of the GNU --
+-- General  Public  License  distributed  with  this  software;   see  file --
+-- COPYING3.  If not, go to http://www.gnu.org/licenses for a complete copy --
+-- of the license.                                                          --
+------------------------------------------------------------------------------
+
+with Errout;   use Errout;
+with Get_Targ; use Get_Targ;
+with Sem_Aux;  use Sem_Aux;
+with Sinfo;    use Sinfo;
+
+with LLVM.Core; use LLVM.Core;
+
+with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
+with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
+with GNATLLVM.GLType;         use GNATLLVM.GLType;
+with GNATLLVM.Records;        use GNATLLVM.Records;
+with GNATLLVM.Records.Create; use GNATLLVM.Records.Create;
+with GNATLLVM.Subprograms;    use GNATLLVM.Subprograms;
+with GNATLLVM.Utils;          use GNATLLVM.Utils;
+
+package body GNATLLVM.Types.Create is
+
+   function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean
+     with Pre => Is_Type_Or_Void (TE);
+   --  Return True if TE or any type it depends on is being elaborated
+
+   function Create_Discrete_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
+          Post => Present (Create_Discrete_Type'Result);
+   function Create_Floating_Point_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Floating_Point_Type (TE),
+          Post => Present (Create_Floating_Point_Type'Result);
+   function Create_Access_Type
+     (TE : Entity_Id; Dummy : out Boolean) return Type_T
+     with Pre  => Is_Access_Type (TE),
+          Post => Present (Create_Access_Type'Result);
+   --  Create an LLVM type for various GNAT types
+
+   ---------------------------------
+   -- Depends_On_Being_Elaborated --
+   ---------------------------------
+
+   function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean is
+      BT : constant Entity_Id := Full_Base_Type (TE);
+      F  : Entity_Id;
+
+   begin
+      --  If this is a void type, it doesn't depend on anything.
+
+      if Ekind (TE) = E_Void then
+         return False;
+
+      --  This depends on something being elaborated if the type is being
+      --  elaborated, its base type depends on something being elaborated,
+      --  or this is an array with an aggregate component type that depends
+      --  on something being elaborated.
+
+      elsif Is_Being_Elaborated (TE)
+        or else (BT /= TE and then Depends_On_Being_Elaborated (BT))
+        or else (Is_Array_Type (TE)
+                   and then Is_Aggregate_Type (Full_Component_Type (TE))
+                   and then (Depends_On_Being_Elaborated
+                               (Full_Component_Type (TE))))
+      then
+         return True;
+
+      --  If this is a record type, it depends on the type of each of
+      --  the fields which have aggregate types.
+
+      elsif Is_Record_Type (TE) then
+         F := First_Component_Or_Discriminant (TE);
+         while Present (F) loop
+            exit when Is_Aggregate_Type (Full_Etype (F))
+              and then Depends_On_Being_Elaborated (Full_Etype (F));
+            Next_Component_Or_Discriminant (F);
+         end loop;
+
+         return Present (F);
+
+      else
+         --  Otherwise, this doesn't depend on something being elaborated
+
+         return False;
+      end if;
+   end Depends_On_Being_Elaborated;
+
+   --------------------------
+   -- Create_Discrete_Type --
+   --------------------------
+
+   function Create_Discrete_Type (TE : Entity_Id) return Type_T is
+      Max_Size : constant Uint      := UI_From_Int (Get_Long_Long_Size);
+      Size_TE  : constant Entity_Id :=
+        (if Has_Biased_Representation (TE) then Full_Base_Type (TE) else TE);
+      --  Normally, we want to use an integer representation for a type
+      --  that's a different (usually larger) size than it's base type, but
+      --  if this is a biased representation, the base type is the primitive
+      --  type and we'll use a biased representation as the default
+      --  representation of the type.
+
+      Size     : Uint               := Esize (Size_TE);
+
+   begin
+      --  It's tempting to use i1 for boolean types, but that causes issues.
+      --  First, we'd have to handle booleans with rep clauses specially,
+      --  but, perhaps more importantly, LLVM treats a boolean as being true
+      --  if it's 1 (interpreted as an 8-bit value) and zero otherwise, but
+      --  the more natural interpretaton is that it's false if zero and
+      --  true otherwise and this can become visible when using overlays
+      --  with 'Address.
+      --
+      --  So we only use i1 for the internal boolean object (e.g., the result
+      --  of a comparison) and for a 1-bit modular type.
+
+      if Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= Uint_0 then
+         Size := RM_Size (TE);
+      elsif Esize (TE) = Uint_0 then
+         Size := Uint_Bits_Per_Unit;
+      end if;
+
+      return
+        Int_Ty (if Size <= Max_Size then Size else Max_Size);
+
+   end Create_Discrete_Type;
+
+   --------------------------------
+   -- Create_Floating_Point_Type --
+   --------------------------------
+
+   function Create_Floating_Point_Type (TE : Entity_Id) return Type_T is
+      Size : constant Uint := Esize (Full_Base_Type (TE));
+      T    : Type_T;
+      pragma Assert (UI_Is_In_Int_Range (Size));
+
+   begin
+      case Float_Rep (TE) is
+         when IEEE_Binary =>
+            case UI_To_Int (Size) is
+               when 32 =>
+                  T := Float_Type_In_Context (Context);
+               when 64 =>
+                  T := Double_Type_In_Context (Context);
+               when 80 | 96 | 128 =>
+                  --  Extended precision; not IEEE_128
+                  T := X86_F_P80_Type_In_Context (Context);
+               when others =>
+                  T := Void_Type;
+            end case;
+
+         when AAMP =>
+            T := Void_Type;
+      end case;
+
+      if T = Void_Type then
+         Error_Msg_N ("unsupported floating point type", TE);
+      end if;
+
+      return T;
+   end Create_Floating_Point_Type;
+
+   ------------------------
+   -- Create_Access_Type --
+   ------------------------
+
+   function Create_Access_Type
+     (TE : Entity_Id; Dummy : out Boolean) return Type_T
+   is
+      DT : constant Entity_Id       := Full_Designated_Type (TE);
+      R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
+      GT : GL_Type                  := Default_GL_Type (DT, Create => False);
+
+   begin
+      Dummy := False;
+
+      --  If this is a record type, we can get the actual type that will be
+      --  used here. If it hasn't been done yet, set it for the record
+      --  type, and mark it dummy.
+
+      if Is_Record_Type (DT) then
+         if No (GT) then
+            GT := New_GT (DT);
+            Update_GL_Type (GT, Struct_Create_Named (Context, Get_Name (DT)),
+                            True);
+         end if;
+
+         Set_Associated_GL_Type (TE, GT);
+         return Pointer_Type (Type_Of (GT), 0);
+
+      --  If DT is a subprogram type (since the access type to it is always
+      --  the same type), handle this normally, but don't try to record an
+      --  associated type.
+
+      elsif Ekind (DT) = E_Subprogram_Type then
+         return Type_For_Relationship (DT, R);
+
+      --  If DT doesn't depend on something that's being
+      --  elaborated, handle this normally.
+
+      elsif not Depends_On_Being_Elaborated (DT) then
+         if No (GT) then
+            GT := Default_GL_Type (DT);
+         end if;
+
+         Set_Associated_GL_Type (TE, GT);
+         return Type_For_Relationship (DT, R);
+
+      --  Otherwise, if DT is currently being elaborated, we have to make a
+      --  dummy type that we know will be the same width of an access to
+      --  the actual object and we'll convert to the actual type when we
+      --  try to access an object of this access type.  The only types
+      --  where there's an elaboration that can recurse are record, array,
+      --  and access types (though access types whose designated types are
+      --  other access types are quite rare).
+
+      else
+         Dummy := True;
+         if Is_Array_Type (DT) then
+
+            --  For arrays, a pointer to void will work for all but a fat
+            --  pointer.  For a fat pointer, use two pointers to void (we
+            --  could make an array bound type without actually fully
+            --  elaborating the array type, but it's not worth the trouble).
+
+            return (if   R /= Fat_Pointer then Void_Ptr_Type
+                    else Build_Struct_Type ((1 => Void_Ptr_Type,
+                                             2 => Void_Ptr_Type)));
+
+         elsif Ekind (DT) = E_Subprogram_Type then
+            return Void_Ptr_Type;
+
+         else
+            --  Access type is the only case left.  We use a void pointer.
+
+            pragma Assert (Is_Access_Type (DT) and then R = Reference);
+            return Void_Ptr_Type;
+         end if;
+      end if;
+   end Create_Access_Type;
+
+   -----------------
+   -- Create_Type --
+   -----------------
+
+   function Create_Type (TE : Entity_Id) return Type_T is
+      Dummy : Boolean := False;
+      Align : Uint    := No_Uint;
+      GT    : GL_Type;
+      T     : Type_T;
+      TBAA  : Metadata_T;
+
+   begin
+      --  Set that we're elaborating the type.  Note that we have to do this
+      --  here rather than right before the case statement because we may
+      --  have two different types being elaborated that have the same
+      --  base type.
+
+      Set_Is_Being_Elaborated (TE, True);
+
+      case Ekind (TE) is
+         when E_Void =>
+            T := Void_Type;
+
+         when Discrete_Or_Fixed_Point_Kind =>
+            T := Create_Discrete_Type (TE);
+
+         when Float_Kind =>
+            T := Create_Floating_Point_Type (TE);
+
+         when Access_Kind =>
+            T := Create_Access_Type (TE, Dummy);
+
+         when Record_Kind =>
+            T := Create_Record_Type (TE);
+
+         when Array_Kind =>
+            T := Create_Array_Type (TE);
+
+         when E_Subprogram_Type =>
+            T := Create_Subprogram_Type (TE);
+
+         when E_Incomplete_Type =>
+            --  This is normally a Taft Amendment type, so return a
+            --  dummy type that we can take a pointer to.  But it may also
+            --  be an actual type in the case of an error, so use something
+            --  that we can take the size an alignment of.
+
+            T := Int_Ty (Uint_Bits_Per_Unit);
+
+         when others =>
+            Error_Msg_N
+              ("unsupported type kind: `" & Ekind (TE)'Image & "`", TE);
+            T := Void_Type;
+      end case;
+
+      --  Now save the result.  If we don't have a GT already made, make one.
+
+      GT := Default_GL_Type (TE, Create => False);
+      if No (GT) then
+         GT := New_GT (TE);
+      end if;
+
+      --  GT is either a new type (Kind = None) or a
+      --  dummy.  If all we were able to return is a dummy type and GT is
+      --  also a dummy type, its type should be the same as ours.
+
+      if Dummy and then Is_Dummy_Type (GT) then
+         pragma Assert (Type_Of (GT) = T);
+         return T;
+
+      --  If we're not a dummy type and GT is a dummy type, we need to
+      --  create a new GL_Type for the real type.  This can only happen
+      --  for access types.
+
+      elsif not Dummy and then Is_Dummy_Type (GT) then
+         pragma Assert (Is_Access_Type (TE));
+         GT := New_GT (TE);
+      end if;
+
+      --  Set the LLVM type and status of the new GL_Type we made and show
+      --  that this type is no longer being elaborated.  If all we have is
+      --  a dummy type or if this is a void type, do no more.
+
+      Update_GL_Type (GT, T, Dummy);
+      Set_Is_Being_Elaborated (TE, False);
+      if Dummy or else Ekind (TE) = E_Void then
+         return T;
+      end if;
+
+      --  Now make and record the TBAA for the type, if any
+
+      TBAA := Create_TBAA (TE);
+      if Present (TBAA) then
+         Set_TBAA (TE, TBAA);
+      end if;
+
+      --  If this is a packed array implementation type and the original
+      --  type is an array, set information about the bounds of the
+      --  original array.
+
+      if Is_Packed_Array_Impl_Type (TE) then
+         Discard (Create_Array_Type (TE, For_Orig => True));
+      end if;
+
+      --  Make a GL_Type corresponding to any specified sizes and
+      --  alignments, as well as for biased repesentation.  But don't
+      --  do this for void or subprogram types or if we haven't
+      --  elaborated Size_Type yet.  If there's no alignment specified
+      --  for this type and it's not a base type, use the alignment of the
+      --  base type.
+
+      if Ekind (GT) not in E_Void | E_Subprogram_Type
+        and then Present (Size_GL_Type)
+      then
+         if not Unknown_Alignment (TE) then
+            Align := Alignment (TE);
+         elsif not Is_Full_Base_Type (TE)
+           and then not Unknown_Alignment (Full_Base_Type (TE))
+         then
+            Align := Alignment (Full_Base_Type (TE));
+         end if;
+
+         declare
+            Size_TE : constant Entity_Id :=
+              (if   Is_Packed_Array_Impl_Type (TE)
+               then Original_Array_Type (TE) else TE);
+            Size    : constant Uint      :=
+               (if    Is_Discrete_Or_Fixed_Point_Type (Size_TE)
+                then  Esize (Size_TE)
+                elsif Has_Size_Clause (Size_TE)
+                      or not Unknown_RM_Size (Size_TE)
+                then  RM_Size (Size_TE) else No_Uint);
+
+         begin
+            GT := Make_GT_Alternative
+              (GT, TE,
+               Size          => Size,
+               Align         => Align,
+               For_Type      => True,
+               For_Component => False,
+               Max_Size      => False,
+               Is_Biased     => Has_Biased_Representation (TE));
+         end;
+      end if;
+
+      --  Back-annotate sizes of non-scalar types if there isn't one.  ???
+      --  Don't do anything for access subprogram since this will cause
+      --  warnings for UC's in g-thread and g-spipat.
+
+      if not Is_Access_Subprogram_Type (TE)
+        and then not Is_Scalar_Type (TE)
+      then
+         if Unknown_Esize (TE) then
+            Set_Esize   (TE, Annotated_Object_Size (GT, True));
+         end if;
+         if Unknown_RM_Size (TE) then
+            Set_RM_Size (TE, Annotated_Value
+                           (Get_Type_Size (GT, No_Padding => True) *
+                              Const (Uint_Bits_Per_Unit)));
+         end if;
+      end if;
+
+      Validate_And_Set_Alignment
+        (TE, Alignment (TE),
+         (Get_Type_Alignment (GT, Use_Specified => False)));
+      if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
+        and then Present (Original_Array_Type (TE))
+      then
+         Validate_And_Set_Alignment (Original_Array_Type (TE),
+                                     Alignment (TE), Get_Type_Alignment (GT));
+      end if;
+
+      return Type_Of (GT);
+   end Create_Type;
+
+   --------------------------------
+   -- Validate_And_Set_Alignment --
+   --------------------------------
+
+   procedure Validate_And_Set_Alignment
+     (E : Entity_Id; Align : Uint; Current_Align : ULL)
+   is
+      TE        : constant Entity_Id :=
+        (if Is_Type (E) then E else Full_Etype (E));
+      Max_Align : constant Uint      := UI_From_Int (2 ** 29);
+      --  This is the maximum permitted alignment, not the maximum default
+      --  alignment that's assigned to a type (which is
+      --  Get_Maximum_Alignment).
+
+      No_Error  : constant Boolean   :=
+        Error_Posted (E) and then not Has_Alignment_Clause (E);
+      --  If there's no user-specified alignment clause and we've already
+      --  posted an error, don't post another one.
+
+      N         : Node_Id            := E;
+      --  The initial location for an error message is the entity,
+      --  but we may override it below if we find a better one.
+
+      New_Align : Int                := Int (Current_Align);
+      --  By default, the new alignment is the same as the old one
+
+   begin
+      --  Find a possibly better place to post an alignment error.  If
+      --  there's an alignment clause, use its expression.  However, for
+      --  the implicit base type of an array type, the alignment clause is
+      --  on the first subtype.
+
+      if Present (Alignment_Clause (E)) then
+         N := Expression (Alignment_Clause (E));
+      elsif Is_Array_Type (E) and then Is_Full_Base_Type (E)
+        and then Present (Alignment_Clause (First_Subtype (E)))
+      then
+         N := Expression (Alignment_Clause (First_Subtype (E)));
+      end if;
+
+      --  If the alignment either doesn't fit into an int or is larger than the
+      --  maximum allowed, give an error.  Otherwise, we try to use the new
+      --  alignment if one is specified.
+
+      if not UI_Is_In_Int_Range (Align) or else Align > Max_Align then
+         New_Align := UI_To_Int (Max_Align);
+         if not No_Error then
+            Error_Msg_NE_Num ("largest supported alignment for& is ^",
+                              N, E, Max_Align);
+         end if;
+      elsif Align /= Uint_0 and then Align /= No_Uint then
+         New_Align := UI_To_Int (Align);
+      end if;
+
+      --  If the alignment is too small, stick with the old alignment and give
+      --  an error if required.  ??? For now, we don't support under-alignment
+      --  of discrete types.  ??? And records and arrays have issues too.
+      --  (Yes, this is all types.)
+
+      if New_Align < Int (Current_Align) then
+         if not No_Error
+           and then not Is_Discrete_Type (TE)
+           and then not Is_Array_Type (TE)
+           and then not Is_Record_Type (TE)
+           and then (No (Alignment_Clause (E))
+                       or else not From_At_Mod (Alignment_Clause (E)))
+         then
+            Error_Msg_NE_Num ("alignment for& must be at least ^",
+                              N, E, Int (Current_Align));
+            New_Align := Int (Current_Align);
+         end if;
+      end if;
+
+      Set_Alignment (E, UI_From_Int (New_Align));
+   end Validate_And_Set_Alignment;
+
+end GNATLLVM.Types.Create;

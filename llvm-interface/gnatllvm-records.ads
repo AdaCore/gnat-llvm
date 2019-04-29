@@ -25,11 +25,6 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Records is
 
-   function Create_Record_Type (TE : Entity_Id) return Type_T
-     with Pre => Is_Record_Type (TE),
-          Post => Present (Create_Record_Type'Result);
-   --  Create a type for the record denoted by Def_Ident
-
    function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value
      with Pre  => Ekind (E) = E_Discriminant,
           Post => Present (Use_Discriminant_For_Bound'Result);
@@ -278,5 +273,15 @@ private
       Table_Initial        => 1000,
       Table_Increment      => 100,
       Table_Name           => "Record_Info_Table");
+
+   function Get_Discriminant_Constraint
+     (TE : Entity_Id; E : Entity_Id) return Node_Id
+     with Pre  => Ekind (TE) = E_Record_Subtype,
+          Post => Present (Get_Discriminant_Constraint'Result);
+   --  Get the expression that constrains the discriminant E of type TE
+
+   function Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
+     with Pre => Ekind_In (E, E_Component, E_Discriminant);
+   --  Back-annotation version of Emit_Field_Position
 
 end GNATLLVM.Records;

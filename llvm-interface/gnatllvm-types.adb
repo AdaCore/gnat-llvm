@@ -24,15 +24,16 @@ with Sem_Aux;  use Sem_Aux;
 with Snames;   use Snames;
 with Table;    use Table;
 
-with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
-with GNATLLVM.Records;     use GNATLLVM.Records;
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
-with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
+with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;         use GNATLLVM.Blocks;
+with GNATLLVM.Compile;        use GNATLLVM.Compile;
+with GNATLLVM.Exprs;          use GNATLLVM.Exprs;
+with GNATLLVM.GLType;         use GNATLLVM.GLType;
+with GNATLLVM.Records;        use GNATLLVM.Records;
+with GNATLLVM.Records.Create; use GNATLLVM.Records.Create;
+with GNATLLVM.Subprograms;    use GNATLLVM.Subprograms;
+with GNATLLVM.Variables;      use GNATLLVM.Variables;
+with GNATLLVM.Wrapper;        use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
 

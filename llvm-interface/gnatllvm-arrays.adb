@@ -17,13 +17,11 @@
 
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
-with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
@@ -31,43 +29,6 @@ with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays is
-
-   --  A bound of a constrained array can either be a compile-time
-   --  constant, which we record as a Uint or some dynamic value that was
-   --  known at the declaration of the type, which can include a refdrence
-   --  to a discriminant.  We use the structures and table below to
-   --  indicate which.  The value return by Get_Array_Info is the index
-   --  into this table for the first index of a constrained array whose
-   --  size isn't known at compile-time.  The remaining bounds are
-   --  subsequent entries in the table.
-
-   type One_Bound is record
-      Cnst    : Uint;
-      Value   : Node_Id;
-   end record
-     --  Only one item can be specified.  We might think that exactly one
-     --  item must be specified, but that's not the case for an
-     --  unconstrained array.
-     with Predicate => ((if Cnst = No_Uint then 0 else 1) +
-                        (if No (Value) then 0 else 1)) <= 1;
-
-   type Index_Bounds is record
-      Bound_GT     : GL_Type;
-      Bound_Sub_GT : GL_Type;
-      Low, High    : One_Bound;
-      Bound_Range  : GL_Value;
-   end record
-     with Predicate => Is_Discrete_Type (Bound_GT)
-                       and then Is_Discrete_Type (Bound_Sub_GT);
-
-   package Array_Info is new Table.Table
-     (Table_Component_Type => Index_Bounds,
-      Table_Index_Type     => Array_Info_Id'Base,
-      Table_Low_Bound      => Array_Info_Low_Bound,
-      Table_Initial        => 1024,
-      Table_Increment      => 100,
-      Table_Name           => "Array_Info_Table");
-   --  Table of representation of arrays indices
 
    function Type_For_Get_Bound
      (GT : GL_Type; V : GL_Value) return GL_Type

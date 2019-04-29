@@ -1242,4 +1242,10 @@ package body GNATLLVM.Records.Create is
       return LLVM_Type;
    end Create_Record_Type;
 
+begin
+   --  Make a dummy entry in the record and field tables, so the
+   --  "Empty" entry is never used.
+
+   Record_Info_Table.Increment_Last;
+   Field_Info_Table.Increment_Last;
 end GNATLLVM.Records.Create;

@@ -19,14 +19,15 @@ with Ada.Unchecked_Conversion;
 
 with Get_Targ; use Get_Targ;
 
-with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
+with GNATLLVM.Arrays;        use GNATLLVM.Arrays;
+with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
+with GNATLLVM.Blocks;        use GNATLLVM.Blocks;
+with GNATLLVM.Environment;   use GNATLLVM.Environment;
+with GNATLLVM.GLType;        use GNATLLVM.GLType;
+with GNATLLVM.Subprograms;   use GNATLLVM.Subprograms;
+with GNATLLVM.Types;         use GNATLLVM.Types;
+with GNATLLVM.Utils;         use GNATLLVM.Utils;
+with GNATLLVM.Variables;     use GNATLLVM.Variables;
 
 package body GNATLLVM.GLValue is
 

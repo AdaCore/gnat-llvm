@@ -25,6 +25,7 @@ with Snames;   use Snames;
 with Table;    use Table;
 
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
+with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
 with GNATLLVM.Blocks;         use GNATLLVM.Blocks;
 with GNATLLVM.Compile;        use GNATLLVM.Compile;
 with GNATLLVM.Exprs;          use GNATLLVM.Exprs;

@@ -30,6 +30,13 @@ package GNATLLVM.Arrays is
    pragma Warnings (Off, "formal parameter *");
    --  Workaround bug in GNAT warning machinery
 
+   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
+          Post => Present (Create_Array_Bounds_Type'Result);
+   --  Helper that returns the type used to store array bounds. This is a
+   --  structure that that follows the following pattern: { LB0, UB0, LB1,
+   --  UB1, ... }
+
    function Contains_Discriminant (N : Node_Id) return Boolean;
    --  Return True if N contains a reference to a discriminant
 
@@ -38,27 +45,6 @@ package GNATLLVM.Arrays is
    --  Return True if GT is a type where computing the size of the type
    --  requires an instance of the type.  This is true for an unconstrained
    --  type or an array subtype that has a discriminant as a bound.
-
-   function Create_Array_Type
-     (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
-     with Pre  => (if   For_Orig then Is_Packed_Array_Impl_Type (TE)
-                   else Is_Array_Type (TE)),
-          Post => Present (Create_Array_Type'Result);
-   --  Return the type used to represent Array_Type_Node.  This will be
-   --  an opaque type if LLVM can't represent it directly.  If For_Orig
-   --  is True, set the array info for the Original_Record_Type of TE.
-
-   function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
-          Post => Present (Create_Array_Fat_Pointer_Type'Result);
-   --  Return the type used to store fat pointers to Array_Type
-
-   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
-          Post => Present (Create_Array_Bounds_Type'Result);
-   --  Helper that returns the type used to store array bounds. This is a
-   --  structure that that follows the following pattern: { LB0, UB0, LB1,
-   --  UB1, ... }
 
    function Get_Bound_Size (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Bound_Size'Result);

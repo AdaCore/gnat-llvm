@@ -1718,10 +1718,4 @@ package body GNATLLVM.Records is
 
    end Print_Record_Info;
 
-begin
-   --  Make a dummy entry in the record and field tables, so the
-   --  "Empty" entry is never used.
-
-   Record_Info_Table.Increment_Last;
-   Field_Info_Table.Increment_Last;
 end GNATLLVM.Records;

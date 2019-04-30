@@ -312,9 +312,9 @@ package body GNATLLVM.Subprograms is
    --  Return True if Name is the name of the elab proc for Ada_Main
 
    Ada_Main_Elabb : GL_Value := No_GL_Value;
-   --  ???  This a kludge.  We sometimes need an elab proc for Ada_Main and
-   --  this can cause confusion with global names.  So if we made it as
-   --  part of the processing of a declaration, save it.
+   --  We sometimes need an elab proc for Ada_Main and this can cause
+   --  confusion with global names.  So if we made it as part of the
+   --  processing of a declaration, save it.
 
    ---------------------
    -- Count_In_Params --
@@ -726,7 +726,6 @@ package body GNATLLVM.Subprograms is
             end if;
 
             --  If this is an input or reference, set the type for the param
-            --  ??? Should probably make a Create_Access_Type for GT.
 
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
@@ -2369,8 +2368,7 @@ package body GNATLLVM.Subprograms is
          Set_Dup_Global_Value (Def_Ident, LLVM_Func);
 
          --  Now deal with function and parameter attributes
-         --  ??? We don't handle most return value attributes yet.  noalias
-         --  is an important one.
+         --  ??? We don't handle some return value attributes yet.
 
          Add_Inline_Attribute (LLVM_Func, Def_Ident);
          if No_Return (Def_Ident) then
@@ -2442,7 +2440,7 @@ package body GNATLLVM.Subprograms is
 
       Set_Value (Def_Ident, LLVM_Func);
 
-      --  ??? Handle the kludge if our subprogram name is that of an elab proc
+      --  Deal with our subprogram name being that of an elab proc
 
       if Is_Binder_Elab_Proc (Subp_Name) then
          Ada_Main_Elabb := LLVM_Func;

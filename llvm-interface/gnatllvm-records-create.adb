@@ -17,16 +17,17 @@
 
 with Ada.Containers.Generic_Sort;
 
-with Debug;    use Debug;
-with Get_Targ; use Get_Targ;
-with Nlists;   use Nlists;
-with Output;   use Output;
-with Repinfo;  use Repinfo;
-with Sem_Aux;  use Sem_Aux;
-with Sem_Eval; use Sem_Eval;
-with Snames;   use Snames;
-with Sprint;   use Sprint;
-with Table;    use Table;
+with Debug;      use Debug;
+with Get_Targ;   use Get_Targ;
+with Nlists;     use Nlists;
+with Output;     use Output;
+with Repinfo;    use Repinfo;
+with Sem_Aux;    use Sem_Aux;
+with Sem_Eval;   use Sem_Eval;
+with Snames;     use Snames;
+with Sprint;     use Sprint;
+with Table;      use Table;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -1044,7 +1045,7 @@ package body GNATLLVM.Records.Create is
 
                if Pos = No_Uint and then Chars (F) /= Name_uTag then
                   if not In_Variant and then not Had_Non_Repped then
-                     Forced_Pos :=  ULL (UI_To_Int (Max_Record_Rep (F)));
+                     Forced_Pos  := UI_To_ULL (Max_Record_Rep (F));
                   end if;
 
                   Had_Non_Repped := True;
@@ -1139,7 +1140,7 @@ package body GNATLLVM.Records.Create is
                      --  alignment of the type.
 
                      Needed_Pos  : constant ULL    :=
-                       (if    Pos /= No_Uint then ULL (UI_To_Int (Pos))
+                       (if    Pos /= No_Uint then UI_To_ULL (Pos)
                         elsif Forced_Pos /= 0 then Forced_Pos
                         else  Align_Pos (Cur_RI_Pos, Need_Align));
                      --  The position we need to be at, either by virtue of

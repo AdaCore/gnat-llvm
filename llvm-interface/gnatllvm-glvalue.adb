@@ -17,7 +17,8 @@
 
 with Ada.Unchecked_Conversion;
 
-with Get_Targ; use Get_Targ;
+with Get_Targ;   use Get_Targ;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Arrays;        use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
@@ -856,8 +857,7 @@ package body GNATLLVM.GLValue is
       GT_Align : constant ULL             := Get_Type_Alignment (GT);
       E_Align  : constant ULL             :=
         (if   Present (E) and then not Unknown_Alignment (E)
-         then ULL (UI_To_Int (Alignment (E)))
-         else 1);
+         then UI_To_ULL (Alignment (E)) else 1);
 
    begin
       Set_Alignment (Obj, unsigned (ULL'Max (GT_Align, E_Align)));

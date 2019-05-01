@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -26,5 +26,8 @@ package Uintp.LLVM is
 
    function UI_To_LLVM (T : Type_T; U : Uint) return Value_T;
    --  Convert a Uint into an LLVM native integer constant
+
+   function UI_To_ULL (U : Uint) return ULL;
+   --  Like UI_To_Int, but for Unsigned_Long_Long
 
 end Uintp.LLVM;

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -45,6 +45,38 @@ package body Uintp.LLVM is
          end;
       end if;
    end UI_To_LLVM;
+
+   ---------------
+   -- UI_To_ULL --
+   ---------------
+
+   function UI_To_ULL (U : Uint) return ULL is
+   begin
+      if UI_Is_In_Int_Range (U) then
+         return ULL (UI_To_Int (U));
+      else
+         declare
+            Words  : constant Word_Array := Big_UI_To_Words (U);
+
+         begin
+            --  We assume that ULL is no wider than an element of Word_Array,
+            --  but is no narrower than Int.
+
+            pragma Assert (ULL'Size <= Words (Words'First)'Size
+                             and then ULL'Size >= Int'Size);
+
+            --  If this takes up more than one word, it's too large.
+            --  Otherwise, return the value.
+
+            if Words'Length /= 1 then
+               raise Constraint_Error;
+            else
+               return ULL (Words (Words'First));
+            end if;
+         end;
+      end if;
+
+   end UI_To_ULL;
 
    -----------------
    -- UI_To_Words --

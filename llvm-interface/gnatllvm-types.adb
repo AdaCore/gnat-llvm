@@ -15,12 +15,13 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Get_Targ; use Get_Targ;
-with Nlists;   use Nlists;
-with Output;   use Output;
-with Restrict; use Restrict;
-with Snames;   use Snames;
-with Table;    use Table;
+with Get_Targ;   use Get_Targ;
+with Nlists;     use Nlists;
+with Output;     use Output;
+with Restrict;   use Restrict;
+with Snames;     use Snames;
+with Table;      use Table;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;         use GNATLLVM.Blocks;
@@ -967,7 +968,7 @@ package body GNATLLVM.Types is
       --  use that value.
 
       elsif not Unknown_Alignment (TE)  and Use_Specified then
-         return ULL (UI_To_Int (Alignment (TE)));
+         return UI_To_ULL (Alignment (TE));
 
       --  If it's an array, it's the alignment of the component type
 
@@ -1149,7 +1150,7 @@ package body GNATLLVM.Types is
       GT_Align    : constant ULL := Get_Type_Alignment (Alloc_GT);
       E_Align     : constant ULL :=
         (if   Present (E) and then not Unknown_Alignment (E)
-         then ULL (UI_To_Int (Alignment (E))) else 1);
+         then UI_To_ULL (Alignment (E)) else 1);
       Bound_Align : constant ULL :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
          then Get_Bound_Alignment (Full_Etype (GT)) else 1);

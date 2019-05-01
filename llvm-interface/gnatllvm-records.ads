@@ -214,6 +214,10 @@ private
       Align            : ULL;
       --  If specified, the alignment of this piece
 
+      Position         : ULL;
+      --  If nonzero, a forced starting position of this piece.  This can't
+      --  be set on the first RI for a record.
+
       Next             : Record_Info_Id;
       --  Link to the next Record_Info entry for this record or variant
 

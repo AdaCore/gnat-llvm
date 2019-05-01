@@ -267,6 +267,10 @@ package body GNATLLVM.Records.Create is
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
+      RI_Position   : ULL            := 0;
+      --  If nonzero, an alignment to assign to the next RI built for an
+      --  LLVM type.
+
       RI_Is_Overlap : Boolean        := False;
       --  If True, the next RI built is an overlap RI for a variant
 
@@ -299,6 +303,7 @@ package body GNATLLVM.Records.Create is
         (T                : Type_T                      := No_Type_T;
          F_GT             : GL_Type                     := No_GL_Type;
          Align            : ULL                         := 0;
+         Position         : ULL                         := 0;
          Variant_List     : List_Id                     := No_List;
          Variant_Expr     : Node_Id                     := Empty;
          Variants         : Record_Info_Id_Array_Access := null;
@@ -338,6 +343,7 @@ package body GNATLLVM.Records.Create is
         (T                : Type_T                      := No_Type_T;
          F_GT             : GL_Type                     := No_GL_Type;
          Align            : ULL                         := 0;
+         Position         : ULL                         := 0;
          Variant_List     : List_Id                     := No_List;
          Variant_Expr     : Node_Id                     := Empty;
          Variants         : Record_Info_Id_Array_Access := null;
@@ -351,6 +357,7 @@ package body GNATLLVM.Records.Create is
            (LLVM_Type        => T,
             GT               => F_GT,
             Align            => Align,
+            Position         => Position,
             Next             => Empty_Record_Info_Id,
             Variant_List     => Variant_List,
             Variant_Expr     => Variant_Expr,
@@ -771,10 +778,12 @@ package body GNATLLVM.Records.Create is
 
       begin
          if Last_Type >= 0 then
-            Add_RI (T => Build_Struct_Type
+            Add_RI (T        => Build_Struct_Type
                       (Type_Array (LLVM_Types.Table (0 .. Last_Type))),
-                    Align => RI_Align);
-            RI_Align  := 0;
+                    Align    => RI_Align,
+                    Position => RI_Position);
+            RI_Align    := 0;
+            RI_Position := 0;
             LLVM_Types.Set_Last (-1);
          end if;
 
@@ -813,6 +822,8 @@ package body GNATLLVM.Records.Create is
          In_Dynamic_Variant : constant Boolean := In_Variant
            and then not Variant_Stack.Table (Variant_Stack.Last).Is_Static;
          Last_Var_Depth     : Int              := 0;
+         Had_Non_Repped     : Boolean          := False;
+         Forced_Pos         : ULL              := 0;
 
          function Field_Before (L, R : Int) return Boolean;
          --  Determine the sort order of two fields in Added_Field_Table
@@ -826,6 +837,10 @@ package body GNATLLVM.Records.Create is
          function Align_Pos (Pos, Align : ULL) return ULL is
            (((Pos + Align - 1) / Align)  * Align);
          --  Given a position and an alignment, align the position
+
+         function Max_Record_Rep (E : Entity_Id) return Uint;
+         --  Return the next byte after the highest repped position of
+         --  the base type of F.
 
          ------------------
          -- Field_Before --
@@ -947,13 +962,39 @@ package body GNATLLVM.Records.Create is
             Added_Field_Table.Table (R) := Temp;
          end Swap_Fields;
 
-      begin
+         --------------------
+         -- Max_Record_Rep --
+         --------------------
+
+         function Max_Record_Rep (E : Entity_Id) return Uint is
+            TE      : constant Entity_Id := Full_Base_Type (Full_Scope (E));
+            F       : Entity_Id          :=
+              First_Component_Or_Discriminant (TE);
+            End_Pos : Uint               := Uint_0;
+
+         begin
+            while Present (F) loop
+               if Present (Component_Clause (F))
+                 and then Component_Bit_Offset (F) + Esize (F) > End_Pos
+               then
+                  End_Pos := Component_Bit_Offset (F) + Esize (F);
+               end if;
+
+               Next_Component_Or_Discriminant (F);
+            end loop;
+
+            return (End_Pos + (Uint_Bits_Per_Unit - 1)) / Uint_Bits_Per_Unit;
+
+         end Max_Record_Rep;
+
+      begin  -- Start of processing for Process_Fields_To_Add
+
          Sort (1, Added_Field_Table.Last);
 
          for J in 1 .. Added_Field_Table.Last loop
             declare
                AF        : constant Added_Field := Added_Field_Table.Table (J);
-               F        : constant Entity_Id   := AF.F;
+               F         : constant Entity_Id   := AF.F;
                --  The field to add
 
                Def_GT    : constant GL_Type     :=
@@ -986,16 +1027,29 @@ package body GNATLLVM.Records.Create is
                --  use the max size.
 
                Pos         : constant Uint :=
-                 (if   No (Prev_Idx) and then Present (Component_Clause (F))
+                 (if   Present (Component_Clause (F))
                   then Normalized_Position (F) else No_Uint);
-               --  If this is the first RI for the type, honor the
-               --  requested position.
+               --  If a position is specified, honor it
 
                Need_Align :  ULL                :=
                  (if Pos /= No_Uint then 1 else Get_Type_Alignment (F_GT));
                --  The alignment we need this field to have
 
             begin
+               --  If we're not in a variant, this field has no rep clause,
+               --  is not the _Tag field, and we haven't seen a non-repped
+               --  field before, force the position of this record to be
+               --  after the end of all repped fields (including those in
+               --  a variant).
+
+               if Pos = No_Uint and then Chars (F) /= Name_uTag then
+                  if not In_Variant and then not Had_Non_Repped then
+                     Forced_Pos :=  ULL (UI_To_Int (Max_Record_Rep (F)));
+                  end if;
+
+                  Had_Non_Repped := True;
+               end if;
+
                --  If we've pushed into a new static variant, see if
                --  we need to align it.  But update our level anyway.
                --  Ignore if there's a position specified.
@@ -1025,6 +1079,18 @@ package body GNATLLVM.Records.Create is
                   --  sure that's OK.
 
                   Flush_Current_Types;
+
+                  --  If we're forcing the position of this field, set that
+                  --  as the starting position of the RI we're about to make.
+                  --  ??? For now, set the alignment to unaligned, but we
+                  --  need to clean this up at some point as well as set
+                  --  the proper GT for the fields.
+
+                  if Forced_Pos /= 0 then
+                     RI_Position := Forced_Pos;
+                     RI_Align    := 1;
+                  end if;
+
                   Add_FI (F, Cur_Idx, 0, F_GT);
                   Add_RI (F_GT => F_GT, Align => Need_Align);
                   Set_Is_Nonnative_Type (TE);
@@ -1073,17 +1139,29 @@ package body GNATLLVM.Records.Create is
                      --  alignment of the type.
 
                      Needed_Pos  : constant ULL    :=
-                       (if   Pos /= No_Uint then ULL (UI_To_Int (Pos))
-                        else Align_Pos (Cur_RI_Pos, Need_Align));
+                       (if    Pos /= No_Uint then ULL (UI_To_Int (Pos))
+                        elsif Forced_Pos /= 0 then Forced_Pos
+                        else  Align_Pos (Cur_RI_Pos, Need_Align));
                      --  The position we need to be at, either by virtue of
-                     --  a specified position or specified alignment.
+                     --  a specified position alignment or because it's
+                     --  forced there in a complex partially-repped variant
+                     --  case.
 
                   begin
                      --  If the position we need to be at is beyond where
                      --  we'd be given the native alignment of the type,
-                     --  make an explicit padding type.
+                     --  make an explicit padding type or, if this is the
+                     --  first field for an RI that isn't the first one,
+                     --  set the position of the RI we're going to make.
+                     --  ???  See above for RI_Align.
 
-                     if Needed_Pos > Pos_Aligned then
+                     if Needed_Pos /= 0 and then LLVM_Types.Last = -1
+                       and then Present (Prev_Idx)
+                     then
+                        RI_Position := Needed_Pos;
+                        RI_Align    := 1;
+                        Cur_RI_Pos  := Needed_Pos;
+                     elsif Needed_Pos > Pos_Aligned then
                         LLVM_Types.Append
                           (Array_Type (Int_Ty (8),
                                        unsigned (Needed_Pos - Cur_RI_Pos)));
@@ -1135,8 +1213,7 @@ package body GNATLLVM.Records.Create is
       if No (Prev_Idx) then
          Struct_Set_Body (LLVM_Type, LLVM_Types.Table (0)'Address,
                           unsigned (LLVM_Types.Last + 1), False);
-         Add_RI (T => LLVM_Type);
-
+         Add_RI (T => LLVM_Type, Align => RI_Align);
       else
          --  Otherwise, close out the last record info if we have any
          --  fields.  Note that if we don't have any fields, the entry we
@@ -1209,17 +1286,24 @@ package body GNATLLVM.Records.Create is
                           or else not Is_Completely_Hidden (ORC))
             then
                declare
-                  Byte_Position : constant BA_Data :=
+                  Byte_Position : constant BA_Data         :=
                     Field_Position (Cur_Field, No_GL_Value);
-                  Bit_Position  : constant BA_Data :=
+                  Bit_Position  : constant BA_Data         :=
                     Byte_Position * Const (Uint_Bits_Per_Unit);
+                  Bit_Offset    : constant Node_Ref_Or_Val :=
+                    Annotated_Value (Bit_Position);
 
                begin
                   Set_Esize (Cur_Field,
                              Annotated_Object_Size (Default_GL_Type (Typ)));
-                  Set_Component_Bit_Offset (Cur_Field,
-                                            Annotated_Value (Bit_Position));
-                  if not Is_Const (Byte_Position) then
+                  Set_Component_Bit_Offset (Cur_Field, Bit_Offset);
+                  if Is_Static_SO_Ref (Bit_Offset) then
+                     Set_Normalized_Position
+                       (Cur_Field, Bit_Offset / Uint_Bits_Per_Unit);
+
+                     Set_Normalized_First_Bit
+                       (Cur_Field, Bit_Offset mod Uint_Bits_Per_Unit);
+                  else
                      Set_Normalized_Position (Cur_Field,
                                               Annotated_Value (Byte_Position));
                      Set_Normalized_First_Bit (Cur_Field, Uint_0);

@@ -167,19 +167,20 @@ package body GNATLLVM.Records is
          LHS : Result;
          RHS : Result;
          Name : String := "") return Result;
-      with function  "+" (V1, V2 : Result) return Result;
-      with function  "-" (V1, V2 : Result) return Result;
-      with function  Sz_Neg (V : Result; Name : String := "") return Result;
-      with function  Sz_And
+      with function "+" (V1, V2 : Result) return Result;
+      with function "-" (V1, V2 : Result) return Result;
+      with function Sz_Neg (V : Result; Name : String := "") return Result;
+      with function Sz_And
         (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Select
+      with function Sz_Select
         (V_If, V_Then, V_Else : Result; Name : String := "") return Result;
-      with function  Sz_Min
+      with function Sz_Min
         (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Max
+      with function Sz_Max
         (V1, V2 : Result; Name : String := "") return Result;
-      with function  Sz_Is_Const (V : Result) return Boolean;
-      with function  Sz_Const_Val (V : Result) return ULL;
+      with function Sz_Is_Const (V : Result) return Boolean;
+      with function Sz_Const_Val (V : Result) return ULL;
+      with function Sz_Replace_Val (O, N : Result) return Result;
    package Size is
 
       function No      (V : Result) return Boolean is (V =  Empty_Result);
@@ -385,7 +386,13 @@ package body GNATLLVM.Records is
          This_Size : Result           := Empty_Result;
 
       begin
-         --  First check for zero length LLVM type since the code below will
+         --  If this piece has a starting position specified, move to it
+
+         if RI.Position /= 0 then
+            Total_Size := Sz_Replace_Val (Total_Size, Sz_Const (RI.Position));
+         end if;
+
+         --  Then check for zero length LLVM type since the code below will
          --  fail if we have no fields.
 
          if Present (T) and then Get_Type_Size (T) = ULL (0) then
@@ -489,7 +496,8 @@ package body GNATLLVM.Records is
          end if;
 
          --  If we've set an alignment for this RI, it overrides any
-         --  computation we did above.
+         --  computation we did above and setting a position for this
+         --  RI also overrides the alignment.
 
          if RI.Align /= 0 then
             Must_Align := RI.Align;
@@ -839,6 +847,24 @@ package body GNATLLVM.Records is
 
    end Size;
 
+   --  Sz_Replace_Val is used to replace a size value with a new value.
+   --  For both the normal and back-annotation cases, this is the second
+   --  operand.  However, for the purpose of determining if this is of
+   --  dynamic size, we need to conside the size variable if either the old
+   --  or the new value is variable to avoid trying to compute something
+   --  dynamic at the global level.  We could probably avoid this computation
+   --  if worth it, but the case here is very unusual (involving partially-
+   --  repped extension records), so it's not worth the trouble.
+
+   function Replace_Val (Unused_O, N : GL_Value) return GL_Value is
+      (N);
+
+   function Replace_Val (Unused_O, N : BA_Data) return BA_Data is
+      (N);
+
+   function Replace_Val (O, N : IDS) return IDS is
+      (if Is_Const (O) then N else Var_IDS);
+
    --  Here we instantiate the size routines with functions that compute
    --  the LLVM value the size and make those visible to clients.
 
@@ -857,7 +883,8 @@ package body GNATLLVM.Records is
                 Sz_Is_Const     => Is_A_Const_Int,
                 Sz_Const_Val    => Get_Const_Int_Value_ULL,
                 Sz_Type_Size    => Get_Type_Size,
-                Sz_Variant_Size => Get_Variant_Size);
+                Sz_Variant_Size => Get_Variant_Size,
+                Sz_Replace_Val  => Replace_Val);
 
    function Get_Record_Size_So_Far
      (TE         : Entity_Id;
@@ -909,7 +936,8 @@ package body GNATLLVM.Records is
                 Sz_Is_Const     => Is_Const,
                 Sz_Const_Val    => Const_Val_ULL,
                 Sz_Type_Size    => Get_Type_Size,
-                Sz_Variant_Size => Get_Variant_Size);
+                Sz_Variant_Size => Get_Variant_Size,
+                Sz_Replace_Val  => Replace_Val);
 
    function Get_Record_Type_Size
      (TE         : Entity_Id;
@@ -957,7 +985,8 @@ package body GNATLLVM.Records is
                 Sz_Is_Const     => Is_Const,
                 Sz_Const_Val    => Const_Val_ULL,
                 Sz_Type_Size    => Get_Type_Size,
-                Sz_Variant_Size => Get_Variant_Size);
+                Sz_Variant_Size => Get_Variant_Size,
+                Sz_Replace_Val  => Replace_Val);
 
    function Get_Record_Type_Size
      (TE         : Entity_Id;
@@ -1634,6 +1663,11 @@ package body GNATLLVM.Records is
             if RI.Align /= 0 then
                Write_Str (" align ");
                Write_Int (Nat (RI.Align));
+            end if;
+
+            if RI.Position /= 0 then
+               Write_Str (" position ");
+               Write_Int (Nat (RI.Position));
             end if;
 
             Write_Eol;

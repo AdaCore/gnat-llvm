@@ -1029,13 +1029,9 @@ package body GNATLLVM.Records is
    --------------------
 
    function Get_Field_Type
-     (F_Idx : Field_Info_Id; TE : Entity_Id) return GL_Type
-   is
-      FI     : constant Field_Info := Field_Info_Table.Table (F_Idx);
-
+     (F_Idx : Field_Info_Id; TE : Entity_Id) return GL_Type is
    begin
-      pragma Assert (FI.Rec_Info_Idx = Get_Record_Info (TE));
-      return FI.GT;
+      return Field_Info_Table.Table (F_Idx).GT;
    end Get_Field_Type;
 
    ----------------------

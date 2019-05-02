@@ -25,7 +25,6 @@ with GNATLLVM.Arrays;    use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;    use GNATLLVM.Blocks;
 with GNATLLVM.Compile;   use GNATLLVM.Compile;
 with GNATLLVM.Exprs;     use GNATLLVM.Exprs;
-with GNATLLVM.GLType;    use GNATLLVM.GLType;
 with GNATLLVM.Types;     use GNATLLVM.Types;
 with GNATLLVM.Variables; use GNATLLVM.Variables;
 

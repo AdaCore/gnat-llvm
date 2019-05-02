@@ -1510,6 +1510,38 @@ package body GNATLLVM.Records is
       end return;
    end Emit_Record_Aggregate;
 
+   ----------------------
+   -- Build_Field_Load --
+   ----------------------
+
+   function Build_Field_Load
+     (V       : GL_Value;
+      F       : Entity_Id;
+      For_LHS : Boolean := False) return GL_Value
+   is
+      R_TE  : constant Entity_Id     := Full_Scope (F);
+      F_Idx : constant Field_Info_Id := Get_Field_Info (F);
+
+   begin
+      --  If we have something in a data form and we're not requiring or
+      --  preferring an LHS, and we have information about the field, we
+      --  can and should do this with an Extract_Value.
+
+      if Is_Data (V) and then not For_LHS and then Present (F_Idx)
+        and then not Is_Nonnative_Type (R_TE)
+        and then not Is_Nonnative_Type (Field_Info_Table.Table (F_Idx).GT)
+        and then (Full_Etype (V) = R_TE
+                    or else Is_Layout_Identical (V, Default_GL_Type (R_TE)))
+      then
+         return Extract_Value (Get_Field_Type (F_Idx, R_TE),
+                               To_Primitive (V),
+                               Get_Field_Ordinal (F_Idx, R_TE));
+      else
+         return Record_Field_Offset (Get (V, Any_Reference), F);
+      end if;
+
+   end Build_Field_Load;
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    procedure Print_RI_Briefly (Ridx : Record_Info_Id);

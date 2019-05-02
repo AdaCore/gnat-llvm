@@ -878,38 +878,13 @@ package body GNATLLVM.Compile is
 
             --  Evaluate our prefix first in case that's what's causing
             --  the elaboration of its type, which sets the Field_Info below.
-            --  ??? Need to deal with field GT vs GT and similarly for
-            --  N_Indexed_Component.
 
-            Result := Emit (Prefix (N),
-                            For_LHS    => For_LHS,
-                            Prefer_LHS => Prefer_LHS);
-
-            declare
-               F     : constant Entity_Id     := Entity (Selector_Name (N));
-               R_TE  : constant Entity_Id     := Full_Scope (F);
-               F_Idx : constant Field_Info_Id := Get_Field_Info (F);
-
-            begin
-               --  If we have something in a data form and we're not requiring
-               --  or preferring an LHS, and we have information about the
-               --  field, we can and should do this with an Extract_Value.
-
-               if Is_Data (Result) and then not For_LHS
-                 and then not Prefer_LHS and then Present (F_Idx)
-                 and then not Is_Nonnative_Type (R_TE)
-                 and then not Is_Nonnative_Type (GT)
-                 and then (Full_Etype (Result) = R_TE
-                             or else Is_Layout_Identical
-                                       (Result, Default_GL_Type (R_TE)))
-               then
-                  return Extract_Value (Get_Field_Type (F_Idx, R_TE),
-                                        To_Primitive (Result),
-                                        Get_Field_Ordinal (F_Idx, R_TE));
-               else
-                  return Record_Field_Offset (Get (Result, Any_Reference), F);
-               end if;
-            end;
+            Result := Build_Field_Load (Emit (Prefix (N),
+                                              For_LHS    => For_LHS,
+                                              Prefer_LHS => Prefer_LHS),
+                                        Entity (Selector_Name (N)),
+                                        For_LHS or Prefer_LHS);
+            return Convert_GT (Result, GT);
 
          when N_Indexed_Component | N_Slice =>
             Result := Emit (Prefix (N),
@@ -977,8 +952,9 @@ package body GNATLLVM.Compile is
                   else
                      --  Otherwise, get a reference and do this using GEP.
 
-                     return Get_Indexed_LValue (Idxs,
-                                                Get (Result, Any_Reference));
+                     return Convert_GT (Get_Indexed_LValue
+                                          (Idxs, Get (Result, Any_Reference)),
+                                        GT);
                   end if;
                end;
             else

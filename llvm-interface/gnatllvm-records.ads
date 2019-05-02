@@ -109,6 +109,17 @@ package GNATLLVM.Records is
    --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
    --  Align_To.
 
+   function Build_Field_Load
+     (V       : GL_Value;
+      F       : Entity_Id;
+      For_LHS : Boolean := False) return GL_Value
+     with  Pre  => Is_Record_Type (Related_Type (V))
+                   and then Ekind_In (F, E_Component, E_Discriminant),
+           Post => Present (Build_Field_Load'Result);
+   --  V represents a record.  Return a value representing loading field
+   --  F from that record.  If For_LHS is True, this must be a reference
+   --  to the field, otherwise, it may or may not be a reference, depending
+   --  on what's simpler.
    --  The following are debug procedures to print information about records
    --  and fields.
 

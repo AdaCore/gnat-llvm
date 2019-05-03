@@ -92,16 +92,15 @@ package GNATLLVM.Records is
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
 
-   function Get_Field_Ordinal
-     (F_Idx : Field_Info_Id; TE : Entity_Id) return unsigned
-   with Pre => Present (F_Idx) and then Is_Record_Type (TE);
-   --  Return the index of the field denoted by F_Idx in type TE.
+   function Get_Field_Ordinal (F : Entity_Id) return unsigned
+     with Pre => Ekind_In (F, E_Component, E_Discriminant);
+   --  Return the index of the field denoted by F. We assume here, but
+   --  don't check, that the F is in a record with just a single RI.
 
-   function Get_Field_Type
-     (F_Idx : Field_Info_Id; TE : Entity_Id) return GL_Type
-   with Pre  => Present (F_Idx) and then Is_Record_Type (TE),
-        Post => Present (Get_Field_Type'Result);
-   --  Return the GL_Type of the field denoted by F_Idx in type TE.
+   function Get_Field_Type (F : Entity_Id) return GL_Type
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant),
+          Post => Present (Get_Field_Type'Result);
+   --  Return the GL_Type of the field denoted by F
 
    function Align_To
      (V : GL_Value; Cur_Align, Must_Align : ULL) return GL_Value
@@ -122,6 +121,15 @@ package GNATLLVM.Records is
    --  on what's simpler.
    --  The following are debug procedures to print information about records
    --  and fields.
+
+   function Build_Field_Store
+     (LHS : GL_Value; F : Entity_Id; RHS : GL_Value) return GL_Value
+     with  Pre  => Is_Record_Type (Related_Type (LHS))
+                   and then Present (RHS)
+                   and then Ekind_In (F, E_Component, E_Discriminant);
+   --  Likewise, but perform a store of RHS into the F component of LHS.
+   --  If we return a value, that's the record that needs to be stored into
+   --  the actual LHS.  If no value if returned, all our work is done.
 
    procedure Print_Field_Info (E : Entity_Id)
      with Export, External_Name => "dfi";

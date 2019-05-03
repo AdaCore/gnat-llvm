@@ -255,6 +255,11 @@ package GNATLLVM.GLType is
      with Pre  => Is_Array_Type (GT),
           Post => Present (Full_Component_GL_Type'Result);
 
+   function Full_Component_GL_Type (V : GL_Value) return GL_Type is
+     (Get_Associated_GL_Type (Full_Etype (Related_Type (V))))
+     with Pre  => Is_Array_Type (Related_Type (V)),
+          Post => Present (Full_Component_GL_Type'Result);
+
    function Full_Component_GL_Type (TE : Entity_Id) return GL_Type is
      (Get_Associated_GL_Type (TE))
      with Pre  => Is_Array_Type (TE),

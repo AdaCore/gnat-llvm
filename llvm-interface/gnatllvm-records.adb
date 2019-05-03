@@ -1014,24 +1014,19 @@ package body GNATLLVM.Records is
    -- Get_Field_Ordinal --
    -----------------------
 
-   function Get_Field_Ordinal
-     (F_Idx : Field_Info_Id; TE : Entity_Id) return unsigned
-   is
-      FI     : constant Field_Info := Field_Info_Table.Table (F_Idx);
-
+   function Get_Field_Ordinal (F : Entity_Id) return unsigned is
    begin
-      pragma Assert (FI.Rec_Info_Idx = Get_Record_Info (TE));
-      return unsigned (FI.Field_Ordinal);
+      return
+        unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal);
    end Get_Field_Ordinal;
 
    --------------------
    -- Get_Field_Type --
    --------------------
 
-   function Get_Field_Type
-     (F_Idx : Field_Info_Id; TE : Entity_Id) return GL_Type is
+   function Get_Field_Type (F : Entity_Id) return GL_Type is
    begin
-      return Field_Info_Table.Table (F_Idx).GT;
+      return Field_Info_Table.Table (Get_Field_Info (F)).GT;
    end Get_Field_Type;
 
    ----------------------
@@ -1412,8 +1407,8 @@ package body GNATLLVM.Records is
    function Emit_Record_Aggregate
      (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
    is
-      GT       : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
-      Expr     : Node_Id;
+      GT   : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
+      Expr : Node_Id;
 
    begin
       --  If we can use Data for the result, it means that each of its
@@ -1448,10 +1443,10 @@ package body GNATLLVM.Records is
 
          while Present (Expr) loop
             declare
-               F     : constant Entity_Id     :=
-                 Find_Matching_Field
+               F   : constant Entity_Id     := Find_Matching_Field
                  (Full_Etype (GT), Entity (First (Choices (Expr))));
-               F_Idx : constant Field_Info_Id := Get_Field_Info (F);
+               Val : constant Node_Id := Expression (Expr);
+               V   : GL_Value;
 
             begin
                if Ekind (F) = E_Discriminant and then Is_Unchecked_Union (GT)
@@ -1466,31 +1461,19 @@ package body GNATLLVM.Records is
                                            N_Aggregate,
                                            N_Extension_Aggregate));
 
-                  Result := Emit_Record_Aggregate (Expression (Expr), Result);
+                  Result := Emit_Record_Aggregate (Val, Result);
                else
                   --  We are to actually insert the field.  However, if we
                   --  haven't set any information for this field, it may be
                   --  a reference to a field that will cause Constraint_Error.
                   --  If so, just don't do anything with it.
 
-                  if Present (F_Idx) then
-                     declare
-                        FI    : constant Field_Info :=
-                          Field_Info_Table.Table (F_Idx);
-                        F_GT  : constant GL_Type    := FI.GT;
-                        Idx : constant Nat          := FI.Field_Ordinal;
-                        Val : constant GL_Value     :=
-                          Emit_Convert_Value (Expression (Expr), F_GT);
-
-                     begin
-                        if Is_Data (Result) then
-                           Result :=
-                             Insert_Value (Result, Val, unsigned (Idx));
-                        else
-                           Emit_Assignment (Record_Field_Offset (Result, F),
-                                            Empty, Val);
-                        end if;
-                     end;
+                  if Present (Get_Field_Info (F)) then
+                     V := Emit_Convert_Value (Val, Get_Field_Type (F));
+                     V := Build_Field_Store (Result, F, V);
+                     if Present (V) then
+                        Result := V;
+                     end if;
                   else
                      --  Ensure we understand this case
 
@@ -1516,27 +1499,52 @@ package body GNATLLVM.Records is
       For_LHS : Boolean := False) return GL_Value
    is
       R_TE  : constant Entity_Id     := Full_Scope (F);
-      F_Idx : constant Field_Info_Id := Get_Field_Info (F);
 
    begin
       --  If we have something in a data form and we're not requiring or
       --  preferring an LHS, and we have information about the field, we
       --  can and should do this with an Extract_Value.
 
-      if Is_Data (V) and then not For_LHS and then Present (F_Idx)
+      if Is_Data (V) and then not For_LHS and then Present (Get_Field_Info (F))
         and then not Is_Nonnative_Type (R_TE)
-        and then not Is_Nonnative_Type (Field_Info_Table.Table (F_Idx).GT)
+        and then not Is_Nonnative_Type (Get_Field_Type (F))
         and then (Full_Etype (V) = R_TE
                     or else Is_Layout_Identical (V, Default_GL_Type (R_TE)))
       then
-         return Extract_Value (Get_Field_Type (F_Idx, R_TE),
-                               To_Primitive (V),
-                               Get_Field_Ordinal (F_Idx, R_TE));
+         return Extract_Value (Get_Field_Type (F), To_Primitive (V),
+                               Get_Field_Ordinal (F));
       else
          return Record_Field_Offset (Get (V, Any_Reference), F);
       end if;
 
    end Build_Field_Load;
+
+   -----------------------
+   -- Build_Field_Store --
+   -----------------------
+
+   function Build_Field_Store
+     (LHS : GL_Value; F : Entity_Id; RHS : GL_Value) return GL_Value
+   is
+      T      : constant Type_T        := Type_Of (Full_Scope (F));
+      F_Idx  : constant Field_Info_Id := Get_Field_Info (F);
+      FI     : constant Field_Info    := Field_Info_Table.Table (F_Idx);
+      F_GT   : constant GL_Type       := FI.GT;
+      Idx    : constant Nat           := FI.Field_Ordinal;
+      Result : GL_Value               := No_GL_Value;
+      pragma Unreferenced (T);
+      --  We had to force elaboration of the type of F's Scope here
+      --  since there's a chance it wasn't yet elaborated.
+
+   begin
+      if Is_Data (LHS) then
+         Result := Insert_Value (LHS, Convert_GT (RHS, F_GT), unsigned (Idx));
+      else
+         Emit_Assignment (Record_Field_Offset (LHS, F), Empty, RHS);
+      end if;
+
+      return Result;
+   end Build_Field_Store;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

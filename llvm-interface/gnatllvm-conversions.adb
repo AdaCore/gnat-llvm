@@ -622,6 +622,56 @@ package body GNATLLVM.Conversions is
       return To_Access (Result, GT);
    end Convert_To_Access;
 
+   ----------------
+   -- Convert_GT --
+   ----------------
+
+   function Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value is
+      In_GT : constant GL_Type := Related_Type (V);
+
+   begin
+      --  If V is already of the desired type, we're done
+
+      if In_GT = GT then
+         return V;
+
+      --  If this is an elementary type, the GT's may be of a different
+      --  size, so pointer-punning will give the wrong result.  Instead,
+      --  we have to ensure the value is Data and do a normal conversion.
+      --  However, we don't need to do the load if the LLVM types are the
+      --  same.
+
+      elsif Is_Elementary_Type (In_GT) then
+         if Type_Of (In_GT) = Type_Of (GT) then
+            return G_Is (V, GT);
+         else
+            return Convert (Get (V, Data), GT);
+         end if;
+
+      --  If this is a reference (now known to be a composite type), use
+      --  pointer punning.
+
+      elsif Is_Reference (V) then
+         return Convert_Ref (V, GT);
+
+      --  We now have Data of a composite type.  If they're the same GNAT
+      --  type, convert via the primitive type.
+
+      elsif Full_Etype (In_GT) = Full_Etype (GT) then
+         return From_Primitive (To_Primitive (V), GT);
+
+      --  Otherwise, it must be a case where this is a type whose layout
+      --  is identical to GT.  If it's a constant record, we can convert
+      --  it.  Otherwise, leave it alone and it'll be sorted out downstream.
+
+      elsif Is_Constant (V) and then Is_Record_Type (GT) then
+         return Convert_Struct_Constant (V, GT);
+      else
+         return V;
+      end if;
+
+   end Convert_GT;
+
    -----------------
    -- Convert_Ref --
    -----------------

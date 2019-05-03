@@ -21,6 +21,7 @@ with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Repinfo;  use Repinfo;
 with Restrict; use Restrict;
+with Sem_Aggr; use Sem_Aggr;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Stand;    use Stand;
@@ -411,10 +412,35 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Assignment_Statement =>
-            Emit_Assignment (Emit_LValue (Name (N), For_LHS => True),
-                             Expr         => Expression (N),
-                             Forwards_OK  => Forwards_OK (N),
-                             Backwards_OK => Backwards_OK (N));
+
+            --  If the LHS is an N_Selected_Component, handle this specially
+            --  since this might be a bitfield assignment.  But be careful
+            --  not to do this if the RHS is an "others" aggregate.
+
+            if Nkind (Name (N)) = N_Selected_Component
+              and then (not Nkind_In (Expression (N), N_Aggregate,
+                                      N_Extension_Aggregate)
+                          or else not Is_Others_Aggregate (Expression (N)))
+            then
+               declare
+                  Pref   : constant Node_Id   := Prefix (Name (N));
+                  Result : constant GL_Value  :=
+                    Build_Field_Store (Emit_LValue (Pref),
+                                       Entity (Selector_Name (Name (N))),
+                                       Emit_Expression (Expression (N)));
+
+               begin
+                  if Present (Result) then
+                     Emit_Assignment (Emit_LValue (Pref, For_LHS => True),
+                                      Value => Result);
+                  end if;
+               end;
+            else
+               Emit_Assignment (Emit_LValue (Name (N), For_LHS => True),
+                                Expr         => Expression (N),
+                                Forwards_OK  => Forwards_OK (N),
+                                Backwards_OK => Backwards_OK (N));
+            end if;
 
          when N_Procedure_Call_Statement =>
             Discard (Emit_Call (N));
@@ -676,7 +702,7 @@ package body GNATLLVM.Compile is
          return Get_Value (Entity (N));
       else
          return Get (Emit (N, LHS,
-                           For_LHS => For_LHS,
+                           For_LHS    => For_LHS,
                            Prefer_LHS => True),
                      Any_Reference);
       end if;
@@ -875,16 +901,12 @@ package body GNATLLVM.Compile is
             return Emit_Attribute_Reference (N);
 
          when N_Selected_Component =>
-
-            --  Evaluate our prefix first in case that's what's causing
-            --  the elaboration of its type, which sets the Field_Info below.
-
             Result := Build_Field_Load (Emit (Prefix (N),
                                               For_LHS    => For_LHS,
                                               Prefer_LHS => Prefer_LHS),
                                         Entity (Selector_Name (N)),
                                         For_LHS or Prefer_LHS);
-            return Convert_GT (Result, GT);
+            return Maybe_Convert_GT (Result, GT);
 
          when N_Indexed_Component | N_Slice =>
             Result := Emit (Prefix (N),
@@ -947,14 +969,16 @@ package body GNATLLVM.Compile is
                         C_Idxs (J) := unsigned (Bound);
                      end loop;
 
-                     return Extract_Value (GT, To_Primitive (Result),
+                     return Extract_Value (Full_Component_GL_Type (Result),
+                                           To_Primitive (Result),
                                            Swap_Indices (C_Idxs, Result));
                   else
                      --  Otherwise, get a reference and do this using GEP.
 
-                     return Convert_GT (Get_Indexed_LValue
-                                          (Idxs, Get (Result, Any_Reference)),
-                                        GT);
+                     return Maybe_Convert_GT (Get_Indexed_LValue
+                                                (Idxs,
+                                                 Get (Result, Any_Reference)),
+                                              GT);
                   end if;
                end;
             else

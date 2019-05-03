@@ -70,17 +70,20 @@ package GNATLLVM.Conversions is
           Post => Is_Access_Type (Convert_To_Access'Result);
    --  Likewise, but get type from V
 
-   function Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value is
-     (if    Is_Reference (V) then Convert_Ref (V, GT)
-      elsif Full_Etype (Related_Type (V)) = Full_Etype (GT)
-      then  From_Primitive (To_Primitive (V), GT)
-      else  V)
+   function Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Reference (V)
                   or else Full_Etype (Related_Type (V)) = Full_Etype (GT)
                   or else Is_Layout_Identical (V, GT),
           Post => Is_Layout_Identical (Related_Type (Convert_GT'Result), GT);
    --  Convert V, which is either a reference or whose current GL_Type
    --  is the same GNAT type as GT or has the same layout, to GT.
+
+   function Maybe_Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value is
+     (if   Full_Etype (Related_Type (V)) = Full_Etype (GT) then V
+      else Convert_GT (V, GT))
+     with Pre  => Present (V) and then Present (GT),
+          Post => Present (Maybe_Convert_GT'Result);
+   --  Likewise, but only do so if V and GT have different GNAT types
 
    function Emit_Conversion
      (N                   : Node_Id;

@@ -897,10 +897,10 @@ package body GNATLLVM.Arrays is
       Indices_So_Far : Index_Array;
       Value_So_Far   : GL_Value) return GL_Value
    is
-      GT           : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
-      Comp_GL_Type : constant GL_Type := Full_Component_GL_Type (GT);
-      Cur_Index    : unsigned         := 0;
-      Expr         : Node_Id;
+      GT        : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
+      Comp_GT   : constant GL_Type := Full_Component_GL_Type (GT);
+      Cur_Index : unsigned         := 0;
+      Expr      : Node_Id;
 
    begin
       --  The back-end supports exactly two types of array aggregates.
@@ -919,7 +919,7 @@ package body GNATLLVM.Arrays is
         and then (Is_Loadable_Type (GT)
                     or else Dims_Left = Number_Dimensions (GT))
       then
-         return Emit_Constant_Aggregate (N, Comp_GL_Type, GT, Dims_Left);
+         return Emit_Constant_Aggregate (N, Comp_GT, GT, Dims_Left);
       end if;
 
       Expr := First (Expressions (N));
@@ -966,7 +966,7 @@ package body GNATLLVM.Arrays is
                   if Is_Data (Cur_Value) then
                      Cur_Value :=
                        Insert_Value (Cur_Value,
-                                     Emit_Convert_Value (Expr, Comp_GL_Type),
+                                     Emit_Convert_Value (Expr, Comp_GT),
                                      Swap_Indices (Indices, Cur_Value));
                   else
                      declare

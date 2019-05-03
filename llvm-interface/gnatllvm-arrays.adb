@@ -932,7 +932,7 @@ package body GNATLLVM.Arrays is
 
          if No (Cur_Value) then
             if Is_Loadable_Type (GT)
-              and then not Is_Unconstrained_Record (Comp_GL_Type)
+              and then not Is_Unconstrained_Record (Comp_GT)
             then
                Cur_Value := Get_Undef (GT);
             else

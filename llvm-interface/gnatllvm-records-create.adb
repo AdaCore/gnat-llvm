@@ -18,6 +18,7 @@
 with Ada.Containers.Generic_Sort;
 
 with Debug;      use Debug;
+with Exp_Util;   use Exp_Util;
 with Get_Targ;   use Get_Targ;
 with Nlists;     use Nlists;
 with Output;     use Output;
@@ -796,6 +797,15 @@ package body GNATLLVM.Records.Create is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
+         Clause    : constant Node_Id   := Component_Clause (E);
+         Pos       : constant Uint      := Component_Bit_Offset (E);
+         R_TE      : constant Entity_Id := Full_Scope (E);
+         GT        : constant GL_Type   := Full_GL_Type (E);
+         Align     : constant ULL       := Get_Type_Alignment (GT);
+         Bit_Align : constant ULL       := Align * ULL (Get_Bits_Per_Unit);
+         Parent_TE : constant Entity_Id :=
+           (if   Present (Parent_Subtype (R_TE))
+            then Full_Parent_Subtype (R_TE) else Empty);
          Var_Depth : Int := 0;
          Var_Align : ULL := 0;
 
@@ -809,6 +819,52 @@ package body GNATLLVM.Records.Create is
             Var_Depth := Variant_Stack.Last;
             Var_Align := Variant_Stack.Table (Variant_Stack.Last).Align;
          end if;
+
+         --  Ensure the position does not overlap with the parent subtype,
+         --  if there is one.  This test is omitted if the parent of the
+         --  tagged type has a full rep clause since, in this case,
+         --  component clauses are allowed to overlay the space allocated
+         --  for the parent type and the front-end has checked that there
+         --  are no overlapping components.
+
+         if Present (Clause) and then Pos /= No_Uint
+           and then Present (Parent_TE)
+           and then not Is_Fully_Repped_Tagged_Type (Parent_TE)
+           and then not Is_Dynamic_Size (Default_GL_Type (Parent_TE))
+           and then Pos < Esize (Parent_TE)
+         then
+            Error_Msg_NE_Num
+              ("offset of & must be beyond parent, minimum allowed is ^",
+               Position (Clause), E, Esize (Parent_TE) / Uint_Bits_Per_Unit);
+
+         --  If a position is specified and it's not a multiple of the
+         --  alignment of the type, we may have to give an error in some
+         --  cases.
+
+         elsif Present (Clause) and then Pos /= No_Uint
+           and then Pos mod Int (Bit_Align) /= 0
+         then
+            if Is_Atomic (E) then
+               Error_Msg_NE_Num
+                 ("position of atomic field& must be multiple of ^ bits",
+                  First_Bit (Clause), E, Int (Bit_Align));
+            elsif Is_Aliased (E) then
+               Error_Msg_NE_Num
+                 ("position of aliased field& must be multiple of ^ bits",
+                  First_Bit (Clause), E, Int (Bit_Align));
+            elsif Is_Independent (E) then
+               Error_Msg_NE_Num
+                 ("position of independent field& must be multiple of ^ bits",
+                  First_Bit (Clause), E, Int (Bit_Align));
+            elsif Strict_Alignment (E) then
+               Error_Msg_NE_Num
+                 ("position of & with aliased or tagged part must be " &
+                    "multiple of ^ bits",
+                  First_Bit (Clause), E, Int (Bit_Align));
+            end if;
+         end if;
+
+         --  Now add field to table
 
          Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Par_Depth,
                                     Var_Depth, Var_Align));

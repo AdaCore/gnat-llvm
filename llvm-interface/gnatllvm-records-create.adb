@@ -1146,6 +1146,7 @@ package body GNATLLVM.Records.Create is
                   if Forced_Pos /= 0 then
                      RI_Position := Forced_Pos;
                      RI_Align    := 1;
+                     Forced_Pos  := 0;
                   end if;
 
                   Add_FI (F, Cur_Idx, 0, F_GT);
@@ -1230,6 +1231,7 @@ package body GNATLLVM.Records.Create is
                      LLVM_Types.Append (T);
                      Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (T);
                      Add_FI (F, Cur_Idx, LLVM_Types.Last, F_GT);
+                     Forced_Pos := 0;
                   end;
                end if;
             end;

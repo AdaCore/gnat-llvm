@@ -800,8 +800,8 @@ package body GNATLLVM.Records.Create is
          Clause    : constant Node_Id   := Component_Clause (E);
          Pos       : constant Uint      := Component_Bit_Offset (E);
          R_TE      : constant Entity_Id := Full_Scope (E);
-         GT        : constant GL_Type   := Full_GL_Type (E);
-         Align     : constant ULL       := Get_Type_Alignment (GT);
+         F_GT      : GL_Type            := Full_GL_Type (E);
+         Align     : constant ULL       := Get_Type_Alignment (F_GT);
          Bit_Align : constant ULL       := Align * ULL (Get_Bits_Per_Unit);
          Parent_TE : constant Entity_Id :=
            (if   Present (Parent_Subtype (R_TE))
@@ -820,6 +820,13 @@ package body GNATLLVM.Records.Create is
             Var_Align := Variant_Stack.Table (Variant_Stack.Last).Align;
          end if;
 
+         --  If this is the '_parent' field, we make a dummy entry
+         --  and handle it specially later.
+
+         if Chars (E) = Name_uParent then
+            Add_FI (E, Get_Record_Info_N (TE), 0, F_GT);
+            return;
+
          --  Ensure the position does not overlap with the parent subtype,
          --  if there is one.  This test is omitted if the parent of the
          --  tagged type has a full rep clause since, in this case,
@@ -827,7 +834,7 @@ package body GNATLLVM.Records.Create is
          --  for the parent type and the front-end has checked that there
          --  are no overlapping components.
 
-         if Present (Clause) and then Pos /= No_Uint
+         elsif Present (Clause) and then Pos /= No_Uint
            and then Present (Parent_TE)
            and then not Is_Fully_Repped_Tagged_Type (Parent_TE)
            and then not Is_Dynamic_Size (Default_GL_Type (Parent_TE))
@@ -1120,17 +1127,11 @@ package body GNATLLVM.Records.Create is
                   Last_Var_Depth := AF.Var_Depth;
                end if;
 
-               --  If this is the '_parent' field, we make a dummy entry
-               --  and handle it specially later.
-
-               if Chars (F) = Name_uParent then
-                  Add_FI (F, Get_Record_Info_N (TE), 0, F_GT);
-
                --  If this field is a non-native type, we have to close out
                --  the last record info entry we're making, if there's
                --  anything in it, and make a piece for this field.
 
-               elsif Is_Nonnative_Type (F_GT) then
+               if Is_Nonnative_Type (F_GT) then
                   --  ??  This is the only case where we use an F_GT that
                   --  might have been modified by Add_FI.  We need to be
                   --  sure that's OK.

@@ -1025,16 +1025,25 @@ package body GNATLLVM.Types is
          Max_Size   : Boolean  := False;
          No_Padding : Boolean  := False) return Result
       is
-         Use_Max_Size : constant Boolean := Max_Size or else Is_Max_Size (GT);
+         Size_In_GT   : constant GL_Value := GT_Size (GT);
+         Use_Max_Size : constant Boolean  := Max_Size or else Is_Max_Size (GT);
+         Unpad_Record : constant Boolean  :=
+           No_Padding and then Is_Record_Type (GT);
 
       begin
          --  If a value was specified and it's data, then it must be of a
          --  fixed size.  That's the size we're looking for.
 
          if Present (V) and then Is_Data (V)
-           and then not Use_Max_Size and then not No_Padding
+           and then not Use_Max_Size and then not Unpad_Record
          then
             return Sz_From_Const (Get_Type_Size (Type_Of (V)));
+
+         --  If there's a size specified in this GT, that's what we want
+         --  unless we aren't to remove padding and this is a record type.
+
+         elsif Present (Size_In_GT) and then not Unpad_Record then
+            return Sz_From_Const (Size_In_GT);
 
          --  If this is a subprogram type, it doesn't have a size
 
@@ -1045,9 +1054,7 @@ package body GNATLLVM.Types is
          --  LLVM type and unless we aren't to remove padding and this is a
          --  record type.
 
-         elsif not Is_Nonnative_Type (GT)
-              and then (not Is_Record_Type (GT) or else not No_Padding)
-         then
+         elsif not Is_Nonnative_Type (GT) and then not Unpad_Record then
             return Sz_From_Const (Get_Type_Size (Type_Of (GT)));
 
          elsif Is_Record_Type (GT) then

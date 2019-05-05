@@ -382,9 +382,7 @@ package body GNATLLVM.GLType is
                   Err_Node := Expression (Object_Size_Clause (Err_Ident));
                end if;
 
-               Error_Msg_Uint_1 :=
-                 UI_From_Int (Int (Get_Const_Int_Value (Pad_Sz)));
-
+               Error_Msg_Uint_1 := UI_From_LLI (Get_Const_Int_Value (Pad_Sz));
                if For_Component then
                   Error_Msg_NE ("component of& padded by ^ bits?",
                                 Err_Node, Err_Ident);

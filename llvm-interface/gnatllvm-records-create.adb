@@ -1345,7 +1345,6 @@ package body GNATLLVM.Records.Create is
       while Present (Cur_Field) loop
          declare
             ORC : constant Entity_Id := Original_Record_Component (Cur_Field);
-            Typ : constant Entity_Id := Full_Etype (Cur_Field);
 
          begin
             if Full_Scope (Cur_Field) = TE
@@ -1363,7 +1362,8 @@ package body GNATLLVM.Records.Create is
 
                begin
                   Set_Esize (Cur_Field,
-                             Annotated_Object_Size (Default_GL_Type (Typ)));
+                             Annotated_Object_Size (Get_Field_Type
+                                                      (Cur_Field)));
                   Set_Component_Bit_Offset (Cur_Field, Bit_Offset);
                   if Is_Static_SO_Ref (Bit_Offset) then
                      Set_Normalized_Position

@@ -27,6 +27,7 @@ with Table;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
+with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package body GNATLLVM.GLType is
@@ -356,8 +357,10 @@ package body GNATLLVM.GLType is
         and then Is_Padded_GL_Type (Out_GT)
       then
          declare
+            Align_V   : constant ULL      := Get_Type_Alignment (GT);
             Out_Sz    : constant GL_Value := GT_Size (Out_GT);
-            In_Sz     : constant GL_Value := GT_Size (GT);
+            In_Sz     : constant GL_Value :=
+              Align_To (GT_Size (GT), 1, Align_V);
             Pad_Sz    : constant GL_Value :=
               (if   Present (Out_Sz) and then Present (In_Sz)
                then Sub (Out_Sz, In_Sz) else No_GL_Value);

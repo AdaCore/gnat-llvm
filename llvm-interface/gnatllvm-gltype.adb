@@ -349,18 +349,20 @@ package body GNATLLVM.GLType is
 
    begin
       --  If this is an entity that comes from source, is in the unit being
-      --  compiled, and we've made a padded type, set a warning saying how
-      --  many bits are unused.
+      --  compiled, a size was specified, and we've made a padded type, set
+      --  a warning saying how many bits are unused.
 
       if Present (Err_Ident) and then Comes_From_Source (Err_Ident)
         and then In_Extended_Main_Code_Unit (Err_Ident)
         and then Is_Padded_GL_Type (Out_GT)
+        and then Size /= No_Uint
       then
          declare
             Align_V   : constant ULL      := Get_Type_Alignment (GT);
-            Out_Sz    : constant GL_Value := GT_Size (Out_GT);
+            Out_Sz    : constant GL_Value := Size_Const_Int (Size);
             In_Sz     : constant GL_Value :=
-              Align_To (GT_Size (GT), 1, Align_V);
+              Align_To (GT_Size (GT), 1, Align_V) *
+              Size_Const_Int (ULL (Get_Bits_Per_Unit));
             Pad_Sz    : constant GL_Value :=
               (if   Present (Out_Sz) and then Present (In_Sz)
                then Sub (Out_Sz, In_Sz) else No_GL_Value);
@@ -381,8 +383,7 @@ package body GNATLLVM.GLType is
                end if;
 
                Error_Msg_Uint_1 :=
-                 UI_From_Int (Int (Get_Const_Int_Value (Pad_Sz)) *
-                                Get_Bits_Per_Unit);
+                 UI_From_Int (Int (Get_Const_Int_Value (Pad_Sz)));
 
                if For_Component then
                   Error_Msg_NE ("component of& padded by ^ bits?",

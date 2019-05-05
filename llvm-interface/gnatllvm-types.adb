@@ -527,7 +527,9 @@ package body GNATLLVM.Types is
          Set_Alignment (Out_TE, Alignment (In_TE));
       end if;
 
-      if Is_Array_Type (Out_TE) and then Is_Base_Type (Out_TE) then
+      if Is_Array_Type (Out_TE) and then Is_Base_Type (Out_TE)
+        and then Unknown_Component_Size (Out_TE)
+      then
          Set_Component_Size (Out_TE, Component_Size (In_TE));
       end if;
 

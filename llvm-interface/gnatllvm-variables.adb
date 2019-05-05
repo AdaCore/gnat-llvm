@@ -568,6 +568,9 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean is
+      In_Prim_GT  : constant GL_Type := Primitive_GL_Type (In_GT);
+      Out_Prim_GT : constant GL_Type := Primitive_GL_Type (Out_GT);
+
    begin
       --  If either GT is a Byte_Array type, we can only do the
       --  conversion if both types are the same.
@@ -578,26 +581,32 @@ package body GNATLLVM.Variables is
         or else Is_Byte_Array_GL_Type (Out_GT)
       then
          return False;
-
-      --  We can do the conversion statically if both types are elementary
-
-      else
-         return (Is_Elementary_Type (In_GT)
-                   and then Is_Elementary_Type (Out_GT))
-           --  Or fixed-size record types with identical layout
-
-           or else (Is_Record_Type (In_GT)
-                      and then not Is_Nonnative_Type (In_GT)
-                      and then Is_Record_Type (Out_GT)
-                      and then not Is_Nonnative_Type (Out_GT)
-                      and then Is_Layout_Identical (In_GT, Out_GT))
-
-           --  Or if both types are native and the LLVM types are the same
-
-           or else (not Is_Nonnative_Type (In_GT)
-                      and then not Is_Nonnative_Type (Out_GT)
-                      and then Type_Of (In_GT) = Type_Of (Out_GT));
       end if;
+
+      --  Otherwise, we know we can convert to and from the primitive type,
+      --  so we can now check about those type.
+
+      --  We can do the conversion statically if both are the same
+      return (In_Prim_GT = Out_Prim_GT
+
+                --  Or if both types are elementary
+                or else (Is_Elementary_Type (In_Prim_GT)
+                           and then Is_Elementary_Type (Out_Prim_GT))
+
+                --  Or fixed-size record types with identical layout
+                or else (Is_Record_Type (In_Prim_GT)
+                           and then not Is_Nonnative_Type (In_Prim_GT)
+                           and then Is_Record_Type (Out_Prim_GT)
+                           and then not Is_Nonnative_Type (Out_Prim_GT)
+                           and then Is_Layout_Identical (In_Prim_GT,
+                                                         Out_Prim_GT))
+
+                --  Or if both types are native and the LLVM types are
+                --  the same.
+                or else (not Is_Nonnative_Type (In_Prim_GT)
+                           and then not Is_Nonnative_Type (Out_Prim_GT)
+                           and then Type_Of (In_Prim_GT) =
+                                      Type_Of (Out_Prim_GT)));
 
    end Is_Static_Conversion;
 

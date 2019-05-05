@@ -1131,7 +1131,7 @@ package body GNATLLVM.Variables is
       --  unless we have a qualified expression initializing a class wide
       --  type.
 
-      GT       : GL_Type             := Default_GL_Type (TE);
+      GT       : GL_Type            := Default_GL_Type (TE);
       Size     : constant Uint      :=
         (if   Has_Size_Clause (Def_Ident) or not Unknown_Esize (Def_Ident)
          then Esize (Def_Ident) else No_Uint);

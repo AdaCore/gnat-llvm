@@ -508,17 +508,16 @@ package body GNATLLVM.Compile is
                GT : GL_Type;
 
             begin
-               Copy_Annotations (TE, Defining_Identifier (N));
-
-               --  Check that the type fits in the specified size, which
-               --  may have been set by back-annotation.  We don't consider
-               --  a type to be of fixed size if the byte size is larger
-               --  than unsigned'Last due to LLVM limitations, so we may
-               --  have a dynamic size that's actual a constant.  And if
-               --  the size is dynamic we can't know if it fits or not.
-               --  The best way to do the size comparison is to form a
-               --  GL_Value of the two constants and compare them since
-               --  this doesn't rely on the above behavior of Is_Dynamic_Size.
+               --  Elaboratte the type, then check that the type fits in
+               --  the specified size, which may have been set by
+               --  back-annotation.  We don't consider a type to be of
+               --  fixed size if the byte size is larger than unsigned'Last
+               --  due to LLVM limitations, so we may have a dynamic size
+               --  that's actual a constant.  And if the size is dynamic we
+               --  can't know if it fits or not.  The best way to do the
+               --  size comparison is to form a GL_Value of the two
+               --  constants and compare them since this doesn't rely on
+               --  the above behavior of Is_Dynamic_Size.
 
                Discard (Type_Of (TE));
                GT := Default_GL_Type (TE);
@@ -532,6 +531,11 @@ package body GNATLLVM.Compile is
                   Error_Msg_Uint_1 := Sz;
                   Error_Msg_NE ("??type & does not fit into ^ bits", N, TE);
                end if;
+
+               --  Now copy any back-annotations from what we
+               --  elaborated to this type.
+
+               Copy_Annotations (TE, Defining_Identifier (N));
             end;
 
          when N_Freeze_Entity =>

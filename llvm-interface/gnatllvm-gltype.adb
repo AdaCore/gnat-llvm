@@ -1069,6 +1069,19 @@ package body GNATLLVM.GLType is
    begin
       Write_Str (GT_Kind'Image (GTI.Kind) & "(");
       Write_Int (Int (GTI.GNAT_Type));
+      if Present (GTI.Size) then
+         Write_Str (", S=");
+         Write_Int (Int (Get_Const_Int_Value (GTI.Size)));
+      end if;
+      if Present (GTI.Alignment) then
+         Write_Str (", A=");
+         Write_Int (Int (Get_Const_Int_Value (GTI.Alignment)));
+      end if;
+      if Present (GTI.Bias) then
+         Write_Str (", B=");
+         Write_Int (Int (Get_Const_Int_Value (GTI.Bias)));
+      end if;
+
       Write_Str (")");
       if Full_Dump then
          Write_Str (": ");

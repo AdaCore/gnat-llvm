@@ -1351,6 +1351,9 @@ package body GNATLLVM.Records.Create is
               and then (Ekind (Cur_Field) = E_Component
                           or else No (ORC)
                           or else not Is_Completely_Hidden (ORC))
+              and then not (Is_Unchecked_Union (TE)
+                              and then Ekind (Cur_Field) = E_Discriminant)
+              and then Present (Get_Field_Info (Cur_Field))
             then
                declare
                   Byte_Position : constant BA_Data         :=

@@ -117,8 +117,8 @@ package body GNATLLVM.Conditionals is
             --  for a zero size, so we don't need to worry about testing
             --  for that case.
 
-            LHS_Val : constant GL_Value := Emit_LValue (LHS);
-            RHS_Val : constant GL_Value := Emit_LValue (RHS);
+            LHS_Val : constant GL_Value := To_Primitive (Emit_LValue (LHS));
+            RHS_Val : constant GL_Value := To_Primitive (Emit_LValue (RHS));
             Size    : constant GL_Value :=
               Compute_Size (Full_Designated_GL_Type (LHS_Val),
                             Full_Designated_GL_Type (RHS_Val),
@@ -214,8 +214,10 @@ package body GNATLLVM.Conditionals is
               (if Kind = N_Op_Eq then BB_True else BB_False);
             BB_F           : constant Basic_Block_T :=
               (if Kind = N_Op_Eq then BB_False else BB_True);
-            LHS_Val        : constant GL_Value := Emit_LValue (Our_LHS);
-            RHS_Val        : constant GL_Value := Emit_LValue (Our_RHS);
+            LHS_Val        : constant GL_Value :=
+              To_Primitive (Emit_LValue (Our_LHS));
+            RHS_Val        : constant GL_Value :=
+              To_Primitive (Emit_LValue (Our_RHS));
             BB_Next        : Basic_Block_T;
             LHS_Lengths    : GL_Value_Array (0 .. Last_Dim);
             RHS_Lengths    : GL_Value_Array (0 .. Last_Dim);

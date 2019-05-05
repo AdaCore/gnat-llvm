@@ -1132,16 +1132,68 @@ package body GNATLLVM.Variables is
       --  type.
 
       GT       : GL_Type            := Default_GL_Type (TE);
+      In_Size  : constant GL_Value  :=
+        (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
+      In_Align : constant GL_Value  := Get_Type_Alignment (GT);
       Size     : constant Uint      :=
         (if   Has_Size_Clause (Def_Ident) or not Unknown_Esize (Def_Ident)
          then Esize (Def_Ident) else No_Uint);
-      Align    : constant Uint      :=
+      Align    : Uint               :=
         (if   Unknown_Alignment (Def_Ident) then No_Uint
          else Alignment (Def_Ident));
       Max_Size : constant Boolean   := Is_Unconstrained_Record (GT);
       Biased   : constant Boolean   := Has_Biased_Representation (Def_Ident);
 
    begin
+      --  If this is an object with no specified size and alignment, and if
+      --  either it is atomic or we are not optimizing alignment for space
+      --  and it is composite and not an exception, an Out parameter or a
+      --  reference to another object, and the size of its type is a
+      --  constant, adjust the alignment.
+
+      if Size = No_Uint and then Align = No_Uint and then Present (In_Size)
+        and then (Is_Atomic_Or_VFA (Def_Ident)
+                    or else (not Ekind_In (Def_Ident, E_Exception,
+                                           E_Out_Parameter, E_Loop_Parameter)
+                               and then Is_Composite_Type (GT)
+                               and then not Optimize_Alignment_Space
+                                              (Def_Ident)
+                               and then not Is_Constr_Subt_For_UN_Aliased (GT)
+                               and then not Is_Exported (Def_Ident)
+                               and then not Is_Imported (Def_Ident)
+                               and then No (Renamed_Object (Def_Ident))
+                               and then No (Address_Clause (Def_Ident))))
+      then
+         declare
+            In_Size_ULL : constant ULL := Get_Const_Int_Value_ULL (In_Size);
+            Our_Align   : ULL          := 0;
+
+         begin
+            --  Rather than trying to make this unnecessarily portable,
+            --  we're going to hardwire the three cases that make sense.
+
+            case In_Size_ULL is
+               when 2 =>
+                  Our_Align := 2;
+               when 3 .. 4 =>
+                  Our_Align := 4;
+               when 5 .. 8 =>
+                  Our_Align := 8;
+               when others =>
+                  null;
+            end case;
+
+            --  If this is larger than the previous alignment, use it
+
+            if Our_Align > Get_Const_Int_Value_ULL (In_Align) then
+               Align := UI_From_Int (Int (Our_Align));
+            end if;
+         end;
+      end if;
+
+      --  Get the proper GT for this object given all of the above
+      --  computations.
+
       GT := Make_GT_Alternative (GT, Def_Ident, Size, Align,
                                  For_Type      => False,
                                  For_Component => False,

@@ -975,9 +975,14 @@ package body GNATLLVM.Types is
       elsif Is_Array_Type (TE) then
          return Get_Type_Alignment (Full_Component_GL_Type (TE));
 
-      --  If a record, use the highest alignment of any field
+      --  If a record, use the highest alignment of any field, but use 1
+      --  for a packed record.
 
       elsif Is_Record_Type (TE) then
+         if Is_Packed (TE) then
+            return 1;
+         end if;
+
          Field := First_Entity (TE);
          while Present (Field) loop
             if Ekind_In (Field, E_Discriminant, E_Component) then

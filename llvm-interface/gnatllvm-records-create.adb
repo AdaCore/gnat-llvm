@@ -247,46 +247,51 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 1,
          Table_Name           => "Variant_Stack");
 
-      Prev_Idx      : Record_Info_Id := Empty_Record_Info_Id;
+      Use_Packed    : constant Boolean :=
+        Is_Packed (TE) or else Has_Specified_Layout (TE);
+      --  Says to use an LLVM packed struct
+
+      Prev_Idx      : Record_Info_Id   := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
-      First_Idx     : Record_Info_Id := Empty_Record_Info_Id;
+      First_Idx     : Record_Info_Id   := Empty_Record_Info_Id;
       --  The first index used by the current record fragment construction
 
-      Overlap_Idx   : Record_Info_Id := Empty_Record_Info_Id;
+      Overlap_Idx   : Record_Info_Id   := Empty_Record_Info_Id;
       --  The index of the overlap component of this variant part, if any
 
       Cur_Idx       : Record_Info_Id;
       --  The index of the record table entry we're building
 
-      Cur_RI_Pos    : ULL            := 0;
+      Cur_RI_Pos    : ULL              := 0;
       --  Current position into this RI
 
-      Par_Depth     : Int            := 0;
+      Par_Depth     : Int              := 0;
       --  Nesting depth into parent records
 
-      RI_Align      : ULL            := 0;
+      RI_Align      : ULL              := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Position   : ULL            := 0;
+      RI_Position   : ULL              := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Is_Overlap : Boolean        := False;
+      RI_Is_Overlap : Boolean          := False;
       --  If True, the next RI built is an overlap RI for a variant
 
-      Cur_Field     : Entity_Id      := Empty;
+      Cur_Field     : Entity_Id        := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
-      Split_Align   : ULL            := ULL (Get_Maximum_Alignment);
+      Split_Align   : ULL              := ULL (Get_Maximum_Alignment);
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the
       --  same reason after a variable-size field.
 
-      GT            :  GL_Type       := Default_GL_Type (TE, Create => False);
+      GT            :  GL_Type         :=
+        Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
 
       LLVM_Type     : Type_T;
@@ -781,7 +786,8 @@ package body GNATLLVM.Records.Create is
       begin
          if Last_Type >= 0 then
             Add_RI (T        => Build_Struct_Type
-                      (Type_Array (LLVM_Types.Table (0 .. Last_Type))),
+                      (Type_Array (LLVM_Types.Table (0 .. Last_Type)),
+                       Packed => Use_Packed),
                     Align    => RI_Align,
                     Position => RI_Position);
             RI_Align    := 0;
@@ -1096,7 +1102,8 @@ package body GNATLLVM.Records.Create is
                --  If a position is specified, honor it
 
                Need_Align :  ULL                :=
-                 (if Pos /= No_Uint then 1 else Get_Type_Alignment (F_GT));
+                 (if   Pos /= No_Uint or else Is_Packed (TE) then 1
+                  else Get_Type_Alignment (F_GT));
                --  The alignment we need this field to have
 
             begin
@@ -1108,7 +1115,8 @@ package body GNATLLVM.Records.Create is
 
                if Pos = No_Uint and then Chars (F) /= Name_uTag then
                   if not In_Variant and then not Had_Non_Repped then
-                     Forced_Pos  := UI_To_ULL (Max_Record_Rep (F));
+                     Forced_Pos :=
+                       Align_Pos (UI_To_ULL (Max_Record_Rep (F)), Need_Align);
                   end if;
 
                   Had_Non_Repped := True;
@@ -1163,7 +1171,7 @@ package body GNATLLVM.Records.Create is
                   --  by the alignment.  We assume here that if Add_FI
                   --  updates our type that it has the same alignment.
 
-                  if Need_Align > Split_Align then
+                  if Need_Align > Split_Align and then not Use_Packed then
                      Flush_Current_Types;
                      Set_Is_Nonnative_Type (TE);
                      RI_Align    := Need_Align;
@@ -1189,7 +1197,7 @@ package body GNATLLVM.Records.Create is
                      --  LLVM type to use
 
                      T_Align     : constant ULL    :=
-                       Get_Type_Alignment (T);
+                       (if Use_Packed then 1 else Get_Type_Alignment (T));
                      --  The native alignment of the LLVM type
 
                      Pos_Aligned : constant ULL    :=
@@ -1272,7 +1280,7 @@ package body GNATLLVM.Records.Create is
 
       if No (Prev_Idx) then
          Struct_Set_Body (LLVM_Type, LLVM_Types.Table (0)'Address,
-                          unsigned (LLVM_Types.Last + 1), False);
+                          unsigned (LLVM_Types.Last + 1), Use_Packed);
          Add_RI (T => LLVM_Type, Align => RI_Align);
       else
          --  Otherwise, close out the last record info if we have any

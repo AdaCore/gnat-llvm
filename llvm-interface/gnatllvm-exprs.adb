@@ -1089,7 +1089,7 @@ package body GNATLLVM.Exprs is
 
             if Src_R = Reference_To_Bounds_And_Data then
                pragma Assert (Dest_R = Src_R);
-               Size := Add (Size, Get_Bound_Size (Related_Type (Src)));
+               Size := Size + Get_Bound_Size (Related_Type (Src));
             end if;
 
             Call_With_Align_2

@@ -153,14 +153,10 @@ RTSLIB=$(pwd)/lib/rts-native/adalib
 RTSOBJ=$(pwd)/lib/rts-native/obj
 ADAFLAGS=-gnatpg
 ADA_INCLUDES=-nostdinc -I../adainclude
-GCC_INCLUDE_PATH = $(word 2,$(shell gcc --print-search-dirs|grep install:))gcc-include
 CFLAGS = -O2 -g
-GNATLIBCFLAGS = -DIN_RTS=1 -DIN_GCC=1 -fexceptions
+GNATLIBCFLAGS = -DIN_RTS=1 -fexceptions -DSTANDALONE
 ALL_ADAFLAGS = $(CFLAGS) $(ADAFLAGS) $(ADA_INCLUDES)
-INCLUDES = -I../adainclude -I$(GCC_INCLUDE_PATH)/include     \
-  -I$(GCC_INCLUDE_PATH)/gcc/config -I$(GCC_INCLUDE_PATH)/gcc \
-  -I$(GCC_INCLUDE_PATH)/gcc/ada    -I$(GCC_INCLUDE_PATH)     \
-  -I$(GCC_INCLUDE_PATH)/libgcc
+INCLUDES = -I../adainclude -I../include
 
 ADAC=$(pwd)/bin/llvm-gcc
 CROSSC=clang
@@ -229,6 +225,7 @@ $(RTSDIR): bin/llvm-gnat1
 	$(RMDIR) $(RTSLIB) $(RTSOBJ)
 	$(MKDIR) $(RTSLIB)
 	$(MAKE) setup-rts
+	cp -pr include $(RTSLIB)/..
 	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
 	  $(pwd)/obj-tools/xoscons s-oscons && \
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \

@@ -95,6 +95,13 @@ package GNATLLVM.Types is
                  and then In_TE = Get_Fullest_View (Out_TE);
    --  Copy any annotations we made from In_TE to Out_TE
 
+   procedure Check_OK_For_Atomic_Type
+     (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
+     with Pre => Present (GT) and then Present (E);
+   --  GT is a type proposed for entity E, which is either an atomic object
+   --  or an atomic component.  Produce an error message if we can't make
+   --  it atomic.
+
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);
 

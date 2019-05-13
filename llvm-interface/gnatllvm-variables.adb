@@ -1484,6 +1484,21 @@ package body GNATLLVM.Variables is
          return;
       end if;
 
+      --  If the object is to have atomic components, find the component
+      --  type and validate it.
+
+      if Has_Atomic_Components (Def_Ident) then
+         Check_OK_For_Atomic_Type ((if   Is_Array_Type (GT)
+                                    then Full_Component_GL_Type (GT) else GT),
+                                   Def_Ident, True);
+      end if;
+
+      --  Now check if the type of the object allows atomic access
+
+      if Is_Atomic_Or_VFA (Def_Ident) then
+         Check_OK_For_Atomic_Type (GT, Def_Ident);
+      end if;
+
       --  Object declarations are variables either allocated on the
       --  stack (local) or global.  For globals, we operate in two phases:
       --  first we allocate the global itself, which may include some static

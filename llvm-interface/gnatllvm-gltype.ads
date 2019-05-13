@@ -389,6 +389,10 @@ package GNATLLVM.GLType is
      (Is_Volatile (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Atomic_Or_VFA (GT : GL_Type) return Boolean is
+     (Is_Atomic_Or_VFA (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Universal_Aliasing (GT : GL_Type) return Boolean is
      (Universal_Aliasing (Full_Etype (GT)))
      with Pre => Present (GT);

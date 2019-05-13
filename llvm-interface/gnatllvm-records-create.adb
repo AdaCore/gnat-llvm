@@ -877,6 +877,12 @@ package body GNATLLVM.Records.Create is
             end if;
          end if;
 
+         --  If this is to be an atomic field, verify that we can make it one
+
+         if Is_Atomic_Or_VFA (E) then
+            Check_OK_For_Atomic_Type (F_GT, E);
+         end if;
+
          --  Now add field to table
 
          Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Par_Depth,

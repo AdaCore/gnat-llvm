@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;     use Errout;
 with Get_Targ;   use Get_Targ;
 with Nlists;     use Nlists;
 with Output;     use Output;
@@ -1350,9 +1351,67 @@ package body GNATLLVM.Types is
       end if;
    end Add_Type_Data_To_Instruction;
 
-   ----------------
-   -- Builld_Min --
-   ----------------
+   ------------------------------
+   -- Check_OK_For_Atomic_Type --
+   ------------------------------
+
+   procedure Check_OK_For_Atomic_Type
+     (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
+   is
+      T           : constant Type_T := Type_Of (GT);
+      Align       : constant ULL    := Get_Type_Alignment (GT);
+      Error_Node  : Node_Id         := E;
+      Pragma_Node : Node_Id;
+
+   begin
+      --  If this is an anonymous base type, nothing to check, the
+      --  error will be reported on the source type if need be.
+
+      if not Comes_From_Source (E)
+
+        --  Consider all aligned elementary types as atomic
+        or else (Is_Elementary_Type (GT)
+                   and then Align >= Get_Type_Alignment (T))
+
+        --  Or if it's a fixed size, the size is equal to the alignment,
+        --  and the alignment is less than a word.
+        or else (not Is_Dynamic_Size (GT)
+                   and then Align <= ULL (Get_Bits_Per_Word /
+                                            Get_Bits_Per_Unit)
+                   and then Align = Get_Const_Int_Value_ULL
+                                       (Get_Type_Size (GT)))
+      then
+         return;
+      end if;
+
+      --  We normally give an error at E, but if there's a relevant
+      --  pragma, the error point is there.
+
+      Pragma_Node :=
+        Get_Pragma (E, (if   Is_Component then Pragma_Atomic_Components
+                        else Pragma_Atomic));
+      if Present (Pragma_Node) then
+         Error_Node := First (Pragma_Argument_Associations (Pragma_Node));
+      end if;
+
+      --  Now give the appropriate error message
+
+      if Is_Component then
+         Error_Msg_NE ("atomic access to component of & cannot be guaranteed",
+                       Error_Node, E);
+      elsif Is_Volatile_Full_Access (E) then
+         Error_Msg_NE ("volatile full access to & cannot be guaranteed",
+                       Error_Node, E);
+      else
+         Error_Msg_NE ("atomic access to & cannot be guaranteed",
+                       Error_Node, E);
+      end if;
+
+   end Check_OK_For_Atomic_Type;
+
+   ---------------
+   -- Build_Min --
+   ---------------
 
    function Build_Min (V1, V2 : IDS; Name : String := "") return IDS is
      (if   Is_Const (V1) and then Is_Const (V2)

@@ -394,6 +394,12 @@ package body GNATLLVM.Types.Create is
          end;
       end if;
 
+      --  If this is to be atomic, see if legal
+
+      if Is_Atomic_Or_VFA (TE) then
+         Check_OK_For_Atomic_Type (GT, TE);
+      end if;
+
       --  Back-annotate sizes of non-scalar types if there isn't one.  ???
       --  Don't do anything for access subprogram since this will cause
       --  warnings for UC's in g-thread and g-spipat.

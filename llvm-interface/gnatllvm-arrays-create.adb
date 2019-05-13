@@ -183,6 +183,12 @@ package body GNATLLVM.Arrays.Create is
          Set_Associated_GL_Type (A_TE, Comp_GT);
       end if;
 
+      --  Check for an array that requires atomic components
+
+      if  Has_Atomic_Components (A_TE) or else Is_Atomic_Or_VFA (Comp_GT) then
+         Check_OK_For_Atomic_Type (Comp_GT, A_TE, True);
+      end if;
+
       --  If this is a base type, back-annotate the component size
 
       if Is_Base_Type (A_TE) and then Unknown_Component_Size (A_TE) then

@@ -1107,6 +1107,19 @@ package body GNATLLVM.Records.Create is
                --  The alignment we need this field to have
 
             begin
+               --  If we've pushed into a new static variant, see if
+               --  we need to align it.  But update our level anyway.
+               --  Ignore if there's a position specified.
+
+               if AF.Var_Depth /= Last_Var_Depth and then Pos = No_Uint then
+                  if AF.Var_Depth > Last_Var_Depth and then AF.Var_Align /= 0
+                  then
+                     Need_Align  := AF.Var_Align;
+                  end if;
+
+                  Last_Var_Depth := AF.Var_Depth;
+               end if;
+
                --  If we're not in a variant, this field has no rep clause,
                --  is not the _Tag field, and we haven't seen a non-repped
                --  field before, force the position of this record to be
@@ -1120,19 +1133,6 @@ package body GNATLLVM.Records.Create is
                   end if;
 
                   Had_Non_Repped := True;
-               end if;
-
-               --  If we've pushed into a new static variant, see if
-               --  we need to align it.  But update our level anyway.
-               --  Ignore if there's a position specified.
-
-               if AF.Var_Depth /= Last_Var_Depth and then Pos = No_Uint then
-                  if AF.Var_Depth > Last_Var_Depth and then AF.Var_Align /= 0
-                  then
-                     Need_Align  := AF.Var_Align;
-                  end if;
-
-                  Last_Var_Depth := AF.Var_Depth;
                end if;
 
                --  If this field is a non-native type, we have to close out

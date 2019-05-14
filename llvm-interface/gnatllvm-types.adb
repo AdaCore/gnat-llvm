@@ -368,8 +368,7 @@ package body GNATLLVM.Types is
 
    function Get_Type_Size_In_Bits (GT : GL_Type) return GL_Value is
    begin
-      pragma Assert (not Is_Nonnative_Type (GT));
-      return Get_Type_Size_In_Bits (Type_Of (GT));
+      return Get_Type_Size (GT) * Byte_Size;
    end Get_Type_Size_In_Bits;
 
    ---------------------------

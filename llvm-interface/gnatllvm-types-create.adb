@@ -356,13 +356,13 @@ package body GNATLLVM.Types.Create is
       --  Make a GL_Type corresponding to any specified sizes and
       --  alignments, as well as for biased repesentation.  But don't
       --  do this for void or subprogram types or if we haven't
-      --  elaborated Size_Type yet.  If there's no alignment specified
-      --  for this type and it's not a base type, use the alignment of the
-      --  base type.
+      --  elaborated Size_Type yet.
 
       if Ekind (GT) not in E_Void | E_Subprogram_Type
         and then Present (Size_GL_Type)
       then
+         --  If there's no alignment specified for this type and it's not a
+         --  base type, use the alignment of the base type.
          if not Unknown_Alignment (TE) then
             Align := Alignment (TE);
          elsif not Is_Full_Base_Type (TE)
@@ -376,13 +376,37 @@ package body GNATLLVM.Types.Create is
               (if   Is_Packed_Array_Impl_Type (TE)
                then Original_Array_Type (TE) else TE);
             Size    : constant Uint      :=
-               (if    Is_Discrete_Or_Fixed_Point_Type (Size_TE)
-                then  Esize (Size_TE)
-                elsif Has_Size_Clause (Size_TE)
-                      or not Unknown_RM_Size (Size_TE)
-                then  RM_Size (Size_TE) else No_Uint);
+              (if    Is_Discrete_Or_Fixed_Point_Type (Size_TE)
+               then  Esize (Size_TE)
+               elsif Has_Size_Clause (Size_TE)
+                     or not Unknown_RM_Size (Size_TE)
+               then  RM_Size (Size_TE) else No_Uint);
+            Size_GT : constant GL_Value  :=
+              (if   Is_Dynamic_Size (GT) then No_GL_Value
+               else Get_Type_Size (GT));
 
          begin
+            --  If this is an atomic or VFA type with no alignment specified,
+            --  maybe pick an alignment based on the size.
+
+            if Is_Atomic_Or_VFA (TE) then
+               if Size /= No_Uint
+                 and then (Size = Uint_2 or else Size = Uint_4
+                             or else Size = Uint_8)
+               then
+                  Align := Size / Uint_Bits_Per_Unit;
+               elsif Present (Size_GT)
+                 and then (Size_GT = Size_Const_Int (2)
+                             or else Size_GT = Size_Const_Int (4)
+                             or else Size_GT = Size_Const_Int (8))
+               then
+                  Align :=
+                    UI_From_Int (Int (Get_Const_Int_Value_ULL (Size_GT)));
+               end if;
+            end if;
+
+            --  Now make the GT that we need for this type
+
             GT := Make_GT_Alternative
               (GT, TE,
                Size          => Size,

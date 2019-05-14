@@ -806,6 +806,7 @@ package body GNATLLVM.Records.Create is
          Clause    : constant Node_Id   := Component_Clause (E);
          Pos       : constant Uint      := Component_Bit_Offset (E);
          R_TE      : constant Entity_Id := Full_Scope (E);
+         Def_GT    : constant GL_Type   := Default_GL_Type (Full_Etype (E));
          F_GT      : GL_Type            := Full_GL_Type (E);
          Align     : constant ULL       := Get_Type_Alignment (F_GT);
          Bit_Align : constant ULL       := Align * ULL (Get_Bits_Per_Unit);
@@ -881,6 +882,39 @@ package body GNATLLVM.Records.Create is
 
          if Is_Atomic_Or_VFA (E) then
             Check_OK_For_Atomic_Type (F_GT, E);
+         end if;
+
+         --  If a size is specified and constant and is lower than
+         --  the size of the type or larger than the type and the field
+         --  is atomic or aliased, we may have to give an error. (The
+         --  variable case is handled above.)
+
+         if Present (Clause)
+           and then not Is_Dynamic_Size (Def_GT)
+           and then (Size_Const_Int (Esize (E)) <
+                       Get_Type_Size_In_Bits (Def_GT)
+                       or else ((Is_Aliased (E) or else Is_Atomic (E))
+                                and then (Get_Type_Size_In_Bits (Def_GT)) <
+                                  Size_Const_Int (Esize (E))))
+         then
+            if Is_Atomic (E) then
+               Error_Msg_NE_Num
+                 ("size of atomic field& must be ^ bits",
+                  Last_Bit (Clause), E, Esize (Full_Etype (E)));
+            elsif Is_Aliased (E) then
+               Error_Msg_NE_Num
+                 ("size of aliased field& must be ^ bits",
+                  Last_Bit (Clause), E, Esize (Full_Etype (E)));
+            elsif Is_Independent (E) then
+               Error_Msg_NE_Num
+                 ("size of independent field& must be at least ^ bits",
+                  Last_Bit (Clause), E, Esize (Full_Etype (E)));
+            elsif Strict_Alignment (E) then
+               Error_Msg_NE_Num
+                 ("size of & with aliased or tagged part must be at least " &
+                    "^ bits",
+                  Last_Bit (Clause), E, Esize (Full_Etype (E)));
+            end if;
          end if;
 
          --  Now add field to table

@@ -734,6 +734,7 @@ package body GNATLLVM.Variables is
                while Present (Expr) loop
                   exit when not Box_Present (Expr)
                     and then (not Is_No_Elab_Needed (Expression (Expr))
+                                or else Is_Array_Bitfield (Entity (Expr))
                                 or else not Is_Static_Conversion
                                 (Full_GL_Type (Expression (Expr)),
                                  Full_GL_Type (F)));

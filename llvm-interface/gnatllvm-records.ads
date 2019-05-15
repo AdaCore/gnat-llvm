@@ -102,6 +102,18 @@ package GNATLLVM.Records is
           Post => Present (Get_Field_Type'Result);
    --  Return the GL_Type of the field denoted by F
 
+   function Is_Bitfield (F : Entity_Id) return Boolean
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant);
+   --  Indicate whether F is a bitfield, meaning that shift/mask operations
+   --  are required to access it.
+
+   function Is_Array_Bitfield (F : Entity_Id) return Boolean
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant);
+   --  If True, this is a bitfield and the underlying LLVM field is an
+   --  array.  This means that we must use pointer-punning as part of
+   --  accessing this field, which forces it in memory and means we can't
+   --  do get a static access to this field.
+
    function Align_To
      (V : GL_Value; Cur_Align, Must_Align : ULL) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);
@@ -275,18 +287,33 @@ private
    --  The information for a field is the index of the piece in the record
    --  information and optionally the location within the piece in the case
    --  when the Record_Info is an LLVM_type.  We also record the GL_Type
-   --  used to represent the field.
+   --  used to represent the field and bit positions if this is a bitfield.
 
    type Field_Info is record
-      Rec_Info_Idx  : Record_Info_Id;
+      Rec_Info_Idx   : Record_Info_Id;
       --  Index into the record info table that contains this field
 
-      Field_Ordinal : Nat;
+      Field_Ordinal  : Nat;
       --  Ordinal of this field within the contents of the record info table
 
-      GT            : GL_Type;
+      GT             : GL_Type;
       --  The GL_Type correspond to this field, which takes into account
       --  a possible change in size
+
+      First_Bit      : Uint;
+      --  If not No_Uint, then the first bit (0-origin) within the LLVM field
+      --  that corresponds to this field.
+
+      Num_Bits       : Uint;
+      --  If not No_Uint, then the number of bits within the LLVM field that
+      --  corresponds to this field.
+
+      Array_Bitfield : Boolean;
+      --  If True, the underlying LLVM field is an array.  This means that we
+      --  must use pointer-punning as part of accessing this field, which
+      --  forces it in memory and means we can't do get a static access to
+      --  this field.
+
    end record;
 
    package Field_Info_Table is new Table.Table

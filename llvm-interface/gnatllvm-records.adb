@@ -1029,6 +1029,24 @@ package body GNATLLVM.Records is
       return Field_Info_Table.Table (Get_Field_Info (F)).GT;
    end Get_Field_Type;
 
+   -----------------
+   -- Is_Bitfield --
+   -----------------
+
+   function Is_Bitfield (F : Entity_Id) return Boolean is
+   begin
+      return Field_Info_Table.Table (Get_Field_Info (F)).First_Bit /= No_Uint;
+   end Is_Bitfield;
+
+   -----------------------
+   -- Is_Array_Bitfield --
+   -----------------------
+
+   function Is_Array_Bitfield (F : Entity_Id) return Boolean is
+   begin
+      return Field_Info_Table.Table (Get_Field_Info (F)).Array_Bitfield;
+   end Is_Array_Bitfield;
+
    ----------------------
    -- Get_Variant_Size --
    ----------------------
@@ -1443,9 +1461,10 @@ package body GNATLLVM.Records is
 
          while Present (Expr) loop
             declare
-               F   : constant Entity_Id     := Find_Matching_Field
-                 (Full_Etype (GT), Entity (First (Choices (Expr))));
-               Val : constant Node_Id := Expression (Expr);
+               F   : constant Entity_Id :=
+                 Find_Matching_Field (Full_Etype (GT),
+                                      Entity (First (Choices (Expr))));
+               Val : constant Node_Id   := Expression (Expr);
                V   : GL_Value;
 
             begin
@@ -1588,6 +1607,17 @@ package body GNATLLVM.Records is
          Write_Int (Nat (FI.Rec_Info_Idx));
          Write_Str (", Ordinal = ");
          Write_Int (FI.Field_Ordinal);
+         if FI.First_Bit /= No_Uint then
+            Write_Str (", Bits = ");
+            Write_Int (UI_To_Int (FI.First_Bit));
+            Write_Str (" .. ");
+            Write_Int (UI_To_Int (FI.First_Bit + FI.Num_Bits - 1));
+         end if;
+
+         if FI.Array_Bitfield then
+            Write_Str (", Array Bitfield");
+         end if;
+
          Dump_GL_Type (FI.GT);
          Write_Eol;
          Print_RI_Briefly (FI.Rec_Info_Idx);
@@ -1724,6 +1754,13 @@ package body GNATLLVM.Records is
                   if Present (RI.LLVM_Type) then
                      Write_Str ("@");
                      Write_Int (FI.Field_Ordinal);
+                     if FI.First_Bit /= No_Uint then
+                        Write_Str (" [");
+                        Write_Int (UI_To_Int (FI.First_Bit));
+                        Write_Str (" .. ");
+                        Write_Int (UI_To_Int (FI.First_Bit + FI.Num_Bits - 1));
+                        Write_Str ("]");
+                     end if;
                   end if;
 
                   Write_Str (" ");

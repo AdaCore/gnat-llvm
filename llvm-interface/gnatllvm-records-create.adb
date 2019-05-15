@@ -318,10 +318,13 @@ package body GNATLLVM.Records.Create is
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
-        (E       : Entity_Id;
-         RI_Idx  : Record_Info_Id;
-         Ordinal : Nat;
-         F_GT    : in out GL_Type)
+        (E              : Entity_Id;
+         RI_Idx         : Record_Info_Id;
+         F_GT           : in out GL_Type;
+         Ordinal        : Nat  := 0;
+         First_Bit      : Uint := No_Uint;
+         Num_Bits       : Uint := No_Uint;
+         Array_Bitfield : Boolean := False)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
       --  the field to point to it.  Update F_GT if we used a matching field.
@@ -396,10 +399,13 @@ package body GNATLLVM.Records.Create is
       ------------
 
       procedure Add_FI
-        (E       : Entity_Id;
-         RI_Idx  : Record_Info_Id;
-         Ordinal : Nat;
-         F_GT    : in out GL_Type)
+        (E              : Entity_Id;
+         RI_Idx         : Record_Info_Id;
+         F_GT           : in out GL_Type;
+         Ordinal        : Nat  := 0;
+         First_Bit      : Uint := No_Uint;
+         Num_Bits       : Uint := No_Uint;
+         Array_Bitfield : Boolean := False)
       is
          Matching_Field : Entity_Id;
 
@@ -407,17 +413,22 @@ package body GNATLLVM.Records.Create is
          --  If this field really isn't in the record we're working on, it
          --  must be in a parent.  So it was correct to allocate space for
          --  it, but let the record description be from the type that it's
-         --  actually in.  The fields in the entity list for this type are
-         --  almost, but not quite, in the same order as in the component
-         --  list, so we have to search for a field in that list with the
-         --  same Original_Record_Component as this field.  And finally,
-         --  if this is a hidden discriminant and we haven't yet found a
-         --  place to save the value, save it in Discriminant_FIs.
+         --  actually in.  And finally,
          --
          --  If we're using a matching field, update F_GT to its type.
 
          Field_Info_Table.Append
-           ((Rec_Info_Idx  => RI_Idx, Field_Ordinal => Ordinal, GT => F_GT));
+           ((Rec_Info_Idx   => RI_Idx,
+             GT             => F_GT,
+             Field_Ordinal  => Ordinal,
+             First_Bit      => First_Bit,
+             Num_Bits       => Num_Bits,
+             Array_Bitfield => Array_Bitfield));
+
+         --  The fields in the entity list for this type are almost, but
+         --  not quite, in the same order as in the component list, so we
+         --  have to search for a field in that list with the same
+         --  Original_Record_Component as this field.
 
          if Full_Scope (E) = TE then
             Set_Field_Info (E, Field_Info_Table.Last);
@@ -426,6 +437,10 @@ package body GNATLLVM.Records.Create is
             if Present (Matching_Field) then
                Set_Field_Info (Matching_Field, Field_Info_Table.Last);
                F_GT := Full_GL_Type (Matching_Field);
+
+            --  If this is a hidden discriminant and we haven't yet found a
+            --  place to save the value, save it in Discriminant_FIs.
+
             elsif Ekind (E) = E_Discriminant
               and then Is_Completely_Hidden (E)
             then
@@ -831,7 +846,7 @@ package body GNATLLVM.Records.Create is
          --  and handle it specially later.
 
          if Chars (E) = Name_uParent then
-            Add_FI (E, Get_Record_Info_N (TE), 0, F_GT);
+            Add_FI (E, Get_Record_Info_N (TE), F_GT);
             return;
 
          --  Ensure the position does not overlap with the parent subtype,
@@ -1198,7 +1213,7 @@ package body GNATLLVM.Records.Create is
                      Forced_Pos  := 0;
                   end if;
 
-                  Add_FI (F, Cur_Idx, 0, F_GT);
+                  Add_FI (F, Cur_Idx, F_GT);
                   Add_RI (F_GT => F_GT, Align => Need_Align);
                   Set_Is_Nonnative_Type (TE);
                   Split_Align := Need_Align;
@@ -1279,7 +1294,7 @@ package body GNATLLVM.Records.Create is
 
                      LLVM_Types.Append (T);
                      Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (T);
-                     Add_FI (F, Cur_Idx, LLVM_Types.Last, F_GT);
+                     Add_FI (F, Cur_Idx, F_GT, Ordinal => LLVM_Types.Last);
                      Forced_Pos := 0;
                   end;
                end if;

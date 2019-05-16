@@ -1954,7 +1954,7 @@ package body GNATLLVM.GLValue is
       --  that it might cross the boundary where the high-bit changes.
       --  A modular type might "overflow" in both signed or unsigned.
 
-      if No (Is_A_Instruction (Inst)) or else  Is_Modular_Integer_Type (V) then
+      if No (Is_A_Instruction (Inst)) or else Is_Modular_Integer_Type (V) then
          null;
       elsif Is_Access_Type (V) or else Is_Unsigned_Type (V) then
          Set_NUW (Inst);

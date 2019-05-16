@@ -1282,11 +1282,16 @@ package GNATLLVM.GLValue is
            Post => Is_Floating_Point_Type (F_Div'Result);
 
    function Shl
-     (V, Count : GL_Value; Name : String := "") return GL_Value
+     (V              : GL_Value;
+      Count          : GL_Value;
+      Name           : String  := "";
+      Allow_Overflow : Boolean := False) return GL_Value
    is
-      (G_From (Set_Arith_Attrs
-                 (Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name),
-                  V),
+      (G_From ((if   Allow_Overflow
+                then Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name)
+                else Set_Arith_Attrs
+                  (Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name),
+                   V)),
                V))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                    and then Is_Discrete_Or_Fixed_Point_Type (Count),
@@ -1499,11 +1504,30 @@ package GNATLLVM.GLValue is
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 
+   function GEP_To_Relationship
+     (GT      : GL_Type;
+      R       : GL_Relationship;
+      Ptr     : GL_Value;
+      Indices : GL_Value_Array;
+      Name    : String := "") return GL_Value
+     with Pre  => Is_Access_Type (Ptr) and then Present (GT),
+          Post => Is_Access_Type (GEP_To_Relationship'Result);
+
+   function GEP_Idx_To_Relationship
+     (GT      : GL_Type;
+      R       : GL_Relationship;
+      Ptr     : GL_Value;
+      Indices : Index_Array;
+      Name    : String := "") return GL_Value
+     with Pre  => Is_Access_Type (Ptr) and then Present (GT),
+          Post => Is_Access_Type (GEP_Idx_To_Relationship'Result);
+
    function GEP
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : GL_Value_Array;
-      Name    : String := "") return GL_Value
+      Name    : String := "") return GL_Value is
+     (GEP_To_Relationship (GT, Reference, Ptr, Indices, Name))
      with Pre  => Is_Access_Type (Ptr) and then Present (GT),
           Post => Is_Access_Type (GEP'Result);
 
@@ -1511,19 +1535,10 @@ package GNATLLVM.GLValue is
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : Index_Array;
-      Name    : String := "") return GL_Value
+      Name    : String := "") return GL_Value is
+     (GEP_Idx_To_Relationship (GT, Reference, Ptr, Indices, Name))
      with Pre  => Is_Access_Type (Ptr) and then Present (GT),
           Post => Is_Access_Type (GEP_Idx'Result);
-   --  ??? Why can't this overload GEP?
-
-   function GEP_To_Relationship
-     (GT      : GL_Type;
-      R       : GL_Relationship;
-      Ptr     : GL_Value;
-      Indices : Index_Array;
-      Name    : String := "") return GL_Value
-     with Pre  => Is_Access_Type (Ptr) and then Present (GT),
-          Post => Is_Access_Type (GEP_To_Relationship'Result);
 
    function Call
      (Func : GL_Value;

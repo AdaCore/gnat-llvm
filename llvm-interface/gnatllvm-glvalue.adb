@@ -664,7 +664,7 @@ package body GNATLLVM.GLValue is
             --  we just get the address of the first field.
 
             elsif Our_R = Reference_To_Bounds_And_Data then
-               return GEP_To_Relationship (GT, R, V, (1 => 0, 2 => 0));
+               return GEP_Idx_To_Relationship (GT, R, V, (1 => 0, 2 => 0));
 
             --  The bounds are in front of the data for a thin pointer
 
@@ -727,7 +727,7 @@ package body GNATLLVM.GLValue is
             --  bounds and data, we can store them and proceed as above.
 
             elsif Our_R = Reference_To_Bounds_And_Data then
-               return GEP_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
+               return GEP_Idx_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             end if;
@@ -742,7 +742,7 @@ package body GNATLLVM.GLValue is
             --  Ada language rules guarantee that it will be.
 
             if Our_R = Reference_To_Bounds_And_Data then
-               return GEP_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
+               return GEP_Idx_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             elsif Our_R = Fat_Pointer then
@@ -1387,12 +1387,13 @@ package body GNATLLVM.GLValue is
    function Full_Base_Type (V : GL_Value) return Entity_Id is
      (Full_Base_Type (Etype (V)));
 
-   ---------
-   -- GEP --
-   ---------
+   -------------------------
+   -- GEP_To_Relationship --
+   -------------------------
 
-   function GEP
+   function GEP_To_Relationship
      (GT      : GL_Type;
+      R       : GL_Relationship;
       Ptr     : GL_Value;
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
@@ -1407,37 +1408,14 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, GT, Reference, Is_Pristine => Is_Pristine (Ptr));
-   end GEP;
+      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr));
+   end GEP_To_Relationship;
 
-   -------------
-   -- GEP_Idx --
-   -------------
+   -----------------------------
+   -- GEP_Idx_To_Relationship --
+   -----------------------------
 
-   function GEP_Idx
-     (GT      : GL_Type;
-      Ptr     : GL_Value;
-      Indices : Index_Array;
-      Name    : String := "") return GL_Value
-   is
-      Val_Idxs : Value_Array (Indices'Range);
-      Result   : Value_T;
-
-   begin
-      for J in Indices'Range loop
-         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
-      end loop;
-
-      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
-                               Val_Idxs'Length, Name);
-      return G (Result, GT, Reference, Is_Pristine => Is_Pristine (Ptr));
-   end GEP_Idx;
-
-   -------------------------
-   -- GEP_To_Relationship --
-   -------------------------
-
-   function GEP_To_Relationship
+   function GEP_Idx_To_Relationship
      (GT      : GL_Type;
       R       : GL_Relationship;
       Ptr     : GL_Value;
@@ -1455,7 +1433,7 @@ package body GNATLLVM.GLValue is
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
       return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr));
-   end GEP_To_Relationship;
+   end GEP_Idx_To_Relationship;
 
    ----------
    -- Load --

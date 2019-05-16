@@ -1511,7 +1511,7 @@ package GNATLLVM.GLValue is
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : Index_Array;
-      Name        : String := "") return GL_Value
+      Name    : String := "") return GL_Value
      with Pre  => Is_Access_Type (Ptr) and then Present (GT),
           Post => Is_Access_Type (GEP_Idx'Result);
    --  ??? Why can't this overload GEP?
@@ -1521,7 +1521,7 @@ package GNATLLVM.GLValue is
       R       : GL_Relationship;
       Ptr     : GL_Value;
       Indices : Index_Array;
-      Name        : String := "") return GL_Value
+      Name    : String := "") return GL_Value
      with Pre  => Is_Access_Type (Ptr) and then Present (GT),
           Post => Is_Access_Type (GEP_To_Relationship'Result);
 

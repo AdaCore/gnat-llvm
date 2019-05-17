@@ -1,5 +1,6 @@
 Limitations and missing features (identified so far):
 
+- add llvm.lifetime.{start,end} calls
 - must position extensions fields after padding of parent;
   shows up in c460005 with -O2 and optimizing build
 - when have convention C and array, change to pointer to element type
@@ -13,12 +14,10 @@ Limitations and missing features (identified so far):
   generating code, but not when pushing for elab proc)
 - more __sync builtins and other atomic builtins
 - call "_ext" version of raise routines (e.g., J917-030)
-- representation clauses
 - debug info (for variables, types and parameters)
 - restriction checks done by back end (other than no elab and allocations,
   which are done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - support for stack checking
 - suport for -gnatc (when back-annotating)
-- must allocate aliased components of records early (GA23-024)
 - support for builtings such as sqrt (C903-006)

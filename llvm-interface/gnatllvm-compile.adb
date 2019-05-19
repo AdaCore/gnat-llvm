@@ -415,12 +415,16 @@ package body GNATLLVM.Compile is
 
             --  If the LHS is an N_Selected_Component, handle this specially
             --  since this might be a bitfield assignment.  But be careful
-            --  not to do this if the RHS is an "others" aggregate.
+            --  not to do this if the RHS is an "others" aggregate unless
+            --  this is a bitfield, in which case we must use the helper.
 
             if Nkind (Name (N)) = N_Selected_Component
-              and then (not Nkind_In (Expression (N), N_Aggregate,
+              and then not (Nkind_In (Expression (N), N_Aggregate,
                                       N_Extension_Aggregate)
-                          or else not Is_Others_Aggregate (Expression (N)))
+                              and then Is_Others_Aggregate (Expression (N))
+                              and then not Is_Bitfield (Entity
+                                                          (Selector_Name
+                                                             (Name (N)))))
             then
                declare
                   Pref   : constant Node_Id   := Prefix (Name (N));
@@ -909,7 +913,8 @@ package body GNATLLVM.Compile is
                                               For_LHS    => For_LHS,
                                               Prefer_LHS => Prefer_LHS),
                                         Entity (Selector_Name (N)),
-                                        For_LHS or Prefer_LHS);
+                                        LHS     => LHS,
+                                        For_LHS => For_LHS or Prefer_LHS);
             return Maybe_Convert_GT (Result, GT);
 
          when N_Indexed_Component | N_Slice =>

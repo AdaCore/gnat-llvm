@@ -78,6 +78,15 @@ package GNATLLVM.Records is
    --  Emit code for a record aggregate at Node.  Result_So_Far, if
    --  Present, contain any fields already filled in for the record.
 
+   function Find_Matching_Field
+     (TE : Entity_Id; Field : Entity_Id) return Entity_Id
+     with Pre  => Is_Record_Type (TE)
+     and then Ekind_In (Field, E_Discriminant, E_Component),
+     Post => Chars (Field) = Chars (Find_Matching_Field'Result)
+             and then Present (Get_Field_Info (Find_Matching_Field'Result));
+   --  Find a field in the entity list of TE that has the same name as
+   --  F and has Field_Info.
+
    function Contains_Unconstrained_Record (GT : GL_Type) return Boolean
      with Pre => Is_Record_Type (GT);
    --  True if TE has a field whose type if an unconstrained record.
@@ -92,23 +101,37 @@ package GNATLLVM.Records is
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
 
-   function Get_Field_Ordinal (F : Entity_Id) return unsigned
+   function Field_Ordinal (F : Entity_Id) return unsigned
      with Pre => Ekind_In (F, E_Component, E_Discriminant);
    --  Return the index of the field denoted by F. We assume here, but
    --  don't check, that the F is in a record with just a single RI.
 
    function Get_Field_Type (F : Entity_Id) return GL_Type
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant),
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
+                  and then Present (Get_Field_Info (F)),
           Post => Present (Get_Field_Type'Result);
    --  Return the GL_Type of the field denoted by F
 
+   function Field_Bit_Offset (F : Entity_Id) return Uint
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
+                  and then Present (Get_Field_Info (F)),
+          Post => Field_Bit_Offset'Result /= No_Uint;
+   --  Return the bitfield offset of F or zero if it's not a bitfield
+
    function Is_Bitfield (F : Entity_Id) return Boolean
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant);
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
+                  and then Present (Get_Field_Info (F));
    --  Indicate whether F is a bitfield, meaning that shift/mask operations
    --  are required to access it.
 
+   function Is_Bitfield_By_Rep (F : Entity_Id) return Boolean
+     with Pre => Ekind_In (F, E_Component, E_Discriminant);
+   --  True if we need bitfield processing for this field based on its
+   --  rep clause.
+
    function Is_Array_Bitfield (F : Entity_Id) return Boolean
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant);
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
+                  and then Present (Get_Field_Info (F));
    --  If True, this is a bitfield and the underlying LLVM field is an
    --  array.  This means that we must use pointer-punning as part of
    --  accessing this field, which forces it in memory and means we can't
@@ -121,24 +144,25 @@ package GNATLLVM.Records is
    --  Align_To.
 
    function Build_Field_Load
-     (V       : GL_Value;
-      F       : Entity_Id;
-      For_LHS : Boolean := False) return GL_Value
-     with  Pre  => Is_Record_Type (Related_Type (V))
-                   and then Ekind_In (F, E_Component, E_Discriminant),
+     (In_V    : GL_Value;
+      In_F    : Entity_Id;
+      LHS     : GL_Value := No_GL_Value;
+      For_LHS : Boolean  := False) return GL_Value
+     with  Pre  => Is_Record_Type (Related_Type (In_V))
+                   and then Ekind_In (In_F, E_Component, E_Discriminant),
            Post => Present (Build_Field_Load'Result);
    --  V represents a record.  Return a value representing loading field
-   --  F from that record.  If For_LHS is True, this must be a reference
+   --  In_F from that record.  If For_LHS is True, this must be a reference
    --  to the field, otherwise, it may or may not be a reference, depending
    --  on what's simpler.
    --  The following are debug procedures to print information about records
    --  and fields.
 
    function Build_Field_Store
-     (LHS : GL_Value; F : Entity_Id; RHS : GL_Value) return GL_Value
+     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value) return GL_Value
      with  Pre  => Is_Record_Type (Related_Type (LHS))
                    and then Present (RHS)
-                   and then Ekind_In (F, E_Component, E_Discriminant);
+                   and then Ekind_In (In_F, E_Component, E_Discriminant);
    --  Likewise, but perform a store of RHS into the F component of LHS.
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.

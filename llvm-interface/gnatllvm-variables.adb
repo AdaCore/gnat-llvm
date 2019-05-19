@@ -725,21 +725,32 @@ package body GNATLLVM.Variables is
                end loop;
 
             elsif Is_Record_Type (GT) then
+
+               --  ??? This may be OBE
                if Contains_Unconstrained_Record (GT) then
                   return False;
                end if;
 
                Expr := First (Component_Associations (N));
-               F    := First_Component_Or_Discriminant (Full_Etype (GT));
                while Present (Expr) loop
-                  exit when not Box_Present (Expr)
-                    and then (not Is_No_Elab_Needed (Expression (Expr))
-                                or else Is_Array_Bitfield (Entity (Expr))
-                                or else not Is_Static_Conversion
-                                (Full_GL_Type (Expression (Expr)),
-                                 Full_GL_Type (F)));
+                  F := Entity (First (Choices (Expr)));
+                  if Ekind (F) /= E_Discriminant
+                    or else not Is_Unchecked_Union (Full_Scope (F))
+                  then
+                     Discard (Type_Of (Full_Scope (F)));
+                     F := Find_Matching_Field (Full_Scope (F), F);
+                     exit when not Box_Present (Expr)
+                       and then (not Is_No_Elab_Needed (Expression (Expr))
+                                   or else Is_Array_Bitfield (F)
+                                   or else (Is_Bitfield (F)
+                                              and then not Is_Elementary_Type
+                                              (Full_Etype (F)))
+                                   or else not Is_Static_Conversion
+                                   (Full_GL_Type (Expression (Expr)),
+                                    Full_GL_Type (F)));
+                  end if;
+
                   Next (Expr);
-                  Next_Component_Or_Discriminant (F);
                end loop;
             else
                return False;

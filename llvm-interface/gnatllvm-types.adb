@@ -624,7 +624,8 @@ package body GNATLLVM.Types is
 
       --  If we have a value to move into memory, move it
 
-      if Present (New_V) and then New_V /= Memory then
+      if Present (New_V) and then New_V /= Memory and then not Is_Undef (New_V)
+      then
          Emit_Assignment (Memory, Value => New_V);
       end if;
 
@@ -978,8 +979,8 @@ package body GNATLLVM.Types is
       elsif Is_Array_Type (TE) then
          return Get_Type_Alignment (Full_Component_GL_Type (TE));
 
-      --  If a record, use the highest alignment of any field, but use 1
-      --  for a packed record.
+      --  If a record, use the highest alignment of any field without
+      --  a rep clause, but use 1 for a packed record.
 
       elsif Is_Record_Type (TE) then
          if Is_Packed (TE) then
@@ -988,7 +989,9 @@ package body GNATLLVM.Types is
 
          Field := First_Entity (TE);
          while Present (Field) loop
-            if Ekind_In (Field, E_Discriminant, E_Component) then
+            if Ekind_In (Field, E_Discriminant, E_Component)
+              and then not Is_Bitfield_By_Rep (Field)
+            then
                Largest_Align
                  := ULL'Max (Largest_Align,
                              Get_Type_Alignment (Full_GL_Type (Field)));
@@ -1310,8 +1313,10 @@ package body GNATLLVM.Types is
                Ret := Ret / Uint_Bits_Per_Unit;
             end if;
 
-         when Attribute_First_Bit =>
-            if not Unknown_Normalized_Position (Our_E) then
+         when Attribute_First_Bit | Attribute_Bit =>
+            if Ekind_In (Our_E, E_Discriminant, E_Component)
+              and then not Unknown_Normalized_Position (Our_E)
+            then
                Ret := Normalized_First_Bit (Our_E);
             end if;
 
@@ -1323,7 +1328,7 @@ package body GNATLLVM.Types is
               and then not Unknown_Esize (Our_E)
               and then Is_Static_SO_Ref (Ret)
             then
-               Ret := Ret + Esize (Our_E) - Uint_1;
+               Ret := Ret + Esize (Our_E) - 1;
             end if;
 
          when others =>

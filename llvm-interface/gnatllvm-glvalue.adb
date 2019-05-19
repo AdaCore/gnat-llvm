@@ -133,7 +133,8 @@ package body GNATLLVM.GLValue is
             return Ekind (GT) = E_Subprogram_Type
               and then Kind = Pointer_Type_Kind;
 
-         when Reference_To_Subprogram | Reference_To_Ref_To_Subprogram =>
+         when Reference_To_Subprogram | Reference_To_Ref_To_Subprogram
+            | Reference_To_Unknown =>
             return Kind = Pointer_Type_Kind;
 
          when Trampoline =>

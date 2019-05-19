@@ -45,12 +45,6 @@ package body GNATLLVM.Conversions is
      with Pre => Is_Reference (V) and then Present (GT);
    --  Return True if converting V to type GT won't change any bits
 
-   function Is_Unsigned_For_RM (GT : GL_Type) return Boolean
-     with Pre => Present (GT);
-   --  Return true if GT has an unsigned representation.  This needs to be
-   --  used when the representation of types whose precision is not equal
-   --  to their size is manipulated based on the RM size.
-
    -----------------------------------------------
    -- Are_Arrays_With_Different_Index_Types --
    -----------------------------------------------
@@ -125,9 +119,14 @@ package body GNATLLVM.Conversions is
 
    function Is_Unsigned_For_RM (GT : GL_Type) return Boolean is
    begin
+      --  If biased, say yes
+
+      if Is_Biased_GL_Type (GT) then
+         return True;
+
       --  If not scalar type or no range, say no; if unsigned say yes.
 
-      if not Is_Scalar_Type (GT) or else No (Scalar_Range (GT)) then
+      elsif not Is_Scalar_Type (GT) or else No (Scalar_Range (GT)) then
          return False;
       elsif Is_Unsigned_Type (GT) then
          return True;
@@ -641,7 +640,7 @@ package body GNATLLVM.Conversions is
       --  However, we don't need to do the load if the LLVM types are the
       --  same.
 
-      elsif Is_Elementary_Type (In_GT) then
+      elsif Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
          if Type_Of (In_GT) = Type_Of (GT) then
             return G_Is (V, GT);
          else
@@ -660,11 +659,14 @@ package body GNATLLVM.Conversions is
       elsif Full_Etype (In_GT) = Full_Etype (GT) then
          return From_Primitive (To_Primitive (V), GT);
 
-      --  Otherwise, it must be a case where this is a type whose layout
-      --  is identical to GT.  If it's a constant record, we can convert
-      --  it.  Otherwise, leave it alone and it'll be sorted out downstream.
+      --  Otherwise, it must be a case where this is a type whose layout is
+      --  identical to GT or where the base types are the same.  If it's a
+      --  constant record with identical layout, we can convert it.
+      --  Otherwise, leave it alone and it'll be sorted out downstream.
 
-      elsif Is_Constant (V) and then Is_Record_Type (GT) then
+      elsif Is_Constant (V) and then Is_Record_Type (GT)
+        and then Is_Layout_Identical (V, GT)
+      then
          return Convert_Struct_Constant (V, GT);
       else
          return V;

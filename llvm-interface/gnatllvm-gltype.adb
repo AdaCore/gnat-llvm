@@ -15,14 +15,15 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
-with Get_Targ; use Get_Targ;
-with Lib;      use Lib;
-with Output;   use Output;
-with Repinfo;  use Repinfo;
-with Sinfo;    use Sinfo;
-with Sprint;   use Sprint;
+with Errout;     use Errout;
+with Get_Targ;   use Get_Targ;
+with Lib;        use Lib;
+with Output;     use Output;
+with Repinfo;    use Repinfo;
+with Sinfo;      use Sinfo;
+with Sprint;     use Sprint;
 with Table;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -478,13 +479,20 @@ package body GNATLLVM.GLType is
                   and then Needs_Bias = (GTI.Kind = Biased)
                   and then not (Needs_Max
                                   and then (No (Size_V)
-                                              or else not Prim_Native)))
-
+                                              or else not Prim_Native))
+                  and then not (Size /= No_Uint
+                                  and then (Get_Type_Kind (GTI.LLVM_Type) =
+                                              Integer_Type_Kind)
+                                  and then (Get_Type_Size_In_Bits
+                                              (GTI.LLVM_Type) /=
+                                              UI_To_ULL (Size))))
               --  If the size and alignment are the same, this must be the
               --  same type.  But this isn't the case if we need the
               --  maximim size and there's no size for the type or the
               --  primitive type isn't native (the latter can happen for a
               --  variant record where all the variants are the same size.)
+              --  Also check for the integral case when the size isn't the
+              --  number of bits.
 
               or else (Needs_Max and then GTI.Max_Size)
               --  It's also the same type even if there's no match if
@@ -557,7 +565,7 @@ package body GNATLLVM.GLType is
                Pad_Size  : constant GL_Value := Sub (Size_V, Prim_Size);
                Pad_Count : constant LLI      := Get_Const_Int_Value (Pad_Size);
                Arr_T     : constant Type_T   :=
-                 Array_Type (Int_Ty (8), unsigned (Pad_Count));
+                 Array_Type (Int_Ty (Get_Bits_Per_Unit), unsigned (Pad_Count));
 
             begin
                --  If there's a padding amount, thisis a padded type.

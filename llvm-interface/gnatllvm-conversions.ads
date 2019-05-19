@@ -71,12 +71,14 @@ package GNATLLVM.Conversions is
    --  Likewise, but get type from V
 
    function Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value
-     with Pre  => Is_Reference (V)
-                  or else Full_Etype (Related_Type (V)) = Full_Etype (GT)
-                  or else Is_Layout_Identical (V, GT),
-          Post => Is_Layout_Identical (Related_Type (Convert_GT'Result), GT);
-   --  Convert V, which is either a reference or whose current GL_Type
-   --  is the same GNAT type as GT or has the same layout, to GT.
+     with Pre  => Present (V) and then Present (GT),
+          Post => Present (Convert_GT'Result);
+   --  Convert V, to GT. ???  We have a mess here because the front end
+   --  often treats different types as if they're identical, but we,
+   --  unfortunately, sometimes must keep the original type.  This means that
+   --  we may sometimes do nothing even though we actually have to convert
+   --  due to a GT difference of the types.  Nothing we can do about it
+   --  for now.
 
    function Maybe_Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value is
      (if   Full_Etype (Related_Type (V)) = Full_Etype (GT) then V
@@ -125,6 +127,12 @@ package GNATLLVM.Conversions is
      with Pre => Present (GT);
    --  True if we are to treate GT as unsigned for the purpose of a
    --  conversion.
+
+   function Is_Unsigned_For_RM (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+   --  Return true if GT has an unsigned representation.  This needs to be
+   --  used when the representation of types whose precision is not equal
+   --  to their size is manipulated based on the RM size.
 
    function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
      with Pre => Is_Record_Type (T_Need) and then Is_Record_Type (T_Have);

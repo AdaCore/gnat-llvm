@@ -1,5 +1,6 @@
 Limitations and missing features (identified so far):
 
+- do better in avoiding array bitfield fields (FC16-002)
 - add llvm.lifetime.{start,end} calls
 - must position extensions fields after padding of parent;
   shows up in c460005 with -O2 and optimizing build

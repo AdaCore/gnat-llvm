@@ -123,6 +123,10 @@ package GNATLLVM.GLValue is
       --  LLVM objects such as landing pads or the structure representing
       --  the return from a function.
 
+      Reference_To_Unknown,
+      --  Similar to Unknown, but we know that this is a reference and a
+      --  dereference to it will be Unknown.
+
       Any_Reference,
       --  Valid only as an operand to Get and indicates that a value with
       --  any reference to data can be returned.  This includes fat and
@@ -219,9 +223,12 @@ package GNATLLVM.GLValue is
       Trampoline                     =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref  => Invalid,          Ref => Invalid),
+      Reference_To_Unknown           =>
+        (Is_Ref => True, Is_Any_Ref => False,
+         Deref  => Unknown,          Ref => Unknown),
       Unknown                        =>
         (Is_Ref => False, Is_Any_Ref => False,
-         Deref  => Invalid,          Ref => Invalid),
+         Deref  => Invalid,          Ref => Reference_To_Unknown),
       Any_Reference                  =>
         (Is_Ref => True,  Is_Any_Ref => False,
          Deref  => Invalid,          Ref => Invalid),
@@ -391,7 +398,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Etype (V : GL_Value) return Entity_Id
-     with Pre  => Present (V) and then Is_Data (V),
+     with Pre  => Present (V)
+                  and then (Is_Data (V) or else Relationship (V) = Unknown),
           Post => Is_Type_Or_Void (Etype'Result);
 
    --  Constructors for a GL_Value
@@ -954,6 +962,23 @@ package GNATLLVM.GLValue is
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast'Result);
 
+   function Bit_Cast
+     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   is
+     (G_From (Bit_Cast (IR_Builder, LLVM_Value (V), T, Name), V))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Bit_Cast'Result);
+
+   function Bit_Cast_To_Relationship
+     (V    : GL_Value;
+      T    : Type_T;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+   is
+     (G (Bit_Cast (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V), R))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Bit_Cast_To_Relationship'Result);
+
    function Pointer_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),
@@ -991,6 +1016,16 @@ package GNATLLVM.GLValue is
           Post => Is_Pointer (Ptr_To_Relationship'Result);
 
    function Ptr_To_Relationship
+     (V    : GL_Value;
+      T    : Type_T;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value is
+     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
+         Related_Type (V), R, Is_Pristine (V)))
+     with Pre  => Is_Pointer (V) and then Present (T),
+          Post => Is_Pointer (Ptr_To_Relationship'Result);
+
+   function Ptr_To_Relationship
      (V, T : GL_Value;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
@@ -1002,6 +1037,13 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
           Post => Is_Discrete_Or_Fixed_Point_Type (Trunc'Result);
 
+   function Trunc
+     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   is
+     (G_From (Trunc (IR_Builder, LLVM_Value (V), T, Name), V))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Trunc'Result);
+
    function S_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
@@ -1011,6 +1053,13 @@ package GNATLLVM.GLValue is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
           Post => Is_Discrete_Or_Fixed_Point_Type (Z_Ext'Result);
+
+   function Z_Ext
+     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   is
+     (G_From (Z_Ext (IR_Builder, LLVM_Value (V), T, Name), V))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Z_Ext'Result);
 
    function FP_Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
@@ -1223,27 +1272,24 @@ package GNATLLVM.GLValue is
    is
      (G_From (Build_And (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
-                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Build_And'Result);
+      with Pre  => Present (LHS) and then Present (RHS),
+           Post => Present (Build_And'Result);
 
    function Build_Or
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_Or (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
-                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Build_Or'Result);
+      with Pre  => Present (LHS) and then Present (RHS),
+           Post => Present (Build_Or'Result);
 
    function Build_Xor
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (Build_Xor (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
               LHS))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
-                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Build_Xor'Result);
+      with Pre  => Present (LHS) and then Present (RHS),
+           Post => Present (Build_Xor'Result);
 
    function F_Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
@@ -1293,32 +1339,29 @@ package GNATLLVM.GLValue is
                   (Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name),
                    V)),
                V))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
-                   and then Is_Discrete_Or_Fixed_Point_Type (Count),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Shl'Result);
+      with Pre  => Present (V) and then Present (Count),
+           Post => Present (Shl'Result);
 
    function L_Shr
      (V, Count : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (L_Shr (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name), V))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
-                   and then Is_Discrete_Or_Fixed_Point_Type (Count),
-           Post => Is_Discrete_Or_Fixed_Point_Type (L_Shr'Result);
+      with Pre  => Present (V) and then Present (Count),
+           Post => Present (L_Shr'Result);
 
    function A_Shr
      (V, Count : GL_Value; Name : String := "") return GL_Value
    is
      (G_From (A_Shr (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name), V))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
-                   and then Is_Discrete_Or_Fixed_Point_Type (Count),
-           Post => Is_Discrete_Or_Fixed_Point_Type (A_Shr'Result);
+      with Pre  => Present (V) and then Present (Count),
+           Post => Present (A_Shr'Result);
 
    function Build_Not
      (V : GL_Value; Name : String := "") return GL_Value
    is
       (G_From (Build_Not (IR_Builder, LLVM_Value (V), Name), V))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Build_Not'Result);
+      with Pre  => Present (V),
+           Post => Present (Build_Not'Result);
 
    function Neg
      (V : GL_Value; Name : String := "") return GL_Value
@@ -1441,7 +1484,7 @@ package GNATLLVM.GLValue is
      (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
          GT, R))
      with  Pre  => Present (Arg) and then Present (GT),
-           Post => Is_Pointer (Extract_Value_To_Relationship'Result);
+           Post => Present (Extract_Value_To_Relationship'Result);
 
    function Insert_Value
      (Arg, Elt : GL_Value;

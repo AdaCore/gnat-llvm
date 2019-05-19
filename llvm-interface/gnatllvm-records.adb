@@ -23,6 +23,7 @@ with Nlists;   use Nlists;
 with Output;   use Output;
 with Snames;   use Snames;
 with Sprint;   use Sprint;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -56,14 +57,6 @@ package body GNATLLVM.Records is
       Table_Initial        => 5,
       Table_Increment      => 2,
       Table_Name           => "Subtype_Stack");
-
-   function Find_Matching_Field
-     (TE : Entity_Id; Field : Entity_Id) return Entity_Id
-     with Pre  => Is_Record_Type (TE)
-     and then Ekind_In (Field, E_Discriminant, E_Component),
-     Post => Chars (Field) = Chars (Find_Matching_Field'Result);
-   --  Find a field in the entity list of TE that has the same
-   --  Original_Record_Component as F and return it if so.
 
    function Get_Variant_Size
      (RI        : Record_Info;
@@ -319,7 +312,7 @@ package body GNATLLVM.Records is
       --  Otherwise, use a value that we pushed onto the LValue stacka
 
       return
-        Get (Record_Field_Offset (Get_Matching_Value (Rec_Type), E), Data);
+        Get (Build_Field_Load (Get_Matching_Value (Rec_Type), E), Data);
 
    end Use_Discriminant_For_Bound;
 
@@ -334,9 +327,19 @@ package body GNATLLVM.Records is
 
    begin
       while Present (Ent) loop
-         exit when Chars (Ent) = Chars (Field);
+         exit when Chars (Ent) = Chars (Field)
+           and then Present (Get_Field_Info (Ent));
          Next_Component_Or_Discriminant (Ent);
       end loop;
+
+      --  If this didn't work and the Original_Record_Component isn't
+      --  the same record, try it and its type.  ??? The front end really
+      --  should do proper typing here; see c391001.
+
+      if No (Ent) and then Original_Record_Component (Field) /= Field then
+         Ent := Original_Record_Component (Field);
+         return Find_Matching_Field (Full_Scope (Ent), Ent);
+      end if;
 
       return Ent;
    end Find_Matching_Field;
@@ -1010,42 +1013,69 @@ package body GNATLLVM.Records is
       Max_Size  : Boolean := False) return BA_Data
      renames BA_Size.Variant_Part_Size;
 
-   -----------------------
-   -- Get_Field_Ordinal --
-   -----------------------
+   -------------------
+   -- Field_Ordinal --
+   -------------------
 
-   function Get_Field_Ordinal (F : Entity_Id) return unsigned is
-   begin
-      return
-        unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal);
-   end Get_Field_Ordinal;
+   function Field_Ordinal (F : Entity_Id) return unsigned is
+     (unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal));
 
    --------------------
    -- Get_Field_Type --
    --------------------
 
    function Get_Field_Type (F : Entity_Id) return GL_Type is
+     (Field_Info_Table.Table (Get_Field_Info (F)).GT);
+
+   ------------------------
+   -- Is_Bitfield_By_Rep --
+   ------------------------
+
+   function Is_Bitfield_By_Rep (F : Entity_Id) return Boolean is
    begin
-      return Field_Info_Table.Table (Get_Field_Info (F)).GT;
-   end Get_Field_Type;
+      --  If there's no component clause, this isn't a bitfield
+
+      if No (Component_Clause (F)) then
+         return False;
+
+      --  If the position isn't byte-aligned, it is a bitfield
+
+      elsif Component_Bit_Offset (F) mod Uint_Bits_Per_Unit /= 0 then
+         return True;
+      end if;
+
+      --  For integral types, we can only have sizes that are a power of
+      --  two due to the way that LLVM handles types like i24.
+
+      if Is_Discrete_Or_Fixed_Point_Type (Full_Etype (F)) then
+         return Esize (F) not in Uint_8 | Uint_16 | Uint_32 | Uint_64;
+      else
+         return Esize (F) mod Uint_Bits_Per_Unit /= 0;
+      end if;
+
+   end Is_Bitfield_By_Rep;
 
    -----------------
    -- Is_Bitfield --
    -----------------
 
    function Is_Bitfield (F : Entity_Id) return Boolean is
-   begin
-      return Field_Info_Table.Table (Get_Field_Info (F)).First_Bit /= No_Uint;
-   end Is_Bitfield;
+     (Field_Info_Table.Table (Get_Field_Info (F)).First_Bit /= No_Uint);
 
    -----------------------
    -- Is_Array_Bitfield --
    -----------------------
 
    function Is_Array_Bitfield (F : Entity_Id) return Boolean is
-   begin
-      return Field_Info_Table.Table (Get_Field_Info (F)).Array_Bitfield;
-   end Is_Array_Bitfield;
+     (Field_Info_Table.Table (Get_Field_Info (F)).Array_Bitfield);
+
+   ----------------------
+   -- Field_Bit_Offset --
+   ----------------------
+
+   function Field_Bit_Offset (F : Entity_Id) return Uint is
+     (if   not Is_Bitfield (F) then Uint_0
+      else Field_Info_Table.Table (Get_Field_Info (F)).First_Bit);
 
    ----------------------
    -- Get_Variant_Size --
@@ -1343,6 +1373,7 @@ package body GNATLLVM.Records is
       --  make sure we're pointing to Rec_Type.
 
       elsif Present (RI.GT) then
+         pragma Assert (not Is_Bitfield (Field));
          return Ptr_To_Ref (GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
                                  (1 => Offset)),
                             F_GT);
@@ -1372,9 +1403,12 @@ package body GNATLLVM.Records is
 
       --  Finally, do a regular GEP for the field and we're done
 
-      return GEP (F_GT, Result,
-                  (1 => Const_Null_32,
-                   2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
+      return GEP_To_Relationship
+        (F_GT,
+         (if Is_Bitfield (Field) then Reference_To_Unknown else Reference),
+         Result,
+         (1 => Const_Null_32,
+          2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
 
    end Record_Field_Offset;
 
@@ -1461,17 +1495,17 @@ package body GNATLLVM.Records is
 
          while Present (Expr) loop
             declare
-               F   : constant Entity_Id :=
-                 Find_Matching_Field (Full_Etype (GT),
-                                      Entity (First (Choices (Expr))));
-               Val : constant Node_Id   := Expression (Expr);
-               V   : GL_Value;
+               In_F : constant Entity_Id := Entity (First (Choices (Expr)));
+               Val  : constant Node_Id   := Expression (Expr);
+               V    : GL_Value;
+               F    : Entity_Id;
 
             begin
-               if Ekind (F) = E_Discriminant and then Is_Unchecked_Union (GT)
+               if Ekind (In_F) = E_Discriminant
+                 and then Is_Unchecked_Union (GT)
                then
                   null;
-               elsif Chars (F) = Name_uParent then
+               elsif Chars (In_F) = Name_uParent then
 
                   --  If this is "_parent", its fields are our fields too.
                   --  Assume Expression is also an N_Aggregate.
@@ -1487,6 +1521,7 @@ package body GNATLLVM.Records is
                   --  a reference to a field that will cause Constraint_Error.
                   --  If so, just don't do anything with it.
 
+                  F := Find_Matching_Field (Full_Etype (GT), In_F);
                   if Present (Get_Field_Info (F)) then
                      V := Emit_Convert_Value (Val, Get_Field_Type (F));
                      V := Build_Field_Store (Result, F, V);
@@ -1513,11 +1548,20 @@ package body GNATLLVM.Records is
    ----------------------
 
    function Build_Field_Load
-     (V       : GL_Value;
-      F       : Entity_Id;
-      For_LHS : Boolean := False) return GL_Value
+     (In_V    : GL_Value;
+      In_F    : Entity_Id;
+      LHS     : GL_Value := No_GL_Value;
+      For_LHS : Boolean  := False) return GL_Value
    is
-      R_TE  : constant Entity_Id     := Full_Scope (F);
+      R_TE   : constant Entity_Id := Full_Scope (In_F);
+      Rec_T  : constant Type_T    := Type_Of (R_TE);
+      F      : constant Entity_Id := Find_Matching_Field (R_TE, In_F);
+      V      : constant GL_Value  := To_Primitive (In_V);
+      F_GT   : constant GL_Type   := Get_Field_Type (F);
+      Result : GL_Value;
+      pragma Unreferenced (Rec_T);
+      --  We had to force elaboration of the type of F's Scope here
+      --  since there's a chance it wasn't yet elaborated.
 
    begin
       --  If we have something in a data form and we're not requiring or
@@ -1526,16 +1570,109 @@ package body GNATLLVM.Records is
 
       if Is_Data (V) and then not For_LHS and then Present (Get_Field_Info (F))
         and then not Is_Nonnative_Type (R_TE)
-        and then not Is_Nonnative_Type (Get_Field_Type (F))
+        and then not Is_Nonnative_Type (F_GT)
+        and then not Is_Array_Bitfield (F)
         and then (Full_Etype (V) = R_TE
                     or else Is_Layout_Identical (V, Default_GL_Type (R_TE)))
       then
-         return Extract_Value (Get_Field_Type (F), To_Primitive (V),
-                               Get_Field_Ordinal (F));
+         Result := Extract_Value_To_Relationship
+           (F_GT, V, Field_Ordinal (F),
+            (if Is_Bitfield (F) then Unknown else Data));
       else
-         return Record_Field_Offset (Get (V, Any_Reference), F);
+         Result := Record_Field_Offset (Get (V, Any_Reference), F);
       end if;
 
+      --  If we have a bitfield, we need special processing.  Because we have
+      --  a lot of intermediate values that don't correspond to Ada types,
+      --  we do some low-level processing here when we can't avoid it.
+
+      if Is_Bitfield (F) then
+
+         --  ??? We have no way for now to provide an LHS into a bitfield
+         pragma Assert (not For_LHS);
+
+         --  If this is a bitfield array type, we need to pointer-pun it to
+         --  an integral type that's the width of the bitfield field type.
+
+         if Is_Array_Bitfield (F) then
+            declare
+               T     : constant Type_T := Get_Element_Type (Type_Of (Result));
+               New_T : constant Type_T :=
+                 Int_Ty (Nat (ULL'(Get_Type_Size_In_Bits (T))));
+
+            begin
+               Result := Ptr_To_Relationship (Result, Pointer_Type (New_T, 0),
+                                              Reference_To_Unknown);
+            end;
+         end if;
+
+         --  Next, do the extraction using two shifts
+
+         declare
+            type Opf is access function
+              (V, Count : GL_Value; Name : String := "") return GL_Value;
+            Loaded    : constant GL_Value := Get (Result, Unknown);
+            T         : constant Type_T   := Type_Of (Loaded);
+            Result_T  : constant Type_T   := Type_Of (F_GT);
+            First_Bit : constant ULL      := UI_To_ULL (Field_Bit_Offset (F));
+            Num_Bits  : constant ULL      := UI_To_ULL (Esize (F));
+            Val_Width : constant ULL      := Get_Type_Size_In_Bits (T);
+            Uns       : constant Boolean  :=
+              Is_Unsigned_For_RM (F_GT)
+              or else not Is_Discrete_Or_Fixed_Point_Type (F_GT);
+            Shl_Count : constant ULL      := Val_Width - First_Bit - Num_Bits;
+            Shr_Count : constant ULL      := Val_Width - Num_Bits;
+            Shr       : constant Opf      :=
+              (if Uns then L_Shr'Access else A_Shr'Access);
+         begin
+            Result := Shl (Loaded,
+                           G (Const_Int (T, Shl_Count, False), F_GT, Unknown),
+                           Allow_Overflow => True);
+            Result := Shr (Result,
+                           G (Const_Int (T, Shr_Count, False), F_GT, Unknown));
+
+            --  If the result is an integral type, we can just convert to
+            --  that type, if needed.
+
+            if Get_Type_Kind (Result_T) = Integer_Type_Kind then
+               return (if   Result_T = T
+                       then G_Is_Relationship (Result, F_GT, Data)
+                       else Trunc (Result, F_GT));
+
+            --  Otherwise, truncate to the corresponding bit size
+
+            else
+               Result := Trunc (Result, Int_Ty (Nat (ULL'(Get_Type_Size_In_Bits
+                                                            (Result_T)))));
+
+               --  For a floating-point type we perform a bit cast
+
+               if Is_Floating_Point_Type (F_GT) then
+                  return Bit_Cast (Result, F_GT);
+
+               --  For other types, we have to put into memory via pointer
+               --  punning.
+
+               else
+                  declare
+                     Memory         : constant GL_Value :=
+                       (if   Present (LHS) then LHS
+                        else Allocate_For_Type (F_GT, F_GT, Empty));
+                     Mem_As_Int_Ptr : constant GL_Value :=
+                       G (Bit_Cast (IR_Builder, LLVM_Value (Memory),
+                                    Pointer_Type (Type_Of (Result), 0), ""),
+                          F_GT, Reference_To_Unknown);
+
+                  begin
+                     Store (Result, Mem_As_Int_Ptr);
+                     return Memory;
+                  end;
+               end if;
+            end if;
+         end;
+      end if;
+
+      return Result;
    end Build_Field_Load;
 
    -----------------------
@@ -1543,26 +1680,174 @@ package body GNATLLVM.Records is
    -----------------------
 
    function Build_Field_Store
-     (LHS : GL_Value; F : Entity_Id; RHS : GL_Value) return GL_Value
+     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value) return GL_Value
    is
-      T      : constant Type_T        := Type_Of (Full_Scope (F));
-      F_Idx  : constant Field_Info_Id := Get_Field_Info (F);
-      FI     : constant Field_Info    := Field_Info_Table.Table (F_Idx);
-      F_GT   : constant GL_Type       := FI.GT;
-      Idx    : constant Nat           := FI.Field_Ordinal;
-      Result : GL_Value               := No_GL_Value;
-      pragma Unreferenced (T);
+      LHS_GT    : constant GL_Type       := Related_Type (LHS);
+      R_TE      : constant Entity_Id     := Full_Scope (In_F);
+      Rec_T     : constant Type_T        := Type_Of (R_TE);
+      F         : constant Entity_Id     := Find_Matching_Field (R_TE, In_F);
+      F_Idx     : constant Field_Info_Id := Get_Field_Info (F);
+      FI        : constant Field_Info    := Field_Info_Table.Table (F_Idx);
+      F_GT      : constant GL_Type       := FI.GT;
+      Idx       : constant Nat           := FI.Field_Ordinal;
+      RHS_Cvt   : GL_Value               := Convert_GT (RHS, F_GT);
+      Result    : GL_Value               := No_GL_Value;
+      First_Bit : ULL;
+      Num_Bits  : ULL;
+      pragma Unreferenced (Rec_T);
       --  We had to force elaboration of the type of F's Scope here
       --  since there's a chance it wasn't yet elaborated.
 
    begin
-      if Is_Data (LHS) then
-         Result := Insert_Value (LHS, Convert_GT (RHS, F_GT), unsigned (Idx));
-      else
-         Emit_Assignment (Record_Field_Offset (LHS, F), Empty, RHS);
+      --  First handle the cases where F isn't a bitfield
+
+      if not Is_Bitfield (F) then
+         if Is_Data (LHS) then
+            Result := Insert_Value (LHS, Get (RHS_Cvt, Data), unsigned (Idx));
+         else
+            Emit_Assignment (Record_Field_Offset (LHS, F), Empty, RHS);
+         end if;
+
+         return Result;
       end if;
 
-      return Result;
+      --  Now we handle the bitfield case.  Like the load case, we do our
+      --  masking and shifting operations in an integral type.  This is
+      --  either the type of the field or an integral type of the same
+      --  width as the array used for the field.
+      --
+      --  We need to get both the field within LHS that contains F into this
+      --  integral type (if it isn't already) and RHS.  Then we perform the
+      --  masking and store the data back.
+
+      declare
+         LHS_For_Access : constant GL_Value :=
+           (if Is_Array_Bitfield (F) and then Is_Data (LHS)
+            then Allocate_For_Type (LHS_GT, LHS_GT, Empty, LHS) else LHS);
+         RHS_T          : Type_T            :=
+           Type_Of (Related_Type (RHS_Cvt));
+         RHS_Width      : constant ULL      := Get_Type_Size_In_Bits (RHS_T);
+         Data_LHS       : GL_Value          := No_GL_Value;
+         Rec_Data       : GL_Value;
+         Data_T         : Type_T;
+         New_RHS_T      : Type_T;
+         Data_Width     : ULL;
+         Count          : GL_Value;
+         Mask           : GL_Value;
+
+      begin
+         --  We first have to form an access to the appropriate field, either
+         --  a reference or actual data.  The code above has ensured that
+         --  we'll have a reference in the case of an array bitfield.
+
+         if Is_Data (LHS_For_Access) then
+            Rec_Data := Extract_Value_To_Relationship
+              (F_GT, LHS_For_Access, Field_Ordinal (F), Unknown);
+         else
+            Data_LHS := Record_Field_Offset (LHS_For_Access, F);
+            Rec_Data := Data_LHS;
+         end if;
+
+         --  If this is a bitfield array type, we need to pointer-pun it to
+         --  an integral type that's the width of the bitfield field type.
+         --  We've forced Rec_Data to be a reference in this case.
+
+         if Is_Array_Bitfield (F) then
+            declare
+               T     : constant Type_T :=
+                 Get_Element_Type (Type_Of (Rec_Data));
+               New_T : constant Type_T :=
+                 Int_Ty (Nat (ULL'(Get_Type_Size_In_Bits (T))));
+
+            begin
+               Data_LHS := Ptr_To_Relationship (Data_LHS,
+                                                Pointer_Type (New_T, 0),
+                                                Reference_To_Unknown);
+               Rec_Data := Data_LHS;
+            end;
+         end if;
+
+         --  Now get the field contents as actual data and get and verify
+         --  its type.
+
+         Rec_Data   := Get (Rec_Data, Unknown);
+         Data_T     := Type_Of (Rec_Data);
+         Data_Width := Get_Type_Size_In_Bits (Data_T);
+         pragma Assert (Get_Type_Kind (Data_T) = Integer_Type_Kind);
+
+         --  Our next step is to get RHS into the same type as the
+         --  record data.  We have the same three cases as field load,
+         --  but here we want to start with an integral value the same
+         --  width as the converted input.
+
+         New_RHS_T := Int_Ty (Nat (RHS_Width));
+         if Is_Floating_Point_Type (RHS_Cvt) then
+            RHS_Cvt := Bit_Cast_To_Relationship (Get (RHS_Cvt, Data),
+                                                 New_RHS_T, Unknown);
+         elsif Get_Type_Kind (RHS_T) /= Integer_Type_Kind then
+            RHS_Cvt := Load (G (Bit_Cast (IR_Builder,
+                                          LLVM_Value (Get (RHS_Cvt,
+                                                           Reference)),
+                                          Pointer_Type (New_RHS_T, 0), ""),
+                                Related_Type (RHS_Cvt), Reference_To_Unknown));
+         end if;
+
+         --  Next, we do shifts, masks, and a logical "or" to compute the
+         --  new value of the field.
+
+         RHS_T     := Type_Of (RHS_Cvt);
+         First_Bit := UI_To_ULL (Field_Bit_Offset (F));
+         Num_Bits  := UI_To_ULL (Esize (F));
+
+         --  If this is narrower than the field size, mask off the high bits.
+         --  One might think that we don't have to do this in the unsigned case
+         --  since a failed suppressed check is erroneous, but the value might
+         --  also be out of range due to being uninitialized and that's a
+         --  bounded error (13.9.1(9-11)).
+
+         if Num_Bits /= RHS_Width then
+            Count   := G (Const_Int (RHS_T, RHS_Width - Num_Bits, False),
+                          F_GT, Unknown);
+            RHS_Cvt := L_Shr (Shl (RHS_Cvt, Count, Allow_Overflow => True),
+                              Count);
+         end if;
+
+         --  If needed, extend the RHS to the size of the bitfield field
+
+         if RHS_Width /= Data_Width then
+            RHS_Cvt := Z_Ext (RHS_Cvt, Data_T);
+         end if;
+
+         --  Now form the mask, remove the old value, and insert the new value
+
+         Count := G (Const_Int (Data_T, First_Bit, False), F_GT, Unknown);
+         Mask := G (Const_Int (Data_T, ULL'Last, True), F_GT, Unknown);
+         Mask := L_Shr (Mask, G (Const_Int (Data_T, Data_Width - Num_Bits,
+                                            False),
+                                 F_GT, Unknown));
+         Mask := Build_Not (Shl (Mask, Count));
+         Rec_Data := Build_Or (Build_And (Rec_Data, Mask),
+                               Shl (RHS_Cvt, Count));
+         --  If we're still working with data, then insert the new value into
+         --  the field. Otherwise, store it where it belongs.
+
+         if Is_Data (LHS_For_Access) then
+            Result := Insert_Value (LHS_For_Access, Rec_Data,
+                                    unsigned (Idx));
+         else
+            Store (Rec_Data, Data_LHS);
+         end if;
+
+         --  If our input was data, but we made an LHS above, we need to
+         --  reload the data.
+
+         if No (Result) and then Is_Data (LHS) then
+            Result := Load (LHS_For_Access);
+         end if;
+
+         return Result;
+      end;
+
    end Build_Field_Store;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
@@ -1618,6 +1903,7 @@ package body GNATLLVM.Records is
             Write_Str (", Array Bitfield");
          end if;
 
+         Write_Str (": ");
          Dump_GL_Type (FI.GT);
          Write_Eol;
          Print_RI_Briefly (FI.Rec_Info_Idx);
@@ -1669,12 +1955,12 @@ package body GNATLLVM.Records is
          FI1 := Field_Info_Table.Table (F1_Idx);
          FI2 := Field_Info_Table.Table (F2_Idx);
 
-         if  FI1.Rec_Info_Idx < FI2.Rec_Info_Idx then
-            return True;
-         elsif FI1.Rec_Info_Idx > FI2.Rec_Info_Idx then
-            return False;
-         else
+         if FI1.Rec_Info_Idx /= FI2.Rec_Info_Idx then
+            return FI1.Rec_Info_Idx < FI2.Rec_Info_Idx;
+         elsif FI1.Field_Ordinal /= FI2.Field_Ordinal then
             return FI1.Field_Ordinal < FI2.Field_Ordinal;
+         else
+            return FI1.First_Bit < FI2.First_Bit;
          end if;
       end FI_Before;
 
@@ -1755,7 +2041,7 @@ package body GNATLLVM.Records is
                      Write_Str ("@");
                      Write_Int (FI.Field_Ordinal);
                      if FI.First_Bit /= No_Uint then
-                        Write_Str (" [");
+                        Write_Str ("[");
                         Write_Int (UI_To_Int (FI.First_Bit));
                         Write_Str (" .. ");
                         Write_Int (UI_To_Int (FI.First_Bit + FI.Num_Bits - 1));

@@ -823,7 +823,7 @@ package body GNATLLVM.Arrays is
 
       --  If the type is floating-point, the front-end has verified that
       --  it's zero, so use that.  Otherwise, evaluate the value and
-      --  convert it to 8 bits.
+      --  convert it to a short short integer type.
 
       if Is_Floating_Point_Type (Full_Etype (E)) then
          Value := Const_Null (SSI_GL_Type);

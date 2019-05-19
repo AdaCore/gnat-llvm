@@ -376,7 +376,9 @@ package body GNATLLVM.Types.Create is
               (if   Is_Packed_Array_Impl_Type (TE)
                then Original_Array_Type (TE) else TE);
             Size    : constant Uint      :=
-              (if    Is_Discrete_Or_Fixed_Point_Type (Size_TE)
+              (if    Is_Modular_Integer_Type (Size_TE)
+               then  RM_Size (Size_TE)
+               elsif Is_Discrete_Or_Fixed_Point_Type (Size_TE)
                then  Esize (Size_TE)
                elsif Has_Size_Clause (Size_TE)
                      or not Unknown_RM_Size (Size_TE)

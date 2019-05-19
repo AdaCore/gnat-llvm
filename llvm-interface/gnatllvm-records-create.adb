@@ -944,11 +944,32 @@ package body GNATLLVM.Records.Create is
 
       procedure Process_Fields_To_Add is
          In_Variant         : constant Boolean := Variant_Stack.Last /= 0;
+         --  True if we're processing inside a variant, either static
+         --  or dynamic.
+
          In_Dynamic_Variant : constant Boolean := In_Variant
            and then not Variant_Stack.Table (Variant_Stack.Last).Is_Static;
+         --  True if we're inside a dynamic variant
+
          Last_Var_Depth     : Int              := 0;
+         --  The last variant depth that we saw for a field; used to indicate
+         --  when the depth changes.
+
          Had_Non_Repped     : Boolean          := False;
+         --  True once we saw a non-repped field; used to ensure that all
+         --  non-repped fields as positions after all repped fields.
+
          Forced_Pos         : ULL              := 0;
+         --  If nonzero, a position to force the next field to
+
+         Bitfield_Start_Pos : Uint             := No_Uint;
+         Bitfield_End_Pos   : Uint             := No_Uint;
+         --  Starting and ending (last plus one) positions of an LLVM
+         --  field being used to contain multiple bitfields, if not
+         --  No_Uint.
+
+         Bitfield_Is_Array  : Boolean;
+         --  Set if the bitfield field we make is an array
 
          function Field_Before (L, R : Int) return Boolean;
          --  Determine the sort order of two fields in Added_Field_Table
@@ -963,9 +984,32 @@ package body GNATLLVM.Records.Create is
            (((Pos + Align - 1) / Align)  * Align);
          --  Given a position and an alignment, align the position
 
-         function Max_Record_Rep (E : Entity_Id) return Uint;
+         function End_Position (F : Entity_Id) return Uint is
+           ((if   No (Component_Clause (F)) then No_Uint
+             else (Component_Bit_Offset (F) + Esize (F) +
+                     Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit))
+           with Pre => Ekind_In (F, E_Component, E_Discriminant);
+           --  If this field has a specified representation, return the
+           --  position in bytes just beyond the last bit of this field.
+
+         function Max_Record_Rep (E : Entity_Id) return Uint
+           with Pre => Ekind_In (E, E_Component, E_Discriminant);
          --  Return the next byte after the highest repped position of
-         --  the base type of F.
+         --  the base type of E.
+
+         procedure Force_To_Pos (Needed_Pos, Aligned_Pos : ULL);
+         --  If the position we need to be at is beyond where we'd be given
+         --  the native alignment of the type (if any, and taking into
+         --  account that packed record fields aren't aligned), make an
+         --  explicit padding type or, if this is the first field for an RI
+         --  that isn't the first one, set the position of the RI we're
+         --  going to make.
+
+         procedure Create_Bitfield_Field (J : Int)
+           with Pre => Is_Bitfield_By_Rep (Added_Field_Table.Table (J).F);
+         --  We're processing the component at table index J, which is known
+         --  to be a bitfield.  Create an LLVM field to hold contents of
+         --  the J'th field to process, which is known to be a bitfield.
 
          ------------------
          -- Field_Before --
@@ -1112,6 +1156,110 @@ package body GNATLLVM.Records.Create is
 
          end Max_Record_Rep;
 
+         ------------------
+         -- Force_To_Pos --
+         ------------------
+         procedure Force_To_Pos (Needed_Pos, Aligned_Pos : ULL) is
+         begin
+            if Needed_Pos /= 0 and then LLVM_Types.Last = -1
+              and then Present (Prev_Idx)
+            then
+               RI_Position := Needed_Pos;
+               RI_Align    := 1;
+               Cur_RI_Pos  := Needed_Pos;
+            elsif Needed_Pos > Aligned_Pos then
+               LLVM_Types.Append
+                 (Array_Type (Int_Ty (8), unsigned (Needed_Pos - Cur_RI_Pos)));
+               Cur_RI_Pos := Needed_Pos;
+            else
+               Cur_RI_Pos := Aligned_Pos;
+            end if;
+
+         end Force_To_Pos;
+
+         ---------------------------
+         -- Create_Bitfield_Field --
+         ---------------------------
+
+         procedure Create_Bitfield_Field (J : Int) is
+            J_F          : constant Entity_Id := Added_Field_Table.Table (J).F;
+            Bitfield_Len : ULL;
+
+         begin
+            --  We need to create an LLVM field to use to represent one or
+            --  more bitfields starting at location J in the
+            --  Added_Field_Table.  We need to continue widening the field
+            --  until we run into a component that no longer overlaps any
+            --  of the bits in the field or we've reached the end of the
+            --  field list.
+            --
+            --  Start by making a field just wide enough for this component.
+
+            Bitfield_Start_Pos := Normalized_Position (J_F);
+            Bitfield_End_Pos   := End_Position (J_F);
+
+            --  Now go through all the remaining components that start within
+            --  end field we made and widen the bitfield field to include it.
+
+            for K in J + 1 .. Added_Field_Table.Last loop
+               declare
+                  F : constant Entity_Id := Added_Field_Table.Table (K).F;
+
+               begin
+                  exit when not Is_Bitfield_By_Rep (F)
+                    or else Normalized_Position (F) >= Bitfield_End_Pos;
+
+                  Bitfield_End_Pos := End_Position (F);
+               end;
+            end loop;
+
+            --  We can be the most efficient if we can use a normal integral
+            --  type (i8, i16, i32, or i64) for this field.  If it's not
+            --  the size already, the only option we have now is to see if
+            --  we have padding between our current position and the start of
+            --  the bitfield that we can use to widen the bitfield.
+
+            Bitfield_Len := UI_To_ULL (Bitfield_End_Pos - Bitfield_Start_Pos);
+            case Bitfield_Len is
+               when 1 | 2 | 4 | 8 =>
+                  null;
+
+               when 3 =>
+                  if Cur_RI_Pos < UI_To_ULL (Bitfield_Start_Pos) then
+                     Bitfield_Start_Pos := Bitfield_Start_Pos - 1;
+                     Bitfield_Len       := 4;
+                  end if;
+
+               when 5 .. 7 =>
+                  if UI_To_ULL (Bitfield_Start_Pos) - Cur_RI_Pos >
+                    8 - Bitfield_Len
+                  then
+                     Bitfield_Start_Pos :=
+                       Bitfield_Start_Pos - Int (8 - Bitfield_Len);
+                     Bitfield_Len       := 8;
+                  end if;
+
+               when others =>
+                  null;
+            end case;
+
+            --  Now we know what we have to do for the bitfield field
+
+            Force_To_Pos (UI_To_ULL (Bitfield_Start_Pos), Cur_RI_Pos);
+            if Bitfield_Len in 1 | 2 | 4 | 8 then
+               Bitfield_Is_Array := False;
+               LLVM_Types.Append (Int_Ty (Nat (Bitfield_Len) *
+                                            Get_Bits_Per_Unit));
+            else
+               Bitfield_Is_Array := True;
+               LLVM_Types.Append (Array_Type
+                                    (Int_Ty (Get_Bits_Per_Unit),
+                                     unsigned (Bitfield_Len)));
+            end if;
+
+            Cur_RI_Pos := UI_To_ULL (Bitfield_End_Pos);
+         end Create_Bitfield_Field;
+
       begin  -- Start of processing for Process_Fields_To_Add
 
          Sort (1, Added_Field_Table.Last);
@@ -1151,12 +1299,12 @@ package body GNATLLVM.Records.Create is
                --  into account any specified size and if we have to
                --  use the max size.
 
-               Pos         : constant Uint :=
-                 (if   Present (Component_Clause (F))
-                  then Normalized_Position (F) else No_Uint);
-               --  If a position is specified, honor it
+               Pos         : constant Uint      :=
+                 (if   No (Component_Clause (F)) then No_Uint
+                  else Normalized_Position (F));
+               --  If a position is specified, this is that position
 
-               Need_Align :  ULL                :=
+               Need_Align  :  ULL                :=
                  (if   Pos /= No_Uint or else Is_Packed (TE) then 1
                   else Get_Type_Alignment (F_GT));
                --  The alignment we need this field to have
@@ -1270,32 +1418,31 @@ package body GNATLLVM.Records.Create is
                      --  case.
 
                   begin
-                     --  If the position we need to be at is beyond where
-                     --  we'd be given the native alignment of the type,
-                     --  make an explicit padding type or, if this is the
-                     --  first field for an RI that isn't the first one,
-                     --  set the position of the RI we're going to make.
-                     --  ???  See above for RI_Align.
+                     --  If this is a bitfield, we'll be using the special
+                     --  "bitfield field".  If we don't fit in the current
+                     --  one or there isn't one, make one.  Otherwise, just
+                     --  record this field.
 
-                     if Needed_Pos /= 0 and then LLVM_Types.Last = -1
-                       and then Present (Prev_Idx)
-                     then
-                        RI_Position := Needed_Pos;
-                        RI_Align    := 1;
-                        Cur_RI_Pos  := Needed_Pos;
-                     elsif Needed_Pos > Pos_Aligned then
-                        LLVM_Types.Append
-                          (Array_Type (Int_Ty (8),
-                                       unsigned (Needed_Pos - Cur_RI_Pos)));
-                        Cur_RI_Pos := Needed_Pos;
+                     if Is_Bitfield_By_Rep (F) then
+                        if Bitfield_Start_Pos = No_Uint
+                          or else Normalized_Position (F) >= Bitfield_End_Pos
+                        then
+                           Create_Bitfield_Field (J);
+                        end if;
+
+                        Add_FI (F, Cur_Idx, F_GT,
+                                Ordinal        => LLVM_Types.Last,
+                                First_Bit      => Component_Bit_Offset (F) -
+                                  (Bitfield_Start_Pos * Uint_Bits_Per_Unit),
+                                Num_Bits       => Esize (F),
+                                Array_Bitfield => Bitfield_Is_Array);
                      else
-                        Cur_RI_Pos := Pos_Aligned;
+                        Force_To_Pos (Needed_Pos, Pos_Aligned);
+                        LLVM_Types.Append (T);
+                        Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (T);
+                        Add_FI (F, Cur_Idx, F_GT, Ordinal => LLVM_Types.Last);
+                        Forced_Pos := 0;
                      end if;
-
-                     LLVM_Types.Append (T);
-                     Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (T);
-                     Add_FI (F, Cur_Idx, F_GT, Ordinal => LLVM_Types.Last);
-                     Forced_Pos := 0;
                   end;
                end if;
             end;
@@ -1414,14 +1561,18 @@ package body GNATLLVM.Records.Create is
                   Byte_Position : constant BA_Data         :=
                     Field_Position (Cur_Field, No_GL_Value);
                   Bit_Position  : constant BA_Data         :=
-                    Byte_Position * Const (Uint_Bits_Per_Unit);
+                    Byte_Position * Const (Uint_Bits_Per_Unit) +
+                    Const (Field_Bit_Offset (Cur_Field));
                   Bit_Offset    : constant Node_Ref_Or_Val :=
                     Annotated_Value (Bit_Position);
 
                begin
-                  Set_Esize (Cur_Field,
-                             Annotated_Object_Size (Get_Field_Type
-                                                      (Cur_Field)));
+                  if Unknown_Esize (Cur_Field) then
+                     Set_Esize (Cur_Field,
+                                Annotated_Object_Size (Get_Field_Type
+                                                         (Cur_Field)));
+                  end if;
+
                   Set_Component_Bit_Offset (Cur_Field, Bit_Offset);
                   if Is_Static_SO_Ref (Bit_Offset) then
                      Set_Normalized_Position

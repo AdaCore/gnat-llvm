@@ -666,10 +666,11 @@ package body GNATLLVM.Exprs is
 
    function Emit_Attribute_Reference (N : Node_Id) return GL_Value is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
+      Pref : constant Node_Id      := Prefix (N);
       GT   : constant GL_Type      := Full_GL_Type (N);
       V    : GL_Value              := No_GL_Value;
       P_GT : GL_Type               := Full_GL_Type (Prefix (N));
-      Ret  : Uint;
+         Ret  : Uint;
 
    begin
       --  First see if this is something we can compute from annotations
@@ -689,15 +690,14 @@ package body GNATLLVM.Exprs is
             --  same constraints.  But we do have to be sure that it's of
             --  the right type.
 
-            return Convert_To_Access (Emit_LValue (Prefix (N)), GT);
+            return Convert_To_Access (Emit_LValue (Pref), GT);
 
          when Attribute_Address | Attribute_Code_Address =>
 
             --  We need a single-word pointer, then convert it to the
             --  desired integral type.
 
-            return Ptr_To_Int (Get (Emit_LValue (Prefix (N)),
-                                    Reference_For_Integer),
+            return Ptr_To_Int (Get (Emit_LValue (Pref), Reference_For_Integer),
                                GT, "attr-address");
 
          when Attribute_Pool_Address =>
@@ -707,7 +707,7 @@ package body GNATLLVM.Exprs is
             --  it's an access type, what we want is the value.  So convert
             --  it to a reference.
 
-            V := Emit (Prefix (N), Prefer_LHS => True);
+            V := Emit (Pref, Prefer_LHS => True);
             if Is_Access_Type (P_GT) then
                V := From_Access (Get (V, Data));
             end if;
@@ -762,12 +762,12 @@ package body GNATLLVM.Exprs is
                   --  If what we're taking the prefix of is a type, we can't
                   --  evaluate it as an expression.
 
-                  if Is_Entity_Name (Prefix (N))
-                    and then Is_Type (Entity (Prefix (N)))
+                  if Is_Entity_Name (Pref)
+                    and then Is_Type (Entity (Pref))
                   then
                      Array_Descr := No_GL_Value;
                   else
-                     Array_Descr := Emit_LValue (Prefix (N));
+                     Array_Descr := Emit_LValue (Pref);
                      P_GT        := Related_Type (Array_Descr);
                   end if;
 
@@ -788,41 +788,62 @@ package body GNATLLVM.Exprs is
                return Convert (V, GT);
             end;
 
-         when Attribute_Position | Attribute_Bit_Position =>
+         when Attribute_Position | Attribute_Bit_Position
+            | Attribute_First_Bit | Attribute_Bit | Attribute_Last_Bit =>
 
-            --  We don't pack, so the bit position is always a multiple
-            --  of the byte size.
+            declare
+               F            : Entity_Id;
+               Val          : GL_Value;
+               Position     : GL_Value;
+               Bit_Position : GL_Value;
 
-            if Nkind (Prefix (N)) = N_Identifier then
-               V := Emit_Field_Position (Entity (Prefix (N)), No_GL_Value);
-            else
-               V := Emit_Field_Position (Entity (Selector_Name (Prefix (N))),
-                                         Emit_LValue (Prefix (Prefix (N))));
-            end if;
+            begin
+               --  Get the relevant field and expression for this operation,
+               --  if any.
 
-            if No (V) then
-               V := Get_Undef (Size_GL_Type);
-            end if;
-            if Attr = Attribute_Bit_Position then
-               V := Mul (V, Byte_Size);
-            end if;
+               if Nkind (Pref) = N_Identifier
+                 and then Ekind_In (Entity (Pref), E_Discriminant,
+                                    E_Component)
+               then
+                  F   := Entity (Pref);
+                  Val := No_GL_Value;
+               elsif Nkind (Pref) = N_Selected_Component then
+                  F   := Entity (Selector_Name (Pref));
+                  Val := Emit_LValue (Prefix (Pref));
+               else
+                  pragma Assert (Attr = Attribute_Bit);
+                  return Const_Null (GT);
+               end if;
 
-            return Convert (V, GT);
+               --  Now compute the offset and bit position
 
-         when Attribute_First_Bit | Attribute_Bit =>
+               Position := Emit_Field_Position (F, Val);
+               if No (Position) then
+                  return Get_Undef (GT);
+               else
+                  Bit_Position := Position * Byte_Size +
+                    Size_Const_Int (Field_Bit_Offset (F));
+               end if;
 
-            --  We don't support packing, so this is always zero
+               case Attr is
+                  when Attribute_Position =>
+                     V := Position;
 
-            return Const_Null (GT);
+                  when Attribute_Bit_Position =>
+                     V := Bit_Position;
 
-         when Attribute_Last_Bit =>
+                  when Attribute_First_Bit | Attribute_Bit =>
+                     V := S_Rem (Bit_Position, Byte_Size);
 
-            --  We don't support packing, so this is always the size minus 1
+                  when Attribute_Last_Bit =>
+                     V := Bit_Position + Size_Const_Int (Esize (F) - 1);
 
-            return Convert
-              (Sub (Mul (Get_Type_Size (P_GT), Byte_Size),
-                    Size_Const_Int (Uint_1)),
-               GT);
+                  when others =>
+                     pragma Assert (False);
+               end case;
+
+               return Convert (V, GT);
+            end;
 
          when Attribute_Max | Attribute_Min =>
             pragma Assert (List_Length (Expressions (N)) = 2);

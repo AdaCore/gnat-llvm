@@ -670,7 +670,7 @@ package body GNATLLVM.Exprs is
       GT   : constant GL_Type      := Full_GL_Type (N);
       V    : GL_Value              := No_GL_Value;
       P_GT : GL_Type               := Full_GL_Type (Prefix (N));
-         Ret  : Uint;
+      Ret  : Uint;
 
    begin
       --  First see if this is something we can compute from annotations

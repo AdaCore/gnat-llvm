@@ -973,6 +973,21 @@ package body GNATLLVM.GLType is
    function Base_GL_Type (GT : GL_Type) return GL_Type is
      (Primitive_GL_Type (Full_Base_Type (GT)));
 
+   ------------------------
+   -- Full_Alloc_GL_Type --
+   ------------------------
+
+   function Full_Alloc_GL_Type (N : Node_Id) return GL_Type is
+      TE : Entity_Id := Full_Etype (N);
+
+   begin
+      if Is_Entity_Name (N) and then Present (Actual_Subtype (Entity (N))) then
+         TE := Get_Fullest_View (Actual_Subtype (Entity (N)));
+      end if;
+
+      return Default_GL_Type (TE);
+   end Full_Alloc_GL_Type;
+
    --------------------
    --  Is_Dummy_Type --
    --------------------

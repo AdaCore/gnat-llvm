@@ -1773,11 +1773,15 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Nonnative_Type (GT) then
-            Store (Get (Heap_Allocate_For_Type (GT, GT, Value,
-                                                Expr      => Expr,
-                                                N         => N,
-                                                Def_Ident => Def_Ident,
-                                                Max_Size  => Is_Max_Size (GT)),
+            Store (Get (Heap_Allocate_For_Type
+                          (GT, (if   not Is_Unconstrained_Record (GT)
+                                     and then Present (Expr)
+                                then Full_Alloc_GL_Type (Expr) else GT),
+                           V         => Value,
+                           Expr      => Expr,
+                           N         => N,
+                           Def_Ident => Def_Ident,
+                           Max_Size  => Is_Max_Size (GT)),
                         Any_Reference),
                    LLVM_Var);
             Copied := True;

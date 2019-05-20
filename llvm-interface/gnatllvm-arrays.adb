@@ -1092,12 +1092,16 @@ package body GNATLLVM.Arrays is
       N := First (Indices);
       while Present (N) loop
 
-         --  Adjust the index according to the range lower bound
+         --  Adjust the index according to the range lower bound.  If the
+         --  type is an unconstrained PAT, we skip this adjustment.
 
          declare
             User_Index          : constant GL_Value := Emit_Safe_Expr (N);
             Dim_Low_Bound       : constant GL_Value :=
-              Get_Array_Bound (GT, Dim, True, V);
+              (if   Is_Packed_Array_Impl_Type (GT)
+                    and then not Is_Constrained (GT)
+               then Const_Null (User_Index)
+               else Get_Array_Bound (GT, Dim, True, V));
             Dim_Op_GT           : constant GL_Type  :=
               Get_GEP_Safe_Type (Dim_Low_Bound);
             Converted_Index     : constant GL_Value :=

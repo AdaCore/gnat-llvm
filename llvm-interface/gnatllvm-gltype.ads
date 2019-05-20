@@ -125,6 +125,11 @@ package GNATLLVM.GLType is
      with Pre => Present (N), Post => Present (Full_GL_Type'Result);
    --  Return the default GL_Type corresponding to the type of N
 
+   function Full_Alloc_GL_Type (N : Node_Id) return GL_Type
+     with Pre => Present (N), Post => Present (Full_Alloc_GL_Type'Result);
+   --  Likewise, but use the type for an allocation, which may be an
+   --  Actual_Subtype.
+
    function Base_GL_Type (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type (TE),
           Post => Is_Primitive_GL_Type (Base_GL_Type'Result);

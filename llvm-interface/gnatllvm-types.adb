@@ -593,11 +593,15 @@ package body GNATLLVM.Types is
    is
       R        : constant GL_Relationship := Relationship_For_Alloc (GT);
       New_Expr : constant Node_Id         := Strip_Complex_Conversions (Expr);
-      Memory : GL_Value                   :=
-        (if Is_Access_Type (Temp)
-         then Ptr_To_Relationship (Temp, Alloc_GT, R)
-         else Int_To_Relationship (Temp, Alloc_GT, R));
-      New_V  : GL_Value                   :=
+      Mem_GT   : constant GL_Type         :=
+        (if   Is_Unconstrained_Type (Alloc_GT)
+              and then not Is_Unconstrained_Type (GT)
+         then GT else Alloc_GT);
+      Memory   : GL_Value                 :=
+        (if   Is_Access_Type (Temp)
+         then Ptr_To_Relationship (Temp, Mem_GT, R)
+         else Int_To_Relationship (Temp, Mem_GT, R));
+      New_V    : GL_Value                 :=
         (if   Present (V) then V elsif Present (New_Expr)
          then Emit (New_Expr, LHS => Memory) else No_GL_Value);
 
@@ -1148,15 +1152,22 @@ package body GNATLLVM.Types is
       Max_Size    : Boolean := False;
       For_Dealloc : Boolean := False) return GL_Value
    is
-      --  If we're allocating a classwide equivalent type, we want to ignore
-      --  the initial value, but not if deallocating one.
+      Class_Wide : constant Boolean :=
+        Is_Class_Wide_Equivalent_Type (Alloc_GT);
+      Size_GT    : constant GL_Type :=
+        (if   Is_Unconstrained_Type (Alloc_GT)
+              and then not Is_Unconstrained_Type (GT)
+         then GT else Alloc_GT);
+      --  For sizing purposes, we normally want to use Alloc_GT, but an
+      --  exception is if it's constrained and GT isn't.
 
-      Size : GL_Value :=
-        Get_Type_Size (Alloc_GT,
-                       (if   not For_Dealloc
-                             and then Is_Class_Wide_Equivalent_Type (Alloc_GT)
+      Size       : GL_Value         :=
+        Get_Type_Size (Size_GT,
+                       (if   not For_Dealloc and then Class_Wide
                         then No_GL_Value else V),
                        Max_Size => Max_Size);
+      --  If we're allocating a classwide equivalent type, we want to ignore
+      --  the initial value, but not if deallocating one.
 
    begin
       --  Adjust size if constrained subtype for aliased unconstrained or
@@ -1180,11 +1191,15 @@ package body GNATLLVM.Types is
       Alloc_GT : GL_Type;
       E        : Entity_Id := Empty) return ULL
    is
-      GT_Align    : constant ULL := Get_Type_Alignment (Alloc_GT);
-      E_Align     : constant ULL :=
+      Align_GT : constant GL_Type :=
+        (if   Is_Unconstrained_Type (Alloc_GT)
+              and then not Is_Unconstrained_Type (GT)
+         then GT else Alloc_GT);
+      GT_Align    : constant ULL  := Get_Type_Alignment (Align_GT);
+      E_Align     : constant ULL  :=
         (if   Present (E) and then not Unknown_Alignment (E)
          then UI_To_ULL (Alignment (E)) else 1);
-      Bound_Align : constant ULL :=
+      Bound_Align : constant ULL  :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
          then Get_Bound_Alignment (Full_Etype (GT)) else 1);
 
@@ -1202,21 +1217,41 @@ package body GNATLLVM.Types is
    is
       LHS_Complex : constant Nat     := Get_Type_Size_Complexity (Left_GT);
       RHS_Complex : constant Nat     := Get_Type_Size_Complexity (Right_GT);
+      LHS_Unc     : constant Boolean := Is_Unconstrained_Type (Left_GT);
+      RHS_Unc     : constant Boolean := Is_Unconstrained_Type (Right_GT);
       Class_Wide  : constant Boolean :=
         Is_Class_Wide_Equivalent_Type (Left_GT);
+      Size_GT     : GL_Type;
+      Size_Value  : GL_Value;
 
    begin
-      --  Use the type of right side unless its complexity is more
-      --  than that of the size of the type on the left side.  If the
-      --  LHS is a class wide equivalent type, we must use it.
+      --  If the LHS is a class wide equivalent type, we must use it.
 
-      if RHS_Complex > LHS_Complex or else Class_Wide then
-         return Get_Type_Size (Left_GT, Left_Value,
-                               No_Padding => not Class_Wide);
+      if Class_Wide then
+         Size_GT    := Left_GT;
+         Size_Value := Left_Value;
+
+      --  If one size is contrained and the other isn't, use the constrained
+      --  size.
+      elsif LHS_Unc and then not RHS_Unc then
+         Size_GT    := Right_GT;
+         Size_Value := Right_Value;
+      elsif not LHS_Unc and then RHS_Unc then
+         Size_GT    := Left_GT;
+         Size_Value := Left_Value;
+
+      --  Use the type of right side unless its complexity is more
+      --  than that of the size of the type on the left side.
+
+      elsif RHS_Complex > LHS_Complex or else Class_Wide then
+         Size_GT    := Left_GT;
+         Size_Value := Left_Value;
       else
-         return Get_Type_Size (Right_GT, Right_Value, No_Padding => True);
+         Size_GT    := Right_GT;
+         Size_Value := Right_Value;
       end if;
 
+      return Get_Type_Size (Size_GT, Size_Value, No_Padding => not Class_Wide);
    end Compute_Size;
 
    ------------------------------

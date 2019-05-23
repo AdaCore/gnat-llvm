@@ -1414,6 +1414,15 @@ package body GNATLLVM.Variables is
       --  Initializing expression, if Present and we are to use one
 
       GT           : constant GL_Type   := Variable_GL_Type (Def_Ident, Expr);
+      --  Type to use for Def_Ident
+
+      Alloc_GT     : constant GL_Type   :=
+        (if   not Is_Class_Wide_Equivalent_Type (GT)
+              and then not Is_Unconstrained_Record (GT)
+              and then Present (Expr)
+         then Full_Alloc_GL_Type (Expr) else GT);
+      --  Type to use for allocating Def_Ident, if different
+
       Addr_Expr    : constant Node_Id   :=
         (if   Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
@@ -1773,15 +1782,12 @@ package body GNATLLVM.Variables is
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
          elsif Is_Nonnative_Type (GT) then
-            Store (Get (Heap_Allocate_For_Type
-                          (GT, (if   not Is_Unconstrained_Record (GT)
-                                     and then Present (Expr)
-                                then Full_Alloc_GL_Type (Expr) else GT),
-                           V         => Value,
-                           Expr      => Expr,
-                           N         => N,
-                           Def_Ident => Def_Ident,
-                           Max_Size  => Is_Max_Size (GT)),
+            Store (Get (Heap_Allocate_For_Type (GT, Alloc_GT,
+                                                V         => Value,
+                                                Expr      => Expr,
+                                                N         => N,
+                                                Def_Ident => Def_Ident,
+                                                Max_Size  => Is_Max_Size (GT)),
                         Any_Reference),
                    LLVM_Var);
             Copied := True;
@@ -1801,17 +1807,28 @@ package body GNATLLVM.Variables is
       elsif Is_True_Constant (Def_Ident) and then not Is_Volatile (Def_Ident)
         and then (Present (Expr) or else Present (Value))
       then
+         --  Evaluate the expression if needed.  Normally, convert it to
+         --  our type, but if our type is an unconstrained record, we need
+         --  to preserve the source type to prevent too much data from
+         --  being copied.
+
          if No (Value) then
-            Value := Emit_Conversion (Expr, GT);
+            Value := (if   Is_Unconstrained_Record (GT)
+                      then Emit_Expression (Expr)
+                      else Emit_Conversion (Expr, GT));
          end if;
+
+         --  If this is an elementary type (except if it's a PAT),
+         --  be sure it's a value.  In any case, if it is a value, use that
+         --  valule for this variable.
 
          if Is_Elementary_Type (GT) and then not Is_Packed_Array_Impl_Type (GT)
          then
             LLVM_Var := Get (Value, Data);
-            Copied := True;
+            Copied   := True;
          elsif Is_Data (Value) then
             LLVM_Var := Value;
-            Copied := True;
+            Copied   := True;
          end if;
 
          --  If this is an unnamed operation, set its name to that of our
@@ -1826,7 +1843,7 @@ package body GNATLLVM.Variables is
       --  on the stack, copying in any value.
 
       if No (LLVM_Var) then
-         LLVM_Var := Allocate_For_Type (GT, GT, Def_Ident, Value, Expr,
+         LLVM_Var := Allocate_For_Type (GT, Alloc_GT, Def_Ident, Value, Expr,
                                         Def_Ident => Def_Ident,
                                         Max_Size  => Is_Max_Size (GT));
          Copied := True;

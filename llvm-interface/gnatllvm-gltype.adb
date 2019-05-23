@@ -981,7 +981,11 @@ package body GNATLLVM.GLType is
       TE : Entity_Id := Full_Etype (N);
 
    begin
-      if Is_Entity_Name (N) and then Present (Actual_Subtype (Entity (N))) then
+      if Is_Entity_Name (N)
+        and then (Ekind_In (Entity (N), E_Constant, E_Variable)
+                    or else Is_Formal (Entity (N)))
+        and then Present (Actual_Subtype (Entity (N)))
+      then
          TE := Get_Fullest_View (Actual_Subtype (Entity (N)));
       end if;
 

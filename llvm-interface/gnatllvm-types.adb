@@ -708,7 +708,7 @@ package body GNATLLVM.Types is
          Num_Elts   := Get_Array_Elements (Value, Full_Etype (Alloc_GT));
       else
          Element_GT := SSI_GL_Type;
-         Num_Elts   := Get_Alloc_Size (Alloc_GT, Alloc_GT, Value, Max_Size);
+         Num_Elts   := Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size);
       end if;
 
       --  Handle overalignment by adding the alignment to the size
@@ -1217,22 +1217,31 @@ package body GNATLLVM.Types is
    is
       LHS_Complex : constant Nat     := Get_Type_Size_Complexity (Left_GT);
       RHS_Complex : constant Nat     := Get_Type_Size_Complexity (Right_GT);
-      LHS_Unc     : constant Boolean := Is_Unconstrained_Array (Left_GT);
-      RHS_Unc     : constant Boolean := Is_Unconstrained_Array (Right_GT);
+      LHS_Unc     : constant Boolean := Is_Unconstrained_Type (Left_GT);
+      RHS_Unc     : constant Boolean := Is_Unconstrained_Type (Right_GT);
       Class_Wide  : constant Boolean :=
         Is_Class_Wide_Equivalent_Type (Left_GT);
       Size_GT     : GL_Type;
       Size_Value  : GL_Value;
 
    begin
-      --  If the LHS is a class wide equivalent type, we must use it.
+      --  In most cases, the two sizes are equal.  However, we can't verify
+      --  that.  In most cases, our goal is to just choose the type whose size
+      --  is easiest to compute, either in terms of what we need to do the
+      --  computation (favoring unconstrained over constrained) or the
+      --  amount of work to compute the type.  There are, however, two
+      --  exceptions: if the LHS is a class-wide equivalent type, we must
+      --  do the copy using that size.  We check for that first.  Conversely,
+      --  if the LHS is an unconstrained record, we must use the size of
+      --  the RHS.  This case, however, is covered in our general preference
+      --  of unconstrained.
 
       if Class_Wide then
          Size_GT    := Left_GT;
          Size_Value := Left_Value;
 
-      --  If one size is a contrained array and the other isn't, use
-      --  the constrained size.
+      --  If one size is contrained and the other isn't, use the
+      --  constrained size.
 
       elsif LHS_Unc and then not RHS_Unc then
          Size_GT    := Right_GT;
@@ -1240,12 +1249,6 @@ package body GNATLLVM.Types is
       elsif not LHS_Unc and then RHS_Unc then
          Size_GT    := Left_GT;
          Size_Value := Left_Value;
-
-      --  If the LHS is an unconstrained record, use the size of the RHS
-
-      elsif Is_Unconstrained_Record (Left_GT) then
-         Size_GT    := Right_GT;
-         Size_Value := Right_Value;
 
       --  Use the type of right side unless its complexity is more
       --  than that of the size of the type on the left side.

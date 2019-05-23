@@ -1217,8 +1217,8 @@ package body GNATLLVM.Types is
    is
       LHS_Complex : constant Nat     := Get_Type_Size_Complexity (Left_GT);
       RHS_Complex : constant Nat     := Get_Type_Size_Complexity (Right_GT);
-      LHS_Unc     : constant Boolean := Is_Unconstrained_Type (Left_GT);
-      RHS_Unc     : constant Boolean := Is_Unconstrained_Type (Right_GT);
+      LHS_Unc     : constant Boolean := Is_Unconstrained_Array (Left_GT);
+      RHS_Unc     : constant Boolean := Is_Unconstrained_Array (Right_GT);
       Class_Wide  : constant Boolean :=
         Is_Class_Wide_Equivalent_Type (Left_GT);
       Size_GT     : GL_Type;
@@ -1231,14 +1231,21 @@ package body GNATLLVM.Types is
          Size_GT    := Left_GT;
          Size_Value := Left_Value;
 
-      --  If one size is contrained and the other isn't, use the constrained
-      --  size.
+      --  If one size is a contrained array and the other isn't, use
+      --  the constrained size.
+
       elsif LHS_Unc and then not RHS_Unc then
          Size_GT    := Right_GT;
          Size_Value := Right_Value;
       elsif not LHS_Unc and then RHS_Unc then
          Size_GT    := Left_GT;
          Size_Value := Left_Value;
+
+      --  If the LHS is an unconstrained record, use the size of the RHS
+
+      elsif Is_Unconstrained_Record (Left_GT) then
+         Size_GT    := Right_GT;
+         Size_Value := Right_Value;
 
       --  Use the type of right side unless its complexity is more
       --  than that of the size of the type on the left side.

@@ -144,19 +144,18 @@ package GNATLLVM.Records is
    --  Align_To.
 
    function Build_Field_Load
-     (In_V    : GL_Value;
-      In_F    : Entity_Id;
-      LHS     : GL_Value := No_GL_Value;
-      For_LHS : Boolean  := False) return GL_Value
+     (In_V       : GL_Value;
+      In_F       : Entity_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False) return GL_Value
      with  Pre  => Is_Record_Type (Related_Type (In_V))
                    and then Ekind_In (In_F, E_Component, E_Discriminant),
            Post => Present (Build_Field_Load'Result);
    --  V represents a record.  Return a value representing loading field
    --  In_F from that record.  If For_LHS is True, this must be a reference
    --  to the field, otherwise, it may or may not be a reference, depending
-   --  on what's simpler.
-   --  The following are debug procedures to print information about records
-   --  and fields.
+   --  on what's simpler and the value of Prefer_LHS.
 
    function Build_Field_Store
      (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value) return GL_Value
@@ -166,6 +165,9 @@ package GNATLLVM.Records is
    --  Likewise, but perform a store of RHS into the F component of LHS.
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.
+
+   --  The following are debug procedures to print information about records
+   --  and fields.
 
    procedure Print_Field_Info (E : Entity_Id)
      with Export, External_Name => "dfi";

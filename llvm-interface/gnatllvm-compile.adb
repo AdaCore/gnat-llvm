@@ -709,9 +709,7 @@ package body GNATLLVM.Compile is
       then
          return Get_Value (Entity (N));
       else
-         return Get (Emit (N, LHS,
-                           For_LHS    => For_LHS,
-                           Prefer_LHS => True),
+         return Get (Emit (N, LHS, For_LHS => For_LHS, Prefer_LHS => True),
                      Any_Reference);
       end if;
    end Emit_LValue;
@@ -913,8 +911,9 @@ package body GNATLLVM.Compile is
                                               For_LHS    => For_LHS,
                                               Prefer_LHS => Prefer_LHS),
                                         Entity (Selector_Name (N)),
-                                        LHS     => LHS,
-                                        For_LHS => For_LHS or Prefer_LHS);
+                                        LHS        => LHS,
+                                        For_LHS    => For_LHS,
+                                        Prefer_LHS => Prefer_LHS);
             return Maybe_Convert_GT (Result, GT);
 
          when N_Indexed_Component | N_Slice =>
@@ -1052,7 +1051,6 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_xxx_Error =>
-            pragma Assert (not For_LHS);
             pragma Assert (No (Condition (N)));
             Emit_Raise (N);
             return Emit_Undef (GT);

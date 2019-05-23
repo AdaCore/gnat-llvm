@@ -2141,7 +2141,8 @@ package body GNATLLVM.Subprograms is
                Out_LHSs (Out_Idx) :=
                  (if   PK_Is_In_Or_Ref (PK) and then Is_Undef (Arg)
                   then Get_Undef_Ref (GT)
-                  else Emit_LValue (Strip_Conversions (Actual)));
+                  else Emit_LValue (Strip_Conversions (Actual),
+                                    For_LHS => True));
                Out_Idx := Out_Idx + 1;
             end if;
          end;

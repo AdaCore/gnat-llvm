@@ -1548,10 +1548,11 @@ package body GNATLLVM.Records is
    ----------------------
 
    function Build_Field_Load
-     (In_V    : GL_Value;
-      In_F    : Entity_Id;
-      LHS     : GL_Value := No_GL_Value;
-      For_LHS : Boolean  := False) return GL_Value
+     (In_V       : GL_Value;
+      In_F       : Entity_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False) return GL_Value
    is
       R_TE   : constant Entity_Id := Full_Scope (In_F);
       Rec_T  : constant Type_T    := Type_Of (R_TE);
@@ -1568,7 +1569,8 @@ package body GNATLLVM.Records is
       --  preferring an LHS, and we have information about the field, we
       --  can and should do this with an Extract_Value.
 
-      if Is_Data (V) and then not For_LHS and then Present (Get_Field_Info (F))
+      if Is_Data (V) and then not For_LHS and then not Prefer_LHS
+        and then Present (Get_Field_Info (F))
         and then not Is_Nonnative_Type (R_TE)
         and then not Is_Nonnative_Type (F_GT)
         and then not Is_Array_Bitfield (F)

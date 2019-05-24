@@ -2152,6 +2152,10 @@ package body GNATLLVM.Subprograms is
          pragma Assert (No (Actual) = No (Param));
       end loop;
 
+      --  Perform any needed write-backs if any of the above had an LHS
+      --  involving a bitfield.  Then pop the LValue list if we pushed it.
+
+      Perform_Writebacks;
       if not No_Adjust_LV then
          Pop_LValue_List;
       end if;

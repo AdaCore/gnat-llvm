@@ -166,6 +166,10 @@ package GNATLLVM.Records is
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.
 
+   procedure Perform_Writebacks;
+   --  Perform any writebacks put onto the stack by the Add_Write_Back
+   --  procedure.
+
    --  The following are debug procedures to print information about records
    --  and fields.
 

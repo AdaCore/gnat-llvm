@@ -427,6 +427,8 @@ package body GNATLLVM.Compile is
                                                              (Name (N)))))
             then
                declare
+                  --  ??? Need to support "others aggregate here"
+
                   Pref   : constant Node_Id   := Prefix (Name (N));
                   Result : constant GL_Value  :=
                     Build_Field_Store (Emit_LValue (Pref),
@@ -445,6 +447,11 @@ package body GNATLLVM.Compile is
                                 Forwards_OK  => Forwards_OK (N),
                                 Backwards_OK => Backwards_OK (N));
             end if;
+
+            --  Deal with any writebacks needed if we had a bitfield in an
+            --  LHS context above.
+
+            Perform_Writebacks;
 
          when N_Procedure_Call_Statement =>
             Discard (Emit_Call (N));

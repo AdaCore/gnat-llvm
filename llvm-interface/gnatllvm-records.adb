@@ -58,6 +58,27 @@ package body GNATLLVM.Records is
       Table_Increment      => 2,
       Table_Name           => "Subtype_Stack");
 
+   type Write_Back is record
+      LHS : GL_Value;
+      F   : Entity_Id;
+      RHS : GL_Value;
+   end record;
+
+   package Writeback_Stack is new Table.Table
+     (Table_Component_Type => Write_Back,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 2,
+      Table_Increment      => 1,
+      Table_Name           => "Writeback_Stack");
+
+   procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
+     with  Pre  => Is_Record_Type (Related_Type (LHS))
+                   and then Present (RHS)
+                   and then Ekind_In (F, E_Component, E_Discriminant);
+   --  Like Build_Field_Store, but stack the operation to be performed
+   --  later.  The operations are performed LIFO.
+
    function Get_Variant_Size
      (RI        : Record_Info;
       V         : GL_Value;
@@ -1590,9 +1611,6 @@ package body GNATLLVM.Records is
 
       if Is_Bitfield (F) then
 
-         --  ??? We have no way for now to provide an LHS into a bitfield
-         pragma Assert (not For_LHS);
-
          --  If this is a bitfield array type, we need to pointer-pun it to
          --  an integral type that's the width of the bitfield field type.
 
@@ -1667,6 +1685,14 @@ package body GNATLLVM.Records is
 
                   begin
                      Store (Result, Mem_As_Int_Ptr);
+
+                     --  For aggregates, we need to queue up a write-back of
+                     --  the aggregate if this is in an LHS context.
+
+                     if For_LHS and then Is_Bitfield (F) then
+                        Add_Write_Back (V, F, Memory);
+                     end if;
+
                      return Memory;
                   end;
                end if;
@@ -1851,6 +1877,31 @@ package body GNATLLVM.Records is
       end;
 
    end Build_Field_Store;
+
+   --------------------
+   -- Add_Write_Back --
+   --------------------
+
+   procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value) is
+   begin
+      Writeback_Stack.Append ((LHS => LHS, F => F, RHS => RHS));
+   end Add_Write_Back;
+
+   ------------------------
+   -- Perform_Writebacks --
+   ------------------------
+
+   procedure Perform_Writebacks is
+   begin
+      for J in reverse 1 .. Writeback_Stack.Last loop
+         declare
+            WB : constant Write_Back := Writeback_Stack.Table (J);
+
+         begin
+            Discard (Build_Field_Store (WB.LHS, WB.F, WB.RHS));
+         end;
+      end loop;
+   end Perform_Writebacks;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

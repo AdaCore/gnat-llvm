@@ -1420,6 +1420,7 @@ package body GNATLLVM.Variables is
         (if   not Is_Class_Wide_Equivalent_Type (GT)
               and then not Is_Unconstrained_Record (GT)
               and then Present (Expr)
+              and then not Is_Unconstrained_Type (Full_Etype (Expr))
          then Full_Alloc_GL_Type (Expr) else GT);
       --  Type to use for allocating Def_Ident, if different
 

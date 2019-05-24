@@ -40,6 +40,12 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Exprs is
 
+   procedure Emit_For_Address (N : Node_Id; V : out GL_Value; Bits : out Uint)
+     with Pre => Present (N);
+   --  Helper for Emit_Attribute_Reference to recursively find the address
+   --  of an object.  Returns a GL_Value that's a reference that points into
+   --  an object and a number of bits that must be added to that value.
+
    ----------------
    -- Emit_Undef --
    ----------------
@@ -660,6 +666,57 @@ package body GNATLLVM.Exprs is
       end if;
    end Emit_Shift;
 
+   ----------------------
+   -- Emit_For_Address --
+   ----------------------
+
+   procedure Emit_For_Address (N : Node_Id; V : out GL_Value; Bits : out Uint)
+   is
+      GT : constant GL_Type := Full_GL_Type (N);
+
+   begin
+      case Nkind (N) is
+         when N_Indexed_Component =>
+            Emit_For_Address (Prefix (N), V, Bits);
+            V := Get_Indexed_LValue (Get_Indices (Expressions (N), V), V);
+
+         when N_Slice =>
+            Emit_For_Address (Prefix (N), V, Bits);
+            V := Get_Slice_LValue (GT, V);
+
+         when N_Selected_Component =>
+            declare
+               In_F  : constant Entity_Id := Entity (Selector_Name (N));
+               R_TE  : constant Entity_Id := Full_Scope (In_F);
+               Rec_T : constant Type_T    := Type_Of (R_TE);
+               F     : constant Entity_Id := Find_Matching_Field (R_TE, In_F);
+               pragma Unreferenced (Rec_T);
+
+            begin
+               --  Compute an LValue that points either to the field or the
+               --  bitfield field that contains the field.
+               Emit_For_Address (Prefix (N), V, Bits);
+               V := Record_Field_Offset (V, F);
+
+               --  If it's a bitfield, record the offset in bits and force
+               --  the type to be the desired type so outer component
+               --  references will work properly.              --
+
+               if Is_Bitfield (F) then
+                  pragma Assert (Relationship (V) = Reference_To_Unknown);
+                  V := Convert_Ref (G_Is_Relationship (V, V, Reference), GT);
+                  Bits := Bits + Field_Bit_Offset (F);
+               end if;
+            end;
+
+         when others =>
+            --  Just get this as an LValue and initialize the bit offset.
+
+            V    := Emit_LValue (N);
+            Bits := Uint_0;
+      end case;
+   end Emit_For_Address;
+
    ------------------------------
    -- Emit_Attribute_Reference --
    ------------------------------
@@ -670,6 +727,7 @@ package body GNATLLVM.Exprs is
       GT   : constant GL_Type      := Full_GL_Type (N);
       V    : GL_Value              := No_GL_Value;
       P_GT : GL_Type               := Full_GL_Type (Prefix (N));
+      Bits : Uint;
       Ret  : Uint;
 
    begin
@@ -694,11 +752,19 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Address | Attribute_Code_Address =>
 
+            --  First get an LValue and byte offset for this expression
+
+            Emit_For_Address (Pref, V, Bits);
+
             --  We need a single-word pointer, then convert it to the
             --  desired integral type.
 
-            return Ptr_To_Int (Get (Emit_LValue (Pref), Reference_For_Integer),
-                               GT, "attr-address");
+            V := Ptr_To_Int (Get (V, Reference_For_Integer), GT,
+                             "attr-address");
+
+            --  Now add in any bit offset
+
+            return V + Const_Int (GT, Bits / Uint_Bits_Per_Unit);
 
          when Attribute_Pool_Address =>
 

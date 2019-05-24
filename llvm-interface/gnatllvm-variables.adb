@@ -493,7 +493,8 @@ package body GNATLLVM.Variables is
                           or else not In_Extended_Main_Code_Unit (N));
 
          when N_Selected_Component =>
-            return Is_Static_Location (Prefix (N));
+            return Is_Static_Location (Prefix (N))
+              and then not Is_Bitfield_By_Rep (Entity (Selector_Name (N)));
 
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion

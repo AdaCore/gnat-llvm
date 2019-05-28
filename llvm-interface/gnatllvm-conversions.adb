@@ -485,10 +485,15 @@ package body GNATLLVM.Conversions is
       Result      : GL_Value;
 
    begin
+      --  If the input is undefined, so is our output
+
+      if Is_Undef (In_V) then
+         return Get_Undef (GT);
+
       --  If the value is already of the desired LLVM type, we're done
       --  unless one type is biased.
 
-      if Type_Of (In_V) = Type_Of (GT) and then not Is_Biased_GL_Type (In_V)
+      elsif Type_Of (In_V) = Type_Of (GT) and then not Is_Biased_GL_Type (In_V)
         and then not Is_Biased_GL_Type (GT)
       then
          return G_Is (In_V, GT);

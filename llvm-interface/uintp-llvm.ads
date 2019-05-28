@@ -30,5 +30,11 @@ package Uintp.LLVM is
    function UI_To_ULL (U : Uint) return ULL;
    --  Like UI_To_Int, but for Unsigned_Long_Long
 
-   function UI_From_LLI is new UI_From_Integral (LLI);
+   function UI_From_ULL (V : ULL) return Uint is
+     (UI_From_LLI (LLI (V)));
+   --  Like UI_From_Int, but for ULL.
+   --  This implementation doesn't work for the highest half of ULL, but we're
+   --  not going to see sizes that large (the only place where this is used),
+   --  so that's OK.
+
 end Uintp.LLVM;

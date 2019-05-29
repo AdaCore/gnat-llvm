@@ -359,18 +359,26 @@ package body GNATLLVM.GLType is
         and then Size /= No_Uint
       then
          declare
-            Align_V   : constant ULL      := Get_Type_Alignment (GT);
-            Out_Sz    : constant GL_Value := Size_Const_Int (Size);
-            In_Sz     : constant GL_Value :=
-              Align_To (GT_Size (GT), 1, Align_V) *
-              Size_Const_Int (ULL (Get_Bits_Per_Unit));
-            Pad_Sz    : constant GL_Value :=
+            Align_V      : constant ULL      := Get_Type_Alignment (GT);
+            Out_Sz       : constant GL_Value := Size_Const_Int (Size);
+            In_Sz        : constant GL_Value := GT_Size (GT) * Byte_Size;
+            In_Sz_Align  : constant GL_Value :=
+              Align_To (GT_Size (GT), 1, Align_V) * Byte_Size;
+            Pad_Sz       : constant GL_Value :=
               (if   Present (Out_Sz) and then Present (In_Sz)
                then Sub (Out_Sz, In_Sz) else No_GL_Value);
+            Pad_Sz_Align : constant GL_Value :=
+              (if   Present (Out_Sz) and then Present (In_Sz_Align)
+               then Sub (Out_Sz, In_Sz_Align) else No_GL_Value);
             Err_Node  : Entity_Id         := Empty;
 
          begin
-            if Present (Pad_Sz) and then Get_Const_Int_Value (Pad_Sz) > 0 then
+            --  If we'd only give a message due to alignment of the type,
+            --  skip.  But take the alignment padding into account when saying
+            --  by how much we pad.
+
+            if Present (Pad_Sz_Align) and then Pad_Sz_Align > Size_Const_Null
+            then
                if Ekind_In (Err_Ident, E_Component, E_Discriminant)
                  and then Present (Component_Clause (Err_Ident))
                then
@@ -386,7 +394,7 @@ package body GNATLLVM.GLType is
                Error_Msg_Uint_1 := UI_From_LLI (Get_Const_Int_Value (Pad_Sz));
                if For_Component then
                   Error_Msg_NE ("component of& padded by ^ bits?",
-                                Err_Node, Err_Ident);
+                                Err_Ident, Err_Ident);
                elsif Present (Err_Node) then
                   Error_Msg_NE ("^ bits of & unused?", Err_Node,
                                 Err_Ident);

@@ -1389,6 +1389,8 @@ package GNATLLVM.GLValue is
      (S_Div (LHS, RHS));
    function "<" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp (Int_SLT, LHS, RHS) = Const_True);
+   function ">" (LHS, RHS : GL_Value) return Boolean is
+     (I_Cmp (Int_SGT, LHS, RHS) = Const_True);
 
    function Build_Select
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")

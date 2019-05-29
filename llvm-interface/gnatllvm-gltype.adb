@@ -500,6 +500,7 @@ package body GNATLLVM.GLType is
               --  we got the maximum size.
 
               or else (not Is_Discrete_Or_Fixed_Point_Type (GT)
+                         and then GTI.Kind = Primitive
                          and then Present (Size_V) and then Present (GTI.Size)
                          and then Size_V < GTI.Size)
               --  ??? Until we support field rep clauses, don't try to make

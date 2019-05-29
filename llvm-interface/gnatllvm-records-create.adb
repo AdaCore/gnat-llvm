@@ -140,7 +140,7 @@ package body GNATLLVM.Records.Create is
    -----------------------
 
    function Variant_Alignment (Var_Part : Node_Id) return ULL is
-      Align         : ULL := 1;
+      Align         : ULL     := 0;
       Variant       : Node_Id := First_Non_Pragma (Variants (Var_Part));
 
    begin
@@ -153,10 +153,23 @@ package body GNATLLVM.Records.Create is
 
          begin
             while Present (Comp_Def) loop
-               Align := ULL'Max (Align,
-                                 Get_Type_Alignment
-                                   (Full_GL_Type (Defining_Identifier
-                                                    (Comp_Def))));
+               declare
+                  F  : constant Entity_Id := Defining_Identifier (Comp_Def);
+                  GT : constant GL_Type   := Full_GL_Type (F);
+                  TE : constant Entity_Id := Full_Scope (F);
+
+               begin
+                  --  If this won't be a bitfield and either it's not a packed
+                  --  record or this field isn't aliased, consider its
+                  --  alignment
+
+                  if not Is_Bitfield_By_Rep (F)
+                    and then (not Is_Packed (TE) or else Is_Aliased (F))
+                  then
+                     Align := ULL'Max (Align, Get_Type_Alignment (GT));
+                  end if;
+               end;
+
                Next_Non_Pragma (Comp_Def);
             end loop;
 
@@ -193,20 +206,35 @@ package body GNATLLVM.Records.Create is
       --  few cases when we reorder records, then lay out the fields into
       --  Record_Info pieces.  We start with a simple data structure that
       --  records information about the field to add and its location
-      --  within the record.  We record the sequence in which we add a
-      --  field because, all else being equal, we want to keep fields in
-      --  that order.  We also record the depth of parent reference and
-      --  depth of static variants (for the subtype case) that we are
-      --  because we must not move non-repped field across that boundary.
-      --  And we record the alignment of the variant, if that depth is
-      --  nonzero.
+      --  within the record.
 
       type Added_Field is record
          F            : Entity_Id;
-         Seq          : Int;
-         Par_Depth    : Int;
-         Var_Depth    : Int;
+         --  Entity of the field that we're adding
+
+         Seq          : Nat;
+         --  An ordinal representing the sequence number in which we add
+         --  fields because, all else being equal, we want to keep fields
+         --  in that order.
+
+         Par_Depth    : Nat;
+         --  The depth of parent reference (how many parents this is inside)
+
+         Var_Depth    : Nat;
+         --  The depth of static variants (for the subtype case) that we
+         --  are because we must not move non-repped field across that
+         --  boundary.
+
          Var_Align    : ULL;
+         --  The alignment of the variant, if that depth is nonzero.
+
+         Bitpos       : Uint;
+         --  The bit position specified (or to be used, in the case of
+         --  packed records), or No_Uint if none.
+
+         Size         : Uint;
+         --  Size in bits specified (or to be used, in the case of packed
+         --  records), or No_Uint if none.
       end record;
 
       package Added_Field_Table is new Table.Table
@@ -247,60 +275,63 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 1,
          Table_Name           => "Variant_Stack");
 
-      Use_Packed    : constant Boolean :=
+      Use_Packed     : constant Boolean :=
         Is_Packed (TE) or else Has_Specified_Layout (TE);
       --  Says to use an LLVM packed struct
 
-      Prev_Idx      : Record_Info_Id   := Empty_Record_Info_Id;
+      Prev_Idx       : Record_Info_Id   := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
-      First_Idx     : Record_Info_Id   := Empty_Record_Info_Id;
+      First_Idx      : Record_Info_Id   := Empty_Record_Info_Id;
       --  The first index used by the current record fragment construction
 
-      Overlap_Idx   : Record_Info_Id   := Empty_Record_Info_Id;
+      Overlap_Idx    : Record_Info_Id   := Empty_Record_Info_Id;
       --  The index of the overlap component of this variant part, if any
 
-      Cur_Idx       : Record_Info_Id;
+      Cur_Idx        : Record_Info_Id;
       --  The index of the record table entry we're building
 
-      Cur_RI_Pos    : ULL              := 0;
-      --  Current position into this RI
+      Cur_RI_Pos     : ULL              := 0;
+      --  Current position into this R
 
-      Par_Depth     : Int              := 0;
+      Par_Depth      : Int              := 0;
       --  Nesting depth into parent records
 
-      RI_Align      : ULL              := 0;
+      RI_Align       : ULL              := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Position   : ULL              := 0;
+      RI_Position    : ULL              := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Is_Overlap : Boolean          := False;
+      RI_Is_Overlap  : Boolean          := False;
       --  If True, the next RI built is an overlap RI for a variant
 
-      Cur_Field     : Entity_Id        := Empty;
+      Cur_Field      : Entity_Id        := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
-      Split_Align   : ULL              := ULL (Get_Maximum_Alignment);
+      Split_Align    : ULL              := ULL (Get_Maximum_Alignment);
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the
       --  same reason after a variable-size field.
 
-      GT            :  GL_Type         :=
+      GT             :  GL_Type         :=
         Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
 
-      LLVM_Type     : Type_T;
+      Aliased_Fields : Boolean         := False;
+      --  Indicates that at least one field is aliased
+
+      LLVM_Type      : Type_T;
       --  The LLVM type for this record type
 
-      Field         : Entity_Id;
-      --  Temporary for loop over discriminants
+      Field          : Entity_Id;
+      --  Temporary for loop over components and discriminants
 
-      Discrim_FIs   : Field_Info_Id_Array :=
+      Discrim_FIs    : Field_Info_Id_Array :=
         (1 .. Max_Discriminant (Full_Base_Type (TE)) => Empty_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
       --  discriminant number J.  We use this for record subtypes of
@@ -819,7 +850,9 @@ package body GNATLLVM.Records.Create is
 
       procedure Add_Field (E : Entity_Id) is
          Clause    : constant Node_Id   := Component_Clause (E);
-         Pos       : constant Uint      := Component_Bit_Offset (E);
+         Pos       : constant Uint      :=
+           (if   Present (Component_Clause (E)) then Component_Bit_Offset (E)
+            else No_Uint);
          R_TE      : constant Entity_Id := Full_Scope (E);
          Def_GT    : constant GL_Type   := Default_GL_Type (Full_Etype (E));
          F_GT      : GL_Type            := Full_GL_Type (E);
@@ -856,8 +889,7 @@ package body GNATLLVM.Records.Create is
          --  for the parent type and the front-end has checked that there
          --  are no overlapping components.
 
-         elsif Present (Clause) and then Pos /= No_Uint
-           and then Present (Parent_TE)
+         elsif Present (Clause) and then Present (Parent_TE)
            and then not Is_Fully_Repped_Tagged_Type (Parent_TE)
            and then not Is_Dynamic_Size (Default_GL_Type (Parent_TE))
            and then Pos < Esize (Parent_TE)
@@ -870,9 +902,7 @@ package body GNATLLVM.Records.Create is
          --  alignment of the type, we may have to give an error in some
          --  cases.
 
-         elsif Present (Clause) and then Pos /= No_Uint
-           and then Pos mod Int (Bit_Align) /= 0
-         then
+         elsif Present (Clause) and then Pos mod Int (Bit_Align) /= 0 then
             if Is_Atomic (E) then
                Error_Msg_NE_Num
                  ("position of atomic field& must be multiple of ^ bits",
@@ -935,7 +965,9 @@ package body GNATLLVM.Records.Create is
          --  Now add field to table
 
          Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Par_Depth,
-                                    Var_Depth, Var_Align));
+                                    Var_Depth, Var_Align, Pos,
+                                    (if   Present (Clause) then Esize (E)
+                                     else No_Uint)));
       end Add_Field;
 
       ---------------------------
@@ -943,32 +975,33 @@ package body GNATLLVM.Records.Create is
       ---------------------------
 
       procedure Process_Fields_To_Add is
-         In_Variant         : constant Boolean := Variant_Stack.Last /= 0;
+         In_Variant          : constant Boolean := Variant_Stack.Last /= 0;
          --  True if we're processing inside a variant, either static
          --  or dynamic.
 
-         In_Dynamic_Variant : constant Boolean := In_Variant
+         In_Dynamic_Variant  : constant Boolean := In_Variant
            and then not Variant_Stack.Table (Variant_Stack.Last).Is_Static;
          --  True if we're inside a dynamic variant
 
-         Last_Var_Depth     : Int              := 0;
+         Last_Var_Depth      : Int              := 0;
          --  The last variant depth that we saw for a field; used to indicate
          --  when the depth changes.
 
-         Had_Non_Repped     : Boolean          := False;
+         Had_Non_Repped      : Boolean          := False;
          --  True once we saw a non-repped field; used to ensure that all
          --  non-repped fields as positions after all repped fields.
 
-         Forced_Pos         : ULL              := 0;
+         Packed_Field_Bitpos : Uint             := No_Uint;
+         Forced_Pos          : ULL              := 0;
          --  If nonzero, a position to force the next field to
 
-         Bitfield_Start_Pos : Uint             := No_Uint;
-         Bitfield_End_Pos   : Uint             := No_Uint;
+         Bitfield_Start_Pos  : Uint             := No_Uint;
+         Bitfield_End_Pos    : Uint             := No_Uint;
          --  Starting and ending (last plus one) positions of an LLVM
          --  field being used to contain multiple bitfields, if not
          --  No_Uint.
 
-         Bitfield_Is_Array  : Boolean;
+         Bitfield_Is_Array   : Boolean;
          --  Set if the bitfield field we make is an array
 
          function Field_Before (L, R : Int) return Boolean;
@@ -984,14 +1017,6 @@ package body GNATLLVM.Records.Create is
            (((Pos + Align - 1) / Align)  * Align);
          --  Given a position and an alignment, align the position
 
-         function End_Position (F : Entity_Id) return Uint is
-           ((if   No (Component_Clause (F)) then No_Uint
-             else (Component_Bit_Offset (F) + Esize (F) +
-                     Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit))
-           with Pre => Ekind_In (F, E_Component, E_Discriminant);
-           --  If this field has a specified representation, return the
-           --  position in bytes just beyond the last bit of this field.
-
          function Max_Record_Rep (E : Entity_Id) return Uint
            with Pre => Ekind_In (E, E_Component, E_Discriminant);
          --  Return the next byte after the highest repped position of
@@ -1005,8 +1030,7 @@ package body GNATLLVM.Records.Create is
          --  that isn't the first one, set the position of the RI we're
          --  going to make.
 
-         procedure Create_Bitfield_Field (J : Int)
-           with Pre => Is_Bitfield_By_Rep (Added_Field_Table.Table (J).F);
+         procedure Create_Bitfield_Field (J : Int);
          --  We're processing the component at table index J, which is known
          --  to be a bitfield.  Create an LLVM field to hold contents of
          --  the J'th field to process, which is known to be a bitfield.
@@ -1035,12 +1059,21 @@ package body GNATLLVM.Records.Create is
               Present (Component_Clause (Left_F));
             Is_Pos_R  : constant Boolean     :=
               Present (Component_Clause (Right_F));
+            Pack_L    : constant Boolean     := Is_Packable_Field (Left_F);
+            Pack_R    : constant Boolean     := Is_Packable_Field (Right_F);
             Dynamic_L : constant Boolean     :=
               Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
             Dynamic_R : constant Boolean     :=
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
 
          begin
+            --  This function must satisfy the conditions of A.18(5/3),
+            --  specifically that it must define a "strict weak ordering",
+            --  meaning that it's irreflexive, asymetric, transitive and
+            --  that if Field_Before (X, Y) is true for any X and Y, then
+            --  for any Z, either Field_Before (X, Z) or Field_Before (Z,
+            --  Y) must be true.
+
             --  The tag field is always the first field
 
             if Chars (Left_F) = Name_uTag then
@@ -1079,6 +1112,23 @@ package body GNATLLVM.Records.Create is
             elsif Is_Pos_L and then Is_Pos_R then
                return Left_BO < Right_BO;
 
+            --  For all other cases, don't move outside of a variant part
+
+            elsif AF_Left.Var_Depth /= AF_Right.Var_Depth then
+               return AF_Left.Var_Depth < AF_Right.Var_Depth;
+
+            --  Unless reordering is disabled, put packable fields after
+            --  non-packable, fixed-length fields.
+
+            elsif not No_Reordering (TE) and then Pack_L
+              and then not Pack_R and then not Dynamic_R
+            then
+               return False;
+            elsif not No_Reordering (TE) and then Pack_R
+              and then not Pack_L and then not Dynamic_L
+            then
+               return True;
+
             --  A discriminant is in front of a non-discriminant
 
             elsif Ekind (Left_F) = E_Discriminant
@@ -1090,24 +1140,17 @@ package body GNATLLVM.Records.Create is
             then
                return False;
 
-            --  For all other cases, don't move outside of a variant part
-
-            elsif AF_Left.Var_Depth /= AF_Right.Var_Depth then
-               return AF_Left.Var_Depth < AF_Right.Var_Depth;
-
-            --  Fixed-size fields come before variable-sized ones if the
-            --  fixed field is aliased or if we're in a variant.  But don't
-            --  do this if we aren't to reorder fields.
+            --  Fixed-size fields come before variable-sized ones if this
+            --  record is packed or has aliased components.  But don't do
+            --  this if we aren't to reorder fields.
 
             elsif not No_Reordering (TE)
-              and then (Is_Aliased (Left_F) or else In_Variant
-                          or else AF_Left.Var_Depth /= 0)
+              and then (Is_Packed (TE) or else Aliased_Fields)
               and then not Dynamic_L and then Dynamic_R
             then
                return True;
             elsif not No_Reordering (TE)
-              and then (Is_Aliased (Right_F) or else In_Variant
-                          or else AF_Right.Var_Depth /= 0)
+              and then (Is_Packed (TE) or else Aliased_Fields)
               and then not Dynamic_R and then Dynamic_L
             then
                return False;
@@ -1182,8 +1225,14 @@ package body GNATLLVM.Records.Create is
          ---------------------------
 
          procedure Create_Bitfield_Field (J : Int) is
-            J_F          : constant Entity_Id := Added_Field_Table.Table (J).F;
+            AF           : constant Added_Field := Added_Field_Table.Table (J);
             Bitfield_Len : ULL;
+
+            function Start_Position (Bitpos : Uint) return Uint is
+              (Bitpos / Uint_Bits_Per_Unit);
+
+            function End_Position (Bitpos, Size : Uint) return Uint is
+              ((Bitpos + Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit);
 
          begin
             --  We need to create an LLVM field to use to represent one or
@@ -1195,21 +1244,23 @@ package body GNATLLVM.Records.Create is
             --
             --  Start by making a field just wide enough for this component.
 
-            Bitfield_Start_Pos := Normalized_Position (J_F);
-            Bitfield_End_Pos   := End_Position (J_F);
+            Bitfield_Start_Pos := Start_Position (AF.Bitpos);
+            Bitfield_End_Pos   := End_Position (AF.Bitpos, AF.Size);
 
             --  Now go through all the remaining components that start within
-            --  end field we made and widen the bitfield field to include it.
+            --  the field we made and widen the bitfield field to include it.
 
             for K in J + 1 .. Added_Field_Table.Last loop
                declare
-                  F : constant Entity_Id := Added_Field_Table.Table (K).F;
+                  AF_K : constant Added_Field := Added_Field_Table.Table (K);
+                  F    : constant Entity_Id   := AF_K.F;
 
                begin
-                  exit when not Is_Bitfield_By_Rep (F)
-                    or else Normalized_Position (F) >= Bitfield_End_Pos;
+                  exit when AF_K.Bitpos = No_Uint or else AF_K.Size = No_Uint
+                    or else not Is_Bitfield_By_Rep (F, AF_K.Bitpos, AF_K.Size)
+                    or else Start_Position (AF_K.Bitpos) >= Bitfield_End_Pos;
 
-                  Bitfield_End_Pos := End_Position (F);
+                  Bitfield_End_Pos := End_Position (AF_K.Bitpos, AF_K.Size);
                end;
             end loop;
 
@@ -1266,7 +1317,7 @@ package body GNATLLVM.Records.Create is
 
          for J in 1 .. Added_Field_Table.Last loop
             declare
-               AF        : constant Added_Field := Added_Field_Table.Table (J);
+               AF        : Added_Field renames Added_Field_Table.Table (J);
                F         : constant Entity_Id   := AF.F;
                --  The field to add
 
@@ -1274,8 +1325,7 @@ package body GNATLLVM.Records.Create is
                  Default_GL_Type (Full_Etype (F));
                --  The default GL_Type for that field
 
-               Size      : constant Uint        :=
-                 (if   Unknown_Esize (F) then No_Uint else Esize (F));
+               Size      : Uint                 := AF.Size;
                --  An optional size to force the field to
 
                Max_Sz    : constant Boolean     :=
@@ -1299,19 +1349,25 @@ package body GNATLLVM.Records.Create is
                --  into account any specified size and if we have to
                --  use the max size.
 
-               Pos         : constant Uint      :=
-                 (if   No (Component_Clause (F)) then No_Uint
-                  else Normalized_Position (F));
+               Bit_Pos     : Uint               := AF.Bitpos;
+               --  Specified bit position of field, if any.
+
+               Pos         : Uint               :=
+                 (if   Bit_Pos = No_Uint then No_Uint
+                  else Bit_Pos / Uint_Bits_Per_Unit);
+
                --  If a position is specified, this is that position
 
                Need_Align  :  ULL                :=
-                 (if   Pos /= No_Uint or else Is_Packed (TE) then 1
-                  else Get_Type_Alignment (F_GT));
+                 (if   Pos /= No_Uint
+                       or else (Is_Packed (TE) and then not Is_Aliased (F))
+                  then 1 else Get_Type_Alignment (F_GT));
                --  The alignment we need this field to have
 
             begin
                --  If we've pushed into a new static variant, see if
-               --  we need to align it.  But update our level anyway.
+               --  we need to align it.  But update our level anyway and
+               --  clear out any starting location for packed fields.
                --  Ignore if there's a position specified.
 
                if AF.Var_Depth /= Last_Var_Depth and then Pos = No_Uint then
@@ -1321,6 +1377,55 @@ package body GNATLLVM.Records.Create is
                   end if;
 
                   Last_Var_Depth := AF.Var_Depth;
+                  Packed_Field_Bitpos := No_Uint;
+               end if;
+
+               --  If this isn't a packable field, but we've previously set
+               --  up a location for them, clear out the location.
+
+               if Packed_Field_Bitpos /= No_Uint
+                 and then not Is_Packable_Field (F)
+               then
+                  Packed_Field_Bitpos := No_Uint;
+
+               --  If this is a packable field and we haven't set up a
+               --  location for them, set one up and initialize the position
+               --  and size of this field as well as following ones.
+
+               elsif Packed_Field_Bitpos = No_Uint
+                 and then Is_Packable_Field (F)
+               then
+                  Pos                 := UI_From_ULL (Cur_RI_Pos);
+                  Bit_Pos             := Pos * Uint_Bits_Per_Unit;
+                  Size                := RM_Size (F_GT);
+                  Packed_Field_Bitpos := Bit_Pos + Size;
+                  AF.Bitpos           := Bit_Pos;
+                  AF.Size             := Size;
+                  F_GT                :=
+                    Make_GT_Alternative (Def_GT, F,
+                                         Size          => Size,
+                                         Align         => No_Uint,
+                                         For_Type      => False,
+                                         For_Component => False,
+                                         Max_Size      => Max_Sz,
+                                         Is_Biased     => Biased);
+
+                  Set_Esize (F, Size);
+
+                  for K in J + 1 .. Added_Field_Table.Last loop
+                     declare
+                        AF_K : Added_Field renames Added_Field_Table.Table (K);
+
+                     begin
+                        exit when not Is_Packable_Field (AF_K.F)
+                          or else AF_K.Var_Depth /= Last_Var_Depth;
+
+                        AF_K.Bitpos         := Packed_Field_Bitpos;
+                        AF_K.Size           := RM_Size (Full_Etype (AF_K.F));
+                        Packed_Field_Bitpos := Packed_Field_Bitpos + AF_K.Size;
+                        Set_Esize (AF_K.F, AF_K.Size);
+                     end;
+                  end loop;
                end if;
 
                --  If we're not in a variant, this field has no rep clause,
@@ -1388,10 +1493,12 @@ package body GNATLLVM.Records.Create is
                      Flush_Current_Types;
                      RI_Is_Overlap := False;
 
-                  --  If we're in a dynamic variant and have a position,
-                  --  show that we're building a overlap RI.
+                  --  If we're in a dynamic variant and have a component
+                  --  clause,  show that we're building a overlap RI.
 
-                  elsif In_Dynamic_Variant and then Pos /= No_Uint then
+                  elsif In_Dynamic_Variant
+                    and then Present (Component_Clause (F))
+                  then
                      RI_Is_Overlap := True;
                   end if;
 
@@ -1423,18 +1530,19 @@ package body GNATLLVM.Records.Create is
                      --  one or there isn't one, make one.  Otherwise, just
                      --  record this field.
 
-                     if Is_Bitfield_By_Rep (F) then
+                     if Is_Bitfield_By_Rep (F, Bit_Pos, Size) then
                         if Bitfield_Start_Pos = No_Uint
-                          or else Normalized_Position (F) >= Bitfield_End_Pos
+                          or else AF.Bitpos / Uint_Bits_Per_Unit
+                                    >= Bitfield_End_Pos
                         then
                            Create_Bitfield_Field (J);
                         end if;
 
                         Add_FI (F, Cur_Idx, F_GT,
                                 Ordinal        => LLVM_Types.Last,
-                                First_Bit      => Component_Bit_Offset (F) -
+                                First_Bit      => Bit_Pos -
                                   (Bitfield_Start_Pos * Uint_Bits_Per_Unit),
-                                Num_Bits       => Esize (F),
+                                Num_Bits       => Size,
                                 Array_Bitfield => Bitfield_Is_Array);
                      else
                         Force_To_Pos (Needed_Pos, Pos_Aligned);
@@ -1468,6 +1576,19 @@ package body GNATLLVM.Records.Create is
          pragma Assert (Is_Empty_GL_Type (GT));
          LLVM_Type := Struct_Create_Named (Context, Get_Name (TE));
       end if;
+
+      --  See if the record has any aliased components.  We'll use that
+      --  flag to see if we should move variable-sized fields after fixed
+      --  fields.  Ignore the tag.
+
+      Field := First_Component_Or_Discriminant (TE);
+      while Present (Field) loop
+         if Is_Aliased (Field) and then Chars (Field) /= Name_uTag then
+            Aliased_Fields := True;
+         end if;
+
+         Next_Component_Or_Discriminant (Field);
+      end loop;
 
       Update_GL_Type (GT, LLVM_Type, True);
       Record_Info_Table.Increment_Last;
@@ -1520,13 +1641,9 @@ package body GNATLLVM.Records.Create is
                if Present (Outer_Field)
                  and then No (Get_Field_Info (Outer_Field))
                  and then Scope (ORC) = Full_Base_Type (TE)
-                 and then Is_Completely_Hidden (ORC)
                then
                   if Present (Outer_Field) and then Present (Outer_Orig) then
-                     Set_Field_Info (Outer_Field,
-                                     Get_Field_Info
-                                       (Original_Record_Component
-                                          (Outer_Orig)));
+                     Set_Field_Info (Outer_Field, Get_Field_Info (Outer_Orig));
                   elsif Present (Discrim_FIs (Discrim_Num)) then
                      Set_Field_Info (Outer_Field, Discrim_FIs (Discrim_Num));
                   end if;
@@ -1545,49 +1662,39 @@ package body GNATLLVM.Records.Create is
 
       Cur_Field := First_Component_Or_Discriminant (TE);
       while Present (Cur_Field) loop
-         declare
-            ORC : constant Entity_Id := Original_Record_Component (Cur_Field);
+         if Full_Scope (Cur_Field) = TE
+           and then Present (Get_Field_Info (Cur_Field))
+         then
+            declare
+               Byte_Position : constant BA_Data         :=
+                 Field_Position (Cur_Field, No_GL_Value);
+               Bit_Position  : constant BA_Data         :=
+                 Byte_Position * Const (Uint_Bits_Per_Unit) +
+                 Const (Field_Bit_Offset (Cur_Field));
+               Bit_Offset    : constant Node_Ref_Or_Val :=
+                 Annotated_Value (Bit_Position);
 
-         begin
-            if Full_Scope (Cur_Field) = TE
-              and then (Ekind (Cur_Field) = E_Component
-                          or else No (ORC)
-                          or else not Is_Completely_Hidden (ORC))
-              and then not (Is_Unchecked_Union (TE)
-                              and then Ekind (Cur_Field) = E_Discriminant)
-              and then Present (Get_Field_Info (Cur_Field))
-            then
-               declare
-                  Byte_Position : constant BA_Data         :=
-                    Field_Position (Cur_Field, No_GL_Value);
-                  Bit_Position  : constant BA_Data         :=
-                    Byte_Position * Const (Uint_Bits_Per_Unit) +
-                    Const (Field_Bit_Offset (Cur_Field));
-                  Bit_Offset    : constant Node_Ref_Or_Val :=
-                    Annotated_Value (Bit_Position);
+            begin
+               if Unknown_Esize (Cur_Field) then
+                  Set_Esize (Cur_Field,
+                             Annotated_Object_Size (Get_Field_Type
+                                                      (Cur_Field)));
+               end if;
 
-               begin
-                  if Unknown_Esize (Cur_Field) then
-                     Set_Esize (Cur_Field,
-                                Annotated_Object_Size (Get_Field_Type
-                                                         (Cur_Field)));
-                  end if;
+               Set_Component_Bit_Offset (Cur_Field, Bit_Offset);
+               if Is_Static_SO_Ref (Bit_Offset) then
+                  Set_Normalized_Position
+                    (Cur_Field, Bit_Offset / Uint_Bits_Per_Unit);
 
-                  Set_Component_Bit_Offset (Cur_Field, Bit_Offset);
-                  if Is_Static_SO_Ref (Bit_Offset) then
-                     Set_Normalized_Position
-                       (Cur_Field, Bit_Offset / Uint_Bits_Per_Unit);
-
-                     Set_Normalized_First_Bit
-                       (Cur_Field, Bit_Offset mod Uint_Bits_Per_Unit);
-                  else
-                     Set_Normalized_Position (Cur_Field,
-                                              Annotated_Value (Byte_Position));
-                     Set_Normalized_First_Bit (Cur_Field, Uint_0);
-                  end if;
-               end;
-            end if;
-         end;
+                  Set_Normalized_First_Bit
+                    (Cur_Field, Bit_Offset mod Uint_Bits_Per_Unit);
+               else
+                  Set_Normalized_Position (Cur_Field,
+                                           Annotated_Value (Byte_Position));
+                  Set_Normalized_First_Bit (Cur_Field, Uint_0);
+               end if;
+            end;
+         end if;
 
          Next_Component_Or_Discriminant (Cur_Field);
       end loop;

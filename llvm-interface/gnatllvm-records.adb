@@ -21,6 +21,7 @@ with Elists;   use Elists;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Output;   use Output;
+with Repinfo;  use Repinfo;
 with Snames;   use Snames;
 with Sprint;   use Sprint;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -1048,30 +1049,79 @@ package body GNATLLVM.Records is
    function Get_Field_Type (F : Entity_Id) return GL_Type is
      (Field_Info_Table.Table (Get_Field_Info (F)).GT);
 
+   function Is_Packable_Field (F : Entity_Id) return Boolean is
+      GT : constant GL_Type := Full_GL_Type (Original_Record_Component (F));
+      --  We have to use the data from the base type of the record to be sure
+      --  that we lay out a record and its subtype the same way.
+
+      T  : constant Type_T  := Type_Of (GT);
+      pragma Unreferenced (T);
+      --  We need to be sure that the type of the record is elaborated
+
+   begin
+      --  If we have a rep clause, we'll use that rather than packing it.
+      --  If the record isn't packed, neither is the field.  Aliased fields
+      --  aren't packed either.
+
+      if Present (Component_Clause (F)) or else not Is_Packed (Full_Scope (F))
+        or else Is_Aliased (F)
+      then
+         return False;
+      end if;
+
+      --  If the type's size is variable or if the type is nonnative, we
+      --  can't pack.  We do pack if the RM_Size of the field's type is
+      --  smaller than the Esize of the type.  However, we avoid packing if
+      --  the field would be larger than 64 bits since that's usually not
+      --  worth it.  We rely here on back-annotation of types so we're sure
+      --  that both sizes are set.
+
+      return not Is_Nonnative_Type (GT)
+        and then Is_Static_SO_Ref (RM_Size (GT))
+        and then Is_Static_SO_Ref (Esize (GT))
+        and then RM_Size (GT) < Esize (GT) and then RM_Size (GT) <= Uint_64;
+
+   end Is_Packable_Field;
+
    ------------------------
    -- Is_Bitfield_By_Rep --
    ------------------------
 
-   function Is_Bitfield_By_Rep (F : Entity_Id) return Boolean is
+   function Is_Bitfield_By_Rep
+     (F    : Entity_Id;
+      Pos  : Uint := No_Uint;
+      Size : Uint := No_Uint) return Boolean
+   is
+      TE       : constant Entity_Id := Full_Etype (F);
+      Our_Pos  : constant Uint      :=
+        (if   Pos /= No_Uint then Pos elsif Present (Component_Clause (F))
+         then Component_Bit_Offset (F) else No_Uint);
+      Our_Size : constant Uint      :=
+        (if   Size /= No_Uint then Size elsif Is_Packable_Field (F)
+         then RM_Size (TE)
+         elsif not Unknown_Esize (F)
+               and then Is_Static_SO_Ref (Esize (F))
+         then Esize (F) else No_Uint);
+
    begin
-      --  If there's no component clause, this isn't a bitfield
+      --  If the position is specified and isn't byte-aligned, it's a bitfield
 
-      if No (Component_Clause (F)) then
-         return False;
-
-      --  If the position isn't byte-aligned, it is a bitfield
-
-      elsif Component_Bit_Offset (F) mod Uint_Bits_Per_Unit /= 0 then
+      if Our_Pos /= No_Uint and then Our_Pos mod Uint_Bits_Per_Unit /= 0 then
          return True;
-      end if;
+
+      --  If we have no specification of size, either explicitly or
+      --  implicitly by packing, this isn't a bitfield
+
+      elsif Our_Size = No_Uint then
+         return False;
 
       --  For integral types, we can only have sizes that are a power of
       --  two due to the way that LLVM handles types like i24.
 
-      if Is_Discrete_Or_Fixed_Point_Type (Full_Etype (F)) then
-         return Esize (F) not in Uint_8 | Uint_16 | Uint_32 | Uint_64;
+      elsif Is_Discrete_Or_Fixed_Point_Type (TE) then
+         return Our_Size not in Uint_8 | Uint_16 | Uint_32 | Uint_64;
       else
-         return Esize (F) mod Uint_Bits_Per_Unit /= 0;
+         return Our_Size mod Uint_Bits_Per_Unit /= 0;
       end if;
 
    end Is_Bitfield_By_Rep;
@@ -1605,11 +1655,23 @@ package body GNATLLVM.Records is
          Result := Record_Field_Offset (Get (V, Any_Reference), F);
       end if;
 
+      --  If this is the parent field, we're done
+
+      if Chars (F) = Name_uParent then
+         return Result;
+
+      --  Check for the trivial case of a zero-length field
+
+      elsif Esize (F) = 0 then
+         return (if    Is_Elementary_Type (F_GT) then Const_Null (F_GT)
+                 elsif Is_Loadable_Type (F_GT)   then Get_Undef (F_GT)
+                 else  Get_Undef_Ref (F_GT));
+
       --  If we have a bitfield, we need special processing.  Because we have
       --  a lot of intermediate values that don't correspond to Ada types,
       --  we do some low-level processing here when we can't avoid it.
 
-      if Is_Bitfield (F) then
+      elsif Is_Bitfield (F) then
 
          --  If this is a bitfield array type, we need to pointer-pun it to
          --  an integral type that's the width of the bitfield field type.
@@ -1739,6 +1801,12 @@ package body GNATLLVM.Records is
          return Result;
       end if;
 
+      --  First check for the trivial case of a zero-length field
+
+      if Esize (F) = 0 then
+         return (if Is_Data (LHS) then LHS else No_GL_Value);
+      end if;
+
       --  Now we handle the bitfield case.  Like the load case, we do our
       --  masking and shifting operations in an integral type.  This is
       --  either the type of the field or an integral type of the same
@@ -1840,10 +1908,14 @@ package body GNATLLVM.Records is
                               Count);
          end if;
 
-         --  If needed, extend the RHS to the size of the bitfield field
+         --  If needed, convert the RHS to the size of the bitfield field.
+         --  This is usually an extension, but can be a truncation in some
+         --  cases where RHS is a record type with padding.
 
-         if RHS_Width /= Data_Width then
+         if RHS_Width < Data_Width then
             RHS_Cvt := Z_Ext (RHS_Cvt, Data_T);
+         elsif RHS_Width > Data_Width then
+            RHS_Cvt := Trunc (RHS_Cvt, Data_T);
          end if;
 
          --  Now form the mask, remove the old value, and insert the new value
@@ -1901,6 +1973,8 @@ package body GNATLLVM.Records is
             Discard (Build_Field_Store (WB.LHS, WB.F, WB.RHS));
          end;
       end loop;
+
+      Writeback_Stack.Set_Last (0);
    end Perform_Writebacks;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

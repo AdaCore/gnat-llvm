@@ -431,7 +431,7 @@ package body GNATLLVM.Compile is
 
                   Pref   : constant Node_Id   := Prefix (Name (N));
                   Result : constant GL_Value  :=
-                    Build_Field_Store (Emit_LValue (Pref),
+                    Build_Field_Store (Emit_LValue (Pref, For_LHS => True),
                                        Entity (Selector_Name (Name (N))),
                                        Emit_Expression (Expression (N)));
 

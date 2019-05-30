@@ -12,7 +12,7 @@ Limitations and missing features (identified so far):
   maybe related to next item
 - materialize bounds from 0 to 'Last for foreign array param (2315-001)
 - deal with recording positions for package bodies (can already do when
-  generating code, but not when pushing for elab proc)
+  generating code, but not when pushing for elab proc; see S313-017)
 - more __sync builtins and other atomic builtins
 - call "_ext" version of raise routines (e.g., J917-030)
 - debug info (for variables, types and parameters)

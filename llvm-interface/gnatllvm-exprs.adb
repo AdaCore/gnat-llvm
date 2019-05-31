@@ -134,7 +134,7 @@ package body GNATLLVM.Exprs is
                --  If this is a normal string, where the size of a character
                --  is a byte, use Const_String to create the string.
 
-               if Get_Type_Size_In_Bits (Type_Of (Elmt_GT)) = 8 then
+               if ULL'(Get_Type_Size_In_Bits (Type_Of (Elmt_GT))) = 8 then
                   declare
                      type String_Access is access String;
                      procedure Free is new Ada.Unchecked_Deallocation

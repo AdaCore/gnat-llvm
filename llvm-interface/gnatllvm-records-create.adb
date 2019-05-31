@@ -120,19 +120,19 @@ package body GNATLLVM.Records.Create is
 
    function Max_Discriminant (TE : Entity_Id) return Int is
       F     : Entity_Id := First_Component_Or_Discriminant (TE);
-      Max   : Uint      := Uint_0;
 
    begin
-      while Present (F) loop
-         if Ekind (F) = E_Discriminant and then Discriminant_Number (F) > Max
-         then
-            Max := Discriminant_Number (F);
-         end if;
+      return Max : Int := 0 do
+         while Present (F) loop
+            if Ekind (F) = E_Discriminant
+              and then Discriminant_Number (F) > Max
+            then
+               Max := UI_To_Int (Discriminant_Number (F));
+            end if;
 
-         Next_Component_Or_Discriminant (F);
-      end loop;
-
-      return UI_To_Int (Max);
+            Next_Component_Or_Discriminant (F);
+         end loop;
+      end return;
    end Max_Discriminant;
 
    -----------------------
@@ -140,48 +140,47 @@ package body GNATLLVM.Records.Create is
    -----------------------
 
    function Variant_Alignment (Var_Part : Node_Id) return ULL is
-      Align         : ULL     := 0;
       Variant       : Node_Id := First_Non_Pragma (Variants (Var_Part));
 
    begin
-      while Present (Variant) loop
-         declare
-            Comp_List      : constant Node_Id := Component_List (Variant);
-            Nested_Variant : constant Node_Id := Variant_Part (Comp_List);
-            Comp_Def       : Node_Id          :=
-              First_Non_Pragma (Component_Items (Component_List (Variant)));
+      return Align : ULL := 0 do
+         while Present (Variant) loop
+            declare
+               Comp_List      : constant Node_Id := Component_List (Variant);
+               Nested_Variant : constant Node_Id := Variant_Part (Comp_List);
+               Comp_Def       : Node_Id          :=
+                 First_Non_Pragma (Component_Items (Component_List (Variant)));
 
-         begin
-            while Present (Comp_Def) loop
-               declare
-                  F  : constant Entity_Id := Defining_Identifier (Comp_Def);
-                  GT : constant GL_Type   := Full_GL_Type (F);
-                  TE : constant Entity_Id := Full_Scope (F);
+            begin
+               while Present (Comp_Def) loop
+                  declare
+                     F  : constant Entity_Id := Defining_Identifier (Comp_Def);
+                     GT : constant GL_Type   := Full_GL_Type (F);
+                     TE : constant Entity_Id := Full_Scope (F);
 
-               begin
-                  --  If this won't be a bitfield and either it's not a packed
-                  --  record or this field isn't aliased, consider its
-                  --  alignment
+                  begin
+                     --  If this won't be a bitfield and either it's not a
+                     --  packed record or this field isn't aliased,
+                     --  consider its alignment
 
-                  if not Is_Bitfield_By_Rep (F)
-                    and then (not Is_Packed (TE) or else Is_Aliased (F))
-                  then
-                     Align := ULL'Max (Align, Get_Type_Alignment (GT));
-                  end if;
-               end;
+                     if not Is_Bitfield_By_Rep (F)
+                       and then (not Is_Packed (TE) or else Is_Aliased (F))
+                     then
+                        Align := ULL'Max (Align, Get_Type_Alignment (GT));
+                     end if;
+                  end;
 
-               Next_Non_Pragma (Comp_Def);
-            end loop;
+                  Next_Non_Pragma (Comp_Def);
+               end loop;
 
-            if Present (Nested_Variant) then
-               Align := ULL'Max (Align, Variant_Alignment (Nested_Variant));
-            end if;
-         end;
+               if Present (Nested_Variant) then
+                  Align := ULL'Max (Align, Variant_Alignment (Nested_Variant));
+               end if;
+            end;
 
-         Next_Non_Pragma (Variant);
-      end loop;
-
-      return Align;
+            Next_Non_Pragma (Variant);
+         end loop;
+      end return;
    end Variant_Alignment;
 
    ------------------------
@@ -734,8 +733,8 @@ package body GNATLLVM.Records.Create is
                   This_Expr := Uint_0;
                end if;
 
-               Expr := (if    Expr = Uint_0 then This_Expr
-                        elsif This_Expr = Uint_0 then Expr
+               Expr := (if    Expr = 0 then This_Expr
+                        elsif This_Expr = 0 then Expr
                         else  Create_Node (Truth_Or_Expr, Expr, This_Expr));
                Next (Choice);
             end loop;

@@ -333,6 +333,17 @@ package GNATLLVM.GLValue is
      with Predicate => GL_Value_Is_Valid (GL_Value);
    --  Subtype used by everybody except validation function
 
+   function "<" (LHS : GL_Value; RHS : Int) return Boolean
+     with Pre => Present (LHS);
+   function "<=" (LHS : GL_Value; RHS : Int) return Boolean
+     with Pre => Present (LHS);
+   function ">" (LHS : GL_Value; RHS : Int) return Boolean
+     with Pre => Present (LHS);
+   function ">=" (LHS : GL_Value; RHS : Int) return Boolean
+     with Pre => Present (LHS);
+   function "=" (LHS : GL_Value; RHS : Int) return Boolean
+     with Pre => Present (LHS);
+
    type GL_Value_Array is array (Nat range <>) of GL_Value;
    type Access_GL_Value_Array is access all GL_Value_Array;
    procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
@@ -1389,8 +1400,12 @@ package GNATLLVM.GLValue is
      (S_Div (LHS, RHS));
    function "<" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp (Int_SLT, LHS, RHS) = Const_True);
+   function "<=" (LHS, RHS : GL_Value) return Boolean is
+     (I_Cmp (Int_SLE, LHS, RHS) = Const_True);
    function ">" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp (Int_SGT, LHS, RHS) = Const_True);
+   function ">=" (LHS, RHS : GL_Value) return Boolean is
+     (I_Cmp (Int_SGE, LHS, RHS) = Const_True);
 
    function Build_Select
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")

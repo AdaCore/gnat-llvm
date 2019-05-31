@@ -1079,7 +1079,7 @@ package body GNATLLVM.Records is
       return not Is_Nonnative_Type (GT)
         and then Is_Static_SO_Ref (RM_Size (GT))
         and then Is_Static_SO_Ref (Esize (GT))
-        and then RM_Size (GT) < Esize (GT) and then RM_Size (GT) <= Uint_64;
+        and then RM_Size (GT) < Esize (GT) and then RM_Size (GT) <= 64;
 
    end Is_Packable_Field;
 

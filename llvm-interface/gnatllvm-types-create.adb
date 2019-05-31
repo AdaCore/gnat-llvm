@@ -15,10 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
-with Get_Targ; use Get_Targ;
-with Sem_Aux;  use Sem_Aux;
-with Sinfo;    use Sinfo;
+with Errout;     use Errout;
+with Get_Targ;   use Get_Targ;
+with Sem_Aux;    use Sem_Aux;
+with Sinfo;      use Sinfo;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -124,9 +125,9 @@ package body GNATLLVM.Types.Create is
       --  So we only use i1 for the internal boolean object (e.g., the result
       --  of a comparison) and for a 1-bit modular type.
 
-      if Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= Uint_0 then
+      if Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= 0 then
          Size := RM_Size (TE);
-      elsif Esize (TE) = Uint_0 then
+      elsif Esize (TE) = 0 then
          Size := Uint_Bits_Per_Unit;
       end if;
 
@@ -372,18 +373,15 @@ package body GNATLLVM.Types.Create is
          end if;
 
          declare
-            Size_TE : constant Entity_Id :=
+            Size_TE    : constant Entity_Id :=
               (if   Is_Packed_Array_Impl_Type (TE)
                then Original_Array_Type (TE) else TE);
-            Size    : constant Uint      :=
-              (if    Is_Modular_Integer_Type (Size_TE)
-               then  RM_Size (Size_TE)
-               elsif Is_Discrete_Or_Fixed_Point_Type (Size_TE)
-               then  Esize (Size_TE)
-               elsif Has_Size_Clause (Size_TE)
-                     or not Unknown_RM_Size (Size_TE)
-               then  RM_Size (Size_TE) else No_Uint);
-            Size_GT : constant GL_Value  :=
+            Value_Size : constant Uint      :=
+              (if   Unknown_RM_Size (Size_TE) or else RM_Size (Size_TE) = 0
+               then No_Uint else RM_Size (Size_TE));
+            Size       : constant Uint      :=
+              (if Unknown_Esize (Size_TE) then No_Uint else Esize (Size_TE));
+            Size_GT    : constant GL_Value  :=
               (if   Is_Dynamic_Size (GT) then No_GL_Value
                else Get_Type_Size (GT));
 
@@ -393,25 +391,31 @@ package body GNATLLVM.Types.Create is
 
             if Is_Atomic_Or_VFA (TE) then
                if Size /= No_Uint
-                 and then (Size = Uint_2 or else Size = Uint_4
-                             or else Size = Uint_8)
+                 and then (Size = 16 or else Size = 32 or else Size = 64)
                then
                   Align := Size / Uint_Bits_Per_Unit;
                elsif Present (Size_GT)
-                 and then (Size_GT = Size_Const_Int (2)
-                             or else Size_GT = Size_Const_Int (4)
-                             or else Size_GT = Size_Const_Int (8))
+                 and then (Size_GT = 2 or else Size_GT = 4 or else Size_GT = 8)
                then
-                  Align :=
-                    UI_From_Int (Int (Get_Const_Int_Value_ULL (Size_GT)));
+                  Align := UI_From_ULL (Get_Const_Int_Value_ULL (Size_GT));
                end if;
             end if;
 
-            --  Now make the GT that we need for this type
+            --  Now make the GT that we need for this type.  We do this in
+            --  two steps so that we can give the proper diagnostics.
+            --  First, for composite types and if specified, we use the
+            --  RM_Size with no alignment.  Then we make the final GL_Type
+            --  from the alignment and specified Esize, if any.
 
-            GT := Make_GT_Alternative
-              (GT, TE,
-               Size          => Size,
+            if Is_Composite_Type (GT) then
+               GT := Make_GT_Alternative (GT, TE,
+                                          Size     => Value_Size,
+                                          For_Type => True);
+            end if;
+
+            GT := Make_GT_Alternative (GT, TE,
+               Size          => (if   Is_Modular_Integer_Type (Size_TE)
+                                 then Value_Size else Size),
                Align         => Align,
                For_Type      => True,
                For_Component => False,
@@ -506,7 +510,7 @@ package body GNATLLVM.Types.Create is
             Error_Msg_NE_Num ("largest supported alignment for& is ^",
                               N, E, Max_Align);
          end if;
-      elsif Align /= Uint_0 and then Align /= No_Uint then
+      elsif Align /= 0 and then Align /= No_Uint then
          New_Align := UI_To_Int (Align);
       end if;
 

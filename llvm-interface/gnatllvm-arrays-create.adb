@@ -210,7 +210,7 @@ package body GNATLLVM.Arrays.Create is
       Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
-            Idx_Range : constant Node_Id      := Get_Dim_Range (Index);
+            Idx_Range : constant Node_Id := Get_Dim_Range (Index);
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 

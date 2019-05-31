@@ -153,6 +153,21 @@ package body GNATLLVM.GLValue is
       end case;
    end GL_Value_Is_Valid_Int;
 
+   ---------------
+   -- Operators --
+   ---------------
+
+   function "<" (LHS : GL_Value; RHS : Int) return Boolean is
+     (LHS < Const_Int (LHS, UI_From_Int (RHS)));
+   function "<=" (LHS : GL_Value; RHS : Int) return Boolean is
+     (LHS <= Const_Int (LHS, UI_From_Int (RHS)));
+   function ">" (LHS : GL_Value; RHS : Int) return Boolean is
+     (LHS > Const_Int (LHS, UI_From_Int (RHS)));
+   function ">=" (LHS : GL_Value; RHS : Int) return Boolean is
+     (LHS >= Const_Int (LHS, UI_From_Int (RHS)));
+   function "=" (LHS : GL_Value; RHS : Int) return Boolean is
+     (LHS = Const_Int (LHS, UI_From_Int (RHS)));
+
    -----------
    -- Etype --
    -----------

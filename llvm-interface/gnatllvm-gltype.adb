@@ -432,7 +432,7 @@ package body GNATLLVM.GLType is
         (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
       Prim_Align  : constant GL_Value     := Get_Type_Alignment (Prim_GT);
       Int_Sz      : constant Uint         :=
-        (if Size = Uint_0 then Uint_1 else Size);
+        (if Size = 0 then Uint_1 else Size);
       Size_Bytes  : constant Uint         :=
         (if   Size = No_Uint or else Is_Dynamic_SO_Ref (Size) then No_Uint
          else (Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit);
@@ -466,11 +466,10 @@ package body GNATLLVM.GLType is
          Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
       end if;
 
-      --  If this isn't for a type, we haven't specified a size, but the
-      --  input size isn't a multiple of the input alignment, we have to
-      --  pad it.
+      --  If this is for a type, we haven't specified a size, we have to
+      --  align the input size.
 
-      if not For_Type and then Size = No_Uint and then Present (Size_V)
+      if For_Type and then Size = No_Uint and then Present (Size_V)
         and then Present (Align_V)
         and then U_Rem (Size_V, Align_V) /= Size_Const_Int (0)
       then

@@ -246,7 +246,7 @@ package body GNATLLVM.Types is
    begin
       --  A type isn't loadable if it's too large
 
-      if Get_Type_Size (T) / Get_Type_Alignment (T) > Max_Load_Size then
+      if ULL'(Get_Type_Size (T)) / Get_Type_Alignment (T) > Max_Load_Size then
          return False;
 
       --  If a structure, it isn't loadable if any component isn't
@@ -1033,7 +1033,10 @@ package body GNATLLVM.Types is
          Max_Size   : Boolean  := False;
          No_Padding : Boolean  := False) return Result
       is
-         Size_In_GT   : constant GL_Value := GT_Size (GT);
+         Size_GT      : constant GL_Type  :=
+           (if   No_Padding and then Has_Padding (GT)
+            then Primitive_GL_Type (GT) else GT);
+         Size_In_GT   : constant GL_Value := GT_Size (Size_GT);
          Use_Max_Size : constant Boolean  := Max_Size or else Is_Max_Size (GT);
          Unpad_Record : constant Boolean  :=
            No_Padding and then Is_Record_Type (GT);

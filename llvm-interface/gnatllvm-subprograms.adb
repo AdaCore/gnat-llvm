@@ -1757,10 +1757,10 @@ package body GNATLLVM.Subprograms is
             return Result;
 
          when Atomic_RMW_Bin_Op_Add =>
-            return Add (Result, Value);
+            return Result + Value;
 
          when Atomic_RMW_Bin_Op_Sub =>
-            return Sub (Result, Value);
+            return Result - Value;
 
          when Atomic_RMW_Bin_Op_And =>
             return Build_And (Result, Value);

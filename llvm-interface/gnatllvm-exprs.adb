@@ -296,7 +296,7 @@ package body GNATLLVM.Exprs is
 
       if not Unsign and Nkind (N) = N_Op_Mod then
          declare
-            Add_Back      : constant GL_Value := Add (Result, RVal);
+            Add_Back      : constant GL_Value := Result + RVal;
             RHS_Neg       : constant GL_Value :=
               I_Cmp (Int_SLT, RVal, Const_Null (RVal), "RHS-neg");
             Result_Nonpos : constant GL_Value :=
@@ -325,8 +325,8 @@ package body GNATLLVM.Exprs is
 
             One         : constant GL_Value := Const_Int (RVal, Uint_1);
             Remainder   : constant GL_Value := U_Rem (LVal, RVal);
-            Half_RHS    : constant GL_Value := L_Shr (Sub (RVal, One), One);
-            Plus_One    : constant GL_Value := Add (Result, One);
+            Half_RHS    : constant GL_Value := L_Shr (RVal - One, One);
+            Plus_One    : constant GL_Value := Result + One;
             Need_Adjust : constant GL_Value :=
               I_Cmp (Int_UGT, Remainder, Half_RHS);
 
@@ -362,8 +362,8 @@ package body GNATLLVM.Exprs is
               I_Cmp (Int_UGE, Shl (Abs_Rem, One), Abs_RHS);
             Signs_Same    : constant GL_Value :=
               Build_Select (RHS_Neg, Rem_Neg, Rem_Nonneg, "signsame");
-            Plus_One     : constant GL_Value  := Add (Result, One);
-            Minus_One    : constant GL_Value  := Sub (Result, One);
+            Plus_One     : constant GL_Value  := Result + One;
+            Minus_One    : constant GL_Value  := Result - One;
             Which_Adjust : constant GL_Value  :=
               Build_Select (Signs_Same, Plus_One, Minus_One);
 
@@ -602,7 +602,7 @@ package body GNATLLVM.Exprs is
             --  with too many bits, so we must handle "multiple turns".
 
             Reduced_N   : constant GL_Value := U_Rem (N, LHS_Bits);
-            Lower_Shift : constant GL_Value := Sub (LHS_Bits, Reduced_N);
+            Lower_Shift : constant GL_Value := LHS_Bits - Reduced_N;
             Reduced_Low : constant GL_Value := U_Rem (Lower_Shift, LHS_Bits);
             Upper       : constant GL_Value :=
               (if   To_Left then Shl   (LHS, Reduced_N,   "rotate-upper")
@@ -984,7 +984,7 @@ package body GNATLLVM.Exprs is
                V := Get_Type_Size (P_GT, V, Max_Size);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
                   if Is_Unconstrained_Array (P_GT) then
-                     V := Add (V, Get_Bound_Size (P_GT));
+                     V := V + Get_Bound_Size (P_GT);
                   end if;
 
                   return Convert (V, GT);

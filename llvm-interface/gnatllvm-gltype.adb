@@ -142,8 +142,6 @@ package body GNATLLVM.GLType is
       Table_Increment      => 200,
       Table_Name           => "GL_Type_Table");
 
-   function  Next (GT : GL_Type) return GL_Type
-     with Pre => Present (GT);
    procedure Next (GT : in out GL_Type)
      with Pre => Present (GT);
 
@@ -252,13 +250,6 @@ package body GNATLLVM.GLType is
    -- Next --
    ----------
 
-   function  Next (GT : GL_Type) return GL_Type is
-     (GL_Type_Table.Table (GT).Next);
-
-   ----------
-   -- Next --
-   ----------
-
    procedure Next (GT : in out GL_Type) is
    begin
       GT := GL_Type_Table.Table (GT).Next;
@@ -290,17 +281,14 @@ package body GNATLLVM.GLType is
    ---------------------------
 
    function Get_Or_Create_GL_Type
-     (TE : Entity_Id; Create : Boolean) return GL_Type
-   is
-      GT : GL_Type := Get_GL_Type (TE);
-
+     (TE : Entity_Id; Create : Boolean) return GL_Type is
    begin
-      if No (GT) and then Create then
-         Discard (Type_Of (TE));
-         GT := Get_GL_Type (TE);
-      end if;
-
-      return GT;
+      return GT : GL_Type := Get_GL_Type (TE) do
+         if No (GT) and then Create then
+            Discard (Type_Of (TE));
+            GT := Get_GL_Type (TE);
+         end if;
+      end return;
    end Get_Or_Create_GL_Type;
 
    ------------
@@ -340,7 +328,7 @@ package body GNATLLVM.GLType is
       Max_Size      : Boolean := False;
       Is_Biased     : Boolean := False) return GL_Type
    is
-      Out_GT    : constant GL_Type  :=
+      Out_GT    : constant GL_Type   :=
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
                                       Is_Biased);
       Err_Ident : constant Entity_Id :=
@@ -365,20 +353,18 @@ package body GNATLLVM.GLType is
             In_Sz_Align  : constant GL_Value :=
               Align_To (GT_Size (GT), 1, Align_V) * Byte_Size;
             Pad_Sz       : constant GL_Value :=
-              (if   Present (Out_Sz) and then Present (In_Sz)
-               then Sub (Out_Sz, In_Sz) else No_GL_Value);
+              (if Present (In_Sz) then Out_Sz - In_Sz else No_GL_Value);
             Pad_Sz_Align : constant GL_Value :=
-              (if   Present (Out_Sz) and then Present (In_Sz_Align)
-               then Sub (Out_Sz, In_Sz_Align) else No_GL_Value);
-            Err_Node  : Entity_Id         := Empty;
+              (if   Present (In_Sz_Align) then Out_Sz - In_Sz_Align
+               else No_GL_Value);
+            Err_Node  : Entity_Id            := Empty;
 
          begin
             --  If we'd only give a message due to alignment of the type,
             --  skip.  But take the alignment padding into account when saying
             --  by how much we pad.
 
-            if Present (Pad_Sz_Align) and then Pad_Sz_Align > Size_Const_Null
-            then
+            if Present (Pad_Sz_Align) and then Pad_Sz_Align > 0 then
                if Ekind_In (Err_Ident, E_Component, E_Discriminant)
                  and then Present (Component_Clause (Err_Ident))
                then
@@ -391,7 +377,7 @@ package body GNATLLVM.GLType is
                   Err_Node := Expression (Object_Size_Clause (Err_Ident));
                end if;
 
-               Error_Msg_Uint_1 := UI_From_LLI (Get_Const_Int_Value (Pad_Sz));
+               Error_Msg_Uint_1 := UI_From_GL_Value (Pad_Sz);
                if For_Component then
                   Error_Msg_NE ("component of& padded by ^ bits?",
                                 Err_Ident, Err_Ident);
@@ -470,8 +456,7 @@ package body GNATLLVM.GLType is
       --  align the input size.
 
       if For_Type and then Size = No_Uint and then Present (Size_V)
-        and then Present (Align_V)
-        and then U_Rem (Size_V, Align_V) /= Size_Const_Int (0)
+        and then Present (Align_V) and then U_Rem (Size_V, Align_V) /= 0
       then
          Size_V := Align_To (Size_V, 1, Get_Const_Int_Value_ULL (Align_V));
       end if;
@@ -525,8 +510,8 @@ package body GNATLLVM.GLType is
       --  size, alignment, or both differ from that of the primitive type.
 
       declare
-         Ret_GT  : constant GL_Type := New_GT (TE);
-         GTI     : GL_Type_Info renames GL_Type_Table.Table (Ret_GT);
+         Ret_GT : constant GL_Type := New_GT (TE);
+         GTI    : GL_Type_Info renames GL_Type_Table.Table (Ret_GT);
 
       begin
          --  Record the basic parameters of what we're making
@@ -570,7 +555,7 @@ package body GNATLLVM.GLType is
                                   and then Prim_Align /= Align_V))
          then
             declare
-               Pad_Size  : constant GL_Value := Sub (Size_V, Prim_Size);
+               Pad_Size  : constant GL_Value := Size_V - Prim_Size;
                Pad_Count : constant LLI      := Get_Const_Int_Value (Pad_Size);
                Arr_T     : constant Type_T   :=
                  Array_Type (Int_Ty (Get_Bits_Per_Unit), unsigned (Pad_Count));
@@ -718,15 +703,13 @@ package body GNATLLVM.GLType is
    -------------------
 
    function Dummy_GL_Type (TE : Entity_Id) return GL_Type is
-      GT : GL_Type := Get_Or_Create_GL_Type (TE, False);
-
    begin
-      while Present (GT) loop
-         exit when GL_Type_Table.Table (GT).Kind = Dummy;
-         Next (GT);
-      end loop;
-
-      return GT;
+      return GT : GL_Type := Get_Or_Create_GL_Type (TE, False) do
+         while Present (GT) loop
+            exit when GL_Type_Table.Table (GT).Kind = Dummy;
+            Next (GT);
+         end loop;
+      end return;
    end Dummy_GL_Type;
 
    ---------------------
@@ -734,30 +717,28 @@ package body GNATLLVM.GLType is
    ---------------------
 
    function Default_GL_Type
-     (TE : Entity_Id; Create : Boolean := True) return GL_Type
-   is
-      GT : GL_Type := Get_Or_Create_GL_Type (TE, Create);
-
+     (TE : Entity_Id; Create : Boolean := True) return GL_Type is
    begin
-      while Present (GT) loop
-         exit when GL_Type_Table.Table (GT).Default;
-         Next (GT);
-      end loop;
-
-      --  If what we got was a dummy type, try again to make a type.  Note that
-      --  we may not have succeded, so we may get the dummy type back.
-
-      if Create and then Present (GT) and then Is_Dummy_Type (GT) then
-         Discard (Type_Of (TE));
-         GT := Get_GL_Type (TE);
-
+      return GT : GL_Type := Get_Or_Create_GL_Type (TE, Create) do
          while Present (GT) loop
             exit when GL_Type_Table.Table (GT).Default;
             Next (GT);
          end loop;
-      end if;
 
-      return GT;
+         --  If what we got was a dummy type, try again to make a type.
+         --  Note that we may not have succeded, so we may get the dummy
+         --  type back.
+
+         if Create and then Present (GT) and then Is_Dummy_Type (GT) then
+            Discard (Type_Of (TE));
+            GT := Get_GL_Type (TE);
+
+            while Present (GT) loop
+               exit when GL_Type_Table.Table (GT).Default;
+               Next (GT);
+            end loop;
+         end if;
+      end return;
    end Default_GL_Type;
 
    ------------------
@@ -797,7 +778,6 @@ package body GNATLLVM.GLType is
 
       if Type_Of (V) = Type_Of (GT) then
          return G_Is (V, GT);
-
       elsif Is_Trunc then
          Subp := Trunc'Access;
       else
@@ -849,7 +829,7 @@ package body GNATLLVM.GLType is
       --  the underlying type, then add the bias.
 
       elsif In_GTI.Kind = Biased then
-         return Add (Convert_Int (Get (Result, Data), Out_GT), In_GTI.Bias);
+         return Convert_Int (Get (Result, Data), Out_GT) + In_GTI.Bias;
 
       --  For Dummy, this must be an access type, so just convert to the
       --  proper pointer.
@@ -921,7 +901,7 @@ package body GNATLLVM.GLType is
       --  the bias, then convert to the underlying type.
 
       elsif GTI.Kind = Biased then
-         return Trunc (Sub (Get (Result, Data), GTI.Bias), GT);
+         return Trunc (Get (Result, Data) - GTI.Bias, GT);
 
       --  For Dummy, this must be an access type, so just convert to the
       --  proper pointer.

@@ -34,7 +34,8 @@ package body GNATLLVM.Conditionals is
    function Build_Short_Circuit_Op
      (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
    is
-      And_Op               : constant Boolean := Op in N_And_Then | N_Op_And;
+      And_Op               : constant Boolean       :=
+        Op in N_And_Then | N_Op_And;
       --  Whether this is an AND or OR operation
 
       LHS, RHS             : GL_Value;
@@ -63,7 +64,7 @@ package body GNATLLVM.Conditionals is
 
       Build_Cond_Br (I_Cmp (Int_NE, LHS, Const_Null (LHS)),
                      (if And_Op then Block_Right_Expr else Block_Exit),
-                     (if And_Op then Block_Exit else Block_Right_Expr));
+                     (if And_Op then Block_Exit       else Block_Right_Expr));
 
       --  Emit code for the evaluation of the right part expression
 
@@ -100,8 +101,7 @@ package body GNATLLVM.Conditionals is
       if Is_Access_Subprogram_Type (GT)
         and then not Has_Foreign_Convention (GT)
       then
-         return I_Cmp
-           (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
+         return I_Cmp (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
 
       elsif Is_Elementary_Type (GT) then
          return Build_Elementary_Comparison
@@ -342,8 +342,8 @@ package body GNATLLVM.Conditionals is
       Orig_LHS, Orig_RHS : GL_Value) return GL_Value
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
-      LHS          : GL_Value := Orig_LHS;
-      RHS          : GL_Value := Orig_RHS;
+      LHS          : GL_Value              := Orig_LHS;
+      RHS          : GL_Value              := Orig_RHS;
 
    begin
       --  If a scalar type (meaning both must be), convert each operand to
@@ -360,7 +360,6 @@ package body GNATLLVM.Conditionals is
       --  type at that point.
 
       if Is_Access_Type (LHS) then
-
          LHS := Get (From_Access (LHS), Reference_For_Integer);
          RHS := Get (From_Access (RHS), Reference_For_Integer);
 
@@ -375,9 +374,7 @@ package body GNATLLVM.Conditionals is
 
       elsif Is_Floating_Point_Type (LHS) then
          return F_Cmp (Operation.Real, LHS, RHS);
-
       else
-
          --  The only case left is integer or normal access type.
 
          pragma Assert (Is_Discrete_Or_Fixed_Point_Type (LHS)
@@ -396,7 +393,7 @@ package body GNATLLVM.Conditionals is
          --  signedness from the original type, not the base type.
 
          return I_Cmp
-           ((if Is_Unsigned_Type (Orig_LHS) or else Is_Access_Type (LHS)
+           ((if   Is_Unsigned_Type (Orig_LHS) or else Is_Access_Type (LHS)
              then Operation.Unsigned else Operation.Signed),
             LHS, RHS);
 
@@ -501,10 +498,10 @@ package body GNATLLVM.Conditionals is
 
                First_Choice := First (Discrete_Choices (Alt));
                Num_Choices  := Num_Choices +
-                 (if Nkind (First_Choice) = N_Others_Choice
+                 (if   Nkind (First_Choice) = N_Others_Choice
                   then List_Length (Others_Discrete_Choices (First_Choice))
                   else List_Length (Discrete_Choices (Alt)));
-                  Next_Non_Pragma (Alt);
+               Next_Non_Pragma (Alt);
             end loop;
          end return;
 
@@ -562,7 +559,7 @@ package body GNATLLVM.Conditionals is
          Worst_Cost := 0;
 
          for J in Alts'Range loop
-            Our_Cost := (if Is_Switch then Alts (J).Switch_Cost
+            Our_Cost := (if   Is_Switch then Alts (J).Switch_Cost
                          else Alts (J).If_Cost);
 
             if Our_Cost > Worst_Cost then
@@ -583,9 +580,9 @@ package body GNATLLVM.Conditionals is
       Alt := First_Non_Pragma (In_Alts);
       while Present (Alt) loop
          First_Choice := Current_Choice;
-         Choice := First (Discrete_Choices (Alt));
+         Choice       := First (Discrete_Choices (Alt));
          if Nkind (Choice) = N_Others_Choice then
-            Choice := First (Others_Discrete_Choices (Choice));
+            Choice    := First (Others_Discrete_Choices (Choice));
          end if;
 
          while Present (Choice) loop
@@ -597,8 +594,8 @@ package body GNATLLVM.Conditionals is
             --  switch at all.
 
             If_Cost := (if Low > High then 0 elsif Low = High then 1 else 2);
-            Switch_Cost := (if not UI_Is_In_Int_Range (Low)
-                              or else not UI_Is_In_Int_Range (High)
+            Switch_Cost := (if    not UI_Is_In_Int_Range (Low)
+                                  or else not UI_Is_In_Int_Range (High)
                             then  Max_Cost
                             elsif If_Cost <= 1 then If_Cost
                             else  Range_Length (Low, High, Max_Cost));
@@ -723,10 +720,17 @@ package body GNATLLVM.Conditionals is
       --  Record information about each part of an "if" statement
 
       type If_Ent is record
-         Cond     : Node_Id;         --  Expression to test.
-         Stmts    : List_Id;         --  Statements to emit if true.
-         BB_True  : Basic_Block_T;   --  Basic block to branch for true.
-         BB_False : Basic_Block_T;   --  Basic block to branch for false.
+         Cond     : Node_Id;
+         --  Expression to test
+
+         Stmts    : List_Id;
+         --  Statements to emit if true
+
+         BB_True  : Basic_Block_T;
+         --  Basic block to branch for true
+
+         BB_False : Basic_Block_T;
+         --  Basic block to branch for false
       end record;
 
       If_Parts_Pos : Nat := 1;
@@ -746,11 +750,11 @@ package body GNATLLVM.Conditionals is
       if Present (Elsif_Parts (N)) then
          Elsif_Part := First (Elsif_Parts (N));
          while Present (Elsif_Part) loop
-            If_Parts (If_Parts_Pos)
-              := (Cond     => Condition (Elsif_Part),
-                  Stmts    => Then_Statements (Elsif_Part),
-                  BB_True  => Create_Basic_Block,
-                  BB_False => Create_Basic_Block);
+            If_Parts (If_Parts_Pos) :=
+              (Cond     => Condition (Elsif_Part),
+               Stmts    => Then_Statements (Elsif_Part),
+               BB_True  => Create_Basic_Block,
+               BB_False => Create_Basic_Block);
             If_Parts_Pos := If_Parts_Pos + 1;
             Next (Elsif_Part);
          end loop;
@@ -760,7 +764,7 @@ package body GNATLLVM.Conditionals is
       --  an "else" clause, it's a new basic block and the end; otherwise,
       --  it's the last False block.
 
-      BB_End := (if Present (Else_Statements (N)) then Create_Basic_Block
+      BB_End := (if   Present (Else_Statements (N)) then Create_Basic_Block
                  else If_Parts (If_Parts_Pos - 1).BB_False);
 
       --  Now process each entry that we made: test the condition and branch;
@@ -880,7 +884,7 @@ package body GNATLLVM.Conditionals is
                if Low /= No_Uint and then High /= No_Uint then
                   Build_If_Range
                     (Emit_Expression (Left_Opnd (N)), Low, High,
-                     (if Nkind (N) = N_In then BB_True else BB_False),
+                     (if Nkind (N) = N_In then BB_True  else BB_False),
                      (if Nkind (N) = N_In then BB_False else BB_True));
                   return;
                end if;
@@ -993,18 +997,18 @@ package body GNATLLVM.Conditionals is
 
       if Elementary then
          Position_Builder_At_End (Then_BB);
-         Then_Value := Get (Then_Value, Data);
+         Then_Value    := Get (Then_Value, Data);
          if Type_Of (Then_Value) /= Type_Of (Else_Value) then
             Then_Value := Convert (Then_Value, GT);
          end if;
-         Then_BB    := Get_Insert_Block;
 
+         Then_BB       := Get_Insert_Block;
          Position_Builder_At_End (Else_BB);
-         Else_Value := Get (Else_Value, Data);
+         Else_Value    := Get (Else_Value, Data);
          if Type_Of (Then_Value) /= Type_Of (Else_Value) then
             Else_Value := Convert (Else_Value, GT);
          end if;
-         Else_BB    := Get_Insert_Block;
+         Else_BB       := Get_Insert_Block;
 
       --  In the composite case, we may have one side as a reference
       --  and the other as data.  We need to make them the same.  In
@@ -1018,18 +1022,18 @@ package body GNATLLVM.Conditionals is
          R := (if   Related_Type (Then_Value) = Related_Type (Else_Value)
                then Data else Any_Reference);
          Position_Builder_At_End (Then_BB);
-         Then_Value := Get (Then_Value, R);
+         Then_Value    := Get (Then_Value, R);
          if R = Any_Reference then
             Then_Value := Convert_Ref (Then_Value, GT);
          end if;
-         Then_BB    := Get_Insert_Block;
+         Then_BB       := Get_Insert_Block;
 
          Position_Builder_At_End (Else_BB);
-         Else_Value := Get (Else_Value, R);
+         Else_Value    := Get (Else_Value, R);
          if R = Any_Reference then
             Else_Value := Convert_Ref (Else_Value, GT);
          end if;
-         Else_BB    := Get_Insert_Block;
+         Else_BB       := Get_Insert_Block;
       end if;
 
       --  Both sides then branch to the Phi block and we emit the Phi,

@@ -89,7 +89,7 @@ package body GNATLLVM.Utils is
             if Is_Type (Entity (N)) then
                Decode_Range (Scalar_Range (Full_Etype (N)), Low, High);
             else
-               Low := Get_Uint_Value (N);
+               Low  := Get_Uint_Value (N);
                High := Low;
             end if;
 
@@ -97,16 +97,16 @@ package body GNATLLVM.Utils is
             Decode_Range (Range_Expression (Constraint (N)), Low, High);
 
          when N_Range | N_Signed_Integer_Type_Definition =>
-            Low := Get_Uint_Value (Low_Bound (N));
+            Low  := Get_Uint_Value (Low_Bound (N));
             High := Get_Uint_Value (High_Bound (N));
 
          when N_Character_Literal | N_Integer_Literal =>
-            Low := Get_Uint_Value (N);
+            Low  := Get_Uint_Value (N);
             High := Low;
 
          when others =>
             Error_Msg_N ("unknown range operand", N);
-            Low := No_Uint;
+            Low  := No_Uint;
             High := No_Uint;
       end case;
    end Decode_Range;
@@ -151,7 +151,7 @@ package body GNATLLVM.Utils is
             --  literals in a user-defined character type.
 
             return
-              (if Present (Entity (N)) then Enumeration_Rep (Entity (N))
+              (if   Present (Entity (N)) then Enumeration_Rep (Entity (N))
                else Char_Literal_Value (N));
 
          when N_Integer_Literal =>
@@ -353,72 +353,6 @@ package body GNATLLVM.Utils is
       end case;
    end Is_Layout_Identical;
 
-   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
-
-   ---------------------
-   -- Dump_LLVM_Value --
-   ---------------------
-
-   procedure Dump_LLVM_Value (V : Value_T) is
-   begin
-      Dump_Value (V);
-      New_Line (Current_Error);
-   end Dump_LLVM_Value;
-
-   -------------------
-   -- Dump_GL_Value --
-   -------------------
-
-   procedure Dump_GL_Value (V : GL_Value) is
-   begin
-      if No (V) then
-         Write_Line ("None");
-         return;
-      end if;
-
-      Dump_LLVM_Value (V.Value);
-      Dump_LLVM_Type (Type_Of (V.Value));
-      if Is_Pristine (V) then
-         Write_Str ("Pristine ");
-      end if;
-      Write_Str (GL_Relationship'Image (V.Relationship) & "(");
-      Dump_GL_Type_Int (V.Typ, False);
-      Write_Str ("): ");
-      pg (Union_Id (Full_Etype (V.Typ)));
-   end Dump_GL_Value;
-
-   ------------------
-   -- Dump_GL_Type --
-   ------------------
-
-   procedure Dump_GL_Type (GT : GL_Type) is
-   begin
-      Dump_GL_Type_Int (GT, True);
-   end Dump_GL_Type;
-
-   ----------------------
-   -- Dump_LLVM_Module --
-   ----------------------
-
-   procedure Dump_LLVM_Module (M : Module_T) is
-   begin
-      Dump_Module (M);
-   end Dump_LLVM_Module;
-
-   --------------------
-   -- Dump_LLVM_Type --
-   --------------------
-
-   procedure Dump_LLVM_Type (T : Type_T) is
-      procedure Dump_LLVM_Type_C (T : Type_T)
-        with Import, Convention => C, External_Name => "Dump_LLVM_Type_C";
-
-   begin
-      Dump_LLVM_Type_C (T);
-   end Dump_LLVM_Type;
-
-   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
-
    ----------------------
    -- Are_In_Dead_Code --
    ----------------------
@@ -554,5 +488,71 @@ package body GNATLLVM.Utils is
       Error_Msg_Uint_1 := Num;
       Error_Msg_NE (Msg, N, E);
    end Error_Msg_NE_Num;
+
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
+   ---------------------
+   -- Dump_LLVM_Value --
+   ---------------------
+
+   procedure Dump_LLVM_Value (V : Value_T) is
+   begin
+      Dump_Value (V);
+      New_Line (Current_Error);
+   end Dump_LLVM_Value;
+
+   -------------------
+   -- Dump_GL_Value --
+   -------------------
+
+   procedure Dump_GL_Value (V : GL_Value) is
+   begin
+      if No (V) then
+         Write_Line ("None");
+         return;
+      end if;
+
+      Dump_LLVM_Value (V.Value);
+      Dump_LLVM_Type (Type_Of (V.Value));
+      if Is_Pristine (V) then
+         Write_Str ("Pristine ");
+      end if;
+      Write_Str (GL_Relationship'Image (V.Relationship) & "(");
+      Dump_GL_Type_Int (V.Typ, False);
+      Write_Str ("): ");
+      pg (Union_Id (Full_Etype (V.Typ)));
+   end Dump_GL_Value;
+
+   ------------------
+   -- Dump_GL_Type --
+   ------------------
+
+   procedure Dump_GL_Type (GT : GL_Type) is
+   begin
+      Dump_GL_Type_Int (GT, True);
+   end Dump_GL_Type;
+
+   ----------------------
+   -- Dump_LLVM_Module --
+   ----------------------
+
+   procedure Dump_LLVM_Module (M : Module_T) is
+   begin
+      Dump_Module (M);
+   end Dump_LLVM_Module;
+
+   --------------------
+   -- Dump_LLVM_Type --
+   --------------------
+
+   procedure Dump_LLVM_Type (T : Type_T) is
+      procedure Dump_LLVM_Type_C (T : Type_T)
+        with Import, Convention => C, External_Name => "Dump_LLVM_Type_C";
+
+   begin
+      Dump_LLVM_Type_C (T);
+   end Dump_LLVM_Type;
+
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

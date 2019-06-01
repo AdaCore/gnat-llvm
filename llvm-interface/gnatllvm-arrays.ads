@@ -87,9 +87,9 @@ package GNATLLVM.Arrays is
    --  Original_Array_Type of GT.
 
    function Get_Array_Length
-     (TE      : Entity_Id;
-      Dim     : Nat;
-      V       : GL_Value;
+     (TE       : Entity_Id;
+      Dim      : Nat;
+      V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
      with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
                   and then (Present (V) or else Is_Constrained (TE)
@@ -116,8 +116,7 @@ package GNATLLVM.Arrays is
    --  all the indices and subtracted the lower bounds of each dimension.
    --  This list consists of the constant zero followed by the indices.
 
-   function Swap_Indices
-     (Idxs : Index_Array; V : GL_Value) return Index_Array
+   function Swap_Indices (Idxs : Index_Array; V : GL_Value) return Index_Array
      with Pre  => Is_Array_Type (Related_Type (V)),
           Post => Swap_Indices'Result'Length = Idxs'Length;
    --  Given a list of indices, swap them if V is a Fortran array
@@ -226,8 +225,7 @@ package GNATLLVM.Arrays is
    --  Dest is an unconstrained array, store bounds into Dest, taking them
    --  from Src_GT and Src, if the latter is Present.
 
-   function Get_Array_Bounds
-     (GT, V_GT : GL_Type; V : GL_Value) return GL_Value
+   function Get_Array_Bounds (GT, V_GT : GL_Type; V : GL_Value) return GL_Value
      with Pre  => Present (GT) and then Present (V_GT),
           Post => Present (Get_Array_Bounds'Result);
    --  Get the bounds of the array type V_GT using V if necessary.  GT

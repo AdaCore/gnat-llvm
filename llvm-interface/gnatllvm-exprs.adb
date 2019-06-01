@@ -274,8 +274,7 @@ package body GNATLLVM.Exprs is
          begin
             if Present (Label_Ent) then
                BB_Next := Create_Basic_Block;
-               Build_Cond_Br
-                 (Overflow, Get_Label_BB (Label_Ent), BB_Next);
+               Build_Cond_Br (Overflow, Get_Label_BB (Label_Ent), BB_Next);
                Position_Builder_At_End (BB_Next);
             else
                Emit_Raise_Call_If (Overflow, N);
@@ -403,8 +402,8 @@ package body GNATLLVM.Exprs is
                Compare   : constant GL_Value :=
                  Build_Elementary_Comparison (N_Op_Ge, Result, Zero);
                Neg_Expr  : constant GL_Value :=
-                 (if   Is_Floating_Point_Type (Result)
-                  then F_Neg (Result) else Neg (Result));
+                 (if   Is_Floating_Point_Type (Result) then F_Neg (Result)
+                  else Neg (Result));
 
             begin
                if Is_Unsigned_Type (Result) then
@@ -428,11 +427,11 @@ package body GNATLLVM.Exprs is
                  and then not Is_Unsigned_Type (BT)
                then
                   declare
-                     Func      : constant GL_Value := Build_Intrinsic
+                     Func      : constant GL_Value  := Build_Intrinsic
                        (Overflow, "llvm.ssub.with.overflow.i", BT);
-                     Fn_Ret    : constant GL_Value :=
+                     Fn_Ret    : constant GL_Value  :=
                        Call (Func, GT, (1 => Const_Null (BT), 2 => V));
-                     Overflow  : constant GL_Value :=
+                     Overflow  : constant GL_Value  :=
                        Extract_Value (Boolean_GL_Type, Fn_Ret, 1, "overflow");
                      Label_Ent : constant Entity_Id :=
                        Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
@@ -441,8 +440,8 @@ package body GNATLLVM.Exprs is
                   begin
                      if Present (Label_Ent) then
                         BB_Next := Create_Basic_Block;
-                        Build_Cond_Br
-                          (Overflow, Get_Label_BB (Label_Ent), BB_Next);
+                        Build_Cond_Br (Overflow, Get_Label_BB (Label_Ent),
+                                       BB_Next);
                         Position_Builder_At_End (BB_Next);
                      else
                         Emit_Raise_Call_If (Overflow, N);
@@ -606,12 +605,10 @@ package body GNATLLVM.Exprs is
             Lower_Shift : constant GL_Value := Sub (LHS_Bits, Reduced_N);
             Reduced_Low : constant GL_Value := U_Rem (Lower_Shift, LHS_Bits);
             Upper       : constant GL_Value :=
-              (if   To_Left
-               then Shl   (LHS, Reduced_N,   "rotate-upper")
+              (if   To_Left then Shl   (LHS, Reduced_N,   "rotate-upper")
                else L_Shr (LHS, Reduced_N,   "rotate-upper"));
             Lower       : constant GL_Value :=
-              (if   To_Left
-               then L_Shr (LHS, Reduced_Low, "rotate-lower")
+              (if   To_Left then L_Shr (LHS, Reduced_Low, "rotate-lower")
                else Shl   (LHS, Reduced_Low, "rotate-lower"));
 
          begin
@@ -622,9 +619,8 @@ package body GNATLLVM.Exprs is
          --  First, compute the value using the underlying LLVM instruction
 
          Result :=
-           (if    To_Left
-            then  Shl (LHS, N)
-            elsif Arithmetic then A_Shr (LHS, N) else L_Shr (LHS, N));
+           (if   To_Left then  Shl (LHS, N) elsif Arithmetic
+            then A_Shr (LHS, N) else L_Shr (LHS, N));
 
          --  If this is a packed array implementation type, we know the
          --  shift won't overflow, so we can just use the result.
@@ -998,8 +994,8 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Component_Size =>
             return Convert
-              (Mul (Get_Type_Size
-                      (Full_Component_GL_Type (P_GT), Max_Size => True),
+              (Mul (Get_Type_Size (Full_Component_GL_Type (P_GT),
+                                   Max_Size => True),
                     Byte_Size),
                GT);
 
@@ -1152,10 +1148,10 @@ package body GNATLLVM.Exprs is
 
          declare
             Func_Name : constant String   :=
-              (if Forwards_OK and then Backwards_OK
-               then "memcpy" else "memmove");
-            Size      : GL_Value          := Compute_Size
-              (Dest_GT, Related_Type (Src), Dest, Src);
+              (if Forwards_OK and then Backwards_OK then "memcpy"
+               else "memmove");
+            Size      : GL_Value          :=
+              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src);
 
          begin
             --  Get the proper relationship.  If we're copying both bounds
@@ -1248,7 +1244,7 @@ package body GNATLLVM.Exprs is
 
       while not System."=" (Clobber, System.Null_Address) loop
          Constraint_Length := Constraint_Length + Nat (Name_Len) + 4;
-         Clobber := Clobber_Get_Next;
+         Clobber           := Clobber_Get_Next;
       end loop;
 
       declare
@@ -1335,8 +1331,8 @@ package body GNATLLVM.Exprs is
          --  Finally, build the template
 
          for J in 1 .. Integer (String_Length (Template_Strval)) loop
-            Template (J) :=
-              Get_Character (Get_String_Char (Template_Strval, Int (J)));
+            Template (J) := Get_Character (Get_String_Char (Template_Strval,
+                                                            Int (J)));
          end loop;
 
          --  Create the inline asm

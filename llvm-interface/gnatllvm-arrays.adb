@@ -30,8 +30,7 @@ with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays is
 
-   function Type_For_Get_Bound
-     (GT : GL_Type; V : GL_Value) return GL_Type
+   function Type_For_Get_Bound (GT : GL_Type; V : GL_Value) return GL_Type
      with Pre  => Is_Array_Or_Packed_Array_Type (GT),
           Post => Is_Array_Or_Packed_Array_Type (Type_For_Get_Bound'Result);
    --  Get the best type to use to search for a bound of an arrray
@@ -42,8 +41,7 @@ package body GNATLLVM.Arrays is
    --  Compute the value of N viewing any discriminant encountered as
    --  being either their lowest or highest values, respectively
 
-   function Bound_Complexity
-     (B : One_Bound; Max_Size : Boolean) return Nat is
+   function Bound_Complexity (B : One_Bound; Max_Size : Boolean) return Nat is
       (if    B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
        elsif Max_Size then 1 else 2);
 
@@ -81,8 +79,8 @@ package body GNATLLVM.Arrays is
       with function Sz_Type_Size
         (GT          : GL_Type;
          V           : GL_Value := No_GL_Value;
-         Max_Size    : Boolean := False;
-         No_Paddding : Boolean := False) return Result;
+         Max_Size    : Boolean  := False;
+         No_Paddding : Boolean  := False) return Result;
       with function  Sz_I_Cmp
         (Op : Int_Predicate_T;
          LHS : Result;
@@ -115,8 +113,8 @@ package body GNATLLVM.Arrays is
         (V : Node_Id; LHS : Result := Empty_Result) return Result;
       with function  Sz_Emit_Convert
         (N : Node_Id; GT : GL_Type) return Result;
-      with function  Sz_Undef (GT : GL_Type) return Result;
-      with function  Sz_Is_Const (V : Result) return Boolean;
+      with function  Sz_Undef     (GT : GL_Type) return Result;
+      with function  Sz_Is_Const  (V : Result) return Boolean;
       with function  Sz_Const_Val (V : Result) return ULL;
    package Size is
 
@@ -174,9 +172,8 @@ package body GNATLLVM.Arrays is
       if No (V_GT) or else not Is_Array_Type (V_GT)
         or else (Ultimate_Base_Type (V_GT) /= Ultimate_Base_Type (GT))
         or else not Is_Unconstrained_Array (GT)
+        or else (not Is_Constrained (V_GT) and then Is_Constrained (GT))
       then
-         return GT;
-      elsif not Is_Constrained (V_GT) and then Is_Constrained (GT) then
          return GT;
       else
          return V_GT;
@@ -384,7 +381,7 @@ package body GNATLLVM.Arrays is
             if Max_Size and then Contains_Discriminant (Expr) then
                declare
                   Bound_GT    : constant GL_Type := Dim_Info.Bound_Sub_GT;
-                  Bound_Limit : constant Node_Id   :=
+                  Bound_Limit : constant Node_Id :=
                     (if   Is_Low then Type_Low_Bound (Bound_GT)
                      else Type_High_Bound (Bound_GT));
                   Bound_Val   : constant Result  :=
@@ -407,7 +404,7 @@ package body GNATLLVM.Arrays is
          elsif Max_Size and then Is_Unconstrained_Array (GT) then
             declare
                Bound_GT    : constant GL_Type := Dim_Info.Bound_Sub_GT;
-               Bound_Limit : constant Node_Id   :=
+               Bound_Limit : constant Node_Id :=
                  (if   Is_Low then Type_Low_Bound (Bound_GT)
                   else Type_High_Bound (Bound_GT));
 
@@ -442,7 +439,7 @@ package body GNATLLVM.Arrays is
          Max_Size : Boolean := False) return Result
       is
          Low_Bound  : constant Result :=
-           Get_Array_Bound (Default_GL_Type (TE), Dim, True, V, Max_Size);
+           Get_Array_Bound (Default_GL_Type (TE), Dim, True,  V, Max_Size);
          High_Bound : constant Result :=
            Get_Array_Bound (Default_GL_Type (TE), Dim, False, V, Max_Size);
 
@@ -649,7 +646,7 @@ package body GNATLLVM.Arrays is
    function Get_Array_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat
    is
-      Info_Idx    : constant Array_Info_Id := Get_Array_Info (TE);
+      Info_Idx : constant Array_Info_Id := Get_Array_Info (TE);
 
    begin
       return Complexity : Nat :=
@@ -657,8 +654,8 @@ package body GNATLLVM.Arrays is
       do
          for Dim in 0 .. Number_Dimensions (TE) - 1 loop
             declare
-               Dim_Info : constant Index_Bounds
-                 := Array_Info.Table (Info_Idx + Dim);
+               Dim_Info : constant Index_Bounds :=
+                 Array_Info.Table (Info_Idx + Dim);
             begin
                Complexity := (Complexity +
                                 Bound_Complexity (Dim_Info.Low, Max_Size) +
@@ -849,8 +846,8 @@ package body GNATLLVM.Arrays is
      (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
    is
       Prim_GT : constant GL_Type := Primitive_GL_Type (GT);
+      Idx     : Int              := 1;
       Vals    : GL_Value_Array (1 .. List_Length (Expressions (N)));
-      Idx     : Int := 1;
       Expr    : Node_Id;
 
    begin
@@ -874,17 +871,16 @@ package body GNATLLVM.Arrays is
    function Swap_Indices
      (Idxs : Index_Array; V : GL_Value) return Index_Array
    is
-      Result : Index_Array (Idxs'Range);
-
    begin
       if Convention (Related_Type (V)) /= Convention_Fortran then
          return Idxs;
       end if;
 
-      for J in Idxs'Range loop
-         Result (J) := Idxs (Idxs'Last + Idxs'First - J);
-      end loop;
-      return Result;
+      return Result : Index_Array (Idxs'Range) do
+         for J in Idxs'Range loop
+            Result (J) := Idxs (Idxs'Last + Idxs'First - J);
+         end loop;
+      end return;
    end Swap_Indices;
 
    --------------------------
@@ -1049,7 +1045,7 @@ package body GNATLLVM.Arrays is
    function Get_GEP_Safe_Type (V : GL_Value) return GL_Type is
       Int_Types : constant array (Nat range <>) of GL_Type :=
         (SSI_GL_Type, SI_GL_Type, Integer_GL_Type, LI_GL_Type, LLI_GL_Type);
-      Our_GT  : constant GL_Type := Related_Type (V);
+      Our_GT  : constant GL_Type                           := Related_Type (V);
 
    begin
       --  If we are of an unsigned type narrower than Size_Type, we must find
@@ -1210,17 +1206,17 @@ package body GNATLLVM.Arrays is
       end if;
 
       declare
-         Comp_GT   : constant GL_Type := Full_Component_GL_Type (Arr_GT);
-         Comp_Unc  : constant Boolean   := Is_Unconstrained_Record (Comp_GT);
-         Use_Comp  : constant Boolean   := not Is_Nonnative_Type (Comp_GT);
-         Unit_GT   : constant GL_Type   :=
+         Comp_GT   : constant GL_Type  := Full_Component_GL_Type (Arr_GT);
+         Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
+         Use_Comp  : constant Boolean  := not Is_Nonnative_Type (Comp_GT);
+         Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
-         Data      : constant GL_Value  :=
+         Data      : constant GL_Value :=
            Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
-         Unit_Mult : constant GL_Value  :=
+         Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
             else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));
-         Index         : constant GL_Value  :=
+         Index     : constant GL_Value :=
            To_Size_Type (Index_Shift) * Unit_Mult;
 
       begin

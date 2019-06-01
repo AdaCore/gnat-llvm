@@ -331,10 +331,9 @@ package body GNATLLVM.Records is
          end;
       end loop;
 
-      --  Otherwise, use a value that we pushed onto the LValue stacka
+      --  Otherwise, use a value that we pushed onto the LValue stack
 
-      return
-        Get (Build_Field_Load (Get_Matching_Value (Rec_Type), E), Data);
+      return Get (Build_Field_Load (Get_Matching_Value (Rec_Type), E), Data);
 
    end Use_Discriminant_For_Bound;
 
@@ -354,9 +353,8 @@ package body GNATLLVM.Records is
          Next_Component_Or_Discriminant (Ent);
       end loop;
 
-      --  If this didn't work and the Original_Record_Component isn't
-      --  the same record, try it and its type.  ??? The front end really
-      --  should do proper typing here; see c391001.
+      --  If this didn't work and the Original_Record_Component isn't the
+      --  same record, try it and its type.
 
       if No (Ent) and then Original_Record_Component (Field) /= Field then
          Ent := Original_Record_Component (Field);
@@ -604,9 +602,9 @@ package body GNATLLVM.Records is
       begin
          --  We need to compute the maximum size of each variant.  Most
          --  discriminant sizes are constant, so we use an algorithm
-         --  that'll work best in that situation.  So we record the largest
+         --  that'll work best in that situation. First record the largest
          --  constant size and make a chain of Max operations to compute
-         --  the largest non-constant.  Then we merge them.
+         --  the largest non-constant.
 
          for J in RI.Variants'Range loop
             Our_Size := Variant_Part_Size (RI, No_GL_Value, J, In_Size,
@@ -621,6 +619,8 @@ package body GNATLLVM.Records is
                Max_Var_Size := Sz_Max (Our_Size, Max_Var_Size);
             end if;
          end loop;
+
+         --  Now merge the variable and constant sizes
 
          if No (Max_Var_Size) then
             return Sz_Const (Max_Const_Size);
@@ -715,7 +715,7 @@ package body GNATLLVM.Records is
 
                Cur_Align := ULL'Min (This_Align,
                                      ULL'Max (Cur_Align, Must_Align));
-               Cur_Idx := RI.Next;
+               Cur_Idx   := RI.Next;
             end if;
          end loop;
 
@@ -848,7 +848,7 @@ package body GNATLLVM.Records is
          Overlap_Size : constant Result :=
            Get_Record_Size_So_Far (Empty, V, RI.Overlap_Variants (J),
                                    Empty_Record_Info_Id, False);
-         Our_Size      : Result         := In_Size;
+         Our_Size     : Result          := In_Size;
 
       begin
          --  If this variant isn't of zero size, align the input and add
@@ -1294,7 +1294,7 @@ package body GNATLLVM.Records is
       --  represents an expression to compute which value is correct
       --  for a specific record object.
 
-      Sizes       : BA_Data_Array (RI.Variants'Range) := (others => No_BA);
+      Sizes : BA_Data_Array (RI.Variants'Range) := (others => No_BA);
 
       ----------------------
       -- Get_Variant_Expr --
@@ -1353,7 +1353,7 @@ package body GNATLLVM.Records is
                   if Values (J) = This_Value then
                      pragma Assert (Present_Expr (Variant) /= Uint_1);
                      Values (J) := No_BA;
-                     This_Cond :=
+                     This_Cond  :=
                        Truth_Or (This_Cond,
                                  SO_Ref_To_BA (Present_Expr (Variant)));
                   end if;
@@ -1424,11 +1424,11 @@ package body GNATLLVM.Records is
          end if;
       end if;
 
-      FI       := Field_Info_Table.Table (F_Idx);
-      F_GT     := FI.GT;
-      Our_Idx  := FI.Rec_Info_Idx;
-      Offset   := Get_Record_Size_So_Far (Rec_Type, V, First_Idx, Our_Idx);
-      RI       := Record_Info_Table.Table (Our_Idx);
+      FI      := Field_Info_Table.Table (F_Idx);
+      F_GT    := FI.GT;
+      Our_Idx := FI.Rec_Info_Idx;
+      Offset  := Get_Record_Size_So_Far (Rec_Type, V, First_Idx, Our_Idx);
+      RI      := Record_Info_Table.Table (Our_Idx);
 
       --  If this is the "_parent" field, just do a conversion so we point
       --  to that type.  But add it to the LValue table in case there's
@@ -1693,6 +1693,7 @@ package body GNATLLVM.Records is
          declare
             type Opf is access function
               (V, Count : GL_Value; Name : String := "") return GL_Value;
+
             Loaded    : constant GL_Value := Get (Result, Unknown);
             T         : constant Type_T   := Type_Of (Loaded);
             Result_T  : constant Type_T   := Type_Of (F_GT);
@@ -1920,12 +1921,12 @@ package body GNATLLVM.Records is
 
          --  Now form the mask, remove the old value, and insert the new value
 
-         Count := G (Const_Int (Data_T, First_Bit, False), F_GT, Unknown);
-         Mask := G (Const_Int (Data_T, ULL'Last, True), F_GT, Unknown);
-         Mask := L_Shr (Mask, G (Const_Int (Data_T, Data_Width - Num_Bits,
-                                            False),
+         Count    := G (Const_Int (Data_T, First_Bit, False), F_GT, Unknown);
+         Mask     := G (Const_Int (Data_T, ULL'Last, True), F_GT, Unknown);
+         Mask     := L_Shr (Mask, G (Const_Int (Data_T, Data_Width - Num_Bits,
+                                             False),
                                  F_GT, Unknown));
-         Mask := Build_Not (Shl (Mask, Count));
+         Mask     := Build_Not (Shl (Mask, Count));
          Rec_Data := Build_Or (Build_And (Rec_Data, Mask),
                                Shl (RHS_Cvt, Count));
          --  If we're still working with data, then insert the new value into
@@ -2103,7 +2104,7 @@ package body GNATLLVM.Records is
          Field_Table.Table (J2) := Temp;
       end Swap_Fields;
 
-      Field          : Entity_Id := First_Component_Or_Discriminant (TE);
+      Field : Entity_Id := First_Component_Or_Discriminant (TE);
 
    begin
       while Present (Field) loop

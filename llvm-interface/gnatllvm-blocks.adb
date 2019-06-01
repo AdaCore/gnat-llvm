@@ -281,8 +281,7 @@ package body GNATLLVM.Blocks is
    --  a need for a landing pad.  Return the actual landing pad
    --  instruction, if any.
 
-   function Get_File_Name_Address
-     (Index : Source_File_Index) return GL_Value
+   function Get_File_Name_Address (Index : Source_File_Index) return GL_Value
      with Post => Type_Of (Get_File_Name_Address'Result) = LLVM_Size_Type;
    --  Return a GL_Value giving the address of a string corresponding to
    --  the name of the file with the specified file index.
@@ -301,7 +300,7 @@ package body GNATLLVM.Blocks is
    procedure Initialize_Predefines;
    --  Initialize the predefined functions and variables below
 
-   Predefines_Set   : Boolean  := False;
+   Predefines_Set   : Boolean        := False;
    --  True when all of the below have been initialized
 
    Personality_Fn   : GL_Value;
@@ -325,7 +324,7 @@ package body GNATLLVM.Blocks is
    --  Declaration for __gnat_set_exception_parameter.  This can't be
    --  initialized with the ones above since we need its type.
 
-   LCH_Fn            : GL_Value := No_GL_Value;
+   LCH_Fn            : GL_Value      := No_GL_Value;
    --  Last-chance handler.  We only initialize this if needed
 
    type File_GL_Value_Array is array (Source_File_Index range <>) of GL_Value;
@@ -664,9 +663,9 @@ package body GNATLLVM.Blocks is
             Str := Const_Array (Elements, Any_Array_GL_Type);
             V   := G_Ref (Add_Global (Module, Type_Of (Str), "fname"),
                           Any_Array_GL_Type);
-            Set_Initializer (V, Str);
-            Set_Linkage (V, Private_Linkage);
-            Set_Global_Constant (LLVM_Value (V), True);
+            Set_Initializer     (V, Str);
+            Set_Linkage         (V, Private_Linkage);
+            Set_Global_Constant (V);
             File_Name_Strings (Index) := Ptr_To_Int (V, Size_GL_Type);
          end;
       end if;
@@ -839,7 +838,7 @@ package body GNATLLVM.Blocks is
             if Present (Block_Stack.Table (J).EH_List)
               and then not Block_Stack.Table (J).Unprotected
             then
-               Handler := First_Non_Pragma (Block_Stack.Table (J).EH_List);
+               Handler   := First_Non_Pragma (Block_Stack.Table (J).EH_List);
                while Present (Handler) loop
                   Choice := First (Exception_Choices (Handler));
                   while Present (Choice) loop
@@ -875,7 +874,7 @@ package body GNATLLVM.Blocks is
 
          declare
             From_BBs  : Basic_Block_Array (1 .. N_Dispatch_Froms);
-            From_Vals : GL_Value_Array (1 .. N_Dispatch_Froms);
+            From_Vals : GL_Value_Array    (1 .. N_Dispatch_Froms);
             From_Idx  : Nat := 1;
 
          begin

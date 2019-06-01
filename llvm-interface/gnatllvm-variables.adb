@@ -1131,6 +1131,7 @@ package body GNATLLVM.Variables is
 
    function Hash_Value_T (Val : Value_T) return Hash_Type is
       function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
+
    begin
       return Hash_Type ((To_Integer (UC (Val)) / (Val'Size / 8))
                         rem Hash_Type'Modulus);
@@ -1500,7 +1501,6 @@ package body GNATLLVM.Variables is
       end Can_Initialize;
 
    begin
-
       --  Nothing to do if this is a debug renaming type
 
       if Full_Etype (GT) = Standard_Debug_Renaming_Type then
@@ -1559,7 +1559,6 @@ package body GNATLLVM.Variables is
       elsif Present (Freeze_Node (Def_Ident))
         and then not For_Freeze_Entity and then not In_Elab_Proc
       then
-
          --  If we have a Full_View, we may see that declaration
          --  before our freeze node, so set a dummy value for it so we
          --  can detect that.
@@ -1636,7 +1635,7 @@ package body GNATLLVM.Variables is
                end if;
 
                Set_Global_Constant (LLVM_Var);
-               Set_Initializer (LLVM_Var, Int_To_Ref (Addr, GT));
+               Set_Initializer     (LLVM_Var, Int_To_Ref (Addr, GT));
                Set_Init := True;
             elsif Library_Level then
                Add_To_Elab_Proc (N);
@@ -1924,9 +1923,9 @@ package body GNATLLVM.Variables is
 
          if Library_Level then
             LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident));
-            Set_Initializer (LLVM_Var, V);
+            Set_Initializer     (LLVM_Var, V);
             Set_Global_Constant (LLVM_Var, True);
-            Set_Linker_Section (LLVM_Var, Def_Ident);
+            Set_Linker_Section  (LLVM_Var, Def_Ident);
          end if;
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
          Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), GT));

@@ -198,14 +198,14 @@ package GNATLLVM.GLType is
      (Is_Padded_GL_Type (GT) or else Is_Byte_Array_GL_Type (GT))
      with Pre => Present (GT);
 
-   function Has_Padding (V : GL_Value)     return Boolean is
+   function Has_Padding (V : GL_Value)           return Boolean is
      (Has_Padding (Related_Type (V)))
      with Pre => Present (V);
 
    function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
      with Pre => Present (GT);
 
-   function To_Primitive   (V : GL_Value) return GL_Value
+   function To_Primitive   (V : GL_Value)        return GL_Value
      with Pre  => Present (V),
           Post => Is_Primitive_GL_Type (Related_Type (To_Primitive'Result));
    --  Convert V to its primitive GL_Type

@@ -82,7 +82,7 @@ package body GNATLLVM.Arrays.Create is
             if Is_A_Const_Int (V) then
                Val := Get_Const_Int_Value (V);
                if Val in LLI (Int'First) .. LLI (Int'Last) then
-                  return (Cnst => UI_From_Int (Int (Val)), Value => Empty);
+                  return (Cnst => UI_From_LLI (Val), Value => Empty);
                end if;
             end if;
          end;
@@ -107,12 +107,12 @@ package body GNATLLVM.Arrays.Create is
       Last       : constant Uint         := First + Length - 1;
       Low_Bound  : constant One_Bound    := (Cnst => First, Value => Empty);
       High_Bound : constant One_Bound    := (Cnst => Last, Value => Empty);
-      Dim_Info   : constant Index_Bounds
-        := (Bound_GT     => Integer_GL_Type,
-            Bound_Sub_GT => Integer_GL_Type,
-            Low          => Low_Bound,
-            High         => High_Bound,
-            Bound_Range  => Size_Const_Int (Length));
+      Dim_Info   : constant Index_Bounds :=
+        (Bound_GT     => Integer_GL_Type,
+         Bound_Sub_GT => Integer_GL_Type,
+         Low          => Low_Bound,
+         High         => High_Bound,
+         Bound_Range  => Size_Const_Int (Length));
       Result_Typ : constant Type_T       :=
         Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
 
@@ -284,11 +284,10 @@ package body GNATLLVM.Arrays.Create is
                  Array_Info.Table (Idx).Bound_Range;
 
             begin
-               Typ :=
-                 Array_Type (Typ,
-                             (if   Present (Rng)
-                              then unsigned (Get_Const_Int_Value (Rng))
-                              else 0));
+               Typ := Array_Type (Typ,
+                                  (if   Present (Rng)
+                                   then unsigned (Get_Const_Int_Value (Rng))
+                                   else 0));
             end;
          end loop;
       end if;

@@ -355,7 +355,7 @@ package GNATLLVM.GLValue is
 
    --  Define basic accessors for components of GL_Value
 
-   function LLVM_Value (V : GL_Value) return Value_T is
+   function LLVM_Value (V : GL_Value)   return Value_T is
      (V.Value)
      with Pre => Present (V), Post => Present (LLVM_Value'Result);
    --  Return the LLVM value in the GL_Value
@@ -370,7 +370,7 @@ package GNATLLVM.GLValue is
      (V.Relationship)
      with Pre => Present (V);
 
-   function Is_Pristine (V : GL_Value) return Boolean is
+   function Is_Pristine (V : GL_Value)  return Boolean is
      (V.Is_Pristine)
      with Pre => Present (V);
 
@@ -408,7 +408,7 @@ package GNATLLVM.GLValue is
      (Is_Data (Relationship (V)))
      with Pre => Present (V);
 
-   function Etype (V : GL_Value) return Entity_Id
+   function Etype (V : GL_Value)                   return Entity_Id
      with Pre  => Present (V)
                   and then (Is_Data (V) or else Relationship (V) = Unknown),
           Post => Is_Type_Or_Void (Etype'Result);

@@ -204,8 +204,8 @@ package body GNATLLVM.Codegen is
          Addrs (J + Num_Builtin) := Switch_Table.Table (J).all'Address;
       end loop;
 
-      Parse_Command_Line_Options
-        (Switch_Table.Last + Num_Builtin, Addrs'Address, "");
+      Parse_Command_Line_Options (Switch_Table.Last + Num_Builtin,
+                                  Addrs'Address, "");
 
       --  Finalize our compilation mode now that all switches are parsed
 
@@ -296,6 +296,7 @@ package body GNATLLVM.Codegen is
          when Write_BC =>
             declare
                S : constant String := Output_File_Name (".bc");
+
             begin
                if Integer (Write_Bitcode_To_File (Module, S)) /= 0 then
                   Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
@@ -318,6 +319,7 @@ package body GNATLLVM.Codegen is
          when Write_Assembly =>
             declare
                S : constant String := Output_File_Name (".s");
+
             begin
                if Target_Machine_Emit_To_File
                  (Target_Machine, Module, S, Assembly_File, Err_Msg'Address)
@@ -331,9 +333,10 @@ package body GNATLLVM.Codegen is
          when Write_Object =>
             declare
                S : constant String := Output_File_Name (".o");
+
             begin
-               if Target_Machine_Emit_To_File
-                 (Target_Machine, Module, S, Object_File, Err_Msg'Address)
+               if Target_Machine_Emit_To_File (Target_Machine, Module, S,
+                                               Object_File, Err_Msg'Address)
                then
                   Error_Msg_N
                     ("could not write `" & S & "`: " &

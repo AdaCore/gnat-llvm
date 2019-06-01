@@ -24,6 +24,7 @@ package GNATLLVM.DebugInfo is
 
    type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
    type DI_File_Cache_Access is access all DI_File_Cache;
+
    DI_Cache : DI_File_Cache_Access := null;
 
    procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T)

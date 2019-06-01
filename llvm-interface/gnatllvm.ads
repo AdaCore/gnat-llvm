@@ -72,12 +72,12 @@ package GNATLLVM is
      renames Interfaces.C.Extensions."=";
    function ">"  (L, R : ULL)  return Boolean
      renames Interfaces.C.Extensions.">";
-   function "<"  (L, R : ULL)  return Boolean renames
-     Interfaces.C.Extensions."<";
-   function "<=" (L, R : ULL) return  Boolean renames
-     Interfaces.C.Extensions."<=";
-   function ">=" (L, R : ULL) return  Boolean renames
-     Interfaces.C.Extensions.">=";
+   function "<"  (L, R : ULL)  return Boolean
+     renames Interfaces.C.Extensions."<";
+   function "<=" (L, R : ULL) return  Boolean
+     renames Interfaces.C.Extensions."<=";
+   function ">=" (L, R : ULL) return  Boolean
+     renames Interfaces.C.Extensions.">=";
 
    subtype long_long_integer is Interfaces.C.Extensions.long_long;
    subtype LLI is long_long_integer;
@@ -198,7 +198,7 @@ package GNATLLVM is
    Emit_Debug_Info : Boolean := False;
    --  Whether or not to emit debugging information (-g)
 
-   Do_Stack_Check : Boolean := False;
+   Do_Stack_Check  : Boolean := False;
    --  If set, check for too-large allocation
 
    subtype Err_Msg_Type is String (1 .. 10000);

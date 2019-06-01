@@ -321,7 +321,7 @@ package body GNATLLVM.Records.Create is
         Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
 
-      Aliased_Fields : Boolean         := False;
+      Aliased_Fields : Boolean          := False;
       --  Indicates that at least one field is aliased
 
       LLVM_Type      : Type_T;
@@ -344,16 +344,16 @@ package body GNATLLVM.Records.Create is
          Variant_List     : List_Id                     := No_List;
          Variant_Expr     : Node_Id                     := Empty;
          Variants         : Record_Info_Id_Array_Access := null;
-          Overlap_Variants : Record_Info_Id_Array_Access := null);
+         Overlap_Variants : Record_Info_Id_Array_Access := null);
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
         (E              : Entity_Id;
          RI_Idx         : Record_Info_Id;
          F_GT           : in out GL_Type;
-         Ordinal        : Nat  := 0;
-         First_Bit      : Uint := No_Uint;
-         Num_Bits       : Uint := No_Uint;
+         Ordinal        : Nat     := 0;
+         First_Bit      : Uint    := No_Uint;
+         Num_Bits       : Uint    := No_Uint;
          Array_Bitfield : Boolean := False)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
@@ -432,9 +432,9 @@ package body GNATLLVM.Records.Create is
         (E              : Entity_Id;
          RI_Idx         : Record_Info_Id;
          F_GT           : in out GL_Type;
-         Ordinal        : Nat  := 0;
-         First_Bit      : Uint := No_Uint;
-         Num_Bits       : Uint := No_Uint;
+         Ordinal        : Nat     := 0;
+         First_Bit      : Uint    := No_Uint;
+         Num_Bits       : Uint    := No_Uint;
          Array_Bitfield : Boolean := False)
       is
          Matching_Field : Entity_Id;
@@ -492,7 +492,7 @@ package body GNATLLVM.Records.Create is
            (if Rec_Type = Def_Ident then Empty else Def_Ident);
          --  Present if we have to search the field list of a record subtype
 
-         Rec_Field : Entity_Id := Empty;
+         Rec_Field    : Entity_Id          := Empty;
          --  Cache used to limit quadratic behavior
 
          function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
@@ -700,8 +700,8 @@ package body GNATLLVM.Records.Create is
          function Choices_To_SO_Ref
            (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
          is
-            Discrim_SO : constant SO_Ref
-              := Annotated_Value (Emit_Expr (Discrim));
+            Discrim_SO : constant SO_Ref :=
+              Annotated_Value (Emit_Expr (Discrim));
             Choice     : Node_Id;
             Expr       : SO_Ref;
             This_Expr  : SO_Ref;
@@ -783,8 +783,8 @@ package body GNATLLVM.Records.Create is
                     Find_Field_In_Entity_List (Field, Sub_Rec_Type, Rec_Field);
                end if;
 
-               Outer_Field
-                 := Find_Field_In_Entity_List (Field_To_Add, TE, Cur_Field);
+               Outer_Field :=
+                 Find_Field_In_Entity_List (Field_To_Add, TE, Cur_Field);
 
                --  If this is a tagged type, ignore if this was already in
                --  a _parent field.
@@ -860,8 +860,8 @@ package body GNATLLVM.Records.Create is
          Parent_TE : constant Entity_Id :=
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
-         Var_Depth : Int := 0;
-         Var_Align : ULL := 0;
+         Var_Depth : Int                := 0;
+         Var_Align : ULL                := 0;
 
       begin
          --  If we've pushed the variant stack and the top entry is static,
@@ -1244,7 +1244,7 @@ package body GNATLLVM.Records.Create is
             --  Start by making a field just wide enough for this component.
 
             Bitfield_Start_Pos := Start_Position (AF.Bitpos);
-            Bitfield_End_Pos   := End_Position (AF.Bitpos, AF.Size);
+            Bitfield_End_Pos   := End_Position   (AF.Bitpos, AF.Size);
 
             --  Now go through all the remaining components that start within
             --  the field we made and widen the bitfield field to include it.
@@ -1634,9 +1634,7 @@ package body GNATLLVM.Records.Create is
                Outer_Field : Entity_Id;
 
             begin
-               Outer_Field
-                 := Find_Field_In_Entity_List (Field, TE, Cur_Field);
-
+               Outer_Field := Find_Field_In_Entity_List (Field, TE, Cur_Field);
                if Present (Outer_Field)
                  and then No (Get_Field_Info (Outer_Field))
                  and then Scope (ORC) = Full_Base_Type (TE)

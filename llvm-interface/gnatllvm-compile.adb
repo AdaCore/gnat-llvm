@@ -291,7 +291,7 @@ package body GNATLLVM.Compile is
             end if;
 
             declare
-               Stmts      : constant Node_Id := Handled_Statement_Sequence (N);
+               Stmts : constant Node_Id := Handled_Statement_Sequence (N);
 
             begin
                --  Always process declarations, but they do not provide
@@ -532,7 +532,7 @@ package body GNATLLVM.Compile is
 
                Discard (Type_Of (TE));
                GT := Default_GL_Type (TE);
-               if Sz /= Uint_0 and then Is_Static_SO_Ref (Sz)
+               if Sz /= 0 and then Is_Static_SO_Ref (Sz)
                  and then not Is_Dynamic_Size (GT)
                  and then (I_Cmp (Int_SGT, Get_Type_Size
                                     (GT, Max_Size => True),
@@ -565,8 +565,7 @@ package body GNATLLVM.Compile is
                when Pragma_Optimize =>
 
                   case Chars (Expression
-                                (First
-                                   (Pragma_Argument_Associations (N)))) is
+                                (First (Pragma_Argument_Associations (N)))) is
 
                      when Name_Off =>
                         if Code_Opt_Level /= 0 then
@@ -657,7 +656,7 @@ package body GNATLLVM.Compile is
               and then Present (Freeze_Node (Entity (Name (N))))
             then
                declare
-                  Expr : constant Node_Id   := Expression (N);
+                  Expr : constant Node_Id := Expression (N);
 
                begin
                   if Library_Level and then not Is_Static_Address (Expr) then
@@ -1158,25 +1157,25 @@ package body GNATLLVM.Compile is
       --  Each step has its own basic block. When a loop doesn't need one
       --  of these steps, just alias it with another one.
 
-      BB_Cond : Basic_Block_T :=
+      BB_Cond : Basic_Block_T              :=
         (if not Is_For_Loop then Enter_Block_With_Node (Empty)
          else Create_Basic_Block ("loop-cond"));
       --  If this is not a FOR loop, there is no initialization: alias
       --  it with the COND block.
 
-      BB_Stmts : constant Basic_Block_T :=
+      BB_Stmts : constant Basic_Block_T    :=
         (if Is_Mere_Loop or else Is_For_Loop
          then BB_Cond else Create_Basic_Block ("loop-stmts"));
       --  If this is a mere loop or a For loop, there is no condition
       --  block: alias it with the STMTS block.
 
-      BB_Iter : Basic_Block_T :=
+      BB_Iter : Basic_Block_T              :=
         (if Is_For_Loop then Create_Basic_Block ("loop-iter") else BB_Cond);
       --  If this is not a FOR loop, there is no iteration: alias it with
       --  the COND block, so that at the end of every STMTS, jump on ITER
       --  or COND.
 
-      BB_Next : constant Basic_Block_T := Create_Basic_Block ("loop-exit");
+      BB_Next : constant Basic_Block_T     := Create_Basic_Block ("loop-exit");
       --  The NEXT step contains no statement that comes from the loop: it
       --  is the exit point.
 

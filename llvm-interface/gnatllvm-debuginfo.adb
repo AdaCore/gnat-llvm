@@ -132,9 +132,9 @@ package body GNATLLVM.DebugInfo is
       end if;
 
       declare
-         Full_Name : constant String :=
+         Full_Name : constant String     :=
            Get_Name_String (Full_Debug_Name (File));
-         Name      : constant String :=
+         Name      : constant String     :=
            Get_Name_String (Debug_Source_Name (File));
          DIFile    : constant Metadata_T :=
            DI_Create_File (DI_Builder, Name, UL (Name'Length),

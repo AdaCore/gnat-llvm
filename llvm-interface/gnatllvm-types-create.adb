@@ -148,7 +148,7 @@ package body GNATLLVM.Types.Create is
    begin
       case Float_Rep (TE) is
          when IEEE_Binary =>
-            case UI_To_Int (Size) is
+            case UI_To_ULL (Size) is
                when 32 =>
                   T := Float_Type_In_Context (Context);
                when 64 =>
@@ -397,7 +397,7 @@ package body GNATLLVM.Types.Create is
                elsif Present (Size_GT)
                  and then (Size_GT = 2 or else Size_GT = 4 or else Size_GT = 8)
                then
-                  Align := UI_From_ULL (Get_Const_Int_Value_ULL (Size_GT));
+                  Align := UI_From_GL_Value (Size_GT);
                end if;
             end if;
 

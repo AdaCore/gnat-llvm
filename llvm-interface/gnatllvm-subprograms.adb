@@ -359,15 +359,13 @@ package body GNATLLVM.Subprograms is
    ---------------------
 
    function First_Out_Param (E : Entity_Id) return Entity_Id is
-      Param : Entity_Id := First_Formal_With_Extras (E);
-
    begin
-      while Present (Param) loop
-         exit when PK_Is_Out (Get_Param_Kind (Param));
-         Next_Formal_With_Extras (Param);
-      end loop;
-
-      return Param;
+      return Param : Entity_Id := First_Formal_With_Extras (E) do
+         while Present (Param) loop
+            exit when PK_Is_Out (Get_Param_Kind (Param));
+            Next_Formal_With_Extras (Param);
+         end loop;
+      end return;
    end First_Out_Param;
 
    ---------------------
@@ -375,15 +373,14 @@ package body GNATLLVM.Subprograms is
    ---------------------
 
    function Next_Out_Param (E : Entity_Id) return Entity_Id is
-      Param : Entity_Id := Next_Formal_With_Extras (E);
 
    begin
-      while Present (Param) loop
-         exit when PK_Is_Out (Get_Param_Kind (Param));
-         Next_Formal_With_Extras (Param);
-      end loop;
-
-      return Param;
+      return Param : Entity_Id := Next_Formal_With_Extras (E) do
+         while Present (Param) loop
+            exit when PK_Is_Out (Get_Param_Kind (Param));
+            Next_Formal_With_Extras (Param);
+         end loop;
+      end return;
    end Next_Out_Param;
 
    ---------------------
@@ -520,8 +517,8 @@ package body GNATLLVM.Subprograms is
         or else Has_Foreign_Convention (Subp)
       then
          return (if   Param_Mode = E_In_Parameter and then By_Ref_Mech /= Must
-                        and then (Mech = By_Copy
-                                    or else (Is_Elementary_Type (GT)
+                      and then (Mech = By_Copy
+                                  or else (Is_Elementary_Type (GT)
                                                and then Mech /= By_Reference))
                  then In_Value else Foreign_By_Ref);
 
@@ -652,8 +649,7 @@ package body GNATLLVM.Subprograms is
      (PK : Param_Kind; GT : GL_Type) return GL_Relationship is
    begin
       if PK_Is_Reference (PK) then
-         return (if Is_Unconstrained_Array (GT)
-                   and then PK /= Foreign_By_Ref
+         return (if  Is_Unconstrained_Array (GT) and then PK /= Foreign_By_Ref
                  then Fat_Pointer else Reference);
       else
          return Data;
@@ -710,9 +706,9 @@ package body GNATLLVM.Subprograms is
 
       while Present (Param_Ent) loop
          declare
-            Param_GT   : constant GL_Type    := Full_GL_Type (Param_Ent);
-            PK         : constant Param_Kind := Get_Param_Kind (Param_Ent);
-            PK_By_Ref  : constant Boolean    := PK_Is_Reference (PK);
+            Param_GT  : constant GL_Type    := Full_GL_Type (Param_Ent);
+            PK        : constant Param_Kind := Get_Param_Kind (Param_Ent);
+            PK_By_Ref : constant Boolean    := PK_Is_Reference (PK);
          begin
             --  If the mechanism requested was by-copy and we use by-ref,
             --  give a warning.  If the mechanism was defaulted, set
@@ -1032,6 +1028,7 @@ package body GNATLLVM.Subprograms is
 
       Check_Implicit_Dynamic_Code_Allowed (N);
       Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Cvt_Fn, 3 => Static_Link));
+
       return G_Is_Relationship
         (Call (Get_Tramp_Adjust_Fn, A_Char_GL_Type, (1 => Tramp)),
          GT, Trampoline);
@@ -1918,9 +1915,9 @@ package body GNATLLVM.Subprograms is
 
       if Nkind (Parent (N)) = N_Attribute_Reference then
          declare
-            Ref    : constant Node_Id  := Parent (N);
-            Ref_GT : constant GL_Type  := Full_GL_Type (Ref);
-            S_Link : constant GL_Value :=
+            Ref    : constant Node_Id      := Parent (N);
+            Ref_GT : constant GL_Type      := Full_GL_Type (Ref);
+            S_Link : constant GL_Value     :=
               (if   Has_Activation_Record (Def_Ident)
                then Get_Static_Link (Def_Ident)
                else Get_Undef (A_Char_GL_Type));
@@ -2392,7 +2389,7 @@ package body GNATLLVM.Subprograms is
             declare
                PK : constant Param_Kind := Get_Param_Kind (Formal);
                GT : constant GL_Type    := Full_GL_Type (Formal);
-               DT : constant GL_Type  :=
+               DT : constant GL_Type    :=
                  (if   Is_Access_Type (GT) then Full_Designated_GL_Type (GT)
                   else No_GL_Type);
 

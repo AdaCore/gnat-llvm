@@ -55,7 +55,6 @@ package body GNATLLVM.Conversions is
       Idx1, Idx2 : Entity_Id;
 
    begin
-
       --  The front end should not have gotten us here if the number
       --  of dimensions differ.
 
@@ -72,8 +71,7 @@ package body GNATLLVM.Conversions is
       Idx1 := First_Index (GT1);
       Idx2 := First_Index (GT2);
       while Present (Idx1) loop
-         exit when
-           Type_Of (Full_Base_Type (Full_Etype (Idx1))) /=
+         exit when Type_Of (Full_Base_Type (Full_Etype (Idx1))) /=
            Type_Of (Full_Base_Type (Full_Etype (Idx2)));
          Next_Index (Idx1);
          Next_Index (Idx2);
@@ -314,9 +312,9 @@ package body GNATLLVM.Conversions is
          --  code in the case of access to subprogram.
 
          if Is_Unconstrained_Array (Full_Designated_Type (GT)) then
-            Result :=
-              Int_To_Relationship (Get (Result, Data),
-                                   Full_Designated_GL_Type (GT), Thin_Pointer);
+            Result := Int_To_Relationship (Get (Result, Data),
+                                           Full_Designated_GL_Type (GT),
+                                           Thin_Pointer);
          elsif Ekind (GT) = E_Access_Subprogram_Type then
             Result := Int_To_Relationship (Get (Result, Data),
                                            Full_Designated_GL_Type (GT),
@@ -482,7 +480,6 @@ package body GNATLLVM.Conversions is
       Dest_Size   : constant Nat      := UI_To_Int (Dest_Usize);
       Is_Trunc    : constant Boolean  := Dest_Size < Src_Size;
       Subp        : Cvtf              := null;
-      Result      : GL_Value;
 
    begin
       --  If the input is undefined, so is our output
@@ -579,12 +576,11 @@ package body GNATLLVM.Conversions is
       --  Here all that's left to do is deal with non-primitive types and
       --  generate the IR instruction.
 
-      Result := Subp (Value, Prim_GT);
-      if Related_Type (Result) /= GT then
-         Result := From_Primitive (Result, GT);
-      end if;
-
-      return Result;
+      return Result : GL_Value := Subp (Value, Prim_GT) do
+         if Related_Type (Result) /= GT then
+            Result := From_Primitive (Result, GT);
+         end if;
+      end return;
 
    end Convert;
 
@@ -837,21 +833,19 @@ package body GNATLLVM.Conversions is
    -------------------------------
 
    function Strip_Complex_Conversions (N : Node_Id) return Node_Id is
-      E : Node_Id := N;
-
    begin
-      while Present (E) loop
-         exit when not Nkind_In (E, N_Type_Conversion,
-                                 N_Unchecked_Type_Conversion,
-                                 N_Qualified_Expression);
-         exit when Is_Elementary_Type (Full_Etype (E));
-         exit when Is_Elementary_Type (Full_Etype (Expression (E)));
-         exit when Get_Type_Size_Complexity (Full_GL_Type (E))
-           <= Get_Type_Size_Complexity (Full_GL_Type (Expression (E)));
-         E := Expression (E);
-      end loop;
-
-      return E;
+      return E : Node_Id := N do
+         while Present (E) loop
+            exit when not Nkind_In (E, N_Type_Conversion,
+                                    N_Unchecked_Type_Conversion,
+                                    N_Qualified_Expression);
+            exit when Is_Elementary_Type (Full_Etype (E));
+            exit when Is_Elementary_Type (Full_Etype (Expression (E)));
+            exit when Get_Type_Size_Complexity (Full_GL_Type (E))
+              <= Get_Type_Size_Complexity (Full_GL_Type (Expression (E)));
+            E := Expression (E);
+         end loop;
+      end return;
    end Strip_Complex_Conversions;
 
    -----------------------
@@ -859,17 +853,15 @@ package body GNATLLVM.Conversions is
    -----------------------
 
    function Strip_Conversions (N : Node_Id) return Node_Id is
-      E : Node_Id := N;
-
    begin
-      while Present (E) loop
-         exit when not Nkind_In (E, N_Type_Conversion,
-                                 N_Unchecked_Type_Conversion,
-                                 N_Qualified_Expression);
-         E := Expression (E);
-      end loop;
-
-      return E;
+      return E : Node_Id := N do
+         while Present (E) loop
+            exit when not Nkind_In (E, N_Type_Conversion,
+                                    N_Unchecked_Type_Conversion,
+                                    N_Qualified_Expression);
+            E := Expression (E);
+         end loop;
+      end return;
    end Strip_Conversions;
 
 end GNATLLVM.Conversions;

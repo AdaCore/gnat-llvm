@@ -472,8 +472,8 @@ package body GNATLLVM.Types is
       GT    : GL_Type;
 
    begin
-      --  Before we do anything, see if this isn't a base type and
-      --  process that if so.  Copy sizes from the base type if a size
+      --  Before we do anything, see if this isn't a base type and process
+      --  the base type if so.  Copy sizes from the base type if a size
       --  clause was present.
 
       if not Is_Full_Base_Type (TE) then
@@ -488,7 +488,7 @@ package body GNATLLVM.Types is
          end if;
       end if;
 
-      --  Next see if we already have a suitable type.
+      --  Next see if we already have a suitable type
 
       GT := Default_GL_Type (TE, Create => False);
 
@@ -762,15 +762,15 @@ package body GNATLLVM.Types is
       Def_Ident : Entity_Id := Empty;
       Max_Size  : Boolean   := False) return GL_Value
    is
-      Value   : constant GL_Value    :=
+      Value   : constant GL_Value :=
         (if    Present (V) then V
          elsif Is_Self_Referential_Type (Alloc_GT) and then Present (Expr)
          then  Emit (Expr) else No_GL_Value);
-      Size    : constant GL_Value    :=
+      Size    : constant GL_Value :=
         Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size);
-      Align   : constant ULL         :=
+      Align   : constant ULL      :=
         Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
-      Align_V    : constant GL_Value := Size_Const_Int (Align);
+      Align_V : constant GL_Value := Size_Const_Int (Align);
       Result  : GL_Value;
 
    begin
@@ -936,7 +936,8 @@ package body GNATLLVM.Types is
                                             Full_GL_Type
                                               (First_Formal (Proc))),
                            2 => Ptr_To_Size_Type (Conv_V),
-                           3 => Size, 4 => Align_V));
+                           3 => Size,
+                           4 => Align_V));
 
             --  Otherwise, this is the secondary stack and we just call
             --  it with the size.
@@ -963,7 +964,6 @@ package body GNATLLVM.Types is
    is
       Align         : constant GL_Value  := GT_Alignment (GT);
       TE            : constant Entity_Id := Full_Etype (GT);
-      Largest_Align : ULL  := 1;
       Field         : Entity_Id;
 
    begin
@@ -991,20 +991,20 @@ package body GNATLLVM.Types is
             return 1;
          end if;
 
-         Field := First_Entity (TE);
-         while Present (Field) loop
-            if Ekind_In (Field, E_Discriminant, E_Component)
-              and then not Is_Bitfield_By_Rep (Field)
-            then
-               Largest_Align
-                 := ULL'Max (Largest_Align,
+         return Largest_Align : ULL := 1 do
+            Field := First_Entity (TE);
+            while Present (Field) loop
+               if Ekind_In (Field, E_Discriminant, E_Component)
+                 and then not Is_Bitfield_By_Rep (Field)
+               then
+                  Largest_Align :=
+                    ULL'Max (Largest_Align,
                              Get_Type_Alignment (Full_GL_Type (Field)));
-            end if;
+               end if;
 
-            Next_Entity (Field);
-         end loop;
-
-         return Largest_Align;
+               Next_Entity (Field);
+            end loop;
+         end return;
 
       --  If it's a subprogram type, there really isn't an alignment, but
       --  indicate that code can be anywhere.
@@ -1332,8 +1332,8 @@ package body GNATLLVM.Types is
             then
                Ret := Esize (Our_E) / Uint_Bits_Per_Unit;
                if Is_Unconstrained_Array (TE) then
-                  Ret := Ret + UI_From_GL_Value
-                    (Get_Bound_Size (Default_GL_Type (TE)));
+                  Ret := Ret + UI_From_GL_Value (Get_Bound_Size
+                                                   (Default_GL_Type (TE)));
                end if;
 
                return Ret;
@@ -1509,7 +1509,7 @@ package body GNATLLVM.Types is
       --  Otherwise, we have a constant.  If negative, make a Negate_Expr.
 
       else
-         Ret := UI_From_LLI (Get_Const_Int_Value (V.C_Value));
+         Ret := UI_From_GL_Value (V.C_Value);
          return (if   Ret < 0 then Create_Node (Negate_Expr, UI_Negate (Ret))
                  else Ret);
       end if;
@@ -1651,8 +1651,12 @@ package body GNATLLVM.Types is
       LHS, RHS : BA_Data;
       Name     : String := "") return BA_Data
    is
+      type C_Map is array (Int_Predicate_T range <>) of TCode;
+      Codes          : constant C_Map :=
+        (Int_EQ => Eq_Expr, Int_NE => Ne_Expr,
+         Int_UGT | Int_SGT => Gt_Expr, Int_UGE | Int_SGE => Ge_Expr,
+         Int_ULT | Int_SLT => Lt_Expr, Int_ULE | Int_SLE => Le_Expr);
       LHS_Op, RHS_Op : Node_Ref_Or_Val;
-      TC             : TCode;
 
    begin
       --  If both are constants, do the operation as a constant and return
@@ -1675,24 +1679,7 @@ package body GNATLLVM.Types is
       --  Otherwise, build and return a node
 
       else
-         case Op is
-            when Int_EQ =>
-               TC := Eq_Expr;
-            when Int_NE =>
-               TC := Ne_Expr;
-            when Int_UGT | Int_SGT =>
-               TC := Gt_Expr;
-            when Int_UGE | Int_SGE =>
-               TC := Ge_Expr;
-            when Int_ULT | Int_SLT =>
-               TC := Lt_Expr;
-            when Int_ULE | Int_SLE =>
-               TC := Le_Expr;
-            when others =>
-               pragma Assert (False);
-         end case;
-
-         return (False, No_GL_Value, Create_Node (TC, LHS_Op, RHS_Op));
+         return (False, No_GL_Value, Create_Node (Codes (Op), LHS_Op, RHS_Op));
       end if;
 
    end I_Cmp;

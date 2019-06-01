@@ -547,7 +547,7 @@ package body GNATLLVM.GLValue is
       --  which are also OK.
 
       if R = Reference_For_Integer then
-         R := (if Relationship (V) in Reference_To_Subprogram | Trampoline
+         R := (if   Relationship (V) in Reference_To_Subprogram | Trampoline
                then Relationship (V) else Reference);
       end if;
 
@@ -778,9 +778,9 @@ package body GNATLLVM.GLValue is
                --  If we have something that isn't a reference, start by
                --  getting a reference to it.
 
-               Fat_Ptr : constant GL_Value  := Get_Undef_Relationship (GT, R);
-               Bounds  : constant GL_Value  := Get (Val, Reference_To_Bounds);
-               Data    : constant GL_Value  :=
+               Fat_Ptr : constant GL_Value := Get_Undef_Relationship (GT, R);
+               Bounds  : constant GL_Value := Get (Val, Reference_To_Bounds);
+               Data    : constant GL_Value :=
                  To_Primitive (Get (Val, Reference));
 
             begin
@@ -870,8 +870,8 @@ package body GNATLLVM.GLValue is
    ----------------------
 
    procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id) is
-      GT_Align : constant ULL             := Get_Type_Alignment (GT);
-      E_Align  : constant ULL             :=
+      GT_Align : constant ULL := Get_Type_Alignment (GT);
+      E_Align  : constant ULL :=
         (if   Present (E) and then not Unknown_Alignment (E)
          then UI_To_ULL (Alignment (E)) else 1);
 
@@ -888,11 +888,11 @@ package body GNATLLVM.GLValue is
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "") return GL_Value
    is
-      R       : constant GL_Relationship  := Relationship_For_Alloc (GT);
-      PT      : constant Type_T           := Type_For_Relationship (GT, R);
-      T       : constant Type_T           := Get_Element_Type (PT);
-      Promote : constant Basic_Block_T    := Maybe_Promote_Alloca (T);
-      Inst    : constant Value_T          :=
+      R       : constant GL_Relationship := Relationship_For_Alloc (GT);
+      PT      : constant Type_T          := Type_For_Relationship (GT, R);
+      T       : constant Type_T          := Get_Element_Type (PT);
+      Promote : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
+      Inst    : constant Value_T         :=
         Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
 
    begin
@@ -1002,8 +1002,7 @@ package body GNATLLVM.GLValue is
    -- Const_Int --
    ---------------
 
-   function Const_Int (GT : GL_Type; N : Uint) return GL_Value
-   is
+   function Const_Int (GT : GL_Type; N : Uint) return GL_Value is
      (G (Const_Int (Type_Of (GT), N), GT));
 
    ---------------
@@ -1042,13 +1041,13 @@ package body GNATLLVM.GLValue is
    function Const_Array
      (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value
    is
-      T       : constant Type_T :=
+      T      : constant Type_T            :=
         (if   Elmts'Length = 0 then Type_Of (Component_Type (GT))
          else Type_Of (Elmts (Elmts'First)));
       --  Take the element type from what was passed, but if no elements
       --  were passed, the only choice is from the component type of the array.
-      Values  : Access_Value_Array := new Value_Array (Elmts'Range);
-      V       : GL_Value;
+      Values : aliased Access_Value_Array := new Value_Array (Elmts'Range);
+      V      : GL_Value;
       procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
                                                         Access_Value_Array);
    begin
@@ -1075,8 +1074,8 @@ package body GNATLLVM.GLValue is
    function Const_Struct
      (Elmts : GL_Value_Array; GT : GL_Type; Packed : Boolean) return GL_Value
    is
-      Values  : Access_Value_Array := new Value_Array (Elmts'Range);
-      V       : GL_Value;
+      Values : aliased Access_Value_Array := new Value_Array (Elmts'Range);
+      V      : GL_Value;
       procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
                                                         Access_Value_Array);
    begin
@@ -1101,7 +1100,7 @@ package body GNATLLVM.GLValue is
    function Get_Float_From_Words_And_Exp
      (GT : GL_Type; Exp : Int; Words : Word_Array) return GL_Value
    is
-      Our_Words : Word_Array := Words;
+      Our_Words : aliased Word_Array := Words;
    begin
       return G (Get_Float_From_Words_And_Exp
                   (Context, Type_Of (GT), Exp, Our_Words'Length,
@@ -1314,8 +1313,7 @@ package body GNATLLVM.GLValue is
    -- Build_Cond_Br --
    -------------------
 
-   procedure Build_Cond_Br (C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
-   is
+   procedure Build_Cond_Br (C_If : GL_Value; C_Then, C_Else : Basic_Block_T) is
    begin
       Discard (Build_Cond_Br (IR_Builder, LLVM_Value (C_If), C_Then, C_Else));
    end Build_Cond_Br;
@@ -1374,7 +1372,7 @@ package body GNATLLVM.GLValue is
       BBs       : Basic_Block_Array;
       Name      : String := "") return GL_Value
    is
-      Values  : Value_Array (GL_Values'Range);
+      Values  : aliased Value_Array (GL_Values'Range);
       Our_Phi : Value_T;
 
    begin
@@ -1414,7 +1412,7 @@ package body GNATLLVM.GLValue is
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
    is
-      Val_Idxs : Value_Array (Indices'Range);
+      Val_Idxs : aliased Value_Array (Indices'Range);
       Result   : Value_T;
 
    begin
@@ -1438,7 +1436,7 @@ package body GNATLLVM.GLValue is
       Indices : Index_Array;
       Name    : String := "") return GL_Value
    is
-      Val_Idxs : Value_Array (Indices'Range);
+      Val_Idxs : aliased Value_Array (Indices'Range);
       Result   : Value_T;
 
    begin
@@ -1515,7 +1513,7 @@ package body GNATLLVM.GLValue is
       Lpad        : constant Basic_Block_T :=
         (if No_Raise then No_BB_T else Get_Landing_Pad);
       Act_Param   : Int                    := -1;
-      Arg_Values  : Value_Array (Args'Range);
+      Arg_Values  : aliased Value_Array (Args'Range);
       Next_BB     : Basic_Block_T;
       Call_Inst   : Value_T;
 
@@ -1675,7 +1673,7 @@ package body GNATLLVM.GLValue is
         (if   Present (Output_Value)
          then Primitive_GL_Type (Full_Etype (Output_Value))
          else Void_GL_Type);
-      T         : constant Type_T :=
+      T         : constant Type_T  :=
         (if Present (Output_Value) then Type_Of (GT) else Void_Type);
       Arg_Types : Type_Array (Args'Range);
 
@@ -1963,9 +1961,7 @@ package body GNATLLVM.GLValue is
    -- Is_Layout_Identical --
    -------------------------
 
-   function Is_Layout_Identical
-     (V : GL_Value; GT : GL_Type) return Boolean
-   is
+   function Is_Layout_Identical (V : GL_Value; GT : GL_Type) return Boolean is
      (Is_Layout_Identical (Type_Of (V), Type_Of (GT)));
 
    -------------------------
@@ -1998,7 +1994,7 @@ package body GNATLLVM.GLValue is
    function Convert_Struct_Constant (V : Value_T; T : Type_T) return Value_T
    is
       Num_Elmts : constant Nat    := Nat (Count_Struct_Element_Types (T));
-      Values    : Value_Array (0 .. Num_Elmts - 1);
+      Values    : aliased Value_Array (0 .. Num_Elmts - 1);
 
    begin
       for J in Values'Range loop

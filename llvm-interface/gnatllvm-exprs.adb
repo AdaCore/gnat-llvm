@@ -760,7 +760,7 @@ package body GNATLLVM.Exprs is
 
             --  Now add in any bit offset
 
-            return V + Const_Int (GT, Bits / Uint_Bits_Per_Unit);
+            return V + Const_Int (GT, Bits / BPU);
 
          when Attribute_Pool_Address =>
 
@@ -883,7 +883,7 @@ package body GNATLLVM.Exprs is
                if No (Position) then
                   return Get_Undef (GT);
                else
-                  Bit_Position := Position * Byte_Size +
+                  Bit_Position := Position * BPU +
                     Size_Const_Int (Field_Bit_Offset (F));
                end if;
 
@@ -895,7 +895,8 @@ package body GNATLLVM.Exprs is
                      V := Bit_Position;
 
                   when Attribute_First_Bit | Attribute_Bit =>
-                     V := S_Rem (Bit_Position, Byte_Size);
+                     V := S_Rem (Bit_Position,
+                                 Size_Const_Int (UI_From_Int (BPU)));
 
                   when Attribute_Last_Bit =>
                      V := Bit_Position + Size_Const_Int (Esize (F) - 1);
@@ -988,21 +989,21 @@ package body GNATLLVM.Exprs is
 
                   return Convert (V, GT);
                else
-                  return Convert (Mul (V, Byte_Size), GT);
+                  return Convert (V * BPU, GT);
                end if;
             end;
 
          when Attribute_Component_Size =>
             return Convert
-              (Mul (Get_Type_Size (Full_Component_GL_Type (P_GT),
-                                   Max_Size => True),
-                    Byte_Size),
+              (Get_Type_Size (Full_Component_GL_Type (P_GT),
+                              Max_Size => True) *
+                 BPU,
                GT);
 
          when Attribute_Descriptor_Size =>
             pragma Assert (Is_Unconstrained_Array (P_GT));
 
-            return Mul (Get_Bound_Size (P_GT), Byte_Size);
+            return Get_Bound_Size (P_GT) * BPU;
 
          when Attribute_Passed_By_Reference =>
 

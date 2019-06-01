@@ -128,7 +128,7 @@ package body GNATLLVM.Types.Create is
       if Is_Modular_Integer_Type (TE) and then RM_Size (TE) /= 0 then
          Size := RM_Size (TE);
       elsif Esize (TE) = 0 then
-         Size := Uint_Bits_Per_Unit;
+         Size := UI_From_Int (BPU);
       end if;
 
       return
@@ -297,7 +297,7 @@ package body GNATLLVM.Types.Create is
             --  be an actual type in the case of an error, so use something
             --  that we can take the size an alignment of.
 
-            T := Int_Ty (Uint_Bits_Per_Unit);
+            T := Byte_T;
 
          when others =>
             Error_Msg_N
@@ -393,7 +393,7 @@ package body GNATLLVM.Types.Create is
                if Size /= No_Uint
                  and then (Size = 16 or else Size = 32 or else Size = 64)
                then
-                  Align := Size / Uint_Bits_Per_Unit;
+                  Align := Size / BPU;
                elsif Present (Size_GT)
                  and then (Size_GT = 2 or else Size_GT = 4 or else Size_GT = 8)
                then
@@ -443,7 +443,7 @@ package body GNATLLVM.Types.Create is
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
                            (Get_Type_Size (GT, No_Padding => True) *
-                              Const (Uint_Bits_Per_Unit)));
+                              Const (ULL (BPU))));
          end if;
       end if;
 

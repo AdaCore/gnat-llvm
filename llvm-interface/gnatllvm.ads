@@ -22,11 +22,11 @@ with stdint_h;
 with Interfaces.C;
 with Interfaces.C.Extensions;
 
-with Atree; use Atree;
-with Einfo; use Einfo;
-with Namet; use Namet;
-with Types; use Types;
-with Uintp; use Uintp;
+with Atree;    use Atree;
+with Einfo;    use Einfo;
+with Namet;    use Namet;
+with Types;    use Types;
+with Uintp;    use Uintp;
 
 with LLVM.Target;         use LLVM.Target;
 with LLVM.Target_Machine; use LLVM.Target_Machine;
@@ -181,11 +181,13 @@ package GNATLLVM is
    Any_Array_GL_Type : GL_Type;
    --  GL_Types for builtin types
 
-   Int_32_GL_Type     : GL_Type;
-   Int_32_Type        : Entity_Id;
+   Int_32_GL_Type    : GL_Type;
+   Int_32_Type       : Entity_Id;
    --  Type for 32-bit integers (for GEP indexes)
 
-   Uint_Bits_Per_Unit : Uint;
+   BPU                : Int;
+   Bit_T              : Type_T;
+   Byte_T             : Type_T;
 
    --  GNAT LLVM switches
 

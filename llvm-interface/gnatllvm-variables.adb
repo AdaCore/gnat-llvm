@@ -21,7 +21,6 @@ with Ada.Unchecked_Conversion;
 with System.Storage_Elements;    use System.Storage_Elements;
 
 with Errout;   use Errout;
-with Get_Targ; use Get_Targ;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
 with Sem;      use Sem;
@@ -1232,8 +1231,7 @@ package body GNATLLVM.Variables is
         and then not (Is_Constr_Subt_For_UN_Aliased (GT)
                         and then Is_Array_Type (GT))
       then
-         GT := Make_GT_Alternative (GT, Empty, UI_From_Int (Get_Bits_Per_Unit),
-                                    No_Uint);
+         GT := Make_GT_Alternative (GT, Empty, UI_From_Int (BPU), No_Uint);
       end if;
 
       return GT;
@@ -1948,7 +1946,7 @@ package body GNATLLVM.Variables is
       if Unknown_Esize (Def_Ident) then
          Set_Esize (Def_Ident, Annotated_Value
                       (Get_Type_Size (GT, Max_Size => True) *
-                         Const (Uint_Bits_Per_Unit)));
+                         Const (ULL (BPU))));
       end if;
 
       Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),

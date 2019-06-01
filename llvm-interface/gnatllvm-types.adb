@@ -368,7 +368,7 @@ package body GNATLLVM.Types is
 
    function Get_Type_Size_In_Bits (GT : GL_Type) return GL_Value is
    begin
-      return Get_Type_Size (GT) * Byte_Size;
+      return Get_Type_Size (GT) * BPU;
    end Get_Type_Size_In_Bits;
 
    ---------------------------
@@ -1330,7 +1330,7 @@ package body GNATLLVM.Types is
             if not Unknown_Esize (Our_E)
               and then Is_Static_SO_Ref (Esize (Our_E))
             then
-               Ret := Esize (Our_E) / Uint_Bits_Per_Unit;
+               Ret := Esize (Our_E) / BPU;
                if Is_Unconstrained_Array (TE) then
                   Ret := Ret + UI_From_GL_Value (Get_Bound_Size
                                                    (Default_GL_Type (TE)));
@@ -1340,8 +1340,8 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_Descriptor_Size =>
-            return UI_From_GL_Value (Get_Bound_Size (Default_GL_Type (TE))) *
-              Uint_Bits_Per_Unit;
+            return
+              UI_From_GL_Value (Get_Bound_Size (Default_GL_Type (TE))) * BPU;
 
          when Attribute_Component_Size =>
             if not Unknown_Component_Size (TE) then
@@ -1358,7 +1358,7 @@ package body GNATLLVM.Types is
             if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
               and then Attr = Attribute_Position
             then
-               Ret := Ret / Uint_Bits_Per_Unit;
+               Ret := Ret / BPU;
             end if;
 
          when Attribute_First_Bit | Attribute_Bit =>
@@ -1428,8 +1428,7 @@ package body GNATLLVM.Types is
         --  Or if it's a fixed size, the size is equal to the alignment,
         --  and the alignment is less than a word.
         or else (not Is_Dynamic_Size (GT)
-                   and then Align <= ULL (Get_Bits_Per_Word /
-                                            Get_Bits_Per_Unit)
+                   and then Align <= ULL (Get_Bits_Per_Word / BPU)
                    and then Align = Get_Const_Int_Value_ULL
                                        (Get_Type_Size (GT)))
       then
@@ -1523,7 +1522,7 @@ package body GNATLLVM.Types is
      (GT : GL_Type; Align : Boolean := False) return Node_Ref_Or_Val
    is
       Use_Max       : constant Boolean := Is_Unconstrained_Record (GT);
-      Bits_Per_Unit : constant BA_Data := Const (Uint_Bits_Per_Unit);
+      Bits_Per_Unit : constant BA_Data := Const (ULL (BPU));
       TE_Byte_Size  : constant BA_Data :=
         Get_Type_Size (GT, Max_Size => Use_Max);
       TE_Bit_Size   : constant BA_Data := TE_Byte_Size * Bits_Per_Unit;

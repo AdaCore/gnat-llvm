@@ -828,20 +828,20 @@ package body GNATLLVM.Subprograms is
 
          when Overflow =>
             Fun_Ty := Fn_Ty ((1 => T, 2 => T),
-                             Build_Struct_Type ((1 => T, 2 => Int_Ty (1))));
+                             Build_Struct_Type ((1 => T, 2 => Bit_T)));
 
          when Memcpy =>
             Return_GT := Void_GL_Type;
             Fun_Ty := Fn_Ty
               ((1 => Void_Ptr_Type,  2 => Void_Ptr_Type,
-                3 => LLVM_Size_Type, 4 => Int_Ty (1)),
+                3 => LLVM_Size_Type, 4 => Bit_T),
                Void_Type);
 
          when Memset =>
             Return_GT := Void_GL_Type;
             Fun_Ty := Fn_Ty
-              ((1 => Void_Ptr_Type,  2 => Int_Ty (Uint_Bits_Per_Unit),
-                3 => LLVM_Size_Type, 4 => Int_Ty (1)),
+              ((1 => Void_Ptr_Type,  2 => Byte_T,
+                3 => LLVM_Size_Type, 4 => Bit_T),
                Void_Type);
       end case;
 

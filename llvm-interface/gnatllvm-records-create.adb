@@ -856,7 +856,7 @@ package body GNATLLVM.Records.Create is
          Def_GT    : constant GL_Type   := Default_GL_Type (Full_Etype (E));
          F_GT      : GL_Type            := Full_GL_Type (E);
          Align     : constant ULL       := Get_Type_Alignment (F_GT);
-         Bit_Align : constant ULL       := Align * ULL (Get_Bits_Per_Unit);
+         Bit_Align : constant ULL       := Align * ULL (BPU);
          Parent_TE : constant Entity_Id :=
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
@@ -895,7 +895,7 @@ package body GNATLLVM.Records.Create is
          then
             Error_Msg_NE_Num
               ("offset of & must be beyond parent, minimum allowed is ^",
-               Position (Clause), E, Esize (Parent_TE) / Uint_Bits_Per_Unit);
+               Position (Clause), E, Esize (Parent_TE) / BPU);
 
          --  If a position is specified and it's not a multiple of the
          --  alignment of the type, we may have to give an error in some
@@ -1194,7 +1194,7 @@ package body GNATLLVM.Records.Create is
                Next_Component_Or_Discriminant (F);
             end loop;
 
-            return (End_Pos + (Uint_Bits_Per_Unit - 1)) / Uint_Bits_Per_Unit;
+            return (End_Pos + (BPU - 1)) / BPU;
 
          end Max_Record_Rep;
 
@@ -1211,7 +1211,7 @@ package body GNATLLVM.Records.Create is
                Cur_RI_Pos  := Needed_Pos;
             elsif Needed_Pos > Aligned_Pos then
                LLVM_Types.Append
-                 (Array_Type (Int_Ty (8), unsigned (Needed_Pos - Cur_RI_Pos)));
+                 (Array_Type (Byte_T, unsigned (Needed_Pos - Cur_RI_Pos)));
                Cur_RI_Pos := Needed_Pos;
             else
                Cur_RI_Pos := Aligned_Pos;
@@ -1228,10 +1228,10 @@ package body GNATLLVM.Records.Create is
             Bitfield_Len : ULL;
 
             function Start_Position (Bitpos : Uint) return Uint is
-              (Bitpos / Uint_Bits_Per_Unit);
+              (Bitpos / BPU);
 
             function End_Position (Bitpos, Size : Uint) return Uint is
-              ((Bitpos + Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit);
+              ((Bitpos + Size + BPU - 1) / BPU);
 
          begin
             --  We need to create an LLVM field to use to represent one or
@@ -1298,13 +1298,11 @@ package body GNATLLVM.Records.Create is
             Force_To_Pos (UI_To_ULL (Bitfield_Start_Pos), Cur_RI_Pos);
             if Bitfield_Len in 1 | 2 | 4 | 8 then
                Bitfield_Is_Array := False;
-               LLVM_Types.Append (Int_Ty (Nat (Bitfield_Len) *
-                                            Get_Bits_Per_Unit));
+               LLVM_Types.Append (Int_Ty (Nat (Bitfield_Len) * BPU));
             else
                Bitfield_Is_Array := True;
-               LLVM_Types.Append (Array_Type
-                                    (Int_Ty (Get_Bits_Per_Unit),
-                                     unsigned (Bitfield_Len)));
+               LLVM_Types.Append (Array_Type (Byte_T,
+                                              unsigned (Bitfield_Len)));
             end if;
 
             Cur_RI_Pos := UI_To_ULL (Bitfield_End_Pos);
@@ -1352,8 +1350,7 @@ package body GNATLLVM.Records.Create is
                --  Specified bit position of field, if any.
 
                Pos         : Uint               :=
-                 (if   Bit_Pos = No_Uint then No_Uint
-                  else Bit_Pos / Uint_Bits_Per_Unit);
+                 (if Bit_Pos = No_Uint then No_Uint else Bit_Pos / BPU);
 
                --  If a position is specified, this is that position
 
@@ -1395,7 +1392,7 @@ package body GNATLLVM.Records.Create is
                  and then Is_Packable_Field (F)
                then
                   Pos                 := UI_From_ULL (Cur_RI_Pos);
-                  Bit_Pos             := Pos * Uint_Bits_Per_Unit;
+                  Bit_Pos             := Pos * BPU;
                   Size                := RM_Size (F_GT);
                   Packed_Field_Bitpos := Bit_Pos + Size;
                   AF.Bitpos           := Bit_Pos;
@@ -1531,8 +1528,7 @@ package body GNATLLVM.Records.Create is
 
                      if Is_Bitfield_By_Rep (F, Bit_Pos, Size) then
                         if Bitfield_Start_Pos = No_Uint
-                          or else AF.Bitpos / Uint_Bits_Per_Unit
-                                    >= Bitfield_End_Pos
+                          or else AF.Bitpos / BPU >= Bitfield_End_Pos
                         then
                            Create_Bitfield_Field (J);
                         end if;
@@ -1540,7 +1536,7 @@ package body GNATLLVM.Records.Create is
                         Add_FI (F, Cur_Idx, F_GT,
                                 Ordinal        => LLVM_Types.Last,
                                 First_Bit      => Bit_Pos -
-                                  (Bitfield_Start_Pos * Uint_Bits_Per_Unit),
+                                  (Bitfield_Start_Pos * BPU),
                                 Num_Bits       => Size,
                                 Array_Bitfield => Bitfield_Is_Array);
                      else
@@ -1666,8 +1662,8 @@ package body GNATLLVM.Records.Create is
                Byte_Position : constant BA_Data         :=
                  Field_Position (Cur_Field, No_GL_Value);
                Bit_Position  : constant BA_Data         :=
-                 Byte_Position * Const (Uint_Bits_Per_Unit) +
-                 Const (Field_Bit_Offset (Cur_Field));
+                 Byte_Position * Const (ULL (BPU)) + Const (Field_Bit_Offset
+                                                              (Cur_Field));
                Bit_Offset    : constant Node_Ref_Or_Val :=
                  Annotated_Value (Bit_Position);
 
@@ -1681,10 +1677,10 @@ package body GNATLLVM.Records.Create is
                Set_Component_Bit_Offset (Cur_Field, Bit_Offset);
                if Is_Static_SO_Ref (Bit_Offset) then
                   Set_Normalized_Position
-                    (Cur_Field, Bit_Offset / Uint_Bits_Per_Unit);
+                    (Cur_Field, Bit_Offset / BPU);
 
                   Set_Normalized_First_Bit
-                    (Cur_Field, Bit_Offset mod Uint_Bits_Per_Unit);
+                    (Cur_Field, Bit_Offset mod BPU);
                else
                   Set_Normalized_Position (Cur_Field,
                                            Annotated_Value (Byte_Position));

@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Errout;     use Errout;
-with Get_Targ;   use Get_Targ;
 with Lib;        use Lib;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
@@ -349,9 +348,9 @@ package body GNATLLVM.GLType is
          declare
             Align_V      : constant ULL      := Get_Type_Alignment (GT);
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
-            In_Sz        : constant GL_Value := GT_Size (GT) * Byte_Size;
+            In_Sz        : constant GL_Value := GT_Size (GT) * BPU;
             In_Sz_Align  : constant GL_Value :=
-              Align_To (GT_Size (GT), 1, Align_V) * Byte_Size;
+              Align_To (GT_Size (GT), 1, Align_V) * BPU;
             Pad_Sz       : constant GL_Value :=
               (if Present (In_Sz) then Out_Sz - In_Sz else No_GL_Value);
             Pad_Sz_Align : constant GL_Value :=
@@ -408,7 +407,7 @@ package body GNATLLVM.GLType is
       Needs_Bias  : constant Boolean      :=
         Is_Biased or else In_GTI.Kind = Biased;
       Needs_Max   : constant Boolean      := Max_Size or else In_GTI.Max_Size;
-      Max_Int_Sz  : constant Uint         := UI_From_Int (Get_Long_Long_Size);
+      Max_Int_Sz  : constant Uint         := UI_From_Int (64);
       TE          : constant Entity_Id    := Full_Etype (GT);
       Prim_GT     : constant GL_Type      := Primitive_GL_Type (GT);
       Prim_Native : constant Boolean      := not Is_Nonnative_Type (Prim_GT);
@@ -421,7 +420,7 @@ package body GNATLLVM.GLType is
         (if Size = 0 then Uint_1 else Size);
       Size_Bytes  : constant Uint         :=
         (if   Size = No_Uint or else Is_Dynamic_SO_Ref (Size) then No_Uint
-         else (Size + Uint_Bits_Per_Unit - 1) / Uint_Bits_Per_Unit);
+         else (Size + BPU - 1) / BPU);
       Size_V      : GL_Value              :=
         (if   Size_Bytes = No_Uint or else not UI_Is_In_Int_Range (Size_Bytes)
          then In_GTI.Size else Size_Const_Int (Size_Bytes));
@@ -558,7 +557,7 @@ package body GNATLLVM.GLType is
                Pad_Size  : constant GL_Value := Size_V - Prim_Size;
                Pad_Count : constant LLI      := Get_Const_Int_Value (Pad_Size);
                Arr_T     : constant Type_T   :=
-                 Array_Type (Int_Ty (Get_Bits_Per_Unit), unsigned (Pad_Count));
+                 Array_Type (Byte_T, unsigned (Pad_Count));
 
             begin
                --  If there's a padding amount, thisis a padded type.
@@ -580,9 +579,8 @@ package body GNATLLVM.GLType is
          --  Byte_Array.
 
          elsif not Prim_Native and then Present (Size_V) then
-            GTI.LLVM_Type := Array_Type (Int_Ty (8),
-                                         unsigned (Get_Const_Int_Value
-                                                     (Size_V)));
+            GTI.LLVM_Type := Array_Type (Byte_T, unsigned (Get_Const_Int_Value
+                                                             (Size_V)));
             GTI.Kind      := Byte_Array;
 
          --  If we're looking for the maximum size and none of the above cases

@@ -17,13 +17,13 @@
 
 with Ada.Containers.Generic_Sort;
 
-with Elists;   use Elists;
-with Get_Targ; use Get_Targ;
-with Nlists;   use Nlists;
-with Output;   use Output;
-with Repinfo;  use Repinfo;
-with Snames;   use Snames;
-with Sprint;   use Sprint;
+with Elists;     use Elists;
+with Get_Targ;   use Get_Targ;
+with Nlists;     use Nlists;
+with Output;     use Output;
+with Repinfo;    use Repinfo;
+with Snames;     use Snames;
+with Sprint;     use Sprint;
 with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
@@ -1106,7 +1106,7 @@ package body GNATLLVM.Records is
    begin
       --  If the position is specified and isn't byte-aligned, it's a bitfield
 
-      if Our_Pos /= No_Uint and then Our_Pos mod Uint_Bits_Per_Unit /= 0 then
+      if Our_Pos /= No_Uint and then Our_Pos mod BPU /= 0 then
          return True;
 
       --  If we have no specification of size, either explicitly or
@@ -1121,7 +1121,7 @@ package body GNATLLVM.Records is
       elsif Is_Discrete_Or_Fixed_Point_Type (TE) then
          return Our_Size not in Uint_8 | Uint_16 | Uint_32 | Uint_64;
       else
-         return Our_Size mod Uint_Bits_Per_Unit /= 0;
+         return Our_Size mod BPU /= 0;
       end if;
 
    end Is_Bitfield_By_Rep;

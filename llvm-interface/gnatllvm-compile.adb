@@ -87,7 +87,11 @@ package body GNATLLVM.Compile is
          LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
       end loop;
 
-      Uint_Bits_Per_Unit := UI_From_Int (Get_Bits_Per_Unit);
+      --  Get single bit and single byte values and types
+
+      BPU    := Get_Bits_Per_Unit;
+      Bit_T  := Int_Ty (1);
+      Byte_T := Int_Ty (BPU);
 
       --  Find the integer type corresponding to the size of a pointer
       --  and use that for our Size Type.  Do this before we create any

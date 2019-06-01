@@ -858,10 +858,6 @@ package GNATLLVM.GLValue is
      (Const_Int (Size_GL_Type, N))
      with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
 
-   function Byte_Size return GL_Value is
-     (Size_Const_Int (Uint_Bits_Per_Unit))
-     with Post => Is_Constant (Byte_Size'Result);
-
    function Size_Const_Int
      (N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
@@ -1398,6 +1394,7 @@ package GNATLLVM.GLValue is
      (Mul (LHS, RHS));
    function "/" (LHS, RHS : GL_Value) return GL_Value is
      (S_Div (LHS, RHS));
+
    function "<" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp (Int_SLT, LHS, RHS) = Const_True);
    function "<=" (LHS, RHS : GL_Value) return Boolean is
@@ -1406,6 +1403,15 @@ package GNATLLVM.GLValue is
      (I_Cmp (Int_SGT, LHS, RHS) = Const_True);
    function ">=" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp (Int_SGE, LHS, RHS) = Const_True);
+
+   function "+" (LHS : GL_Value; RHS : Int) return GL_Value is
+     (LHS + Const_Int (LHS, UI_From_Int (RHS)));
+   function "-" (LHS : GL_Value; RHS : Int) return GL_Value is
+     (LHS - Const_Int (LHS, UI_From_Int (RHS)));
+   function "*" (LHS : GL_Value; RHS : Int) return GL_Value is
+     (LHS * Const_Int (LHS, UI_From_Int (RHS)));
+   function "/" (LHS : GL_Value; RHS : Int) return GL_Value is
+     (LHS / Const_Int (LHS, UI_From_Int (RHS)));
 
    function Build_Select
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")

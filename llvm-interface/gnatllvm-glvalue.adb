@@ -400,7 +400,7 @@ package body GNATLLVM.GLValue is
             return T;
 
          when Boolean_Data =>
-            return Int_Ty (1);
+            return Bit_T;
 
          when Object =>
             return (if Is_Loadable_Type (GT) then T else P_T);
@@ -409,7 +409,7 @@ package body GNATLLVM.GLValue is
             return P_T;
 
          when Activation_Record =>
-            return Int_Ty (Uint_Bits_Per_Unit);
+            return Byte_T;
 
          when Fat_Pointer =>
             return Create_Array_Fat_Pointer_Type (TE);
@@ -459,7 +459,7 @@ package body GNATLLVM.GLValue is
             return Type_Of (TE);
 
          when Boolean_Data =>
-            return Int_Ty (1);
+            return Bit_T;
 
          when Object =>
             return (if   Is_Loadable_Type (TE) then Type_Of (TE)
@@ -469,7 +469,7 @@ package body GNATLLVM.GLValue is
             return Pointer_Type (Type_Of (TE), 0);
 
          when Activation_Record =>
-            return Int_Ty (Uint_Bits_Per_Unit);
+            return Byte_T;
 
          when Fat_Pointer =>
             return Create_Array_Fat_Pointer_Type (TE);
@@ -971,7 +971,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_True return GL_Value is
-     (G (Const_Int (Int_Ty (1), ULL (1), False), Boolean_GL_Type,
+     (G (Const_Int (Bit_T, ULL (1), False), Boolean_GL_Type,
          Boolean_Data));
 
    -----------------
@@ -979,7 +979,7 @@ package body GNATLLVM.GLValue is
    -----------------
 
    function Const_False return GL_Value is
-     (G (Const_Int (Int_Ty (1), ULL (0), False), Boolean_GL_Type,
+     (G (Const_Int (Bit_T, ULL (0), False), Boolean_GL_Type,
          Boolean_Data));
 
    ---------------

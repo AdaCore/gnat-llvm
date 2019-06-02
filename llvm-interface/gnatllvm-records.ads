@@ -70,6 +70,11 @@ package GNATLLVM.Records is
       No_Padding : Boolean := False) return BA_Data
      with Pre  => Is_Record_Type (TE);
 
+   function Get_Record_Type_Alignment (TE : Entity_Id) return ULL
+     with Pre => Is_Record_Type (TE);
+   --  Like Get_Type_Alignment, but only for records and is called with
+   --  the GNAT type.
+
    function Emit_Record_Aggregate
      (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
      with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)

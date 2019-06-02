@@ -485,10 +485,11 @@ package body GNATLLVM.GLType is
               --  Also check for the integral case when the size isn't the
               --  number of bits.
 
-              or else (Needs_Max and then GTI.Max_Size)
+              or else (Needs_Max and then GTI.Max_Size
+                      and then Align_V = GTI.Alignment)
               --  It's also the same type even if there's no match if
               --  we want the maximum size and we have an entry where
-              --  we got the maximum size.
+              --  we got the maximum size.  But we need the right alignment.
 
               or else (not Is_Discrete_Or_Fixed_Point_Type (GT)
                          and then GTI.Kind = Primitive

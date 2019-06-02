@@ -1035,6 +1035,48 @@ package body GNATLLVM.Records is
       Max_Size  : Boolean := False) return BA_Data
      renames BA_Size.Variant_Part_Size;
 
+   -------------------------------
+   -- Get_Record_Type_Alignment --
+   -------------------------------
+
+   function Get_Record_Type_Alignment (TE : Entity_Id) return ULL is
+      Field : Entity_Id;
+
+   begin
+      --  If the record is packed, the alignment is 1
+
+      if Is_Packed (TE) then
+         return 1;
+      end if;
+
+      --  Otherwise, use the largest alignment of any field, but not if
+      --  there's a rep clause that unaligns it.
+
+      return Largest_Align : ULL := 1 do
+         Field := First_Entity (TE);
+         while Present (Field) loop
+            if Ekind_In (Field, E_Discriminant, E_Component) then
+               declare
+                  This_Align : constant ULL  :=
+                    Get_Type_Alignment (Full_GL_Type (Field));
+                  Pos        : constant Uint := Component_Bit_Offset (Field);
+                  Size       : constant Uint := Esize (Field);
+
+               begin
+                  if No (Component_Clause (Field))
+                    or else (Pos mod (Int (This_Align) * BPU) = 0
+                               and then Size mod (Int (This_Align) * BPU) = 0)
+                  then
+                     Largest_Align := ULL'Max (Largest_Align, This_Align);
+                  end if;
+               end;
+            end if;
+
+            Next_Entity (Field);
+         end loop;
+      end return;
+   end Get_Record_Type_Alignment;
+
    -------------------
    -- Field_Ordinal --
    -------------------

@@ -401,6 +401,11 @@ package body GNATLLVM.Types.Create is
                end if;
             end if;
 
+            --  Ensure the alignment is valid
+
+            Align := Validate_Alignment
+              (TE, Align, Get_Type_Alignment (GT, Use_Specified => False));
+
             --  Now make the GT that we need for this type.  We do this in
             --  two steps so that we can give the proper diagnostics.
             --  First, for composite types and if specified, we use the
@@ -447,25 +452,27 @@ package body GNATLLVM.Types.Create is
          end if;
       end if;
 
-      Validate_And_Set_Alignment
-        (TE, Alignment (TE),
-         (Get_Type_Alignment (GT, Use_Specified => False)));
+      if Unknown_Alignment (TE) then
+         Set_Alignment (TE, UI_From_ULL (Get_Type_Alignment (GT)));
+      end if;
+
       if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
         and then Present (Original_Array_Type (TE))
+        and then Unknown_Alignment (Original_Array_Type (TE))
       then
-         Validate_And_Set_Alignment (Original_Array_Type (TE),
-                                     Alignment (TE), Get_Type_Alignment (GT));
+         Set_Alignment (Original_Array_Type (TE),
+                        UI_From_ULL (Get_Type_Alignment (GT)));
       end if;
 
       return Type_Of (GT);
    end Create_Type;
 
-   --------------------------------
-   -- Validate_And_Set_Alignment --
-   --------------------------------
+   ------------------------
+   -- Validate_Alignment --
+   ------------------------
 
-   procedure Validate_And_Set_Alignment
-     (E : Entity_Id; Align : Uint; Current_Align : ULL)
+   function Validate_Alignment
+     (E : Entity_Id; Align : Uint; Current_Align : ULL) return Uint
    is
       TE        : constant Entity_Id :=
         (if Is_Type (E) then E else Full_Etype (E));
@@ -479,6 +486,7 @@ package body GNATLLVM.Types.Create is
       --  If there's no user-specified alignment clause and we've already
       --  posted an error, don't post another one.
 
+      Clause    : Node_Id            := Alignment_Clause (E);
       N         : Node_Id            := E;
       --  The initial location for an error message is the entity,
       --  but we may override it below if we find a better one.
@@ -492,12 +500,17 @@ package body GNATLLVM.Types.Create is
       --  the implicit base type of an array type, the alignment clause is
       --  on the first subtype.
 
-      if Present (Alignment_Clause (E)) then
-         N := Expression (Alignment_Clause (E));
-      elsif Is_Array_Type (E) and then Is_Full_Base_Type (E)
-        and then Present (Alignment_Clause (First_Subtype (E)))
+      if No (Clause) and then Is_Array_Type (E) and then Is_Full_Base_Type (E)
       then
-         N := Expression (Alignment_Clause (First_Subtype (E)));
+         Clause := Alignment_Clause (First_Subtype (E));
+      elsif No (Clause) and then Is_Record_Type (E)
+        and then not Is_Full_Base_Type (E)
+      then
+         Clause := Alignment_Clause (Full_Base_Type (E));
+      end if;
+
+      if Present (Clause) then
+         N := Expression (Clause);
       end if;
 
       --  If the alignment either doesn't fit into an int or is larger than the
@@ -505,27 +518,25 @@ package body GNATLLVM.Types.Create is
       --  alignment if one is specified.
 
       if not UI_Is_In_Int_Range (Align) or else Align > Max_Align then
-         New_Align := UI_To_Int (Max_Align);
          if not No_Error then
             Error_Msg_NE_Num ("largest supported alignment for& is ^",
                               N, E, Max_Align);
          end if;
+         return Max_Align;
+
       elsif Align /= 0 and then Align /= No_Uint then
          New_Align := UI_To_Int (Align);
       end if;
 
       --  If the alignment is too small, stick with the old alignment and give
-      --  an error if required.  ??? For now, we don't support under-alignment
-      --  of discrete types.  ??? And records and arrays have issues too.
-      --  (Yes, this is all types.)
+      --  an error if required.  We allow scalar types to be under-aligned
+      --  as compared to the alignment of the corresponding LLVM type when
+      --  defining a type, but not a object.
 
       if New_Align < Int (Current_Align) then
          if not No_Error
-           and then not Is_Discrete_Type (TE)
-           and then not Is_Array_Type (TE)
-           and then not Is_Record_Type (TE)
-           and then (No (Alignment_Clause (E))
-                       or else not From_At_Mod (Alignment_Clause (E)))
+           and then (not Is_Type (E) or else Is_Composite_Type (TE))
+           and then (No (Clause) or else not From_At_Mod (Clause))
          then
             Error_Msg_NE_Num ("alignment for& must be at least ^",
                               N, E, Int (Current_Align));
@@ -533,7 +544,7 @@ package body GNATLLVM.Types.Create is
          end if;
       end if;
 
-      Set_Alignment (E, UI_From_Int (New_Align));
-   end Validate_And_Set_Alignment;
+      return UI_From_Int (New_Align);
+   end Validate_Alignment;
 
 end GNATLLVM.Types.Create;

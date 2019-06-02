@@ -20,17 +20,18 @@ with Ada.Containers.Hashed_Maps;
 with Ada.Unchecked_Conversion;
 with System.Storage_Elements;    use System.Storage_Elements;
 
-with Errout;   use Errout;
-with Lib;      use Lib;
-with Nlists;   use Nlists;
-with Sem;      use Sem;
-with Sem_Aux;  use Sem_Aux;
-with Sem_Eval; use Sem_Eval;
-with Sem_Util; use Sem_Util;
-with Snames;   use Snames;
-with Stand;    use Stand;
-with Stringt;  use Stringt;
-with Table;    use Table;
+with Errout;     use Errout;
+with Lib;        use Lib;
+with Nlists;     use Nlists;
+with Sem;        use Sem;
+with Sem_Aux;    use Sem_Aux;
+with Sem_Eval;   use Sem_Eval;
+with Sem_Util;   use Sem_Util;
+with Snames;     use Snames;
+with Stand;      use Stand;
+with Stringt;    use Stringt;
+with Table;      use Table;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -1144,7 +1145,7 @@ package body GNATLLVM.Variables is
      (Def_Ident : Entity_Id;
       Expr      : Node_Id) return GL_Type
    is
-      TE       : constant Entity_Id :=
+      TE          : constant Entity_Id :=
         (if   Ekind (Etype (Def_Ident)) = E_Class_Wide_Type
               and then Present (Expr)
               and then Nkind (Expr) = N_Qualified_Expression
@@ -1153,16 +1154,18 @@ package body GNATLLVM.Variables is
       --  unless we have a qualified expression initializing a class wide
       --  type.
 
-      GT       : GL_Type            := Default_GL_Type (TE);
-      In_Size  : constant GL_Value  :=
+      GT           : GL_Type            := Default_GL_Type (TE);
+      In_Size      : constant GL_Value  :=
         (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
-      In_Align : constant GL_Value  := Get_Type_Alignment (GT);
-      Size     : constant Uint      :=
+      In_Align     : constant GL_Value  := Get_Type_Alignment (GT);
+      In_Align_ULL : constant ULL       := Get_Const_Int_Value_ULL (In_Align);
+      Size         : constant Uint      :=
         (if   Has_Size_Clause (Def_Ident) or not Unknown_Esize (Def_Ident)
          then Esize (Def_Ident) else No_Uint);
-      Align    : Uint               :=
+      Align        : Uint               :=
         (if   Unknown_Alignment (Def_Ident) then No_Uint
-         else Alignment (Def_Ident));
+         else Validate_Alignment (Def_Ident, Alignment (Def_Ident),
+                                  In_Align_ULL));
       Max_Size : constant Boolean   := Is_Unconstrained_Record (GT);
       Biased   : constant Boolean   := Has_Biased_Representation (Def_Ident);
 
@@ -1207,7 +1210,7 @@ package body GNATLLVM.Variables is
 
             --  If this is larger than the previous alignment, use it
 
-            if Our_Align > Get_Const_Int_Value_ULL (In_Align) then
+            if Our_Align > In_Align_ULL then
                Align := UI_From_Int (Int (Our_Align));
             end if;
          end;
@@ -1729,8 +1732,9 @@ package body GNATLLVM.Variables is
          Set_Esize (Def_Ident, Annotated_Object_Size (GT));
       end if;
 
-      Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  Get_Type_Alignment (GT));
+      if Unknown_Alignment (Def_Ident) then
+         Set_Alignment (Def_Ident, UI_From_ULL (Get_Type_Alignment (GT)));
+      end if;
 
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.
@@ -1949,9 +1953,9 @@ package body GNATLLVM.Variables is
                          Const (ULL (BPU))));
       end if;
 
-      Validate_And_Set_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  Get_Type_Alignment (GT));
-
+      if Unknown_Alignment (Def_Ident) then
+         Set_Alignment (Def_Ident, UI_From_ULL (Get_Type_Alignment (GT)));
+      end if;
    end Emit_Renaming_Declaration;
 
    ---------------------

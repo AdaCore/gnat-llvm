@@ -25,14 +25,15 @@ package GNATLLVM.Types.Create is
    --  Given a GNAT type TE, build the corresponding LLVM type, building
    --  a GL_Type first if necessary.
 
-   procedure Validate_And_Set_Alignment
-     (E : Entity_Id; Align : Uint; Current_Align : ULL)
-     with Pre => Present (E);
-   --  Current_Align is the current alignment of E, either because it's
-   --  the alignment of the LLVM type (if E is a type) or because it's the
+   function Validate_Alignment
+     (E : Entity_Id; Align : Uint; Current_Align : ULL) return Uint
+     with Pre  => Present (E),
+          Post => Validate_Alignment'Result /= No_Uint;
+   --  Current_Align is the current alignment of E, either because it's the
+   --  alignment of the LLVM type (if E is a type) or because it's the
    --  alignment of E's type (if E if an object).  Align is a proposed
    --  alignment for E.  See if it's valid (possibly issuing an error
-   --  message if not) and set the alignment of E to that value or an
-   --  acceptable value if Align isn't valid.
+   --  message if not) and return it if so or some other acceptable value
+   --  if not.
 
 end GNATLLVM.Types.Create;

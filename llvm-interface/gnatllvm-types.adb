@@ -964,7 +964,6 @@ package body GNATLLVM.Types is
    is
       Align         : constant GL_Value  := GT_Alignment (GT);
       TE            : constant Entity_Id := Full_Etype (GT);
-      Field         : Entity_Id;
 
    begin
       --  If there's a known alignment in this GL_Type, use it
@@ -983,28 +982,10 @@ package body GNATLLVM.Types is
       elsif Is_Array_Type (TE) then
          return Get_Type_Alignment (Full_Component_GL_Type (TE));
 
-      --  If a record, use the highest alignment of any field without
-      --  a rep clause, but use 1 for a packed record.
+      --  If a record, call the specialized function
 
       elsif Is_Record_Type (TE) then
-         if Is_Packed (TE) then
-            return 1;
-         end if;
-
-         return Largest_Align : ULL := 1 do
-            Field := First_Entity (TE);
-            while Present (Field) loop
-               if Ekind_In (Field, E_Discriminant, E_Component)
-                 and then not Is_Bitfield_By_Rep (Field)
-               then
-                  Largest_Align :=
-                    ULL'Max (Largest_Align,
-                             Get_Type_Alignment (Full_GL_Type (Field)));
-               end if;
-
-               Next_Entity (Field);
-            end loop;
-         end return;
+         return Get_Record_Type_Alignment (TE);
 
       --  If it's a subprogram type, there really isn't an alignment, but
       --  indicate that code can be anywhere.

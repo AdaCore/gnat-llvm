@@ -19,7 +19,6 @@ with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
-with Repinfo;  use Repinfo;
 with Restrict; use Restrict;
 with Sem_Aggr; use Sem_Aggr;
 with Sem_Util; use Sem_Util;
@@ -517,35 +516,11 @@ package body GNATLLVM.Compile is
             | N_Task_Type_Declaration
            =>
             declare
-               TE : constant Entity_Id     :=
+               TE : constant Entity_Id :=
                  Get_Fullest_View (Defining_Identifier (N));
-               Sz : constant Uint          := Esize (TE);
-               GT : GL_Type;
 
             begin
-               --  Elaboratte the type, then check that the type fits in
-               --  the specified size, which may have been set by
-               --  back-annotation.  We don't consider a type to be of
-               --  fixed size if the byte size is larger than unsigned'Last
-               --  due to LLVM limitations, so we may have a dynamic size
-               --  that's actual a constant.  And if the size is dynamic we
-               --  can't know if it fits or not.  The best way to do the
-               --  size comparison is to form a GL_Value of the two
-               --  constants and compare them since this doesn't rely on
-               --  the above behavior of Is_Dynamic_Size.
-
                Discard (Type_Of (TE));
-               GT := Default_GL_Type (TE);
-               if Sz /= 0 and then Is_Static_SO_Ref (Sz)
-                 and then not Is_Dynamic_Size (GT)
-                 and then (I_Cmp (Int_SGT, Get_Type_Size
-                                    (GT, Max_Size => True),
-                                  Size_Const_Int (Sz))
-                             = Const_True)
-               then
-                  Error_Msg_Uint_1 := Sz;
-                  Error_Msg_NE ("??type & does not fit into ^ bits", N, TE);
-               end if;
 
                --  Now copy any back-annotations from what we
                --  elaborated to this type.

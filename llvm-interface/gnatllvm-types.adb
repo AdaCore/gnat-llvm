@@ -532,10 +532,6 @@ package body GNATLLVM.Types is
       then
          Set_Component_Size (Out_TE, Component_Size (In_TE));
       end if;
-
-      --  ??? Unclear what, if anything, we need to do about record field
-      --  positions.
-
    end Copy_Annotations;
 
    -----------------

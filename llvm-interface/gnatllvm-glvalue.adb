@@ -17,8 +17,7 @@
 
 with Ada.Unchecked_Conversion;
 
-with Get_Targ;   use Get_Targ;
-with Uintp.LLVM; use Uintp.LLVM;
+with Get_Targ; use Get_Targ;
 
 with GNATLLVM.Arrays;        use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
@@ -870,13 +869,13 @@ package body GNATLLVM.GLValue is
    ----------------------
 
    procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id) is
-      GT_Align : constant ULL := Get_Type_Alignment (GT);
-      E_Align  : constant ULL :=
+      GT_Align : constant Nat := Get_Type_Alignment (GT);
+      E_Align  : constant Nat :=
         (if   Present (E) and then not Unknown_Alignment (E)
-         then UI_To_ULL (Alignment (E)) else 1);
+         then UI_To_Int (Alignment (E)) else 1);
 
    begin
-      Set_Alignment (Obj, unsigned (ULL'Max (GT_Align, E_Align)));
+      Set_Alignment (Obj, unsigned (Nat'Max (GT_Align, E_Align)));
    end Set_Object_Align;
 
    ------------
@@ -1605,7 +1604,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    procedure Call_With_Align
-     (Func : GL_Value; Args : GL_Value_Array; Align : ULL; Name : String := "")
+     (Func : GL_Value; Args : GL_Value_Array; Align : Nat; Name : String := "")
    is
       CI : constant Value_T := Call_Internal (Func, Args, Name);
 
@@ -1620,7 +1619,7 @@ package body GNATLLVM.GLValue is
    procedure Call_With_Align_2
      (Func             : GL_Value;
       Args             : GL_Value_Array;
-      Align_1, Align_2 : ULL;
+      Align_1, Align_2 : Nat;
       Name             : String := "")
    is
       CI : constant Value_T := Call_Internal (Func, Args, Name);
@@ -1692,21 +1691,21 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Type_Size (V : GL_Value) return GL_Value is
-      (Get_Type_Size (Related_Type (V), V));
+     (Get_Type_Size (Related_Type (V), V));
 
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (V : GL_Value) return ULL is
-      (Get_Type_Alignment (Related_Type (V)));
+   function Get_Type_Alignment (V : GL_Value) return Nat is
+     (Get_Type_Alignment (Related_Type (V)));
 
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
 
    function Get_Type_Alignment (GT : GL_Type) return GL_Value is
-      (Size_Const_Int (Get_Type_Alignment (GT)));
+     (Size_Const_Int (Get_Type_Alignment (GT)));
 
    ----------------
    -- Add_Global --

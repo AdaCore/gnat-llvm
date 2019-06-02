@@ -26,7 +26,7 @@ package GNATLLVM.Types.Create is
    --  a GL_Type first if necessary.
 
    function Validate_Alignment
-     (E : Entity_Id; Align : Uint; Current_Align : ULL) return Uint
+     (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint
      with Pre  => Present (E),
           Post => Validate_Alignment'Result /= No_Uint;
    --  Current_Align is the current alignment of E, either because it's the

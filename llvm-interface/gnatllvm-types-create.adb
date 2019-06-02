@@ -292,6 +292,7 @@ package body GNATLLVM.Types.Create is
             T := Create_Subprogram_Type (TE);
 
          when E_Incomplete_Type =>
+
             --  This is normally a Taft Amendment type, so return a
             --  dummy type that we can take a pointer to.  But it may also
             --  be an actual type in the case of an error, so use something
@@ -472,7 +473,7 @@ package body GNATLLVM.Types.Create is
    ------------------------
 
    function Validate_Alignment
-     (E : Entity_Id; Align : Uint; Current_Align : ULL) return Uint
+     (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint
    is
       TE        : constant Entity_Id :=
         (if Is_Type (E) then E else Full_Etype (E));
@@ -491,7 +492,7 @@ package body GNATLLVM.Types.Create is
       --  The initial location for an error message is the entity,
       --  but we may override it below if we find a better one.
 
-      New_Align : Int                := Int (Current_Align);
+      New_Align : Nat                := Current_Align;
       --  By default, the new alignment is the same as the old one
 
    begin
@@ -533,14 +534,14 @@ package body GNATLLVM.Types.Create is
       --  as compared to the alignment of the corresponding LLVM type when
       --  defining a type, but not a object.
 
-      if New_Align < Int (Current_Align) then
+      if New_Align < Current_Align then
          if not No_Error
            and then (not Is_Type (E) or else Is_Composite_Type (TE))
            and then (No (Clause) or else not From_At_Mod (Clause))
          then
             Error_Msg_NE_Num ("alignment for& must be at least ^",
                               N, E, Int (Current_Align));
-            New_Align := Int (Current_Align);
+            New_Align := Current_Align;
          end if;
       end if;
 

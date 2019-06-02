@@ -20,18 +20,17 @@ with Ada.Containers.Hashed_Maps;
 with Ada.Unchecked_Conversion;
 with System.Storage_Elements;    use System.Storage_Elements;
 
-with Errout;     use Errout;
-with Lib;        use Lib;
-with Nlists;     use Nlists;
-with Sem;        use Sem;
-with Sem_Aux;    use Sem_Aux;
-with Sem_Eval;   use Sem_Eval;
-with Sem_Util;   use Sem_Util;
-with Snames;     use Snames;
-with Stand;      use Stand;
-with Stringt;    use Stringt;
-with Table;      use Table;
-with Uintp.LLVM; use Uintp.LLVM;
+with Errout;   use Errout;
+with Lib;      use Lib;
+with Nlists;   use Nlists;
+with Sem;      use Sem;
+with Sem_Aux;  use Sem_Aux;
+with Sem_Eval; use Sem_Eval;
+with Sem_Util; use Sem_Util;
+with Snames;   use Snames;
+with Stand;    use Stand;
+with Stringt;  use Stringt;
+with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -1158,14 +1157,15 @@ package body GNATLLVM.Variables is
       In_Size      : constant GL_Value  :=
         (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
       In_Align     : constant GL_Value  := Get_Type_Alignment (GT);
-      In_Align_ULL : constant ULL       := Get_Const_Int_Value_ULL (In_Align);
+      In_Align_Nat : constant Nat       :=
+        Nat (Get_Const_Int_Value_ULL (In_Align));
       Size         : constant Uint      :=
         (if   Has_Size_Clause (Def_Ident) or not Unknown_Esize (Def_Ident)
          then Esize (Def_Ident) else No_Uint);
       Align        : Uint               :=
         (if   Unknown_Alignment (Def_Ident) then No_Uint
          else Validate_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  In_Align_ULL));
+                                  In_Align_Nat));
       Max_Size : constant Boolean   := Is_Unconstrained_Record (GT);
       Biased   : constant Boolean   := Has_Biased_Representation (Def_Ident);
 
@@ -1191,7 +1191,7 @@ package body GNATLLVM.Variables is
       then
          declare
             In_Size_ULL : constant ULL := Get_Const_Int_Value_ULL (In_Size);
-            Our_Align   : ULL          := 0;
+            Our_Align   : Nat          := 0;
 
          begin
             --  Rather than trying to make this unnecessarily portable,
@@ -1210,8 +1210,8 @@ package body GNATLLVM.Variables is
 
             --  If this is larger than the previous alignment, use it
 
-            if Our_Align > In_Align_ULL then
-               Align := UI_From_Int (Int (Our_Align));
+            if Our_Align > In_Align_Nat then
+               Align := UI_From_Int (Our_Align);
             end if;
          end;
       end if;
@@ -1733,7 +1733,7 @@ package body GNATLLVM.Variables is
       end if;
 
       if Unknown_Alignment (Def_Ident) then
-         Set_Alignment (Def_Ident, UI_From_ULL (Get_Type_Alignment (GT)));
+         Set_Alignment (Def_Ident, UI_From_Int (Get_Type_Alignment (GT)));
       end if;
 
       --  If we're at library level and not in an elab proc, we can't do
@@ -1954,7 +1954,7 @@ package body GNATLLVM.Variables is
       end if;
 
       if Unknown_Alignment (Def_Ident) then
-         Set_Alignment (Def_Ident, UI_From_ULL (Get_Type_Alignment (GT)));
+         Set_Alignment (Def_Ident, UI_From_Int (Get_Type_Alignment (GT)));
       end if;
    end Emit_Renaming_Declaration;
 

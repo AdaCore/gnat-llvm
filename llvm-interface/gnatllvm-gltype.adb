@@ -346,7 +346,7 @@ package body GNATLLVM.GLType is
         and then Size /= No_Uint
       then
          declare
-            Align_V      : constant ULL      := Get_Type_Alignment (GT);
+            Align_V      : constant Nat      := Get_Type_Alignment (GT);
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
             In_Sz        : constant GL_Value := GT_Size (GT) * BPU;
             In_Sz_Align  : constant GL_Value :=
@@ -457,7 +457,8 @@ package body GNATLLVM.GLType is
       if For_Type and then Size = No_Uint and then Present (Size_V)
         and then Present (Align_V) and then U_Rem (Size_V, Align_V) /= 0
       then
-         Size_V := Align_To (Size_V, 1, Get_Const_Int_Value_ULL (Align_V));
+         Size_V := Align_To (Size_V, 1,
+                             Nat (Get_Const_Int_Value_ULL (Align_V)));
       end if;
 
       --  See if we already made a matching GL_Type

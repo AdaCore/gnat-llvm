@@ -70,7 +70,7 @@ package GNATLLVM.Records is
       No_Padding : Boolean := False) return BA_Data
      with Pre  => Is_Record_Type (TE);
 
-   function Get_Record_Type_Alignment (TE : Entity_Id) return ULL
+   function Get_Record_Type_Alignment (TE : Entity_Id) return Nat
      with Pre => Is_Record_Type (TE);
    --  Like Get_Type_Alignment, but only for records and is called with
    --  the GNAT type.
@@ -150,7 +150,7 @@ package GNATLLVM.Records is
    --  do get a static access to this field.
 
    function Align_To
-     (V : GL_Value; Cur_Align, Must_Align : ULL) return GL_Value
+     (V : GL_Value; Cur_Align, Must_Align : Nat) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);
    --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
    --  Align_To.
@@ -284,7 +284,7 @@ private
       GT               : GL_Type;
       --  The GL_Type corresponding to this fragment, if any
 
-      Align            : ULL;
+      Align            : Nat;
       --  If specified, the alignment of this piece
 
       Position         : ULL;

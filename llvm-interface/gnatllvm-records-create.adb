@@ -52,7 +52,7 @@ package body GNATLLVM.Records.Create is
    --  since we'll be requesting fields in roughly (but not exactly!)
    --  the same order as they are in the list.
 
-   function Variant_Alignment (Var_Part : Node_Id) return ULL
+   function Variant_Alignment (Var_Part : Node_Id) return Nat
      with Pre => Present (Var_Part);
    --  Compute the alignment of the variant at Var_Part, which is the
    --  maximum size of any field in the variant.  We recurse through
@@ -139,11 +139,11 @@ package body GNATLLVM.Records.Create is
    -- Variant_Alignment --
    -----------------------
 
-   function Variant_Alignment (Var_Part : Node_Id) return ULL is
-      Variant       : Node_Id := First_Non_Pragma (Variants (Var_Part));
+   function Variant_Alignment (Var_Part : Node_Id) return Nat is
+      Variant : Node_Id := First_Non_Pragma (Variants (Var_Part));
 
    begin
-      return Align : ULL := 0 do
+      return Align : Nat := 0 do
          while Present (Variant) loop
             declare
                Comp_List      : constant Node_Id := Component_List (Variant);
@@ -166,7 +166,7 @@ package body GNATLLVM.Records.Create is
                      if not Is_Bitfield_By_Rep (F)
                        and then (not Is_Packed (TE) or else Is_Aliased (F))
                      then
-                        Align := ULL'Max (Align, Get_Type_Alignment (GT));
+                        Align := Nat'Max (Align, Get_Type_Alignment (GT));
                      end if;
                   end;
 
@@ -174,7 +174,7 @@ package body GNATLLVM.Records.Create is
                end loop;
 
                if Present (Nested_Variant) then
-                  Align := ULL'Max (Align, Variant_Alignment (Nested_Variant));
+                  Align := Nat'Max (Align, Variant_Alignment (Nested_Variant));
                end if;
             end;
 
@@ -224,7 +224,7 @@ package body GNATLLVM.Records.Create is
          --  are because we must not move non-repped field across that
          --  boundary.
 
-         Var_Align    : ULL;
+         Var_Align    : Nat;
          --  The alignment of the variant, if that depth is nonzero.
 
          Bitpos       : Uint;
@@ -262,7 +262,7 @@ package body GNATLLVM.Records.Create is
       --  so we know which fields will be present in the record.
 
       type Variant_Stack_Info is record
-         Align      : ULL;
+         Align      : Nat;
          Is_Static  : Boolean;
       end record;
 
@@ -296,7 +296,7 @@ package body GNATLLVM.Records.Create is
       Par_Depth      : Int              := 0;
       --  Nesting depth into parent records
 
-      RI_Align       : ULL              := 0;
+      RI_Align       : Nat              := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
@@ -311,7 +311,7 @@ package body GNATLLVM.Records.Create is
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
-      Split_Align    : ULL              := ULL (Get_Maximum_Alignment);
+      Split_Align    : Nat              := Get_Maximum_Alignment;
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the
@@ -339,7 +339,7 @@ package body GNATLLVM.Records.Create is
       procedure Add_RI
         (T                : Type_T                      := No_Type_T;
          F_GT             : GL_Type                     := No_GL_Type;
-         Align            : ULL                         := 0;
+         Align            : Nat                         := 0;
          Position         : ULL                         := 0;
          Variant_List     : List_Id                     := No_List;
          Variant_Expr     : Node_Id                     := Empty;
@@ -382,7 +382,7 @@ package body GNATLLVM.Records.Create is
       procedure Add_RI
         (T                : Type_T                      := No_Type_T;
          F_GT             : GL_Type                     := No_GL_Type;
-         Align            : ULL                         := 0;
+         Align            : Nat                         := 0;
          Position         : ULL                         := 0;
          Variant_List     : List_Id                     := No_List;
          Variant_Expr     : Node_Id                     := Empty;
@@ -571,7 +571,7 @@ package body GNATLLVM.Records.Create is
             Static_Constraint  : constant Boolean   :=
               Present (Constraining_Expr)
                 and then Is_Static_Expression (Constraining_Expr);
-            Variant_Align      : constant ULL       :=
+            Variant_Align      : constant Nat       :=
               (if Present (Var_Part) then Variant_Alignment (Var_Part) else 0);
             Var_Array          : Record_Info_Id_Array_Access;
             Overlap_Var_Array  : Record_Info_Id_Array_Access;
@@ -855,13 +855,13 @@ package body GNATLLVM.Records.Create is
          R_TE      : constant Entity_Id := Full_Scope (E);
          Def_GT    : constant GL_Type   := Default_GL_Type (Full_Etype (E));
          F_GT      : GL_Type            := Full_GL_Type (E);
-         Align     : constant ULL       := Get_Type_Alignment (F_GT);
-         Bit_Align : constant ULL       := Align * ULL (BPU);
+         Align     : constant Nat       := Get_Type_Alignment (F_GT);
+         Bit_Align : constant Nat       := Align * BPU;
          Parent_TE : constant Entity_Id :=
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
          Var_Depth : Int                := 0;
-         Var_Align : ULL                := 0;
+         Var_Align : Nat                := 0;
 
       begin
          --  If we've pushed the variant stack and the top entry is static,
@@ -901,24 +901,24 @@ package body GNATLLVM.Records.Create is
          --  alignment of the type, we may have to give an error in some
          --  cases.
 
-         elsif Present (Clause) and then Pos mod Int (Bit_Align) /= 0 then
+         elsif Present (Clause) and then Pos mod Bit_Align /= 0 then
             if Is_Atomic (E) then
                Error_Msg_NE_Num
                  ("position of atomic field& must be multiple of ^ bits",
-                  First_Bit (Clause), E, Int (Bit_Align));
+                  First_Bit (Clause), E, Bit_Align);
             elsif Is_Aliased (E) then
                Error_Msg_NE_Num
                  ("position of aliased field& must be multiple of ^ bits",
-                  First_Bit (Clause), E, Int (Bit_Align));
+                  First_Bit (Clause), E, Bit_Align);
             elsif Is_Independent (E) then
                Error_Msg_NE_Num
                  ("position of independent field& must be multiple of ^ bits",
-                  First_Bit (Clause), E, Int (Bit_Align));
+                  First_Bit (Clause), E, Bit_Align);
             elsif Strict_Alignment (E) then
                Error_Msg_NE_Num
                  ("position of & with aliased or tagged part must be " &
                     "multiple of ^ bits",
-                  First_Bit (Clause), E, Int (Bit_Align));
+                  First_Bit (Clause), E, Bit_Align);
             end if;
          end if;
 
@@ -1012,8 +1012,8 @@ package body GNATLLVM.Records.Create is
          procedure Sort is new Ada.Containers.Generic_Sort
            (Index_Type => Int, Before => Field_Before, Swap => Swap_Fields);
 
-         function Align_Pos (Pos, Align : ULL) return ULL is
-           (((Pos + Align - 1) / Align)  * Align);
+         function Align_Pos (Pos : ULL; Align : Nat) return ULL is
+           (((Pos + ULL (Align) - 1) / ULL (Align))  * ULL (Align));
          --  Given a position and an alignment, align the position
 
          function Max_Record_Rep (E : Entity_Id) return Uint
@@ -1354,7 +1354,7 @@ package body GNATLLVM.Records.Create is
 
                --  If a position is specified, this is that position
 
-               Need_Align  :  ULL                :=
+               Need_Align  :  Nat                :=
                  (if   Pos /= No_Uint
                        or else (Is_Packed (TE) and then not Is_Aliased (F))
                   then 1 else Get_Type_Alignment (F_GT));
@@ -1502,7 +1502,7 @@ package body GNATLLVM.Records.Create is
                      T           : constant Type_T := Type_Of (F_GT);
                      --  LLVM type to use
 
-                     T_Align     : constant ULL    :=
+                     T_Align     : constant Nat    :=
                        (if Use_Packed then 1 else Get_Type_Alignment (T));
                      --  The native alignment of the LLVM type
 

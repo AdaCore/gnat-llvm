@@ -680,7 +680,7 @@ package body GNATLLVM.Arrays is
    -- Get_Bound_Alignment --
    -------------------------
 
-   function Get_Bound_Alignment (TE : Entity_Id) return ULL is
+   function Get_Bound_Alignment (TE : Entity_Id) return Nat is
       (Get_Type_Alignment (Create_Array_Bounds_Type (TE)));
 
    ------------------------

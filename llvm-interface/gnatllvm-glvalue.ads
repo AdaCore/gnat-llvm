@@ -1637,13 +1637,13 @@ package GNATLLVM.GLValue is
      with Pre  => Present (Func);
 
    procedure Call_With_Align
-     (Func : GL_Value; Args : GL_Value_Array; Align : ULL; Name : String := "")
+     (Func : GL_Value; Args : GL_Value_Array; Align : Nat; Name : String := "")
      with Pre  => Present (Func);
 
    procedure Call_With_Align_2
      (Func             : GL_Value;
       Args             : GL_Value_Array;
-      Align_1, Align_2 : ULL;
+      Align_1, Align_2 : Nat;
       Name             : String := "")
      with Pre  => Present (Func);
 
@@ -1693,11 +1693,7 @@ package GNATLLVM.GLValue is
    function Get_Type_Size (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Get_Type_Size'Result);
 
-   function Get_Type_Alignment (V : GL_Value) return ULL
-     with Pre => Present (V);
-
-   function Get_Type_Alignment (V : GL_Value) return unsigned is
-     (unsigned (ULL'(Get_Type_Alignment (V))))
+   function Get_Type_Alignment (V : GL_Value) return Nat
      with Pre => Present (V);
 
    function Get_Type_Alignment (GT : GL_Type) return GL_Value
@@ -1731,8 +1727,8 @@ package GNATLLVM.GLValue is
      with Pre  => Present (Func) and then Present (GT),
           Post => Present (Get_Param'Result);
 
-   function Get_Stack_Alignment return unsigned is
-     (Get_Stack_Alignment (Module_Data_Layout));
+   function Get_Stack_Alignment return Nat is
+     (Nat (Get_Stack_Alignment (Module_Data_Layout)));
 
    function Get_Insert_Block return Basic_Block_T is
      (Get_Insert_Block (IR_Builder))

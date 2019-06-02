@@ -19,6 +19,7 @@ with Errout;     use Errout;
 with Get_Targ;   use Get_Targ;
 with Sem_Aux;    use Sem_Aux;
 with Sinfo;      use Sinfo;
+with Snames;     use Snames;
 with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
@@ -48,6 +49,12 @@ package body GNATLLVM.Types.Create is
      with Pre  => Is_Access_Type (TE),
           Post => Present (Create_Access_Type'Result);
    --  Create an LLVM type for various GNAT types
+
+   function Validate_Value_Size
+     (TE : Entity_Id; GT : GL_Type; Size : Uint) return Uint
+     with Pre => Is_Type (TE) and then Present (GT);
+   --  Return Size if valid, otherwise maybe give an error message and
+   --  return No_Uint.
 
    ---------------------------------
    -- Depends_On_Being_Elaborated --
@@ -377,14 +384,15 @@ package body GNATLLVM.Types.Create is
             Size_TE    : constant Entity_Id :=
               (if   Is_Packed_Array_Impl_Type (TE)
                then Original_Array_Type (TE) else TE);
-            Value_Size : constant Uint      :=
-              (if   Unknown_RM_Size (Size_TE) or else RM_Size (Size_TE) = 0
-               then No_Uint else RM_Size (Size_TE));
-            Size       : constant Uint      :=
-              (if Unknown_Esize (Size_TE) then No_Uint else Esize (Size_TE));
             Size_GT    : constant GL_Value  :=
               (if   Is_Dynamic_Size (GT) then No_GL_Value
                else Get_Type_Size (GT));
+            Value_Size : constant Uint      :=
+              (if   Unknown_RM_Size (Size_TE) or else RM_Size (Size_TE) = 0
+               then No_Uint
+               else Validate_Value_Size (TE, GT, RM_Size (Size_TE)));
+            Size       : constant Uint      :=
+              (if Unknown_Esize (Size_TE) then No_Uint else Esize (Size_TE));
 
          begin
             --  If this is an atomic or VFA type with no alignment specified,
@@ -547,5 +555,62 @@ package body GNATLLVM.Types.Create is
 
       return UI_From_Int (New_Align);
    end Validate_Alignment;
+
+   -------------------------
+   -- Validate_Value_Size --
+   -------------------------
+
+   function Validate_Value_Size
+     (TE : Entity_Id; GT : GL_Type; Size : Uint) return Uint
+   is
+      Clause   : constant Node_Id :=
+        Get_Attribute_Definition_Clause (TE, Attribute_Value_Size);
+      Old_Size : GL_Value;
+
+   begin
+      --  If no size was specified we're done.  Also, ignore a zero size
+      --  unless it's been specified for a non-integral type.
+
+      if Size = No_Uint
+        or else (Size = 0 and then No (Clause)
+                   and then not Has_Size_Clause (TE)
+                   and then not Is_Discrete_Or_Fixed_Point_Type (TE))
+      then
+         return No_Uint;
+      end if;
+
+      --  If this is of variable size, specifying a size is an error
+
+      if Is_Dynamic_Size (GT, Max_Size => Is_Unconstrained_Record (GT)) then
+         if Present (Clause) then
+            Error_Msg_NE ("Value_Size for^ too small", Clause, TE);
+         end if;
+
+         return No_Uint;
+      end if;
+
+      --  Otherwise, get the size to compare against
+
+      Old_Size :=
+        Get_Type_Size (GT, No_GL_Value,
+                       Max_Size   => Is_Unconstrained_Record (GT),
+                       No_Padding => not Is_Unconstrained_Record (GT));
+
+      --  If too small, we can't use it.  Give an error if 'Value_Size
+      --  was specified and this isn't a discrete type.
+
+      if Size_Const_Int (Size) < Old_Size * BPU then
+         if Present (Clause) and then not Is_Discrete_Or_Fixed_Point_Type (TE)
+         then
+            Error_Msg_Uint_1 := UI_From_GL_Value (Old_Size) * BPU;
+            Error_Msg_NE ("Value_Size for& too small, minimum allowed is^",
+                          Clause, TE);
+         end if;
+
+         return No_Uint;
+      end if;
+
+      return Size;
+   end Validate_Value_Size;
 
 end GNATLLVM.Types.Create;

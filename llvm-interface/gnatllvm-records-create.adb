@@ -32,6 +32,7 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
 
+with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.Records.Create is
@@ -850,11 +851,14 @@ package body GNATLLVM.Records.Create is
       procedure Add_Field (E : Entity_Id) is
          Clause    : constant Node_Id   := Component_Clause (E);
          Pos       : constant Uint      :=
-           (if   Present (Component_Clause (E)) then Component_Bit_Offset (E)
-            else No_Uint);
+           (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
          R_TE      : constant Entity_Id := Full_Scope (E);
          Def_GT    : constant GL_Type   := Default_GL_Type (Full_Etype (E));
          F_GT      : GL_Type            := Full_GL_Type (E);
+         Size      : constant Uint      :=
+           (if   Unknown_Esize (E) then No_Uint
+            else Validate_Size (E, Def_GT, Esize (E),
+                                Zero_Allowed => Present (Clause)));
          Align     : constant Nat       := Get_Type_Alignment (F_GT);
          Bit_Align : constant Nat       := Align * BPU;
          Parent_TE : constant Entity_Id :=
@@ -933,13 +937,12 @@ package body GNATLLVM.Records.Create is
          --  is atomic or aliased, we may have to give an error. (The
          --  variable case is handled above.)
 
-         if Present (Clause)
+         if Present (Clause) and then Size /= No_Uint
            and then not Is_Dynamic_Size (Def_GT)
-           and then (Size_Const_Int (Esize (E)) <
-                       Get_Type_Size_In_Bits (Def_GT)
+           and then (Size_Const_Int (Size) < Get_Type_Size_In_Bits (Def_GT)
                        or else ((Is_Aliased (E) or else Is_Atomic (E))
                                 and then (Get_Type_Size_In_Bits (Def_GT)) <
-                                  Size_Const_Int (Esize (E))))
+                                  Size_Const_Int (Size)))
          then
             if Is_Atomic (E) then
                Error_Msg_NE_Num
@@ -964,9 +967,7 @@ package body GNATLLVM.Records.Create is
          --  Now add field to table
 
          Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Par_Depth,
-                                    Var_Depth, Var_Align, Pos,
-                                    (if   Present (Clause) then Esize (E)
-                                     else No_Uint)));
+                                    Var_Depth, Var_Align, Pos, Size));
       end Add_Field;
 
       ---------------------------

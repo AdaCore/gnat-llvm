@@ -1793,4 +1793,8 @@ package GNATLLVM.GLValue is
      (Def_Ident : Entity_Id; Name : String) return String;
    --  Get name to be used for an alloc instruction
 
+   procedure Error_Msg_NE_Num
+     (Msg : String; N : Node_Id; E : Entity_Id; V : GL_Value)
+     with Pre => Msg'Length > 0 and then Present (N) and then Present (E)
+                 and then Present (V);
 end GNATLLVM.GLValue;

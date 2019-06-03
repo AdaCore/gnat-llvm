@@ -871,7 +871,7 @@ package body GNATLLVM.GLValue is
    procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id) is
       GT_Align : constant Nat := Get_Type_Alignment (GT);
       E_Align  : constant Nat :=
-        (if   Present (E) and then not Unknown_Alignment (E)
+        (if   Present (E) and then Known_Alignment (E)
          then UI_To_Int (Alignment (E)) else 1);
 
    begin
@@ -2045,5 +2045,15 @@ package body GNATLLVM.GLValue is
      (if    Name = "%%" then "" elsif Name /= "" then Name
       elsif Present (Def_Ident)
       then  Get_Ext_Name (Def_Ident) else "");
+
+   ----------------------
+   -- Error_Msg_NE_Num --
+   ----------------------
+
+   procedure Error_Msg_NE_Num
+     (Msg : String; N : Node_Id; E : Entity_Id; V : GL_Value) is
+   begin
+      Error_Msg_NE_Num (Msg, N, E, UI_From_GL_Value (V));
+   end Error_Msg_NE_Num;
 
 end GNATLLVM.GLValue;

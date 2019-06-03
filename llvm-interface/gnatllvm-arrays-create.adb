@@ -21,9 +21,10 @@ with Snames;   use Snames;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays.Create is
 
@@ -138,8 +139,11 @@ package body GNATLLVM.Arrays.Create is
       CT                : constant Entity_Id := Full_Component_Type (A_TE);
       Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
       Comp_Size         : constant Uint      :=
-        (if   Unknown_Component_Size (TE) then No_Uint
-         else Component_Size (TE));
+        (if   Unknown_Component_Size (A_TE) then No_Uint
+         else Validate_Size (A_TE, Comp_Def_GT, Component_Size (A_TE),
+                             For_Component => True,
+                             Zero_Allowed  =>
+                               Has_Component_Size_Clause (A_TE)));
       Max_Size          : constant Boolean   :=
         Is_Unconstrained_Record (Comp_Def_GT);
       Biased            : constant Boolean   :=

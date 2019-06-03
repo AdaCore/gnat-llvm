@@ -391,8 +391,14 @@ package body GNATLLVM.Types.Create is
               (if   Unknown_RM_Size (Size_TE) or else RM_Size (Size_TE) = 0
                then No_Uint
                else Validate_Value_Size (TE, GT, RM_Size (Size_TE)));
+            Obj_Size   : constant Uint      :=
+              (if    Known_Esize (Size_TE) then Esize (Size_TE)
+               elsif Known_RM_Size (Size_TE) then RM_Size (Size_TE)
+               else  No_Uint);
             Size       : constant Uint      :=
-              (if Unknown_Esize (Size_TE) then No_Uint else Esize (Size_TE));
+                Validate_Size (TE, GT, Obj_Size,
+                               For_Type     => True,
+                               Zero_Allowed => Has_Size_Clause (Size_TE));
 
          begin
             --  If this is an atomic or VFA type with no alignment specified,
@@ -548,7 +554,7 @@ package body GNATLLVM.Types.Create is
            and then (No (Clause) or else not From_At_Mod (Clause))
          then
             Error_Msg_NE_Num ("alignment for& must be at least ^",
-                              N, E, Int (Current_Align));
+                              N, E, Current_Align);
             New_Align := Current_Align;
          end if;
       end if;
@@ -565,7 +571,7 @@ package body GNATLLVM.Types.Create is
    is
       Clause   : constant Node_Id :=
         Get_Attribute_Definition_Clause (TE, Attribute_Value_Size);
-      Old_Size : GL_Value;
+      In_Size  : GL_Value;
 
    begin
       --  If no size was specified we're done.  Also, ignore a zero size
@@ -591,7 +597,7 @@ package body GNATLLVM.Types.Create is
 
       --  Otherwise, get the size to compare against
 
-      Old_Size :=
+      In_Size :=
         Get_Type_Size (GT, No_GL_Value,
                        Max_Size   => Is_Unconstrained_Record (GT),
                        No_Padding => not Is_Unconstrained_Record (GT));
@@ -599,12 +605,11 @@ package body GNATLLVM.Types.Create is
       --  If too small, we can't use it.  Give an error if 'Value_Size
       --  was specified and this isn't a discrete type.
 
-      if Size_Const_Int (Size) < Old_Size * BPU then
+      if Size_Const_Int (Size) < In_Size * BPU then
          if Present (Clause) and then not Is_Discrete_Or_Fixed_Point_Type (TE)
          then
-            Error_Msg_Uint_1 := UI_From_GL_Value (Old_Size) * BPU;
-            Error_Msg_NE ("Value_Size for& too small, minimum allowed is^",
-                          Clause, TE);
+            Error_Msg_NE_Num ("Value_Size for& too small, minimum allowed is^",
+                              Clause, TE, In_Size * BPU);
          end if;
 
          return No_Uint;
@@ -612,5 +617,106 @@ package body GNATLLVM.Types.Create is
 
       return Size;
    end Validate_Value_Size;
+
+   -------------------
+   -- Validate_Size --
+   -------------------
+
+   function Validate_Size
+     (E             : Entity_Id;
+      GT            : GL_Type;
+      Size          : Uint;
+      For_Type      : Boolean := False;
+      For_Component : Boolean := False;
+      Zero_Allowed  : Boolean := False) return Uint
+   is
+      Is_Field   : constant Boolean  :=
+        Ekind_In (E, E_Component, E_Discriminant);
+      Is_Var     : constant Boolean  :=
+        not For_Type and then not For_Component and then not Is_Field;
+      Error_Node : constant Node_Id  :=
+        (if    Is_Field and then Present (Component_Clause (E))
+         then  Last_Bit (Component_Clause (E))
+         elsif Present (Size_Clause (E)) then Expression (Size_Clause (E))
+         else  E);
+      In_Size    : GL_Value;
+
+   begin
+      --  If no size was specified, if a zero size is specified but isn't
+      --  allowed, or if this is a dynamic size (from back-annotation), we're
+      --  done.
+
+      if Size = No_Uint or else (Size = 0 and then not Zero_Allowed)
+        or else Is_Dynamic_SO_Ref (Size)
+      then
+         return No_Uint;
+
+      --  The size of objects must always be a multiple of a byte
+
+      elsif Is_Var and then Size mod BPU /= 0 then
+         if For_Component then
+            Error_Msg_NE ("component size for& is not a multiple of " &
+                            "Storage_Unit",
+                          Error_Node, E);
+         else
+            Error_Msg_NE ("size for& is not a multiple of Storage_Unit",
+                          Error_Node, E);
+         end if;
+
+         return No_Uint;
+
+      --  If this is an integral type or a packed array type, the front-end
+      --  has already verified the size, so we need not do it here (which
+      --  would mean checking against the bounds).  However, if this is an
+      --  aliased object, it may not be smaller than the type of the
+      --  object.
+
+      elsif (Is_Discrete_Or_Fixed_Point_Type (GT)
+               or else Is_Packed_Array_Impl_Type (GT))
+        and then not (Is_Var and Is_Aliased (E))
+      then
+         return Size;
+
+      --  If the type is of variable size, we can't have a size clause
+
+      elsif Is_Dynamic_Size (GT, Max_Size   => Is_Unconstrained_Record (GT),
+                             Allow_Overflow => True)
+      then
+         if For_Component then
+            Error_Msg_NE ("component size for& too small", Error_Node, E);
+         else
+            Error_Msg_NE ("size for& too small", Error_Node, E);
+         end if;
+
+         return No_Uint;
+      end if;
+
+      --  Otherwise, get the size to compare against
+
+      In_Size :=
+        Get_Type_Size (GT, No_GL_Value,
+                       Max_Size   => Is_Unconstrained_Record (GT),
+                       No_Padding => not Is_Unconstrained_Record (GT));
+
+      --  If too small, we can't use it.
+      --  ??? For now, just compare sizes in bytes, with rounding.
+
+      if Size_Const_Int ((Size + BPU - 1) / BPU) < In_Size then
+         if For_Component then
+            Error_Msg_NE_Num ("component size for& too small, " &
+                                "minimum allowed is ^",
+                              Error_Node, E, In_Size * BPU);
+         else
+            Error_Msg_NE_Num ("size for& too small, minimum allowed is ^",
+                              Error_Node, E, In_Size * BPU);
+         end if;
+
+         return No_Uint;
+      end if;
+
+      --  Otherwise, we're good
+
+      return Size;
+   end Validate_Size;
 
 end GNATLLVM.Types.Create;

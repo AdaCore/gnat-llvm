@@ -196,7 +196,9 @@ package body GNATLLVM.Types is
    ----------------------
 
    function Is_Dynamic_Size
-     (GT : GL_Type; Max_Size : Boolean := False) return Boolean
+     (GT             : GL_Type;
+      Max_Size       : Boolean := False;
+      Allow_Overflow : Boolean := False) return Boolean
    is
       Size : IDS;
    begin
@@ -215,8 +217,9 @@ package body GNATLLVM.Types is
 
       Size := Get_Type_Size (GT, No_GL_Value, Max_Size);
       return not Is_Const (Size)
-        or else Const_Int (Size) < 0
-        or else Const_Int (Size) > LLI (Int'Last);
+        or else (not Allow_Overflow
+                   and then (Const_Int (Size) < 0
+                               or else Const_Int (Size) > LLI (Int'Last)));
 
    end Is_Dynamic_Size;
 
@@ -968,7 +971,7 @@ package body GNATLLVM.Types is
       --  If the alignment is specified (or back-annotated) in the tree,
       --  use that value.
 
-      elsif not Unknown_Alignment (TE)  and Use_Specified then
+      elsif Known_Alignment (TE)  and Use_Specified then
          return UI_To_Int (Alignment (TE));
 
       --  If it's an array, it's the alignment of the component type
@@ -1175,7 +1178,7 @@ package body GNATLLVM.Types is
          then GT else Alloc_GT);
       GT_Align    : constant Nat  := Get_Type_Alignment (Align_GT);
       E_Align     : constant Nat  :=
-        (if   Present (E) and then not Unknown_Alignment (E)
+        (if   Present (E) and then Known_Alignment (E)
          then UI_To_Int (Alignment (E)) else 1);
       Bound_Align : constant Nat  :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
@@ -1292,18 +1295,17 @@ package body GNATLLVM.Types is
 
       case Attr is
          when Attribute_Object_Size =>
-            if not Unknown_Esize (Our_E) then
+            if Known_Esize (Our_E) then
                Ret := Esize (Our_E);
             end if;
 
          when Attribute_Size | Attribute_Value_Size =>
-            if not Unknown_RM_Size (Our_E) then
+            if Known_RM_Size (Our_E) then
                Ret := RM_Size (Our_E);
             end if;
 
          when Attribute_Max_Size_In_Storage_Elements =>
-            if not Unknown_Esize (Our_E)
-              and then Is_Static_SO_Ref (Esize (Our_E))
+            if Known_Esize (Our_E) and then Is_Static_SO_Ref (Esize (Our_E))
             then
                Ret := Esize (Our_E) / BPU;
                if Is_Unconstrained_Array (TE) then
@@ -1319,12 +1321,12 @@ package body GNATLLVM.Types is
               UI_From_GL_Value (Get_Bound_Size (Default_GL_Type (TE))) * BPU;
 
          when Attribute_Component_Size =>
-            if not Unknown_Component_Size (TE) then
+            if Known_Component_Size (TE) then
                Ret := Component_Size (TE);
             end if;
 
          when Attribute_Alignment =>
-            if not Unknown_Alignment (Our_E) then
+            if Known_Alignment (Our_E) then
                return Alignment (Our_E);
             end if;
 
@@ -1338,18 +1340,17 @@ package body GNATLLVM.Types is
 
          when Attribute_First_Bit | Attribute_Bit =>
             if Ekind_In (Our_E, E_Discriminant, E_Component)
-              and then not Unknown_Normalized_Position (Our_E)
+              and then Known_Normalized_Position (Our_E)
             then
                Ret := Normalized_First_Bit (Our_E);
             end if;
 
          when Attribute_Last_Bit =>
-            if not Unknown_Normalized_Position (Our_E) then
+            if Known_Normalized_Position (Our_E) then
                Ret := Normalized_First_Bit (Our_E);
             end if;
             if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
-              and then not Unknown_Esize (Our_E)
-              and then Is_Static_SO_Ref (Ret)
+              and then Known_Esize (Our_E) and then Is_Static_SO_Ref (Ret)
             then
                Ret := Ret + Esize (Our_E) - 1;
             end if;

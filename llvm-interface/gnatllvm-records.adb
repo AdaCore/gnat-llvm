@@ -1141,8 +1141,7 @@ package body GNATLLVM.Records is
       Our_Size : constant Uint      :=
         (if   Size /= No_Uint then Size elsif Is_Packable_Field (F)
          then RM_Size (TE)
-         elsif not Unknown_Esize (F)
-               and then Is_Static_SO_Ref (Esize (F))
+         elsif Known_Esize (F) and then Is_Static_SO_Ref (Esize (F))
          then Esize (F) else No_Uint);
 
    begin

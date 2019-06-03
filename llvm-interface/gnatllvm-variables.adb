@@ -1160,8 +1160,9 @@ package body GNATLLVM.Variables is
       In_Align_Nat : constant Nat       :=
         Nat (Get_Const_Int_Value_ULL (In_Align));
       Size         : constant Uint      :=
-        (if   Has_Size_Clause (Def_Ident) or not Unknown_Esize (Def_Ident)
-         then Esize (Def_Ident) else No_Uint);
+        (if   Unknown_Esize (Def_Ident) then No_Uint
+         else Validate_Size (Def_Ident, GT, Esize (Def_Ident),
+                             Zero_Allowed => Has_Size_Clause (Def_Ident)));
       Align        : Uint               :=
         (if   Unknown_Alignment (Def_Ident) then No_Uint
          else Validate_Alignment (Def_Ident, Alignment (Def_Ident),

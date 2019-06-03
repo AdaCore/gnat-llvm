@@ -36,4 +36,18 @@ package GNATLLVM.Types.Create is
    --  message if not) and return it if so or some other acceptable value
    --  if not.
 
+   function Validate_Size
+     (E             : Entity_Id;
+      GT            : GL_Type;
+      Size          : Uint;
+      For_Type      : Boolean := False;
+      For_Component : Boolean := False;
+      Zero_Allowed  : Boolean := False) return Uint
+     with Pre => Present (E) and then Present (GT);
+   --  Validate that size Size is valid for entity E of type GT.  For_Type
+   --  is True if we're doing this for a type, For_Component if this is
+   --  for the component of an array and Zero_Allowed if a size of zero is
+   --  considered a valid size.  Give an error message if needed and return
+   --  a valid size.
+
 end GNATLLVM.Types.Create;

@@ -150,9 +150,13 @@ package GNATLLVM.Utils is
    --  Returns a string corresponding to the external name of E
 
    procedure Error_Msg_NE_Num
-     (Msg : String; N : Node_Id; E : Entity_Id; Num : Int);
+     (Msg : String; N : Node_Id; E : Entity_Id; Num : Int)
+     with Pre => Msg'Length > 0 and then Present (N) and then Present (E);
+
    procedure Error_Msg_NE_Num
-     (Msg : String; N : Node_Id; E : Entity_Id; Num : Uint);
+     (Msg : String; N : Node_Id; E : Entity_Id; Num : Uint)
+     with Pre => Msg'Length > 0 and then Present (N) and then Present (E)
+                 and then Num /= No_Uint;
 
    function Is_Layout_Identical (T1, T2 : Type_T) return Boolean
      with Pre => Present (T1) and then Present (T2);

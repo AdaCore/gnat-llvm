@@ -158,7 +158,12 @@ package body GNATLLVM.Arrays.Create is
                              Is_Biased     => Biased);
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);
-      Must_Use_Fake     : Boolean            := Is_Nonnative_Type (Comp_GT);
+      Must_Use_Fake     : Boolean            :=
+        Is_Nonnative_Type (Comp_GT)
+          or else Get_Type_Size (Type_Of (Comp_GT)) /= Get_Type_Size (Comp_GT);
+      --  If we have a type like i24, where the size of the LLVM type
+      --  isn't consistent with the number of bits, force a fake type.
+
       This_Nonnative    : Boolean            := Must_Use_Fake or Unconstrained;
       CT_To_Use         : constant GL_Type   :=
         (if Must_Use_Fake then SSI_GL_Type else Comp_GT);

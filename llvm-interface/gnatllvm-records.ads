@@ -70,6 +70,9 @@ package GNATLLVM.Records is
       No_Padding : Boolean := False) return BA_Data
      with Pre  => Is_Record_Type (TE);
 
+   function Effective_Field_Alignment (F : Entity_Id) return Pos
+     with Pre  => Ekind_In (F, E_Discriminant, E_Component);
+
    function Get_Record_Type_Alignment (TE : Entity_Id) return Nat
      with Pre => Is_Record_Type (TE);
    --  Like Get_Type_Alignment, but only for records and is called with

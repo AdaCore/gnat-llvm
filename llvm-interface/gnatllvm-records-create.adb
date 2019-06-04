@@ -154,22 +154,9 @@ package body GNATLLVM.Records.Create is
 
             begin
                while Present (Comp_Def) loop
-                  declare
-                     F  : constant Entity_Id := Defining_Identifier (Comp_Def);
-                     GT : constant GL_Type   := Full_GL_Type (F);
-                     TE : constant Entity_Id := Full_Scope (F);
-
-                  begin
-                     --  If this won't be a bitfield and either it's not a
-                     --  packed record or this field isn't aliased,
-                     --  consider its alignment
-
-                     if not Is_Bitfield_By_Rep (F)
-                       and then (not Is_Packed (TE) or else Is_Aliased (F))
-                     then
-                        Align := Nat'Max (Align, Get_Type_Alignment (GT));
-                     end if;
-                  end;
+                  Align := Nat'Max (Align,
+                                    Effective_Field_Alignment
+                                      (Defining_Identifier (Comp_Def)));
 
                   Next_Non_Pragma (Comp_Def);
                end loop;

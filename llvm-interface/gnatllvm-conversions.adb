@@ -785,7 +785,7 @@ package body GNATLLVM.Conversions is
          --  to be an obvious way to fix it at the moment and this
          --  whole function needs to be rewritten anyway.
 
-         return Convert_Pointer (Get (To_Primitive (V), Fat_Pointer), GT);
+         return Convert_Pointer (Get (Remove_Padding (V), Fat_Pointer), GT);
       end if;
    end Convert_Ref;
 

@@ -26,6 +26,9 @@ package GNATLLVM.Arrays.Create is
    --  an opaque type if LLVM can't represent it directly.  If For_Orig
    --  is True, set the array info for the Original_Record_Type of TE.
 
+   function Create_Array_Fat_Pointer_Type (GT : GL_Type) return Type_T
+     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
+          Post => Present (Create_Array_Fat_Pointer_Type'Result);
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Array_Or_Packed_Array_Type (TE),
           Post => Present (Create_Array_Fat_Pointer_Type'Result);

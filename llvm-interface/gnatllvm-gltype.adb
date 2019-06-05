@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Errout;     use Errout;
+with Get_Targ;   use Get_Targ;
 with Lib;        use Lib;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
@@ -60,6 +61,10 @@ package body GNATLLVM.GLType is
       Int_Alt,
       --  An integral type of a different width then the primitive type
       --  (either wider or narrower), but not a biased type.
+
+      Access_Alt,
+      --  An alternate representation of an access type, either a thin
+      --  pointer when the primitive type is a fat pointer, or vice versa
 
       Biased,
       --  An integral type narrower than the primitive type and for which
@@ -147,7 +152,7 @@ package body GNATLLVM.GLType is
    function Get_Or_Create_GL_Type
      (TE : Entity_Id; Create : Boolean) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
-     Post => not Create or else Present (Get_Or_Create_GL_Type'Result);
+          Post => not Create or else Present (Get_Or_Create_GL_Type'Result);
 
    function Convert_Int (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Data (V) and then Is_Discrete_Or_Fixed_Point_Type (V)
@@ -156,6 +161,13 @@ package body GNATLLVM.GLType is
           Post => Related_Type (Convert_Int'Result) = GT;
    --  Convert V, which is of one integral type, to GT, an alternative
    --  of that type.
+
+   function Convert_Access (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Data (V) and then Is_Access_Type (V)
+                  and then Is_Unconstrained_Array
+                             (Full_Designated_GL_Type (V)),
+          Post => Related_Type (Convert_Access'Result) = GT;
+   --  Likewise, for converting between forms of access to unconstrained
 
    function Make_GT_Alternative_Internal
      (GT        : GL_Type;
@@ -219,6 +231,9 @@ package body GNATLLVM.GLType is
             return Is_Record_Type (TE) or else Is_Access_Type (TE);
          when Int_Alt =>
             return Is_Discrete_Or_Fixed_Point_Type (TE);
+         when Access_Alt =>
+            return Is_Access_Type (TE)
+              and then Is_Unconstrained_Array (Full_Designated_Type (TE));
          when Biased =>
             return GTI.Bias /= No_GL_Value and then Is_Discrete_Type (TE);
          when Padded =>
@@ -493,6 +508,7 @@ package body GNATLLVM.GLType is
               --  we got the maximum size.  But we need the right alignment.
 
               or else (not Is_Discrete_Or_Fixed_Point_Type (GT)
+                         and then not Is_Access_Type (GT)
                          and then GTI.Kind = Primitive and then not Needs_Max
                          and then Present (Size_V) and then Present (GTI.Size)
                          and then Size_V < GTI.Size)
@@ -546,6 +562,28 @@ package body GNATLLVM.GLType is
             GTI.LLVM_Type := Int_Ty (Int_Sz);
             GTI.Kind      := Int_Alt;
 
+         --  If this is an access type to an unconstrained array and we have
+         --  a size that corresponds to either a thin or fat pointer, make
+         --  and alternate access type.
+
+         elsif Is_Access_Type (GT)
+           and then Is_Unconstrained_Array (Full_Designated_GL_Type (GT))
+           and then (Size = Get_Pointer_Size
+                       or else Size = Get_Pointer_Size * 2)
+         then
+            declare
+               DT    : constant Entity_Id       := Full_Designated_Type (GT);
+               R     : constant GL_Relationship :=
+                 Relationship_For_Access_Type (GT);
+               New_R : constant GL_Relationship :=
+                 (if R = Fat_Pointer then Thin_Pointer else Fat_Pointer);
+
+            begin
+               pragma Assert (R in Thin_Pointer | Fat_Pointer);
+               GTI.LLVM_Type := Type_For_Relationship (DT, New_R);
+               GTI.Kind      := Access_Alt;
+            end;
+
          --  If we have a native primitive type, we specified a size, and
          --  the size or alignment is different that that of the primitive,
          --  we make a padded type.
@@ -577,7 +615,7 @@ package body GNATLLVM.GLType is
             end;
 
          --  If we're making a fixed-size version of something of dynamic
-         --  size (possibly because we need the maximim size), we need a
+         --  size (possibly because we need the maximum size), we need a
          --  Byte_Array.
 
          elsif not Prim_Native and then Present (Size_V) then
@@ -787,6 +825,14 @@ package body GNATLLVM.GLType is
       return Subp (V, GT);
    end Convert_Int;
 
+   --------------------
+   -- Convert_Access --
+   --------------------
+
+   function Convert_Access (V : GL_Value; GT : GL_Type) return GL_Value is
+     (To_Access (Get (From_Access (V), Relationship_For_Access_Type (GT)),
+                 GT));
+
    ------------------
    -- To_Primitive --
    ------------------
@@ -810,12 +856,13 @@ package body GNATLLVM.GLType is
       if Is_Primitive_GL_Type (In_GT) then
          return Result;
 
-      --  Unless this is Biased or Padded, if this is a reference,
-      --  just convert the pointer.  But if it's a reference to bounds and
-      --  data, always do it this way.
+      --  Unless this is Biased, Padded, Int_Alt, or Access_Alt, if this is
+      --  a reference, just convert the pointer.  But if it's a reference
+      --  to bounds and data, always do it this way.
 
       elsif Relationship (V) = Reference_To_Bounds_And_Data
-        or else (In_GTI.Kind not in Biased | Padded and Is_Ref)
+        or else (In_GTI.Kind not in Biased | Padded | Int_Alt | Access_Alt
+                   and then Is_Ref)
       then
          return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
 
@@ -841,7 +888,13 @@ package body GNATLLVM.GLType is
       --  the desired alternative.
 
       elsif In_GTI.Kind = Int_Alt then
-         return Convert_Int (Result, Out_GT);
+         return Convert_Int (Get (Result, Data), Out_GT);
+
+      --  For Access_Alt, convert to the other type of access type
+      --  using our helper.
+
+      elsif In_GTI.Kind = Access_Alt then
+         return Convert_Access (Get (Result, Data), Out_GT);
 
       --  For Padded, use either GEP or Extract_Value, depending on whether
       --  this is a reference or not.
@@ -885,10 +938,10 @@ package body GNATLLVM.GLType is
       if Related_Type (V) = GT then
          return Result;
 
-      --  Unless the result is Biased, if this is a reference, just
-      --  convert the pointer.
+      --  Unless the result is Biased, Int_Alt, or Access_Alt, if this is a
+      --  reference, just convert the pointer.
 
-      elsif GTI.Kind /= Biased and Is_Ref then
+      elsif GTI.Kind not in Biased | Int_Alt | Access_Alt and Is_Ref then
          return Ptr_To_Relationship (Result, GT, Relationship (Result));
 
       --  If the result is Aligning or Max_Size, the object is the
@@ -913,7 +966,13 @@ package body GNATLLVM.GLType is
       --  the desired alternative.
 
       elsif GTI.Kind = Int_Alt then
-         return Convert_Int (Result, GT);
+         return Convert_Int (Get (Result, Data), GT);
+
+      --  For Access_Alt, convert to the other type of access type
+      --  using our helper.
+
+      elsif GTI.Kind = Access_Alt then
+         return Convert_Access (Get (Result, Data), GT);
 
       --  For Padded, we know this is data, so use Insert_Value to
       --  make the padded version.

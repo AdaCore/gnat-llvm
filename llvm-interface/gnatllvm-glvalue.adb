@@ -309,7 +309,25 @@ package body GNATLLVM.GLValue is
 
    function Relationship_For_Access_Type (GT : GL_Type) return GL_Relationship
    is
-     (Relationship_For_Access_Type (Full_Etype (GT)));
+      TE   : constant Entity_Id        := Full_Etype (GT);
+      R    : constant GL_Relationship  := Relationship_For_Access_Type (TE);
+      Size : constant GL_Value         := Get_Type_Size (GT);
+
+   begin
+      --  If this would be a fat pointer, but the size of the GL_Type
+      --  corresponds to that of a thin pointer, use it.
+
+      if R = Fat_Pointer and then Size = Get_Pointer_Size / BPU then
+         return Thin_Pointer;
+
+      --  And vice versa
+
+      elsif R = Thin_Pointer and then Size = Get_Pointer_Size / BPU * 2 then
+         return Fat_Pointer;
+      else
+         return R;
+      end if;
+   end Relationship_For_Access_Type;
 
    ----------------------------------
    -- Relationship_For_Access_Type --
@@ -411,7 +429,7 @@ package body GNATLLVM.GLValue is
             return Byte_T;
 
          when Fat_Pointer =>
-            return Create_Array_Fat_Pointer_Type (TE);
+            return Create_Array_Fat_Pointer_Type (GT);
 
          when Bounds =>
             return Create_Array_Bounds_Type (TE);
@@ -777,10 +795,11 @@ package body GNATLLVM.GLValue is
                --  If we have something that isn't a reference, start by
                --  getting a reference to it.
 
-               Fat_Ptr : constant GL_Value := Get_Undef_Relationship (GT, R);
+               Data_P  : constant GL_Value := Remove_Padding (Val);
+               N_GT    : constant GL_Type  := Related_Type (Data_P);
+               Fat_Ptr : constant GL_Value := Get_Undef_Relationship (N_GT, R);
                Bounds  : constant GL_Value := Get (Val, Reference_To_Bounds);
-               Data    : constant GL_Value :=
-                 To_Primitive (Get (Val, Reference));
+               Data    : constant GL_Value := Get (Data_P, Reference);
 
             begin
                return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),
@@ -848,20 +867,19 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
-     (From_Primitive (G (LLVM_Value (V), Primitive_GL_Type (GT)), GT));
+     (G (LLVM_Value (V), GT));
 
    -----------------
    -- From_Access --
    -----------------
 
    function From_Access (V : GL_Value) return GL_Value is
-      Prim_V : constant GL_Value        := To_Primitive (V);
       GT     : constant GL_Type         := Related_Type (V);
       Acc_GT : constant GL_Type         := Full_Designated_GL_Type (V);
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
 
    begin
-      return G (LLVM_Value (Prim_V), Acc_GT, R);
+      return G (LLVM_Value (V), Acc_GT, R);
    end From_Access;
 
    ----------------------

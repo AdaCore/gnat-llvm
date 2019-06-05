@@ -320,12 +320,17 @@ package body GNATLLVM.Arrays.Create is
    -- Create_Array_Fat_Pointer_Type --
    -----------------------------------
 
+   function Create_Array_Fat_Pointer_Type (GT : GL_Type) return Type_T is
+     (Build_Struct_Type
+        ((1 => Pointer_Type (Type_Of (GT), 0),
+          2 => Pointer_Type (Create_Array_Bounds_Type (Full_Etype (GT)), 0))));
+
+   -----------------------------------
+   -- Create_Array_Fat_Pointer_Type --
+   -----------------------------------
+
    function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T is
-   begin
-      return Build_Struct_Type
-        ((1 => Pointer_Type (Type_Of (Primitive_GL_Type (TE)), 0),
-          2 => Pointer_Type (Create_Array_Bounds_Type (TE), 0)));
-   end Create_Array_Fat_Pointer_Type;
+     (Create_Array_Fat_Pointer_Type (Primitive_GL_Type (TE)));
 
 begin
    --  Make a dummy entry in the array info table, so the "Empty"

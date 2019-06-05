@@ -205,10 +205,16 @@ package GNATLLVM.GLType is
    function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
      with Pre => Present (GT);
 
-   function To_Primitive   (V : GL_Value)        return GL_Value
+   function To_Primitive (V : GL_Value)          return GL_Value
      with Pre  => Present (V),
           Post => Is_Primitive_GL_Type (Related_Type (To_Primitive'Result));
    --  Convert V to its primitive GL_Type
+
+   function Remove_Padding (V : GL_Value)        return GL_Value is
+     ((if Has_Padding (V) then To_Primitive (V) else V))
+     with Pre  => Present (V),
+          Post => not Has_Padding (Remove_Padding'Result);
+   --  Likewise, but only if the type is padded
 
    function From_Primitive (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Primitive_GL_Type (Related_Type (V))
@@ -279,6 +285,10 @@ package GNATLLVM.GLType is
      with Pre  => Present (GT), Post => Is_Type (Ultimate_Base_Type'Result);
 
    function Is_Nonnative_Type (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+
+   function Is_Base_Type (GT : GL_Type) return Boolean is
+     (Is_Base_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Is_Array_Type (GT : GL_Type) return Boolean is

@@ -172,7 +172,7 @@ package GNATLLVM.Wrapper is
       Typ       : Type_T;
       Exp       : Int;
       Num_Words : unsigned;
-      Words     : access stdint_h.uint64_t) return Value_T
+      Words     : access stdint_h.uint_fast64_t) return Value_T
      with Import, Convention => C,
           External_Name => "Get_Float_From_Words_And_Exp";
 

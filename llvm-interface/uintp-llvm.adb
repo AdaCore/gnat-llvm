@@ -90,7 +90,7 @@ package body Uintp.LLVM is
       --  Big_UI_To_Words for many integer values due to the way Uint works.
 
       if UI_Is_In_Int_Range (U) then
-         Words (1) := uint64_t (UI_To_Int (U));
+         Words (1) := uint_fast64_t (UI_To_Int (U));
          return Words;
       else
          return Big_UI_To_Words (U);
@@ -112,11 +112,11 @@ package body Uintp.LLVM is
       Cur_Word       : Nat              := N_Words;
       Cur_Bit        : Nat              := 64;
 
-      function Ones (Length : Nat) return uint64_t is
-         (uint64_t (2 ** Integer (Length) - 1));
+      function Ones (Length : Nat) return uint_fast64_t is
+         (uint_fast64_t (2 ** Integer (Length) - 1));
       --  Return a bitfield with the Length least significant bits set to 1
 
-      procedure Push_Bits (Bits : uint64_t; Length : Nat);
+      procedure Push_Bits (Bits : uint_fast64_t; Length : Nat);
       --  Push Bits (an integer Length bits arge) into the upper bits of Words
       --  right after the cursor. Update the cursor accordingly.
 
@@ -124,7 +124,7 @@ package body Uintp.LLVM is
       -- Push_Bits --
       ---------------
 
-      procedure Push_Bits (Bits : uint64_t; Length : Nat) is
+      procedure Push_Bits (Bits : uint_fast64_t; Length : Nat) is
          Buffer        : Unsigned_64 := Unsigned_64 (Bits);
          Buffer_Length : Nat         := Length;
 
@@ -143,7 +143,7 @@ package body Uintp.LLVM is
             begin
                --  First finish filling the current word
 
-               Words (Cur_Word) := uint64_t
+               Words (Cur_Word) := uint_fast64_t
                  (Unsigned_64 (Words (Cur_Word))
                   or Shift_Right (Buffer, Integer (Left_Over)));
 
@@ -157,7 +157,7 @@ package body Uintp.LLVM is
             end;
          end if;
 
-         Words (Cur_Word) := uint64_t
+         Words (Cur_Word) := uint_fast64_t
            (Unsigned_64 (Words (Cur_Word))
             or Shift_Left (Buffer, Integer (Cur_Bit - Buffer_Length)));
          Cur_Bit := Cur_Bit - Buffer_Length;
@@ -177,7 +177,7 @@ package body Uintp.LLVM is
       Push_Bits (0, N_Padding_Bits);
 
       for J in 1 .. Nat (Length) loop
-         Push_Bits (uint64_t (abs D_Table (Loc + J - 1)), Base_Bits);
+         Push_Bits (uint_fast64_t (abs D_Table (Loc + J - 1)), Base_Bits);
       end loop;
 
       return Words;

@@ -54,14 +54,6 @@ Create_Debug_Subprogram_C (DIBuilder *DBld, Function *func, DIFile *file,
 }
 
 extern "C"
-DILexicalBlock *
-Create_Debug_Lexical_Block (DIBuilder *DBld, DIScope *scope, DIFile *file,
-			    int line, int col)
-{
-  return DBld->createLexicalBlock (scope, file, line, col);
-}
-
-extern "C"
 MDBuilder *
 Create_MDBuilder_In_Context (LLVMContext &Ctx)
 {

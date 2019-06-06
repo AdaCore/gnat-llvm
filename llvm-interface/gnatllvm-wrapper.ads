@@ -147,14 +147,6 @@ package GNATLLVM.Wrapper is
       Name, Ext_Name : String;
       Lineno         : Logical_Line_Number) return Metadata_T;
 
-   function Create_Debug_Lexical_Block
-     (Bld         : DI_Builder_T;
-      Scope, File : Metadata_T;
-      Line        : Logical_Line_Number;
-      Column      : Column_Number) return Metadata_T
-     with Import, Convention => C,
-          External_Name => "Create_Debug_Lexical_Block";
-
    function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
       Typ       : Type_T;

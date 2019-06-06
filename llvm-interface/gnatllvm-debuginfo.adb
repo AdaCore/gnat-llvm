@@ -186,10 +186,10 @@ package body GNATLLVM.DebugInfo is
    begin
       if Emit_Debug_Info and then not Library_Level then
          Push_Debug_Scope
-           (SFI, Create_Debug_Lexical_Block
+           (SFI, DI_Builder_Create_Lexical_Block
               (DI_Builder, Current_Debug_Scope, Get_Debug_File_Node (SFI),
-               Get_Logical_Line_Number (Sloc (N)),
-               Get_Column_Number (Sloc (N))));
+               unsigned (Get_Logical_Line_Number (Sloc (N))),
+               unsigned (Get_Column_Number (Sloc (N)))));
       end if;
    end Push_Lexical_Debug_Scope;
 

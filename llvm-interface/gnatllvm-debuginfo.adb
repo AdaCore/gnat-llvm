@@ -24,6 +24,7 @@ with Table;  use Table;
 
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.DebugInfo is
@@ -164,13 +165,26 @@ package body GNATLLVM.DebugInfo is
       N              : Node_Id;
       Name, Ext_Name : String) return Metadata_T
    is
+      Types     : constant Type_Array (1 .. 0) := (others => <>);
+      Result    : Metadata_T;
       pragma Unreferenced (Def_Ident);
    begin
       if Emit_Debug_Info then
-         return Create_Debug_Subprogram
-           (DI_Builder, LLVM_Value (Func),
+         Result := DI_Create_Function
+           (DI_Builder,
             Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
-            Name, Ext_Name, Get_Logical_Line_Number (Sloc (N)));
+            Name, Name'Length, Ext_Name, Ext_Name'Length,
+            Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
+            unsigned (Get_Logical_Line_Number (Sloc (N))),
+            DI_Builder_Create_Subroutine_Type
+              (DI_Builder,
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
+               Types'Address, 0, DI_Flag_Zero),
+            False, True, unsigned (Get_Logical_Line_Number (Sloc (N))),
+            DI_Flag_Zero, Code_Gen_Level /= Code_Gen_Level_None);
+
+         Set_Subprogram (LLVM_Value (Func), Result);
+         return Result;
       else
          return No_Metadata_T;
       end if;

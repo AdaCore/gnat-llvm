@@ -38,22 +38,6 @@ Add_Debug_Flags (Module *TheModule)
 }
 
 extern "C"
-DISubprogram *
-Create_Debug_Subprogram_C (DIBuilder *DBld, Function *func, DIFile *file,
-			   const char *name, const char *ExtName, int lineno)
-{
-  SmallVector<Metadata *, 0> EltTy;
-  DITypeRefArray TyArr = DBld->getOrCreateTypeArray (EltTy);
-  DISubroutineType *st = DBld->createSubroutineType (TyArr);
-  DISubprogram *subp = DBld->createFunction (file, name, ExtName, file,
-					     lineno, st, lineno,
-					     DINode::FlagZero,
-					     DISubprogram::SPFlagDefinition);
-  func->setSubprogram (subp);
-  return subp;
-}
-
-extern "C"
 MDBuilder *
 Create_MDBuilder_In_Context (LLVMContext &Ctx)
 {

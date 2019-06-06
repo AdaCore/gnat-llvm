@@ -127,28 +127,4 @@ package body GNATLLVM.Wrapper is
                               No_Loop_Vect_B, No_SLP_Vect_B);
    end LLVM_Optimize_Module;
 
-   -----------------------------
-   -- Create_Debug_Subprogram --
-   -----------------------------
-
-   function Create_Debug_Subprogram
-     (Bld            : DI_Builder_T;
-      Func           : Value_T;
-      File           : Metadata_T;
-      Name, Ext_Name : String;
-      Lineno         : Logical_Line_Number) return Metadata_T
-   is
-      function Create_Debug_Subprogram_C
-        (Bld            : DI_Builder_T;
-         Func           : Value_T;
-         File           : Metadata_T;
-         Name, Ext_Name : String;
-         Lineno         : Logical_Line_Number) return Metadata_T
-        with Import, Convention => C,
-             External_Name => "Create_Debug_Subprogram_C";
-   begin
-      return Create_Debug_Subprogram_C (Bld, Func, File, Name & ASCII.NUL,
-                                        Ext_Name & ASCII.NUL, Lineno);
-   end Create_Debug_Subprogram;
-
 end GNATLLVM.Wrapper;

@@ -54,7 +54,9 @@ Create_Debug_Subprogram_C (DIBuilder *DBld, Function *func, DIFile *file,
   DITypeRefArray TyArr = DBld->getOrCreateTypeArray (EltTy);
   DISubroutineType *st = DBld->createSubroutineType (TyArr);
   DISubprogram *subp = DBld->createFunction (file, name, ExtName, file,
-					     lineno, st, false, true, lineno);
+					     lineno, st, lineno,
+					     DINode::FlagZero,
+					     DISubprogram::SPFlagDefinition);
   func->setSubprogram (subp);
   return subp;
 }

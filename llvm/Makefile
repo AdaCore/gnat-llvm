@@ -1,15 +1,15 @@
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
-LLVM_SRC_DIR=llvm-7.0.0.src
-LLVM_CLANG_EXP_NAME=cfe-7.0.0.src
+LLVM_SRC_DIR=llvm-8.0.0.src
+LLVM_CLANG_EXP_NAME=cfe-8.0.0.src
 LLVM_INCLUDE_DIR=$(PWD)/$(LLVM_SRC_DIR)/include
 LLVM_INCLUDE_DIR_C=$(LLVM_INCLUDE_DIR)/llvm-c
 DL=wget
 LLVM_SRC_FNAME=$(LLVM_SRC_DIR).tar.xz
 LLVM_CLANG_SRC_FNAME=$(LLVM_CLANG_EXP_NAME).tar.xz
-LLVM_SRC_LINK=http://releases.llvm.org/7.0.0/$(LLVM_SRC_FNAME)
-LLVM_CLANG_SRC_LINK=http://releases.llvm.org/7.0.0/$(LLVM_CLANG_SRC_FNAME)
+LLVM_SRC_LINK=http://releases.llvm.org/8.0.0/$(LLVM_SRC_FNAME)
+LLVM_CLANG_SRC_LINK=http://releases.llvm.org/8.0.0/$(LLVM_CLANG_SRC_FNAME)
 
 .PHONY: configure
 

@@ -38,14 +38,6 @@ Add_Debug_Flags (Module *TheModule)
 }
 
 extern "C"
-DICompileUnit *
-Create_Debug_Compile_Unit (DIBuilder *DBld, DIFile *file)
-{
-  return DBld->createCompileUnit (dwarf::DW_LANG_Ada95, file,
-				  "GNAT/LLVM", true, "", 0);
-}
-
-extern "C"
 DISubprogram *
 Create_Debug_Subprogram_C (DIBuilder *DBld, Function *func, DIFile *file,
 			   const char *name, const char *ExtName, int lineno)

@@ -140,11 +140,6 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C, External_Name => "Add_Debug_Flags";
    --  Create a DIBuilder and return it
 
-   function Create_Debug_Compile_Unit
-     (Bld : DI_Builder_T; File : Metadata_T) return Metadata_T
-     with Import, Convention => C,
-          External_Name => "Create_Debug_Compile_Unit";
-
    function Create_Debug_Subprogram
      (Bld            : DI_Builder_T;
       Func           : Value_T;

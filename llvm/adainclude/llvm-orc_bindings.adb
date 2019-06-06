@@ -21,7 +21,7 @@ package body LLVM.Orc_Bindings is
      (JIT_Stack : Orc_JIT_Stack_T;
       Stub_Name : String;
       Init_Addr : Orc_Target_Address_T)
-      return Orc_Error_Code_T
+      return LLVM.Error.Error_T
    is
       Stub_Name_Array  : aliased char_array := To_C (Stub_Name);
       Stub_Name_String : constant chars_ptr := To_Chars_Ptr (Stub_Name_Array'Unchecked_Access);
@@ -33,7 +33,7 @@ package body LLVM.Orc_Bindings is
      (JIT_Stack : Orc_JIT_Stack_T;
       Stub_Name : String;
       New_Addr  : Orc_Target_Address_T)
-      return Orc_Error_Code_T
+      return LLVM.Error.Error_T
    is
       Stub_Name_Array  : aliased char_array := To_C (Stub_Name);
       Stub_Name_String : constant chars_ptr := To_Chars_Ptr (Stub_Name_Array'Unchecked_Access);
@@ -45,13 +45,26 @@ package body LLVM.Orc_Bindings is
      (JIT_Stack   : Orc_JIT_Stack_T;
       Ret_Addr    : Orc_Target_Address_T;
       Symbol_Name : String)
-      return Orc_Error_Code_T
+      return LLVM.Error.Error_T
    is
       Symbol_Name_Array  : aliased char_array := To_C (Symbol_Name);
       Symbol_Name_String : constant chars_ptr := To_Chars_Ptr (Symbol_Name_Array'Unchecked_Access);
    begin
       return Orc_Get_Symbol_Address_C (JIT_Stack, Ret_Addr, Symbol_Name_String);
    end Orc_Get_Symbol_Address;
+
+   function Orc_Get_Symbol_Address_In
+     (JIT_Stack   : Orc_JIT_Stack_T;
+      Ret_Addr    : Orc_Target_Address_T;
+      H           : Orc_Module_Handle_T;
+      Symbol_Name : String)
+      return LLVM.Error.Error_T
+   is
+      Symbol_Name_Array  : aliased char_array := To_C (Symbol_Name);
+      Symbol_Name_String : constant chars_ptr := To_Chars_Ptr (Symbol_Name_Array'Unchecked_Access);
+   begin
+      return Orc_Get_Symbol_Address_In_C (JIT_Stack, Ret_Addr, H, Symbol_Name_String);
+   end Orc_Get_Symbol_Address_In;
 
    procedure Orc_Get_Mangled_Symbol
      (JIT_Stack      : Orc_JIT_Stack_T;

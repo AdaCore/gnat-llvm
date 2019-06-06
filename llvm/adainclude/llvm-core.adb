@@ -19,6 +19,14 @@ package body LLVM.Core is
       return Value (Create_Message_C (Message_String));
    end Create_Message;
 
+   function Context_Should_Discard_Value_Names
+     (C : LLVM.Types.Context_T)
+      return Boolean
+   is
+   begin
+      return Context_Should_Discard_Value_Names_C (C) /= 0;
+   end Context_Should_Discard_Value_Names;
+
    function Get_Diag_Info_Description
      (DI : LLVM.Types.Diagnostic_Info_T)
       return String
@@ -141,6 +149,15 @@ package body LLVM.Core is
       return Value (Get_Module_Identifier_C (M, Len));
    end Get_Module_Identifier;
 
+   function Get_Source_File_Name
+     (M   : LLVM.Types.Module_T;
+      Len : stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Get_Source_File_Name_C (M, Len));
+   end Get_Source_File_Name;
+
    function Get_Data_Layout_Str
      (M : LLVM.Types.Module_T)
       return String
@@ -165,6 +182,28 @@ package body LLVM.Core is
       return Value (Get_Target_C (M));
    end Get_Target;
 
+   function Module_Flag_Entries_Get_Key
+     (Entries : System.Address;
+      Index   : unsigned;
+      Len     : stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Module_Flag_Entries_Get_Key_C (Entries, Index, Len));
+   end Module_Flag_Entries_Get_Key;
+
+   function Get_Module_Flag
+     (M       : LLVM.Types.Module_T;
+      Key     : String;
+      Key_Len : stddef_h.size_t)
+      return LLVM.Types.Metadata_T
+   is
+      Key_Array  : aliased char_array := To_C (Key);
+      Key_String : constant chars_ptr := To_Chars_Ptr (Key_Array'Unchecked_Access);
+   begin
+      return Get_Module_Flag_C (M, Key_String, Key_Len);
+   end Get_Module_Flag;
+
    function Print_Module_To_File
      (M             : LLVM.Types.Module_T;
       Filename      : String;
@@ -185,6 +224,36 @@ package body LLVM.Core is
       return Value (Print_Module_To_String_C (M));
    end Print_Module_To_String;
 
+   function Get_Module_Inline_Asm
+     (M   : LLVM.Types.Module_T;
+      Len : stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Get_Module_Inline_Asm_C (M, Len));
+   end Get_Module_Inline_Asm;
+
+   function Get_Inline_Asm
+     (Ty               : LLVM.Types.Type_T;
+      Asm_String       : String;
+      Asm_String_Size  : stddef_h.size_t;
+      Constraints      : String;
+      Constraints_Size : stddef_h.size_t;
+      Has_Side_Effects : Boolean;
+      Is_Align_Stack   : Boolean;
+      Dialect          : Inline_Asm_Dialect_T)
+      return LLVM.Types.Value_T
+   is
+      Asm_String_Array      : aliased char_array := To_C (Asm_String);
+      Asm_String_String     : constant chars_ptr := To_Chars_Ptr (Asm_String_Array'Unchecked_Access);
+      Constraints_Array     : aliased char_array := To_C (Constraints);
+      Constraints_String    : constant chars_ptr := To_Chars_Ptr (Constraints_Array'Unchecked_Access);
+      Has_Side_Effects_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Has_Side_Effects);
+      Is_Align_Stack_Bool   : constant LLVM.Types.Bool_T := Boolean'Pos (Is_Align_Stack);
+   begin
+      return Get_Inline_Asm_C (Ty, Asm_String_String, Asm_String_Size, Constraints_String, Constraints_Size, Has_Side_Effects_Bool, Is_Align_Stack_Bool, Dialect);
+   end Get_Inline_Asm;
+
    function Get_Type_By_Name
      (M    : LLVM.Types.Module_T;
       Name : String)
@@ -196,6 +265,39 @@ package body LLVM.Core is
       return Get_Type_By_Name_C (M, Name_String);
    end Get_Type_By_Name;
 
+   function Get_Named_Metadata
+     (M        : LLVM.Types.Module_T;
+      Name     : String;
+      Name_Len : stddef_h.size_t)
+      return LLVM.Types.Named_MD_Node_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Get_Named_Metadata_C (M, Name_String, Name_Len);
+   end Get_Named_Metadata;
+
+   function Get_Or_Insert_Named_Metadata
+     (M        : LLVM.Types.Module_T;
+      Name     : String;
+      Name_Len : stddef_h.size_t)
+      return LLVM.Types.Named_MD_Node_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Get_Or_Insert_Named_Metadata_C (M, Name_String, Name_Len);
+   end Get_Or_Insert_Named_Metadata;
+
+   function Get_Named_Metadata_Name
+     (Named_MD : LLVM.Types.Named_MD_Node_T;
+      Name_Len : stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Get_Named_Metadata_Name_C (Named_MD, Name_Len));
+   end Get_Named_Metadata_Name;
+
    function Get_Named_Metadata_Num_Operands
      (M    : LLVM.Types.Module_T;
       Name : String)
@@ -206,6 +308,24 @@ package body LLVM.Core is
    begin
       return Get_Named_Metadata_Num_Operands_C (M, Name_String);
    end Get_Named_Metadata_Num_Operands;
+
+   function Get_Debug_Loc_Directory
+     (Val    : LLVM.Types.Value_T;
+      Length : unsigned)
+      return String
+   is
+   begin
+      return Value (Get_Debug_Loc_Directory_C (Val, Length));
+   end Get_Debug_Loc_Directory;
+
+   function Get_Debug_Loc_Filename
+     (Val    : LLVM.Types.Value_T;
+      Length : unsigned)
+      return String
+   is
+   begin
+      return Value (Get_Debug_Loc_Filename_C (Val, Length));
+   end Get_Debug_Loc_Filename;
 
    function Add_Function
      (M           : LLVM.Types.Module_T;
@@ -324,13 +444,22 @@ package body LLVM.Core is
       return Is_Opaque_Struct_C (Struct_Ty) /= 0;
    end Is_Opaque_Struct;
 
-   function Get_Value_Name
-     (Val : LLVM.Types.Value_T)
+   function Is_Literal_Struct
+     (Struct_Ty : LLVM.Types.Type_T)
+      return Boolean
+   is
+   begin
+      return Is_Literal_Struct_C (Struct_Ty) /= 0;
+   end Is_Literal_Struct;
+
+   function Get_Value_Name2
+     (Val    : LLVM.Types.Value_T;
+      Length : stddef_h.size_t)
       return String
    is
    begin
-      return Value (Get_Value_Name_C (Val));
-   end Get_Value_Name;
+      return Value (Get_Value_Name2_C (Val, Length));
+   end Get_Value_Name2;
 
    function Print_Value_To_String
      (Val : LLVM.Types.Value_T)
@@ -356,6 +485,14 @@ package body LLVM.Core is
       return Is_Undef_C (Val) /= 0;
    end Is_Undef;
 
+   function Get_Value_Name
+     (Val : LLVM.Types.Value_T)
+      return String
+   is
+   begin
+      return Value (Get_Value_Name_C (Val));
+   end Get_Value_Name;
+
    function Is_Null
      (Val : LLVM.Types.Value_T)
       return Boolean
@@ -378,7 +515,7 @@ package body LLVM.Core is
    function Const_Int_Of_String
      (Int_Ty : LLVM.Types.Type_T;
       Text   : String;
-      Radix  : stdint_h.uint8_t)
+      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
       return LLVM.Types.Value_T
    is
       Text_Array  : aliased char_array := To_C (Text);
@@ -391,7 +528,7 @@ package body LLVM.Core is
      (Int_Ty : LLVM.Types.Type_T;
       Text   : String;
       S_Len  : unsigned;
-      Radix  : stdint_h.uint8_t)
+      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
       return LLVM.Types.Value_T
    is
       Text_Array  : aliased char_array := To_C (Text);
@@ -626,6 +763,18 @@ package body LLVM.Core is
       return Add_Alias_C (M, Ty, Aliasee, Name_String);
    end Add_Alias;
 
+   function Get_Named_Global_Alias
+     (M        : LLVM.Types.Module_T;
+      Name     : String;
+      Name_Len : stddef_h.size_t)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Get_Named_Global_Alias_C (M, Name_String, Name_Len);
+   end Get_Named_Global_Alias;
+
    function Has_Personality_Fn
      (Fn : LLVM.Types.Value_T)
       return Boolean
@@ -633,6 +782,34 @@ package body LLVM.Core is
    begin
       return Has_Personality_Fn_C (Fn) /= 0;
    end Has_Personality_Fn;
+
+   function Intrinsic_Get_Name
+     (ID          : unsigned;
+      Name_Length : stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Intrinsic_Get_Name_C (ID, Name_Length));
+   end Intrinsic_Get_Name;
+
+   function Intrinsic_Copy_Overloaded_Name
+     (ID          : unsigned;
+      Param_Types : System.Address;
+      Param_Count : stddef_h.size_t;
+      Name_Length : stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Intrinsic_Copy_Overloaded_Name_C (ID, Param_Types, Param_Count, Name_Length));
+   end Intrinsic_Copy_Overloaded_Name;
+
+   function Intrinsic_Is_Overloaded
+     (ID : unsigned)
+      return Boolean
+   is
+   begin
+      return Intrinsic_Is_Overloaded_C (ID) /= 0;
+   end Intrinsic_Is_Overloaded;
 
    function Get_GC
      (Fn : LLVM.Types.Value_T)
@@ -702,6 +879,17 @@ package body LLVM.Core is
    begin
       return Value (Get_Basic_Block_Name_C (BB));
    end Get_Basic_Block_Name;
+
+   function Create_Basic_Block_In_Context
+     (C    : LLVM.Types.Context_T;
+      Name : String)
+      return LLVM.Types.Basic_Block_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Create_Basic_Block_In_Context_C (C, Name_String);
+   end Create_Basic_Block_In_Context;
 
    function Append_Basic_Block_In_Context
      (C    : LLVM.Types.Context_T;
@@ -802,6 +990,23 @@ package body LLVM.Core is
       return Build_Invoke_C (arg1, Fn, Args, Num_Args, C_Then, Catch, Name_String);
    end Invoke;
 
+   function Invoke2
+     (arg1     : LLVM.Types.Builder_T;
+      Ty       : LLVM.Types.Type_T;
+      Fn       : LLVM.Types.Value_T;
+      Args     : System.Address;
+      Num_Args : unsigned;
+      C_Then   : LLVM.Types.Basic_Block_T;
+      Catch    : LLVM.Types.Basic_Block_T;
+      Name     : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Invoke2_C (arg1, Ty, Fn, Args, Num_Args, C_Then, Catch, Name_String);
+   end Invoke2;
+
    function Landing_Pad
      (B           : LLVM.Types.Builder_T;
       Ty          : LLVM.Types.Type_T;
@@ -815,6 +1020,48 @@ package body LLVM.Core is
    begin
       return Build_Landing_Pad_C (B, Ty, Pers_Fn, Num_Clauses, Name_String);
    end Landing_Pad;
+
+   function Catch_Pad
+     (B          : LLVM.Types.Builder_T;
+      Parent_Pad : LLVM.Types.Value_T;
+      Args       : System.Address;
+      Num_Args   : unsigned;
+      Name       : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Catch_Pad_C (B, Parent_Pad, Args, Num_Args, Name_String);
+   end Catch_Pad;
+
+   function Cleanup_Pad
+     (B          : LLVM.Types.Builder_T;
+      Parent_Pad : LLVM.Types.Value_T;
+      Args       : System.Address;
+      Num_Args   : unsigned;
+      Name       : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Cleanup_Pad_C (B, Parent_Pad, Args, Num_Args, Name_String);
+   end Cleanup_Pad;
+
+   function Catch_Switch
+     (B            : LLVM.Types.Builder_T;
+      Parent_Pad   : LLVM.Types.Value_T;
+      Unwind_BB    : LLVM.Types.Basic_Block_T;
+      Num_Handlers : unsigned;
+      Name         : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Catch_Switch_C (B, Parent_Pad, Unwind_BB, Num_Handlers, Name_String);
+   end Catch_Switch;
 
    function Is_Cleanup
      (Landing_Pad : LLVM.Types.Value_T)
@@ -1298,6 +1545,19 @@ package body LLVM.Core is
       return Build_Load_C (arg1, Pointer_Val, Name_String);
    end Load;
 
+   function Load2
+     (arg1        : LLVM.Types.Builder_T;
+      Ty          : LLVM.Types.Type_T;
+      Pointer_Val : LLVM.Types.Value_T;
+      Name        : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Load2_C (arg1, Ty, Pointer_Val, Name_String);
+   end Load2;
+
    function GEP
      (B           : LLVM.Types.Builder_T;
       Pointer     : LLVM.Types.Value_T;
@@ -1338,6 +1598,50 @@ package body LLVM.Core is
    begin
       return Build_Struct_GEP_C (B, Pointer, Idx, Name_String);
    end Struct_GEP;
+
+   function GE_P2
+     (B           : LLVM.Types.Builder_T;
+      Ty          : LLVM.Types.Type_T;
+      Pointer     : LLVM.Types.Value_T;
+      Indices     : System.Address;
+      Num_Indices : unsigned;
+      Name        : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_GE_P2_C (B, Ty, Pointer, Indices, Num_Indices, Name_String);
+   end GE_P2;
+
+   function In_Bounds_GE_P2
+     (B           : LLVM.Types.Builder_T;
+      Ty          : LLVM.Types.Type_T;
+      Pointer     : LLVM.Types.Value_T;
+      Indices     : System.Address;
+      Num_Indices : unsigned;
+      Name        : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_In_Bounds_GE_P2_C (B, Ty, Pointer, Indices, Num_Indices, Name_String);
+   end In_Bounds_GE_P2;
+
+   function Struct_GE_P2
+     (B       : LLVM.Types.Builder_T;
+      Ty      : LLVM.Types.Type_T;
+      Pointer : LLVM.Types.Value_T;
+      Idx     : unsigned;
+      Name    : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Struct_GE_P2_C (B, Ty, Pointer, Idx, Name_String);
+   end Struct_GE_P2;
 
    function Global_String
      (B    : LLVM.Types.Builder_T;
@@ -1610,18 +1914,20 @@ package body LLVM.Core is
       return Build_Pointer_Cast_C (arg1, Val, Dest_Ty, Name_String);
    end Pointer_Cast;
 
-   function Int_Cast
-     (arg1    : LLVM.Types.Builder_T;
-      Val     : LLVM.Types.Value_T;
-      Dest_Ty : LLVM.Types.Type_T;
-      Name    : String)
+   function Int_Cast2
+     (arg1      : LLVM.Types.Builder_T;
+      Val       : LLVM.Types.Value_T;
+      Dest_Ty   : LLVM.Types.Type_T;
+      Is_Signed : Boolean;
+      Name      : String)
       return LLVM.Types.Value_T
    is
-      Name_Array  : aliased char_array := To_C (Name);
-      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+      Is_Signed_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Is_Signed);
+      Name_Array     : aliased char_array := To_C (Name);
+      Name_String    : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
    begin
-      return Build_Int_Cast_C (arg1, Val, Dest_Ty, Name_String);
-   end Int_Cast;
+      return Build_Int_Cast2_C (arg1, Val, Dest_Ty, Is_Signed_Bool, Name_String);
+   end Int_Cast2;
 
    function FP_Cast
      (arg1    : LLVM.Types.Builder_T;
@@ -1635,6 +1941,19 @@ package body LLVM.Core is
    begin
       return Build_FP_Cast_C (arg1, Val, Dest_Ty, Name_String);
    end FP_Cast;
+
+   function Int_Cast
+     (arg1    : LLVM.Types.Builder_T;
+      Val     : LLVM.Types.Value_T;
+      Dest_Ty : LLVM.Types.Type_T;
+      Name    : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Int_Cast_C (arg1, Val, Dest_Ty, Name_String);
+   end Int_Cast;
 
    function I_Cmp
      (arg1 : LLVM.Types.Builder_T;
@@ -1689,6 +2008,21 @@ package body LLVM.Core is
    begin
       return Build_Call_C (arg1, Fn, Args, Num_Args, Name_String);
    end Call;
+
+   function Call2
+     (arg1     : LLVM.Types.Builder_T;
+      arg2     : LLVM.Types.Type_T;
+      Fn       : LLVM.Types.Value_T;
+      Args     : System.Address;
+      Num_Args : unsigned;
+      Name     : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Call2_C (arg1, arg2, Fn, Args, Num_Args, Name_String);
+   end Call2;
 
    function Build_Select
      (arg1   : LLVM.Types.Builder_T;
@@ -1989,6 +2323,15 @@ package body LLVM.Core is
       Dispose_Message_C (Message_String);
    end Dispose_Message;
 
+   procedure Context_Set_Discard_Value_Names
+     (C       : LLVM.Types.Context_T;
+      Discard : Boolean)
+   is
+      Discard_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Discard);
+   begin
+      Context_Set_Discard_Value_Names_C (C, Discard_Bool);
+   end Context_Set_Discard_Value_Names;
+
    procedure Set_Module_Identifier
      (M     : LLVM.Types.Module_T;
       Ident : String;
@@ -1999,6 +2342,17 @@ package body LLVM.Core is
    begin
       Set_Module_Identifier_C (M, Ident_String, Len);
    end Set_Module_Identifier;
+
+   procedure Set_Source_File_Name
+     (M    : LLVM.Types.Module_T;
+      Name : String;
+      Len  : stddef_h.size_t)
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      Set_Source_File_Name_C (M, Name_String, Len);
+   end Set_Source_File_Name;
 
    procedure Set_Data_Layout
      (M               : LLVM.Types.Module_T;
@@ -2020,15 +2374,40 @@ package body LLVM.Core is
       Set_Target_C (M, Triple_String);
    end Set_Target;
 
-   procedure Set_Module_Inline_Asm
+   procedure Add_Module_Flag
+     (M        : LLVM.Types.Module_T;
+      Behavior : Module_Flag_Behavior_T;
+      Key      : String;
+      Key_Len  : stddef_h.size_t;
+      Val      : LLVM.Types.Metadata_T)
+   is
+      Key_Array  : aliased char_array := To_C (Key);
+      Key_String : constant chars_ptr := To_Chars_Ptr (Key_Array'Unchecked_Access);
+   begin
+      Add_Module_Flag_C (M, Behavior, Key_String, Key_Len, Val);
+   end Add_Module_Flag;
+
+   procedure Set_Module_Inline_Asm2
      (M   : LLVM.Types.Module_T;
-      Asm : String)
+      Asm : String;
+      Len : stddef_h.size_t)
    is
       Asm_Array  : aliased char_array := To_C (Asm);
       Asm_String : constant chars_ptr := To_Chars_Ptr (Asm_Array'Unchecked_Access);
    begin
-      Set_Module_Inline_Asm_C (M, Asm_String);
-   end Set_Module_Inline_Asm;
+      Set_Module_Inline_Asm2_C (M, Asm_String, Len);
+   end Set_Module_Inline_Asm2;
+
+   procedure Append_Module_Inline_Asm
+     (M   : LLVM.Types.Module_T;
+      Asm : String;
+      Len : stddef_h.size_t)
+   is
+      Asm_Array  : aliased char_array := To_C (Asm);
+      Asm_String : constant chars_ptr := To_Chars_Ptr (Asm_Array'Unchecked_Access);
+   begin
+      Append_Module_Inline_Asm_C (M, Asm_String, Len);
+   end Append_Module_Inline_Asm;
 
    procedure Get_Named_Metadata_Operands
      (M    : LLVM.Types.Module_T;
@@ -2052,6 +2431,16 @@ package body LLVM.Core is
       Add_Named_Metadata_Operand_C (M, Name_String, Val);
    end Add_Named_Metadata_Operand;
 
+   procedure Set_Module_Inline_Asm
+     (M   : LLVM.Types.Module_T;
+      Asm : String)
+   is
+      Asm_Array  : aliased char_array := To_C (Asm);
+      Asm_String : constant chars_ptr := To_Chars_Ptr (Asm_Array'Unchecked_Access);
+   begin
+      Set_Module_Inline_Asm_C (M, Asm_String);
+   end Set_Module_Inline_Asm;
+
    procedure Struct_Set_Body
      (Struct_Ty     : LLVM.Types.Type_T;
       Element_Types : System.Address;
@@ -2062,6 +2451,17 @@ package body LLVM.Core is
    begin
       Struct_Set_Body_C (Struct_Ty, Element_Types, Element_Count, Packed_Bool);
    end Struct_Set_Body;
+
+   procedure Set_Value_Name2
+     (Val      : LLVM.Types.Value_T;
+      Name     : String;
+      Name_Len : stddef_h.size_t)
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      Set_Value_Name2_C (Val, Name_String, Name_Len);
+   end Set_Value_Name2;
 
    procedure Set_Value_Name
      (Val  : LLVM.Types.Value_T;

@@ -13,9 +13,9 @@ package body LLVM.Disassembler is
      (Triple_Name    : String;
       Dis_Info       : System.Address;
       Tag_Type       : int;
-      Get_Op_Info    : Op_Info_Callback_T;
-      Symbol_Look_Up : Symbol_Lookup_Callback_T)
-      return Disasm_Context_T
+      Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
+      Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
+      return LLVM.Disassembler_Types.Disasm_Context_T
    is
       Triple_Name_Array  : aliased char_array := To_C (Triple_Name);
       Triple_Name_String : constant chars_ptr := To_Chars_Ptr (Triple_Name_Array'Unchecked_Access);
@@ -28,9 +28,9 @@ package body LLVM.Disassembler is
       CPU            : String;
       Dis_Info       : System.Address;
       Tag_Type       : int;
-      Get_Op_Info    : Op_Info_Callback_T;
-      Symbol_Look_Up : Symbol_Lookup_Callback_T)
-      return Disasm_Context_T
+      Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
+      Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
+      return LLVM.Disassembler_Types.Disasm_Context_T
    is
       Triple_Array  : aliased char_array := To_C (Triple);
       Triple_String : constant chars_ptr := To_Chars_Ptr (Triple_Array'Unchecked_Access);
@@ -46,9 +46,9 @@ package body LLVM.Disassembler is
       Features       : String;
       Dis_Info       : System.Address;
       Tag_Type       : int;
-      Get_Op_Info    : Op_Info_Callback_T;
-      Symbol_Look_Up : Symbol_Lookup_Callback_T)
-      return Disasm_Context_T
+      Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
+      Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
+      return LLVM.Disassembler_Types.Disasm_Context_T
    is
       Triple_Array    : aliased char_array := To_C (Triple);
       Triple_String   : constant chars_ptr := To_Chars_Ptr (Triple_Array'Unchecked_Access);
@@ -61,10 +61,10 @@ package body LLVM.Disassembler is
    end Create_Disasm_CPU_Features;
 
    function Disasm_Instruction
-     (DC              : Disasm_Context_T;
-      Bytes           : stdint_h.uint8_t;
-      Bytes_Size      : stdint_h.uint64_t;
-      PC              : stdint_h.uint64_t;
+     (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
+      Bytes           : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t;
+      Bytes_Size      : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      PC              : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
       Out_String      : String;
       Out_String_Size : stddef_h.size_t)
       return stddef_h.size_t

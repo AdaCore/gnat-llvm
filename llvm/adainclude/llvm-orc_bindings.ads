@@ -3,10 +3,11 @@ pragma Style_Checks (Off);
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
-with stdint_h;
+with x86_64_linux_gnu_bits_stdint_uintn_h;
 with Interfaces.C.Strings;
-with LLVM.Types;
 with LLVM.Target_Machine;
+with LLVM.Error;
+with LLVM.Types;
 
 package LLVM.Orc_Bindings is
 
@@ -31,57 +32,19 @@ package LLVM.Orc_Bindings is
   --|*                                                                            *|
   --\*===----------------------------------------------------------------------=== 
 
-   --  skipped empty struct LLVMOpaqueSharedModule
-
-   type Shared_Module_T is new System.Address;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:32
-
    --  skipped empty struct LLVMOrcOpaqueJITStack
 
-   type Orc_JIT_Stack_T is new System.Address;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:33
+   type Orc_JIT_Stack_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:33
 
-   subtype Orc_Module_Handle_T is stdint_h.uint32_t;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:34
+   subtype Orc_Module_Handle_T is x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:34
 
-   subtype Orc_Target_Address_T is stdint_h.uint64_t;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:35
+   subtype Orc_Target_Address_T is x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:35
 
-   type Orc_Symbol_Resolver_Fn_T is access function  (arg1 : Interfaces.C.Strings.chars_ptr; arg2 : System.Address) return stdint_h.uint64_t;
-   pragma Convention (C, Orc_Symbol_Resolver_Fn_T);  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:36
+   type Orc_Symbol_Resolver_Fn_T is access function  (arg1 : Interfaces.C.Strings.chars_ptr; arg2 : System.Address) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+   pragma Convention (C, Orc_Symbol_Resolver_Fn_T);  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:36
 
-   type Orc_Lazy_Compile_Callback_Fn_T is access function  (arg1 : Orc_JIT_Stack_T; arg2 : System.Address) return stdint_h.uint64_t;
-   pragma Convention (C, Orc_Lazy_Compile_Callback_Fn_T);  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:37
-
-   type Orc_Error_Code_T is 
-     (Orc_Err_Success,
-      Orc_Err_Generic);
-   pragma Convention (C, Orc_Error_Code_T);  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:40
-
-  --*
-  -- * Turn an LLVMModuleRef into an LLVMSharedModuleRef.
-  -- *
-  -- * The JIT uses shared ownership for LLVM modules, since it is generally
-  -- * difficult to know when the JIT will be finished with a module (and the JIT
-  -- * has no way of knowing when a user may be finished with one).
-  -- *
-  -- * Calling this method with an LLVMModuleRef creates a shared-pointer to the
-  -- * module, and returns a reference to this shared pointer.
-  -- *
-  -- * The shared module should be disposed when finished with by calling
-  -- * LLVMOrcDisposeSharedModule (not LLVMDisposeModule). The Module will be
-  -- * deleted when the last shared pointer owner relinquishes it.
-  --  
-
-   function Orc_Make_Shared_Module (C_Mod : LLVM.Types.Module_T) return Shared_Module_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:57
-   pragma Import (C, Orc_Make_Shared_Module, "LLVMOrcMakeSharedModule");
-
-  --*
-  -- * Dispose of a shared module.
-  -- *
-  -- * The module should not be accessed after this call. The module will be
-  -- * deleted once all clients (including the JIT itself) have released their
-  -- * shared pointers.
-  --  
-
-   procedure Orc_Dispose_Shared_Module_Ref (Shared_Mod : Shared_Module_T);  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:67
-   pragma Import (C, Orc_Dispose_Shared_Module_Ref, "LLVMOrcDisposeSharedModuleRef");
+   type Orc_Lazy_Compile_Callback_Fn_T is access function  (arg1 : Orc_JIT_Stack_T; arg2 : System.Address) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+   pragma Convention (C, Orc_Lazy_Compile_Callback_Fn_T);  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:37
 
   --*
   -- * Create an ORC JIT stack.
@@ -93,7 +56,7 @@ package LLVM.Orc_Bindings is
   -- * in a double-free.
   --  
 
-   function Orc_Create_Instance (TM : LLVM.Target_Machine.Target_Machine_T) return Orc_JIT_Stack_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:78
+   function Orc_Create_Instance (TM : LLVM.Target_Machine.Target_Machine_T) return Orc_JIT_Stack_T;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:49
    pragma Import (C, Orc_Create_Instance, "LLVMOrcCreateInstance");
 
   --*
@@ -108,7 +71,7 @@ package LLVM.Orc_Bindings is
       return String;
    function Orc_Get_Error_Msg_C
      (JIT_Stack : Orc_JIT_Stack_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:86
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:57
    pragma Import (C, Orc_Get_Error_Msg_C, "LLVMOrcGetErrorMsg");
 
   --*
@@ -133,7 +96,7 @@ procedure Orc_Get_Mangled_Symbol
    procedure Orc_Dispose_Mangled_Symbol
      (Mangled_Symbol : String);
    procedure Orc_Dispose_Mangled_Symbol_C
-     (Mangled_Symbol : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:98
+     (Mangled_Symbol : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:69
    pragma Import (C, Orc_Dispose_Mangled_Symbol_C, "LLVMOrcDisposeMangledSymbol");
 
   --*
@@ -144,7 +107,7 @@ procedure Orc_Get_Mangled_Symbol
      (JIT_Stack : Orc_JIT_Stack_T;
       Ret_Addr : access Orc_Target_Address_T;
       Callback : Orc_Lazy_Compile_Callback_Fn_T;
-      Callback_Ctx : System.Address) return Orc_Error_Code_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:104
+      Callback_Ctx : System.Address) return LLVM.Error.Error_T;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:74
    pragma Import (C, Orc_Create_Lazy_Compile_Callback, "LLVMOrcCreateLazyCompileCallback");
 
   --*
@@ -155,12 +118,12 @@ function Orc_Create_Indirect_Stub
      (JIT_Stack : Orc_JIT_Stack_T;
       Stub_Name : String;
       Init_Addr : Orc_Target_Address_T)
-      return Orc_Error_Code_T;
+      return LLVM.Error.Error_T;
    function Orc_Create_Indirect_Stub_C
      (JIT_Stack : Orc_JIT_Stack_T;
       Stub_Name : Interfaces.C.Strings.chars_ptr;
       Init_Addr : Orc_Target_Address_T)
-      return Orc_Error_Code_T;
+      return LLVM.Error.Error_T;
    pragma Import (C, Orc_Create_Indirect_Stub_C, "LLVMOrcCreateIndirectStub");
 
   --*
@@ -171,12 +134,12 @@ function Orc_Set_Indirect_Stub_Pointer
      (JIT_Stack : Orc_JIT_Stack_T;
       Stub_Name : String;
       New_Addr  : Orc_Target_Address_T)
-      return Orc_Error_Code_T;
+      return LLVM.Error.Error_T;
    function Orc_Set_Indirect_Stub_Pointer_C
      (JIT_Stack : Orc_JIT_Stack_T;
       Stub_Name : Interfaces.C.Strings.chars_ptr;
       New_Addr  : Orc_Target_Address_T)
-      return Orc_Error_Code_T;
+      return LLVM.Error.Error_T;
    pragma Import (C, Orc_Set_Indirect_Stub_Pointer_C, "LLVMOrcSetIndirectStubPointer");
 
   --*
@@ -186,9 +149,9 @@ function Orc_Set_Indirect_Stub_Pointer
    function Orc_Add_Eagerly_Compiled_IR
      (JIT_Stack : Orc_JIT_Stack_T;
       Ret_Handle : access Orc_Module_Handle_T;
-      C_Mod : Shared_Module_T;
+      C_Mod : LLVM.Types.Module_T;
       Symbol_Resolver : Orc_Symbol_Resolver_Fn_T;
-      Symbol_Resolver_Ctx : System.Address) return Orc_Error_Code_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:127
+      Symbol_Resolver_Ctx : System.Address) return LLVM.Error.Error_T;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:95
    pragma Import (C, Orc_Add_Eagerly_Compiled_IR, "LLVMOrcAddEagerlyCompiledIR");
 
   --*
@@ -198,9 +161,9 @@ function Orc_Set_Indirect_Stub_Pointer
    function Orc_Add_Lazily_Compiled_IR
      (JIT_Stack : Orc_JIT_Stack_T;
       Ret_Handle : access Orc_Module_Handle_T;
-      C_Mod : Shared_Module_T;
+      C_Mod : LLVM.Types.Module_T;
       Symbol_Resolver : Orc_Symbol_Resolver_Fn_T;
-      Symbol_Resolver_Ctx : System.Address) return Orc_Error_Code_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:137
+      Symbol_Resolver_Ctx : System.Address) return LLVM.Error.Error_T;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:104
    pragma Import (C, Orc_Add_Lazily_Compiled_IR, "LLVMOrcAddLazilyCompiledIR");
 
   --*
@@ -217,7 +180,7 @@ function Orc_Set_Indirect_Stub_Pointer
       Ret_Handle : access Orc_Module_Handle_T;
       Obj : LLVM.Types.Memory_Buffer_T;
       Symbol_Resolver : Orc_Symbol_Resolver_Fn_T;
-      Symbol_Resolver_Ctx : System.Address) return Orc_Error_Code_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:151
+      Symbol_Resolver_Ctx : System.Address) return LLVM.Error.Error_T;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:118
    pragma Import (C, Orc_Add_Object_File, "LLVMOrcAddObjectFile");
 
   --*
@@ -227,7 +190,7 @@ function Orc_Set_Indirect_Stub_Pointer
   -- * files.
   --  
 
-   function Orc_Remove_Module (JIT_Stack : Orc_JIT_Stack_T; H : Orc_Module_Handle_T) return Orc_Error_Code_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:163
+   function Orc_Remove_Module (JIT_Stack : Orc_JIT_Stack_T; H : Orc_Module_Handle_T) return LLVM.Error.Error_T;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:130
    pragma Import (C, Orc_Remove_Module, "LLVMOrcRemoveModule");
 
   --*
@@ -238,20 +201,57 @@ function Orc_Get_Symbol_Address
      (JIT_Stack   : Orc_JIT_Stack_T;
       Ret_Addr    : Orc_Target_Address_T;
       Symbol_Name : String)
-      return Orc_Error_Code_T;
+      return LLVM.Error.Error_T;
    function Orc_Get_Symbol_Address_C
      (JIT_Stack   : Orc_JIT_Stack_T;
       Ret_Addr    : Orc_Target_Address_T;
       Symbol_Name : Interfaces.C.Strings.chars_ptr)
-      return Orc_Error_Code_T;
+      return LLVM.Error.Error_T;
    pragma Import (C, Orc_Get_Symbol_Address_C, "LLVMOrcGetSymbolAddress");
+
+  --*
+  -- * Get symbol address from JIT instance, searching only the specified
+  -- * handle.
+  --  
+
+function Orc_Get_Symbol_Address_In
+     (JIT_Stack   : Orc_JIT_Stack_T;
+      Ret_Addr    : Orc_Target_Address_T;
+      H           : Orc_Module_Handle_T;
+      Symbol_Name : String)
+      return LLVM.Error.Error_T;
+   function Orc_Get_Symbol_Address_In_C
+     (JIT_Stack   : Orc_JIT_Stack_T;
+      Ret_Addr    : Orc_Target_Address_T;
+      H           : Orc_Module_Handle_T;
+      Symbol_Name : Interfaces.C.Strings.chars_ptr)
+      return LLVM.Error.Error_T;
+   pragma Import (C, Orc_Get_Symbol_Address_In_C, "LLVMOrcGetSymbolAddressIn");
 
   --*
   -- * Dispose of an ORC JIT stack.
   --  
 
-   function Orc_Dispose_Instance (JIT_Stack : Orc_JIT_Stack_T) return Orc_Error_Code_T;  -- llvm-6.0.0.src/include/llvm-c/OrcBindings.h:176
+   function Orc_Dispose_Instance (JIT_Stack : Orc_JIT_Stack_T) return LLVM.Error.Error_T;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:152
    pragma Import (C, Orc_Dispose_Instance, "LLVMOrcDisposeInstance");
+
+  --*
+  -- * Register a JIT Event Listener.
+  -- *
+  -- * A NULL listener is ignored.
+  --  
+
+   procedure Orc_Register_JIT_Event_Listener (JIT_Stack : Orc_JIT_Stack_T; L : LLVM.Types.JIT_Event_Listener_T);  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:159
+   pragma Import (C, Orc_Register_JIT_Event_Listener, "LLVMOrcRegisterJITEventListener");
+
+  --*
+  -- * Unegister a JIT Event Listener.
+  -- *
+  -- * A NULL listener is ignored.
+  --  
+
+   procedure Orc_Unregister_JIT_Event_Listener (JIT_Stack : Orc_JIT_Stack_T; L : LLVM.Types.JIT_Event_Listener_T);  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:166
+   pragma Import (C, Orc_Unregister_JIT_Event_Listener, "LLVMOrcUnregisterJITEventListener");
 
 end LLVM.Orc_Bindings;
 

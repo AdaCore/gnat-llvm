@@ -6,12 +6,11 @@ with Interfaces.C.Extensions;
 with System;
 with Interfaces.C.Strings;
 with stddef_h;
+with x86_64_linux_gnu_sys_types_h;
 
 package LLVM.lto is
 
-   subtype off_t is Long_Integer;
-
-   LTO_API_VERSION : constant := 21;  --  llvm-6.0.0.src/include/llvm-c/lto.h:47
+   LTO_API_VERSION : constant := 23;  --  llvm-8.0.0.src/include/llvm-c/lto.h:47
 
   --===-- llvm-c/lto.h - LTO Public C Interface ---------------------*- C -*-===*|*                                                                            *|
   --|
@@ -28,7 +27,7 @@ package LLVM.lto is
   --|*                                                                            *|
   --\*===----------------------------------------------------------------------=== 
 
-   subtype Bool_T_T is Extensions.bool;  -- llvm-6.0.0.src/include/llvm-c/lto.h:29
+   subtype Bool_T_T is Extensions.bool;  -- llvm-8.0.0.src/include/llvm-c/lto.h:29
 
   -- MSVC in particular does not have anything like _Bool or bool in C, but we can
   --   at least make sure the type is the same size.  The implementation side will
@@ -65,7 +64,7 @@ package LLVM.lto is
    SYMBOL_SCOPE_DEFAULT : constant Symbol_Attributes_T := 6144;
    SYMBOL_SCOPE_DEFAULT_CAN_BE_HIDDEN : constant Symbol_Attributes_T := 10240;
    SYMBOL_COMDAT : constant Symbol_Attributes_T := 16384;
-   SYMBOL_ALIAS : constant Symbol_Attributes_T := 32768;  -- llvm-6.0.0.src/include/llvm-c/lto.h:72
+   SYMBOL_ALIAS : constant Symbol_Attributes_T := 32768;  -- llvm-8.0.0.src/include/llvm-c/lto.h:72
 
   --*
   -- * \since prior to LTO_API_VERSION=3
@@ -74,7 +73,7 @@ package LLVM.lto is
    type Debug_Model_T is 
      (DEBUG_MODEL_NONE,
       DEBUG_MODEL_DWARF);
-   pragma Convention (C, Debug_Model_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:80
+   pragma Convention (C, Debug_Model_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:80
 
   --*
   -- * \since prior to LTO_API_VERSION=3
@@ -85,22 +84,22 @@ package LLVM.lto is
       CODEGEN_PIC_MODEL_DYNAMIC,
       CODEGEN_PIC_MODEL_DYNAMIC_NO_PIC,
       CODEGEN_PIC_MODEL_DEFAULT);
-   pragma Convention (C, Codegen_Model_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:90
+   pragma Convention (C, Codegen_Model_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:90
 
   --* opaque reference to a loaded object module  
    --  skipped empty struct LLVMOpaqueLTOModule
 
-   type Module_T_T is new System.Address;  -- llvm-6.0.0.src/include/llvm-c/lto.h:93
+   type Module_T_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/lto.h:93
 
   --* opaque reference to a code generator  
    --  skipped empty struct LLVMOpaqueLTOCodeGenerator
 
-   type Code_Gen_T_T is new System.Address;  -- llvm-6.0.0.src/include/llvm-c/lto.h:96
+   type Code_Gen_T_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/lto.h:96
 
   --* opaque reference to a thin code generator  
    --  skipped empty struct LLVMOpaqueThinLTOCodeGenerator
 
-   type thinlto_code_gen_t is new System.Address;  -- llvm-6.0.0.src/include/llvm-c/lto.h:99
+   type thinlto_code_gen_t is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/lto.h:99
 
   --*
   -- * Returns a printable string.
@@ -111,7 +110,7 @@ package LLVM.lto is
    function Get_Version
       return String;
    function Get_Version_C
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/lto.h:111
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/lto.h:111
    pragma Import (C, Get_Version_C, "lto_get_version");
 
   --*
@@ -123,7 +122,7 @@ package LLVM.lto is
    function Get_Error_Message
       return String;
    function Get_Error_Message_C
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/lto.h:119
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/lto.h:119
    pragma Import (C, Get_Error_Message_C, "lto_get_error_message");
 
   --*
@@ -137,7 +136,7 @@ package LLVM.lto is
       return Bool_T_T;
    function Module_Is_Object_File_C
      (path : Interfaces.C.Strings.chars_ptr)
-      return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:127
+      return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:127
    pragma Import (C, Module_Is_Object_File_C, "lto_module_is_object_file");
 
   --*
@@ -153,7 +152,7 @@ package LLVM.lto is
    function Module_Is_Object_File_For_Target_C
      (path                 : Interfaces.C.Strings.chars_ptr;
       Target_Triple_Prefix : Interfaces.C.Strings.chars_ptr)
-      return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:135
+      return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:135
    pragma Import (C, Module_Is_Object_File_For_Target_C, "lto_module_is_object_file_for_target");
 
   --*
@@ -163,7 +162,7 @@ package LLVM.lto is
   -- * \since LTO_API_VERSION=20
   --  
 
-   function Module_Has_Objc_Category (mem : System.Address; length : stddef_h.size_t) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:145
+   function Module_Has_Objc_Category (mem : System.Address; length : stddef_h.size_t) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:145
    pragma Import (C, Module_Has_Objc_Category, "lto_module_has_objc_category");
 
   --*
@@ -172,7 +171,7 @@ package LLVM.lto is
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Is_Object_File_In_Memory (mem : System.Address; length : stddef_h.size_t) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:152
+   function Module_Is_Object_File_In_Memory (mem : System.Address; length : stddef_h.size_t) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:152
    pragma Import (C, Module_Is_Object_File_In_Memory, "lto_module_is_object_file_in_memory");
 
   --*
@@ -205,7 +204,7 @@ function Module_Is_Object_File_In_Memory_For_Target
       return Module_T_T;
    function Module_Create_C
      (path : Interfaces.C.Strings.chars_ptr)
-      return Module_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:171
+      return Module_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:171
    pragma Import (C, Module_Create_C, "lto_module_create");
 
   --*
@@ -215,7 +214,7 @@ function Module_Is_Object_File_In_Memory_For_Target
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Create_From_Memory (mem : System.Address; length : stddef_h.size_t) return Module_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:180
+   function Module_Create_From_Memory (mem : System.Address; length : stddef_h.size_t) return Module_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:180
    pragma Import (C, Module_Create_From_Memory, "lto_module_create_from_memory");
 
   --*
@@ -238,7 +237,7 @@ function Module_Create_From_Memory_With_Path
    pragma Import (C, Module_Create_From_Memory_With_Path_C, "lto_module_create_from_memory_with_path");
 
   --*
-  -- * \brief Loads an object file in its own context.
+  -- * Loads an object file in its own context.
   -- *
   -- * Loads an object file in its own LLVMContext.  This function call is
   -- * thread-safe.  However, modules created this way should not be merged into an
@@ -262,7 +261,7 @@ function Module_Create_In_Local_Context
    pragma Import (C, Module_Create_In_Local_Context_C, "lto_module_create_in_local_context");
 
   --*
-  -- * \brief Loads an object file in the codegen context.
+  -- * Loads an object file in the codegen context.
   -- *
   -- * Loads an object file into the same context as \c cg.  The module is safe to
   -- * add using \a lto_codegen_add_module().
@@ -317,14 +316,14 @@ function Module_Create_From_Fd_At_Offset
       path      : String;
       File_Size : stddef_h.size_t;
       Map_Size  : stddef_h.size_t;
-      offset    : off_t)
+      offset    : x86_64_linux_gnu_sys_types_h.off_t)
       return Module_T_T;
    function Module_Create_From_Fd_At_Offset_C
      (fd        : int;
       path      : Interfaces.C.Strings.chars_ptr;
       File_Size : stddef_h.size_t;
       Map_Size  : stddef_h.size_t;
-      offset    : off_t)
+      offset    : x86_64_linux_gnu_sys_types_h.off_t)
       return Module_T_T;
    pragma Import (C, Module_Create_From_Fd_At_Offset_C, "lto_module_create_from_fd_at_offset");
 
@@ -335,7 +334,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   procedure Module_Dispose (C_Mod : Module_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:247
+   procedure Module_Dispose (C_Mod : Module_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:247
    pragma Import (C, Module_Dispose, "lto_module_dispose");
 
   --*
@@ -349,7 +348,7 @@ function Module_Create_From_Fd_At_Offset
       return String;
    function Module_Get_Target_Triple_C
      (C_Mod : Module_T_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/lto.h:255
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/lto.h:255
    pragma Import (C, Module_Get_Target_Triple_C, "lto_module_get_target_triple");
 
   --*
@@ -363,7 +362,7 @@ function Module_Create_From_Fd_At_Offset
       triple : String);
    procedure Module_Set_Target_Triple_C
      (C_Mod  : Module_T_T;
-      triple : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:263
+      triple : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:263
    pragma Import (C, Module_Set_Target_Triple_C, "lto_module_set_target_triple");
 
   --*
@@ -372,7 +371,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Get_Num_Symbols (C_Mod : Module_T_T) return unsigned;  -- llvm-6.0.0.src/include/llvm-c/lto.h:271
+   function Module_Get_Num_Symbols (C_Mod : Module_T_T) return unsigned;  -- llvm-8.0.0.src/include/llvm-c/lto.h:271
    pragma Import (C, Module_Get_Num_Symbols, "lto_module_get_num_symbols");
 
   --*
@@ -388,7 +387,7 @@ function Module_Create_From_Fd_At_Offset
    function Module_Get_Symbol_Name_C
      (C_Mod : Module_T_T;
       index : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/lto.h:279
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/lto.h:279
    pragma Import (C, Module_Get_Symbol_Name_C, "lto_module_get_symbol_name");
 
   --*
@@ -397,7 +396,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Get_Symbol_Attribute (C_Mod : Module_T_T; index : unsigned) return Symbol_Attributes_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:287
+   function Module_Get_Symbol_Attribute (C_Mod : Module_T_T; index : unsigned) return Symbol_Attributes_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:287
    pragma Import (C, Module_Get_Symbol_Attribute, "lto_module_get_symbol_attribute");
 
   --*
@@ -414,7 +413,7 @@ function Module_Create_From_Fd_At_Offset
       return String;
    function Module_Get_Linkeropts_C
      (C_Mod : Module_T_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/lto.h:298
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/lto.h:298
    pragma Import (C, Module_Get_Linkeropts_C, "lto_module_get_linkeropts");
 
   --*
@@ -428,7 +427,7 @@ function Module_Create_From_Fd_At_Offset
    DS_ERROR : constant Codegen_Diagnostic_Severity_T_T := 0;
    DS_WARNING : constant Codegen_Diagnostic_Severity_T_T := 1;
    DS_REMARK : constant Codegen_Diagnostic_Severity_T_T := 3;
-   DS_NOTE : constant Codegen_Diagnostic_Severity_T_T := 2;  -- llvm-6.0.0.src/include/llvm-c/lto.h:310
+   DS_NOTE : constant Codegen_Diagnostic_Severity_T_T := 2;  -- llvm-8.0.0.src/include/llvm-c/lto.h:310
 
   --*
   -- * Diagnostic handler type.
@@ -444,7 +443,7 @@ function Module_Create_From_Fd_At_Offset
         (arg1 : Codegen_Diagnostic_Severity_T_T;
          arg2 : Interfaces.C.Strings.chars_ptr;
          arg3 : System.Address);
-   pragma Convention (C, Diagnostic_Handler_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:321
+   pragma Convention (C, Diagnostic_Handler_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:321
 
   --*
   -- * Set a diagnostic handler and the related context (void *).
@@ -457,7 +456,7 @@ function Module_Create_From_Fd_At_Offset
    procedure Codegen_Set_Diagnostic_Handler
      (arg1 : Code_Gen_T_T;
       arg2 : Diagnostic_Handler_T_T;
-      arg3 : System.Address);  -- llvm-6.0.0.src/include/llvm-c/lto.h:331
+      arg3 : System.Address);  -- llvm-8.0.0.src/include/llvm-c/lto.h:331
    pragma Import (C, Codegen_Set_Diagnostic_Handler, "lto_codegen_set_diagnostic_handler");
 
   --*
@@ -470,11 +469,11 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Create return Code_Gen_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:345
+   function Codegen_Create return Code_Gen_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:345
    pragma Import (C, Codegen_Create, "lto_codegen_create");
 
   --*
-  -- * \brief Instantiate a code generator in its own context.
+  -- * Instantiate a code generator in its own context.
   -- *
   -- * Instantiates a code generator in its own context.  Modules added via \a
   -- * lto_codegen_add_module() must have all been created in the same context,
@@ -483,7 +482,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=11
   --  
 
-   function Codegen_Create_In_Local_Context return Code_Gen_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:357
+   function Codegen_Create_In_Local_Context return Code_Gen_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:357
    pragma Import (C, Codegen_Create_In_Local_Context, "lto_codegen_create_in_local_context");
 
   --*
@@ -493,7 +492,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   procedure Codegen_Dispose (arg1 : Code_Gen_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:366
+   procedure Codegen_Dispose (arg1 : Code_Gen_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:366
    pragma Import (C, Codegen_Dispose, "lto_codegen_dispose");
 
   --*
@@ -507,7 +506,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Add_Module (cg : Code_Gen_T_T; C_Mod : Module_T_T) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:379
+   function Codegen_Add_Module (cg : Code_Gen_T_T; C_Mod : Module_T_T) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:379
    pragma Import (C, Codegen_Add_Module, "lto_codegen_add_module");
 
   --*
@@ -519,7 +518,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=13
   --  
 
-   procedure Codegen_Set_Module (cg : Code_Gen_T_T; C_Mod : Module_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:390
+   procedure Codegen_Set_Module (cg : Code_Gen_T_T; C_Mod : Module_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:390
    pragma Import (C, Codegen_Set_Module, "lto_codegen_set_module");
 
   --*
@@ -529,7 +528,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Set_Debug_Model (cg : Code_Gen_T_T; arg2 : Debug_Model_T) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:399
+   function Codegen_Set_Debug_Model (cg : Code_Gen_T_T; arg2 : Debug_Model_T) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:399
    pragma Import (C, Codegen_Set_Debug_Model, "lto_codegen_set_debug_model");
 
   --*
@@ -539,7 +538,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Set_Pic_Model (cg : Code_Gen_T_T; arg2 : Codegen_Model_T) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:408
+   function Codegen_Set_Pic_Model (cg : Code_Gen_T_T; arg2 : Codegen_Model_T) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:408
    pragma Import (C, Codegen_Set_Pic_Model, "lto_codegen_set_pic_model");
 
   --*
@@ -553,7 +552,7 @@ function Module_Create_From_Fd_At_Offset
       cpu : String);
    procedure Codegen_Set_Cpu_C
      (cg  : Code_Gen_T_T;
-      cpu : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:416
+      cpu : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:416
    pragma Import (C, Codegen_Set_Cpu_C, "lto_codegen_set_cpu");
 
   --*
@@ -568,7 +567,7 @@ function Module_Create_From_Fd_At_Offset
       path : String);
    procedure Codegen_Set_Assembler_Path_C
      (cg   : Code_Gen_T_T;
-      path : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:425
+      path : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:425
    pragma Import (C, Codegen_Set_Assembler_Path_C, "lto_codegen_set_assembler_path");
 
   --*
@@ -580,7 +579,7 @@ function Module_Create_From_Fd_At_Offset
    procedure Codegen_Set_Assembler_Args
      (cg : Code_Gen_T_T;
       args : System.Address;
-      nargs : int);  -- llvm-6.0.0.src/include/llvm-c/lto.h:433
+      nargs : int);  -- llvm-8.0.0.src/include/llvm-c/lto.h:433
    pragma Import (C, Codegen_Set_Assembler_Args, "lto_codegen_set_assembler_args");
 
   --*
@@ -596,7 +595,7 @@ function Module_Create_From_Fd_At_Offset
       symbol : String);
    procedure Codegen_Add_Must_Preserve_Symbol_C
      (cg     : Code_Gen_T_T;
-      symbol : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:444
+      symbol : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:444
    pragma Import (C, Codegen_Add_Must_Preserve_Symbol_C, "lto_codegen_add_must_preserve_symbol");
 
   --*
@@ -614,7 +613,7 @@ function Module_Create_From_Fd_At_Offset
    function Codegen_Write_Merged_Modules_C
      (cg   : Code_Gen_T_T;
       path : Interfaces.C.Strings.chars_ptr)
-      return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:454
+      return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:454
    pragma Import (C, Codegen_Write_Merged_Modules_C, "lto_codegen_write_merged_modules");
 
   --*
@@ -630,7 +629,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Compile (cg : Code_Gen_T_T; length : access stddef_h.size_t) return System.Address;  -- llvm-6.0.0.src/include/llvm-c/lto.h:469
+   function Codegen_Compile (cg : Code_Gen_T_T; length : access stddef_h.size_t) return System.Address;  -- llvm-8.0.0.src/include/llvm-c/lto.h:469
    pragma Import (C, Codegen_Compile, "lto_codegen_compile");
 
   --*
@@ -643,7 +642,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=5
   --  
 
-   function Codegen_Compile_To_File (cg : Code_Gen_T_T; name : System.Address) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:481
+   function Codegen_Compile_To_File (cg : Code_Gen_T_T; name : System.Address) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:481
    pragma Import (C, Codegen_Compile_To_File, "lto_codegen_compile_to_file");
 
   --*
@@ -652,7 +651,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=12
   --  
 
-   function Codegen_Optimize (cg : Code_Gen_T_T) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:489
+   function Codegen_Optimize (cg : Code_Gen_T_T) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:489
    pragma Import (C, Codegen_Optimize, "lto_codegen_optimize");
 
   --*
@@ -668,7 +667,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=12
   --  
 
-   function Codegen_Compile_Optimized (cg : Code_Gen_T_T; length : access stddef_h.size_t) return System.Address;  -- llvm-6.0.0.src/include/llvm-c/lto.h:504
+   function Codegen_Compile_Optimized (cg : Code_Gen_T_T; length : access stddef_h.size_t) return System.Address;  -- llvm-8.0.0.src/include/llvm-c/lto.h:504
    pragma Import (C, Codegen_Compile_Optimized, "lto_codegen_compile_optimized");
 
   --*
@@ -677,7 +676,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=12
   --  
 
-   function Api_Version_Fun return unsigned;  -- llvm-6.0.0.src/include/llvm-c/lto.h:512
+   function Api_Version_Fun return unsigned;  -- llvm-8.0.0.src/include/llvm-c/lto.h:512
    pragma Import (C, Api_Version_Fun, "lto_api_version_fun");
 
   --*
@@ -691,7 +690,7 @@ function Module_Create_From_Fd_At_Offset
       arg2 : String);
    procedure Codegen_Debug_Options_C
      (cg   : Code_Gen_T_T;
-      arg2 : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:520
+      arg2 : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:520
    pragma Import (C, Codegen_Debug_Options_C, "lto_codegen_debug_options");
 
   --*
@@ -701,7 +700,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=5
   --  
 
-   procedure Initialize_Disassembler;  -- llvm-6.0.0.src/include/llvm-c/lto.h:529
+   procedure Initialize_Disassembler;  -- llvm-8.0.0.src/include/llvm-c/lto.h:529
    pragma Import (C, Initialize_Disassembler, "lto_initialize_disassembler");
 
   --*
@@ -711,11 +710,11 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=14
   --  
 
-   procedure Codegen_Set_Should_Internalize (cg : Code_Gen_T_T; Should_Internalize : Bool_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:538
+   procedure Codegen_Set_Should_Internalize (cg : Code_Gen_T_T; Should_Internalize : Bool_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:538
    pragma Import (C, Codegen_Set_Should_Internalize, "lto_codegen_set_should_internalize");
 
   --*
-  -- * \brief Set whether to embed uselists in bitcode.
+  -- * Set whether to embed uselists in bitcode.
   -- *
   -- * Sets whether \a lto_codegen_write_merged_modules() should embed uselists in
   -- * output bitcode.  This should be turned on for all -save-temps output.
@@ -723,7 +722,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=15
   --  
 
-   procedure Codegen_Set_Should_Embed_Uselists (cg : Code_Gen_T_T; Should_Embed_Uselists : Bool_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:550
+   procedure Codegen_Set_Should_Embed_Uselists (cg : Code_Gen_T_T; Should_Embed_Uselists : Bool_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:550
    pragma Import (C, Codegen_Set_Should_Embed_Uselists, "lto_codegen_set_should_embed_uselists");
 
   --*
@@ -741,12 +740,12 @@ function Module_Create_From_Fd_At_Offset
   --  
 
    type bject_Buffer_T is record
-      Buffer : Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/lto.h:567
-      Size : aliased stddef_h.size_t;  -- llvm-6.0.0.src/include/llvm-c/lto.h:568
+      Buffer : Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/lto.h:567
+      Size : aliased stddef_h.size_t;  -- llvm-8.0.0.src/include/llvm-c/lto.h:568
    end record;
-   pragma Convention (C_Pass_By_Copy, bject_Buffer_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:569
+   pragma Convention (C_Pass_By_Copy, bject_Buffer_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:569
 
-   --  skipped anonymous struct anon_17
+   --  skipped anonymous struct anon_19
 
   --*
   -- * Instantiates a ThinLTO code generator.
@@ -761,7 +760,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_create_codegen return thinlto_code_gen_t;  -- llvm-6.0.0.src/include/llvm-c/lto.h:583
+   function thinlto_create_codegen return thinlto_code_gen_t;  -- llvm-8.0.0.src/include/llvm-c/lto.h:583
    pragma Import (C, thinlto_create_codegen, "thinlto_create_codegen");
 
   --*
@@ -771,7 +770,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_dispose (cg : thinlto_code_gen_t);  -- llvm-6.0.0.src/include/llvm-c/lto.h:591
+   procedure thinlto_codegen_dispose (cg : thinlto_code_gen_t);  -- llvm-8.0.0.src/include/llvm-c/lto.h:591
    pragma Import (C, thinlto_codegen_dispose, "thinlto_codegen_dispose");
 
   --*
@@ -805,7 +804,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_process (cg : thinlto_code_gen_t);  -- llvm-6.0.0.src/include/llvm-c/lto.h:614
+   procedure thinlto_codegen_process (cg : thinlto_code_gen_t);  -- llvm-8.0.0.src/include/llvm-c/lto.h:614
    pragma Import (C, thinlto_codegen_process, "thinlto_codegen_process");
 
   --*
@@ -818,7 +817,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_module_get_num_objects (cg : thinlto_code_gen_t) return unsigned;  -- llvm-6.0.0.src/include/llvm-c/lto.h:625
+   function thinlto_module_get_num_objects (cg : thinlto_code_gen_t) return unsigned;  -- llvm-8.0.0.src/include/llvm-c/lto.h:625
    pragma Import (C, thinlto_module_get_num_objects, "thinlto_module_get_num_objects");
 
   --*
@@ -831,7 +830,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_module_get_object (cg : thinlto_code_gen_t; index : unsigned) return bject_Buffer_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:636
+   function thinlto_module_get_object (cg : thinlto_code_gen_t; index : unsigned) return bject_Buffer_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:636
    pragma Import (C, thinlto_module_get_object, "thinlto_module_get_object");
 
   --*
@@ -844,7 +843,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=21
   --  
 
-   function thinlto_module_get_num_object_files (cg : thinlto_code_gen_t) return unsigned;  -- llvm-6.0.0.src/include/llvm-c/lto.h:648
+   function thinlto_module_get_num_object_files (cg : thinlto_code_gen_t) return unsigned;  -- llvm-8.0.0.src/include/llvm-c/lto.h:648
    pragma Import (C, thinlto_module_get_num_object_files, "thinlto_module_get_num_object_files");
 
   --*
@@ -864,7 +863,7 @@ procedure thinlto_codegen_add_module
    function thinlto_module_get_object_file_C
      (cg    : thinlto_code_gen_t;
       index : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/lto.h:659
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/lto.h:659
    pragma Import (C, thinlto_module_get_object_file_C, "thinlto_module_get_object_file");
 
   --*
@@ -874,7 +873,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_codegen_set_pic_model (cg : thinlto_code_gen_t; arg2 : Codegen_Model_T) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:668
+   function thinlto_codegen_set_pic_model (cg : thinlto_code_gen_t; arg2 : Codegen_Model_T) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:668
    pragma Import (C, thinlto_codegen_set_pic_model, "thinlto_codegen_set_pic_model");
 
   --*
@@ -890,7 +889,7 @@ procedure thinlto_codegen_add_module
       Save_Temps_Dir : String);
    procedure thinlto_codegen_set_savetemps_dir_C
      (cg             : thinlto_code_gen_t;
-      Save_Temps_Dir : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:678
+      Save_Temps_Dir : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:678
    pragma Import (C, thinlto_codegen_set_savetemps_dir_C, "thinlto_codegen_set_savetemps_dir");
 
   --*
@@ -907,7 +906,7 @@ procedure thinlto_codegen_add_module
       Save_Temps_Dir : String);
    procedure thinlto_set_generated_objects_dir_C
      (cg             : thinlto_code_gen_t;
-      Save_Temps_Dir : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:689
+      Save_Temps_Dir : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:689
    pragma Import (C, thinlto_set_generated_objects_dir_C, "thinlto_set_generated_objects_dir");
 
   --*
@@ -921,7 +920,7 @@ procedure thinlto_codegen_add_module
       cpu : String);
    procedure thinlto_codegen_set_cpu_C
      (cg  : thinlto_code_gen_t;
-      cpu : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:697
+      cpu : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:697
    pragma Import (C, thinlto_codegen_set_cpu_C, "thinlto_codegen_set_cpu");
 
   --*
@@ -931,7 +930,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=19
   --  
 
-   procedure thinlto_codegen_disable_codegen (cg : thinlto_code_gen_t; disable : Bool_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:705
+   procedure thinlto_codegen_disable_codegen (cg : thinlto_code_gen_t; disable : Bool_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:705
    pragma Import (C, thinlto_codegen_disable_codegen, "thinlto_codegen_disable_codegen");
 
   --*
@@ -940,7 +939,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=19
   --  
 
-   procedure thinlto_codegen_set_codegen_only (cg : thinlto_code_gen_t; Codegen_Only : Bool_T_T);  -- llvm-6.0.0.src/include/llvm-c/lto.h:713
+   procedure thinlto_codegen_set_codegen_only (cg : thinlto_code_gen_t; Codegen_Only : Bool_T_T);  -- llvm-8.0.0.src/include/llvm-c/lto.h:713
    pragma Import (C, thinlto_codegen_set_codegen_only, "thinlto_codegen_set_codegen_only");
 
   --*
@@ -949,7 +948,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_debug_options (options : System.Address; number : int);  -- llvm-6.0.0.src/include/llvm-c/lto.h:721
+   procedure thinlto_debug_options (options : System.Address; number : int);  -- llvm-8.0.0.src/include/llvm-c/lto.h:721
    pragma Import (C, thinlto_debug_options, "thinlto_debug_options");
 
   --*
@@ -958,7 +957,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   function Module_Is_Thinlto (C_Mod : Module_T_T) return Bool_T_T;  -- llvm-6.0.0.src/include/llvm-c/lto.h:728
+   function Module_Is_Thinlto (C_Mod : Module_T_T) return Bool_T_T;  -- llvm-8.0.0.src/include/llvm-c/lto.h:728
    pragma Import (C, Module_Is_Thinlto, "lto_module_is_thinlto");
 
   --*
@@ -1032,23 +1031,23 @@ procedure thinlto_codegen_add_cross_referenced_symbol
       Cache_Dir : String);
    procedure thinlto_codegen_set_cache_dir_C
      (cg        : thinlto_code_gen_t;
-      Cache_Dir : Interfaces.C.Strings.chars_ptr);  -- llvm-6.0.0.src/include/llvm-c/lto.h:781
+      Cache_Dir : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/lto.h:781
    pragma Import (C, thinlto_codegen_set_cache_dir_C, "thinlto_codegen_set_cache_dir");
 
   --*
   -- * Sets the cache pruning interval (in seconds). A negative value disables the
   -- * pruning. An unspecified default value will be applied, and a value of 0 will
-  -- * be ignored.
+  -- * force prunning to occur.
   -- *
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_set_cache_pruning_interval (cg : thinlto_code_gen_t; interval : int);  -- llvm-6.0.0.src/include/llvm-c/lto.h:791
+   procedure thinlto_codegen_set_cache_pruning_interval (cg : thinlto_code_gen_t; interval : int);  -- llvm-8.0.0.src/include/llvm-c/lto.h:791
    pragma Import (C, thinlto_codegen_set_cache_pruning_interval, "thinlto_codegen_set_cache_pruning_interval");
 
   --*
   -- * Sets the maximum cache size that can be persistent across build, in terms of
-  -- * percentage of the available space on the the disk. Set to 100 to indicate
+  -- * percentage of the available space on the disk. Set to 100 to indicate
   -- * no limit, 50 to indicate that the cache size will not be left over half the
   -- * available space. A value over 100 will be reduced to 100, a value of 0 will
   -- * be ignored. An unspecified default value will be applied.
@@ -1060,7 +1059,7 @@ procedure thinlto_codegen_add_cross_referenced_symbol
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_set_final_cache_size_relative_to_available_space (cg : thinlto_code_gen_t; percentage : unsigned);  -- llvm-6.0.0.src/include/llvm-c/lto.h:807
+   procedure thinlto_codegen_set_final_cache_size_relative_to_available_space (cg : thinlto_code_gen_t; percentage : unsigned);  -- llvm-8.0.0.src/include/llvm-c/lto.h:807
    pragma Import (C, thinlto_codegen_set_final_cache_size_relative_to_available_space, "thinlto_codegen_set_final_cache_size_relative_to_available_space");
 
   --*
@@ -1070,8 +1069,40 @@ procedure thinlto_codegen_add_cross_referenced_symbol
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_set_cache_entry_expiration (cg : thinlto_code_gen_t; expiration : unsigned);  -- llvm-6.0.0.src/include/llvm-c/lto.h:816
+   procedure thinlto_codegen_set_cache_entry_expiration (cg : thinlto_code_gen_t; expiration : unsigned);  -- llvm-8.0.0.src/include/llvm-c/lto.h:816
    pragma Import (C, thinlto_codegen_set_cache_entry_expiration, "thinlto_codegen_set_cache_entry_expiration");
+
+  --*
+  -- * Sets the maximum size of the cache directory (in bytes). A value over the
+  -- * amount of available space on the disk will be reduced to the amount of
+  -- * available space. An unspecified default value will be applied. A value of 0
+  -- * will be ignored.
+  -- *
+  -- * \since LTO_API_VERSION=22
+  --  
+
+   procedure thinlto_codegen_set_cache_size_bytes (cg : thinlto_code_gen_t; Max_Size_Bytes : unsigned);  -- llvm-8.0.0.src/include/llvm-c/lto.h:827
+   pragma Import (C, thinlto_codegen_set_cache_size_bytes, "thinlto_codegen_set_cache_size_bytes");
+
+  --*
+  -- * Same as thinlto_codegen_set_cache_size_bytes, except the maximum size is in
+  -- * megabytes (2^20 bytes).
+  -- *
+  -- * \since LTO_API_VERSION=23
+  --  
+
+   procedure thinlto_codegen_set_cache_size_megabytes (cg : thinlto_code_gen_t; Max_Size_Megabytes : unsigned);  -- llvm-8.0.0.src/include/llvm-c/lto.h:837
+   pragma Import (C, thinlto_codegen_set_cache_size_megabytes, "thinlto_codegen_set_cache_size_megabytes");
+
+  --*
+  -- * Sets the maximum number of files in the cache directory. An unspecified
+  -- * default value will be applied. A value of 0 will be ignored.
+  -- *
+  -- * \since LTO_API_VERSION=22
+  --  
+
+   procedure thinlto_codegen_set_cache_size_files (cg : thinlto_code_gen_t; Max_Size_Files : unsigned);  -- llvm-8.0.0.src/include/llvm-c/lto.h:846
+   pragma Import (C, thinlto_codegen_set_cache_size_files, "thinlto_codegen_set_cache_size_files");
 
   --*
   -- * @} // endgroup LLVMCTLTO_CACHING

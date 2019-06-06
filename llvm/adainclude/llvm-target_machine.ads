@@ -29,46 +29,50 @@ package LLVM.Target_Machine is
 
    --  skipped empty struct LLVMOpaqueTargetMachine
 
-   type Target_Machine_T is new System.Address;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:28
+   type Target_Machine_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:28
 
    --  skipped empty struct LLVMTarget
 
-   type Target_T is new System.Address;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:29
+   type Target_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:29
 
    type Code_Gen_Opt_Level_T is 
      (Code_Gen_Level_None,
       Code_Gen_Level_Less,
       Code_Gen_Level_Default,
       Code_Gen_Level_Aggressive);
-   pragma Convention (C, Code_Gen_Opt_Level_T);  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:36
+   pragma Convention (C, Code_Gen_Opt_Level_T);  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:36
 
    type Reloc_Mode_T is 
      (Reloc_Default,
       Reloc_Static,
       Reloc_PIC,
-      Reloc_Dynamic_No_Pic);
-   pragma Convention (C, Reloc_Mode_T);  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:43
+      Reloc_Dynamic_No_Pic,
+      Reloc_ROPI,
+      Reloc_RWPI,
+      Relocropi_Rwpi);
+   pragma Convention (C, Reloc_Mode_T);  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:46
 
    type Code_Model_T is 
      (Code_Model_Default,
       Code_Model_JIT_Default,
+      Code_Model_Tiny,
       Code_Model_Small,
       Code_Model_Kernel,
       Code_Model_Medium,
       Code_Model_Large);
-   pragma Convention (C, Code_Model_T);  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:52
+   pragma Convention (C, Code_Model_T);  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:56
 
    type Code_Gen_File_Type_T is 
      (Assembly_File,
       Object_File);
-   pragma Convention (C, Code_Gen_File_Type_T);  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:57
+   pragma Convention (C, Code_Gen_File_Type_T);  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:61
 
   --* Returns the first llvm::Target in the registered targets list.  
-   function Get_First_Target return Target_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:60
+   function Get_First_Target return Target_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:64
    pragma Import (C, Get_First_Target, "LLVMGetFirstTarget");
 
   --* Returns the next llvm::Target given a previous one (or null if there's none)  
-   function Get_Next_Target (T : Target_T) return Target_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:62
+   function Get_Next_Target (T : Target_T) return Target_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:66
    pragma Import (C, Get_Next_Target, "LLVMGetNextTarget");
 
   --===-- Target ------------------------------------------------------------=== 
@@ -80,7 +84,7 @@ package LLVM.Target_Machine is
       return Target_T;
    function Get_Target_From_Name_C
      (Name : Interfaces.C.Strings.chars_ptr)
-      return Target_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:67
+      return Target_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:71
    pragma Import (C, Get_Target_From_Name_C, "LLVMGetTargetFromName");
 
   --* Finds the target corresponding to the given triple and stores it in \p T.
@@ -105,7 +109,7 @@ function Get_Target_From_Triple
       return String;
    function Get_Target_Name_C
      (T : Target_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:76
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:80
    pragma Import (C, Get_Target_Name_C, "LLVMGetTargetName");
 
   --* Returns the description  of a target. See llvm::Target::getDescription  
@@ -114,7 +118,7 @@ function Get_Target_From_Triple
       return String;
    function Get_Target_Description_C
      (T : Target_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:79
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:83
    pragma Import (C, Get_Target_Description_C, "LLVMGetTargetDescription");
 
   --* Returns if the target has a JIT  
@@ -123,7 +127,7 @@ function Get_Target_From_Triple
       return Boolean;
    function Target_Has_JIT_C
      (T : Target_T)
-      return LLVM.Types.Bool_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:82
+      return LLVM.Types.Bool_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:86
    pragma Import (C, Target_Has_JIT_C, "LLVMTargetHasJIT");
 
   --* Returns if the target has a TargetMachine associated  
@@ -132,7 +136,7 @@ function Get_Target_From_Triple
       return Boolean;
    function Target_Has_Target_Machine_C
      (T : Target_T)
-      return LLVM.Types.Bool_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:85
+      return LLVM.Types.Bool_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:89
    pragma Import (C, Target_Has_Target_Machine_C, "LLVMTargetHasTargetMachine");
 
   --* Returns if the target as an ASM backend (required for emitting output)  
@@ -141,7 +145,7 @@ function Get_Target_From_Triple
       return Boolean;
    function Target_Has_Asm_Backend_C
      (T : Target_T)
-      return LLVM.Types.Bool_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:88
+      return LLVM.Types.Bool_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:92
    pragma Import (C, Target_Has_Asm_Backend_C, "LLVMTargetHasAsmBackend");
 
   --===-- Target Machine ----------------------------------------------------=== 
@@ -169,11 +173,11 @@ function Create_Target_Machine
   --* Dispose the LLVMTargetMachineRef instance generated by
   --  LLVMCreateTargetMachine.  
 
-   procedure Dispose_Target_Machine (T : Target_Machine_T);  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:98
+   procedure Dispose_Target_Machine (T : Target_Machine_T);  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:102
    pragma Import (C, Dispose_Target_Machine, "LLVMDisposeTargetMachine");
 
   --* Returns the Target used in a TargetMachine  
-   function Get_Target_Machine_Target (T : Target_Machine_T) return Target_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:101
+   function Get_Target_Machine_Target (T : Target_Machine_T) return Target_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:105
    pragma Import (C, Get_Target_Machine_Target, "LLVMGetTargetMachineTarget");
 
   --* Returns the triple used creating this target machine. See
@@ -185,7 +189,7 @@ function Create_Target_Machine
       return String;
    function Get_Target_Machine_Triple_C
      (T : Target_Machine_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:106
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:110
    pragma Import (C, Get_Target_Machine_Triple_C, "LLVMGetTargetMachineTriple");
 
   --* Returns the cpu used creating this target machine. See
@@ -197,7 +201,7 @@ function Create_Target_Machine
       return String;
    function Get_Target_Machine_CPU_C
      (T : Target_Machine_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:111
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:115
    pragma Import (C, Get_Target_Machine_CPU_C, "LLVMGetTargetMachineCPU");
 
   --* Returns the feature string used creating this target machine. See
@@ -209,11 +213,11 @@ function Create_Target_Machine
       return String;
    function Get_Target_Machine_Feature_String_C
      (T : Target_Machine_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:116
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:120
    pragma Import (C, Get_Target_Machine_Feature_String_C, "LLVMGetTargetMachineFeatureString");
 
   --* Create a DataLayout based on the targetMachine.  
-   function Create_Target_Data_Layout (T : Target_Machine_T) return LLVM.Target.Target_Data_T;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:119
+   function Create_Target_Data_Layout (T : Target_Machine_T) return LLVM.Target.Target_Data_T;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:123
    pragma Import (C, Create_Target_Data_Layout, "LLVMCreateTargetDataLayout");
 
   --* Set the target machine's ASM verbosity.  
@@ -222,7 +226,7 @@ function Create_Target_Machine
       Verbose_Asm : Boolean);
    procedure Set_Target_Machine_Asm_Verbosity_C
      (T           : Target_Machine_T;
-      Verbose_Asm : LLVM.Types.Bool_T);  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:122
+      Verbose_Asm : LLVM.Types.Bool_T);  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:126
    pragma Import (C, Set_Target_Machine_Asm_Verbosity_C, "LLVMSetTargetMachineAsmVerbosity");
 
   --* Emits an asm or object file for the given module to the filename. This
@@ -269,11 +273,40 @@ function Target_Machine_Emit_To_Memory_Buffer
    function Get_Default_Target_Triple
       return String;
    function Get_Default_Target_Triple_C
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:138
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:142
    pragma Import (C, Get_Default_Target_Triple_C, "LLVMGetDefaultTargetTriple");
 
+  --* Normalize a target triple. The result needs to be disposed with
+  --  LLVMDisposeMessage.  
+
+   function Normalize_Target_Triple
+     (triple : String)
+      return String;
+   function Normalize_Target_Triple_C
+     (triple : Interfaces.C.Strings.chars_ptr)
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:146
+   pragma Import (C, Normalize_Target_Triple_C, "LLVMNormalizeTargetTriple");
+
+  --* Get the host CPU as a string. The result needs to be disposed with
+  --  LLVMDisposeMessage.  
+
+   function Get_Host_CPU_Name
+      return String;
+   function Get_Host_CPU_Name_C
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:150
+   pragma Import (C, Get_Host_CPU_Name_C, "LLVMGetHostCPUName");
+
+  --* Get the host CPU's features as a string. The result needs to be disposed
+  --  with LLVMDisposeMessage.  
+
+   function Get_Host_CPU_Features
+      return String;
+   function Get_Host_CPU_Features_C
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:154
+   pragma Import (C, Get_Host_CPU_Features_C, "LLVMGetHostCPUFeatures");
+
   --* Adds the target-specific analysis passes to the pass manager.  
-   procedure Add_Analysis_Passes (T : Target_Machine_T; PM : LLVM.Types.Pass_Manager_T);  -- llvm-6.0.0.src/include/llvm-c/TargetMachine.h:141
+   procedure Add_Analysis_Passes (T : Target_Machine_T; PM : LLVM.Types.Pass_Manager_T);  -- llvm-8.0.0.src/include/llvm-c/TargetMachine.h:157
    pragma Import (C, Add_Analysis_Passes, "LLVMAddAnalysisPasses");
 
 end LLVM.Target_Machine;

@@ -148,6 +148,30 @@ package body LLVM.Target_Machine is
       return Value (Get_Default_Target_Triple_C);
    end Get_Default_Target_Triple;
 
+   function Normalize_Target_Triple
+     (triple : String)
+      return String
+   is
+      triple_Array  : aliased char_array := To_C (triple);
+      triple_String : constant chars_ptr := To_Chars_Ptr (triple_Array'Unchecked_Access);
+   begin
+      return Value (Normalize_Target_Triple_C (triple_String));
+   end Normalize_Target_Triple;
+
+   function Get_Host_CPU_Name
+      return String
+   is
+   begin
+      return Value (Get_Host_CPU_Name_C);
+   end Get_Host_CPU_Name;
+
+   function Get_Host_CPU_Features
+      return String
+   is
+   begin
+      return Value (Get_Host_CPU_Features_C);
+   end Get_Host_CPU_Features;
+
    procedure Set_Target_Machine_Asm_Verbosity
      (T           : Target_Machine_T;
       Verbose_Asm : Boolean)

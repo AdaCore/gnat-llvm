@@ -15,7 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Debug_Info;      use LLVM.Debug_Info;
+with LLVM.Core;       use LLVM.Core;
+with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 with Opt;    use Opt;
 with Sinput; use Sinput;
@@ -221,9 +222,14 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info and then Has_Debug_Scope
         and then Freeze_Pos_Level = 0 and then SFI = Current_Debug_SFI
       then
-         Set_Debug_Loc (IR_Builder, Current_Debug_Scope,
-                        Get_Logical_Line_Number (Sloc (N)),
-                        Get_Column_Number (Sloc (N)));
+         Set_Current_Debug_Location
+           (IR_Builder,
+            Metadata_As_Value
+              (Context,
+               (DI_Builder_Create_Debug_Location
+                  (Context, unsigned (Get_Logical_Line_Number (Sloc (N))),
+                   unsigned (Get_Column_Number (Sloc (N))),
+                   Current_Debug_Scope, No_Metadata_T))));
       end if;
    end Set_Debug_Pos_At_Node;
 

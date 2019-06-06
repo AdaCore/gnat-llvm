@@ -155,13 +155,6 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Create_Debug_Lexical_Block";
 
-   procedure Set_Debug_Loc
-     (Bld    : Builder_T;
-      Subp   : Metadata_T;
-      Line   : Logical_Line_Number;
-      Column : Column_Number)
-     with Import, Convention => C, External_Name => "Set_Debug_Loc";
-
    function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
       Typ       : Type_T;

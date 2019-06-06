@@ -62,13 +62,6 @@ Create_Debug_Lexical_Block (DIBuilder *DBld, DIScope *scope, DIFile *file,
 }
 
 extern "C"
-void
-Set_Debug_Loc (IRBuilder<> *bld, DISubprogram *subp, int line, int col)
-{
-  bld->SetCurrentDebugLocation (DebugLoc::get (line, col, subp));
-}
-
-extern "C"
 MDBuilder *
 Create_MDBuilder_In_Context (LLVMContext &Ctx)
 {

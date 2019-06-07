@@ -1871,6 +1871,10 @@ package body GNATLLVM.Variables is
          Emit_Assignment (Get (LLVM_Var, Any_Reference), Expr, Value);
       end if;
 
+      --  Generate debug information
+
+      Build_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
+
    end Emit_Declaration;
 
    -------------------------------

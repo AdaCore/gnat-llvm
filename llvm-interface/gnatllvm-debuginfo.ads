@@ -89,6 +89,11 @@ package GNATLLVM.DebugInfo is
    --  Build debugging data for Def_Ident, a global variable, with V as its
    --  location.
 
+   procedure Build_Local_Variable_Debug_Data
+     (Def_Ident : Entity_Id; V : GL_Value)
+     with Pre => not Is_Type (Def_Ident) and then Present (V);
+   --  Likewise, for local variables
+
    Empty_DI_Expr : Metadata_T;
    --  An empty DI_Expr
 

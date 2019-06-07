@@ -386,4 +386,33 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Build_Global_Variable_Debug_Data;
 
+   -------------------------------------
+   -- Build_Local_Variable_Debug_Data --
+   -------------------------------------
+
+   procedure Build_Local_Variable_Debug_Data
+     (Def_Ident : Entity_Id; V : GL_Value)
+   is
+      GT        : constant GL_Type    := Related_Type (V);
+      Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
+      Name      : constant String     := Get_Name (Def_Ident);
+      Var_Data  : Metadata_T;
+
+   begin
+      if Emit_Debug_Info and then Present (Type_Data)
+        and then Relationship (V) = Reference
+      then
+         Var_Data :=
+           DI_Create_Auto_Variable
+           (DI_Builder, Current_Debug_Scope, Name, Name'Length,
+            Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
+            unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+            Type_Data, False, DI_Flag_Zero,
+            unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
+         Discard (DI_Builder_Insert_Declare_At_End
+                    (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
+                     Create_Debug_Location (Def_Ident), Get_Insert_Block));
+      end if;
+   end Build_Local_Variable_Debug_Data;
+
 end GNATLLVM.DebugInfo;

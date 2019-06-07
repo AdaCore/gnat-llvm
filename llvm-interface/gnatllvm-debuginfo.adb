@@ -400,7 +400,7 @@ package body GNATLLVM.DebugInfo is
 
    begin
       if Emit_Debug_Info and then Present (Type_Data)
-        and then Relationship (V) = Reference
+        and then Relationship (V) in Reference | Data
       then
          Var_Data :=
            DI_Create_Auto_Variable
@@ -409,9 +409,19 @@ package body GNATLLVM.DebugInfo is
             unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
             Type_Data, False, DI_Flag_Zero,
             unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
-         Discard (DI_Builder_Insert_Declare_At_End
-                    (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
-                     Create_Debug_Location (Def_Ident), Get_Insert_Block));
+
+         --  If this is a reference, insert a dbg.declare call.  Otherwise,
+         --  a dbg.value call.
+
+         if Is_Data (V) then
+            Discard (DI_Builder_Insert_Dbg_Value_At_End
+                       (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
+                        Create_Debug_Location (Def_Ident), Get_Insert_Block));
+         else
+            Discard (DI_Builder_Insert_Declare_At_End
+                       (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
+                        Create_Debug_Location (Def_Ident), Get_Insert_Block));
+         end if;
       end if;
    end Build_Local_Variable_Debug_Data;
 

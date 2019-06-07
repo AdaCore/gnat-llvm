@@ -21,6 +21,7 @@ with Opt;    use Opt;
 with Sinput; use Sinput;
 with Table;  use Table;
 
+with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
@@ -291,15 +292,16 @@ package body GNATLLVM.DebugInfo is
    ----------------------------
 
    function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T is
-      TE     : constant Entity_Id := Full_Etype (GT);
-      Name   : constant String    := Get_Name (TE);
-      T      : constant Type_T    := Type_Of (GT);
-      Size   : constant UL        :=
+      TE         : constant Entity_Id := Full_Etype (GT);
+      Name       : constant String    := Get_Name (TE);
+      T          : constant Type_T    := Type_Of (GT);
+      Size       : constant UL        :=
         (if   Type_Is_Sized (T) then UL (ULL'(Get_Type_Size_In_Bits (T)))
          else 0);
-      Align  : constant unsigned :=
+      Align      : constant unsigned :=
         unsigned (Nat'(Get_Type_Alignment (GT)) * BPU);
-      Result : Metadata_T        := Get_Debug_Type (TE);
+      Inner_Type : Metadata_T        := No_Metadata_T;
+      Result     : Metadata_T        := Get_Debug_Type (TE);
 
    begin
       --  If we already made debug info for this type, return it
@@ -320,15 +322,15 @@ package body GNATLLVM.DebugInfo is
       --  the kind of the type.
 
       Set_Is_Being_Elaborated (TE, True);
-      case Ekind (GT) is
+      case Ekind (TE) is
          when E_Signed_Integer_Type | E_Signed_Integer_Subtype
             | E_Modular_Integer_Type | E_Modular_Integer_Subtype =>
             Result := DI_Create_Basic_Type
               (DI_Builder, Name, Name'Length, Size,
                (if    Size = UL (BPU)
-                then  (if   Is_Unsigned_Type (GT) then DW_ATE_Unsigned_Char
+                then  (if   Is_Unsigned_Type (TE) then DW_ATE_Unsigned_Char
                        else DW_ATE_Signed_Char)
-                elsif Is_Unsigned_Type (GT) then DW_ATE_Unsigned
+                elsif Is_Unsigned_Type (TE) then DW_ATE_Unsigned
                 else  DW_ATE_Signed),
                DI_Flag_Zero);
 
@@ -337,17 +339,50 @@ package body GNATLLVM.DebugInfo is
                                             Size, DW_ATE_Float, DI_Flag_Zero);
          when Access_Kind =>
 
-            declare
-               Inner_Type : constant Metadata_T :=
-                 Create_Debug_Type_Data (Full_Designated_GL_Type (GT));
+            --  Get the type info for what this points to.  If we have
+            --  something, make our type.
 
-            begin
-               if Present (Inner_Type) then
-                  Result := DI_Create_Pointer_Type
-                    (DI_Builder, Inner_Type, Size, Align, 0,
-                     Name, Name'Length);
-               end if;
-            end;
+            Inner_Type :=
+              Create_Debug_Type_Data (Full_Designated_GL_Type (GT));
+
+            if Present (Inner_Type) then
+               Result := DI_Create_Pointer_Type
+                 (DI_Builder, Inner_Type, Size, Align, 0, Name, Name'Length);
+            end if;
+
+         when E_Array_Subtype =>
+
+            --  Get the component type's data.  If it exists and this
+            --  is of fixed size, get info for each of the bounds and
+            --  make a description of the type.
+
+            Inner_Type := Create_Debug_Type_Data (Full_Component_GL_Type (GT));
+            if not Is_Nonnative_Type (TE) and then Present (Inner_Type) then
+               declare
+                  Num_Dims : constant Nat        := Number_Dimensions (TE);
+                  Ranges   : Metadata_Array (0 .. Num_Dims - 1);
+
+               begin
+                  for J in 0 .. Num_Dims - 1 loop
+                     declare
+                        Low_Bound  : constant GL_Value   :=
+                          Get_Array_Bound (GT, J, True, No_GL_Value);
+                        Length     : constant GL_Value   :=
+                          Get_Array_Length (TE, J, No_GL_Value);
+
+                     begin
+                        Ranges (J) := DI_Builder_Get_Or_Create_Subrange
+                          (DI_Builder,
+                           int64_t (Get_Const_Int_Value (Low_Bound)),
+                           int64_t (Get_Const_Int_Value (Length)));
+                     end;
+                  end loop;
+
+                  Result := DI_Builder_Create_Array_Type
+                    (DI_Builder, Size, Align, Inner_Type,
+                     Ranges'Address, unsigned (Num_Dims));
+               end;
+            end if;
 
          when others =>
             null;

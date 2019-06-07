@@ -17,14 +17,16 @@
 
 with LLVM.Core;       use LLVM.Core;
 
-with Opt;    use Opt;
-with Sinput; use Sinput;
-with Table;  use Table;
+with Opt;        use Opt;
+with Sinput;     use Sinput;
+with Table;      use Table;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
+with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -292,19 +294,22 @@ package body GNATLLVM.DebugInfo is
    ----------------------------
 
    function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T is
-      TE         : constant Entity_Id := Full_Etype (GT);
-      Name       : constant String    := Get_Name (TE);
-      T          : constant Type_T    := Type_Of (GT);
-      Size       : constant UL        :=
+      TE         : constant Entity_Id  := Full_Etype (GT);
+      Name       : constant String     := Get_Name (TE);
+      T          : constant Type_T     := Type_Of (GT);
+      Size       : constant UL         :=
         (if   Type_Is_Sized (T) then UL (ULL'(Get_Type_Size_In_Bits (T)))
          else 0);
-      Align      : constant unsigned :=
+      Align      : constant unsigned   :=
         unsigned (Nat'(Get_Type_Alignment (GT)) * BPU);
-      Inner_Type : Metadata_T        := No_Metadata_T;
-      Result     : Metadata_T        := Get_Debug_Type (TE);
+      S          : constant Source_Ptr := Sloc (TE);
+      Inner_Type : Metadata_T          := No_Metadata_T;
+      Result     : Metadata_T          := Get_Debug_Type (TE);
 
    begin
       --  If we already made debug info for this type, return it
+      --  ??? This is bogus because we really want, at some point, to
+      --  handle debug information for different GL_Types differently.
 
       if Present (Result) then
          return Result;
@@ -315,9 +320,10 @@ package body GNATLLVM.DebugInfo is
          return No_Metadata_T;
 
       --  If we've seen this type as part of elaboration (e.g., an access
-      --  type that points to itself), this is an "unspecified" type.
+      --  type that points to itself) or if this is a nonnative type, this
+      --  is an "unspecified" type.
 
-      elsif Is_Being_Elaborated (TE) then
+      elsif Is_Being_Elaborated (TE) or else Is_Nonnative_Type (TE) then
          return DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length);
       end if;
 
@@ -347,22 +353,21 @@ package body GNATLLVM.DebugInfo is
 
             Inner_Type :=
               Create_Debug_Type_Data (Full_Designated_GL_Type (GT));
-
             if Present (Inner_Type) then
                Result := DI_Create_Pointer_Type
                  (DI_Builder, Inner_Type, Size, Align, 0, Name, Name'Length);
             end if;
 
-         when E_Array_Subtype =>
+         when Array_Kind =>
 
             --  Get the component type's data.  If it exists and this
             --  is of fixed size, get info for each of the bounds and
             --  make a description of the type.
 
             Inner_Type := Create_Debug_Type_Data (Full_Component_GL_Type (GT));
-            if not Is_Nonnative_Type (TE) and then Present (Inner_Type) then
+            if Present (Inner_Type) then
                declare
-                  Num_Dims : constant Nat        := Number_Dimensions (TE);
+                  Num_Dims : constant Nat := Number_Dimensions (TE);
                   Ranges   : Metadata_Array (0 .. Num_Dims - 1);
 
                begin
@@ -387,6 +392,65 @@ package body GNATLLVM.DebugInfo is
                end;
             end if;
 
+         when Record_Kind =>
+
+            declare
+               package Member_Table is new Table.Table
+                 (Table_Component_Type => Metadata_T,
+                  Table_Index_Type     => Int,
+                  Table_Low_Bound      => 1,
+                  Table_Initial        => 20,
+                  Table_Increment      => 5,
+                  Table_Name           => "Member_Table");
+
+               F        : Entity_Id;
+
+            begin
+               --  Go through each field.  If we can make debug info for the
+               --  type and the position and size are known and static,
+               --  add that field as a member.
+
+               F := First_Component_Or_Discriminant (TE);
+               while Present (F) loop
+                  declare
+                     F_GT     : constant GL_Type    := Get_Field_Type (F);
+                     Mem_Type : constant Metadata_T :=
+                       Create_Debug_Type_Data (F_GT);
+                     Name     : constant String     := Get_Name (F);
+                     F_S      : constant Source_Ptr := Sloc (F);
+
+                  begin
+                     if Known_Static_Component_Bit_Offset (F)
+                       and then Known_Static_Esize (F)
+                       and then Present (Mem_Type)
+                     then
+                        Member_Table.Append
+                          (DI_Create_Member_Type
+                             (DI_Builder, No_Metadata_T, Name, Name'Length,
+                              Get_Debug_File_Node
+                                (Get_Source_File_Index (F_S)),
+                              unsigned (Get_Logical_Line_Number (F_S)),
+                              uint64_t (UI_To_ULL (Esize (F))),
+                              unsigned (Nat'(Get_Type_Alignment (F_GT)) * BPU),
+                              uint64_t (UI_To_ULL (Component_Bit_Offset (F))),
+                              (if   Is_Bitfield (F) then DI_Flag_Bit_Field
+                               else DI_Flag_Zero),
+                              Mem_Type));
+                     end if;
+                  end;
+
+                  Next_Component_Or_Discriminant (F);
+               end loop;
+
+               Result := DI_Create_Struct_Type
+                 (DI_Builder, No_Metadata_T, Name, Name'Length,
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  unsigned (Get_Logical_Line_Number (S)),
+                  Size, Align, DI_Flag_Zero, No_Metadata_T,
+                  Member_Table.Table (1)'Address, unsigned (Member_Table.Last),
+                  0, No_Metadata_T, "", 0);
+            end;
+
          when others =>
             null;
       end case;
@@ -408,17 +472,19 @@ package body GNATLLVM.DebugInfo is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
       Name      : constant String     := Get_Name (Def_Ident);
+      S         : constant Source_Ptr := Sloc (Def_Ident);
 
    begin
       if Emit_Debug_Info and then Present (Type_Data)
         and then Relationship (V) = Reference
+        and then Is_A_Global_Variable (V)
       then
          Global_Set_Metadata
            (LLVM_Value (V), 0,
             DI_Create_Global_Variable_Expression
               (DI_Builder, Debug_Compile_Unit, Name, Name'Length, "", 0,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
-               unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+               Get_Debug_File_Node (Get_Source_File_Index (S)),
+               unsigned (Get_Logical_Line_Number (S)),
                Type_Data, False, Empty_DI_Expr, No_Metadata_T,
                unsigned (Nat'(Get_Type_Alignment (GT)) * BPU)));
       end if;

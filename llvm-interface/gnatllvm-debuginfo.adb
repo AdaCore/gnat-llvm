@@ -15,15 +15,18 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with x86_64_linux_gnu_bits_stdint_intn_h;
 with LLVM.Core;       use LLVM.Core;
-with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 with Opt;    use Opt;
 with Sinput; use Sinput;
 with Table;  use Table;
 
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
@@ -70,8 +73,6 @@ package body GNATLLVM.DebugInfo is
    Freeze_Pos_Level : Natural := 0;
    --  Current level of pushes of requests to freeze debug position
 
-   subtype UL is Interfaces.C.unsigned_long;
-
    ----------------------
    -- Push_Debug_Scope --
    ----------------------
@@ -110,7 +111,7 @@ package body GNATLLVM.DebugInfo is
              else DWARF_Source_Language_Ada95),
             Get_Debug_File_Node (Main_Source_File), "GNAT/LLVM", 9,
             Code_Gen_Level /= Code_Gen_Level_None, "", 0, 0, "", 0,
-            DWARF_Emission_Line_Tables_Only, 0, False, False);
+            DWARF_Emission_Full, 0, False, False);
       end if;
    end Initialize;
 
@@ -246,5 +247,104 @@ package body GNATLLVM.DebugInfo is
                    Current_Debug_Scope, No_Metadata_T))));
       end if;
    end Set_Debug_Pos_At_Node;
+
+   ----------------------------
+   -- Create_Debug_Type_Data --
+   ----------------------------
+
+   function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T is
+      TE     : constant Entity_Id := Full_Etype (GT);
+      Name   : constant String   := Get_Name (TE);
+      T      : constant Type_T   := Type_Of (GT);
+      Size   : constant UL       :=
+        (if   Type_Is_Sized (T) then UL (ULL'(Get_Type_Size_In_Bits (T)))
+         else 0);
+      Align  : constant unsigned :=
+        unsigned (Nat'(Get_Type_Alignment (GT)) * BPU);
+      Result : Metadata_T        := No_Metadata_T;
+
+   begin
+      --  Do nothing if not emitting debug info or if we've already
+      --  seen this type as part of elaboration (e.g., an access type that
+      --  points to itself).  ???  We really should use an incomplete type
+      --  in that last case.
+
+      if not Emit_Debug_Info or else Is_Being_Elaborated (TE) then
+         return No_Metadata_T;
+      end if;
+
+      --  Mark as being elaborated and create debug information based on
+      --  the kind of the type.
+
+      Set_Is_Being_Elaborated (TE, True);
+      case Ekind (GT) is
+         when E_Signed_Integer_Type | E_Signed_Integer_Subtype
+            | E_Modular_Integer_Type | E_Modular_Integer_Subtype =>
+            Result := DI_Create_Basic_Type
+              (DI_Builder, Name, Name'Length, Size,
+               (if    Size = UL (BPU)
+                then  (if   Is_Unsigned_Type (GT) then DW_ATE_Unsigned_Char
+                       else DW_ATE_Signed_Char)
+                elsif Is_Unsigned_Type (GT) then DW_ATE_Unsigned
+                else  DW_ATE_Signed),
+               DI_Flag_Zero);
+
+         when Float_Kind =>
+            Result := DI_Create_Basic_Type (DI_Builder, Name, Name'Length,
+                                            Size, DW_ATE_Float, DI_Flag_Zero);
+         when Access_Kind =>
+
+            declare
+               Inner_Type : constant Metadata_T :=
+                 Create_Debug_Type_Data (Full_Designated_GL_Type (GT));
+
+            begin
+               if Present (Inner_Type) then
+                  Result := DI_Create_Pointer_Type
+                    (DI_Builder, Inner_Type, Size, Align, 0,
+                     Name, Name'Length);
+               end if;
+            end;
+
+         when others =>
+            null;
+      end case;
+
+      --  Show no longer elaborating this type and return the result
+
+      Set_Is_Being_Elaborated (TE, False);
+      return Result;
+   end Create_Debug_Type_Data;
+
+   --------------------------------------
+   -- Build_Global_Variable_Debug_Data --
+   --------------------------------------
+
+   procedure Build_Global_Variable_Debug_Data
+     (Def_Ident : Entity_Id; V : GL_Value)
+   is
+      GT        : constant GL_Type    := Related_Type (V);
+      Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
+      Name      : constant String     := Get_Name (Def_Ident);
+      Exp_Arr   : aliased x86_64_linux_gnu_bits_stdint_intn_h.int64_t;
+      Expr      : Metadata_T;
+      GVE       : Metadata_T;
+
+   begin
+      if Emit_Debug_Info and then Present (Type_Data)
+        and then Relationship (V) = Reference
+      then
+         Expr := DI_Builder_Create_Expression (DI_Builder, Exp_Arr'Access, 0);
+
+         GVE := DI_Create_Global_Variable_Expression
+           (DI_Builder, Debug_Compile_Unit, Name, Name'Length, "", 0,
+            Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
+            unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+            Type_Data, False, Expr, No_Metadata_T,
+            unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
+
+         Global_Set_Metadata (LLVM_Value (V), 0, GVE);
+      end if;
+   end Build_Global_Variable_Debug_Data;
 
 end GNATLLVM.DebugInfo;

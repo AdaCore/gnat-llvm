@@ -38,6 +38,7 @@ with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
+with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
@@ -1725,6 +1726,10 @@ package body GNATLLVM.Variables is
                (if   Is_Ref then Const_Null_Ref (GT)
                 else Const_Null_Alloc (GT)));
          end if;
+
+         --  Make debugging information for the globel variable
+
+         Build_Global_Variable_Debug_Data (Def_Ident, LLVM_Var);
       end if;
 
       --  Back-annotate size and alignment

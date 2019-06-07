@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Debug_Info; use LLVM.Debug_Info;
+
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.DebugInfo is
@@ -75,5 +77,53 @@ package GNATLLVM.DebugInfo is
    --  calls should be used to freeze the position.  Each "push" must be
    --  cancelled with a "pop" and the position will be frozen until the
    --  all pushes have been popped.
+
+   function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T
+     with Pre => Present (GT);
+   --  Create metadata corresponding to the type of GT.  Return
+   --  No_Metadata_T if the type is too complex.
+
+   procedure Build_Global_Variable_Debug_Data
+     (Def_Ident : Entity_Id; V : GL_Value)
+     with Pre => not Is_Type (Def_Ident) and then Present (V);
+   --  Build debugging data for Def_Ident, a global variable, with V as its
+   --  location.
+
+private
+
+   subtype UL is Interfaces.C.unsigned_long;
+
+   function "+" (L, R : UL)  return UL renames Interfaces.C."+";
+   function "-" (L, R : UL)  return UL renames Interfaces.C."-";
+   function "*" (L, R : UL)  return UL renames Interfaces.C."*";
+   function "/" (L, R : UL)  return UL renames Interfaces.C."/";
+   function "=" (L, R : UL)  return Boolean  renames Interfaces.C."=";
+   function ">" (L, R : UL)  return Boolean  renames Interfaces.C.">";
+   function "<" (L, R : UL)  return Boolean  renames Interfaces.C."<";
+   function "<=" (L, R : UL) return Boolean  renames Interfaces.C."<=";
+   function ">=" (L, R : UL) return Boolean  renames Interfaces.C.">=";
+
+   --  Define the various Dwarf type attributes.  This is encoded in
+   --  lvm/BinaryFormat/Dwarf.def, but it's simpler to just repeat them
+   --  here since they are part of the standard and won't change.
+
+   DW_ATE_Address         : constant DWARF_Type_Encoding_T := 16#01#;
+   DW_ATE_Boolean         : constant DWARF_Type_Encoding_T := 16#02#;
+   DW_ATE_Complex_Float   : constant DWARF_Type_Encoding_T := 16#03#;
+   DW_ATE_Float           : constant DWARF_Type_Encoding_T := 16#04#;
+   DW_ATE_Signed          : constant DWARF_Type_Encoding_T := 16#05#;
+   DW_ATE_Signed_Char     : constant DWARF_Type_Encoding_T := 16#06#;
+   DW_ATE_Unsigned        : constant DWARF_Type_Encoding_T := 16#07#;
+   DW_ATE_Unsigned_Char   : constant DWARF_Type_Encoding_T := 16#08#;
+   DW_ATE_Imaginary_Float : constant DWARF_Type_Encoding_T := 16#09#;
+   DW_ATE_Packed_Decimal  : constant DWARF_Type_Encoding_T := 16#0A#;
+   DW_ATE_Numeric_String  : constant DWARF_Type_Encoding_T := 16#0B#;
+   DW_ATE_Edited          : constant DWARF_Type_Encoding_T := 16#0C#;
+   DW_ATE_Signed_Fixed    : constant DWARF_Type_Encoding_T := 16#0D#;
+   DW_ATE_Unsigned_Fixed  : constant DWARF_Type_Encoding_T := 16#0E#;
+   DW_ATE_Decimal_Float   : constant DWARF_Type_Encoding_T := 16#0F#;
+   DW_ATE_UTF             : constant DWARF_Type_Encoding_T := 16#10#;
+   DW_ATE_UCS             : constant DWARF_Type_Encoding_T := 16#11#;
+   DW_ATE_ASCII           : constant DWARF_Type_Encoding_T := 16#12#;
 
 end GNATLLVM.DebugInfo;

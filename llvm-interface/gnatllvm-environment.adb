@@ -54,6 +54,8 @@ package body GNATLLVM.Environment is
      (LI.Is_Nonnative_Type);
    function Raw_Get_TBAA   (LI : Access_LLVM_Info) return Metadata_T is
      (LI.TBAA);
+   function Raw_Get_Debug  (LI : Access_LLVM_Info) return Metadata_T is
+     (LI.Debug_Type);
    function Raw_Get_Array  (LI : Access_LLVM_Info) return Array_Info_Id is
      (LI.Array_Info);
    function Raw_Get_O_A    (LI : Access_LLVM_Info) return Array_Info_Id is
@@ -72,6 +74,7 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_Label  (LI : Access_LLVM_Info; Val : Label_Info_Id);
    procedure Raw_Set_NN     (LI : Access_LLVM_Info; Val : Boolean);
    procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T);
+   procedure Raw_Set_Debug  (LI : Access_LLVM_Info; Val : Metadata_T);
    procedure Raw_Set_Array  (LI : Access_LLVM_Info; Val : Array_Info_Id);
    procedure Raw_Set_O_A    (LI : Access_LLVM_Info; Val : Array_Info_Id);
    procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id);
@@ -85,6 +88,7 @@ package body GNATLLVM.Environment is
    pragma Inline (Raw_Set_Label);
    pragma Inline (Raw_Set_NN);
    pragma Inline (Raw_Set_TBAA);
+   pragma Inline (Raw_Set_Debug);
    pragma Inline (Raw_Set_Array);
    pragma Inline (Raw_Set_O_A);
    pragma Inline (Raw_Set_Record);
@@ -115,6 +119,9 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T) is
    begin LI.TBAA := Val; end Raw_Set_TBAA;
+
+   procedure Raw_Set_Debug  (LI : Access_LLVM_Info; Val : Metadata_T) is
+   begin LI.Debug_Type := Val; end Raw_Set_Debug;
 
    procedure Raw_Set_Array  (LI : Access_LLVM_Info; Val : Array_Info_Id) is
    begin LI.Array_Info := Val; end Raw_Set_Array;
@@ -162,6 +169,7 @@ package body GNATLLVM.Environment is
                                   Is_Being_Elaborated => False,
                                   Record_Info         => Empty_Record_Info_Id,
                                   Field_Info          => Empty_Field_Info_Id,
+                                  Debug_Type          => No_Metadata_T,
                                   Array_Info          => Empty_Array_Info_Id,
                                   Label_Info          => Empty_Label_Info_Id,
                                   Orig_Array_Info     => Empty_Array_Info_Id,
@@ -275,6 +283,8 @@ package body GNATLLVM.Environment is
                                          Raw_Get_O_A, Raw_Set_O_A);
    package Env_Record_N is new Pkg_None (Record_Info_Id, Empty_Record_Info_Id,
                                          Raw_Get_Record, Raw_Set_Record);
+   package Env_Debug_N  is new Pkg_None (Metadata_T, No_Metadata_T,
+                                         Raw_Get_Debug, Raw_Set_Debug);
    package Env_Array_N  is new Pkg_None (Array_Info_Id, Empty_Array_Info_Id,
                                          Raw_Get_Array, Raw_Set_Array);
    package Env_NN_N     is new Pkg_None (Boolean, False,
@@ -286,6 +296,8 @@ package body GNATLLVM.Environment is
                                        Raw_Get_O_A, Raw_Set_O_A);
    package Env_Record is new Pkg_Elab (Record_Info_Id,
                                        Raw_Get_Record, Raw_Set_Record);
+   package Env_Debug  is new Pkg_Elab (Metadata_T,
+                                       Raw_Get_Debug, Raw_Set_Debug);
    package Env_Array  is new Pkg_Elab (Array_Info_Id,
                                        Raw_Get_Array, Raw_Set_Array);
    package Env_NN     is new Pkg_Elab (Boolean, Raw_Get_NN, Raw_Set_NN);
@@ -342,6 +354,13 @@ package body GNATLLVM.Environment is
      renames Env_TBAA_N.Get;
    procedure Set_TBAA                 (TE : Entity_Id; TBAA : Metadata_T)
      renames Env_TBAA.Set;
+
+   function  Get_Debug_Type           (TE : Entity_Id) return Metadata_T
+     renames Env_Debug.Get;
+   function  Get_Debug_Type_N         (TE : Entity_Id) return Metadata_T
+     renames Env_Debug_N.Get;
+   procedure Set_Debug_Type           (TE : Entity_Id; DT : Metadata_T)
+     renames Env_Debug.Set;
 
    function  Get_Array_Info           (TE : Entity_Id) return Array_Info_Id
      renames Env_Array.Get;

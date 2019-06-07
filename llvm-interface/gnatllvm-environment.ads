@@ -101,6 +101,11 @@ package GNATLLVM.Environment is
       Is_Being_Elaborated   : Boolean;
       --  True if we're in the process of elaborating this type.
 
+      Debug_Type            : Metadata_T;
+      --  Cache for debug information for this entity, if it's a type.
+      --  LLVM will also cache this, but it'll save us the time of
+      --  recomputing debug info, especially for complex types.
+
       Array_Info            : Array_Info_Id;
       --  For arrays, an index into bounds information maintained by
       --  GNATLLVM.Arrays.
@@ -174,6 +179,12 @@ package GNATLLVM.Environment is
    function Get_SO_Ref                (N : Node_Id)    return Dynamic_SO_Ref
      with Pre => Present (N);
 
+   function Get_Debug_Type            (TE : Entity_Id) return Metadata_T
+     with Pre => Is_Type_Or_Void (TE);
+
+   function Get_Debug_Type_N          (TE : Entity_Id) return Metadata_T
+     with Pre => Is_Type_Or_Void (TE);
+
    function Get_Array_Info            (TE : Entity_Id) return Array_Info_Id
      with Pre => Is_Array_Type (TE);
 
@@ -231,6 +242,12 @@ package GNATLLVM.Environment is
                               or else Get_SO_Ref (N) = U),
           Post => Get_SO_Ref (N) = U;
 
+   procedure Set_Debug_Type           (TE : Entity_Id; DT : Metadata_T)
+     with Pre  => Is_Type_Or_Void (TE)
+                  and then (No (Get_Debug_Type_N (TE))
+                              or else Get_Debug_Type_N (TE) = DT),
+          Post => Get_Debug_Type_N (TE) = DT;
+
    procedure Set_Array_Info           (TE : Entity_Id; AI : Array_Info_Id)
      with Pre  => Is_Array_Type (TE)
                   and then (No (Get_Array_Info_N (TE))
@@ -263,13 +280,20 @@ package GNATLLVM.Environment is
 
    pragma Inline (Get_GL_Type);
    pragma Inline (Get_Associated_GL_Type);
+   pragma Inline (Get_Associated_GL_Type_N);
    pragma Inline (Is_Nonnative_Type);
+   pragma Inline (Is_Nonnative_Type_N);
    pragma Inline (Is_Being_Elaborated);
    pragma Inline (Get_TBAA);
+   pragma Inline (Get_TBAA_N);
    pragma Inline (Get_Value);
    pragma Inline (Get_SO_Ref);
+   pragma Inline (Get_Debug_Type);
+   pragma Inline (Get_Debug_Type_N);
    pragma Inline (Get_Array_Info);
+   pragma Inline (Get_Array_Info_N);
    pragma Inline (Get_Orig_Array_Info);
+   pragma Inline (Get_Orig_Array_Info_N);
    pragma Inline (Get_Record_Info);
    pragma Inline (Get_Label_Info);
    pragma Inline (Set_GL_Type);

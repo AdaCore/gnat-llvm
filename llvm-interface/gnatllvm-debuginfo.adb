@@ -261,15 +261,20 @@ package body GNATLLVM.DebugInfo is
          else 0);
       Align  : constant unsigned :=
         unsigned (Nat'(Get_Type_Alignment (GT)) * BPU);
-      Result : Metadata_T        := No_Metadata_T;
+      Result : Metadata_T        := Get_Debug_Type (TE);
 
    begin
+      --  If we already made debug info for this type, return it
+
+      if Present (Result) then
+         return Result;
+
       --  Do nothing if not emitting debug info or if we've already
       --  seen this type as part of elaboration (e.g., an access type that
       --  points to itself).  ???  We really should use an incomplete type
       --  in that last case.
 
-      if not Emit_Debug_Info or else Is_Being_Elaborated (TE) then
+      elsif not Emit_Debug_Info or else Is_Being_Elaborated (TE) then
          return No_Metadata_T;
       end if;
 
@@ -310,9 +315,10 @@ package body GNATLLVM.DebugInfo is
             null;
       end case;
 
-      --  Show no longer elaborating this type and return the result
+      --  Show no longer elaborating this type and save and return the result
 
       Set_Is_Being_Elaborated (TE, False);
+      Set_Debug_Type (TE, Result);
       return Result;
    end Create_Debug_Type_Data;
 

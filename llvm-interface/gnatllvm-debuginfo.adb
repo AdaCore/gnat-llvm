@@ -309,13 +309,16 @@ package body GNATLLVM.DebugInfo is
       if Present (Result) then
          return Result;
 
-      --  Do nothing if not emitting debug info or if we've already
-      --  seen this type as part of elaboration (e.g., an access type that
-      --  points to itself).  ???  We really should use an incomplete type
-      --  in that last case.
+      --  Do nothing if not emitting debug info
 
-      elsif not Emit_Debug_Info or else Is_Being_Elaborated (TE) then
+      elsif not Emit_Debug_Info then
          return No_Metadata_T;
+
+      --  If we've seen this type as part of elaboration (e.g., an access
+      --  type that points to itself), this is an "unspecified" type.
+
+      elsif Is_Being_Elaborated (TE) then
+         return DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length);
       end if;
 
       --  Mark as being elaborated and create debug information based on

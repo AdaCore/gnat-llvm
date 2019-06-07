@@ -3,7 +3,7 @@ pragma Style_Checks (Off);
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
+with stdint_h;
 with Interfaces.C.Strings;
 with LLVM.Target_Machine;
 with LLVM.Error;
@@ -36,14 +36,14 @@ package LLVM.Orc_Bindings is
 
    type Orc_JIT_Stack_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:33
 
-   subtype Orc_Module_Handle_T is x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:34
+   subtype Orc_Module_Handle_T is stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:34
 
-   subtype Orc_Target_Address_T is x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:35
+   subtype Orc_Target_Address_T is stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:35
 
-   type Orc_Symbol_Resolver_Fn_T is access function  (arg1 : Interfaces.C.Strings.chars_ptr; arg2 : System.Address) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+   type Orc_Symbol_Resolver_Fn_T is access function  (arg1 : Interfaces.C.Strings.chars_ptr; arg2 : System.Address) return stdint_h.uint64_t;
    pragma Convention (C, Orc_Symbol_Resolver_Fn_T);  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:36
 
-   type Orc_Lazy_Compile_Callback_Fn_T is access function  (arg1 : Orc_JIT_Stack_T; arg2 : System.Address) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+   type Orc_Lazy_Compile_Callback_Fn_T is access function  (arg1 : Orc_JIT_Stack_T; arg2 : System.Address) return stdint_h.uint64_t;
    pragma Convention (C, Orc_Lazy_Compile_Callback_Fn_T);  -- llvm-8.0.0.src/include/llvm-c/OrcBindings.h:37
 
   --*

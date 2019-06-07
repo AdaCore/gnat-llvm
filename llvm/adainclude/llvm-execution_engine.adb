@@ -99,7 +99,7 @@ package body LLVM.Execution_Engine is
    function Get_Global_Value_Address
      (EE   : Execution_Engine_T;
       Name : String)
-      return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t
+      return stdint_h.uint64_t
    is
       Name_Array  : aliased char_array := To_C (Name);
       Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
@@ -110,7 +110,7 @@ package body LLVM.Execution_Engine is
    function Get_Function_Address
      (EE   : Execution_Engine_T;
       Name : String)
-      return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t
+      return stdint_h.uint64_t
    is
       Name_Array  : aliased char_array := To_C (Name);
       Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);

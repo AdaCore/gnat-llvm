@@ -6,7 +6,7 @@ with LLVM.Types;
 with Interfaces.C.Strings;
 with System;
 with stddef_h;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
+with stdint_h;
 with Interfaces.C.Extensions;
 
 package LLVM.Core is
@@ -762,7 +762,7 @@ function Get_MD_Kind_ID_In_Context
    function Create_Enum_Attribute
      (C : LLVM.Types.Context_T;
       Kind_ID : unsigned;
-      Val : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t) return LLVM.Types.Attribute_T;  -- llvm-8.0.0.src/include/llvm-c/Core.h:584
+      Val : stdint_h.uint64_t) return LLVM.Types.Attribute_T;  -- llvm-8.0.0.src/include/llvm-c/Core.h:584
    pragma Import (C, Create_Enum_Attribute, "LLVMCreateEnumAttribute");
 
   --*
@@ -777,7 +777,7 @@ function Get_MD_Kind_ID_In_Context
   -- * Get the enum attribute's value. 0 is returned if none exists.
   --  
 
-   function Get_Enum_Attribute_Value (A : LLVM.Types.Attribute_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Core.h:596
+   function Get_Enum_Attribute_Value (A : LLVM.Types.Attribute_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Core.h:596
    pragma Import (C, Get_Enum_Attribute_Value, "LLVMGetEnumAttributeValue");
 
   --*
@@ -2889,7 +2889,7 @@ function Const_Int
    function Const_Int_Of_Arbitrary_Precision
      (Int_Ty : LLVM.Types.Type_T;
       Num_Words : unsigned;
-      Words : access x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t) return LLVM.Types.Value_T;  -- llvm-8.0.0.src/include/llvm-c/Core.h:1872
+      Words : access stdint_h.uint64_t) return LLVM.Types.Value_T;  -- llvm-8.0.0.src/include/llvm-c/Core.h:1872
    pragma Import (C, Const_Int_Of_Arbitrary_Precision, "LLVMConstIntOfArbitraryPrecision");
 
   --*
@@ -2905,12 +2905,12 @@ function Const_Int
 function Const_Int_Of_String
      (Int_Ty : LLVM.Types.Type_T;
       Text   : String;
-      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
+      Radix  : stdint_h.uint8_t)
       return LLVM.Types.Value_T;
    function Const_Int_Of_String_C
      (Int_Ty : LLVM.Types.Type_T;
       Text   : Interfaces.C.Strings.chars_ptr;
-      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
+      Radix  : stdint_h.uint8_t)
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Int_Of_String_C, "LLVMConstIntOfString");
 
@@ -2925,13 +2925,13 @@ function Const_Int_Of_String_And_Size
      (Int_Ty : LLVM.Types.Type_T;
       Text   : String;
       S_Len  : unsigned;
-      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
+      Radix  : stdint_h.uint8_t)
       return LLVM.Types.Value_T;
    function Const_Int_Of_String_And_Size_C
      (Int_Ty : LLVM.Types.Type_T;
       Text   : Interfaces.C.Strings.chars_ptr;
       S_Len  : unsigned;
-      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
+      Radix  : stdint_h.uint8_t)
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Int_Of_String_And_Size_C, "LLVMConstIntOfStringAndSize");
 

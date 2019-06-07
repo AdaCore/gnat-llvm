@@ -5,7 +5,7 @@ pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On)
 with Interfaces.C.Strings;
 with System;
 with LLVM.Disassembler_Types;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
+with stdint_h;
 with stddef_h;
 
 package LLVM.Disassembler is
@@ -126,7 +126,7 @@ function Create_Disasm_CPU_Features
   -- * otherwise.
   --  
 
-   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t) return int;  -- llvm-8.0.0.src/include/llvm-c/Disassembler.h:73
+   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int;  -- llvm-8.0.0.src/include/llvm-c/Disassembler.h:73
    pragma Import (C, Set_Disasm_Options, "LLVMSetDisasmOptions");
 
   -- The option to produce marked up assembly.  
@@ -154,17 +154,17 @@ function Create_Disasm_CPU_Features
 
 function Disasm_Instruction
      (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
-      Bytes           : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t;
-      Bytes_Size      : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      PC              : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Bytes           : stdint_h.uint8_t;
+      Bytes_Size      : stdint_h.uint64_t;
+      PC              : stdint_h.uint64_t;
       Out_String      : String;
       Out_String_Size : stddef_h.size_t)
       return stddef_h.size_t;
    function Disasm_Instruction_C
      (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
-      Bytes           : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t;
-      Bytes_Size      : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      PC              : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Bytes           : stdint_h.uint8_t;
+      Bytes_Size      : stdint_h.uint64_t;
+      PC              : stdint_h.uint64_t;
       Out_String      : Interfaces.C.Strings.chars_ptr;
       Out_String_Size : stddef_h.size_t)
       return stddef_h.size_t;

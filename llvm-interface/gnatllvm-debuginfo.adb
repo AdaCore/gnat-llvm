@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with x86_64_linux_gnu_bits_stdint_intn_h;
 with LLVM.Core;       use LLVM.Core;
 
 with Opt;    use Opt;
@@ -332,7 +331,7 @@ package body GNATLLVM.DebugInfo is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
       Name      : constant String     := Get_Name (Def_Ident);
-      Exp_Arr   : aliased x86_64_linux_gnu_bits_stdint_intn_h.int64_t;
+      Exp_Arr   : aliased stdint_h.int64_t;
       Expr      : Metadata_T;
       GVE       : Metadata_T;
 

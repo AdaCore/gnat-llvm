@@ -6,8 +6,7 @@ with LLVM.Types;
 with Interfaces.C.Strings;
 with stddef_h;
 with System;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
-with x86_64_linux_gnu_bits_stdint_intn_h;
+with stdint_h;
 
 package LLVM.Debug_Info is
 
@@ -630,8 +629,8 @@ function DI_Create_Enumeration_Type
       Name_Len      : stddef_h.size_t;
       File          : LLVM.Types.Metadata_T;
       Line_Number   : unsigned;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Elements      : System.Address;
       Num_Elements  : unsigned;
       Class_Ty      : LLVM.Types.Metadata_T)
@@ -643,8 +642,8 @@ function DI_Create_Enumeration_Type
       Name_Len      : stddef_h.size_t;
       File          : LLVM.Types.Metadata_T;
       Line_Number   : unsigned;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Elements      : System.Address;
       Num_Elements  : unsigned;
       Class_Ty      : LLVM.Types.Metadata_T)
@@ -676,8 +675,8 @@ function DI_Create_Union_Type
       Name_Len      : stddef_h.size_t;
       File          : LLVM.Types.Metadata_T;
       Line_Number   : unsigned;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Flags         : DI_Flags_T;
       Elements      : System.Address;
       Num_Elements  : unsigned;
@@ -692,8 +691,8 @@ function DI_Create_Union_Type
       Name_Len      : stddef_h.size_t;
       File          : LLVM.Types.Metadata_T;
       Line_Number   : unsigned;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Flags         : DI_Flags_T;
       Elements      : System.Address;
       Num_Elements  : unsigned;
@@ -715,8 +714,8 @@ function DI_Create_Union_Type
 
    function DI_Builder_Create_Array_Type
      (Builder : LLVM.Types.DI_Builder_T;
-      Size : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Ty : LLVM.Types.Metadata_T;
       Subscripts : System.Address;
       Num_Subscripts : unsigned) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:537
@@ -734,8 +733,8 @@ function DI_Create_Union_Type
 
    function DI_Builder_Create_Vector_Type
      (Builder : LLVM.Types.DI_Builder_T;
-      Size : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Ty : LLVM.Types.Metadata_T;
       Subscripts : System.Address;
       Num_Subscripts : unsigned) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:552
@@ -775,7 +774,7 @@ function DI_Create_Basic_Type
      (Builder      : LLVM.Types.DI_Builder_T;
       Name         : String;
       Name_Len     : stddef_h.size_t;
-      Size_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits : stdint_h.uint64_t;
       Encoding     : DWARF_Type_Encoding_T;
       Flags        : DI_Flags_T)
       return LLVM.Types.Metadata_T;
@@ -783,7 +782,7 @@ function DI_Create_Basic_Type
      (Builder      : LLVM.Types.DI_Builder_T;
       Name         : Interfaces.C.Strings.chars_ptr;
       Name_Len     : stddef_h.size_t;
-      Size_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits : stdint_h.uint64_t;
       Encoding     : DWARF_Type_Encoding_T;
       Flags        : DI_Flags_T)
       return LLVM.Types.Metadata_T;
@@ -803,8 +802,8 @@ function DI_Create_Basic_Type
 function DI_Create_Pointer_Type
      (Builder       : LLVM.Types.DI_Builder_T;
       Pointee_Ty    : LLVM.Types.Metadata_T;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Address_Space : unsigned;
       Name          : String;
       Name_Len      : stddef_h.size_t)
@@ -812,8 +811,8 @@ function DI_Create_Pointer_Type
    function DI_Builder_Create_Pointer_Type_C
      (Builder       : LLVM.Types.DI_Builder_T;
       Pointee_Ty    : LLVM.Types.Metadata_T;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Address_Space : unsigned;
       Name          : Interfaces.C.Strings.chars_ptr;
       Name_Len      : stddef_h.size_t)
@@ -846,8 +845,8 @@ function DI_Create_Struct_Type
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_Number    : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
       Flags          : DI_Flags_T;
       Derived_From   : LLVM.Types.Metadata_T;
       Elements       : System.Address;
@@ -864,8 +863,8 @@ function DI_Create_Struct_Type
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_Number    : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
       Flags          : DI_Flags_T;
       Derived_From   : LLVM.Types.Metadata_T;
       Elements       : System.Address;
@@ -899,9 +898,9 @@ function DI_Create_Member_Type
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_No        : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
+      Offset_In_Bits : stdint_h.uint64_t;
       Flags          : DI_Flags_T;
       Ty             : LLVM.Types.Metadata_T)
       return LLVM.Types.Metadata_T;
@@ -912,9 +911,9 @@ function DI_Create_Member_Type
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_No        : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
+      Offset_In_Bits : stdint_h.uint64_t;
       Flags          : DI_Flags_T;
       Ty             : LLVM.Types.Metadata_T)
       return LLVM.Types.Metadata_T;
@@ -945,7 +944,7 @@ function DI_Create_Static_Member_Type
       C_Type        : LLVM.Types.Metadata_T;
       Flags         : DI_Flags_T;
       Constant_Val  : LLVM.Types.Value_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    function DI_Builder_Create_Static_Member_Type_C
      (Builder       : LLVM.Types.DI_Builder_T;
@@ -957,7 +956,7 @@ function DI_Create_Static_Member_Type
       C_Type        : LLVM.Types.Metadata_T;
       Flags         : DI_Flags_T;
       Constant_Val  : LLVM.Types.Value_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    pragma Import (C, DI_Builder_Create_Static_Member_Type_C, "LLVMDIBuilderCreateStaticMemberType");
 
@@ -975,8 +974,8 @@ function DI_Create_Static_Member_Type
      (Builder : LLVM.Types.DI_Builder_T;
       Pointee_Type : LLVM.Types.Metadata_T;
       Class_Type : LLVM.Types.Metadata_T;
-      Size_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:675
    pragma Import (C, DI_Builder_Create_Member_Pointer_Type, "LLVMDIBuilderCreateMemberPointerType");
 
@@ -1001,9 +1000,9 @@ function DI_Create_Obj_CI_Var
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_No        : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
+      Offset_In_Bits : stdint_h.uint64_t;
       Flags          : DI_Flags_T;
       Ty             : LLVM.Types.Metadata_T;
       Property_Node  : LLVM.Types.Metadata_T)
@@ -1014,9 +1013,9 @@ function DI_Create_Obj_CI_Var
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_No        : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
+      Offset_In_Bits : stdint_h.uint64_t;
       Flags          : DI_Flags_T;
       Ty             : LLVM.Types.Metadata_T;
       Property_Node  : LLVM.Types.Metadata_T)
@@ -1157,8 +1156,8 @@ function DI_Create_Typedef
      (Builder : LLVM.Types.DI_Builder_T;
       Ty : LLVM.Types.Metadata_T;
       Base_Ty : LLVM.Types.Metadata_T;
-      Base_Offset : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      VB_Ptr_Offset : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Base_Offset : stdint_h.uint64_t;
+      VB_Ptr_Offset : stdint_h.uint32_t;
       Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:791
    pragma Import (C, DI_Builder_Create_Inheritance, "LLVMDIBuilderCreateInheritance");
 
@@ -1188,8 +1187,8 @@ function DI_Create_Forward_Decl
       File                  : LLVM.Types.Metadata_T;
       Line                  : unsigned;
       Runtime_Lang          : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
       Unique_Identifier     : String;
       Unique_Identifier_Len : stddef_h.size_t)
       return LLVM.Types.Metadata_T;
@@ -1202,8 +1201,8 @@ function DI_Create_Forward_Decl
       File                  : LLVM.Types.Metadata_T;
       Line                  : unsigned;
       Runtime_Lang          : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
       Unique_Identifier     : Interfaces.C.Strings.chars_ptr;
       Unique_Identifier_Len : stddef_h.size_t)
       return LLVM.Types.Metadata_T;
@@ -1236,8 +1235,8 @@ function DI_Create_Replaceable_Composite_Type
       File                  : LLVM.Types.Metadata_T;
       Line                  : unsigned;
       Runtime_Lang          : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
       Flags                 : DI_Flags_T;
       Unique_Identifier     : String;
       Unique_Identifier_Len : stddef_h.size_t)
@@ -1251,8 +1250,8 @@ function DI_Create_Replaceable_Composite_Type
       File                  : LLVM.Types.Metadata_T;
       Line                  : unsigned;
       Runtime_Lang          : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
       Flags                 : DI_Flags_T;
       Unique_Identifier     : Interfaces.C.Strings.chars_ptr;
       Unique_Identifier_Len : stddef_h.size_t)
@@ -1281,9 +1280,9 @@ function DI_Create_Bit_Field_Member_Type
       Name_Len               : stddef_h.size_t;
       File                   : LLVM.Types.Metadata_T;
       Line_Number            : unsigned;
-      Size_In_Bits           : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Offset_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Storage_Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits           : stdint_h.uint64_t;
+      Offset_In_Bits         : stdint_h.uint64_t;
+      Storage_Offset_In_Bits : stdint_h.uint64_t;
       Flags                  : DI_Flags_T;
       C_Type                 : LLVM.Types.Metadata_T)
       return LLVM.Types.Metadata_T;
@@ -1294,9 +1293,9 @@ function DI_Create_Bit_Field_Member_Type
       Name_Len               : stddef_h.size_t;
       File                   : LLVM.Types.Metadata_T;
       Line_Number            : unsigned;
-      Size_In_Bits           : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Offset_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Storage_Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits           : stdint_h.uint64_t;
+      Offset_In_Bits         : stdint_h.uint64_t;
+      Storage_Offset_In_Bits : stdint_h.uint64_t;
       Flags                  : DI_Flags_T;
       C_Type                 : LLVM.Types.Metadata_T)
       return LLVM.Types.Metadata_T;
@@ -1332,9 +1331,9 @@ function DI_Create_Class_Type
       Name_Len              : stddef_h.size_t;
       File                  : LLVM.Types.Metadata_T;
       Line_Number           : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits        : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
+      Offset_In_Bits        : stdint_h.uint64_t;
       Flags                 : DI_Flags_T;
       Derived_From          : LLVM.Types.Metadata_T;
       Elements              : System.Address;
@@ -1351,9 +1350,9 @@ function DI_Create_Class_Type
       Name_Len              : stddef_h.size_t;
       File                  : LLVM.Types.Metadata_T;
       Line_Number           : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits        : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
+      Offset_In_Bits        : stdint_h.uint64_t;
       Flags                 : DI_Flags_T;
       Derived_From          : LLVM.Types.Metadata_T;
       Elements              : System.Address;
@@ -1399,7 +1398,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getSizeInBits()
   --  
 
-   function DI_Type_Get_Size_In_Bits (D_Type : LLVM.Types.Metadata_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:922
+   function DI_Type_Get_Size_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:922
    pragma Import (C, DI_Type_Get_Size_In_Bits, "LLVMDITypeGetSizeInBits");
 
   --*
@@ -1409,7 +1408,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getOffsetInBits()
   --  
 
-   function DI_Type_Get_Offset_In_Bits (D_Type : LLVM.Types.Metadata_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:930
+   function DI_Type_Get_Offset_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:930
    pragma Import (C, DI_Type_Get_Offset_In_Bits, "LLVMDITypeGetOffsetInBits");
 
   --*
@@ -1419,7 +1418,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getAlignInBits()
   --  
 
-   function DI_Type_Get_Align_In_Bits (D_Type : LLVM.Types.Metadata_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:938
+   function DI_Type_Get_Align_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:938
    pragma Import (C, DI_Type_Get_Align_In_Bits, "LLVMDITypeGetAlignInBits");
 
   --*
@@ -1451,8 +1450,8 @@ function DI_Create_Class_Type
 
    function DI_Builder_Get_Or_Create_Subrange
      (Builder : LLVM.Types.DI_Builder_T;
-      Lower_Bound : x86_64_linux_gnu_bits_stdint_intn_h.int64_t;
-      Count : x86_64_linux_gnu_bits_stdint_intn_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:962
+      Lower_Bound : stdint_h.int64_t;
+      Count : stdint_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:962
    pragma Import (C, DI_Builder_Get_Or_Create_Subrange, "LLVMDIBuilderGetOrCreateSubrange");
 
   --*
@@ -1478,7 +1477,7 @@ function DI_Create_Class_Type
 
    function DI_Builder_Create_Expression
      (Builder : LLVM.Types.DI_Builder_T;
-      Addr : access x86_64_linux_gnu_bits_stdint_intn_h.int64_t;
+      Addr : access stdint_h.int64_t;
       Length : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:983
    pragma Import (C, DI_Builder_Create_Expression, "LLVMDIBuilderCreateExpression");
 
@@ -1489,7 +1488,7 @@ function DI_Create_Class_Type
   -- * \param Value       The constant value.
   --  
 
-   function DI_Builder_Create_Constant_Value_Expression (Builder : LLVM.Types.DI_Builder_T; Value : x86_64_linux_gnu_bits_stdint_intn_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:993
+   function DI_Builder_Create_Constant_Value_Expression (Builder : LLVM.Types.DI_Builder_T; Value : stdint_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-8.0.0.src/include/llvm-c/DebugInfo.h:993
    pragma Import (C, DI_Builder_Create_Constant_Value_Expression, "LLVMDIBuilderCreateConstantValueExpression");
 
   --*
@@ -1525,7 +1524,7 @@ function DI_Create_Global_Variable_Expression
       Local_To_Unit : Boolean;
       Expr          : LLVM.Types.Metadata_T;
       Decl          : LLVM.Types.Metadata_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    function DI_Builder_Create_Global_Variable_Expression_C
      (Builder       : LLVM.Types.DI_Builder_T;
@@ -1540,7 +1539,7 @@ function DI_Create_Global_Variable_Expression
       Local_To_Unit : LLVM.Types.Bool_T;
       Expr          : LLVM.Types.Metadata_T;
       Decl          : LLVM.Types.Metadata_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    pragma Import (C, DI_Builder_Create_Global_Variable_Expression_C, "LLVMDIBuilderCreateGlobalVariableExpression");
 
@@ -1609,7 +1608,7 @@ function DI_Create_Temp_Global_Variable_Fwd_Decl
       Ty            : LLVM.Types.Metadata_T;
       Local_To_Unit : Boolean;
       Decl          : LLVM.Types.Metadata_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    function DI_Builder_Create_Temp_Global_Variable_Fwd_Decl_C
      (Builder       : LLVM.Types.DI_Builder_T;
@@ -1623,7 +1622,7 @@ function DI_Create_Temp_Global_Variable_Fwd_Decl
       Ty            : LLVM.Types.Metadata_T;
       Local_To_Unit : LLVM.Types.Bool_T;
       Decl          : LLVM.Types.Metadata_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    pragma Import (C, DI_Builder_Create_Temp_Global_Variable_Fwd_Decl_C, "LLVMDIBuilderCreateTempGlobalVariableFwdDecl");
 
@@ -1731,7 +1730,7 @@ function DI_Create_Auto_Variable
       Ty              : LLVM.Types.Metadata_T;
       Always_Preserve : Boolean;
       Flags           : DI_Flags_T;
-      Align_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits   : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    function DI_Builder_Create_Auto_Variable_C
      (Builder         : LLVM.Types.DI_Builder_T;
@@ -1743,7 +1742,7 @@ function DI_Create_Auto_Variable
       Ty              : LLVM.Types.Metadata_T;
       Always_Preserve : LLVM.Types.Bool_T;
       Flags           : DI_Flags_T;
-      Align_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits   : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    pragma Import (C, DI_Builder_Create_Auto_Variable_C, "LLVMDIBuilderCreateAutoVariable");
 

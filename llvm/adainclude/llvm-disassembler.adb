@@ -62,9 +62,9 @@ package body LLVM.Disassembler is
 
    function Disasm_Instruction
      (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
-      Bytes           : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t;
-      Bytes_Size      : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      PC              : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Bytes           : stdint_h.uint8_t;
+      Bytes_Size      : stdint_h.uint64_t;
+      PC              : stdint_h.uint64_t;
       Out_String      : String;
       Out_String_Size : stddef_h.size_t)
       return stddef_h.size_t

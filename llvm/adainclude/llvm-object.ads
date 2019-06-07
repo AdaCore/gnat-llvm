@@ -5,7 +5,7 @@ pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On)
 with System;
 with LLVM.Types;
 with Interfaces.C.Strings;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
+with stdint_h;
 
 package LLVM.Object is
 
@@ -109,7 +109,7 @@ package LLVM.Object is
       return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/Object.h:63
    pragma Import (C, Get_Section_Name_C, "LLVMGetSectionName");
 
-   function Get_Section_Size (SI : Section_Iterator_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:64
+   function Get_Section_Size (SI : Section_Iterator_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:64
    pragma Import (C, Get_Section_Size, "LLVMGetSectionSize");
 
    function Get_Section_Contents
@@ -120,7 +120,7 @@ package LLVM.Object is
       return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/Object.h:65
    pragma Import (C, Get_Section_Contents_C, "LLVMGetSectionContents");
 
-   function Get_Section_Address (SI : Section_Iterator_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:66
+   function Get_Section_Address (SI : Section_Iterator_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:66
    pragma Import (C, Get_Section_Address, "LLVMGetSectionAddress");
 
    function Get_Section_Contains_Symbol
@@ -162,20 +162,20 @@ package LLVM.Object is
       return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/Object.h:79
    pragma Import (C, Get_Symbol_Name_C, "LLVMGetSymbolName");
 
-   function Get_Symbol_Address (SI : Symbol_Iterator_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:80
+   function Get_Symbol_Address (SI : Symbol_Iterator_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:80
    pragma Import (C, Get_Symbol_Address, "LLVMGetSymbolAddress");
 
-   function Get_Symbol_Size (SI : Symbol_Iterator_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:81
+   function Get_Symbol_Size (SI : Symbol_Iterator_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:81
    pragma Import (C, Get_Symbol_Size, "LLVMGetSymbolSize");
 
   -- RelocationRef accessors
-   function Get_Relocation_Offset (RI : Relocation_Iterator_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:84
+   function Get_Relocation_Offset (RI : Relocation_Iterator_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:84
    pragma Import (C, Get_Relocation_Offset, "LLVMGetRelocationOffset");
 
    function Get_Relocation_Symbol (RI : Relocation_Iterator_T) return Symbol_Iterator_T;  -- llvm-8.0.0.src/include/llvm-c/Object.h:85
    pragma Import (C, Get_Relocation_Symbol, "LLVMGetRelocationSymbol");
 
-   function Get_Relocation_Type (RI : Relocation_Iterator_T) return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:86
+   function Get_Relocation_Type (RI : Relocation_Iterator_T) return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/Object.h:86
    pragma Import (C, Get_Relocation_Type, "LLVMGetRelocationType");
 
   -- NOTE: Caller takes ownership of returned string of the two

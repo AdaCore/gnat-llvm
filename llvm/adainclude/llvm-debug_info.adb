@@ -155,8 +155,8 @@ package body LLVM.Debug_Info is
       Name_Len      : stddef_h.size_t;
       File          : LLVM.Types.Metadata_T;
       Line_Number   : unsigned;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Elements      : System.Address;
       Num_Elements  : unsigned;
       Class_Ty      : LLVM.Types.Metadata_T)
@@ -175,8 +175,8 @@ package body LLVM.Debug_Info is
       Name_Len      : stddef_h.size_t;
       File          : LLVM.Types.Metadata_T;
       Line_Number   : unsigned;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Flags         : DI_Flags_T;
       Elements      : System.Address;
       Num_Elements  : unsigned;
@@ -209,7 +209,7 @@ package body LLVM.Debug_Info is
      (Builder      : LLVM.Types.DI_Builder_T;
       Name         : String;
       Name_Len     : stddef_h.size_t;
-      Size_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits : stdint_h.uint64_t;
       Encoding     : DWARF_Type_Encoding_T;
       Flags        : DI_Flags_T)
       return LLVM.Types.Metadata_T
@@ -223,8 +223,8 @@ package body LLVM.Debug_Info is
    function DI_Create_Pointer_Type
      (Builder       : LLVM.Types.DI_Builder_T;
       Pointee_Ty    : LLVM.Types.Metadata_T;
-      Size_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits  : stdint_h.uint64_t;
+      Align_In_Bits : stdint_h.uint32_t;
       Address_Space : unsigned;
       Name          : String;
       Name_Len      : stddef_h.size_t)
@@ -243,8 +243,8 @@ package body LLVM.Debug_Info is
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_Number    : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
       Flags          : DI_Flags_T;
       Derived_From   : LLVM.Types.Metadata_T;
       Elements       : System.Address;
@@ -270,9 +270,9 @@ package body LLVM.Debug_Info is
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_No        : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
+      Offset_In_Bits : stdint_h.uint64_t;
       Flags          : DI_Flags_T;
       Ty             : LLVM.Types.Metadata_T)
       return LLVM.Types.Metadata_T
@@ -293,7 +293,7 @@ package body LLVM.Debug_Info is
       C_Type        : LLVM.Types.Metadata_T;
       Flags         : DI_Flags_T;
       Constant_Val  : LLVM.Types.Value_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T
    is
       Name_Array  : aliased char_array := To_C (Name);
@@ -308,9 +308,9 @@ package body LLVM.Debug_Info is
       Name_Len       : stddef_h.size_t;
       File           : LLVM.Types.Metadata_T;
       Line_No        : unsigned;
-      Size_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits  : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits   : stdint_h.uint64_t;
+      Align_In_Bits  : stdint_h.uint32_t;
+      Offset_In_Bits : stdint_h.uint64_t;
       Flags          : DI_Flags_T;
       Ty             : LLVM.Types.Metadata_T;
       Property_Node  : LLVM.Types.Metadata_T)
@@ -371,8 +371,8 @@ package body LLVM.Debug_Info is
       File                  : LLVM.Types.Metadata_T;
       Line                  : unsigned;
       Runtime_Lang          : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
       Unique_Identifier     : String;
       Unique_Identifier_Len : stddef_h.size_t)
       return LLVM.Types.Metadata_T
@@ -394,8 +394,8 @@ package body LLVM.Debug_Info is
       File                  : LLVM.Types.Metadata_T;
       Line                  : unsigned;
       Runtime_Lang          : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
       Flags                 : DI_Flags_T;
       Unique_Identifier     : String;
       Unique_Identifier_Len : stddef_h.size_t)
@@ -416,9 +416,9 @@ package body LLVM.Debug_Info is
       Name_Len               : stddef_h.size_t;
       File                   : LLVM.Types.Metadata_T;
       Line_Number            : unsigned;
-      Size_In_Bits           : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Offset_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Storage_Offset_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits           : stdint_h.uint64_t;
+      Offset_In_Bits         : stdint_h.uint64_t;
+      Storage_Offset_In_Bits : stdint_h.uint64_t;
       Flags                  : DI_Flags_T;
       C_Type                 : LLVM.Types.Metadata_T)
       return LLVM.Types.Metadata_T
@@ -436,9 +436,9 @@ package body LLVM.Debug_Info is
       Name_Len              : stddef_h.size_t;
       File                  : LLVM.Types.Metadata_T;
       Line_Number           : unsigned;
-      Size_In_Bits          : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-      Align_In_Bits         : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;
-      Offset_In_Bits        : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      Size_In_Bits          : stdint_h.uint64_t;
+      Align_In_Bits         : stdint_h.uint32_t;
+      Offset_In_Bits        : stdint_h.uint64_t;
       Flags                 : DI_Flags_T;
       Derived_From          : LLVM.Types.Metadata_T;
       Elements              : System.Address;
@@ -479,7 +479,7 @@ package body LLVM.Debug_Info is
       Local_To_Unit : Boolean;
       Expr          : LLVM.Types.Metadata_T;
       Decl          : LLVM.Types.Metadata_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T
    is
       Name_Array         : aliased char_array := To_C (Name);
@@ -503,7 +503,7 @@ package body LLVM.Debug_Info is
       Ty            : LLVM.Types.Metadata_T;
       Local_To_Unit : Boolean;
       Decl          : LLVM.Types.Metadata_T;
-      Align_In_Bits : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T
    is
       Name_Array         : aliased char_array := To_C (Name);
@@ -525,7 +525,7 @@ package body LLVM.Debug_Info is
       Ty              : LLVM.Types.Metadata_T;
       Always_Preserve : Boolean;
       Flags           : DI_Flags_T;
-      Align_In_Bits   : x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t)
+      Align_In_Bits   : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T
    is
       Name_Array           : aliased char_array := To_C (Name);

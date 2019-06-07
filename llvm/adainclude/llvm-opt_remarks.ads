@@ -3,7 +3,7 @@ pragma Style_Checks (Off);
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Strings;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
+with stdint_h;
 with System;
 with LLVM.Types;
 
@@ -41,7 +41,7 @@ package LLVM.Opt_Remarks is
 
    type Opt_Remark_String_T is record
       Str : Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:43
-      Len : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:44
+      Len : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:44
    end record;
    pragma Convention (C_Pass_By_Copy, Opt_Remark_String_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:45
 
@@ -56,8 +56,8 @@ package LLVM.Opt_Remarks is
   -- File:
    type Opt_Remark_Debug_Loc_T is record
       SourceFile : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:54
-      SourceLineNumber : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:56
-      SourceColumnNumber : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:58
+      SourceLineNumber : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:56
+      SourceColumnNumber : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:58
    end record;
    pragma Convention (C_Pass_By_Copy, Opt_Remark_Debug_Loc_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:59
 
@@ -98,8 +98,8 @@ package LLVM.Opt_Remarks is
       RemarkName : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:89
       FunctionName : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:91
       DebugLoc : aliased Opt_Remark_Debug_Loc_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:94
-      Hotness : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:96
-      NumArgs : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:98
+      Hotness : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:96
+      NumArgs : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:98
       Args : access Opt_Remark_Arg_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:99
    end record;
    pragma Convention (C_Pass_By_Copy, Opt_Remark_Entry_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:100
@@ -128,7 +128,7 @@ package LLVM.Opt_Remarks is
   -- * \since OPT_REMARKS_API_VERSION=0
   --  
 
-   function Opt_Remark_Parser_Create (Buf : System.Address; Size : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t) return Opt_Remark_Parser_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:115
+   function Opt_Remark_Parser_Create (Buf : System.Address; Size : stdint_h.uint64_t) return Opt_Remark_Parser_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:115
    pragma Import (C, Opt_Remark_Parser_Create, "LLVMOptRemarkParserCreate");
 
   --*
@@ -224,7 +224,7 @@ package LLVM.Opt_Remarks is
   -- * \since OPT_REMARKS_API_VERSION=0
   --  
 
-   function Opt_Remark_Version return x86_64_linux_gnu_bits_stdint_uintn_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:194
+   function Opt_Remark_Version return stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:194
    pragma Import (C, Opt_Remark_Version, "LLVMOptRemarkVersion");
 
   --*

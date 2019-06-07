@@ -3,7 +3,7 @@ pragma Style_Checks (Off);
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
+with stdint_h;
 with Interfaces.C.Strings;
 
 package LLVM.Disassembler_Types is
@@ -89,9 +89,9 @@ package LLVM.Disassembler_Types is
 
    type Op_Info_Callback_T is access function 
         (arg1 : System.Address;
-         arg2 : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-         arg3 : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-         arg4 : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+         arg2 : stdint_h.uint64_t;
+         arg3 : stdint_h.uint64_t;
+         arg4 : stdint_h.uint64_t;
          arg5 : int;
          arg6 : System.Address) return int;
    pragma Convention (C, Op_Info_Callback_T);  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:42
@@ -119,9 +119,9 @@ package LLVM.Disassembler_Types is
 
   -- 1 if this symbol is present  
    type Op_Info_Symbol1_T is record
-      Present : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:67
+      Present : aliased stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:67
       Name : Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:68
-      Value : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:69
+      Value : aliased stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:69
    end record;
    pragma Convention (C_Pass_By_Copy, Op_Info_Symbol1_T);  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:66
 
@@ -130,8 +130,8 @@ package LLVM.Disassembler_Types is
    type Op_Info1_T is record
       AddSymbol : aliased Op_Info_Symbol1_T;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:73
       SubtractSymbol : aliased Op_Info_Symbol1_T;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:74
-      Value : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:75
-      VariantKind : aliased x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:76
+      Value : aliased stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:75
+      VariantKind : aliased stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:76
    end record;
    pragma Convention (C_Pass_By_Copy, Op_Info1_T);  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:72
 
@@ -162,9 +162,9 @@ package LLVM.Disassembler_Types is
 
    type Symbol_Lookup_Callback_T is access function 
         (arg1 : System.Address;
-         arg2 : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-         arg3 : access x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
-         arg4 : x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+         arg2 : stdint_h.uint64_t;
+         arg3 : access stdint_h.uint64_t;
+         arg4 : stdint_h.uint64_t;
          arg5 : System.Address) return Interfaces.C.Strings.chars_ptr;
    pragma Convention (C, Symbol_Lookup_Callback_T);  -- llvm-8.0.0.src/include/llvm-c/DisassemblerTypes.h:112
 

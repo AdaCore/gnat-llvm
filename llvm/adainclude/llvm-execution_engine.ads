@@ -9,7 +9,6 @@ with Interfaces.C.Extensions;
 with stddef_h;
 with Interfaces.C.Strings;
 with LLVM.Target;
-with x86_64_linux_gnu_bits_stdint_uintn_h;
 with stdint_h;
 
 package LLVM.Execution_Engine is
@@ -260,21 +259,21 @@ function Find_Function
    function Get_Global_Value_Address
      (EE   : Execution_Engine_T;
       Name : String)
-      return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      return stdint_h.uint64_t;
    function Get_Global_Value_Address_C
      (EE   : Execution_Engine_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/ExecutionEngine.h:149
+      return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/ExecutionEngine.h:149
    pragma Import (C, Get_Global_Value_Address_C, "LLVMGetGlobalValueAddress");
 
    function Get_Function_Address
      (EE   : Execution_Engine_T;
       Name : String)
-      return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;
+      return stdint_h.uint64_t;
    function Get_Function_Address_C
      (EE   : Execution_Engine_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return x86_64_linux_gnu_bits_stdint_uintn_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/ExecutionEngine.h:151
+      return stdint_h.uint64_t;  -- llvm-8.0.0.src/include/llvm-c/ExecutionEngine.h:151
    pragma Import (C, Get_Function_Address_C, "LLVMGetFunctionAddress");
 
   --===-- Operations on memory managers -------------------------------------=== 
@@ -283,7 +282,7 @@ function Find_Function
          arg2 : stdint_h.uintptr_t;
          arg3 : unsigned;
          arg4 : unsigned;
-         arg5 : Interfaces.C.Strings.chars_ptr) return access x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t;
+         arg5 : Interfaces.C.Strings.chars_ptr) return access stdint_h.uint8_t;
    pragma Convention (C, Memory_Manager_Allocate_Code_Section_Callback_T);  -- llvm-8.0.0.src/include/llvm-c/ExecutionEngine.h:155
 
    type Memory_Manager_Allocate_Data_Section_Callback_T is access function 
@@ -292,7 +291,7 @@ function Find_Function
          arg3 : unsigned;
          arg4 : unsigned;
          arg5 : Interfaces.C.Strings.chars_ptr;
-         arg6 : LLVM.Types.Bool_T) return access x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t;
+         arg6 : LLVM.Types.Bool_T) return access stdint_h.uint8_t;
    pragma Convention (C, Memory_Manager_Allocate_Data_Section_Callback_T);  -- llvm-8.0.0.src/include/llvm-c/ExecutionEngine.h:158
 
    type Memory_Manager_Finalize_Memory_Callback_T is access function  (arg1 : System.Address; arg2 : System.Address) return LLVM.Types.Bool_T;

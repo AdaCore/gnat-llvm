@@ -515,7 +515,7 @@ package body LLVM.Core is
    function Const_Int_Of_String
      (Int_Ty : LLVM.Types.Type_T;
       Text   : String;
-      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
+      Radix  : stdint_h.uint8_t)
       return LLVM.Types.Value_T
    is
       Text_Array  : aliased char_array := To_C (Text);
@@ -528,7 +528,7 @@ package body LLVM.Core is
      (Int_Ty : LLVM.Types.Type_T;
       Text   : String;
       S_Len  : unsigned;
-      Radix  : x86_64_linux_gnu_bits_stdint_uintn_h.uint8_t)
+      Radix  : stdint_h.uint8_t)
       return LLVM.Types.Value_T
    is
       Text_Array  : aliased char_array := To_C (Text);

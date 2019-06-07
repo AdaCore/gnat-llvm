@@ -131,7 +131,7 @@ package GNATLLVM is
    function No      (GT : GL_Type) return Boolean is (GT =  No_GL_Type);
    function Present (GT : GL_Type) return Boolean is (GT /= No_GL_Type);
 
-   type Word_Array is array (Nat range <>) of aliased stdint_h.uint_fast64_t;
+   type Word_Array is array (Nat range <>) of aliased stdint_h.uint64_t;
    --  Array of words for LLVM construction functions
 
    Context            : Context_T;

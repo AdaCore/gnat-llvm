@@ -294,17 +294,17 @@ package body GNATLLVM.DebugInfo is
    ----------------------------
 
    function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T is
-      TE         : constant Entity_Id  := Full_Etype (GT);
-      Name       : constant String     := Get_Name (TE);
-      T          : constant Type_T     := Type_Of (GT);
-      Size       : constant UL         :=
+      TE          : constant Entity_Id  := Full_Etype (GT);
+      Name        : constant String     := Get_Name (TE);
+      T           : constant Type_T     := Type_Of (GT);
+      Size        : constant UL         :=
         (if   Type_Is_Sized (T) then UL (ULL'(Get_Type_Size_In_Bits (T)))
          else 0);
-      Align      : constant unsigned   :=
+      Align       : constant unsigned   :=
         unsigned (Nat'(Get_Type_Alignment (GT)) * BPU);
-      S          : constant Source_Ptr := Sloc (TE);
-      Inner_Type : Metadata_T          := No_Metadata_T;
-      Result     : Metadata_T          := Get_Debug_Type (TE);
+      S           : constant Source_Ptr := Sloc (TE);
+      Inner_Type  : Metadata_T          := No_Metadata_T;
+      Result      : Metadata_T          := Get_Debug_Type (TE);
 
    begin
       --  If we already made debug info for this type, return it
@@ -424,6 +424,11 @@ package body GNATLLVM.DebugInfo is
                        and then Known_Static_Esize (F)
                        and then Present (Mem_Type)
                      then
+                        --  Add the member type to the table.  ???  Maybe
+                        --  we should use
+                        --  DI_Builder_Create_Bit_Field_Member_type when
+                        --  appropriate.
+
                         Member_Table.Append
                           (DI_Create_Member_Type
                              (DI_Builder, No_Metadata_T, Name, Name'Length,
@@ -449,6 +454,37 @@ package body GNATLLVM.DebugInfo is
                   Size, Align, DI_Flag_Zero, No_Metadata_T,
                   Member_Table.Table (1)'Address, unsigned (Member_Table.Last),
                   0, No_Metadata_T, "", 0);
+            end;
+
+         when Enumeration_Kind =>
+
+            declare
+               package Member_Table is new Table.Table
+                 (Table_Component_Type => Metadata_T,
+                  Table_Index_Type     => Int,
+                  Table_Low_Bound      => 1,
+                  Table_Initial        => 20,
+                  Table_Increment      => 5,
+                  Table_Name           => "Member_Table");
+
+               Member : Entity_Id;
+
+            begin
+               Member := First_Literal (TE);
+               while Present (Member) loop
+                  Member_Table.Append (Create_Enumerator
+                                         (DI_Builder, Get_Name (Member),
+                                          UI_To_ULL (Enumeration_Rep (Member)),
+                                          Enumeration_Rep (Member) >= 0));
+                  Next_Literal (Member);
+               end loop;
+
+               Result := DI_Create_Enumeration_Type
+                 (DI_Builder, Debug_Compile_Unit, Name, Name'Length,
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  unsigned (Get_Logical_Line_Number (S)),
+                  Size, Align, Member_Table.Table (1)'Address,
+                  unsigned (Member_Table.Last), No_Metadata_T);
             end;
 
          when others =>
@@ -515,12 +551,16 @@ package body GNATLLVM.DebugInfo is
             unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
 
          --  If this is a reference, insert a dbg.declare call.  Otherwise,
-         --  a dbg.value call.
+         --  a dbg.value call.  ???  However, there sees to be an LLVM issue
+         --  when we do this for a zero-length array.
 
          if Is_Data (V) then
-            Discard (DI_Builder_Insert_Dbg_Value_At_End
-                       (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
-                        Create_Debug_Location (Def_Ident), Get_Insert_Block));
+            if Get_Type_Size (V) /= 0 then
+               Discard (DI_Builder_Insert_Dbg_Value_At_End
+                          (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
+                           Create_Debug_Location (Def_Ident),
+                           Get_Insert_Block));
+            end if;
          else
             Discard (DI_Builder_Insert_Declare_At_End
                        (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,

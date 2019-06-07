@@ -38,6 +38,27 @@ package body GNATLLVM.Wrapper is
       return Create_TBAA_Scalar_Type_Node_C (MDBld, Name & ASCII.NUL, Parent);
    end Create_TBAA_Scalar_Type_Node;
 
+   -----------------------
+   -- Create_Enumerator --
+   -----------------------
+
+   function Create_Enumerator
+     (Builder     : DI_Builder_T;
+      Name        : String;
+      Value       : unsigned_long_long;
+      Is_Unsigned : Boolean) return Metadata_T
+   is
+      function Create_Enumerator_C
+        (Builder     : DI_Builder_T;
+         Name        : String;
+         Value       : unsigned_long_long;
+         Is_Unsigned : Bool_T) return Metadata_T
+        with Import, Convention => C, External_Name => "Create_Enumerator";
+   begin
+      return Create_Enumerator_C (Builder, Name, Value,
+                                  Boolean'Pos (Is_Unsigned));
+   end Create_Enumerator;
+
    ------------------------
    -- Build_Extract_Value --
    ------------------------

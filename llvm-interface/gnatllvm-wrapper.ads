@@ -139,6 +139,12 @@ package GNATLLVM.Wrapper is
    procedure Add_Debug_Flags (Module : Module_T)
      with Import, Convention => C, External_Name => "Add_Debug_Flags";
 
+   function Create_Enumerator
+     (Builder     : DI_Builder_T;
+      Name        : String;
+      Value       : unsigned_long_long;
+      Is_Unsigned : Boolean) return Metadata_T;
+
    function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
       Typ       : Type_T;

@@ -89,6 +89,9 @@ package GNATLLVM.DebugInfo is
    --  Build debugging data for Def_Ident, a global variable, with V as its
    --  location.
 
+   Empty_DI_Expr : Metadata_T;
+   --  An empty DI_Expr
+
 private
 
    subtype UL is Interfaces.C.unsigned_long;

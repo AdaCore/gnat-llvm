@@ -106,6 +106,7 @@ package GNATLLVM.Utils is
    --  Return an LLVM value for the given type where all bits are set
 
    type Type_Array is array (Nat range <>) of Type_T;
+   type Metadata_Array is array (Nat range <>) of Metadata_T;
 
    function Get_Uint_Value (N : Node_Id) return Uint
      with Pre => Present (N);

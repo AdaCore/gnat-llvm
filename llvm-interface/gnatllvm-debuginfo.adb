@@ -72,6 +72,16 @@ package body GNATLLVM.DebugInfo is
    Freeze_Pos_Level : Natural := 0;
    --  Current level of pushes of requests to freeze debug position
 
+   function Create_Debug_Location (N : Node_Id) return Metadata_T
+     with Pre  => Present (N),
+          Post => Present (Create_Debug_Location'Result);
+   --  Return debug metadata for a location
+
+   Debug_Loc_Sloc  : Source_Ptr := No_Location;
+   Debug_Loc_Scope : Metadata_T := No_Metadata_T;
+   Debug_Loc       : Metadata_T := No_Metadata_T;
+   --  One-entry cache for Create_Debug_Location
+
    ----------------------
    -- Push_Debug_Scope --
    ----------------------
@@ -99,6 +109,8 @@ package body GNATLLVM.DebugInfo is
    ----------------
 
    procedure Initialize is
+      Exp : aliased stdint_h.int64_t;
+
    begin
       if Emit_Debug_Info then
          Add_Debug_Flags (Module);
@@ -111,6 +123,8 @@ package body GNATLLVM.DebugInfo is
             Get_Debug_File_Node (Main_Source_File), "GNAT/LLVM", 9,
             Code_Gen_Level /= Code_Gen_Level_None, "", 0, 0, "", 0,
             DWARF_Emission_Full, 0, False, False);
+         Empty_DI_Expr      :=
+           DI_Builder_Create_Expression (DI_Builder, Exp'Access, 0);
       end if;
    end Initialize;
 
@@ -226,6 +240,36 @@ package body GNATLLVM.DebugInfo is
    end Pop_Debug_Freeze_Pos;
 
    ---------------------------
+   -- Create_Debug_Location --
+   ---------------------------
+
+   function Create_Debug_Location (N : Node_Id) return Metadata_T is
+      S           : constant Source_Ptr := Sloc (N);
+      Debug_Scope : constant Metadata_T :=
+         (if Has_Debug_Scope then Current_Debug_Scope else Debug_Compile_Unit);
+      Result      : Metadata_T;
+
+   begin
+      --  If this is the same as our last request, return the result.
+      --  Note that we can have multiple scopes at the same sloc (it can
+      --  generate multiple subprograms).
+
+      if S = Debug_Loc_Sloc and Debug_Scope = Debug_Loc_Scope then
+         return Debug_Loc;
+      end if;
+
+      --  Otherwise, make a new one, set up our cache, and return it
+
+      Result          := DI_Builder_Create_Debug_Location
+        (Context, unsigned (Get_Logical_Line_Number (S)),
+         unsigned (Get_Column_Number (S)), Debug_Scope, No_Metadata_T);
+      Debug_Loc_Sloc  := S;
+      Debug_Loc_Scope := Debug_Scope;
+      Debug_Loc       := Result;
+      return Result;
+   end Create_Debug_Location;
+
+   ---------------------------
    -- Set_Debug_Pos_At_Node --
    ---------------------------
 
@@ -238,12 +282,7 @@ package body GNATLLVM.DebugInfo is
       then
          Set_Current_Debug_Location
            (IR_Builder,
-            Metadata_As_Value
-              (Context,
-               (DI_Builder_Create_Debug_Location
-                  (Context, unsigned (Get_Logical_Line_Number (Sloc (N))),
-                   unsigned (Get_Column_Number (Sloc (N))),
-                   Current_Debug_Scope, No_Metadata_T))));
+            Metadata_As_Value (Context, Create_Debug_Location (N)));
       end if;
    end Set_Debug_Pos_At_Node;
 
@@ -253,9 +292,9 @@ package body GNATLLVM.DebugInfo is
 
    function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T is
       TE     : constant Entity_Id := Full_Etype (GT);
-      Name   : constant String   := Get_Name (TE);
-      T      : constant Type_T   := Type_Of (GT);
-      Size   : constant UL       :=
+      Name   : constant String    := Get_Name (TE);
+      T      : constant Type_T    := Type_Of (GT);
+      Size   : constant UL        :=
         (if   Type_Is_Sized (T) then UL (ULL'(Get_Type_Size_In_Bits (T)))
          else 0);
       Align  : constant unsigned :=
@@ -331,24 +370,19 @@ package body GNATLLVM.DebugInfo is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
       Name      : constant String     := Get_Name (Def_Ident);
-      Exp_Arr   : aliased stdint_h.int64_t;
-      Expr      : Metadata_T;
-      GVE       : Metadata_T;
 
    begin
       if Emit_Debug_Info and then Present (Type_Data)
         and then Relationship (V) = Reference
       then
-         Expr := DI_Builder_Create_Expression (DI_Builder, Exp_Arr'Access, 0);
-
-         GVE := DI_Create_Global_Variable_Expression
-           (DI_Builder, Debug_Compile_Unit, Name, Name'Length, "", 0,
-            Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
-            unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
-            Type_Data, False, Expr, No_Metadata_T,
-            unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
-
-         Global_Set_Metadata (LLVM_Value (V), 0, GVE);
+         Global_Set_Metadata
+           (LLVM_Value (V), 0,
+            DI_Create_Global_Variable_Expression
+              (DI_Builder, Debug_Compile_Unit, Name, Name'Length, "", 0,
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
+               unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+               Type_Data, False, Empty_DI_Expr, No_Metadata_T,
+               unsigned (Nat'(Get_Type_Alignment (GT)) * BPU)));
       end if;
    end Build_Global_Variable_Debug_Data;
 

@@ -34,9 +34,18 @@ with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 package body GNATLLVM.DebugInfo is
 
+   Debug_Compile_Unit  : Metadata_T;
+   --  DICompileUnit metadata for the main compile unit
+
+   type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
+   type DI_File_Cache_Access is access all DI_File_Cache;
+
+   DI_Cache : DI_File_Cache_Access := null;
+
    --  We maintain a stack of debug info contexts, with the outermost
-   --  context being global (??? not currently supported), then a subprogram,
-   --  and then lexical blocks.
+   --  context being global, then a subprogram, and then lexical blocks.
+   --  We can only write line number information for code in the non-global
+   --  scope.
 
    Debug_Scope_Low_Bound : constant := 1;
 
@@ -58,15 +67,16 @@ package body GNATLLVM.DebugInfo is
    --  Table of debugging scopes. The last inserted scope point corresponds
    --  to the current scope.
 
-   function Has_Debug_Scope return Boolean is
+   function Has_Local_Debug_Scope return Boolean is
      (Debug_Scope_Table.Last >= Debug_Scope_Low_Bound);
-   --  Says whether we do or don't currently have a debug scope.
-   --  Won't be needed when we support a global scope.
+   --  Says whether we do or don't currently have a local scope.
 
    function Current_Debug_Scope return Metadata_T is
-     (Debug_Scope_Table.Table (Debug_Scope_Table.Last).Scope)
+     ((if   Has_Local_Debug_Scope
+      then Debug_Scope_Table.Table (Debug_Scope_Table.Last).Scope
+      else Debug_Compile_Unit))
      with Post => Present (Current_Debug_Scope'Result);
-   --  Current debug info scope
+   --  Current debug info scop, either global or local
 
    function Current_Debug_SFI return Source_File_Index is
      (Debug_Scope_Table.Table (Debug_Scope_Table.Last).SFI);
@@ -115,6 +125,8 @@ package body GNATLLVM.DebugInfo is
       Exp : aliased stdint_h.int64_t;
 
    begin
+      --  If we're emitting debug info, set up everything we need to do  so.
+
       if Emit_Debug_Info then
          Add_Debug_Flags (Module);
          DI_Builder         := Create_DI_Builder (Module);
@@ -148,14 +160,21 @@ package body GNATLLVM.DebugInfo is
 
    function Get_Debug_File_Node (File : Source_File_Index) return Metadata_T is
    begin
+      --  If we haven't already created a cache of DIFile values, do so now
+
       if DI_Cache = null then
          DI_Cache :=
            new DI_File_Cache'(1 .. Last_Source_File => No_Metadata_T);
       end if;
 
+      --  See if we previously made the entry for this file and return it
+      --  if so.
+
       if DI_Cache (File) /= No_Metadata_T then
          return DI_Cache (File);
       end if;
+
+      --  Otherwise, make a new DIFile entry and cache and return it
 
       declare
          Full_Name : constant String     :=
@@ -186,6 +205,10 @@ package body GNATLLVM.DebugInfo is
       Result    : Metadata_T;
       pragma Unreferenced (Def_Ident);
    begin
+      --  ??? We don't make the subprogram type from the types of the
+      --  arguments because they may not match the actual args and
+      --  it's trick to get this right.
+
       if Emit_Debug_Info then
          Result := DI_Create_Function
            (DI_Builder,
@@ -247,17 +270,15 @@ package body GNATLLVM.DebugInfo is
    ---------------------------
 
    function Create_Debug_Location (N : Node_Id) return Metadata_T is
-      S           : constant Source_Ptr := Sloc (N);
-      Debug_Scope : constant Metadata_T :=
-         (if Has_Debug_Scope then Current_Debug_Scope else Debug_Compile_Unit);
-      Result      : Metadata_T;
+      S      : constant Source_Ptr := Sloc (N);
+      Result : Metadata_T;
 
    begin
       --  If this is the same as our last request, return the result.
       --  Note that we can have multiple scopes at the same sloc (it can
       --  generate multiple subprograms).
 
-      if S = Debug_Loc_Sloc and Debug_Scope = Debug_Loc_Scope then
+      if S = Debug_Loc_Sloc and Current_Debug_Scope = Debug_Loc_Scope then
          return Debug_Loc;
       end if;
 
@@ -265,11 +286,12 @@ package body GNATLLVM.DebugInfo is
 
       Result          := DI_Builder_Create_Debug_Location
         (Context, unsigned (Get_Logical_Line_Number (S)),
-         unsigned (Get_Column_Number (S)), Debug_Scope, No_Metadata_T);
+         unsigned (Get_Column_Number (S)), Current_Debug_Scope, No_Metadata_T);
       Debug_Loc_Sloc  := S;
-      Debug_Loc_Scope := Debug_Scope;
+      Debug_Loc_Scope := Current_Debug_Scope;
       Debug_Loc       := Result;
       return Result;
+
    end Create_Debug_Location;
 
    ---------------------------
@@ -280,7 +302,7 @@ package body GNATLLVM.DebugInfo is
       SFI : constant Source_File_Index := Get_Source_File_Index (Sloc (N));
 
    begin
-      if Emit_Debug_Info and then Has_Debug_Scope
+      if Emit_Debug_Info and then Has_Local_Debug_Scope
         and then Freeze_Pos_Level = 0 and then SFI = Current_Debug_SFI
       then
          Set_Current_Debug_Location
@@ -308,8 +330,6 @@ package body GNATLLVM.DebugInfo is
 
    begin
       --  If we already made debug info for this type, return it
-      --  ??? This is bogus because we really want, at some point, to
-      --  handle debug information for different GL_Types differently.
 
       if Present (Result) then
          return Result;
@@ -511,6 +531,9 @@ package body GNATLLVM.DebugInfo is
       S         : constant Source_Ptr := Sloc (Def_Ident);
 
    begin
+      --  ??? For globals, we only do something now if this is a normal
+      --  reference to the data.
+
       if Emit_Debug_Info and then Present (Type_Data)
         and then Relationship (V) = Reference
         and then Is_A_Global_Variable (V)
@@ -539,6 +562,9 @@ package body GNATLLVM.DebugInfo is
       Var_Data  : Metadata_T;
 
    begin
+      --  ??? We nly support the simple case of where we have data or a
+      --  reference to data.
+
       if Emit_Debug_Info and then Present (Type_Data)
         and then Relationship (V) in Reference | Data
       then

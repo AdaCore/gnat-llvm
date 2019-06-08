@@ -21,14 +21,6 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.DebugInfo is
 
-   Debug_Compile_Unit  : Metadata_T;
-   --  DICompilleUnit metadata for the main compile unit
-
-   type DI_File_Cache is array (Source_File_Index range <>) of Metadata_T;
-   type DI_File_Cache_Access is access all DI_File_Cache;
-
-   DI_Cache : DI_File_Cache_Access := null;
-
    procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T)
      with Pre => not Emit_Debug_Info or else Present (Scope);
    --  Push the current debug scope and make Scope the present scope.  Does

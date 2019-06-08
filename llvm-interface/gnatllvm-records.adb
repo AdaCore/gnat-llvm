@@ -457,7 +457,7 @@ package body GNATLLVM.Records is
             --  In the layout of the base type, which is of variable size, the
             --  LLVM struct will be { i32, i32, i8 } and the next fragment
             --  will be for field C.  The above struct has a size of 12
-            --  because the size is always a multiple of itsq alignment.
+            --  because the size is always a multiple of its alignment.
             --  However, if we have a subtype of R with X = 10, the struct for
             --  that subtype (now containing all the fields) will be
             --

@@ -55,7 +55,7 @@ package body GNATLLVM.Wrapper is
          Is_Unsigned : Bool_T) return Metadata_T
         with Import, Convention => C, External_Name => "Create_Enumerator";
    begin
-      return Create_Enumerator_C (Builder, Name, Value,
+      return Create_Enumerator_C (Builder, Name & ASCII.NUL, Value,
                                   Boolean'Pos (Is_Unsigned));
    end Create_Enumerator;
 

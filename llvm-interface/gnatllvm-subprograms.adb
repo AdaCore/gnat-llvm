@@ -1177,6 +1177,7 @@ package body GNATLLVM.Subprograms is
                then Get_Param (Func, Param_Num, GT, R) else No_GL_Value);
             P_Name : aliased constant String  := Get_Name (Param);
             A_Name : aliased constant String  := P_Name & ".addr";
+            P_Num  : Nat                      := Param_Num + 1;
             Name   : String_Access            := P_Name'Access;
 
          begin
@@ -1189,12 +1190,14 @@ package body GNATLLVM.Subprograms is
             --  If this is an out parameter, we have to make a variable
             --  for it, possibly initialized to our parameter value if this
             --  is also an in parameter.  Otherwise, we can use the parameter
-            --  unchanged.
+            --  unchanged.  If we make a variable for it, indicate that
+            --  the variable is no longer a parameter.
 
             if PK_Is_Out (PK) then
                LLVM_Param := Allocate_For_Type (GT, GT, Param, V,
                                                 Def_Ident => Param,
                                                 Name      => Name.all);
+               P_Num      := 0;
             else
                LLVM_Param := V;
             end if;
@@ -1210,6 +1213,7 @@ package body GNATLLVM.Subprograms is
                Param_Num := Param_Num + 1;
             end if;
 
+            Build_Local_Variable_Debug_Data (Param, LLVM_Param, P_Num);
             Next_Formal_With_Extras (Param);
          end;
       end loop;

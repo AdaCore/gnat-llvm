@@ -90,9 +90,10 @@ package GNATLLVM.DebugInfo is
    --  location.
 
    procedure Build_Local_Variable_Debug_Data
-     (Def_Ident : Entity_Id; V : GL_Value)
+     (Def_Ident : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
      with Pre => not Is_Type (Def_Ident) and then Present (V);
-   --  Likewise, for local variables
+   --  Likewise, for local variables.  Arg_Num is the argument number if
+   --  this is for a parameter.
 
    Empty_DI_Expr : Metadata_T;
    --  An empty DI_Expr

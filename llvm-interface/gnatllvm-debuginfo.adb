@@ -531,7 +531,7 @@ package body GNATLLVM.DebugInfo is
    -------------------------------------
 
    procedure Build_Local_Variable_Debug_Data
-     (Def_Ident : Entity_Id; V : GL_Value)
+     (Def_Ident : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
    is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
@@ -542,13 +542,23 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info and then Present (Type_Data)
         and then Relationship (V) in Reference | Data
       then
-         Var_Data :=
-           DI_Create_Auto_Variable
-           (DI_Builder, Current_Debug_Scope, Name, Name'Length,
-            Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
-            unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
-            Type_Data, False, DI_Flag_Zero,
-            unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
+         if Arg_Num = 0 then
+            Var_Data :=
+              DI_Create_Auto_Variable
+              (DI_Builder, Current_Debug_Scope, Name, Name'Length,
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
+               unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+               Type_Data, False, DI_Flag_Zero,
+               unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
+         else
+            Var_Data :=
+              DI_Create_Parameter_Variable
+              (DI_Builder, Current_Debug_Scope, Name, Name'Length,
+               unsigned (Arg_Num),
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
+               unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+               Type_Data, False, DI_Flag_Zero);
+         end if;
 
          --  If this is a reference, insert a dbg.declare call.  Otherwise,
          --  a dbg.value call.  ???  However, there sees to be an LLVM issue

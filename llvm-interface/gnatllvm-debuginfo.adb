@@ -536,11 +536,12 @@ package body GNATLLVM.DebugInfo is
 
    begin
       --  ??? For globals, we only do something now if this is a normal
-      --  reference to the data.
+      --  reference to the data and if it's not imported.
 
       if Emit_Debug_Info and then Present (Type_Data)
         and then Relationship (V) = Reference
         and then Is_A_Global_Variable (V)
+        and then not Is_Imported (Def_Ident)
       then
          Global_Set_Metadata
            (LLVM_Value (V), 0,

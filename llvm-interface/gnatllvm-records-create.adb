@@ -1105,14 +1105,17 @@ package body GNATLLVM.Records.Create is
                return AF_Left.Var_Depth < AF_Right.Var_Depth;
 
             --  Unless reordering is disabled, put packable fields after
-            --  non-packable, fixed-length fields.
+            --  non-packable, fixed-length fields.  But don't do this if we
+            --  aren't to reorder fields or for tagged records (since an
+            --  extension could add packing but we must have the same
+            --  ordering in extensions).
 
-            elsif not No_Reordering (TE) and then Pack_L
-              and then not Pack_R and then not Dynamic_R
+            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
+              and then Pack_L and then not Pack_R and then not Dynamic_R
             then
                return False;
-            elsif not No_Reordering (TE) and then Pack_R
-              and then not Pack_L and then not Dynamic_L
+            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
+              and then Pack_R and then not Pack_L and then not Dynamic_L
             then
                return True;
 
@@ -1129,14 +1132,16 @@ package body GNATLLVM.Records.Create is
 
             --  Fixed-size fields come before variable-sized ones if this
             --  record is packed or has aliased components.  But don't do
-            --  this if we aren't to reorder fields.
+            --  this if we aren't to reorder fields or for tagged records
+            --  (since an extension could add an aliased field but we must
+            --  have the same ordering in extensions).
 
-            elsif not No_Reordering (TE)
+            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
               and then (Is_Packed (TE) or else Aliased_Fields)
               and then not Dynamic_L and then Dynamic_R
             then
                return True;
-            elsif not No_Reordering (TE)
+            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
               and then (Is_Packed (TE) or else Aliased_Fields)
               and then not Dynamic_R and then Dynamic_L
             then

@@ -1729,7 +1729,7 @@ package body GNATLLVM.Variables is
 
          --  Make debugging information for the globel variable
 
-         Build_Global_Variable_Debug_Data (Def_Ident, LLVM_Var);
+         Create_Global_Variable_Debug_Data (Def_Ident, LLVM_Var);
       end if;
 
       --  Back-annotate size and alignment
@@ -1873,7 +1873,7 @@ package body GNATLLVM.Variables is
 
       --  Generate debug information
 
-      Build_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
+      Create_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
 
    end Emit_Declaration;
 

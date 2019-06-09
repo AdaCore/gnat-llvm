@@ -1198,7 +1198,7 @@ package body GNATLLVM.Compile is
                                               (if Reversed then High else Low),
                                               Def_Ident => Def_Ident);
                Set_Value (Def_Ident, LLVM_Var);
-               Build_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
+               Create_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
 
                --  Then go to the condition block if the range isn't empty.
                --  Note that this comparison must be done in the base type.

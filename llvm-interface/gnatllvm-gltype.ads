@@ -304,6 +304,10 @@ package GNATLLVM.GLType is
        and then Ekind (Full_Designated_GL_Type (GT)) = E_Subprogram_Type)
      with Pre => Present (GT);
 
+   function Is_Tagged_Type (GT : GL_Type) return Boolean is
+     (Is_Tagged_Type (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Is_Constrained (GT : GL_Type) return Boolean is
      (Is_Constrained (Full_Etype (GT)))
      with Pre => Present (GT);

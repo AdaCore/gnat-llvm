@@ -105,6 +105,18 @@ package body GNATLLVM.Types is
    --  type, either an integer or pointer to anything.  Alloc_GT is the
    --  type that was used to allocate the memory.
 
+   function GT_To_Use (GT, Alloc_GT : GL_Type) return GL_Type is
+     ((if   Is_Unconstrained_Type (Alloc_GT)
+            and then not Is_Unconstrained_Type (GT)
+            and then not Is_Tagged_Type (GT)
+       then GT else Alloc_GT))
+     with Pre  => Present (GT) and then Present (Alloc_GT),
+          Post => GT_To_Use'Result in GT | Alloc_GT;
+   --  When we have a GT for an object and a GT to use for allocating the
+   --  object, return the one we're to use.  We normally want to use
+   --  Alloc_GT, but an exception is if it's constrained and GT isn't
+   --  unless this is a tagged type.
+
    --  We put the function used to compute sizes into a generic so that we
    --  can instantiate it using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -591,10 +603,7 @@ package body GNATLLVM.Types is
    is
       R        : constant GL_Relationship := Relationship_For_Alloc (GT);
       New_Expr : constant Node_Id         := Strip_Complex_Conversions (Expr);
-      Mem_GT   : constant GL_Type         :=
-        (if   Is_Unconstrained_Type (Alloc_GT)
-              and then not Is_Unconstrained_Type (GT)
-         then GT else Alloc_GT);
+      Mem_GT   : constant GL_Type         := GT_To_Use (GT, Alloc_GT);
       Memory   : GL_Value                 :=
         (if   Is_Access_Type (Temp)
          then Ptr_To_Relationship (Temp, Mem_GT, R)
@@ -1135,13 +1144,7 @@ package body GNATLLVM.Types is
    is
       Class_Wide : constant Boolean :=
         Is_Class_Wide_Equivalent_Type (Alloc_GT);
-      Size_GT    : constant GL_Type :=
-        (if   Is_Unconstrained_Type (Alloc_GT)
-              and then not Is_Unconstrained_Type (GT)
-         then GT else Alloc_GT);
-      --  For sizing purposes, we normally want to use Alloc_GT, but an
-      --  exception is if it's constrained and GT isn't.
-
+      Size_GT    : constant GL_Type := GT_To_Use (GT, Alloc_GT);
       Size       : GL_Value         :=
         Get_Type_Size (Size_GT,
                        (if   not For_Dealloc and then Class_Wide
@@ -1172,10 +1175,7 @@ package body GNATLLVM.Types is
       Alloc_GT : GL_Type;
       E        : Entity_Id := Empty) return Nat
    is
-      Align_GT : constant GL_Type :=
-        (if   Is_Unconstrained_Type (Alloc_GT)
-              and then not Is_Unconstrained_Type (GT)
-         then GT else Alloc_GT);
+      Align_GT    : constant GL_Type := GT_To_Use (GT, Alloc_GT);
       GT_Align    : constant Nat  := Get_Type_Alignment (Align_GT);
       E_Align     : constant Nat  :=
         (if   Present (E) and then Known_Alignment (E)

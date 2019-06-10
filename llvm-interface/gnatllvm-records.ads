@@ -174,12 +174,19 @@ package GNATLLVM.Records is
 
    function Build_Field_Store
      (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value) return GL_Value
-     with  Pre  => Is_Record_Type (Related_Type (LHS))
-                   and then Present (RHS)
-                   and then Ekind_In (In_F, E_Component, E_Discriminant);
+     with  Pre => Is_Record_Type (Related_Type (LHS))
+                  and then Present (RHS)
+                  and then Ekind_In (In_F, E_Component, E_Discriminant);
    --  Likewise, but perform a store of RHS into the F component of LHS.
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.
+
+   procedure Build_Field_Store
+     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value)
+     with  Pre => Is_Record_Type (Related_Type (LHS))
+                  and then Present (RHS)
+                  and then Ekind_In (In_F, E_Component, E_Discriminant);
+   --  Similar to the function version, but we always update LHS.
 
    procedure Perform_Writebacks;
    --  Perform any writebacks put onto the stack by the Add_Write_Back

@@ -812,6 +812,10 @@ package body GNATLLVM.Arrays is
       Value : GL_Value;
 
    begin
+      --  First, store the bounds if needed
+
+      Maybe_Store_Bounds (LValue, No_GL_Value, GT, False);
+
       --  Find the innermost N_Aggregate and get the value to use
 
       while Nkind (E) = N_Aggregate and then Is_Others_Aggregate (E) loop
@@ -902,21 +906,41 @@ package body GNATLLVM.Arrays is
       --  The back-end supports exactly two types of array aggregates.
       --  One, which we handle here, is for a fixed-size aggregate.  The
       --  other are very special cases of Others that are tested for in
-      --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.  We handle them in
-      --  Emit_Assignment.
-      --
-      --  First handle the case where we have all constants.  In that
-      --  case, it's better to just make the array directly.  The test
-      --  here checks for multi-dimensional Fortran arrays, which we don't
-      --  handle.  However, we can only do this if we're either at the
-      --  top level of the array or the type is loadable.
+      --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.
 
-      if Is_No_Elab_Needed (N)
+      --  This may be an Others aggregate if it's not directly on the RHS
+      --  of an assignment statement, for example if we're assigning such
+      --  to a bitfield.  So handle it here.
+
+      if Is_Others_Aggregate (N) then
+
+         --  If we've already been passed in an LHS, use it.  Otherwise,
+         --  allocate one.
+
+         declare
+            Result : constant GL_Value :=
+              (if   Present (Value_So_Far) then Value_So_Far
+               else Allocate_For_Type (GT, GT, N));
+
+         begin
+            Emit_Others_Aggregate (Result, N);
+            return Result;
+         end;
+
+      --  Handle the case where we have all constants.  In that case, it's
+      --  better to just make the array directly.  The test here checks for
+      --  multi-dimensional Fortran arrays, which we don't handle.
+      --  However, we can only do this if we're either at the top level of
+      --  the array or the type is loadable.
+
+      elsif Is_No_Elab_Needed (N)
         and then (Is_Loadable_Type (GT)
                     or else Dims_Left = Number_Dimensions (GT))
       then
          return Emit_Constant_Aggregate (N, Comp_GT, GT, Dims_Left);
       end if;
+
+      --  Otherwise we have a normal aggregate
 
       Expr := First (Expressions (N));
       return Cur_Value : GL_Value := Value_So_Far do

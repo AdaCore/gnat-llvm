@@ -20,7 +20,6 @@ with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Restrict; use Restrict;
-with Sem_Aggr; use Sem_Aggr;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Stand;    use Stand;
@@ -416,40 +415,26 @@ package body GNATLLVM.Compile is
 
          when N_Assignment_Statement =>
 
-            --  If the LHS is an N_Selected_Component, handle this specially
-            --  since this might be a bitfield assignment.  But be careful
-            --  not to do this if the RHS is an "others" aggregate unless
-            --  this is a bitfield, in which case we must use the helper.
+            declare
+               LHS    : GL_Value;
+               F      : Entity_Id;
 
-            if Nkind (Name (N)) = N_Selected_Component
-              and then not (Nkind_In (Expression (N), N_Aggregate,
-                                      N_Extension_Aggregate)
-                              and then Is_Others_Aggregate (Expression (N))
-                              and then not Is_Bitfield (Entity
-                                                          (Selector_Name
-                                                             (Name (N)))))
-            then
-               declare
-                  --  ??? Need to support "others aggregate here"
+            begin
+               --  Get the LHS to evaluate and see if we need to do a
+               --  field operation.  If so, it may return a value that
+               --  we have to copy into the result.
 
-                  Pref   : constant Node_Id   := Prefix (Name (N));
-                  Result : constant GL_Value  :=
-                    Build_Field_Store (Emit_LValue (Pref, For_LHS => True),
-                                       Entity (Selector_Name (Name (N))),
-                                       Emit_Expression (Expression (N)));
-
-               begin
-                  if Present (Result) then
-                     Emit_Assignment (Emit_LValue (Pref, For_LHS => True),
-                                      Value => Result);
-                  end if;
-               end;
-            else
-               Emit_Assignment (Emit_LValue (Name (N), For_LHS => True),
-                                Expr         => Expression (N),
-                                Forwards_OK  => Forwards_OK (N),
-                                Backwards_OK => Backwards_OK (N));
-            end if;
+               LHS_And_Field_For_Assignment (Name (N), LHS, F,
+                                             For_LHS => True);
+               if Present (F) then
+                  Build_Field_Store (LHS, F, Emit_Expression (Expression (N)));
+               else
+                  Emit_Assignment (LHS,
+                                   Expr         => Expression (N),
+                                   Forwards_OK  => Forwards_OK (N),
+                                   Backwards_OK => Backwards_OK (N));
+               end if;
+            end;
 
             --  Deal with any writebacks needed if we had a bitfield in an
             --  LHS context above.
@@ -992,11 +977,9 @@ package body GNATLLVM.Compile is
             else
                pragma Assert (Is_Array_Type (GT));
                --  The back-end supports exactly two types of array
-               --  aggregates.  One, which we handle here, is for a
-               --  fixed-size aggregate.  The other are very special cases
-               --  of Others that are tested for in
-               --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.  We handle
-               --  them in Emit_Assignment.
+               --  aggregates.  One is for a fixed-size aggregate.  The
+               --  other are very special cases of Others that are tested
+               --  for in Aggr_Assignment_OK_For_Backend in Exp_Aggr.
 
                return Emit_Array_Aggregate
                  (N, Number_Dimensions (GT), (1 .. 0 => <>),

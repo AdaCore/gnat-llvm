@@ -1877,9 +1877,14 @@ package body GNATLLVM.Records is
       --  since there's a chance it wasn't yet elaborated.
 
    begin
-      --  First handle the cases where F isn't a bitfield
+      --  First check for the trivial case of a zero-length field
 
-      if not Is_Bitfield (F) then
+      if Esize (F) = 0 then
+         return (if Is_Data (LHS) then LHS else No_GL_Value);
+
+      --  Then handle the cases where F isn't a bitfield
+
+      elsif not Is_Bitfield (F) then
          if Is_Data (LHS) then
             Result := Insert_Value (LHS, Get (RHS_Cvt, Data), unsigned (Idx));
          else
@@ -1887,12 +1892,6 @@ package body GNATLLVM.Records is
          end if;
 
          return Result;
-      end if;
-
-      --  First check for the trivial case of a zero-length field
-
-      if Esize (F) = 0 then
-         return (if Is_Data (LHS) then LHS else No_GL_Value);
       end if;
 
       --  Now we handle the bitfield case.  Like the load case, we do our
@@ -2036,6 +2035,23 @@ package body GNATLLVM.Records is
          return Result;
       end;
 
+   end Build_Field_Store;
+
+   -----------------------
+   -- Build_Field_Store --
+   -----------------------
+
+   procedure Build_Field_Store
+     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value)
+   is
+      Result : constant GL_Value := Build_Field_Store (LHS, In_F, RHS);
+
+   begin
+      --  If we have a value, copy it back into LHS
+
+      if Present (Result) then
+         Emit_Assignment (LHS, Value => Result);
+      end if;
    end Build_Field_Store;
 
    --------------------

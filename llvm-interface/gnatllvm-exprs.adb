@@ -46,6 +46,45 @@ package body GNATLLVM.Exprs is
    --  of an object.  Returns a GL_Value that's a reference that points into
    --  an object and a number of bits that must be added to that value.
 
+   ----------------------------------
+   -- LHS_And_Field_For_Assignment --
+   ----------------------------------
+
+   procedure LHS_And_Field_For_Assignment
+     (N             : Node_Id;
+      LHS           : out GL_Value;
+      F             : out Entity_Id;
+      For_LHS       : Boolean := False;
+      Only_Bitfield : Boolean := False)
+   is
+      LHS_Expr : Node_Id   := N;
+
+   begin
+      --  Start by assuming there's no special field processing, then
+      --  see if there is.
+
+      F := Empty;
+      if Nkind (N) = N_Selected_Component then
+         declare
+            Fld  : constant Entity_Id := Entity (Selector_Name (N));
+
+         begin
+            --  If we want field processing for all fields or if this is a
+            --  bitfield, set the field and LHS.
+
+            if not Only_Bitfield or else Is_Bitfield (Fld) then
+               LHS_Expr := Prefix (N);
+               F        := Entity (Selector_Name (N));
+            end if;
+         end;
+      end if;
+
+      --  Finally, evaluate the LHS needed, either the prefix of the
+      --  selector or our input.
+
+      LHS := Emit_LValue (LHS_Expr, For_LHS => For_LHS);
+   end LHS_And_Field_For_Assignment;
+
    ----------------
    -- Emit_Undef --
    ----------------
@@ -1061,7 +1100,6 @@ package body GNATLLVM.Exprs is
         and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
         and then Is_Others_Aggregate (E)
       then
-         Maybe_Store_Bounds (Dest, No_GL_Value, Full_GL_Type (E), False);
          Emit_Others_Aggregate (Dest, E);
          return;
       end if;

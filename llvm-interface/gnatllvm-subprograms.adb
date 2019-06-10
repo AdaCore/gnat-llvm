@@ -2037,7 +2037,9 @@ package body GNATLLVM.Subprograms is
          end if;
 
          --  Now do the assignment.  We could call Emit_Assignment, but
-         --  we've already done almost all of the work above.
+         --  we've already done almost all of the work above.  We know that
+         --  this must be a native type because we don't try to use a value
+         --  mechanism for non-native types.
 
          Store (RHS, LHS);
       end Write_Back;

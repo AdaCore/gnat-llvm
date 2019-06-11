@@ -648,6 +648,13 @@ package body GNATLLVM.Types.Create is
                        Max_Size   => Is_Unconstrained_Record (Size_GT),
                        No_Padding => True);
 
+      --  If this is for a variable, round up the size to the alignment
+      --  of the type.
+
+      if Is_Var then
+         In_Size := Align_To (In_Size, 1, Get_Type_Alignment (GT));
+      end if;
+
       --  If this is an access to an unconstrained array, both the size of
       --  a pointer and twice that size is valid.
 

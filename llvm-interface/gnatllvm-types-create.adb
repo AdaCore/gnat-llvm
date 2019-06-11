@@ -671,7 +671,7 @@ package body GNATLLVM.Types.Create is
          Error_Msg_NE_Num (Msg_Prefix &
                              " for& too small, minimum allowed is ^",
                            Error_Node, E, In_Size * BPU);
-         return No_Uint;
+         return UI_From_GL_Value (In_Size * BPU);
       end if;
 
       --  Otherwise, we're good

@@ -342,6 +342,8 @@ package body GNATLLVM.Conditionals is
       Orig_LHS, Orig_RHS : GL_Value) return GL_Value
    is
       Operation    : constant Pred_Mapping := Get_Preds (Kind);
+      LHS_GT       : constant GL_Type      := Related_Type (Orig_LHS);
+      RHS_GT       : constant GL_Type      := Related_Type (Orig_RHS);
       LHS          : GL_Value              := Orig_LHS;
       RHS          : GL_Value              := Orig_RHS;
 
@@ -390,10 +392,12 @@ package body GNATLLVM.Conditionals is
          end if;
 
          --  Now just do the normal comparison, but be sure to get the
-         --  signedness from the original type, not the base type.
+         --  signedness from the original type, not the base type, unless
+         --  the two inputs are of different types.
 
          return I_Cmp
-           ((if   Is_Unsigned_Type (Orig_LHS) or else Is_Access_Type (LHS)
+           ((if   (Is_Unsigned_Type (Orig_LHS) and then LHS_GT = RHS_GT)
+                  or else Is_Access_Type (LHS)
              then Operation.Unsigned else Operation.Signed),
             LHS, RHS);
 

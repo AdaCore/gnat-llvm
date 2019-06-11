@@ -1204,7 +1204,7 @@ package body GNATLLVM.Variables is
                   Our_Align := 2;
                when 3 .. 4 =>
                   Our_Align := 4;
-               when 5 .. 8 =>
+               when 5 .. 16 =>
                   Our_Align := 8;
                when others =>
                   null;

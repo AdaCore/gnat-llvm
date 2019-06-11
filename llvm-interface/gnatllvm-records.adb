@@ -666,8 +666,9 @@ package body GNATLLVM.Records is
          Total_Size   : Result         := Sz_Const (0);
          Cur_Align    : Nat            := Get_Maximum_Alignment;
          Cur_Idx      : Record_Info_Id :=
-           (if   Present (Start_Idx) then Start_Idx elsif Present (TE)
-            then Get_Record_Info (TE) else Empty_Record_Info_Id);
+           (if    Present (Start_Idx) then Start_Idx
+            elsif Present (TE) then Get_Record_Info (TE)
+            else  Empty_Record_Info_Id);
          Must_Align   : Nat            := 1;
          Pushed_Stack : Boolean        := False;
          This_Align   : Nat;
@@ -1175,13 +1176,14 @@ package body GNATLLVM.Records is
    is
       TE       : constant Entity_Id := Full_Etype (F);
       Our_Pos  : constant Uint      :=
-        (if   Pos /= No_Uint then Pos elsif Present (Component_Clause (F))
-         then Component_Bit_Offset (F) else No_Uint);
+        (if   Pos /= No_Uint then Pos
+         elsif Present (Component_Clause (F)) then Component_Bit_Offset (F)
+         else No_Uint);
       Our_Size : constant Uint      :=
-        (if   Size /= No_Uint then Size elsif Is_Packable_Field (F)
-         then RM_Size (TE)
+        (if    Size /= No_Uint then Size
+         elsif Is_Packable_Field (F) then RM_Size (TE)
          elsif Known_Esize (F) and then Is_Static_SO_Ref (Esize (F))
-         then Esize (F) else No_Uint);
+         then  Esize (F) else No_Uint);
 
    begin
       --  If the position is specified and isn't byte-aligned, it's a bitfield

@@ -77,7 +77,7 @@ package body GNATLLVM.Subprograms is
    --  True if this parameter kind represents a value passed by reference
 
    function PK_Is_In_Or_Ref (PK : Param_Kind) return Boolean is
-     (PK not in Out_Value);
+     (PK /= Out_Value);
    --  True if this parameter kind corresponds to an input parameter to
    --  the subprogram in the C sense.
 

@@ -72,7 +72,7 @@ package body GNATLLVM.Exprs is
             --  If we want field processing for all fields or if this is a
             --  bitfield, set the field and LHS.
 
-            if not Only_Bitfield or else Is_Bitfield (Fld) then
+            if not Only_Bitfield or else Is_Bitfield_By_Rep (Fld) then
                LHS_Expr := Prefix (N);
                F        := Entity (Selector_Name (N));
             end if;

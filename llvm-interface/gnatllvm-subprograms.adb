@@ -1965,10 +1965,23 @@ package body GNATLLVM.Subprograms is
      (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
    is
       pragma Unreferenced (LHS);
-      procedure Write_Back (In_LHS, In_RHS : GL_Value)
-        with Pre => Present (In_LHS) and then Present (In_RHS)
-                    and then Is_Data (In_RHS) and then Is_Reference (In_LHS);
-      --  Write the value in In_RHS to the location In_LHS
+      procedure Write_Back
+        (In_LHS : GL_Value; F : Entity_Id; In_RHS : GL_Value)
+        with Pre => Present (In_RHS) and then Is_Reference (In_LHS)
+                    and then (No (F)
+                                or else Ekind_In (F, E_Component,
+                                                  E_Discriminant));
+      --  Write the value in In_RHS to the location In_LHS.  F, if Present,
+      --  is a field into In_LHS to write.
+
+      type WB is record
+         LHS, RHS : GL_Value;
+         Field    : Entity_Id;
+      end record;
+      --   A writeback entry for an by-ref type that's In or In Out
+
+      type WB_Array     is array (Nat range <>) of WB;
+      type Entity_Array is array (Nat range <>) of Entity_Id;
 
       Subp             : Node_Id              := Name (N);
       Our_Return_GT    : constant GL_Type     := Full_GL_Type (N);
@@ -1985,7 +1998,7 @@ package body GNATLLVM.Subprograms is
       No_Adjust_LV     : constant Boolean     := Contains_Discriminant (N);
       In_Idx           : Nat                  := 1;
       Out_Idx          : Nat                  := 1;
-      Ret_Idx          : Nat                  := 1;
+      Ret_Idx          : Nat                  := 0;
       Result           : GL_Value             := No_GL_Value;
       Foreign          : constant Boolean     :=
         Has_Foreign_Convention (Subp_Typ);
@@ -1995,7 +2008,10 @@ package body GNATLLVM.Subprograms is
         Orig_Arg_Count + (if This_Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);
       Args             : GL_Value_Array (1 .. Arg_Count);
+      WBs              : WB_Array       (1 .. Arg_Count) :=
+        (others => (No_GL_Value, No_GL_Value, Empty));
       Out_LHSs         : GL_Value_Array (1 .. Out_Arg_Count);
+      Out_Flds         : Entity_Array   (1 .. Out_Arg_Count);
       Actual_Return    : GL_Value;
       S_Link           : GL_Value;
       LLVM_Func        : GL_Value;
@@ -2006,10 +2022,13 @@ package body GNATLLVM.Subprograms is
       -- Write_Back --
       ----------------
 
-      procedure Write_Back (In_LHS, In_RHS : GL_Value) is
+      procedure Write_Back
+         (In_LHS : GL_Value; F : Entity_Id; In_RHS : GL_Value)
+      is
          LHS      : GL_Value         := In_LHS;
-         RHS      : GL_Value         := In_RHS;
-         LHS_GT   : constant GL_Type := Related_Type (LHS);
+         RHS      : GL_Value         := Get (In_RHS, Object);
+         LHS_GT   : constant GL_Type :=
+           (if Present (F) then Get_Field_Type (F) else Related_Type (LHS));
          RHS_GT   : constant GL_Type := Related_Type (RHS);
 
       begin
@@ -2020,28 +2039,30 @@ package body GNATLLVM.Subprograms is
 
          --  We've looked through any conversions in the actual and
          --  evaluated the actual LHS to be assigned before the call.  We
-         --  wouldn't be here is this were a dynamic-sized type, and we
+         --  wouldn't be here if this were a dynamic-sized type, and we
          --  know that the types of LHS and RHS are similar, but it may be
          --  a small record and the types on both sides may differ.
          --
          --  If we're dealing with elementary types, convert the RHS to the
          --  type of the LHS.  Otherwise, convert the type of the LHS to be
-         --  a reference to the type of the RHS.
+         --  a reference to the type of the RHS unless this is a field store.
 
          if Is_Elementary_Type (LHS_GT)
            and then not Is_Packed_Array_Impl_Type (LHS_GT)
          then
             RHS := Convert (RHS, LHS_GT);
-         else
+         elsif No (F) then
             LHS := Convert_Ref (LHS, RHS_GT);
          end if;
 
-         --  Now do the assignment.  We could call Emit_Assignment, but
-         --  we've already done almost all of the work above.  We know that
-         --  this must be a native type because we don't try to use a value
-         --  mechanism for non-native types.
+         --  Now do the assignment, either directly or as a bitfield store
 
-         Store (RHS, LHS);
+         if Present (F) then
+            Build_Field_Store (LHS, F, RHS);
+         else
+            Emit_Assignment (LHS, Value => RHS);
+         end if;
+
       end Write_Back;
 
    begin  -- Start of processing for Emit_Call
@@ -2102,6 +2123,8 @@ package body GNATLLVM.Subprograms is
             GT  : constant GL_Type         := Full_GL_Type (Param);
             PK  : constant Param_Kind      := Get_Param_Kind (Param);
             R   : constant GL_Relationship := Relationship_For_PK (PK, GT);
+            F   : Entity_Id                := Empty;
+            LHS : GL_Value                 := No_GL_Value;
             Arg : GL_Value;
 
          begin
@@ -2118,12 +2141,31 @@ package body GNATLLVM.Subprograms is
                --  If the param isn't passed by reference, convert the
                --  value to the parameter's type.  If it is, convert the
                --  pointer to being a pointer to the parameter's type.
+               --  If this is an Out or In Out parameter, we need to check
+               --  if this is a bitfield reference.
 
                if PK_Is_Reference (PK) then
-                  Arg := Emit_LValue (Actual);
-                  Arg := (if   PK = Foreign_By_Ref
-                          then Ptr_To_Relationship (Get (Arg, R), GT, R)
-                          else Convert_Ref (Arg, GT));
+                  if Ekind (Param) = E_In_Parameter then
+                     LHS := Emit_LValue (Actual);
+                  else
+                     LHS_And_Field_For_Assignment (Actual, LHS, F,
+                                                   For_LHS       => True,
+                                                   Only_Bitfield => True);
+                  end if;
+
+                  --  If this is a bitfield reference, we need to create
+                  --  a temporary for this reference, initialize it to
+                  --  the field load, and set up for a writeback.
+
+                  if Present (F) then
+                     Arg := Allocate_For_Type (GT, GT, N => Actual,
+                                               V => Build_Field_Load (LHS, F));
+                     WBs (In_Idx) := (LHS => LHS, RHS => Arg, Field => F);
+                  else
+                     Arg := (if   PK = Foreign_By_Ref
+                               then Ptr_To_Relationship (Get (LHS, R), GT, R)
+                               else Convert_Ref (LHS, GT));
+                  end if;
                else
                   Arg := Get (Emit_Conversion (Actual, GT), Data);
                end if;
@@ -2141,11 +2183,16 @@ package body GNATLLVM.Subprograms is
             --  writeback.
 
             if PK_Is_Out (PK) then
-               Out_LHSs (Out_Idx) :=
-                 (if   PK_Is_In_Or_Ref (PK) and then Is_Undef (Arg)
-                  then Get_Undef_Ref (GT)
-                  else Emit_LValue (Strip_Conversions (Actual),
-                                    For_LHS => True));
+               if PK_Is_In_Or_Ref (PK) and then Is_Undef (Arg) then
+                  LHS := Get_Undef_Ref (GT);
+               elsif No (LHS) or else Actual /= Strip_Conversions (Actual) then
+                  LHS_And_Field_For_Assignment (Strip_Conversions (Actual),
+                                                LHS, F,
+                                                For_LHS       => True);
+               end if;
+
+               Out_LHSs (Out_Idx) := LHS;
+               Out_Flds (Out_Idx) := F;
                Out_Idx := Out_Idx + 1;
             end if;
          end;
@@ -2155,10 +2202,8 @@ package body GNATLLVM.Subprograms is
          pragma Assert (No (Actual) = No (Param));
       end loop;
 
-      --  Perform any needed write-backs if any of the above had an LHS
-      --  involving a bitfield.  Then pop the LValue list if we pushed it.
+      --  Pop the LValue list if we pushed it
 
-      Perform_Writebacks;
       if not No_Adjust_LV then
          Pop_LValue_List;
       end if;
@@ -2190,14 +2235,14 @@ package body GNATLLVM.Subprograms is
             --  Write back the single out parameter to our saved LHS
 
             Write_Back
-              (Out_LHSs (1), Call (LLVM_Func, Full_GL_Type (Out_Param), Args));
+              (Out_LHSs (1), Out_Flds (1),
+               Call (LLVM_Func, Full_GL_Type (Out_Param), Args));
 
          when Struct_Out | Struct_Out_Subprog =>
             Actual_Return := Call_Struct (LLVM_Func, Return_GT, Args);
 
             --  First extract the return value (possibly returned by-ref)
 
-            Ret_Idx := 0;
             if LRK = Struct_Out_Subprog then
                if RK = RK_By_Reference then
                   Result := Extract_Value_To_Ref (Return_GT, Actual_Return,
@@ -2214,7 +2259,7 @@ package body GNATLLVM.Subprograms is
 
             Out_Idx := 1;
             while Present (Out_Param) loop
-               Write_Back (Out_LHSs (Out_Idx),
+               Write_Back (Out_LHSs (Out_Idx), Out_Flds (Out_Idx),
                            Extract_Value (Full_GL_Type (Out_Param),
                                           Actual_Return, unsigned (Ret_Idx)));
                Ret_Idx := Ret_Idx + 1;
@@ -2223,6 +2268,18 @@ package body GNATLLVM.Subprograms is
             end loop;
       end case;
 
+      --  Do writebacks for by-reference types that reference bitfields
+
+      for J in WBs'Range loop
+         if Present (WBs (J).LHS) then
+            Write_Back (WBs (J).LHS, WBs (J).Field, WBs (J).RHS);
+         end if;
+      end loop;
+
+      --  Perform any needed write-backs in case any of the above had an
+      --  LHS involving a bitfield internally.
+
+      Perform_Writebacks;
       if RK = Return_By_Parameter then
          return Convert_Ref (Args (1), Our_Return_GT);
       else

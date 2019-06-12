@@ -18,6 +18,7 @@
 with Ada.Containers.Generic_Sort;
 
 with Debug;      use Debug;
+with Errout;     use Errout;
 with Exp_Util;   use Exp_Util;
 with Get_Targ;   use Get_Targ;
 with Nlists;     use Nlists;
@@ -837,20 +838,26 @@ package body GNATLLVM.Records.Create is
 
       procedure Add_Field (E : Entity_Id) is
          Clause    : constant Node_Id   := Component_Clause (E);
-         Pos       : constant Uint      :=
-           (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
          R_TE      : constant Entity_Id := Full_Scope (E);
          Def_GT    : constant GL_Type   := Default_GL_Type (Full_Etype (E));
          F_GT      : GL_Type            := Full_GL_Type (E);
-         Size      : constant Uint      :=
-           (if   Unknown_Esize (E) then No_Uint
-            else Validate_Size (E, Def_GT, Esize (E),
-                                Zero_Allowed => Present (Clause)));
          Align     : constant Nat       := Get_Type_Alignment (F_GT);
          Bit_Align : constant Nat       := Align * BPU;
          Parent_TE : constant Entity_Id :=
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
+         Error_Str : constant String    :=
+           (if    Is_Atomic (E)        then "atomic &"
+            elsif Is_Aliased (E)       then "aliased &"
+            elsif Is_Independent (E)   then "independent &"
+            elsif Strict_Alignment (E) then "& with aliased or tagged part"
+            else  "");
+         Pos       : Uint               :=
+           (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
+         Size      : Uint               :=
+           (if   Unknown_Esize (E) then No_Uint
+            else Validate_Size (E, Def_GT, Esize (E),
+                                Zero_Allowed => Present (Clause)));
          Var_Depth : Int                := 0;
          Var_Align : Nat                := 0;
 
@@ -885,32 +892,34 @@ package body GNATLLVM.Records.Create is
            and then Pos < Esize (Parent_TE)
          then
             Error_Msg_NE_Num
-              ("offset of & must be beyond parent, minimum allowed is ^",
+              ("position for & must be beyond parent, minimum allowed is ^",
                Position (Clause), E, Esize (Parent_TE) / BPU);
+            Pos := No_Uint;
 
-         --  If a position is specified and it's not a multiple of the
-         --  alignment of the type, we may have to give an error in some
-         --  cases.
+          --  If the position is not a multiple of the storage unit, then
+          --  error out and reset the position.
 
-         elsif Present (Clause) and then Pos mod Bit_Align /= 0 then
-            if Is_Atomic (E) then
-               Error_Msg_NE_Num
-                 ("position of atomic field& must be multiple of ^ bits",
-                  First_Bit (Clause), E, Bit_Align);
-            elsif Is_Aliased (E) then
-               Error_Msg_NE_Num
-                 ("position of aliased field& must be multiple of ^ bits",
-                  First_Bit (Clause), E, Bit_Align);
-            elsif Is_Independent (E) then
-               Error_Msg_NE_Num
-                 ("position of independent field& must be multiple of ^ bits",
-                  First_Bit (Clause), E, Bit_Align);
-            elsif Strict_Alignment (E) then
-               Error_Msg_NE_Num
-                 ("position of & with aliased or tagged part must be " &
-                    "multiple of ^ bits",
-                  First_Bit (Clause), E, Bit_Align);
-            end if;
+         elsif Present (Clause) and then Pos mod BPU /= 0
+           and then Error_Str'Length > 0
+         then
+            Error_Msg_NE ("position for " & Error_Str &
+                            " must be multiple of Storage_Unit",
+                          First_Bit (Clause), E);
+            Pos := No_Uint;
+
+         --  Likewise, if a position is specified and it's not a multiple
+         --  of the alignment of the type.
+
+         elsif Present (Clause) and then Pos mod Bit_Align /= 0
+           and then Error_Str'Length > 0
+         then
+            Error_Msg_NE_Num
+              ("position for " & Error_Str & " must be multiple of ^",
+                  First_Bit (Clause), E, Align);
+            Error_Msg_NE_Num
+              ("\\because alignment of its type& is ^",
+                  First_Bit (Clause), Full_Etype (E), Align);
+            Pos := No_Uint;
          end if;
 
          --  If this is to be an atomic field, verify that we can make it one
@@ -919,36 +928,41 @@ package body GNATLLVM.Records.Create is
             Check_OK_For_Atomic_Type (F_GT, E);
          end if;
 
+         --  If the size is not a multiple of the storage unit, then error
+         --  out and reset the size.
+
+         if Present (Clause) and then Size /= No_Uint
+           and then Size mod BPU /= 0 and then Error_Str'Length > 0
+         then
+            Error_Msg_NE ("size for " & Error_Str &
+                            " must be multiple of Storage_Unit",
+                          Last_Bit (Clause), E);
+            Size := No_Uint;
+
          --  If a size is specified and constant and is lower than
          --  the size of the type or larger than the type and the field
          --  is atomic or aliased, we may have to give an error. (The
          --  variable case is handled above.)
 
-         if Present (Clause) and then Size /= No_Uint
+         elsif Present (Clause) and then Size /= No_Uint
            and then not Is_Dynamic_Size (Def_GT)
            and then (Size_Const_Int (Size) < Get_Type_Size_In_Bits (Def_GT)
                        or else ((Is_Aliased (E) or else Is_Atomic (E))
                                 and then (Get_Type_Size_In_Bits (Def_GT)) <
                                   Size_Const_Int (Size)))
+           and then Error_Str'Length > 0
          then
-            if Is_Atomic (E) then
+            if Is_Atomic (E) or else Is_Aliased (E) then
                Error_Msg_NE_Num
-                 ("size of atomic field& must be ^ bits",
+                 ("size for " & Error_Str & " must be ^",
                   Last_Bit (Clause), E, Esize (Full_Etype (E)));
-            elsif Is_Aliased (E) then
+            else
                Error_Msg_NE_Num
-                 ("size of aliased field& must be ^ bits",
-                  Last_Bit (Clause), E, Esize (Full_Etype (E)));
-            elsif Is_Independent (E) then
-               Error_Msg_NE_Num
-                 ("size of independent field& must be at least ^ bits",
-                  Last_Bit (Clause), E, Esize (Full_Etype (E)));
-            elsif Strict_Alignment (E) then
-               Error_Msg_NE_Num
-                 ("size of & with aliased or tagged part must be at least " &
-                    "^ bits",
+                 ("size for " & Error_Str & " must be at least ^",
                   Last_Bit (Clause), E, Esize (Full_Etype (E)));
             end if;
+
+            Size := No_Uint;
          end if;
 
          --  Now add field to table

@@ -137,12 +137,14 @@ package GNATLLVM.Records is
    --  Indicate whether F is a field that we'll be packing.
 
    function Is_Bitfield_By_Rep
-     (F    : Entity_Id;
-      Pos  : Uint := No_Uint;
-      Size : Uint := No_Uint) return Boolean
+     (F            : Entity_Id;
+      Pos          : Uint := No_Uint;
+      Size         : Uint := No_Uint;
+      Use_Pos_Size : Boolean := True) return Boolean
      with Pre => Ekind_In (F, E_Component, E_Discriminant);
    --  True if we need bitfield processing for this field based on its
-   --  rep clause.  If specified, Pos and Size override that from F.
+   --  rep clause.  If Use_Pos_Size is specified, Pos and Size
+   --  override that from F.
 
    function Is_Array_Bitfield (F : Entity_Id) return Boolean
      with Pre  => Ekind_In (F, E_Component, E_Discriminant)

@@ -1170,17 +1170,18 @@ package body GNATLLVM.Records is
    ------------------------
 
    function Is_Bitfield_By_Rep
-     (F    : Entity_Id;
-      Pos  : Uint := No_Uint;
-      Size : Uint := No_Uint) return Boolean
+     (F            : Entity_Id;
+      Pos          : Uint := No_Uint;
+      Size         : Uint := No_Uint;
+      Use_Pos_Size : Boolean := True) return Boolean
    is
       TE       : constant Entity_Id := Full_Etype (F);
       Our_Pos  : constant Uint      :=
-        (if   Pos /= No_Uint then Pos
+        (if    Use_Pos_Size then Pos
          elsif Present (Component_Clause (F)) then Component_Bit_Offset (F)
-         else No_Uint);
+         else  No_Uint);
       Our_Size : constant Uint      :=
-        (if    Size /= No_Uint then Size
+        (if    Use_Pos_Size then Size
          elsif Is_Packable_Field (F) then RM_Size (TE)
          elsif Known_Esize (F) and then Is_Static_SO_Ref (Esize (F))
          then  Esize (F) else No_Uint);

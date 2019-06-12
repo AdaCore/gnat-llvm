@@ -432,8 +432,7 @@ package body GNATLLVM.Subprograms is
       --------------------
 
       function Is_Initialized (GT : GL_Type) return Boolean is
-         F  : Entity_Id;
-
+         F : Entity_Id;
       begin
          if Is_Access_Type (GT)
            or else (Is_Scalar_Type (GT)
@@ -460,7 +459,6 @@ package body GNATLLVM.Subprograms is
          else
             return False;
          end if;
-
       end Is_Initialized;
 
    begin
@@ -509,7 +507,7 @@ package body GNATLLVM.Subprograms is
       then
          return Activation_Record;
 
-      --  For foreign convension, the only time we pass by value is an
+      --  For foreign convention, the only time we pass by value is an
       --  elementary type that's an In parameter and Mechanism isn't
       --  By_Reference or any type with a Mechanism of By_Copy.
 
@@ -542,7 +540,6 @@ package body GNATLLVM.Subprograms is
          return (if   By_Ref_Mech = Default_By_Ref then By_Ref_Kind
                  else By_Copy_Kind);
       end if;
-
    end Get_Param_Kind;
 
    ---------------------

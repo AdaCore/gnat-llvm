@@ -1829,7 +1829,7 @@ package body GNATLLVM.Variables is
 
          --  If this is an elementary type (except if it's a PAT),
          --  be sure it's a value.  In any case, if it is a value, use that
-         --  valule for this variable.
+         --  value for this variable.
 
          if Is_Elementary_Type (GT) and then not Is_Packed_Array_Impl_Type (GT)
          then

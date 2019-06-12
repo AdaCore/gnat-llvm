@@ -2,6 +2,10 @@ project GNAT_LLVM_C is
    for Languages use ("C", "C++");
    for Object_Dir use "obj";
 
+   package Compiler is
+      for Driver ("C++") use "g++";
+   end Compiler;
+
    package Naming is
       for Body_Suffix ("C++") use ".cc";
    end Naming;

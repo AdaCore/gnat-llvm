@@ -609,8 +609,9 @@ package body GNATLLVM.Types is
          then Ptr_To_Relationship (Temp, Mem_GT, R)
          else Int_To_Relationship (Temp, Mem_GT, R));
       New_V    : GL_Value                 :=
-        (if   Present (V) then V elsif Present (New_Expr)
-         then Emit (New_Expr, LHS => Memory) else No_GL_Value);
+        (if    Present (V) then V
+         elsif Present (New_Expr) then Emit (New_Expr, LHS => Memory)
+         else  No_GL_Value);
 
    begin
       --  If this is to get bounds and data and we have a value to store
@@ -626,6 +627,8 @@ package body GNATLLVM.Types is
          else
             if not Is_Constrained (GT) or else No (New_V)
               or else New_V = Memory
+              or else (Is_Constr_Subt_For_UN_Aliased (GT) and then
+                         not Is_Constr_Subt_For_UN_Aliased (Alloc_GT))
             then
                Store (Get_Array_Bounds (GT, Alloc_GT, New_V),
                       Get (Memory, Reference_To_Bounds));
@@ -708,7 +711,7 @@ package body GNATLLVM.Types is
 
       if Is_Array_Type (Alloc_GT)
         and then not Is_Nonnative_Type (Full_Component_GL_Type (Alloc_GT))
-        and then not Is_Constr_Subt_For_UN_Aliased (Alloc_GT)
+        and then not Is_Constr_Subt_For_UN_Aliased (GT)
         and then not Overalign
       then
          Element_GT := Full_Component_GL_Type (Alloc_GT);
@@ -1157,7 +1160,7 @@ package body GNATLLVM.Types is
       --  Adjust size if constrained subtype for aliased unconstrained or
       --  for unconstrained itself.
 
-      if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT) then
+      if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (GT) then
          Size := Align_To (Size + Get_Bound_Size (GT),
                            Get_Type_Alignment (GT),
                            Get_Bound_Alignment (Full_Etype (GT)));

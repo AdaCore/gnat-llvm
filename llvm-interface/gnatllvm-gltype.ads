@@ -480,6 +480,10 @@ package GNATLLVM.GLType is
      (First_Index (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT);
 
+   function Strict_Alignment (GT : GL_Type) return Boolean is
+     (Strict_Alignment (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function First_Component_Or_Discriminant (GT : GL_Type) return Entity_Id is
      (First_Component_Or_Discriminant (Full_Etype (GT)))
      with Pre => Is_Record_Type (GT);

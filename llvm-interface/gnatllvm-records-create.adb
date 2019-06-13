@@ -837,29 +837,33 @@ package body GNATLLVM.Records.Create is
       ---------------
 
       procedure Add_Field (E : Entity_Id) is
-         Clause    : constant Node_Id   := Component_Clause (E);
-         R_TE      : constant Entity_Id := Full_Scope (E);
-         Def_GT    : constant GL_Type   := Default_GL_Type (Full_Etype (E));
-         F_GT      : GL_Type            := Full_GL_Type (E);
-         Align     : constant Nat       := Get_Type_Alignment (F_GT);
-         Bit_Align : constant Nat       := Align * BPU;
-         Parent_TE : constant Entity_Id :=
+         Clause      : constant Node_Id   := Component_Clause (E);
+         R_TE        : constant Entity_Id := Full_Scope (E);
+         Def_GT      : constant GL_Type   := Default_GL_Type (Full_Etype (E));
+         F_GT        : GL_Type            := Full_GL_Type (E);
+         Align       : constant Nat       := Get_Type_Alignment (F_GT);
+         Bit_Align   : constant Nat       := Align * BPU;
+         Parent_TE   : constant Entity_Id :=
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
-         Error_Str : constant String    :=
-           (if    Is_Atomic (E)        then "atomic &"
-            elsif Is_Aliased (E)       then "aliased &"
-            elsif Is_Independent (E)   then "independent &"
-            elsif Strict_Alignment (E) then "& with aliased or tagged part"
+         Atomic      : constant Boolean   :=
+           Is_Atomic_Or_VFA (E) or else Is_Atomic_Or_VFA (F_GT);
+         Independent : constant Boolean   :=
+           Is_Independent (E) or else Is_Independent (F_GT);
+         Error_Str   : constant String    :=
+           (if    Atomic                  then "atomic &"
+            elsif Is_Aliased (E)          then "aliased &"
+            elsif Independent             then "independent &"
+            elsif Strict_Alignment (F_GT) then "& with aliased or tagged part"
             else  "");
-         Pos       : Uint               :=
+         Pos         : Uint               :=
            (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
-         Size      : Uint               :=
+         Size        : Uint               :=
            (if   Unknown_Esize (E) then No_Uint
             else Validate_Size (E, Def_GT, Esize (E),
                                 Zero_Allowed => Present (Clause)));
-         Var_Depth : Int                := 0;
-         Var_Align : Nat                := 0;
+         Var_Depth   : Int                := 0;
+         Var_Align   : Nat                := 0;
 
       begin
          --  If we've pushed the variant stack and the top entry is static,
@@ -947,12 +951,12 @@ package body GNATLLVM.Records.Create is
          elsif Present (Clause) and then Size /= No_Uint
            and then not Is_Dynamic_Size (Def_GT)
            and then (Size_Const_Int (Size) < Get_Type_Size_In_Bits (Def_GT)
-                       or else ((Is_Aliased (E) or else Is_Atomic (E))
+                       or else ((Is_Aliased (E) or else Atomic)
                                 and then (Get_Type_Size_In_Bits (Def_GT)) <
                                   Size_Const_Int (Size)))
            and then Error_Str'Length > 0
          then
-            if Is_Atomic (E) or else Is_Aliased (E) then
+            if Atomic or else Is_Aliased (E) then
                Error_Msg_NE_Num
                  ("size for " & Error_Str & " must be ^",
                   Last_Bit (Clause), E, Esize (Full_Etype (E)));

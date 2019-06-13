@@ -412,6 +412,10 @@ package GNATLLVM.GLType is
      (Is_Atomic_Or_VFA (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Independent (GT : GL_Type) return Boolean is
+     (Is_Independent (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Universal_Aliasing (GT : GL_Type) return Boolean is
      (Universal_Aliasing (Full_Etype (GT)))
      with Pre => Present (GT);

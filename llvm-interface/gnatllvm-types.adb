@@ -376,22 +376,6 @@ package body GNATLLVM.Types is
       return No_GL_Value;
    end Get_Matching_Value;
 
-   ---------------------------
-   -- Get_Type_Size_In_Bits --
-   ---------------------------
-
-   function Get_Type_Size_In_Bits (GT : GL_Type) return GL_Value is
-   begin
-      return Get_Type_Size (GT) * BPU;
-   end Get_Type_Size_In_Bits;
-
-   ---------------------------
-   -- Get_Type_Size_In_Bits --
-   ---------------------------
-
-   function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value is
-     (Get_Type_Size_In_Bits (Related_Type (V)));
-
    ------------------------
    -- Ultimate_Base_Type --
    ------------------------
@@ -670,7 +654,7 @@ package body GNATLLVM.Types is
       Max_Alloc  : constant ULL     := 10_000_000;
       Align      : constant Nat     :=
         Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
-      Overalign  : constant Boolean := Align > Get_Stack_Alignment;
+      Overalign  : constant Boolean := Align > (Get_Stack_Alignment * BPU);
       Value      : GL_Value         := V;
       Element_GT : GL_Type;
       Num_Elts   : GL_Value;
@@ -683,7 +667,7 @@ package body GNATLLVM.Types is
 
       if not Is_Nonnative_Type (Alloc_GT) and then not Overalign then
          if Do_Stack_Check
-           and then Get_Type_Size (Type_Of (Alloc_GT)) > Max_Alloc
+           and then Get_Type_Size (Type_Of (Alloc_GT)) > Max_Alloc * ULL (BPU)
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
             return Get_Undef_Ref (GT);
@@ -718,13 +702,14 @@ package body GNATLLVM.Types is
          Num_Elts   := Get_Array_Elements (Value, Full_Etype (Alloc_GT));
       else
          Element_GT := SSI_GL_Type;
-         Num_Elts   := Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size);
+         Num_Elts   :=
+           To_Bytes (Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size));
       end if;
 
       --  Handle overalignment by adding the alignment to the size
 
       if Overalign then
-         Num_Elts := Num_Elts + Align;
+         Num_Elts := Num_Elts + To_Bytes (Align);
       end if;
 
       --  Check that we aren't trying to allocate too much memory.  Raise
@@ -748,7 +733,7 @@ package body GNATLLVM.Types is
                               (if Overalign then "%%" else Name));
       if Overalign then
          Result := Ptr_To_Int (Result, Size_GL_Type);
-         Result := Align_To   (Result, Get_Stack_Alignment, Align);
+         Result := Align_To   (Result, Get_Stack_Alignment, To_Bytes (Align));
          Result := Int_To_Ptr (Result, A_Char_GL_Type);
          Set_Value_Name (Result, Get_Alloca_Name (Def_Ident, Name));
       end if;
@@ -807,8 +792,9 @@ package body GNATLLVM.Types is
       --  directly if the requested alignment is a constand and no larger
       --  than the system allocator alignment.
 
-      if No (Proc) and then Align <= Get_System_Allocator_Alignment then
-         Result := Call (Get_Default_Alloc_Fn, A_Char_GL_Type, (1 => Size));
+      if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU then
+         Result := Call (Get_Default_Alloc_Fn, A_Char_GL_Type,
+                         (1 => To_Bytes (Size)));
 
       --  Otherwise, if we can use the default memory allocation
       --  function but have to overalign, increase the size by both
@@ -819,14 +805,15 @@ package body GNATLLVM.Types is
       elsif No (Proc) then
          declare
             Ptr_Size   : constant GL_Value := Get_Type_Size (A_Char_GL_Type);
-            Total_Size : constant GL_Value := Size + Align_V + Ptr_Size;
+            Total_Size : constant GL_Value := Size + Align + Ptr_Size;
             Alloc      : constant GL_Value :=
-              Call (Get_Default_Alloc_Fn, A_Char_GL_Type, (1 => Total_Size));
+              Call (Get_Default_Alloc_Fn, A_Char_GL_Type,
+                    (1 => To_Bytes (Total_Size)));
             Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_GL_Type);
             Aligned    : constant GL_Value :=
-              Align_To (Alloc_Int + Ptr_Size, Get_System_Allocator_Alignment,
-                        Align);
-            Ptr_Loc    : constant GL_Value := Aligned - Ptr_Size;
+              Align_To (Alloc_Int + To_Bytes (Ptr_Size),
+                        Get_System_Allocator_Alignment, To_Bytes (Align));
+            Ptr_Loc    : constant GL_Value := Aligned - To_Bytes (Ptr_Size);
 
          begin
             Store (Alloc, Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
@@ -844,12 +831,13 @@ package body GNATLLVM.Types is
            Call_Alloc (Proc,
                        (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
                                          Full_GL_Type (First_Formal (Proc))),
-                        2 => Size, 3 => Align_V));
+                        2 => To_Bytes (Size),
+                        3 => To_Bytes (Align_V)));
 
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Result := Call_Alloc (Proc, (1 => Size));
+         Result := Call_Alloc (Proc, (1 => To_Bytes (Size)));
       end if;
 
       --  If we're doing this for an unconstrained array, we have the pointer
@@ -910,7 +898,8 @@ package body GNATLLVM.Types is
          --  directly if the requested alignment is a constand and no larger
          --  than the system allocator alignment.
 
-         if No (Proc) and then Align <= Get_System_Allocator_Alignment then
+         if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU
+         then
             Call (Get_Default_Free_Fn,
                   (1 => Pointer_Cast (Conv_V, A_Char_GL_Type)));
 
@@ -925,7 +914,7 @@ package body GNATLLVM.Types is
                  Ptr_To_Int (Conv_V, Size_GL_Type);
                Ptr_Size   : constant GL_Value :=
                  Get_Type_Size (A_Char_GL_Type);
-               Ptr_Loc    : constant GL_Value := Addr - Ptr_Size;
+               Ptr_Loc    : constant GL_Value := Addr - To_Bytes (Ptr_Size);
                Ptr_Ref    : constant GL_Value :=
                  Int_To_Ref (Ptr_Loc, A_Char_GL_Type);
 
@@ -945,14 +934,15 @@ package body GNATLLVM.Types is
                                             Full_GL_Type
                                               (First_Formal (Proc))),
                            2 => Ptr_To_Size_Type (Conv_V),
-                           3 => Size,
-                           4 => Align_V));
+                           3 => To_Bytes (Size),
+                           4 => To_Bytes (Align_V)));
 
             --  Otherwise, this is the secondary stack and we just call
             --  it with the size.
 
          else
-            Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Conv_V), 2 => Size));
+            Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Conv_V),
+                                 2 => To_Bytes (Size)));
          end if;
       end;
    end Heap_Deallocate;
@@ -984,7 +974,7 @@ package body GNATLLVM.Types is
       --  use that value.
 
       elsif Known_Alignment (TE)  and Use_Specified then
-         return UI_To_Int (Alignment (TE));
+         return UI_To_Int (Alignment (TE)) * BPU;
 
       --  If it's an array, it's the alignment of the component type
 
@@ -1182,10 +1172,10 @@ package body GNATLLVM.Types is
       GT_Align    : constant Nat  := Get_Type_Alignment (Align_GT);
       E_Align     : constant Nat  :=
         (if   Present (E) and then Known_Alignment (E)
-         then UI_To_Int (Alignment (E)) else 1);
+         then UI_To_Int (Alignment (E)) else BPU);
       Bound_Align : constant Nat  :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
-         then Get_Bound_Alignment (Full_Etype (GT)) else 1);
+         then Get_Bound_Alignment (Full_Etype (GT)) else BPU);
 
    begin
       return Nat'Max (Nat'Max (GT_Align, Bound_Align), E_Align);
@@ -1312,16 +1302,15 @@ package body GNATLLVM.Types is
             then
                Ret := Esize (Our_E) / BPU;
                if Is_Unconstrained_Array (TE) then
-                  Ret := Ret + UI_From_GL_Value (Get_Bound_Size
-                                                   (Default_GL_Type (TE)));
+                  Ret := Ret + UI_From_GL_Value
+                    (To_Bytes (Get_Bound_Size (Default_GL_Type (TE))));
                end if;
 
                return Ret;
             end if;
 
          when Attribute_Descriptor_Size =>
-            return
-              UI_From_GL_Value (Get_Bound_Size (Default_GL_Type (TE))) * BPU;
+            return UI_From_GL_Value (Get_Bound_Size (Default_GL_Type (TE)));
 
          when Attribute_Component_Size =>
             if Known_Component_Size (TE) then
@@ -1334,6 +1323,9 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_Position | Attribute_Bit_Position =>
+
+            --  ??? Is this correct that both are in bytes?
+
             Ret := Component_Bit_Offset (Our_E);
             if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
               and then Attr = Attribute_Position
@@ -1349,7 +1341,7 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_Last_Bit =>
-            if Known_Normalized_Position (Our_E) then
+            if Known_Normalized_First_Bit (Our_E) then
                Ret := Normalized_First_Bit (Our_E);
             end if;
             if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
@@ -1374,7 +1366,8 @@ package body GNATLLVM.Types is
       TBAA : constant Metadata_T := Get_TBAA (Full_Etype (GT));
    begin
       Set_Volatile  (Inst, Is_Volatile (GT));
-      Set_Alignment (Inst, Get_Type_Alignment (GT));
+      Set_Alignment (Inst,
+                     unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
 
       if Present (TBAA) and then not Universal_Aliasing (GT) then
          Add_TBAA_Access
@@ -1407,9 +1400,9 @@ package body GNATLLVM.Types is
         --  Or if it's a fixed size, the size is equal to the alignment,
         --  and the alignment is less than a word.
         or else (not Is_Dynamic_Size (GT)
-                   and then Align <= Get_Bits_Per_Word / BPU
-                   and then Align = Nat (Get_Const_Int_Value_ULL
-                                           (Get_Type_Size (GT))))
+                   and then Align <= Get_Bits_Per_Word
+                   and then ULL (Align) = Get_Const_Int_Value_ULL
+                                           (Get_Type_Size (GT)))
       then
          return;
       end if;
@@ -1498,30 +1491,24 @@ package body GNATLLVM.Types is
    ---------------------------
 
    function Annotated_Object_Size
-     (GT : GL_Type; Align : Boolean := False) return Node_Ref_Or_Val
+     (GT : GL_Type; Do_Align : Boolean := False) return Node_Ref_Or_Val
    is
       Use_Max       : constant Boolean := Is_Unconstrained_Record (GT);
       Bits_Per_Unit : constant BA_Data := Const (ULL (BPU));
-      TE_Byte_Size  : constant BA_Data :=
+      Size          : constant BA_Data :=
         Get_Type_Size (GT, Max_Size => Use_Max);
-      TE_Bit_Size   : constant BA_Data := TE_Byte_Size * Bits_Per_Unit;
-      Align_Bytes   : constant BA_Data := Const (Get_Type_Alignment (GT));
-      Align_Bits    : constant BA_Data := Align_Bytes * Bits_Per_Unit;
-      Size          : BA_Data          := TE_Bit_Size;
+      Align         : constant BA_Data :=
+        Const (if Do_Align then Get_Type_Alignment (GT) else ULL (BPU));
 
    begin
-      --  We need to return a size that's a muliple of the alignment.
-      --  If the alignment is 1, it already is.  It's possible that it
-      --  already is and we can't detect it.  This isn't a problem
-      --  for constant sizes, but may cause an extra computation for
-      --  dynamic sizes.  For now, we won't worry about that.
+      --  We need to return a size that's a muliple of the alignment or at
+      --  least aligned to a byte boundary.  It's possible that it already
+      --  is and we can't detect it.  This isn't a problem for constant
+      --  sizes, but may cause an extra computation for dynamic sizes.  For
+      --  now, at least, we won't worry about that.
 
-      if  Align and then Align_Bytes /= Const (Uint_1) then
-         Size := Build_And (Size + Align_Bits - (Bits_Per_Unit - Const (1)),
-                            -Align_Bits);
-      end if;
-
-      return Annotated_Value (Size);
+      return Annotated_Value
+        (Build_And (Size + Align - (Bits_Per_Unit - Const (1)), -Align));
    end Annotated_Object_Size;
 
    ----------

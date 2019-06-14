@@ -1413,6 +1413,10 @@ package GNATLLVM.GLValue is
    function "/" (LHS : GL_Value; RHS : Int) return GL_Value is
      (LHS / Const_Int (LHS, UI_From_Int (RHS)));
 
+   function To_Bytes (V : GL_Value) return GL_Value is
+     ((V + (BPU - 1)) / BPU)
+     with Pre => Present (V), Post => Present (To_Bytes'Result);
+
    function Build_Select
      (C_If, C_Then, C_Else : GL_Value; Name : String := "")
      return GL_Value
@@ -1692,6 +1696,12 @@ package GNATLLVM.GLValue is
 
    function Get_Type_Size (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Get_Type_Size'Result);
+
+   function Get_Type_Size (V : GL_Value) return ULL
+     with Pre => Present (V);
+
+   function Get_Scalar_Bit_Size (V : GL_Value) return ULL
+     with Pre => Present (V);
 
    function Get_Type_Alignment (V : GL_Value) return Nat
      with Pre => Present (V);

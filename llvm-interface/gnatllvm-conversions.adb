@@ -105,10 +105,9 @@ package body GNATLLVM.Conversions is
    begin
       --  If GT is narrower than BT, use its signedness, otherwise use BT's
 
-      return (if   ULL'(Get_Type_Size_In_Bits (Type_Of (GT))) <
-                   ULL'(Get_Type_Size_In_Bits (Type_Of (BT)))
-              then Is_Unsigned_Type (GT)
-              else Is_Unsigned_Type (BT));
+      return (if   ULL'(Get_Type_Size (Type_Of (GT))) <
+                   ULL'(Get_Type_Size (Type_Of (BT)))
+              then Is_Unsigned_Type (GT) else Is_Unsigned_Type (BT));
    end Is_Unsigned_For_Convert;
 
    ------------------------
@@ -334,8 +333,8 @@ package body GNATLLVM.Conversions is
                      and then Is_Discrete_Or_Fixed_Point_Type (In_GT))
                   or else (Is_Discrete_Or_Fixed_Point_Type (GT)
                              and then Is_Floating_Point_Type (In_GT)))
-        and then (ULL'(Get_Type_Size_In_Bits (Type_Of (GT))) =
-                    ULL'(Get_Type_Size_In_Bits (Type_Of (In_GT))))
+        and then (ULL'(Get_Type_Size (Type_Of (GT))) =
+                    ULL'(Get_Type_Size (Type_Of (In_GT))))
       then
          Result := Bit_Cast (Get (Result, Data), GT);
 
@@ -473,7 +472,7 @@ package body GNATLLVM.Conversions is
       Src_Uns     : constant Boolean  := Is_Unsigned_For_Convert (In_GT);
       Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
       Src_Size    : constant Nat      :=
-        Nat (ULL'(Get_Type_Size_In_Bits (In_V)));
+        Nat (ULL'(Get_Scalar_Bit_Size (In_V)));
       Dest_Usize  : constant Uint     :=
         (if   Is_Modular_Integer_Type (Prim_GT) then RM_Size (Prim_GT)
          else Esize (Prim_GT));

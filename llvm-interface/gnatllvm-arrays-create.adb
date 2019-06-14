@@ -139,7 +139,7 @@ package body GNATLLVM.Arrays.Create is
       CT                : constant Entity_Id := Full_Component_Type (A_TE);
       Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
       Comp_Size         : constant Uint      :=
-        (if   Unknown_Component_Size (A_TE) then No_Uint
+        (if   Unknown_Component_Size (A_TE) or else For_Orig then No_Uint
          else Validate_Size (A_TE, Comp_Def_GT, Component_Size (A_TE),
                              For_Component => True,
                              Zero_Allowed  =>

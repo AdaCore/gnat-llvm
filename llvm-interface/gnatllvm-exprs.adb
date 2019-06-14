@@ -173,7 +173,7 @@ package body GNATLLVM.Exprs is
                --  If this is a normal string, where the size of a character
                --  is a byte, use Const_String to create the string.
 
-               if ULL'(Get_Type_Size_In_Bits (Type_Of (Elmt_GT))) = 8 then
+               if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
                   declare
                      type String_Access is access String;
                      procedure Free is new Ada.Unchecked_Deallocation
@@ -596,7 +596,7 @@ package body GNATLLVM.Exprs is
       LHS       : constant GL_Value := Emit_Expression (LHS_Node);
       RHS       : constant GL_Value := Emit_Expression (RHS_Node);
       N         : constant GL_Value := Convert (RHS, LHS);
-      LHS_Size  : constant GL_Value := Get_Type_Size_In_Bits (LHS);
+      LHS_Size  : constant GL_Value := Get_Type_Size (LHS);
       LHS_Bits  : constant GL_Value := Convert (LHS_Size, LHS);
       Result    : GL_Value          := LHS;
       Saturated : GL_Value;
@@ -896,7 +896,6 @@ package body GNATLLVM.Exprs is
                F            : Entity_Id;
                Val          : GL_Value;
                Position     : GL_Value;
-               Bit_Position : GL_Value;
 
             begin
                --  Get the relevant field and expression for this operation,
@@ -922,23 +921,21 @@ package body GNATLLVM.Exprs is
                if No (Position) then
                   return Get_Undef (GT);
                else
-                  Bit_Position := Position * BPU +
-                    Size_Const_Int (Field_Bit_Offset (F));
+                  Position := Position + Size_Const_Int (Field_Bit_Offset (F));
                end if;
 
                case Attr is
                   when Attribute_Position =>
-                     V := Position;
+                     V := Position / BPU;
 
                   when Attribute_Bit_Position =>
-                     V := Bit_Position;
+                     V := Position;
 
                   when Attribute_First_Bit | Attribute_Bit =>
-                     V := S_Rem (Bit_Position,
-                                 Size_Const_Int (UI_From_Int (BPU)));
+                     V := S_Rem (Position, Size_Const_Int (UI_From_Int (BPU)));
 
                   when Attribute_Last_Bit =>
-                     V := Bit_Position + Size_Const_Int (Esize (F) - 1);
+                     V := Position + Size_Const_Int (Esize (F) - 1);
 
                   when others =>
                      pragma Assert (False);
@@ -996,11 +993,10 @@ package body GNATLLVM.Exprs is
             return Emit_Expression (First (Expressions (N)));
 
          when Attribute_Alignment =>
-            return Const_Int (GT, Get_Type_Alignment (P_GT),
+            return Const_Int (GT, To_Bytes (Get_Type_Alignment (P_GT)),
                               Sign_Extend => False);
 
-         when Attribute_Size | Attribute_Object_Size
-            | Attribute_Value_Size
+         when Attribute_Size | Attribute_Object_Size | Attribute_Value_Size
             | Attribute_Max_Size_In_Storage_Elements =>
 
             declare
@@ -1026,23 +1022,21 @@ package body GNATLLVM.Exprs is
                      V := V + Get_Bound_Size (P_GT);
                   end if;
 
-                  return Convert (V, GT);
+                  return Convert (To_Bytes (V), GT);
                else
-                  return Convert (V * BPU, GT);
+                  return Convert (V, GT);
                end if;
             end;
 
          when Attribute_Component_Size =>
             return Convert
-              (Get_Type_Size (Full_Component_GL_Type (P_GT),
-                              Max_Size => True) *
-                 BPU,
+              (Get_Type_Size (Full_Component_GL_Type (P_GT), Max_Size => True),
                GT);
 
          when Attribute_Descriptor_Size =>
             pragma Assert (Is_Unconstrained_Array (P_GT));
 
-            return Get_Bound_Size (P_GT) * BPU;
+            return Get_Bound_Size (P_GT);
 
          when Attribute_Passed_By_Reference =>
 
@@ -1219,10 +1213,10 @@ package body GNATLLVM.Exprs is
                  (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_GL_Type),
                (1 => Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type),
                 2 => Pointer_Cast (Get (Src,  Src_R),  A_Char_GL_Type),
-                3 => Size,
+                3 => To_Bytes (Size),
                 4 => Const_False), -- Is_Volatile
-               Get_Type_Alignment (Dest_GT),
-               Get_Type_Alignment (Related_Type (Src)));
+               Get_Type_Alignment (Dest_GT) / BPU,
+               Get_Type_Alignment (Related_Type (Src)) / BPU);
          end;
       end if;
    end Emit_Assignment;

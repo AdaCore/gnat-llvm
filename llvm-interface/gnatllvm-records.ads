@@ -37,7 +37,7 @@ package GNATLLVM.Records is
      with Pre  => Present (V)
                   and then Ekind_In (Field, E_Discriminant, E_Component),
           Post => Present (Record_Field_Offset'Result);
-   --  Compute the offset of a given record field
+   --  Return a GL_Value that represents the offset of a given record field
 
    function Get_Record_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat
@@ -104,7 +104,7 @@ package GNATLLVM.Records is
           Post => No (Emit_Field_Position'Result)
                   or else (Type_Of (Emit_Field_Position'Result) =
                              LLVM_Size_Type);
-   --  Compute and return the position in bytes of the field specified
+   --  Compute and return the position in bits of the field specified
    --  by E from the start of its type as a value of Size_Type.  If
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
@@ -300,8 +300,9 @@ private
       --  If specified, the alignment of this piece
 
       Position         : ULL;
-      --  If nonzero, a forced starting position of this piece.  This can't
-      --  be set on the first RI for a record.
+      --  If nonzero, a forced starting position (in bits, but on a byte
+      --  boundary) of this piece.  This can't be set on the first RI for a
+      --  record.
 
       Next             : Record_Info_Id;
       --  Link to the next Record_Info entry for this record or variant

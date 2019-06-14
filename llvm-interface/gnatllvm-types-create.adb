@@ -403,9 +403,10 @@ package body GNATLLVM.Types.Create is
                then
                   Align := Size / BPU;
                elsif Present (Size_GT)
-                 and then (Size_GT = 2 or else Size_GT = 4 or else Size_GT = 8)
+                 and then (Size_GT = 16 or else Size_GT = 32
+                             or else Size_GT = 64)
                then
-                  Align := UI_From_GL_Value (Size_GT);
+                  Align := UI_From_GL_Value (Size_GT) / BPU;
                end if;
             end if;
 
@@ -456,13 +457,12 @@ package body GNATLLVM.Types.Create is
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
                            (Get_Type_Size
-                              (GT, No_Padding => not Strict_Alignment (GT)) *
-                              Const (ULL (BPU))));
+                              (GT, No_Padding => not Strict_Alignment (GT))));
          end if;
       end if;
 
       if Unknown_Alignment (TE) then
-         Set_Alignment (TE, UI_From_ULL (Get_Type_Alignment (GT)));
+         Set_Alignment (TE, UI_From_ULL (Get_Type_Alignment (GT)) / BPU);
       end if;
 
       if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
@@ -470,7 +470,7 @@ package body GNATLLVM.Types.Create is
         and then Unknown_Alignment (Original_Array_Type (TE))
       then
          Set_Alignment (Original_Array_Type (TE),
-                        UI_From_ULL (Get_Type_Alignment (GT)));
+                        UI_From_ULL (Get_Type_Alignment (GT)) / BPU);
       end if;
 
       return Type_Of (GT);
@@ -531,10 +531,11 @@ package body GNATLLVM.Types.Create is
             Error_Msg_NE_Num ("largest supported alignment for& is ^",
                               N, E, Max_Align);
          end if;
+
          return Max_Align;
 
       elsif Align /= 0 and then Align /= No_Uint then
-         New_Align := UI_To_Int (Align);
+         New_Align := UI_To_Int (Align) * BPU;
       end if;
 
       --  If the alignment is too small, stick with the old alignment and give
@@ -548,7 +549,7 @@ package body GNATLLVM.Types.Create is
            and then (No (Clause) or else not From_At_Mod (Clause))
          then
             Error_Msg_NE_Num ("alignment for& must be at least ^",
-                              N, E, Current_Align);
+                              N, E, Current_Align / BPU);
             New_Align := Current_Align;
          end if;
       end if;
@@ -653,7 +654,7 @@ package body GNATLLVM.Types.Create is
       --  of the type.
 
       if Is_Var then
-         In_Size := Align_To (In_Size, 1, Get_Type_Alignment (GT));
+         In_Size := Align_To (In_Size, BPU, Get_Type_Alignment (GT));
       end if;
 
       --  If this is an access to an unconstrained array, both the size of
@@ -666,12 +667,13 @@ package body GNATLLVM.Types.Create is
          return Size;
 
       --  If too small, we can't use it.
-      --  ??? For now, just compare sizes in bytes, with rounding.
+      --  ???   But don't give this error for RM_Size until we can get the
+      --  size of objects accurate to the bit.
 
-      elsif Size_Const_Int ((Size + BPU - 1) / BPU) < In_Size then
+      elsif Size_Const_Int (Size) < In_Size and then not Is_RM_Size then
          Error_Msg_NE_Num (Msg_Prefix &
                              " for& too small, minimum allowed is ^",
-                           Error_Node, E, In_Size * BPU);
+                           Error_Node, E, In_Size);
          return UI_From_GL_Value (In_Size * BPU);
       end if;
 

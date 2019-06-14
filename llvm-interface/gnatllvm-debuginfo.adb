@@ -209,6 +209,7 @@ package body GNATLLVM.DebugInfo is
         (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (Def_Ident));
       Result     : Metadata_T;
       pragma Unreferenced (Def_Ident);
+
    begin
       --  ??? We don't make the subprogram type from the types of the
       --  arguments because they may not match the actual args and
@@ -327,10 +328,9 @@ package body GNATLLVM.DebugInfo is
       Name        : constant String     := Get_Name (TE);
       T           : constant Type_T     := Type_Of (GT);
       Size        : constant UL         :=
-        (if   Type_Is_Sized (T) then UL (ULL'(Get_Type_Size_In_Bits (T)))
-         else 0);
+        (if Type_Is_Sized (T) then UL (ULL'(Get_Type_Size (T))) else 0);
       Align       : constant unsigned   :=
-        unsigned (Nat'(Get_Type_Alignment (GT)) * BPU);
+        unsigned (Nat'(Get_Type_Alignment (GT)));
       S           : constant Source_Ptr := Sloc (TE);
       Inner_Type  : Metadata_T          := No_Metadata_T;
       Result      : Metadata_T          := Get_Debug_Type (TE);
@@ -430,7 +430,7 @@ package body GNATLLVM.DebugInfo is
                   Table_Increment      => 5,
                   Table_Name           => "Member_Table");
 
-               F        : Entity_Id;
+               F : Entity_Id;
 
             begin
                --  Go through each field.  If we can make debug info for the
@@ -464,8 +464,7 @@ package body GNATLLVM.DebugInfo is
                                    (Get_Source_File_Index (F_S)),
                                  unsigned (Get_Logical_Line_Number (F_S)),
                                  uint64_t (UI_To_ULL (Esize (F))),
-                                 unsigned (Nat'(Get_Type_Alignment (F_GT)) *
-                                             BPU),
+                                 unsigned (Nat'(Get_Type_Alignment (F_GT))),
                                  uint64_t (UI_To_ULL
                                              (Component_Bit_Offset (F))),
                                  (if   Is_Bitfield (F) then DI_Flag_Bit_Field
@@ -606,7 +605,7 @@ package body GNATLLVM.DebugInfo is
          --  when we do this for a zero-length array.
 
          if Is_Data (V) then
-            if Get_Type_Size (V) /= 0 then
+            if Get_Type_Size (V) /= Nat (0) then
                Discard (DI_Builder_Insert_Dbg_Value_At_End
                           (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
                            Create_Debug_Location (Def_Ident),

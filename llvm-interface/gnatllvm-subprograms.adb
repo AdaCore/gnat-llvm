@@ -796,8 +796,8 @@ package body GNATLLVM.Subprograms is
       GT   : GL_Type) return GL_Value
    is
       T         : constant Type_T := Type_Of (GT);
-      Width     : constant ULL    := Get_Type_Size_In_Bits (T);
-      --  We need to use Get_Type_Size_In_Bits instead of Esize (GT)
+      Width     : constant ULL    := Get_Type_Size (T);
+      --  We need to use Get_Type_Size instead of Esize (GT)
       --  so that we handle FP types properly.
 
       W         : constant String := Int'Image (Int (Width));
@@ -1733,10 +1733,10 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Type_Size := Get_Type_Size (Type_Of (GT));
-      if not (S (Index .. Index + 1) = "_1" and then Type_Size = 1)
-        and then not (S (Index .. Index + 1) = "_2" and then Type_Size = 2)
-        and then not (S (Index .. Index + 1) = "_4" and then Type_Size = 4)
-        and then not (S (Index .. Index + 1) = "_8" and then Type_Size = 8)
+      if not (S (Index .. Index + 1) = "_1" and then Type_Size = 8)
+        and then not (S (Index .. Index + 1) = "_2" and then Type_Size = 16)
+        and then not (S (Index .. Index + 1) = "_4" and then Type_Size = 32)
+        and then not (S (Index .. Index + 1) = "_8" and then Type_Size = 64)
       then
          return No_GL_Value;
       end if;
@@ -1806,7 +1806,7 @@ package body GNATLLVM.Subprograms is
          return No_GL_Value;
       end if;
 
-      Type_Size := Get_Type_Size_In_Bits (Type_Of (GT));
+      Type_Size := Get_Type_Size (Type_Of (GT));
       if not (S (S'Last - 1 .. S'Last) = "16" and then Type_Size = 16)
         and then not (S (S'Last - 1 .. S'Last) = "32" and then Type_Size = 32)
         and then not (S (S'Last - 1 .. S'Last) = "64" and then Type_Size = 64)

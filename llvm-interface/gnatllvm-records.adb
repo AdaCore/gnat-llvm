@@ -487,7 +487,8 @@ package body GNATLLVM.Records is
             begin
                Must_Align := Get_Type_Alignment (T);
                Is_Align   := Get_Type_Alignment (Last_Type);
-               This_Size  := Sz_Const (Last_Offset + Last_Size);
+               This_Size  :=
+                 Sz_Const (Last_Offset * ULL (BPU) + Last_Size);
             end;
 
          --  The GNAT type case is easy
@@ -514,7 +515,7 @@ package body GNATLLVM.Records is
             --  has no fields.  So we return in that case.
 
             Must_Align := RI.Align;
-            Is_Align   := 1;
+            Is_Align   := BPU;
             if Return_Size then
                Total_Size :=
                  (if   Max_Size
@@ -528,8 +529,8 @@ package body GNATLLVM.Records is
          --  Otherwise, this is a null entry
 
          else
-            Must_Align := 1;
-            Is_Align   := Get_Maximum_Alignment;
+            Must_Align := BPU;
+            Is_Align   := Get_Maximum_Alignment * BPU;
             This_Size  := Sz_Const (0);
          end if;
 
@@ -664,12 +665,12 @@ package body GNATLLVM.Records is
          No_Padding : Boolean := False) return Result
       is
          Total_Size   : Result         := Sz_Const (0);
-         Cur_Align    : Nat            := Get_Maximum_Alignment;
+         Cur_Align    : Nat            := Get_Maximum_Alignment * BPU;
          Cur_Idx      : Record_Info_Id :=
            (if    Present (Start_Idx) then Start_Idx
             elsif Present (TE) then Get_Record_Info (TE)
             else  Empty_Record_Info_Id);
-         Must_Align   : Nat            := 1;
+         Must_Align   : Nat            := BPU;
          Pushed_Stack : Boolean        := False;
          This_Align   : Nat;
          New_Idx      : Record_Info_Id;
@@ -827,7 +828,7 @@ package body GNATLLVM.Records is
                  Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
 
             begin
-               return Offset + Sz_Const (This_Offset);
+               return Offset + Sz_Const (This_Offset * ULL (BPU));
             end;
          end if;
       end Emit_Field_Position;
@@ -1084,7 +1085,7 @@ package body GNATLLVM.Records is
       --  of the clause are consistent with the alignment, use it.
 
       elsif No (Component_Clause (F))
-        or else (Pos mod (Align * BPU) = 0 and then Size mod (Align * BPU) = 0)
+        or else (Pos mod Align = 0 and then Size mod Align = 0)
       then
          return Align;
 
@@ -1106,7 +1107,7 @@ package body GNATLLVM.Records is
    begin
       --  Use the largest effective alignment of any field
 
-      return Largest_Align : Nat := 1 do
+      return Largest_Align : Nat := BPU do
          Field := First_Component_Or_Discriminant (TE);
          while Present (Field) loop
             Largest_Align := Nat'Max (Largest_Align,
@@ -1464,7 +1465,7 @@ package body GNATLLVM.Records is
 
       for J in RI.Variants'Range loop
          Sizes (J) := Variant_Part_Size (RI, V, J, In_Size, Cur_Align,
-                                        No_Padding => No_Padding);
+                                         No_Padding => No_Padding);
       end loop;
 
       --  Now compute the resulting size
@@ -1536,7 +1537,7 @@ package body GNATLLVM.Records is
       elsif Present (RI.GT) then
          pragma Assert (not Is_Bitfield (Field));
          return Ptr_To_Ref (GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
-                                 (1 => Offset)),
+                                 (1 => To_Bytes (Offset))),
                             F_GT);
       end if;
 
@@ -1548,7 +1549,7 @@ package body GNATLLVM.Records is
       else
          Result := GEP (SSI_GL_Type,
                         Pointer_Cast (To_Primitive (V), A_Char_GL_Type),
-                        (1 => Offset));
+                        (1 => To_Bytes (Offset)));
       end if;
 
       --  If the type is not native, we have to convert the pointer to the
@@ -1769,8 +1770,7 @@ package body GNATLLVM.Records is
          if Is_Array_Bitfield (F) then
             declare
                T     : constant Type_T := Get_Element_Type (Type_Of (Result));
-               New_T : constant Type_T :=
-                 Int_Ty (Nat (ULL'(Get_Type_Size_In_Bits (T))));
+               New_T : constant Type_T := Int_Ty (Get_Scalar_Bit_Size (T));
 
             begin
                Result := Ptr_To_Relationship (Result, Pointer_Type (New_T, 0),
@@ -1789,7 +1789,7 @@ package body GNATLLVM.Records is
             Result_T  : constant Type_T   := Type_Of (F_GT);
             First_Bit : constant ULL      := UI_To_ULL (Field_Bit_Offset (F));
             Num_Bits  : constant ULL      := UI_To_ULL (Esize (F));
-            Val_Width : constant ULL      := Get_Type_Size_In_Bits (T);
+            Val_Width : constant ULL      := Get_Scalar_Bit_Size (T);
             Uns       : constant Boolean  :=
               Is_Unsigned_For_RM (F_GT)
               or else not Is_Discrete_Or_Fixed_Point_Type (F_GT);
@@ -1815,8 +1815,7 @@ package body GNATLLVM.Records is
             --  Otherwise, truncate to the corresponding bit size
 
             else
-               Result := Trunc (Result, Int_Ty (Nat (ULL'(Get_Type_Size_In_Bits
-                                                            (Result_T)))));
+               Result := Trunc (Result, Int_Ty (Get_Type_Size (Result_T)));
 
                --  For a floating-point type we perform a bit cast
 
@@ -1910,9 +1909,9 @@ package body GNATLLVM.Records is
          LHS_For_Access : constant GL_Value :=
            (if Is_Array_Bitfield (F) and then Is_Data (LHS)
             then Allocate_For_Type (LHS_GT, LHS_GT, Empty, LHS) else LHS);
-         RHS_T          : Type_T            :=
-           Type_Of (Related_Type (RHS_Cvt));
-         RHS_Width      : constant ULL      := Get_Type_Size_In_Bits (RHS_T);
+         RHS_GT         : constant GL_Type  := Related_Type (RHS_Cvt);
+         RHS_T          : Type_T            := Type_Of (RHS_GT);
+         RHS_Width      : constant ULL      := Get_Scalar_Bit_Size (RHS_T);
          Data_LHS       : GL_Value          := No_GL_Value;
          Rec_Data       : GL_Value;
          Data_T         : Type_T;
@@ -1942,8 +1941,7 @@ package body GNATLLVM.Records is
             declare
                T     : constant Type_T :=
                  Get_Element_Type (Type_Of (Rec_Data));
-               New_T : constant Type_T :=
-                 Int_Ty (Nat (ULL'(Get_Type_Size_In_Bits (T))));
+               New_T : constant Type_T := Int_Ty (Get_Type_Size (T));
 
             begin
                Data_LHS := Ptr_To_Relationship (Data_LHS,
@@ -1958,7 +1956,7 @@ package body GNATLLVM.Records is
 
          Rec_Data   := Get (Rec_Data, Unknown);
          Data_T     := Type_Of (Rec_Data);
-         Data_Width := Get_Type_Size_In_Bits (Data_T);
+         Data_Width := Get_Scalar_Bit_Size (Data_T);
          pragma Assert (Get_Type_Kind (Data_T) = Integer_Type_Kind);
 
          --  Our next step is to get RHS into the same type as the

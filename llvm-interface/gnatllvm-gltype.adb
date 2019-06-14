@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;     use Errout;
 with Get_Targ;   use Get_Targ;
 with Lib;        use Lib;
 with Output;     use Output;
@@ -363,9 +362,9 @@ package body GNATLLVM.GLType is
          declare
             Align_V      : constant Nat      := Get_Type_Alignment (GT);
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
-            In_Sz        : constant GL_Value := GT_Size (GT) * BPU;
+            In_Sz        : constant GL_Value := GT_Size (GT);
             In_Sz_Align  : constant GL_Value :=
-              Align_To (GT_Size (GT), 1, Align_V) * BPU;
+              Align_To (GT_Size (GT), BPU, Align_V);
             Pad_Sz       : constant GL_Value :=
               (if Present (In_Sz) then Out_Sz - In_Sz else No_GL_Value);
             Pad_Sz_Align : constant GL_Value :=
@@ -391,13 +390,12 @@ package body GNATLLVM.GLType is
                   Err_Node := Expression (Object_Size_Clause (Err_Ident));
                end if;
 
-               Error_Msg_Uint_1 := UI_From_GL_Value (Pad_Sz);
                if For_Component then
-                  Error_Msg_NE ("component of& padded by ^ bits?",
-                                Err_Ident, Err_Ident);
+                  Error_Msg_NE_Num ("component of& padded by ^ bits?",
+                                    Err_Ident, Err_Ident, Pad_Sz);
                elsif Present (Err_Node) then
-                  Error_Msg_NE ("^ bits of & unused?", Err_Node,
-                                Err_Ident);
+                  Error_Msg_NE_Num ("^ bits of & unused?", Err_Node,
+                                    Err_Ident, Pad_Sz);
                end if;
             end if;
          end;
@@ -433,15 +431,13 @@ package body GNATLLVM.GLType is
       Prim_Align  : constant GL_Value     := Get_Type_Alignment (Prim_GT);
       Int_Sz      : constant Uint         :=
         (if Size = 0 then Uint_1 else Size);
-      Size_Bytes  : constant Uint         :=
-        (if   Size = No_Uint or else Is_Dynamic_SO_Ref (Size) then No_Uint
-         else (Size + BPU - 1) / BPU);
       Size_V      : GL_Value              :=
-        (if   Size_Bytes = No_Uint or else not UI_Is_In_Int_Range (Size_Bytes)
-         then In_GTI.Size else Size_Const_Int (Size_Bytes));
+        (if   Size = No_Uint or else not UI_Is_In_Int_Range (Size)
+              or else Is_Dynamic_SO_Ref (Size)
+         then In_GTI.Size else Size_Const_Int (Size));
       Align_V     : constant GL_Value     :=
-        (if   Align = No_Uint or else Is_Dynamic_SO_Ref (Align)
-         then In_GTI.Alignment else Size_Const_Int (Align));
+        (if   Align = No_Uint then In_GTI.Alignment
+         else Size_Const_Int (Align));
       Found_GT    : GL_Type               := Get_GL_Type (TE);
 
    begin
@@ -472,7 +468,7 @@ package body GNATLLVM.GLType is
       if For_Type and then Size = No_Uint and then Present (Size_V)
         and then Present (Align_V) and then U_Rem (Size_V, Align_V) /= 0
       then
-         Size_V := Align_To (Size_V, 1,
+         Size_V := Align_To (Size_V, BPU,
                              Nat (Get_Const_Int_Value_ULL (Align_V)));
       end if;
 
@@ -490,8 +486,7 @@ package body GNATLLVM.GLType is
                   and then not (Size /= No_Uint
                                   and then (Get_Type_Kind (GTI.LLVM_Type) =
                                               Integer_Type_Kind)
-                                  and then (Get_Type_Size_In_Bits
-                                              (GTI.LLVM_Type) /=
+                                  and then (Get_Type_Size (GTI.LLVM_Type) /=
                                               UI_To_ULL (Size))))
               --  If the size and alignment are the same, this must be the
               --  same type.  But this isn't the case if we need the
@@ -595,9 +590,10 @@ package body GNATLLVM.GLType is
          then
             declare
                Pad_Size  : constant GL_Value := Size_V - Prim_Size;
-               Pad_Count : constant LLI      := Get_Const_Int_Value (Pad_Size);
+               Pad_Count : constant ULL      :=
+                 Get_Const_Int_Value_ULL (Pad_Size);
                Arr_T     : constant Type_T   :=
-                 Array_Type (Byte_T, unsigned (Pad_Count));
+                 Array_Type (Byte_T, unsigned (To_Bytes (Pad_Count)));
 
             begin
                --  If there's a padding amount, thisis a padded type.
@@ -619,8 +615,9 @@ package body GNATLLVM.GLType is
          --  Byte_Array.
 
          elsif not Prim_Native and then Present (Size_V) then
-            GTI.LLVM_Type := Array_Type (Byte_T, unsigned (Get_Const_Int_Value
-                                                             (Size_V)));
+            GTI.LLVM_Type := Array_Type (Byte_T,
+                                         unsigned (Get_Const_Int_Value
+                                                     (To_Bytes (Size_V))));
             GTI.Kind      := Byte_Array;
 
          --  If we're looking for the maximum size and none of the above cases
@@ -805,9 +802,9 @@ package body GNATLLVM.GLType is
 
       T           : constant Type_T  := Type_Of (GT);
       In_GT       : constant GL_Type := Related_Type (V);
-      Src_Uns     : constant Boolean := Is_Unsigned_For_Convert (In_GT);
-      Src_Size    : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (V)));
-      Dest_Size   : constant Nat     := Nat (ULL'(Get_Type_Size_In_Bits (T)));
+      Src_Uns     : constant Boolean := Is_Unsigned_For_RM (In_GT);
+      Src_Size    : constant Nat     := Nat (ULL'(Get_Scalar_Bit_Size (V)));
+      Dest_Size   : constant Nat     := Nat (ULL'(Get_Scalar_Bit_Size (T)));
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
       Subp        : Cvtf             := null;
 

@@ -136,6 +136,10 @@ package GNATLLVM.Types is
      (Int_Type (unsigned (Num_Bits)))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
 
+   function Int_Ty (Num_Bits : ULL) return Type_T is
+     (Int_Type (unsigned (Num_Bits)))
+     with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
+
    function Int_Ty (Num_Bits : Uint) return Type_T is
      (Int_Type (unsigned (UI_To_Int (Num_Bits))))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
@@ -248,62 +252,47 @@ package GNATLLVM.Types is
 
    function Get_Type_Size (T : Type_T) return ULL is
      (if   Get_Type_Kind (T) = Struct_Type_Kind
-      then Store_Size_Of_Type (Module_Data_Layout, T)
-      else ABI_Size_Of_Type (Module_Data_Layout, T))
+      then Store_Size_Of_Type (Module_Data_Layout, T) * ULL (BPU)
+      else ABI_Size_Of_Type (Module_Data_Layout, T) * ULL (BPU))
      with Pre => Present (T);
-     --  Return the size of an LLVM type, in bytes.  For structures, we want
+     --  Return the size of an LLVM type, in bits.  For structures, we want
      --  to return the actual size, not including padding, but for other types
      --  we need the size, including padding.  This is important for some
      --  of the FP types.
 
    function Get_Type_Size (T : Type_T) return GL_Value is
-     (Size_Const_Int (Get_Type_Size (T)));
+     (Size_Const_Int (Get_Type_Size (T)))
+     with Pre => Present (T), Post => Present (Get_Type_Size'Result);
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
-   function Get_Type_Size_In_Bits (T : Type_T) return ULL is
+   function Get_Scalar_Bit_Size (T : Type_T) return ULL is
      (Size_Of_Type_In_Bits (Module_Data_Layout, T))
      with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
-
-   function Get_Type_Size_In_Bits (V : GL_Value) return ULL is
-     (Size_Of_Type_In_Bits (Module_Data_Layout, Type_Of (V.Value)))
-     with Pre => Present (V);
-   --  Return the size of an LLVM type, in bits
-
-   function Get_Type_Size_In_Bits (T : Type_T) return GL_Value is
-     (Const_Int (Size_GL_Type, Get_Type_Size_In_Bits (T), False))
-     with Pre  => Present (T),
-          Post => Present (Get_Type_Size_In_Bits'Result);
-   --  Return the size of an LLVM type, in bits, as an LLVM constant
-
-   function Get_Type_Size_In_Bits (GT : GL_Type) return GL_Value
-     with Pre  => Present (GT),
-          Post => Present (Get_Type_Size_In_Bits'Result);
-   --  Likewise, but convert from a GNAT type
-
-   function Get_Type_Size_In_Bits (V : GL_Value) return GL_Value
-     with Pre  => Present (V),
-          Post => Present (Get_Type_Size_In_Bits'Result);
-   --  Variant of above to get type from a GL_Value
 
    function Get_Type_Alignment (T : Type_T) return Nat is
-     (Nat (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
+     (Nat (ABI_Alignment_Of_Type (Module_Data_Layout, T)) * BPU)
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return ULL is
-     (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
+     (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T)) * ULL (BPU))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return unsigned is
-     (unsigned (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
+     (ABI_Alignment_Of_Type (Module_Data_Layout, T) * unsigned (BPU))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return GL_Value is
      (Size_Const_Int (ULL (Nat'(Get_Type_Alignment (T)))));
    --  Return the alignment of an LLVM type, in bytes, as an LLVM constant
+
+   function To_Bytes (Size : Nat) return Nat is
+     ((Size + (BPU - 1)) / BPU);
+
+   function To_Bytes (Size : ULL) return ULL is
+     ((Size + (ULL (BPU) - 1)) / ULL (BPU));
 
    function Is_Loadable_Type (T : Type_T) return Boolean
      with Pre => Present (T);
@@ -649,7 +638,7 @@ package GNATLLVM.Types is
    --  Likewise, but in the opposite direction
 
    function Annotated_Object_Size
-     (GT : GL_Type; Align : Boolean := False) return Node_Ref_Or_Val
+     (GT : GL_Type; Do_Align : Boolean := False) return Node_Ref_Or_Val
      with Pre => Present (GT);
    --  Given a type that's used for the type of an object, return the
    --  SO_Ref corresponding to the object's size.
@@ -720,6 +709,9 @@ package GNATLLVM.Types is
      (S_Div (LHS, RHS));
    function "<" (LHS, RHS : BA_Data) return Boolean is
      (Is_Const_1 (I_Cmp (Int_SLT, LHS, RHS)));
+
+   function To_Bytes (Size : BA_Data) return BA_Data is
+     ((Size + (Const (ULL (BPU)) - Const (1))) / Const (ULL (BPU)));
 
    function Build_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data;
    function Build_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data;

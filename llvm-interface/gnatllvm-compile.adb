@@ -88,7 +88,7 @@ package body GNATLLVM.Compile is
       --  Get single bit and single byte values and types
 
       BPU    := Get_Bits_Per_Unit;
-      Bit_T  := Int_Ty (1);
+      Bit_T  := Int_Ty (Nat (1));
       Byte_T := Int_Ty (BPU);
 
       --  Find the integer type corresponding to the size of a pointer

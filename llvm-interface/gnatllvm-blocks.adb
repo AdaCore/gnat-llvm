@@ -522,7 +522,7 @@ package body GNATLLVM.Blocks is
 
       Personality_Fn  :=
         Add_Global_Function ("__gnat_personality_v0",
-                             Fn_Ty ((1 .. 0 => <>), Int_Ty (32), True),
+                             Fn_Ty ((1 .. 0 => <>), Int_Ty (Nat (32)), True),
                              Void_GL_Type);
 
       Begin_Handler_Fn :=
@@ -543,7 +543,7 @@ package body GNATLLVM.Blocks is
 
       EH_Slot_Id_Fn    :=
         Add_Function ("llvm.eh.typeid.for",
-                      Fn_Ty ((1 => Void_Ptr_Type), Int_Ty (32)),
+                      Fn_Ty ((1 => Void_Ptr_Type), Int_Ty (Nat (32))),
                       Int_32_GL_Type);
       Set_Does_Not_Throw (EH_Slot_Id_Fn);
 
@@ -701,7 +701,7 @@ package body GNATLLVM.Blocks is
       Lpad              : constant Basic_Block_T := BI.Landing_Pad;
       EH_List           : constant List_Id       := BI.EH_List;
       LP_Type           : constant Type_T        :=
-        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (32)));
+        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (Nat (32))));
       Have_Cleanup      : constant Boolean       :=
         (for some J in 1 .. Block =>
            Present (Block_Stack.Table (J).At_End_Proc)

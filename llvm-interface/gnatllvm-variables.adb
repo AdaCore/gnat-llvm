@@ -1200,12 +1200,12 @@ package body GNATLLVM.Variables is
             --  we're going to hardwire the three cases that make sense.
 
             case In_Size_ULL is
-               when 2 =>
-                  Our_Align := 2;
-               when 3 .. 4 =>
-                  Our_Align := 4;
-               when 5 .. 16 =>
-                  Our_Align := 8;
+               when 16 =>
+                  Our_Align := 16;
+               when 18 .. 32 =>
+                  Our_Align := 32;
+               when 33 .. 128 =>
+                  Our_Align := 64;
                when others =>
                   null;
             end case;
@@ -1739,7 +1739,8 @@ package body GNATLLVM.Variables is
       end if;
 
       if Unknown_Alignment (Def_Ident) then
-         Set_Alignment (Def_Ident, UI_From_Int (Get_Type_Alignment (GT)));
+         Set_Alignment (Def_Ident,
+                        UI_From_Int (Get_Type_Alignment (GT)) / BPU);
       end if;
 
       --  If we're at library level and not in an elab proc, we can't do
@@ -1964,7 +1965,8 @@ package body GNATLLVM.Variables is
       end if;
 
       if Unknown_Alignment (Def_Ident) then
-         Set_Alignment (Def_Ident, UI_From_Int (Get_Type_Alignment (GT)));
+         Set_Alignment (Def_Ident,
+                        UI_From_Int (Get_Type_Alignment (GT)) / BPU);
       end if;
    end Emit_Renaming_Declaration;
 

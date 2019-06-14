@@ -837,9 +837,9 @@ package body GNATLLVM.Arrays is
          (1 => Pointer_Cast (To_Primitive (Get (LValue, Reference)),
                              A_Char_GL_Type),
           2 => Value,
-          3 => Get_Type_Size (GT),
+          3 => To_Bytes (Get_Type_Size (GT)),
           4 => Const_False),  --  Is_Volatile
-         Get_Type_Alignment (GT));
+         Get_Type_Alignment (GT) / BPU);
    end Emit_Others_Aggregate;
 
    -----------------------------
@@ -1180,7 +1180,7 @@ package body GNATLLVM.Arrays is
            Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));
+            else To_Bytes (Get_Type_Size (Comp_GT, Max_Size => Comp_Unc)));
          Index     : GL_Value          := To_Size_Type (Idxs (2));
          Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
 
@@ -1239,7 +1239,7 @@ package body GNATLLVM.Arrays is
            Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
-            else Get_Type_Size (Comp_GT, Max_Size => Comp_Unc));
+            else To_Bytes (Get_Type_Size (Comp_GT, Max_Size => Comp_Unc)));
          Index     : constant GL_Value :=
            To_Size_Type (Index_Shift) * Unit_Mult;
 

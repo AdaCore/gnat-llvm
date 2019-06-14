@@ -317,12 +317,12 @@ package body GNATLLVM.GLValue is
       --  If this would be a fat pointer, but the size of the GL_Type
       --  corresponds to that of a thin pointer, use it.
 
-      if R = Fat_Pointer and then Size = Get_Pointer_Size / BPU then
+      if R = Fat_Pointer and then Size = Get_Pointer_Size then
          return Thin_Pointer;
 
       --  And vice versa
 
-      elsif R = Thin_Pointer and then Size = Get_Pointer_Size / BPU * 2 then
+      elsif R = Thin_Pointer and then Size = Get_Pointer_Size * 2 then
          return Fat_Pointer;
       else
          return R;
@@ -702,7 +702,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Our_R = Thin_Pointer then
-               Result := Ptr_To_Size_Type (V) - Get_Bound_Size (GT);
+               Result := Ptr_To_Size_Type (V) - To_Bytes (Get_Bound_Size (GT));
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -729,7 +729,7 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Our_R = Thin_Pointer then
-               Result := Ptr_To_Size_Type (V) - Get_Bound_Size (GT);
+               Result := Ptr_To_Size_Type (V) - To_Bytes (Get_Bound_Size (GT));
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -890,10 +890,10 @@ package body GNATLLVM.GLValue is
       GT_Align : constant Nat := Get_Type_Alignment (GT);
       E_Align  : constant Nat :=
         (if   Present (E) and then Known_Alignment (E)
-         then UI_To_Int (Alignment (E)) else 1);
+         then UI_To_Int (Alignment (E)) else BPU);
 
    begin
-      Set_Alignment (Obj, unsigned (Nat'Max (GT_Align, E_Align)));
+      Set_Alignment (Obj, unsigned (To_Bytes (Nat'Max (GT_Align, E_Align))));
    end Set_Object_Align;
 
    ------------
@@ -1166,6 +1166,7 @@ package body GNATLLVM.GLValue is
                           Name),
               GT));
 
+   -------------------------
    -- Int_To_Relationship --
    -------------------------
 
@@ -1458,7 +1459,8 @@ package body GNATLLVM.GLValue is
 
    begin
       for J in Indices'Range loop
-         Val_Idxs (J) := Const_Int (Int_Ty (32), ULL (Indices (J)), False);
+         Val_Idxs (J) :=
+           Const_Int (Int_Ty (Nat (32)), ULL (Indices (J)), False);
       end loop;
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
@@ -1711,6 +1713,20 @@ package body GNATLLVM.GLValue is
    function Get_Type_Size (V : GL_Value) return GL_Value is
      (Get_Type_Size (Related_Type (V), V));
 
+   -------------------
+   -- Get_Type_Size --
+   -------------------
+
+   function Get_Type_Size (V : GL_Value) return ULL is
+     (Get_Type_Size (Type_Of (Related_Type (V))));
+
+   -------------------------
+   -- Get_Scalar_Bit_Size --
+   -------------------------
+
+   function Get_Scalar_Bit_Size (V : GL_Value) return ULL is
+     (Get_Scalar_Bit_Size (Type_Of (Related_Type (V))));
+
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
@@ -1790,7 +1806,7 @@ package body GNATLLVM.GLValue is
 
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Attribute (LLVM_Value (V), unsigned (Idx),
-                                        Get_Type_Size (T));
+                                        To_Bytes (Get_Type_Size (T)));
       else
          Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
       end if;
@@ -1808,7 +1824,7 @@ package body GNATLLVM.GLValue is
    begin
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V), unsigned (Idx),
-                                                Get_Type_Size (T));
+                                                To_Bytes (Get_Type_Size (T)));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
 

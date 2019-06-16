@@ -432,7 +432,7 @@ package body GNATLLVM.GLType is
       Int_Sz      : constant Uint         :=
         (if Size = 0 then Uint_1 else Size);
       Size_V      : GL_Value              :=
-        (if   Size = No_Uint or else not UI_Is_In_Int_Range (Size)
+        (if   Size = No_Uint or else not UI_Is_In_ULL_Range (Size)
               or else Is_Dynamic_SO_Ref (Size)
          then In_GTI.Size else Size_Const_Int (Size));
       Align_V     : constant GL_Value     :=

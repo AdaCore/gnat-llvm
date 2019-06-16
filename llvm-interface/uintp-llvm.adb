@@ -78,6 +78,25 @@ package body Uintp.LLVM is
 
    end UI_To_ULL;
 
+   ------------------------
+   -- UI_Is_In_ULL_Range --
+   ------------------------
+
+   function UI_Is_In_ULL_Range (U : Uint) return Boolean is
+      Val : ULL;
+      pragma Unreferenced (Val);
+
+   begin
+      --  Try to convert and see if we get an exception
+
+      Val := UI_To_ULL (U);
+      return True;
+
+   exception
+      when Constraint_Error =>
+         return False;
+   end UI_Is_In_ULL_Range;
+
    -----------------
    -- UI_To_Words --
    -----------------

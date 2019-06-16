@@ -416,6 +416,10 @@ package body GNATLLVM.GLType is
       Max_Size  : Boolean;
       Is_Biased : Boolean) return GL_Type
    is
+      function Make_Large_Array (Count : ULL) return Type_T
+        with Post => Get_Type_Kind (Make_Large_Array'Result) = Array_Type_Kind;
+      --  Build an array (possibly a nested array) of Count entries
+
       In_GTI      : constant GL_Type_Info := GL_Type_Table.Table (GT);
       Needs_Bias  : constant Boolean      :=
         Is_Biased or else In_GTI.Kind = Biased;
@@ -439,6 +443,30 @@ package body GNATLLVM.GLType is
         (if   Align = No_Uint then In_GTI.Alignment
          else Size_Const_Int (Align));
       Found_GT    : GL_Type               := Get_GL_Type (TE);
+
+      ----------------------
+      -- Make_Large_Array --
+      ----------------------
+
+      function Make_Large_Array (Count : ULL) return Type_T is
+         Count_Left : ULL := Count;
+         This_Count : ULL;
+
+      begin
+         --  We need an array of Count elements, but can only make an array
+         --  of Unsigned'Last elements, so if we need more, we need to make
+         --  a nested array. Set a limit a bit under the maximum to avoid
+         --  any corner cases.
+
+         return Result : Type_T := Byte_T do
+            while True loop
+               This_Count := ULL'Min (Count_Left, ULL (unsigned'Last / 2));
+               Result     := Array_Type (Result, unsigned (This_Count));
+               exit when This_Count = Count_Left;
+               Count_Left := Count_Left / This_Count;
+            end loop;
+         end return;
+      end Make_Large_Array;
 
    begin
       --  If we're not specifying a size, alignment, or a request for
@@ -590,19 +618,18 @@ package body GNATLLVM.GLType is
          then
             declare
                Pad_Size  : constant GL_Value := Size_V - Prim_Size;
-               Pad_Count : constant ULL      :=
-                 Get_Const_Int_Value_ULL (Pad_Size);
-               Arr_T     : constant Type_T   :=
-                 Array_Type (Byte_T, unsigned (To_Bytes (Pad_Count)));
+               Pad_Count : constant LLI      := Get_Const_Int_Value (Pad_Size);
 
             begin
                --  If there's a padding amount, thisis a padded type.
                --  Otherwise, this is an aligning type.
 
                if Pad_Count > 0 then
-                  GTI.LLVM_Type := Build_Struct_Type ((1 => Prim_T,
-                                                       2 => Arr_T),
-                                                      Packed => True);
+                  GTI.LLVM_Type :=
+                    Build_Struct_Type ((1 => Prim_T,
+                                        2 => Make_Large_Array
+                                               (To_Bytes (ULL (Pad_Count)))),
+                                       Packed => True);
                   GTI.Kind      := Padded;
                else
                   GTI.LLVM_Type := Prim_T;
@@ -615,9 +642,8 @@ package body GNATLLVM.GLType is
          --  Byte_Array.
 
          elsif not Prim_Native and then Present (Size_V) then
-            GTI.LLVM_Type := Array_Type (Byte_T,
-                                         unsigned (Get_Const_Int_Value
-                                                     (To_Bytes (Size_V))));
+            GTI.LLVM_Type := Make_Large_Array (Get_Const_Int_Value_ULL
+                                                 (To_Bytes (Size_V)));
             GTI.Kind      := Byte_Array;
 
          --  If we're looking for the maximum size and none of the above cases

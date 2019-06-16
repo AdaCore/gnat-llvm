@@ -144,6 +144,11 @@ package GNATLLVM.GLType is
    --  primitive GL_Type of the base type of a type.  This is used to perform
    --  computation on a type.
 
+   function Get_Unused_Bits (GT : GL_Type) return Uint
+     with Pre => Present (GT);
+   --  Return the number of unused bits that are at the end of objects
+   --  of type GT.
+
    --  Here are the access function to obtain fields from a GL_Type.
    --  Many are overloaded from the functions that obtain these fields from
    --  a GNAT type.

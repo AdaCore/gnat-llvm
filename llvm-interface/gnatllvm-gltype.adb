@@ -792,6 +792,47 @@ package body GNATLLVM.GLType is
       end loop;
    end Mark_Default;
 
+   ---------------------
+   -- Get_Unused_Bits --
+   ---------------------
+
+   function Get_Unused_Bits (GT : GL_Type) return Uint is
+      TE : constant Entity_Id := Full_Etype (GT);
+
+   begin
+      return Result : Uint := Uint_0 do
+
+         --  There are two ways we can have unused bits.  We can have a record
+         --  type with padding at the end and/or we can have padding on this
+         --  GL_Type with respect to the underlying type.
+         --
+         --  First deal with any unused bits from the type.  We can have some
+         --  unused bits if this is a record with a defined and static Esize
+         --  and RM_size.
+
+         if Is_Record_Type (TE) and then Known_Static_Esize (TE)
+           and then Known_Static_RM_Size (TE)
+         then
+            Result := Esize (TE) - RM_Size (TE);
+         end if;
+
+         --  The other way that we can have unused bits is if this is a
+         --  padded type.  If we have that, then we have a struct type
+         --  where the second field is the padding.
+
+         if Is_Padded_GL_Type (GT) then
+            declare
+               Pad_T : constant Type_T :=
+                 Struct_Get_Type_At_Index (Type_Of (GT), 1);
+
+            begin
+               Result := Result + UI_From_ULL (Get_Type_Size (Pad_T));
+            end;
+         end if;
+      end return;
+
+   end Get_Unused_Bits;
+
    -----------------
    -- Convert_Int --
    -----------------

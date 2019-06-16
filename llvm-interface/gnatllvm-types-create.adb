@@ -666,15 +666,13 @@ package body GNATLLVM.Types.Create is
       then
          return Size;
 
-      --  If too small, we can't use it.
-      --  ???   But don't give this error for RM_Size until we can get the
-      --  size of objects accurate to the bit.
+      --  If too small, we can't use it
 
-      elsif Size_Const_Int (Size) < In_Size and then not Is_RM_Size then
+      elsif Size_Const_Int (Size) < In_Size then
          Error_Msg_NE_Num (Msg_Prefix &
                              " for& too small, minimum allowed is ^",
                            Error_Node, E, In_Size);
-         return UI_From_GL_Value (In_Size * BPU);
+         return UI_From_GL_Value (In_Size);
       end if;
 
       --  Otherwise, we're good

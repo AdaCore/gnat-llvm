@@ -542,8 +542,15 @@ package body GNATLLVM.Records is
             Must_Align := RI.Align;
          end if;
 
-         --  Now update the total size given what we've computed above
+         --  Now update the total size given what we've computed above.  If
+         --  this is the last RI, and we're asking for the size without
+         --  padding, subtract the unused bits from the size of this piece.
+
          if Return_Size then
+            if No (RI.Next) and then No_Padding then
+               This_Size := This_Size - Sz_Const (UI_To_ULL (RI.Unused_Bits));
+            end if;
+
             Total_Size
               := Align_To (Total_Size, Cur_Align, Must_Align) + This_Size;
          end if;
@@ -2252,6 +2259,11 @@ package body GNATLLVM.Records is
             if RI.Position /= 0 then
                Write_Str (" position ");
                Write_Int (Nat (RI.Position));
+            end if;
+
+            if No (RI.Next) and then RI.Unused_Bits /= 0 then
+               Write_Str (" unused bits ");
+               Write_Int (UI_To_Int (RI.Unused_Bits));
             end if;
 
             Write_Eol;

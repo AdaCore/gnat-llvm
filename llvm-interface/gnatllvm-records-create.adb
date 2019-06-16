@@ -280,7 +280,7 @@ package body GNATLLVM.Records.Create is
       --  The index of the record table entry we're building
 
       Cur_RI_Pos     : ULL              := 0;
-      --  Current position into this R
+      --  Current position into this RI
 
       Par_Depth      : Int              := 0;
       --  Nesting depth into parent records
@@ -295,6 +295,9 @@ package body GNATLLVM.Records.Create is
 
       RI_Is_Overlap  : Boolean          := False;
       --  If True, the next RI built is an overlap RI for a variant
+
+      RI_Unused_Bits : Uint             := Uint_0;
+      --  Number of unused bits at the end of this RI
 
       Cur_Field      : Entity_Id        := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
@@ -333,7 +336,8 @@ package body GNATLLVM.Records.Create is
          Variant_List     : List_Id                     := No_List;
          Variant_Expr     : Node_Id                     := Empty;
          Variants         : Record_Info_Id_Array_Access := null;
-         Overlap_Variants : Record_Info_Id_Array_Access := null);
+         Overlap_Variants : Record_Info_Id_Array_Access := null;
+         Unused_Bits      : Uint                        := Uint_0);
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
@@ -376,7 +380,8 @@ package body GNATLLVM.Records.Create is
          Variant_List     : List_Id                     := No_List;
          Variant_Expr     : Node_Id                     := Empty;
          Variants         : Record_Info_Id_Array_Access := null;
-         Overlap_Variants : Record_Info_Id_Array_Access := null) is
+         Overlap_Variants : Record_Info_Id_Array_Access := null;
+         Unused_Bits      : Uint                        := Uint_0) is
 
       begin
          --  It's tempting to set Next to the next entry that we'll be using,
@@ -391,7 +396,8 @@ package body GNATLLVM.Records.Create is
             Variant_List     => Variant_List,
             Variant_Expr     => Variant_Expr,
             Variants         => Variants,
-            Overlap_Variants => Overlap_Variants);
+            Overlap_Variants => Overlap_Variants,
+            Unused_Bits      => Unused_Bits);
 
          --  If we've had a previous RI for this part, link us to it.
          --  Otherwise, if this is an overlap RI, indicate it as so and
@@ -826,13 +832,15 @@ package body GNATLLVM.Records.Create is
 
       begin
          if Last_Type >= 0 then
-            Add_RI (T        => Build_Struct_Type
+            Add_RI (T           => Build_Struct_Type
                       (Type_Array (LLVM_Types.Table (0 .. Last_Type)),
                        Packed => Use_Packed),
-                    Align    => RI_Align,
-                    Position => RI_Position);
-            RI_Align    := 0;
-            RI_Position := 0;
+                    Align       => RI_Align,
+                    Position    => RI_Position,
+                    Unused_Bits => RI_Unused_Bits);
+            RI_Align       := 0;
+            RI_Position    := 0;
+            RI_Unused_Bits := Uint_0;
             LLVM_Types.Set_Last (-1);
          end if;
 
@@ -1489,7 +1497,9 @@ package body GNATLLVM.Records.Create is
                   end if;
 
                   Add_FI (F, Cur_Idx, F_GT);
-                  Add_RI (F_GT => F_GT, Align => Need_Align);
+                  Add_RI (F_GT         => F_GT,
+                          Align       => Need_Align,
+                          Unused_Bits => Get_Unused_Bits (F_GT));
                   Set_Is_Nonnative_Type (TE);
                   Split_Align := Need_Align;
 
@@ -1565,12 +1575,14 @@ package body GNATLLVM.Records.Create is
                                 First_Bit      => Pos - Bitfield_Start_Pos,
                                 Num_Bits       => Size,
                                 Array_Bitfield => Bitfield_Is_Array);
+                        RI_Unused_Bits := Bitfield_End_Pos - (Pos + Size);
                      else
                         Force_To_Pos (Needed_Pos, Pos_Aligned);
                         LLVM_Types.Append (T);
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (T), BPU);
                         Add_FI (F, Cur_Idx, F_GT, Ordinal => LLVM_Types.Last);
+                        RI_Unused_Bits := Get_Unused_Bits (F_GT);
                         Forced_Pos := 0;
                      end if;
                   end;
@@ -1626,7 +1638,9 @@ package body GNATLLVM.Records.Create is
       if No (Prev_Idx) then
          Struct_Set_Body (LLVM_Type, LLVM_Types.Table (0)'Address,
                           unsigned (LLVM_Types.Last + 1), Use_Packed);
-         Add_RI (T => LLVM_Type, Align => RI_Align);
+         Add_RI (T           => LLVM_Type,
+                 Align       => RI_Align,
+                 Unused_Bits => RI_Unused_Bits);
       else
          --  Otherwise, close out the last record info if we have any
          --  fields.  Note that if we don't have any fields, the entry we

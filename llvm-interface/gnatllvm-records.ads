@@ -321,6 +321,11 @@ private
       --  Likewise for any part of the variant who offset starts at
       --  the beginning of a record (for field with record rep
       --  clauses).
+
+      Unused_Bits      : Uint;
+      --  The number of unused bits in the last type for this RI, either
+      --  a GNAT type or a bitfield type.  This is only used in the last
+      --  RI of the chain.
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.

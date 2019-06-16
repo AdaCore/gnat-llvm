@@ -1710,9 +1710,9 @@ package body GNATLLVM.Records.Create is
 
             begin
                if Unknown_Esize (Cur_Field) then
-                  Set_Esize (Cur_Field,
-                             Annotated_Object_Size (Get_Field_Type
-                                                      (Cur_Field)));
+                  Set_Esize (Cur_Field, Annotated_Value (Get_Type_Size
+                                                           (Get_Field_Type
+                                                              (Cur_Field))));
                end if;
 
                Set_Component_Bit_Offset (Cur_Field, Bit_Offset);

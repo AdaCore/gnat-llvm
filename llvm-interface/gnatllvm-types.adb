@@ -1502,7 +1502,6 @@ package body GNATLLVM.Types is
      (GT : GL_Type; Do_Align : Boolean := False) return Node_Ref_Or_Val
    is
       Use_Max       : constant Boolean := Is_Unconstrained_Record (GT);
-      Bits_Per_Unit : constant BA_Data := Const (ULL (BPU));
       Size          : constant BA_Data :=
         Get_Type_Size (GT, Max_Size => Use_Max);
       Align         : constant BA_Data :=
@@ -1516,7 +1515,7 @@ package body GNATLLVM.Types is
       --  now, at least, we won't worry about that.
 
       return Annotated_Value
-        (Build_And (Size + Align - (Bits_Per_Unit - Const (1)), -Align));
+        (Build_And (Size + Align - Const (1), -Align));
    end Annotated_Object_Size;
 
    ----------

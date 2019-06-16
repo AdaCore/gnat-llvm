@@ -672,8 +672,16 @@ package body GNATLLVM.Types is
             Emit_Raise_Call (N, SE_Object_Too_Large);
             return Get_Undef_Ref (GT);
          else
-            return Move_Into_Memory (Alloca (Alloc_GT, Def_Ident, Name),
-                                     Value, Expr, GT, Alloc_GT);
+            declare
+               Align_GT : constant GL_Type :=
+                 (if   GT_Alignment (Alloc_GT) >= Align then Alloc_GT
+                  else Make_GT_Alternative (Alloc_GT, N,
+                                            Align => UI_From_Int (Align)));
+
+            begin
+               return Move_Into_Memory (Alloca (Align_GT, Def_Ident, Name),
+                                        Value, Expr, GT, Alloc_GT);
+            end;
          end if;
       end if;
 
@@ -1169,11 +1177,11 @@ package body GNATLLVM.Types is
       E        : Entity_Id := Empty) return Nat
    is
       Align_GT    : constant GL_Type := GT_To_Use (GT, Alloc_GT);
-      GT_Align    : constant Nat  := Get_Type_Alignment (Align_GT);
-      E_Align     : constant Nat  :=
+      GT_Align    : constant Nat     := Get_Type_Alignment (Align_GT);
+      E_Align     : constant Nat     :=
         (if   Present (E) and then Known_Alignment (E)
-         then UI_To_Int (Alignment (E)) else BPU);
-      Bound_Align : constant Nat  :=
+         then UI_To_Int (Alignment (E)) * BPU else BPU);
+      Bound_Align : constant Nat     :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
          then Get_Bound_Alignment (Full_Etype (GT)) else BPU);
 

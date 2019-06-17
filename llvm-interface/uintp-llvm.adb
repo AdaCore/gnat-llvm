@@ -57,7 +57,6 @@ package body Uintp.LLVM is
       else
          declare
             Words  : constant Word_Array := Big_UI_To_Words (U);
-
          begin
             --  We assume that ULL is no wider than an element of Word_Array,
             --  but is no narrower than Int.
@@ -83,18 +82,9 @@ package body Uintp.LLVM is
    ------------------------
 
    function UI_Is_In_ULL_Range (U : Uint) return Boolean is
-      Val : ULL;
-      pragma Unreferenced (Val);
-
    begin
-      --  Try to convert and see if we get an exception
-
-      Val := UI_To_ULL (U);
-      return True;
-
-   exception
-      when Constraint_Error =>
-         return False;
+      return UI_Is_In_Int_Range (U)
+        or else Big_UI_To_Words (U)'Length = 1;
    end UI_Is_In_ULL_Range;
 
    -----------------

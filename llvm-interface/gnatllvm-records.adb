@@ -417,9 +417,37 @@ package body GNATLLVM.Records is
          Return_Size : Boolean := True;
          No_Padding  : Boolean := False)
       is
+         function Only_Overlap_RIs (Idx : Record_Info_Id) return Boolean;
+         --  Return True if Idx is null or if the only RIs after it are
+         --  RIs for variants with only overlap parts.
+
          T         : constant Type_T  := RI.LLVM_Type;
          GT        : constant GL_Type := RI.GT;
          This_Size : Result           := Empty_Result;
+
+         ----------------------
+         -- Only_Overlap_RIs --
+         ----------------------
+
+         function Only_Overlap_RIs (Idx : Record_Info_Id) return Boolean is
+            J : Record_Info_Id := Idx;
+
+         begin
+            while Present (J) loop
+               declare
+                  RI : constant Record_Info := Record_Info_Table.Table (J);
+
+               begin
+                  exit when Present (RI.LLVM_Type) or else Present (RI.GT);
+                  exit when RI.Variants /= null
+                    and then (for some K of RI.Variants.all => Present (K));
+
+                  J := RI.Next;
+               end;
+            end loop;
+
+            return No (J);
+         end Only_Overlap_RIs;
 
       begin
          --  If this piece has a starting position specified, move to it
@@ -543,11 +571,12 @@ package body GNATLLVM.Records is
          end if;
 
          --  Now update the total size given what we've computed above.  If
-         --  this is the last RI, and we're asking for the size without
-         --  padding, subtract the unused bits from the size of this piece.
+         --  this is the last RI (or subsequent RI's only have overlap RIs
+         --  in variants), and we're asking for the size without padding,
+         --  subtract the unused bits from the size of this piece.
 
          if Return_Size then
-            if No (RI.Next) and then No_Padding then
+            if Only_Overlap_RIs (RI.Next) and then No_Padding then
                This_Size := This_Size - Sz_Const (UI_To_ULL (RI.Unused_Bits));
             end if;
 
@@ -2261,7 +2290,7 @@ package body GNATLLVM.Records is
                Write_Int (Nat (RI.Position));
             end if;
 
-            if No (RI.Next) and then RI.Unused_Bits /= 0 then
+            if RI.Unused_Bits /= 0 then
                Write_Str (" unused bits ");
                Write_Int (UI_To_Int (RI.Unused_Bits));
             end if;

@@ -428,8 +428,7 @@ package body GNATLLVM.Types.Create is
             end if;
 
             GT := Make_GT_Alternative (GT, TE,
-               Size          => (if   Is_Modular_Integer_Type (Size_TE)
-                                 then Value_Size else Size),
+               Size          => Size,
                Align         => Align,
                For_Type      => True,
                For_Component => False,

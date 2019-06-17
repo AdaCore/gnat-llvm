@@ -103,11 +103,19 @@ package body GNATLLVM.Conversions is
       BT : constant GL_Type := Base_GL_Type (GT);
 
    begin
+      --  If biased, say yes
+
+      if Is_Biased_GL_Type (GT) then
+         return True;
+
       --  If GT is narrower than BT, use its signedness, otherwise use BT's
 
-      return (if   ULL'(Get_Type_Size (Type_Of (GT))) <
-                   ULL'(Get_Type_Size (Type_Of (BT)))
-              then Is_Unsigned_Type (GT) else Is_Unsigned_Type (BT));
+      else
+         return (if   ULL'(Get_Type_Size (Type_Of (GT))) <
+                        ULL'(Get_Type_Size (Type_Of (BT)))
+                 then Is_Unsigned_Type (GT) else Is_Unsigned_Type (BT));
+      end if;
+
    end Is_Unsigned_For_Convert;
 
    ------------------------

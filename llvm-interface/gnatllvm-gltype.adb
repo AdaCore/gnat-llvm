@@ -429,7 +429,8 @@ package body GNATLLVM.GLType is
       Prim_GT     : constant GL_Type      := Primitive_GL_Type (GT);
       Prim_Native : constant Boolean      := not Is_Nonnative_Type (Prim_GT);
       Prim_T      : constant Type_T       := Type_Of (Prim_GT);
-      Prim_Fixed  : constant Boolean      := not Is_Dynamic_Size (Prim_GT);
+      Prim_Fixed  : constant Boolean      :=
+        not Is_Dynamic_Size (Prim_GT, Allow_Overflow => True);
       Prim_Size   : constant GL_Value     :=
         (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
       Prim_Align  : constant GL_Value     := Get_Type_Alignment (Prim_GT);
@@ -823,39 +824,35 @@ package body GNATLLVM.GLType is
    ---------------------
 
    function Get_Unused_Bits (GT : GL_Type) return Uint is
-      TE : constant Entity_Id := Full_Etype (GT);
+      TE     : constant Entity_Id := Full_Etype (GT);
+      Def_GT : constant GL_Type   := Default_GL_Type (TE);
+      Sz_GT  : constant GL_Value  := GT_Size (GT);
+      Sz_Def : constant GL_Value  := GT_Size (Def_GT);
 
    begin
-      return Result : Uint := Uint_0 do
+      --  There are two ways we can have unused bits.  We can have a
+      --  record type with padding at the end and/or we can have
+      --  padding or truncation on this GL_Type with respect to the
+      --  underlying type.  But we need all of these values to be known
+      --  and constant and this only applies for record types.
 
-         --  There are two ways we can have unused bits.  We can have a record
-         --  type with padding at the end and/or we can have padding on this
-         --  GL_Type with respect to the underlying type.
-         --
-         --  First deal with any unused bits from the type.  We can have some
-         --  unused bits if this is a record with a defined and static Esize
-         --  and RM_size.
+      if Is_Record_Type (TE) and then Known_Static_Esize (TE)
+        and then Known_Static_RM_Size (TE) and then Present (Sz_GT)
+        and then Present (Sz_Def)
+      then
+         return Esize (TE) - RM_Size (TE) + Sz_GT - Sz_Def;
 
-         if Is_Record_Type (TE) and then Known_Static_Esize (TE)
-           and then Known_Static_RM_Size (TE)
-         then
-            Result := Esize (TE) - RM_Size (TE);
-         end if;
+      --  Another case is if we have a padding type and both sizes are
+      --  defined.
 
-         --  The other way that we can have unused bits is if this is a
-         --  padded type.  If we have that, then we have a struct type
-         --  where the second field is the padding.
+      elsif Is_Padded_GL_Type (GT) and then Present (Sz_Def) then
+         return UI_From_GL_Value (Sz_GT - Sz_Def);
 
-         if Is_Padded_GL_Type (GT) then
-            declare
-               Pad_T : constant Type_T :=
-                 Struct_Get_Type_At_Index (Type_Of (GT), 1);
+      --  Otherwise, there are no padding bits
 
-            begin
-               Result := Result + UI_From_ULL (Get_Type_Size (Pad_T));
-            end;
-         end if;
-      end return;
+      else
+         return Uint_0;
+      end if;
 
    end Get_Unused_Bits;
 

@@ -1395,6 +1395,18 @@ package GNATLLVM.GLValue is
    function "/" (LHS, RHS : GL_Value) return GL_Value is
      (S_Div (LHS, RHS));
 
+   function "+" (LHS : Uint; RHS : GL_Value) return Uint is
+     (LHS + UI_From_GL_Value (RHS))
+     with Pre  => LHS /= No_Uint and then Is_A_Const_Int (RHS);
+
+   function "+" (LHS : GL_Value; RHS : Uint) return Uint is
+     (RHS + UI_From_GL_Value (LHS))
+     with Pre  => RHS /= No_Uint and then Is_A_Const_Int (LHS);
+
+   function "-" (LHS : Uint; RHS : GL_Value) return Uint is
+     (LHS - UI_From_GL_Value (RHS))
+     with Pre  => LHS /= No_Uint and then Is_A_Const_Int (RHS);
+
    function "<" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp (Int_SLT, LHS, RHS) = Const_True);
    function "<=" (LHS, RHS : GL_Value) return Boolean is

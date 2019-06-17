@@ -1229,6 +1229,9 @@ package body GNATLLVM.GLType is
          Write_Str (", B=");
          Write_Int (Int (Get_Const_Int_Value (GTI.Bias)));
       end if;
+      if GTI.Default then
+         Write_Str (", default");
+      end if;
 
       Write_Str (")");
       if Full_Dump then

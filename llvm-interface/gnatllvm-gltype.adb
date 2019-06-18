@@ -842,11 +842,14 @@ package body GNATLLVM.GLType is
       then
          return Esize (TE) - RM_Size (TE) + Sz_GT - Sz_Def;
 
-      --  Another case is if we have a padding type and both sizes are
-      --  defined.
+      --  Another case is if we have a padding type.  We don't want
+      --  to use the size difference here in case some of that difference
+      --  isn't padding but is, for example, a different integer type or
+      --  a thin vs fat pointer.
 
-      elsif Is_Padded_GL_Type (GT) and then Present (Sz_Def) then
-         return UI_From_GL_Value (Sz_GT - Sz_Def);
+      elsif Is_Padded_GL_Type (GT) then
+         return UI_From_ULL (Get_Type_Size
+                               (Struct_Get_Type_At_Index (Type_Of (GT), 1)));
 
       --  Otherwise, there are no padding bits
 

@@ -442,8 +442,18 @@ package body GNATLLVM.Subprograms is
          then
             return True;
 
+         --  We have to be careful in how we test for array types.  This
+         --  could be a normal array type or it could be a packed array
+         --  implementation type.  Check for both separately since both
+         --  are arrays;
+
          elsif Is_Array_Type (GT) then
             return Is_Initialized (Full_Component_GL_Type (GT));
+
+         elsif Is_Packed_Array_Impl_Type (GT) then
+            return Is_Initialized (Default_GL_Type (Full_Component_Type
+                                                      (Full_Original_Array_Type
+                                                         (Full_Etype (GT)))));
 
          elsif Is_Record_Type (GT) then
             F := First_Component_Or_Discriminant (Full_Base_Type (GT));

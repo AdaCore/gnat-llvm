@@ -692,7 +692,10 @@ package body GNATLLVM.GLType is
       then
          GTI.Alignment := Get_Type_Alignment (GT);
          if not Is_Dynamic_Size (GT, Allow_Overflow => True) then
-            GTI.Size   := Get_Type_Size (GT);
+            GTI.Size   :=
+              (if   Is_Integer_Type (GT)
+               then Size_Const_Int (Get_Scalar_Bit_Size (T))
+               else Get_Type_Size (GT));
          end if;
       end if;
 

@@ -472,18 +472,24 @@ package body GNATLLVM.Types is
    begin
       --  Before we do anything, see if this isn't a base type and process
       --  the base type if so.  Copy sizes from the base type if a size
-      --  clause was present.
+      --  clause was present and the corresponding value hasn't already
+      --  been set.
 
       if not Is_Full_Base_Type (TE) then
-         Discard (Type_Of (Full_Base_Type (TE)));
+         declare
+            BT : constant Entity_Id := Full_Base_Type (TE);
 
-         if Has_Size_Clause (Full_Base_Type (TE)) then
-            Set_RM_Size (TE, RM_Size (Full_Base_Type (TE)));
-         end if;
+         begin
+            Discard (Type_Of (BT));
 
-         if Has_Object_Size_Clause (Full_Base_Type (TE)) then
-            Set_Esize (TE, Esize (Full_Base_Type (TE)));
-         end if;
+            if Has_Size_Clause (BT) and then Unknown_RM_Size (TE) then
+               Set_RM_Size (TE, RM_Size (BT));
+            end if;
+
+            if Has_Object_Size_Clause (BT) and then Unknown_Esize (TE) then
+               Set_Esize (TE, Esize (BT));
+            end if;
+         end;
       end if;
 
       --  Next see if we already have a suitable type

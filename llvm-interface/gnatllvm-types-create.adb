@@ -455,8 +455,7 @@ package body GNATLLVM.Types.Create is
          end if;
          if Unknown_RM_Size (TE) then
             Set_RM_Size (TE, Annotated_Value
-                           (Get_Type_Size
-                              (GT, No_Padding => not Strict_Alignment (GT))));
+                           (Get_Type_Size (GT, No_Padding => True)));
          end if;
       end if;
 
@@ -647,7 +646,7 @@ package body GNATLLVM.Types.Create is
       In_Size :=
         Get_Type_Size (Size_GT, No_GL_Value,
                        Max_Size   => Is_Unconstrained_Record (Size_GT),
-                       No_Padding => not Strict_Alignment (Size_GT));
+                       No_Padding => True);
 
       --  If this is for a variable, round up the size to the alignment
       --  of the type.

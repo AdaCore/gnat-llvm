@@ -1077,7 +1077,8 @@ package body GNATLLVM.Types is
          elsif Is_Record_Type (GT) then
             return Sz_Record_Type_Size (Full_Etype (GT), V,
                                         Max_Size   => Use_Max_Size,
-                                        No_Padding => No_Padding);
+                                        No_Padding => No_Padding
+                                          and then not Strict_Alignment (GT));
          elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
             return Sz_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
          elsif Is_Array_Type (GT) then

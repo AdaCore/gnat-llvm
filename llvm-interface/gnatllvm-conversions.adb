@@ -462,16 +462,14 @@ package body GNATLLVM.Conversions is
       type Cvtf is access function
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
-      In_V        : constant GL_Value :=
-        (if   Is_Unchecked and then not Has_Padding (V) then V
-         else To_Primitive (V));
-      In_GT       : constant GL_Type  := Related_Type (In_V);
       Is_Unc_Bias : constant Boolean  :=
         Is_Unchecked and then (Is_Biased_GL_Type (GT)
-                                 or else Is_Biased_GL_Type (In_GT));
+                                 or else Is_Biased_GL_Type (Related_Type (V)));
+      In_V        : constant GL_Value :=
+        (if Is_Unc_Bias then V else To_Primitive (V));
+      In_GT       : constant GL_Type  := Related_Type (In_V);
       Prim_GT     : constant GL_Type  :=
-        (if   Is_Unchecked and then not Has_Padding (GT) then GT
-         else Primitive_GL_Type (GT));
+        (if Is_Unc_Bias then GT else Primitive_GL_Type (GT));
       Value       : GL_Value          := In_V;
       Src_Access  : constant Boolean  := Is_Access_Type (V);
       Dest_Access : constant Boolean  := Is_Access_Type (Prim_GT);
@@ -481,10 +479,8 @@ package body GNATLLVM.Conversions is
       Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
       Src_Size    : constant Nat      :=
         Nat (ULL'(Get_Scalar_Bit_Size (In_V)));
-      Dest_Usize  : constant Uint     :=
-        (if   Is_Modular_Integer_Type (Prim_GT) then RM_Size (Prim_GT)
-         else Esize (Prim_GT));
-      Dest_Size   : constant Nat      := UI_To_Int (Dest_Usize);
+      Dest_Size   : constant Nat      :=
+        Nat (ULL'(Get_Scalar_Bit_Size (Prim_GT)));
       Is_Trunc    : constant Boolean  := Dest_Size < Src_Size;
       Subp        : Cvtf              := null;
 

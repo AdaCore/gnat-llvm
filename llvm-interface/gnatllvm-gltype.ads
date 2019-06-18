@@ -230,6 +230,10 @@ package GNATLLVM.GLType is
    --  Now define functions that operate on GNAT types that we want to
    --  also operate on GL_Type's.
 
+   function Get_Scalar_Bit_Size (GT : GL_Type) return ULL is
+     (Get_Scalar_Bit_Size (Type_Of (GT)))
+     with Pre => Present (GT);
+
    function Ekind (GT : GL_Type) return Entity_Kind is
      (Ekind (Full_Etype (GT)))
      with Pre => Present (GT);

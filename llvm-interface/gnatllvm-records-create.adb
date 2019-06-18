@@ -264,8 +264,13 @@ package body GNATLLVM.Records.Create is
          Table_Name           => "Variant_Stack");
 
       Use_Packed     : constant Boolean :=
-        Is_Packed (TE) or else Has_Specified_Layout (TE);
+        Is_Packed (TE) or else Has_Specified_Layout (TE)
+        or else Component_Alignment (TE) = Calign_Storage_Unit;
       --  Says to use an LLVM packed struct
+
+      Comp_Unaligned : constant Boolean :=
+        Is_Packed (TE) or else Component_Alignment (TE) = Calign_Storage_Unit;
+      --  True if we're to align component only at a byte boundary
 
       Prev_Idx       : Record_Info_Id   := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
@@ -1095,6 +1100,8 @@ package body GNATLLVM.Records.Create is
               Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
             Dynamic_R : constant Boolean     :=
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
+            P_Or_A    : constant Boolean     :=
+              Is_Packed (TE) or else Comp_Unaligned or else Aliased_Fields;
 
          begin
             --  This function must satisfy the conditions of A.18(5/3),
@@ -1180,13 +1187,11 @@ package body GNATLLVM.Records.Create is
             --  have the same ordering in extensions).
 
             elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
-              and then (Is_Packed (TE) or else Aliased_Fields)
-              and then not Dynamic_L and then Dynamic_R
+              and then P_Or_A and then not Dynamic_L and then Dynamic_R
             then
                return True;
             elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
-              and then (Is_Packed (TE) or else Aliased_Fields)
-              and then not Dynamic_R and then Dynamic_L
+              and then P_Or_A and then not Dynamic_R and then Dynamic_L
             then
                return False;
 
@@ -1391,7 +1396,8 @@ package body GNATLLVM.Records.Create is
 
                Need_Align  :  Nat                :=
                  (if   Pos /= No_Uint
-                       or else (Is_Packed (TE) and then not Is_Aliased (F))
+                       or else (Comp_Unaligned
+                                  and then not Is_Aliased (F))
                   then BPU else Get_Type_Alignment (F_GT));
                --  The alignment we need this field to have
 

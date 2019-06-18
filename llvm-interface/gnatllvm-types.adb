@@ -539,6 +539,23 @@ package body GNATLLVM.Types is
       end if;
    end Copy_Annotations;
 
+   --------------------------
+   -- Annotate_Object_Size --
+   --------------------------
+
+   procedure Annotate_Object_Size_And_Alignment
+     (Def_Ident : Entity_Id; GT : GL_Type) is
+   begin
+      if Unknown_Esize (Def_Ident) then
+         Set_Esize (Def_Ident, Annotated_Object_Size (GT));
+      end if;
+
+      if Unknown_Alignment (Def_Ident) then
+         Set_Alignment (Def_Ident,
+                        UI_From_Int (Get_Type_Alignment (GT)) / BPU);
+      end if;
+   end Annotate_Object_Size_And_Alignment;
+
    -----------------
    -- Create_TBAA --
    -----------------

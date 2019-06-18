@@ -98,6 +98,11 @@ package GNATLLVM.Types is
                  and then In_TE = Get_Fullest_View (Out_TE);
    --  Copy any annotations we made from In_TE to Out_TE
 
+   procedure Annotate_Object_Size_And_Alignment
+     (Def_Ident : Entity_Id; GT : GL_Type)
+     with Pre => not Is_Type (Def_Ident);
+   --  Peform back-annotation of size and alignment of Def_Ident
+
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
      with Pre => Present (GT) and then Present (E);

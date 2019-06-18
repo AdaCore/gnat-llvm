@@ -1732,16 +1732,7 @@ package body GNATLLVM.Variables is
          Create_Global_Variable_Debug_Data (Def_Ident, LLVM_Var);
       end if;
 
-      --  Back-annotate size and alignment
-
-      if Unknown_Esize (Def_Ident) then
-         Set_Esize (Def_Ident, Annotated_Object_Size (GT));
-      end if;
-
-      if Unknown_Alignment (Def_Ident) then
-         Set_Alignment (Def_Ident,
-                        UI_From_Int (Get_Type_Alignment (GT)) / BPU);
-      end if;
+      Annotate_Object_Size_And_Alignment (Def_Ident, GT);
 
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.
@@ -1956,18 +1947,8 @@ package body GNATLLVM.Variables is
          Add_To_Elab_Proc (N);
       end if;
 
-      --  Back-annotate size and alignment
+      Annotate_Object_Size_And_Alignment (Def_Ident, GT);
 
-      if Unknown_Esize (Def_Ident) then
-         Set_Esize (Def_Ident, Annotated_Value
-                      (Get_Type_Size (GT, Max_Size => True) *
-                         Const (ULL (BPU))));
-      end if;
-
-      if Unknown_Alignment (Def_Ident) then
-         Set_Alignment (Def_Ident,
-                        UI_From_Int (Get_Type_Alignment (GT)) / BPU);
-      end if;
    end Emit_Renaming_Declaration;
 
    ---------------------

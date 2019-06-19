@@ -342,7 +342,6 @@ package body GNATLLVM.DebugInfo is
       Align       : constant unsigned   :=
         unsigned (Nat'(Get_Type_Alignment (GT)));
       S           : constant Source_Ptr := Sloc (TE);
-      Inner_Type  : Metadata_T          := No_Metadata_T;
       Result      : Metadata_T          := Get_Debug_Type (TE);
 
    begin
@@ -369,8 +368,7 @@ package body GNATLLVM.DebugInfo is
 
       Set_Is_Being_Elaborated (TE, True);
       case Ekind (TE) is
-         when E_Signed_Integer_Type | E_Signed_Integer_Subtype
-            | E_Modular_Integer_Type | E_Modular_Integer_Subtype =>
+         when Integer_Kind | Fixed_Point_Kind =>
             Result := DI_Create_Basic_Type
               (DI_Builder, Name, Name'Length, Size,
                (if    Size = UL (BPU)
@@ -388,12 +386,10 @@ package body GNATLLVM.DebugInfo is
             --  Get the type info for what this points to.  If we have
             --  something, make our type.
 
-            Inner_Type :=
-              Create_Debug_Type_Data (Full_Designated_GL_Type (GT));
-            if Present (Inner_Type) then
-               Result := DI_Create_Pointer_Type
-                 (DI_Builder, Inner_Type, Size, Align, 0, Name, Name'Length);
-            end if;
+            Result := DI_Create_Pointer_Type
+              (DI_Builder,
+               Create_Debug_Type_Data (Full_Designated_GL_Type (GT)),
+               Size, Align, 0, Name, Name'Length);
 
          when Array_Kind =>
 
@@ -401,33 +397,32 @@ package body GNATLLVM.DebugInfo is
             --  is of fixed size, get info for each of the bounds and
             --  make a description of the type.
 
-            Inner_Type := Create_Debug_Type_Data (Full_Component_GL_Type (GT));
-            if Present (Inner_Type) then
-               declare
-                  Num_Dims : constant Nat := Number_Dimensions (TE);
-                  Ranges   : Metadata_Array (0 .. Num_Dims - 1);
+            declare
+               Num_Dims   : constant Nat        := Number_Dimensions (TE);
+               Inner_Type : constant Metadata_T :=
+                 Create_Debug_Type_Data (Full_Component_GL_Type (GT));
+               Ranges     : Metadata_Array (0 .. Num_Dims - 1);
 
-               begin
-                  for J in 0 .. Num_Dims - 1 loop
-                     declare
-                        Low_Bound  : constant GL_Value   :=
-                          Get_Array_Bound (GT, J, True, No_GL_Value);
-                        Length     : constant GL_Value   :=
-                          Get_Array_Length (TE, J, No_GL_Value);
+            begin
+               for J in 0 .. Num_Dims - 1 loop
+                  declare
+                     Low_Bound  : constant GL_Value   :=
+                       Get_Array_Bound (GT, J, True, No_GL_Value);
+                     Length     : constant GL_Value   :=
+                       Get_Array_Length (TE, J, No_GL_Value);
 
-                     begin
-                        Ranges (J) := DI_Builder_Get_Or_Create_Subrange
-                          (DI_Builder,
-                           int64_t (Get_Const_Int_Value (Low_Bound)),
-                           int64_t (Get_Const_Int_Value (Length)));
-                     end;
-                  end loop;
+                  begin
+                     Ranges (J) := DI_Builder_Get_Or_Create_Subrange
+                       (DI_Builder,
+                        int64_t (Get_Const_Int_Value (Low_Bound)),
+                        int64_t (Get_Const_Int_Value (Length)));
+                  end;
+               end loop;
 
-                  Result := DI_Builder_Create_Array_Type
-                    (DI_Builder, Size, Align, Inner_Type,
-                     Ranges'Address, unsigned (Num_Dims));
-               end;
-            end if;
+               Result := DI_Builder_Create_Array_Type
+                 (DI_Builder, Size, Align, Inner_Type,
+                  Ranges'Address, unsigned (Num_Dims));
+            end;
 
          when Record_Kind =>
 
@@ -460,27 +455,23 @@ package body GNATLLVM.DebugInfo is
                         F_S      : constant Source_Ptr := Sloc (F);
 
                      begin
-                        if Present (Mem_Type) then
+                        --  Add the member type to the table.  ???  Maybe
+                        --  we should use
+                        --  DI_Builder_Create_Bit_Field_Member_type when
+                        --  appropriate.
 
-                           --  Add the member type to the table.  ???  Maybe
-                           --  we should use
-                           --  DI_Builder_Create_Bit_Field_Member_type when
-                           --  appropriate.
-
-                           Member_Table.Append
-                             (DI_Create_Member_Type
-                                (DI_Builder, No_Metadata_T, Name, Name'Length,
-                                 Get_Debug_File_Node
-                                   (Get_Source_File_Index (F_S)),
-                                 unsigned (Get_Logical_Line_Number (F_S)),
-                                 uint64_t (UI_To_ULL (Esize (F))),
-                                 unsigned (Nat'(Get_Type_Alignment (F_GT))),
-                                 uint64_t (UI_To_ULL
-                                             (Component_Bit_Offset (F))),
-                                 (if   Is_Bitfield (F) then DI_Flag_Bit_Field
-                                  else DI_Flag_Zero),
-                                 Mem_Type));
-                        end if;
+                        Member_Table.Append
+                          (DI_Create_Member_Type
+                             (DI_Builder, No_Metadata_T, Name, Name'Length,
+                              Get_Debug_File_Node
+                                (Get_Source_File_Index (F_S)),
+                              unsigned (Get_Logical_Line_Number (F_S)),
+                              uint64_t (UI_To_ULL (Esize (F))),
+                              unsigned (Nat'(Get_Type_Alignment (F_GT))),
+                              uint64_t (UI_To_ULL (Component_Bit_Offset (F))),
+                              (if   Is_Bitfield (F) then DI_Flag_Bit_Field
+                               else DI_Flag_Zero),
+                              Mem_Type));
                      end;
                   end if;
 
@@ -528,7 +519,7 @@ package body GNATLLVM.DebugInfo is
             end;
 
          when others =>
-            null;
+            return DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length);
       end case;
 
       --  Show no longer elaborating this type and save and return the result

@@ -840,14 +840,14 @@ package body GNATLLVM.Subprograms is
 
          when Memcpy =>
             Return_GT := Void_GL_Type;
-            Fun_Ty := Fn_Ty
+            Fun_Ty    := Fn_Ty
               ((1 => Void_Ptr_Type,  2 => Void_Ptr_Type,
                 3 => LLVM_Size_Type, 4 => Bit_T),
                Void_Type);
 
          when Memset =>
             Return_GT := Void_GL_Type;
-            Fun_Ty := Fn_Ty
+            Fun_Ty    := Fn_Ty
               ((1 => Void_Ptr_Type,  2 => Byte_T,
                 3 => LLVM_Size_Type, 4 => Bit_T),
                Void_Type);
@@ -855,6 +855,19 @@ package body GNATLLVM.Subprograms is
 
       Result := Add_Function (Full_Name, Fun_Ty, Return_GT);
       Set_Does_Not_Throw (Result);
+      if Kind = Memcpy then
+         Add_Nocapture_Attribute (Result, 0);
+         Add_Nocapture_Attribute (Result, 1);
+         Add_Non_Null_Attribute  (Result, 0);
+         Add_Non_Null_Attribute  (Result, 1);
+         Add_Writeonly_Attribute (Result, 0);
+         Add_Readonly_Attribute  (Result, 1);
+      elsif Kind = Memset then
+         Add_Nocapture_Attribute (Result, 0);
+         Add_Non_Null_Attribute  (Result, 0);
+         Add_Writeonly_Attribute (Result, 0);
+      end if;
+
       Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
       return Result;
    end Build_Intrinsic;

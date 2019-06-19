@@ -350,12 +350,29 @@ package body GNATLLVM.Conversions is
       --  raise a Constraint_Error if this conversion overflowed by producing
       --  an undef.
 
-      elsif Is_Elementary_Type (In_GT)
-        and then Is_Elementary_Type (GT)
-      then
-         Result := Convert (Get (Result, Data), GT,
-                            Float_Truncate => Float_Truncate,
-                            Is_Unchecked   => Is_Unchecked);
+      elsif Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
+
+         --  If the aim of the conversion is one integral type to the same
+         --  result type, just show that the type has changed.  There may
+         --  have been smaller types involved in primitive types of the
+         --  conversion, but converting to and from them is not only
+         --  unnecessary code, but can break 'Valid of a widened field.
+         --  However, we always have to do something if there's a biased
+         --  type involved.
+
+         Result := Get (Result, Data);
+         if Is_Discrete_Or_Fixed_Point_Type (GT)
+           and then Type_Of (GT) = Type_Of (Result)
+           and then not Is_Biased_GL_Type (GT)
+           and then not Is_Biased_GL_Type (Result)
+         then
+            Result := G_Is (Result, GT);
+         else
+            Result := Convert (Result, GT,
+                               Float_Truncate => Float_Truncate,
+                               Is_Unchecked   => Is_Unchecked);
+         end if;
+
          if Is_Undef (Result) and then not Is_Undef (Orig_Result) then
             Error_Msg_N ("?`Constraint_Error` will be raised at run time",
                          From_N);

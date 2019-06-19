@@ -946,6 +946,12 @@ package body GNATLLVM.Subprograms is
                     3 => LLVM_Size_Type),
                    Type_Of (Integer_GL_Type)),
             Integer_GL_Type);
+         Add_Nocapture_Attribute (Memory_Compare_Fn, 0);
+         Add_Nocapture_Attribute (Memory_Compare_Fn, 1);
+         Add_Readonly_Attribute  (Memory_Compare_Fn, 0);
+         Add_Readonly_Attribute  (Memory_Compare_Fn, 1);
+         Add_Non_Null_Attribute  (Memory_Compare_Fn, 0);
+         Add_Non_Null_Attribute  (Memory_Compare_Fn, 1);
       end if;
 
       return Memory_Compare_Fn;

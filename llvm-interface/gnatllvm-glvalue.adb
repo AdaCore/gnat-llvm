@@ -1990,6 +1990,15 @@ package body GNATLLVM.GLValue is
       return Inst;
    end Set_Arith_Attrs;
 
+   --------------------
+   -- Set_Subprogram --
+   --------------------
+
+   procedure Set_Subprogram (V : GL_Value; M : Metadata_T) is
+   begin
+      Set_Subprogram (LLVM_Value (V), M);
+   end Set_Subprogram;
+
    -------------------------
    -- Is_Layout_Identical --
    -------------------------

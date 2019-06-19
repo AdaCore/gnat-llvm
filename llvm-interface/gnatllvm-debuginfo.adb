@@ -207,32 +207,42 @@ package body GNATLLVM.DebugInfo is
         (if Name /= "" then Name else Get_Name (Def_Ident));
       S_Ext_Name : constant String              :=
         (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (Def_Ident));
-      Result     : Metadata_T;
-      pragma Unreferenced (Def_Ident);
 
    begin
       --  ??? We don't make the subprogram type from the types of the
       --  arguments because they may not match the actual args and
-      --  it's trick to get this right.
+      --  it's tricky to get this right.
 
       if Emit_Debug_Info then
-         Result := DI_Create_Function
-           (DI_Builder,
-            Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
-            S_Name, S_Name'Length,
-            (if S_Ext_Name = S_Name then "" else S_Ext_Name),
-            (if S_Ext_Name = S_Name then 0  else S_Ext_Name'Length),
-            Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
-            unsigned (Get_Logical_Line_Number (Sloc (N))),
-            DI_Builder_Create_Subroutine_Type
-              (DI_Builder,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
-               Types'Address, 0, DI_Flag_Zero),
-            False, True, unsigned (Get_Logical_Line_Number (Sloc (N))),
-            DI_Flag_Zero, Code_Gen_Level /= Code_Gen_Level_None);
+         declare
+            Dyn_Scope_E   : constant Entity_Id  :=
+              Enclosing_Subprogram_Scope (Def_Ident);
+            File_Node     : constant Metadata_T :=
+              Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)));
+            Sub_Type_Node : constant Metadata_T :=
+              DI_Builder_Create_Subroutine_Type
+              (DI_Builder, File_Node, Types'Address, 0, DI_Flag_Zero);
+            Line_Number   : constant unsigned   :=
+              unsigned (Get_Logical_Line_Number (Sloc (N)));
+            Dyn_Scope     : constant Metadata_T :=
+              (if   Present (Dyn_Scope_E)
+                    and then Present (Get_Value (Dyn_Scope_E))
+                    and then Present (Get_Subprogram (Get_Value (Dyn_Scope_E)))
+               then Get_Subprogram (Get_Value (Dyn_Scope_E))
+               else File_Node);
+            Function_Node : constant Metadata_T :=
+              DI_Create_Function
+                (DI_Builder, Dyn_Scope, S_Name, S_Name'Length,
+                 (if S_Ext_Name = S_Name then "" else S_Ext_Name),
+                 (if S_Ext_Name = S_Name then 0  else S_Ext_Name'Length),
+                 File_Node, Line_Number, Sub_Type_Node, False, True,
+                 Line_Number, DI_Flag_Zero,
+                 Code_Gen_Level /= Code_Gen_Level_None);
 
-         Set_Subprogram (LLVM_Value (Func), Result);
-         return Result;
+         begin
+            Set_Subprogram (Func, Function_Node);
+            return Function_Node;
+         end;
       else
          return No_Metadata_T;
       end if;

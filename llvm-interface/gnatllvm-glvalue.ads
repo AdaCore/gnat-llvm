@@ -17,7 +17,8 @@
 
 with Ada.Unchecked_Deallocation;
 
-with LLVM.Core; use LLVM.Core;
+with LLVM.Core;       use LLVM.Core;
+with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -1794,6 +1795,13 @@ package GNATLLVM.GLValue is
    procedure Set_Unnamed_Addr
      (V : GL_Value; Has_Unnamed_Addr : Boolean := True)
      with Pre => Is_A_Global_Variable (V);
+
+   function Get_Subprogram (V : GL_Value) return Metadata_T is
+     (Get_Subprogram (LLVM_Value (V)))
+     with Pre => Is_A_Function (V);
+
+   procedure Set_Subprogram (V : GL_Value; M : Metadata_T)
+     with Pre => Is_A_Function (V) and then Present (M);
 
    function Is_Layout_Identical (V : GL_Value; GT : GL_Type) return Boolean
      with Pre => Present (V) and then Present (GT);

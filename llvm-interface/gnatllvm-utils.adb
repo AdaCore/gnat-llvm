@@ -24,6 +24,7 @@ with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
 with Sprint;   use Sprint;
+with Stand;    use Stand;
 with Stringt;  use Stringt;
 
 with GNATLLVM.GLType; use GNATLLVM.GLType;
@@ -460,6 +461,30 @@ package body GNATLLVM.Utils is
       end if;
 
    end Process_Pragmas;
+
+   --------------------------------
+   -- Enclosing_Subprogram_Scope --
+   --------------------------------
+
+   function Enclosing_Subprogram_Scope
+     (Def_Ident : Entity_Id) return Entity_Id is
+   begin
+      return S : Entity_Id := Scope (Def_Ident) do
+         loop
+            exit when S = Standard_Standard;
+            exit when Ekind_In (S, E_Function, E_Procedure);
+            if Is_Private_Type (S) then
+               S := Full_View (S);
+            else
+               S := Scope (S);
+            end if;
+         end loop;
+
+         if S = Standard_Standard then
+            S := Empty;
+         end if;
+      end return;
+   end Enclosing_Subprogram_Scope;
 
    ----------------------
    -- Error_Msg_NE_Num --

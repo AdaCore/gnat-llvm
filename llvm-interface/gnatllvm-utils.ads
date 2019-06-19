@@ -90,6 +90,10 @@ package GNATLLVM.Utils is
                              or else Is_A_Function (V));
    --  Process any pragmas for V, whose corresponding tree node is Def_Ident.
 
+   function Enclosing_Subprogram_Scope (Def_Ident : Entity_Id) return Entity_Id
+     with Pre => not Is_Type (Def_Ident);
+   --  Return any enclosing subprogram scope above Def_Ident
+
    function GEP
      (Bld     : Builder_T;
       Ptr     : Value_T;

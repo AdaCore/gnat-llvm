@@ -312,8 +312,9 @@ package body GNATLLVM.Subprograms is
    --  Return True if Name is the name of the elab proc for Ada_Main
 
    Ada_Main_Elabb : GL_Value := No_GL_Value;
+   Ada_Main_Elabb_Ident : Entity_Id := Empty;
    --  We sometimes need an elab proc for Ada_Main and this can cause
-   --  confusion with global names.  So if we made it as part of the
+   --  confusion with global names. So if we made it as part of the
    --  processing of a declaration, save it.
 
    ---------------------
@@ -1287,9 +1288,10 @@ package body GNATLLVM.Subprograms is
    function Is_Binder_Elab_Proc (Name : String) return Boolean is
       pragma Assert (Name'First = 1);
    begin
-      return Name'Length >= 16
-        and then Name (1 .. 9) = "ada_main_"
-        and then Name (Name'Last - 7 .. Name'Last) = "___elabb";
+      return Name'Length >= 13
+        and then Name (Name'Last - 7 .. Name'Last) = "___elabb"
+        and then (Name (1 .. 9) = "ada_main_"
+                  or else Name (Name'Last - 11 .. Name'Last - 8) = "main");
    end Is_Binder_Elab_Proc;
 
    --------------------
@@ -1327,7 +1329,9 @@ package body GNATLLVM.Subprograms is
          Set_Has_No_Elaboration_Code (CU, False);
       end if;
 
-      if Present (Ada_Main_Elabb) and then Is_Binder_Elab_Proc (Name) then
+      if Present (Ada_Main_Elabb)
+        and then Get_Ext_Name (Ada_Main_Elabb_Ident) = Name
+      then
          LLVM_Func := Ada_Main_Elabb;
       else
          LLVM_Func := Add_Function (Name, Elab_Type, Void_GL_Type);
@@ -2514,8 +2518,9 @@ package body GNATLLVM.Subprograms is
 
       --  Deal with our subprogram name being that of an elab proc
 
-      if Is_Binder_Elab_Proc (Subp_Name) then
+      if No (Ada_Main_Elabb) and then Is_Binder_Elab_Proc (Subp_Name) then
          Ada_Main_Elabb := LLVM_Func;
+         Ada_Main_Elabb_Ident := Def_Ident;
       end if;
 
       --  See if we're to make a global constructor or destructor entry for

@@ -311,7 +311,7 @@ package body GNATLLVM.Subprograms is
    function Is_Binder_Elab_Proc (Name : String) return Boolean;
    --  Return True if Name is the name of the elab proc for Ada_Main
 
-   Ada_Main_Elabb : GL_Value := No_GL_Value;
+   Ada_Main_Elabb       : GL_Value  := No_GL_Value;
    Ada_Main_Elabb_Ident : Entity_Id := Empty;
    --  We sometimes need an elab proc for Ada_Main and this can cause
    --  confusion with global names. So if we made it as part of the
@@ -699,8 +699,8 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          In_Arg_Types (1) := Create_Access_Type_To (Return_GT);
-         LLVM_Ret_Typ := Void_Type;
-         J := 2;
+         LLVM_Ret_Typ     := Void_Type;
+         J                := 2;
       end if;
 
       --  Back-annotate the return mechanism
@@ -766,13 +766,13 @@ package body GNATLLVM.Subprograms is
             J := 1;
             if LRK = Struct_Out_Subprog then
                Out_Arg_Types (J) := LLVM_Ret_Typ;
-               J := J + 1;
+               J                 := J + 1;
             end if;
 
             Param_Ent := First_Out_Param (Def_Ident);
             while Present (Param_Ent) loop
                Out_Arg_Types (J) := Type_Of (Full_Etype (Param_Ent));
-               J := J + 1;
+               J                 := J + 1;
                Next_Out_Param (Param_Ent);
             end loop;
 
@@ -909,8 +909,8 @@ package body GNATLLVM.Subprograms is
    begin
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
-           Add_Global_Function ("__gnat_malloc", Fn_Ty ((1 => LLVM_Size_Type),
-                                                        Void_Ptr_Type),
+           Add_Global_Function ("__gnat_malloc",
+                                Fn_Ty ((1 => LLVM_Size_Type), Void_Ptr_Type),
                                 A_Char_GL_Type);
       end if;
 
@@ -1098,9 +1098,9 @@ package body GNATLLVM.Subprograms is
               Activation_Record_Component (E);
             Activation_Rec : constant GL_Value  :=
               Get_Activation_Record_Ptr (Activation_Rec_Param, Component);
-            Pointer       : constant GL_Value  :=
+            Pointer       : constant GL_Value   :=
               Get (Record_Field_Offset (Activation_Rec, Component), Reference);
-            Value         : constant GL_Value  := Load (Pointer);
+            Value         : constant GL_Value   := Load (Pointer);
 
          begin
             --  If GT is unconstrained, we have an access type, which is a
@@ -1126,8 +1126,8 @@ package body GNATLLVM.Subprograms is
    procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False) is
       Spec            : constant Node_Id     := Get_Acting_Spec (N);
       Func            : constant GL_Value    := Emit_Subprogram_Decl (Spec);
-      Def_Ident       : constant Entity_Id   := Defining_Entity      (Spec);
-      Return_GT       : constant GL_Type     := Full_GL_Type      (Def_Ident);
+      Def_Ident       : constant Entity_Id   := Defining_Entity (Spec);
+      Return_GT       : constant GL_Type     := Full_GL_Type (Def_Ident);
       RK              : constant Return_Kind := Get_Return_Kind (Def_Ident);
       LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (Def_Ident);
       Param_Num       : Nat                  := 0;
@@ -2174,8 +2174,8 @@ package body GNATLLVM.Subprograms is
                      WBs (In_Idx) := (LHS => LHS, RHS => Arg, Field => F);
                   else
                      Arg := (if   PK = Foreign_By_Ref
-                               then Ptr_To_Relationship (Get (LHS, R), GT, R)
-                               else Convert_Ref (LHS, GT));
+                             then Ptr_To_Relationship (Get (LHS, R), GT, R)
+                             else Convert_Ref (LHS, GT));
                   end if;
                else
                   Arg := Get (Emit_Conversion (Actual, GT), Data);
@@ -2199,12 +2199,12 @@ package body GNATLLVM.Subprograms is
                elsif No (LHS) or else Actual /= Strip_Conversions (Actual) then
                   LHS_And_Field_For_Assignment (Strip_Conversions (Actual),
                                                 LHS, F,
-                                                For_LHS       => True);
+                                                For_LHS => True);
                end if;
 
                Out_LHSs (Out_Idx) := LHS;
                Out_Flds (Out_Idx) := F;
-               Out_Idx := Out_Idx + 1;
+               Out_Idx            := Out_Idx + 1;
             end if;
          end;
 
@@ -2368,7 +2368,7 @@ package body GNATLLVM.Subprograms is
                --  Otherwise, initialize this to null and add to elab proc
 
                else
-                  Set_Initializer (V, G (Const_Null (Subp_T), GT, R));
+                  Set_Initializer  (V, G (Const_Null (Subp_T), GT, R));
                   Add_To_Elab_Proc (N);
                end if;
 
@@ -2382,7 +2382,7 @@ package body GNATLLVM.Subprograms is
 
                V := Int_To_Subp (Addr);
                Set_Value_Name (V, Get_Ext_Name (Def_Ident));
-               Set_Value (Def_Ident, V);
+               Set_Value      (Def_Ident, V);
             end if;
          end;
 
@@ -2407,8 +2407,8 @@ package body GNATLLVM.Subprograms is
         Present (Interface_Name (Def_Ident))
         and then No (Address_Clause (Def_Ident));
       Actual_Name : constant String      :=
-        (if Is_Compilation_Unit (Def_Ident)
-           and then No (Interface_Name (Def_Ident))
+        (if   Is_Compilation_Unit (Def_Ident)
+              and then No (Interface_Name (Def_Ident))
          then "_ada_" & Subp_Name else Subp_Name);
       LLVM_Func   : GL_Value             := Get_Dup_Global_Value (Def_Ident);
       RK          : constant Return_Kind := Get_Return_Kind (Def_Ident);
@@ -2499,8 +2499,8 @@ package body GNATLLVM.Subprograms is
                   if Can_Never_Be_Null (GT) then
                      Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   else
-                     Add_Dereferenceable_Or_Null_Attribute
-                       (LLVM_Func, Param_Num, DT);
+                     Add_Dereferenceable_Or_Null_Attribute (LLVM_Func,
+                                                            Param_Num, DT);
                   end if;
                end if;
 
@@ -2519,7 +2519,7 @@ package body GNATLLVM.Subprograms is
       --  Deal with our subprogram name being that of an elab proc
 
       if No (Ada_Main_Elabb) and then Is_Binder_Elab_Proc (Subp_Name) then
-         Ada_Main_Elabb := LLVM_Func;
+         Ada_Main_Elabb       := LLVM_Func;
          Ada_Main_Elabb_Ident := Def_Ident;
       end if;
 

@@ -1441,11 +1441,6 @@ package body GNATLLVM.Subprograms is
       V   : GL_Value             := No_GL_Value;
 
    begin
-      --  First, generate any neded fixups for this.  Then see what kind of
-      --  return we're doing.
-
-      Emit_Fixups_For_Return;
-
       --  Start by handling our expression, if any
 
       if Present (Expression (N)) then
@@ -1499,6 +1494,10 @@ package body GNATLLVM.Subprograms is
       else
          pragma Assert (RK = None);
       end if;
+
+      --  Now generate any neded fixups for this return
+
+      Emit_Fixups_For_Return;
 
       --  Now see what the actual return value of this LLVM function should be
 

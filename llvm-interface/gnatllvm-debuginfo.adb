@@ -519,7 +519,8 @@ package body GNATLLVM.DebugInfo is
             end;
 
          when others =>
-            return DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length);
+            Result :=
+              DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length);
       end case;
 
       --  Show no longer elaborating this type and save and return the result

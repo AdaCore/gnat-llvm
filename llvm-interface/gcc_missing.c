@@ -4,7 +4,7 @@
  *                                                                          *
  *                              j m i s s i n g                             *
  *                                                                          *
- *                      Copyright (C) 1998-2018, AdaCore                    *
+ *                      Copyright (C) 1998-2019, AdaCore                    *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -62,4 +62,7 @@ update_path (char *path, char *key)
 /* Originally defined in link.c */
 unsigned char __gnat_separate_run_path_options = 0;
 const char *__gnat_default_libgcc_subdir = "lib";
+
+/* Originally defined in version.c */
+const char version_string[] = "1.0";
 

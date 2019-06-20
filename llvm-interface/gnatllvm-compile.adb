@@ -267,14 +267,17 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Subunit =>
+
             Emit (Proper_Body (N));
 
          when N_Package_Declaration =>
+
             Push_Lexical_Debug_Scope (N);
             Emit (Specification (N));
             Pop_Debug_Scope;
 
          when N_Package_Specification =>
+
             Push_Lexical_Debug_Scope (N);
             Emit_Decl_Lists (Visible_Declarations (N),
                              Private_Declarations (N));
@@ -339,6 +342,7 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Subprogram_Declaration =>
+
             Emit (Specification (N));
 
          when N_Function_Specification | N_Procedure_Specification =>
@@ -353,6 +357,7 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Free_Statement =>
+
             Heap_Deallocate
               (Emit_Expression (Expression (N)),
                (if   Present (Actual_Designated_Subtype (N))
@@ -362,6 +367,7 @@ package body GNATLLVM.Compile is
                Procedure_To_Call (N), Storage_Pool (N));
 
          when N_Code_Statement =>
+
             Emit_Code_Statement (N);
 
          when N_Handled_Sequence_Of_Statements =>
@@ -381,17 +387,21 @@ package body GNATLLVM.Compile is
             Emit (Statements (N), Starting_At => First_Real_Statement (N));
 
          when N_Raise_Statement =>
+
             pragma Assert (Back_End_Exceptions);
             Emit_Reraise;
 
          when N_Raise_xxx_Error =>
+
             Emit_Raise (N);
 
          when N_Object_Declaration | N_Exception_Declaration =>
+
             Emit_Declaration (N);
 
          when N_Object_Renaming_Declaration
             | N_Exception_Renaming_Declaration =>
+
             Emit_Renaming_Declaration (N);
 
          when N_Subprogram_Renaming_Declaration =>
@@ -442,18 +452,22 @@ package body GNATLLVM.Compile is
             Perform_Writebacks;
 
          when N_Procedure_Call_Statement =>
+
             Discard (Emit_Call (N));
 
          when N_Null_Statement =>
             null;
 
          when N_Label =>
+
             Discard (Enter_Block_With_Node (N));
 
          when N_Goto_Statement =>
+
             Build_Br (Get_Label_BB (Entity (Name (N))));
 
          when N_Exit_Statement =>
+
             declare
                Exit_BB : constant Basic_Block_T := Get_Exit_Point (Name (N));
                Next_BB : Basic_Block_T;
@@ -470,15 +484,19 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Simple_Return_Statement =>
+
             Emit_Return_Statement (N);
 
          when N_If_Statement =>
+
             Emit_If (N);
 
          when N_Loop_Statement =>
+
             Emit_Loop_Statement (N);
 
          when N_Block_Statement =>
+
             Push_Lexical_Debug_Scope (N);
             Push_Block;
             Emit_Decl_Lists (Declarations (N), No_List);
@@ -519,6 +537,7 @@ package body GNATLLVM.Compile is
             Emit_Decl_Lists (Actions (N), No_List);
 
          when N_Pragma =>
+
             case Get_Pragma_Id (N) is
 
                when Pragma_Reviewable =>
@@ -564,6 +583,7 @@ package body GNATLLVM.Compile is
             end case;
 
          when N_Case_Statement =>
+
             Emit_Case_Statement (N);
 
          when N_Body_Stub =>
@@ -608,6 +628,7 @@ package body GNATLLVM.Compile is
             null;
 
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
+
             Process_Push_Pop_xxx_Error_Label (N);
 
          when N_Attribute_Definition_Clause =>
@@ -643,17 +664,15 @@ package body GNATLLVM.Compile is
    --------------------
 
    function Emit_Safe_Expr
-     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
-   is
-      V : GL_Value;
-
+     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value is
    begin
-      Push_LValue_List;
-      Push_Debug_Freeze_Pos;
-      V := Emit_Expression (N, LHS => LHS);
-      Pop_Debug_Freeze_Pos;
-      Pop_LValue_List;
-      return V;
+      return V : GL_Value do
+         Push_LValue_List;
+         Push_Debug_Freeze_Pos;
+         V := Emit_Expression (N, LHS => LHS);
+         Pop_Debug_Freeze_Pos;
+         Pop_LValue_List;
+      end return;
    end Emit_Safe_Expr;
 
    -----------------
@@ -691,17 +710,15 @@ package body GNATLLVM.Compile is
    function Emit_Safe_LValue
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False) return GL_Value
-   is
-      V : GL_Value;
-
+      For_LHS    : Boolean  := False) return GL_Value is
    begin
-      Push_LValue_List;
-      Push_Debug_Freeze_Pos;
-      V := Emit_LValue (N, LHS => LHS, For_LHS => For_LHS);
-      Pop_Debug_Freeze_Pos;
-      Pop_LValue_List;
-      return V;
+      return V : GL_Value do
+         Push_LValue_List;
+         Push_Debug_Freeze_Pos;
+         V := Emit_LValue (N, LHS => LHS, For_LHS => For_LHS);
+         Pop_Debug_Freeze_Pos;
+         Pop_LValue_List;
+      end return;
    end Emit_Safe_LValue;
 
    ----------
@@ -738,6 +755,7 @@ package body GNATLLVM.Compile is
       case Nkind (N) is
 
          when N_Binary_Op =>
+
             pragma Assert (not For_LHS);
             if Nkind (N) in N_Op_Compare then
                return Emit_Comparison (Nkind (N), Left_Opnd (N),
@@ -754,10 +772,12 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Unary_Op =>
+
             pragma Assert (not For_LHS);
             return Emit_Unary_Operation (N);
 
          when N_Expression_With_Actions =>
+
             Push_LValue_List;
             Emit (Actions (N));
             Pop_LValue_List;
@@ -767,10 +787,12 @@ package body GNATLLVM.Compile is
                          Prefer_LHS => Prefer_LHS);
 
          when N_Character_Literal | N_Numeric_Or_String_Literal =>
+
             pragma Assert (not For_LHS);
             return Emit_Literal (N);
 
          when N_And_Then | N_Or_Else =>
+
             pragma Assert (not For_LHS);
             if Safe_For_Short_Circuit (Left_Opnd (N))
               and then Safe_For_Short_Circuit (Right_Opnd (N))
@@ -785,17 +807,20 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Unchecked_Type_Conversion =>
+
             return Emit_Conversion (Expression (N), GT, N,
                                     Is_Unchecked  => True,
                                     No_Truncation => No_Truncation (N));
 
          when N_Type_Conversion =>
+
             return Emit_Conversion
               (Expression (N), GT, N,
                Need_Overflow_Check => Do_Overflow_Check (N),
                Float_Truncate      => Float_Truncate (N));
 
          when N_Qualified_Expression =>
+
             return Emit_Conversion (Expression (N), GT, N);
 
          when N_Identifier
@@ -807,6 +832,7 @@ package body GNATLLVM.Compile is
             return Emit_Identifier (N, Prefer_LHS => Prefer_LHS);
 
          when N_Function_Call =>
+
             pragma Assert (not For_LHS);
             return Emit_Call (N, LHS => LHS);
 
@@ -874,9 +900,11 @@ package body GNATLLVM.Compile is
             return Convert_To_Access (Emit_LValue (Prefix (N)), GT);
 
          when N_Attribute_Reference =>
+
             return Emit_Attribute_Reference (N);
 
          when N_Selected_Component =>
+
             Result := Build_Field_Load (Emit (Prefix (N),
                                               For_LHS    => For_LHS,
                                               Prefer_LHS => Prefer_LHS),
@@ -887,6 +915,7 @@ package body GNATLLVM.Compile is
             return Maybe_Convert_GT (Result, GT);
 
          when N_Indexed_Component | N_Slice =>
+
             Result := Emit (Prefix (N),
                             For_LHS    => For_LHS,
                             Prefer_LHS => Prefer_LHS);
@@ -988,14 +1017,17 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_If_Expression =>
+
             pragma Assert (not For_LHS);
             return Emit_If_Expression (N);
 
          when N_Null =>
+
             pragma Assert (not For_LHS);
             return Const_Null (GT);
 
          when N_In =>
+
             declare
                Rng  : Node_Id := Right_Opnd (N);
                Left : constant GL_Value := Emit_Expression (Left_Opnd (N));
@@ -1019,6 +1051,7 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Raise_xxx_Error =>
+
             pragma Assert (No (Condition (N)));
             Emit_Raise (N);
             return Emit_Undef (GT);
@@ -1041,7 +1074,6 @@ package body GNATLLVM.Compile is
    begin
       if Present (List) then
          N := (if Present (Starting_At) then Starting_At else First (List));
-
          while Present (N) loop
 
             --  If N is an N_Handled_Sequence_Of_Statements here, we know
@@ -1120,13 +1152,13 @@ package body GNATLLVM.Compile is
       --  of these steps, just alias it with another one.
 
       BB_Cond : Basic_Block_T              :=
-        (if not Is_For_Loop then Enter_Block_With_Node (Empty)
+        (if   not Is_For_Loop then Enter_Block_With_Node (Empty)
          else Create_Basic_Block ("loop-cond"));
       --  If this is not a FOR loop, there is no initialization: alias
       --  it with the COND block.
 
       BB_Stmts : constant Basic_Block_T    :=
-        (if Is_Mere_Loop or else Is_For_Loop
+        (if   Is_Mere_Loop or else Is_For_Loop
          then BB_Cond else Create_Basic_Block ("loop-stmts"));
       --  If this is a mere loop or a For loop, there is no condition
       --  block: alias it with the STMTS block.

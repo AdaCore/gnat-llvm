@@ -18,7 +18,6 @@
 with Ada.Unchecked_Deallocation;
 
 with Debug;    use Debug;
-with Errout;   use Errout;
 with Exp_Ch11; use Exp_Ch11;
 with Exp_Unst; use Exp_Unst;
 with Nlists;   use Nlists;
@@ -1004,11 +1003,11 @@ package body GNATLLVM.Blocks is
                Call (Begin_Handler_Fn, (1 => Exc_Ptr));
                if Present (Clauses.Table (J).Param) then
                   declare
-                     Param : constant Entity_Id := Clauses.Table (J).Param;
-                     GT    : constant GL_Type   := Full_GL_Type (Param);
-                     V     : constant GL_Value  :=
+                     Param : constant Entity_Id  := Clauses.Table (J).Param;
+                     GT    : constant GL_Type    := Full_GL_Type (Param);
+                     V     : constant GL_Value   :=
                        Allocate_For_Type (GT, GT, Param, Def_Ident => Param);
-                     Cvt_Ptr : constant GL_Value  :=
+                     Cvt_Ptr : constant GL_Value :=
                        Convert_To_Access (Exc_Ptr, A_Char_GL_Type);
 
                   begin
@@ -1094,6 +1093,7 @@ package body GNATLLVM.Blocks is
       Next_BB    : constant Basic_Block_T     :=
         (if EH_Work and then not At_Dead then Create_Basic_Block else No_BB_T);
       Lifetimes  : A_Lifetime_Data            := BI.Lifetime_List;
+      Next       : A_Lifetime_Data;
 
       procedure Free is new Ada.Unchecked_Deallocation (Lifetime_Data,
                                                         A_Lifetime_Data);
@@ -1158,13 +1158,9 @@ package body GNATLLVM.Blocks is
       --  Free the lifetime data associated with this block
 
       while Lifetimes /= null loop
-         declare
-            Next : constant A_Lifetime_Data := Lifetimes.Next;
-
-         begin
-            Free (Lifetimes);
-            Lifetimes := Next;
-         end;
+         Next := Lifetimes.Next;
+         Free (Lifetimes);
+         Lifetimes := Next;
       end loop;
 
       --  And finally pop our stack
@@ -1178,20 +1174,15 @@ package body GNATLLVM.Blocks is
 
    procedure Emit_Reraise is
    begin
-      --  Find the innermost block that has exception data.  Call
-      --  reraise with that data.
+      --  Find the innermost block that has exception data.  Call reraise
+      --  with that data.
 
       for J in reverse 1 .. Block_Stack.Last loop
-         declare
-            BI : Block_Info renames Block_Stack.Table (J);
-
-         begin
-            if Present (BI.Exc_Ptr) then
-               Call (Reraise_Fn, (1 => BI.Exc_Ptr));
-               Build_Unreachable;
-               return;
-            end if;
-         end;
+         if Present (Block_Stack.Table (J).Exc_Ptr) then
+            Call (Reraise_Fn, (1 => Block_Stack.Table (J).Exc_Ptr));
+            Build_Unreachable;
+            return;
+         end if;
       end loop;
 
       --  We should have found such a block.
@@ -1359,9 +1350,9 @@ package body GNATLLVM.Blocks is
       L_Idx     : constant Label_Info_Id :=
           (if Present (E) then Get_Label_Info (E) else Empty_Label_Info_Id);
       BB        : constant Basic_Block_T :=
-          (if Present (L_Idx) then Label_Info_Table.Table (L_Idx).Orig_BB
+          (if    Present (L_Idx) then Label_Info_Table.Table (L_Idx).Orig_BB
            elsif No (Last_Inst) and then This_BB /= Entry_BB
-           then This_BB else Create_Basic_Block (Name));
+           then  This_BB else Create_Basic_Block (Name));
       --  If we have an identifier and it has a basic block already set,
       --  that's the one that we have to use.  If we've just started a
       --  basic block with no instructions in it, that basic block will do,
@@ -1473,7 +1464,7 @@ package body GNATLLVM.Blocks is
       --  If the loop label isn't registered, then we just met an exit
       --  statement with no corresponding loop: should not happen.
 
-      Error_Msg_N ("unknown loop identifier", N);
+      pragma Assert (False);
       return Exit_Point_Table.Last;
    end Find_Exit_Point;
 

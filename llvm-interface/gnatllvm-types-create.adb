@@ -17,6 +17,7 @@
 
 with Errout;     use Errout;
 with Get_Targ;   use Get_Targ;
+with Opt;        use Opt;
 with Sem_Aux;    use Sem_Aux;
 with Sinfo;      use Sinfo;
 with Snames;     use Snames;
@@ -441,6 +442,16 @@ package body GNATLLVM.Types.Create is
 
       if Is_Atomic_Or_VFA (TE) then
          Check_OK_For_Atomic_Type (GT, TE);
+      end if;
+
+      --  If this type requests a reversed storage order, let the user
+      --  know that we don't support that.
+
+      if Ekind (TE) in Record_Kind | Array_Kind
+        and then Reverse_Storage_Order (TE) and then not GNAT_Mode
+      then
+         Error_Msg_NE
+           ("reverse storage order for & not supported by 'L'L'V'M", TE, TE);
       end if;
 
       --  Back-annotate sizes of non-scalar types if there isn't one.  ???

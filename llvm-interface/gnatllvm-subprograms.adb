@@ -811,10 +811,7 @@ package body GNATLLVM.Subprograms is
       GT   : GL_Type) return GL_Value
    is
       T         : constant Type_T := Type_Of (GT);
-      Width     : constant ULL    := Get_Type_Size (T);
-      --  We need to use Get_Type_Size instead of Esize (GT)
-      --  so that we handle FP types properly.
-
+      Width     : constant ULL    := Get_Scalar_Bit_Size (T);
       W         : constant String := Int'Image (Int (Width));
       Full_Name : constant String := Name & W (W'First + 1 .. W'Last);
       Return_GT : GL_Type         := GT;
@@ -1728,13 +1725,13 @@ package body GNATLLVM.Subprograms is
          (4, "umin", Atomic_RMW_Bin_Op_U_Min));
 
    begin
-      for J in Ops'Range loop
-         Len := Ops (J).Length;
+      for RMW of Ops loop
+         Len := RMW.Length;
          if S'Last > Index + Len - 1
-           and then S (Index .. Index + Len - 1) = Ops (J).Name (1 .. Len)
+           and then S (Index .. Index + Len - 1) = RMW.Name (1 .. Len)
          then
             End_Index := Index + Len;
-            Op        := Ops (J).Op;
+            Op        := RMW.Op;
             return True;
          end if;
       end loop;
@@ -1903,6 +1900,25 @@ package body GNATLLVM.Subprograms is
    function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
    is
       Fn_Name : constant String := Get_Ext_Name (Subp);
+      Len     : Integer;
+
+      type FP_Builtin is record
+         Length : Integer;
+         Name   : String (1 .. 5);
+         Kind   : Overloaded_Intrinsic_Kind;
+      end record;
+
+      type FP_Builtin_Array is array (Integer range <>) of FP_Builtin;
+      FP_Builtins : constant FP_Builtin_Array :=
+        ((4, "sqrt ", Unary),
+         (3, "sin  ", Unary),
+         (3, "cos  ", Unary),
+         (3, "pow  ", Binary),
+         (3, "exp  ", Unary),
+         (4, "exp2 ", Unary),
+         (3, "log  ", Unary),
+         (5, "log10", Unary),
+         (4, "log2 ", Unary));
 
    begin
       --  First see if this is a __sync class of subprogram
@@ -1916,6 +1932,37 @@ package body GNATLLVM.Subprograms is
       then
          return Emit_Bswap_Call (N, Fn_Name);
       end if;
+
+      --  Now see if this is a FP builtin
+
+      for FP of FP_Builtins loop
+         Len := FP.Length;
+         if Fn_Name'Length >= Len + 10
+           and then Fn_Name (1 .. 10) = "__builtin_"
+           and then Fn_Name (11 .. Len + 10) = FP.Name (1 .. Len)
+           and then (Fn_Name'Length = Len + 10
+                       or else (Fn_Name'Length = Len + 11
+                                  and then (Fn_Name (Len + 11) in 'f' | 'l')))
+         then
+            declare
+               GT     : constant GL_Type  := Full_GL_Type (N);
+               I_Name : constant String   :=
+                 "llvm." & FP.Name (1 .. FP.Length) & ".f";
+               Subp   : constant GL_Value :=
+                 Build_Intrinsic (FP.Kind, I_Name, GT);
+               Actual : constant Node_Id  := First_Actual (N);
+
+            begin
+               if FP.Kind = Unary then
+                  return Call (Subp, GT, (1 => Emit_Expression (Actual)));
+               else
+                  return Call (Subp, GT, (1 => Emit_Expression (Actual),
+                                          2 => Emit_Expression (Next_Actual
+                                                                  (Actual))));
+               end if;
+            end;
+         end if;
+      end loop;
 
       --  That's all we support for now
 

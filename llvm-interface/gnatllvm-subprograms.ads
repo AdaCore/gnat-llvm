@@ -97,6 +97,14 @@ package GNATLLVM.Subprograms is
      with Post => Present (Get_Stack_Restore_Fn'Result);
    --  Get function to restore stack pointer
 
+   function Get_Lifetime_Start_Fn return GL_Value
+     with Post => Present (Get_Lifetime_Start_Fn'Result);
+   --  Get function to mark start of a variable's lifetime
+
+   function Get_Lifetime_End_Fn return GL_Value
+     with Post => Present (Get_Lifetime_End_Fn'Result);
+   --  Get function to mark start of a variable's lifetime
+
    function Get_From_Activation_Record (E : Entity_Id) return GL_Value
      with Pre => not Is_Type (E);
    --  Checks whether E is present in the current activation record and

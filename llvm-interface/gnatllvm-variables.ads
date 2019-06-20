@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -82,15 +82,18 @@ package GNATLLVM.Variables is
    --  make the second pass over both lists if Pass2 is true.  The lists
    --  usually correspond to the public and private parts of a package.
 
-   function Maybe_Promote_Alloca (T : Type_T) return Basic_Block_T
-     with Pre => Present (T);
+   function Maybe_Promote_Alloca
+     (T : Type_T; Elts : GL_Value) return Basic_Block_T
+     with Pre => Present (T) and then Present (Elts);
    --  Called when about to do an alloca of type T to see if that
    --  alloca should be promoted to the entry block.  The return from
    --  this function must be passed to Done_Promoting_Alloca along
    --  with the alloca immediately after emitting the alloca.  The
    --  pair of calls will do what's necessary, either promoting the
    --  alloca or forcing a stack save/restore.
-   procedure Done_Promoting_Alloca (Alloca : Value_T; BB : Basic_Block_T);
+   procedure Done_Promoting_Alloca
+     (Alloca : Value_T; BB : Basic_Block_T; T : Type_T; Elts : GL_Value)
+     with Pre => Present (Alloca) and then Present (T) and then Present (Elts);
 
    function Is_Static_Address (N : Node_Id) return Boolean
      with Pre => Present (N);

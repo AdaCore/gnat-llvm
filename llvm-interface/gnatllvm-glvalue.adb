@@ -613,11 +613,13 @@ package body GNATLLVM.GLValue is
          else
             declare
                T       : constant Type_T        := Type_Of (V);
-               Promote : constant Basic_Block_T := Maybe_Promote_Alloca (T);
+               Promote : constant Basic_Block_T :=
+                 Maybe_Promote_Alloca (T, Size_Const_Int (1));
 
             begin
                Result := G (Alloca (IR_Builder, T, ""), GT, Ref (Our_R));
-               Done_Promoting_Alloca (LLVM_Value (Result), Promote);
+               Done_Promoting_Alloca (LLVM_Value (Result), Promote,
+                                      T, Size_Const_Int (1));
                Store (V, Result);
                return Result;
             end;
@@ -908,13 +910,14 @@ package body GNATLLVM.GLValue is
       R       : constant GL_Relationship := Relationship_For_Alloc (GT);
       PT      : constant Type_T          := Type_For_Relationship (GT, R);
       T       : constant Type_T          := Get_Element_Type (PT);
-      Promote : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
+      Promote : constant Basic_Block_T   :=
+        Maybe_Promote_Alloca (T, Size_Const_Int (1));
       Inst    : constant Value_T         :=
         Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
 
    begin
       Set_Object_Align (Inst, GT, Def_Ident);
-      Done_Promoting_Alloca (Inst, Promote);
+      Done_Promoting_Alloca (Inst, Promote, T, Size_Const_Int (1));
       return G (Inst, GT, R, Is_Pristine => True);
    end Alloca;
 
@@ -928,13 +931,15 @@ package body GNATLLVM.GLValue is
       Def_Ident : Entity_Id := Empty;
       Name      : String    := "") return GL_Value
    is
-      Inst : constant Value_T :=
+      T       : constant Type_T        := Type_Of (GT);
+      Promote : constant Basic_Block_T := Maybe_Promote_Alloca (T, Num_Elts);
+      Inst    : constant Value_T       :=
         Array_Alloca (IR_Builder, Type_Of (GT), LLVM_Value (Num_Elts),
                       Get_Alloca_Name (Def_Ident, Name));
 
    begin
       Set_Object_Align (Inst, GT, Def_Ident);
-      Save_Stack_Pointer;
+      Done_Promoting_Alloca (Inst, Promote, T, Num_Elts);
       return G_Ref (Inst, GT, Is_Pristine => True);
    end Array_Alloca;
 

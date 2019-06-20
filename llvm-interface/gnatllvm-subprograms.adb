@@ -249,6 +249,10 @@ package body GNATLLVM.Subprograms is
    Tramp_Adjust_Fn   : GL_Value := No_GL_Value;
    --  Functions to initialize and adjust a trampoline
 
+   Lifetime_Start_Fn : GL_Value := No_GL_Value;
+   Lifetime_End_Fn   : GL_Value := No_GL_Value;
+   --  Function to mark the start and end of the lifetime of a variable
+
    --  Tables for recording global constructors and global destructors
 
    package Global_Constructors is new Table.Table
@@ -965,6 +969,7 @@ package body GNATLLVM.Subprograms is
          Add_Readonly_Attribute  (Memory_Compare_Fn, 1);
          Add_Non_Null_Attribute  (Memory_Compare_Fn, 0);
          Add_Non_Null_Attribute  (Memory_Compare_Fn, 1);
+         Set_Does_Not_Throw      (Memory_Compare_Fn);
       end if;
 
       return Memory_Compare_Fn;
@@ -1036,6 +1041,46 @@ package body GNATLLVM.Subprograms is
 
       return Tramp_Adjust_Fn;
    end Get_Tramp_Adjust_Fn;
+
+   ---------------------------
+   -- Get_Lifetime_Start_Fn --
+   ---------------------------
+
+   function Get_Lifetime_Start_Fn return GL_Value is
+   begin
+      if No (Lifetime_Start_Fn) then
+         Lifetime_Start_Fn := Add_Function
+           ("llvm.lifetime.start.p0i8",
+            Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type), Void_Type),
+            Void_GL_Type);
+         Set_Does_Not_Throw      (Lifetime_Start_Fn);
+         Add_Nocapture_Attribute (Lifetime_Start_Fn, 1);
+         Add_Readonly_Attribute  (Lifetime_Start_Fn, 1);
+         Add_Non_Null_Attribute  (Lifetime_Start_Fn, 1);
+      end if;
+
+      return Lifetime_Start_Fn;
+   end Get_Lifetime_Start_Fn;
+
+   -------------------------
+   -- Get_Lifetime_End_Fn --
+   -------------------------
+
+   function Get_Lifetime_End_Fn return GL_Value is
+   begin
+      if No (Lifetime_End_Fn) then
+         Lifetime_End_Fn := Add_Function
+           ("llvm.lifetime.end.p0i8",
+            Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type), Void_Type),
+            Void_GL_Type);
+         Set_Does_Not_Throw      (Lifetime_End_Fn);
+         Add_Nocapture_Attribute (Lifetime_End_Fn, 1);
+         Add_Readonly_Attribute  (Lifetime_End_Fn, 1);
+         Add_Non_Null_Attribute  (Lifetime_End_Fn, 1);
+      end if;
+
+      return Lifetime_End_Fn;
+   end Get_Lifetime_End_Fn;
 
    ---------------------
    -- Make_Trampoline --
@@ -1187,8 +1232,8 @@ package body GNATLLVM.Subprograms is
          Param_Num := Param_Num + 1;
       end if;
 
-      Push_Block;
       Entry_Block_Allocas := Get_Current_Position;
+      Push_Block;
       Param := First_Formal_With_Extras (Def_Ident);
       while Present (Param) loop
          declare

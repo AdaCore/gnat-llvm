@@ -934,19 +934,18 @@ package body GNATLLVM.Variables is
    -- Maybe_Promote_Alloca --
    --------------------------
 
-   function Maybe_Promote_Alloca (T : Type_T) return Basic_Block_T is
-      Current_BB         : constant Basic_Block_T := Get_Insert_Block;
-      Threshold_In_Words : constant               := 4;
-      Max_Promoted_Size  : constant ULL           :=
-        Get_Type_Size (Void_Ptr_Type) * Threshold_In_Words;
+   function Maybe_Promote_Alloca
+     (T : Type_T; Elts : GL_Value) return Basic_Block_T
+   is
+      Current_BB : constant Basic_Block_T := Get_Insert_Block;
 
    begin
-      --  If this is small, promote it to the entry block by setting our
-      --  position into that block and returning our current position.
-      --  Otherwise, nothing to do here.
+      --  If this is of fixed size, but not too huge, promote it to the
+      --  entry block by setting our position into that block and returning
+      --  our current position.  Otherwise, nothing to do here.
 
-      if Present (Entry_Block_Allocas)
-        and then Get_Type_Size (T) <= Max_Promoted_Size
+      if Present (Entry_Block_Allocas) and then Is_A_Const_Int (Elts)
+        and then Elts < 100_000_000
       then
          Set_Current_Position (Entry_Block_Allocas);
          return Current_BB;
@@ -959,7 +958,13 @@ package body GNATLLVM.Variables is
    -- Done_Promoting_Alloca --
    ---------------------------
 
-   procedure Done_Promoting_Alloca (Alloca : Value_T; BB : Basic_Block_T) is
+   procedure Done_Promoting_Alloca
+     (Alloca : Value_T; BB : Basic_Block_T; T : Type_T; Elts : GL_Value)
+   is
+      Threshold_In_Words : constant          := 20;
+      Min_Lifetime_Size  : constant GL_Value :=
+        Size_Const_Int (Get_Type_Size (Void_Ptr_Type) * Threshold_In_Words);
+
    begin
       --  If we promoted this alloca, update the position for allocas
       --  to after this one and restore the saved position.
@@ -969,6 +974,14 @@ package body GNATLLVM.Variables is
       if Present (BB) then
          Entry_Block_Allocas.Instr := Alloca;
          Position_Builder_At_End (BB);
+
+         --  If this is a large enough object to be worthwhile, emit a
+         --  call to indicate the start of the lifetime and set up to
+         --  emit the end of the lifetime when the block ends.
+
+         if Get_Type_Size (T) * Elts > Min_Lifetime_Size then
+            Add_Lifetime_Entry (Alloca, Get_Type_Size (T) * Elts / BPU);
+         end if;
       else
          Save_Stack_Pointer;
       end if;

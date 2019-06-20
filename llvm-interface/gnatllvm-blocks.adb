@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Unchecked_Deallocation;
+
 with Debug;    use Debug;
 with Errout;   use Errout;
 with Exp_Ch11; use Exp_Ch11;
@@ -38,6 +40,17 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Blocks is
 
+   --  We record a list of variables and sizes that we must mark as
+   --  having their lifetime ended at the end of a block.
+
+   type Lifetime_Data;
+   type A_Lifetime_Data is access Lifetime_Data;
+   type Lifetime_Data is record
+     Next   : A_Lifetime_Data;
+     Memory : GL_Value;
+     Size   : GL_Value;
+   end record;
+
    --  This data structure records the information about each block that
    --  we're in and we construct a table to act as a block stack.
 
@@ -49,6 +62,9 @@ package body GNATLLVM.Blocks is
       --  True if we've reached the pop of the block (in the end handler
       --  or its fixup) where calls aren't protected by exceptions or
       --  At_End handlers in this block.
+
+      At_Entry_Start    : Boolean;
+      --  True if this block start at the start of the entry block
 
       Stack_Save        : GL_Value;
       --  Value of the stack pointer at entry to the block, if saved
@@ -75,6 +91,9 @@ package body GNATLLVM.Blocks is
       Exc_Ptr           : GL_Value;
       --  The exception pointer for the block
 
+      Lifetime_List     : A_Lifetime_Data;
+      --  List of memory locations whose lifetimes end at the end of this
+      --  block.
    end record;
 
    type Block_Stack_Level is new Integer;
@@ -360,7 +379,10 @@ package body GNATLLVM.Blocks is
                            Exc_Ptr           => No_GL_Value,
                            EH_List           => No_List,
                            In_Stmts          => False,
-                           Unprotected       => False));
+                           Unprotected       => False,
+                           At_Entry_Start    =>
+                             Get_Current_Position = Entry_Block_Allocas,
+                           Lifetime_List     => null));
 
    end Push_Block;
 
@@ -383,6 +405,31 @@ package body GNATLLVM.Blocks is
          Position_Builder_At_End (Our_BB);
       end if;
    end Save_Stack_Pointer;
+
+   ------------------------
+   -- Add_Lifetime_Entry --
+   ------------------------
+
+   procedure Add_Lifetime_Entry (Inst : Value_T; Size : GL_Value) is
+      BI     : Block_Info renames Block_Stack.Table (Block_Stack.Last);
+      Our_BB : constant Basic_Block_T := Get_Insert_Block;
+      Ptr    : GL_Value;
+
+   begin
+      --  We need to put the call to start the lifetime at the start of
+      --  this block.  However, if the start of this block is the entry
+      --  BB, we need to put this after the allocas.
+
+      Set_Current_Position
+        ((if   BI.At_Entry_Start then Entry_Block_Allocas
+          else BI.Starting_Position));
+      Ptr := G (Pointer_Cast (IR_Builder, Inst, Void_Ptr_Type, ""),
+                SSI_GL_Type, Reference);
+      Call (Get_Lifetime_Start_Fn, (1 => Size, 2 => Ptr));
+      Position_Builder_At_End (Our_BB);
+      BI.Lifetime_List := new Lifetime_Data'(BI.Lifetime_List, Ptr, Size);
+
+   end Add_Lifetime_Entry;
 
    -----------------------------
    --  Start_Block_Statements --
@@ -483,6 +530,23 @@ package body GNATLLVM.Blocks is
       --  we pass and then restore the outermost stack pointer.
 
       for J in reverse To + 1 .. From loop
+
+         --  Process any ends of variable lifetimes
+
+         declare
+            Lifetimes : A_Lifetime_Data := Block_Stack.Table (J).Lifetime_List;
+
+         begin
+            while Lifetimes /= null loop
+               Call (Get_Lifetime_End_Fn,
+                     (1 => Lifetimes.Size, 2 => Lifetimes.Memory));
+               Lifetimes := Lifetimes.Next;
+            end loop;
+         end;
+
+         --  Now call the at-end handler, if any, and record the stack save
+         --  location for this block.
+
          Call_At_End (J);
          if Present (Block_Stack.Table (J).Stack_Save) then
             Stack_Save := Block_Stack.Table (J).Stack_Save;
@@ -1029,6 +1093,10 @@ package body GNATLLVM.Blocks is
         Present (BI.Landing_Pad) or else Present (BI.Dispatch_BB);
       Next_BB    : constant Basic_Block_T     :=
         (if EH_Work and then not At_Dead then Create_Basic_Block else No_BB_T);
+      Lifetimes  : A_Lifetime_Data            := BI.Lifetime_List;
+
+      procedure Free is new Ada.Unchecked_Deallocation (Lifetime_Data,
+                                                        A_Lifetime_Data);
 
    begin
       --  If we're not in dead code, we have to fixup the block and the branch
@@ -1084,9 +1152,23 @@ package body GNATLLVM.Blocks is
       end loop;
 
       --  If we made a label for end-of-block actions, move to it now.
-      --  Then pop our stack.
 
       Move_To_BB (Next_BB);
+
+      --  Free the lifetime data associated with this block
+
+      while Lifetimes /= null loop
+         declare
+            Next : constant A_Lifetime_Data := Lifetimes.Next;
+
+         begin
+            Free (Lifetimes);
+            Lifetimes := Next;
+         end;
+      end loop;
+
+      --  And finally pop our stack
+
       Block_Stack.Decrement_Last;
    end Pop_Block;
 

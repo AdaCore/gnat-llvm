@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -48,6 +48,10 @@ package GNATLLVM.Blocks is
 
    procedure Save_Stack_Pointer;
    --  Generate a stack save at the start of the current block
+
+   procedure Add_Lifetime_Entry (Inst : Value_T; Size : GL_Value)
+     with Pre => Present (Inst) and then Present (Size);
+   --  Add an entry for a variable lifetime that ends at the end of this block
 
    procedure Start_Block_Statements
      (At_End_Proc : Entity_Id; EH_List : List_Id)

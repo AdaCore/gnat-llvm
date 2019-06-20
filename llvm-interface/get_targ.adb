@@ -132,7 +132,7 @@ package body Get_Targ is
 
    function Get_System_Allocator_Alignment return Nat is
    begin
-      return 8;
+      return 16;
    end Get_System_Allocator_Alignment;
 
    ------------------------

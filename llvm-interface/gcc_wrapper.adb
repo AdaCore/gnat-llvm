@@ -65,6 +65,7 @@ procedure GCC_Wrapper is
    Verbose            : Boolean := False;
    Dash_O_Index       : Natural := 0;
    Dash_w_Index       : Natural := 0;
+   Dash_Wall_Index    : Natural := 0;
    Dump_SCOs_Index    : Natural := 0;
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
@@ -191,6 +192,9 @@ begin
          elsif Arg = "-w" then
             Dash_w_Index := Arg_Count + 1;
 
+         elsif Arg = "-Wall" then
+            Dash_Wall_Index := Arg_Count + 1;
+
          elsif Arg = "-v" then
             Verbose := True;
             Skip := True;
@@ -219,6 +223,12 @@ begin
 
    if Dash_w_Index /= 0 and then Compile and then Compile_Ada then
       Args (Dash_w_Index) := new String'("-gnatws");
+   end if;
+
+   --  Replace -Wall by -gnatwa when compiling Ada code
+
+   if Dash_Wall_Index /= 0 and then Compile and then Compile_Ada then
+      Args (Dash_Wall_Index) := new String'("-gnatwa");
    end if;
 
    if GCC'Length >= 3

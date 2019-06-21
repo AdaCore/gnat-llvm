@@ -1210,18 +1210,17 @@ package body GNATLLVM.Records is
      (F            : Entity_Id;
       Pos          : Uint := No_Uint;
       Size         : Uint := No_Uint;
-      Use_Pos_Size : Boolean := True) return Boolean
+      Use_Pos_Size : Boolean := False) return Boolean
    is
       TE       : constant Entity_Id := Full_Etype (F);
       Our_Pos  : constant Uint      :=
         (if    Use_Pos_Size then Pos
-         elsif Present (Component_Clause (F)) then Component_Bit_Offset (F)
-         else  No_Uint);
+         elsif Known_Static_Component_Bit_Offset (F)
+         then  Component_Bit_Offset (F) else  No_Uint);
       Our_Size : constant Uint      :=
         (if    Use_Pos_Size then Size
-         elsif Is_Packable_Field (F) then RM_Size (TE)
-         elsif Known_Esize (F) and then Is_Static_SO_Ref (Esize (F))
-         then  Esize (F) else No_Uint);
+         elsif Known_Static_Esize (F) then  Esize (F)
+         elsif Is_Packable_Field (F) then RM_Size (TE) else No_Uint);
 
    begin
       --  If the position is specified and isn't byte-aligned, it's a bitfield
@@ -2010,6 +2009,8 @@ package body GNATLLVM.Records is
                                                            Reference)),
                                           Pointer_Type (New_RHS_T, 0), ""),
                                 Related_Type (RHS_Cvt), Reference_To_Unknown));
+         else
+            RHS_Cvt := Get (RHS_Cvt, Data);
          end if;
 
          --  Next, we do shifts, masks, and a logical "or" to compute the

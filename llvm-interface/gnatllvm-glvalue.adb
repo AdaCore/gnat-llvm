@@ -615,11 +615,12 @@ package body GNATLLVM.GLValue is
                T       : constant Type_T        := Type_Of (V);
                Promote : constant Basic_Block_T :=
                  Maybe_Promote_Alloca (T, Size_Const_Int (1));
+               Inst    : constant Value_T       := Alloca (IR_Builder, T, "");
 
             begin
-               Result := G (Alloca (IR_Builder, T, ""), GT, Ref (Our_R));
-               Done_Promoting_Alloca (LLVM_Value (Result), Promote,
-                                      T, Size_Const_Int (1));
+               Set_Object_Align (Inst, GT, Empty);
+               Done_Promoting_Alloca (Inst, Promote, T, Size_Const_Int (1));
+               Result := G (Inst, GT, Ref (Our_R));
                Store (V, Result);
                return Result;
             end;

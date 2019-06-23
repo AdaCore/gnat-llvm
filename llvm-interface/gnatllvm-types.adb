@@ -935,10 +935,10 @@ package body GNATLLVM.Types is
       elsif Known_Alignment (TE)  and Use_Specified then
          return UI_To_Int (Alignment (TE)) * BPU;
 
-      --  If it's an array, it's the alignment of the component type
+      --  If it's an array, call the specialized function
 
       elsif Is_Array_Type (TE) then
-         return Get_Type_Alignment (Full_Component_GL_Type (TE));
+         return Get_Array_Type_Alignment (TE);
 
       --  If a record, call the specialized function
 

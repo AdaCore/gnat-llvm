@@ -186,6 +186,11 @@ package GNATLLVM.Arrays is
      (No_BA)
      with Pre  => Is_Array_Type (TE);
 
+   function Get_Array_Type_Alignment (TE : Entity_Id) return Nat
+     with Pre => Is_Array_Type (TE);
+   --  Like Get_Type_Alignment, but only for arrays and is called with
+   --  the GNAT type.
+
    function Bounds_To_Length
      (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data;
 

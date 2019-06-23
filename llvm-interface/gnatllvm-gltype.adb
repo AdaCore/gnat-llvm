@@ -496,7 +496,7 @@ package body GNATLLVM.GLType is
       if For_Type and then Present (Size_V) and then Present (Align_V)
         and then U_Rem (Size_V, Align_V) /= 0
       then
-         Size_V := Align_To (Size_V, BPU,
+         Size_V := Align_To (Size_V, 1,
                              Nat (Get_Const_Int_Value_ULL (Align_V)));
       end if;
 

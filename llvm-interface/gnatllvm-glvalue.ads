@@ -1395,6 +1395,8 @@ package GNATLLVM.GLValue is
      (Mul (LHS, RHS));
    function "/" (LHS, RHS : GL_Value) return GL_Value is
      (U_Div (LHS, RHS));
+   function "mod" (LHS, RHS : GL_Value) return GL_Value is
+     (U_Rem (LHS, RHS));
 
    function "+" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS + UI_From_GL_Value (RHS))
@@ -1425,6 +1427,8 @@ package GNATLLVM.GLValue is
      (LHS * Const_Int (LHS, UI_From_Int (RHS)));
    function "/" (LHS : GL_Value; RHS : Int) return GL_Value is
      (LHS / Const_Int (LHS, UI_From_Int (RHS)));
+   function "mod" (LHS : GL_Value; RHS : Int) return GL_Value is
+     (LHS mod Const_Int (LHS, UI_From_Int (RHS)));
 
    function To_Bytes (V : GL_Value) return GL_Value is
      ((V + (BPU - 1)) / BPU)

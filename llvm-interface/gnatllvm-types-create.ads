@@ -25,6 +25,19 @@ package GNATLLVM.Types.Create is
    --  Given a GNAT type TE, build the corresponding LLVM type, building
    --  a GL_Type first if necessary.
 
+   procedure Copy_Annotations (In_TE, Out_TE : Entity_Id)
+     with Pre => Is_Type (In_TE) and then Is_Type (Out_TE)
+                 and then In_TE = Get_Fullest_View (Out_TE);
+   --  Copy any annotations we made from In_TE to Out_TE
+
+   procedure Annotate_Object_Size_And_Alignment
+     (Def_Ident : Entity_Id; GT : GL_Type)
+     with Pre => not Is_Type (Def_Ident);
+   --  Peform back-annotation of size and alignment of Def_Ident
+
+   function Create_TBAA (TE : Entity_Id) return Metadata_T
+     with Pre => Is_Type_Or_Void (TE);
+
    function Validate_Alignment
      (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint
      with Pre  => Present (E),

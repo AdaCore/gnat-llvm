@@ -93,25 +93,12 @@ package GNATLLVM.Types is
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it and a GL_Type first if necessary.
 
-   procedure Copy_Annotations (In_TE, Out_TE : Entity_Id)
-     with Pre => Is_Type (In_TE) and then Is_Type (Out_TE)
-                 and then In_TE = Get_Fullest_View (Out_TE);
-   --  Copy any annotations we made from In_TE to Out_TE
-
-   procedure Annotate_Object_Size_And_Alignment
-     (Def_Ident : Entity_Id; GT : GL_Type)
-     with Pre => not Is_Type (Def_Ident);
-   --  Peform back-annotation of size and alignment of Def_Ident
-
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
      with Pre => Present (GT) and then Present (E);
    --  GT is a type proposed for entity E, which is either an atomic object
    --  or an atomic component.  Produce an error message if we can't make
    --  it atomic.
-
-   function Create_TBAA (TE : Entity_Id) return Metadata_T
-     with Pre => Is_Type_Or_Void (TE);
 
    procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value)
      with Pre => Present (GT), Post => Present (Low) and then Present (High);

@@ -30,16 +30,17 @@ with LLVM.Core; use LLVM.Core;
 
 with GNAT.Strings; use GNAT.Strings;
 
-with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Conversions; use GNATLLVM.Conversions;
-with GNATLLVM.DebugInfo;   use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.Records;     use GNATLLVM.Records;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
+with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
+with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.Records;      use GNATLLVM.Records;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Subprograms is
 

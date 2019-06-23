@@ -1394,7 +1394,7 @@ package GNATLLVM.GLValue is
    function "*" (LHS, RHS : GL_Value) return GL_Value is
      (Mul (LHS, RHS));
    function "/" (LHS, RHS : GL_Value) return GL_Value is
-     (S_Div (LHS, RHS));
+     (U_Div (LHS, RHS));
 
    function "+" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS + UI_From_GL_Value (RHS))

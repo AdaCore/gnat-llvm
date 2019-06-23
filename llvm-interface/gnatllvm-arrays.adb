@@ -91,7 +91,7 @@ package body GNATLLVM.Arrays is
       with function  "*" (V1, V2 : Result) return Result;
       with function  "/" (V1, V2 : Result) return Result;
       with function  Sz_Neg (V : Result; Name : String := "") return Result;
-      with function  Sz_U_Div
+      with function  Sz_S_Div
         (V1, V2 : Result; Name : String := "") return Result;
       with function  Sz_Select
         (C_If, C_Then, C_Else : Result; Name : String := "") return Result;
@@ -302,7 +302,7 @@ package body GNATLLVM.Arrays is
                LHS := Emit_Expr_For_Minmax (Left_Opnd (N),  Is_Low);
                RHS := Emit_Expr_For_Minmax (Right_Opnd (N), Is_Low);
                return (if   Is_Unsigned_Type (Full_Etype (N))
-                       then Sz_U_Div (LHS, RHS) else LHS / RHS);
+                       then LHS / RHS else Sz_S_Div (LHS, RHS));
 
             when N_Type_Conversion | N_Unchecked_Type_Conversion =>
                LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
@@ -521,7 +521,7 @@ package body GNATLLVM.Arrays is
                 "*"              => "*",
                 "/"              => "/",
                 Sz_Neg           => Neg,
-                Sz_U_Div         => U_Div,
+                Sz_S_Div         => S_Div,
                 Sz_Select        => Build_Select,
                 Sz_Min           => Build_Min,
                 Sz_Max           => Build_Max,
@@ -583,7 +583,7 @@ package body GNATLLVM.Arrays is
                 "*"              => "*",
                 "/"              => "/",
                 Sz_I_Cmp         => I_Cmp,
-                Sz_U_Div         => U_Div,
+                Sz_S_Div         => S_Div,
                 Sz_Neg           => Neg,
                 Sz_Select        => Build_Select,
                 Sz_Min           => Build_Min,
@@ -616,7 +616,7 @@ package body GNATLLVM.Arrays is
                 "*"              => "*",
                 "/"              => "/",
                 Sz_I_Cmp         => I_Cmp,
-                Sz_U_Div         => U_Div,
+                Sz_S_Div         => S_Div,
                 Sz_Neg           => Neg,
                 Sz_Select        => Build_Select,
                 Sz_Min           => Build_Min,

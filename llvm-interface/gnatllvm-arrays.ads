@@ -189,6 +189,12 @@ package GNATLLVM.Arrays is
    function Bounds_To_Length
      (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data;
 
+   function Data_Index_In_BD_Type (V : GL_Value) return unsigned
+     with Pre  => Relationship (V)
+                  in Reference_To_Bounds_And_Data | Bounds_And_Data,
+          Post => Data_Index_In_BD_Type'Result in 1 | 2;
+   --  Get the index of the data in a Bounds and Data value
+
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)
      with Pre => Present (LValue)
                  and then Nkind_In (N, N_Aggregate, N_Extension_Aggregate)

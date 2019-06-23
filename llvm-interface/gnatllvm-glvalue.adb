@@ -636,7 +636,7 @@ package body GNATLLVM.GLValue is
             --  If we have bounds and data, extract the data
 
             if Our_R = Bounds_And_Data then
-               return Extract_Value (GT, V, 1);
+               return Extract_Value (GT, V, Data_Index_In_BD_Type (V));
 
                --  If we have a reference to something else, try to convert
                --  to a normal reference and then get the data.  If this
@@ -681,10 +681,10 @@ package body GNATLLVM.GLValue is
             --  If we have data, we can add the bounds
 
             if Our_R = Data then
+               Result := Get_Undef_Relationship (GT, R);
                return Insert_Value
-                 (Insert_Value (Get_Undef_Relationship (GT, R),
-                                Get_Array_Bounds (GT, GT, V), 0),
-                  V, 1);
+                 (Insert_Value (Result, Get_Array_Bounds (GT, GT, V), 0),
+                  V, Data_Index_In_BD_Type (Result));
             end if;
 
          when Reference_To_Bounds =>
@@ -762,7 +762,10 @@ package body GNATLLVM.GLValue is
             --  bounds and data, we can store them and proceed as above.
 
             elsif Our_R = Reference_To_Bounds_And_Data then
-               return GEP_Idx_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
+               return
+                 GEP_Idx_To_Relationship (GT, R, V,
+                                          (1 => 0,
+                                           2 => Data_Index_In_BD_Type (V)));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             end if;
@@ -777,7 +780,10 @@ package body GNATLLVM.GLValue is
             --  Ada language rules guarantee that it will be.
 
             if Our_R = Reference_To_Bounds_And_Data then
-               return GEP_Idx_To_Relationship (GT, R, V, (1 => 0, 2 => 1));
+               return
+                 GEP_Idx_To_Relationship (GT, R, V,
+                                          (1 => 0,
+                                           2 => Data_Index_In_BD_Type (V)));
             elsif Our_R = Bounds_And_Data then
                return Get (Get (V, Reference_To_Bounds_And_Data), R);
             elsif Our_R = Fat_Pointer then

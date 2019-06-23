@@ -19,7 +19,7 @@ with Sem_Eval; use Sem_Eval;
 with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 
-with LLVM.Core;  use LLVM.Core;
+with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
@@ -347,8 +347,32 @@ package body GNATLLVM.Arrays.Create is
    function Create_Array_Bounds_And_Data_Type
      (TE : Entity_Id; T : Type_T) return Type_T
    is
-     (Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
-                          2 => T)));
+      Align  : constant Nat    := Get_Type_Alignment (Default_GL_Type (TE));
+      B_T    : constant Type_T := Create_Array_Bounds_Type (TE);
+      B_T_Sz : constant Nat    := Nat (ULL'(Get_Type_Size (B_T)));
+
+   begin
+      --  If the size of the bounds type is a multiple of the alignment,
+      --  we have the normal case of two types.
+
+      if B_T_Sz mod Align = 0 then
+         return Build_Struct_Type ((1 => B_T, 2 => T));
+
+      --  Otherwise, generate some padding
+
+      else
+         declare
+            Align_Sz : constant Nat := (B_T_Sz + Align - 1) / Align * Align;
+            Pad      : constant Nat := (Align_Sz - B_T_Sz) / BPU;
+
+         begin
+            return
+              Build_Struct_Type ((1 => B_T,
+                                  2 => Array_Type (Byte_T, unsigned (Pad)),
+                                  3 => T));
+         end;
+      end if;
+   end Create_Array_Bounds_And_Data_Type;
 
    -----------------------------------
    -- Create_Array_Fat_Pointer_Type --

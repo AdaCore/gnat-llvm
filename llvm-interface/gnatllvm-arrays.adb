@@ -705,6 +705,19 @@ package body GNATLLVM.Arrays is
    end Maybe_Store_Bounds;
 
    ---------------------------
+   -- Data_Index_In_BD_Type --
+   ---------------------------
+
+   function Data_Index_In_BD_Type (V : GL_Value) return unsigned is
+      T    : constant Type_T := Type_Of (V);
+      BD_T : constant Type_T :=
+        (if Is_Reference (V) then Get_Element_Type (T) else T);
+
+   begin
+      return Count_Struct_Element_Types (BD_T) - 1;
+   end Data_Index_In_BD_Type;
+
+   ---------------------------
    -- Contains_Discriminant --
    ---------------------------
 

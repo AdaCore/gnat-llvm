@@ -316,6 +316,30 @@ package body GNATLLVM.Arrays.Create is
       return Typ;
    end Create_Array_Type;
 
+   ------------------------------
+   -- Create_Array_Bounds_Type --
+   ------------------------------
+
+   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T is
+      Dims       : constant Nat           :=
+        Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
+                           then Full_Original_Array_Type (TE) else TE);
+      Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
+      First_Info : constant Array_Info_Id :=
+        (if   Is_Packed_Array_Impl_Type (TE) then Get_Orig_Array_Info (TE)
+         else Get_Array_Info (TE));
+      J          : Nat                    := 0;
+
+   begin
+      for K in Nat range 0 .. Dims - 1 loop
+         Fields (J) := Type_Of (Array_Info.Table (First_Info + K).Bound_GT);
+         Fields (J + 1) := Fields (J);
+         J := J + 2;
+      end loop;
+
+      return Build_Struct_Type (Fields);
+   end Create_Array_Bounds_Type;
+
    -----------------------------------
    -- Create_Array_Fat_Pointer_Type --
    -----------------------------------

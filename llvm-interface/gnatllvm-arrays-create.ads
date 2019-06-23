@@ -34,4 +34,11 @@ package GNATLLVM.Arrays.Create is
           Post => Present (Create_Array_Fat_Pointer_Type'Result);
    --  Return the type used to store fat pointers to Array_Type
 
+   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
+          Post => Present (Create_Array_Bounds_Type'Result);
+   --  Helper that returns the type used to store array bounds. This is a
+   --  structure that that follows the following pattern: { LB0, UB0, LB1,
+   --  UB1, ... }
+
 end GNATLLVM.Arrays.Create;

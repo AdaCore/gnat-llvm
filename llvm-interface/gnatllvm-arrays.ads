@@ -30,13 +30,6 @@ package GNATLLVM.Arrays is
    pragma Warnings (Off, "formal parameter *");
    --  Workaround bug in GNAT warning machinery
 
-   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE),
-          Post => Present (Create_Array_Bounds_Type'Result);
-   --  Helper that returns the type used to store array bounds. This is a
-   --  structure that that follows the following pattern: { LB0, UB0, LB1,
-   --  UB1, ... }
-
    function Contains_Discriminant (N : Node_Id) return Boolean;
    --  Return True if N contains a reference to a discriminant
 

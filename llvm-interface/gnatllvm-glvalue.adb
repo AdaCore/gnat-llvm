@@ -435,8 +435,7 @@ package body GNATLLVM.GLValue is
             return Create_Array_Bounds_Type (TE);
 
          when Bounds_And_Data =>
-            return Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
-                                       2 => T));
+            return Create_Array_Bounds_And_Data_Type (TE, T);
 
          when Trampoline =>
             return Void_Ptr_Type;

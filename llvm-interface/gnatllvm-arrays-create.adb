@@ -340,6 +340,16 @@ package body GNATLLVM.Arrays.Create is
       return Build_Struct_Type (Fields);
    end Create_Array_Bounds_Type;
 
+   ---------------------------------------
+   -- Create_Array_Bounds_And_Data_Type --
+   ---------------------------------------
+
+   function Create_Array_Bounds_And_Data_Type
+     (TE : Entity_Id; T : Type_T) return Type_T
+   is
+     (Build_Struct_Type ((1 => Create_Array_Bounds_Type (TE),
+                          2 => T)));
+
    -----------------------------------
    -- Create_Array_Fat_Pointer_Type --
    -----------------------------------

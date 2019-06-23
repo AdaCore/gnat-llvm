@@ -37,8 +37,13 @@ package GNATLLVM.Arrays.Create is
    function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T
      with Pre  => Is_Array_Or_Packed_Array_Type (TE),
           Post => Present (Create_Array_Bounds_Type'Result);
-   --  Helper that returns the type used to store array bounds. This is a
-   --  structure that that follows the following pattern: { LB0, UB0, LB1,
-   --  UB1, ... }
+   --  Return the type used to store array bounds. This is a structure
+   --  that that follows the following pattern: { LB0, UB0, LB1, UB1, ... }
+
+   function Create_Array_Bounds_And_Data_Type
+     (TE : Entity_Id; T : Type_T) return Type_T
+     with Pre  => Is_Array_Or_Packed_Array_Type (TE) and then Present (T),
+     Post => Present (Create_Array_Bounds_And_Data_Type'Result);
+   --  Return the type used to store the bounds and data of an array
 
 end GNATLLVM.Arrays.Create;

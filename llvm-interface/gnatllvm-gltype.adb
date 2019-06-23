@@ -491,11 +491,10 @@ package body GNATLLVM.GLType is
          Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
       end if;
 
-      --  If this is for a type, we haven't specified a size, we have to
-      --  align the input size.
+      --  If this is for a type, we have to align the input size
 
-      if For_Type and then Size = No_Uint and then Present (Size_V)
-        and then Present (Align_V) and then U_Rem (Size_V, Align_V) /= 0
+      if For_Type and then Present (Size_V) and then Present (Align_V)
+        and then U_Rem (Size_V, Align_V) /= 0
       then
          Size_V := Align_To (Size_V, BPU,
                              Nat (Get_Const_Int_Value_ULL (Align_V)));

@@ -639,7 +639,7 @@ package body GNATLLVM.Conversions is
          Result := Convert_Pointer (Get (As_Ref, R), DT);
       end if;
 
-      return To_Access (Result, GT);
+      return From_Primitive (To_Access (Result, Primitive_GL_Type (GT)), GT);
    end Convert_To_Access;
 
    ----------------

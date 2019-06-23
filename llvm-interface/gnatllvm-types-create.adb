@@ -389,10 +389,10 @@ package body GNATLLVM.Types.Create is
                                    Is_RM_Size => True));
             Size       : constant Uint      :=
               (if   Unknown_Esize (Size_TE) then No_Uint
-               else  Validate_Size (Size_TE, GT, Esize (Size_TE),
-                                    For_Type     => True,
-                                    Zero_Allowed =>
-                                      Has_Size_Clause (Size_TE)));
+               else Validate_Size (Size_TE, GT, Esize (Size_TE),
+                                   For_Type     => True,
+                                   Zero_Allowed =>
+                                     Has_Size_Clause (Size_TE)));
 
          begin
             --  If this is an atomic or VFA type with no alignment specified,

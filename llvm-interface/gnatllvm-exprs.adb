@@ -1159,8 +1159,9 @@ package body GNATLLVM.Exprs is
 
          Store (Convert (Get (Src, Data), Dest_GT), Get (Dest, Reference));
 
-      elsif (Present (E) and then Is_Loadable_Type (Full_GL_Type (E)))
-         or else (Present (Value) and then Is_Loadable_Type (Value))
+      elsif ((Present (E) and then Is_Loadable_Type (Full_GL_Type (E)))
+             or else (Present (Value) and then Is_Loadable_Type (Value)))
+        and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then
          --  Here, the source is of an LLVM value small enough to store,
          --  but the destination may or may not be a variable-sized type.

@@ -73,7 +73,7 @@ package GNATLLVM.Conversions is
    function Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Present (V) and then Present (GT),
           Post => Present (Convert_GT'Result);
-   --  Convert V, to GT. ???  We have a mess here because the front end
+   --  Convert V to GT. ???  We have a mess here because the front end
    --  often treats different types as if they're identical, but we,
    --  unfortunately, sometimes must keep the original type.  This means that
    --  we may sometimes do nothing even though we actually have to convert

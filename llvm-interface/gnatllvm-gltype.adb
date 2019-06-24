@@ -27,6 +27,7 @@ with Uintp.LLVM; use Uintp.LLVM;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
+with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -175,6 +176,11 @@ package body GNATLLVM.GLType is
                              (Full_Designated_GL_Type (V)),
           Post => Related_Type (Convert_Access'Result) = GT;
    --  Likewise, for converting between forms of access to unconstrained
+
+   function Convert_Via_Copy (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Is_Reference (V) and then Present (GT),
+          Post => Related_Type (Convert_Via_Copy'Result) = GT;
+   --  Likewise, for cases where we have to make a copy
 
    function Make_GT_Alternative_Internal
      (GT        : GL_Type;
@@ -906,43 +912,47 @@ package body GNATLLVM.GLType is
      (To_Access (Get (From_Access (V), Relationship_For_Access_Type (GT)),
                  GT));
 
+   ----------------------
+   -- Convert_Via_Copy --
+   ----------------------
+
+   function Convert_Via_Copy (V : GL_Value; GT : GL_Type) return GL_Value is
+      Memory : constant GL_Value := Allocate_For_Type (GT, GT, Empty);
+
+   begin
+      --  We've allocated memory for the type we're converting into, which
+      --  is the wider type.  Get a pointer to it in the narrower type and
+      --  copy V to it.  The result is the memory.
+
+      Emit_Assignment (Ptr_To_Relationship (Memory, V, Relationship (V)),
+                       Value => V);
+      return Memory;
+
+   end Convert_Via_Copy;
+
    ------------------
    -- To_Primitive --
    ------------------
 
-   function To_Primitive   (V : GL_Value) return GL_Value is
-      In_GT  : constant GL_Type      := Related_Type (V);
-      In_GTI : constant GL_Type_Info := GL_Type_Table.Table (In_GT);
-      Out_GT : constant GL_Type      := Primitive_GL_Type (Full_Etype (In_GT));
-      Is_Ref : constant Boolean      := Is_Reference (V);
-      Result : GL_Value              := V;
+   function To_Primitive
+     (V : GL_Value; No_Copy : Boolean := False) return GL_Value
+   is
+      In_GT  : constant GL_Type         := Related_Type (V);
+      In_R   : constant GL_Relationship := Relationship (V);
+      In_GTI : constant GL_Type_Info    := GL_Type_Table.Table (In_GT);
+      Out_GT : constant GL_Type         := Primitive_GL_Type (In_GT);
+      Result : GL_Value                 := V;
 
    begin
-      --  If this is a double reference, convert it to a single reference
-
-      if Is_Double_Reference (Result) then
-         Result := Load (Result);
-      end if;
-
       --  If we're already primitive, done
 
       if Is_Primitive_GL_Type (In_GT) then
          return Result;
 
-      --  Unless this is Biased, Padded, Int_Alt, or Access_Alt, if this is
-      --  a reference, just convert the pointer.  But if it's a reference
-      --  to bounds and data, always do it this way.
+      --  If this is Aligning, the object is the same, we just note that it
+      --  now has the right type.
 
-      elsif Relationship (V) = Reference_To_Bounds_And_Data
-        or else (In_GTI.Kind not in Biased | Padded | Int_Alt | Access_Alt
-                   and then Is_Ref)
-      then
-         return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
-
-      --  If this is Aligning or Max_Size, the object is the same, we
-      --  just note that it now has the right type.
-
-      elsif In_GTI.Kind in Aligning | Max_Size_Type then
+      elsif In_GTI.Kind = Aligning then
          return G_Is (Result, Out_GT);
 
       --  For Biased, we need to be sure we have data, then convert to
@@ -955,7 +965,7 @@ package body GNATLLVM.GLType is
       --  proper pointer.
 
       elsif In_GTI.Kind = Dummy then
-         return Convert_Pointer (Result, Out_GT);
+         return Convert_Pointer (Get (Result, Data), Out_GT);
 
       --  For Int_Alt, this must be an integral type, so convert it to
       --  the desired alternative.
@@ -970,23 +980,36 @@ package body GNATLLVM.GLType is
          return Convert_Access (Get (Result, Data), Out_GT);
 
       --  For Padded, use either GEP or Extract_Value, depending on whether
-      --  this is a reference or not.
+      --  this is a reference or not.  But only do this for an actual
+      --  Reference, not something else, such as a double reference or
+      --  a reference to bounds and data
 
-      elsif In_GTI.Kind = Padded then
-         return (if   Is_Ref
-                 then GEP (Out_GT, Result,
+      elsif In_GTI.Kind = Padded and then In_R in Data | Reference then
+         return (if   In_R =  Reference
+                 then GEP (Out_GT,  Result,
                            (1 => Const_Null_32, 2 => Const_Null_32))
                  else Extract_Value (Out_GT, Result, 0));
 
-      --  The remaining case must be a byte array or truncation where we
-      --  have data, not a reference.  In this case, we have to store the
-      --  data into memory and convert the memory pointer to the proper
-      --  type.
-
       else
-         pragma Assert (In_GTI.Kind in Byte_Array | Truncated and not Is_Ref);
-         Result := Get (Result, Any_Reference);
-         return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
+         --  Otherwise we need the data in memory
+
+         if Is_Double_Reference (Result) or else Is_Data (Result) then
+            Result := Get (Result, Any_Reference);
+         end if;
+
+         --  If we're making a wider type, we can't just pun the pointer
+         --  since it would result in an access outside the object, so we
+         --  need to allocate a copy of the data and copy that.  Use our
+         --  helper.
+
+         if In_GTI.Kind = Truncated and then not No_Copy then
+            return Convert_Via_Copy (Result, Out_GT);
+
+         --  Otherwise, convert the pointer
+
+         else
+            return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
+         end if;
       end if;
 
    end To_Primitive;
@@ -997,31 +1020,18 @@ package body GNATLLVM.GLType is
 
    function From_Primitive (V : GL_Value; GT : GL_Type) return GL_Value is
       GTI    : constant GL_Type_Info := GL_Type_Table.Table (GT);
-      Is_Ref : constant Boolean      := Is_Reference (V);
       Result : GL_Value              := V;
 
    begin
-      --  If this is a double reference, convert it to a single reference
-
-      if Is_Double_Reference (Result) then
-         Result := Load (Result);
-      end if;
-
       --  If we're already the requested type, done
 
       if Related_Type (V) = GT then
          return Result;
 
-      --  Unless the result is Biased, Int_Alt, or Access_Alt, if this is a
-      --  reference, just convert the pointer.
-
-      elsif GTI.Kind not in Biased | Int_Alt | Access_Alt and Is_Ref then
-         return Ptr_To_Relationship (Result, GT, Relationship (Result));
-
-      --  If the result is Aligning or Max_Size, the object is the
+      --  If the result is Aligning the object is the
       --  same, we just note that it now has the right type.
 
-      elsif GTI.Kind in Aligning | Max_Size_Type then
+      elsif GTI.Kind = Aligning then
          return G_Is (Result, GT);
 
       --  For Biased, we need to be sure we have data, then subtract
@@ -1034,7 +1044,7 @@ package body GNATLLVM.GLType is
       --  proper pointer.
 
       elsif GTI.Kind = Dummy then
-         return Convert_Pointer (Result, GT);
+         return Convert_Pointer (Get (Result, Data), GT);
 
       --  For Int_Alt, this must be an integral type, so convert it to
       --  the desired alternative.
@@ -1048,21 +1058,29 @@ package body GNATLLVM.GLType is
       elsif GTI.Kind = Access_Alt then
          return Convert_Access (Get (Result, Data), GT);
 
-      --  For Padded, we know this is data, so use Insert_Value to
-      --  make the padded version.
+      --  For Padded data, use Insert_Value to make the padded version
 
-      elsif GTI.Kind = Padded then
-         return Insert_Value (Get_Undef (GT), V, 0);
-
-      --  The remaining case must be a byte array or truncation where we
-      --  have data, not a reference.  In this case, we have to store the
-      --  data into memory and convert the memory pointer to the proper
-      --  type.
+      elsif GTI.Kind = Padded and then Is_Loadable_Type (Result) then
+         return Insert_Value (Get_Undef (GT), Get (Result, Data), 0);
 
       else
-         pragma Assert (GTI.Kind in Byte_Array | Truncated and not Is_Ref);
+         --  Otherwise we need the data in memory
+
          Result := Get (Result, Any_Reference);
-         return Ptr_To_Relationship (Result, GT, Relationship (Result));
+
+         --  If we're making a wider type, we can't just pun the pointer
+         --  since this will result in an access outside the object, so we
+         --  need to allocate a copy of the data and copy that.  Use our
+         --  helper.
+
+         if GTI.Kind in Padded | Byte_Array | Max_Size_Type then
+            return Convert_Via_Copy (Result, GT);
+
+         --  Otherwise, convert the pointer
+
+         else
+            return Ptr_To_Relationship (Result, GT, Relationship (Result));
+         end if;
       end if;
 
    end From_Primitive;

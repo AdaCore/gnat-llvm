@@ -888,7 +888,8 @@ package body GNATLLVM.Arrays is
 
       Call_With_Align
         (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
-         (1 => Pointer_Cast (To_Primitive (Get (LValue, Reference)),
+         (1 => Pointer_Cast (Get (To_Primitive (LValue, No_Copy => True),
+                                  Reference),
                              A_Char_GL_Type),
           2 => Value,
           3 => To_Bytes (Get_Type_Size (GT)),
@@ -1205,7 +1206,8 @@ package body GNATLLVM.Arrays is
       GT         : constant GL_Type  := Related_Type (V);
       N_Dim      : constant Int      := Number_Dimensions (GT);
       Comp_GT    : constant GL_Type  := Full_Component_GL_Type (GT);
-      Array_Data : constant GL_Value := Get (To_Primitive (V), Reference);
+      Array_Data : constant GL_Value :=
+        Get (To_Primitive (V, No_Copy => True), Reference);
       Fortran    : constant Boolean  := Convention (GT) = Convention_Fortran;
 
    begin
@@ -1259,7 +1261,8 @@ package body GNATLLVM.Arrays is
    function Get_Slice_LValue (GT : GL_Type; V : GL_Value) return GL_Value
    is
       Rng         : constant Node_Id  := Get_Dim_Range (First_Index (GT));
-      Array_Data  : constant GL_Value := Get (To_Primitive (V), Reference);
+      Array_Data  : constant GL_Value :=
+        Get (To_Primitive (V, No_Copy => True), Reference);
       Arr_GT      : constant GL_Type  := Full_Designated_GL_Type (V);
       Idx_LB      : constant GL_Value := Get_Array_Bound (Arr_GT, 0, True, V);
       Index_Val   : constant GL_Value := Emit_Safe_Expr (Low_Bound (Rng));

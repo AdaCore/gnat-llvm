@@ -34,7 +34,7 @@ package GNATLLVM.Records is
 
    function Record_Field_Offset
      (V : GL_Value; Field : Entity_Id) return GL_Value
-     with Pre  => Present (V)
+     with Pre  => not Is_Data (V)
                   and then Ekind_In (Field, E_Discriminant, E_Component),
           Post => Present (Record_Field_Offset'Result);
    --  Return a GL_Value that represents the offset of a given record field

@@ -217,10 +217,14 @@ package GNATLLVM.GLType is
    function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
      with Pre => Present (GT);
 
-   function To_Primitive (V : GL_Value)          return GL_Value
+   function To_Primitive
+     (V : GL_Value; No_Copy : Boolean := False) return GL_Value
      with Pre  => Present (V),
           Post => Is_Primitive_GL_Type (Related_Type (To_Primitive'Result));
-   --  Convert V to its primitive GL_Type
+   --  Convert V to its primitive GL_Type.  If No_Copy is True, the caller
+   --  is guaranteeing that it'll either make a sub-reference to the value
+   --  or use a size computed by some other means so that we don't need
+   --  to make a copy (and must not make a copy) of V.
 
    function Remove_Padding (V : GL_Value)        return GL_Value is
      ((if Has_Padding (V) then To_Primitive (V) else V))

@@ -520,7 +520,8 @@ package body GNATLLVM.GLValue is
 
    begin
       if R = Object then
-         R := (if Object_Can_Be_Data (V) then Data else Any_Reference);
+         R := (if Is_Data (V) or else Object_Can_Be_Data (V) then Data
+               else Any_Reference);
       end if;
 
       return Relationship (V) = R
@@ -555,7 +556,8 @@ package body GNATLLVM.GLValue is
       --  relationship for TE and V.
 
       if R = Object then
-         R := (if Object_Can_Be_Data (V) then Data else Any_Reference);
+         R := (if   Object_Can_Be_Data (V) or else Is_Data (V) then Data
+               else Any_Reference);
       end if;
 
       --  If we want any single-word relationship, we can convert everything

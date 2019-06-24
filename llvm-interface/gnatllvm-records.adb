@@ -1576,14 +1576,18 @@ package body GNATLLVM.Records is
                             F_GT);
       end if;
 
+      --  Get the primitive form of V and make sure that it's not a fat or
+      --  thin pointer, but we don't a copy because we'll be indexing into
+      --  it (and the copy would be incorrect if we want this offset as an
+      --  LValue).
+
+      Result := Get (To_Primitive (V, No_Copy => True), Any_Reference);
+
       --  Otherwise, if this is not the first piece, we have to offset to
       --  the field (in bytes).
 
-      if Our_Idx = First_Idx then
-         Result := To_Primitive (V);
-      else
-         Result := GEP (SSI_GL_Type,
-                        Pointer_Cast (To_Primitive (V), A_Char_GL_Type),
+      if Our_Idx /= First_Idx then
+         Result := GEP (SSI_GL_Type, Pointer_Cast (Result, A_Char_GL_Type),
                         (1 => To_Bytes (Offset)));
       end if;
 
@@ -1591,9 +1595,9 @@ package body GNATLLVM.Records is
       --  type of this piece (which has no corresponding GNAT type).
 
       if Is_Nonnative_Type (Rec_Type) then
-         Result := G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (Result),
-                                        Pointer_Type (RI.LLVM_Type, 0), ""),
-                          Rec_GT);
+         Result := G (Pointer_Cast (IR_Builder, LLVM_Value (Result),
+                                    Pointer_Type (RI.LLVM_Type, 0), ""),
+                      Rec_GT, Reference_To_Unknown);
       else
          Result := Convert_Ref (Result, Rec_GT);
       end if;
@@ -1925,7 +1929,8 @@ package body GNATLLVM.Records is
          if Is_Data (LHS) then
             Result := Insert_Value (LHS, Get (RHS_Cvt, Data), unsigned (Idx));
          else
-            Emit_Assignment (Record_Field_Offset (LHS, F), Empty, RHS);
+            Emit_Assignment (Record_Field_Offset (LHS, F), Empty,
+                             Convert_GT (RHS, F_GT));
          end if;
 
          return Result;

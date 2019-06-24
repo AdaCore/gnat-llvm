@@ -843,38 +843,28 @@ package body GNATLLVM.GLType is
    ---------------------
 
    function Get_Unused_Bits (GT : GL_Type) return Uint is
-      TE     : constant Entity_Id := Full_Etype (GT);
-      Def_GT : constant GL_Type   := Default_GL_Type (TE);
-      Sz_GT  : constant GL_Value  := GT_Size (GT);
-      Sz_Def : constant GL_Value  := GT_Size (Def_GT);
-
    begin
       --  There are two ways we can have unused bits.  We can have a
-      --  record type with padding at the end and/or we can have
-      --  padding or truncation on this GL_Type with respect to the
-      --  underlying type.  But we need all of these values to be known
-      --  and constant and this only applies for record types.
+      --  record type with padding at the end.
 
-      if Is_Record_Type (TE) and then Known_Static_Esize (TE)
-        and then Known_Static_RM_Size (TE) and then Present (Sz_GT)
-        and then Present (Sz_Def)
-      then
-         return Esize (TE) - RM_Size (TE) + Sz_GT - Sz_Def;
+      return Bits : Uint := Uint_0 do
+         if Is_Record_Type (GT) and then Known_Static_Esize (GT)
+           and then Known_Static_RM_Size (GT)
+         then
+            Bits := Bits +  Esize (GT) - RM_Size (GT);
+         end if;
 
-      --  Another case is if we have a padding type.  We don't want
-      --  to use the size difference here in case some of that difference
-      --  isn't padding but is, for example, a different integer type or
-      --  a thin vs fat pointer.
+         --  Another case is if we have a padding type.  We don't want
+         --  to use the size difference here in case some of that difference
+         --  isn't padding but is, for example, a different integer type or
+         --  a thin vs fat pointer.
 
-      elsif Is_Padded_GL_Type (GT) then
-         return UI_From_ULL (Get_Type_Size
-                               (Struct_Get_Type_At_Index (Type_Of (GT), 1)));
-
-      --  Otherwise, there are no padding bits
-
-      else
-         return Uint_0;
-      end if;
+         if Is_Padded_GL_Type (GT) then
+            Bits := Bits + UI_From_ULL (Get_Type_Size
+                                          (Struct_Get_Type_At_Index
+                                             (Type_Of (GT), 1)));
+         end if;
+      end return;
 
    end Get_Unused_Bits;
 

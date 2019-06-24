@@ -191,6 +191,15 @@ package GNATLLVM.Arrays is
    --  Like Get_Type_Alignment, but only for arrays and is called with
    --  the GNAT type.
 
+   function Is_Native_Component_GT (GT : GL_Type) return Boolean is
+     (not Is_Nonnative_Type (GT) and then not Is_Truncated_GL_Type (GT)
+        and then Get_Type_Size (Type_Of (GT)) = Get_Type_Size (GT))
+     with Pre => Present (GT);
+   --  True if this is a component type that we can use natively; i.e.
+   --  without making the array [N x i8] and doing our own indexing.
+   --  If we have a type like i24, where the size of the LLVM type
+   --  isn't consistent with the number of bits, we can't use it either.
+
    function Bounds_To_Length
      (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data;
 

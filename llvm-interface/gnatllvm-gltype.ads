@@ -192,6 +192,13 @@ package GNATLLVM.GLType is
      (Is_Padded_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
+   function Is_Truncated_GL_Type (GT : GL_Type)     return Boolean
+     with Pre => Present (GT);
+
+   function Is_Truncated_GL_Type (V : GL_Value)     return Boolean is
+     (Is_Truncated_GL_Type (Related_Type (V)))
+     with Pre => Present (V);
+
    function Is_Byte_Array_GL_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
 

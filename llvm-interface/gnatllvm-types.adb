@@ -239,7 +239,8 @@ package body GNATLLVM.Types is
    -- Is_Loadable_Type --
    ----------------------
    function Is_Loadable_Type (GT : GL_Type) return Boolean is
-     (not Is_Nonnative_Type (GT) and then Is_Loadable_Type (Type_Of (GT)));
+     (not Is_Nonnative_Type (GT) and then not Is_Truncated_GL_Type (GT)
+        and then Is_Loadable_Type (Type_Of (GT)));
 
    -----------------------
    -- Build_Struct_Type --
@@ -653,7 +654,7 @@ package body GNATLLVM.Types is
       end if;
 
       if Is_Array_Type (Alloc_GT)
-        and then not Is_Nonnative_Type (Full_Component_GL_Type (Alloc_GT))
+        and then Is_Native_Component_GT (Full_Component_GL_Type (Alloc_GT))
         and then not Is_Constr_Subt_For_UN_Aliased (GT)
         and then not Overalign
       then

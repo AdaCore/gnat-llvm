@@ -34,7 +34,7 @@ package body GNATLLVM.GLType is
 
    --  A GL_Type can be of various different kinds.  We list them here.
 
-   type GT_Kind is
+   type GT_Kind_Type is
      (None,
       --  A so-far-unused entry
 
@@ -74,6 +74,14 @@ package body GNATLLVM.GLType is
       --  A record whose first field is the primitive type and the second
       --  is padding to make the record the proper length.  This can only
       --  be done if the primitive type is a native LLVM type.
+
+      Truncated,
+      --  A type that's shorter than the underlying LLVM type because
+      --  (e.g.) the LLVM type represents an array with padding.  We only
+      --  can have this if the primitive type is a native LLVM type.  We
+      --  disallow the use of Load or Store instructions of this type by
+      --  marking it as a non-loadable type, so all operations on the type
+      --  are done with memcpy and a specified length.
 
       Byte_Array,
       --  An array of bytes (i8) whose length is the desired size of the
@@ -117,7 +125,7 @@ package body GNATLLVM.GLType is
       --  If True, this corresponds to the maxumum size of an unconstrained
       --  variant record with default discriminant values;
 
-      Kind      : GT_Kind;
+      Kind      : GT_Kind_Type;
       --  Says what type of alternative type this is
 
       Default   : Boolean;
@@ -180,6 +188,10 @@ package body GNATLLVM.GLType is
                    = Full_Etype (GT);
    --  Internal version of Make_GT_Alternative to actually make the GL_Type
 
+   function GT_Kind (GT : GL_Type) return GT_Kind_Type is
+     (GL_Type_Table.Table (GT).Kind)
+     with Pre => Present (GT);
+
    ---------------------------
    -- GL_Type_Info_Is_Valid --
    ---------------------------
@@ -241,6 +253,8 @@ package body GNATLLVM.GLType is
          when Byte_Array =>
             return Is_Nonnative_Type (TE)
               and then Get_Type_Kind (T) = Array_Type_Kind;
+         when Truncated =>
+            return not Is_Nonnative_Type (TE);
          when Max_Size_Type =>
             return Is_Nonnative_Type (TE)
               and then Is_Unconstrained_Record (TE);
@@ -530,14 +544,6 @@ package body GNATLLVM.GLType is
               --  we want the maximum size and we have an entry where
               --  we got the maximum size.  But we need the right alignment.
 
-              or else (not Is_Discrete_Or_Fixed_Point_Type (GT)
-                         and then not Is_Access_Type (GT)
-                         and then GTI.Kind = Primitive and then not Needs_Max
-                         and then Present (Size_V) and then Present (GTI.Size)
-                         and then Size_V < GTI.Size)
-              --  ??? Until we support field rep clauses, don't try to make
-              --  non-integer types smaller.
-
             then
                return Found_GT;
             end if;
@@ -608,11 +614,11 @@ package body GNATLLVM.GLType is
             end;
 
          --  If we have a native primitive type, we specified a size, and
-         --  the size or alignment is different that that of the primitive,
-         --  we make a padded type.
+         --  the size is larger that that of the primitive, or if the
+         --  alignment is different, we make a padded or aligning type.
 
          elsif Prim_Native and then Present (Size_V)
-           and then (Prim_Size /= Size_V
+           and then (Size_V > Prim_Size
                        or else (Present (Align_V)
                                   and then Prim_Align /= Align_V))
          then
@@ -636,6 +642,14 @@ package body GNATLLVM.GLType is
                   GTI.Kind      := Aligning;
                end if;
             end;
+
+         --  Similarly, if he size is smaller, make a truncating type
+
+         elsif Prim_Native and then Present (Size_V)
+           and then Size_V < Prim_Size
+         then
+            GTI.LLVM_Type := Prim_T;
+            GTI.Kind      := Truncated;
 
          --  If we're making a fixed-size version of something of dynamic
          --  size (possibly because we need the maximum size), we need a
@@ -715,14 +729,14 @@ package body GNATLLVM.GLType is
       --  dummy type is the best we have.
 
       while Present (GT) loop
-         exit when GL_Type_Table.Table (GT).Kind = Primitive;
+         exit when GT_Kind (GT) = Primitive;
          Next (GT);
       end loop;
 
       if No (GT) then
          GT := Get_GL_Type (TE);
          while Present (GT) loop
-            exit when GL_Type_Table.Table (GT).Kind = Dummy;
+            exit when GT_Kind (GT) = Dummy;
             Next (GT);
          end loop;
       end if;
@@ -735,14 +749,14 @@ package body GNATLLVM.GLType is
          GT := Get_GL_Type (TE);
 
          while Present (GT) loop
-            exit when GL_Type_Table.Table (GT).Kind = Primitive;
+            exit when GT_Kind (GT) = Primitive;
             Next (GT);
          end loop;
 
          if No (GT) then
             GT := Get_GL_Type (TE);
             while Present (GT) loop
-               exit when GL_Type_Table.Table (GT).Kind = Dummy;
+               exit when GT_Kind (GT) = Dummy;
                Next (GT);
             end loop;
          end if;
@@ -773,7 +787,7 @@ package body GNATLLVM.GLType is
    begin
       return GT : GL_Type := Get_Or_Create_GL_Type (TE, False) do
          while Present (GT) loop
-            exit when GL_Type_Table.Table (GT).Kind = Dummy;
+            exit when GT_Kind (GT) = Dummy;
             Next (GT);
          end loop;
       end return;
@@ -974,12 +988,13 @@ package body GNATLLVM.GLType is
                            (1 => Const_Null_32, 2 => Const_Null_32))
                  else Extract_Value (Out_GT, Result, 0));
 
-      --  The remaining case must be a byte array where we have data, not
-      --  a reference.  In this case, we have to store the data into memory
-      --  and convert the memory pointer to the proper type.
+      --  The remaining case must be a byte array or truncation where we
+      --  have data, not a reference.  In this case, we have to store the
+      --  data into memory and convert the memory pointer to the proper
+      --  type.
 
       else
-         pragma Assert (In_GTI.Kind = Byte_Array and not Is_Ref);
+         pragma Assert (In_GTI.Kind in Byte_Array | Truncated and not Is_Ref);
          Result := Get (Result, Any_Reference);
          return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
       end if;
@@ -1049,12 +1064,13 @@ package body GNATLLVM.GLType is
       elsif GTI.Kind = Padded then
          return Insert_Value (Get_Undef (GT), V, 0);
 
-      --  The remaining case must be a byte array where we have data, not
-      --  a reference.  In this case, we have to store the data into memory
-      --  and convert the memory pointer to the proper type.
+      --  The remaining case must be a byte array or truncation where we
+      --  have data, not a reference.  In this case, we have to store the
+      --  data into memory and convert the memory pointer to the proper
+      --  type.
 
       else
-         pragma Assert (GTI.Kind = Byte_Array and not Is_Ref);
+         pragma Assert (GTI.Kind in Byte_Array | Truncated and not Is_Ref);
          Result := Get (Result, Any_Reference);
          return Ptr_To_Relationship (Result, GT, Relationship (Result));
       end if;
@@ -1113,42 +1129,49 @@ package body GNATLLVM.GLType is
    --------------------
 
    function Is_Dummy_Type (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Kind = Dummy);
+     (GT_Kind (GT) = Dummy);
 
    ---------------------------
    --  Is_Primitive_GL_Type --
    ---------------------------
 
    function Is_Primitive_GL_Type (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Kind = Primitive);
+     (GT_Kind (GT) = Primitive);
 
    ------------------------
    --  Is_Biased_GL_Type --
    ------------------------
 
    function Is_Biased_GL_Type (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Kind = Biased);
+     (GT_Kind (GT) = Biased);
 
    ------------------------
    --  Is_Padded_GL_Type --
    ------------------------
 
    function Is_Padded_GL_Type (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Kind = Padded);
+     (GT_Kind (GT) = Padded);
+
+   ---------------------------
+   --  Is_Truncated_GL_Type --
+   ---------------------------
+
+   function Is_Truncated_GL_Type (GT : GL_Type) return Boolean is
+     (GT_Kind (GT) = Truncated);
 
    ---------------------------
    --  Is_Bye_Array_GL_Type --
    ---------------------------
 
    function Is_Byte_Array_GL_Type (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Kind = Byte_Array);
+     (GT_Kind (GT) = Byte_Array);
 
    ----------------------
    -- Is_Empty_GL_Type --
    ----------------------
 
    function Is_Empty_GL_Type (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Kind = None);
+     (GT_Kind (GT) = None);
 
    -----------------------
    -- Is_Nonnative_Type --
@@ -1220,7 +1243,7 @@ package body GNATLLVM.GLType is
       GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
 
    begin
-      Write_Str (GT_Kind'Image (GTI.Kind) & "(");
+      Write_Str (GT_Kind_Type'Image (GTI.Kind) & "(");
       Write_Int (Int (GTI.GNAT_Type));
       if Present (GTI.Size) then
          Write_Str (", S=");

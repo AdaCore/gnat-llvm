@@ -1227,7 +1227,7 @@ package body GNATLLVM.Arrays is
 
       declare
          Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
-         Use_Comp  : constant Boolean  := not Is_Nonnative_Type (Comp_GT);
+         Use_Comp  : constant Boolean  := Is_Native_Component_GT (Comp_GT);
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
@@ -1286,7 +1286,7 @@ package body GNATLLVM.Arrays is
       declare
          Comp_GT   : constant GL_Type  := Full_Component_GL_Type (Arr_GT);
          Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
-         Use_Comp  : constant Boolean  := not Is_Nonnative_Type (Comp_GT);
+         Use_Comp  : constant Boolean  := Is_Native_Component_GT (Comp_GT);
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=

@@ -694,9 +694,11 @@ package body GNATLLVM.Variables is
       case Nkind (N) is
          when N_Aggregate | N_Extension_Aggregate =>
 
-            --  We never can create an aggregate in a byte array GT
+            --  We never can create an aggregate in a byte array GT or a
+            --  truncated GT.
 
-            if Is_Byte_Array_GL_Type (GT) then
+            if Is_Byte_Array_GL_Type (GT) or else Is_Truncated_GL_Type (GT)
+            then
                return False;
 
             elsif Is_Array_Type (GT) then

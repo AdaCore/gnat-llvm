@@ -138,12 +138,15 @@ package body GNATLLVM.Arrays.Create is
       Unconstrained     : constant Boolean   := not Is_Constrained (A_TE);
       CT                : constant Entity_Id := Full_Component_Type (A_TE);
       Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
+      Comp_Size_To_Use  : constant Uint      :=
+        (if    Known_Static_Component_Size (A_TE) and then not For_Orig
+         then  Component_Size (A_TE)
+         elsif Is_Packed (A_TE) and then not Is_Packed_Array_Impl_Type (TE)
+         then  RM_Size (Comp_Def_GT) else No_Uint);
       Comp_Size         : constant Uint      :=
-        (if   Unknown_Component_Size (A_TE) or else For_Orig then No_Uint
-         else Validate_Size (A_TE, Comp_Def_GT, Component_Size (A_TE),
-                             For_Component => True,
-                             Zero_Allowed  =>
-                               Has_Component_Size_Clause (A_TE)));
+         Validate_Size (A_TE, Comp_Def_GT, Comp_Size_To_Use,
+                        For_Component => True,
+                        Zero_Allowed  => Has_Component_Size_Clause (A_TE));
       Max_Size          : constant Boolean   :=
         Is_Unconstrained_Record (Comp_Def_GT);
       Biased            : constant Boolean   :=
@@ -159,11 +162,7 @@ package body GNATLLVM.Arrays.Create is
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);
       Must_Use_Fake     : Boolean            :=
-        Is_Nonnative_Type (Comp_GT)
-          or else Get_Type_Size (Type_Of (Comp_GT)) /= Get_Type_Size (Comp_GT);
-      --  If we have a type like i24, where the size of the LLVM type
-      --  isn't consistent with the number of bits, force a fake type.
-
+          not Is_Native_Component_GT (Comp_GT);
       This_Nonnative    : Boolean            := Must_Use_Fake or Unconstrained;
       CT_To_Use         : constant GL_Type   :=
         (if Must_Use_Fake then SSI_GL_Type else Comp_GT);

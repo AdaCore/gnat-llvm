@@ -1407,6 +1407,7 @@ package body GNATLLVM.Subprograms is
             Name     => Get_Name_String (Chars (Unit)),
             Ext_Name => Name));
       Set_Debug_Pos_At_Node (N);
+      Entry_Block_Allocas := Get_Current_Position;
       Push_Block;
       In_Elab_Proc := True;
 

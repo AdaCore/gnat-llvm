@@ -1458,7 +1458,9 @@ package body GNATLLVM.Types is
       Size          : constant BA_Data :=
         Get_Type_Size (GT, Max_Size => Use_Max);
       Align         : constant BA_Data :=
-        Const (if Do_Align then Get_Type_Alignment (GT) else ULL (BPU));
+        Const (if   Do_Align
+               then Get_Type_Alignment (GT, Use_Specified => False)
+               else ULL (BPU));
 
    begin
       --  We need to return a size that's a muliple of the alignment or at

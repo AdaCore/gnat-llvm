@@ -2008,7 +2008,9 @@ package body GNATLLVM.Variables is
             --  N_Defining_Identifier nodes for enumeration literals are not
             --  stored in the environment. Handle them here.
 
-            return Const_Int (GT, Enumeration_Rep (Def_Ident));
+            return From_Primitive (Const_Int (Primitive_GL_Type (GT),
+                                              Enumeration_Rep (Def_Ident)),
+                                   GT);
 
          when E_Label =>
             return Block_Address (Current_Func, Get_Label_BB (Def_Ident));

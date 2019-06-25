@@ -26,7 +26,7 @@ with GNATLLVM.Blocks;    use GNATLLVM.Blocks;
 with GNATLLVM.Compile;   use GNATLLVM.Compile;
 with GNATLLVM.Exprs;     use GNATLLVM.Exprs;
 with GNATLLVM.Types;     use GNATLLVM.Types;
-with GNATLLVM.Variables; use GNATLLVM.Variables;
+with GNATLLVM.Utils;     use GNATLLVM.Utils;
 
 package body GNATLLVM.Conversions is
 
@@ -139,16 +139,9 @@ package body GNATLLVM.Conversions is
       --  Otherwise it's unsigned iff the low bound is known to be
       --  nonnegative.
 
-      elsif Is_No_Elab_Needed (Type_Low_Bound (GT)) then
-         declare
-            LB : constant GL_Value := Emit_Expression (Type_Low_Bound (GT));
-
-         begin
-            return Is_A_Const_Int (LB) and then Get_Const_Int_Value (LB) >= 0;
-         end;
-
       else
-         return False;
+         return Get_Uint_Value (Type_Low_Bound (GT)) /= No_Uint
+           and then Get_Uint_Value (Type_Low_Bound (GT)) >= 0;
       end if;
 
    end Is_Unsigned_For_RM;

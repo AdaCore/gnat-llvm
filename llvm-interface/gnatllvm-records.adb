@@ -1105,10 +1105,13 @@ package body GNATLLVM.Records is
    -------------------------------
 
    function Effective_Field_Alignment (F : Entity_Id) return Pos is
-      Align : constant Nat       := Get_Type_Alignment (Full_GL_Type (F));
-      Pos   : constant Uint      := Component_Bit_Offset (F);
-      Size  : constant Uint      := Esize (F);
-      TE    : constant Entity_Id := Full_Scope (F);
+      F_Align : constant Nat       := Get_Type_Alignment (Full_GL_Type (F));
+      Pos     : constant Uint      := Component_Bit_Offset (F);
+      Size    : constant Uint      := Esize (F);
+      TE      : constant Entity_Id := Full_Scope (F);
+      R_Align : constant Nat       :=
+        (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE))
+         else Get_Maximum_Alignment * BPU);
 
    begin
       --  If the record is packed and this field isn't aliased, its alignment
@@ -1117,13 +1120,14 @@ package body GNATLLVM.Records is
       if Is_Packed (TE) and then not Is_Aliased (F) then
          return 1;
 
-      --  If there's no component clause or the position and alignment
-      --  of the clause are consistent with the alignment, use it.
+      --  If there's no component clause or the position and alignment of
+      --  the clause are consistent with the alignment, use it.  But we
+      --  can't use an alignment smaller than that of the record
 
       elsif No (Component_Clause (F))
-        or else (Pos mod Align = 0 and then Size mod Align = 0)
+        or else (Pos mod F_Align = 0 and then Size mod F_Align = 0)
       then
-         return Align;
+         return Nat'Min (F_Align, R_Align);
 
       --  Otherwise, this field doesn't contribute to the alignment
 

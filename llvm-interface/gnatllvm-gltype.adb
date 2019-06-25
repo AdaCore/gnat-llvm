@@ -709,7 +709,7 @@ package body GNATLLVM.GLType is
       if Present (Size_GL_Type) and then not Is_Dummy
         and then Ekind (GT) not in E_Void | E_Subprogram_Type
       then
-         GTI.Alignment  := Get_Type_Alignment (GT);
+         GTI.Alignment  := Get_Type_Alignment (GT, Use_Specified => False);
          if not Is_Dynamic_Size (GT, Allow_Overflow => True) then
             GTI.Size    :=
               (if   Is_Integer_Type (GT)

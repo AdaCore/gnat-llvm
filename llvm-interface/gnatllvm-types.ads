@@ -354,12 +354,16 @@ package GNATLLVM.Types is
    --  Return the alignment of a type.  If Use_Specified is False, ignore a
    --  specified alignment.
 
-   function Get_Type_Alignment (GT : GL_Type) return ULL is
-     (ULL (Nat'(Get_Type_Alignment (GT))))
+   function Get_Type_Alignment
+     (GT : GL_Type; Use_Specified : Boolean := True) return ULL
+   is
+     (ULL (Nat'(Get_Type_Alignment (GT, Use_Specified => Use_Specified))))
      with Pre => Present (GT);
 
-   function Get_Type_Alignment (GT : GL_Type) return unsigned is
-     (unsigned (Nat'(Get_Type_Alignment (GT))))
+   function Get_Type_Alignment
+     (GT : GL_Type; Use_Specified : Boolean := True) return unsigned
+   is
+     (unsigned (Nat'(Get_Type_Alignment (GT, Use_Specified => Use_Specified))))
      with Pre => Present (GT);
 
    function Get_Type_Size

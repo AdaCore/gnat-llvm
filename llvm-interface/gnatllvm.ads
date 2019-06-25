@@ -203,6 +203,9 @@ package GNATLLVM is
    Do_Stack_Check  : Boolean := False;
    --  If set, check for too-large allocation
 
+   Short_Enums     : Boolean := False;
+   --  True if we should use the RM_Size, not Esize, for enums
+
    subtype Err_Msg_Type is String (1 .. 10000);
    type Ptr_Err_Msg_Type is access all Err_Msg_Type;
    --  Used for LLVM error handling

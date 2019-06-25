@@ -1720,10 +1720,12 @@ package GNATLLVM.GLValue is
    function Get_Scalar_Bit_Size (V : GL_Value) return ULL
      with Pre => Present (V);
 
-   function Get_Type_Alignment (V : GL_Value) return Nat
+   function Get_Type_Alignment
+     (V : GL_Value; Use_Specified : Boolean := True) return Nat
      with Pre => Present (V);
 
-   function Get_Type_Alignment (GT : GL_Type) return GL_Value
+   function Get_Type_Alignment
+     (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
      with Pre  => Present (GT),
           Post => Type_Of (Get_Type_Alignment'Result) = LLVM_Size_Type;
 

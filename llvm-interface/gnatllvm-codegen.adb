@@ -84,6 +84,8 @@ package body GNATLLVM.Codegen is
          Emit_Debug_Info := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
+      elsif Switch = "-fshort-enums" then
+         Short_Enums := True;
       elsif Switch = "-foptimize-ir" then
          Optimize_IR := True;
       elsif Starts_With ("--target=") then

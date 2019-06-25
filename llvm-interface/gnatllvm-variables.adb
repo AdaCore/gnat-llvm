@@ -1304,7 +1304,7 @@ package body GNATLLVM.Variables is
    is
       LLVM_Var     : GL_Value         := Get_Dup_Global_Value (Def_Ident);
       Addr_Expr    : constant Node_Id :=
-        (if Present (Address_Clause (Def_Ident))
+        (if   Present (Address_Clause (Def_Ident))
          then Expression (Address_Clause (Def_Ident)) else Empty);
       Is_Ref       : constant Boolean :=
         Present (Addr_Expr) or else Is_Nonnative_Type (GT)
@@ -1421,7 +1421,7 @@ package body GNATLLVM.Variables is
 
       Full_Ident   : constant Node_Id    :=
         (if   Ekind (Def_Ident) = E_Constant
-           and then Present (Full_View (Def_Ident))
+              and then Present (Full_View (Def_Ident))
          then Full_View (Def_Ident) else Def_Ident);
       --  Identifier to use to find the initializing expression
 

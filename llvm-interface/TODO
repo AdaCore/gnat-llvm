@@ -1,9 +1,6 @@
 Limitations and missing features (identified so far):
 
 - do better in avoiding array bitfield fields (FC16-002)
-- add llvm.lifetime.{start,end} calls
-- must position extensions fields after padding of parent;
-  shows up in c460005 with -O2 and optimizing build
 - when have convention C and array, change to pointer to element type
   this causes cxb3008 to fail in the optimizer with -O2 and an optimizing build
 - look at shouldAssumeDSOLocal in clang to see what we should do
@@ -20,5 +17,5 @@ Limitations and missing features (identified so far):
   which are done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - support for stack checking
-- suport for -gnatc (when back-annotating)
-- support for builtins such as sqrt (C903-006)
+- support for -gnatc (when back-annotating)
+- need not use indirect for variable that's of known size but nonnnative type

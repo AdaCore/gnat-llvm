@@ -395,12 +395,12 @@ package body GNATLLVM.Types.Create is
                else Validate_Size (TE, GT, RM_Size (Size_TE),
                                    For_Type   => True,
                                    Is_RM_Size => True));
+            Obj_Size   : constant Uint      :=
+              (if   Known_Esize (Size_TE) and then not This_Short_Enum
+               then Esize (Size_TE) else RM_Size (Size_TE));
             Size       : constant Uint      :=
-              (if   Unknown_Esize (Size_TE)
-                    or else (Short_Enums
-                               and then Is_Enumeration_Type (Size_TE))
-               then No_Uint
-               else Validate_Size (Size_TE, GT, Esize (Size_TE),
+              (if   Obj_Size = No_Uint then No_Uint
+               else Validate_Size (Size_TE, GT, Obj_Size,
                                    For_Type     => True,
                                    Zero_Allowed =>
                                      Has_Size_Clause (Size_TE)));

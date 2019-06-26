@@ -662,7 +662,7 @@ package body GNATLLVM.Variables is
 
    begin
       if No (Decl) or else not Is_True_Constant (E)
-        or else Is_Volatile (E)
+        or else Is_Volatile_Object (E) or else Treat_As_Volatile (E)
         or else (Nkind (Decl) = N_Object_Declaration
                    and then No_Initialization (Decl))
       then
@@ -1310,6 +1310,8 @@ package body GNATLLVM.Variables is
         Present (Addr_Expr) or else Is_Nonnative_Type (GT)
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
+      Is_Volatile  : constant Boolean :=
+        Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
       Linker_Alias : constant Node_Id :=
         Get_Pragma (Def_Ident, Pragma_Linker_Alias);
 
@@ -1385,8 +1387,12 @@ package body GNATLLVM.Variables is
       --  that's the default if there's no initializer.
 
       else
-         LLVM_Var := Add_Global
-           (GT, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref);
+         LLVM_Var := Mark_Atomic
+           (Mark_Volatile
+              (Add_Global
+                 (GT, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref),
+               Is_Volatile),
+            Is_Atomic (Def_Ident) or else Is_Atomic (GT));
          Set_Thread_Local (LLVM_Var,
                            Has_Pragma_Thread_Local_Storage (Def_Ident));
 
@@ -1457,6 +1463,10 @@ package body GNATLLVM.Variables is
       Is_Ref       : constant Boolean   :=
         Present (Addr_Expr) or else Is_Nonnative_Type (GT);
       --  True if we need to use an indirection for this variable
+
+      Is_Volatile  : constant Boolean :=
+        Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
+      --  True if we need to consider Def_Ident as volatile
 
       Value        : GL_Value           :=
         (if Present (Expr) then Get_Value (Expr) else No_GL_Value);
@@ -1820,7 +1830,7 @@ package body GNATLLVM.Variables is
       --  not constant, so we actually have to allocate our entity and copy
       --  into it.
 
-      elsif Is_True_Constant (Def_Ident) and then not Is_Volatile (Def_Ident)
+      elsif Is_True_Constant (Def_Ident) and then not Is_Volatile
         and then (Present (Expr) or else Present (Value))
       then
          --  Evaluate the expression if needed.  Normally, convert it to
@@ -1862,6 +1872,9 @@ package body GNATLLVM.Variables is
          LLVM_Var := Allocate_For_Type (GT, Alloc_GT, Def_Ident, Value, Expr,
                                         Def_Ident => Def_Ident,
                                         Max_Size  => Is_Max_Size (GT));
+         LLVM_Var := Mark_Atomic (Mark_Volatile (LLVM_Var, Is_Volatile),
+                                  Is_Atomic (Def_Ident)
+                                    or else Is_Atomic (GT));
          Copied := True;
       end if;
 
@@ -1889,9 +1902,11 @@ package body GNATLLVM.Variables is
    -------------------------------
 
    procedure Emit_Renaming_Declaration (N : Node_Id) is
-      Def_Ident : constant Entity_Id := Defining_Identifier (N);
-      GT        : constant GL_Type   := Full_GL_Type (Def_Ident);
-      Use_LHS   : constant Boolean   :=
+      Def_Ident   : constant Entity_Id := Defining_Identifier (N);
+      GT          : constant GL_Type   := Full_GL_Type (Def_Ident);
+      Is_Volatile : constant Boolean   :=
+        Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
+      Use_LHS     : constant Boolean   :=
         Is_Name (Name (N))
         and then (Nkind (Name (N)) not in N_Has_Entity
                     or else (Ekind (Entity (Name (N))) /=
@@ -1931,7 +1946,7 @@ package body GNATLLVM.Variables is
       --  Don't do this at library level if it needs run-time computation.
 
       elsif Is_True_Constant (Def_Ident) and then not Use_LHS
-        and then not Is_Volatile (Def_Ident)
+        and then not Is_Volatile
         and then (not Library_Level
                     or else Is_No_Elab_Needed (Name (N)))
       then
@@ -1952,8 +1967,11 @@ package body GNATLLVM.Variables is
          --  If this is a constant, we're going to put the actual value there;
          --  otherwise, we'll put the address of the expression.
 
-         LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident),
-                                 Need_Reference => Use_LHS);
+         LLVM_Var := Mark_Volatile
+           (Add_Global (GT, Get_Ext_Name (Def_Ident),
+                        Need_Reference => Use_LHS),
+            Is_Volatile_Object (Def_Ident)
+              or else Treat_As_Volatile (Def_Ident));
          Set_Value (Def_Ident, LLVM_Var);
          Set_Initializer
            (LLVM_Var,

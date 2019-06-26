@@ -1322,11 +1322,12 @@ package body GNATLLVM.Types is
    -- Add_Type_Data_To_Instruction --
    ----------------------------------
 
-   procedure Add_Type_Data_To_Instruction (Inst : Value_T; GT : GL_Type)
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; V : GL_Value)
    is
+      GT   : constant GL_Type    := Related_Type (V);
       TBAA : constant Metadata_T := Get_TBAA (Full_Etype (GT));
    begin
-      Set_Volatile  (Inst, Is_Volatile (GT));
+      Set_Volatile  (Inst, Is_Volatile (V));
       Set_Alignment (Inst,
                      unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
 

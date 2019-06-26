@@ -1212,7 +1212,8 @@ package body GNATLLVM.Arrays is
 
    begin
       if not Is_Nonnative_Type (GT) then
-         return GEP (Comp_GT, Array_Data, Idxs);
+         return Mark_Atomic (GEP (Comp_GT, Array_Data, Idxs),
+                             Has_Volatile_Components (GT));
       end if;
 
       --  Otherwise, we choose a type to use for the indexing.  If the
@@ -1249,7 +1250,10 @@ package body GNATLLVM.Arrays is
 
          Index := Index * Unit_Mult;
          return Ptr_To_Ref
-           (GEP (Unit_GT, Data, (1 => Index), "arr-lvalue"), Comp_GT);
+           (Mark_Volatile
+              (GEP (Unit_GT, Data, (1 => Index), "arr-lvalue"),
+               Has_Volatile_Components (GT)),
+            Comp_GT);
       end;
 
    end Get_Indexed_LValue;

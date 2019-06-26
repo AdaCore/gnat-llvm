@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
+with Exp_Util; use Exp_Util;
 with Get_Targ; use Get_Targ;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
@@ -732,9 +733,12 @@ package body GNATLLVM.Compile is
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False) return GL_Value is
    begin
-      return Add_To_LValue_List (Emit_Internal (N, LHS,
-                                                For_LHS    => For_LHS,
-                                                Prefer_LHS => Prefer_LHS));
+      return Add_To_LValue_List
+        (Mark_Volatile (Emit_Internal (N, LHS,
+                                       For_LHS    => For_LHS,
+                                       Prefer_LHS => Prefer_LHS),
+                        Is_Volatile_Reference (N)));
+
    end Emit;
 
    --------------------

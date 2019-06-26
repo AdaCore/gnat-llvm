@@ -1168,7 +1168,7 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-          Data, Is_Pristine (V)));
+          Data, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
 
    ----------------
    -- Int_To_Ref --
@@ -1180,7 +1180,8 @@ package body GNATLLVM.GLValue is
       (G_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
                           Pointer_Type (Type_Of (GT), 0),
                           Name),
-              GT));
+              GT, Is_Pristine => Is_Pristine (V),
+              Is_Volatile => Is_Volatile (V), Is_Atomic => Is_Atomic (V)));
 
    -------------------------
    -- Int_To_Relationship --
@@ -1194,7 +1195,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
                       Type_For_Relationship (GT, R), Name),
-          GT, R, Is_Pristine (V)));
+          GT, R, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
 
    --------------
    -- Bit_Cast --
@@ -1212,7 +1213,8 @@ package body GNATLLVM.GLValue is
    function Pointer_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Data, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
 
    ----------------
    -- Ptr_To_Ref --
@@ -1223,7 +1225,8 @@ package body GNATLLVM.GLValue is
    is
      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                            Pointer_Type (Type_Of (GT), 0), Name),
-             GT, Is_Pristine => Is_Pristine (V)));
+             GT, Is_Pristine => Is_Pristine (V),
+             Is_Volatile => Is_Volatile (V), Is_Atomic => Is_Atomic (V)));
 
    ----------------
    -- Ptr_To_Ref --
@@ -1233,7 +1236,8 @@ package body GNATLLVM.GLValue is
    is
      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                            Pointer_Type (Type_Of (T), 0), Name),
-             Full_Designated_GL_Type (T), Is_Pristine => Is_Pristine (V)));
+             Full_Designated_GL_Type (T), Is_Pristine => Is_Pristine (V),
+             Is_Volatile => Is_Volatile (V), Is_Atomic => Is_Atomic (V)));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -1247,7 +1251,7 @@ package body GNATLLVM.GLValue is
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Type_For_Relationship (GT, R), Name),
-          GT, R, Is_Pristine (V)));
+          GT, R, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -1260,7 +1264,8 @@ package body GNATLLVM.GLValue is
    is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Type_For_Relationship (Related_Type (T), R), Name),
-          Related_Type (T), R, Is_Pristine (V)));
+          Related_Type (T), R,
+          Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
 
    -----------
    -- Trunc --
@@ -1456,7 +1461,8 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr));
+      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr),
+               Is_Volatile => Is_Volatile (Ptr), Is_Atomic => Is_Atomic (Ptr));
    end GEP_To_Relationship;
 
    -----------------------------
@@ -1481,7 +1487,8 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr));
+      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr),
+               Is_Volatile => Is_Volatile (Ptr), Is_Atomic => Is_Atomic (Ptr));
    end GEP_Idx_To_Relationship;
 
    ----------
@@ -1510,7 +1517,7 @@ package body GNATLLVM.GLValue is
       --  this isn't true.
 
       if Is_Data (New_R) then
-         Add_Type_Data_To_Instruction (Load_Inst, Related_Type (Ptr));
+         Add_Type_Data_To_Instruction (Load_Inst, Ptr);
       end if;
 
       --  Now build the result, with the proper GT and relationship
@@ -1528,7 +1535,7 @@ package body GNATLLVM.GLValue is
 
    begin
       if Is_Data (Expr) then
-         Add_Type_Data_To_Instruction (Store_Inst, Related_Type (Expr));
+         Add_Type_Data_To_Instruction (Store_Inst, Ptr);
       end if;
 
    end Store;
@@ -2137,6 +2144,12 @@ package body GNATLLVM.GLValue is
       Dump_LLVM_Type (Type_Of (V.Value));
       if Is_Pristine (V) then
          Write_Str ("Pristine ");
+      end if;
+      if Is_Volatile (V) then
+         Write_Str ("Volatile ");
+      end if;
+      if Is_Atomic (V) then
+         Write_Str ("Atomic ");
       end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
       Dump_GL_Type_Int (V.Typ, False);

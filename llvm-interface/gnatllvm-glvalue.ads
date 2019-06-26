@@ -323,6 +323,12 @@ package GNATLLVM.GLValue is
       --  yet of it being written.  We know that no expression can conflict
       --  with it.
 
+      Is_Volatile          : Boolean;
+      --  Set when this value represents a volatile object or type
+
+      Is_Atomic            : Boolean;
+      --  Set when this value represents an atomic object or type
+
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -350,7 +356,9 @@ package GNATLLVM.GLValue is
    procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
                                                      Access_GL_Value_Array);
 
-   No_GL_Value : constant GL_Value := (No_Value_T, No_GL_Type, Data, False);
+   No_GL_Value : constant GL_Value :=
+     (No_Value_T, No_GL_Type, Data, False, False, False);
+
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
@@ -373,6 +381,14 @@ package GNATLLVM.GLValue is
 
    function Is_Pristine (V : GL_Value)  return Boolean is
      (V.Is_Pristine)
+     with Pre => Present (V);
+
+   function Is_Volatile (V : GL_Value)  return Boolean is
+     (V.Is_Volatile)
+     with Pre => Present (V);
+
+   function Is_Atomic (V : GL_Value)  return Boolean is
+     (V.Is_Atomic)
      with Pre => Present (V);
 
    --  Define functions about relationships
@@ -420,34 +436,39 @@ package GNATLLVM.GLValue is
      (V                    : Value_T;
       GT                   : GL_Type;
       Relationship         : GL_Relationship := Data;
-      Is_Pristine          : Boolean := False) return GL_Value is
-     ((V, GT, Relationship, Is_Pristine))
+      Is_Pristine          : Boolean := False;
+      Is_Volatile          : Boolean := False;
+      Is_Atomic            : Boolean := False) return GL_Value is
+     ((V, GT, Relationship, Is_Pristine, Is_Volatile, Is_Atomic))
      with Pre => Present (V) and then Present (GT);
    --  Raw constructor that allow full specification of all fields
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
-     (G (V, GL_Type'(Related_Type (GV)), Relationship (GV), Is_Pristine (GV)))
+     (G (V, GL_Type'(Related_Type (GV)), Relationship (GV),
+         Is_Pristine (GV), Is_Volatile (GV), Is_Atomic (GV)))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing
    --  any typing information, so we just copy it from an existing value.
 
    function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
-     (G (LLVM_Value (V), GT, Relationship (V), Is_Pristine (V)))
+     (G (LLVM_Value (V), GT, Relationship (V),
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
      (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (V),
-         Is_Pristine (V)))
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
 
    function G_Is_Relationship
      (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (G (LLVM_Value (V), GT, R, Is_Pristine (V)))
+     (G (LLVM_Value (V), GT, R,
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -456,7 +477,8 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (T)), R, Is_Pristine (V)))
+     (G (LLVM_Value (V), GL_Type'(Related_Type (T)), R,
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -464,7 +486,7 @@ package GNATLLVM.GLValue is
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
       (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (T),
-          Is_Pristine (V)))
+          Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -473,18 +495,44 @@ package GNATLLVM.GLValue is
    function G_Ref
      (V           : Value_T;
       GT          : GL_Type;
-      Is_Pristine : Boolean := False) return GL_Value
+      Is_Pristine : Boolean := False;
+      Is_Volatile : Boolean := False;
+      Is_Atomic   : Boolean := False) return GL_Value
    is
-     (G (V, GT, Relationship_For_Ref (GT), Is_Pristine))
+     (G (V, GT, Relationship_For_Ref (GT),
+         Is_Pristine, Is_Volatile, Is_Atomic))
      with Pre  => Present (V) and then Present (GT),
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
    --  to type GT.
 
    function Not_Pristine (V : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V), False))
+     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
+         Is_Pristine => False, Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic (V)))
      with Pre => Present (V), Post => not Is_Pristine (Not_Pristine'Result);
    --  Make a copy of V with the Is_Pristine flag cleared
+
+   function Mark_Volatile
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+      (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
+          Is_Pristine => Is_Pristine (V),
+          Is_Volatile => Is_Volatile (V) or else Flag,
+          Is_Atomic   => Is_Atomic (V)))
+     with Pre  => Present (V),
+          Post => not Flag or else Is_Volatile (Mark_Volatile'Result);
+   --  Make a copy of V with the Is_Volatile flag set if Flag is True
+
+   function Mark_Atomic
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
+         Is_Pristine => Is_Pristine (V), Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic (V) or else Flag))
+     with Pre  => Present (V),
+          Post => not Flag or else Is_Atomic (Mark_Atomic'Result);
+   --  Make a copy of V with the Is_Atomic flag set if Flag is True
 
    procedure Discard (V : GL_Value);
    --  Evaluate V and throw away the result
@@ -1029,7 +1077,7 @@ package GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
-         Related_Type (V), R, Is_Pristine (V)))
+         Related_Type (V), R, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
      with Pre  => Is_Pointer (V) and then Present (T),
           Post => Is_Pointer (Ptr_To_Relationship'Result);
 

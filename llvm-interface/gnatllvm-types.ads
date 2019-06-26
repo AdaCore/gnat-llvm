@@ -406,8 +406,9 @@ package GNATLLVM.Types is
    --  set by the front end or by us via back-annotation, return the value
    --  as a Uint.  Otherwise, return No_Uint.
 
-   procedure Add_Type_Data_To_Instruction (Inst : Value_T; GT : GL_Type);
+   procedure Add_Type_Data_To_Instruction (Inst : Value_T; V : GL_Value);
    --  Add type data (e.g., volatility and TBAA info) to an Instruction
+   --  using information from V, which is the pointer.
 
    --  In order to use the generic functions that computing sizing
    --  information to compute whether a size is dynamic, we need versions

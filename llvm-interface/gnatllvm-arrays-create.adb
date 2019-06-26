@@ -180,7 +180,7 @@ package body GNATLLVM.Arrays.Create is
       --  String literal subtypes are simple, so handle then here
 
       if Ekind (A_TE) = E_String_Literal_Subtype then
-         Set_Associated_GL_Type (A_TE, SSI_GL_Type);
+         Set_Associated_GL_Type (A_TE, Comp_GT);
          return Create_String_Literal_Type (A_TE, Typ);
       end if;
 

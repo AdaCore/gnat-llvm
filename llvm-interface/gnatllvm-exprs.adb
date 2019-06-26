@@ -166,8 +166,7 @@ package body GNATLLVM.Exprs is
             declare
                Str_Id  : constant String_Id := Strval (N);
                Length  : constant Nat       := String_Length (Str_Id);
-               Elmt_GT : constant GL_Type   :=
-                 Default_GL_Type (Full_Component_Type (GT));
+               Elmt_GT : constant GL_Type   := Full_Component_GL_Type (GT);
 
             begin
                --  If this is a normal string, where the size of a character

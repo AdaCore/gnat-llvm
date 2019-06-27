@@ -828,6 +828,20 @@ package body GNATLLVM.GLType is
       end return;
    end Default_GL_Type;
 
+   ---------------------
+   -- Default_GL_Type --
+   ---------------------
+
+   function Default_GL_Type (GT : GL_Type) return GL_Type is
+     (Default_GL_Type (Full_Etype (GT)));
+
+   ---------------------
+   -- Default_GL_Type --
+   ---------------------
+
+   function Default_GL_Type (V : GL_Value) return GL_Type is
+     (Default_GL_Type (Full_Etype (Related_Type (V))));
+
    ------------------
    -- Mark_Default --
    ------------------
@@ -857,18 +871,24 @@ package body GNATLLVM.GLType is
          if Is_Record_Type (GT) and then Known_Static_Esize (GT)
            and then Known_Static_RM_Size (GT)
          then
-            Bits := Bits +  Esize (GT) - RM_Size (GT);
+            Bits := Bits + Esize (GT) - RM_Size (GT);
          end if;
 
-         --  Another case is if we have a padding type.  We don't want
-         --  to use the size difference here in case some of that difference
-         --  isn't padding but is, for example, a different integer type or
-         --  a thin vs fat pointer.
+         --  Another case is if we have a padding type.  The padded type may
+         --  be padding further than the default size of the type.
 
-         if Is_Padded_GL_Type (GT) then
-            Bits := Bits + UI_From_ULL (Get_Type_Size
-                                          (Struct_Get_Type_At_Index
-                                             (Type_Of (GT), 1)));
+         if Has_Padding (GT) then
+            declare
+               Def_GT   : constant GL_Type  := Default_GL_Type (GT);
+               Our_Size : constant GL_Value := Get_Type_Size (GT);
+
+            begin
+               if not Is_Dynamic_Size (Def_GT)
+                 and then Our_Size > Get_Type_Size (Def_GT)
+               then
+                  Bits := Bits + (Our_Size - Get_Type_Size (Def_GT));
+               end if;
+            end;
          end if;
       end return;
 

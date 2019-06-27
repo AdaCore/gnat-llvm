@@ -1110,7 +1110,7 @@ package body GNATLLVM.Records is
       Size    : constant Uint      := Esize (F);
       TE      : constant Entity_Id := Full_Scope (F);
       R_Align : constant Nat       :=
-        (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE))
+        (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
          else Get_Maximum_Alignment * BPU);
 
    begin

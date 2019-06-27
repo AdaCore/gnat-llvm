@@ -110,10 +110,19 @@ package GNATLLVM.GLType is
      (TE : Entity_Id; Create : Boolean := True) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
           Post => not Create or else Present (Default_GL_Type'Result);
-   --  Return the GT_TYpe for TE that's to be used as the default for
+   --  Return the GT_Type for TE that's to be used as the default for
    --  objects or components of the type.  If Create is True, make one if
    --  it doesn't already exist.  This may or may not be the same as what
    --  Primitive_GL_Type returns.
+
+   function Default_GL_Type (GT : GL_Type) return GL_Type
+     with Pre  => Present (GT),
+          Post => Full_Etype (Default_GL_Type'Result) = Full_Etype (GT);
+
+   function Default_GL_Type (V : GL_Value) return GL_Type
+     with Pre  => Present (V),
+          Post => Full_Etype (Default_GL_Type'Result) =
+                    Full_Etype (Related_Type (V));
 
    procedure Mark_Default (GT : GL_Type)
      with Pre => Present (GT);

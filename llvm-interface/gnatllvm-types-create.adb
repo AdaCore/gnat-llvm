@@ -261,11 +261,13 @@ package body GNATLLVM.Types.Create is
    -----------------
 
    function Create_Type (TE : Entity_Id) return Type_T is
-      Dummy : Boolean := False;
-      Align : Uint    := No_Uint;
-      GT    : GL_Type;
-      T     : Type_T;
-      TBAA  : Metadata_T;
+      This_Short_Enum : constant Boolean :=
+        Is_Enumeration_Type (TE) and then Short_Enums;
+      Dummy           : Boolean          := False;
+      Align           : Uint             := No_Uint;
+      GT              : GL_Type;
+      T               : Type_T;
+      TBAA            : Metadata_T;
 
    begin
       --  Set that we're elaborating the type.  Note that we have to do this
@@ -373,7 +375,7 @@ package body GNATLLVM.Types.Create is
          --  base type, use the alignment of the base type.  Ignore alignments
          --  for Enumeration types with -fshort-enums.
 
-         if not Is_Enumeration_Type (TE) or else not Short_Enums then
+         if not This_Short_Enum then
             if not Unknown_Alignment (TE) then
                Align := Alignment (TE);
             elsif not Is_Full_Base_Type (TE)

@@ -1143,16 +1143,17 @@ package body GNATLLVM.Subprograms is
       --  See if this is a type of object that's passed in activation
       --  records, if this object is allocated space in an activation
       --  record, if we have an activation record as a parameter of this
-      --  subprogram, and if this isn't a reference to the variable
-      --  in its own subprogram.  If so, get the object from the activation
-      --  record.  We return the address from the record so we can either
-      --  give an LValue or an expression.
+      --  subprogram, this isn't a reference to the variable in its own
+      --  subprogram, and if this isn't a constant.  If so, get the object
+      --  from the activation record.  We return the address from the
+      --  record so we can either give an LValue or an expression.
 
       if Ekind_In (E, E_Constant, E_Variable, E_In_Parameter, E_Out_Parameter,
                    E_In_Out_Parameter, E_Loop_Parameter)
         and then Present (Activation_Record_Component (E))
         and then Present (Activation_Rec_Param)
         and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func
+        and then not Is_No_Elab_Needed (E)
       then
          declare
             GT             : constant GL_Type   := Full_GL_Type (E);

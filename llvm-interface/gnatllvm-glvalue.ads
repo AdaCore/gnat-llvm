@@ -513,6 +513,12 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => not Is_Pristine (Not_Pristine'Result);
    --  Make a copy of V with the Is_Pristine flag cleared
 
+   function Atomic_Kind (T : Type_T) return Boolean is
+     (Get_Type_Kind (T)
+        in Half_Type_Kind .. Integer_Type_Kind | Pointer_Type_Kind)
+     with Pre => Present (T);
+   --  Return True if type T is valid for an atomic operation
+
    function Mark_Volatile
      (V : GL_Value; Flag : Boolean := True) return GL_Value
    is

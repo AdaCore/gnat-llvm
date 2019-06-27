@@ -1219,8 +1219,9 @@ package body GNATLLVM.Arrays is
 
    begin
       if not Is_Nonnative_Type (GT) then
-         return Mark_Atomic (GEP (Comp_GT, Array_Data, Idxs),
-                             Has_Volatile_Components (GT));
+         return Mark_Atomic (Mark_Volatile (GEP (Comp_GT, Array_Data, Idxs),
+                                            Has_Volatile_Components (GT)),
+                             Has_Atomic_Components (GT));
       end if;
 
       --  Otherwise, we choose a type to use for the indexing.  If the

@@ -737,10 +737,12 @@ package body GNATLLVM.Compile is
       Prefer_LHS : Boolean  := False) return GL_Value is
    begin
       return Add_To_LValue_List
-        (Mark_Volatile (Emit_Internal (N, LHS,
-                                       For_LHS    => For_LHS,
-                                       Prefer_LHS => Prefer_LHS),
-                        Is_Volatile_Reference (N)));
+        (Mark_Atomic
+           (Mark_Volatile (Emit_Internal (N, LHS,
+                                          For_LHS    => For_LHS,
+                                          Prefer_LHS => Prefer_LHS),
+                           Is_Volatile_Reference (N)),
+            Is_Atomic_Object (N)));
 
    end Emit;
 

@@ -214,17 +214,16 @@ package body GNATLLVM.Utils is
          when N_Identifier | N_Expanded_Name =>
             Def_Ident := Entity (N);
             return Is_Object (Def_Ident)
-              and then (Is_Volatile_Full_Access (Def_Ident)
-                          or else Is_Volatile_Full_Access
-                                   (Full_Etype (Def_Ident)));
+              and then (Is_Atomic_Or_VFA (Def_Ident)
+                          or else Is_Atomic_Or_VFA (Full_Etype (Def_Ident)));
 
          when N_Selected_Component =>
             Def_Ident := Entity (Selector_Name (N));
-            return Is_Volatile_Full_Access (Def_Ident)
-              or else Is_Volatile_Full_Access (Full_Etype (Def_Ident));
+            return Is_Atomic_Or_VFA (Def_Ident)
+              or else Is_Atomic_Or_VFA (Full_Etype (Def_Ident));
 
          when N_Indexed_Component | N_Explicit_Dereference =>
-            return Is_Volatile_Full_Access (Full_Etype (N));
+            return Is_Atomic_Or_VFA (Full_Etype (N));
 
          when others =>
             return False;

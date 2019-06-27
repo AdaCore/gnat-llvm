@@ -1328,6 +1328,12 @@ package body GNATLLVM.Types is
       TBAA : constant Metadata_T := Get_TBAA (Full_Etype (GT));
    begin
       Set_Volatile  (Inst, Is_Volatile (V));
+      Set_Ordering  (Inst,
+                     (if   Is_Atomic (V)
+                           and then Atomic_Kind
+                                      (Get_Element_Type (Type_Of (V)))
+                      then Atomic_Ordering_Sequentially_Consistent
+                      else Atomic_Ordering_Not_Atomic));
       Set_Alignment (Inst,
                      unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
 
@@ -1360,7 +1366,10 @@ package body GNATLLVM.Types is
                    and then Align >= Get_Type_Alignment (T))
 
         --  Or if it's a fixed size, the size is equal to the alignment,
-        --  and the alignment is less than a word.
+        --  and the alignment is less than a word bu only for VFA, not
+        --  atomic.  ??? We can't support this for Atomic, only VFA, but
+        --  we use it in the library, so don't give an error message.
+
         or else (not Is_Dynamic_Size (GT)
                    and then Align <= Get_Bits_Per_Word
                    and then ULL (Align) = Get_Const_Int_Value_ULL

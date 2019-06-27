@@ -557,6 +557,10 @@ package GNATLLVM.GLType is
      (Has_Volatile_Components (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT);
 
+   function Has_Atomic_Components (GT : GL_Type) return Boolean is
+     (Has_Atomic_Components (Full_Etype (GT)))
+     with Pre => Is_Array_Type (GT);
+
    function Is_Atomic (GT : GL_Type) return Boolean is
      (Is_Atomic (Full_Etype (GT)))
      with Pre => Present (GT);

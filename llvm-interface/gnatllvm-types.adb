@@ -160,7 +160,7 @@ package body GNATLLVM.Types is
    ----------------
 
    function From_Const (V : GL_Value) return IDS is
-     (if   Is_A_Const_Int (V) then (False, V) else Var_IDS)
+     (if Is_A_Const_Int (V) then (False, V) else Var_IDS)
      with Pre => Is_Constant (V), Post => Present (From_Const'Result);
    --  V is a constant.  If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.

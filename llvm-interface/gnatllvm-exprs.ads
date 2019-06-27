@@ -91,7 +91,8 @@ package GNATLLVM.Exprs is
       Expr         : Node_Id  := Empty;
       Value        : GL_Value := No_GL_Value;
       Forwards_OK  : Boolean  := True;
-      Backwards_OK : Boolean  := True)
+      Backwards_OK : Boolean  := True;
+      VFA          : Boolean  := False)
      with Pre => Present (LValue)
                  and then (Present (Expr) or else Present (Value));
    --  Copy the value of the expression Expr or Value to LValue

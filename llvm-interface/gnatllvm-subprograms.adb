@@ -2091,7 +2091,7 @@ package body GNATLLVM.Subprograms is
    is
       pragma Unreferenced (LHS);
       procedure Write_Back
-        (In_LHS : GL_Value; F : Entity_Id; In_RHS : GL_Value)
+        (In_LHS : GL_Value; F : Entity_Id; In_RHS : GL_Value; VFA : Boolean)
         with Pre => Present (In_RHS) and then Is_Reference (In_LHS)
                     and then (No (F)
                                 or else Ekind_In (F, E_Component,
@@ -2102,6 +2102,7 @@ package body GNATLLVM.Subprograms is
       type WB is record
          LHS, RHS : GL_Value;
          Field    : Entity_Id;
+         VFA      : Boolean;
       end record;
       --   A writeback entry for an by-ref type that's In or In Out
 
@@ -2134,9 +2135,10 @@ package body GNATLLVM.Subprograms is
           (if RK = Return_By_Parameter then 1 else 0);
       Args             : GL_Value_Array (1 .. Arg_Count);
       WBs              : WB_Array       (1 .. Arg_Count) :=
-        (others => (No_GL_Value, No_GL_Value, Empty));
+        (others => (No_GL_Value, No_GL_Value, Empty, False));
       Out_LHSs         : GL_Value_Array (1 .. Out_Arg_Count);
       Out_Flds         : Entity_Array   (1 .. Out_Arg_Count);
+      Out_VFAs         : array (1 .. Out_Arg_Count) of Boolean;
       Actual_Return    : GL_Value;
       S_Link           : GL_Value;
       LLVM_Func        : GL_Value;
@@ -2148,7 +2150,7 @@ package body GNATLLVM.Subprograms is
       ----------------
 
       procedure Write_Back
-         (In_LHS : GL_Value; F : Entity_Id; In_RHS : GL_Value)
+         (In_LHS : GL_Value; F : Entity_Id; In_RHS : GL_Value; VFA : Boolean)
       is
          LHS      : GL_Value         := In_LHS;
          RHS      : GL_Value         := Get (In_RHS, Object);
@@ -2183,7 +2185,7 @@ package body GNATLLVM.Subprograms is
          --  Now do the assignment, either directly or as a bitfield store
 
          if Present (F) then
-            Build_Field_Store (LHS, F, RHS);
+            Build_Field_Store (LHS, F, RHS, VFA);
          else
             Emit_Assignment (LHS, Value => RHS);
          end if;
@@ -2285,7 +2287,8 @@ package body GNATLLVM.Subprograms is
                   if Present (F) then
                      Arg := Allocate_For_Type (GT, GT, N => Actual,
                                                V => Build_Field_Load (LHS, F));
-                     WBs (In_Idx) := (LHS => LHS, RHS => Arg, Field => F);
+                     WBs (In_Idx) := (LHS => LHS, RHS => Arg, Field => F,
+                                      VFA => Is_VFA_Ref (Actual));
                   else
                      Arg := (if   PK = Foreign_By_Ref
                              then Ptr_To_Relationship (Get (LHS, R), GT, R)
@@ -2318,6 +2321,7 @@ package body GNATLLVM.Subprograms is
 
                Out_LHSs (Out_Idx) := LHS;
                Out_Flds (Out_Idx) := F;
+               Out_VFAs (Out_Idx) := Is_VFA_Ref (Actual);
                Out_Idx            := Out_Idx + 1;
             end if;
          end;
@@ -2361,7 +2365,8 @@ package body GNATLLVM.Subprograms is
 
             Write_Back
               (Out_LHSs (1), Out_Flds (1),
-               Call (LLVM_Func, Full_GL_Type (Out_Param), Args));
+               Call (LLVM_Func, Full_GL_Type (Out_Param), Args),
+               VFA => Out_VFAs (1));
 
          when Struct_Out | Struct_Out_Subprog =>
             Actual_Return := Call_Struct (LLVM_Func, Return_GT, Args);
@@ -2386,7 +2391,8 @@ package body GNATLLVM.Subprograms is
             while Present (Out_Param) loop
                Write_Back (Out_LHSs (Out_Idx), Out_Flds (Out_Idx),
                            Extract_Value (Full_GL_Type (Out_Param),
-                                          Actual_Return, unsigned (Ret_Idx)));
+                                          Actual_Return, unsigned (Ret_Idx)),
+                           VFA => Out_VFAs (Out_Idx));
                Ret_Idx := Ret_Idx + 1;
                Out_Idx := Out_Idx + 1;
                Next_Out_Param (Out_Param);
@@ -2397,7 +2403,7 @@ package body GNATLLVM.Subprograms is
 
       for J in WBs'Range loop
          if Present (WBs (J).LHS) then
-            Write_Back (WBs (J).LHS, WBs (J).Field, WBs (J).RHS);
+            Write_Back (WBs (J).LHS, WBs (J).Field, WBs (J).RHS, WBs (J).VFA);
          end if;
       end loop;
 

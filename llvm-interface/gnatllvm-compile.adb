@@ -439,12 +439,15 @@ package body GNATLLVM.Compile is
                LHS_And_Field_For_Assignment (Name (N), LHS, F,
                                              For_LHS => True);
                if Present (F) then
-                  Build_Field_Store (LHS, F, Emit_Expression (Expression (N)));
+                  Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
+                                     VFA => Is_VFA_Ref (Name (N)));
                else
                   Emit_Assignment (LHS,
                                    Expr         => Expression (N),
                                    Forwards_OK  => Forwards_OK (N),
-                                   Backwards_OK => Backwards_OK (N));
+                                   Backwards_OK => Backwards_OK (N),
+                                   VFA          =>
+                                     Has_Volatile_Full_Access (Name (N)));
                end if;
             end;
 
@@ -910,9 +913,14 @@ package body GNATLLVM.Compile is
 
          when N_Selected_Component =>
 
-            Result := Build_Field_Load (Emit (Prefix (N),
-                                              For_LHS    => For_LHS,
-                                              Prefer_LHS => Prefer_LHS),
+            Result := Emit (Prefix (N), For_LHS    => For_LHS,
+                            Prefer_LHS => Prefer_LHS);
+
+            if Has_Volatile_Full_Access (Prefix (N)) then
+               Result := Get (Result, Object);
+            end if;
+
+            Result := Build_Field_Load (Result,
                                         Entity (Selector_Name (N)),
                                         LHS        => LHS,
                                         For_LHS    => For_LHS,
@@ -924,6 +932,19 @@ package body GNATLLVM.Compile is
             Result := Emit (Prefix (N),
                             For_LHS    => For_LHS,
                             Prefer_LHS => Prefer_LHS);
+
+            if Has_Volatile_Full_Access (Prefix (N)) then
+               if For_LHS then
+                  Error_Msg_N ("?Volatile_Full_Access not yet supported for "
+                                 & "assignments to array", N);
+
+               else
+                  --  If this is a Volatile_Full_Access expression and we're
+                  --  not on the LHS, ensure we have data.
+
+                  Result := Get (Result, Object);
+               end if;
+            end if;
 
             --  This can be an integer type if it's the implementation
             --  type of a packed array type.  In that case, convert it to

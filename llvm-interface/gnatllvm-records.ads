@@ -175,16 +175,19 @@ package GNATLLVM.Records is
    --  on what's simpler and the value of Prefer_LHS.
 
    function Build_Field_Store
-     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value) return GL_Value
-     with  Pre => Is_Record_Type (Related_Type (LHS))
-                  and then Present (RHS)
-                  and then Ekind_In (In_F, E_Component, E_Discriminant);
-   --  Likewise, but perform a store of RHS into the F component of LHS.
+     (In_LHS : GL_Value;
+      In_F   : Entity_Id;
+      RHS    : GL_Value;
+      VFA    : Boolean := False) return GL_Value
+     with Pre => Is_Record_Type (Related_Type (In_LHS))
+                 and then Present (RHS)
+                 and then Ekind_In (In_F, E_Component, E_Discriminant);
+   --  Likewise, but perform a store of RHS into the F component of In_LHS.
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.
 
    procedure Build_Field_Store
-     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value)
+     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value; VFA : Boolean := False)
      with  Pre => Is_Record_Type (Related_Type (LHS))
                   and then Present (RHS)
                   and then Ekind_In (In_F, E_Component, E_Discriminant);

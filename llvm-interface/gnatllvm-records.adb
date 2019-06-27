@@ -1903,9 +1903,12 @@ package body GNATLLVM.Records is
    -----------------------
 
    function Build_Field_Store
-     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value) return GL_Value
+     (In_LHS : GL_Value;
+      In_F   : Entity_Id;
+      RHS    : GL_Value;
+      VFA    : Boolean := False) return GL_Value
    is
-      LHS_GT    : constant GL_Type       := Related_Type (LHS);
+      LHS_GT    : constant GL_Type       := Related_Type (In_LHS);
       R_TE      : constant Entity_Id     := Full_Scope (In_F);
       Rec_T     : constant Type_T        := Type_Of (R_TE);
       F         : constant Entity_Id     := Find_Matching_Field (R_TE, In_F);
@@ -1913,6 +1916,7 @@ package body GNATLLVM.Records is
       FI        : constant Field_Info    := Field_Info_Table.Table (F_Idx);
       F_GT      : constant GL_Type       := FI.GT;
       Idx       : constant Nat           := FI.Field_Ordinal;
+      LHS       : GL_Value               := In_LHS;
       RHS_Cvt   : GL_Value               := Convert_GT (RHS, F_GT);
       Result    : GL_Value               := No_GL_Value;
       First_Bit : ULL;
@@ -1925,11 +1929,18 @@ package body GNATLLVM.Records is
       --  First check for the trivial case of a zero-length field
 
       if Esize (F) = 0 then
+
          return (if Is_Data (LHS) then LHS else No_GL_Value);
 
-      --  Then handle the cases where F isn't a bitfield
+      --  If this is for a volatile full access object, load that object
 
-      elsif not Is_Bitfield (F) then
+      elsif VFA and then not Is_Data (LHS) then
+         LHS := Get (To_Primitive (LHS), Object);
+      end if;
+
+      --  Handle the cases where F isn't a bitfield
+
+      if not Is_Bitfield (F) then
          if Is_Data (LHS) then
             Result := Insert_Value (LHS, Get (RHS_Cvt, Data), unsigned (Idx));
          else
@@ -2089,9 +2100,9 @@ package body GNATLLVM.Records is
    -----------------------
 
    procedure Build_Field_Store
-     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value)
+     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value; VFA : Boolean := False)
    is
-      Result : constant GL_Value := Build_Field_Store (LHS, In_F, RHS);
+      Result : constant GL_Value := Build_Field_Store (LHS, In_F, RHS, VFA);
 
    begin
       --  If we have a value, copy it back into LHS

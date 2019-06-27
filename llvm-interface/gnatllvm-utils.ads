@@ -146,6 +146,17 @@ package GNATLLVM.Utils is
    --  If Subp_Body acts as a spec, return it. Return the corresponding
    --  subprogram declaration otherwise.
 
+   function Has_Volatile_Full_Access (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Return True if N is a node which needs Volatile_Full_Access
+
+   function Is_VFA_Ref (N : Node_Id) return Boolean is
+     (Nkind_In (N, N_Indexed_Component, N_Selected_Component)
+        and then Has_Volatile_Full_Access (Prefix (N)))
+     with Pre => Present (N);
+   --  Return True if N is an expression that has a Volatile_Full_Access
+   --  prefix.
+
    procedure Discard (V  : Value_T)        with Pre => Present (V);
    procedure Discard (T  : Type_T)         with Pre => Present (T);
    procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);

@@ -1068,7 +1068,8 @@ package body GNATLLVM.Exprs is
       Expr         : Node_Id  := Empty;
       Value        : GL_Value := No_GL_Value;
       Forwards_OK  : Boolean  := True;
-      Backwards_OK : Boolean  := True)
+      Backwards_OK : Boolean  := True;
+      VFA          : Boolean  := False)
    is
       E       : constant Node_Id := Strip_Complex_Conversions (Expr);
       Dest_GT : constant GL_Type := Related_Type (LValue);
@@ -1102,7 +1103,7 @@ package body GNATLLVM.Exprs is
       --  Otherwise, if we want a value, get it.
 
       if No (Src) then
-         Src := Emit (E, LHS => Dest);
+         Src := Emit (E, LHS => (if VFA then No_GL_Value else Dest));
          if Src = Dest then
             return;
          elsif not Is_Data (Src) and then Is_Loadable_Type (Src_GT) then

@@ -2109,7 +2109,7 @@ package body GNATLLVM.Subprograms is
       type WB_Array     is array (Nat range <>) of WB;
       type Entity_Array is array (Nat range <>) of Entity_Id;
 
-      Subp             : Node_Id              := Name (N);
+      Subp             : constant Node_Id     := Name (N);
       Our_Return_GT    : constant GL_Type     := Full_GL_Type (N);
       Direct_Call      : constant Boolean     :=
         Nkind (Subp) /= N_Explicit_Dereference;
@@ -2194,15 +2194,11 @@ package body GNATLLVM.Subprograms is
 
    begin  -- Start of processing for Emit_Call
 
-      if Direct_Call then
-         Subp := Entity (Subp);
-      end if;
-
       --  See if this is an instrinsic subprogram that we handle.  We're
       --  done if so.
 
-      if Direct_Call and then Is_Intrinsic_Subprogram (Subp) then
-         Result := Emit_Intrinsic_Call (N, Subp);
+      if Direct_Call and then Is_Intrinsic_Subprogram (Entity (Subp)) then
+         Result := Emit_Intrinsic_Call (N, Entity (Subp));
          if Present (Result) then
             return Result;
          end if;

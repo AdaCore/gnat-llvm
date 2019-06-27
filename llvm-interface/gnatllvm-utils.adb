@@ -19,15 +19,12 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 
 with Errout;   use Errout;
-with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
-with Sprint;   use Sprint;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 
-with GNATLLVM.GLType; use GNATLLVM.GLType;
 with GNATLLVM.Types;  use GNATLLVM.Types;
 
 package body GNATLLVM.Utils is
@@ -519,37 +516,6 @@ package body GNATLLVM.Utils is
       Dump_Value (V);
       New_Line (Current_Error);
    end Dump_LLVM_Value;
-
-   -------------------
-   -- Dump_GL_Value --
-   -------------------
-
-   procedure Dump_GL_Value (V : GL_Value) is
-   begin
-      if No (V) then
-         Write_Line ("None");
-         return;
-      end if;
-
-      Dump_LLVM_Value (V.Value);
-      Dump_LLVM_Type (Type_Of (V.Value));
-      if Is_Pristine (V) then
-         Write_Str ("Pristine ");
-      end if;
-      Write_Str (GL_Relationship'Image (V.Relationship) & "(");
-      Dump_GL_Type_Int (V.Typ, False);
-      Write_Str ("): ");
-      pg (Union_Id (Full_Etype (V.Typ)));
-   end Dump_GL_Value;
-
-   ------------------
-   -- Dump_GL_Type --
-   ------------------
-
-   procedure Dump_GL_Type (GT : GL_Type) is
-   begin
-      Dump_GL_Type_Int (GT, True);
-   end Dump_GL_Type;
 
    ----------------------
    -- Dump_LLVM_Module --

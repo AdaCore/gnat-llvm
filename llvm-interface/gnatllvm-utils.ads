@@ -172,17 +172,11 @@ package GNATLLVM.Utils is
    --  we don't actually need identical types.
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
    procedure Dump_LLVM_Value (V : Value_T)
      with Export, External_Name => "dllv";
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
    --  function that is usable in debugging sessions.
-
-   procedure Dump_GL_Value (V : GL_Value)
-     with Export, External_Name => "dglv";
-   procedure Dump_GL_Type (GT : GL_Type)
-     with Export, External_Name => "dglt";
-
-   --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
 
    procedure Dump_LLVM_Type (T : Type_T)
      with Export, External_Name => "dllt";
@@ -197,11 +191,8 @@ package GNATLLVM.Utils is
    function LLVM_Count_Param_Types (T : Type_T) return Nat is
      (Nat (Count_Param_Types (T)));
 
-   function LLVM_Get_El_Type (T : Type_T) return Type_T is
+   function LLVM_Get_Elmt_Type (T : Type_T) return Type_T is
      (Get_Element_Type (T));
-
-   function LLVM_Size_Of (T_Data : Target_Data_T; Ty : Type_T) return Nat is
-     (Nat (Size_Of_Type_In_Bits (T_Data, Ty)));
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 

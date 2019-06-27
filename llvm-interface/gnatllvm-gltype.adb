@@ -1243,6 +1243,15 @@ package body GNATLLVM.GLType is
 
    end Full_Designated_GL_Type;
 
+   ------------------
+   -- Dump_GL_Type --
+   ------------------
+
+   procedure Dump_GL_Type (GT : GL_Type) is
+   begin
+      Dump_GL_Type_Int (GT, True);
+   end Dump_GL_Type;
+
    ----------------------
    -- Dump_GL_Type_Int --
    ----------------------

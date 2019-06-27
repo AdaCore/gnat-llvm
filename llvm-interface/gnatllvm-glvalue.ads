@@ -1833,4 +1833,12 @@ package GNATLLVM.GLValue is
      (Msg : String; N : Node_Id; E : Entity_Id; V : GL_Value)
      with Pre => Msg'Length > 0 and then Present (N) and then Present (E)
                  and then Present (V);
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
+   --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
+
+   procedure Dump_GL_Value (V : GL_Value)
+     with Export, External_Name => "dglv";
+
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 end GNATLLVM.GLValue;

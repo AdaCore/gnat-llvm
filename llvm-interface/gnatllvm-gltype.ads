@@ -544,4 +544,11 @@ package GNATLLVM.GLType is
      (Number_Dimensions (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT);
 
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
+   procedure Dump_GL_Type (GT : GL_Type)
+     with Export, External_Name => "dglt";
+
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
+
 end GNATLLVM.GLType;

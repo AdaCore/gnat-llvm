@@ -177,7 +177,7 @@ package body Get_Targ is
 
    function Get_Short_Enums return Int is
    begin
-      return 0;
+      return (if Short_Enums then 1 else 0);
    end Get_Short_Enums;
 
    --------------------------

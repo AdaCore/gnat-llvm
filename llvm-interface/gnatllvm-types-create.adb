@@ -128,10 +128,7 @@ package body GNATLLVM.Types.Create is
       --  So we only use i1 for the internal boolean object (e.g., the result
       --  of a comparison) and for a 1-bit modular type.
 
-      if (Is_Modular_Integer_Type (Size_TE)
-            or else (Is_Enumeration_Type (Size_TE) and then Short_Enums))
-        and then RM_Size (Size_TE) /= 0
-      then
+      if Is_Modular_Integer_Type (Size_TE) then
          Size := RM_Size (Size_TE);
       elsif Esize (Size_TE) = 0 then
          Size := UI_From_Int (BPU);
@@ -261,13 +258,11 @@ package body GNATLLVM.Types.Create is
    -----------------
 
    function Create_Type (TE : Entity_Id) return Type_T is
-      This_Short_Enum : constant Boolean :=
-        Is_Enumeration_Type (TE) and then Short_Enums;
-      Dummy           : Boolean          := False;
-      Align           : Uint             := No_Uint;
-      GT              : GL_Type;
-      T               : Type_T;
-      TBAA            : Metadata_T;
+      Dummy : Boolean := False;
+      Align : Uint    := No_Uint;
+      GT    : GL_Type;
+      T     : Type_T;
+      TBAA  : Metadata_T;
 
    begin
       --  Set that we're elaborating the type.  Note that we have to do this
@@ -372,17 +367,14 @@ package body GNATLLVM.Types.Create is
         and then Present (Size_GL_Type)
       then
          --  If there's no alignment specified for this type and it's not a
-         --  base type, use the alignment of the base type.  Ignore alignments
-         --  for Enumeration types with -fshort-enums.
+         --  base type, use the alignment of the base type.
 
-         if not This_Short_Enum then
-            if not Unknown_Alignment (TE) then
-               Align := Alignment (TE);
-            elsif not Is_Full_Base_Type (TE)
-              and then not Unknown_Alignment (Full_Base_Type (TE))
-            then
-               Align := Alignment (Full_Base_Type (TE));
-            end if;
+         if not Unknown_Alignment (TE) then
+            Align := Alignment (TE);
+         elsif not Is_Full_Base_Type (TE)
+           and then not Unknown_Alignment (Full_Base_Type (TE))
+         then
+            Align := Alignment (Full_Base_Type (TE));
          end if;
 
          declare
@@ -398,8 +390,8 @@ package body GNATLLVM.Types.Create is
                                    For_Type   => True,
                                    Is_RM_Size => True));
             Obj_Size   : constant Uint      :=
-              (if   Known_Esize (Size_TE) and then not This_Short_Enum
-               then Esize (Size_TE) else RM_Size (Size_TE));
+              (if   Known_Esize (Size_TE) then Esize (Size_TE)
+               else RM_Size (Size_TE));
             Size       : constant Uint      :=
               (if   Obj_Size = No_Uint then No_Uint
                else Validate_Size (Size_TE, GT, Obj_Size,
@@ -472,19 +464,23 @@ package body GNATLLVM.Types.Create is
       --  ???  Don't do anything for access subprogram since this will cause
       --  warnings for UC's in g-thread and g-spipat.
 
-      if not Is_Access_Subprogram_Type (TE)
-        and then not (Is_Scalar_Type (TE)
-                        and then not (Is_Enumeration_Type (TE)
-                                        and then Short_Enums))
+      if not Is_Access_Subprogram_Type (TE) and then not Is_Scalar_Type (TE)
       then
-         Set_Esize   (TE, Annotated_Object_Size (GT, Do_Align => True));
-         Set_RM_Size (TE, Annotated_Value
-                        (Get_Type_Size (GT, No_Padding => True)));
+         if Unknown_Esize (TE) then
+            Set_Esize   (TE, Annotated_Object_Size (GT, Do_Align => True));
+         end if;
+
+         if Unknown_RM_Size (TE) then
+            Set_RM_Size (TE, Annotated_Value
+                           (Get_Type_Size (GT, No_Padding => True)));
+         end if;
       end if;
 
-      Set_Alignment
-        (TE, UI_From_ULL
-           (Get_Type_Alignment (GT, Use_Specified => False)) / BPU);
+      if Unknown_Alignment (TE) then
+         Set_Alignment
+           (TE, UI_From_ULL
+              (Get_Type_Alignment (GT, Use_Specified => False)) / BPU);
+      end if;
 
       if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
         and then Present (Original_Array_Type (TE))

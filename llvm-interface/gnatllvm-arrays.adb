@@ -701,6 +701,13 @@ package body GNATLLVM.Arrays is
         or else Is_Dynamic_Size (Comp_GT)
       then
          return Comp_Align;
+
+      --  We now know that it's back-end packed.  If an alignment was
+      --  specified, use it.
+
+      elsif Known_Alignment (TE) then
+         return UI_To_Int (Alignment (TE)) * BPU;
+
       else
          declare
             Comp_Size : constant GL_Value :=

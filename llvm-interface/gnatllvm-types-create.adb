@@ -128,7 +128,7 @@ package body GNATLLVM.Types.Create is
       --  So we only use i1 for the internal boolean object (e.g., the result
       --  of a comparison) and for a 1-bit modular type.
 
-      if Is_Modular_Integer_Type (Size_TE) then
+      if Is_Modular_Integer_Type (Size_TE) and then RM_Size (Size_TE) /= 0 then
          Size := RM_Size (Size_TE);
       elsif Esize (Size_TE) = 0 then
          Size := UI_From_Int (BPU);

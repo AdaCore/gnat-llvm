@@ -915,18 +915,16 @@ package body GNATLLVM.Compile is
 
          when N_Selected_Component =>
 
-            Result := Emit (Prefix (N), For_LHS    => For_LHS,
-                            Prefer_LHS => Prefer_LHS);
-
-            if Has_Volatile_Full_Access (Prefix (N)) then
-               Result := Get (Result, Object);
-            end if;
-
-            Result := Build_Field_Load (Result,
+            Result := Build_Field_Load (Emit (Prefix (N),
+                                              For_LHS    => For_LHS,
+                                              Prefer_LHS => Prefer_LHS),
                                         Entity (Selector_Name (N)),
                                         LHS        => LHS,
                                         For_LHS    => For_LHS,
-                                        Prefer_LHS => Prefer_LHS);
+                                        Prefer_LHS => Prefer_LHS,
+                                        VFA        =>
+                                          Has_Volatile_Full_Access
+                                            (Prefix (N)));
             return Maybe_Convert_GT (Result, GT);
 
          when N_Indexed_Component | N_Slice =>

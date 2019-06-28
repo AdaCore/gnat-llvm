@@ -165,7 +165,8 @@ package GNATLLVM.Records is
       In_F       : Entity_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False) return GL_Value
+      Prefer_LHS : Boolean  := False;
+      VFA        : Boolean  := False) return GL_Value
      with  Pre  => Is_Record_Type (Related_Type (In_V))
                    and then Ekind_In (In_F, E_Component, E_Discriminant),
            Post => Present (Build_Field_Load'Result);

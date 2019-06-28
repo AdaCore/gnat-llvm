@@ -76,7 +76,8 @@ package body GNATLLVM.Records is
    procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
      with  Pre  => Is_Record_Type (Related_Type (LHS))
                    and then Present (RHS)
-                   and then Ekind_In (F, E_Component, E_Discriminant);
+                   and then (No (F) or else Ekind_In (F, E_Component,
+                                                      E_Discriminant));
    --  Like Build_Field_Store, but stack the operation to be performed
    --  later.  The operations are performed LIFO.
 
@@ -1757,19 +1758,32 @@ package body GNATLLVM.Records is
       In_F       : Entity_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False) return GL_Value
+      Prefer_LHS : Boolean  := False;
+      VFA        : Boolean  := False) return GL_Value
    is
       R_TE   : constant Entity_Id := Full_Scope (In_F);
       Rec_T  : constant Type_T    := Type_Of (R_TE);
       F      : constant Entity_Id := Find_Matching_Field (R_TE, In_F);
-      V      : constant GL_Value  := To_Primitive (In_V);
       F_GT   : constant GL_Type   := Get_Field_Type (F);
+      V      : GL_Value           := To_Primitive (In_V);
       Result : GL_Value;
       pragma Unreferenced (Rec_T);
       --  We had to force elaboration of the type of F's Scope here
       --  since there's a chance it wasn't yet elaborated.
 
    begin
+      --  If V is Volatile_Full_Access, we have to try to load the full record
+      --  into memory.  If we did, and this is for an LHS, we also need to
+      --  set up a writeback.
+
+      if VFA then
+         V  := Get (V, Object);
+         if Is_Data (V) and For_LHS then
+            V := Get (V, Any_Reference);
+            Add_Write_Back (In_V, Empty, V);
+         end if;
+      end if;
+
       --  If we have something in a data form and we're not requiring or
       --  preferring an LHS, and we have information about the field, we
       --  can and should do this with an Extract_Value.
@@ -2132,7 +2146,11 @@ package body GNATLLVM.Records is
             WB : constant Write_Back := Writeback_Stack.Table (J);
 
          begin
-            Discard (Build_Field_Store (WB.LHS, WB.F, WB.RHS));
+            if Present (WB.F) then
+               Discard (Build_Field_Store (WB.LHS, WB.F, WB.RHS));
+            else
+               Emit_Assignment (WB.LHS, Value => WB.RHS);
+            end if;
          end;
       end loop;
 

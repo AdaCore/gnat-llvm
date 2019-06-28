@@ -1215,7 +1215,8 @@ package body GNATLLVM.Exprs is
                (1 => Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type),
                 2 => Pointer_Cast (Get (Src,  Src_R),  A_Char_GL_Type),
                 3 => To_Bytes (Size),
-                4 => Const_False), -- Is_Volatile
+                4 => (if   Is_Volatile (Dest) or else Is_Volatile (Src)
+                      then Const_True else Const_False)), -- Is_Volatile
                Get_Type_Alignment (Dest_GT) / BPU,
                Get_Type_Alignment (Related_Type (Src)) / BPU);
          end;

@@ -900,7 +900,7 @@ package body GNATLLVM.Arrays is
                              A_Char_GL_Type),
           2 => Value,
           3 => To_Bytes (Get_Type_Size (GT)),
-          4 => Const_False),  --  Is_Volatile
+          4 => (if Is_Volatile (LValue) then Const_True else Const_False)),
          Get_Type_Alignment (GT) / BPU);
    end Emit_Others_Aggregate;
 

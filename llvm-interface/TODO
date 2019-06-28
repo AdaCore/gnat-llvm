@@ -16,6 +16,6 @@ Limitations and missing features (identified so far):
 - restriction checks done by back end (other than no elab and allocations,
   which are done)
 - support for some -fxxx and -m (e.g -mtune) code generation switches
-- support for stack checking
 - support for -gnatc (when back-annotating)
 - need not use indirect for variable that's of known size but nonnnative type
+- support volatile full access for array LHS

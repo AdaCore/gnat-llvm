@@ -734,16 +734,24 @@ package body GNATLLVM.Compile is
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False) return GL_Value is
+      Prefer_LHS : Boolean  := False) return GL_Value
+   is
+      Is_Volatile : constant Boolean := Is_Volatile_Reference (N);
+      Is_Atomic   : constant Boolean :=
+        Is_Atomic_Object (N)
+        or else (Nkind_In (N, N_Expanded_Name, N_Explicit_Dereference,
+                           N_Identifier, N_Indexed_Component,
+                           N_Selected_Component)
+                   and then Atomic_Sync_Required (N));
+
    begin
       return Add_To_LValue_List
         (Mark_Atomic
            (Mark_Volatile (Emit_Internal (N, LHS,
                                           For_LHS    => For_LHS,
                                           Prefer_LHS => Prefer_LHS),
-                           Is_Volatile_Reference (N)),
-            Is_Atomic_Object (N)));
-
+                           Is_Volatile or else Is_Atomic),
+            Is_Atomic));
    end Emit;
 
    --------------------
@@ -1006,7 +1014,7 @@ package body GNATLLVM.Compile is
                                            To_Primitive (Result),
                                            Swap_Indices (C_Idxs, Result));
                   else
-                     --  Otherwise, get a reference and do this using GEP.
+                     --  Otherwise, get a reference and do the indexing
 
                      return Maybe_Convert_GT (Get_Indexed_LValue
                                                 (Idxs,

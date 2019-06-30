@@ -64,6 +64,12 @@ package body GNATLLVM.Arrays is
    --  remaining.  Return an LLVM constant including all of the constants
    --  in that aggregate.
 
+   function Swap_Indices
+     (Idxs : GL_Value_Array; V : GL_Value) return GL_Value_Array
+     with Pre  => Is_Array_Type (Related_Type (V)),
+          Post => Swap_Indices'Result'Length = Idxs'Length;
+   --  Given a list of indices, swap them if V is a Fortran array
+
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -935,14 +941,13 @@ package body GNATLLVM.Arrays is
    ------------------
 
    function Swap_Indices
-     (Idxs : Index_Array; V : GL_Value) return Index_Array
-   is
+     (Idxs : GL_Value_Array; V : GL_Value) return GL_Value_Array is
    begin
       if Convention (Related_Type (V)) /= Convention_Fortran then
          return Idxs;
       end if;
 
-      return Result : Index_Array (Idxs'Range) do
+      return Result : GL_Value_Array (Idxs'Range) do
          for J in Idxs'Range loop
             Result (J) := Idxs (Idxs'Last + Idxs'First - J);
          end loop;
@@ -956,12 +961,12 @@ package body GNATLLVM.Arrays is
    function Emit_Array_Aggregate
      (N              : Node_Id;
       Dims_Left      : Pos;
-      Indices_So_Far : Index_Array;
+      Indices_So_Far : GL_Value_Array;
       Value_So_Far   : GL_Value) return GL_Value
    is
       GT        : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
       Comp_GT   : constant GL_Type := Full_Component_GL_Type (GT);
-      Cur_Index : unsigned         := 0;
+      Cur_Index : GL_Value         := Size_Const_Null;
       Expr      : Node_Id;
 
    begin
@@ -1033,13 +1038,14 @@ package body GNATLLVM.Arrays is
               and then Dims_Left > 1
             then
                Cur_Value := Emit_Array_Aggregate
-                 (Expr, Dims_Left - 1, Indices_So_Far & (1 => Cur_Index),
+                 (Expr, Dims_Left - 1,
+                  Indices_So_Far & GL_Value_Array'(1 => Cur_Index),
                   Cur_Value);
 
             else
                declare
-                  Indices : constant Index_Array :=
-                    Indices_So_Far & (1 => Cur_Index);
+                  Idxs : constant GL_Value_Array :=
+                    Indices_So_Far & GL_Value_Array'(1 => Cur_Index);
 
                begin
                   --  If we're using data, insert the value.  Otherwise, index
@@ -1047,21 +1053,13 @@ package body GNATLLVM.Arrays is
 
                   if Is_Data (Cur_Value) then
                      Cur_Value :=
-                       Insert_Value (Cur_Value,
-                                     Emit_Convert_Value (Expr, Comp_GT),
-                                     Swap_Indices (Indices, Cur_Value));
+                       Insert_Value
+                       (Cur_Value,
+                        Emit_Convert_Value (Expr, Comp_GT),
+                        Idxs_From_GL_Values (Swap_Indices (Idxs, Cur_Value)));
                   else
-                     declare
-                        GL_Idxs : constant GL_Value_Array :=
-                          Idxs_To_GL_Values ((1 => 0) &
-                                               Swap_Indices (Indices,
-                                                             Cur_Value));
-                        LValue  : constant GL_Value       :=
-                          Get_Indexed_LValue (GL_Idxs, Cur_Value);
-
-                     begin
-                        Emit_Assignment (LValue, Expr, No_GL_Value);
-                     end;
+                     Emit_Assignment (Get_Indexed_LValue (Idxs, Cur_Value),
+                                      Expr, No_GL_Value);
                   end if;
                end;
             end if;
@@ -1162,13 +1160,10 @@ package body GNATLLVM.Arrays is
       GT         : constant GL_Type := Related_Type (V);
       N_Dim      : constant Int     := Number_Dimensions (GT);
       Fortran    : constant Boolean := Convention (GT) = Convention_Fortran;
-      Idx        : Nat              := (if Fortran then N_Dim + 1 else 2);
+      Idx        : Nat              := (if Fortran then N_Dim else 1);
       Dim        : Nat              := 0;
+      Idxs       : GL_Value_Array (1 .. N_Dim);
       N          : Node_Id;
-      Idxs       : GL_Value_Array (1 .. N_Dim + 1) :=
-        (1 => Size_Const_Null, others => <>);
-      --  Operands for the GetElementPtr instruction: one for the
-      --  pointer deference, and then one per array index.
 
    begin
       N := First (Indices);
@@ -1219,9 +1214,12 @@ package body GNATLLVM.Arrays is
 
    begin
       if not Is_Nonnative_Type (GT) then
-         return Mark_Atomic (Mark_Volatile (GEP (Comp_GT, Array_Data, Idxs),
-                                            Has_Volatile_Components (GT)),
-                             Has_Atomic_Components (GT));
+         return Mark_Atomic
+           (Mark_Volatile
+              (GEP (Comp_GT, Array_Data,
+                    GL_Value_Array'(1 => Size_Const_Null) & Idxs),
+               Has_Volatile_Components (GT)),
+            Has_Atomic_Components (GT));
       end if;
 
       --  Otherwise, we choose a type to use for the indexing.  If the
@@ -1246,11 +1244,11 @@ package body GNATLLVM.Arrays is
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
             else To_Bytes (Get_Type_Size (Comp_GT, Max_Size => Comp_Unc)));
-         Index     : GL_Value          := To_Size_Type (Idxs (2));
+         Index     : GL_Value          := To_Size_Type (Idxs (1));
          Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
 
       begin
-         for Idx in 3 .. Idxs'Last loop
+         for Idx in 2 .. Idxs'Last loop
             Index := Index * Get_Array_Length (Full_Etype (GT), Dim, V) +
                       To_Size_Type (Idxs (Idx));
             Dim   := (if Fortran then Dim - 1 else Dim + 1);
@@ -1331,8 +1329,6 @@ package body GNATLLVM.Arrays is
       VFA        : Boolean := False) return GL_Value
    is
       Result : GL_Value := V;
-      C_Idxs : Index_Array (Idxs'First + 1 .. Idxs'Last);
-      Bound  : LLI;
 
    begin
       if VFA then
@@ -1346,24 +1342,9 @@ package body GNATLLVM.Arrays is
       if Is_Data (Result) and then not For_LHS and then not Prefer_LHS
         and then (for all J of Idxs => Is_A_Const_Int (J))
       then
-         for J in C_Idxs'Range loop
-            Bound := Get_Const_Int_Value (Idxs (J));
-
-            --  Since this is an LLVM object, we know that all valid bounds
-            --  are within the range of unsigned.  But we don't want to get
-            --  a constraint error below if the constant is invalid.  So
-            --  test and force to zero (any constant will do since this is
-            --  erroneous) in that case.
-
-            if Bound < 0 or else Bound > LLI (unsigned'Last) then
-               Bound := 0;
-            end if;
-
-            C_Idxs (J) := unsigned (Bound);
-         end loop;
-
          return Extract_Value (Full_Component_GL_Type (Result),
-                               To_Primitive (Result), C_Idxs);
+                               To_Primitive (Result),
+                               Idxs_From_GL_Values (Idxs));
       else
          --  Otherwise, get a reference and do the indexing
 

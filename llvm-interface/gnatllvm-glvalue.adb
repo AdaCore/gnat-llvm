@@ -2093,18 +2093,32 @@ package body GNATLLVM.GLValue is
 
    end Convert_Struct_Constant;
 
-   -----------------------
-   -- Idxs_To_GL_Values --
-   -----------------------
+   -------------------------
+   -- Idxs_From_GL_Values --
+   -------------------------
 
-   function Idxs_To_GL_Values (Idxs : Index_Array) return GL_Value_Array is
+   function Idxs_From_GL_Values (Idxs : GL_Value_Array) return Index_Array is
+      Bound  : LLI;
+
    begin
-      return GL_Idxs : GL_Value_Array (Idxs'Range) do
+      return C_Idxs : Index_Array (Idxs'Range) do
          for J in Idxs'Range loop
-            GL_Idxs (J) := Size_Const_Int (ULL (Idxs (J)));
+            Bound := Get_Const_Int_Value (Idxs (J));
+
+            --  Since this is an LLVM object, we know that all valid bounds
+            --  are within the range of unsigned.  But we don't want to get
+            --  a constraint error below if the constant is invalid.  So
+            --  test and force to zero (any constant will do since this is
+            --  erroneous) in that case.
+
+            if Bound < 0 or else Bound > LLI (unsigned'Last) then
+               Bound := 0;
+            end if;
+
+            C_Idxs (J) := unsigned (Bound);
          end loop;
       end return;
-   end Idxs_To_GL_Values;
+   end Idxs_From_GL_Values;
 
    ---------------------
    -- Get_Alloca_Name --

@@ -997,10 +997,10 @@ package body GNATLLVM.Compile is
                         Bound := Get_Const_Int_Value (Idxs (J));
 
                         --  Since this is an LLVM object, we know that all
-                        --  valid bounds are well within the range of an
-                        --  unsigned.  But we don't want to get a constraint
-                        --  error below if the contant is invalid.  So test
-                        --  and force to zero (any constant will do since this
+                        --  valid bounds are within the range of unsigned.
+                        --  But we don't want to get a constraint error
+                        --  below if the constant is invalid.  So test and
+                        --  force to zero (any constant will do since this
                         --  is erroneous) in that case.
 
                         if Bound < 0 or else Bound > LLI (unsigned'Last) then

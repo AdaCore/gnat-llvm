@@ -1011,8 +1011,7 @@ package body GNATLLVM.Compile is
                      end loop;
 
                      return Extract_Value (Full_Component_GL_Type (Result),
-                                           To_Primitive (Result),
-                                           Swap_Indices (C_Idxs, Result));
+                                           To_Primitive (Result), C_Idxs);
                   else
                      --  Otherwise, get a reference and do the indexing
 

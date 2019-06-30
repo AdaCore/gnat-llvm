@@ -1319,6 +1319,59 @@ package body GNATLLVM.Arrays is
 
    end Get_Slice_LValue;
 
+   ------------------------
+   -- Build_Indexed_Load --
+   ------------------------
+
+   function Build_Indexed_Load
+     (V          : GL_Value;
+      Idxs       : GL_Value_Array;
+      For_LHS    : Boolean := False;
+      Prefer_LHS : Boolean := False;
+      VFA        : Boolean := False) return GL_Value
+   is
+      Result : GL_Value := V;
+      C_Idxs : Index_Array (Idxs'First + 1 .. Idxs'Last);
+      Bound  : LLI;
+
+   begin
+      if VFA then
+         Result := Get (Result, Object);
+      end if;
+
+      --  If we have something in a data form, we're not requiring or
+      --  preferring an LHS, and all indices are constants, we can and
+      --  should do this with an Extract_Value.
+
+      if Is_Data (Result) and then not For_LHS and then not Prefer_LHS
+        and then (for all J of Idxs => Is_A_Const_Int (J))
+      then
+         for J in C_Idxs'Range loop
+            Bound := Get_Const_Int_Value (Idxs (J));
+
+            --  Since this is an LLVM object, we know that all valid bounds
+            --  are within the range of unsigned.  But we don't want to get
+            --  a constraint error below if the constant is invalid.  So
+            --  test and force to zero (any constant will do since this is
+            --  erroneous) in that case.
+
+            if Bound < 0 or else Bound > LLI (unsigned'Last) then
+               Bound := 0;
+            end if;
+
+            C_Idxs (J) := unsigned (Bound);
+         end loop;
+
+         return Extract_Value (Full_Component_GL_Type (Result),
+                               To_Primitive (Result), C_Idxs);
+      else
+         --  Otherwise, get a reference and do the indexing
+
+         return Get_Indexed_LValue (Idxs, Get (Result, Any_Reference));
+      end if;
+
+   end Build_Indexed_Load;
+
    -------------------
    -- Get_Dim_Range --
    -------------------

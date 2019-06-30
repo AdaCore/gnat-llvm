@@ -245,6 +245,15 @@ package GNATLLVM.Arrays is
    --  is the type of the array we're getting the bounds for, in case they're
    --  different.
 
+   function Build_Indexed_Load
+     (V          : GL_Value;
+      Idxs       : GL_Value_Array;
+      For_LHS    : Boolean := False;
+      Prefer_LHS : Boolean := False;
+      VFA        : Boolean := False) return GL_Value
+     with Pre => Present (V), Post => Present (Build_Indexed_Load'Result);
+   --  Perform an indexed load operation with prefix V and indices Idxs.
+
 private
 
    --  A bound of a constrained array can either be a compile-time

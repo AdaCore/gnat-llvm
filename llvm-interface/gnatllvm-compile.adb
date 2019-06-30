@@ -923,17 +923,17 @@ package body GNATLLVM.Compile is
 
          when N_Selected_Component =>
 
-            Result := Build_Field_Load (Emit (Prefix (N),
-                                              For_LHS    => For_LHS,
-                                              Prefer_LHS => Prefer_LHS),
-                                        Entity (Selector_Name (N)),
-                                        LHS        => LHS,
-                                        For_LHS    => For_LHS,
-                                        Prefer_LHS => Prefer_LHS,
-                                        VFA        =>
-                                          Has_Volatile_Full_Access
-                                            (Prefix (N)));
-            return Maybe_Convert_GT (Result, GT);
+            return Maybe_Convert_GT
+              (Build_Field_Load (Emit (Prefix (N),
+                                       For_LHS    => For_LHS,
+                                       Prefer_LHS => Prefer_LHS),
+                                 Entity (Selector_Name (N)),
+                                 LHS        => LHS,
+                                 For_LHS    => For_LHS,
+                                 Prefer_LHS => Prefer_LHS,
+                                 VFA        =>
+                                   Has_Volatile_Full_Access (Prefix (N))),
+               GT);
 
          when N_Indexed_Component | N_Slice =>
 
@@ -941,17 +941,9 @@ package body GNATLLVM.Compile is
                             For_LHS    => For_LHS,
                             Prefer_LHS => Prefer_LHS);
 
-            if Has_Volatile_Full_Access (Prefix (N)) then
-               if For_LHS then
-                  Error_Msg_N ("?Volatile_Full_Access not yet supported for "
-                                 & "assignments to array", N);
-
-               else
-                  --  If this is a Volatile_Full_Access expression and we're
-                  --  not on the LHS, ensure we have data.
-
-                  Result := Get (Result, Object);
-               end if;
+            if Has_Volatile_Full_Access (Prefix (N)) and then For_LHS then
+               Error_Msg_N ("?Volatile_Full_Access not yet supported for "
+                              & "assignments to array", N);
             end if;
 
             --  This can be an integer type if it's the implementation
@@ -977,50 +969,14 @@ package body GNATLLVM.Compile is
 
             elsif Nkind (N) = N_Indexed_Component then
 
-               declare
-                  Idxs   : constant GL_Value_Array :=
-                    Get_Indices (Expressions (N), Result);
-                  C_Idxs : Index_Array (Idxs'First + 1 .. Idxs'Last);
-                  Bound  : LLI;
-
-               begin
-                  --  If we have something in a data form, we're not
-                  --  requiring or preferring an LHS, and all indices are
-                  --  constants, we can and should do this with an
-                  --  Extract_Value.
-
-                  if Is_Data (Result) and then not For_LHS
-                    and then not Prefer_LHS
-                    and then (for all J of Idxs => Is_A_Const_Int (J))
-                  then
-                     for J in C_Idxs'Range loop
-                        Bound := Get_Const_Int_Value (Idxs (J));
-
-                        --  Since this is an LLVM object, we know that all
-                        --  valid bounds are within the range of unsigned.
-                        --  But we don't want to get a constraint error
-                        --  below if the constant is invalid.  So test and
-                        --  force to zero (any constant will do since this
-                        --  is erroneous) in that case.
-
-                        if Bound < 0 or else Bound > LLI (unsigned'Last) then
-                           Bound := 0;
-                        end if;
-
-                        C_Idxs (J) := unsigned (Bound);
-                     end loop;
-
-                     return Extract_Value (Full_Component_GL_Type (Result),
-                                           To_Primitive (Result), C_Idxs);
-                  else
-                     --  Otherwise, get a reference and do the indexing
-
-                     return Maybe_Convert_GT (Get_Indexed_LValue
-                                                (Idxs,
-                                                 Get (Result, Any_Reference)),
-                                              GT);
-                  end if;
-               end;
+               return Maybe_Convert_GT
+                 (Build_Indexed_Load (Result,
+                                      Get_Indices (Expressions (N), Result),
+                                      For_LHS    => For_LHS,
+                                      Prefer_LHS => Prefer_LHS,
+                                      VFA        =>
+                                        Has_Volatile_Full_Access (Prefix (N))),
+                  GT);
             else
                return Get_Slice_LValue (GT, Get (Result, Any_Reference));
             end if;

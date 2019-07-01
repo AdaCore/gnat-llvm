@@ -26,6 +26,8 @@
 
 with LLVM.Target; use LLVM.Target;
 
+with Targparm; use Targparm;
+
 with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
@@ -304,6 +306,7 @@ package body Get_Targ is
 
          Scan_Command_Line;
          Initialize_LLVM_Target;
+         Always_Compatible_Rep_On_Target := False;
       end if;
 
       return null;

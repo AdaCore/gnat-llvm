@@ -100,6 +100,7 @@ package body GNATLLVM.Conditionals is
 
       if Is_Access_Subprogram_Type (GT)
         and then not Has_Foreign_Convention (GT)
+        and then Can_Use_Internal_Rep (GT)
       then
          return I_Cmp (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
 

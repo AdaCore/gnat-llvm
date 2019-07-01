@@ -565,6 +565,10 @@ package GNATLLVM.GLType is
      (Is_Atomic (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Can_Use_Internal_Rep (GT : GL_Type) return Boolean is
+     (Can_Use_Internal_Rep (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    procedure Dump_GL_Type (GT : GL_Type)

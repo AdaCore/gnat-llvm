@@ -355,7 +355,8 @@ package body GNATLLVM.GLValue is
       --  Similarly for foreign convention access to subprogram
 
       elsif R = Fat_Reference_To_Subprogram
-        and then Has_Foreign_Convention (TE)
+        and then (Has_Foreign_Convention (TE)
+                    or else not Can_Use_Internal_Rep (TE))
       then
          return Trampoline;
       else
@@ -826,7 +827,7 @@ package body GNATLLVM.GLValue is
 
             if Our_R = Fat_Reference_To_Subprogram then
                return Extract_Value_To_Relationship (GT, V, 1, R);
-            elsif Our_R = Reference then
+            else
                return Get_Undef_Relationship (GT, R);
             end if;
 

@@ -2059,7 +2059,9 @@ package body GNATLLVM.Subprograms is
                   DT : constant GL_Type := Full_Designated_GL_Type (Ref_GT);
 
                begin
-                  if Has_Foreign_Convention (Ref_GT) then
+                  if Has_Foreign_Convention (Ref_GT)
+                    or else not Can_Use_Internal_Rep (Ref_GT)
+                  then
                      return (if   Has_Activation_Record (Def_Ident)
                              then Make_Trampoline (DT, V, S_Link, N)
                              else G_Is_Relationship (V, DT, Trampoline));

@@ -1359,21 +1359,33 @@ package body GNATLLVM.Types is
       --  If this is an anonymous base type, nothing to check, the
       --  error will be reported on the source type if need be.
 
-      if not Comes_From_Source (E)
+      if not Comes_From_Source (E) then
+         return;
+      end if;
 
-        --  Consider all aligned elementary types as atomic
-        or else (Is_Elementary_Type (GT)
-                   and then Align >= Get_Type_Alignment (T))
+      --  If we're actually checking for atomic (as opposed to VFA),
+      --  we can only support types that are the basic LLVM types and
+      --  that is at least as aligned as their alignment.
+
+      if Is_Atomic (E) then
+         if Get_Type_Kind (T) not in Struct_Type_Kind | Array_Type_Kind
+           and then Align >= Get_Type_Alignment (T)
+         then
+            return;
+         end if;
+
+      --  In the VFA, case, consider all aligned elementary types as atomic
+
+      elsif (Is_Elementary_Type (GT)
+               and then Align >= Get_Type_Alignment (T))
 
         --  Or if it's a fixed size, the size is equal to the alignment,
-        --  and the alignment is less than a word bu only for VFA, not
-        --  atomic.  ??? We can't support this for Atomic, only VFA, but
-        --  we use it in the library, so don't give an error message.
+        --  and the alignment is less than a word.        --  atomic.
 
         or else (not Is_Dynamic_Size (GT)
                    and then Align <= Get_Bits_Per_Word
                    and then ULL (Align) = Get_Const_Int_Value_ULL
-                                           (Get_Type_Size (GT)))
+                   (Get_Type_Size (GT)))
       then
          return;
       end if;

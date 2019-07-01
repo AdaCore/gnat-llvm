@@ -261,7 +261,10 @@ package body GNATLLVM.Conversions is
 
       if Is_Access_Subprogram_Type (GT)
         and then Is_Access_Subprogram_Type (In_GT)
-        and then Has_Foreign_Convention (GT) /= Has_Foreign_Convention (In_GT)
+        and then ((Has_Foreign_Convention (GT)
+                     or else not Can_Use_Internal_Rep (GT)) /=
+                    (Has_Foreign_Convention (In_GT)
+                       or else not Can_Use_Internal_Rep (GT)))
       then
          Error_Msg_Node_1 := Full_Etype (In_GT);
          Error_Msg_Node_2 := Full_Etype (GT);

@@ -1326,8 +1326,16 @@ package body GNATLLVM.Arrays is
       Result : GL_Value := V;
 
    begin
+      --  If V is Volatile_Full_Access, we have to try to load the full array
+      --  into memory.  If we did, and this is for an LHS, we also need to
+      --  set up a writeback.
+
       if VFA then
          Result := Get (Result, Object);
+         if Is_Data (Result) and For_LHS then
+            Result := Get (Result, Any_Reference);
+            Add_Write_Back (V, Empty, Result);
+         end if;
       end if;
 
       --  If we have something in a data form, we're not requiring or

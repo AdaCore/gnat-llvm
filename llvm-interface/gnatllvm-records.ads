@@ -194,6 +194,14 @@ package GNATLLVM.Records is
                   and then Ekind_In (In_F, E_Component, E_Discriminant);
    --  Similar to the function version, but we always update LHS.
 
+   procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
+     with  Pre  => (No (F) or else Is_Record_Type (Related_Type (LHS)))
+                   and then Present (RHS)
+                   and then (No (F) or else Ekind_In (F, E_Component,
+                                                      E_Discriminant));
+   --  Like Build_Field_Store, but stack the operation to be performed
+   --  later.  The operations are performed LIFO.
+
    procedure Perform_Writebacks;
    --  Perform any writebacks put onto the stack by the Add_Write_Back
    --  procedure.

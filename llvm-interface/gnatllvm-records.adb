@@ -73,14 +73,6 @@ package body GNATLLVM.Records is
       Table_Increment      => 1,
       Table_Name           => "Writeback_Stack");
 
-   procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
-     with  Pre  => Is_Record_Type (Related_Type (LHS))
-                   and then Present (RHS)
-                   and then (No (F) or else Ekind_In (F, E_Component,
-                                                      E_Discriminant));
-   --  Like Build_Field_Store, but stack the operation to be performed
-   --  later.  The operations are performed LIFO.
-
    function Get_Variant_Size
      (RI         : Record_Info;
       V          : GL_Value;

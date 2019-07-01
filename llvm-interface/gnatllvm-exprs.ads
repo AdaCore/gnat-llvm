@@ -33,22 +33,24 @@ package GNATLLVM.Exprs is
    --  RHS.  That's certainly true if LHS is pristine or RHS is a constant.
    --  Perhaps we can test more cases later, so this is really a placeholder.
 
-   procedure LHS_And_Field_For_Assignment
+   procedure LHS_And_Component_For_Assignment
      (N             : Node_Id;
       LHS           : out GL_Value;
       F             : out Entity_Id;
+      Idxs          : out Access_GL_Value_Array;
       For_LHS       : Boolean := False;
       Only_Bitfield : Boolean := False)
      with Pre  => Present (N),
-     Post => Present (LHS)
-     and then (No (F) or else Ekind_In (F, E_Component,
-                                                       E_Discriminant));
-   --  N is an expression that's used in a LHS context, either the LHS
-   --  side of an N_Assignment_Statement or an actual corresponding to
-   --  an Out (or in Out) parameter.  If N represents an field selection
-   --  (if Only_Bitfield then only if that field is a bitfield), then
-   --  LHS is the Prefix of that selection and F is the field being
-   --  selected.  Otherwise, F is Empty and LHS is the LValue form of N.
+          Post => Present (LHS)
+                  and then (No (F) or else Ekind_In (F, E_Component,
+                                                     E_Discriminant));
+   --  N is an expression that's used in a LHS context, either the LHS side
+   --  of an N_Assignment_Statement or an actual corresponding to an Out
+   --  (or in Out) parameter.  If N represents an field selection (if
+   --  Only_Bitfield then only if that field is a bitfield), then LHS is
+   --  the Prefix of that selection and F is the field being selected.  If
+   --  N is an indexed reference, Idxs is a pointer to the list of indices.
+   --  Otherwise, F is Empty, Idxs is null, and LHS is the LValue form of N.
 
    procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id)
      with Pre => Nkind (N) = N_Type_Conversion and then Present (V)

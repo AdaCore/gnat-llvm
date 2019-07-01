@@ -428,19 +428,25 @@ package body GNATLLVM.Compile is
          when N_Assignment_Statement =>
 
             declare
-               LHS    : GL_Value;
-               F      : Entity_Id;
+               LHS  : GL_Value;
+               Idxs : Access_GL_Value_Array;
+               F    : Entity_Id;
 
             begin
                --  Get the LHS to evaluate and see if we need to do a
-               --  field operation.  If so, it may return a value that
-               --  we have to copy into the result.
+               --  field or array operation.
 
-               LHS_And_Field_For_Assignment (Name (N), LHS, F,
-                                             For_LHS => True);
+               LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
+                                                 For_LHS => True);
                if Present (F) then
                   Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
                                      VFA => Is_VFA_Ref (Name (N)));
+               elsif Idxs /= null then
+                  Build_Indexed_Store (LHS, Idxs.all,
+                                       Emit_Expression (Expression (N)),
+                                       VFA => Is_VFA_Ref (Name (N)));
+                  Free (Idxs);
+
                else
                   Emit_Assignment (LHS,
                                    Expr         => Expression (N),
@@ -940,11 +946,6 @@ package body GNATLLVM.Compile is
             Result := Emit (Prefix (N),
                             For_LHS    => For_LHS,
                             Prefer_LHS => Prefer_LHS);
-
-            if Has_Volatile_Full_Access (Prefix (N)) and then For_LHS then
-               Error_Msg_N ("?Volatile_Full_Access not yet supported for "
-                              & "assignments to array", N);
-            end if;
 
             --  This can be an integer type if it's the implementation
             --  type of a packed array type.  In that case, convert it to

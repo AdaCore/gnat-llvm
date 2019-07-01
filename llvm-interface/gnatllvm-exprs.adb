@@ -46,24 +46,25 @@ package body GNATLLVM.Exprs is
    --  of an object.  Returns a GL_Value that's a reference that points into
    --  an object and a number of bits that must be added to that value.
 
-   ----------------------------------
-   -- LHS_And_Field_For_Assignment --
-   ----------------------------------
+   --------------------------------------
+   -- LHS_And_Component_For_Assignment --
+   --------------------------------------
 
-   procedure LHS_And_Field_For_Assignment
+   procedure LHS_And_Component_For_Assignment
      (N             : Node_Id;
       LHS           : out GL_Value;
       F             : out Entity_Id;
+      Idxs          : out Access_GL_Value_Array;
       For_LHS       : Boolean := False;
-      Only_Bitfield : Boolean := False)
-   is
-      LHS_Expr : Node_Id   := N;
-
+      Only_Bitfield : Boolean := False) is
    begin
-      --  Start by assuming there's no special field processing, then
+      --  Start by assuming there's no special processing, then
       --  see if there is.
 
-      F := Empty;
+      F    := Empty;
+      Idxs := null;
+      LHS  := No_GL_Value;
+
       if Nkind (N) = N_Selected_Component then
          declare
             Fld  : constant Entity_Id := Entity (Selector_Name (N));
@@ -73,17 +74,21 @@ package body GNATLLVM.Exprs is
             --  bitfield, set the field and LHS.
 
             if not Only_Bitfield or else Is_Bitfield_By_Rep (Fld) then
-               LHS_Expr := Prefix (N);
-               F        := Entity (Selector_Name (N));
+               LHS := Emit_LValue (Prefix (N), For_LHS => For_LHS);
+               F   := Fld;
             end if;
          end;
+
+      elsif Nkind (N) = N_Indexed_Component and not Only_Bitfield then
+         LHS  := Emit_LValue (Prefix (N), For_LHS => For_LHS);
+         Idxs := new GL_Value_Array'(Get_Indices (Expressions (N), LHS));
       end if;
 
-      --  Finally, evaluate the LHS needed, either the prefix of the
-      --  selector or our input.
+      if No (LHS) then
+         LHS := Emit_LValue (N, For_LHS => For_LHS);
+      end if;
 
-      LHS := Emit_LValue (LHS_Expr, For_LHS => For_LHS);
-   end LHS_And_Field_For_Assignment;
+   end LHS_And_Component_For_Assignment;
 
    ----------------
    -- Emit_Undef --

@@ -146,7 +146,7 @@ clean:
 
 # Full runtime
 
-target=x86_64-pc-linux-gnu
+target=$(shell gcc -dumpmachine)
 
 target_list=$(subst -, ,$(target))
 target_cpu=$(word 1,$(target_list))

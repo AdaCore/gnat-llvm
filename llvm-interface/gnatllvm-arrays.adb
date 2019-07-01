@@ -1030,39 +1030,34 @@ package body GNATLLVM.Arrays is
          --  Now process each expression
 
          while Present (Expr) loop
+            declare
+               Idxs   : constant GL_Value_Array :=
+                 Indices_So_Far & GL_Value_Array'(1 => Cur_Index);
+               Result : GL_Value                := No_GL_Value;
 
-            --  If this is a nested N_Aggregate and we have dimensions left
-            --  in the outer array, use recursion to fill in the aggregate.
+            begin
+               --  If this is a nested N_Aggregate and we have dimensions
+               --  left in the outer array, use recursion to fill in the
+               --  aggregate.
 
-            if Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
-              and then Dims_Left > 1
-            then
-               Cur_Value := Emit_Array_Aggregate
-                 (Expr, Dims_Left - 1,
-                  Indices_So_Far & GL_Value_Array'(1 => Cur_Index),
-                  Cur_Value);
+               if Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
+                 and then Dims_Left > 1
+               then
+                  Cur_Value := Emit_Array_Aggregate (Expr, Dims_Left - 1, Idxs,
+                                                     Cur_Value);
 
-            else
-               declare
-                  Idxs : constant GL_Value_Array :=
-                    Indices_So_Far & GL_Value_Array'(1 => Cur_Index);
+               --  Otherwise do an indexed store
 
-               begin
-                  --  If we're using data, insert the value.  Otherwise, index
-                  --  to the proper offset and copy the data.
-
-                  if Is_Data (Cur_Value) then
-                     Cur_Value :=
-                       Insert_Value
-                       (Cur_Value,
-                        Emit_Convert_Value (Expr, Comp_GT),
-                        Idxs_From_GL_Values (Swap_Indices (Idxs, Cur_Value)));
-                  else
-                     Emit_Assignment (Get_Indexed_LValue (Idxs, Cur_Value),
-                                      Expr, No_GL_Value);
+               else
+                  Result :=
+                    Build_Indexed_Store (Cur_Value,
+                                         Swap_Indices (Idxs, Cur_Value),
+                                         Emit_Convert_Value (Expr, Comp_GT));
+                  if Present (Result) then
+                     Cur_Value := Result;
                   end if;
-               end;
-            end if;
+               end if;
+            end;
 
             Cur_Index := Cur_Index + 1;
             Next (Expr);
@@ -1352,6 +1347,59 @@ package body GNATLLVM.Arrays is
       end if;
 
    end Build_Indexed_Load;
+
+   -------------------------
+   -- Build_Indexed_Store --
+   -------------------------
+
+   function Build_Indexed_Store
+     (In_LHS : GL_Value;
+      Idxs   : GL_Value_Array;
+      RHS    : GL_Value;
+      VFA    : Boolean := False) return GL_Value
+   is
+      LHS    : GL_Value := In_LHS;
+      Result : GL_Value := No_GL_Value;
+
+   begin
+      --  If this is for a volatile full access object, load that object
+
+      if VFA and then not Is_Data (LHS) then
+         LHS := Get (To_Primitive (LHS), Object);
+      end if;
+
+      --  Now use one of two stratgies, depending on whether or not we have
+      --  data.
+
+      if Is_Data (LHS) then
+         Result := Insert_Value
+           (LHS, RHS, Idxs_From_GL_Values (Swap_Indices (Idxs, LHS)));
+      else
+         Emit_Assignment (Get_Indexed_LValue (Idxs, LHS), Value => RHS);
+      end if;
+
+      return Result;
+   end Build_Indexed_Store;
+
+   -------------------------
+   -- Build_Indexed_Store --
+   -------------------------
+
+   procedure Build_Indexed_Store
+     (LHS  : GL_Value;
+      Idxs : GL_Value_Array;
+      RHS  : GL_Value;
+      VFA  : Boolean := False)
+   is
+      Result : constant GL_Value := Build_Indexed_Store (LHS, Idxs, RHS, VFA);
+
+   begin
+      --  If we have a value, copy it back into LHS
+
+      if Present (Result) then
+         Emit_Assignment (LHS, Value => Result);
+      end if;
+   end Build_Indexed_Store;
 
    -------------------
    -- Get_Dim_Range --

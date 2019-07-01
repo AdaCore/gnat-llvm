@@ -248,6 +248,25 @@ package GNATLLVM.Arrays is
      with Pre => Present (V), Post => Present (Build_Indexed_Load'Result);
    --  Perform an indexed load operation with prefix V and indices Idxs.
 
+   function Build_Indexed_Store
+     (In_LHS : GL_Value;
+      Idxs   : GL_Value_Array;
+      RHS    : GL_Value;
+      VFA    : Boolean := False) return GL_Value
+     with Pre => Present (In_LHS) and then Present (RHS);
+   --  Perform an indexed store operation with prefix In_LHS, indices Idxs,
+   --  and RHS, the data to store.  If we return a value, that's the array
+   --  that needs to be stored into the actual LHS.  If no value if
+   --  returned, all our work is done.
+
+   procedure Build_Indexed_Store
+     (LHS  : GL_Value;
+      Idxs : GL_Value_Array;
+      RHS  : GL_Value;
+      VFA  : Boolean := False)
+     with Pre => Present (LHS) and then Present (RHS);
+   --  Similar to the function version, but we always update LHS
+
 private
 
    --  A bound of a constrained array can either be a compile-time

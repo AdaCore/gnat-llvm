@@ -1683,7 +1683,7 @@ package body GNATLLVM.Subprograms is
    function Call_Alloc
      (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value is
    begin
-      return Call (Emit_Safe_LValue (Proc), Size_GL_Type,
+      return Call (Emit_Identifier (Proc), Size_GL_Type,
                    Add_Static_Link (Proc, Args));
    end Call_Alloc;
 
@@ -1693,7 +1693,7 @@ package body GNATLLVM.Subprograms is
 
    procedure Call_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
    begin
-      Call (Emit_Safe_LValue (Proc), Add_Static_Link (Proc, Args));
+      Call (Emit_Identifier (Proc), Add_Static_Link (Proc, Args));
    end Call_Dealloc;
 
    --------------------

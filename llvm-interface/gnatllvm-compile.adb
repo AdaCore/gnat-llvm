@@ -45,13 +45,6 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Compile is
 
-   --  Note: in order to find the right LLVM instruction to generate,
-   --  you can compare with what Clang generates on corresponding C or C++
-   --  code. This can be done online via http://ellcc.org/demo/index.cgi
-
-   --  See also DragonEgg sources for comparison on how GCC nodes are converted
-   --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
-
    procedure Emit_Loop_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Loop_Statement;
    --  Generate code for a loop

@@ -34,6 +34,13 @@ with LLVM.Types;          use LLVM.Types;
 
 package GNATLLVM is
 
+   --  Note: in order to find the right LLVM instruction to generate,
+   --  you can compare with what Clang generates on corresponding C or C++
+   --  code. This can be done online via http://ellcc.org/demo/index.cgi
+
+   --  See also DragonEgg sources for comparison on how GCC nodes are converted
+   --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
+
    --  This package contains very low-level types, objects, and functions,
    --  mostly corresponding to LLVM objects and exists to avoid circular
    --  dependencies between other specs.  The intent is that every child

@@ -1027,7 +1027,8 @@ package GNATLLVM.GLValue is
    function Bit_Cast
      (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
    is
-     (G_From (Bit_Cast (IR_Builder, LLVM_Value (V), T, Name), V))
+     (G (Bit_Cast (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
+         Unknown))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast'Result);
 
@@ -1053,12 +1054,16 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Pointer (V) and then Is_Access_Type (T),
           Post => Is_Pointer (Pointer_Cast'Result);
 
-   function Pointer_Cast
-     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   function Pointer_Cast_To_Relationship
+     (V    : GL_Value;
+      T    : Type_T;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
    is
-     (G_From (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name), V))
+     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
+         Related_Type (V), R))
      with Pre  => Is_Pointer (V) and then Present (T),
-          Post => Is_Pointer (Pointer_Cast'Result);
+          Post => Is_Pointer (Pointer_Cast_To_Relationship'Result);
 
    function Ptr_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
@@ -1102,7 +1107,8 @@ package GNATLLVM.GLValue is
    function Trunc
      (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
    is
-     (G_From (Trunc (IR_Builder, LLVM_Value (V), T, Name), V))
+     (G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
+         Unknown))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Trunc'Result);
 
@@ -1119,7 +1125,8 @@ package GNATLLVM.GLValue is
    function Z_Ext
      (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
    is
-     (G_From (Z_Ext (IR_Builder, LLVM_Value (V), T, Name), V))
+     (G (Z_Ext (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
+         Unknown))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Z_Ext'Result);
 

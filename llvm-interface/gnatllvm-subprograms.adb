@@ -2022,7 +2022,10 @@ package body GNATLLVM.Subprograms is
 
          begin
             V := Emit_Identifier (Alias (Def_Ident));
-            return (if Type_Of (V) /= T then Pointer_Cast (V, T) else V);
+            return (if   Type_Of (V) /= T
+                    then Pointer_Cast_To_Relationship (V, T,
+                                                       Reference_To_Subprogram)
+                    else V);
          end;
       end if;
 

@@ -22,7 +22,6 @@ with Snames; use Snames;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Arrays;    use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;    use GNATLLVM.Blocks;
 with GNATLLVM.Compile;   use GNATLLVM.Compile;
 with GNATLLVM.Exprs;     use GNATLLVM.Exprs;
 with GNATLLVM.Types;     use GNATLLVM.Types;
@@ -231,7 +230,6 @@ package body GNATLLVM.Conversions is
       No_Truncation       : Boolean := False) return GL_Value
    is
       Result      : GL_Value                 := Emit (N, For_LHS => For_LHS);
-      Orig_Result : constant GL_Value        := Result;
       Prim_GT     : constant GL_Type         := Primitive_GL_Type (GT);
       In_GT       : constant GL_Type         := Related_Type (Result);
       R           : constant GL_Relationship := Relationship (Result);
@@ -367,12 +365,6 @@ package body GNATLLVM.Conversions is
             Result := Convert (Result, GT,
                                Float_Truncate => Float_Truncate,
                                Is_Unchecked   => Is_Unchecked);
-         end if;
-
-         if Is_Undef (Result) and then not Is_Undef (Orig_Result) then
-            Error_Msg_N ("?`Constraint_Error` will be raised at run time",
-                         From_N);
-            Emit_Raise_Call (From_N, CE_Overflow_Check_Failed);
          end if;
 
       --  Otherwise, convert to the primitive type, do any require
@@ -589,10 +581,15 @@ package body GNATLLVM.Conversions is
          Subp := (if Src_Uns then Z_Ext'Access else S_Ext'Access);
       end if;
 
-      --  Here all that's left to do is deal with non-primitive types and
-      --  generate the IR instruction.
+      --  We've verified at the start that our input isn't an undef.  If we
+      --  see an undef here, it means that LLVM has flagged a conversion as
+      --  overflowing (which only happens for FP to int).  Be consistent
+      --  with the rest of our infrastructure in that case and mark it as
+      --  overflowed.  Then all that's left to do is deal with
+      --  non-primitive types and generate the IR instruction.
 
       return Result : GL_Value := Subp (Value, Prim_GT) do
+         Result := Mark_Overflowed (Result, Is_Undef (Result));
          if Related_Type (Result) /= GT then
             Result := From_Primitive (Result, GT);
          end if;

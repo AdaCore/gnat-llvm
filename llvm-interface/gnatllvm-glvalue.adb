@@ -61,6 +61,10 @@ package body GNATLLVM.GLValue is
    --  GL_Value_Is_Valid, we have to be careful not to call any function
    --  that takes a GL_Value as an operand.
 
+   function Trunc_Overflowed (V, Result : GL_Value) return Boolean
+     with Pre => Present (V) and then Present (Result);
+   --  Return True if the truncation operation from V to Result overflowed
+
    -----------------------
    -- GL_Value_Is_Valid --
    -----------------------
@@ -1158,8 +1162,12 @@ package body GNATLLVM.GLValue is
 
    function Int_To_Ptr
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-   is
-     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+  is
+     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V)));
 
    ----------------
    -- Ptr_To_Int --
@@ -1168,8 +1176,11 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Int
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-      (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-          Data, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
+     (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V)));
 
    ----------------
    -- Int_To_Ref --
@@ -1179,10 +1190,12 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       (G_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                          Pointer_Type (Type_Of (GT), 0),
-                          Name),
-              GT, Is_Pristine => Is_Pristine (V),
-              Is_Volatile => Is_Volatile (V), Is_Atomic => Is_Atomic (V)));
+                          Pointer_Type (Type_Of (GT), 0), Name),
+              GT,
+              Is_Pristine => Is_Pristine (V),
+              Is_Volatile => Is_Volatile (V),
+              Is_Atomic   => Is_Atomic   (V),
+              Overflowed  => Overflowed  (V)));
 
    -------------------------
    -- Int_To_Relationship --
@@ -1194,9 +1207,13 @@ package body GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-      (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                      Type_For_Relationship (GT, R), Name),
-          GT, R, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
+     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                     Type_For_Relationship (GT, R), Name),
+         GT, R,
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V)));
 
    --------------
    -- Bit_Cast --
@@ -1205,7 +1222,11 @@ package body GNATLLVM.GLValue is
    function Bit_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V)));
 
    ------------------
    -- Pointer_Cast --
@@ -1215,7 +1236,10 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-         Data, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V)));
 
    ----------------
    -- Ptr_To_Ref --
@@ -1226,8 +1250,11 @@ package body GNATLLVM.GLValue is
    is
      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                            Pointer_Type (Type_Of (GT), 0), Name),
-             GT, Is_Pristine => Is_Pristine (V),
-             Is_Volatile => Is_Volatile (V), Is_Atomic => Is_Atomic (V)));
+             GT,
+             Is_Pristine => Is_Pristine (V),
+             Is_Volatile => Is_Volatile (V),
+             Is_Atomic   => Is_Atomic   (V),
+             Overflowed  => Overflowed  (V)));
 
    ----------------
    -- Ptr_To_Ref --
@@ -1237,8 +1264,11 @@ package body GNATLLVM.GLValue is
    is
      (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
                            Pointer_Type (Type_Of (T), 0), Name),
-             Full_Designated_GL_Type (T), Is_Pristine => Is_Pristine (V),
-             Is_Volatile => Is_Volatile (V), Is_Atomic => Is_Atomic (V)));
+             Full_Designated_GL_Type (T),
+             Is_Pristine => Is_Pristine (V),
+             Is_Volatile => Is_Volatile (V),
+             Is_Atomic   => Is_Atomic   (V),
+             Overflowed  => Overflowed  (V)));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -1250,9 +1280,13 @@ package body GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        Type_For_Relationship (GT, R), Name),
-          GT, R, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
+     (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                       Type_For_Relationship (GT, R), Name),
+         GT, R,
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V)));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -1266,7 +1300,59 @@ package body GNATLLVM.GLValue is
       (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
                         Type_For_Relationship (Related_Type (T), R), Name),
           Related_Type (T), R,
-          Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)));
+          Is_Pristine => Is_Pristine (V),
+          Is_Volatile => Is_Volatile (V),
+          Is_Atomic   => Is_Atomic   (V),
+          Overflowed  => Overflowed  (V)));
+
+   ---------------------
+   -- Trunc_Oveflowed --
+   ---------------------
+
+   function Trunc_Overflowed (V, Result : GL_Value) return Boolean is
+      Bitsize : constant Integer :=
+        Integer (Get_Scalar_Bit_Size (Type_Of (Result)));
+
+   begin
+      --  If this is a modular type or the input or output isn't an integer,
+      --  we can't have an overlow (the output should be an integer if the
+      --  input is, but let's check anyway).
+
+      if Is_Modular_Integer_Type (Result) or else not Is_A_Const_Int (V)
+        or else not Is_A_Const_Int (Result)
+
+        --  If the values of the old and new constants are the same, there's
+        --  no overflow.
+
+        or else Get_Const_Int_Value (V) = Get_Const_Int_Value (Result)
+      then
+         return False;
+
+      --  At this point, we have a non-modular type and the values differ.
+      --  That's an overflow if we have a signed type.
+
+      elsif not Is_Biased_GL_Type (Result)
+        and then not Is_Unsigned_Type (Result)
+      then
+         return True;
+
+      --  Otherwise, we could have an issue because LLVM views all constants
+      --  as sign-extended, so if the high-order bit is set, it'll extend
+      --  the sign all the way out.  We check for this by masking the
+      --  value to its width.
+
+      else
+         declare
+            Mask          : constant ULL := (ULL (2) ** Bitsize) - 1;
+            Orig          : constant ULL := Get_Const_Int_Value_ULL (V);
+            Masked_Result : constant ULL :=
+              Get_Const_Int_Value_ULL (V) and Mask;
+
+         begin
+            return Orig /= Masked_Result;
+         end;
+      end if;
+   end Trunc_Overflowed;
 
    -----------
    -- Trunc --
@@ -1275,7 +1361,32 @@ package body GNATLLVM.GLValue is
    function Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Trunc (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+      T      : constant Type_T   := Type_Of (GT);
+      Result : constant GL_Value :=
+        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), GT);
+
+   begin
+      return Mark_Overflowed
+        (Result, Overflowed (V) or else Trunc_Overflowed (V, Result));
+
+   end Trunc;
+
+   -----------
+   -- Trunc --
+   -----------
+
+   function Trunc
+     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   is
+      Result : constant GL_Value :=
+        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
+           Unknown);
+
+   begin
+      return Mark_Overflowed
+        (Result, Overflowed (V) or else Trunc_Overflowed (V, Result));
+
+   end Trunc;
 
    -----------
    -- S_Ext --
@@ -1293,7 +1404,8 @@ package body GNATLLVM.GLValue is
    function Z_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Z_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (Z_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Overflowed => Overflowed (V)));
 
    --------------
    -- FP_Trunc --
@@ -1302,7 +1414,8 @@ package body GNATLLVM.GLValue is
    function FP_Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_Trunc (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (FP_Trunc (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Overflowed => Overflowed (V)));
 
    ------------
    -- FP_Ext --
@@ -1311,7 +1424,8 @@ package body GNATLLVM.GLValue is
    function FP_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (FP_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Overflowed => Overflowed (V)));
 
    --------------
    -- FP_To_SI --
@@ -1320,7 +1434,8 @@ package body GNATLLVM.GLValue is
    function FP_To_SI
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_To_SI (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (FP_To_SI (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Overflowed => Overflowed (V)));
 
    --------------
    -- FP_To_UI --
@@ -1338,7 +1453,8 @@ package body GNATLLVM.GLValue is
    function UI_To_FP
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (UI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (UI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+        Overflowed => Overflowed (V)));
 
    --------------
    -- SI_To_FP --
@@ -1347,7 +1463,8 @@ package body GNATLLVM.GLValue is
    function SI_To_FP
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (SI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (SI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Overflowed => Overflowed (V)));
 
    -------------------
    -- Build_Cond_Br --
@@ -2006,11 +2123,13 @@ package body GNATLLVM.GLValue is
       --  an instruction.  If so, set the flags according to the type.
       --  We have to treat a pointer as unsigned here, since it's possible
       --  that it might cross the boundary where the high-bit changes.
-      --  A modular type might "overflow" in both signed or unsigned.
+      --  A modular type is defined to wrap.  Biased type are unsigned.
 
       if No (Is_A_Instruction (Inst)) or else Is_Modular_Integer_Type (V) then
          null;
-      elsif Is_Access_Type (V) or else Is_Unsigned_Type (V) then
+      elsif Is_Access_Type (V) or else Is_Biased_GL_Type (V)
+        or else Is_Unsigned_Type (V)
+      then
          Set_NUW (Inst);
       else
          Set_NSW (Inst);
@@ -2165,6 +2284,9 @@ package body GNATLLVM.GLValue is
       end if;
       if Is_Atomic (V) then
          Write_Str ("Atomic ");
+      end if;
+      if Overflowed (V) then
+         Write_Str ("Overflowed ");
       end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
       Dump_GL_Type_Int (V.Typ, False);

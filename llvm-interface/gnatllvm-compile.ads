@@ -49,6 +49,13 @@ package GNATLLVM.Compile is
    --  'Address) where we prefer returning an LValue if we can, but we are
    --  allowed to have a context where the result isn't an LHS.
 
+   procedure Push_Suppress_Overflow;
+   procedure Pop_Suppress_Overflow;
+   --  Push and pop the level of supressing overflow messages.  This is used
+   --  during trial elaborations, such as in Is_No_Elab_Needed to avoid
+   --  producing error messages for values that may not be used and
+   --  certainly will not be used in that context.
+
    function Emit_LValue
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;

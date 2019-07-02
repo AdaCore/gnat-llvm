@@ -64,6 +64,9 @@ package body GNATLLVM.Compile is
      with Pre => Present (N), Post => Present (Emit_Internal'Result);
    --  Same as Emit, but push result into LValue list
 
+   Suppress_Overflow_Depth : Int := 0;
+   --  The depth of Push/Pop_Suppress_Overflow
+
    ------------------
    -- GNAT_To_LLVM --
    ------------------
@@ -162,6 +165,24 @@ package body GNATLLVM.Compile is
       LLVM_Generate_Code (GNAT_Root);
 
    end GNAT_To_LLVM;
+
+   ---------------------------
+   -- Push_Supress_Overflow --
+   ---------------------------
+
+   procedure Push_Suppress_Overflow is
+   begin
+      Suppress_Overflow_Depth := Suppress_Overflow_Depth + 1;
+   end Push_Suppress_Overflow;
+
+   ---------------------------
+   -- Push_Supress_Overflow --
+   ---------------------------
+
+   procedure Pop_Suppress_Overflow is
+   begin
+      Suppress_Overflow_Depth := Suppress_Overflow_Depth - 1;
+   end Pop_Suppress_Overflow;
 
    ----------
    -- Emit --
@@ -749,15 +770,29 @@ package body GNATLLVM.Compile is
                            N_Identifier, N_Indexed_Component,
                            N_Selected_Component)
                    and then Atomic_Sync_Required (N));
+      Result      : GL_Value         :=
+        Emit_Internal (N, LHS, For_LHS => For_LHS, Prefer_LHS => Prefer_LHS);
 
    begin
+      --  If we have an overflow, convert it to an undef.  Unless we're to
+      --  suppress the error, also give an error and emit a raise.
+
+      if Overflowed (Result) then
+         Result := Get_Undef_Relationship (Related_Type (Result),
+                                           Relationship (Result));
+         if Suppress_Overflow_Depth = 0 then
+            Error_Msg_N ("?`Constraint_Error` will be raised at run time",
+                         N);
+            Emit_Raise_Call (N, CE_Overflow_Check_Failed);
+         end if;
+      end if;
+
+      --  Now mark the result as volatile or atomic, as needed, maybe add
+      --  it to the LValue list, and return it.
+
       return Add_To_LValue_List
-        (Mark_Atomic
-           (Mark_Volatile (Emit_Internal (N, LHS,
-                                          For_LHS    => For_LHS,
-                                          Prefer_LHS => Prefer_LHS),
-                           Is_Volatile or else Is_Atomic),
-            Is_Atomic));
+        (Mark_Atomic (Mark_Volatile (Result, Is_Volatile or else Is_Atomic),
+                      Is_Atomic));
    end Emit;
 
    --------------------
@@ -832,9 +867,10 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
 
-            return Emit_Conversion (Expression (N), GT, N,
-                                    Is_Unchecked  => True,
-                                    No_Truncation => No_Truncation (N));
+            return Clear_Overflowed
+              (Emit_Conversion (Expression (N), GT, N,
+                                Is_Unchecked  => True,
+                                No_Truncation => No_Truncation (N)));
 
          when N_Type_Conversion =>
 

@@ -686,9 +686,27 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Is_No_Elab_Needed (N : Node_Id) return Boolean is
+      function Emit_No_Error (N : Node_Id) return GL_Value
+        with Pre => Present (N), Post => Present (Emit_No_Error'Result);
+      --  Like Emit_Expression, but don't post an error if there's an
+      --  overflow.
+
       GT   : constant GL_Type := Full_GL_Type (N);
       Expr : Node_Id;
       F    : Entity_Id;
+
+      -------------------
+      -- Emit_No_Error --
+      -------------------
+
+      function Emit_No_Error (N : Node_Id) return GL_Value is
+      begin
+         return Result : GL_Value do
+            Push_Suppress_Overflow;
+            Result := Emit_Expression (N);
+            Pop_Suppress_Overflow;
+         end return;
+      end Emit_No_Error;
 
    begin
       case Nkind (N) is
@@ -787,7 +805,7 @@ package body GNATLLVM.Variables is
             --  Otherwise, it's static iff its value is a constant integer
 
             else
-               return Is_A_Const_Int (Emit_Expression (N));
+               return Is_A_Const_Int (Emit_No_Error (N));
             end if;
 
          when N_Unary_Op =>
@@ -810,8 +828,8 @@ package body GNATLLVM.Variables is
 
               and then (not Is_Scalar_Type (GT)
                           or else Type_Of (GT) = LLVM_Size_Type
-                          or else Is_A_Const_Int (Emit_Expression (N))
-                          or else Is_A_Const_FP  (Emit_Expression (N)));
+                          or else Is_A_Const_Int (Emit_No_Error (N))
+                          or else Is_A_Const_FP  (Emit_No_Error (N)));
               --  If converting to a scalar type other than Size_Type,
               --  we can't have a relocatable expression.
 

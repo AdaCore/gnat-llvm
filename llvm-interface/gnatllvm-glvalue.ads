@@ -329,6 +329,12 @@ package GNATLLVM.GLValue is
       Is_Atomic            : Boolean;
       --  Set when this value represents an atomic object or type
 
+      Overflowed           : Boolean;
+      --  Set when an arithmetic operation overflowed.  This is propagated
+      --  on further arithmetic or conversions.  When we're ready to post
+      --  an error message about the overflow, this will be converted
+      --  to an undef.
+
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -357,7 +363,7 @@ package GNATLLVM.GLValue is
                                                      Access_GL_Value_Array);
 
    No_GL_Value : constant GL_Value :=
-     (No_Value_T, No_GL_Type, Data, False, False, False);
+     (No_Value_T, No_GL_Type, Data, False, False, False, False);
 
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
@@ -389,6 +395,10 @@ package GNATLLVM.GLValue is
 
    function Is_Atomic (V : GL_Value)  return Boolean is
      (V.Is_Atomic)
+     with Pre => Present (V);
+
+   function Overflowed (V : GL_Value)  return Boolean is
+     (V.Overflowed)
      with Pre => Present (V);
 
    --  Define functions about relationships
@@ -433,19 +443,21 @@ package GNATLLVM.GLValue is
    --  Constructors for a GL_Value
 
    function G
-     (V                    : Value_T;
-      GT                   : GL_Type;
-      Relationship         : GL_Relationship := Data;
-      Is_Pristine          : Boolean := False;
-      Is_Volatile          : Boolean := False;
-      Is_Atomic            : Boolean := False) return GL_Value is
-     ((V, GT, Relationship, Is_Pristine, Is_Volatile, Is_Atomic))
+     (V           : Value_T;
+      GT          : GL_Type;
+      R           : GL_Relationship := Data;
+      Is_Pristine : Boolean         := False;
+      Is_Volatile : Boolean         := False;
+      Is_Atomic   : Boolean         := False;
+      Overflowed  : Boolean         := False) return GL_Value is
+     ((V, GT, R, Is_Pristine, Is_Volatile, Is_Atomic, Overflowed))
      with Pre => Present (V) and then Present (GT);
    --  Raw constructor that allow full specification of all fields
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
-     (G (V, GL_Type'(Related_Type (GV)), Relationship (GV),
-         Is_Pristine (GV), Is_Volatile (GV), Is_Atomic (GV)))
+     (G (V, GL_Type'(Related_Type (GV)),
+         Relationship (GV),
+         Is_Pristine (GV), Is_Volatile (GV), Is_Atomic (GV), Overflowed (GV)))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing
@@ -453,14 +465,14 @@ package GNATLLVM.GLValue is
 
    function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
      (G (LLVM_Value (V), GT, Relationship (V),
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
      (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (V),
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
 
@@ -468,7 +480,7 @@ package GNATLLVM.GLValue is
      (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
    is
      (G (LLVM_Value (V), GT, R,
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -478,7 +490,7 @@ package GNATLLVM.GLValue is
      (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
    is
      (G (LLVM_Value (V), GL_Type'(Related_Type (T)), R,
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
+         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -486,7 +498,7 @@ package GNATLLVM.GLValue is
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
       (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (T),
-          Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
+          Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -497,10 +509,14 @@ package GNATLLVM.GLValue is
       GT          : GL_Type;
       Is_Pristine : Boolean := False;
       Is_Volatile : Boolean := False;
-      Is_Atomic   : Boolean := False) return GL_Value
+      Is_Atomic   : Boolean := False;
+      Overflowed  : Boolean := False) return GL_Value
    is
      (G (V, GT, Relationship_For_Ref (GT),
-         Is_Pristine, Is_Volatile, Is_Atomic))
+         Is_Pristine => Is_Pristine,
+         Is_Volatile => Is_Volatile,
+         Is_Atomic   => Is_Atomic,
+         Overflowed  => Overflowed))
      with Pre  => Present (V) and then Present (GT),
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
@@ -508,8 +524,10 @@ package GNATLLVM.GLValue is
 
    function Not_Pristine (V : GL_Value) return GL_Value is
      (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
-         Is_Pristine => False, Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic (V)))
+         Is_Pristine => False,
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V)))
      with Pre => Present (V), Post => not Is_Pristine (Not_Pristine'Result);
    --  Make a copy of V with the Is_Pristine flag cleared
 
@@ -525,7 +543,8 @@ package GNATLLVM.GLValue is
       (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
           Is_Pristine => Is_Pristine (V),
           Is_Volatile => Is_Volatile (V) or else Flag,
-          Is_Atomic   => Is_Atomic (V)))
+          Is_Atomic   => Is_Atomic   (V),
+          Overflowed  => Overflowed  (V)))
      with Pre  => Present (V),
           Post => not Flag or else Is_Volatile (Mark_Volatile'Result);
    --  Make a copy of V with the Is_Volatile flag set if Flag is True
@@ -534,11 +553,37 @@ package GNATLLVM.GLValue is
      (V : GL_Value; Flag : Boolean := True) return GL_Value
    is
      (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
-         Is_Pristine => Is_Pristine (V), Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic (V) or else Flag))
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V) or else Flag,
+         Overflowed  => Overflowed  (V)))
      with Pre  => Present (V),
           Post => not Flag or else Is_Atomic (Mark_Atomic'Result);
    --  Make a copy of V with the Is_Atomic flag set if Flag is True
+
+   function Mark_Overflowed
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => Overflowed  (V) or else Flag))
+     with Pre  => Present (V),
+          Post => not Flag or else Overflowed (Mark_Overflowed'Result);
+   --  Make a copy of V with the Overflowed flag set if Flag is True
+
+   function Clear_Overflowed
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V),
+         Overflowed  => False))
+     with Pre  => Present (V),
+          Post => not Overflowed (Clear_Overflowed'Result);
+   --  Clear the overflow flag in V and return the result
 
    procedure Discard (V : GL_Value);
    --  Evaluate V and throw away the result
@@ -1088,7 +1133,10 @@ package GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value is
      (G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
-         Related_Type (V), R, Is_Pristine (V), Is_Volatile (V), Is_Atomic (V)))
+         Related_Type (V), R,
+         Is_Pristine => Is_Pristine (V),
+         Is_Volatile => Is_Volatile (V),
+         Is_Atomic   => Is_Atomic   (V)))
      with Pre  => Is_Pointer (V) and then Present (T),
           Post => Is_Pointer (Ptr_To_Relationship'Result);
 
@@ -1106,9 +1154,6 @@ package GNATLLVM.GLValue is
 
    function Trunc
      (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
-   is
-     (G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
-         Unknown))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Trunc'Result);
 
@@ -1264,11 +1309,13 @@ package GNATLLVM.GLValue is
    is
       ((if    Is_Const_Int_Value (RHS, 0) then LHS
         elsif Is_Const_Int_Value (LHS, 0) then RHS
-        else G_From (Set_Arith_Attrs
-                       (Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                             Name),
+        else  Mark_Overflowed
+               (G_From (Set_Arith_Attrs
+                          (Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                                Name),
+                           LHS),
                         LHS),
-                     LHS)))
+                Overflowed (LHS) or else Overflowed (RHS))))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (Add'Result);
@@ -1277,11 +1324,13 @@ package GNATLLVM.GLValue is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      ((if   Is_Const_Int_Value (RHS, 0) then LHS
-       else G_From (Set_Arith_Attrs
-                      (Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                            Name),
+       else Mark_Overflowed
+              (G_From (Set_Arith_Attrs
+                         (Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                               Name),
+                          LHS),
                        LHS),
-                    LHS)))
+               Overflowed (LHS) or else Overflowed (RHS))))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (Sub'Result);
@@ -1291,11 +1340,13 @@ package GNATLLVM.GLValue is
    is
      ((if    Is_Const_Int_Value (RHS, 1) then LHS
        elsif Is_Const_Int_Value (LHS, 1) then RHS
-       else G_From (Set_Arith_Attrs
-                      (Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                            Name),
-                       LHS),
-                    LHS)))
+       else  Mark_Overflowed
+               (G_From (Set_Arith_Attrs
+                          (Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                                Name),
+                           LHS),
+                        LHS),
+                Overflowed (LHS) or else Overflowed (RHS))))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (Mul'Result);
@@ -1303,8 +1354,10 @@ package GNATLLVM.GLValue is
    function S_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (S_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (S_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (S_Div'Result);
@@ -1312,8 +1365,10 @@ package GNATLLVM.GLValue is
    function U_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (U_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (U_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (U_Div'Result);
@@ -1321,8 +1376,10 @@ package GNATLLVM.GLValue is
    function S_Rem
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (S_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (S_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (S_Rem'Result);
@@ -1330,8 +1387,10 @@ package GNATLLVM.GLValue is
    function U_Rem
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (U_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (U_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (U_Rem'Result);
@@ -1339,32 +1398,43 @@ package GNATLLVM.GLValue is
    function Build_And
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Build_And (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (Build_And (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                            Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_And'Result);
 
    function Build_Or
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Build_Or (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (Build_Or (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                           Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Or'Result);
 
    function Build_Xor
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Build_Xor (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (Build_Xor (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
+                           Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Xor'Result);
 
    function F_Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (F_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
            Post => Is_Floating_Point_Type (F_Add'Result);
@@ -1372,8 +1442,10 @@ package GNATLLVM.GLValue is
    function F_Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (F_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
            Post => Is_Floating_Point_Type (F_Sub'Result);
@@ -1381,8 +1453,10 @@ package GNATLLVM.GLValue is
    function F_Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (F_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
            Post => Is_Floating_Point_Type (F_Mul'Result);
@@ -1390,8 +1464,10 @@ package GNATLLVM.GLValue is
    function F_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-              LHS))
+     (Mark_Overflowed
+        (G_From (F_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
+                 LHS),
+         Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
            Post => Is_Floating_Point_Type (F_Div'Result);

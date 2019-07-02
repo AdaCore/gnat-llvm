@@ -427,7 +427,9 @@ package GNATLLVM.Types is
    function No      (V : IDS) return Boolean is (V =  No_IDS);
    function Present (V : IDS) return Boolean is (V /= No_IDS);
 
-   function Is_Const  (V : IDS) return Boolean is (Present (V.Value));
+   function Is_Const  (V : IDS) return Boolean is
+     (Present (V.Value) and then not Overflowed (V.Value)
+        and then not Is_Undef (V.Value));
 
    function Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
      ((False,  Size_Const_Int (C, Sign_Extend)))
@@ -594,7 +596,9 @@ package GNATLLVM.Types is
    type Binop_Access is access
      function (V1, V2 : GL_Value; Name : String := "") return GL_Value;
 
-   function Is_Const  (V : BA_Data) return Boolean is (Present (V.C_Value));
+   function Is_Const  (V : BA_Data) return Boolean is
+     (Present (V.C_Value) and then not Overflowed (V.C_Value)
+        and then not Is_Undef (V.C_Value));
 
    function Const_Val_ULL (V : BA_Data) return ULL is
      (Get_Const_Int_Value_ULL (V.C_Value))

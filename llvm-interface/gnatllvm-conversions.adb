@@ -235,6 +235,8 @@ package body GNATLLVM.Conversions is
       R           : constant GL_Relationship := Relationship (Result);
       GT_Uns      : constant Boolean         := Is_Unsigned_For_RM (GT);
       In_GT_Uns   : constant Boolean         := Is_Unsigned_For_RM (In_GT);
+      Error_N     : constant Node_Id         :=
+        (if Present (From_N) then From_N else N);
 
    begin
       --  We have to be careful here.  There isn't as clear a distinction
@@ -268,12 +270,13 @@ package body GNATLLVM.Conversions is
          Error_Msg_Node_2 := Full_Etype (GT);
          Error_Msg
            ("??conversion between subprogram access types of different",
-            Sloc (N));
+            Sloc (Error_N));
          Error_Msg
            ("\conventions, & and &, will not work if the former points ",
-            Sloc (N));
+            Sloc (Error_N));
          Error_Msg
-           ("\to a subprogram that references parent variables.", Sloc (N));
+           ("\to a subprogram that references parent variables.",
+            Sloc (Error_N));
       end if;
 
       --  If we're converting to an elementary type and need an overflow

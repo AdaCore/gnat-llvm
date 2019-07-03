@@ -1614,19 +1614,47 @@ package body GNATLLVM.GLValue is
    ----------
 
    function Load (Ptr : GL_Value; Name : String := "") return GL_Value is
-      New_R     : constant GL_Relationship :=
+      New_R          : constant GL_Relationship :=
         Relation_Props (Relationship (Ptr)).Deref;
       --  Get the resulting relation after the load
 
-      Load_GT   : constant GL_Type         :=
+      Load_GT        : constant GL_Type         :=
         (if   Is_Data (New_R) then Full_Designated_GL_Type (Ptr)
          else Related_Type (Ptr));
       --  If our result is data, the resulting type may be the designated
       --  type of an access type. Otherwise, it's the same type.
 
-      Load_Inst : constant Value_T         :=
-        Load (IR_Builder, LLVM_Value (Ptr), Name);
+      T              : constant Type_T          := Type_Of (Load_GT);
+      --  The LLVM type that will be loaded by this instruction
+
+      Result_Bits    : constant Nat             :=
+        (if Is_Data (New_R) then Nat (Get_Scalar_Bit_Size (T)) else 0);
+      --  Size in bits that will be loaded by this instruction
+
+      Special_Atomic : constant Boolean         :=
+        Is_Data (New_R) and then Is_Atomic (Ptr)
+          and then not Atomic_Kind (T)
+          and then Nat'(Get_Type_Alignment (Load_GT)) >= Result_Bits;
+      --  True if this is an atomic reference that LLVM can't handle
+      --  directly.
+
+      Equiv_T        : constant Type_T         :=
+        (if   Special_Atomic then Pointer_Type (Int_Ty (Result_Bits), 0)
+         else No_Type_T);
+      --  Integer type with size matching that of the type to be loaded
+
+      Ptr_Val        : constant Value_T        :=
+        (if   Special_Atomic
+         then Pointer_Cast (IR_Builder, LLVM_Value (Ptr), Equiv_T, "")
+         else LLVM_Value (Ptr));
+      --  Address of item to load
+
+      Load_Inst : Value_T                      :=
+        Load (IR_Builder, Ptr_Val, Name);
       --  The actual load instruction
+
+      Memory    : GL_Value;
+      --  Memory to use as temporary
 
    begin
       --  If this is going to actually be pointing to data of the related
@@ -1635,7 +1663,19 @@ package body GNATLLVM.GLValue is
       --  this isn't true.
 
       if Is_Data (New_R) then
-         Add_Type_Data_To_Instruction (Load_Inst, Ptr);
+         Add_Type_Data_To_Instruction (Load_Inst, Ptr, Special_Atomic);
+      end if;
+
+      --  If this is the special atomic case, we need to allocate memory,
+      --  store what we loaded into it, load it back again as the proper
+      --  type, and return that value.
+
+      if Special_Atomic then
+         Memory := Allocate_For_Type (Load_GT, Load_GT, Empty);
+         Discard (Build_Store (IR_Builder, Load_Inst,
+                               Pointer_Cast (IR_Builder, LLVM_Value (Memory),
+                                             Equiv_T, "")));
+         Load_Inst := Load (IR_Builder, LLVM_Value (Memory), "");
       end if;
 
       --  Now build the result, with the proper GT and relationship
@@ -1648,12 +1688,43 @@ package body GNATLLVM.GLValue is
    -----------
 
    procedure Store (Expr : GL_Value; Ptr : GL_Value) is
-      Store_Inst : constant Value_T :=
-        Build_Store (IR_Builder, LLVM_Value (Expr), LLVM_Value (Ptr));
+      GT             : constant GL_Type := Related_Type (Expr);
+      T              : constant Type_T  := Type_Of (Expr);
+      Result_Bits    : constant Nat     :=
+        (if Is_Data (Expr) then Nat (Get_Scalar_Bit_Size (T)) else 0);
+      Special_Atomic : constant Boolean :=
+        Is_Data (Expr) and then Is_Atomic (Ptr) and then not Atomic_Kind (T)
+          and then Nat'(Get_Type_Alignment (GT)) >= Result_Bits;
+      Equiv_T        : constant Type_T  :=
+        (if   Special_Atomic then Pointer_Type (Int_Ty (Result_Bits), 0)
+         else No_Type_T);
+      Ptr_Val        : constant Value_T :=
+        (if   Special_Atomic
+         then Pointer_Cast (IR_Builder, LLVM_Value (Ptr), Equiv_T, "")
+         else LLVM_Value (Ptr));
+      Val_To_Store   : Value_T          := LLVM_Value (Expr);
+      Store_Inst     : Value_T;
+      Memory         : GL_Value;
 
    begin
+      --  If this is a special atomic store, allocate a temporary, store
+      --  the data into it, then load that as the equivalent type and store
+      --  into into the pointer-punned result.
+
+      if Special_Atomic then
+         Memory := Allocate_For_Type (GT, GT, Empty);
+         Discard (Build_Store (IR_Builder, Val_To_Store, LLVM_Value (Memory)));
+         Val_To_Store := Load (IR_Builder,
+                               Pointer_Cast (IR_Builder, LLVM_Value (Memory),
+                                             Equiv_T, ""), "");
+      end if;
+
+      --  Now do the actual store and set the attributes
+
+      Store_Inst := Build_Store (IR_Builder, Val_To_Store, Ptr_Val);
+
       if Is_Data (Expr) then
-         Add_Type_Data_To_Instruction (Store_Inst, Ptr);
+         Add_Type_Data_To_Instruction (Store_Inst, Ptr, Special_Atomic);
       end if;
 
    end Store;

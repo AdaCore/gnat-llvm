@@ -1322,16 +1322,20 @@ package body GNATLLVM.Types is
    -- Add_Type_Data_To_Instruction --
    ----------------------------------
 
-   procedure Add_Type_Data_To_Instruction (Inst : Value_T; V : GL_Value)
+   procedure Add_Type_Data_To_Instruction
+     (Inst : Value_T; V : GL_Value; Special_Atomic : Boolean := False)
    is
       GT   : constant GL_Type    := Related_Type (V);
       TBAA : constant Metadata_T := Get_TBAA (Full_Etype (GT));
+
    begin
       Set_Volatile  (Inst, Is_Volatile (V));
       Set_Ordering  (Inst,
                      (if   Is_Atomic (V)
-                           and then Atomic_Kind
-                                      (Get_Element_Type (Type_Of (V)))
+                           and then (Special_Atomic
+                                       or else (Atomic_Kind
+                                                  (Get_Element_Type
+                                                     (Type_Of (V)))))
                       then Atomic_Ordering_Sequentially_Consistent
                       else Atomic_Ordering_Not_Atomic));
       Set_Alignment (Inst,
@@ -1359,28 +1363,15 @@ package body GNATLLVM.Types is
       --  If this is an anonymous base type, nothing to check, the
       --  error will be reported on the source type if need be.
 
-      if not Comes_From_Source (E) then
-         return;
-      end if;
+      if not Comes_From_Source (E)
 
-      --  If we're actually checking for atomic (as opposed to VFA),
-      --  we can only support types that are the basic LLVM types and
-      --  that is at least as aligned as their alignment.
+      --  Consider all aligned elementary types as atomic
 
-      if Is_Atomic (E) then
-         if Get_Type_Kind (T) not in Struct_Type_Kind | Array_Type_Kind
-           and then Align >= Get_Type_Alignment (T)
-         then
-            return;
-         end if;
+        or else (Is_Elementary_Type (GT)
+                   and then Align >= Get_Type_Alignment (T))
 
-      --  In the VFA, case, consider all aligned elementary types as atomic
-
-      elsif (Is_Elementary_Type (GT)
-               and then Align >= Get_Type_Alignment (T))
-
-        --  Or if it's a fixed size, the size is equal to the alignment,
-        --  and the alignment is less than a word.        --  atomic.
+      --  Or if it's a fixed size, the size is equal to the alignment,
+      --  and the alignment is less than a word.        --  atomic.
 
         or else (not Is_Dynamic_Size (GT)
                    and then Align <= Get_Bits_Per_Word

@@ -573,9 +573,7 @@ package GNATLLVM.GLValue is
           Post => not Flag or else Overflowed (Mark_Overflowed'Result);
    --  Make a copy of V with the Overflowed flag set if Flag is True
 
-   function Clear_Overflowed
-     (V : GL_Value; Flag : Boolean := True) return GL_Value
-   is
+   function Clear_Overflowed (V : GL_Value) return GL_Value is
      (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
          Is_Pristine => Is_Pristine (V),
          Is_Volatile => Is_Volatile (V),

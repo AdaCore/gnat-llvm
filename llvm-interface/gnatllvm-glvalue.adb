@@ -1305,6 +1305,82 @@ package body GNATLLVM.GLValue is
           Is_Atomic   => Is_Atomic   (V),
           Overflowed  => Overflowed  (V)));
 
+   -------------
+   -- Add_Sub --
+   -------------
+
+   function Add_Sub
+     (LHS, RHS : GL_Value; Is_Add : Boolean; Name : String) return GL_Value
+   is
+      V      : Value_T;
+      Result : GL_Value;
+
+   begin
+      --  First, do some simple constant folding, but be sure that a zero is
+      --  a real zero.
+
+      if Is_Const_Int_Value (RHS, 0) then
+         return Mark_Overflowed (LHS, Overflowed (RHS));
+      elsif Is_Const_Int_Value (LHS, 0) then
+         return Mark_Overflowed ((if Is_Add then RHS else Neg (RHS, Name)),
+                                 Overflowed (LHS));
+      end if;
+
+      --  Otherwise, perform the operation and respect any overflow flags
+
+      V := (if   Is_Add
+            then Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name)
+            else Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name));
+      Result := Mark_Overflowed (G_From (Set_Arith_Attrs (V, LHS), LHS),
+                                 Overflowed (LHS) or else Overflowed (RHS));
+
+      --  If either operand or the result isn't a constant integer, if this
+      --  is a modular integer type, or if we already had an overflow, we
+      --  don't have to test for overflow.
+
+      if not Is_A_Const_Int (LHS) or else not Is_A_Const_Int (RHS)
+        or else not Is_A_Const_Int (Result) or else Overflowed (Result)
+        or else Is_Modular_Integer_Type (Result)
+      then
+         return Result;
+
+      --  Otherwise, test for overflow.  Note that, unlike in C, LLVM
+      --  defines the result if an overflow occurs (mod 2**N), so we can
+      --  safely do post-operation testing that we couldn't do if this were
+      --  the C addition operation.  The unsigned case is simple
+
+      elsif Is_Unsigned_Type (Result) then
+         declare
+            LHS_I : constant ULL := Get_Const_Int_Value_ULL (LHS);
+            RHS_I : constant ULL := Get_Const_Int_Value_ULL (RHS);
+            Res_I : constant ULL := Get_Const_Int_Value_ULL (Result);
+
+         begin
+            return Mark_Overflowed
+              (Result, (if Is_Add then Res_I < LHS_I else LHS_I < RHS_I));
+         end;
+
+      else
+         --  For signed, we overflow if the two operands have the same (for
+         --  addition) or different (for subtraction) sign and the sign of
+         --  the result differs.
+
+         declare
+            LHS_Neg    : constant Boolean  := Get_Const_Int_Value (LHS) < 0;
+            RHS_Neg    : constant Boolean  := Get_Const_Int_Value (RHS) < 0;
+            Res_Neg    : constant Boolean  := Get_Const_Int_Value (Result) < 0;
+            Maybe_Ovfl : constant Boolean  :=
+              (if Is_Add then LHS_Neg = RHS_Neg else LHS_Neg = not RHS_Neg);
+
+         begin
+            return Mark_Overflowed (Result,
+                                    Maybe_Ovfl and then LHS_Neg = not Res_Neg);
+
+         end;
+      end if;
+
+   end Add_Sub;
+
    ---------------------
    -- Trunc_Oveflowed --
    ---------------------

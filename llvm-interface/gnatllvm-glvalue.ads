@@ -860,7 +860,7 @@ package GNATLLVM.GLValue is
    --  Add the Writeonly attribute to parameter with index Idx
 
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
-     (Is_A_Const_Int (V) and then Get_Const_Int_Value (V) = LLI (Val))
+     (Is_A_Const_Int (V) and then Get_Const_Int_Value_ULL (V) = Val)
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 
@@ -1302,33 +1302,24 @@ package GNATLLVM.GLValue is
                   and then Is_Floating_Point_Type (RHS),
           Post => Present (F_Cmp'Result);
 
+   function Add_Sub
+     (LHS, RHS : GL_Value; Is_Add : Boolean; Name : String) return GL_Value
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                  and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Add_Sub'Result);
+
    function Add
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-      ((if    Is_Const_Int_Value (RHS, 0) then LHS
-        elsif Is_Const_Int_Value (LHS, 0) then RHS
-        else  Mark_Overflowed
-               (G_From (Set_Arith_Attrs
-                          (Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                                Name),
-                           LHS),
-                        LHS),
-                Overflowed (LHS) or else Overflowed (RHS))))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
-                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Add'Result);
+     (Add_Sub (LHS, RHS, True, Name))
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                  and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Add'Result);
 
    function Sub
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     ((if   Is_Const_Int_Value (RHS, 0) then LHS
-       else Mark_Overflowed
-              (G_From (Set_Arith_Attrs
-                         (Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                               Name),
-                          LHS),
-                       LHS),
-               Overflowed (LHS) or else Overflowed (RHS))))
+     (Add_Sub (LHS, RHS, False, Name))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (Sub'Result);

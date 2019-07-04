@@ -232,6 +232,13 @@ package body GNATLLVM.GLValue is
    function Is_Bit_Packed_Array_Impl_Type (V : GL_Value) return Boolean is
      (Is_Bit_Packed_Array_Impl_Type (Related_Type (V)));
 
+   ----------------------
+   -- Is_Unsigned_Type --
+   ----------------------
+
+   function Is_Unsigned_Type (V : GL_Value) return Boolean is
+     (not Is_Reference (V) and then Is_Unsigned_Type (Related_Type (V)));
+
    -----------------------
    -- Type_Needs_Bounds --
    -----------------------
@@ -1316,8 +1323,7 @@ package body GNATLLVM.GLValue is
       Result : GL_Value;
 
    begin
-      --  First, do some simple constant folding, but be sure that a zero is
-      --  a real zero.
+      --  First, do some simple constant folding
 
       if Is_Const_Int_Value (RHS, 0) then
          return Mark_Overflowed (LHS, Overflowed (RHS));
@@ -1381,6 +1387,60 @@ package body GNATLLVM.GLValue is
 
    end Add_Sub;
 
+   ---------
+   -- Mul --
+   ---------
+
+   function Mul (LHS, RHS : GL_Value; Name : String := "") return GL_Value is
+      Result : GL_Value;
+
+   begin
+      --  First, do some simple constant folding. Note that 0 * overflow is
+      --  still zero.
+
+      if Is_Const_Int_Value (RHS, 0) then
+         return RHS;
+      elsif Is_Const_Int_Value (LHS, 0) then
+         return LHS;
+      elsif Is_Const_Int_Value (RHS, 1) then
+         return Mark_Overflowed (LHS, Overflowed (RHS));
+      elsif Is_Const_Int_Value (LHS, 1) then
+         return Mark_Overflowed (RHS, Overflowed (LHS));
+      end if;
+
+      --  Otherwise, perform the operation and respect any overflow flags
+
+      Result := Mark_Overflowed
+        (G_From
+           (Set_Arith_Attrs (Mul (IR_Builder, LLVM_Value (LHS),
+                                  LLVM_Value (RHS), Name),
+                             LHS),
+            LHS),
+         Overflowed (LHS) or else Overflowed (RHS));
+
+      --  If either operand or the result isn't a constant integer, if this
+      --  is a modular integer type, or if we already had an overflow, we
+      --  don't have to test for overflow.
+
+      if not Is_A_Const_Int (LHS) or else not Is_A_Const_Int (RHS)
+        or else not Is_A_Const_Int (Result) or else Overflowed (Result)
+        or else Is_Modular_Integer_Type (Result)
+      then
+         return Result;
+
+      else
+         declare
+            LHS_I : constant LLI := Get_Const_Int_Value (LHS);
+            RHS_I : constant LLI := Get_Const_Int_Value (RHS);
+            Res_I : constant LLI := Get_Const_Int_Value (Result);
+
+         begin
+            return Mark_Overflowed (Result, Res_I / LHS_I /= RHS_I);
+         end;
+      end if;
+
+   end Mul;
+
    ---------------------
    -- Trunc_Oveflowed --
    ---------------------
@@ -1407,9 +1467,7 @@ package body GNATLLVM.GLValue is
       --  At this point, we have a non-modular type and the values differ.
       --  That's an overflow if we have a signed type.
 
-      elsif not Is_Biased_GL_Type (Result)
-        and then not Is_Unsigned_Type (Result)
-      then
+      elsif not Is_Unsigned_Type (Result) then
          return True;
 
       --  Otherwise, we could have an issue because LLVM views all constants
@@ -2274,9 +2332,7 @@ package body GNATLLVM.GLValue is
 
       if No (Is_A_Instruction (Inst)) or else Is_Modular_Integer_Type (V) then
          null;
-      elsif Is_Access_Type (V) or else Is_Biased_GL_Type (V)
-        or else Is_Unsigned_Type (V)
-      then
+      elsif Is_Access_Type (V) or else Is_Unsigned_Type (V) then
          Set_NUW (Inst);
       else
          Set_NSW (Inst);

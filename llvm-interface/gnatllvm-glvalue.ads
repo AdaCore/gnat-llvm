@@ -682,8 +682,7 @@ package GNATLLVM.GLValue is
      (not Is_Reference (V) and then Is_Floating_Point_Type (Full_Etype (V)))
      with Pre => Present (V);
 
-   function Is_Unsigned_Type (V : GL_Value) return Boolean is
-     (not Is_Reference (V) and then Is_Unsigned_Type (Full_Etype (V)))
+   function Is_Unsigned_Type (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function Is_Discrete_Or_Fixed_Point_Type (V : GL_Value) return Boolean is
@@ -860,7 +859,8 @@ package GNATLLVM.GLValue is
    --  Add the Writeonly attribute to parameter with index Idx
 
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
-     (Is_A_Const_Int (V) and then Get_Const_Int_Value_ULL (V) = Val)
+     (Is_A_Const_Int (V) and then not Overflowed (V)
+      and then Get_Const_Int_Value_ULL (V) = Val)
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 
@@ -1320,25 +1320,15 @@ package GNATLLVM.GLValue is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (Add_Sub (LHS, RHS, False, Name))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
-                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Sub'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                  and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Sub'Result);
 
    function Mul
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
-   is
-     ((if    Is_Const_Int_Value (RHS, 1) then LHS
-       elsif Is_Const_Int_Value (LHS, 1) then RHS
-       else  Mark_Overflowed
-               (G_From (Set_Arith_Attrs
-                          (Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                                Name),
-                           LHS),
-                        LHS),
-                Overflowed (LHS) or else Overflowed (RHS))))
-      with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
-                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
-           Post => Is_Discrete_Or_Fixed_Point_Type (Mul'Result);
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                  and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Mul'Result);
 
    function S_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value

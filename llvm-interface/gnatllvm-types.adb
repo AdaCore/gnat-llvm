@@ -615,7 +615,8 @@ package body GNATLLVM.Types is
    begin
       --  We have three cases.  If the object has a native type and we're
       --  not trying to over-align it, we just do the alloca and that's
-      --  all.
+      --  all.  Test for the size being other an overflow or an undef,
+      --  which we'll assume was likely caused by an overflow.
 
       if not Is_Nonnative_Type (Alloc_GT) and then not Overalign then
          if Do_Stack_Check
@@ -686,6 +687,18 @@ package body GNATLLVM.Types is
                              N, SE_Object_Too_Large);
       end if;
 
+      --  If the number of elements overflowed, raise Storage_Error.  Bt
+      --  check for the pathalogical case of an array of zero-sized elements.
+
+      if Overflowed (Num_Elts) or else Is_Undef (Num_Elts) then
+         if Get_Type_Size (Element_GT) = 0 then
+            Num_Elts := Size_Const_Int (Uint_1);
+         else
+            Emit_Raise_Call (N, SE_Object_Too_Large);
+            return Get_Undef_Ref (GT);
+         end if;
+      end if;
+
       --  Now allocate the object, align if necessary, and then move
       --  any data into it.
 
@@ -747,6 +760,13 @@ package body GNATLLVM.Types is
          end if;
       end if;
 
+      --  If the size overflowed, raise Storage_Error
+
+      if Overflowed (Size) or else Is_Undef (Size) then
+         Emit_Raise_Call (N, SE_Object_Too_Large);
+         return Get_Undef_Ref (GT);
+      end if;
+
       --  If no procedure was specified, use the default memory allocation
       --  function, where we just pass a size.  But we can only do this
       --  directly if the requested alignment is a constand and no larger
@@ -776,6 +796,14 @@ package body GNATLLVM.Types is
             Ptr_Loc    : constant GL_Value := Aligned - To_Bytes (Ptr_Size);
 
          begin
+            --  It may have been the case that Size didn't oveflow until
+            --  we did the computation above.  So check again.
+
+            if Overflowed (Total_Size) then
+               Emit_Raise_Call (N, SE_Object_Too_Large);
+               return Get_Undef_Ref (GT);
+            end if;
+
             Store (Alloc, Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
             Result := Convert (Aligned, A_Char_GL_Type);
          end;
@@ -1525,40 +1553,18 @@ package body GNATLLVM.Types is
       C      : TCode;
       Name   : String := "") return BA_Data
    is
+      Result   : GL_Value;
       Op1, Op2 : Node_Ref_Or_Val;
 
    begin
       --  If both are constants, do the operation as a constant and return
-      --  that value.  Unfortunately, LLVM doesn't check for overflow in
-      --  the constant case, so we have to do it.
+      --  that value unless it overflows.
 
       if Is_Const (V1) and then Is_Const (V2) then
-         declare
-            Res     : constant GL_Value := F (V1.C_Value, V2.C_Value, Name);
-            V1_Neg  : constant Boolean  := Const_Int (V1) < 0;
-            V2_Neg  : constant Boolean  := Const_Int (V2) < 0;
-            Res_Neg : constant Boolean  := Get_Const_Int_Value (Res) < 0;
-
-         begin
-            case C is
-               when Plus_Expr =>
-                  if V1_Neg = V2_Neg and then Res_Neg /= V1_Neg then
-                     return No_BA;
-                  end if;
-               when Minus_Expr =>
-                  if V1_Neg = not V2_Neg and then Res_Neg /= V1_Neg then
-                     return No_BA;
-                  end if;
-               when Mult_Expr =>
-                  if Res_Neg /= V1_Neg xor V2_Neg then
-                     return No_BA;
-                  end if;
-               when others =>
-                  null;
-            end case;
-
-            return (False, Res, No_Uint);
-         end;
+         Result := F (V1.C_Value, V2.C_Value, Name);
+         if not Overflowed (Result) and then not Is_Undef (Result) then
+            return (False, Result, No_Uint);
+         end if;
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint
@@ -1782,7 +1788,19 @@ package body GNATLLVM.Types is
          --  Otherwise, see if this is a constant
 
          elsif Is_No_Elab_Needed (V) then
-            return (False, Emit_Expression (V), No_Uint);
+            declare
+               Result : constant GL_Value := Emit_Expression (V);
+
+            begin
+               if not Overflowed (Result) and then not Is_Undef (Result) then
+                  return (False, Emit_Expression (V), No_Uint);
+               else
+                  SO_Info :=
+                    Create_Node (Dynamic_Val, UI_From_Int (Var_Idx_For_BA));
+                  Var_Idx_For_BA := Var_Idx_For_BA + 1;
+               end if;
+            end;
+
          else
             SO_Info := Create_Node (Dynamic_Val, UI_From_Int (Var_Idx_For_BA));
             Var_Idx_For_BA := Var_Idx_For_BA + 1;

@@ -885,7 +885,9 @@ package body GNATLLVM.Variables is
             end case;
 
          when N_Identifier | N_Expanded_Name =>
-            return Is_No_Elab_Needed (Entity (N));
+            return Is_No_Elab_Needed (Entity (N))
+              and then Is_Static_Conversion (Full_GL_Type (Entity (N)),
+                                             Full_GL_Type (N));
 
          --  If Emit_Identifier would walk into a constant value, we do as well
 
@@ -895,10 +897,16 @@ package body GNATLLVM.Variables is
             end if;
 
             declare
-               CV : constant Node_Id := Initialized_Value (N);
+               CV : constant Node_Id  := Initialized_Value (N);
+               V  : constant GL_Value := Get_Value (N);
 
             begin
-               if Ekind (N) = E_Constant and then Present (Full_View (N))
+               if Present (V) and then Is_Data (V) and then Is_Constant (V)
+                 and then Is_Static_Conversion (Related_Type (V), GT)
+               then
+                  return True;
+
+               elsif Ekind (N) = E_Constant and then Present (Full_View (N))
                  and then No (Address_Clause (N))
                then
                   return Is_No_Elab_Needed (Full_View (N))

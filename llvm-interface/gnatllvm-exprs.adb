@@ -1010,11 +1010,14 @@ package body GNATLLVM.Exprs is
             | Attribute_Max_Size_In_Storage_Elements =>
 
             declare
-               Is_A_Type   : constant Boolean   :=
+               Is_A_Type   : constant Boolean :=
                  (Is_Entity_Name (Prefix (N))
                     and then Is_Type (Entity (Prefix (N))));
-               Max_Size    : constant Boolean   :=
+               Max_Size    : constant Boolean :=
                  Is_A_Type and then not Is_Constrained (P_GT);
+               No_Padding  : constant Boolean :=
+                 Is_A_Type
+                 and then Attr in Attribute_Size | Attribute_Value_Size;
 
             begin
                --  If this is a value we want to use that value to help
@@ -1026,7 +1029,9 @@ package body GNATLLVM.Exprs is
                   P_GT := Related_Type (V);
                end if;
 
-               V := Get_Type_Size (P_GT, V, Max_Size);
+               V := Get_Type_Size (P_GT, V,
+                                   Max_Size   => Max_Size,
+                                   No_Padding => No_Padding);
                if Attr = Attribute_Max_Size_In_Storage_Elements then
                   if Is_Unconstrained_Array (P_GT) then
                      V := V + Get_Bound_Size (P_GT);

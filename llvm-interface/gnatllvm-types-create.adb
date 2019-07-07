@@ -492,6 +492,18 @@ package body GNATLLVM.Types.Create is
               (Get_Type_Alignment (GT, Use_Specified => False)) / BPU);
       end if;
 
+      --  Consider an alignment as suspicious if the alignment/size
+      --  ratio is greater or equal to the byte/bit ratio.
+
+      if Has_Alignment_Clause (TE) and then Known_Static_RM_Size (TE)
+        and then Alignment (TE) > Get_Maximum_Alignment
+        and then (Alignment (TE) >=
+                    (if Is_Scalar_Type (TE) then Esize (TE) else RM_Size (TE)))
+      then
+         Error_Msg_NE ("?suspiciously large alignment specified for&",
+                       Expression (Alignment_Clause (TE)), TE);
+      end if;
+
       return Type_Of (GT);
    end Create_Type;
 

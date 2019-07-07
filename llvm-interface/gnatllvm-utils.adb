@@ -286,7 +286,13 @@ package body GNATLLVM.Utils is
    begin
       if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
          Append (Buf, Strval (Interface_Name (E)));
-         return +Buf;
+
+         declare
+            Str : constant String := +Buf;
+         begin
+            return (if   Str (Str'First) = '*'
+                    then Str (Str'First + 1 .. Str'Last) else Str);
+         end;
       else
          return Get_Name_String (Chars (E));
       end if;

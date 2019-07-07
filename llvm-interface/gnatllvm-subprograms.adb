@@ -1349,11 +1349,10 @@ package body GNATLLVM.Subprograms is
    -------------------------
 
    function Is_Binder_Elab_Proc (Name : String) return Boolean is
-      pragma Assert (Name'First = 1);
    begin
       return Name'Length >= 13
         and then Name (Name'Last - 7 .. Name'Last) = "___elabb"
-        and then (Name (1 .. 9) = "ada_main_"
+        and then (Name (Name'First .. Name'First + 8) = "ada_main_"
                   or else Name (Name'Last - 11 .. Name'Last - 8) = "main");
    end Is_Binder_Elab_Proc;
 

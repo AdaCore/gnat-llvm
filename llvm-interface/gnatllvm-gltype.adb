@@ -376,7 +376,8 @@ package body GNATLLVM.GLType is
 
       if Present (Err_Ident) and then Comes_From_Source (Err_Ident)
         and then In_Extended_Main_Code_Unit (Err_Ident)
-        and then Is_Padded_GL_Type (Out_GT)
+        and then (Is_Padded_GL_Type (Out_GT)
+                    or else Is_Packed_Array_Impl_Type (GT))
         and then Size /= No_Uint
       then
          declare

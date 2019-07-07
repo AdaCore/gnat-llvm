@@ -200,7 +200,7 @@ package body GNATLLVM.Arrays.Create is
         Is_Unconstrained_Record (Comp_Def_GT);
       Biased            : constant Boolean   :=
         Has_Biased_Representation (A_TE);
-      Comp_GT           : constant GL_Type   :=
+      Comp_Initial_GT   : constant GL_Type   :=
         Make_GT_Alternative (Comp_Def_GT, TE,
                              Size          => Comp_Size,
                              Align         => No_Uint,
@@ -208,6 +208,13 @@ package body GNATLLVM.Arrays.Create is
                              For_Component => True,
                              Max_Size      => Max_Size,
                              Is_Biased     => Biased);
+      Comp_GT           : constant GL_Type   :=
+        (if  Has_Aliased_Components (A_TE)
+             and then Present (GT_Size (Comp_Initial_GT))
+             and then Is_Const_Int_Value (GT_Size (Comp_Initial_GT), 0)
+         then Make_GT_Alternative (Comp_Initial_GT, TE,
+                                   Size => UI_From_Int (BPU))
+         else Comp_Initial_GT);
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);
       Must_Use_Fake     : Boolean            :=

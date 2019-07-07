@@ -706,7 +706,7 @@ package body GNATLLVM.Arrays is
       Comp_Align : constant Nat     := Get_Type_Alignment (Comp_GT);
       Comp_Size  : constant GL_Value :=
         (if   Is_Dynamic_Size (Comp_GT) then No_GL_Value
-         else Get_Type_Size (Comp_GT, No_Padding => True));
+         else Get_Type_Size (Comp_GT, No_Padding => Is_Packed (TE)));
 
    begin
       --  The alignment of an array type is the alignment of the component
@@ -1223,16 +1223,18 @@ package body GNATLLVM.Arrays is
       end if;
 
       --  Otherwise, we choose a type to use for the indexing.  If the
-      --  component type is of fixed size, the array type must be [0 x
-      --  CT], and we can count in units of CT.  If CT is of variable
-      --  size, we convert the array data type to an i8*, do the
-      --  indexing computation in units of bytes, and then convert
-      --  back to the array type.  We start with the first index then
-      --  for each dimension after the first, multiply by the size of
-      --  that dimension and add that index.  Finally, we multiply by
-      --  the size of the component type if it isn't the indexing
-      --  type.  We do all of this in Size_Type.  Getting the indexing here
-      --  correct for the Fortran and non-Fortran cases are tricky.
+      --  component type is of fixed size, the array type must be [0 x CT],
+      --  and we can count in units of CT.  If CT is of variable size, we
+      --  convert the array data type to an i8*, do the indexing
+      --  computation in units of bytes, and then convert back to the array
+      --  type.  If the array has aliased components, we must be sure that
+      --  the component size is at least one byte.  We then start with the
+      --  first index then for each dimension after the first, multiply by
+      --  the size of that dimension and add that index.  Finally, we
+      --  multiply by the size of the component type if it isn't the
+      --  indexing type.  We do all of this in Size_Type.  Getting the
+      --  indexing here correct for the Fortran and non-Fortran cases are
+      --  tricky.
 
       declare
          Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
@@ -1241,9 +1243,15 @@ package body GNATLLVM.Arrays is
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
            Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
+         Comp_Size : constant GL_Value :=
+           Get_Type_Size (Comp_GT, Max_Size => Comp_Unc);
+         Unit_Size : constant GL_Value :=
+           (if   Has_Aliased_Components (GT)
+            then Build_Max (Comp_Size, Size_Const_Int (UI_From_Int (BPU)))
+            else Comp_Size);
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
-            else To_Bytes (Get_Type_Size (Comp_GT, Max_Size => Comp_Unc)));
+            else To_Bytes (Unit_Size));
          Index     : GL_Value          := To_Size_Type (Idxs (1));
          Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
 

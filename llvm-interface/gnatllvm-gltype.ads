@@ -561,6 +561,10 @@ package GNATLLVM.GLType is
      (Has_Atomic_Components (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT);
 
+   function Has_Aliased_Components (GT : GL_Type) return Boolean is
+     (Has_Aliased_Components (Full_Etype (GT)))
+     with Pre => Is_Array_Type (GT);
+
    function Is_Atomic (GT : GL_Type) return Boolean is
      (Is_Atomic (Full_Etype (GT)))
      with Pre => Present (GT);

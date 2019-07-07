@@ -1517,7 +1517,6 @@ package GNATLLVM.GLValue is
    function "+" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS + UI_From_GL_Value (RHS))
      with Pre  => LHS /= No_Uint and then Is_A_Const_Int (RHS);
-
    function "+" (LHS : GL_Value; RHS : Uint) return Uint is
      (RHS + UI_From_GL_Value (LHS))
      with Pre  => RHS /= No_Uint and then Is_A_Const_Int (LHS);
@@ -1527,13 +1526,17 @@ package GNATLLVM.GLValue is
      with Pre  => LHS /= No_Uint and then Is_A_Const_Int (RHS);
 
    function "<" (LHS, RHS : GL_Value) return Boolean is
-     (I_Cmp (Int_SLT, LHS, RHS) = Const_True);
+     (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_ULT else Int_SLT),
+             LHS, RHS) = Const_True);
    function "<=" (LHS, RHS : GL_Value) return Boolean is
-     (I_Cmp (Int_SLE, LHS, RHS) = Const_True);
+     (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_ULE else Int_SLE),
+             LHS, RHS) = Const_True);
    function ">" (LHS, RHS : GL_Value) return Boolean is
-     (I_Cmp (Int_SGT, LHS, RHS) = Const_True);
+     (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_UGT else Int_SGT),
+             LHS, RHS) = Const_True);
    function ">=" (LHS, RHS : GL_Value) return Boolean is
-     (I_Cmp (Int_SGE, LHS, RHS) = Const_True);
+     (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_UGE else Int_SGE),
+             LHS, RHS) = Const_True);
 
    function "+" (LHS : GL_Value; RHS : Int) return GL_Value is
      (LHS + Const_Int (LHS, UI_From_Int (RHS)));

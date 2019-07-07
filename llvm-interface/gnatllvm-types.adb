@@ -1727,12 +1727,12 @@ package body GNATLLVM.Types is
                         declare
                            PT : constant Entity_Id := Full_Etype (Prefix (V));
                            LB : constant Node_Id   := Type_Low_Bound  (PT);
-                           UB : constant Node_Id   := Type_High_Bound (PT);
+                           HB : constant Node_Id   := Type_High_Bound (PT);
 
                         begin
 
                            LHS    := Emit_Expr (LB);
-                           RHS    := Emit_Expr (UB);
+                           RHS    := Emit_Expr (HB);
                            Result := Bounds_To_Length (LHS, RHS,
                                                        Full_GL_Type (V));
                         end;

@@ -522,13 +522,13 @@ package body GNATLLVM.Exprs is
       In_FP      : constant Boolean   := Is_Floating_Point_Type (In_GT);
       Out_FP     : constant Boolean   := Is_Floating_Point_Type (Out_GT);
       In_LB      : constant Node_Id   := Type_Low_Bound  (In_BT);
-      In_UB      : constant Node_Id   := Type_High_Bound (In_BT);
+      In_HB      : constant Node_Id   := Type_High_Bound (In_BT);
       Out_LB     : constant Node_Id   := Type_Low_Bound  (Out_BT);
-      Out_UB     : constant Node_Id   := Type_High_Bound (Out_BT);
+      Out_HB     : constant Node_Id   := Type_High_Bound (Out_BT);
       Label_Ent  : constant Entity_Id :=
         Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
       Compare_LB : GL_Value           := No_GL_Value;
-      Compare_UB : GL_Value           := No_GL_Value;
+      Compare_HB : GL_Value           := No_GL_Value;
       BB_Raise   : Basic_Block_T;
       BB_Next    : Basic_Block_T;
 
@@ -548,15 +548,15 @@ package body GNATLLVM.Exprs is
       end if;
 
       if In_FP or else Out_FP
-        or else Get_Uint_Value (Out_UB) < Get_Uint_Value (In_UB)
+        or else Get_Uint_Value (Out_HB) < Get_Uint_Value (In_HB)
       then
-         Compare_UB := Build_Elementary_Comparison
-           (N_Op_Le, V, Emit_Convert_Value (Out_UB, In_GT));
+         Compare_HB := Build_Elementary_Comparison
+           (N_Op_Le, V, Emit_Convert_Value (Out_HB, In_GT));
       end if;
 
       --  If neither comparison is needed, we're done
 
-      if No (Compare_LB) and then No (Compare_UB) then
+      if No (Compare_LB) and then No (Compare_HB) then
          return;
       end if;
 
@@ -569,8 +569,8 @@ package body GNATLLVM.Exprs is
          else Create_Basic_Block);
       BB_Next := Create_Basic_Block;
 
-      if Present (Compare_UB) then
-         Build_Cond_Br (Compare_UB, BB_Next, BB_Raise);
+      if Present (Compare_HB) then
+         Build_Cond_Br (Compare_HB, BB_Next, BB_Raise);
          if Present (Compare_LB) then
             Position_Builder_At_End (BB_Next);
             BB_Next := Create_Basic_Block;

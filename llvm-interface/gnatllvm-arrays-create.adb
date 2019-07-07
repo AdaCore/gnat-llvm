@@ -28,6 +28,10 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays.Create is
 
+   function Cannot_Be_Superflat (N : Node_Id) return Boolean;
+   --  Return True if the range described by N is known not to be
+   --  able to be superflat.
+
    function Build_One_Bound
      (N             : Node_Id;
       Unconstrained : Boolean;
@@ -42,6 +46,50 @@ package body GNATLLVM.Arrays.Create is
           Post => (Get_Type_Kind (Create_String_Literal_Type'Result) =
                      Array_Type_Kind);
    --  Helper function to create type for string literals
+
+   -------------------------
+   -- Cannot_Be_Superflat --
+   -------------------------
+
+   function Cannot_Be_Superflat (N : Node_Id) return Boolean is
+      LB      : Node_Id := Low_Bound  (N);
+      HB      : Node_Id := High_Bound (N);
+      TE      : Entity_Id;
+      Rng     : Node_Id;
+
+   begin
+      --  If the low bound is not constant, try to find an upper bound
+
+      loop
+         exit when Nkind (LB) = N_Integer_Literal;
+         TE := Full_Etype (LB);
+         exit when not Ekind_In (TE, E_Signed_Integer_Subtype,
+                               E_Modular_Integer_Subtype);
+         Rng := Scalar_Range (TE);
+         exit when not Nkind_In (Rng, N_Signed_Integer_Type_Definition,
+                                 N_Range);
+         LB := High_Bound (Rng);
+      end loop;
+
+      --  Similarly for the high bound
+
+      loop
+         exit when Nkind (HB) = N_Integer_Literal;
+         TE := Full_Etype (HB);
+         exit when not Ekind_In (TE, E_Signed_Integer_Subtype,
+                               E_Modular_Integer_Subtype);
+         Rng := Scalar_Range (TE);
+         exit when not Nkind_In (Rng, N_Signed_Integer_Type_Definition,
+                                 N_Range);
+         HB := Low_Bound (Rng);
+      end loop;
+
+      --  If both are integers and the bounds are safe, we can't be superflat
+
+      return Nkind (LB) = N_Integer_Literal
+        and then Nkind (HB) = N_Integer_Literal
+        and then Intval (HB) >= Intval (LB) - 1;
+   end Cannot_Be_Superflat;
 
    ---------------------
    -- Build_One_Bound --
@@ -109,11 +157,12 @@ package body GNATLLVM.Arrays.Create is
       Low_Bound  : constant One_Bound    := (Cnst => First, Value => Empty);
       High_Bound : constant One_Bound    := (Cnst => Last, Value => Empty);
       Dim_Info   : constant Index_Bounds :=
-        (Bound_GT     => Integer_GL_Type,
-         Bound_Sub_GT => Integer_GL_Type,
-         Low          => Low_Bound,
-         High         => High_Bound,
-         Bound_Range  => Size_Const_Int (Length));
+        (Bound_GT      => Integer_GL_Type,
+         Bound_Sub_GT  => Integer_GL_Type,
+         Low           => Low_Bound,
+         High          => High_Bound,
+         Bound_Range   => Size_Const_Int (Length),
+         Not_Superflat => True);
       Result_Typ : constant Type_T       :=
         Array_Type (Comp_Typ, unsigned (UI_To_Int (Length)));
 
@@ -227,11 +276,18 @@ package body GNATLLVM.Arrays.Create is
             LB        : constant Node_Id := Low_Bound (Idx_Range);
             HB        : constant Node_Id := High_Bound (Idx_Range);
             Dim_Info  : Index_Bounds     :=
-              (Bound_GT     => Index_BT,
-               Bound_Sub_GT => Full_GL_Type (Base_Index),
-               Low          => Build_One_Bound (LB, Unconstrained, For_Orig),
-               High         => Build_One_Bound (HB, Unconstrained, For_Orig),
-               Bound_Range  => No_GL_Value);
+              (Bound_GT      => Index_BT,
+               Bound_Sub_GT  => Full_GL_Type (Base_Index),
+               Low           => Build_One_Bound (LB, Unconstrained, For_Orig),
+               High          => Build_One_Bound (HB, Unconstrained, For_Orig),
+               Bound_Range   => No_GL_Value,
+               Not_Superflat =>
+                 (Ekind (TE) = E_Array_Subtype and then Nkind (Index) = N_Range
+                    and then Cannot_Be_Superflat (Idx_Range))
+                 or else (not For_Orig and then Is_Packed_Array_Impl_Type (TE)
+                            and then Is_Bit_Packed_Array
+                                       (Original_Array_Type (TE))));
+
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges
             --  that are outside the base type if the subtype is superflat
@@ -253,7 +309,7 @@ package body GNATLLVM.Arrays.Create is
                Dim_Info.Bound_Range :=
                  Bounds_To_Length (Size_Const_Int (Dim_Info.Low.Cnst),
                                    Size_Const_Int (Dim_Info.High.Cnst),
-                                   Size_GL_Type);
+                                   Size_GL_Type, Dim_Info.Not_Superflat);
             else
                This_Nonnative := True;
                if Dim /= 0 then

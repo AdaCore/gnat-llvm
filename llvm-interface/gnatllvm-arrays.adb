@@ -128,7 +128,9 @@ package body GNATLLVM.Arrays is
       function Present (V : Result) return Boolean is (V /= Empty_Result);
 
       function Bounds_To_Length
-        (In_Low, In_High : Result; GT : GL_Type) return Result;
+        (In_Low, In_High : Result;
+         GT              : GL_Type;
+         Not_Superflat   : Boolean := False) return Result;
 
       function Emit_Expr_For_Minmax
         (N : Node_Id; Is_Low : Boolean) return Result;
@@ -194,7 +196,9 @@ package body GNATLLVM.Arrays is
       ----------------------
 
       function Bounds_To_Length
-        (In_Low, In_High : Result; GT : GL_Type) return Result
+        (In_Low, In_High : Result;
+         GT              : GL_Type;
+         Not_Superflat   : Boolean := False) return Result
       is
          Low      : constant Result          := Sz_Convert (In_Low, GT);
          High     : constant Result          := Sz_Convert (In_High, GT);
@@ -209,10 +213,14 @@ package body GNATLLVM.Arrays is
 
          if Low = Const_1 then
             return Sz_Max (High, Const_0);
-         else
-            --  Otherwise, it's zero if this is flat or superflat and
-            --  High - Low + 1 otherwise.
 
+         --  Otherwise, it's zero if this is flat or superflat and High -
+         --  Low + 1 otherwise.
+
+         elsif Not_Superflat then
+            return High - Low + Const_1;
+
+         else
             return Sz_Select
               (C_If   => Sz_I_Cmp (Cmp_Kind, Low, High, "is-empty"),
                C_Then => Const_0,
@@ -265,11 +273,11 @@ package body GNATLLVM.Arrays is
                   declare
                      PT : constant GL_Type := Full_GL_Type (Prefix (N));
                      LB : constant Node_Id := Type_Low_Bound  (PT);
-                     UB : constant Node_Id := Type_High_Bound (PT);
+                     HB : constant Node_Id := Type_High_Bound (PT);
 
                   begin
                      LHS := Emit_Expr_For_Minmax (LB, True);
-                     RHS := Emit_Expr_For_Minmax (UB, False);
+                     RHS := Emit_Expr_For_Minmax (HB, False);
                      return Bounds_To_Length (LHS, RHS, Full_GL_Type (N));
                   end;
                else
@@ -454,20 +462,9 @@ package body GNATLLVM.Arrays is
          --  is not representable in that type (it's one too high).  Rather
          --  than trying to find some suitable type, we use Size_Type,
          --  which will also make thing simpler for some of our callers.
-         --  But if this is the implementation type for a packed array type
-         --  with lower bound zero, we know it can't be super-flat, so we
-         --  can avoid the comparison.
 
-         if Is_Packed_Array_Impl_Type (TE)
-           and then Sz_Is_Const (Low_Bound)
-           and then Sz_Const_Val (Low_Bound) = 0
-         then
-            return Sz_Convert (High_Bound, Size_GL_Type) -
-                     Sz_Convert (Low_Bound,  Size_GL_Type) +
-                     Sz_Const_Int (Size_GL_Type, Uint_1);
-         else
-            return Bounds_To_Length (Low_Bound, High_Bound, Size_GL_Type);
-         end if;
+         return Bounds_To_Length (Low_Bound, High_Bound, Size_GL_Type,
+                                  Array_Not_Superflat (TE, Dim));
       end Get_Array_Length;
 
       ------------------------
@@ -540,7 +537,9 @@ package body GNATLLVM.Arrays is
                 Sz_Undef         => Get_Undef);
 
    function Bounds_To_Length
-     (In_Low, In_High : GL_Value; GT : GL_Type) return GL_Value
+     (In_Low, In_High : GL_Value;
+      GT              : GL_Type;
+      Not_Superflat   : Boolean := False) return GL_Value
      renames LLVM_Size.Bounds_To_Length;
 
    function Emit_Expr_For_Minmax
@@ -642,8 +641,17 @@ package body GNATLLVM.Arrays is
      renames BA_Size.Get_Array_Type_Size;
 
    function Bounds_To_Length
-     (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data
+     (In_Low, In_High : BA_Data;
+      GT              : GL_Type;
+      Not_Superflat   : Boolean := False) return BA_Data
      renames BA_Size.Bounds_To_Length;
+
+   -------------------------
+   -- Array_Not_Superflat --
+   -------------------------
+
+   function Array_Not_Superflat (TE : Entity_Id; Dim : Nat) return Boolean is
+     (Array_Info.Table (Get_Array_Info (TE) + Dim).Not_Superflat);
 
    -------------------------------
    -- Get_Array_Size_Complexity --

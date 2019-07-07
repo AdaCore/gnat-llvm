@@ -46,7 +46,9 @@ package GNATLLVM.Arrays is
    --  and GT.
 
    function Bounds_To_Length
-     (In_Low, In_High : GL_Value; GT : GL_Type) return GL_Value
+     (In_Low, In_High : GL_Value;
+      GT              : GL_Type;
+      Not_Superflat   : Boolean := False) return GL_Value
      with Pre  => Present (In_Low) and then Present (In_High)
                   and then Present (GT)
                   and then Type_Of (In_Low) = Type_Of (In_High),
@@ -90,6 +92,10 @@ package GNATLLVM.Arrays is
           Post => Type_Of (Get_Array_Length'Result) = LLVM_Size_Type;
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
+
+   function Array_Not_Superflat (TE : Entity_Id; Dim : Nat) return Boolean
+     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE);
+   --  Return True if TE is known to not be superflat in dimension Dim
 
    function Get_Array_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat
@@ -195,7 +201,9 @@ package GNATLLVM.Arrays is
    --  isn't consistent with the number of bits, we can't use it either.
 
    function Bounds_To_Length
-     (In_Low, In_High : BA_Data; GT : GL_Type) return BA_Data;
+     (In_Low, In_High : BA_Data;
+      GT              : GL_Type;
+      Not_Superflat   : Boolean := False) return BA_Data;
 
    function Data_Index_In_BD_Type (V : GL_Value) return unsigned
      with Pre  => Relationship (V)
@@ -289,10 +297,11 @@ private
                         (if No (Value) then 0 else 1)) <= 1;
 
    type Index_Bounds is record
-      Bound_GT     : GL_Type;
-      Bound_Sub_GT : GL_Type;
-      Low, High    : One_Bound;
-      Bound_Range  : GL_Value;
+      Bound_GT      : GL_Type;
+      Bound_Sub_GT  : GL_Type;
+      Low, High     : One_Bound;
+      Bound_Range   : GL_Value;
+      Not_Superflat : Boolean;
    end record
      with Predicate => Is_Discrete_Type (Bound_GT)
                        and then Is_Discrete_Type (Bound_Sub_GT);

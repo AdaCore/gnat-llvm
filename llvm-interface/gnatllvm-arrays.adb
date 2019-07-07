@@ -208,11 +208,11 @@ package body GNATLLVM.Arrays is
            (if Is_Unsigned_Type (GT) then Int_UGT else Int_SGT);
 
       begin
-         --  If the low bound is 1, then this is the max of zero and the
-         --  high bound.
+         --  If the low bound is 1, then this is either the max of zero and the
+         --  high bound or the high bound if this is known not to be superflat.
 
          if Low = Const_1 then
-            return Sz_Max (High, Const_0);
+            return (if Not_Superflat then High else Sz_Max (High, Const_0));
 
          --  Otherwise, it's zero if this is flat or superflat and High -
          --  Low + 1 otherwise.

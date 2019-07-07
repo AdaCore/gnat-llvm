@@ -31,9 +31,11 @@ package GNATLLVM.Types.Create is
    --  Copy any annotations we made from In_TE to Out_TE
 
    procedure Annotate_Object_Size_And_Alignment
-     (Def_Ident : Entity_Id; GT : GL_Type)
+     (Def_Ident : Entity_Id; GT : GL_Type; Want_Max : Boolean := True)
      with Pre => not Is_Type (Def_Ident);
-   --  Peform back-annotation of size and alignment of Def_Ident
+     --  Peform back-annotation of size and alignment of Def_Ident.  If
+     --  Want_Max is True, we want the maximum size of GT, in case
+     --  its an unconstrained record type.
 
    function Create_TBAA (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);

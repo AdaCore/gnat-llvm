@@ -1282,7 +1282,7 @@ package body GNATLLVM.Subprograms is
                Param_Num := Param_Num + 1;
             end if;
 
-            Annotate_Object_Size_And_Alignment (Param, GT);
+            Annotate_Object_Size_And_Alignment (Param, GT, Want_Max => False);
             Create_Local_Variable_Debug_Data (Param, LLVM_Param, P_Num);
             Next_Formal_With_Extras (Param);
          end;

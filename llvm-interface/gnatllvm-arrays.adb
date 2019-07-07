@@ -1431,14 +1431,16 @@ package body GNATLLVM.Arrays is
          when N_Identifier | N_Expanded_Name =>
             return Get_Dim_Range (Scalar_Range (Full_Entity (N)));
 
+         when N_Defining_Identifier =>
+            return Get_Dim_Range (Scalar_Range (N));
+
          when N_Subtype_Indication =>
             declare
                Constr : constant Node_Id := Constraint (N);
             begin
                if Present (Constr) then
-                  if Nkind (Constr) = N_Range_Constraint then
-                     return Get_Dim_Range (Range_Expression (Constr));
-                  end if;
+                  pragma Assert (Nkind (Constr) = N_Range_Constraint);
+                  return Get_Dim_Range (Range_Expression (Constr));
                else
                   return
                     Get_Dim_Range (Scalar_Range
@@ -1450,8 +1452,6 @@ package body GNATLLVM.Arrays is
             null;
       end case;
 
-      raise Program_Error
-        with "Invalid node kind in context: " & Node_Kind'Image (Nkind (N));
-      pragma Annotate (Xcov, Exempt_Off);
+      pragma Assert (False);
    end Get_Dim_Range;
 end GNATLLVM.Arrays;

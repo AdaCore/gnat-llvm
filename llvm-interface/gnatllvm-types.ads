@@ -641,10 +641,14 @@ package GNATLLVM.Types is
    --  Likewise, but in the opposite direction
 
    function Annotated_Object_Size
-     (GT : GL_Type; Do_Align : Boolean := False) return Node_Ref_Or_Val
+     (GT       : GL_Type;
+      Do_Align : Boolean := False;
+      Want_Max : Boolean := True) return Node_Ref_Or_Val
      with Pre => Present (GT);
    --  Given a type that's used for the type of an object, return the
-   --  SO_Ref corresponding to the object's size.
+   --  SO_Ref corresponding to the object's size.  If Do_Align is True,
+   --  align the size to the alignment.  If Want_Max is True, we want
+   --  the maximum size of GT, if it's an unconstrained record.
 
    function Unop
      (V    : BA_Data;

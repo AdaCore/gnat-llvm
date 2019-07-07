@@ -788,11 +788,9 @@ package body GNATLLVM.Variables is
             --  addresses as the same, the result is known to be true or
             --  false, respectively, and will constant fold to that.
 
-            --  We definitely can't do this if we need an overflow check
-            --  or if either side needs elaboration.
+            --  We definitely can't do this if either side needs elaboration.
 
-            if Do_Overflow_Check (N)
-              or else not Is_No_Elab_Needed (Left_Opnd (N))
+            if not Is_No_Elab_Needed (Left_Opnd (N))
               or else not Is_No_Elab_Needed (Right_Opnd (N))
             then
                return False;
@@ -809,6 +807,7 @@ package body GNATLLVM.Variables is
             end if;
 
          when N_Unary_Op =>
+
             return not Do_Overflow_Check (N)
               and then Is_No_Elab_Needed (Right_Opnd (N));
 
@@ -864,27 +863,43 @@ package body GNATLLVM.Variables is
                   end if;
 
                when Attribute_Min | Attribute_Max =>
+
                   return Is_No_Elab_Needed (First (Expressions (N)))
                     and then Is_No_Elab_Needed (Last (Expressions (N)));
 
                when Attribute_Pos | Attribute_Val | Attribute_Succ
                   | Attribute_Pred | Attribute_Machine | Attribute_Model =>
+
                   return Is_No_Elab_Needed (First (Expressions (N)));
 
                when Attribute_Access | Attribute_Unchecked_Access
                   | Attribute_Unrestricted_Access | Attribute_Address
                   | Attribute_Code_Address | Attribute_Pool_Address =>
+
                   return Is_Static_Address (N);
 
                when Attribute_Passed_By_Reference
                   | Attribute_Mechanism_Code | Attribute_Null_Parameter =>
+
                   return True;
+
+               when Attribute_First  | Attribute_Last
+                 | Attribute_Length | Attribute_Range_Length =>
+
+                  if Is_Scalar_Type (Full_Etype (Prefix (N))) then
+                     Expr := Get_Dim_Range (Full_Etype (Prefix (N)));
+                     return Is_No_Elab_Needed (Low_Bound (Expr))
+                       and then Is_No_Elab_Needed (High_Bound (Expr));
+                  else
+                     return False;
+                  end if;
 
                when others =>
                   return False;
             end case;
 
          when N_Identifier | N_Expanded_Name =>
+
             return Is_No_Elab_Needed (Entity (N))
               and then Is_Static_Conversion (Full_GL_Type (Entity (N)),
                                              Full_GL_Type (N));
@@ -892,6 +907,7 @@ package body GNATLLVM.Variables is
          --  If Emit_Identifier would walk into a constant value, we do as well
 
          when N_Defining_Identifier =>
+
             if Ekind (N) = E_Enumeration_Literal then
                return True;
             end if;
@@ -921,6 +937,7 @@ package body GNATLLVM.Variables is
             end;
 
          when N_Selected_Component =>
+
             return Is_No_Elab_Needed (Prefix (N))
               and then Is_Static_Conversion (Full_GL_Type (Prefix (N)),
                                              Default_GL_Type

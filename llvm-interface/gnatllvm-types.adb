@@ -1535,7 +1535,9 @@ package body GNATLLVM.Types is
      (V    : BA_Data;
       F    : Unop_Access;
       C    : TCode;
-      Name : String := "") return BA_Data is
+      Name : String := "") return BA_Data
+   is
+      Result   : GL_Value;
 
    begin
       --  If we don't have an input, propagate that to the output.
@@ -1543,10 +1545,12 @@ package body GNATLLVM.Types is
          return V;
 
       --  If we have a constant, perform the operation on the constant and
-      --  return it.
+      --  return it unless it overflowed.
 
       elsif Is_Const (V) then
-         return (False, F (V.C_Value, Name), No_Uint);
+         Result := F (V.C_Value, Name);
+         return (if   Overflowed (Result) or else Is_Undef (Result)
+                 then No_BA else (False, Result, No_Uint));
 
       --  Otherwise, create a new representation tree node
 
@@ -1572,12 +1576,13 @@ package body GNATLLVM.Types is
    begin
       --  If both are constants, do the operation as a constant and return
       --  that value unless it overflows.
+      --  ???  We could switch to computing as a Uint for overflow, but it's
+      --  not worth it.
 
       if Is_Const (V1) and then Is_Const (V2) then
          Result := F (V1.C_Value, V2.C_Value, Name);
-         if not Overflowed (Result) and then not Is_Undef (Result) then
-            return (False, Result, No_Uint);
-         end if;
+         return (if   Overflowed (Result) or else Is_Undef (Result)
+                 then No_BA else (False, Result, No_Uint));
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint

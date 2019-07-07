@@ -704,15 +704,18 @@ package body GNATLLVM.Arrays is
    function Get_Array_Type_Alignment (TE : Entity_Id) return Nat is
       Comp_GT    : constant GL_Type := Full_Component_GL_Type (TE);
       Comp_Align : constant Nat     := Get_Type_Alignment (Comp_GT);
+      Comp_Size  : constant GL_Value :=
+        (if   Is_Dynamic_Size (Comp_GT) then No_GL_Value
+         else Get_Type_Size (Comp_GT, No_Padding => True));
 
    begin
       --  The alignment of an array type is the alignment of the component
       --  type unless it's packed by us (not a front-end created packed
-      --  array) and the size of the component isn't a multiple of its
-      --  alignment.
+      --  array) or a component size isn't a multiple of its alignment.
 
-      if Is_Packed_Array_Impl_Type (TE) or else not Is_Packed (TE)
+      if Is_Packed_Array_Impl_Type (TE)
         or else Is_Dynamic_Size (Comp_GT)
+        or else (not Is_Packed (TE) and then Comp_Size mod Comp_Align = 0)
       then
          return Comp_Align;
 
@@ -723,24 +726,18 @@ package body GNATLLVM.Arrays is
          return UI_To_Int (Alignment (TE)) * BPU;
 
       else
-         declare
-            Comp_Size : constant GL_Value :=
-              Get_Type_Size (Comp_GT, No_Padding => True);
+         if Comp_Size mod Comp_Align = 0 then
+            return Comp_Align;
 
-         begin
-            if Comp_Size mod Comp_Align = 0 then
-               return Comp_Align;
+         else
+            --  Otherwise, find the largest alignment that divides the size
 
-            else
-               --  Otherwise, find the largest alignment that divides the size
-
-               return Align : Nat := BPU do
-                  while Comp_Size mod (Align * 2) = 0 loop
-                     Align := Align * 2;
-                  end loop;
-               end return;
-            end if;
-         end;
+            return Align : Nat := BPU do
+               while Comp_Size mod (Align * 2) = 0 loop
+                  Align := Align * 2;
+               end loop;
+            end return;
+         end if;
       end if;
 
    end Get_Array_Type_Alignment;

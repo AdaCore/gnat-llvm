@@ -617,6 +617,8 @@ package body GNATLLVM.Types is
       --  not trying to over-align it, we just do the alloca and that's
       --  all.  Test for the size being other an overflow or an undef,
       --  which we'll assume was likely caused by an overflow.
+      --  If this is an undef, it likely means that we already said we were
+      --  raising constraint error, so if we did, omit this one.
 
       if not Is_Nonnative_Type (Alloc_GT) and then not Overalign then
          if Do_Stack_Check
@@ -687,13 +689,17 @@ package body GNATLLVM.Types is
                              N, SE_Object_Too_Large);
       end if;
 
-      --  If the number of elements overflowed, raise Storage_Error.  Bt
+      --  If the number of elements overflowed, raise Storage_Error.  But
       --  check for the pathalogical case of an array of zero-sized elements.
 
       if Overflowed (Num_Elts) or else Is_Undef (Num_Elts) then
          if Get_Type_Size (Element_GT) = 0 then
             Num_Elts := Size_Const_Int (Uint_1);
          else
+            if not Is_Undef (Num_Elts) then
+               Error_Msg_N ("?`Storage_Error` will be raised at run time!", N);
+            end if;
+
             Emit_Raise_Call (N, SE_Object_Too_Large);
             return Get_Undef_Ref (GT);
          end if;
@@ -763,6 +769,10 @@ package body GNATLLVM.Types is
       --  If the size overflowed, raise Storage_Error
 
       if Overflowed (Size) or else Is_Undef (Size) then
+         if not Is_Undef (Size) then
+            Error_Msg_N ("?`Storage_Error` will be raised at run time!", N);
+         end if;
+
          Emit_Raise_Call (N, SE_Object_Too_Large);
          return Get_Undef_Ref (GT);
       end if;
@@ -800,6 +810,7 @@ package body GNATLLVM.Types is
             --  we did the computation above.  So check again.
 
             if Overflowed (Total_Size) then
+               Error_Msg_N ("?`Storage_Error` will be raised at run time!", N);
                Emit_Raise_Call (N, SE_Object_Too_Large);
                return Get_Undef_Ref (GT);
             end if;

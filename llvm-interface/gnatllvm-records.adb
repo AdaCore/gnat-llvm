@@ -1110,7 +1110,10 @@ package body GNATLLVM.Records is
       --  If the record is packed and this field isn't aliased, its alignment
       --  doesn't contribute to the alignment.
 
-      if Is_Packed (TE) and then not Is_Aliased (F) then
+      if not Is_Aliased (F)
+        and then (Is_Packed (TE)
+                    or else Component_Alignment (TE) = Calign_Storage_Unit)
+      then
          return 1;
 
       --  If there's no component clause or the position and alignment of

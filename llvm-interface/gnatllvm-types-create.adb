@@ -639,17 +639,24 @@ package body GNATLLVM.Types.Create is
       end if;
 
       --  If the alignment is too small, stick with the old alignment and give
-      --  an error if required.  We allow scalar types to be under-aligned
+      --  an error if required.  We allow discrete types to be under-aligned
       --  as compared to the alignment of the corresponding LLVM type when
       --  defining a type, but not a object.
 
       if New_Align < Current_Align then
          if not No_Error
-           and then (not Is_Type (E) or else Is_Composite_Type (TE))
+           and then (not Is_Type (E)
+                       or else not Is_Discrete_Or_Fixed_Point_Type (TE))
            and then (No (Clause) or else not From_At_Mod (Clause))
          then
-            Error_Msg_NE_Num ("alignment for& must be at least ^",
-                              N, E, Current_Align / BPU);
+            --  If we already have an error here but no alignment clause,
+            --  don't produce another error.
+
+            if not Error_Posted (E) or else Has_Alignment_Clause (E) then
+               Error_Msg_NE_Num ("alignment for& must be at least ^",
+                                 N, E, Current_Align / BPU);
+            end if;
+
             New_Align := Current_Align;
          end if;
       end if;

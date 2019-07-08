@@ -85,12 +85,18 @@ package body GNATLLVM.Conversions is
 
    function Is_Nop_Conversion (V : GL_Value; GT : GL_Type) return Boolean is
    begin
+      --  If either type is biased, this isn't a no-op
+
+      if Is_Biased_GL_Type (V) or else Is_Biased_GL_Type (GT) then
+         return False;
       --  This is a no-op if the two LLVM types are the same or if both
       --  GNAT types aren't scalar types.
 
-      return Type_Of (V) = Pointer_Type (Type_Of (GT), 0)
-        or else (not Is_Scalar_Type (GT)
-                   and then not Is_Scalar_Type (Related_Type (V)));
+      else
+         return Type_Of (V) = Pointer_Type (Type_Of (GT), 0)
+           or else (not Is_Scalar_Type (GT)
+                      and then not Is_Scalar_Type (Related_Type (V)));
+      end if;
 
    end Is_Nop_Conversion;
 

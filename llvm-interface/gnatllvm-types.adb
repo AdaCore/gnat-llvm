@@ -1404,18 +1404,20 @@ package body GNATLLVM.Types is
 
       if not Comes_From_Source (E)
 
-      --  Consider all aligned elementary types as atomic
+        --  Consider all aligned elementary types as atomic except fat
+        --  pointers.
 
         or else (Is_Elementary_Type (GT)
-                   and then Align >= Get_Type_Alignment (T))
+                   and then Align >= Get_Type_Alignment (T)
+                   and then Get_Type_Kind (T) /= Struct_Type_Kind)
 
-      --  Or if it's a fixed size, the size is equal to the alignment,
-      --  and the alignment is less than a word.        --  atomic.
+        --  Or if it's a fixed size, the size is equal to the alignment,
+        --  and the alignment is less than a word.
 
         or else (not Is_Dynamic_Size (GT)
                    and then Align <= Get_Bits_Per_Word
                    and then ULL (Align) = Get_Const_Int_Value_ULL
-                   (Get_Type_Size (GT)))
+                                            (Get_Type_Size (GT)))
       then
          return;
       end if;

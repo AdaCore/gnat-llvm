@@ -1048,7 +1048,37 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value is
-     (G (Const_Int (Type_Of (GT), N), GT));
+      Result  : constant GL_Value := G (Const_Int (Type_Of (GT), N), GT);
+      Val     : constant LLI      := Get_Const_Int_Value (Result);
+      Bitsize : constant Integer  :=
+        Integer (Get_Scalar_Bit_Size (Type_Of (Result)));
+
+   begin
+      --  We're OK if this is a modular type or if the value matches.
+
+      if Is_Modular_Integer_Type (GT) or else UI_From_LLI (Val) = N then
+         return Result;
+
+      --  If it's not an unsigned type or this is the full width of ULL,
+      --  we've overflowed.
+
+      elsif not Is_Unsigned_Type (GT) or else Bitsize >= ULL'Size then
+         return Mark_Overflowed (Result, True);
+
+      end if;
+
+      --  Otherwise, mask off any non-significant bits (that were
+      --  sign-extended) and see if we match.
+
+      declare
+         Mask   : constant ULL := (ULL (2) ** Bitsize) - 1;
+         Masked : constant ULL := Get_Const_Int_Value_ULL (Result) and Mask;
+
+      begin
+         return Mark_Overflowed (Result,
+                                 UI_From_LLI (LLI (Masked)) /= N);
+      end;
+   end Const_Int;
 
    ---------------
    -- Const_Int --

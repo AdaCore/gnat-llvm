@@ -452,8 +452,12 @@ package body GNATLLVM.Types.Create is
       --  If this type requests a reversed storage order, let the user
       --  know that we don't support that.
 
-      if Ekind (TE) in Record_Kind | Array_Kind
-        and then Reverse_Storage_Order (TE) and then not GNAT_Mode
+      if ((Ekind (TE) in Record_Kind | Array_Kind
+             and then Reverse_Storage_Order (TE))
+          or else (Is_Packed_Array_Impl_Type (TE)
+                     and then Reverse_Storage_Order
+                                (Full_Original_Array_Type (TE))))
+        and then not GNAT_Mode
       then
          Error_Msg_NE
            ("reverse storage order for & not supported by 'L'L'V'M", TE, TE);

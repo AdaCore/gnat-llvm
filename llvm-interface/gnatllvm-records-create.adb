@@ -25,6 +25,7 @@ with Nlists;     use Nlists;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
 with Sem_Aux;    use Sem_Aux;
+with Sem_Ch13;   use Sem_Ch13;
 with Sem_Eval;   use Sem_Eval;
 with Snames;     use Snames;
 with Sprint;     use Sprint;
@@ -199,6 +200,9 @@ package body GNATLLVM.Records.Create is
       type Added_Field is record
          F            : Entity_Id;
          --  Entity of the field that we're adding
+
+         AF           : Entity_Id;
+         --  Ancestor of the field that we're adding
 
          Seq          : Nat;
          --  An ordinal representing the sequence number in which we add
@@ -883,6 +887,7 @@ package body GNATLLVM.Records.Create is
                                 Zero_Allowed => Present (Clause)));
          Var_Depth   : Int                := 0;
          Var_Align   : Nat                := 0;
+         AF          : Entity_Id          := E;
 
       begin
          --  If we've pushed the variant stack and the top entry is static,
@@ -988,10 +993,36 @@ package body GNATLLVM.Records.Create is
             Size := No_Uint;
          end if;
 
+         --  Find the ancestor field by walking up both the
+         --  Original_Record_Component chain and the
+         --  Corresponding_Record_Component chains.  Only look at records
+         --  the have the same representation as our record.
+
+         loop
+            declare
+               ORC : constant Entity_Id := Original_Record_Component      (AF);
+               CRC : constant Entity_Id := Corresponding_Record_Component (AF);
+
+            begin
+               if Present (ORC) and then ORC /= AF
+                 and then Same_Representation (R_TE, Full_Scope (ORC))
+               then
+                  AF := ORC;
+               elsif Present (CRC) and then CRC /= AF
+                 and then Same_Representation (R_TE, Full_Scope (CRC))
+               then
+                  AF := CRC;
+               else
+                  exit;
+               end if;
+            end;
+         end loop;
+
          --  Now add field to table
 
-         Added_Field_Table.Append ((E, Added_Field_Table.Last + 1, Par_Depth,
-                                    Var_Depth, Var_Align, Pos, Size));
+         Added_Field_Table.Append ((E, AF, Added_Field_Table.Last + 1,
+                                    Par_Depth, Var_Depth, Var_Align,
+                                    Pos, Size));
       end Add_Field;
 
       ---------------------------
@@ -1082,10 +1113,8 @@ package body GNATLLVM.Records.Create is
 
             AF_Left   : constant Added_Field := Added_Field_Table.Table (L);
             AF_Right  : constant Added_Field := Added_Field_Table.Table (R);
-            Left_F    : constant Entity_Id   :=
-              Original_Record_Component (AF_Left.F);
-            Right_F   : constant Entity_Id   :=
-              Original_Record_Component (AF_Right.F);
+            Left_F    : constant Entity_Id   := AF_Left.AF;
+            Right_F   : constant Entity_Id   := AF_Right.AF;
             Left_GT   : constant GL_Type     := Full_GL_Type (Left_F);
             Right_GT  : constant GL_Type     := Full_GL_Type (Right_F);
             Left_BO   : constant Uint        := Component_Bit_Offset (Left_F);

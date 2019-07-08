@@ -403,7 +403,7 @@ package body GNATLLVM.Types.Create is
             --  If this is an atomic or VFA type with no alignment specified,
             --  maybe pick an alignment based on the size.
 
-            if Is_Atomic_Or_VFA (TE) then
+            if Is_Atomic_Or_VFA (TE) and then Align = No_Uint then
                if Size /= No_Uint
                  and then (Size = 16 or else Size = 32 or else Size = 64)
                then

@@ -385,7 +385,7 @@ package body GNATLLVM.GLType is
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
             In_Sz        : constant GL_Value := GT_Size (GT);
             In_Sz_Align  : constant GL_Value :=
-              Align_To (GT_Size (GT), BPU, Align_V);
+              Align_To (GT_Size (GT), 1, Align_V);
             Pad_Sz       : constant GL_Value :=
               (if Present (In_Sz) then Out_Sz - In_Sz else No_GL_Value);
             Pad_Sz_Align : constant GL_Value :=
@@ -717,7 +717,7 @@ package body GNATLLVM.GLType is
                then Size_Const_Int (Get_Scalar_Bit_Size (T))
                else Get_Type_Size (GT));
             if Strict_Alignment (GT) then
-               GTI.Size := Align_To (GTI.Size, BPU, Get_Type_Alignment (GT));
+               GTI.Size := Align_To (GTI.Size, 1, Get_Type_Alignment (GT));
             end if;
          end if;
       end if;

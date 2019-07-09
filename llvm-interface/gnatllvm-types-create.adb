@@ -367,7 +367,7 @@ package body GNATLLVM.Types.Create is
         and then Present (Size_GL_Type)
       then
          --  If there's no alignment specified for this type and it's not a
-         --  base type, use the alignment of the base type.
+         --  base type, use the alignment of the base type, if any.
 
          if not Unknown_Alignment (TE) then
             Align := Alignment (TE);
@@ -405,12 +405,13 @@ package body GNATLLVM.Types.Create is
 
             if Is_Atomic_Or_VFA (TE) and then Align = No_Uint then
                if Size /= No_Uint
-                 and then (Size = 16 or else Size = 32 or else Size = 64)
+                 and then (Size = 16 or else Size = 32 or else Size = 64
+                             or else Size = 128)
                then
                   Align := Size / BPU;
                elsif Present (Size_GT)
                  and then (Size_GT = 16 or else Size_GT = 32
-                             or else Size_GT = 64)
+                             or else Size_GT = 64 or else Size_GT = 128)
                then
                   Align := UI_From_GL_Value (Size_GT) / BPU;
                end if;

@@ -1237,7 +1237,7 @@ package body GNATLLVM.Variables is
       --  constant, adjust the alignment.
 
       if Size = No_Uint and then Align = No_Uint and then Present (In_Size)
-        and then (Is_Atomic_Or_VFA (Def_Ident)
+        and then (Is_Atomic_Or_VFA_Object (Def_Ident)
                     or else (not Ekind_In (Def_Ident, E_Exception,
                                            E_Out_Parameter, E_Loop_Parameter)
                                and then Is_Composite_Type (GT)
@@ -1255,15 +1255,17 @@ package body GNATLLVM.Variables is
 
          begin
             --  Rather than trying to make this unnecessarily portable,
-            --  we're going to hardwire the three cases that make sense.
+            --  we're going to hardwire the four cases that make sense.
 
             case In_Size_ULL is
                when 16 =>
                   Our_Align := 16;
                when 18 .. 32 =>
                   Our_Align := 32;
-               when 33 .. 128 =>
+               when 33 .. 64 =>
                   Our_Align := 64;
+               when 65 .. 128 =>
+                  Our_Align := 128;
                when others =>
                   null;
             end case;

@@ -16,3 +16,4 @@ Limitations and missing features (identified so far):
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - support for -gnatc (when back-annotating), see H218-58
 - need not use indirect for variable that's of known size but nonnnative type
+- deal with alignment for Atomic fields

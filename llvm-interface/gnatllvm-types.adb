@@ -1412,10 +1412,10 @@ package body GNATLLVM.Types is
                    and then Get_Type_Kind (T) /= Struct_Type_Kind)
 
         --  Or if it's a fixed size, the size is equal to the alignment,
-        --  and the alignment is less than a word.
+        --  and the alignment is less than two words.
 
         or else (not Is_Dynamic_Size (GT)
-                   and then Align <= Get_Bits_Per_Word
+                   and then Align <= Get_Bits_Per_Word * 2
                    and then ULL (Align) = Get_Const_Int_Value_ULL
                                             (Get_Type_Size (GT)))
       then

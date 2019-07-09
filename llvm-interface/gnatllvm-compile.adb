@@ -452,6 +452,20 @@ package body GNATLLVM.Compile is
 
                LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
                                                  For_LHS => True);
+
+               --  If this is a reference, set atomic or volatile, as neeed
+
+               if Present (F) or else Idxs /= null then
+                  LHS := Mark_Atomic
+                    (Mark_Volatile (LHS,
+                                    Atomic_Sync_Required (Name (N))
+                                      or else Is_Volatile_Reference
+                                      (Name (N))),
+                     Atomic_Sync_Required (Name (N)));
+               end if;
+
+               --  Now do the operation
+
                if Present (F) then
                   Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
                                      VFA => Is_VFA_Ref (Name (N)));

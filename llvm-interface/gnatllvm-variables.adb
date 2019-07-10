@@ -1852,7 +1852,7 @@ package body GNATLLVM.Variables is
       if Present (LLVM_Var) then
          if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
             Store (Addr, LLVM_Var);
-         elsif Is_Nonnative_Type (GT) then
+         elsif Is_Nonnative_Type (GT) and then not Is_External then
             Store (Get (Heap_Allocate_For_Type (GT, Alloc_GT,
                                                 V         => Value,
                                                 Expr      => Expr,

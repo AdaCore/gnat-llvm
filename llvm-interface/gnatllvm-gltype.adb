@@ -711,7 +711,7 @@ package body GNATLLVM.GLType is
         and then Ekind (GT) not in E_Void | E_Subprogram_Type
       then
          GTI.Alignment  := Get_Type_Alignment (GT, Use_Specified => False);
-         if not Is_Dynamic_Size (GT, Allow_Overflow => True) then
+         if not Is_Dynamic_Size (GT) then
             GTI.Size    :=
               (if   Is_Integer_Type (GT)
                then Size_Const_Int (Get_Scalar_Bit_Size (T))

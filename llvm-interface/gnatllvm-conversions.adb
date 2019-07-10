@@ -505,12 +505,16 @@ package body GNATLLVM.Conversions is
          return Get_Undef (GT);
 
       --  If the value is already of the desired LLVM type, we're done
-      --  unless one type is biased.
+      --  unless one type is biased or if we're converting an unsigned
+      --  constant to signed and the result will be negative.
 
       elsif Type_Of (In_V) = Type_Of (GT) and then not Is_Biased_GL_Type (In_V)
         and then not Is_Biased_GL_Type (GT)
       then
-         return G_Is (In_V, GT);
+         return Mark_Overflowed (G_Is (In_V, GT),
+                                 not Dest_Uns and then Src_Uns
+                                   and then Is_A_Const_Int (In_V)
+                                   and then Get_Const_Int_Value (In_V) < 0);
 
       --  If we're converting between two GL_Types corresponding to the same
       --  GNAT type, convert to the primitive type and the to the desired

@@ -102,7 +102,7 @@ package body GNATLLVM.GLValue is
       end if;
 
       case V.Relationship is
-         when Data =>
+         when Data | Boolean_And_Data =>
 
             --  We allow a non-loadable type to be Data to handle cases
             --  such as passing large objects by value.  We don't want to
@@ -434,6 +434,9 @@ package body GNATLLVM.GLValue is
          when Boolean_Data =>
             return Bit_T;
 
+         when Boolean_And_Data =>
+            return Build_Struct_Type ((1 => T, 2 => Bit_T));
+
          when Object =>
             return (if Is_Loadable_Type (GT) then T else P_T);
 
@@ -491,6 +494,9 @@ package body GNATLLVM.GLValue is
 
          when Boolean_Data =>
             return Bit_T;
+
+         when Boolean_And_Data =>
+            return Build_Struct_Type ((1 => Type_Of (TE), 2 => Bit_T));
 
          when Object =>
             return (if   Is_Loadable_Type (TE) then Type_Of (TE)
@@ -668,6 +674,24 @@ package body GNATLLVM.GLValue is
 
             elsif Our_R = Boolean_Data then
                return Z_Ext (V, GT);
+
+            --  From Boolean_And_Data, extract the data
+
+            elsif Our_R = Boolean_And_Data then
+               return Extract_Value (GT, V, 0);
+            end if;
+
+         when Boolean_Data =>
+
+            --  To get Boolean_Data from Data, truncate it
+
+            if Our_R = Data then
+               return Trunc_To_Relationship (V, Bit_T, Boolean_Data);
+
+            --  And from Boolean_And_Data, extract it
+
+            elsif Our_R = Boolean_And_Data then
+               return Extract_Value_To_Relationship (Boolean_GL_Type, V, 1, R);
             end if;
 
          when Bounds =>
@@ -1535,22 +1559,24 @@ package body GNATLLVM.GLValue is
 
    end Trunc;
 
-   -----------
-   -- Trunc --
-   -----------
+   ---------------------------
+   -- Trunc_To_Relationship --
+   ---------------------------
 
-   function Trunc
-     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   function Trunc_To_Relationship
+     (V    : GL_Value;
+      T    : Type_T;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
    is
       Result : constant GL_Value :=
-        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
-           Unknown);
+        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V), R);
 
    begin
       return Mark_Overflowed
         (Result, Overflowed (V) or else Trunc_Overflowed (V, Result));
 
-   end Trunc;
+   end Trunc_To_Relationship;
 
    -----------
    -- S_Ext --
@@ -1952,10 +1978,7 @@ package body GNATLLVM.GLValue is
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value is
-
-   begin
-      return G (Call_Internal (Func, Args, Name), GT);
-   end Call;
+     (G (Call_Internal (Func, Args, Name), GT));
 
    --------------
    -- Call_Ref --
@@ -1966,24 +1989,19 @@ package body GNATLLVM.GLValue is
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value is
+     (G_Ref (Call_Internal (Func, Args, Name), GT));
 
-   begin
-      return G_Ref (Call_Internal (Func, Args, Name), GT);
-   end Call_Ref;
+   -----------------------
+   -- Call_Relationship --
+   -----------------------
 
-   -----------------
-   -- Call_Struct --
-   -----------------
-
-   function Call_Struct
+   function Call_Relationship
      (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
+      R    : GL_Relationship;
       Name : String := "") return GL_Value is
-
-   begin
-      return G (Call_Internal (Func, Args, Name), GT, Unknown);
-   end Call_Struct;
+     (G (Call_Internal (Func, Args, Name), GT, R));
 
    ----------
    -- Call --

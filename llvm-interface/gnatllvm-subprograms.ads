@@ -28,7 +28,7 @@ package GNATLLVM.Subprograms is
    --  that we currently support.
 
    type Overloaded_Intrinsic_Kind is
-     (Unary, Binary, Overflow, Memcpy, Memset);
+     (Unary, Binary, Boolean_And_Data, Memcpy, Memset);
 
    --  These indicate whether a type must be passed by reference or what the
    --  default pass-by-reference status is.
@@ -104,6 +104,10 @@ package GNATLLVM.Subprograms is
    function Get_Lifetime_End_Fn return GL_Value
      with Post => Present (Get_Lifetime_End_Fn'Result);
    --  Get function to mark start of a variable's lifetime
+
+   function Get_Expect_Fn return GL_Value
+     with Post => Present (Get_Expect_Fn'Result);
+   --  Get function corresponing to llvm.expect
 
    function Get_From_Activation_Record (E : Entity_Id) return GL_Value
      with Pre => not Is_Type (E);

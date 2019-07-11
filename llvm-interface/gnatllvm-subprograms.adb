@@ -24,6 +24,7 @@ with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Snames;   use Snames;
+with Stand;    use Stand;
 with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
@@ -254,6 +255,9 @@ package body GNATLLVM.Subprograms is
    Lifetime_End_Fn   : GL_Value := No_GL_Value;
    --  Function to mark the start and end of the lifetime of a variable
 
+   Expect_Fn         : GL_Value := No_GL_Value;
+   --  Function to provide branch prediction information
+
    --  Tables for recording global constructors and global destructors
 
    package Global_Constructors is new Table.Table
@@ -309,6 +313,12 @@ package body GNATLLVM.Subprograms is
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
    --  for it and return the result.  Otherwise, No_GL_Value.
+
+   function Emit_Branch_Prediction_Call
+     (N : Node_Id; S : String) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  Generate a call to the branch prediction function if the operands
+   --  are the right type.
 
    function Get_Tramp_Init_Fn   return GL_Value;
    function Get_Tramp_Adjust_Fn return GL_Value;
@@ -836,9 +846,9 @@ package body GNATLLVM.Subprograms is
          when Binary =>
             Fun_Ty := Fn_Ty ((1 => T, 2 => T), T);
 
-         when Overflow =>
+         when Boolean_And_Data =>
             Fun_Ty := Fn_Ty ((1 => T, 2 => T),
-                             Build_Struct_Type ((1 => T, 2 => Bit_T)));
+                             Type_For_Relationship (GT, Boolean_And_Data));
 
          when Memcpy =>
             Return_GT := Void_GL_Type;
@@ -1079,6 +1089,23 @@ package body GNATLLVM.Subprograms is
 
       return Lifetime_End_Fn;
    end Get_Lifetime_End_Fn;
+
+   -------------------
+   -- Get_Expect_Fn --
+   -------------------
+
+   function Get_Expect_Fn return GL_Value is
+   begin
+      if No (Expect_Fn) then
+         Expect_Fn := Add_Function
+           ("llvm.expect.i1",
+            Fn_Ty ((1 => Bit_T, 2 => Bit_T), Bit_T),
+            Void_GL_Type);
+         Set_Does_Not_Throw      (Get_Expect_Fn);
+      end if;
+
+      return Expect_Fn;
+   end Get_Expect_Fn;
 
    ---------------------
    -- Make_Trampoline --
@@ -1895,6 +1922,49 @@ package body GNATLLVM.Subprograms is
                    (1 => Emit_Expression (Val)));
    end Emit_Bswap_Call;
 
+   ------------------------------
+   -- Emit_Branch_Predict_Call --
+   ------------------------------
+
+   function Emit_Branch_Prediction_Call
+     (N : Node_Id; S : String) return GL_Value
+   is
+      Val      : constant Node_Id := First_Actual (N);
+      Two_Arg  : constant Boolean := S = "__builtin_expect";
+      Expected : GL_Value;
+
+   begin
+      --  Verify that the types and number of arguments are correct
+
+      if Nkind (N) /= N_Function_Call or else No (Val)
+        or else Full_Etype (Val) /= Standard_Boolean
+        or else Full_Etype (N) /= Standard_Boolean
+        or else (Two_Arg
+                   and then (No (Next_Actual (Val))
+                               or else Full_Etype (Next_Actual (Val)) /=
+                                         Standard_Boolean))
+      then
+         return No_GL_Value;
+
+      --  If this is a two-arg form, set the expected value from the name,
+      --  and evaluate it otherwise.
+
+      elsif Two_Arg then
+         Expected := Get (Emit (Next_Actual (Val)), Boolean_Data);
+      else
+         Expected
+           := (if S = "__builtin_likely" then Const_True else Const_False);
+      end if;
+
+      --  Now emit the call and return the result
+
+      return Call_Relationship (Get_Expect_Fn, Boolean_GL_Type,
+                                (1 => Get (Emit (Val), Boolean_Data),
+                                 2 => Expected),
+                                Boolean_Data);
+
+   end Emit_Branch_Prediction_Call;
+
    -------------------------
    -- Emit_Intrinsic_Call --
    -------------------------
@@ -1928,11 +1998,15 @@ package body GNATLLVM.Subprograms is
       if Fn_Name'Length > 7 and then Fn_Name (1 .. 7) = "__sync_" then
          return Emit_Sync_Call (N, Fn_Name);
 
-      --  Next, check for __builtin_bswap
+      --  Check for __builtin_bswap and __builtin_expect
 
       elsif Fn_Name'Length > 15 and then Fn_Name (1 .. 15) = "__builtin_bswap"
       then
          return Emit_Bswap_Call (N, Fn_Name);
+      elsif  Fn_Name = "__builtin_expect" or else Fn_Name = "__builtin_likely"
+        or else Fn_Name = "__builtin_unlikely"
+      then
+         return Emit_Branch_Prediction_Call (N, Fn_Name);
       end if;
 
       --  Now see if this is a FP builtin
@@ -2393,7 +2467,8 @@ package body GNATLLVM.Subprograms is
                VFA => Out_VFAs (1));
 
          when Struct_Out | Struct_Out_Subprog =>
-            Actual_Return := Call_Struct (LLVM_Func, Return_GT, Args);
+            Actual_Return :=
+              Call_Relationship (LLVM_Func, Return_GT, Args, Unknown);
 
             --  First extract the return value (possibly returned by-ref)
 

@@ -1867,7 +1867,8 @@ package body GNATLLVM.Records is
             --  Otherwise, truncate to the corresponding bit size
 
             else
-               Result := Trunc (Result, Int_Ty (Get_Type_Size (Result_T)));
+               Result := Trunc_To_Relationship
+                 (Result, Int_Ty (Get_Type_Size (Result_T)), Unknown);
 
                --  For a floating-point type we perform a bit cast
 
@@ -2067,9 +2068,9 @@ package body GNATLLVM.Records is
          --  cases where RHS is a record type with padding.
 
          if RHS_Width < Data_Width then
-            RHS_Cvt := Z_Ext (RHS_Cvt, Data_T);
+            RHS_Cvt := Z_Ext_To_Relationship (RHS_Cvt, Data_T, Unknown);
          elsif RHS_Width > Data_Width then
-            RHS_Cvt := Trunc (RHS_Cvt, Data_T);
+            RHS_Cvt := Trunc_To_Relationship (RHS_Cvt, Data_T, Unknown);
          end if;
 
          --  Now form the mask, remove the old value, and insert the new value

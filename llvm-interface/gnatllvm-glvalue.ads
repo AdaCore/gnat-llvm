@@ -47,6 +47,11 @@ package GNATLLVM.GLValue is
       --  of the normal i8 that we'd use for a Boolean type.  In this case,
       --  the type must be Standard_Boolean.
 
+      Boolean_And_Data,
+      --  Like Data, but a struct consisting of the data followed by an
+      --  i1 item that indicates something about the result, such as
+      --  whether it represents an overflow or not.
+
       Reference,
       --  Value contains the address of an object of Typ.  This is always
       --  the case for types of variable size or for names corresponding to
@@ -179,6 +184,9 @@ package GNATLLVM.GLValue is
       Boolean_Data                   =>
         (Is_Ref => False, Is_Any_Ref => False,
          Deref  => Invalid,          Ref => Invalid),
+      Boolean_And_Data               =>
+        (Is_Ref => False, Is_Any_Ref => False,
+         Deref  => Invalid,          Ref => Invalid),
       Reference                      =>
         (Is_Ref => True,  Is_Any_Ref => True,
          Deref  => Data,             Ref => Reference_To_Reference),
@@ -261,7 +269,7 @@ package GNATLLVM.GLValue is
      (R = Reference_To_Subprogram);
 
    function Is_Data (R : GL_Relationship)                 return Boolean is
-     (R in Data | Boolean_Data | Bounds_And_Data);
+     (R in Data | Boolean_Data | Boolean_And_Data | Bounds_And_Data);
 
    function Relationship_For_Ref (GT : GL_Type) return GL_Relationship
      with Pre => Present (GT);
@@ -1150,10 +1158,13 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
           Post => Is_Discrete_Or_Fixed_Point_Type (Trunc'Result);
 
-   function Trunc
-     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   function Trunc_To_Relationship
+     (V    : GL_Value;
+      T    : Type_T;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
      with Pre  => Present (V) and then Present (T),
-          Post => Present (Trunc'Result);
+          Post => Present (Trunc_To_Relationship'Result);
 
    function S_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
@@ -1165,13 +1176,15 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
           Post => Is_Discrete_Or_Fixed_Point_Type (Z_Ext'Result);
 
-   function Z_Ext
-     (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
+   function Z_Ext_To_Relationship
+     (V    : GL_Value;
+      T    : Type_T;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
    is
-     (G (Z_Ext (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
-         Unknown))
+     (G (Z_Ext (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V), R))
      with Pre  => Present (V) and then Present (T),
-          Post => Present (Z_Ext'Result);
+          Post => Present (Z_Ext_To_Relationship'Result);
 
    function FP_Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
@@ -1762,15 +1775,16 @@ package GNATLLVM.GLValue is
      with Pre  => Present (Func) and then Present (GT),
           Post => Is_Reference (Call_Ref'Result);
 
-   function Call_Struct
+   function Call_Relationship
      (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
+      R    : GL_Relationship;
       Name : String := "") return GL_Value
      with Pre  => Present (Func) and then Present (GT),
-          Post => Present (Call_Struct'Result);
-   --  Used when an LLVM function is returning a structure for multiple
-   --  values.
+          Post => Present (Call_Relationship'Result);
+     --  Used when an LLVM function is returning something of a specified
+     --  relationship.
 
    procedure Call
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")

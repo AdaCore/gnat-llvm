@@ -311,11 +311,12 @@ package body GNATLLVM.Exprs is
 
          declare
             Func      : constant GL_Value  := Build_Intrinsic
-              (Overflow, "llvm." & Ovfl_Name & ".with.overflow.i", LHS_BT);
+              (Boolean_And_Data, "llvm." & Ovfl_Name & ".with.overflow.i",
+               LHS_BT);
             Fn_Ret    : constant GL_Value  :=
-              Call (Func, LHS_BT, (1 => LVal, 2 => RVal));
-            Overflow  : constant GL_Value  :=
-              Extract_Value (Boolean_GL_Type, Fn_Ret, 1, "overflow");
+              Call_Relationship (Func, LHS_BT, (1 => LVal, 2 => RVal),
+                                 Boolean_And_Data);
+            Overflow  : constant GL_Value  := Get (Fn_Ret, Boolean_Data);
             Label_Ent : constant Entity_Id :=
               Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
             BB_Next   : Basic_Block_T;
@@ -329,7 +330,7 @@ package body GNATLLVM.Exprs is
                Emit_Raise_Call_If (Overflow, N);
             end if;
 
-            Result := Extract_Value (LHS_BT, Fn_Ret, 0);
+            Result := Get (Fn_Ret, Data);
          end;
       end if;
 
@@ -477,11 +478,13 @@ package body GNATLLVM.Exprs is
                then
                   declare
                      Func      : constant GL_Value  := Build_Intrinsic
-                       (Overflow, "llvm.ssub.with.overflow.i", BT);
+                       (Boolean_And_Data, "llvm.ssub.with.overflow.i", BT);
                      Fn_Ret    : constant GL_Value  :=
-                       Call (Func, GT, (1 => Const_Null (BT), 2 => V));
+                       Call_Relationship (Func, GT,
+                                          (1 => Const_Null (BT), 2 => V),
+                                          Boolean_And_Data);
                      Overflow  : constant GL_Value  :=
-                       Extract_Value (Boolean_GL_Type, Fn_Ret, 1, "overflow");
+                       Get (Fn_Ret, Boolean_Data);
                      Label_Ent : constant Entity_Id :=
                        Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
                      BB_Next   : Basic_Block_T;
@@ -496,7 +499,7 @@ package body GNATLLVM.Exprs is
                         Emit_Raise_Call_If (Overflow, N);
                      end if;
 
-                     return Extract_Value (BT, Fn_Ret, 0);
+                     return Get (Fn_Ret, Data);
                   end;
                else
                   return Neg (V);

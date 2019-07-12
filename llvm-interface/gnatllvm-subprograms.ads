@@ -17,18 +17,10 @@
 
 with Sinfo; use Sinfo;
 
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.Subprograms is
-
-   --  When we want to create an overloaded intrinsic, we need to specify
-   --  what operand signature the intrinsic has.  The following are those
-   --  that we currently support.
-
-   type Overloaded_Intrinsic_Kind is
-     (Unary, Binary, Boolean_And_Data, Memcpy, Memset);
 
    --  These indicate whether a type must be passed by reference or what the
    --  default pass-by-reference status is.
@@ -55,15 +47,6 @@ package GNATLLVM.Subprograms is
      with Post => Present (Create_Subprogram_Access_Type'Result);
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
-   function Build_Intrinsic
-     (Kind : Overloaded_Intrinsic_Kind;
-      Name : String;
-      GT   : GL_Type) return GL_Value
-     with Pre  => Is_Primitive_GL_Type (GT) and then not Unknown_RM_Size (GT),
-          Post => Present (Build_Intrinsic'Result);
-   --  Build an intrinsic function of the specified type, name, and kind
-
-   --  Build an intrinsic function of the specified type, name, and kind
    function Add_Global_Function
      (S          : String;
       Subp_Type  : Type_T;

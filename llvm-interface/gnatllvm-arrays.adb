@@ -20,12 +20,12 @@ with Snames;   use Snames;
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
+with GNATLLVM.Builtins;      use GNATLLVM.Builtins;
 with GNATLLVM.Compile;       use GNATLLVM.Compile;
 with GNATLLVM.Conversions;   use GNATLLVM.Conversions;
 with GNATLLVM.DebugInfo;     use GNATLLVM.DebugInfo;
 with GNATLLVM.Exprs;         use GNATLLVM.Exprs;
 with GNATLLVM.Records;       use GNATLLVM.Records;
-with GNATLLVM.Subprograms;   use GNATLLVM.Subprograms;
 with GNATLLVM.Variables;     use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays is
@@ -1458,5 +1458,6 @@ package body GNATLLVM.Arrays is
       end case;
 
       pragma Assert (False);
+      return Empty;
    end Get_Dim_Range;
 end GNATLLVM.Arrays;

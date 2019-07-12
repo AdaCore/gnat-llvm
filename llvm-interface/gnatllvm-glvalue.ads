@@ -1630,6 +1630,21 @@ package GNATLLVM.GLValue is
       with Pre  => Is_Access_Type (Ptr) and then Present (V),
            Post => Present (Atomic_RMW'Result);
 
+   function Atomic_Cmp_Xchg
+     (Ptr              : GL_Value;
+      Cmp              : GL_Value;
+      C_New            : GL_Value;
+      Success_Ordering : Atomic_Ordering_T :=
+        Atomic_Ordering_Sequentially_Consistent;
+      Failure_Ordering : Atomic_Ordering_T :=
+        Atomic_Ordering_Sequentially_Consistent;
+      Single_Thread    : Boolean           := False)
+      return GL_Value is
+     (G (Atomic_Cmp_Xchg (IR_Builder, LLVM_Value (Ptr), LLVM_Value (Cmp),
+                          LLVM_Value (C_New), Success_Ordering,
+                          Failure_Ordering, Single_Thread),
+         Related_Type (Cmp), Boolean_And_Data));
+
    function Extract_Value
      (GT    : GL_Type;
       Arg   : GL_Value;
@@ -1934,6 +1949,9 @@ package GNATLLVM.GLValue is
    procedure Set_Unnamed_Addr
      (V : GL_Value; Has_Unnamed_Addr : Boolean := True)
      with Pre => Is_A_Global_Variable (V);
+
+   procedure Set_Volatile_For_Atomic (V : GL_Value)
+     with Pre => Present (V);
 
    function Get_Subprogram (V : GL_Value) return Metadata_T is
      (Get_Subprogram (LLVM_Value (V)))

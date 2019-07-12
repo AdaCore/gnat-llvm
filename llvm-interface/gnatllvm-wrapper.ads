@@ -124,6 +124,9 @@ package GNATLLVM.Wrapper is
    procedure Set_NSW (V : Value_T)
      with Import, Convention => C, External_Name => "Set_NSW";
 
+   procedure Set_Volatile_For_Atomic (V : Value_T)
+     with Import, Convention => C, External_Name => "Set_Volatile_For_Atomic";
+
    procedure LLVM_Optimize_Module
      (Module                : Module_T;
       Target_Machine        : Target_Machine_T;

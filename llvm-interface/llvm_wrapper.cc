@@ -244,6 +244,18 @@ Set_Does_Not_Return (Function *fn)
     return fn->setDoesNotReturn ();
 }
 
+/* The LLVM C interest Set_Volatile only works for loads and stores, not
+   Atomic instructions.  */
+
+extern "C"
+void
+Set_Volatile_For_Atomic (Instruction *inst)
+{
+  if (AtomicRMWInst *ARW = dyn_cast<AtomicRMWInst> (inst))
+    return ARW->setVolatile(true);
+  return cast<AtomicCmpXchgInst> (inst)->setVolatile(true);
+}
+
 extern "C"
 void
 Initialize_LLVM (void)

@@ -445,6 +445,10 @@ package GNATLLVM.GLType is
      (Is_Independent (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Descendant_Of_Address (GT : GL_Type) return Boolean is
+     (Is_Descendant_Of_Address (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Universal_Aliasing (GT : GL_Type) return Boolean is
      (Universal_Aliasing (Full_Etype (GT)))
      with Pre => Present (GT);

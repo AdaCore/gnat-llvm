@@ -2366,6 +2366,15 @@ package body GNATLLVM.GLValue is
       Set_Unnamed_Addr (LLVM_Value (V), Has_Unnamed_Addr);
    end Set_Unnamed_Addr;
 
+   -----------------------------
+   -- Set_Volatile_For_Atomic --
+   -----------------------------
+
+   procedure Set_Volatile_For_Atomic (V : GL_Value) is
+   begin
+      Set_Volatile_For_Atomic (LLVM_Value (V));
+   end Set_Volatile_For_Atomic;
+
    ---------------------
    -- Set_Arith_Attrs --
    ---------------------

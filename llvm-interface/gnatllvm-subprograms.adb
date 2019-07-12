@@ -20,6 +20,7 @@ with Exp_Unst; use Exp_Unst;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
 with Restrict; use Restrict;
+with Sem_Eval; use Sem_Eval;
 with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
@@ -300,14 +301,29 @@ package body GNATLLVM.Subprograms is
    --  a supported LLVM atomicrmw instruction.  If so, set End_Index
    --  to after the name and Op to the code for the operation and return True.
 
+   function Type_Size_Matches_Name
+     (S        : String;
+      Index    : Integer;
+      In_Bytes : Boolean;
+      GT       : GL_Type) return Boolean;
+   --  Return True if the string S, starting at position Index, represents
+   --  an integer corresponding to the size of GT measured in bytes or
+   --  bits, depending on In_Bytes.
+
    function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If N is a valid call to builtin_bswap, generate it
 
-   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value
+   function Emit_Sync_Fetch_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
-   --  If S is a valid __sync name, emit the LLVM for it and return the
-   --  result.  Otherwise, return No_GL_Value.
+   --  If S is a valid __sync name for a Fetch_And_Op or Op_And_Fetch, emit
+   --  the LLVM for it and return the result.  Otherwise, return
+   --  No_GL_Value.
+
+   function Emit_Sync_Compare_Call (N : Node_Id; S : String) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  If S is a valid __sync name for a compare and swap, emit the LLVM
+   --  for it and return the result.  Otherwise, return No_GL_Value.
 
    function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
@@ -319,6 +335,11 @@ package body GNATLLVM.Subprograms is
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  Generate a call to the branch prediction function if the operands
    --  are the right type.
+
+   function Emit_Atomic_Call (N : Node_Id; S : String) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  Generate a call to the atomic load function if the operands are the
+   --  right type.
 
    function Get_Tramp_Init_Fn   return GL_Value;
    function Get_Tramp_Adjust_Fn return GL_Value;
@@ -1770,11 +1791,49 @@ package body GNATLLVM.Subprograms is
       return False;
    end Name_To_RMW_Op;
 
-   --------------------
-   -- Emit_Sync_Call --
-   --------------------
+   ----------------------------
+   -- Type_Size_Matches_Name --
+   ----------------------------
 
-   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value is
+   function Type_Size_Matches_Name
+     (S        : String;
+      Index    : Integer;
+      In_Bytes : Boolean;
+      GT       : GL_Type) return Boolean
+   is
+      GT_Size : constant Nat     := Nat (ULL'(Get_Type_Size (Type_Of (GT))));
+      Size    : constant Integer :=
+        Integer (GT_Size / (if In_Bytes then BPU else 1));
+      Digs    : constant Integer :=
+        (if Size >= 100 then 3 elsif Size >= 10 then 2 else 1);
+
+   begin
+      --  We don't match if the rest of the string isn't the right length
+      --  and we also don't deal with three-digit sizes.
+
+      if S'Last /= Index + Digs - 1 or else Digs > 2 then
+         return False;
+
+      --  If there's only one digit, see if it's the right one
+
+      elsif Digs = 1 then
+         return S (Index) = Character'Val (Character'Pos ('0') + Size);
+
+      --  If there are two digits (the only remaining case), check both
+
+      else
+         return S (Index) = Character'Val (Character'Pos ('0') + Size / 10)
+           and then S (Index + 1) = Character'Val
+                                      (Character'Pos ('0') + Size mod 10);
+      end if;
+
+   end Type_Size_Matches_Name;
+
+   --------------------------
+   -- Emit_Sync_Fetch_Call --
+   --------------------------
+
+   function Emit_Sync_Fetch_Call (N : Node_Id; S : String) return GL_Value is
       Ptr        : constant Node_Id := First_Actual (N);
       Index      : Integer := S'First + 7;
       Val        : Node_Id;
@@ -1782,7 +1841,6 @@ package body GNATLLVM.Subprograms is
       Op_Back    : Boolean;
       New_Index  : Integer;
       GT, BT, PT : GL_Type;
-      Type_Size  : ULL;
       Value      : GL_Value;
       Result     : GL_Value;
 
@@ -1810,7 +1868,8 @@ package body GNATLLVM.Subprograms is
       end if;
 
       --  There must be exactly two actuals with the second an elementary
-      --  type and the first an access type to it.
+      --  type and the first an access type to it.  The name of the function
+      --  must also correspond to the size.
 
       if No (Ptr) then
          return No_GL_Value;
@@ -1827,20 +1886,7 @@ package body GNATLLVM.Subprograms is
       if not Is_Elementary_Type (GT)
         or else not Is_Access_Type (PT)
         or else Base_GL_Type (Full_Designated_GL_Type (PT)) /= BT
-      then
-         return No_GL_Value;
-      end if;
-
-      --  Finally, verify that the size of the type matches the builtin name
-      if S'Last < Index + 1 then
-         return No_GL_Value;
-      end if;
-
-      Type_Size := Get_Type_Size (Type_Of (GT));
-      if not (S (Index .. Index + 1) = "_1" and then Type_Size = 8)
-        and then not (S (Index .. Index + 1) = "_2" and then Type_Size = 16)
-        and then not (S (Index .. Index + 1) = "_4" and then Type_Size = 32)
-        and then not (S (Index .. Index + 1) = "_8" and then Type_Size = 64)
+        or else not Type_Size_Matches_Name (S, Index + 1, True, GT)
       then
          return No_GL_Value;
       end if;
@@ -1849,6 +1895,7 @@ package body GNATLLVM.Subprograms is
 
       Value  := Emit_Expression (Val);
       Result := Atomic_RMW (Op, Emit_Expression (Ptr), Value);
+      Set_Volatile_For_Atomic (Result);
 
       --  If we want the value before the operation, we're done.  Otherwise,
       --  we have to do the operation.
@@ -1886,7 +1933,90 @@ package body GNATLLVM.Subprograms is
             return Build_Min (Result, Value);
       end case;
 
-   end Emit_Sync_Call;
+   end Emit_Sync_Fetch_Call;
+
+   ----------------------------
+   -- Emit_Sync_Compare_Call --
+   ----------------------------
+
+   function Emit_Sync_Compare_Call (N : Node_Id; S : String) return GL_Value is
+      Ptr     : constant Node_Id := First_Actual (N);
+      Index   : Integer          := S'First + 7;
+      Old_Val : Node_Id;
+      New_Val : Node_Id;
+      GT      : GL_Type;
+      Ptr_Val : GL_Value;
+      Is_Bool : Boolean;
+      Result  : GL_Value;
+
+   begin
+      --  See if we are to return the value of the variable or a boolean
+      --  that says whether it matches.
+
+      if S'Length > 29
+        and then S (Index .. Index + 21) = "bool_compare_and_swap_"
+      then
+         Index   := Index + 22;
+         Is_Bool := True;
+      elsif S'Length > 28
+        and then S (Index .. Index + 20) = "val_compare_and_swap_"
+      then
+         Index   := Index + 21;
+         Is_Bool := False;
+      end if;
+
+      --  There must be exactly three actuals with the second an elementary
+      --  type, the first either an access type to it or System.Address,
+      --  and the third the same as the second and the size specified in
+      --  the name must agree with that of the type.
+
+      if No (Ptr) then
+         return No_GL_Value;
+      end if;
+
+      Old_Val := Next_Actual (Ptr);
+      if No (Old_Val) then
+         return No_GL_Value;
+      end if;
+
+      New_Val := Next_Actual (Old_Val);
+      if No (New_Val) or else Present (Next_Actual (New_Val)) then
+         return No_GL_Value;
+      end if;
+
+      --  If the pointer is System.Address, make it an access type
+
+      GT      := Full_GL_Type (Old_Val);
+      Ptr_Val := Emit_Expression (Ptr);
+      if Is_Descendant_Of_Address (Related_Type (Ptr_Val)) then
+         Ptr_Val := Int_To_Ref (Ptr_Val, GT);
+      elsif Is_Access_Type (Related_Type (Ptr_Val)) then
+         Ptr_Val := From_Access (Ptr_Val);
+      end if;
+
+      if not Is_Elementary_Type (GT)
+        or else Full_GL_Type (New_Val) /= GT
+        or else Related_Type (Ptr_Val) /= GT
+        or else not Type_Size_Matches_Name (S, Index, True, GT)
+      then
+         return No_GL_Value;
+      end if;
+
+      --  Now we can emit the operation and return the result
+
+      Result := Atomic_Cmp_Xchg (Ptr_Val, Emit_Expression (Old_Val),
+                                 Emit_Expression (New_Val));
+      Set_Volatile_For_Atomic (Result);
+
+      if Is_Bool then
+         return Get (G_Is_Relationship (Result, Boolean_GL_Type,
+                                        Boolean_And_Data),
+                     Boolean_Data);
+      else
+         return Get (Result, Data);
+      end if;
+
+   end Emit_Sync_Compare_Call;
 
    ---------------------
    -- Emit_Bswap_Call --
@@ -1895,7 +2025,6 @@ package body GNATLLVM.Subprograms is
    function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value is
       Val       : constant Node_Id := First_Actual (N);
       GT        : GL_Type;
-      Type_Size : ULL;
 
    begin
       --  This is supposedly a __builtin_bswap builtin.  Verify that it is.
@@ -1906,17 +2035,13 @@ package body GNATLLVM.Subprograms is
       end if;
 
       GT := Full_GL_Type (Val);
-      if not Is_Elementary_Type (GT) then
-         return No_GL_Value;
-      end if;
-
-      Type_Size := Get_Type_Size (Type_Of (GT));
-      if not (S (S'Last - 1 .. S'Last) = "16" and then Type_Size = 16)
-        and then not (S (S'Last - 1 .. S'Last) = "32" and then Type_Size = 32)
-        and then not (S (S'Last - 1 .. S'Last) = "64" and then Type_Size = 64)
+      if not Is_Elementary_Type (GT)
+        or else not Type_Size_Matches_Name (S, 16, False, GT)
       then
          return No_GL_Value;
       end if;
+
+      --  Otherwise, emit the intrinsic
 
       return Call (Build_Intrinsic (Unary, "llvm.bswap.i", GT), GT,
                    (1 => Emit_Expression (Val)));
@@ -1965,13 +2090,69 @@ package body GNATLLVM.Subprograms is
 
    end Emit_Branch_Prediction_Call;
 
+   ----------------------
+   -- Emit_Atomic_Call --
+   ----------------------
+
+   function Emit_Atomic_Call (N : Node_Id; S : String) return GL_Value is
+      Ptr        : constant Node_Id := First_Actual (N);
+      Ptr_Val    : GL_Value;
+      Order      : Node_Id;
+      GT         : GL_Type;
+      Order_UI   : Uint;
+      Inst_Order : Atomic_Ordering_T;
+      Inst       : Value_T;
+   begin
+      --  Verify that the types and number of arguments are correct
+
+      if Nkind (N) /= N_Function_Call or else No (Ptr) then
+         return No_GL_Value;
+      end if;
+
+      --  If the pointer is System.Address, make it an access type
+
+      GT      := Full_GL_Type (N);
+      Ptr_Val := Emit_Expression (Ptr);
+      if Is_Descendant_Of_Address (Related_Type (Ptr_Val)) then
+         Ptr_Val := Int_To_Ref (Ptr_Val, GT);
+      elsif Is_Access_Type (Related_Type (Ptr_Val)) then
+         Ptr_Val := From_Access (Ptr_Val);
+      end if;
+
+      Order := Next_Actual (Ptr);
+      if No (Order) or else Present (Next_Actual (Order))
+        or else not Type_Size_Matches_Name (S, 15, True, GT)
+        or else Related_Type (Ptr_Val) /= GT
+        or else not Compile_Time_Known_Value (Order)
+      then
+         return No_GL_Value;
+      end if;
+
+      Order_UI := Expr_Value (Order);
+      Inst_Order := (if    Order_UI = 0 then Atomic_Ordering_Unordered
+                     elsif Order_UI = 2 then Atomic_Ordering_Acquire
+                     elsif Order_UI = 3 then Atomic_Ordering_Release
+                     elsif Order_UI = 4 then Atomic_Ordering_Acquire_Release
+                     else  Atomic_Ordering_Sequentially_Consistent);
+
+      Inst := Load  (IR_Builder, LLVM_Value (Ptr_Val), "");
+      Set_Ordering  (Inst, Inst_Order);
+      Set_Volatile  (Inst, True);
+      Set_Alignment (Inst,
+                     unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
+
+      return G (Inst, GT);
+
+   end Emit_Atomic_Call;
+
    -------------------------
    -- Emit_Intrinsic_Call --
    -------------------------
 
    function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
    is
-      Fn_Name : constant String := Get_Ext_Name (Subp);
+      Fn_Name : constant String  := Get_Ext_Name (Subp);
+      J       : constant Integer := Fn_Name'First;
       Len     : Integer;
 
       type FP_Builtin is record
@@ -1995,18 +2176,29 @@ package body GNATLLVM.Subprograms is
    begin
       --  First see if this is a __sync class of subprogram
 
-      if Fn_Name'Length > 7 and then Fn_Name (1 .. 7) = "__sync_" then
-         return Emit_Sync_Call (N, Fn_Name);
+      if Fn_Name'Length > 12 and then Fn_Name (J .. J + 6) = "__sync_" then
+         if Fn_Name (J + 7 .. J + 10) = "val_"
+           or else Fn_Name (J + 7 .. J + 11) = "bool_"
+         then
+            return Emit_Sync_Compare_Call (N, Fn_Name);
+         else
+            return Emit_Sync_Fetch_Call (N, Fn_Name);
+         end if;
 
-      --  Check for __builtin_bswap and __builtin_expect
+      --  Check for __builtin_bswap, __builtin_expect, and __atomic_load
 
-      elsif Fn_Name'Length > 15 and then Fn_Name (1 .. 15) = "__builtin_bswap"
+      elsif Fn_Name'Length > 16
+        and then Fn_Name (J .. J + 14) = "__builtin_bswap"
       then
          return Emit_Bswap_Call (N, Fn_Name);
-      elsif  Fn_Name = "__builtin_expect" or else Fn_Name = "__builtin_likely"
+      elsif Fn_Name = "__builtin_expect" or else Fn_Name = "__builtin_likely"
         or else Fn_Name = "__builtin_unlikely"
       then
          return Emit_Branch_Prediction_Call (N, Fn_Name);
+      elsif Fn_Name'Length > 14
+        and then Fn_Name (J .. J + 13) = "__atomic_load_"
+      then
+         return Emit_Atomic_Call (N, Fn_Name);
       end if;
 
       --  Now see if this is a FP builtin
@@ -2014,11 +2206,12 @@ package body GNATLLVM.Subprograms is
       for FP of FP_Builtins loop
          Len := FP.Length;
          if Fn_Name'Length >= Len + 10
-           and then Fn_Name (1 .. 10) = "__builtin_"
-           and then Fn_Name (11 .. Len + 10) = FP.Name (1 .. Len)
+           and then Fn_Name (J .. J + 9) = "__builtin_"
+           and then Fn_Name (J + 10 .. J + Len + 9) = FP.Name (1 .. Len)
            and then (Fn_Name'Length = Len + 10
                        or else (Fn_Name'Length = Len + 11
-                                  and then (Fn_Name (Len + 11) in 'f' | 'l')))
+                                  and then (Fn_Name (J + Len + 10)
+                                              in 'f' | 'l')))
          then
             declare
                GT     : constant GL_Type  := Full_GL_Type (N);

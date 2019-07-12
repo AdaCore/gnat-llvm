@@ -577,6 +577,10 @@ package GNATLLVM.GLType is
      (Can_Use_Internal_Rep (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function C_Pass_By_Copy (GT : GL_Type) return Boolean is
+     (C_Pass_By_Copy (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    procedure Dump_GL_Type (GT : GL_Type)

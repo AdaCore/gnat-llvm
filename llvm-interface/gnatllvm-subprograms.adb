@@ -17,6 +17,7 @@
 
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
+with Get_Targ; use Get_Targ;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
 with Restrict; use Restrict;
@@ -59,13 +60,18 @@ package body GNATLLVM.Subprograms is
       --  This parameter is passed by reference and is read and written
 
       Foreign_By_Ref,
-      --  Similar to By_Reference, but for a subprogram with foreign convention
+      --  Similar to By_Reference, but for a parameter with foreign convention
 
       Activation_Record,
       --  This parameter is a pointer to an activation record
 
       In_Value,
       --  This parameter is passed by value, but used only as an input
+
+      In_Value_By_Int,
+      --  Similar to In_Value, but for a parameter with foreign convention
+      --  that we have to pass as an integer to avoid issues with LLVM's
+      --  implementation of the x86-64 calling convention
 
       Out_Value,
       --  This parameter is passed by value, but is only an output
@@ -382,8 +388,13 @@ package body GNATLLVM.Subprograms is
 
    function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
       GT           : constant GL_Type           := Full_GL_Type (Param);
+      T            : constant Type_T            := Type_Of (GT);
+      Size         : constant ULL               :=
+        (if Is_Nonnative_Type (GT) then 0 else Get_Type_Size (T));
       Subp         : constant Entity_Id         := Scope (Param);
       By_Ref_Mech  : constant Param_By_Ref_Mech := Get_Param_By_Ref_Mech (GT);
+      Foreign      : constant Boolean           :=
+        Has_Foreign_Convention (Param) or else Has_Foreign_Convention (Subp);
       Param_Mode   : Entity_Kind                := Ekind (Param);
       Mech         : Int                        := Mechanism (Param);
       By_Copy_Kind : Param_Kind;
@@ -460,6 +471,8 @@ package body GNATLLVM.Subprograms is
       if Mech > 0 then
          if Is_Nonnative_Type (GT) then
             Mech := By_Reference;
+         elsif Foreign and then C_Pass_By_Copy (GT) then
+            Mech := By_Copy;
          else
             Mech := (if   Get_Const_Int_Value (Get_Type_Size (GT)) > LLI (Mech)
                      then By_Reference else By_Copy);
@@ -486,16 +499,18 @@ package body GNATLLVM.Subprograms is
 
       --  For foreign convention, the only time we pass by value is an
       --  elementary type that's an In parameter and Mechanism isn't
-      --  By_Reference or any type with a Mechanism of By_Copy.
+      --  By_Reference or any type with a Mechanism of By_Copy.  Handle the
 
-      elsif Has_Foreign_Convention (Param)
-        or else Has_Foreign_Convention (Subp)
-      then
+      elsif Foreign then
          return (if   Param_Mode = E_In_Parameter and then By_Ref_Mech /= Must
                       and then (Mech = By_Copy
                                   or else (Is_Elementary_Type (GT)
                                                and then Mech /= By_Reference))
-                 then In_Value else Foreign_By_Ref);
+                 then (if   Is_Record_Type (GT)
+                            and then not Is_Nonnative_Type (GT)
+                            and then Size <= ULL (Get_Bits_Per_Word)
+                       then In_Value_By_Int else In_Value)
+                 else Foreign_By_Ref);
 
       --  Force by-reference and dynamic-sized types to be passed by reference
 
@@ -681,8 +696,13 @@ package body GNATLLVM.Subprograms is
       while Present (Param_Ent) loop
          declare
             Param_GT  : constant GL_Type    := Full_GL_Type (Param_Ent);
+            Param_T   : constant Type_T     := Type_Of (Param_GT);
             PK        : constant Param_Kind := Get_Param_Kind (Param_Ent);
             PK_By_Ref : constant Boolean    := PK_Is_Reference (PK);
+            Size      : constant ULL        :=
+              (if   Is_Nonnative_Type (Param_GT) then 0
+               else Get_Type_Size (Param_T));
+
          begin
             --  If the mechanism requested was by-copy and we use by-ref,
             --  give a warning.  If the mechanism was defaulted, set
@@ -695,12 +715,16 @@ package body GNATLLVM.Subprograms is
                               (if PK_By_Ref then By_Reference else By_Copy));
             end if;
 
-            --  If this is an input or reference, set the type for the param
+            --  If this is an input or reference, set the type for the
+            --  param For foreign convention, we pass small record (less
+            --  than a word) as an integer to avoid issues with the x86-64
+            --  ABI.
 
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
                  (if    PK = Foreign_By_Ref
                   then  Pointer_Type (Type_Of (Param_GT), 0)
+                  elsif PK = In_Value_By_Int then Int_Ty (Size)
                   elsif PK_By_Ref then Create_Access_Type_To (Param_GT)
                   else  Type_Of (Param_GT));
 
@@ -1173,6 +1197,23 @@ package body GNATLLVM.Subprograms is
                                                 Def_Ident => Param,
                                                 Name      => Name.all);
                P_Num      := 0;
+
+            --  Handle the case where we have to pun the object from
+            --  integer to its actual type.
+
+            elsif PK = In_Value_By_Int then
+               declare
+                  Size : constant ULL := Get_Type_Size (Type_Of (GT));
+
+               begin
+                  LLVM_Param := Allocate_For_Type (GT, GT, Param,
+                                                   Def_Ident => Param,
+                                                   Name      => Name.all);
+                  Store (V,
+                         Pointer_Cast_To_Relationship
+                           (LLVM_Param, Pointer_Type (Int_Ty (Size), 0),
+                            Reference_To_Unknown));
+               end;
             else
                LLVM_Param := V;
             end if;
@@ -1948,7 +1989,28 @@ package body GNATLLVM.Subprograms is
                              else Convert_Ref (LHS, GT));
                   end if;
                else
-                  Arg := Get (Emit_Conversion (Actual, GT), Data);
+                  Arg := Emit_Conversion (Actual, GT);
+
+                  --  Handle the case where this is a parameter passed by
+                  --  integer.  In that case, we have to store the parameter
+                  --  in memory, pun that memory to a pointer to the integer,
+                  --  and load the integer.
+
+                  if PK = In_Value_By_Int then
+                     declare
+                        Size : constant ULL :=
+                          Get_Type_Size (Type_Of (Related_Type (Arg)));
+
+                     begin
+                        Arg := Get (Arg, Reference);
+                        Arg := Load (Pointer_Cast_To_Relationship
+                                       (Get (Arg, Reference),
+                                        Pointer_Type (Int_Ty (Size), 0),
+                                        Reference_To_Unknown));
+                     end;
+                  else
+                     Arg := Get (Arg, Data);
+                  end if;
                end if;
 
                Args (In_Idx) := Arg;

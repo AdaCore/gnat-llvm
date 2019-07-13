@@ -177,8 +177,8 @@ extern "C"
 void
 Dump_LLVM_Type_C (Type *type)
 {
-#ifndef NDEBUG
-    type->dump ();
+#ifndef LINK_WITH_OPT
+  type->dump ();
 #endif
 }
 

@@ -653,6 +653,18 @@ package body GNATLLVM.Arrays is
    function Array_Not_Superflat (TE : Entity_Id; Dim : Nat) return Boolean is
      (Array_Info.Table (Get_Array_Info (TE) + Dim).Not_Superflat);
 
+   --------------------
+   -- Array_Index_GT --
+   --------------------
+
+   function Array_Index_GT (GT : GL_Type; Dim : Nat) return GL_Type is
+      TE      : constant Entity_Id     := Full_Etype (GT);
+      Info_Id : constant Array_Info_Id := Get_Array_Info (TE);
+
+   begin
+      return Array_Info.Table (Info_Id + Dim).Bound_GT;
+   end Array_Index_GT;
+
    -------------------------------
    -- Get_Array_Size_Complexity --
    -------------------------------

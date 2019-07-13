@@ -94,8 +94,13 @@ package GNATLLVM.Arrays is
    --  always Size_Type's width, but may actually be a different GNAT type.
 
    function Array_Not_Superflat (TE : Entity_Id; Dim : Nat) return Boolean
-     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE);
+     with Pre => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE);
    --  Return True if TE is known to not be superflat in dimension Dim
+
+   function Array_Index_GT (GT : GL_Type; Dim : Nat) return GL_Type
+     with Pre  => Is_Array_Type (GT) and then Dim < Number_Dimensions (GT),
+          Post => Present (Array_Index_GT'Result);
+   --  Get the type of the Dim'th index of TE
 
    function Get_Array_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat

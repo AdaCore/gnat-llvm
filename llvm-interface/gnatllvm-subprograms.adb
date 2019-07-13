@@ -62,6 +62,10 @@ package body GNATLLVM.Subprograms is
       Foreign_By_Ref,
       --  Similar to By_Reference, but for a parameter with foreign convention
 
+      Foreign_By_Component_Ref,
+      --  Similar to Foreign_By_Ref, but for an array, where we use a
+      --  pointer to the component.
+
       Activation_Record,
       --  This parameter is a pointer to an activation record
 
@@ -80,7 +84,8 @@ package body GNATLLVM.Subprograms is
       --  This parameter is passed by value and is both an input and output
 
    function PK_Is_Reference (PK : Param_Kind) return Boolean is
-     (PK in PK_By_Ref_In | PK_By_Ref_Out | PK_By_Ref_In_Out | Foreign_By_Ref);
+     (PK in PK_By_Ref_In | PK_By_Ref_Out | PK_By_Ref_In_Out | Foreign_By_Ref |
+            Foreign_By_Component_Ref);
    --  True if this parameter kind represents a value passed by reference
 
    function PK_Is_In_Or_Ref (PK : Param_Kind) return Boolean is
@@ -510,7 +515,8 @@ package body GNATLLVM.Subprograms is
                             and then not Is_Nonnative_Type (GT)
                             and then Size <= ULL (Get_Bits_Per_Word)
                        then In_Value_By_Int else In_Value)
-                 else Foreign_By_Ref);
+                 elsif Is_Array_Type (GT) then Foreign_By_Component_Ref
+                 else  Foreign_By_Ref);
 
       --  Force by-reference and dynamic-sized types to be passed by reference
 
@@ -636,9 +642,11 @@ package body GNATLLVM.Subprograms is
 
    function Relationship_For_PK
      (PK : Param_Kind; GT : GL_Type) return GL_Relationship is
+
    begin
       if PK_Is_Reference (PK) then
          return (if  Is_Unconstrained_Array (GT) and then PK /= Foreign_By_Ref
+                     and then PK /= Foreign_By_Component_Ref
                  then Fat_Pointer else Reference);
       else
          return Data;
@@ -695,13 +703,12 @@ package body GNATLLVM.Subprograms is
 
       while Present (Param_Ent) loop
          declare
-            Param_GT  : constant GL_Type    := Full_GL_Type (Param_Ent);
-            Param_T   : constant Type_T     := Type_Of (Param_GT);
+            GT        : constant GL_Type    := Full_GL_Type (Param_Ent);
+            T         : constant Type_T     := Type_Of (GT);
             PK        : constant Param_Kind := Get_Param_Kind (Param_Ent);
             PK_By_Ref : constant Boolean    := PK_Is_Reference (PK);
             Size      : constant ULL        :=
-              (if   Is_Nonnative_Type (Param_GT) then 0
-               else Get_Type_Size (Param_T));
+              (if Is_Nonnative_Type (GT) then 0 else Get_Type_Size (T));
 
          begin
             --  If the mechanism requested was by-copy and we use by-ref,
@@ -723,11 +730,12 @@ package body GNATLLVM.Subprograms is
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
                  (if    PK = Foreign_By_Ref
-                  then  Pointer_Type (Type_Of (Param_GT), 0)
+                  then  Pointer_Type (Type_Of (GT), 0)
+                  elsif PK = Foreign_By_Component_Ref
+                  then  Pointer_Type (Type_Of (Full_Component_GL_Type (GT)), 0)
                   elsif PK = In_Value_By_Int then Int_Ty (Size)
-                  elsif PK_By_Ref then Create_Access_Type_To (Param_GT)
-                  else  Type_Of (Param_GT));
-
+                  elsif PK_By_Ref then Create_Access_Type_To (GT)
+                  else  Type_Of (GT));
                J := J + 1;
             end if;
          end;
@@ -1214,6 +1222,47 @@ package body GNATLLVM.Subprograms is
                            (LLVM_Param, Pointer_Type (Int_Ty (Size), 0),
                             Reference_To_Unknown));
                end;
+
+            --  If this is an array passed to a foreign convention, we
+            --  pass it as a reference to the component type.  So we have
+            --  to convert to a pointer to the array type.  If it's an
+            --  unconstrained array, we have to materialize bounds for a
+            --  fat pointer.
+
+            elsif PK = Foreign_By_Component_Ref then
+               LLVM_Param := Ptr_To_Ref (V, GT);
+
+               if not Is_Constrained (GT) then
+                  declare
+                     Fat_Ptr   : constant GL_Value  :=
+                       Get_Undef_Relationship (GT, Fat_Pointer);
+                     Bound_Val : GL_Value           :=
+                       Get_Undef_Relationship (GT, Bounds);
+
+                  begin
+                     for J in 0 .. Number_Dimensions (GT) - 1 loop
+                        declare
+                           IGT : constant GL_Type  := Array_Index_GT (GT, J);
+                           LB  : constant GL_Value := Const_Int (IGT, Uint_0);
+                           HB  : constant Node_Id  := Type_High_Bound (IGT);
+
+                        begin
+                           Bound_Val := Insert_Value
+                             (Insert_Value (Bound_Val, LB, unsigned (J * 2)),
+                              Emit_Expression (HB), unsigned (J * 2 + 1));
+                        end;
+                     end loop;
+
+                     LLVM_Param := Insert_Value
+                       (Insert_Value (Fat_Ptr, LLVM_Param, 0),
+                        Get (Bound_Val, Reference_To_Bounds), 1);
+                  end;
+
+                  Set_Value_Name (LLVM_Param, Name.all);
+               end if;
+
+            --  Otherwise we have the simple case
+
             else
                LLVM_Param := V;
             end if;
@@ -1984,9 +2033,13 @@ package body GNATLLVM.Subprograms is
                                       Idxs  => Idxs,
                                       VFA   => Is_VFA_Ref (Actual));
                   else
-                     Arg := (if   PK = Foreign_By_Ref
-                             then Ptr_To_Relationship (Get (LHS, R), GT, R)
-                             else Convert_Ref (LHS, GT));
+                     Arg := (if    PK = Foreign_By_Ref
+                             then  Ptr_To_Relationship (Get (LHS, R), GT, R)
+                             elsif PK = Foreign_By_Component_Ref
+                             then  Ptr_To_Relationship
+                                     (Get (LHS, R),
+                                      Full_Component_GL_Type (GT), R)
+                             else  Convert_Ref (LHS, GT));
                   end if;
                else
                   Arg := Emit_Conversion (Actual, GT);
@@ -2316,7 +2369,8 @@ package body GNATLLVM.Subprograms is
 
                elsif PK_Is_Reference (PK)
                  and then (not Is_Unconstrained_Array (GT)
-                             or else PK = Foreign_By_Ref)
+                             or else PK in Foreign_By_Ref |
+                                           Foreign_By_Component_Ref)
                then
                   --  Technically, we can take 'Address of a parameter
                   --  and put the address someplace, but that's undefined,

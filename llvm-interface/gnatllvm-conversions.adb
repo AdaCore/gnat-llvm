@@ -807,7 +807,7 @@ package body GNATLLVM.Conversions is
       --  converting between fat and raw pointers.
 
       elsif not Unc_Src and not Unc_Dest then
-         if Related_Type (V) = GT then
+         if V_GT = GT and then Relationship (V) /= Reference_To_Unknown then
             return Get (V, Any_Reference);
          else
             --  If what we have is a reference to bounds and data or a
@@ -819,6 +819,8 @@ package body GNATLLVM.Conversions is
               and then Type_Needs_Bounds (GT)
             then
                return Ptr_To_Relationship (V, GT, Relationship (V));
+            elsif Relationship (V) = Reference_To_Unknown then
+               return Ptr_To_Ref (V, GT);
             else
                return Ptr_To_Ref (Get (V, Reference), GT);
             end if;

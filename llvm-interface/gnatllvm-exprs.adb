@@ -744,16 +744,17 @@ package body GNATLLVM.Exprs is
             begin
                --  Compute an LValue that points either to the field or the
                --  bitfield field that contains the field.
+
                Emit_For_Address (Prefix (N), V, Bits);
                V := Record_Field_Offset (V, F);
 
                --  If it's a bitfield, record the offset in bits and force
                --  the type to be the desired type so outer component
-               --  references will work properly.              --
+               --  references will work properly.
 
                if Is_Bitfield (F) then
                   pragma Assert (Relationship (V) = Reference_To_Unknown);
-                  V := Convert_Ref (G_Is_Relationship (V, V, Reference), GT);
+                  V := Convert_Ref (V, GT);
                   Bits := Bits + Field_Bit_Offset (F);
                end if;
             end;

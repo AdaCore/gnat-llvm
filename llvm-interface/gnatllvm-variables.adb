@@ -2104,8 +2104,10 @@ package body GNATLLVM.Variables is
             return Emit_Subprogram_Identifier (Def_Ident, N, GT);
 
          when E_Discriminant =>
+
             --  If this is a bare discriminant, it's a reference to the
             --  discriminant of some record.
+
             return Use_Discriminant_For_Bound (Def_Ident);
 
          when others =>

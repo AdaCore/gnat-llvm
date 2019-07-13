@@ -34,8 +34,6 @@ with LLVM.Types;          use LLVM.Types;
 
 package GNATLLVM is
 
-   pragma Elaborate_Body;
-
    --  Note: in order to find the right LLVM instruction to generate,
    --  you can compare with what Clang generates on corresponding C or C++
    --  code. This can be done online via http://ellcc.org/demo/index.cgi

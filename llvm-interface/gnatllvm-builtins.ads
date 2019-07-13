@@ -42,4 +42,42 @@ package GNATLLVM.Builtins is
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
    --  for it and return the result.  Otherwise, No_GL_Value.
 
+   function Get_Default_Alloc_Fn return GL_Value
+     with Post => Present (Get_Default_Alloc_Fn'Result);
+   --  Get default function to use for allocating memory
+
+   function Get_Default_Free_Fn return GL_Value
+     with Post => Present (Get_Default_Free_Fn'Result);
+   --  Get default function to use for freeing memory
+
+   function Get_Memory_Compare_Fn return GL_Value
+     with Post => Present (Get_Memory_Compare_Fn'Result);
+   --  Get function to use to compare memory
+
+   function Get_Stack_Save_Fn return GL_Value
+     with Post => Present (Get_Stack_Save_Fn'Result);
+   --  Get function to save stack pointer
+
+   function Get_Stack_Restore_Fn return GL_Value
+     with Post => Present (Get_Stack_Restore_Fn'Result);
+   --  Get function to restore stack pointer
+
+   function Get_Lifetime_Start_Fn return GL_Value
+     with Post => Present (Get_Lifetime_Start_Fn'Result);
+   --  Get function to mark start of a variable's lifetime
+
+   function Get_Lifetime_End_Fn return GL_Value
+     with Post => Present (Get_Lifetime_End_Fn'Result);
+   --  Get function to mark start of a variable's lifetime
+
+   function Get_Expect_Fn return GL_Value
+     with Post => Present (Get_Expect_Fn'Result);
+   --  Get function corresponing to llvm.expect
+
+   function Get_Tramp_Init_Fn   return GL_Value
+     with Post => Present (Get_Tramp_Init_Fn'Result);
+   function Get_Tramp_Adjust_Fn return GL_Value
+     with Post => Present (Get_Tramp_Adjust_Fn'Result);
+   --  Get functions to create and adjust trampolines
+
 end GNATLLVM.Builtins;

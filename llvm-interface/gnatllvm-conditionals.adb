@@ -20,6 +20,7 @@ with Exp_Util; use Exp_Util;
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
+with GNATLLVM.Builtins;    use GNATLLVM.Builtins;
 with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;

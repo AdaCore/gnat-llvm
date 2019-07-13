@@ -28,6 +28,7 @@ with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;

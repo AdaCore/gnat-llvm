@@ -282,7 +282,9 @@ package body GNATLLVM.Codegen is
       --  Complete and verify the translation.  Unless just writing IR,
       --  suppress doing anything else if there's an error.
 
-      if Verify_Module (Module, Print_Message_Action, Null_Address) then
+      if not Decls_Only
+        and then Verify_Module (Module, Print_Message_Action, Null_Address)
+      then
          Error_Msg_N ("the backend generated bad 'L'L'V'M code", GNAT_Root);
       end if;
 

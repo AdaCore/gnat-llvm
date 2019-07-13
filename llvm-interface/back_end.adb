@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2008-2018, AdaCore                     --
+--                     Copyright (C) 2008-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 
@@ -62,8 +63,14 @@ package body Back_End is
          return;
       end if;
 
-      --  ??? We only support code generation mode
-      if Mode = Generate_Object then
+      --  Call the back end itself if it has work to do
+
+      if Mode = Generate_Object or else Back_Annotate_Rep_Info then
+         if Mode = Declarations_Only then
+            Decls_Only      := True;
+            Code_Generation := None;
+         end if;
+
          GNAT2LLVM.Call_Back_End;
       end if;
    end Call_Back_End;

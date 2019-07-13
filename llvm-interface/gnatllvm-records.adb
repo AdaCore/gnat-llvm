@@ -317,6 +317,12 @@ package body GNATLLVM.Records is
       TE         : constant Entity_Id := Full_Etype (E);
 
    begin
+      --  If we're just elaborating decls, return undef
+
+      if Decls_Only then
+         return Get_Undef (Full_GL_Type (E));
+      end if;
+
       --  See if we've pushed a subtype of this record type into our
       --  stack of record subtypes.  If so, get the discriminant constraint
       --  from that subtype.  But ignore a constraint on this discriminant
@@ -1144,6 +1150,18 @@ package body GNATLLVM.Records is
       --  Use the largest effective alignment of any field
 
       return Largest_Align : Nat := BPU do
+
+         --  If we're just elaborating types and this is a tagged record,
+         --  we have to allow for the tag field because the front end
+         --  won't create one in this mode.
+
+         if Decls_Only and then Is_Tagged_Type (TE) then
+            Largest_Align := Get_Type_Alignment (Void_Ptr_Type);
+         end if;
+
+         --  Now go through each field looking for the highest effective
+         --  alignment.
+
          Field := First_Component_Or_Discriminant (TE);
          while Present (Field) loop
             Largest_Align := Nat'Max (Largest_Align,
@@ -1702,10 +1720,14 @@ package body GNATLLVM.Records is
                F    : Entity_Id;
 
             begin
-               if Ekind (In_F) = E_Discriminant
-                 and then Is_Unchecked_Union (GT)
+               if (Ekind (In_F) = E_Discriminant
+                     and then Is_Unchecked_Union (GT))
+                 or else Decls_Only
                then
-                  null;
+                  if Present (Val) then
+                     Discard (Emit_Expression (Val));
+                  end if;
+
                elsif Chars (In_F) = Name_uParent then
 
                   --  If this is "_parent", its fields are our fields too.

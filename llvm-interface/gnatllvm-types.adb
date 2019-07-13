@@ -614,6 +614,11 @@ package body GNATLLVM.Types is
       Result     : GL_Value;
 
    begin
+      --  Skip this when only processing decls
+
+      if Decls_Only then
+         return Get_Undef_Ref (GT);
+
       --  We have three cases.  If the object has a native type and we're
       --  not trying to over-align it, we just do the alloca and that's
       --  all.  Test for the size being other an overflow or an undef,
@@ -621,7 +626,7 @@ package body GNATLLVM.Types is
       --  If this is an undef, it likely means that we already said we were
       --  raising constraint error, so if we did, omit this one.
 
-      if not Is_Nonnative_Type (Alloc_GT) and then not Overalign then
+      elsif not Is_Nonnative_Type (Alloc_GT) and then not Overalign then
          if Do_Stack_Check
            and then Get_Type_Size (Type_Of (Alloc_GT)) > Max_Alloc * ULL (BPU)
          then
@@ -975,6 +980,12 @@ package body GNATLLVM.Types is
 
       elsif Known_Alignment (TE)  and Use_Specified then
          return UI_To_Int (Alignment (TE)) * BPU;
+
+      --  If we're only elaborating and back-annotating types, check if
+      --  is void.
+
+      elsif Decls_Only and then Get_Type_Kind (GT) = Void_Type_Kind then
+         return BPU;
 
       --  If it's an array, call the specialized function
 

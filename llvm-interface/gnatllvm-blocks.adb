@@ -1188,7 +1188,7 @@ package body GNATLLVM.Blocks is
 
       --  We should have found such a block.
 
-      pragma Assert (False);
+      pragma Assert (Decls_Only);
    end Emit_Reraise;
 
    --------------------------------------
@@ -1216,7 +1216,7 @@ package body GNATLLVM.Blocks is
             Program_Error_Stack.Decrement_Last;
 
          when others =>
-            pragma Assert (False);
+            pragma Assert (Decls_Only);
       end case;
    end Process_Push_Pop_xxx_Error_Label;
 
@@ -1465,7 +1465,7 @@ package body GNATLLVM.Blocks is
       --  If the loop label isn't registered, then we just met an exit
       --  statement with no corresponding loop: should not happen.
 
-      pragma Assert (False);
+      pragma Assert (Decls_Only);
       return Exit_Point_Table.Last;
    end Find_Exit_Point;
 

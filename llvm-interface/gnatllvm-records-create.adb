@@ -753,6 +753,7 @@ package body GNATLLVM.Records.Create is
             return Expr;
          end Choices_To_SO_Ref;
 
+         Is_Derived        : Boolean   := False;
          Field             : Entity_Id;
          Field_To_Add      : Entity_Id;
          Outer_Field       : Entity_Id;
@@ -768,15 +769,24 @@ package body GNATLLVM.Records.Create is
            Type_Definition (Declaration_Node (Rec_Type));
          if Nkind (Record_Definition) = N_Derived_Type_Definition then
             Record_Definition := Record_Extension_Part (Record_Definition);
+            Is_Derived        := True;
          end if;
 
          Components := Component_List (Record_Definition);
 
          --  Add the parent field, which means adding all subfields of the
          --  parent.  We can't just rely on field sorting to do this because
-         --  the parent record might have variants.
+         --  the parent record might have variants.  The way we do this
+         --  depends on whether we're in normal mode or just elaborating
+         --  types.
 
-         Add_Component_List (Components, Sub_Rec_Type, True);
+         if Decls_Only and then Is_Derived then
+            Par_Depth := Par_Depth + 1;
+            Add_Fields (Full_Etype (Base_Type (Rec_Type)));
+            Par_Depth := Par_Depth - 1;
+         else
+            Add_Component_List (Components, Sub_Rec_Type, True);
+         end if;
 
          --  If there are discriminants, process them.  But
          --  ignore discriminants that are already in a parent type.
@@ -1386,6 +1396,17 @@ package body GNATLLVM.Records.Create is
 
          Sort (1, Added_Field_Table.Last);
 
+         --  If we're just elaborating types and this is a tagged record,
+         --  we have to allow for the tag field because the front end
+         --  won't create one in this mode.
+
+         if Decls_Only and then Is_Tagged_Type (TE) and then No (Prev_Idx)
+           and then Variant_Stack.Last = 0
+         then
+            LLVM_Types.Append (Void_Ptr_Type);
+            Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Void_Ptr_Type);
+         end if;
+
          for J in 1 .. Added_Field_Table.Last loop
             declare
                AF        : Added_Field renames Added_Field_Table.Table (J);
@@ -1570,7 +1591,11 @@ package body GNATLLVM.Records.Create is
                   end if;
 
                   declare
-                     T           : constant Type_T := Type_Of (F_GT);
+                     F_T          : constant Type_T := Type_Of (F_GT);
+                     T            : constant Type_T :=
+                       (if   Decls_Only
+                             and then Get_Type_Kind (F_T) = Void_Type_Kind
+                        then Byte_T else F_T);
                      --  LLVM type to use
 
                      T_Align     : constant Nat    :=

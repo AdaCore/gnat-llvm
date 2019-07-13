@@ -95,11 +95,16 @@ package body GNATLLVM.Conditionals is
       BT        : constant GL_Type      := Base_GL_Type (GT);
 
    begin
+      --  If we're just elaborating decls, return undef
+
+      if Decls_Only then
+         return Get (Get_Undef (Boolean_GL_Type), Boolean_Data);
+
       --  LLVM treats pointers as integers regarding comparison.  But we first
       --  have to see if the pointer has an activation record.  If so,
       --  we just compare the functions, not the activation record.
 
-      if Is_Access_Subprogram_Type (GT)
+      elsif Is_Access_Subprogram_Type (GT)
         and then not Has_Foreign_Convention (GT)
         and then Can_Use_Internal_Rep (GT)
       then
@@ -189,11 +194,19 @@ package body GNATLLVM.Conditionals is
       Cond : GL_Value;
 
    begin
+      --  If we're just elaborating decls, elaborate both types and
+      --  we're done.
+
+      if Decls_Only then
+         Discard (Full_GL_Type (LHS));
+         Discard (Full_GL_Type (RHS));
+         return;
+
       --  Do the array case here, where we have labels, to simplify the
       --  logic and take advantage of the reality that almost all array
       --  comparisons are part of "if" statements.
 
-      if  Is_Array_Type (Full_Etype (LHS)) then
+      elsif  Is_Array_Type (Full_Etype (LHS)) then
          pragma Assert (Kind in N_Op_Eq | N_Op_Ne);
          pragma Assert (Number_Dimensions (Full_Etype (LHS)) =
                           Number_Dimensions (Full_Etype (RHS)));
@@ -580,6 +593,13 @@ package body GNATLLVM.Conditionals is
       end Swap_Highest_Cost;
 
    begin
+      --  If we're just elaborating decls, we may have junk for choices,
+      --  so don't do anything.
+
+      if Decls_Only then
+         return;
+      end if;
+
       --  First we scan all the alternatives and choices and fill in most
       --  of the data.
 
@@ -886,6 +906,14 @@ package body GNATLLVM.Conditionals is
                Low, High : Uint;
 
             begin
+               --  If we're just elaborating decls, this may not be
+               --  complete at this point, so don't try to do anything.
+
+               if Decls_Only then
+                  return;
+               end if;
+
+               pragma Assert (No (Alternatives (N)));
                Decode_Range (Right_Opnd (N), Low, High);
                if Low /= No_Uint and then High /= No_Uint then
                   Build_If_Range
@@ -1111,7 +1139,8 @@ package body GNATLLVM.Conditionals is
       function Search_For_Exception is new Traverse_Func (Process);
 
    begin
-      return Side_Effect_Free (N) and then Search_For_Exception (N) /= Abandon;
+      return not Decls_Only and then Side_Effect_Free (N)
+        and then Search_For_Exception (N) /= Abandon;
    end Safe_For_Short_Circuit;
 
 end GNATLLVM.Conditionals;

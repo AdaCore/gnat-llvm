@@ -358,7 +358,8 @@ package body GNATLLVM.Subprograms is
    begin
       if Is_By_Reference_Type (GT) or else Is_Nonnative_Type (GT) then
          return Must;
-      elsif Get_Type_Size (Type_Of (GT)) > 2 * Ptr_Size then
+      elsif not Decls_Only and then Get_Type_Size (Type_Of (GT)) > 2 * Ptr_Size
+      then
          return Default_By_Ref;
       else
          return Default_By_Copy;
@@ -373,7 +374,8 @@ package body GNATLLVM.Subprograms is
       GT           : constant GL_Type           := Full_GL_Type (Param);
       T            : constant Type_T            := Type_Of (GT);
       Size         : constant ULL               :=
-        (if Is_Nonnative_Type (GT) then 0 else Get_Type_Size (T));
+        (if   Decls_Only or else Is_Nonnative_Type (GT)
+         then ULL (Get_Bits_Per_Word) * 2 else Get_Type_Size (T));
       Subp         : constant Entity_Id         := Scope (Param);
       By_Ref_Mech  : constant Param_By_Ref_Mech := Get_Param_By_Ref_Mech (GT);
       Foreign      : constant Boolean           :=
@@ -490,7 +492,6 @@ package body GNATLLVM.Subprograms is
                                   or else (Is_Elementary_Type (GT)
                                                and then Mech /= By_Reference))
                  then (if   Is_Record_Type (GT)
-                            and then not Is_Nonnative_Type (GT)
                             and then Size <= ULL (Get_Bits_Per_Word)
                        then In_Value_By_Int else In_Value)
                  elsif Is_Array_Type (GT) then Foreign_By_Component_Ref
@@ -548,6 +549,7 @@ package body GNATLLVM.Subprograms is
       elsif not Is_Unconstrained_Array (GT)
         and then (Is_Nonnative_Type (GT)
                     or else (not Has_Foreign_Convention (Def_Ident)
+                               and then not Decls_Only
                                and then Get_Type_Size (T) > 5 * Ptr_Size))
       then
          return Return_By_Parameter;
@@ -686,7 +688,8 @@ package body GNATLLVM.Subprograms is
             PK        : constant Param_Kind := Get_Param_Kind (Param_Ent);
             PK_By_Ref : constant Boolean    := PK_Is_Reference (PK);
             Size      : constant ULL        :=
-              (if Is_Nonnative_Type (GT) then 0 else Get_Type_Size (T));
+              (if   Decls_Only or else Is_Nonnative_Type (GT) then 0
+               else Get_Type_Size (T));
 
          begin
             --  If the mechanism requested was by-copy and we use by-ref,
@@ -1643,8 +1646,7 @@ package body GNATLLVM.Subprograms is
 
       Subp             : constant Node_Id     := Name (N);
       Our_Return_GT    : constant GL_Type     := Full_GL_Type (N);
-      Direct_Call      : constant Boolean     :=
-        Nkind (Subp) /= N_Explicit_Dereference;
+      Direct_Call      : constant Boolean     := Is_Entity_Name (Subp);
       Subp_Typ         : constant Entity_Id   :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
       RK               : constant Return_Kind := Get_Return_Kind  (Subp_Typ);

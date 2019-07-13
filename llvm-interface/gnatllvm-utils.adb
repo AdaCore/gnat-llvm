@@ -84,7 +84,7 @@ package body GNATLLVM.Utils is
             --  at the range of the type, or a constant, in which case we
             --  look at the initializing expression.
 
-            if Is_Type (Entity (N)) then
+            if Is_Type (Entity (N)) and then not Decls_Only then
                Decode_Range (Scalar_Range (Full_Etype (N)), Low, High);
             else
                Low  := Get_Uint_Value (N);
@@ -103,7 +103,7 @@ package body GNATLLVM.Utils is
             High := Low;
 
          when others =>
-            Error_Msg_N ("unknown range operand", N);
+            pragma Assert (Decls_Only);
             Low  := No_Uint;
             High := No_Uint;
       end case;

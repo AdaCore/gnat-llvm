@@ -24,8 +24,6 @@ with Sprint;     use Sprint;
 with Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
 with GNATLLVM.Records;     use GNATLLVM.Records;
@@ -709,6 +707,7 @@ package body GNATLLVM.GLType is
 
       if Present (Size_GL_Type) and then not Is_Dummy
         and then Ekind (GT) not in E_Void | E_Subprogram_Type
+        and then not (Decls_Only and then not Type_Is_Sized (T))
       then
          GTI.Alignment  := Get_Type_Alignment (GT, Use_Specified => False);
          if not Is_Dynamic_Size (GT) then
@@ -1280,20 +1279,35 @@ package body GNATLLVM.GLType is
    procedure Dump_GL_Type_Int (GT : GL_Type; Full_Dump : Boolean) is
       GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
 
+      procedure Write_Int_From_LLI (J : LLI);
+
+      ------------------------
+      -- Write_Int_From_ULL --
+      ------------------------
+
+      procedure Write_Int_From_LLI (J : LLI) is
+      begin
+         if J < LLI (Int'First) or else J > LLI (Int'Last) then
+            Write_Str ("<overflow>");
+         else
+            Write_Int (Int (J));
+         end if;
+      end Write_Int_From_LLI;
+
    begin
       Write_Str (GT_Kind_Type'Image (GTI.Kind) & "(");
       Write_Int (Int (GTI.GNAT_Type));
       if Present (GTI.Size) then
          Write_Str (", S=");
-         Write_Int (Int (Get_Const_Int_Value (GTI.Size)));
+         Write_Int_From_LLI (Get_Const_Int_Value (GTI.Size));
       end if;
       if Present (GTI.Alignment) then
          Write_Str (", A=");
-         Write_Int (Int (Get_Const_Int_Value (GTI.Alignment)));
+         Write_Int_From_LLI (Get_Const_Int_Value (GTI.Alignment));
       end if;
       if Present (GTI.Bias) then
          Write_Str (", B=");
-         Write_Int (Int (Get_Const_Int_Value (GTI.Bias)));
+         Write_Int_From_LLI (Get_Const_Int_Value (GTI.Bias));
       end if;
       if GTI.Default then
          Write_Str (", default");

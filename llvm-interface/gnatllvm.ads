@@ -202,6 +202,9 @@ package GNATLLVM is
 
    --  GNAT LLVM switches
 
+   Decls_Only      : Boolean        := False;
+   --  True if just compiling to process and back-annotate decls
+
    Output_Assembly : Boolean := False;
    --  True if -S was specified
 

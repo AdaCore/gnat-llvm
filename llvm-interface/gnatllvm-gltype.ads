@@ -19,6 +19,8 @@ with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -246,6 +248,10 @@ package GNATLLVM.GLType is
                   and then Full_Etype (Related_Type (V)) = Full_Etype (GT),
           Post => Related_Type (From_Primitive'Result) = GT;
    --  Convert V, which must be of a primitive GL_Type, to GT
+
+   function Get_Type_Kind (GT : GL_Type) return Type_Kind_T is
+     (Get_Type_Kind (Type_Of (GT)))
+     with Pre => Present (GT);
 
    --  Now define functions that operate on GNAT types that we want to
    --  also operate on GL_Type's.
@@ -571,6 +577,12 @@ package GNATLLVM.GLType is
 
    function Is_Atomic (GT : GL_Type) return Boolean is
      (Is_Atomic (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Is_Access_Protected_Subprogram_Type
+     (GT : GL_Type) return Boolean
+   is
+     (Is_Access_Protected_Subprogram_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Can_Use_Internal_Rep (GT : GL_Type) return Boolean is

@@ -413,9 +413,9 @@ package body GNATLLVM.GLValue is
    function Type_For_Relationship
      (GT : GL_Type; R : GL_Relationship) return Type_T
    is
-      T   : constant Type_T    := Type_Of (GT);
-      P_T : constant Type_T    := Pointer_Type (T, 0);
-      TE  : constant Entity_Id := Full_Etype (GT);
+      T       : constant Type_T  := Type_Of (GT);
+      P_T : constant Type_T      := Pointer_Type (T, 0);
+      TE  : constant Entity_Id   := Full_Etype (GT);
 
    begin
       --  If this is a reference to some other relationship, get the type for

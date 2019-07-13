@@ -709,6 +709,13 @@ package body GNATLLVM.Variables is
       end Emit_No_Error;
 
    begin
+      --  If this is an aggregate type, we don't want to worry about
+      --  this when just doing back-annotations.
+
+      if Decls_Only and then Is_Composite_Type (GT) then
+         return False;
+      end if;
+
       case Nkind (N) is
          when N_Aggregate | N_Extension_Aggregate =>
 
@@ -1388,6 +1395,9 @@ package body GNATLLVM.Variables is
       elsif Present (Renamed_Object (Def_Ident))
         and then Is_Static_Location (Renamed_Object (Def_Ident))
       then
+         --  ??? This may be wrong because it calls Emit_LValue on
+         --  an N_Defining_Identifier.
+
          LLVM_Var := Emit_LValue (Renamed_Object (Def_Ident));
 
          --  Otherwise, if this is a linker alias and we're defining this
@@ -1578,12 +1588,24 @@ package body GNATLLVM.Variables is
 
       if Full_Etype (GT) = Standard_Debug_Renaming_Type then
          return;
-      end if;
+
+      --  If we're just elaborating decls, just set the variable to be
+      --  and undef because we've elaborated the type (it may be that
+      --  there may be types only used in an expression or address,
+      --  but let's not worry about that possibility).
+
+      elsif Decls_Only then
+         if No (Get_Value (Def_Ident)) then
+            Set_Value (Def_Ident, Emit_Undef (GT));
+            Annotate_Object_Size_And_Alignment (Def_Ident, GT);
+         end if;
+
+         return;
 
       --  If the object is to have atomic components, find the component
       --  type and validate it.
 
-      if Has_Atomic_Components (Def_Ident) then
+      elsif Has_Atomic_Components (Def_Ident) then
          Check_OK_For_Atomic_Type ((if   Is_Array_Type (GT)
                                     then Full_Component_GL_Type (GT) else GT),
                                    Def_Ident, True);
@@ -2106,6 +2128,12 @@ package body GNATLLVM.Variables is
             then
                V := Make_Global_Variable
                  (Def_Ident, Variable_GL_Type (Def_Ident, Empty), False);
+
+            --  If we still have nothing, but are just elaboration decls,
+            --  make this an undef.
+
+            elsif No (V) and then Decls_Only then
+               V := Emit_Undef (GT);
             end if;
 
             --  Now return what we got (if we didn't get anything by now,

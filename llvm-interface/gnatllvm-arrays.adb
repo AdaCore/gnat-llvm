@@ -896,7 +896,14 @@ package body GNATLLVM.Arrays is
       Value : GL_Value;
 
    begin
-      --  First, store the bounds if needed
+      --  If we're just processing decls, this isn't known to be of the
+      --  proper form.
+
+      if Decls_Only then
+         return;
+      end if;
+
+      --  Otherwise, store the bounds if needed
 
       Maybe_Store_Bounds (LValue, No_GL_Value, GT, False);
 
@@ -1053,11 +1060,16 @@ package body GNATLLVM.Arrays is
                Result : GL_Value                := No_GL_Value;
 
             begin
+               --  If we're just elaborating decls, don't build aggregate
+
+               if Decls_Only then
+                  Discard (Emit_Expression (Expr));
+
                --  If this is a nested N_Aggregate and we have dimensions
                --  left in the outer array, use recursion to fill in the
                --  aggregate.
 
-               if Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
+               elsif Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
                  and then Dims_Left > 1
                then
                   Cur_Value := Emit_Array_Aggregate (Expr, Dims_Left - 1, Idxs,

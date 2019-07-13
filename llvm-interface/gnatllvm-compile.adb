@@ -404,7 +404,7 @@ package body GNATLLVM.Compile is
 
          when N_Raise_Statement =>
 
-            pragma Assert (Back_End_Exceptions);
+            pragma Assert (Decls_Only or else Back_End_Exceptions);
             Emit_Reraise;
 
          when N_Raise_xxx_Error =>
@@ -492,7 +492,15 @@ package body GNATLLVM.Compile is
 
          when N_Procedure_Call_Statement =>
 
-            Discard (Emit_Call (N));
+            --  If we're only elaborating decls, we may have a call to a
+            --  function whose Name is an N_Selected_Component.  This is
+            --  an unexpanded tasking-related call.  Skip it and hope there
+            --  are no types only in that call.
+
+            if not Decls_Only or else Nkind (Name (N)) /= N_Selected_Component
+            then
+               Discard (Emit_Call (N));
+            end if;
 
          when N_Null_Statement =>
             null;
@@ -692,9 +700,7 @@ package body GNATLLVM.Compile is
             end if;
 
          when others =>
-            Error_Msg_N
-              ("unhandled statement kind: `" &
-               Node_Kind'Image (Nkind (N)) & "`", N);
+            pragma Assert (Decls_Only);
       end case;
    end Emit;
 
@@ -770,7 +776,8 @@ package body GNATLLVM.Compile is
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False) return GL_Value
    is
-      Is_Volatile : constant Boolean := Is_Volatile_Reference (N);
+      Is_Volatile : constant Boolean :=
+        (not Is_Entity_Name (N) and then Is_Volatile_Reference (N));
       Is_Atomic   : constant Boolean :=
         Is_Atomic_Object (N)
         or else (Nkind_In (N, N_Expanded_Name, N_Explicit_Dereference,
@@ -900,8 +907,17 @@ package body GNATLLVM.Compile is
 
          when N_Function_Call =>
 
-            pragma Assert (not For_LHS);
-            return Emit_Call (N, LHS => LHS);
+            --  If we're only elaborating decls, we may have a call to a
+            --  function whose Name is an N_Selected_Component.  This is
+            --  an unexpanded tasking-related call.  Skip it and hope there
+            --  are no types only in that call.
+
+            if Decls_Only and then Nkind (Name (N)) = N_Selected_Component then
+               return Emit_Undef (GT);
+            else
+               pragma Assert (Decls_Only or else not For_LHS);
+               return Emit_Call (N, LHS => LHS);
+            end if;
 
          when N_Explicit_Dereference =>
 
@@ -933,7 +949,9 @@ package body GNATLLVM.Compile is
                --  value for the object.
 
                pragma Assert (not For_LHS);
-               if Is_Entity_Name (Expr) then
+               if Decls_Only then
+                  return Get_Undef (GT);
+               elsif Is_Entity_Name (Expr) then
                   A_GT  := Default_GL_Type (Get_Fullest_View (Entity (Expr)));
                   Value := No_GL_Value;
                else
@@ -972,17 +990,25 @@ package body GNATLLVM.Compile is
 
          when N_Selected_Component =>
 
-            return Maybe_Convert_GT
-              (Build_Field_Load (Emit (Prefix (N),
-                                       For_LHS    => For_LHS,
-                                       Prefer_LHS => Prefer_LHS),
-                                 Entity (Selector_Name (N)),
-                                 LHS        => LHS,
-                                 For_LHS    => For_LHS,
-                                 Prefer_LHS => Prefer_LHS,
-                                 VFA        =>
-                                   Has_Volatile_Full_Access (Prefix (N))),
-               GT);
+            --  If we're just processing declarations, make sure we've
+            --  elaborated the type of the prefix and do nothing more.
+
+            if Decls_Only then
+               Discard (Full_GL_Type (Prefix (N)));
+               return Emit_Undef (GT);
+            else
+               return Maybe_Convert_GT
+                 (Build_Field_Load (Emit (Prefix (N),
+                                          For_LHS    => For_LHS,
+                                          Prefer_LHS => Prefer_LHS),
+                                    Entity (Selector_Name (N)),
+                                    LHS        => LHS,
+                                    For_LHS    => For_LHS,
+                                    Prefer_LHS => Prefer_LHS,
+                                    VFA        =>
+                                      Has_Volatile_Full_Access (Prefix (N))),
+                  GT);
+            end if;
 
          when N_Indexed_Component | N_Slice =>
 
@@ -990,11 +1016,16 @@ package body GNATLLVM.Compile is
                             For_LHS    => For_LHS,
                             Prefer_LHS => Prefer_LHS);
 
+            --  If we're just processing decls, the above is all we have to do
+
+            if Decls_Only then
+               return Emit_Undef (GT);
+
             --  This can be an integer type if it's the implementation
             --  type of a packed array type.  In that case, convert it to
             --  the result type.
 
-            if Is_Integer_Type (Related_Type (Result))
+            elsif Is_Integer_Type (Related_Type (Result))
               and then Is_Packed_Array_Impl_Type (Related_Type (Result))
             then
                --  Evaluate any expressions in case they have side-effects
@@ -1036,8 +1067,10 @@ package body GNATLLVM.Compile is
                  (N, (if   Present (LHS) and then Is_Safe_From (LHS, N)
                       then LHS else No_GL_Value));
 
+            elsif not Is_Array_Type (GT) then
+               pragma Assert (Decls_Only);
+               return Emit_Undef (GT);
             else
-               pragma Assert (Is_Array_Type (GT));
                --  The back-end supports exactly two types of array
                --  aggregates.  One is for a fixed-size aggregate.  The
                --  other are very special cases of Others that are tested
@@ -1066,10 +1099,12 @@ package body GNATLLVM.Compile is
                Left : constant GL_Value := Emit_Expression (Left_Opnd (N));
 
             begin
+               if Decls_Only then
+                  return Get (Get_Undef (Boolean_GL_Type), Boolean_Data);
+               end if;
+
                pragma Assert (not For_LHS);
                pragma Assert (No (Alternatives (N)));
-               pragma Assert (Present (Rng));
-               --  The front end guarantees the above
 
                if Nkind (Rng) = N_Identifier then
                   Rng := Scalar_Range (Full_Etype (Rng));
@@ -1090,9 +1125,7 @@ package body GNATLLVM.Compile is
             return Emit_Undef (GT);
 
          when others =>
-            Error_Msg_N
-              ("unsupported node kind: `" &
-                 Node_Kind'Image (Nkind (N)) & "`", N);
+            pragma Assert (Decls_Only);
             return Emit_Undef (GT);
       end case;
    end Emit_Internal;
@@ -1217,8 +1250,10 @@ package body GNATLLVM.Compile is
             --  condition evaluates to True, jump to the loop-exit
             --  otherwise.
 
-            Position_Builder_At_End (BB_Cond);
-            Emit_If_Cond (Condition (Iter_Scheme), BB_Stmts, BB_Next);
+            if not Decls_Only then
+               Position_Builder_At_End (BB_Cond);
+               Emit_If_Cond (Condition (Iter_Scheme), BB_Stmts, BB_Next);
+            end if;
 
          else
             --  This is a FOR loop

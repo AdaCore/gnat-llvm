@@ -160,16 +160,14 @@ package body GNATLLVM.Types.Create is
                   --  Extended precision; not IEEE_128
                   T := X86_F_P80_Type_In_Context (Context);
                when others =>
-                  T := Void_Type;
+                  pragma Assert (Decls_Only);
+                  T := Byte_T;
             end case;
 
          when AAMP =>
-            T := Void_Type;
+            pragma Assert (Decls_Only);
+            T := Byte_T;
       end case;
-
-      if T = Void_Type then
-         Error_Msg_N ("unsupported floating point type", TE);
-      end if;
 
       return T;
    end Create_Floating_Point_Type;
@@ -188,11 +186,17 @@ package body GNATLLVM.Types.Create is
    begin
       Dummy := False;
 
+      --  If wre're just elaborating types, we may run into accesses to
+      --  protected subprograms.
+
+      if Decls_Only and then Is_Access_Protected_Subprogram_Type (TE) then
+         return Create_Subprogram_Access_Type;
+
       --  If this is a record type, we can get the actual type that will be
       --  used here. If it hasn't been done yet, set it for the record
       --  type, and mark it dummy.
 
-      if Is_Record_Type (DT) then
+      elsif Is_Record_Type (DT) then
          if No (GT) then
             GT := New_GT (DT);
             Update_GL_Type (GT, Struct_Create_Named (Context, Get_Name (DT)),
@@ -304,9 +308,8 @@ package body GNATLLVM.Types.Create is
             T := Byte_T;
 
          when others =>
-            Error_Msg_N
-              ("unsupported type kind: `" & Ekind (TE)'Image & "`", TE);
-            T := Void_Type;
+            pragma Assert (Decls_Only);
+            T := Byte_T;
       end case;
 
       --  Now save the result.  If we don't have a GT already made, make one.

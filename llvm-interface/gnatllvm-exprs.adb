@@ -60,13 +60,16 @@ package body GNATLLVM.Exprs is
       Only_Bitfield : Boolean := False) is
    begin
       --  Start by assuming there's no special processing, then
-      --  see if there is.
+      --  see if there is.  If we're just elaborating decls, there isn't
 
       F    := Empty;
       Idxs := null;
       LHS  := No_GL_Value;
 
-      if Nkind (N) = N_Selected_Component then
+      if Decls_Only then
+         null;
+
+      elsif Nkind (N) = N_Selected_Component then
          declare
             Fld  : constant Entity_Id := Entity (Selector_Name (N));
 
@@ -80,7 +83,7 @@ package body GNATLLVM.Exprs is
             end if;
          end;
 
-      elsif Nkind (N) = N_Indexed_Component and not Only_Bitfield then
+      elsif Nkind (N) = N_Indexed_Component and then not Only_Bitfield then
          LHS  := Emit_LValue (Prefix (N), For_LHS => For_LHS);
          Idxs := new GL_Value_Array'(Get_Indices (Expressions (N), LHS));
       end if;
@@ -219,8 +222,8 @@ package body GNATLLVM.Exprs is
             end;
 
          when others =>
-            Error_Msg_N ("unhandled literal node", N);
-            V := Get_Undef (Prim_GT);
+            pragma Assert (Decls_Only);
+            V := Emit_Undef (Prim_GT);
       end case;
 
       return From_Primitive (V, Prim_GT);
@@ -256,6 +259,13 @@ package body GNATLLVM.Exprs is
       Ovfl_Name  : String (1 .. 4);
 
    begin
+      --  If we're just doing compiling to back-annotate things, don't try
+      --  to compute this operation.
+
+      if Decls_Only then
+         return Emit_Undef (Full_GL_Type (N));
+      end if;
+
       case Nkind (N) is
          when N_Op_Add =>
             if Ovfl_Check then
@@ -437,6 +447,13 @@ package body GNATLLVM.Exprs is
       BT     : constant GL_Type  := Base_GL_Type (GT);
 
    begin
+      --  If we're just doing compiling to back-annotate things, don't try
+      --  to compute this operation.
+
+      if Decls_Only then
+         return Emit_Undef (Full_GL_Type (N));
+      end if;
+
       case Nkind (N) is
 
          when N_Op_Not =>
@@ -616,6 +633,13 @@ package body GNATLLVM.Exprs is
       Saturated : GL_Value;
 
    begin
+      --  If we're just doing compiling to back-annotate things, don't try
+      --  to compute this operation.
+
+      if Decls_Only then
+         return Emit_Undef (Primitive_GL_Type (N));
+      end if;
+
       --  Extract properties for the operation we are asked to generate code
       --  for.  We defaulted to a right shift above.
 
@@ -798,11 +822,22 @@ package body GNATLLVM.Exprs is
             --  same constraints.  But we do have to be sure that it's of
             --  the right type.
 
-            return Convert_To_Access (Emit_LValue (Pref), GT);
+            if Decls_Only and then Is_Access_Protected_Subprogram_Type (GT)
+            then
+               return Get_Undef (GT);
+            else
+               return Convert_To_Access (Emit_LValue (Pref), GT);
+            end if;
 
          when Attribute_Address | Attribute_Code_Address =>
 
-            --  First get an LValue and byte offset for this expression
+            --  If just elaborating decls, don't try to go inside this
+
+            if Decls_Only then
+               return Get_Undef (GT);
+            end if;
+
+            --  Otherwise, get an LValue and byte offset for this expression
 
             Emit_For_Address (Pref, V, Bits);
 
@@ -868,9 +903,8 @@ package body GNATLLVM.Exprs is
                   elsif Attr = Attribute_Range_Length then
                      V := Bounds_To_Length (Low, High, GT);
                   else
-                     Error_Msg_N ("unsupported attribute: `" &
-                                    Attribute_Id'Image (Attr) & "`", N);
-                     V := Get_Undef (GT);
+                     pragma Assert (Decls_Only);
+                     V := Emit_Undef (GT);
                   end if;
 
                elsif Is_Array_Type (P_GT) then
@@ -896,9 +930,8 @@ package body GNATLLVM.Exprs is
                         For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
                   end if;
                else
-                  Error_Msg_N ("unsupported attribute: `" &
-                                 Attribute_Id'Image (Attr) & "`", N);
-                  V := Get_Undef (GT);
+                  pragma Assert (Decls_Only);
+                  V := Emit_Undef (GT);
                end if;
 
                return Convert (V, GT);
@@ -1074,9 +1107,8 @@ package body GNATLLVM.Exprs is
             return Load (Const_Null_Ref (P_GT));
 
          when others =>
-            Error_Msg_N ("unsupported attribute: `" &
-                           Attribute_Id'Image (Attr) & "`", N);
-            return Get_Undef (GT);
+            pragma Assert (Decls_Only);
+            return Emit_Undef (GT);
       end case;
    end Emit_Attribute_Reference;
 
@@ -1137,6 +1169,13 @@ package body GNATLLVM.Exprs is
          if Full_Etype (Src_GT) = Full_Etype (Related_Type (Src)) then
             Src := From_Primitive (To_Primitive (Src), Src_GT);
          end if;
+      end if;
+
+      --  Once we've elaborated everything, we don't need to do anything
+      --  more if all we're to do is to elaborate and back-annotate.
+
+      if Decls_Only then
+         return;
       end if;
 
       --  See what relationships we have for the source and destination to

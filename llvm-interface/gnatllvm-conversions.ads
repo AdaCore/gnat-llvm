@@ -57,7 +57,10 @@ package GNATLLVM.Conversions is
           Post => Is_Access_Type (Convert_Ref'Result);
    --  Likewise, but get type from V
 
-   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value
+   function Convert_To_Access
+     (V            : GL_Value;
+      GT           : GL_Type;
+      Is_Unchecked : Boolean := False) return GL_Value
      with Pre  => Present (V) and then Present (GT),
           Post => Is_Access_Type (Convert_To_Access'Result);
    --  Convert Src, which should be an access or reference, into an access

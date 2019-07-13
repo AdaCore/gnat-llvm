@@ -265,6 +265,10 @@ package GNATLLVM.GLValue is
    function Is_Single_Reference (R : GL_Relationship)     return Boolean is
      (Is_Reference (R) and then not Is_Double_Reference (R));
 
+   function Can_Find_Bounds (R : GL_Relationship)         return Boolean is
+     (R in Fat_Pointer | Bounds | Bounds_And_Data | Reference_To_Bounds |
+           Reference_To_Bounds_And_Data | Thin_Pointer);
+
    function Is_Subprogram_Reference (R : GL_Relationship) return Boolean is
      (R = Reference_To_Subprogram);
 
@@ -1986,6 +1990,14 @@ package GNATLLVM.GLValue is
      with Pre => Msg'Length > 0 and then Present (N) and then Present (E)
                  and then Present (V);
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
+   function Can_Find_Bounds (V : GL_Value) return Boolean is
+     (Can_Find_Bounds (Relationship (V))
+        or else (Is_Array_Type (V) and then Is_Constrained (V)))
+     with Pre => Present (V);
+   --  True if V is something that we can find bounds from, either because
+   --  it's a relationship that points to bounds or it's a constrained array
+   --  (which has bounds).
 
    --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value
 

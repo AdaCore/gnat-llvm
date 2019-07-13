@@ -15,9 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout; use Errout;
-with Sinfo;  use Sinfo;
-with Snames; use Snames;
+with Errout;   use Errout;
+with Get_Targ; use Get_Targ;
+with Sinfo;    use Sinfo;
+with Snames;   use Snames;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -535,7 +536,7 @@ package body GNATLLVM.Conversions is
       --  For pointer to pointer, call our helper
 
       elsif Src_Access and then Dest_Access then
-         return Convert_To_Access (Value, GT);
+         return Convert_To_Access (Value, GT, Is_Unchecked => Is_Unchecked);
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int.  We already know that this isn't
@@ -614,13 +615,17 @@ package body GNATLLVM.Conversions is
    -- Convert_To_Access --
    -----------------------
 
-   function Convert_To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
+   function Convert_To_Access
+     (V            : GL_Value;
+      GT           : GL_Type;
+      Is_Unchecked : Boolean := False) return GL_Value
+   is
       DT     : constant GL_Type         := Full_Designated_GL_Type (GT);
-      In_R   : constant GL_Relationship := Relationship (V);
       In_GT  : constant GL_Type         := Related_Type (V);
       As_Ref : constant GL_Value        :=
         (if   Is_Data (V) and then Is_Access_Type (In_GT)
          then From_Access (V) else V);
+      In_R   : constant GL_Relationship := Relationship (As_Ref);
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
       Result : GL_Value;
 
@@ -641,6 +646,29 @@ package body GNATLLVM.Conversions is
         and then Ekind (GT) = E_Access_Subprogram_Type
       then
          Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
+
+      --  If we have an unchecked conversion to a fat pointer, we can
+      --  have all sorts of weird stuff as input.  In that case, we want
+      --  to do whatever is as reasonable as we can, but not crash
+
+      elsif Is_Unchecked and then R = Fat_Pointer
+        and then not Can_Find_Bounds (As_Ref)
+      then
+         --  Start making a fat pointer with both parts initial undefined.
+         --  If As_Ref is a pointer, cast it into the proper type and insert
+         --  it into the fat pointer.  If it's an integer of the proper width,
+         --  convert it to a pointer (it may be System.Address).  Otherwise,
+         --  leave it as undef.
+
+         Result := Get_Undef_Relationship (DT, R);
+         if Is_Pointer (As_Ref) then
+            Result := Insert_Value (Result, Ptr_To_Ref (As_Ref, DT), 0);
+         elsif Is_Integer_Type (As_Ref)
+           and then Get_Type_Size (Type_Of (As_Ref)) = ULL (Get_Pointer_Size)
+         then
+            Result := Insert_Value (Result, Int_To_Ref (As_Ref, DT), 0);
+         end if;
+
       else
          Result := Convert_Pointer (Get (As_Ref, R), DT);
       end if;

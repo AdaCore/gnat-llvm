@@ -5,8 +5,6 @@ Limitations and missing features (identified so far):
   this causes cxb3008 to fail in the optimizer with -O2 and an optimizing build
 - look at shouldAssumeDSOLocal in clang to see what we should do
 - volatile needs to be passed by reference (RB09-002, RB09-011, RM C.6(19))
-- warn on UC of different size and use undef (see, e.g., 7816-003)
-  maybe related to next item
 - materialize bounds from 0 to 'Last for foreign array param (2315-001)
 - deal with recording positions for package bodies (can already do when
   generating code, but not when pushing for elab proc; see S313-017)

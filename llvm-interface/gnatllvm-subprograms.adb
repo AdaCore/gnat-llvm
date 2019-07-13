@@ -75,7 +75,12 @@ package body GNATLLVM.Subprograms is
       In_Value_By_Int,
       --  Similar to In_Value, but for a parameter with foreign convention
       --  that we have to pass as an integer to avoid issues with LLVM's
-      --  implementation of the x86-64 calling convention
+      --  implementation of the x86-64 calling convention.  We don't
+      --  try to conditionalize this on the calling convention because
+      --  in all other cases, the integer and record is passed the same.
+      --  We also don't do this for large records even though there'd
+      --  be a difference in the ABI.   We do this compromise since this
+      --  case is rare and all known instances are of small size.
 
       Out_Value,
       --  This parameter is passed by value, but is only an output
@@ -1827,6 +1832,12 @@ package body GNATLLVM.Subprograms is
       --  Write the value in In_RHS to the location In_LHS.  F, if Present,
       --  is a field into In_LHS to write.
 
+      function Atomic_Or_Volatile_Copy_Required
+        (N : Node_Id; GT : GL_Type) return Boolean
+        with Pre => Present (N) and then Present (GT);
+      --  Return whether actual parameter corresponding N of formal type GT
+      --  must be passed by copy in a call as per RM C.6(19).
+
       type WB is record
          LHS, RHS : GL_Value;
          Field    : Entity_Id;
@@ -1897,6 +1908,7 @@ package body GNATLLVM.Subprograms is
 
       begin
          --  Handle the case of an undef as our arg.  See below in Emit_Call.
+
          if Is_Undef (LHS) then
             return;
          end if;
@@ -1922,6 +1934,9 @@ package body GNATLLVM.Subprograms is
 
          --  Now do the assignment, either directly or as a bitfield or
          --  indexed store.
+         --  ??? This may be somewhat problematic because we've lost the
+         --  list of LValues used to compute the size so may not be able
+         --  to copy it back if it's self-referential.
 
          if Present (F) then
             Build_Field_Store (LHS, F, RHS, VFA);
@@ -1933,6 +1948,38 @@ package body GNATLLVM.Subprograms is
          end if;
 
       end Write_Back;
+
+      --------------------------------------
+      -- Atomic_Or_Volatile_Copy_Required --
+      --------------------------------------
+
+      function Atomic_Or_Volatile_Copy_Required
+        (N : Node_Id; GT : GL_Type) return Boolean is
+      begin
+         --  We use the same predicates as in the front-end for RM C.6(12)
+         --  because it's purely a legality issue.
+
+         --  We should not have a scalar type here because such a type is
+         --  passed by copy.  But the Interlocked routines in
+         --  System.Aux_DEC force some of the their scalar parameters to be
+         --  passed by reference so we need to preserve that if we do not
+         --  want to break the interface.
+
+         if Is_Scalar_Type (GT) then
+            return False;
+
+         elsif Is_Atomic_Object (N) and then not Is_Atomic (GT) then
+            Error_Msg_N ("?atomic actual passed by copy (RM C.6(19))", N);
+            return True;
+
+         elsif Is_Volatile_Object (N) and then not Is_Volatile (GT) then
+            Error_Msg_N ("?volatile actual passed by copy (RM C.6(19))", N);
+            return True;
+         else
+            return False;
+
+         end if;
+      end Atomic_Or_Volatile_Copy_Required;
 
    begin  -- Start of processing for Emit_Call
 
@@ -1991,6 +2038,7 @@ package body GNATLLVM.Subprograms is
             F    : Entity_Id                := Empty;
             Idxs : Access_GL_Value_Array    := null;
             LHS  : GL_Value                 := No_GL_Value;
+            Copy : Boolean                  := False;
             Arg  : GL_Value;
 
          begin
@@ -2007,10 +2055,22 @@ package body GNATLLVM.Subprograms is
                --  If the param isn't passed by reference, convert the
                --  value to the parameter's type.  If it is, convert the
                --  pointer to being a pointer to the parameter's type.
-               --  If this is an Out or In Out parameter, we need to check
-               --  if this is a bitfield reference.
-
                if PK_Is_Reference (PK) then
+
+                  --  If we're required to make a copy due to volatility or
+                  --  atomicity, make a note of that.
+                  --  ??? We also have to do this for mis-aligned, but  have
+                  --  no way easy way of doing that for now.
+
+                  if Comes_From_Source (N)
+                    and then Atomic_Or_Volatile_Copy_Required (Actual, GT)
+                  then
+                     Copy := True;
+                  end if;
+
+                  --  If this is an Out or In Out parameter, we need to check
+                  --  if this is a bitfield reference.
+
                   if Ekind (Param) = E_In_Parameter then
                      LHS := Emit_LValue (Actual);
                   else
@@ -2032,7 +2092,27 @@ package body GNATLLVM.Subprograms is
                                       Field => F,
                                       Idxs  => Idxs,
                                       VFA   => Is_VFA_Ref (Actual));
+                     Copy         := False;
                   else
+                     --  If we have to make a copy, do so.  Also set up a
+                     --  writeback if we have to.
+
+                     if Copy then
+                        Arg  := Allocate_For_Type (Related_Type (LHS),
+                                                   Related_Type (LHS),
+                                                   N => Actual,
+                                                   V => LHS);
+                        if Ekind (Param) /= E_In_Parameter then
+                           WBs (In_Idx) := (LHS   => LHS,
+                                            RHS   => Arg,
+                                            Field => Empty,
+                                            Idxs  => null,
+                                            VFA   => Is_VFA_Ref (Actual));
+                        end if;
+                     end if;
+
+                     --  Now convert to a pointer to the proper type
+
                      Arg := (if    PK = Foreign_By_Ref
                              then  Ptr_To_Relationship (Get (LHS, R), GT, R)
                              elsif PK = Foreign_By_Component_Ref
@@ -2041,6 +2121,7 @@ package body GNATLLVM.Subprograms is
                                       Full_Component_GL_Type (GT), R)
                              else  Convert_Ref (LHS, GT));
                   end if;
+
                else
                   Arg := Emit_Conversion (Actual, GT);
 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -16,22 +16,5 @@
 ------------------------------------------------------------------------------
 
 package body GNATLLVM is
-
-   ------------------------
-   -- Get_LLVM_Error_Msg --
-   ------------------------
-
-   function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String is
-      Err_Msg_Length : Integer := Msg'Length;
-   begin
-      for J in Err_Msg_Type'Range loop
-         if Msg (J) = ASCII.NUL then
-            Err_Msg_Length := J - 1;
-            exit;
-         end if;
-      end loop;
-
-      return Msg (1 .. Err_Msg_Length);
-   end Get_LLVM_Error_Msg;
 
 end GNATLLVM;

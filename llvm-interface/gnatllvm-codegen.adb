@@ -43,6 +43,9 @@ package body GNATLLVM.Codegen is
    procedure Process_Switch (Switch : String);
    --  Process one command-line switch
 
+   function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
+   --  Get the LLVM error message that was stored in Msg
+
    --------------------
    -- Process_Switch --
    --------------------
@@ -182,6 +185,23 @@ package body GNATLLVM.Codegen is
          Process_Switch (Argument (J));
       end loop;
    end Scan_Command_Line;
+
+   ------------------------
+   -- Get_LLVM_Error_Msg --
+   ------------------------
+
+   function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String is
+      Err_Msg_Length : Integer := Msg'Length;
+   begin
+      for J in Err_Msg_Type'Range loop
+         if Msg (J) = ASCII.NUL then
+            Err_Msg_Length := J - 1;
+            exit;
+         end if;
+      end loop;
+
+      return Msg (1 .. Err_Msg_Length);
+   end Get_LLVM_Error_Msg;
 
    ----------------------------
    -- Initialize_LLVM_Target --

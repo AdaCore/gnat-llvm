@@ -21,6 +21,7 @@ with Ada.Unchecked_Conversion;
 with System.Storage_Elements;    use System.Storage_Elements;
 
 with Errout;   use Errout;
+with Get_Targ; use Get_Targ;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
 with Sem;      use Sem;
@@ -152,6 +153,12 @@ package body GNATLLVM.Variables is
           Post => Present (Make_Global_Variable'Result);
    --  Create a global variable for Def_Ident.  Definition is true if we
    --  are doing this for a declaration.
+
+   function Alloca_Smaller_Than
+     (T : Type_T; Elts : GL_Value; Max : ULL) return Boolean
+     with Pre => Present (T);
+     --  True iff the size of Elts occurrences of T is fixed and smaller
+     --  than Max bits.
 
    function Is_Static_Location (N : Node_Id) return Boolean
      with Pre => Present (N);
@@ -982,24 +989,41 @@ package body GNATLLVM.Variables is
 
    end Is_No_Elab_Needed;
 
+   -------------------------
+   -- Alloca_Smaller_Than --
+   -------------------------
+
+   function Alloca_Smaller_Than
+     (T : Type_T; Elts : GL_Value; Max : ULL) return Boolean
+   is
+      T_Size           : constant ULL          := Get_Type_Size (T);
+      Var_Size         : constant Boolean      :=
+        Present (Elts) and then not Is_A_Const_Int (Elts);
+      Elts_ULL         : constant ULL          :=
+        (if   Present (Elts) and then not Var_Size
+         then Get_Const_Int_Value_ULL (Elts) else 1);
+
+   begin
+      return not Var_Size and then T_Size * Elts_ULL < Max;
+   end Alloca_Smaller_Than;
+
    --------------------------
    -- Maybe_Promote_Alloca --
    --------------------------
 
    function Maybe_Promote_Alloca
-     (T : Type_T; Elts : GL_Value) return Basic_Block_T
+     (T : Type_T; Elts : GL_Value := No_GL_Value) return Basic_Block_T
    is
-      pragma Unreferenced (T);
-
-      Current_BB : constant Basic_Block_T := Get_Insert_Block;
+      Max_Promote_Size : constant              := 1_000_000_000;
+      Current_BB       : constant Basic_Block_T := Get_Insert_Block;
 
    begin
       --  If this is of fixed size, but not too huge, promote it to the
       --  entry block by setting our position into that block and returning
       --  our current position.  Otherwise, nothing to do here.
 
-      if Present (Entry_Block_Allocas) and then Is_A_Const_Int (Elts)
-        and then Elts < 100_000_000
+      if Present (Entry_Block_Allocas)
+        and then Alloca_Smaller_Than (T, Elts, Max_Promote_Size)
       then
          Set_Current_Position (Entry_Block_Allocas);
          return Current_BB;
@@ -1013,11 +1037,14 @@ package body GNATLLVM.Variables is
    ---------------------------
 
    procedure Done_Promoting_Alloca
-     (Alloca : Value_T; BB : Basic_Block_T; T : Type_T; Elts : GL_Value)
+     (Alloca : Value_T;
+      BB     : Basic_Block_T;
+      T      : Type_T;
+      Elts   : GL_Value := No_GL_Value)
    is
-      Threshold_In_Words : constant          := 20;
-      Min_Lifetime_Size  : constant GL_Value :=
-        Size_Const_Int (Get_Type_Size (Void_Ptr_Type) * Threshold_In_Words);
+      Threshold_In_Words : constant     := 20;
+      Min_Lifetime_Size  : constant ULL :=
+        ULL (Get_Bits_Per_Word) *  Threshold_In_Words;
 
    begin
       --  If we promoted this alloca, update the position for allocas
@@ -1031,10 +1058,21 @@ package body GNATLLVM.Variables is
 
          --  If this is a large enough object to be worthwhile, emit a
          --  call to indicate the start of the lifetime and set up to
-         --  emit the end of the lifetime when the block ends.
+         --  emit the end of the lifetime when the block ends.  Note that
+         --  we know this has a constant size becase Maybe_Promote_Alloca
+         --  promoted this.
 
-         if Get_Type_Size (T) * Elts > Min_Lifetime_Size then
-            Add_Lifetime_Entry (Alloca, Get_Type_Size (T) * Elts / BPU);
+         if not Alloca_Smaller_Than (T, Elts, Min_Lifetime_Size) then
+            declare
+               T_Size      : constant ULL := Get_Type_Size (T);
+               Num_Elts    : constant ULL :=
+                 (if   Present (Elts) then Get_Const_Int_Value_ULL (Elts)
+                  else 1);
+               Alloc_Bytes : constant ULL := T_Size * Num_Elts / ULL (BPU);
+
+            begin
+               Add_Lifetime_Entry (Alloca, Size_Const_Int (Alloc_Bytes));
+            end;
          end if;
       else
          Save_Stack_Pointer;

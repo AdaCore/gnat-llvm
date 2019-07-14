@@ -635,13 +635,12 @@ package body GNATLLVM.GLValue is
          else
             declare
                T       : constant Type_T        := Type_Of (V);
-               Promote : constant Basic_Block_T :=
-                 Maybe_Promote_Alloca (T, Size_Const_Int (1));
+               Promote : constant Basic_Block_T := Maybe_Promote_Alloca (T);
                Inst    : constant Value_T       := Alloca (IR_Builder, T, "");
 
             begin
                Set_Object_Align (Inst, GT, Empty);
-               Done_Promoting_Alloca (Inst, Promote, T, Size_Const_Int (1));
+               Done_Promoting_Alloca (Inst, Promote, T);
                Result := G (Inst, GT, Ref (Our_R));
                Store (V, Result);
                return Result;
@@ -957,14 +956,13 @@ package body GNATLLVM.GLValue is
       R       : constant GL_Relationship := Relationship_For_Alloc (GT);
       PT      : constant Type_T          := Type_For_Relationship (GT, R);
       T       : constant Type_T          := Get_Element_Type (PT);
-      Promote : constant Basic_Block_T   :=
-        Maybe_Promote_Alloca (T, Size_Const_Int (1));
+      Promote : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
       Inst    : constant Value_T         :=
         Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
 
    begin
       Set_Object_Align (Inst, GT, Def_Ident);
-      Done_Promoting_Alloca (Inst, Promote, T, Size_Const_Int (1));
+      Done_Promoting_Alloca (Inst, Promote, T);
       return G (Inst, GT, R, Is_Pristine => True);
    end Alloca;
 

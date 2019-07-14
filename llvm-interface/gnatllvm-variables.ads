@@ -83,17 +83,21 @@ package GNATLLVM.Variables is
    --  usually correspond to the public and private parts of a package.
 
    function Maybe_Promote_Alloca
-     (T : Type_T; Elts : GL_Value) return Basic_Block_T
-     with Pre => Present (T) and then Present (Elts);
+     (T : Type_T; Elts : GL_Value := No_GL_Value) return Basic_Block_T
+     with Pre => Present (T);
    --  Called when about to do an alloca of type T to see if that
    --  alloca should be promoted to the entry block.  The return from
    --  this function must be passed to Done_Promoting_Alloca along
    --  with the alloca immediately after emitting the alloca.  The
    --  pair of calls will do what's necessary, either promoting the
-   --  alloca or forcing a stack save/restore.
+   --  alloca or forcing a stack save/restore.  If Elts isn't specified,
+   --  it's presumed to be 1.
    procedure Done_Promoting_Alloca
-     (Alloca : Value_T; BB : Basic_Block_T; T : Type_T; Elts : GL_Value)
-     with Pre => Present (Alloca) and then Present (T) and then Present (Elts);
+     (Alloca : Value_T;
+      BB     : Basic_Block_T;
+      T      : Type_T;
+      Elts   : GL_Value := No_GL_Value)
+     with Pre => Present (Alloca) and then Present (T);
 
    function Is_Static_Address (N : Node_Id) return Boolean
      with Pre => Present (N);

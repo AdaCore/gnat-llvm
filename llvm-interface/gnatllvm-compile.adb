@@ -272,7 +272,7 @@ package body GNATLLVM.Compile is
                   then
                      Subp_Body := Parent (Declaration_Node
                                             (Corresponding_Body (Subp_Body)));
-                     Emit_One_Body (Subp_Body, For_Inline => True);
+                     Emit_Subprogram_Body (Subp_Body, For_Inline => True);
                   end if;
 
                   Next_Inlined_Subprogram (Subp);

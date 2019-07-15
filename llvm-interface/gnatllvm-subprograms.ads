@@ -124,7 +124,8 @@ package GNATLLVM.Subprograms is
 
    procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False)
      with Pre => Present (N);
-   --  Generate code for one given subprogram body
+   --  Generate code for one given subprogram body.  If For_Inline is
+   --  True, we're compiling this just to possibly inline it.
 
    function Create_Subprogram (Def_Ident : Entity_Id) return GL_Value
      with Pre => Ekind (Def_Ident) in Subprogram_Kind;
@@ -136,9 +137,10 @@ package GNATLLVM.Subprograms is
    --  Compile a subprogram declaration, creating the subprogram if not
    --  already done.  Return the subprogram value.
 
-   procedure Emit_Subprogram_Body (N : Node_Id)
+   procedure Emit_Subprogram_Body (N : Node_Id; For_Inline : Boolean := False)
      with Pre => Present (N);
-   --  Compile a subprogram body and save it in the environment
+   --  Compile a subprogram body and save it in the environment.  If For_Inline
+   --  is True, we're compiling this just to possibly inline it.
 
    procedure Emit_Return_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Simple_Return_Statement;

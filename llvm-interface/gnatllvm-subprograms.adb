@@ -1261,7 +1261,9 @@ package body GNATLLVM.Subprograms is
    -- Emit_Subprogram_Body --
    --------------------------
 
-   procedure Emit_Subprogram_Body (N : Node_Id) is
+   procedure Emit_Subprogram_Body
+     (N : Node_Id; For_Inline : Boolean := False)
+   is
       Nest_Table_First : constant Nat     := Nested_Functions_Table.Last + 1;
       Spec             : constant Node_Id := Get_Acting_Spec (N);
 
@@ -1284,10 +1286,11 @@ package body GNATLLVM.Subprograms is
       --  Otherwise, elaborate this function and then any nested functions
       --  within in.
 
-      Emit_One_Body (N);
+      Emit_One_Body (N, For_Inline => For_Inline);
 
       for J in Nest_Table_First .. Nested_Functions_Table.Last loop
-         Emit_Subprogram_Body (Nested_Functions_Table.Table (J));
+         Emit_Subprogram_Body (Nested_Functions_Table.Table (J),
+                               For_Inline => For_Inline);
       end loop;
 
       Nested_Functions_Table.Set_Last (Nest_Table_First);

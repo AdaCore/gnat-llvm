@@ -361,6 +361,11 @@ package body GNATLLVM.Records.Create is
       --  Add a Field_Info info the table, if appropriate, and set
       --  the field to point to it.  Update F_GT if we used a matching field.
 
+      procedure Push_Parent_Depth;
+      procedure Pop_Parent_Depth (Par_TE : Entity_Id);
+      --  Indicate that we're starting/stopping (respectively) to process
+      --  a parent record.
+
       procedure Add_Field (E : Entity_Id)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add one field to the above data
@@ -483,6 +488,31 @@ package body GNATLLVM.Records.Create is
             end if;
          end if;
       end Add_FI;
+
+      -----------------------
+      -- Push_Parent_Depth --
+      -----------------------
+
+      procedure Push_Parent_Depth is
+      begin
+         Par_Depth := Par_Depth + 1;
+      end Push_Parent_Depth;
+
+      ----------------------
+      -- Pop_Parent_Depth --
+      ----------------------
+
+      procedure Pop_Parent_Depth (Par_TE : Entity_Id) is
+      begin
+         Par_Depth := Par_Depth - 1;
+
+         --  If we're starting a new RI, we need to force alignment to
+         --  that of the parent record.
+
+         if LLVM_Types.Last < 0 then
+            RI_Align := Get_Record_Type_Alignment (Par_TE);
+         end if;
+      end Pop_Parent_Depth;
 
       ----------------
       -- Add_Fields --
@@ -609,9 +639,9 @@ package body GNATLLVM.Records.Create is
 
                   if Present (Field_To_Add) then
                      if Chars (Field_To_Add) = Name_uParent then
-                        Par_Depth := Par_Depth + 1;
+                        Push_Parent_Depth;
                         Add_Fields (Full_Etype (Field_To_Add));
-                        Par_Depth := Par_Depth - 1;
+                        Pop_Parent_Depth (Full_Etype (Field_To_Add));
                      end if;
 
                      Add_Field (Field_To_Add);
@@ -781,9 +811,9 @@ package body GNATLLVM.Records.Create is
          --  types.
 
          if Decls_Only and then Is_Derived then
-            Par_Depth := Par_Depth + 1;
+            Push_Parent_Depth;
             Add_Fields (Full_Etype (Base_Type (Rec_Type)));
-            Par_Depth := Par_Depth - 1;
+            Pop_Parent_Depth (Full_Etype (Base_Type (Rec_Type)));
          else
             Add_Component_List (Components, Sub_Rec_Type, True);
          end if;
@@ -1051,6 +1081,12 @@ package body GNATLLVM.Records.Create is
          Last_Var_Depth      : Int              := 0;
          --  The last variant depth that we saw for a field; used to indicate
          --  when the depth changes.
+
+         Last_Par_Depth      : Int              := 0;
+         --  Likewise for the last parent depth that we saw for a field
+
+         Parent_TE           : Entity_Id        := Empty;
+         --  The type of the last parent record that we've seen
 
          Had_Non_Repped      : Boolean          := False;
          --  True once we saw a non-repped field; used to ensure that all
@@ -1452,6 +1488,23 @@ package body GNATLLVM.Records.Create is
                --  The alignment we need this field to have
 
             begin
+               --  If the parent depth has decreased and the previous
+               --  parent has strict alignment, align our position to that
+               --  of its type.  Then save the potential current parent.
+
+               if AF.Par_Depth < Last_Par_Depth and then Present (Parent_TE)
+                 and then Strict_Alignment (Parent_TE)
+               then
+                  Need_Align :=
+                    Nat'Max (Need_Align,
+                             Get_Record_Type_Alignment (Parent_TE));
+               end if;
+
+               Last_Par_Depth := AF.Par_Depth;
+               if Last_Par_Depth /= 0 then
+                  Parent_TE := Full_Scope (F);
+               end if;
+
                --  If we've pushed into a new static variant, see if
                --  we need to align it.  But update our level anyway and
                --  clear out any starting location for packed fields.

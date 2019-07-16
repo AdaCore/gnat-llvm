@@ -1197,11 +1197,12 @@ package body GNATLLVM.Records is
 
    begin
       --  If we have a rep clause, we'll use that rather than packing it.
-      --  If the record isn't packed, neither is the field.  Aliased fields
-      --  aren't packed either.
+      --  If the record isn't packed, neither is the field.  Aliased
+      --  fieldsa or fields whose types are strictly aligned aren't packed
+      --  either.
 
       if Present (Component_Clause (F)) or else not Is_Packed (Full_Scope (F))
-        or else Is_Aliased (F)
+        or else Strict_Alignment (GT) or else Is_Aliased (F)
       then
          return False;
       end if;

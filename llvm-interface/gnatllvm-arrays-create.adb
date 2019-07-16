@@ -191,6 +191,7 @@ package body GNATLLVM.Arrays.Create is
         (if    Known_Static_Component_Size (A_TE) and then not For_Orig
          then  Component_Size (A_TE)
          elsif Is_Packed (A_TE) and then not Is_Packed_Array_Impl_Type (TE)
+               and then not Strict_Alignment (Comp_Def_GT)
          then  RM_Size (Comp_Def_GT) else No_Uint);
       Comp_Size         : constant Uint      :=
          Validate_Size (A_TE, Comp_Def_GT, Comp_Size_To_Use,

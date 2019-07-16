@@ -450,7 +450,8 @@ package body GNATLLVM.Conversions is
             Shift_Count : constant GL_Value :=
               Const_Int (Prim_GT, Esize (Prim_GT) - RM_Size (Prim_GT));
             Left_Shift  : constant GL_Value :=
-              Shl (Convert (Get (Result, Data), Prim_GT), Shift_Count);
+              Shl (Convert (Get (Result, Data), Prim_GT), Shift_Count,
+                   Allow_Overflow => True);
 
          begin
             Result := From_Primitive ((if   Is_Unsigned_Type (Prim_GT)

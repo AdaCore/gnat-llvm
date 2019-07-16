@@ -182,15 +182,6 @@ Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
 
 extern "C"
 void
-Dump_LLVM_Type_C (Type *type)
-{
-#ifndef LINK_WITH_OPT
-  type->dump ();
-#endif
-}
-
-extern "C"
-void
 Set_NUW (Instruction *inst)
 {
   inst->setHasNoUnsignedWrap ();

@@ -697,6 +697,7 @@ package body GNATLLVM.Builtins is
            Add_Global_Function ("__gnat_malloc",
                                 Fn_Ty ((1 => LLVM_Size_Type), Void_Ptr_Type),
                                 A_Char_GL_Type);
+         Add_Noalias_Attribute (Default_Alloc_Fn);
       end if;
 
       return Default_Alloc_Fn;

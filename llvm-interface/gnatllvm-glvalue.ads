@@ -854,6 +854,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V);
    --  Add the Noalias attribute to parameter with index Idx
 
+   procedure Add_Noalias_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V);
+   --  Add the Noalias attribute to the return value of function V
+
    procedure Add_Nocapture_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V);
    --  Add the Nocapture attribute to parameter with index Idx

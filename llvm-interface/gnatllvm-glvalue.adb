@@ -2259,6 +2259,15 @@ package body GNATLLVM.GLValue is
    end Add_Noalias_Attribute;
 
    ---------------------------
+   -- Add_Noalias_Attribute --
+   ---------------------------
+
+   procedure Add_Noalias_Attribute (V : GL_Value) is
+   begin
+      Add_Fn_Noalias_Attribute (LLVM_Value (V));
+   end Add_Noalias_Attribute;
+
+   ---------------------------
    -- Add_Nocapture_Attribute --
    ---------------------------
 

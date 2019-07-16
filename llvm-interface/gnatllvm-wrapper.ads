@@ -74,6 +74,9 @@ package GNATLLVM.Wrapper is
    procedure Add_Noalias_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Noalias_Attribute";
 
+   procedure Add_Fn_Noalias_Attribute (Func : Value_T)
+     with Import, Convention => C, External_Name => "Add_Fn_Noalias_Attribute";
+
    procedure Add_Nocapture_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Nocapture_Attribute";
 

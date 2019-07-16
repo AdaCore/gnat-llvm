@@ -124,6 +124,13 @@ Add_Noalias_Attribute (Function *fn, unsigned idx)
 
 extern "C"
 void
+Add_Fn_Noalias_Attribute (Function *fn)
+{
+    fn->addAttribute (0, Attribute::NoAlias);
+}
+
+extern "C"
+void
 Add_Nocapture_Attribute (Function *fn, unsigned idx)
 {
     fn->addParamAttr (idx, Attribute::NoCapture);

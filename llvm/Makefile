@@ -41,6 +41,10 @@ configure:
 	mkdir -p llvm-obj
 	$(CONFIGURE)
 
+configure-no-debug:
+	mkdir -p llvm-obj
+	$(CONFIGURE) -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
+
 configure-prod:
 	mkdir -p llvm-obj
 	$(CONFIGURE) -DCMAKE_BUILD_TYPE=RelWithDebInfo

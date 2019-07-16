@@ -36,7 +36,7 @@ endif
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs) \
   -static-libstdc++
-CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags)
+CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) -g
 
 ifeq ($(filter-out CYGWIN%,$(uname)),)
   LDFLAGS+=-Wl,--stack=0x2000000
@@ -73,6 +73,12 @@ setup:
 build: setup force
 	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
+	$(GPRBUILD) -Ptools -j$(PROCS)
+	$(MAKE) bugs-bins
+
+build-with-opt: setup force
+	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
+	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS) -DLINK_WITH_OPT
 	$(GPRBUILD) -Ptools -j$(PROCS)
 	$(MAKE) bugs-bins
 

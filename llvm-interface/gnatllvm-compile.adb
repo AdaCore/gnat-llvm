@@ -777,7 +777,8 @@ package body GNATLLVM.Compile is
       Prefer_LHS : Boolean  := False) return GL_Value
    is
       Is_Volatile : constant Boolean :=
-        (not Is_Entity_Name (N) and then Is_Volatile_Reference (N));
+        (Nkind (N) /= N_Defining_Identifier
+           and then Is_Volatile_Reference (N));
       Is_Atomic   : constant Boolean :=
         Is_Atomic_Object (N)
         or else (Nkind_In (N, N_Expanded_Name, N_Explicit_Dereference,

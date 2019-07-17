@@ -80,4 +80,7 @@ package GNATLLVM.Builtins is
      with Post => Present (Get_Tramp_Adjust_Fn'Result);
    --  Get functions to create and adjust trampolines
 
+   procedure Initialize;
+   --  Initialize module
+
 end GNATLLVM.Builtins;

@@ -24,11 +24,12 @@ with LLVM.Core; use LLVM.Core;
 
 with GNAT.Strings; use GNAT.Strings;
 
-with GNATLLVM.Compile;      use GNATLLVM.Compile;
-with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Compile;     use GNATLLVM.Compile;
+with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Builtins is
 
@@ -697,7 +698,10 @@ package body GNATLLVM.Builtins is
            Add_Global_Function ("__gnat_malloc",
                                 Fn_Ty ((1 => LLVM_Size_Type), Void_Ptr_Type),
                                 A_Char_GL_Type);
-         Add_Noalias_Attribute (Default_Alloc_Fn);
+
+         if Is_A_Function (Default_Alloc_Fn) then
+            Add_Noalias_Attribute (Default_Alloc_Fn);
+         end if;
       end if;
 
       return Default_Alloc_Fn;
@@ -732,13 +736,16 @@ package body GNATLLVM.Builtins is
                     3 => LLVM_Size_Type),
                    Type_Of (Integer_GL_Type)),
             Integer_GL_Type);
-         Add_Nocapture_Attribute (Memory_Compare_Fn, 0);
-         Add_Nocapture_Attribute (Memory_Compare_Fn, 1);
-         Add_Readonly_Attribute  (Memory_Compare_Fn, 0);
-         Add_Readonly_Attribute  (Memory_Compare_Fn, 1);
-         Add_Non_Null_Attribute  (Memory_Compare_Fn, 0);
-         Add_Non_Null_Attribute  (Memory_Compare_Fn, 1);
-         Set_Does_Not_Throw      (Memory_Compare_Fn);
+
+         if Is_A_Function (Memory_Compare_Fn) then
+            Add_Nocapture_Attribute (Memory_Compare_Fn, 0);
+            Add_Nocapture_Attribute (Memory_Compare_Fn, 1);
+            Add_Readonly_Attribute  (Memory_Compare_Fn, 0);
+            Add_Readonly_Attribute  (Memory_Compare_Fn, 1);
+            Add_Non_Null_Attribute  (Memory_Compare_Fn, 0);
+            Add_Non_Null_Attribute  (Memory_Compare_Fn, 1);
+            Set_Does_Not_Throw      (Memory_Compare_Fn);
+         end if;
       end if;
 
       return Memory_Compare_Fn;
@@ -867,5 +874,16 @@ package body GNATLLVM.Builtins is
 
       return Expect_Fn;
    end Get_Expect_Fn;
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize is
+   begin
+      Register_Global_Name ("__gnat_free");
+      Register_Global_Name ("__gnat_malloc");
+      Register_Global_Name ("memcmp");
+   end Initialize;
 
 end GNATLLVM.Builtins;

@@ -2405,15 +2405,4 @@ package body GNATLLVM.Subprograms is
 
    end Output_Global_Constructors_Destructors;
 
-   ----------------
-   -- Initialize --
-   ----------------
-
-   procedure Initialize is
-   begin
-      Register_Global_Name ("__gnat_free");
-      Register_Global_Name ("__gnat_malloc");
-      Register_Global_Name ("memcmp");
-   end Initialize;
-
 end GNATLLVM.Subprograms;

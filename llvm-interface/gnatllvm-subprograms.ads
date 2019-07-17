@@ -172,9 +172,6 @@ package GNATLLVM.Subprograms is
    procedure Output_Global_Constructors_Destructors;
    --  Called at end of compilation to output variables for either of the above
 
-   procedure Initialize;
-   --  Initialize module
-
    Current_Subp             : Entity_Id  := Empty;
    --  The spec entity for the subprogram currently being compiled
 

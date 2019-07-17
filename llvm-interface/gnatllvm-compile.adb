@@ -30,6 +30,7 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
+with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
@@ -142,8 +143,8 @@ package body GNATLLVM.Compile is
 
       Stringt.Unlock;
       GNATLLVM.Blocks.Initialize;
+      GNATLLVM.Builtins.Initialize;
       GNATLLVM.DebugInfo.Initialize;
-      GNATLLVM.Subprograms.Initialize;
       Detect_Duplicate_Global_Names;
       Stringt.Lock;
 

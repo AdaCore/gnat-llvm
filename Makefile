@@ -1,4 +1,4 @@
-all: build-with-opt
+all: build-opt
 
 .PHONY: acats
 

@@ -276,7 +276,7 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
 		      bool No_Unit_At_A_Time, bool No_Unroll_Loops,
 		      bool No_Loop_Vectorization, bool No_SLP_Vectorization)
 {
-#ifdef LINK_WITH_OPT
+#ifndef LINK_WITHOUT_OPT
   legacy::PassManager Passes;
   std::unique_ptr<legacy::FunctionPassManager> FPasses;
   PassManagerBuilder Builder;

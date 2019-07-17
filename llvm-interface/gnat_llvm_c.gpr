@@ -4,6 +4,7 @@ project GNAT_LLVM_C is
 
    package Compiler is
       for Driver ("C++") use "g++";
+      for Switches ("C++") use ("-g");
    end Compiler;
 
    package Naming is

@@ -1386,7 +1386,6 @@ package body GNATLLVM.Records.Create is
             --  the bitfield that we can use to widen the bitfield.
             --  Note that the comparisons and arithmetic below are done
             --  unsigned, so we have to write them to avoid wrapping.
-            --  ??? This code assumes that BPU is 8.
 
             Bitfield_Len := UI_To_ULL (Bitfield_End_Pos - Bitfield_Start_Pos);
             case Bitfield_Len is
@@ -1800,12 +1799,13 @@ package body GNATLLVM.Records.Create is
            and then Present (Get_Field_Info (Cur_Field))
          then
             declare
-               Byte_Position : constant BA_Data         :=
+               Byte_Position  : constant BA_Data         :=
                  Field_Position (Cur_Field, No_GL_Value) / Const (ULL (BPU));
-               Bit_Position  : constant BA_Data         :=
-                 Byte_Position * Const (ULL (BPU)) + Const (Field_Bit_Offset
-                                                              (Cur_Field));
-               Bit_Offset    : constant Node_Ref_Or_Val :=
+               Bit_Offset     : constant Uint            :=
+                 Field_Bit_Offset (Cur_Field);
+               Bit_Position   : constant BA_Data         :=
+                 Byte_Position * Const (ULL (BPU)) + Const (Bit_Offset);
+               Bit_Position_T : constant Node_Ref_Or_Val :=
                  Annotated_Value (Bit_Position);
 
             begin
@@ -1815,17 +1815,16 @@ package body GNATLLVM.Records.Create is
                                                               (Cur_Field))));
                end if;
 
-               Set_Component_Bit_Offset (Cur_Field, Bit_Offset);
-               if Is_Static_SO_Ref (Bit_Offset) then
+               Set_Component_Bit_Offset (Cur_Field, Bit_Position_T);
+               if Is_Static_SO_Ref (Bit_Position_T) then
                   Set_Normalized_Position
-                    (Cur_Field, Bit_Offset / BPU);
-
+                    (Cur_Field, Bit_Position_T / BPU);
                   Set_Normalized_First_Bit
-                    (Cur_Field, Bit_Offset mod BPU);
+                    (Cur_Field, Bit_Position_T mod BPU);
                else
                   Set_Normalized_Position (Cur_Field,
                                            Annotated_Value (Byte_Position));
-                  Set_Normalized_First_Bit (Cur_Field, Uint_0);
+                  Set_Normalized_First_Bit (Cur_Field, Bit_Offset mod BPU);
                end if;
             end;
          end if;

@@ -1336,8 +1336,6 @@ package body GNATLLVM.Types is
 
          when Attribute_Position | Attribute_Bit_Position =>
 
-            --  ??? Is this correct that both are in bytes?
-
             Ret := Component_Bit_Offset (Our_E);
             if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
               and then Attr = Attribute_Position

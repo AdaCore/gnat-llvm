@@ -117,7 +117,6 @@ package body GNATLLVM.GLValue is
             return GT = Boolean_GL_Type;
 
          when Reference =>
-            --  ??? This should really only be non-array
             return (Kind = Pointer_Type_Kind
                       or else Ekind (GT) = E_Subprogram_Type);
 

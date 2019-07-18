@@ -103,12 +103,16 @@ begin
             OS_Exit (0);
 
          elsif Arg = "-dumpversion" then
-            --  ??? fixed bugs expect a version of the form x.y.z
-            --  Put_Line (Gnatvsn.Gnat_Static_Version_String);
-            Put_Line ("7.3.1");
+
+            --  Fixed bugs expect a version of the form x.y.z
+
+            Put_Line ("1.1.1");
             OS_Exit (0);
 
          elsif Arg = "-dumpmachine" then
+
+            --  ??? At some point, this should be the real target triple
+
             Put_Line ("llvm");
             OS_Exit (0);
 

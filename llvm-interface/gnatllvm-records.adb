@@ -1552,10 +1552,10 @@ package body GNATLLVM.Records is
       Result     : GL_Value;
 
    begin
-      --  If the field information isn't present, this must be because we're
-      --  referencing a field that's not in this variant and hence is a
-      --  constraint error.  So return undefined.  ??? But first try something
-      --  to see if we can come up with the right field.
+      --  If the field information isn't present, this must be because
+      --  we're referencing a field that's not in this variant and hence is
+      --  a constraint error.  So return undefined.  But first try to see
+      --  if we can come up with the right field.
 
       if No (F_Idx) then
          pragma Assert (Has_Discriminants (Rec_Type));
@@ -1702,7 +1702,6 @@ package body GNATLLVM.Records is
             if (Is_Loadable_Type (GT)
                   or else (not Is_Dynamic_Size (GT)
                              and then Is_No_Elab_Needed (N)))
-              and then not Contains_Unconstrained_Record (GT)
               and then not Is_Nonnative_Type (GT)
             then
                Result := Get_Undef (GT);

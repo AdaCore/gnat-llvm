@@ -135,8 +135,7 @@ package body GNATLLVM.Variables is
    --  Return True if E may have a global name that we need to check for dups
 
    function Variable_GL_Type
-     (Def_Ident : Entity_Id;
-      Expr      : Node_Id) return GL_Type
+     (Def_Ident : Entity_Id; Expr : Node_Id) return GL_Type
      with Pre  => Ekind_In (Def_Ident, E_Variable, E_Constant,
                             E_Loop_Parameter, E_Exception),
           Post => Present (Variable_GL_Type'Result);
@@ -761,11 +760,6 @@ package body GNATLLVM.Variables is
 
             elsif Is_Record_Type (GT) then
 
-               --  ??? This may be OBE
-               if Contains_Unconstrained_Record (GT) then
-                  return False;
-               end if;
-
                Expr := First (Component_Associations (N));
                while Present (Expr) loop
                   F := Entity (First (Choices (Expr)));
@@ -1247,8 +1241,7 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Variable_GL_Type
-     (Def_Ident : Entity_Id;
-      Expr      : Node_Id) return GL_Type
+     (Def_Ident : Entity_Id; Expr : Node_Id) return GL_Type
    is
       TE          : constant Entity_Id :=
         (if   Ekind (Etype (Def_Ident)) = E_Class_Wide_Type
@@ -1336,7 +1329,8 @@ package body GNATLLVM.Variables is
 
       --  To avoid linker issues, pad a zero-size object to one byte, but
       --  don't get confused for cases where we need to store bounds.
-      --  ??? We do this for non-file-level objects too.
+      --  We needn't do this for non-file-level objects, but do so for
+      --  compatibility with Gigi.
 
       if not Is_Nonnative_Type (GT)
         and then Get_Type_Size (GT) = Size_Const_Null

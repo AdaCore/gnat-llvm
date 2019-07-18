@@ -468,10 +468,10 @@ package body GNATLLVM.Types.Create is
            ("reverse storage order for & not supported by 'L'L'V'M", TE, TE);
       end if;
 
-      --  Back-annotate sizes of non-scalar types if there isn't one.
-      --  But do back-annotate enums with -fshort-enums.
+      --  Back-annotate sizes of non-scalar types if there isn't one
       --  ???  Don't do anything for access subprogram since this will cause
-      --  warnings for UC's in g-thread and g-spipat.
+      --  warnings for UC's in g-thread and g-spipat.  They UC from
+      --  pointer to subprogram to System.Address.
 
       if not Is_Access_Subprogram_Type (TE) and then not Is_Scalar_Type (TE)
       then

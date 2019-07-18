@@ -76,10 +76,25 @@ Add_Dereferenceable_Attribute (Function *fn, unsigned idx,
 
 extern "C"
 void
+Add_Ret_Dereferenceable_Attribute (Function *fn, unsigned long long Bytes)
+{
+    fn->addDereferenceableAttr (0, Bytes);
+}
+
+extern "C"
+void
 Add_Dereferenceable_Or_Null_Attribute (Function *fn, unsigned idx,
 				       unsigned long long Bytes)
 {
     fn->addDereferenceableOrNullParamAttr (idx, Bytes);
+}
+
+extern "C"
+void
+Add_Ret_Dereferenceable_Or_Null_Attribute (Function *fn, 
+					  unsigned long long Bytes)
+{
+    fn->addDereferenceableOrNullAttr (0, Bytes);
 }
 
 extern "C"
@@ -124,7 +139,7 @@ Add_Noalias_Attribute (Function *fn, unsigned idx)
 
 extern "C"
 void
-Add_Fn_Noalias_Attribute (Function *fn)
+Add_Ret_Noalias_Attribute (Function *fn)
 {
     fn->addAttribute (0, Attribute::NoAlias);
 }
@@ -141,6 +156,13 @@ void
 Add_Non_Null_Attribute (Function *fn, unsigned idx)
 {
     fn->addParamAttr (idx, Attribute::NonNull);
+}
+
+extern "C"
+void
+Add_Ret_Non_Null_Attribute (Function *fn, unsigned idx)
+{
+    fn->addAttribute (0, Attribute::NonNull);
 }
 
 extern "C"

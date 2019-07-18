@@ -52,10 +52,19 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Add_Dereferenceable_Attribute";
 
+   procedure Add_Dereferenceable_Attribute (Func : Value_T; Bytes : ULL)
+     with Import, Convention => C,
+          External_Name => "Add_Ret_Dereferenceable_Attribute";
+
    procedure Add_Dereferenceable_Or_Null_Attribute
      (Func : Value_T; Idx : unsigned; Bytes : ULL)
      with Import, Convention => C,
           External_Name => "Add_Dereferenceable_Or_Null_Attribute";
+
+   procedure Add_Dereferenceable_Or_Null_Attribute
+     (Func : Value_T; Bytes : ULL)
+     with Import, Convention => C,
+          External_Name => "Add_Ret_Dereferenceable_Or_Null_Attribute";
 
    procedure Add_Inline_Always_Attribute (Func : Value_T)
      with Import, Convention => C,
@@ -74,14 +83,19 @@ package GNATLLVM.Wrapper is
    procedure Add_Noalias_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Noalias_Attribute";
 
-   procedure Add_Fn_Noalias_Attribute (Func : Value_T)
-     with Import, Convention => C, External_Name => "Add_Fn_Noalias_Attribute";
+   procedure Add_Noalias_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_Ret_Noalias_Attribute";
 
    procedure Add_Nocapture_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Nocapture_Attribute";
 
    procedure Add_Non_Null_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Non_Null_Attribute";
+
+   procedure Add_Non_Null_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_Ret_Non_Null_Attribute";
 
    procedure Add_Readonly_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Readonly_Attribute";

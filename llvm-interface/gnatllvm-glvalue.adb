@@ -2208,6 +2208,27 @@ package body GNATLLVM.GLValue is
       end if;
    end Add_Dereferenceable_Attribute;
 
+   -----------------------------------
+   -- Add_Dereferenceable_Attribute --
+   ----------------------------------
+
+   procedure Add_Dereferenceable_Attribute (V : GL_Value; GT : GL_Type)
+   is
+      T : constant Type_T := Type_Of (GT);
+
+   begin
+      --  We can only show this is dereferencable if we know its size.
+      --  But this implies non-null, so we can set that even if we don't
+      --  know the size.
+
+      if Type_Is_Sized (T) then
+         Add_Dereferenceable_Attribute (LLVM_Value (V),
+                                        To_Bytes (Get_Type_Size (T)));
+      else
+         Add_Non_Null_Attribute (LLVM_Value (V));
+      end if;
+   end Add_Dereferenceable_Attribute;
+
    -------------------------------------------
    -- Add_Dereferenceable_Or_Null_Attribute --
    -------------------------------------------
@@ -2220,6 +2241,21 @@ package body GNATLLVM.GLValue is
    begin
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V), unsigned (Idx),
+                                                To_Bytes (Get_Type_Size (T)));
+      end if;
+   end Add_Dereferenceable_Or_Null_Attribute;
+
+   -------------------------------------------
+   -- Add_Dereferenceable_Or_Null_Attribute --
+   -------------------------------------------
+
+   procedure Add_Dereferenceable_Or_Null_Attribute (V : GL_Value; GT : GL_Type)
+   is
+      T : constant Type_T := Type_Of (GT);
+
+   begin
+      if Type_Is_Sized (T) then
+         Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V),
                                                 To_Bytes (Get_Type_Size (T)));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
@@ -2263,7 +2299,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Noalias_Attribute (V : GL_Value) is
    begin
-      Add_Fn_Noalias_Attribute (LLVM_Value (V));
+      Add_Noalias_Attribute (LLVM_Value (V));
    end Add_Noalias_Attribute;
 
    ---------------------------
@@ -2282,6 +2318,15 @@ package body GNATLLVM.GLValue is
    procedure Add_Non_Null_Attribute (V : GL_Value; Idx : Integer) is
    begin
       Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
+   end Add_Non_Null_Attribute;
+
+   ----------------------------
+   -- Add_Non_Null_Attribute --
+   ----------------------------
+
+   procedure Add_Non_Null_Attribute (V : GL_Value) is
+   begin
+      Add_Non_Null_Attribute (LLVM_Value (V));
    end Add_Non_Null_Attribute;
 
    ----------------------------

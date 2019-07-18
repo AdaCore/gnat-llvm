@@ -836,10 +836,20 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V) and then Present (GT);
    --  Add the Dereferenceable attribute to parameter with index Idx
 
+   procedure Add_Dereferenceable_Attribute
+     (V : GL_Value; GT : GL_Type)
+     with Pre => Is_A_Function (V) and then Present (GT);
+   --  Add the Dereferenceable attribute to return value
+
    procedure Add_Dereferenceable_Or_Null_Attribute
      (V : GL_Value; Idx : Integer; GT : GL_Type)
      with Pre => Is_A_Function (V) and then Present (GT);
    --  Add the Dereferenceableornull attribute to parameter with index Idx
+
+   procedure Add_Dereferenceable_Or_Null_Attribute
+     (V : GL_Value; GT : GL_Type)
+     with Pre => Is_A_Function (V) and then Present (GT);
+   --  Add the Dereferenceableornull attribute to return value
 
    procedure Add_Inline_Attribute (V : GL_Value; Subp : Entity_Id)
      with Pre => Is_A_Function (V);
@@ -865,6 +875,10 @@ package GNATLLVM.GLValue is
    procedure Add_Non_Null_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V);
    --  Add the Nonnull attribute to parameter with index Idx
+
+   procedure Add_Non_Null_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V);
+   --  Add the Nonnull attribute to parameter the return value of function V
 
    procedure Add_Readonly_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V);

@@ -2183,6 +2183,9 @@ package body GNATLLVM.Subprograms is
       LLVM_Func   : GL_Value             := Get_Dup_Global_Value (Def_Ident);
       RK          : constant Return_Kind := Get_Return_Kind (Def_Ident);
       Return_GT   : constant GL_Type     := Full_GL_Type (Def_Ident);
+      Return_DT   : constant GL_Type    :=
+          (if   Is_Access_Type (Return_GT)
+           then Full_Designated_GL_Type (Return_GT) else No_GL_Type);
       Param_Num   : Natural              := 0;
       Formal      : Entity_Id;
 
@@ -2226,6 +2229,19 @@ package body GNATLLVM.Subprograms is
             Add_Noalias_Attribute         (LLVM_Func, Param_Num);
             Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
             Param_Num := Param_Num + 1;
+         elsif Get_L_Ret_Kind (Def_Ident) = Subprog_Return then
+            if RK = Value_Return and then Is_Access_Type (Return_GT)
+              and then not Is_Unconstrained_Array (Return_DT)
+              and then Ekind (Return_DT) /= E_Subprogram_Type
+            then
+               if Can_Never_Be_Null (Return_GT) then
+                  Add_Dereferenceable_Attribute (LLVM_Func, Return_DT);
+               else
+                  Add_Dereferenceable_Or_Null_Attribute (LLVM_Func, Return_DT);
+               end if;
+            elsif RK = RK_By_Reference then
+                  Add_Dereferenceable_Attribute (LLVM_Func, Return_GT);
+            end if;
          end if;
 
          Formal := First_Formal_With_Extras (Def_Ident);
@@ -2267,6 +2283,9 @@ package body GNATLLVM.Subprograms is
                  and then not Is_Unconstrained_Array (DT)
                  and then Ekind (DT) /= E_Subprogram_Type
                then
+                  --  ??? This seems wrong if we have an access type
+                  --  returned by reference.
+
                   if Can_Never_Be_Null (GT) then
                      Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   else

@@ -133,6 +133,8 @@ package body GNATLLVM.Codegen is
             when others =>
                null;
          end case;
+      elsif Switch = "-fno-strict-aliasing" then
+         Flag_No_Strict_Aliasing := True;
       elsif Switch = "-fno-unit-at-a-time" then
          No_Unit_At_A_Time := True;
       elsif Switch = "-fno-unroll-loops" then

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2018, AdaCore                     --
+--                     Copyright (C) 2013-2019, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -48,11 +48,12 @@ package GNATLLVM.Codegen is
    Size_Opt_Level  : Int            := 0;
    --  Optimization levels
 
-   No_Inlining           : Boolean := False;
-   No_Unit_At_A_Time     : Boolean := False;
-   No_Unroll_Loops       : Boolean := False;
-   No_Loop_Vectorization : Boolean := False;
-   No_SLP_Vectorization  : Boolean := False;
+   Flag_No_Strict_Aliasing : Boolean := False;
+   No_Inlining             : Boolean := False;
+   No_Unit_At_A_Time       : Boolean := False;
+   No_Unroll_Loops         : Boolean := False;
+   No_Loop_Vectorization   : Boolean := False;
+   No_SLP_Vectorization    : Boolean := False;
    --  Switch options for optimization
 
    Optimize_IR           : Boolean := False;

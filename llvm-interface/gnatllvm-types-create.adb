@@ -27,6 +27,7 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
+with GNATLLVM.Codegen;        use GNATLLVM.Codegen;
 with GNATLLVM.GLType;         use GNATLLVM.GLType;
 with GNATLLVM.Records;        use GNATLLVM.Records;
 with GNATLLVM.Records.Create; use GNATLLVM.Records.Create;
@@ -569,12 +570,17 @@ package body GNATLLVM.Types.Create is
       TBAA : constant Metadata_T := Get_TBAA (BT);
 
    begin
+      --  If we have -fno-strict-aliasing, don't create a TBAA
+
+      if Flag_No_Strict_Aliasing then
+         return No_Metadata_T;
+
       --  If the base type has a TBAA, use it for us.  If it doesn't, it's
       --  probably because this is the base type, in which case, make a
       --  new entry for it.  If it's a type that we don't currently make
       --  TBAA information for, return none.
 
-      if Present (TBAA) then
+      elsif Present (TBAA) then
          return TBAA;
       elsif Is_Scalar_Type (BT) then
          return Create_TBAA_Scalar_Type_Node (MD_Builder, Get_Name (BT),

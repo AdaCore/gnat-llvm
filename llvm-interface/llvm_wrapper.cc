@@ -42,14 +42,14 @@ DIEnumerator *
 Create_Enumerator (DIBuilder *di, char *name, unsigned long long value,
 		   bool isUnsigned)
 {
-    return di->createEnumerator (name, value, isUnsigned);
+  return di->createEnumerator (name, value, isUnsigned);
 }
 
 extern "C"
 MDBuilder *
 Create_MDBuilder_In_Context (LLVMContext &Ctx)
 {
-    return new MDBuilder (Ctx);
+  return new MDBuilder (Ctx);
 }
 
 extern "C"
@@ -63,7 +63,7 @@ extern "C"
 void
 Add_Cold_Attribute (Function *fn)
 {
-    fn->addFnAttr(Attribute::Cold);
+  fn->addFnAttr(Attribute::Cold);
 }
 
 extern "C"
@@ -71,14 +71,14 @@ void
 Add_Dereferenceable_Attribute (Function *fn, unsigned idx,
 			       unsigned long long Bytes)
 {
-    fn->addDereferenceableParamAttr (idx, Bytes);
+  fn->addDereferenceableParamAttr (idx, Bytes);
 }
 
 extern "C"
 void
 Add_Ret_Dereferenceable_Attribute (Function *fn, unsigned long long Bytes)
 {
-    fn->addDereferenceableAttr (0, Bytes);
+  fn->addDereferenceableAttr (0, Bytes);
 }
 
 extern "C"
@@ -86,7 +86,7 @@ void
 Add_Dereferenceable_Or_Null_Attribute (Function *fn, unsigned idx,
 				       unsigned long long Bytes)
 {
-    fn->addDereferenceableOrNullParamAttr (idx, Bytes);
+  fn->addDereferenceableOrNullParamAttr (idx, Bytes);
 }
 
 extern "C"
@@ -94,89 +94,89 @@ void
 Add_Ret_Dereferenceable_Or_Null_Attribute (Function *fn, 
 					  unsigned long long Bytes)
 {
-    fn->addDereferenceableOrNullAttr (0, Bytes);
+  fn->addDereferenceableOrNullAttr (0, Bytes);
 }
 
 extern "C"
 void
 Add_Inline_Always_Attribute (Function *fn)
 {
-    fn->addFnAttr(Attribute::AlwaysInline);
+  fn->addFnAttr(Attribute::AlwaysInline);
 }
 
 extern "C"
 void
 Add_Inline_Hint_Attribute (Function *fn)
 {
-    fn->addFnAttr(Attribute::InlineHint);
+  fn->addFnAttr(Attribute::InlineHint);
 }
 
 extern "C"
 void
 Add_Inline_No_Attribute (Function *fn)
 {
-    fn->addFnAttr(Attribute::NoInline);
+  fn->addFnAttr(Attribute::NoInline);
 }
 
 extern "C"
 void
 Add_Nest_Attribute (Value *v, unsigned idx)
 {
-    if (Function *fn = dyn_cast<Function>(v))
-	fn->addParamAttr (idx, Attribute::Nest);
-    else if (CallInst *ci = dyn_cast<CallInst>(v))
-	ci->addParamAttr (idx, Attribute::Nest);
-    else if (InvokeInst *ii = dyn_cast<InvokeInst>(v))
-	ii->addParamAttr (idx, Attribute::Nest);
+  if (Function *fn = dyn_cast<Function>(v))
+    fn->addParamAttr (idx, Attribute::Nest);
+  else if (CallInst *ci = dyn_cast<CallInst>(v))
+    ci->addParamAttr (idx, Attribute::Nest);
+  else if (InvokeInst *ii = dyn_cast<InvokeInst>(v))
+    ii->addParamAttr (idx, Attribute::Nest);
 }
 
 extern "C"
 void
 Add_Noalias_Attribute (Function *fn, unsigned idx)
 {
-    fn->addParamAttr (idx, Attribute::NoAlias);
+  fn->addParamAttr (idx, Attribute::NoAlias);
 }
 
 extern "C"
 void
 Add_Ret_Noalias_Attribute (Function *fn)
 {
-    fn->addAttribute (0, Attribute::NoAlias);
+  fn->addAttribute (0, Attribute::NoAlias);
 }
 
 extern "C"
 void
 Add_Nocapture_Attribute (Function *fn, unsigned idx)
 {
-    fn->addParamAttr (idx, Attribute::NoCapture);
+  fn->addParamAttr (idx, Attribute::NoCapture);
 }
 
 extern "C"
 void
 Add_Non_Null_Attribute (Function *fn, unsigned idx)
 {
-    fn->addParamAttr (idx, Attribute::NonNull);
+  fn->addParamAttr (idx, Attribute::NonNull);
 }
 
 extern "C"
 void
 Add_Ret_Non_Null_Attribute (Function *fn, unsigned idx)
 {
-    fn->addAttribute (0, Attribute::NonNull);
+  fn->addAttribute (0, Attribute::NonNull);
 }
 
 extern "C"
 void
 Add_Readonly_Attribute (Function *fn, unsigned idx)
 {
-    fn->addParamAttr (idx, Attribute::ReadOnly);
+  fn->addParamAttr (idx, Attribute::ReadOnly);
 }
 
 extern "C"
 void
 Add_Writeonly_Attribute (Function *fn, unsigned idx)
 {
-    fn->addParamAttr (idx, Attribute::WriteOnly);
+  fn->addParamAttr (idx, Attribute::WriteOnly);
 }
 
 extern "C"
@@ -247,21 +247,21 @@ extern "C"
 unsigned char
 Does_Not_Throw (Function *fn)
 {
-    return fn->doesNotThrow () ? 1 : 0;
+  return fn->doesNotThrow () ? 1 : 0;
 }
 
 extern "C"
 void
 Set_Does_Not_Throw (Function *fn)
 {
-    return fn->setDoesNotThrow ();
+  return fn->setDoesNotThrow ();
 }
 
 extern "C"
 void
 Set_Does_Not_Return (Function *fn)
 {
-    return fn->setDoesNotReturn ();
+  return fn->setDoesNotReturn ();
 }
 
 /* The LLVM C interest Set_Volatile only works for loads and stores, not

@@ -2154,6 +2154,24 @@ package body GNATLLVM.Records is
       Writeback_Stack.Append ((LHS => LHS, F => F, RHS => RHS));
    end Add_Write_Back;
 
+   -----------------------------------
+   -- Record_Has_Aliased_Components --
+   -----------------------------------
+
+   function Record_Has_Aliased_Components (TE : Entity_Id) return Boolean is
+      F : Entity_Id := First_Component_Or_Discriminant (TE);
+
+   begin
+      --  We ignore the tag since no user code can take its address
+
+      while Present (F) loop
+         exit when Is_Aliased (F) and then Chars (F) /= Name_uTag;
+         Next_Component_Or_Discriminant (F);
+      end loop;
+
+      return Present (F);
+   end Record_Has_Aliased_Components;
+
    ------------------------
    -- Perform_Writebacks --
    ------------------------

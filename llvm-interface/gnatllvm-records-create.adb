@@ -276,6 +276,9 @@ package body GNATLLVM.Records.Create is
         Is_Packed (TE) or else Component_Alignment (TE) = Calign_Storage_Unit;
       --  True if we're to align component only at a byte boundary
 
+      Aliased_Fields : constant Boolean := Record_Has_Aliased_Components (TE);
+      --  Indicates that at least one field is aliased
+
       Prev_Idx       : Record_Info_Id   := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
@@ -321,9 +324,6 @@ package body GNATLLVM.Records.Create is
       GT             :  GL_Type         :=
         Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
-
-      Aliased_Fields : Boolean          := False;
-      --  Indicates that at least one field is aliased
 
       LLVM_Type      : Type_T;
       --  The LLVM type for this record type
@@ -1723,19 +1723,6 @@ package body GNATLLVM.Records.Create is
          pragma Assert (Is_Empty_GL_Type (GT));
          LLVM_Type := Struct_Create_Named (Context, Get_Name (TE));
       end if;
-
-      --  See if the record has any aliased components.  We'll use that
-      --  flag to see if we should move variable-sized fields after fixed
-      --  fields.  Ignore the tag.
-
-      Field := First_Component_Or_Discriminant (TE);
-      while Present (Field) loop
-         if Is_Aliased (Field) and then Chars (Field) /= Name_uTag then
-            Aliased_Fields := True;
-         end if;
-
-         Next_Component_Or_Discriminant (Field);
-      end loop;
 
       Update_GL_Type (GT, LLVM_Type, True);
       Record_Info_Table.Increment_Last;

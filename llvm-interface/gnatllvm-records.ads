@@ -206,6 +206,10 @@ package GNATLLVM.Records is
    --  Perform any writebacks put onto the stack by the Add_Write_Back
    --  procedure.
 
+   function Record_Has_Aliased_Components (TE : Entity_Id) return Boolean
+     with Pre => Is_Record_Type (TE);
+   --  Return True if any component of TE other than the tag is aliased
+
    --  The following are debug procedures to print information about records
    --  and fields.
 

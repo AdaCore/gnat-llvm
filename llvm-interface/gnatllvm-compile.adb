@@ -590,7 +590,7 @@ package body GNATLLVM.Compile is
 
                when Pragma_Reviewable =>
                   if not Emit_Debug_Info then
-                     Error_Msg_N ("must specify -g?", N);
+                     Error_Msg_N ("must specify -g??", N);
                   end if;
 
                when Pragma_Optimize =>

@@ -14,15 +14,15 @@ In order to build GNAT-LLVM from sources, you need to follow these steps:
 
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2019
 
-- Build/install LLVM 8.0.x
+- Build/install LLVM and Clang 8.0.x
   One possible way assuming you have cmake version >= 3.7.2 in your environment
   is to do:
 
   $ make llvm
 
-  If you've installed LLVM by other means (e.g. "brew install llvm" on Mac OS
-  or "sudo apt-get install llvm-dev" on Ubuntu), make sure the llvm bin
-  directory containing llvm-config and clang is in your PATH.
+  If you've installed LLVM and clang by other means (e.g. "brew install llvm"
+  on Mac OS or "sudo apt-get install llvm-dev" on Ubuntu), make sure the
+  llvm bin directory containing llvm-config and clang is in your PATH.
 
 - Finally build GNAT-LLVM:
 

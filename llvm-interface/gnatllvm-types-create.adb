@@ -509,7 +509,7 @@ package body GNATLLVM.Types.Create is
         and then (Alignment (TE) >=
                     (if Is_Scalar_Type (TE) then Esize (TE) else RM_Size (TE)))
       then
-         Error_Msg_NE ("?suspiciously large alignment specified for&",
+         Error_Msg_NE ("??suspiciously large alignment specified for&",
                        Expression (Alignment_Clause (TE)), TE);
       end if;
 

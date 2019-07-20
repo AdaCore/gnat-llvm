@@ -410,10 +410,10 @@ package body GNATLLVM.GLType is
                end if;
 
                if For_Component then
-                  Error_Msg_NE_Num ("component of& padded by ^ bits?",
+                  Error_Msg_NE_Num ("??component of& padded by ^ bits",
                                     Err_Ident, Err_Ident, Pad_Sz);
                elsif Present (Err_Node) then
-                  Error_Msg_NE_Num ("^ bits of & unused?", Err_Node,
+                  Error_Msg_NE_Num ("??^ bits of & unused", Err_Node,
                                     Err_Ident, Pad_Sz);
                end if;
             end if;

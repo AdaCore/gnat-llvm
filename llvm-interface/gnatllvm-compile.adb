@@ -590,7 +590,7 @@ package body GNATLLVM.Compile is
 
                when Pragma_Reviewable =>
                   if not Emit_Debug_Info then
-                     Error_Msg_N ("must specify -g??", N);
+                     Error_Msg_N ("??must specify -g", N);
                   end if;
 
                when Pragma_Optimize =>
@@ -600,17 +600,17 @@ package body GNATLLVM.Compile is
 
                      when Name_Off =>
                         if Code_Opt_Level /= 0 then
-                           Error_Msg_N ("must specify -O0?", N);
+                           Error_Msg_N ("??must specify -O0", N);
                         end if;
 
                      when Name_Space =>
                         if Size_Opt_Level = 0 then
-                           Error_Msg_N ("must specify -Os or -Oz?", N);
+                           Error_Msg_N ("??must specify -Os or -Oz", N);
                         end if;
 
                      when Name_Time =>
                         if Code_Opt_Level = 0 then
-                           Error_Msg_N ("insufficient -O value?", N);
+                           Error_Msg_N ("??insufficient -O value", N);
                         end if;
 
                      when others =>
@@ -797,7 +797,7 @@ package body GNATLLVM.Compile is
          Result := Get_Undef_Relationship (Related_Type (Result),
                                            Relationship (Result));
          if Suppress_Overflow_Depth = 0 then
-            Error_Msg_N ("?`Constraint_Error` will be raised at run time",
+            Error_Msg_N ("??`Constraint_Error` will be raised at run time",
                          N);
             Emit_Raise_Call (N, CE_Overflow_Check_Failed);
          end if;

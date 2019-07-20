@@ -697,7 +697,7 @@ package body GNATLLVM.Subprograms is
             --  what we used.
 
             if Mechanism (Param_Ent) = By_Copy and then PK_By_Ref then
-               Error_Msg_N ("?cannot pass & by copy", Param_Ent);
+               Error_Msg_N ("??cannot pass & by copy", Param_Ent);
             elsif Mechanism (Param_Ent) = Default_Mechanism then
                Set_Mechanism (Param_Ent,
                               (if PK_By_Ref then By_Reference else By_Copy));
@@ -1766,11 +1766,11 @@ package body GNATLLVM.Subprograms is
             return False;
 
          elsif Is_Atomic_Object (N) and then not Is_Atomic (GT) then
-            Error_Msg_N ("?atomic actual passed by copy (RM C.6(19))", N);
+            Error_Msg_N ("??atomic actual passed by copy (RM C.6(19))", N);
             return True;
 
          elsif Is_Volatile_Object (N) and then not Is_Volatile (GT) then
-            Error_Msg_N ("?volatile actual passed by copy (RM C.6(19))", N);
+            Error_Msg_N ("??volatile actual passed by copy (RM C.6(19))", N);
             return True;
          else
             return False;

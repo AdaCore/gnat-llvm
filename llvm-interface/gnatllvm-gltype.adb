@@ -153,7 +153,7 @@ package body GNATLLVM.GLType is
       Table_Name           => "GL_Type_Table");
 
    procedure Next (GT : in out GL_Type)
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Get_Or_Create_GL_Type
      (TE : Entity_Id; Create : Boolean) return GL_Type

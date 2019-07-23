@@ -43,10 +43,8 @@ package GNATLLVM.GLType is
    --  padding) in the case of aggregates.  One GL_Type (possibly the same
    --  one, but not necessarily) is the default for that type.
 
-   procedure Dump_GL_Type_Int (GT : GL_Type; Full_Dump : Boolean);
-
    procedure Discard (GT : GL_Type)
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function New_GT (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
@@ -92,7 +90,8 @@ package GNATLLVM.GLType is
           Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
                      or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then Full_Etype (GT) =
-                      Full_Etype (Primitive_GL_Type'Result);
+                      Full_Etype (Primitive_GL_Type'Result),
+          Inline;
    --  Return the GT_Type for TE that corresponds to its basic computational
    --  form, creating it if it doesn't exist.
 
@@ -101,17 +100,18 @@ package GNATLLVM.GLType is
           Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
                      or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then Full_Etype (V) = Full_Etype
-                             (Primitive_GL_Type'Result);
+                             (Primitive_GL_Type'Result),
+          Inline;
 
    function Dummy_GL_Type (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
-          Post => Present (Dummy_GL_Type'Result);
+          Post => Present (Dummy_GL_Type'Result), Inline;
    --  Return the GT_Type for TE that corresponds to a dummy form
 
    function Default_GL_Type
      (TE : Entity_Id; Create : Boolean := True) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
-          Post => not Create or else Present (Default_GL_Type'Result);
+          Post => not Create or else Present (Default_GL_Type'Result), Inline;
    --  Return the GT_Type for TE that's to be used as the default for
    --  objects or components of the type.  If Create is True, make one if
    --  it doesn't already exist.  This may or may not be the same as what
@@ -119,34 +119,37 @@ package GNATLLVM.GLType is
 
    function Default_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Present (GT),
-          Post => Full_Etype (Default_GL_Type'Result) = Full_Etype (GT);
+          Post => Full_Etype (Default_GL_Type'Result) = Full_Etype (GT),
+          Inline;
 
    function Default_GL_Type (V : GL_Value) return GL_Type
      with Pre  => Present (V),
           Post => Full_Etype (Default_GL_Type'Result) =
-                    Full_Etype (Related_Type (V));
+                    Full_Etype (Related_Type (V)),
+          Inline;
 
    procedure Mark_Default (GT : GL_Type)
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
    --  Mark GT as the type to be used as the default representation of
    --  its corresponding GNAT type.
 
    function Full_GL_Type (N : Node_Id) return GL_Type is
      (Default_GL_Type (Full_Etype (N)))
-     with Pre => Present (N), Post => Present (Full_GL_Type'Result);
+     with Pre => Present (N), Post => Present (Full_GL_Type'Result), Inline;
    --  Return the default GL_Type corresponding to the type of N
 
    function Full_Alloc_GL_Type (N : Node_Id) return GL_Type
-     with Pre => Present (N), Post => Present (Full_Alloc_GL_Type'Result);
+     with Pre => Present (N), Post => Present (Full_Alloc_GL_Type'Result),
+          Inline;
    --  Likewise, but use the type for an allocation, which may be an
    --  Actual_Subtype.
 
    function Base_GL_Type (TE : Entity_Id) return GL_Type
      with Pre  => Is_Type (TE),
-          Post => Is_Primitive_GL_Type (Base_GL_Type'Result);
+          Post => Is_Primitive_GL_Type (Base_GL_Type'Result), Inline;
    function Base_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Present (GT),
-          Post => Is_Primitive_GL_Type (Base_GL_Type'Result);
+          Post => Is_Primitive_GL_Type (Base_GL_Type'Result), Inline;
    function Base_GL_Type (V : GL_Value) return GL_Type is
      (Base_GL_Type (GL_Type'(Related_Type (V))))
      with Pre  => Present (V),
@@ -156,7 +159,7 @@ package GNATLLVM.GLType is
    --  computation on a type.
 
    function Get_Unused_Bits (GT : GL_Type) return Uint
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
    --  Return the number of unused bits that are at the end of objects
    --  of type GT.
 
@@ -165,53 +168,54 @@ package GNATLLVM.GLType is
    --  a GNAT type.
 
    function Full_Etype (GT : GL_Type)            return Entity_Id
-     with Pre => Present (GT), Post => Is_Type_Or_Void (Full_Etype'Result);
+     with Pre => Present (GT), Post => Is_Type_Or_Void (Full_Etype'Result),
+          Inline;
 
    function Type_Of (GT : GL_Type)               return Type_T
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function GT_Size (GT : GL_Type)               return GL_Value
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Max_Size (GT : GL_Type)           return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function GT_Alignment (GT : GL_Type)          return GL_Value
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Dummy_Type (GT : GL_Type)         return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Primitive_GL_Type (GT : GL_Type)  return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Primitive_GL_Type (V : GL_Value)  return Boolean is
      (Is_Primitive_GL_Type (Related_Type (V)))
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
 
    function Is_Biased_GL_Type (GT : GL_Type)     return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Biased_GL_Type (V : GL_Value)     return Boolean is
      (Is_Biased_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
    function Is_Padded_GL_Type (GT : GL_Type)     return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Padded_GL_Type (V : GL_Value)     return Boolean is
      (Is_Padded_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
    function Is_Truncated_GL_Type (GT : GL_Type)     return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Truncated_GL_Type (V : GL_Value)     return Boolean is
      (Is_Truncated_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
    function Is_Byte_Array_GL_Type (GT : GL_Type) return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Byte_Array_GL_Type (V : GL_Value) return Boolean is
      (Is_Byte_Array_GL_Type (Related_Type (V)))
@@ -226,7 +230,7 @@ package GNATLLVM.GLType is
      with Pre => Present (V);
 
    function Is_Empty_GL_Type (GT : GL_Type)      return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function To_Primitive
      (V : GL_Value; No_Copy : Boolean := False) return GL_Value
@@ -280,7 +284,7 @@ package GNATLLVM.GLType is
 
    function Full_Designated_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Is_Access_Type (GT),
-          Post => Present (Full_Designated_GL_Type'Result);
+          Post => Present (Full_Designated_GL_Type'Result), Inline;
 
    function Full_Designated_GL_Type (TE : Entity_Id) return GL_Type is
      (Get_Associated_GL_Type (TE))
@@ -289,7 +293,7 @@ package GNATLLVM.GLType is
 
    function Full_Designated_GL_Type (V : GL_Value) return GL_Type
      with Pre  => Is_Access_Type (V),
-          Post => Present (Full_Designated_GL_Type'Result);
+          Post => Present (Full_Designated_GL_Type'Result), Inline;
 
    function Full_Component_Type (GT : GL_Type) return Entity_Id is
      (Full_Component_Type (Full_Etype (GT)))
@@ -313,14 +317,16 @@ package GNATLLVM.GLType is
 
    function Full_Base_Type (GT : GL_Type) return Entity_Id is
      (Full_Base_Type (Full_Etype (GT)))
-     with Pre  => Present (GT), Post => Is_Type (Full_Base_Type'Result);
+     with Pre  => Present (GT), Post => Is_Type (Full_Base_Type'Result),
+          Inline;
 
    function Ultimate_Base_Type (GT : GL_Type) return Entity_Id is
      (Ultimate_Base_Type (Full_Etype (GT)))
-     with Pre  => Present (GT), Post => Is_Type (Ultimate_Base_Type'Result);
+     with Pre  => Present (GT), Post => Is_Type (Ultimate_Base_Type'Result),
+          Inline;
 
    function Is_Nonnative_Type (GT : GL_Type) return Boolean
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Is_Base_Type (GT : GL_Type) return Boolean is
      (Is_Base_Type (Full_Etype (GT)))
@@ -597,6 +603,8 @@ package GNATLLVM.GLType is
 
    procedure Dump_GL_Type (GT : GL_Type)
      with Export, External_Name => "dglt";
+
+   procedure Dump_GL_Type_Int (GT : GL_Type; Full_Dump : Boolean);
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 

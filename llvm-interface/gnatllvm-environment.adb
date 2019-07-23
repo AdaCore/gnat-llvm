@@ -24,15 +24,13 @@ package body GNATLLVM.Environment is
    type Access_LLVM_Info is access all LLVM_Info;
 
    function Get_LLVM_Info         (TE : Entity_Id) return Access_LLVM_Info
-     with Pre => Is_Type_Or_Void (TE);
-   function Get_LLVM_Info_For_Set (E : Entity_Id)  return Access_LLVM_Info;
+     with Pre => Is_Type_Or_Void (TE), Inline;
+   function Get_LLVM_Info_For_Set (E : Entity_Id)  return Access_LLVM_Info
+     with Inline;
    --  Helpers for below to either create type and then return entry or
    --  or to allocate LLVM_Info_Table entry if needed (for set).  In either
    --  case, the returned access type must only be used immediately since
    --  it will be invalid if the table is reallocated.
-
-   pragma Inline (Get_LLVM_Info);
-   pragma Inline (Get_LLVM_Info_For_Set);
 
    --  Define functions to get values from LLVM_Info
 
@@ -65,33 +63,32 @@ package body GNATLLVM.Environment is
 
    --  Define procedures to set values into LLVM_Info
 
-   procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type);
-   procedure Raw_Set_AGLT   (LI : Access_LLVM_Info; Val : GL_Type);
-   procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value);
-   procedure Raw_Set_SO     (LI : Access_LLVM_Info; Val : Dynamic_SO_Ref);
-   procedure Raw_Set_Elab   (LI : Access_LLVM_Info; Val : Boolean);
-   procedure Raw_Set_Field  (LI : Access_LLVM_Info; Val : Field_Info_Id);
-   procedure Raw_Set_Label  (LI : Access_LLVM_Info; Val : Label_Info_Id);
-   procedure Raw_Set_NN     (LI : Access_LLVM_Info; Val : Boolean);
-   procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T);
-   procedure Raw_Set_Debug  (LI : Access_LLVM_Info; Val : Metadata_T);
-   procedure Raw_Set_Array  (LI : Access_LLVM_Info; Val : Array_Info_Id);
-   procedure Raw_Set_O_A    (LI : Access_LLVM_Info; Val : Array_Info_Id);
-   procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id);
-
-   pragma Inline (Raw_Set_GLT);
-   pragma Inline (Raw_Set_AGLT);
-   pragma Inline (Raw_Set_Value);
-   pragma Inline (Raw_Set_SO);
-   pragma Inline (Raw_Set_Elab);
-   pragma Inline (Raw_Set_Field);
-   pragma Inline (Raw_Set_Label);
-   pragma Inline (Raw_Set_NN);
-   pragma Inline (Raw_Set_TBAA);
-   pragma Inline (Raw_Set_Debug);
-   pragma Inline (Raw_Set_Array);
-   pragma Inline (Raw_Set_O_A);
-   pragma Inline (Raw_Set_Record);
+   procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type)
+       with Inline;
+   procedure Raw_Set_AGLT   (LI : Access_LLVM_Info; Val : GL_Type)
+       with Inline;
+   procedure Raw_Set_Value  (LI : Access_LLVM_Info; Val : GL_Value)
+       with Inline;
+   procedure Raw_Set_SO     (LI : Access_LLVM_Info; Val : Dynamic_SO_Ref)
+       with Inline;
+   procedure Raw_Set_Elab   (LI : Access_LLVM_Info; Val : Boolean)
+       with Inline;
+   procedure Raw_Set_Field  (LI : Access_LLVM_Info; Val : Field_Info_Id)
+       with Inline;
+   procedure Raw_Set_Label  (LI : Access_LLVM_Info; Val : Label_Info_Id)
+       with Inline;
+   procedure Raw_Set_NN     (LI : Access_LLVM_Info; Val : Boolean)
+       with Inline;
+   procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T)
+       with Inline;
+   procedure Raw_Set_Debug  (LI : Access_LLVM_Info; Val : Metadata_T)
+       with Inline;
+   procedure Raw_Set_Array  (LI : Access_LLVM_Info; Val : Array_Info_Id)
+       with Inline;
+   procedure Raw_Set_O_A    (LI : Access_LLVM_Info; Val : Array_Info_Id)
+       with Inline;
+   procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id)
+       with Inline;
 
    procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type) is
    begin LI.GLType := Val; end Raw_Set_GLT;
@@ -194,12 +191,8 @@ package body GNATLLVM.Environment is
       with function  Getter (LI : Access_LLVM_Info) return Obj;
       with procedure Setter (LI : Access_LLVM_Info; Val : Obj);
    package Pkg_None is
-      function  Get (E : Entity_Id) return Obj;
-      procedure Set (E : Entity_Id; Val : Obj);
-
-      pragma Inline (Get);
-      pragma Inline (Set);
-
+      function  Get (E : Entity_Id) return Obj with Inline;
+      procedure Set (E : Entity_Id; Val : Obj) with Inline;
    end Pkg_None;
 
    package body Pkg_None is
@@ -241,10 +234,7 @@ package body GNATLLVM.Environment is
       with procedure Setter (LI : Access_LLVM_Info; Val : Obj);
    package Pkg_Elab is
       function  Get (E : Entity_Id) return Obj is (Getter (Get_LLVM_Info (E)));
-      procedure Set (E : Entity_Id; Val : Obj);
-
-      pragma Inline (Set);
-
+      procedure Set (E : Entity_Id; Val : Obj) with Inline;
    end Pkg_Elab;
 
    package body Pkg_Elab is

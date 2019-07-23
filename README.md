@@ -53,6 +53,10 @@ llvm-interface which you can put in your PATH:
 
   $ llvm-gcc -c -emit-llvm file.adb
 
+- To generate LLVM assembly (will generate a .ll file):
+
+  $ llvm-gcc -c -S -emit-llvm file.adb
+
 - To generate native assembly file (will generate a .s file):
 
   $ llvm-gcc -S file.adb

@@ -89,7 +89,7 @@ package GNATLLVM.Types is
 
    function Type_Of (TE : Entity_Id) return Type_T
      with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
-          Post => Present (Type_Of'Result);
+          Post => Present (Type_Of'Result), Inline;
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it and a GL_Type first if necessary.
 
@@ -101,21 +101,22 @@ package GNATLLVM.Types is
    --  it atomic.
 
    procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value)
-     with Pre => Present (GT), Post => Present (Low) and then Present (High);
+     with Pre => Present (GT), Post => Present (Low) and then Present (High),
+          Inline;
 
-   procedure Push_LValue_List;
-   procedure Pop_LValue_List;
+   procedure Push_LValue_List  with Inline;
+   procedure Pop_LValue_List   with Inline;
    --  Push and pop the active range of the LValue pair list
 
-   procedure Clear_LValue_List;
+   procedure Clear_LValue_List with Inline;
    --  Remove all entries previously added to the LValue list
 
    procedure Add_To_LValue_List (V : GL_Value)
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
    --  Add V to the list that's searched by Get_Matching_Value
 
    function Add_To_LValue_List (V : GL_Value) return GL_Value
-     with Pre => Present (V), Post => Add_To_LValue_List'Result = V;
+     with Pre => Present (V), Post => Add_To_LValue_List'Result = V, Inline;
    --  Likewise, but return V
 
    function Get_Matching_Value (TE : Entity_Id) return GL_Value
@@ -147,7 +148,7 @@ package GNATLLVM.Types is
 
    function Build_Struct_Type
      (Types : Type_Array; Packed : Boolean := False) return Type_T
-     with Post => Present (Build_Struct_Type'Result);
+     with Post => Present (Build_Struct_Type'Result), Inline;
    --  Build an LLVM struct type containing the specified types
 
    function Get_Fullest_View
@@ -172,7 +173,8 @@ package GNATLLVM.Types is
    --  the front-end function Is_Base_Type, which just tests the Ekind.
 
    function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id
-     with Pre => Is_Type (TE), Post => Is_Type (Ultimate_Base_Type'Result);
+     with Pre => Is_Type (TE), Post => Is_Type (Ultimate_Base_Type'Result),
+          Inline;
    --  Go up TE's Etype chain until it points to itself, which will
    --  go up both base and parent types.
 
@@ -497,11 +499,11 @@ package GNATLLVM.Types is
 
    function Build_Min (V1, V2 : IDS; Name : String := "") return IDS
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (Build_Min'Result);
+          Post => Present (Build_Min'Result), Inline;
 
    function Build_Max (V1, V2 : IDS; Name : String := "") return IDS
      with Pre  => Present (V1) and then Present (V2),
-          Post => Present (Build_Max'Result);
+          Post => Present (Build_Max'Result), Inline;
 
    function Build_And (V1, V2 : IDS; Name : String := "") return IDS is
      (if   Is_Const (V1) and then Is_Const (V2)
@@ -517,7 +519,7 @@ package GNATLLVM.Types is
      (Add (LHS, RHS));
    function "-" (LHS, RHS : IDS) return IDS is
      (Sub (LHS, RHS));
-   function "-" (V : IDS) return IDS is
+   function "-" (V : IDS)        return IDS is
      (Neg (V));
    function "*" (LHS, RHS : IDS) return IDS is
      (Mul (LHS, RHS));
@@ -552,7 +554,7 @@ package GNATLLVM.Types is
      with Pre => Present (V) and then Present (GT);
 
    function Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
-     with Pre => Present (V), Post => Present (Emit_Expr'Result);
+     with Pre => Present (V), Post => Present (Emit_Expr'Result), Inline;
 
    function Emit_Convert (N : Node_Id; GT : GL_Type) return IDS is
      (Convert (Emit_Expr (N), GT))
@@ -708,7 +710,7 @@ package GNATLLVM.Types is
      (Add (LHS, RHS));
    function "-" (LHS, RHS : BA_Data) return BA_Data is
      (Sub (LHS, RHS));
-   function "-" (V : BA_Data) return BA_Data is
+   function "-" (V : BA_Data)        return BA_Data is
      (Neg (V));
    function "*" (LHS, RHS : BA_Data) return BA_Data is
      (Mul (LHS, RHS));
@@ -720,8 +722,10 @@ package GNATLLVM.Types is
    function To_Bytes (Size : BA_Data) return BA_Data is
      ((Size + (Const (ULL (BPU)) - Const (1))) / Const (ULL (BPU)));
 
-   function Build_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data;
-   function Build_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data;
+   function Build_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data
+     with Inline;
+   function Build_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data
+     with Inline;
 
    function Build_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
      ((if   Is_Const_0 (V1) or else Is_Const_0 (V2) then Const (0)
@@ -750,10 +754,10 @@ package GNATLLVM.Types is
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
       Is_Unchecked   : Boolean := False) return BA_Data
-     with Pre => Present (GT);
+     with Pre => Present (GT), Inline;
 
    function Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
 
    function Emit_Convert (N : Node_Id; GT : GL_Type) return BA_Data is
      (Convert (Emit_Expr (N), GT))
@@ -764,8 +768,10 @@ package GNATLLVM.Types is
      with Pre => Present (GT);
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
    procedure Dump_BA_Data (V : BA_Data)
      with Export, External_Name => "dbad";
+
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
    Disable_LV_Append : Nat := 0;

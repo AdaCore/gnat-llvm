@@ -248,11 +248,9 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Build_Struct_Type
-     (Types : Type_Array; Packed : Boolean := False) return Type_T is
-   begin
-      return Struct_Type_In_Context
-        (Context, Types'Address, Types'Length, Packed);
-   end Build_Struct_Type;
+     (Types : Type_Array; Packed : Boolean := False) return Type_T
+   is
+      (Struct_Type_In_Context (Context, Types'Address, Types'Length, Packed));
 
    ----------------------
    -- Is_Loadable_Type --

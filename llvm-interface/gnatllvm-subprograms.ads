@@ -147,22 +147,21 @@ package GNATLLVM.Subprograms is
    --  Emit code for a return statement
 
    function Subp_Ptr (N : Node_Id) return GL_Value
-     with Pre  => Present (N), Post => Present (Subp_Ptr'Result);
+     with Pre  => Present (N), Post => Present (Subp_Ptr'Result), Inline;
    --  Return the subprogram pointer associated with Node
 
    procedure Enter_Subp (Func : GL_Value)
      with Pre  => Present (Func) and then Library_Level,
-          Post => not Library_Level;
+          Post => not Library_Level, Inline;
    --  Create an entry basic block for this subprogram and position
    --  the builder at its end. Mark that we're in a subprogram.  To be
    --  used when starting the compilation of a subprogram body.
 
    procedure Leave_Subp
-     with Pre  => not Library_Level,
-          Post => Library_Level;
+     with Pre  => not Library_Level, Post => Library_Level, Inline;
    --  Indicate that we're no longer compiling a subprogram
 
-   function Library_Level return Boolean;
+   function Library_Level return Boolean with Inline;
    --  Return True if we're at library level
 
    function Create_Basic_Block (Name : String := "") return Basic_Block_T

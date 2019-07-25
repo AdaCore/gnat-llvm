@@ -1388,17 +1388,22 @@ package body GNATLLVM.Variables is
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
    is
-      LLVM_Var     : GL_Value         := Get_Dup_Global_Value (Def_Ident);
-      Addr_Expr    : constant Node_Id :=
-        (if   Present (Address_Clause (Def_Ident))
-         then Expression (Address_Clause (Def_Ident)) else Empty);
-      Is_Ref       : constant Boolean :=
-        Present (Addr_Expr) or else Is_Nonnative_Type (GT)
+      LLVM_Var        : GL_Value         := Get_Dup_Global_Value (Def_Ident);
+      Has_Addr        : constant Boolean :=
+        Present (Address_Clause (Def_Ident));
+      Addr_Expr       : constant Node_Id :=
+        (if Has_Addr then Expression (Address_Clause (Def_Ident)) else Empty);
+      Has_Static_Addr : constant Boolean   :=
+        Has_Addr and then Is_Static_Address (Addr_Expr);
+      Nonnative       : constant Boolean := Is_Nonnative_Type (GT);
+      Needs_Alloc     : constant Boolean := not Has_Addr and then Nonnative;
+      Is_Ref          : constant Boolean :=
+        (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
-      Is_Volatile  : constant Boolean :=
+      Is_Volatile     : constant Boolean :=
         Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
-      Linker_Alias : constant Node_Id :=
+      Linker_Alias    : constant Node_Id :=
         Get_Pragma (Def_Ident, Pragma_Linker_Alias);
 
    begin
@@ -1511,27 +1516,28 @@ package body GNATLLVM.Variables is
    procedure Emit_Declaration
      (N : Node_Id; For_Freeze_Entity : Boolean := False)
    is
-      Def_Ident    : constant Node_Id   := Defining_Identifier (N);
+      Def_Ident       : constant Node_Id   := Defining_Identifier (N);
       --  Identifier being defined
 
-      Full_Ident   : constant Node_Id    :=
+      Full_Ident      : constant Node_Id    :=
         (if   Ekind (Def_Ident) = E_Constant
               and then Present (Full_View (Def_Ident))
          then Full_View (Def_Ident) else Def_Ident);
       --  Identifier to use to find the initializing expression
 
-      No_Init      : constant Boolean   :=
+      No_Init         : constant Boolean   :=
         Nkind (N) = N_Object_Declaration and then No_Initialization (N);
       --  True if we aren't to initialize this object (ignore expression)
 
-      Expr         : Node_Id            :=
+      Expr            : Node_Id            :=
         (if No_Init then Empty else Expression (N));
       --  Initializing expression, if Present and we are to use one
 
-      GT           : constant GL_Type   := Variable_GL_Type (Def_Ident, Expr);
+      GT              : constant GL_Type   :=
+          Variable_GL_Type (Def_Ident, Expr);
       --  Type to use for Def_Ident
 
-      Alloc_GT     : constant GL_Type   :=
+      Alloc_GT        : constant GL_Type   :=
         (if   not Is_Class_Wide_Equivalent_Type (GT)
               and then not Is_Unconstrained_Record (GT)
               and then Present (Expr)
@@ -1539,40 +1545,53 @@ package body GNATLLVM.Variables is
          then Full_Alloc_GL_Type (Expr) else GT);
       --  Type to use for allocating Def_Ident, if different
 
-      Addr_Expr    : constant Node_Id   :=
-        (if   Present (Address_Clause (Def_Ident))
-         then Expression (Address_Clause (Def_Ident)) else Empty);
+      Nonnative       : constant Boolean   := Is_Nonnative_Type (GT);
+      --  True if the type to use for this variable isn't a native LLVM type
+
+      Has_Addr        : constant Boolean   :=
+        Present (Address_Clause (Def_Ident));
+      --  True if variable has an address clause
+
+      Addr_Expr       : constant Node_Id   :=
+        (if Has_Addr then Expression (Address_Clause (Def_Ident)) else Empty);
       --  Expression to use for the address, if Present
 
-      Is_External  : constant Boolean   :=
-        Is_Imported (Def_Ident) and then No (Addr_Expr)
+      Is_External     : constant Boolean   :=
+        Is_Imported (Def_Ident) and then not Has_Addr
           and then not Get_Dup_Global_Is_Defined (Def_Ident);
       --  True if variable is not defined in this unit
 
-      Is_Ref       : constant Boolean   :=
-        Present (Addr_Expr) or else Is_Nonnative_Type (GT);
+      Has_Static_Addr : constant Boolean   :=
+        Has_Addr and then Is_Static_Address (Addr_Expr);
+      --  True if variable has an address clause that's static
+
+      Needs_Alloc     : constant Boolean   := not Has_Addr and then Nonnative;
+      --  True if variable needs a dynamic allocation
+
+      Is_Ref          : constant Boolean   :=
+        (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc;
       --  True if we need to use an indirection for this variable
 
-      Is_Volatile  : constant Boolean :=
+      Is_Volatile     : constant Boolean   :=
         Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
       --  True if we need to consider Def_Ident as volatile
 
-      Value        : GL_Value           :=
+      Value           : GL_Value           :=
         (if Present (Expr) then Get_Value (Expr) else No_GL_Value);
       --  Any value that we've previously saved for an initializing expression
 
-      Addr         : GL_Value           :=
-        (if Present (Addr_Expr) then Get_Value (Addr_Expr) else No_GL_Value);
+      Addr            : GL_Value           :=
+        (if Has_Addr then Get_Value (Addr_Expr) else No_GL_Value);
       --  Likewise for address
 
-      Copied       : Boolean            := False;
+      Copied          : Boolean            := False;
       --  True if we've copied the value to the variable
 
-      Set_Init     : Boolean            := False;
+      Set_Init        : Boolean            := False;
       --  True if we've made an initializer for a static variable that we're
       --  defining.
 
-      LLVM_Var     : GL_Value           := Get_Value (Def_Ident);
+      LLVM_Var        : GL_Value           := Get_Value (Def_Ident);
       --  The LLVM value for the variable
 
       function Can_Initialize (V : GL_Value; GT : GL_Type) return Boolean
@@ -1667,7 +1686,7 @@ package body GNATLLVM.Variables is
       --  value is built manually.  And constants that are renamings are
       --  handled like variables.
 
-      if Full_Ident /= Def_Ident and then No (Addr_Expr) and then not No_Init
+      if Full_Ident /= Def_Ident and then not Has_Addr and then not No_Init
         and then No (Renamed_Object (Def_Ident))
       then
          return;
@@ -1715,15 +1734,15 @@ package body GNATLLVM.Variables is
       --  subtype, then it can overlay only another aliased object with an
       --  unconstrained array nominal subtype and compatible template.
 
-      if Present (Addr_Expr)
-        and then Is_Constr_Subt_For_UN_Aliased (GT) and then Is_Array_Type (GT)
+      if Has_Addr and then Is_Constr_Subt_For_UN_Aliased (GT)
+        and then Is_Array_Type (GT)
         and then Nkind (Addr_Expr) = N_Attribute_Reference
         and then (Get_Attribute_Id (Attribute_Name (Addr_Expr))
                     = Attribute_Address)
       then
          declare
             Other_Id : constant Entity_Id := Entity (Prefix (Addr_Expr));
-            Other_GT : constant GL_Type := Full_GL_Type (Other_Id);
+            Other_GT : constant GL_Type   := Full_GL_Type (Other_Id);
 
          begin
             if not Is_Constr_Subt_For_UN_Aliased (Other_GT)
@@ -1750,32 +1769,36 @@ package body GNATLLVM.Variables is
       then
          pragma Assert (not In_Elab_Proc);
 
-         LLVM_Var := Make_Global_Variable (Def_Ident, GT, True);
+         --  If we have a static address clause, we can convert it to a
+         --  pointer to us and use that as our variable.
 
-         --  If there's an Address clause with a static address, we can
-         --  convert it to a pointer to us and make it a static
-         --  initializer.  Otherwise, we have to take care of this in the
-         --  elaboration proc if at library level.
+         if Has_Static_Addr then
+            LLVM_Var :=
+              Int_To_Ref ((if   Present (Addr) then Addr
+                           else Emit_Expression (Addr_Expr)),
+                          GT);
+            LLVM_Var := Mark_Atomic (Mark_Volatile (LLVM_Var, Is_Volatile),
+                                     Is_Atomic (Def_Ident)
+                                       or else Is_Atomic (GT));
+            Set_Init := True;
+            Set_Value (Def_Ident, LLVM_Var);
+         else
+            --  Otherwise, make a global variable.  If we have an address
+            --  expression, we know it must be nonstatic, so add this to
+            --  the elab proc if at library level.
 
-         if Present (Addr_Expr) then
-            if Is_Static_Address (Addr_Expr) then
-               if No (Addr) then
-                  Addr := Emit_Expression (Addr_Expr);
-               end if;
-
-               Set_Global_Constant (LLVM_Var);
-               Set_Initializer     (LLVM_Var, Int_To_Ref (Addr, GT));
-               Set_Init := True;
-            elsif Library_Level then
+            LLVM_Var := Make_Global_Variable (Def_Ident, GT, True);
+            if Library_Level and then Has_Addr then
                Add_To_Elab_Proc (N);
             end if;
          end if;
 
-         --  If this is an object of non-native type, we have to take care
-         --  of the allocation in the elab proc if at library level.
+         --  If this is an object of non-native type with no address
+         --  clause, we have to take care of the allocation in the elab
+         --  proc if at library level.
 
-         if Library_Level and then not Is_External
-           and then Is_Nonnative_Type (GT)
+         if Library_Level and then not Is_External and then not Has_Addr
+           and then Nonnative
          then
             Add_To_Elab_Proc (N);
          end if;
@@ -1793,8 +1816,7 @@ package body GNATLLVM.Variables is
          if Present (Expr) then
             if Is_No_Elab_Needed (Expr)
               and then Can_Initialize (LLVM_Var, GT)
-              and then not Is_Nonnative_Type (GT)
-              and then No (Addr_Expr)
+              and then not Nonnative and then not Has_Addr
               and then Is_Static_Conversion (Full_GL_Type (Expr), GT)
             then
                if No (Value) then
@@ -1830,7 +1852,9 @@ package body GNATLLVM.Variables is
          --  we have no expression.  In that case, we still have to
          --  initialize the bounds.
 
-         elsif Type_Needs_Bounds (GT) and then not Is_Nonnative_Type (GT) then
+         elsif Type_Needs_Bounds (GT) and then not Nonnative
+           and then not Has_Addr
+         then
             Set_Global_Constant
               (LLVM_Var, (Is_True_Constant (Def_Ident)
                             and then not Address_Taken (Def_Ident)));
@@ -1877,10 +1901,7 @@ package body GNATLLVM.Variables is
 
       --  Evaluate any expression for the address clause
 
-      if Present (Addr_Expr) then
-         if No (Addr) then
-            Addr := Emit_Expression (Addr_Expr);
-         end if;
+      if Has_Addr then
 
          --  We have a special case here: if this would normally be
          --  allocated with bounds, the address points to the actual data,
@@ -1888,14 +1909,15 @@ package body GNATLLVM.Variables is
          --  the data.
 
          declare
-            R : GL_Relationship := Relationship_For_Alloc (GT);
+            R : constant GL_Relationship := Relationship_For_Alloc (GT);
 
          begin
-            if R = Reference_To_Bounds_And_Data then
-               R := Thin_Pointer;
-            end if;
-
-            Addr := Int_To_Relationship (Addr, GT, R);
+            Addr :=
+              Int_To_Relationship ((if   Present (Addr) then Addr
+                                    else Emit_Expression (Addr_Expr)),
+                                   GT,
+                                   (if   R = Reference_To_Bounds_And_Data
+                                    then Thin_Pointer else R));
          end;
       end if;
 
@@ -1905,10 +1927,10 @@ package body GNATLLVM.Variables is
       --  variable is of dynamic size, do the allocation here, copying any
       --  initializing expression.
 
-      if Present (LLVM_Var) then
-         if Present (Addr) and then not Is_Static_Address (Addr_Expr) then
+      if Present (LLVM_Var)  then
+         if Has_Addr and then not Has_Static_Addr then
             Store (Addr, LLVM_Var);
-         elsif Is_Nonnative_Type (GT) and then not Is_External then
+         elsif Nonnative and then not Is_External then
             Store (Get (Heap_Allocate_For_Type (GT, Alloc_GT,
                                                 V         => Value,
                                                 Expr      => Expr,
@@ -1922,7 +1944,7 @@ package body GNATLLVM.Variables is
 
       --  Otherwise, if we have an address, that's what we use
 
-      elsif Present (Addr) then
+      elsif Has_Addr then
          LLVM_Var := Addr;
 
       --  If this is a true constant, we can just use the expression that

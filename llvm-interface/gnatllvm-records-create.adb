@@ -276,9 +276,6 @@ package body GNATLLVM.Records.Create is
         Is_Packed (TE) or else Component_Alignment (TE) = Calign_Storage_Unit;
       --  True if we're to align component only at a byte boundary
 
-      Aliased_Fields : constant Boolean := Record_Has_Aliased_Components (TE);
-      --  Indicates that at least one field is aliased
-
       Prev_Idx       : Record_Info_Id   := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
@@ -1070,36 +1067,43 @@ package body GNATLLVM.Records.Create is
       ---------------------------
 
       procedure Process_Fields_To_Add is
-         In_Variant          : constant Boolean := Variant_Stack.Last /= 0;
+         BT                  : constant Entity_Id := Full_Base_Type (TE);
+
+         Aliased_Fields      : constant Boolean   :=
+           Record_Has_Aliased_Components (BT);
+         --  Indicates that at least one field is aliased
+
+         In_Variant          : constant Boolean   := Variant_Stack.Last /= 0;
          --  True if we're processing inside a variant, either static
          --  or dynamic.
 
-         In_Dynamic_Variant  : constant Boolean := In_Variant
+         In_Dynamic_Variant  : constant Boolean   :=
+           In_Variant
            and then not Variant_Stack.Table (Variant_Stack.Last).Is_Static;
          --  True if we're inside a dynamic variant
 
-         Last_Var_Depth      : Int              := 0;
+         Last_Var_Depth      : Int                := 0;
          --  The last variant depth that we saw for a field; used to indicate
          --  when the depth changes.
 
-         Last_Par_Depth      : Int              := 0;
+         Last_Par_Depth      : Int                := 0;
          --  Likewise for the last parent depth that we saw for a field
 
-         Parent_TE           : Entity_Id        := Empty;
+         Parent_TE           : Entity_Id          := Empty;
          --  The type of the last parent record that we've seen
 
-         Had_Non_Repped      : Boolean          := False;
+         Had_Non_Repped      : Boolean            := False;
          --  True once we saw a non-repped field; used to ensure that all
          --  non-repped fields as positions after all repped fields.
 
-         Packed_Field_Bitpos : Uint             := No_Uint;
+         Packed_Field_Bitpos : Uint               := No_Uint;
          --  Our current position in the packed field type
 
-         Forced_Pos          : ULL              := 0;
+         Forced_Pos          : ULL                := 0;
          --  If nonzero, a position to force the next field to
 
-         Bitfield_Start_Pos  : Uint             := No_Uint;
-         Bitfield_End_Pos    : Uint             := No_Uint;
+         Bitfield_Start_Pos  : Uint               := No_Uint;
+         Bitfield_End_Pos    : Uint               := No_Uint;
          --  Starting and ending (last plus one) positions of an LLVM
          --  field being used to contain multiple bitfields, if not
          --  No_Uint.
@@ -1176,7 +1180,7 @@ package body GNATLLVM.Records.Create is
             Dynamic_R : constant Boolean     :=
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
             P_Or_A    : constant Boolean     :=
-              Is_Packed (TE) or else Comp_Unaligned or else Aliased_Fields;
+              Is_Packed (BT) or else Comp_Unaligned or else Aliased_Fields;
 
          begin
             --  This function must satisfy the conditions of A.18(5/3),
@@ -1235,11 +1239,11 @@ package body GNATLLVM.Records.Create is
             --  extension could add packing but we must have the same
             --  ordering in extensions).
 
-            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
+            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
               and then Pack_L and then not Pack_R and then not Dynamic_R
             then
                return False;
-            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
+            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
               and then Pack_R and then not Pack_L and then not Dynamic_L
             then
                return True;
@@ -1261,11 +1265,11 @@ package body GNATLLVM.Records.Create is
             --  (since an extension could add an aliased field but we must
             --  have the same ordering in extensions).
 
-            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
+            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
               and then P_Or_A and then not Dynamic_L and then Dynamic_R
             then
                return True;
-            elsif not No_Reordering (TE) and then not Is_Tagged_Type (TE)
+            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
               and then P_Or_A and then not Dynamic_R and then Dynamic_L
             then
                return False;

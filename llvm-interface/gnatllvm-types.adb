@@ -602,7 +602,7 @@ package body GNATLLVM.Types is
       Name      : String    := "";
       Max_Size  : Boolean   := False) return GL_Value
    is
-      Max_Alloc  : constant ULL     := 10_000_000;
+      Max_Alloc  : constant ULL     := 20_000_000;
       Align      : constant Nat     :=
         Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
       Overalign  : constant Boolean := Align > (Get_Stack_Alignment * BPU);

@@ -1173,8 +1173,6 @@ package body GNATLLVM.Records.Create is
               Present (Component_Clause (Left_F));
             Is_Pos_R  : constant Boolean     :=
               Present (Component_Clause (Right_F));
-            Pack_L    : constant Boolean     := Is_Packable_Field (Left_F);
-            Pack_R    : constant Boolean     := Is_Packable_Field (Right_F);
             Dynamic_L : constant Boolean     :=
               Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
             Dynamic_R : constant Boolean     :=
@@ -1232,21 +1230,6 @@ package body GNATLLVM.Records.Create is
 
             elsif AF_Left.Var_Depth /= AF_Right.Var_Depth then
                return AF_Left.Var_Depth < AF_Right.Var_Depth;
-
-            --  Unless reordering is disabled, put packable fields after
-            --  non-packable, fixed-length fields.  But don't do this if we
-            --  aren't to reorder fields or for tagged records (since an
-            --  extension could add packing but we must have the same
-            --  ordering in extensions).
-
-            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
-              and then Pack_L and then not Pack_R and then not Dynamic_R
-            then
-               return False;
-            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
-              and then Pack_R and then not Pack_L and then not Dynamic_L
-            then
-               return True;
 
             --  A discriminant is in front of a non-discriminant
 
@@ -1523,10 +1506,11 @@ package body GNATLLVM.Records.Create is
                   Packed_Field_Bitpos := No_Uint;
                end if;
 
-               --  If this isn't a packable field, but we've previously set
-               --  up a location for them, clear out the location.
+               --  If this isn't a packable field and we haven't already
+               --  set its position, but we've previously set up a location
+               --  for packable fields, clear out that location.
 
-               if Packed_Field_Bitpos /= No_Uint
+               if Packed_Field_Bitpos /= No_Uint and then Pos = No_Uint
                  and then not Is_Packable_Field (F)
                then
                   Packed_Field_Bitpos := No_Uint;
@@ -1559,8 +1543,9 @@ package body GNATLLVM.Records.Create is
                         AF_K : Added_Field renames Added_Field_Table.Table (K);
 
                      begin
-                        exit when not Is_Packable_Field (AF_K.F)
-                          or else AF_K.Var_Depth /= Last_Var_Depth;
+                        exit when not Is_Packable_Field
+                          (AF_K.F, Packed_Field_Bitpos mod BPU /= 0);
+                        exit when AF_K.Var_Depth /= Last_Var_Depth;
 
                         AF_K.Pos            := Packed_Field_Bitpos;
                         AF_K.Size           := RM_Size (Full_Etype (AF_K.F));
@@ -1676,9 +1661,13 @@ package body GNATLLVM.Records.Create is
                      --  If this is a bitfield, we'll be using the special
                      --  "bitfield field".  If we don't fit in the current
                      --  one or there isn't one, make one.  Otherwise, just
-                     --  record this field.
+                     --  record this field.  If we have a truncated type
+                     --  that's not the last field, also treat it as a
+                     --  bitfield.
 
                      if Is_Bitfield_By_Rep (F, Pos, Size, Use_Pos_Size => True)
+                       or else (Is_Truncated_GL_Type (F_GT)
+                                  and then J /= Added_Field_Table.Last)
                      then
                         if Bitfield_Start_Pos = No_Uint
                           or else AF.Pos >= Bitfield_End_Pos

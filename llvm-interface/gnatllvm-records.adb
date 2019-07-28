@@ -1186,7 +1186,13 @@ package body GNATLLVM.Records is
    function Get_Field_Type (F : Entity_Id) return GL_Type is
      (Field_Info_Table.Table (Get_Field_Info (F)).GT);
 
-   function Is_Packable_Field (F : Entity_Id) return Boolean is
+   -----------------------
+   -- Is_Packable_Field --
+   -----------------------
+
+   function Is_Packable_Field
+     (F : Entity_Id; Force : Boolean := False) return Boolean
+   is
       GT : constant GL_Type := Full_GL_Type (Original_Record_Component (F));
       --  We have to use the data from the base type of the record to be sure
       --  that we lay out a record and its subtype the same way.
@@ -1198,7 +1204,7 @@ package body GNATLLVM.Records is
    begin
       --  If we have a rep clause, we'll use that rather than packing it.
       --  If the record isn't packed, neither is the field.  Aliased
-      --  fieldsa or fields whose types are strictly aligned aren't packed
+      --  fields or fields whose types are strictly aligned aren't packed
       --  either.
 
       if Present (Component_Clause (F)) or else not Is_Packed (Full_Scope (F))
@@ -1208,16 +1214,17 @@ package body GNATLLVM.Records is
       end if;
 
       --  If the type's size is variable or if the type is nonnative, we
-      --  can't pack.  We do pack if the RM_Size of the field's type is
-      --  smaller than the Esize of the type.  However, we avoid packing if
-      --  the field would be larger than 64 bits since that's usually not
-      --  worth it.  We rely here on back-annotation of types so we're sure
-      --  that both sizes are set.
+      --  can't pack.  We avoid packing if the field would be larger than
+      --  64 bits since that's usually not worth it.  We do pack if the
+      --  RM_Size of the field's type is smaller than the Esize of the type
+      --  or if Cur_Pos is not a multiple of the alignment of the field.
+      --  We rely here on back-annotation of types so we're sure that both
+      --  sizes are set.
 
       return not Is_Nonnative_Type (GT)
         and then Is_Static_SO_Ref (RM_Size (GT))
-        and then Is_Static_SO_Ref (Esize (GT))
-        and then RM_Size (GT) < Esize (GT) and then RM_Size (GT) <= 64;
+        and then Is_Static_SO_Ref (Esize (GT)) and then RM_Size (GT) <= 64
+        and then (Force or else RM_Size (GT) < Esize (GT));
 
    end Is_Packable_Field;
 
@@ -1871,6 +1878,9 @@ package body GNATLLVM.Records is
             Shr_Count : constant ULL      := Val_Width - Num_Bits;
             Shr       : constant Opf      :=
               (if Uns then L_Shr'Access else A_Shr'Access);
+            Res_Width : constant ULL      :=
+              Get_Const_Int_Value_ULL (Align_To (GT_Size (F_GT), 1, BPU));
+
          begin
             Result := Shl (Loaded,
                            G (Const_Int (T, Shl_Count, False), F_GT, Unknown),
@@ -1886,11 +1896,14 @@ package body GNATLLVM.Records is
                        then G_Is_Relationship (Result, F_GT, Data)
                        else Trunc (Result, F_GT));
 
-            --  Otherwise, truncate to the corresponding bit size
+            --  Otherwise, truncate to the corresponding bit size if needed
 
             else
-               Result := Trunc_To_Relationship
-                 (Result, Int_Ty (Get_Type_Size (Result_T)), Unknown);
+
+               if Val_Width /= Res_Width then
+                  Result := Trunc_To_Relationship (Result, Int_Ty (Res_Width),
+                                                   Unknown);
+               end if;
 
                --  For a floating-point type we perform a bit cast
 

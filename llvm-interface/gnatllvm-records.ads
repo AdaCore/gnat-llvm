@@ -132,9 +132,13 @@ package GNATLLVM.Records is
    --  Indicate whether F is a bitfield, meaning that shift/mask operations
    --  are required to access it.
 
-   function Is_Packable_Field (F : Entity_Id) return Boolean
+   function Is_Packable_Field
+     (F : Entity_Id; Force : Boolean := False) return Boolean
      with Pre  => Ekind_In (F, E_Component, E_Discriminant);
-   --  Indicate whether F is a field that we'll be packing.
+   --  Indicate whether F is a field that we'll be packing.  If Force is True,
+   --  we want to pack the field if it's valid to do so, not only when we
+   --  does something from the perspective of this field (e.g., because we
+   --  have some bits to fill).
 
    function Is_Bitfield_By_Rep
      (F            : Entity_Id;

@@ -1083,8 +1083,15 @@ package body GNATLLVM.GLType is
       elsif GTI.Kind = Padded and then Is_Loadable_Type (Result) then
          return Insert_Value (Get_Undef (GT), Get (Result, Data), 0);
 
+      --  If we're truncating and we have data, that data has to have been
+      --  truncated, so we're fine.
+
+      elsif GTI.Kind = Truncated and then Is_Data (Result) then
+         return G_Is (Result, GT);
+
+      --  Otherwise we need the data in memory
+
       else
-         --  Otherwise we need the data in memory
 
          Result := Get (Result, Any_Reference);
 

@@ -296,7 +296,12 @@ begin
          end if;
 
          if S = null then
-            Put_Line (Linker & " not found");
+            --  Last fallback is gcc
+            S := Locate_Exec_On_Path ("gcc");
+         end if;
+
+         if S = null then
+            Put_Line ("clang or gcc not found: cannot link.");
             Set_Exit_Status (Failure);
             return;
          end if;

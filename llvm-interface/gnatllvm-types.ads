@@ -715,9 +715,26 @@ package GNATLLVM.Types is
    function "*" (LHS, RHS : BA_Data) return BA_Data is
      (Mul (LHS, RHS));
    function "/" (LHS, RHS : BA_Data) return BA_Data is
-     (S_Div (LHS, RHS));
+     (U_Div (LHS, RHS));
    function "<" (LHS, RHS : BA_Data) return Boolean is
      (Is_Const_1 (I_Cmp (Int_SLT, LHS, RHS)));
+
+   function "+" (LHS : BA_Data; RHS : ULL)  return BA_Data is
+     (Add (LHS, Const (RHS)));
+   function "+" (LHS : BA_Data; RHS : Uint) return BA_Data is
+     (Add (LHS, Const (RHS)));
+   function "-" (LHS : BA_Data; RHS : ULL)  return BA_Data is
+     (Add (LHS, Const (RHS)));
+   function "-" (LHS : BA_Data; RHS : Uint) return BA_Data is
+     (Sub (LHS, Const (RHS)));
+   function "*" (LHS : BA_Data; RHS : ULL)  return BA_Data is
+     (Mul (LHS, Const (RHS)));
+   function "*" (LHS : BA_Data; RHS : Uint) return BA_Data is
+     (Mul (LHS, Const (RHS)));
+   function "/" (LHS : BA_Data; RHS : ULL)  return BA_Data is
+     (U_Div (LHS, Const (RHS)));
+   function "/" (LHS : BA_Data; RHS : Uint) return BA_Data is
+     (U_Div (LHS, Const (RHS)));
 
    function To_Bytes (Size : BA_Data) return BA_Data is
      ((Size + (Const (ULL (BPU)) - Const (1))) / Const (ULL (BPU)));

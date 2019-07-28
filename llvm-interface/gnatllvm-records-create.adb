@@ -1073,6 +1073,15 @@ package body GNATLLVM.Records.Create is
            Record_Has_Aliased_Components (BT);
          --  Indicates that at least one field is aliased
 
+         Reorder             : constant Boolean   :=
+           Convention (BT) = Convention_Ada and then not No_Reordering (BT)
+           and then not Debug_Flag_Dot_R and then not Is_Tagged_Type (BT)
+           and then (Is_Packed (BT) or else not Optimize_Alignment_Space (BT));
+         --  Says that it's OK to reorder fields in this record.  We don't
+         --  reorder for tagged records since an extension could add an
+         --  aliased field but we must have the same ordering in
+         --  extensions.
+
          In_Variant          : constant Boolean   := Variant_Stack.Last /= 0;
          --  True if we're processing inside a variant, either static
          --  or dynamic.
@@ -1103,7 +1112,7 @@ package body GNATLLVM.Records.Create is
          --  If nonzero, a position to force the next field to
 
          Bitfield_Start_Pos  : Uint               := No_Uint;
-         Bitfield_End_Pos    : Uint               := No_Uint;
+         Bitfield_End_Pos    : Uint;
          --  Starting and ending (last plus one) positions of an LLVM
          --  field being used to contain multiple bitfields, if not
          --  No_Uint.
@@ -1150,6 +1159,9 @@ package body GNATLLVM.Records.Create is
          --  We're processing the component at table index J, which is known
          --  to be a bitfield.  Create an LLVM field to hold contents of
          --  the J'th field to process, which is known to be a bitfield.
+
+         procedure Flush_Types;
+         --  Like Flush_Current_types, but also reset variables we maintain
 
          ------------------
          -- Field_Before --
@@ -1242,18 +1254,15 @@ package body GNATLLVM.Records.Create is
             then
                return False;
 
-            --  Fixed-size fields come before variable-sized ones if this
-            --  record is packed or has aliased components.  But don't do
-            --  this if we aren't to reorder fields or for tagged records
-            --  (since an extension could add an aliased field but we must
-            --  have the same ordering in extensions).
+            --  If we're to reorder fields, fixed-size fields come before
+            --  variable-sized ones.
 
-            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
-              and then P_Or_A and then not Dynamic_L and then Dynamic_R
+            elsif Reorder and then P_Or_A
+              and then not Dynamic_L and then Dynamic_R
             then
                return True;
-            elsif not No_Reordering (BT) and then not Is_Tagged_Type (BT)
-              and then P_Or_A and then not Dynamic_R and then Dynamic_L
+            elsif Reorder and then P_Or_A
+              and then not Dynamic_R and then Dynamic_L
             then
                return False;
 
@@ -1413,6 +1422,17 @@ package body GNATLLVM.Records.Create is
 
             Cur_RI_Pos := UI_To_ULL (Bitfield_End_Pos);
          end Create_Bitfield_Field;
+
+         -----------------
+         -- Flush_Types --
+         -----------------
+
+         procedure Flush_Types is
+         begin
+            Flush_Current_Types;
+            Packed_Field_Bitpos := No_Uint;
+            Bitfield_Start_Pos  := No_Uint;
+         end Flush_Types;
 
       begin  -- Start of processing for Process_Fields_To_Add
 
@@ -1579,7 +1599,7 @@ package body GNATLLVM.Records.Create is
                   --  might have been modified by Add_FI.  We need to be
                   --  sure that's OK.
 
-                  Flush_Current_Types;
+                  Flush_Types;
 
                   --  If we're forcing the position of this field, set that
                   --  as the starting position of the RI we're about to make.
@@ -1609,7 +1629,7 @@ package body GNATLLVM.Records.Create is
                   --  updates our type that it has the same alignment.
 
                   if Need_Align > Split_Align and then not Use_Packed then
-                     Flush_Current_Types;
+                     Flush_Types;
                      Set_Is_Nonnative_Type (TE);
                      RI_Align    := Need_Align;
                      Split_Align := Need_Align;
@@ -1619,7 +1639,7 @@ package body GNATLLVM.Records.Create is
                   --  overlap section.
 
                   elsif Pos = No_Uint and then RI_Is_Overlap then
-                     Flush_Current_Types;
+                     Flush_Types;
                      RI_Is_Overlap := False;
 
                   --  If we're in a dynamic variant and have a component
@@ -1793,11 +1813,11 @@ package body GNATLLVM.Records.Create is
          then
             declare
                Byte_Position  : constant BA_Data         :=
-                 Field_Position (Cur_Field, No_GL_Value) / Const (ULL (BPU));
+                 Field_Position (Cur_Field, No_GL_Value) / ULL (BPU);
                Bit_Offset     : constant Uint            :=
                  Field_Bit_Offset (Cur_Field);
                Bit_Position   : constant BA_Data         :=
-                 Byte_Position * Const (ULL (BPU)) + Const (Bit_Offset);
+                 Byte_Position * ULL (BPU) + Bit_Offset;
                Bit_Position_T : constant Node_Ref_Or_Val :=
                  Annotated_Value (Bit_Position);
 
@@ -1815,8 +1835,9 @@ package body GNATLLVM.Records.Create is
                   Set_Normalized_First_Bit
                     (Cur_Field, Bit_Position_T mod BPU);
                else
-                  Set_Normalized_Position (Cur_Field,
-                                           Annotated_Value (Byte_Position));
+                  Set_Normalized_Position
+                    (Cur_Field,
+                     Annotated_Value (Byte_Position + Bit_Offset / BPU));
                   Set_Normalized_First_Bit (Cur_Field, Bit_Offset mod BPU);
                end if;
             end;

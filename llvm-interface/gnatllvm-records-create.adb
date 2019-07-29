@@ -147,7 +147,7 @@ package body GNATLLVM.Records.Create is
       Variant : Node_Id := First_Non_Pragma (Variants (Var_Part));
 
    begin
-      return Align : Nat := 0 do
+      return Align : Nat := BPU do
          while Present (Variant) loop
             declare
                Comp_List      : constant Node_Id := Component_List (Variant);
@@ -268,15 +268,6 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 1,
          Table_Name           => "Variant_Stack");
 
-      Use_Packed     : constant Boolean :=
-        Is_Packed (TE) or else Has_Specified_Layout (TE)
-        or else Component_Alignment (TE) = Calign_Storage_Unit;
-      --  Says to use an LLVM packed struct
-
-      Comp_Unaligned : constant Boolean :=
-        Is_Packed (TE) or else Component_Alignment (TE) = Calign_Storage_Unit;
-      --  True if we're to align component only at a byte boundary
-
       Prev_Idx       : Record_Info_Id   := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
@@ -300,7 +291,7 @@ package body GNATLLVM.Records.Create is
       --  LLVM type.
 
       RI_Position    : ULL              := 0;
-      --  If nonzero, an alignment to assign to the next RI built for an
+      --  If nonzero, a position to assign to the next RI built for an
       --  LLVM type.
 
       RI_Is_Overlap  : Boolean          := False;
@@ -881,7 +872,7 @@ package body GNATLLVM.Records.Create is
          if Last_Type >= 0 then
             Add_RI (T           => Build_Struct_Type
                       (Type_Array (LLVM_Types.Table (0 .. Last_Type)),
-                       Packed => Use_Packed),
+                       Packed => True),
                     Align       => RI_Align,
                     Position    => RI_Position,
                     Unused_Bits => RI_Unused_Bits);
@@ -1122,6 +1113,11 @@ package body GNATLLVM.Records.Create is
          Bitfield_Is_Array   : Boolean;
          --  Set if the bitfield field we make is an array
 
+         Next_Align          : Nat                := 1;
+         --  An alignment to impose on the next field even if stricter than
+         --  that needed for that field, for example if the previous field
+         --  is a strict-alignment type.
+
          function Field_Before (L, R : Int) return Boolean;
          --  Determine the sort order of two fields in Added_Field_Table
 
@@ -1349,6 +1345,7 @@ package body GNATLLVM.Records.Create is
          ------------------
          -- Force_To_Pos --
          ------------------
+
          procedure Force_To_Pos (Needed_Pos, Aligned_Pos : ULL) is
          begin
             if Needed_Pos /= 0 and then LLVM_Types.Last = -1
@@ -1526,9 +1523,7 @@ package body GNATLLVM.Records.Create is
 
                Need_Align  :  Nat                :=
                  (if   Pos /= No_Uint
-                       or else (Comp_Unaligned
-                                  and then not Cant_Misalign_Field (F, F_GT))
-                  then BPU else Get_Type_Alignment (F_GT));
+                  then BPU else Effective_Field_Alignment (F));
                --  The alignment we need this field to have
 
             begin
@@ -1549,6 +1544,13 @@ package body GNATLLVM.Records.Create is
                   Parent_TE := Full_Scope (F);
                end if;
 
+               --  If we had a field that forces this one to an alignment,
+               --  do that and set that value if needed for this field.
+
+               Need_Align := Nat'Max (Need_Align, Next_Align);
+               Next_Align := (if   Strict_Alignment (F_GT)
+                              then Effective_Field_Alignment (F) else 1);
+
                --  If we've pushed into a new static variant, see if
                --  we need to align it.  But update our level anyway and
                --  clear out any starting location for packed fields.
@@ -1562,6 +1564,13 @@ package body GNATLLVM.Records.Create is
 
                   Last_Var_Depth := AF.Var_Depth;
                   Packed_Field_Bitpos := No_Uint;
+               end if;
+
+               --  If we're at the start of a continuation RI, set its
+               --  alignment to where we need to be aligned.
+
+               if Cur_RI_Pos = 0 and then Present (Prev_Idx) then
+                  RI_Align := Nat'Max (RI_Align, Need_Align);
                end if;
 
                --  If this isn't a packable field and we haven't already
@@ -1656,7 +1665,7 @@ package body GNATLLVM.Records.Create is
                           Align       => Need_Align,
                           Unused_Bits => Get_Unused_Bits (F_GT));
                   Set_Is_Nonnative_Type (TE);
-                  Split_Align := Need_Align;
+                  Split_Align := Nat'Max (Need_Align, BPU);
 
                --  If it's a native type, add it to the current set of
                --  fields and make a field descriptor.
@@ -1666,11 +1675,11 @@ package body GNATLLVM.Records.Create is
                   --  by the alignment.  We assume here that if Add_FI
                   --  updates our type that it has the same alignment.
 
-                  if Need_Align > Split_Align and then not Use_Packed then
+                  if Need_Align > Split_Align then
                      Flush_Types;
                      Set_Is_Nonnative_Type (TE);
                      RI_Align    := Need_Align;
-                     Split_Align := Need_Align;
+                     Split_Align := Nat'Max (Need_Align, BPU);
 
                   --  If we're in the overlap section of a variant and we've
                   --  run out of components that have a position, end the
@@ -1696,15 +1705,6 @@ package body GNATLLVM.Records.Create is
                              and then Get_Type_Kind (F_T) = Void_Type_Kind
                         then Byte_T else F_T);
                      --  LLVM type to use
-
-                     T_Align     : constant Nat    :=
-                       (if Use_Packed then 1 else Get_Type_Alignment (T));
-                     --  The native alignment of the LLVM type
-
-                     Pos_Aligned : constant ULL    :=
-                       Align_Pos (Cur_RI_Pos, T_Align);
-                     --  The position we'll be at when applying the natural
-                     --  alignment of the type.
 
                      Needed_Pos  : constant ULL    :=
                        (if    Pos /= No_Uint then UI_To_ULL (Pos)
@@ -1740,7 +1740,7 @@ package body GNATLLVM.Records.Create is
                                 Array_Bitfield => Bitfield_Is_Array);
                         RI_Unused_Bits := Bitfield_End_Pos - (Pos + Size);
                      else
-                        Force_To_Pos (Needed_Pos, Pos_Aligned);
+                        Force_To_Pos (Needed_Pos, Cur_RI_Pos);
                         LLVM_Types.Append (T);
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (T), BPU);
@@ -1787,7 +1787,7 @@ package body GNATLLVM.Records.Create is
 
       if No (Prev_Idx) then
          Struct_Set_Body (LLVM_Type, LLVM_Types.Table (0)'Address,
-                          unsigned (LLVM_Types.Last + 1), Use_Packed);
+                          unsigned (LLVM_Types.Last + 1), Packed => True);
          Add_RI (T           => LLVM_Type,
                  Align       => RI_Align,
                  Unused_Bits => RI_Unused_Bits);

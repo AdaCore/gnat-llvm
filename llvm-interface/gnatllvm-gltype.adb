@@ -703,7 +703,9 @@ package body GNATLLVM.GLType is
       --  If Size_Type hasn't been elaborated yet, we're done for now.
       --  If this is a E_Void or E_Subprogram_Type, it doesn't have a
       --  size or alignment.  Otherwise, set the alignment and also
-      --  set the size if it's a constant.
+      --  set the size if it's a constant.  If T is a non-native type,
+      --  the size in the GT must agree with the size of T since this is
+      --  a primitive type.
 
       if Present (Size_GL_Type) and then not Is_Dummy
         and then Ekind (GT) not in E_Void | E_Subprogram_Type
@@ -712,10 +714,15 @@ package body GNATLLVM.GLType is
          GTI.Alignment  := Get_Type_Alignment (GT, Use_Specified => False);
          if not Is_Dynamic_Size (GT) then
             GTI.Size    :=
-              (if   Is_Integer_Type (GT)
-               then Size_Const_Int (Get_Scalar_Bit_Size (T))
-               else Get_Type_Size (GT));
-            if Strict_Alignment (GT) then
+              (if    Is_Integer_Type (GT)
+               then  Size_Const_Int (Get_Scalar_Bit_Size (T))
+               elsif Is_Nonnative_Type (GT) then Get_Type_Size (GT)
+               else  Size_Const_Int (Get_Type_Size (T)));
+
+            --  In the case where this isn't a native type, pad the size to
+            --  if we have something that requires strict alignment.
+
+            if Is_Nonnative_Type (GT) and then Strict_Alignment (GT) then
                GTI.Size := Align_To (GTI.Size, 1, Get_Type_Alignment (GT));
             end if;
          end if;
@@ -1020,9 +1027,11 @@ package body GNATLLVM.GLType is
          --  If we're making a wider type, we can't just pun the pointer
          --  since it would result in an access outside the object, so we
          --  need to allocate a copy of the data and copy that.  Use our
-         --  helper.
+         --  helper.  For tagged types, we know this punning is safe.
 
-         if In_GTI.Kind = Truncated and then not No_Copy then
+         if In_GTI.Kind = Truncated and then not No_Copy
+           and then not Is_Tagged_Type (Out_GT)
+         then
             return Convert_Via_Copy (Result, Out_GT);
 
          --  Otherwise, convert the pointer
@@ -1038,7 +1047,11 @@ package body GNATLLVM.GLType is
    -- From_Primitive --
    --------------------
 
-   function From_Primitive (V : GL_Value; GT : GL_Type) return GL_Value is
+   function From_Primitive
+     (V       : GL_Value;
+      GT      : GL_Type;
+      No_Copy : Boolean := False) return GL_Value
+   is
       GTI    : constant GL_Type_Info := GL_Type_Table.Table (GT);
       Result : GL_Value              := V;
 
@@ -1098,9 +1111,11 @@ package body GNATLLVM.GLType is
          --  If we're making a wider type, we can't just pun the pointer
          --  since this will result in an access outside the object, so we
          --  need to allocate a copy of the data and copy that.  Use our
-         --  helper.
+         --  helper.  For tagged types, we know this punning is safe.
 
-         if GTI.Kind in Padded | Byte_Array | Max_Size_Type then
+         if GTI.Kind in Padded | Byte_Array | Max_Size_Type
+           and then not No_Copy and then not Is_Tagged_Type (GT)
+         then
             return Convert_Via_Copy (Result, GT);
 
          --  Otherwise, convert the pointer

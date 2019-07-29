@@ -1360,7 +1360,7 @@ package body GNATLLVM.Arrays is
       Prefer_LHS : Boolean := False;
       VFA        : Boolean := False) return GL_Value
    is
-      Result : GL_Value := V;
+      Result : GL_Value := To_Primitive (V, No_Copy => True);
 
    begin
       --  If V is Volatile_Full_Access, we have to try to load the full array

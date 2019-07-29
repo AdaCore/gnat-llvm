@@ -247,7 +247,10 @@ package GNATLLVM.GLType is
           Post => not Has_Padding (Remove_Padding'Result);
    --  Likewise, but only if the type is padded
 
-   function From_Primitive (V : GL_Value; GT : GL_Type) return GL_Value
+   function From_Primitive
+     (V       : GL_Value;
+      GT      : GL_Type;
+      No_Copy : Boolean := False) return GL_Value
      with Pre  => Is_Primitive_GL_Type (Related_Type (V))
                   and then Full_Etype (Related_Type (V)) = Full_Etype (GT),
           Post => Related_Type (From_Primitive'Result) = GT;

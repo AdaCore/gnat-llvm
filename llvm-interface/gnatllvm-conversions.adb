@@ -286,10 +286,15 @@ package body GNATLLVM.Conversions is
             Sloc (Error_N));
       end if;
 
+      --  If our type is already what's needed, we're done
+
+      if In_GT = GT then
+         return Result;
+
       --  If we're converting to an elementary type and need an overflow
       --  check, do that.
 
-      if Is_Elementary_Type (GT) and then Need_Overflow_Check then
+      elsif Is_Elementary_Type (GT) and then Need_Overflow_Check then
          Result := To_Primitive (Get (Result, Data));
          Emit_Overflow_Check (Result, From_N);
          Result := Convert (Result, GT,
@@ -377,13 +382,13 @@ package body GNATLLVM.Conversions is
                                Is_Unchecked   => Is_Unchecked);
          end if;
 
-      --  Otherwise, convert to the primitive type, do any require
+      --  Otherwise, convert to the primitive type, do any required
       --  conversion (as an unchecked conversion, meaning pointer
       --  punning or equivalent) and then convert to the result type.
       --  Some of these operations will likely be nops.
 
       else
-         Result := To_Primitive (Result);
+         Result := To_Primitive (Result, No_Copy => Is_Unchecked);
 
          --  If both types are the same, just change the type of the result.
          --  Avoid confusing [0 x T] as both a zero-size constrained type and
@@ -423,7 +428,7 @@ package body GNATLLVM.Conversions is
             Result := Convert_Ref (Get (Result, Any_Reference), Prim_GT);
          end if;
 
-         Result := From_Primitive (Result, GT);
+         Result := From_Primitive (Result, GT, No_Copy => Is_Unchecked);
       end if;
 
       --  For unchecked conversion, if the result is a non-biased

@@ -34,6 +34,7 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
 
+with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
@@ -1076,7 +1077,8 @@ package body GNATLLVM.Records.Create is
          Reorder             : constant Boolean   :=
            Convention (BT) = Convention_Ada and then not No_Reordering (BT)
            and then not Debug_Flag_Dot_R and then not Is_Tagged_Type (BT)
-           and then (Is_Packed (BT) or else not Optimize_Alignment_Space (BT));
+           and then (Is_Packed (BT) or else not Optimize_Alignment_Space (BT)
+                       or else Aliased_Fields);
          --  Says that it's OK to reorder fields in this record.  We don't
          --  reorder for tagged records since an extension could add an
          --  aliased field but we must have the same ordering in
@@ -1142,6 +1144,10 @@ package body GNATLLVM.Records.Create is
          --  Given a position and an alignment (usually BPU), truncate that
          --  position to a multiple of the alignment.
 
+         function Uses_Discriminant (GT : GL_Type) return Boolean
+           with Pre => Present (GT);
+         --  Returns True if one of GT's bounds references a discriminant
+
          function Max_Record_Rep (E : Entity_Id) return Uint
            with Pre => Ekind_In (E, E_Component, E_Discriminant);
          --  Return the next byte after the highest repped position of
@@ -1189,8 +1195,8 @@ package body GNATLLVM.Records.Create is
               Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
             Dynamic_R : constant Boolean     :=
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
-            P_Or_A    : constant Boolean     :=
-              Is_Packed (BT) or else Comp_Unaligned or else Aliased_Fields;
+            Self_L    : constant Boolean     := Uses_Discriminant (Left_GT);
+            Self_R    : constant Boolean     := Uses_Discriminant (Right_GT);
 
          begin
             --  This function must satisfy the conditions of A.18(5/3),
@@ -1254,16 +1260,17 @@ package body GNATLLVM.Records.Create is
             then
                return False;
 
-            --  If we're to reorder fields, fixed-size fields come before
-            --  variable-sized ones.
+               --  If we're to reorder fields, self-referential fields come
+               --  after any that aren't and fixed-size fields come before
+               --  variable-sized ones.
 
-            elsif Reorder and then P_Or_A
-              and then not Dynamic_L and then Dynamic_R
-            then
+            elsif Reorder and then Self_L and then not Self_R then
+               return False;
+            elsif Reorder and then not Self_L and then Self_R then
                return True;
-            elsif Reorder and then P_Or_A
-              and then not Dynamic_R and then Dynamic_L
-            then
+            elsif Reorder and then not Dynamic_L and then Dynamic_R then
+               return True;
+            elsif Reorder  and then not Dynamic_R and then Dynamic_L then
                return False;
 
             --  Otherwise, keep the original sequence intact
@@ -1272,6 +1279,37 @@ package body GNATLLVM.Records.Create is
                return AF_Left.Seq < AF_Right.Seq;
             end if;
          end Field_Before;
+
+         -----------------------
+         -- Uses_Discriminant --
+         -----------------------
+
+         function Uses_Discriminant (GT : GL_Type) return Boolean is
+            Index : Entity_Id;
+
+         begin
+            --  Constrained array types are all we're concerned with here
+
+            if not Is_Array_Type (GT) or else Is_Unconstrained_Array (GT) then
+               return False;
+            end if;
+
+            Index := First_Index (GT);
+            while Present (Index) loop
+               declare
+                  Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+                  LB        : constant Node_Id := Low_Bound (Idx_Range);
+                  HB        : constant Node_Id := High_Bound (Idx_Range);
+
+               begin
+                  exit when Contains_Discriminant (LB);
+                  exit when Contains_Discriminant (HB);
+                  Next_Index (Index);
+               end;
+            end loop;
+
+            return Present (Index);
+         end Uses_Discriminant;
 
          -----------------
          -- Swap_Fields --

@@ -55,7 +55,7 @@ llvm-interface which you can put in your PATH:
 
 - To run the ACATS testsuite:
 
-  $ svn co svn+ssh://svn.us.adacore.com/Dev/trunk/acats
+  $ git clone git.adacore.com:acats
   $ cd acats
   $ mkdir -p tmp
   $ ./run_acats_test.py --target=llvm -t tmp --acats-version=4 --disable-cleanup --jobs=24

@@ -1209,6 +1209,7 @@ package body GNATLLVM.Records is
 
       if Present (Component_Clause (F)) or else not Is_Packed (Full_Scope (F))
         or else Strict_Alignment (GT) or else Is_Aliased (F)
+        or else Is_Atomic_Or_VFA (F) or else Is_Atomic_Or_VFA (GT)
       then
          return False;
       end if;

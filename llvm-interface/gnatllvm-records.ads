@@ -70,8 +70,9 @@ package GNATLLVM.Records is
       No_Padding : Boolean := False) return BA_Data
      with Pre  => Is_Record_Type (TE);
 
-   function Effective_Field_Alignment (F : Entity_Id) return Pos
-     with Pre  => Ekind_In (F, E_Discriminant, E_Component);
+   function Effective_Field_Alignment (F : Entity_Id) return Nat
+     with Pre  => Ekind_In (F, E_Discriminant, E_Component),
+          Post => Effective_Field_Alignment'Result > 0;
 
    function Get_Record_Type_Alignment (TE : Entity_Id) return Nat
      with Pre => Is_Record_Type (TE);
@@ -127,10 +128,18 @@ package GNATLLVM.Records is
    --  Return the bitfield offset of F or zero if it's not a bitfield
 
    function Is_Bitfield (F : Entity_Id) return Boolean
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
-                  and then Present (Get_Field_Info (F));
+     with Pre => Ekind_In (F, E_Component, E_Discriminant)
+                 and then Present (Get_Field_Info (F));
    --  Indicate whether F is a bitfield, meaning that shift/mask operations
    --  are required to access it.
+
+   function Cant_Misalign_Field (F : Entity_Id; GT : GL_Type) return Boolean is
+     (Strict_Alignment (GT) or else Is_Aliased (F)
+         or else Is_Atomic_Or_VFA (F) or else Is_Atomic_Or_VFA (GT))
+     with Pre => Ekind_In (F, E_Component, E_Discriminant)
+                 and then Present (GT);
+   --  Return True iff a field F, whose type is GT, is not permitted to be
+   --  misaligned.
 
    function Is_Packable_Field
      (F : Entity_Id; Force : Boolean := False) return Boolean

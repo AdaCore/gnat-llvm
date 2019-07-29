@@ -1527,9 +1527,7 @@ package body GNATLLVM.Records.Create is
                Need_Align  :  Nat                :=
                  (if   Pos /= No_Uint
                        or else (Comp_Unaligned
-                                  and then not Is_Aliased (F)
-                                  and then not Is_Atomic_Or_VFA (F)
-                                  and then not Is_Atomic_Or_VFA (F_GT))
+                                  and then not Cant_Misalign_Field (F, F_GT))
                   then BPU else Get_Type_Alignment (F_GT));
                --  The alignment we need this field to have
 

@@ -1103,8 +1103,9 @@ package body GNATLLVM.Records is
    -- Effective_Field_Alignment --
    -------------------------------
 
-   function Effective_Field_Alignment (F : Entity_Id) return Pos is
-      F_Align : constant Nat       := Get_Type_Alignment (Full_GL_Type (F));
+   function Effective_Field_Alignment (F : Entity_Id) return Nat is
+      GT      : constant GL_Type   := Full_GL_Type (F);
+      F_Align : constant Nat       := Get_Type_Alignment (GT);
       Pos     : constant Uint      := Component_Bit_Offset (F);
       Size    : constant Uint      := Esize (F);
       TE      : constant Entity_Id := Full_Scope (F);
@@ -1116,25 +1117,28 @@ package body GNATLLVM.Records is
       --  If the record is packed and this field isn't aliased, its alignment
       --  doesn't contribute to the alignment.
 
-      if not Is_Aliased (F)
+      if not Cant_Misalign_Field (F, GT)
         and then (Is_Packed (TE)
                     or else Component_Alignment (TE) = Calign_Storage_Unit)
       then
          return 1;
 
-      --  If there's no component clause or the position and alignment of
-      --  the clause are consistent with the alignment, use it.  But we
-      --  can't use an alignment smaller than that of the record
+      --  If there's no component clause use this field's alignmentw.  But
+      --  we can't use an alignment smaller than that of the record
 
-      elsif No (Component_Clause (F))
-        or else (Pos mod F_Align = 0 and then Size mod F_Align = 0)
-      then
+      elsif No (Component_Clause (F)) then
          return Nat'Min (F_Align, R_Align);
 
-      --  Otherwise, this field doesn't contribute to the alignment
+      --  Otherwise, find the largest alignment that's consistent with the
+      --  size and position of the component.
 
       else
-         return 1;
+         return This_Align : Nat := Nat'Min (F_Align, R_Align) do
+            while Pos mod This_Align /= 0 or else Size mod This_Align /= 0 loop
+               This_Align := This_Align / 2;
+            end loop;
+
+         end return;
       end if;
 
    end Effective_Field_Alignment;
@@ -1208,8 +1212,7 @@ package body GNATLLVM.Records is
       --  either.
 
       if Present (Component_Clause (F)) or else not Is_Packed (Full_Scope (F))
-        or else Strict_Alignment (GT) or else Is_Aliased (F)
-        or else Is_Atomic_Or_VFA (F) or else Is_Atomic_Or_VFA (GT)
+        or else Cant_Misalign_Field (F, GT)
       then
          return False;
       end if;

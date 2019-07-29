@@ -67,6 +67,7 @@ procedure GCC_Wrapper is
    Dash_w_Index       : Natural := 0;
    Dash_Wall_Index    : Natural := 0;
    Dump_SCOs_Index    : Natural := 0;
+   S                  : String_Access;
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
@@ -254,13 +255,15 @@ begin
    --  Compile c/c++ files with clang
 
    if Compile_With_Clang then
-      Spawn (Locate_Exec_On_Path ("clang").all, Args (1 .. Arg_Count), Status);
+      S := Locate_Exec_On_Path ("clang");
 
-      if Status then
-         Set_Exit_Status (Success);
-      else
-         Set_Exit_Status (Failure);
+      if S = null then
+         Put_Line ("warning: clang not found, using gcc.");
+         S := Locate_Exec_On_Path ("gcc");
       end if;
+
+      Spawn (S.all, Args (1 .. Arg_Count), Status);
+      Set_Exit_Status (if Status then Success else Failure);
 
       return;
    end if;
@@ -268,7 +271,6 @@ begin
    if Compile then
       declare
          Compiler : constant String := GCC (GCC'First .. Last) & "gnat1";
-         S        : String_Access;
       begin
          S := Locate_Exec_On_Path (Compiler);
 
@@ -311,9 +313,5 @@ begin
       end;
    end if;
 
-   if Status then
-      Set_Exit_Status (Success);
-   else
-      Set_Exit_Status (Failure);
-   end if;
+   Set_Exit_Status (if Status then Success else Failure);
 end GCC_Wrapper;

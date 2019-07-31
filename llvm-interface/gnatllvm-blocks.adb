@@ -1004,11 +1004,11 @@ package body GNATLLVM.Blocks is
                Call (Begin_Handler_Fn, (1 => Exc_Ptr));
                if Present (Clauses.Table (J).Param) then
                   declare
-                     Param : constant Entity_Id  := Clauses.Table (J).Param;
-                     GT    : constant GL_Type    := Full_GL_Type (Param);
-                     V     : constant GL_Value   :=
+                     Param   : constant Entity_Id  := Clauses.Table (J).Param;
+                     GT      : constant GL_Type    := Full_GL_Type (Param);
+                     V       : constant GL_Value   :=
                        Allocate_For_Type (GT, GT, Param, Def_Ident => Param);
-                     Cvt_Ptr : constant GL_Value :=
+                     Cvt_Ptr : constant GL_Value   :=
                        Convert_To_Access (Exc_Ptr, A_Char_GL_Type);
 
                   begin

@@ -173,6 +173,77 @@ package body GNATLLVM.GLValue is
    function "=" (LHS : GL_Value; RHS : Int) return Boolean is
      (LHS = Const_Int (LHS, UI_From_Int (RHS)));
 
+   ------------------
+   -- Not_Pristine --
+   ------------------
+
+   function Not_Pristine (V : GL_Value) return GL_Value is
+      Result : GL_Value := G_From (LLVM_Value (V), V);
+
+   begin
+      Result.Is_Pristine := False;
+      return Result;
+
+   end Not_Pristine;
+
+   -------------------
+   -- Mark_Volatile --
+   -------------------
+
+   function Mark_Volatile
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+      Result : GL_Value := G_From (LLVM_Value (V), V);
+
+   begin
+      Result.Is_Volatile := Result.Is_Volatile or Flag;
+      return Result;
+
+   end Mark_Volatile;
+
+   -----------------
+   -- Mark_Atomic --
+   -----------------
+
+   function Mark_Atomic
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+      Result : GL_Value := G_From (LLVM_Value (V), V);
+
+   begin
+      Result.Is_Atomic := Result.Is_Atomic or Flag;
+      return Result;
+
+   end Mark_Atomic;
+
+   ---------------------
+   -- Mark_Overflowed --
+   ---------------------
+
+   function Mark_Overflowed
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+      Result : GL_Value := G_From (LLVM_Value (V), V);
+
+   begin
+      Result.Overflowed := Result.Overflowed or Flag;
+      return Result;
+
+   end Mark_Overflowed;
+
+   ----------------------
+   -- Clear_Overflowed --
+   ----------------------
+
+   function Clear_Overflowed (V : GL_Value) return GL_Value is
+      Result : GL_Value := G_From (LLVM_Value (V), V);
+
+   begin
+      Result.Overflowed := False;
+      return Result;
+
+   end Clear_Overflowed;
+
    -----------
    -- Etype --
    -----------
@@ -1221,11 +1292,8 @@ package body GNATLLVM.GLValue is
    function Int_To_Ptr
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
   is
-     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V)));
+     (GM (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+          GV => V));
 
    ----------------
    -- Ptr_To_Int --
@@ -1234,11 +1302,8 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Int
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V)));
+     (GM (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+          GV => V));
 
    ----------------
    -- Int_To_Ref --
@@ -1247,13 +1312,9 @@ package body GNATLLVM.GLValue is
    function Int_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-      (G_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                          Pointer_Type (Type_Of (GT), 0), Name),
-              GT,
-              Is_Pristine => Is_Pristine (V),
-              Is_Volatile => Is_Volatile (V),
-              Is_Atomic   => Is_Atomic   (V),
-              Overflowed  => Overflowed  (V)));
+      (GM_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                           Pointer_Type (Type_Of (GT), 0), Name),
+               GT, V));
 
    -------------------------
    -- Int_To_Relationship --
@@ -1265,13 +1326,9 @@ package body GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-     (G (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                     Type_For_Relationship (GT, R), Name),
-         GT, R,
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V)));
+     (GM (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                      Type_For_Relationship (GT, R), Name),
+         GT, R, GV => V));
 
    --------------
    -- Bit_Cast --
@@ -1280,11 +1337,8 @@ package body GNATLLVM.GLValue is
    function Bit_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V)));
+     (GM (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+          GV => V));
 
    ------------------
    -- Pointer_Cast --
@@ -1293,11 +1347,8 @@ package body GNATLLVM.GLValue is
    function Pointer_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V)));
+     (GM (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+          GV => V));
 
    ----------------
    -- Ptr_To_Ref --
@@ -1306,13 +1357,9 @@ package body GNATLLVM.GLValue is
    function Ptr_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                           Pointer_Type (Type_Of (GT), 0), Name),
-             GT,
-             Is_Pristine => Is_Pristine (V),
-             Is_Volatile => Is_Volatile (V),
-             Is_Atomic   => Is_Atomic   (V),
-             Overflowed  => Overflowed  (V)));
+     (GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                            Pointer_Type (Type_Of (GT), 0), Name),
+              GT, V));
 
    ----------------
    -- Ptr_To_Ref --
@@ -1320,13 +1367,9 @@ package body GNATLLVM.GLValue is
 
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
    is
-     (G_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                           Pointer_Type (Type_Of (T), 0), Name),
-             Full_Designated_GL_Type (T),
-             Is_Pristine => Is_Pristine (V),
-             Is_Volatile => Is_Volatile (V),
-             Is_Atomic   => Is_Atomic   (V),
-             Overflowed  => Overflowed  (V)));
+     (GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                            Pointer_Type (Type_Of (T), 0), Name),
+              Full_Designated_GL_Type (T), V));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -1338,13 +1381,9 @@ package body GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-     (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                       Type_For_Relationship (GT, R), Name),
-         GT, R,
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V)));
+     (GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                        Type_For_Relationship (GT, R), Name),
+          GT, R, V));
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -1355,13 +1394,9 @@ package body GNATLLVM.GLValue is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-      (G (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        Type_For_Relationship (Related_Type (T), R), Name),
-          Related_Type (T), R,
-          Is_Pristine => Is_Pristine (V),
-          Is_Volatile => Is_Volatile (V),
-          Is_Atomic   => Is_Atomic   (V),
-          Overflowed  => Overflowed  (V)));
+      (GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                         Type_For_Relationship (Related_Type (T), R), Name),
+           Related_Type (T), R, V));
 
    -------------
    -- Add_Sub --
@@ -1766,8 +1801,7 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr),
-               Is_Volatile => Is_Volatile (Ptr), Is_Atomic => Is_Atomic (Ptr));
+      return GM (Result, GT, R, Ptr);
    end GEP_To_Relationship;
 
    -----------------------------
@@ -1792,8 +1826,7 @@ package body GNATLLVM.GLValue is
 
       Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
                                Val_Idxs'Length, Name);
-      return G (Result, GT, R, Is_Pristine => Is_Pristine (Ptr),
-               Is_Volatile => Is_Volatile (Ptr), Is_Atomic => Is_Atomic (Ptr));
+      return GM (Result, GT, R, Ptr);
    end GEP_Idx_To_Relationship;
 
    ----------

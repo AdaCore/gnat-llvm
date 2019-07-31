@@ -452,6 +452,13 @@ package GNATLLVM.GLValue is
                   and then (Is_Data (V) or else Relationship (V) = Unknown),
           Post => Is_Type_Or_Void (Etype'Result),
           Inline;
+
+   function Atomic_Kind (T : Type_T) return Boolean is
+     (Get_Type_Kind (T)
+        in Half_Type_Kind .. Integer_Type_Kind | Pointer_Type_Kind)
+     with Pre => Present (T);
+   --  Return True if type T is valid for an atomic operation
+
    --  Constructors for a GL_Value
 
    function G
@@ -466,33 +473,42 @@ package GNATLLVM.GLValue is
      with Pre => Present (V) and then Present (GT);
    --  Raw constructor that allow full specification of all fields
 
+   function GM
+     (V  : Value_T;
+      GT : GL_Type;
+      R  : GL_Relationship := Data;
+      GV : GL_Value) return GL_Value is
+     (G (V, GT, R,
+         Is_Pristine => Is_Pristine (GV),
+         Is_Volatile => Is_Volatile (GV),
+         Is_Atomic   => Is_Atomic (GV),
+         Overflowed  => Overflowed (GV)))
+     with Pre  => Present (V) and then Present (GT) and then Present (GV),
+          Post => Present (GM'Result);
+   --  Likewise, but copy all but type and relationship from an existing value
+
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
-     (G (V, GL_Type'(Related_Type (GV)),
-         Relationship (GV),
-         Is_Pristine (GV), Is_Volatile (GV), Is_Atomic (GV), Overflowed (GV)))
+     (GM (V, Related_Type (GV), Relationship (GV), GV))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing
    --  any typing information, so we just copy it from an existing value.
 
    function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
-     (G (LLVM_Value (V), GT, Relationship (V),
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
+     (GM (LLVM_Value (V), GT, Relationship (V), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (V),
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
+     (GM (LLVM_Value (V), Related_Type (T), Relationship (V), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
 
    function G_Is_Relationship
      (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (G (LLVM_Value (V), GT, R,
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
+     (GM (LLVM_Value (V), GT, R, V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -501,16 +517,14 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (T)), R,
-         Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
+     (GM (LLVM_Value (V), Related_Type (T), R, V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
    --  and relationship.
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
-      (G (LLVM_Value (V), GL_Type'(Related_Type (T)), Relationship (T),
-          Is_Pristine (V), Is_Volatile (V), Is_Atomic (V), Overflowed (V)))
+      (GM (LLVM_Value (V), Related_Type (T), Relationship (T), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -534,65 +548,47 @@ package GNATLLVM.GLValue is
    --  Constructor for case where we create a value that's a pointer
    --  to type GT.
 
-   function Not_Pristine (V : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
-         Is_Pristine => False,
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V)))
-     with Pre => Present (V), Post => not Is_Pristine (Not_Pristine'Result);
-   --  Make a copy of V with the Is_Pristine flag cleared
+   function GM_Ref
+     (V : Value_T; GT : GL_Type; GV : GL_Value) return GL_Value
+   is
+     (G_Ref (V, GT,
+             Is_Pristine => Is_Pristine (GV),
+             Is_Volatile => Is_Volatile (GV),
+             Is_Atomic   => Is_Atomic (GV),
+             Overflowed  => Overflowed (GV)))
+     with Pre  => Present (V) and then Present (GT) and then Present (GV),
+          Post => Is_Reference (GM_Ref'Result);
+   --  Likewise, but copy the rest of the attributes from GV
 
-   function Atomic_Kind (T : Type_T) return Boolean is
-     (Get_Type_Kind (T)
-        in Half_Type_Kind .. Integer_Type_Kind | Pointer_Type_Kind)
-     with Pre => Present (T);
-   --  Return True if type T is valid for an atomic operation
+   function Not_Pristine (V : GL_Value) return GL_Value
+     with Pre => Present (V), Post => not Is_Pristine (Not_Pristine'Result),
+          Inline;
+   --  Make a copy of V with the Is_Pristine flag cleared
 
    function Mark_Volatile
      (V : GL_Value; Flag : Boolean := True) return GL_Value
-   is
-      (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
-          Is_Pristine => Is_Pristine (V),
-          Is_Volatile => Is_Volatile (V) or else Flag,
-          Is_Atomic   => Is_Atomic   (V),
-          Overflowed  => Overflowed  (V)))
      with Pre  => Present (V),
-          Post => not Flag or else Is_Volatile (Mark_Volatile'Result);
+          Post => not Flag or else Is_Volatile (Mark_Volatile'Result),
+          Inline;
    --  Make a copy of V with the Is_Volatile flag set if Flag is True
 
    function Mark_Atomic
      (V : GL_Value; Flag : Boolean := True) return GL_Value
-   is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V) or else Flag,
-         Overflowed  => Overflowed  (V)))
      with Pre  => Present (V),
-          Post => not Flag or else Is_Atomic (Mark_Atomic'Result);
+          Post => not Flag or else Is_Atomic (Mark_Atomic'Result),
+          Inline;
    --  Make a copy of V with the Is_Atomic flag set if Flag is True
 
    function Mark_Overflowed
      (V : GL_Value; Flag : Boolean := True) return GL_Value
-   is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => Overflowed  (V) or else Flag))
      with Pre  => Present (V),
-          Post => not Flag or else Overflowed (Mark_Overflowed'Result);
+          Post => not Flag or else Overflowed (Mark_Overflowed'Result),
+          Inline;
    --  Make a copy of V with the Overflowed flag set if Flag is True
 
-   function Clear_Overflowed (V : GL_Value) return GL_Value is
-     (G (LLVM_Value (V), GL_Type'(Related_Type (V)), Relationship (V),
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V),
-         Overflowed  => False))
+   function Clear_Overflowed (V : GL_Value) return GL_Value
      with Pre  => Present (V),
-          Post => not Overflowed (Clear_Overflowed'Result);
+          Post => not Overflowed (Clear_Overflowed'Result), Inline;
    --  Clear the overflow flag in V and return the result
 
    procedure Discard (V : GL_Value)
@@ -919,7 +915,7 @@ package GNATLLVM.GLValue is
 
    function Get_Undef_Fn_Ret (V : GL_Value) return GL_Value is
      (G (Get_Undef (Get_Return_Type (Get_Element_Type (Type_Of (V)))),
-         GL_Type'(Related_Type (V)), Unknown, Is_Pristine => True))
+         Related_Type (V), Unknown, Is_Pristine => True))
      with Pre => Is_A_Function (V), Post => Is_Undef (Get_Undef_Fn_Ret'Result);
 
    function Const_Null (GT : GL_Type) return GL_Value
@@ -1022,7 +1018,7 @@ package GNATLLVM.GLValue is
    function Const_Real
      (V : GL_Value; F : Interfaces.C.double) return GL_Value
    is
-     (Const_Real (GL_Type'(Related_Type (V)), F))
+     (Const_Real (Related_Type (V), F))
      with Pre  => Is_Floating_Point_Type (V),
           Post => Present (Const_Real'Result);
 
@@ -1163,11 +1159,8 @@ package GNATLLVM.GLValue is
       T    : Type_T;
       R    : GL_Relationship;
       Name : String := "") return GL_Value is
-     (G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
-         Related_Type (V), R,
-         Is_Pristine => Is_Pristine (V),
-         Is_Volatile => Is_Volatile (V),
-         Is_Atomic   => Is_Atomic   (V)))
+     (GM (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
+          Related_Type (V), R, V))
      with Pre  => Is_Pointer (V) and then Present (T),
           Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
 
@@ -1258,55 +1251,55 @@ package GNATLLVM.GLValue is
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
 
    function Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
-     (Trunc (V, GL_Type'(Related_Type (T)), Name))
+     (Trunc (V, Related_Type (T), Name))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (Trunc'Result);
 
    function S_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
-     (S_Ext (V, GL_Type'(Related_Type (T)), Name))
+     (S_Ext (V, Related_Type (T), Name))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (S_Ext'Result);
 
    function Z_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
-     (Z_Ext (V, GL_Type'(Related_Type (T)), Name))
+     (Z_Ext (V, Related_Type (T), Name))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (Z_Ext'Result);
 
    function FP_Trunc (V, T : GL_Value; Name : String := "") return GL_Value is
-     (FP_Trunc (V, GL_Type'(Related_Type (T)), Name))
+     (FP_Trunc (V, Related_Type (T), Name))
      with Pre  => Is_Floating_Point_Type (V)
                   and then Is_Floating_Point_Type (T),
           Post => Is_Floating_Point_Type (FP_Trunc'Result);
 
    function FP_Ext (V, T : GL_Value; Name : String := "") return GL_Value is
-     (FP_Ext (V, GL_Type'(Related_Type (T)), Name))
+     (FP_Ext (V, Related_Type (T), Name))
      with Pre  => Is_Floating_Point_Type (V)
                   and then Is_Floating_Point_Type (T),
           Post => Is_Floating_Point_Type (FP_Ext'Result);
 
    function FP_To_SI (V, T : GL_Value; Name : String := "") return GL_Value is
-     (FP_To_SI (V, GL_Type'(Related_Type (T)), Name))
+     (FP_To_SI (V, Related_Type (T), Name))
      with Pre  => Is_Floating_Point_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (FP_To_SI'Result);
 
    function FP_To_UI (V, T : GL_Value; Name : String := "") return GL_Value is
-     (FP_To_UI (V, GL_Type'(Related_Type (T)), Name))
+     (FP_To_UI (V, Related_Type (T), Name))
      with Pre  => Is_Floating_Point_Type (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (FP_To_UI'Result);
 
    function UI_To_FP (V, T : GL_Value; Name : String := "") return GL_Value is
-     (UI_To_FP (V, GL_Type'(Related_Type (T)), Name))
+     (UI_To_FP (V, Related_Type (T), Name))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Floating_Point_Type (T),
           Post => Is_Floating_Point_Type (UI_To_FP'Result);
 
    function SI_To_FP (V, T : GL_Value; Name : String := "") return GL_Value is
-     (SI_To_FP (V, GL_Type'(Related_Type (T)), Name))
+     (SI_To_FP (V, Related_Type (T), Name))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Floating_Point_Type (T),
           Post => Is_Floating_Point_Type (SI_To_FP'Result);

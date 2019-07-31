@@ -321,6 +321,7 @@ package body GNATLLVM.DebugInfo is
 
    begin
       if Emit_Debug_Info and then Has_Local_Debug_Scope
+        and then not Is_Entity_Name (N)
         and then Freeze_Pos_Level = 0 and then SFI = Current_Debug_SFI
       then
          Set_Current_Debug_Location

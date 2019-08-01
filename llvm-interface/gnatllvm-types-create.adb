@@ -28,6 +28,7 @@ with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
 with GNATLLVM.Codegen;        use GNATLLVM.Codegen;
+with GNATLLVM.Environment;    use GNATLLVM.Environment;
 with GNATLLVM.GLType;         use GNATLLVM.GLType;
 with GNATLLVM.Records;        use GNATLLVM.Records;
 with GNATLLVM.Records.Create; use GNATLLVM.Records.Create;

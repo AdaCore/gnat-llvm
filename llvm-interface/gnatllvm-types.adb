@@ -28,6 +28,7 @@ with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
@@ -239,9 +240,19 @@ package body GNATLLVM.Types is
    ----------------------
    -- Is_Loadable_Type --
    ----------------------
+
    function Is_Loadable_Type (GT : GL_Type) return Boolean is
-     (not Is_Nonnative_Type (GT) and then not Is_Truncated_GL_Type (GT)
-        and then Is_Loadable_Type (Type_Of (GT)));
+      T     : constant Type_T := Type_Of (GT);
+      Align : constant Nat    := Get_Type_Alignment (GT);
+
+   begin
+      --  A type is loadable if it's native, not truncated, and it's not
+      --  too large.
+
+      return not Is_Nonnative_Type (GT) and then not Is_Truncated_GL_Type (GT)
+        and then Get_Type_Size (T) / Align <= Max_Load_Size;
+
+   end Is_Loadable_Type;
 
    -----------------------
    -- Build_Struct_Type --
@@ -251,42 +262,6 @@ package body GNATLLVM.Types is
      (Types : Type_Array; Packed : Boolean := False) return Type_T
    is
       (Struct_Type_In_Context (Context, Types'Address, Types'Length, Packed));
-
-   ----------------------
-   -- Is_Loadable_Type --
-   ----------------------
-
-   function Is_Loadable_Type (T : Type_T) return Boolean is
-   begin
-      --  A type isn't loadable if it's too large
-
-      if ULL'(Get_Type_Size (T)) / Get_Type_Alignment (T) > Max_Load_Size then
-         return False;
-
-      --  If a structure, it isn't loadable if any component isn't
-
-      elsif Get_Type_Kind (T) = Struct_Type_Kind
-        and then Count_Struct_Element_Types (T) /= 0
-      then
-         for J in 0 .. Count_Struct_Element_Types (T) - 1 loop
-            if not Is_Loadable_Type (Struct_Get_Type_At_Index (T, J)) then
-               return False;
-            end if;
-         end loop;
-
-      --  Likewise for an array (its component might be an array that has
-      --  a non-loadable type as a component).
-
-      elsif Get_Type_Kind (T) = Array_Type_Kind
-        and then not Is_Loadable_Type (Get_Element_Type (T))
-      then
-         return False;
-      end if;
-
-      --  If nothing prevented this from being a loadable type, it is
-
-      return True;
-   end Is_Loadable_Type;
 
    ----------------------
    -- Push_LValue_List --
@@ -1374,8 +1349,9 @@ package body GNATLLVM.Types is
    procedure Add_Type_Data_To_Instruction
      (Inst : Value_T; V : GL_Value; Special_Atomic : Boolean := False)
    is
-      GT   : constant GL_Type    := Related_Type (V);
-      TBAA : constant Metadata_T := Get_TBAA (Full_Etype (GT));
+      GT    : constant GL_Type    := Related_Type (V);
+      TBAA  : constant Metadata_T := Get_TBAA (Full_Etype (GT));
+      Align : constant Nat        := Get_Type_Alignment (GT);
 
    begin
       Set_Volatile  (Inst, Is_Volatile (V));
@@ -1387,8 +1363,12 @@ package body GNATLLVM.Types is
                                                      (Type_Of (V)))))
                       then Atomic_Ordering_Sequentially_Consistent
                       else Atomic_Ordering_Not_Atomic));
-      Set_Alignment (Inst,
-                     unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
+
+      --  ??? We do lots of pointer punning that breaks alignment.
+      --  x86_64 is actually strict alignment for alignment of 128 bits,
+      --  so don't give an alignment larger than that for now.
+
+      Set_Alignment (Inst, unsigned (To_Bytes (Nat'Min (Align, 64))));
 
       if Present (TBAA) and then not Universal_Aliasing (GT) then
          Add_TBAA_Access

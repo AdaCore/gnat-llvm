@@ -559,8 +559,8 @@ package body GNATLLVM.GLValue is
             return Build_Struct_Type ((1 => Type_Of (TE), 2 => Bit_T));
 
          when Object =>
-            return (if   Is_Loadable_Type (TE) then Type_Of (TE)
-                    else Pointer_Type (Type_Of (TE), 0));
+            return (if   Is_Loadable_Type (Default_GL_Type (TE))
+                    then Type_Of (TE) else Pointer_Type (Type_Of (TE), 0));
 
          when Thin_Pointer | Any_Reference =>
             return Pointer_Type (Type_Of (TE), 0);
@@ -2043,7 +2043,9 @@ package body GNATLLVM.GLValue is
       CI : constant Value_T := Call_Internal (Func, Args, Name);
 
    begin
-      Set_Instr_Param_Alignment (CI, 1, unsigned (Align));
+      --  ??? See comment in Add_Type_Data_To_Instruction.
+
+      Set_Instr_Param_Alignment (CI, 1, unsigned (Nat'Min (Align, 64)));
    end Call_With_Align;
 
    ------------------------
@@ -2059,8 +2061,10 @@ package body GNATLLVM.GLValue is
       CI : constant Value_T := Call_Internal (Func, Args, Name);
 
    begin
-      Set_Instr_Param_Alignment (CI, 1, unsigned (Align_1));
-      Set_Instr_Param_Alignment (CI, 2, unsigned (Align_2));
+      --  ??? See comment in Add_Type_Data_To_Instruction.
+
+      Set_Instr_Param_Alignment (CI, 1, unsigned (Nat'Min (Align_1, 64)));
+      Set_Instr_Param_Alignment (CI, 2, unsigned (Nat'Min (Align_2, 64)));
    end Call_With_Align_2;
 
    ----------------

@@ -22,7 +22,6 @@ with Sinfo;   use Sinfo;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -288,13 +287,6 @@ package GNATLLVM.Types is
    function To_Bytes (Size : ULL) return ULL is
      ((Size + (ULL (BPU) - 1)) / ULL (BPU));
 
-   function Is_Loadable_Type (T : Type_T) return Boolean
-     with Pre => Present (T);
-   --  Used for the function below
-
-   function Is_Loadable_Type (TE : Entity_Id) return Boolean is
-     (not Is_Nonnative_Type (TE) and then Is_Loadable_Type (Type_Of (TE)))
-     with Pre => Is_Type (TE);
    function Is_Loadable_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
    --  Returns True if we should use a load/store instruction to copy values

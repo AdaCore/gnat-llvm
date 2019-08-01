@@ -934,7 +934,7 @@ package body GNATLLVM.Conditionals is
       --  the result if zero or nonzero, unless we already have an i1
       --  (Boolean_Data relationship).  We must have a boolean type here.
 
-      pragma Assert (Is_Boolean_Type (Etype (N)));
+      pragma Assert (Is_Boolean_Type (Full_Etype (N)));
       Result := Emit (N);
       if Relationship (Result) /= Boolean_Data then
          Result := To_Primitive (Get (Result, Data));

@@ -179,11 +179,9 @@ package body GNATLLVM.GLValue is
 
    function Not_Pristine (V : GL_Value) return GL_Value is
       Result : GL_Value := G_From (LLVM_Value (V), V);
-
    begin
       Result.Is_Pristine := False;
       return Result;
-
    end Not_Pristine;
 
    -------------------
@@ -194,11 +192,9 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; Flag : Boolean := True) return GL_Value
    is
       Result : GL_Value := G_From (LLVM_Value (V), V);
-
    begin
       Result.Is_Volatile := Result.Is_Volatile or Flag;
       return Result;
-
    end Mark_Volatile;
 
    -----------------
@@ -209,11 +205,9 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; Flag : Boolean := True) return GL_Value
    is
       Result : GL_Value := G_From (LLVM_Value (V), V);
-
    begin
       Result.Is_Atomic := Result.Is_Atomic or Flag;
       return Result;
-
    end Mark_Atomic;
 
    ---------------------
@@ -224,11 +218,9 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; Flag : Boolean := True) return GL_Value
    is
       Result : GL_Value := G_From (LLVM_Value (V), V);
-
    begin
       Result.Overflowed := Result.Overflowed or Flag;
       return Result;
-
    end Mark_Overflowed;
 
    ----------------------
@@ -237,11 +229,9 @@ package body GNATLLVM.GLValue is
 
    function Clear_Overflowed (V : GL_Value) return GL_Value is
       Result : GL_Value := G_From (LLVM_Value (V), V);
-
    begin
       Result.Overflowed := False;
       return Result;
-
    end Clear_Overflowed;
 
    -----------

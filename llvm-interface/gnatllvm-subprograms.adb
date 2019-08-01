@@ -250,10 +250,11 @@ package body GNATLLVM.Subprograms is
 
    function Get_Activation_Record_Ptr
      (V : GL_Value; E : Entity_Id) return GL_Value
-     with Pre  => Is_Record_Type (Full_Designated_Type (V))
+     with Pre  => Is_Reference (V) and then Is_Record_Type (Related_Type (V))
                   and then Ekind (E) = E_Component,
-          Post => Is_Record_Type (Full_Designated_Type
-                                    (Get_Activation_Record_Ptr'Result));
+          Post => Is_Reference (Get_Activation_Record_Ptr'Result)
+                  and then Is_Record_Type (Related_Type
+                                        (Get_Activation_Record_Ptr'Result));
    --  We need field E from an activation record.  V is the activation record
    --  pointer passed to the current subprogram.  Return a pointer to the
    --  proper activation record, which is either V or an up-level pointer.
@@ -851,7 +852,7 @@ package body GNATLLVM.Subprograms is
      (V : GL_Value; E : Entity_Id) return GL_Value
    is
       Need_Type   : constant Entity_Id := Full_Scope (E);
-      Have_Type   : constant Entity_Id := Full_Designated_Type (V);
+      Have_Type   : constant Entity_Id := Full_Etype (V);
       First_Field : constant Entity_Id :=
         First_Component_Or_Discriminant (Have_Type);
 

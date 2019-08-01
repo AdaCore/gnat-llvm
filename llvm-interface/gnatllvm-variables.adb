@@ -1008,7 +1008,7 @@ package body GNATLLVM.Variables is
    function Maybe_Promote_Alloca
      (T : Type_T; Elts : GL_Value := No_GL_Value) return Basic_Block_T
    is
-      Max_Promote_Size : constant              := 1_000_000_000;
+      Max_Promote_Size : constant               := 1_000_000_000;
       Current_BB       : constant Basic_Block_T := Get_Insert_Block;
 
    begin

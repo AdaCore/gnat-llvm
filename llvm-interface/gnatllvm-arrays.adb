@@ -1305,7 +1305,7 @@ package body GNATLLVM.Arrays is
       Rng         : constant Node_Id  := Get_Dim_Range (First_Index (GT));
       Array_Data  : constant GL_Value :=
         Get (To_Primitive (V, No_Copy => True), Reference);
-      Arr_GT      : constant GL_Type  := Full_Designated_GL_Type (V);
+      Arr_GT      : constant GL_Type  := Related_Type (V);
       Idx_LB      : constant GL_Value := Get_Array_Bound (Arr_GT, 0, True, V);
       Index_Val   : constant GL_Value := Emit_Safe_Expr (Low_Bound (Rng));
       Dim_Op_GT   : constant GL_Type  := Get_GEP_Safe_Type (Idx_LB);

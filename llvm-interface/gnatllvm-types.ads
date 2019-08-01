@@ -303,7 +303,7 @@ package GNATLLVM.Types is
       Name      : String    := "";
       Max_Size  : Boolean   := False) return GL_Value
      with Pre  => Present (GT) and then Present (Alloc_GT),
-          Post => Is_Access_Type (Allocate_For_Type'Result);
+          Post => Is_Reference (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type GT and return a
    --  pointer to the space.  Name is the name to use for the LLVM value.
    --  V, if Present, is a value to be copyied to the temporary and can be
@@ -323,7 +323,7 @@ package GNATLLVM.Types is
       Max_Size  : Boolean   := False) return GL_Value
      with Pre  => Present (GT) and then Present (Alloc_GT)
                   and then (No (Proc) or else Present (Pool)),
-          Post => Is_Access_Type (Heap_Allocate_For_Type'Result);
+          Post => Is_Reference (Heap_Allocate_For_Type'Result);
    --  Similarly, but allocate storage on the heap.  This handles default
    --  allocation, secondary stack, and storage pools.
 

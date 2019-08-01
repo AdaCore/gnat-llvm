@@ -113,8 +113,8 @@ package GNATLLVM.Conversions is
    --  Emit code to convert N to GT and get it as a value
 
    function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value
-     with Pre  => Is_Access_Type (V) and then Present (GT),
-          Post => Is_Access_Type (Convert_Pointer'Result);
+     with Pre  => Is_Pointer (V) and then Present (GT),
+          Post => Is_Pointer (Convert_Pointer'Result);
    --  V is a reference to some object.  Convert it to a reference to GT
    --  with the same relationship.
 

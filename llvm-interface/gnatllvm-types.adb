@@ -99,7 +99,7 @@ package body GNATLLVM.Types is
       Alloc_GT : GL_Type) return GL_Value
      with Pre  => Present (Temp) and then Present (GT)
                   and then Present (Alloc_GT),
-          Post => Is_Access_Type (Move_Into_Memory'Result);
+          Post => Is_Pointer (Move_Into_Memory'Result);
    --  Temp is memory that was recently allocated.  Move V, if Present, or
    --  the evaluation of Expr if Present and V isn't, into that allocated
    --  memory and return the allocated memory as a reference to type GT
@@ -515,7 +515,7 @@ package body GNATLLVM.Types is
       New_Expr : constant Node_Id         := Strip_Complex_Conversions (Expr);
       Mem_GT   : constant GL_Type         := GT_To_Use (GT, Alloc_GT);
       Memory   : GL_Value                 :=
-        (if   Is_Access_Type (Temp)
+        (if   Is_Pointer (Temp)
          then Ptr_To_Relationship (Temp, Mem_GT, R)
          else Int_To_Relationship (Temp, Mem_GT, R));
       New_V    : GL_Value                 :=
@@ -846,7 +846,7 @@ package body GNATLLVM.Types is
       --  type in this case since it may contain bound information and
       --  we need to record the bounds as well as their size.
 
-      if Is_Access_Type (V) and then Is_Data (V) then
+      if Is_Data (V) and then Is_Access_Type (V) then
          Conv_V   := From_Access (V);
          DT       := Full_Designated_GL_Type (V);
          Alloc_GT := DT;

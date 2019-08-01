@@ -234,11 +234,11 @@ package body GNATLLVM.GLValue is
       return Result;
    end Clear_Overflowed;
 
-   -----------
-   -- Etype --
-   -----------
+   ----------------
+   -- Full_Etype --
+   ----------------
 
-   function Etype (V : GL_Value) return Entity_Id is
+   function Full_Etype (V : GL_Value) return Entity_Id is
      (Full_Etype (Related_Type (V)));
 
    ----------------------------
@@ -311,14 +311,14 @@ package body GNATLLVM.GLValue is
    ---------------------
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Dynamic_Size (Related_Type (V)));
+     (Is_Dynamic_Size (Related_Type (V)));
 
    -----------------------
    -- Is_Nonnative_Type --
    -----------------------
 
    function Is_Nonnative_Type (V : GL_Value) return Boolean is
-     (Is_Data (V) and then Is_Nonnative_Type (Related_Type (V)));
+     (Is_Nonnative_Type (Related_Type (V)));
 
    ----------------------
    -- Is_Loadable_Type --
@@ -1759,16 +1759,14 @@ package body GNATLLVM.GLValue is
    --------------------------
 
    function Full_Designated_Type (V : GL_Value) return Entity_Id is
-     ((if   Is_Reference (V)
-       then Get_Fullest_View (Full_Etype (Related_Type (V)))
-       else Full_Designated_Type (Etype (V))));
+     (Full_Designated_Type (Full_Etype (V)));
 
    --------------------
    -- Full_Base_Type --
    --------------------
 
    function Full_Base_Type (V : GL_Value) return Entity_Id is
-     (Full_Base_Type (Etype (V)));
+     (Full_Base_Type (Full_Etype (V)));
 
    -------------------------
    -- GEP_To_Relationship --
@@ -1829,10 +1827,10 @@ package body GNATLLVM.GLValue is
       --  Get the resulting relation after the load
 
       Load_GT        : constant GL_Type         :=
-        (if   Is_Data (New_R) then Full_Designated_GL_Type (Ptr)
+        (if   Is_Data (Ptr) then Full_Designated_GL_Type (Ptr)
          else Related_Type (Ptr));
-      --  If our result is data, the resulting type may be the designated
-      --  type of an access type. Otherwise, it's the same type.
+      --  If our input is data, the resulting type is the designated type
+      --  of an access type. Otherwise, it's the same type.
 
       T              : constant Type_T          := Type_Of (Load_GT);
       --  The LLVM type that will be loaded by this instruction

@@ -62,6 +62,19 @@ package body GNATLLVM.Records.Create is
    --  maximum size of any field in the variant.  We recurse through
    --  any nested variants.
 
+   function Align_Pos (Pos : ULL; Align : Nat) return ULL is
+     (((Pos + ULL (Align - 1)) / ULL (Align)) * ULL (Align));
+      --  Given a position and an alignment, align the position
+
+   function Align_Pos (Pos : Uint; Align : Nat) return Uint is
+     (((Pos + (Align - 1)) / Align) * Align);
+   --  Given a position and an alignment, align the position
+
+   function Truncate_Pos (Pos : Uint; Align : Nat) return Uint is
+     ((Pos / Align) * Align);
+   --  Given a position and an alignment (usually BPU), truncate that
+   --  position to a multiple of the alignment.
+
    -------------------------------
    -- Find_Field_In_Entity_List --
    -------------------------------
@@ -370,6 +383,13 @@ package body GNATLLVM.Records.Create is
       procedure Flush_Current_Types;
       --  If there are any types in the Types array, create a record
       --  description for them.
+
+      procedure Force_To_Pos (Needed_Pos, Aligned_Pos : ULL);
+      --  If the position we need to be at is beyond where we'd be given
+      --  the native alignment of the type (if any, and taking into account
+      --  that packed record fields aren't aligned), make an explicit
+      --  padding type or, if this is the first field for an RI that isn't
+      --  the first one, set the position of the RI we're going to make.
 
       ------------
       -- Add_RI --
@@ -1054,6 +1074,29 @@ package body GNATLLVM.Records.Create is
                                     Pos, Size));
       end Add_Field;
 
+      ------------------
+      -- Force_To_Pos --
+      ------------------
+
+      procedure Force_To_Pos (Needed_Pos, Aligned_Pos : ULL) is
+      begin
+         if Needed_Pos /= 0 and then LLVM_Types.Last = -1
+           and then Present (Prev_Idx)
+         then
+            RI_Position := Needed_Pos;
+            RI_Align    := BPU;
+            Cur_RI_Pos  := Needed_Pos;
+         elsif Needed_Pos > Aligned_Pos then
+            LLVM_Types.Append
+              (Array_Type (Byte_T,
+                           unsigned (To_Bytes (Needed_Pos - Cur_RI_Pos))));
+            Cur_RI_Pos := Needed_Pos;
+         else
+            Cur_RI_Pos := Aligned_Pos;
+         end if;
+
+      end Force_To_Pos;
+
       ---------------------------
       -- Process_Fields_To_Add --
       ---------------------------
@@ -1127,19 +1170,6 @@ package body GNATLLVM.Records.Create is
          procedure Sort is new Ada.Containers.Generic_Sort
            (Index_Type => Int, Before => Field_Before, Swap => Swap_Fields);
 
-         function Align_Pos (Pos : ULL; Align : Nat) return ULL is
-           (((Pos + ULL (Align - 1)) / ULL (Align)) * ULL (Align));
-         --  Given a position and an alignment, align the position
-
-         function Align_Pos (Pos : Uint; Align : Nat) return Uint is
-           (((Pos + (Align - 1)) / Align) * Align);
-         --  Given a position and an alignment, align the position
-
-         function Truncate_Pos (Pos : Uint; Align : Nat) return Uint is
-           ((Pos / Align) * Align);
-         --  Given a position and an alignment (usually BPU), truncate that
-         --  position to a multiple of the alignment.
-
          function Uses_Discriminant (GT : GL_Type) return Boolean
            with Pre => Present (GT);
          --  Returns True if one of GT's bounds references a discriminant
@@ -1148,14 +1178,6 @@ package body GNATLLVM.Records.Create is
            with Pre => Ekind_In (E, E_Component, E_Discriminant);
          --  Return the next byte after the highest repped position of
          --  the base type of E.
-
-         procedure Force_To_Pos (Needed_Pos, Aligned_Pos : ULL);
-         --  If the position we need to be at is beyond where we'd be given
-         --  the native alignment of the type (if any, and taking into
-         --  account that packed record fields aren't aligned), make an
-         --  explicit padding type or, if this is the first field for an RI
-         --  that isn't the first one, set the position of the RI we're
-         --  going to make.
 
          procedure Create_Bitfield_Field (J : Int);
          --  We're processing the component at table index J, which is known
@@ -1341,29 +1363,6 @@ package body GNATLLVM.Records.Create is
                end loop;
             end return;
          end Max_Record_Rep;
-
-         ------------------
-         -- Force_To_Pos --
-         ------------------
-
-         procedure Force_To_Pos (Needed_Pos, Aligned_Pos : ULL) is
-         begin
-            if Needed_Pos /= 0 and then LLVM_Types.Last = -1
-              and then Present (Prev_Idx)
-            then
-               RI_Position := Needed_Pos;
-               RI_Align    := BPU;
-               Cur_RI_Pos  := Needed_Pos;
-            elsif Needed_Pos > Aligned_Pos then
-               LLVM_Types.Append
-                 (Array_Type (Byte_T,
-                              unsigned (To_Bytes (Needed_Pos - Cur_RI_Pos))));
-               Cur_RI_Pos := Needed_Pos;
-            else
-               Cur_RI_Pos := Aligned_Pos;
-            end if;
-
-         end Force_To_Pos;
 
          ---------------------------
          -- Create_Bitfield_Field --
@@ -1786,6 +1785,16 @@ package body GNATLLVM.Records.Create is
       --  so use the one we made.
 
       if No (Prev_Idx) then
+
+         --  If this is a strict-alignment type, pad this record to pad the
+         --  primitive size.
+
+         if Strict_Alignment (TE) then
+            Force_To_Pos (Align_Pos (Cur_RI_Pos,
+                                     Get_Record_Type_Alignment (TE)),
+                          Cur_RI_Pos);
+         end if;
+
          Struct_Set_Body (LLVM_Type, LLVM_Types.Table (0)'Address,
                           unsigned (LLVM_Types.Last + 1), Packed => True);
          Add_RI (T           => LLVM_Type,

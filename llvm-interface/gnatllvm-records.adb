@@ -1104,7 +1104,8 @@ package body GNATLLVM.Records is
    -------------------------------
 
    function Effective_Field_Alignment (F : Entity_Id) return Nat is
-      GT      : constant GL_Type   := Full_GL_Type (F);
+      O_F     : constant Entity_Id := Original_Record_Component (F);
+      GT      : constant GL_Type   := Full_GL_Type (O_F);
       F_Align : constant Nat       := Get_Type_Alignment (GT);
       Pos     : constant Uint      := Component_Bit_Offset (O_F);
       Size    : constant Uint      := Esize (O_F);
@@ -1117,7 +1118,7 @@ package body GNATLLVM.Records is
       --  If the field can't be misaligned, its alignment always contributes
       --  directly to the alignment of the record.
 
-      if Cant_Misalign_Field (F, GT) then
+      if Cant_Misalign_Field (O_F, GT) then
          return F_Align;
 
       --  Otherwise, if the record is packed its alignment doesn't
@@ -1131,7 +1132,7 @@ package body GNATLLVM.Records is
       --  If there's no component clause use this field's alignment.  But
       --  we can't use an alignment smaller than that of the record
 
-      elsif No (Component_Clause (F)) then
+      elsif No (Component_Clause (O_F)) then
          return Nat'Min (F_Align, R_Align);
 
       --  Otherwise, find the largest alignment that's consistent with the

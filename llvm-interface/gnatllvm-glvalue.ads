@@ -1958,7 +1958,7 @@ package GNATLLVM.GLValue is
    --  Set the linkage type for a variable or function
 
    procedure Set_Global_Constant (V : GL_Value; B : Boolean := True)
-     with Pre => Is_A_Global_Variable (V), Inline;
+     with Pre => Present (V), Inline;
 
    procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean := True)
      with Pre => Is_A_Global_Variable (V), Inline;

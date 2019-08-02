@@ -1833,11 +1833,9 @@ package body GNATLLVM.Variables is
 
                --  If this is a true constant whose address is not taken and
                --  this is not used via link name punning elsewhere, set it as
-               --  a global constant.  Do the test this way since LLVM_Var
-               --  may not be a global if there is link name punning.
+               --  a global constant.
 
-               if No (Get_Dup_Global_Value (Def_Ident))
-                 and then Is_True_Constant (Def_Ident)
+               if Is_True_Constant (Def_Ident)
                  and then not Address_Taken (Def_Ident)
                then
                   Set_Global_Constant (LLVM_Var);

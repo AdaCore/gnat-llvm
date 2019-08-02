@@ -2410,8 +2410,18 @@ package body GNATLLVM.GLValue is
    -------------------------
 
    procedure Set_Global_Constant (V : GL_Value; B : Boolean := True) is
+      VV : Value_T := LLVM_Value (V);
    begin
-      Set_Global_Constant (LLVM_Value (V), B);
+
+      --  If VV is a conversion, its operand is the actual variable
+
+      if Get_Value_Kind (VV) = Constant_Expr_Value_Kind then
+         VV := Get_Operand (VV, 0);
+      end if;
+
+      if Present (Is_A_Global_Variable (VV)) then
+         Set_Global_Constant (VV, B);
+      end if;
    end Set_Global_Constant;
 
    ----------------------

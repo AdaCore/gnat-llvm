@@ -435,8 +435,9 @@ package body GNATLLVM.Types.Create is
 
             if Is_Composite_Type (GT) then
                GT := Make_GT_Alternative (GT, TE,
-                                          Size     => Value_Size,
-                                          For_Type => True);
+                                          Size          => Value_Size,
+                                          Align_For_Msg => Align,
+                                          For_Type      => True);
             end if;
 
             GT := Make_GT_Alternative (GT, TE,

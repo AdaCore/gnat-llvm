@@ -357,7 +357,8 @@ package body GNATLLVM.GLType is
       For_Type      : Boolean := False;
       For_Component : Boolean := False;
       Max_Size      : Boolean := False;
-      Is_Biased     : Boolean := False) return GL_Type
+      Is_Biased     : Boolean := False;
+      Align_For_Msg : Uint    := No_Uint) return GL_Type
    is
       Out_GT    : constant GL_Type   :=
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
@@ -379,7 +380,9 @@ package body GNATLLVM.GLType is
         and then Size /= No_Uint
       then
          declare
-            Align_V      : constant Nat      := Get_Type_Alignment (GT);
+            Align_V      : constant Nat      :=
+              (if   Align_For_Msg /= No_Uint then UI_To_Int (Align_For_Msg)
+               else Get_Type_Alignment (GT));
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
             In_Sz        : constant GL_Value := GT_Size (GT);
             In_Sz_Align  : constant GL_Value :=
@@ -872,10 +875,10 @@ package body GNATLLVM.GLType is
    function Get_Unused_Bits (GT : GL_Type) return Uint is
    begin
       --  There are two ways we can have unused bits.  We can have a
-      --  record type with padding at the end.
+      --  composite type with padding at the end.
 
       return Bits : Uint := Uint_0 do
-         if Is_Record_Type (GT) and then Known_Static_Esize (GT)
+         if Is_Composite_Type (GT) and then Known_Static_Esize (GT)
            and then Known_Static_RM_Size (GT)
          then
             Bits := Bits + Esize (GT) - RM_Size (GT);

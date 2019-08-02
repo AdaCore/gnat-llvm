@@ -59,7 +59,8 @@ package GNATLLVM.GLType is
       For_Type      : Boolean := False;
       For_Component : Boolean := False;
       Max_Size      : Boolean := False;
-      Is_Biased     : Boolean := False) return GL_Type
+      Is_Biased     : Boolean := False;
+      Align_For_Msg : Uint    := No_Uint) return GL_Type
      with Pre  => Present (GT),
           Post => Full_Etype (Make_GT_Alternative'Result) = Full_Etype (GT);
    --  Return a GL_Type (creating one if necessary) with the specified
@@ -70,7 +71,8 @@ package GNATLLVM.GLType is
    --  integral value.  Def_Ident is the identifier that we're doing this
    --  for and is used for a warning message if we're padding.  For_Component
    --  is true if we're changing the component size and is used for
-   --  any warning message.
+   --  any warning message.  If Align_For_Msg is specified, use that alignment,
+   --  instead of GT's alignment, in giving warnings about unused bits.
 
    procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)

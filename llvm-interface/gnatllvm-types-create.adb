@@ -751,7 +751,9 @@ package body GNATLLVM.Types.Create is
       --  object.
 
       elsif (Is_Discrete_Or_Fixed_Point_Type (GT)
-               or else Is_Packed_Array_Impl_Type (GT))
+               or else (Is_Packed_Array_Impl_Type (GT)
+                          and then Is_Bit_Packed_Array
+                                     (Full_Original_Array_Type (GT))))
         and then not (Is_Var and Is_Aliased (E))
       then
          return Size;

@@ -1106,24 +1106,29 @@ package body GNATLLVM.Records is
    function Effective_Field_Alignment (F : Entity_Id) return Nat is
       GT      : constant GL_Type   := Full_GL_Type (F);
       F_Align : constant Nat       := Get_Type_Alignment (GT);
-      Pos     : constant Uint      := Component_Bit_Offset (F);
-      Size    : constant Uint      := Esize (F);
-      TE      : constant Entity_Id := Full_Scope (F);
+      Pos     : constant Uint      := Component_Bit_Offset (O_F);
+      Size    : constant Uint      := Esize (O_F);
+      TE      : constant Entity_Id := Full_Scope (O_F);
       R_Align : constant Nat       :=
         (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
          else Get_Maximum_Alignment * BPU);
 
    begin
-      --  If the record is packed and this field isn't aliased, its alignment
-      --  doesn't contribute to the alignment.
+      --  If the field can't be misaligned, its alignment always contributes
+      --  directly to the alignment of the record.
 
-      if not Cant_Misalign_Field (F, GT)
-        and then (Is_Packed (TE)
-                    or else Component_Alignment (TE) = Calign_Storage_Unit)
+      if Cant_Misalign_Field (F, GT) then
+         return F_Align;
+
+      --  Otherwise, if the record is packed its alignment doesn't
+      --  contribute to the alignment.
+
+      elsif Is_Packed (TE)
+        or else Component_Alignment (TE) = Calign_Storage_Unit
       then
          return 1;
 
-      --  If there's no component clause use this field's alignmentw.  But
+      --  If there's no component clause use this field's alignment.  But
       --  we can't use an alignment smaller than that of the record
 
       elsif No (Component_Clause (F)) then

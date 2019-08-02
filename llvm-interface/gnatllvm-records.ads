@@ -135,7 +135,8 @@ package GNATLLVM.Records is
 
    function Cant_Misalign_Field (F : Entity_Id; GT : GL_Type) return Boolean is
      (Strict_Alignment (GT) or else Is_Aliased (F)
-         or else Is_Atomic_Or_VFA (F) or else Is_Atomic_Or_VFA (GT))
+        or else Is_Independent (F) or else Is_Independent (GT)
+        or else Is_Atomic_Or_VFA (F) or else Is_Atomic_Or_VFA (GT))
      with Pre => Ekind_In (F, E_Component, E_Discriminant)
                  and then Present (GT);
    --  Return True iff a field F, whose type is GT, is not permitted to be

@@ -268,12 +268,18 @@ package body GNATLLVM.Compile is
                     --  subprogram in the inlining tables is stalled.
 
                     and then Is_Public (Subp)
-                    and then Nkind (Subp_Body) = N_Subprogram_Declaration
-                    and then Present (Corresponding_Body (Subp_Body))
                   then
-                     Subp_Body := Parent (Declaration_Node
-                                            (Corresponding_Body (Subp_Body)));
-                     Emit_Subprogram_Body (Subp_Body, For_Inline => True);
+                     if Nkind (Subp_Body) = N_Subprogram_Declaration
+                       and then Present (Corresponding_Body (Subp_Body))
+                     then
+                        Subp_Body := Parent (Declaration_Node
+                                               (Corresponding_Body
+                                                  (Subp_Body)));
+                     end if;
+
+                     if Nkind (Subp_Body) = N_Subprogram_Body then
+                        Emit_Subprogram_Body (Subp_Body, For_Inline => True);
+                     end if;
                   end if;
 
                   Next_Inlined_Subprogram (Subp);

@@ -283,15 +283,16 @@ package body GNATLLVM.Builtins is
    --------------------------
 
    function Emit_Sync_Fetch_Call (N : Node_Id; S : String) return GL_Value is
-      Ptr        : constant Node_Id := First_Actual (N);
-      Index      : Integer := S'First + 7;
-      Val        : Node_Id;
-      Op         : Atomic_RMW_Bin_Op_T;
-      Op_Back    : Boolean;
-      New_Index  : Integer;
-      GT, BT, PT : GL_Type;
-      Value      : GL_Value;
-      Result     : GL_Value;
+      Ptr       : constant Node_Id := First_Actual (N);
+      Index     : Integer := S'First + 7;
+      Val       : Node_Id;
+      Op        : Atomic_RMW_Bin_Op_T;
+      Op_Back   : Boolean;
+      New_Index : Integer;
+      GT        : GL_Type;
+      Ptr_Val   : GL_Value;
+      Value     : GL_Value;
+      Result    : GL_Value;
 
    begin
       --  This is supposedly a __sync builtin.  Parse it to see what it
@@ -299,7 +300,8 @@ package body GNATLLVM.Builtins is
       --  operands, just return No_GL_Value and a normal call will result,
       --  which will produce a link error.
       --
-      --  We need to have "Op_and_fetch" or "fetch_and_Op".
+      --  We need to have "Op_and_fetch", "fetch_and_Op", or
+      --  "lock_test_and_set".
 
       if Name_To_RMW_Op (S, Index, New_Index, Op)
         and then S'Last > New_Index + 9
@@ -312,13 +314,17 @@ package body GNATLLVM.Builtins is
       then
          Op_Back := False;
          Index   := New_Index;
+      elsif S (Index .. Index + 17) = "lock_test_and_set_" then
+         Index   := Index + 17;
+         Op      := Atomic_RMW_Bin_Op_Xchg;
+         Op_Back := False;
       else
          return No_GL_Value;
       end if;
 
       --  There must be exactly two actuals with the second an elementary
-      --  type and the first an access type to it.  The name of the function
-      --  must also correspond to the size.
+      --  type and the first an access type to it or System.Address.  The
+      --  name of the function must also correspond to the size.
 
       if No (Ptr) then
          return No_GL_Value;
@@ -329,12 +335,18 @@ package body GNATLLVM.Builtins is
          return No_GL_Value;
       end if;
 
-      GT  := Full_GL_Type (Val);
-      PT  := Full_GL_Type (Ptr);
-      BT  := Base_GL_Type (GT);
+      --  If the pointer is System.Address, make it an access type
+
+      GT      := Full_GL_Type (Val);
+      Ptr_Val := Emit_Expression (Ptr);
+      if Is_Descendant_Of_Address (Ptr_Val) then
+         Ptr_Val := Int_To_Ref (Ptr_Val, GT);
+      elsif Is_Access_Type (Ptr_Val) then
+         Ptr_Val := From_Access (Ptr_Val);
+      end if;
+
       if not Is_Elementary_Type (GT)
-        or else not Is_Access_Type (PT)
-        or else Base_GL_Type (Full_Designated_GL_Type (PT)) /= BT
+        or else Related_Type (Ptr_Val) /= GT
         or else not Type_Size_Matches_Name (S, Index + 1, True, GT)
       then
          return No_GL_Value;
@@ -343,7 +355,7 @@ package body GNATLLVM.Builtins is
       --  Now we can emit the operation
 
       Value  := Emit_Expression (Val);
-      Result := Atomic_RMW (Op, Emit_Expression (Ptr), Value);
+      Result := Atomic_RMW (Op, Ptr_Val, Value);
       Set_Volatile_For_Atomic (Result);
 
       --  If we want the value before the operation, we're done.  Otherwise,
@@ -437,9 +449,9 @@ package body GNATLLVM.Builtins is
 
       GT      := Full_GL_Type (Old_Val);
       Ptr_Val := Emit_Expression (Ptr);
-      if Is_Descendant_Of_Address (Related_Type (Ptr_Val)) then
+      if Is_Descendant_Of_Address (Ptr_Val) then
          Ptr_Val := Int_To_Ref (Ptr_Val, GT);
-      elsif Is_Access_Type (Related_Type (Ptr_Val)) then
+      elsif Is_Access_Type (Ptr_Val) then
          Ptr_Val := From_Access (Ptr_Val);
       end if;
 

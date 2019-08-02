@@ -647,6 +647,10 @@ package GNATLLVM.GLValue is
        and then Ekind (Full_Designated_Type (V)) = E_Subprogram_Type)
      with Pre => Present (V);
 
+   function Is_Descendant_Of_Address (V : GL_Value) return Boolean is
+     (Is_Descendant_Of_Address (Full_Etype (V)))
+     with Pre => Present (V);
+
    function Is_Constrained (V : GL_Value) return Boolean is
      (Is_Constrained (Full_Etype (V)))
      with Pre => Present (V);

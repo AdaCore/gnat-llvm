@@ -330,7 +330,7 @@ package body GNATLLVM.Variables is
       end if;
 
       --  Otherwise, search for an entity in our duplicate class that's in
-      --  the extended main unit and are being exported.
+      --  the extended main unit and is being exported.
 
       return (for some J in Global_Dup_Id range 1 .. Global_Dup.Last
                 => Global_Dup.Table (J).Index = Idx
@@ -478,7 +478,7 @@ package body GNATLLVM.Variables is
          when N_Identifier | N_Expanded_Name =>
             return Is_Static_Location (Entity (N));
 
-         when N_Defining_Identifier =>
+         when N_Defining_Identifier | N_Defining_Operator_Symbol =>
 
             --  If this is at top level and has an address clause, we'll
             --  still allocate the variable, but set the initial value to

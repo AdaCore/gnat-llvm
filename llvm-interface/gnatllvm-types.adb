@@ -1504,7 +1504,8 @@ package body GNATLLVM.Types is
       Do_Align : Boolean := False;
       Want_Max : Boolean := True) return Node_Ref_Or_Val
    is
-      Use_Max       : constant Boolean := Is_Unconstrained_Record (GT);
+      Use_Max       : constant Boolean :=
+        Is_Unconstrained_Record (GT) or else Ekind (GT) = E_Array_Subtype;
       Size          : constant BA_Data :=
         Get_Type_Size (GT, Max_Size => Use_Max and then Want_Max);
       Align : constant BA_Data :=

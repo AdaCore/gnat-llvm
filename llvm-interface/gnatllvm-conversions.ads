@@ -22,17 +22,40 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Conversions is
 
+   function Emit_Conversion
+     (N                   : Node_Id;
+      GT                  : GL_Type;
+      From_N              : Node_Id := Empty;
+      For_LHS             : Boolean := False;
+      Is_Unchecked        : Boolean := False;
+      Need_Overflow_Check : Boolean := False;
+      Float_Truncate      : Boolean := False;
+      No_Truncation       : Boolean := False) return GL_Value
+     with Pre  => Present (GT) and then Present (N)
+                  and then not (Is_Unchecked and Need_Overflow_Check),
+          Post => Present (Emit_Conversion'Result);
+   --  Emit code to convert N to GT, optionally in unchecked mode
+   --  and optionally with an overflow check.  From_N is the conversion node,
+   --  if there is a corresponding source node.
+
+   function Emit_Convert_Value (N : Node_Id; GT : GL_Type) return GL_Value is
+     (Get (Emit_Conversion (N, GT), Object))
+     with Pre  => Present (GT) and then Present (N),
+          Post => Present (Emit_Convert_Value'Result);
+   --  Emit code to convert N to GT and get it as a value
+
    function Convert
      (V              : GL_Value;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return GL_Value
+      Is_Unchecked   : Boolean := False;
+      No_Truncation  : Boolean := False) return GL_Value
      with Pre  => Is_Data (V) and then Present (GT)
                   and then Is_Elementary_Type (V),
           Post => Is_Data (Convert'Result)
                   and then Is_Elementary_Type (Convert'Result);
-   --  Convert V to the type TE, with both the types of V and TE being
-   --  elementary.
+   --  Convert V to the type GT, with both the types of V and GT being
+   --  elementary.  Flags are as for Emit_Conversion.
 
    function Convert
      (V, T           : GL_Value;
@@ -89,28 +112,6 @@ package GNATLLVM.Conversions is
      with Pre  => Present (V) and then Present (GT),
           Post => Present (Maybe_Convert_GT'Result);
    --  Likewise, but only do so if V and GT have different GNAT types
-
-   function Emit_Conversion
-     (N                   : Node_Id;
-      GT                  : GL_Type;
-      From_N              : Node_Id := Empty;
-      For_LHS             : Boolean := False;
-      Is_Unchecked        : Boolean := False;
-      Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False;
-      No_Truncation       : Boolean := False) return GL_Value
-     with Pre  => Present (GT) and then Present (N)
-                  and then not (Is_Unchecked and Need_Overflow_Check),
-          Post => Present (Emit_Conversion'Result);
-   --  Emit code to convert N to GT, optionally in unchecked mode
-   --  and optionally with an overflow check.  From_N is the conversion node,
-   --  if there is a corresponding source node.
-
-   function Emit_Convert_Value (N : Node_Id; GT : GL_Type) return GL_Value is
-     (Get (Emit_Conversion (N, GT), Object))
-     with Pre  => Present (GT) and then Present (N),
-          Post => Present (Emit_Convert_Value'Result);
-   --  Emit code to convert N to GT and get it as a value
 
    function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),

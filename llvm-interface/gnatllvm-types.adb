@@ -175,10 +175,12 @@ package body GNATLLVM.Types is
      (V              : IDS;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return IDS
+      Is_Unchecked   : Boolean := False;
+      No_Truncation  : Boolean := False) return IDS
    is
      (if   Is_Const (V)
-      then (False, Convert (V.Value, GT, Float_Truncate, Is_Unchecked))
+      then (False,
+            Convert (V.Value, GT, Float_Truncate, Is_Unchecked, No_Truncation))
       else Var_IDS);
 
    -------------
@@ -189,10 +191,12 @@ package body GNATLLVM.Types is
      (V              : BA_Data;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return BA_Data
+      Is_Unchecked   : Boolean := False;
+      No_Truncation  : Boolean := False) return BA_Data
    is
      (if   Is_Const (V)
-      then (False, Convert (V.C_Value, GT, Float_Truncate, Is_Unchecked),
+      then (False, Convert (V.C_Value, GT, Float_Truncate, Is_Unchecked,
+                            No_Truncation),
             No_Uint)
       else V);
 

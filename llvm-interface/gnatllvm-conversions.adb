@@ -374,12 +374,14 @@ package body GNATLLVM.Conversions is
            and then Type_Of (GT) = Type_Of (Result)
            and then not Is_Biased_GL_Type (GT)
            and then not Is_Biased_GL_Type (Result)
+           and then not Is_Unchecked
          then
             Result := G_Is (Result, GT);
          else
             Result := Convert (Result, GT,
                                Float_Truncate => Float_Truncate,
-                               Is_Unchecked   => Is_Unchecked);
+                               Is_Unchecked   => Is_Unchecked,
+                               No_Truncation  => No_Truncation);
          end if;
 
       --  Otherwise, convert to the primitive type, do any required
@@ -478,7 +480,8 @@ package body GNATLLVM.Conversions is
      (V              : GL_Value;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return GL_Value
+      Is_Unchecked   : Boolean := False;
+      No_Truncation  : Boolean := False) return GL_Value
    is
       type Cvtf is access function
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
@@ -487,7 +490,8 @@ package body GNATLLVM.Conversions is
         Is_Unchecked and then (Is_Biased_GL_Type (GT)
                                  or else Is_Biased_GL_Type (Related_Type (V)));
       In_V        : constant GL_Value :=
-        (if Is_Unc_Bias then V else To_Primitive (V));
+        (if   Is_Unchecked or else Related_Type (V) = GT then V
+         else To_Primitive (V));
       In_GT       : constant GL_Type  := Related_Type (In_V);
       Prim_GT     : constant GL_Type  :=
         (if Is_Unc_Bias then GT else Primitive_GL_Type (GT));
@@ -511,12 +515,19 @@ package body GNATLLVM.Conversions is
       if Is_Undef (In_V) then
          return Get_Undef (GT);
 
+      --  If we want the same type as we have, we're done
+
+      elsif In_GT = GT then
+         return In_V;
+
       --  If the value is already of the desired LLVM type, we're done
       --  unless one type is biased or if we're converting an unsigned
-      --  constant to signed and the result will be negative.
+      --  constant to signed and the result will be negative or if this is
+      --  an unchecked (but not non-truncating) conversion.
 
       elsif Type_Of (In_V) = Type_Of (GT) and then not Is_Biased_GL_Type (In_V)
         and then not Is_Biased_GL_Type (GT)
+        and then not (Is_Unchecked and then not No_Truncation)
       then
          return Mark_Overflowed (G_Is (In_V, GT),
                                  not Dest_Uns and then Src_Uns

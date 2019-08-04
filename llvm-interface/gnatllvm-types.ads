@@ -542,7 +542,8 @@ package GNATLLVM.Types is
      (V              : IDS;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return IDS
+      Is_Unchecked   : Boolean := False;
+      No_Truncation  : Boolean := False) return IDS
      with Pre => Present (V) and then Present (GT);
 
    function Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
@@ -762,7 +763,8 @@ package GNATLLVM.Types is
      (V              : BA_Data;
       GT             : GL_Type;
       Float_Truncate : Boolean := False;
-      Is_Unchecked   : Boolean := False) return BA_Data
+      Is_Unchecked   : Boolean := False;
+      No_Truncation  : Boolean := False) return BA_Data
      with Pre => Present (GT), Inline;
 
    function Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data

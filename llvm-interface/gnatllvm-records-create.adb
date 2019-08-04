@@ -1574,7 +1574,7 @@ package body GNATLLVM.Records.Create is
                --  for packable fields, clear out that location.
 
                if Packed_Field_Bitpos /= No_Uint and then Pos = No_Uint
-                 and then not Is_Packable_Field (F)
+                 and then not Is_Packable_Field (AF.AF)
                then
                   Packed_Field_Bitpos := No_Uint;
 
@@ -1583,7 +1583,7 @@ package body GNATLLVM.Records.Create is
                --  and size of this field as well as following ones.
 
                elsif Packed_Field_Bitpos = No_Uint
-                 and then Is_Packable_Field (F)
+                 and then Is_Packable_Field (AF.AF)
                then
                   Pos                 := UI_From_ULL (Cur_RI_Pos);
                   Size                := RM_Size (F_GT);
@@ -1607,7 +1607,7 @@ package body GNATLLVM.Records.Create is
 
                      begin
                         exit when not Is_Packable_Field
-                          (AF_K.F, Packed_Field_Bitpos mod BPU /= 0);
+                          (AF_K.AF, Packed_Field_Bitpos mod BPU /= 0);
                         exit when AF_K.Var_Depth /= Last_Var_Depth;
 
                         AF_K.Pos            := Packed_Field_Bitpos;

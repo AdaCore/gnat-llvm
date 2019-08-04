@@ -1203,11 +1203,12 @@ package body GNATLLVM.Records is
    function Is_Packable_Field
      (F : Entity_Id; Force : Boolean := False) return Boolean
    is
-      GT : constant GL_Type := Full_GL_Type (Original_Record_Component (F));
+      O_F : constant Entity_Id := Original_Record_Component (F);
+      GT  : constant GL_Type := Full_GL_Type (O_F);
       --  We have to use the data from the base type of the record to be sure
       --  that we lay out a record and its subtype the same way.
 
-      T  : constant Type_T  := Type_Of (GT);
+      T   : constant Type_T  := Type_Of (GT);
       pragma Unreferenced (T);
       --  We need to be sure that the type of the record is elaborated
 
@@ -1217,8 +1218,9 @@ package body GNATLLVM.Records is
       --  fields or fields whose types are strictly aligned aren't packed
       --  either.
 
-      if Present (Component_Clause (F)) or else not Is_Packed (Full_Scope (F))
-        or else Cant_Misalign_Field (F, GT)
+      if Present (Component_Clause (O_F))
+        or else not Is_Packed (Full_Scope (O_F))
+        or else Cant_Misalign_Field (O_F, GT)
       then
          return False;
       end if;

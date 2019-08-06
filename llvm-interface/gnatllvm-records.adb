@@ -1050,240 +1050,6 @@ package body GNATLLVM.Records is
       No_Padding : Boolean := False) return BA_Data
      renames BA_Size.Variant_Part_Size;
 
-   -------------------------------
-   -- Effective_Field_Alignment --
-   -------------------------------
-
-   function Effective_Field_Alignment (F : Entity_Id) return Nat is
-      AF      : constant Entity_Id := Original_Record_Component (F);
-      GT      : constant GL_Type   := Full_GL_Type (AF);
-      F_Align : constant Nat       := Get_Type_Alignment (GT);
-      Pos     : constant Uint      := Component_Bit_Offset (AF);
-      Size    : constant Uint      := Esize (AF);
-      TE      : constant Entity_Id := Full_Scope (AF);
-      R_Align : constant Nat       :=
-        (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
-         else Get_Maximum_Alignment * BPU);
-
-   begin
-      --  If the field can't be misaligned, its alignment always contributes
-      --  directly to the alignment of the record.
-
-      if Cant_Misalign_Field (AF, GT) then
-         return F_Align;
-
-      --  Otherwise, if the field is packable its alignment doesn't
-      --  contribute to the alignment.
-
-      elsif Is_Packable_Field (AF, Force => True, Ignore_Size => True) then
-         return BPU;
-
-      --  If there's no component clause use this field's alignment.  But
-      --  we can't use an alignment smaller than that of the record
-
-      elsif No (Component_Clause (AF)) then
-         return Nat'Min (F_Align, R_Align);
-
-      --  Otherwise, find the largest alignment that's consistent with the
-      --  size and position of the component.
-
-      else
-         return This_Align : Nat := Nat'Min (F_Align, R_Align) do
-            while Pos mod This_Align /= 0 or else Size mod This_Align /= 0 loop
-               This_Align := This_Align / 2;
-            end loop;
-
-         end return;
-      end if;
-
-   end Effective_Field_Alignment;
-
-   -------------------------------
-   -- Get_Record_Type_Alignment --
-   -------------------------------
-
-   function Get_Record_Type_Alignment (TE : Entity_Id) return Nat is
-      Field : Entity_Id;
-
-   begin
-      --  Use the largest effective alignment of any field
-
-      return Largest_Align : Nat := BPU do
-
-         --  If we're just elaborating types and this is a tagged record,
-         --  we have to allow for the tag field because the front end
-         --  won't create one in this mode.
-
-         if Decls_Only and then Is_Tagged_Type (TE) then
-            Largest_Align := Get_Type_Alignment (Void_Ptr_Type);
-         end if;
-
-         --  Now go through each field looking for the highest effective
-         --  alignment.
-
-         Field := First_Component_Or_Discriminant (TE);
-         while Present (Field) loop
-            Largest_Align := Nat'Max (Largest_Align,
-                                      Effective_Field_Alignment (Field));
-
-            Next_Component_Or_Discriminant (Field);
-         end loop;
-      end return;
-   end Get_Record_Type_Alignment;
-
-   -------------------
-   -- Field_Ordinal --
-   -------------------
-
-   function Field_Ordinal (F : Entity_Id) return unsigned is
-     (unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal));
-
-   --------------------
-   -- Get_Field_Type --
-   --------------------
-
-   function Get_Field_Type (F : Entity_Id) return GL_Type is
-     (Field_Info_Table.Table (Get_Field_Info (F)).GT);
-
-   --------------------
-   -- Ancestor_Field --
-   --------------------
-
-   function Ancestor_Field (F : Entity_Id) return Entity_Id is
-      R_TE     : constant Entity_Id := Full_Scope (F);
-      ORC, CRC : Entity_Id;
-
-   begin
-      return AF : Entity_Id := F do
-         loop
-            ORC := Original_Record_Component (AF);
-            CRC := Corresponding_Record_Component (AF);
-            if Present (ORC) and then ORC /= AF
-              and then Same_Representation (R_TE, Full_Scope (ORC))
-            then
-               AF := ORC;
-            elsif Present (CRC) and then CRC /= AF
-              and then Same_Representation (R_TE, Full_Scope (CRC))
-            then
-               AF := CRC;
-            else
-               exit;
-            end if;
-         end loop;
-      end return;
-   end Ancestor_Field;
-
-   -----------------------
-   -- Is_Packable_Field --
-   -----------------------
-
-   function Is_Packable_Field
-     (F           : Entity_Id;
-      Force       : Boolean := False;
-      Ignore_Size : Boolean := False) return Boolean
-   is
-      AF : constant Entity_Id := Ancestor_Field (F);
-      GT : constant GL_Type   := Full_GL_Type (AF);
-      TE : constant Entity_Id := Full_Scope (AF);
-      T  : constant Type_T    := Type_Of (GT);
-      pragma Unreferenced (T);
-      --  We need to be sure that the type of the record is elaborated
-
-   begin
-      --  If we have a rep clause, we'll use that rather than packing it.
-      --  If the record isn't packed, neither is the field.  Aliased
-      --  fields or fields whose types are strictly aligned aren't packed
-      --  either.
-
-      if Present (Component_Clause (AF))
-        or else (Component_Alignment (TE) /= Calign_Storage_Unit
-                   and then not Is_Packed (TE))
-        or else Cant_Misalign_Field (AF, GT)
-      then
-         return False;
-      end if;
-
-      --  If the type's size is variable or if the type is nonnative, we
-      --  can't pack.  We avoid packing if the field would be larger than
-      --  64 bits since that's usually not worth it.  We do pack if the
-      --  RM_Size of the field's type is smaller than the Esize of the type
-      --  or if Cur_Pos is not a multiple of the alignment of the field.
-      --  We rely here on back-annotation of types so we're sure that both
-      --  sizes are set.
-
-      return not Is_Nonnative_Type (GT)
-        and then Is_Static_SO_Ref (RM_Size (GT))
-        and then Is_Static_SO_Ref (Esize (GT))
-        and then (Ignore_Size or else RM_Size (GT) <= 64)
-        and then (Force or else RM_Size (GT) < Esize (GT));
-
-   end Is_Packable_Field;
-
-   ------------------------
-   -- Is_Bitfield_By_Rep --
-   ------------------------
-
-   function Is_Bitfield_By_Rep
-     (F            : Entity_Id;
-      Pos          : Uint := No_Uint;
-      Size         : Uint := No_Uint;
-      Use_Pos_Size : Boolean := False) return Boolean
-   is
-      TE       : constant Entity_Id := Full_Etype (F);
-      Our_Pos  : constant Uint      :=
-        (if    Use_Pos_Size then Pos
-         elsif Known_Static_Component_Bit_Offset (F)
-         then  Component_Bit_Offset (F) else  No_Uint);
-      Our_Size : constant Uint      :=
-        (if    Use_Pos_Size then Size
-         elsif Known_Static_Esize (F) then  Esize (F)
-         elsif Is_Packable_Field (F) then RM_Size (TE) else No_Uint);
-
-   begin
-      --  If the position is specified and isn't byte-aligned, it's a bitfield
-
-      if Our_Pos /= No_Uint and then Our_Pos mod BPU /= 0 then
-         return True;
-
-      --  If we have no specification of size, either explicitly or
-      --  implicitly by packing, this isn't a bitfield
-
-      elsif Our_Size = No_Uint then
-         return False;
-
-      --  For integral types, we can only have sizes that are a power of
-      --  two due to the way that LLVM handles types like i24.
-
-      elsif Is_Discrete_Or_Fixed_Point_Type (TE) then
-         return Our_Size not in Uint_8 | Uint_16 | Uint_32 | Uint_64;
-      else
-         return Our_Size mod BPU /= 0;
-      end if;
-
-   end Is_Bitfield_By_Rep;
-
-   -----------------
-   -- Is_Bitfield --
-   -----------------
-
-   function Is_Bitfield (F : Entity_Id) return Boolean is
-     (Field_Info_Table.Table (Get_Field_Info (F)).First_Bit /= No_Uint);
-
-   -----------------------
-   -- Is_Array_Bitfield --
-   -----------------------
-
-   function Is_Array_Bitfield (F : Entity_Id) return Boolean is
-     (Field_Info_Table.Table (Get_Field_Info (F)).Array_Bitfield);
-
-   ----------------------
-   -- Field_Bit_Offset --
-   ----------------------
-
-   function Field_Bit_Offset (F : Entity_Id) return Uint is
-     (if   not Is_Bitfield (F) then Uint_0
-      else Field_Info_Table.Table (Get_Field_Info (F)).First_Bit);
-
    ----------------------
    -- Get_Variant_Size --
    ----------------------
@@ -1525,6 +1291,298 @@ package body GNATLLVM.Records is
       return Get_Variant_Expr (RI, Sizes);
    end Get_Variant_Size;
 
+   -------------------------------
+   -- Effective_Field_Alignment --
+   -------------------------------
+
+   function Effective_Field_Alignment (F : Entity_Id) return Nat is
+      AF      : constant Entity_Id := Original_Record_Component (F);
+      GT      : constant GL_Type   := Full_GL_Type (AF);
+      F_Align : constant Nat       := Get_Type_Alignment (GT);
+      Pos     : constant Uint      := Component_Bit_Offset (AF);
+      Size    : constant Uint      := Esize (AF);
+      TE      : constant Entity_Id := Full_Scope (AF);
+      R_Align : constant Nat       :=
+        (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
+         else Get_Maximum_Alignment * BPU);
+
+   begin
+      --  If the field can't be misaligned, its alignment always contributes
+      --  directly to the alignment of the record.
+
+      if Cant_Misalign_Field (AF, GT) then
+         return F_Align;
+
+      --  Otherwise, if the field is packable its alignment doesn't
+      --  contribute to the alignment.
+
+      elsif Is_Packable_Field (AF, Force => True, Ignore_Size => True) then
+         return BPU;
+
+      --  If there's no component clause use this field's alignment.  But
+      --  we can't use an alignment smaller than that of the record
+
+      elsif No (Component_Clause (AF)) then
+         return Nat'Min (F_Align, R_Align);
+
+      --  Otherwise, find the largest alignment that's consistent with the
+      --  size and position of the component.
+
+      else
+         return This_Align : Nat := Nat'Min (F_Align, R_Align) do
+            while Pos mod This_Align /= 0 or else Size mod This_Align /= 0 loop
+               This_Align := This_Align / 2;
+            end loop;
+
+         end return;
+      end if;
+
+   end Effective_Field_Alignment;
+
+   -----------------------------------
+   -- Record_Has_Aliased_Components --
+   -----------------------------------
+
+   function Record_Has_Aliased_Components (TE : Entity_Id) return Boolean is
+      F : Entity_Id := First_Component_Or_Discriminant (TE);
+
+   begin
+      --  We ignore the tag since no user code can take its address
+
+      while Present (F) loop
+         exit when Is_Aliased (F) and then Chars (F) /= Name_uTag;
+         Next_Component_Or_Discriminant (F);
+      end loop;
+
+      return Present (F);
+   end Record_Has_Aliased_Components;
+
+   -------------------------------
+   -- Get_Record_Type_Alignment --
+   -------------------------------
+
+   function Get_Record_Type_Alignment (TE : Entity_Id) return Nat is
+      Field : Entity_Id;
+
+   begin
+      --  Use the largest effective alignment of any field
+
+      return Largest_Align : Nat := BPU do
+
+         --  If we're just elaborating types and this is a tagged record,
+         --  we have to allow for the tag field because the front end
+         --  won't create one in this mode.
+
+         if Decls_Only and then Is_Tagged_Type (TE) then
+            Largest_Align := Get_Type_Alignment (Void_Ptr_Type);
+         end if;
+
+         --  Now go through each field looking for the highest effective
+         --  alignment.
+
+         Field := First_Component_Or_Discriminant (TE);
+         while Present (Field) loop
+            Largest_Align := Nat'Max (Largest_Align,
+                                      Effective_Field_Alignment (Field));
+
+            Next_Component_Or_Discriminant (Field);
+         end loop;
+      end return;
+   end Get_Record_Type_Alignment;
+
+   -------------------
+   -- Field_Ordinal --
+   -------------------
+
+   function Field_Ordinal (F : Entity_Id) return unsigned is
+     (unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal));
+
+   --------------------
+   -- Get_Field_Type --
+   --------------------
+
+   function Get_Field_Type (F : Entity_Id) return GL_Type is
+     (Field_Info_Table.Table (Get_Field_Info (F)).GT);
+
+   --------------------
+   -- Ancestor_Field --
+   --------------------
+
+   function Ancestor_Field (F : Entity_Id) return Entity_Id is
+      R_TE     : constant Entity_Id := Full_Scope (F);
+      ORC, CRC : Entity_Id;
+
+   begin
+      return AF : Entity_Id := F do
+         loop
+            ORC := Original_Record_Component (AF);
+            CRC := Corresponding_Record_Component (AF);
+            if Present (ORC) and then ORC /= AF
+              and then Same_Representation (R_TE, Full_Scope (ORC))
+            then
+               AF := ORC;
+            elsif Present (CRC) and then CRC /= AF
+              and then Same_Representation (R_TE, Full_Scope (CRC))
+            then
+               AF := CRC;
+            else
+               exit;
+            end if;
+         end loop;
+      end return;
+   end Ancestor_Field;
+
+   -----------------------
+   -- Is_Packable_Field --
+   -----------------------
+
+   function Is_Packable_Field
+     (F           : Entity_Id;
+      Force       : Boolean := False;
+      Ignore_Size : Boolean := False) return Boolean
+   is
+      AF : constant Entity_Id := Ancestor_Field (F);
+      GT : constant GL_Type   := Full_GL_Type (AF);
+      TE : constant Entity_Id := Full_Scope (AF);
+      T  : constant Type_T    := Type_Of (GT);
+      pragma Unreferenced (T);
+      --  We need to be sure that the type of the record is elaborated
+
+   begin
+      --  If we have a rep clause, we'll use that rather than packing it.
+      --  If the record isn't packed, neither is the field.  Aliased
+      --  fields or fields whose types are strictly aligned aren't packed
+      --  either.
+
+      if Present (Component_Clause (AF))
+        or else (Component_Alignment (TE) /= Calign_Storage_Unit
+                   and then not Is_Packed (TE))
+        or else Cant_Misalign_Field (AF, GT)
+      then
+         return False;
+      end if;
+
+      --  If the type's size is variable or if the type is nonnative, we
+      --  can't pack.  We avoid packing if the field would be larger than
+      --  64 bits since that's usually not worth it.  We do pack if the
+      --  RM_Size of the field's type is smaller than the Esize of the type
+      --  or if Cur_Pos is not a multiple of the alignment of the field.
+      --  We rely here on back-annotation of types so we're sure that both
+      --  sizes are set.
+
+      return not Is_Nonnative_Type (GT)
+        and then Is_Static_SO_Ref (RM_Size (GT))
+        and then Is_Static_SO_Ref (Esize (GT))
+        and then (Ignore_Size or else RM_Size (GT) <= 64)
+        and then (Force or else RM_Size (GT) < Esize (GT));
+
+   end Is_Packable_Field;
+
+   ------------------------
+   -- Is_Bitfield_By_Rep --
+   ------------------------
+
+   function Is_Bitfield_By_Rep
+     (F            : Entity_Id;
+      Pos          : Uint := No_Uint;
+      Size         : Uint := No_Uint;
+      Use_Pos_Size : Boolean := False) return Boolean
+   is
+      TE       : constant Entity_Id := Full_Etype (F);
+      Our_Pos  : constant Uint      :=
+        (if    Use_Pos_Size then Pos
+         elsif Known_Static_Component_Bit_Offset (F)
+         then  Component_Bit_Offset (F) else  No_Uint);
+      Our_Size : constant Uint      :=
+        (if    Use_Pos_Size then Size
+         elsif Known_Static_Esize (F) then  Esize (F)
+         elsif Is_Packable_Field (F) then RM_Size (TE) else No_Uint);
+
+   begin
+      --  If the position is specified and isn't byte-aligned, it's a bitfield
+
+      if Our_Pos /= No_Uint and then Our_Pos mod BPU /= 0 then
+         return True;
+
+      --  If we have no specification of size, either explicitly or
+      --  implicitly by packing, this isn't a bitfield
+
+      elsif Our_Size = No_Uint then
+         return False;
+
+      --  For integral types, we can only have sizes that are a power of
+      --  two due to the way that LLVM handles types like i24.
+
+      elsif Is_Discrete_Or_Fixed_Point_Type (TE) then
+         return Our_Size not in Uint_8 | Uint_16 | Uint_32 | Uint_64;
+      else
+         return Our_Size mod BPU /= 0;
+      end if;
+
+   end Is_Bitfield_By_Rep;
+
+   -----------------
+   -- Is_Bitfield --
+   -----------------
+
+   function Is_Bitfield (F : Entity_Id) return Boolean is
+     (Field_Info_Table.Table (Get_Field_Info (F)).First_Bit /= No_Uint);
+
+   -----------------------
+   -- Is_Array_Bitfield --
+   -----------------------
+
+   function Is_Array_Bitfield (F : Entity_Id) return Boolean is
+     (Field_Info_Table.Table (Get_Field_Info (F)).Array_Bitfield);
+
+   ----------------------
+   -- Field_Bit_Offset --
+   ----------------------
+
+   function Field_Bit_Offset (F : Entity_Id) return Uint is
+     (if   not Is_Bitfield (F) then Uint_0
+      else Field_Info_Table.Table (Get_Field_Info (F)).First_Bit);
+
+   --------------------------------
+   -- Get_Record_Size_Complexity --
+   --------------------------------
+
+   function Get_Record_Size_Complexity
+     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
+   is
+      Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
+      RI         : Record_Info;
+
+   begin
+      return Complexity : Nat := 0 do
+         while Present (Cur_Idx) loop
+            RI := Record_Info_Table.Table (Cur_Idx);
+            if Present (RI.GT) then
+               Complexity := Complexity +
+                 Get_Type_Size_Complexity (RI.GT, Max_Size);
+            end if;
+
+            Cur_Idx := RI.Next;
+         end loop;
+      end return;
+   end Get_Record_Size_Complexity;
+
+   -----------------------------------
+   -- Contains_Unconstrained_Record --
+   -----------------------------------
+
+   function Contains_Unconstrained_Record (GT : GL_Type) return Boolean is
+      F : Entity_Id := First_Component_Or_Discriminant (GT);
+
+   begin
+      while Present (F) loop
+         exit when Is_Unconstrained_Record (Full_Etype (F));
+         Next_Component_Or_Discriminant (F);
+      end loop;
+
+      return Present (F);
+   end Contains_Unconstrained_Record;
+
    -------------------------
    -- Record_Field_Offset --
    -------------------------
@@ -1629,46 +1687,6 @@ package body GNATLLVM.Records is
           2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
 
    end Record_Field_Offset;
-
-   --------------------------------
-   -- Get_Record_Size_Complexity --
-   --------------------------------
-
-   function Get_Record_Size_Complexity
-     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
-   is
-      Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
-      RI         : Record_Info;
-
-   begin
-      return Complexity : Nat := 0 do
-         while Present (Cur_Idx) loop
-            RI := Record_Info_Table.Table (Cur_Idx);
-            if Present (RI.GT) then
-               Complexity := Complexity +
-                 Get_Type_Size_Complexity (RI.GT, Max_Size);
-            end if;
-
-            Cur_Idx := RI.Next;
-         end loop;
-      end return;
-   end Get_Record_Size_Complexity;
-
-   -----------------------------------
-   -- Contains_Unconstrained_Record --
-   -----------------------------------
-
-   function Contains_Unconstrained_Record (GT : GL_Type) return Boolean is
-      F : Entity_Id := First_Component_Or_Discriminant (GT);
-
-   begin
-      while Present (F) loop
-         exit when Is_Unconstrained_Record (Full_Etype (F));
-         Next_Component_Or_Discriminant (F);
-      end loop;
-
-      return Present (F);
-   end Contains_Unconstrained_Record;
 
    ---------------------------
    -- Emit_Record_Aggregate --
@@ -2156,24 +2174,6 @@ package body GNATLLVM.Records is
    begin
       Writeback_Stack.Append ((LHS => LHS, F => F, RHS => RHS));
    end Add_Write_Back;
-
-   -----------------------------------
-   -- Record_Has_Aliased_Components --
-   -----------------------------------
-
-   function Record_Has_Aliased_Components (TE : Entity_Id) return Boolean is
-      F : Entity_Id := First_Component_Or_Discriminant (TE);
-
-   begin
-      --  We ignore the tag since no user code can take its address
-
-      while Present (F) loop
-         exit when Is_Aliased (F) and then Chars (F) /= Name_uTag;
-         Next_Component_Or_Discriminant (F);
-      end loop;
-
-      return Present (F);
-   end Record_Has_Aliased_Components;
 
    ------------------------
    -- Perform_Writebacks --

@@ -115,6 +115,14 @@ package GNATLLVM.Records is
    --  Return the index of the field denoted by F. We assume here, but
    --  don't check, that the F is in a record with just a single RI.
 
+   function Ancestor_Field (F : Entity_Id) return Entity_Id
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant),
+          Post => Ekind (F) = Ekind (Ancestor_Field'Result);
+   --  Find the ancestor field by walking up both the
+   --  Original_Record_Component chain and the
+   --  Corresponding_Record_Component chains.  Only look at records the
+   --  have the same representation as our record.
+
    function Get_Field_Type (F : Entity_Id) return GL_Type
      with Pre  => Ekind_In (F, E_Component, E_Discriminant)
                   and then Present (Get_Field_Info (F)),
@@ -143,12 +151,15 @@ package GNATLLVM.Records is
    --  misaligned.
 
    function Is_Packable_Field
-     (F : Entity_Id; Force : Boolean := False) return Boolean
+     (F           : Entity_Id;
+      Force       : Boolean := False;
+      Ignore_Size : Boolean := False) return Boolean
      with Pre  => Ekind_In (F, E_Component, E_Discriminant);
    --  Indicate whether F is a field that we'll be packing.  If Force is True,
    --  we want to pack the field if it's valid to do so, not only when we
    --  does something from the perspective of this field (e.g., because we
-   --  have some bits to fill).
+   --  have some bits to fill).  If Ignore_Size, ignore the fact that the
+   --  field may be too large to pack.
 
    function Is_Bitfield_By_Rep
      (F            : Entity_Id;

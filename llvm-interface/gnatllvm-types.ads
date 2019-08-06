@@ -287,6 +287,11 @@ package GNATLLVM.Types is
    function To_Bytes (Size : ULL) return ULL is
      ((Size + (ULL (BPU) - 1)) / ULL (BPU));
 
+   function Max_Align (C : ULL) return Nat;
+   --  Return the maximum alignment that a constant C, representing a
+   --  position or offset, has.  This is the highest power of two that
+   --  divides C up to the maximum alignment.
+
    function Is_Loadable_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
    --  Returns True if we should use a load/store instruction to copy values

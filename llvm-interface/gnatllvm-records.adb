@@ -22,6 +22,7 @@ with Get_Targ;   use Get_Targ;
 with Nlists;     use Nlists;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
+with Sem_Ch13;   use Sem_Ch13;
 with Snames;     use Snames;
 with Sprint;     use Sprint;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -449,76 +450,28 @@ package body GNATLLVM.Records is
          end Only_Overlap_RIs;
 
       begin
-         --  If this piece has a starting position specified, move to it
+         --  If this piece has a starting position specified, move to it.
+         --  We needn't force alignment in the case of a forced position.
 
          if RI.Position /= 0 then
             Total_Size := Sz_Replace_Val (Total_Size, Sz_Const (RI.Position));
+            Must_Align := BPU;
          end if;
 
-         --  Then check for zero length LLVM type since the code below will
-         --  fail if we have no fields.
+         --  If we have an LLVM type, it's packed record, so our size will
+         --  be that of the record and we aren't forcing an alignment.  If
+         --  our total size is a constant, we can say what our alignment is.
 
-         if Present (T) and then Get_Type_Size (T) = ULL (0) then
-            This_Size  := Sz_Const (0);
-            Must_Align := Get_Type_Alignment (T);
-            Is_Align   := Get_Type_Alignment (T);
+         if Present (T) then
+            This_Size  := Sz_Const (Get_Type_Size (T));
+            Must_Align := BPU;
+            Is_Align   :=
+              (if   Sz_Is_Const (Total_Size)
+               then Max_Align (Sz_Const_Val (Total_Size + This_Size))
+               else Nat'(BPU));
 
-         elsif Present (T) then
-
-            --  We have to be careful how we compute the size of this record
-            --  fragment because we don't want to count the padding at the end
-            --  in all cases.  If this is followed by a variable-sized
-            --  fragment, we may have a subtype where the following field is
-            --  fixed size and hence is part of the same LLVM struct in that
-            --  subtype.  In such a case, if the alignment of that type is
-            --  less than the alignment of our type, there'll be less padding.
-            --
-            --  For example, suppose we have:
-            --
-            --     type R (X : Integer) is record
-            --        A : Integer;
-            --        B : Short_Short_Integer;
-            --        C : String (1 .. X);
-            --     end record;
-            --
-            --  In the layout of the base type, which is of variable size, the
-            --  LLVM struct will be { i32, i32, i8 } and the next fragment
-            --  will be for field C.  The above struct has a size of 12
-            --  because the size is always a multiple of its alignment.
-            --  However, if we have a subtype of R with X = 10, the struct for
-            --  that subtype (now containing all the fields) will be
-            --
-            --      { i32, i32, i8, [10 x i8] }
-            --
-            --  but that last array will be at an offset of 9, not 12, which
-            --  is what we'd get by just positioning it from the size of the
-            --  fragment from the base type.
-            --
-            --  Therefore, we need to compute the size of this struct by
-            --  adding the position of the last field to its size.  If padding
-            --  is needed for any reason, our caller will take care of that.
-            --
-            --  In addition, unlike in the GNAT type (variable sized) case,
-            --  the alignment that we must receive and that we generate are
-            --  not the same.
-            --
-            declare
-               Num_Types   : constant unsigned :=
-                 Count_Struct_Element_Types (T);
-               Last_Type   : constant Type_T   :=
-                 Struct_Get_Type_At_Index (T, Num_Types - 1);
-               Last_Size   : constant ULL      := Get_Type_Size (Last_Type);
-               Last_Offset : constant ULL      :=
-                 Offset_Of_Element (Module_Data_Layout, T, Num_Types - 1);
-
-            begin
-               Must_Align := Get_Type_Alignment (T);
-               Is_Align   := Get_Type_Alignment (Last_Type);
-               This_Size  :=
-                 Sz_Const (Last_Offset * ULL (BPU) + Last_Size);
-            end;
-
-         --  The GNAT type case is easy
+         --  For a GNAT type, do similar, except that we know more about
+         --  our alignment.
 
          elsif Present (GT) then
             Must_Align   := Get_Type_Alignment (GT);
@@ -561,12 +514,10 @@ package body GNATLLVM.Records is
             This_Size  := Sz_Const (0);
          end if;
 
-         --  If we've set an alignment for this RI, it overrides any
-         --  computation we did above and setting a position for this
-         --  RI also overrides the alignment.
+         --  Take into account any alignment we set for this RI
 
          if RI.Align /= 0 then
-            Must_Align := RI.Align;
+            Must_Align := Nat'Max (Must_Align, RI.Align);
          end if;
 
          --  Now update the total size given what we've computed above.  If
@@ -1104,12 +1055,12 @@ package body GNATLLVM.Records is
    -------------------------------
 
    function Effective_Field_Alignment (F : Entity_Id) return Nat is
-      O_F     : constant Entity_Id := Original_Record_Component (F);
-      GT      : constant GL_Type   := Full_GL_Type (O_F);
+      AF      : constant Entity_Id := Original_Record_Component (F);
+      GT      : constant GL_Type   := Full_GL_Type (AF);
       F_Align : constant Nat       := Get_Type_Alignment (GT);
-      Pos     : constant Uint      := Component_Bit_Offset (O_F);
-      Size    : constant Uint      := Esize (O_F);
-      TE      : constant Entity_Id := Full_Scope (O_F);
+      Pos     : constant Uint      := Component_Bit_Offset (AF);
+      Size    : constant Uint      := Esize (AF);
+      TE      : constant Entity_Id := Full_Scope (AF);
       R_Align : constant Nat       :=
         (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
          else Get_Maximum_Alignment * BPU);
@@ -1118,21 +1069,19 @@ package body GNATLLVM.Records is
       --  If the field can't be misaligned, its alignment always contributes
       --  directly to the alignment of the record.
 
-      if Cant_Misalign_Field (O_F, GT) then
+      if Cant_Misalign_Field (AF, GT) then
          return F_Align;
 
-      --  Otherwise, if the record is packed its alignment doesn't
+      --  Otherwise, if the field is packable its alignment doesn't
       --  contribute to the alignment.
 
-      elsif Is_Packed (TE)
-        or else Component_Alignment (TE) = Calign_Storage_Unit
-      then
-         return 1;
+      elsif Is_Packable_Field (AF, Force => True, Ignore_Size => True) then
+         return BPU;
 
       --  If there's no component clause use this field's alignment.  But
       --  we can't use an alignment smaller than that of the record
 
-      elsif No (Component_Clause (O_F)) then
+      elsif No (Component_Clause (AF)) then
          return Nat'Min (F_Align, R_Align);
 
       --  Otherwise, find the largest alignment that's consistent with the
@@ -1196,19 +1145,47 @@ package body GNATLLVM.Records is
    function Get_Field_Type (F : Entity_Id) return GL_Type is
      (Field_Info_Table.Table (Get_Field_Info (F)).GT);
 
+   --------------------
+   -- Ancestor_Field --
+   --------------------
+
+   function Ancestor_Field (F : Entity_Id) return Entity_Id is
+      R_TE     : constant Entity_Id := Full_Scope (F);
+      ORC, CRC : Entity_Id;
+
+   begin
+      return AF : Entity_Id := F do
+         loop
+            ORC := Original_Record_Component (AF);
+            CRC := Corresponding_Record_Component (AF);
+            if Present (ORC) and then ORC /= AF
+              and then Same_Representation (R_TE, Full_Scope (ORC))
+            then
+               AF := ORC;
+            elsif Present (CRC) and then CRC /= AF
+              and then Same_Representation (R_TE, Full_Scope (CRC))
+            then
+               AF := CRC;
+            else
+               exit;
+            end if;
+         end loop;
+      end return;
+   end Ancestor_Field;
+
    -----------------------
    -- Is_Packable_Field --
    -----------------------
 
    function Is_Packable_Field
-     (F : Entity_Id; Force : Boolean := False) return Boolean
+     (F           : Entity_Id;
+      Force       : Boolean := False;
+      Ignore_Size : Boolean := False) return Boolean
    is
-      O_F : constant Entity_Id := Original_Record_Component (F);
-      GT  : constant GL_Type := Full_GL_Type (O_F);
-      --  We have to use the data from the base type of the record to be sure
-      --  that we lay out a record and its subtype the same way.
-
-      T   : constant Type_T  := Type_Of (GT);
+      AF : constant Entity_Id := Ancestor_Field (F);
+      GT : constant GL_Type   := Full_GL_Type (AF);
+      TE : constant Entity_Id := Full_Scope (AF);
+      T  : constant Type_T    := Type_Of (GT);
       pragma Unreferenced (T);
       --  We need to be sure that the type of the record is elaborated
 
@@ -1218,9 +1195,10 @@ package body GNATLLVM.Records is
       --  fields or fields whose types are strictly aligned aren't packed
       --  either.
 
-      if Present (Component_Clause (O_F))
-        or else not Is_Packed (Full_Scope (O_F))
-        or else Cant_Misalign_Field (O_F, GT)
+      if Present (Component_Clause (AF))
+        or else (Component_Alignment (TE) /= Calign_Storage_Unit
+                   and then not Is_Packed (TE))
+        or else Cant_Misalign_Field (AF, GT)
       then
          return False;
       end if;
@@ -1235,7 +1213,8 @@ package body GNATLLVM.Records is
 
       return not Is_Nonnative_Type (GT)
         and then Is_Static_SO_Ref (RM_Size (GT))
-        and then Is_Static_SO_Ref (Esize (GT)) and then RM_Size (GT) <= 64
+        and then Is_Static_SO_Ref (Esize (GT))
+        and then (Ignore_Size or else RM_Size (GT) <= 64)
         and then (Force or else RM_Size (GT) < Esize (GT));
 
    end Is_Packable_Field;

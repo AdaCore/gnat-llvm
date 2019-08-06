@@ -241,6 +241,19 @@ package body GNATLLVM.Types is
 
    end Is_Dynamic_Size;
 
+   ---------------
+   -- Max_Align --
+   ---------------
+
+   function Max_Align (C : ULL) return Nat is
+   begin
+      return Align : Nat := Get_Maximum_Alignment * BPU do
+         while C mod ULL (Align) /= 0 loop
+            Align := Align / 2;
+         end loop;
+      end return;
+   end Max_Align;
+
    ----------------------
    -- Is_Loadable_Type --
    ----------------------

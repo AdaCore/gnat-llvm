@@ -20,9 +20,10 @@ In order to build GNAT-LLVM from sources, you need to follow these steps:
 
   $ make llvm
 
-  If you've installed LLVM and clang by other means (e.g. "brew install llvm"
-  on Mac OS or "sudo apt-get install llvm-dev" on Ubuntu), make sure the
-  llvm bin directory containing llvm-config and clang is in your PATH.
+  Alternatively, you can use an existing all of LLVM and clang, e.g. via
+  "brew install llvm" on Mac OS or "sudo apt-get install llvm-dev" on Ubuntu.
+  In this case, make sure the llvm bin directory containing llvm-config and
+  clang is in your PATH.
 
 - Finally build GNAT-LLVM:
 

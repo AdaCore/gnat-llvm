@@ -26,10 +26,10 @@ setup: $(LLVM_SRC_DIR) llvm-obj
 
 $(LLVM_SRC_DIR): 
 	$(DL) $(LLVM_SRC_LINK)
-	tar xaf $(LLVM_SRC_FNAME)
+	tar xJf $(LLVM_SRC_FNAME)
 	rm $(LLVM_SRC_FNAME)
 	$(DL) $(LLVM_CLANG_SRC_LINK)
-	tar xaf $(LLVM_CLANG_SRC_FNAME)
+	tar xJf $(LLVM_CLANG_SRC_FNAME)
 	mv $(LLVM_CLANG_EXP_NAME) $(LLVM_SRC_DIR)/tools/clang
 	rm $(LLVM_CLANG_SRC_FNAME)
 

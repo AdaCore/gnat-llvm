@@ -604,7 +604,7 @@ package body GNATLLVM.Records.Create is
               (if Present (Var_Part) then Name (Var_Part) else Empty);
             Constraining_Expr  : constant Node_Id   :=
               (if   Present (From_Rec) and then Present (Var_Part)
-               then (Get_Discriminant_Constraint (From_Rec, Entity (Discrim)))
+               then Get_Discriminant_Constraint (From_Rec, Entity (Discrim))
                else Empty);
             Variant_Expr       : constant Entity_Id :=
               (if    Present (Constraining_Expr) then Constraining_Expr

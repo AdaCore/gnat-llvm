@@ -958,8 +958,9 @@ package body GNATLLVM.Types is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
    is
-      Align         : constant GL_Value  := GT_Alignment (GT);
-      TE            : constant Entity_Id := Full_Etype (GT);
+      TE    : constant Entity_Id := Full_Etype (GT);
+      Align : constant GL_Value  := GT_Alignment (GT);
+      T     : constant Type_T    := Type_Of (GT);
 
    begin
       --  If there's a known alignment in this GL_Type, use it
@@ -970,38 +971,38 @@ package body GNATLLVM.Types is
       --  If the alignment is specified (or back-annotated) in the tree,
       --  use that value.
 
-      elsif Known_Alignment (TE)  and Use_Specified then
+      elsif Known_Alignment (TE) and then Use_Specified then
          return UI_To_Int (Alignment (TE)) * BPU;
 
       --  If we're only elaborating and back-annotating types, check if
       --  is void.
 
-      elsif Decls_Only and then Get_Type_Kind (GT) = Void_Type_Kind then
+      elsif Decls_Only and then Get_Type_Kind (T) = Void_Type_Kind then
          return BPU;
-
-      --  If it's an array, call the specialized function
-
-      elsif Is_Array_Type (TE) then
-         return Get_Array_Type_Alignment (TE);
-
-      --  If a record, call the specialized function
-
-      elsif Is_Record_Type (TE) then
-         return Get_Record_Type_Alignment (TE);
-
-      --  If it's a subprogram type, there really isn't an alignment, but
-      --  indicate that code can be anywhere.
-
-      elsif Ekind (TE) = E_Subprogram_Type then
-         return 1;
-
-      --  Otherwise, it must be an elementary type, so get the LLVM type's
-      --  alignment
-
-      else
-         return Get_Type_Alignment (Type_Of (TE));
-
       end if;
+
+      case Ekind (TE) is
+
+         when Array_Kind =>
+            return Get_Array_Type_Alignment (TE);
+
+         when Record_Kind =>
+            return Get_Record_Type_Alignment (TE);
+
+         when E_Subprogram_Type =>
+
+            --  There really isn't an alignment, but indicate code can be
+            --  anywhere.
+
+            return BPU;
+
+         when others =>
+            --  Otherwise, it must be an elementary type, so get the LLVM
+            --  type's alignment
+
+            return Get_Type_Alignment (T);
+      end case;
+
    end Get_Type_Alignment;
 
    package body Size is

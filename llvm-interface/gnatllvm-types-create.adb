@@ -398,7 +398,7 @@ package body GNATLLVM.Types.Create is
               (if   Known_Esize (Size_TE) then Esize (Size_TE)
                else RM_Size (Size_TE));
             Size       : constant Uint      :=
-              (if   Obj_Size = No_Uint then No_Uint
+              (if   No (Obj_Size) then No_Uint
                else Validate_Size (Size_TE, GT, Obj_Size,
                                    For_Type     => True,
                                    Zero_Allowed =>
@@ -408,8 +408,8 @@ package body GNATLLVM.Types.Create is
             --  If this is an atomic or VFA type with no alignment specified,
             --  maybe pick an alignment based on the size.
 
-            if Is_Atomic_Or_VFA (TE) and then Align = No_Uint then
-               if Size /= No_Uint
+            if Is_Atomic_Or_VFA (TE) and then No (Align) then
+               if Present (Size)
                  and then (Size = 16 or else Size = 32 or else Size = 64
                              or else Size = 128)
                then
@@ -650,7 +650,7 @@ package body GNATLLVM.Types.Create is
 
          return Max_Align;
 
-      elsif Align /= 0 and then Align /= No_Uint then
+      elsif Present (Align) and then Align /= 0 then
          New_Align := UI_To_Int (Align) * BPU;
       end if;
 
@@ -732,7 +732,7 @@ package body GNATLLVM.Types.Create is
       --  allowed, or if this is a dynamic size (from back-annotation), we're
       --  done.
 
-      if Size = No_Uint or else (Size = 0 and then not Zero_Allowed)
+      if No (Size) or else (Size = 0 and then not Zero_Allowed)
         or else Is_Dynamic_SO_Ref (Size)
       then
          return No_Uint;

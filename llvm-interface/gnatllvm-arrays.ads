@@ -300,7 +300,7 @@ private
      --  Only one item can be specified.  We might think that exactly one
      --  item must be specified, but that's not the case for an
      --  unconstrained array.
-     with Predicate => ((if Cnst = No_Uint then 0 else 1) +
+     with Predicate => ((if No (Cnst)  then 0 else 1) +
                         (if No (Value) then 0 else 1)) <= 1;
 
    type Index_Bounds is record

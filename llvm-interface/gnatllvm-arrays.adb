@@ -42,7 +42,8 @@ package body GNATLLVM.Arrays is
    --  being either their lowest or highest values, respectively
 
    function Bound_Complexity (B : One_Bound; Max_Size : Boolean) return Nat is
-      (if    B.Cnst /= No_Uint then 0 elsif Present (B.Value) then 1
+      (if    Present (B.Cnst) then 0
+       elsif Present (B.Value) then 1
        elsif Max_Size then 1 else 2);
 
    function Get_GEP_Safe_Type (V : GL_Value) return GL_Type
@@ -383,7 +384,7 @@ package body GNATLLVM.Arrays is
          --  array, in which case we have a fat pointer and extract the
          --  bounds from it.
 
-         if Bound_Info.Cnst /= No_Uint then
+         if Present (Bound_Info.Cnst) then
             Res := Sz_Const_Int (Dim_Info.Bound_GT, Bound_Info.Cnst);
          elsif Present (Expr) then
 

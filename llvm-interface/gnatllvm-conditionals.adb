@@ -913,7 +913,7 @@ package body GNATLLVM.Conditionals is
 
                pragma Assert (No (Alternatives (N)));
                Decode_Range (Right_Opnd (N), Low, High);
-               if Low /= No_Uint and then High /= No_Uint then
+               if Present (Low) and then Present (High) then
                   Build_If_Range
                     (Emit_Expression (Left_Opnd (N)), Low, High,
                      (if Nkind (N) = N_In then BB_True  else BB_False),

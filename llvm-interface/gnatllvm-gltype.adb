@@ -378,11 +378,11 @@ package body GNATLLVM.GLType is
         and then In_Extended_Main_Code_Unit (Err_Ident)
         and then (Has_Padding (Out_GT)
                     or else Is_Packed_Array_Impl_Type (GT))
-        and then Present (In_Sz) and then Size /= No_Uint
+        and then Present (In_Sz) and then Present (Size)
       then
          declare
             Align_V      : constant Nat      :=
-              (if   Align_For_Msg /= No_Uint then UI_To_Int (Align_For_Msg)
+              (if   Present (Align_For_Msg) then UI_To_Int (Align_For_Msg)
                else Get_Type_Alignment (GT));
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
             In_Sz_Align  : constant GL_Value :=
@@ -459,12 +459,11 @@ package body GNATLLVM.GLType is
       Int_Sz      : constant Uint         :=
         (if Size = 0 then Uint_1 else Size);
       Size_V      : GL_Value              :=
-        (if   Size = No_Uint or else not UI_Is_In_ULL_Range (Size)
+        (if   No (Size) or else not UI_Is_In_ULL_Range (Size)
               or else Is_Dynamic_SO_Ref (Size)
          then In_GTI.Size else Size_Const_Int (Size));
       Align_V     : constant GL_Value     :=
-        (if   Align = No_Uint then In_GTI.Alignment
-         else Size_Const_Int (Align));
+        (if No (Align) then In_GTI.Alignment else Size_Const_Int (Align));
       Found_GT    : GL_Type               := Get_GL_Type (TE);
 
       ----------------------
@@ -533,7 +532,7 @@ package body GNATLLVM.GLType is
                   and then not (Needs_Max
                                   and then (No (Size_V)
                                               or else not Prim_Native))
-                  and then not (Size /= No_Uint
+                  and then not (Present (Size)
                                   and then (Get_Type_Kind (GTI.LLVM_Type) =
                                               Integer_Type_Kind)
                                   and then (Get_Type_Size (GTI.LLVM_Type) /=
@@ -584,7 +583,7 @@ package body GNATLLVM.GLType is
             begin
                Bounds_From_Type (Prim_GT, LB, HB);
                GTI.LLVM_Type :=
-                 (if Int_Sz = No_Uint then Prim_T else Int_Ty (Int_Sz));
+                 (if No (Int_Sz) then Prim_T else Int_Ty (Int_Sz));
                GTI.Kind      := Biased;
                GTI.Bias      := LB;
             end;
@@ -594,7 +593,7 @@ package body GNATLLVM.GLType is
          --  make an alternate integer type.
 
          elsif Is_Discrete_Or_Fixed_Point_Type (GT)
-           and then Size /= No_Uint and then Size <= Max_Int_Sz
+           and then Present (Size) and then Size <= Max_Int_Sz
          then
             GTI.LLVM_Type := Int_Ty (Int_Sz);
             GTI.Kind      := Int_Alt;

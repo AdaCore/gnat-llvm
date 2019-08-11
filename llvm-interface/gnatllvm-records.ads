@@ -132,7 +132,7 @@ package GNATLLVM.Records is
    function Field_Bit_Offset (F : Entity_Id) return Uint
      with Pre  => Ekind_In (F, E_Component, E_Discriminant)
                   and then Present (Get_Field_Info (F)),
-          Post => Field_Bit_Offset'Result /= No_Uint;
+          Post => Present (Field_Bit_Offset'Result);
    --  Return the bitfield offset of F or zero if it's not a bitfield
 
    function Is_Bitfield (F : Entity_Id) return Boolean
@@ -402,11 +402,11 @@ private
       --  a possible change in size
 
       First_Bit      : Uint;
-      --  If not No_Uint, then the first bit (0-origin) within the LLVM field
-      --  that corresponds to this field.
+      --  If Present, the first bit (0-origin) within the LLVM field that
+      --  corresponds to this field.
 
       Num_Bits       : Uint;
-      --  If not No_Uint, then the number of bits within the LLVM field that
+      --  If Present, the number of bits within the LLVM field that
       --  corresponds to this field.
 
       Array_Bitfield : Boolean;

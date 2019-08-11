@@ -930,7 +930,7 @@ package GNATLLVM.GLValue is
           Inline;
 
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value
-     with Pre  => Present (GT) and then N /= No_Uint,
+     with Pre  => Present (GT) and then Present (N),
           Post => Present (Const_Int'Result), Inline;
 
    function Const_Int
@@ -954,7 +954,7 @@ package GNATLLVM.GLValue is
      with Pre  => Present (GT), Post => Is_Reference (Const_Null_Ref'Result);
 
    function Const_Int (V : GL_Value; N : Uint) return GL_Value
-     with Pre  => Present (V) and then N /= No_Uint,
+     with Pre  => Present (V) and then Present (N),
           Post => Present (Const_Int'Result), Inline;
 
    function Const_Int
@@ -980,7 +980,7 @@ package GNATLLVM.GLValue is
 
    function Size_Const_Int (N : Uint) return GL_Value is
      (Const_Int (Size_GL_Type, N))
-     with Pre  => N /= No_Uint, Post => Present (Size_Const_Int'Result);
+     with Pre  => Present (N), Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Int
      (N : ULL; Sign_Extend : Boolean := False) return GL_Value
@@ -994,7 +994,7 @@ package GNATLLVM.GLValue is
 
    function Const_Int_32 (N : Uint) return GL_Value is
      (Const_Int (Int_32_GL_Type, N))
-     with Pre  => N /= No_Uint, Post => Present (Const_Int_32'Result);
+     with Pre  => Present (N), Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
      (N : ULL; Sign_Extend : Boolean := False) return GL_Value
@@ -1544,14 +1544,14 @@ package GNATLLVM.GLValue is
 
    function "+" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS + UI_From_GL_Value (RHS))
-     with Pre  => LHS /= No_Uint and then Is_A_Const_Int (RHS);
+     with Pre  => Present (LHS) and then Is_A_Const_Int (RHS);
    function "+" (LHS : GL_Value; RHS : Uint) return Uint is
      (RHS + UI_From_GL_Value (LHS))
-     with Pre  => RHS /= No_Uint and then Is_A_Const_Int (LHS);
+     with Pre  => Present (RHS) and then Is_A_Const_Int (LHS);
 
    function "-" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS - UI_From_GL_Value (RHS))
-     with Pre  => LHS /= No_Uint and then Is_A_Const_Int (RHS);
+     with Pre  => Present (LHS) and then Is_A_Const_Int (RHS);
 
    function "<" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_ULT else Int_SLT),

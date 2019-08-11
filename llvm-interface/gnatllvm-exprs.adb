@@ -809,7 +809,7 @@ package body GNATLLVM.Exprs is
       --  in the tree.
 
       Ret := Get_Attribute_From_Annotation (N);
-      if Ret /= No_Uint then
+      if Present (Ret) then
          return Const_Int (GT, Ret);
       end if;
 

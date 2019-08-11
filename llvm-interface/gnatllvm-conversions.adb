@@ -146,8 +146,12 @@ package body GNATLLVM.Conversions is
       --  nonnegative.
 
       else
-         return Get_Uint_Value (Type_Low_Bound (GT)) /= No_Uint
-           and then Get_Uint_Value (Type_Low_Bound (GT)) >= 0;
+         declare
+            LB : constant Uint := Get_Uint_Value (Type_Low_Bound (GT));
+
+         begin
+            return Present (LB) and then LB >= 0;
+         end;
       end if;
 
    end Is_Unsigned_For_RM;

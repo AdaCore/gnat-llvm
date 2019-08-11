@@ -1005,7 +1005,7 @@ package body GNATLLVM.Records.Create is
          --  If the size is not a multiple of the storage unit, then error
          --  out and reset the size.
 
-         if Present (Clause) and then Size /= No_Uint
+         if Present (Clause) and then Present (Size)
            and then Size mod BPU /= 0 and then Error_Str'Length > 0
          then
             Error_Msg_NE ("size for " & Error_Str &
@@ -1018,7 +1018,7 @@ package body GNATLLVM.Records.Create is
          --  is atomic or aliased, we may have to give an error. (The
          --  variable case is handled above.)
 
-         elsif Present (Clause) and then Size /= No_Uint
+         elsif Present (Clause) and then Present (Size)
            and then not Is_Dynamic_Size (Def_GT)
            and then (Size_Const_Int (Size) < Get_Type_Size (Def_GT)
                        or else ((Is_Aliased (E) or else Atomic)
@@ -1370,7 +1370,7 @@ package body GNATLLVM.Records.Create is
                   F    : constant Entity_Id   := AF_K.F;
 
                begin
-                  exit when AF_K.Pos = No_Uint or else AF_K.Size = No_Uint
+                  exit when No (AF_K.Pos) or else No (AF_K.Size)
                     or else not Is_Bitfield_By_Rep (F, AF_K.Pos, AF_K.Size,
                                                     Use_Pos_Size => True)
                     or else Start_Position (AF_K.Pos) >= Bitfield_End_Pos;
@@ -1491,7 +1491,7 @@ package body GNATLLVM.Records.Create is
                --  Specified bit position of field, if any.
 
                Need_Align  :  Nat                :=
-                 (if   Pos /= No_Uint
+                 (if   Present (Pos)
                   then BPU else Effective_Field_Alignment (F));
                --  The alignment we need this field to have
 
@@ -1525,7 +1525,7 @@ package body GNATLLVM.Records.Create is
                --  clear out any starting location for packed fields.
                --  Ignore if there's a position specified.
 
-               if AF.Var_Depth /= Last_Var_Depth and then Pos = No_Uint then
+               if AF.Var_Depth /= Last_Var_Depth and then No (Pos) then
                   if AF.Var_Depth > Last_Var_Depth and then AF.Var_Align /= 0
                   then
                      Need_Align  := AF.Var_Align;
@@ -1546,7 +1546,7 @@ package body GNATLLVM.Records.Create is
                --  set its position, but we've previously set up a location
                --  for packable fields, clear out that location.
 
-               if Packed_Field_Bitpos /= No_Uint and then Pos = No_Uint
+               if Present (Packed_Field_Bitpos) and then No (Pos)
                  and then not Is_Packable_Field (AF.AF)
                then
                   Packed_Field_Bitpos := No_Uint;
@@ -1555,7 +1555,7 @@ package body GNATLLVM.Records.Create is
                --  location for them, set one up and initialize the position
                --  and size of this field as well as following ones.
 
-               elsif Packed_Field_Bitpos = No_Uint
+               elsif No (Packed_Field_Bitpos)
                  and then Is_Packable_Field (AF.AF)
                then
                   Pos                 := UI_From_ULL (Cur_RI_Pos);
@@ -1597,7 +1597,7 @@ package body GNATLLVM.Records.Create is
                --  after the end of all repped fields (including those in
                --  a variant).
 
-               if Pos = No_Uint and then Chars (F) /= Name_uTag then
+               if No (Pos) and then Chars (F) /= Name_uTag then
                   if not In_Variant and then not Had_Non_Repped then
                      Forced_Pos :=
                        Align_Pos (UI_To_ULL (Max_Record_Rep (F)), Need_Align);
@@ -1654,7 +1654,7 @@ package body GNATLLVM.Records.Create is
                   --  run out of components that have a position, end the
                   --  overlap section.
 
-                  elsif Pos = No_Uint and then RI_Is_Overlap then
+                  elsif No (Pos) and then RI_Is_Overlap then
                      Flush_Types;
                      RI_Is_Overlap := False;
 
@@ -1676,7 +1676,7 @@ package body GNATLLVM.Records.Create is
                      --  LLVM type to use
 
                      Needed_Pos  : constant ULL    :=
-                       (if    Pos /= No_Uint then UI_To_ULL (Pos)
+                       (if    Present (Pos)   then UI_To_ULL (Pos)
                         elsif Forced_Pos /= 0 then Forced_Pos
                         else  Align_Pos (Cur_RI_Pos, Need_Align));
                      --  The position we need to be at, either by virtue of
@@ -1696,7 +1696,7 @@ package body GNATLLVM.Records.Create is
                        or else (Is_Truncated_GL_Type (F_GT)
                                   and then J /= Added_Field_Table.Last)
                      then
-                        if Bitfield_Start_Pos = No_Uint
+                        if No (Bitfield_Start_Pos)
                           or else AF.Pos >= Bitfield_End_Pos
                         then
                            Create_Bitfield_Field (J);

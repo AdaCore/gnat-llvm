@@ -438,7 +438,7 @@ package GNATLLVM.Types is
 
    function Const_Int (GT : GL_Type; C : Uint) return IDS is
      ((False, Const_Int (GT, C)))
-     with Pre  => Present (GT) and then C /= No_Uint;
+     with Pre  => Present (GT) and then Present (C);
 
    function Const_Val_ULL (V : IDS) return ULL is
      (Get_Const_Int_Value_ULL (V.Value))
@@ -581,7 +581,7 @@ package GNATLLVM.Types is
       --  If dynamic, the tree node reference of the expression
    end record
      with Predicate => Is_None or else Present (C_Value)
-                       or else T_Value /= No_Uint;
+                       or else Present (T_Value);
 
    type BA_Data_Array is array (Nat range <>) of BA_Data;
 
@@ -623,11 +623,11 @@ package GNATLLVM.Types is
 
    function Const (C : Uint) return BA_Data is
      ((False, Size_Const_Int (C), No_Uint))
-     with Pre => C /= No_Uint, Post => Is_Const (Const'Result);
+     with Pre => Present (C), Post => Is_Const (Const'Result);
 
    function Const_Int (GT : GL_Type; C : Uint) return BA_Data is
      ((False, Const_Int (GT, C), No_Uint))
-     with Pre  => Present (GT) and then C /= No_Uint,
+     with Pre  => Present (GT) and then Present (C),
           Post => Is_Const (Const_Int'Result);
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;

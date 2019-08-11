@@ -845,7 +845,7 @@ package body GNATLLVM.Variables is
             --  If we can compute this from annotations in the tree, we
             --  know it doesn't need elaboration.
 
-            if Get_Attribute_From_Annotation (N) /= No_Uint then
+            if Present (Get_Attribute_From_Annotation (N)) then
                return True;
             end if;
 
@@ -1276,7 +1276,7 @@ package body GNATLLVM.Variables is
       --  reference to another object, and the size of its type is a
       --  constant, adjust the alignment.
 
-      if Size = No_Uint and then Align = No_Uint and then Present (In_Size)
+      if No (Size) and then No (Align) and then Present (In_Size)
         and then (Is_Atomic_Or_VFA_Object (Def_Ident)
                     or else (not Ekind_In (Def_Ident, E_Exception,
                                            E_Out_Parameter, E_Loop_Parameter)

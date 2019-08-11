@@ -1504,7 +1504,7 @@ package body GNATLLVM.Records is
       Our_Pos  : constant Uint      :=
         (if    Use_Pos_Size then Pos
          elsif Known_Static_Component_Bit_Offset (F)
-         then  Component_Bit_Offset (F) else  No_Uint);
+         then  Component_Bit_Offset (F) else No_Uint);
       Our_Size : constant Uint      :=
         (if    Use_Pos_Size then Size
          elsif Known_Static_Esize (F) then  Esize (F)
@@ -1513,13 +1513,13 @@ package body GNATLLVM.Records is
    begin
       --  If the position is specified and isn't byte-aligned, it's a bitfield
 
-      if Our_Pos /= No_Uint and then Our_Pos mod BPU /= 0 then
+      if Present (Our_Pos) and then Our_Pos mod BPU /= 0 then
          return True;
 
       --  If we have no specification of size, either explicitly or
       --  implicitly by packing, this isn't a bitfield
 
-      elsif Our_Size = No_Uint then
+      elsif No (Our_Size) then
          return False;
 
       --  For integral types, we can only have sizes that are a power of
@@ -1538,7 +1538,7 @@ package body GNATLLVM.Records is
    -----------------
 
    function Is_Bitfield (F : Entity_Id) return Boolean is
-     (Field_Info_Table.Table (Get_Field_Info (F)).First_Bit /= No_Uint);
+     (Present (Field_Info_Table.Table (Get_Field_Info (F)).First_Bit));
 
    -----------------------
    -- Is_Array_Bitfield --
@@ -2253,7 +2253,7 @@ package body GNATLLVM.Records is
          Write_Int (Nat (FI.Rec_Info_Idx));
          Write_Str (", Ordinal = ");
          Write_Int (FI.Field_Ordinal);
-         if FI.First_Bit /= No_Uint then
+         if Present (FI.First_Bit) then
             Write_Str (", Bits = ");
             Write_Int (UI_To_Int (FI.First_Bit));
             Write_Str (" .. ");
@@ -2406,7 +2406,7 @@ package body GNATLLVM.Records is
                   if Present (RI.LLVM_Type) then
                      Write_Str ("@");
                      Write_Int (FI.Field_Ordinal);
-                     if FI.First_Bit /= No_Uint then
+                     if Present (FI.First_Bit) then
                         Write_Str ("[");
                         Write_Int (UI_To_Int (FI.First_Bit));
                         Write_Str (" .. ");

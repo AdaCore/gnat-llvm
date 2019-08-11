@@ -1330,7 +1330,7 @@ package body GNATLLVM.Types is
          when Attribute_Position | Attribute_Bit_Position =>
 
             Ret := Component_Bit_Offset (Our_E);
-            if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
+            if Present (Ret) and then Is_Static_SO_Ref (Ret)
               and then Attr = Attribute_Position
             then
                Ret := Ret / BPU;
@@ -1347,7 +1347,7 @@ package body GNATLLVM.Types is
             if Known_Normalized_First_Bit (Our_E) then
                Ret := Normalized_First_Bit (Our_E);
             end if;
-            if Ret /= No_Uint and then Is_Static_SO_Ref (Ret)
+            if Present (Ret) and then Is_Static_SO_Ref (Ret)
               and then Known_Esize (Our_E) and then Is_Static_SO_Ref (Ret)
             then
                Ret := Ret + Esize (Our_E) - 1;
@@ -1497,7 +1497,7 @@ package body GNATLLVM.Types is
 
       --  If we already have a Node_Ref, return it.
 
-      elsif V.T_Value /= No_Uint then
+      elsif Present (V.T_Value) then
          return V.T_Value;
 
       --  Otherwise, we have a constant.  If negative, make a Negate_Expr.
@@ -1603,7 +1603,7 @@ package body GNATLLVM.Types is
 
       --  If either isn't valid, return invalid
 
-      if Op1 = No_Uint or else Op2 = No_Uint then
+      if No (Op1) or else No (Op2) then
          return No_BA;
 
          --  Otherwise build and return a node.  If there's a constant,
@@ -1648,7 +1648,7 @@ package body GNATLLVM.Types is
 
       --  If either isn't valid, return invalid
 
-      if LHS_Op = No_Uint or else RHS_Op = No_Uint then
+      if No (LHS_Op) or else No (RHS_Op) then
          return No_BA;
 
       --  Otherwise, build and return a node
@@ -1698,9 +1698,7 @@ package body GNATLLVM.Types is
 
       --  If any isn't valid, return invalid
 
-      if If_Op = No_Uint or else Then_Op = No_Uint
-        or else Else_Op = No_Uint
-      then
+      if No (If_Op) or else No (Then_Op) or else No (Else_Op) then
          return No_BA;
 
       --  Otherwise, build and return a node
@@ -1725,7 +1723,7 @@ package body GNATLLVM.Types is
    begin
       --  If we didn't already get an SO_Ref for this expression, get one
 
-      if SO_Info = No_Uint then
+      if No (SO_Info) then
          --  If this expression contains a discriminant, build tree nodes
          --  corresponding to that discriminant.  If we have an unsupported
          --  node, return no value.
@@ -1837,14 +1835,14 @@ package body GNATLLVM.Types is
 
          --  Save the computed value, if any
 
-         if SO_Info /= No_Uint then
+         if Present (SO_Info) then
             Set_SO_Ref (V, SO_Info);
          end if;
       end if;
 
       --  And now return the value
 
-      return (SO_Info = No_Uint, No_GL_Value, SO_Info);
+      return (No (SO_Info), No_GL_Value, SO_Info);
    end Emit_Expr;
 
    ------------------

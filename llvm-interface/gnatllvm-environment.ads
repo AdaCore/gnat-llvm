@@ -236,9 +236,8 @@ package GNATLLVM.Environment is
           Post => Get_Value (VE) = VL, Inline;
 
    procedure Set_SO_Ref               (N : Node_Id; U : Dynamic_SO_Ref)
-     with Pre  => Present (N) and then U /= No_Uint
-                  and then (Get_SO_Ref (N) = No_Uint
-                              or else Get_SO_Ref (N) = U),
+     with Pre  => Present (N) and then Present (U)
+                  and then (No (Get_SO_Ref (N)) or else Get_SO_Ref (N) = U),
           Post => Get_SO_Ref (N) = U, Inline;
 
    procedure Set_Debug_Type           (TE : Entity_Id; DT : Metadata_T)

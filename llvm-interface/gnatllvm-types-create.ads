@@ -43,7 +43,7 @@ package GNATLLVM.Types.Create is
    function Validate_Alignment
      (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint
      with Pre  => Present (E),
-          Post => Validate_Alignment'Result /= No_Uint;
+          Post => Present (Validate_Alignment'Result);
    --  Current_Align is the current alignment of E, either because it's the
    --  alignment of the LLVM type (if E is a type) or because it's the
    --  alignment of E's type (if E if an object).  Align is a proposed

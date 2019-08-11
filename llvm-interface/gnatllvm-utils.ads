@@ -49,10 +49,10 @@ package GNATLLVM.Utils is
 
    procedure Decode_Range (N : Node_Id; Low, High : out Uint)
      with Pre => Present (N);
-   --  Decode the right operand of an N_In or N_Not_In or of a Choice in
-   --  a case statement into the low and high bounds.  If either Low or High
-   --  is No_Uint, it means that we have a nonstatic value, a non-discrete
-   --  value, or we can't find the value.  This should not happen in switch
+   --  Decode the right operand of an N_In or N_Not_In or of a Choice in a
+   --  case statement into the low and high bounds.  If either Low or High
+   --  is not Present, we have a nonstatic value, a non-discrete value, or
+   --  we can't find the value.  This should not happen in switch
    --  statements.
 
    function Range_Length
@@ -172,7 +172,7 @@ package GNATLLVM.Utils is
    procedure Error_Msg_NE_Num
      (Msg : String; N : Node_Id; E : Entity_Id; Num : Uint)
      with Pre => Msg'Length > 0 and then Present (N) and then Present (E)
-                 and then Num /= No_Uint;
+                 and then Present (Num);
 
    function Is_Layout_Identical (T1, T2 : Type_T) return Boolean
      with Pre => Present (T1) and then Present (T2);

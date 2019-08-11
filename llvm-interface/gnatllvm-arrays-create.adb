@@ -305,7 +305,7 @@ package body GNATLLVM.Arrays.Create is
             LB_Uint   : constant Uint    := Dim_Info.Low.Cnst;
             HB_Uint   : constant Uint    := Dim_Info.High.Cnst;
             Idx_Const : constant Boolean :=
-              LB_Uint /= No_Uint and then HB_Uint /= No_Uint
+              Present (LB_Uint) and then Present (HB_Uint)
               and then UI_Is_In_Int_Range (HB_Uint - LB_Uint + 1);
 
          begin

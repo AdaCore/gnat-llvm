@@ -360,6 +360,7 @@ package body GNATLLVM.GLType is
       Is_Biased     : Boolean := False;
       Align_For_Msg : Uint    := No_Uint) return GL_Type
    is
+      In_Sz     : constant GL_Value  := GT_Size (GT);
       Out_GT    : constant GL_Type   :=
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
                                       Is_Biased);
@@ -375,16 +376,15 @@ package body GNATLLVM.GLType is
 
       if Present (Err_Ident) and then Comes_From_Source (Err_Ident)
         and then In_Extended_Main_Code_Unit (Err_Ident)
-        and then (Is_Padded_GL_Type (Out_GT)
+        and then (Has_Padding (Out_GT)
                     or else Is_Packed_Array_Impl_Type (GT))
-        and then Size /= No_Uint
+        and then Present (In_Sz) and then Size /= No_Uint
       then
          declare
             Align_V      : constant Nat      :=
               (if   Align_For_Msg /= No_Uint then UI_To_Int (Align_For_Msg)
                else Get_Type_Alignment (GT));
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
-            In_Sz        : constant GL_Value := GT_Size (GT);
             In_Sz_Align  : constant GL_Value :=
               Align_To (GT_Size (GT), 1, Align_V);
             Pad_Sz       : constant GL_Value :=

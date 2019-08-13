@@ -657,7 +657,7 @@ package body GNATLLVM.Records is
          No_Padding  : Boolean        := False) return Result
       is
          Our_BPU      : constant Nat   := BPU;
-         --  ??? The above shouldn't be needed, but we get a weird errora
+         --  ??? The above shouldn't be needed, but we get a weird error
          Total_Size   : Result         :=
            (if Present (In_Size) then In_Size else Sz_Const (0));
          Cur_Align    : Nat            :=

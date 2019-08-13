@@ -1619,9 +1619,6 @@ package body GNATLLVM.Records.Create is
 
                   --  If we're forcing the position of this field, set that
                   --  as the starting position of the RI we're about to make.
-                  --  ??? For now, set the alignment to unaligned, but we
-                  --  need to clean this up at some point as well as set
-                  --  the proper GT for the fields.
 
                   if Forced_Pos /= 0 then
                      RI_Position := Forced_Pos;

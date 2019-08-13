@@ -1583,13 +1583,13 @@ package body GNATLLVM.Types is
    -----------
 
    function Binop
-     (V1, V2 : BA_Data;
-      F      : Binop_Access;
-      C      : TCode;
-      Name   : String := "") return BA_Data
+     (LHS, RHS : BA_Data;
+      F        : Binop_Access;
+      C        : TCode;
+      Name     : String := "") return BA_Data
    is
-      Result   : GL_Value;
-      Op1, Op2 : Node_Ref_Or_Val;
+      Result         : GL_Value;
+      LHS_Op, RHS_Op : Node_Ref_Or_Val;
 
    begin
       --  If both are constants, do the operation as a constant and return
@@ -1597,29 +1597,31 @@ package body GNATLLVM.Types is
       --  ???  We could switch to computing as a Uint for overflow, but it's
       --  not worth it.
 
-      if Is_Const (V1) and then Is_Const (V2) then
-         Result := F (V1.C_Value, V2.C_Value, Name);
+      if Is_Const (LHS) and then Is_Const (RHS) then
+         Result := F (LHS.C_Value, RHS.C_Value, Name);
          return (if   Overflowed (Result) or else Is_Undef (Result)
                  then No_BA else (False, Result, No_Uint));
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint
 
-      Op1 :=  Annotated_Value (V1);
-      Op2 :=  Annotated_Value (V2);
+      LHS_Op :=  Annotated_Value (LHS);
+      RHS_Op :=  Annotated_Value (RHS);
 
       --  If either isn't valid, return invalid
 
-      if No (Op1) or else No (Op2) then
+      if No (LHS_Op) or else No (RHS_Op) then
          return No_BA;
 
-         --  Otherwise build and return a node.  If there's a constant,
-         --  it should be in the second position.
+      --  Otherwise build and return a node.  If there's a constant, it
+      --  should be in the RHS.
 
       else
          return (False, No_GL_Value,
-                 Create_Node (C, (if Is_Static_SO_Ref (Op1) then Op2 else Op1),
-                              (if Is_Static_SO_Ref (Op1) then Op1 else Op2)));
+                 Create_Node (C, (if   Is_Static_SO_Ref (LHS_Op)
+                                  then RHS_Op else LHS_Op),
+                              (if   Is_Static_SO_Ref (LHS_Op)
+                               then LHS_Op else RHS_Op)));
       end if;
 
    end Binop;

@@ -1857,7 +1857,7 @@ package body GNATLLVM.Subprograms is
 
                   --  If we're required to make a copy due to volatility or
                   --  atomicity, make a note of that.
-                  --  ??? We also have to do this for mis-aligned, but  have
+                  --  ??? We also have to do this for mis-aligned, but have
                   --  no way easy way of doing that for now.
 
                   if Comes_From_Source (N)

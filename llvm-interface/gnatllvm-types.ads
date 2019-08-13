@@ -65,8 +65,7 @@ package GNATLLVM.Types is
    --  code generation and optimization is very slow if the value's size is
    --  too large.  We pick an arbitary constant here to cut it off.  This
    --  constant is in number of loads or stores, meaning the maximum value
-   --  of the size divided by the alignment.  ??? Perhaps we should make
-   --  this a command-line operand.
+   --  of the size divided by the alignment.
 
    function Is_Dynamic_Size
      (GT             : GL_Type;
@@ -596,7 +595,7 @@ package GNATLLVM.Types is
    type Unop_Access is access
      function (V : GL_Value; Name : String := "") return GL_Value;
    type Binop_Access is access
-     function (V1, V2 : GL_Value; Name : String := "") return GL_Value;
+     function (LHS, RHS : GL_Value; Name : String := "") return GL_Value;
 
    function Is_Const  (V : BA_Data) return Boolean is
      (Present (V.C_Value) and then not Overflowed (V.C_Value)
@@ -659,10 +658,10 @@ package GNATLLVM.Types is
    --  GL_Value) and C (which is how to make a representation tree).;
 
    function Binop
-     (V1, V2 : BA_Data;
-      F      : Binop_Access;
-      C      : TCode;
-      Name   : String := "") return BA_Data;
+     (LHS, RHS : BA_Data;
+      F        : Binop_Access;
+      C        : TCode;
+      Name     : String := "") return BA_Data;
    --  Likewise, but for a binary operation.
 
    function Neg (V : BA_Data; Name : String := "") return BA_Data is
@@ -680,29 +679,29 @@ package GNATLLVM.Types is
       LHS, RHS : BA_Data;
       Name     : String := "") return BA_Data;
 
-   function Add (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if    Is_Const_0 (V1) then V2
-       elsif Is_Const_0 (V2) then V1
-       else  Binop (V1, V2, Add'Access, Plus_Expr, Name)));
+   function Add (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+     ((if    Is_Const_0 (LHS) then RHS
+       elsif Is_Const_0 (RHS) then LHS
+       else  Binop (LHS, RHS, Add'Access, Plus_Expr, Name)));
 
-   function Sub (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if    Is_Const_0 (V2) then V1
-       elsif Is_Const_0 (V1) then Neg (V2, Name)
-       else  Binop (V1, V2, Sub'Access, Minus_Expr, Name)));
+   function Sub (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+     ((if    Is_Const_0 (RHS) then LHS
+       elsif Is_Const_0 (LHS) then Neg (RHS, Name)
+       else  Binop (LHS, RHS, Sub'Access, Minus_Expr, Name)));
 
-   function Mul (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if    Is_Const_1 (V1) then V2
-       elsif Is_Const_1 (V2) then V1
-       elsif Is_Const_0 (V1) or else Is_Const_0 (V2) then Const (0)
-       else  Binop (V1, V2, Mul'Access, Mult_Expr, Name)));
+   function Mul (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+     ((if    Is_Const_1 (LHS) then RHS
+       elsif Is_Const_1 (RHS) then LHS
+       elsif Is_Const_0 (LHS) or else Is_Const_0 (RHS) then Const (0)
+       else  Binop (LHS, RHS, Mul'Access, Mult_Expr, Name)));
 
-   function U_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if   Is_Const_1 (V2) then V1
-       else Binop (V1, V2, U_Div'Access, Trunc_Div_Expr, Name)));
+   function U_Div (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+     ((if   Is_Const_1 (RHS) then LHS
+       else Binop (LHS, RHS, U_Div'Access, Trunc_Div_Expr, Name)));
 
-   function S_Div (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if   Is_Const_1 (V2) then V1
-       else Binop (V1, V2, S_Div'Access, Trunc_Div_Expr, Name)));
+   function S_Div (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+     ((if   Is_Const_1 (RHS) then LHS
+       else Binop (LHS, RHS, S_Div'Access, Trunc_Div_Expr, Name)));
 
    function "+" (LHS, RHS : BA_Data) return BA_Data is
      (Add (LHS, RHS));

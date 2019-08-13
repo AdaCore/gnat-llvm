@@ -671,6 +671,7 @@ package body GNATLLVM.Types.Create is
             if not Error_Posted (E) or else Has_Alignment_Clause (E) then
                Error_Msg_NE_Num ("alignment for& must be at least ^",
                                  N, E, Current_Align / BPU);
+               New_Align := Current_Align;
             end if;
          end if;
       end if;

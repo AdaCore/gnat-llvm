@@ -1315,8 +1315,14 @@ package body GNATLLVM.Records is
       Size    : constant Uint      := Esize (AF);
       TE      : constant Entity_Id := Full_Scope (AF);
       R_Align : constant Nat       :=
-        (if   Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
-         else Get_Maximum_Alignment * BPU);
+        (if    Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
+         elsif Known_RM_Size (TE) and then Strict_Alignment (TE)
+         then  Max_Align (UI_To_ULL (RM_Size (TE)))
+         else  Get_Maximum_Alignment * BPU);
+      --  If an alignment is specified for the record, use it.  If not, but
+      --  a size is specified for the record and we require strict alignment,
+      --  derive the alignment from that.  Otherwise, the only contributions
+      --  to alignment are the alignment of the fields.
 
    begin
       --  If the field can't be misaligned, its alignment always contributes

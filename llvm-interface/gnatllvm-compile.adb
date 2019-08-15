@@ -25,6 +25,7 @@ with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
+with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -306,8 +307,10 @@ package body GNATLLVM.Compile is
                              Private_Declarations (N));
             Pop_Debug_Scope;
 
-            if Library_Level then
-               Emit_Elab_Proc (N, Empty, Parent (Parent (N)), "s");
+            if Nkind (Parent (Parent (N))) = N_Compilation_Unit
+              and then No (Corresponding_Body (Parent (N)))
+            then
+               Emit_Elab_Proc (N, Empty, Parent (Parent (N)), False);
             end if;
 
          when N_Package_Body =>
@@ -322,6 +325,13 @@ package body GNATLLVM.Compile is
                Stmts : constant Node_Id := Handled_Statement_Sequence (N);
 
             begin
+               --  If this is the uppermost compilation unit, show any
+               --  elaborations are now for the body
+
+               if Nkind (Parent (N)) = N_Compilation_Unit then
+                  Mark_Body_Elab;
+               end if;
+
                --  Always process declarations, but they do not provide
                --  a scope, since those declarations are part of what
                --  encloses us, if anything.
@@ -335,10 +345,18 @@ package body GNATLLVM.Compile is
                --  level).
 
                Push_Lexical_Debug_Scope (N);
-               if Library_Level
-                 and then Nkind (Parent (N)) = N_Compilation_Unit
-               then
-                  Emit_Elab_Proc (N, Stmts, Parent (N), "b");
+               if Nkind (Parent (N)) = N_Compilation_Unit then
+                  if Present (Corresponding_Spec (N)) then
+                     declare
+                        Spec : constant Entity_Id := Corresponding_Spec (N);
+                        Decl : constant Node_Id   := Declaration_Node (Spec);
+
+                     begin
+                        Emit_Elab_Proc (Decl, Empty, Parent (Parent (Decl)));
+                     end;
+                  end if;
+
+                  Emit_Elab_Proc (N, Stmts, Parent (N), For_Body => True);
                elsif Present (Stmts) then
                   if not Library_Level then
                      Push_Block;
@@ -1168,6 +1186,148 @@ package body GNATLLVM.Compile is
       end if;
    end Emit;
 
+   --  Freeze nodes for package bodies are relatively rare, so we can store
+   --  information about them in a table that we search for the relevant
+   --  entity.  We need to handle the case where we're at library level
+   --  (so what we have to save is the position into the elab table) or
+   --  in code, where we need to save a pointer to a branch we add to a new
+   --  basic block that we made.  Note that in the latter case, we can't
+   --  use Get_Current_Position / Set_Current_Position because those are
+   --  intended for adding invidual instructions within a basic block
+   --  but here we need to insert large amounts of code, including basic
+   --  blocks.
+
+   type Code_Position (Library : Boolean := False) is record
+      Def_Ident : Entity_Id;
+      case Library is
+         when True =>
+            Elab_Ptr : Nat;
+
+         when False =>
+            Branch_Inst : Value_T;
+      end case;
+   end record;
+
+   package Code_Positions is new Table.Table
+     (Table_Component_Type => Code_Position,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Code_Positions");
+
+   --------------------------
+   -- Record_Code_Position --
+   --------------------------
+
+   procedure Record_Code_Position (Def_Ident : Entity_Id) is
+   begin
+      if Library_Level then
+
+         --  Add a dummy entry into the elab list so that multiple
+         --  consecutive calls will have different positions and record our
+         --  position in the list.
+
+         Add_To_Elab_Proc (Empty);
+         Code_Positions.Append ((True, Def_Ident, Get_Elab_Position));
+
+      else
+         --  Create a new basic block and branch to it.  Later, we'll
+         --  replace the branch we made to a branch to our new code and then
+         --  branch to that new block.
+
+         declare
+            BB : constant Basic_Block_T := Create_Basic_Block;
+
+         begin
+            Code_Positions.Append ((False, Def_Ident,
+                                    Build_Br (IR_Builder, BB)));
+            Position_Builder_At_End (BB);
+         end;
+      end if;
+
+   end Record_Code_Position;
+
+   ---------------------
+   -- Insert_Code_For --
+   ---------------------
+
+   procedure Insert_Code_For (Def_Ident : Entity_Id) is
+      Code_To_Emit : constant Node_Id :=
+        Parent (Corresponding_Body (Parent (Declaration_Node (Def_Ident))));
+
+   begin
+      for J in 1 .. Code_Positions.Last loop
+         declare
+            RCP  : constant Code_Position := Code_Positions.Table (J);
+
+         begin
+            if RCP.Def_Ident = Def_Ident then
+               pragma Assert (Library_Level = RCP.Library);
+               if RCP.Library then
+
+                  --  Get the elab pointer that we saved and the first one
+                  --  that we'll generate.
+
+                  declare
+                     Prev_Ptr  : constant Nat := RCP.Elab_Ptr;
+                     Start_Ptr : constant Nat := Get_Elab_Position;
+                     Last_Ptr  : Nat;
+
+                  begin
+                     --  Then emit our code and reorder the elab entries
+
+                     Emit (Code_To_Emit);
+                     Last_Ptr := Get_Elab_Position;
+                     Reorder_Elab_Table (Prev_Ptr, Start_Ptr);
+
+                     --  Now look for other pointers that have been stored
+                     --  in the code position table and are behind us and
+                     --  update them to account for our length.
+
+                     for K in 1 .. Code_Positions.Last loop
+                        declare
+                           RCP2 : Code_Position
+                             renames Code_Positions.Table (K);
+
+                        begin
+                           if RCP2.Library and then RCP2.Elab_Ptr > Prev_Ptr
+                           then
+                              RCP2.Elab_Ptr
+                                := RCP2.Elab_Ptr + Last_Ptr - Start_Ptr;
+                           end if;
+                        end;
+                     end loop;
+                  end;
+               else
+                  --  Make a new block and and get pointers to all the
+                  --  relevant blocks.  Then rewrite the branch to point
+                  --  to our code, emit our code, and branch to the new
+                  --  block that we used to branch to.
+
+                  declare
+                     Our_BB  : constant Basic_Block_T := Get_Insert_Block;
+                     New_BB  : constant Basic_Block_T := Create_Basic_Block;
+                     Inst    : constant Value_T       := RCP.Branch_Inst;
+                     Old_BB  : constant Basic_Block_T :=
+                       Get_Instruction_Parent (Inst);
+                     Targ_BB : constant Basic_Block_T :=
+                       Basic_Block_T (Get_Operand (Inst, 0));
+
+                  begin
+                     Instruction_Erase_From_Parent (Inst);
+                     Position_Builder_At_End (Old_BB);
+                     Move_To_BB (New_BB);
+                     Emit (Code_To_Emit);
+                     Build_Br (Targ_BB);
+                     Position_Builder_At_End (Our_BB);
+                  end;
+               end if;
+            end if;
+         end;
+      end loop;
+   end Insert_Code_For;
+
    ---------------------------
    -- Process_Freeze_Entity --
    ---------------------------
@@ -1177,28 +1337,42 @@ package body GNATLLVM.Compile is
       Decl : constant Node_Id   := Declaration_Node (E);
 
    begin
-      --  For objects, perform the object declaration
+      case Nkind (Decl) is
 
-      if Nkind_In (Decl, N_Object_Declaration, N_Exception_Declaration) then
-         Emit_Declaration (Decl, For_Freeze_Entity => True);
+         when N_Object_Declaration | N_Exception_Declaration =>
 
-      --  For subprograms, the decl node points to the subprogram
-      --  specification.  We only want to consider "normal" subprograms
-      --  that aren't intrinsic, so we not only test for intrinsic but for
-      --  an N_Subprogram_Declaration, as opposed to, for example an
-      --  N_Abstract_Subprogram_Declaration, which we don't process.  We also
-      --  have to test for protected subprograms.
+            --  For objects, perform the object declaration
 
-      elsif Nkind_In (Decl, N_Procedure_Specification,
-                      N_Function_Specification)
-        and then not Is_Intrinsic_Subprogram (E)
-        and then Nkind (Parent (Decl)) = N_Subprogram_Declaration
-        and then Convention (E) /= Convention_Protected
-        and then not Is_Eliminated (E)
-      then
-         Discard (Emit_Subprogram_Decl (Decl));
-      end if;
+            Emit_Declaration (Decl, For_Freeze_Entity => True);
 
+         when N_Procedure_Specification | N_Function_Specification =>
+
+            --  For subprograms, the decl node points to the subprogram
+            --  specification.  We only want to consider "normal"
+            --  subprograms that aren't intrinsic, so we not only test for
+            --  intrinsic but for an N_Subprogram_Declaration, as opposed
+            --  to, for example an N_Abstract_Subprogram_Declaration, which
+            --  we don't process.  We also have to test for protected
+            --  subprograms.
+
+            if not Is_Intrinsic_Subprogram (E)
+              and then Nkind (Parent (Decl)) = N_Subprogram_Declaration
+              and then Convention (E) /= Convention_Protected
+              and then not Is_Eliminated (E)
+            then
+               Discard (Emit_Subprogram_Decl (Decl));
+            end if;
+
+         when N_Package_Specification =>
+
+            --  Write out the code for this specification at the point of the
+            --  initial declaration.
+
+            Insert_Code_For (E);
+
+         when others =>
+            null;
+      end case;
    end Process_Freeze_Entity;
 
    -------------------------

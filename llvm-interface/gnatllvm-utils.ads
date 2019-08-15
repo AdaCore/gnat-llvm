@@ -42,6 +42,9 @@ package GNATLLVM.Utils is
 
    function  Get_Current_Position return Position_T;
    procedure Set_Current_Position (P : Position_T);
+   --  Save and restore the current position within a basic block. Note that
+   --  this is meant to only insert small sequences of instructions, which
+   --  cannot include a terminator.
 
    function List_Length_Non_Pragma (List : List_Id) return Nat
      with Pre => Present (List);

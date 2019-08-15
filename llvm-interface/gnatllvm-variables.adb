@@ -1116,22 +1116,25 @@ package body GNATLLVM.Variables is
 
                   --  Package bodies with freeze nodes get their
                   --  elaboration deferred until the freeze node, but the
-                  --  code must be placed in the right place.  ??? We don't
-                  --  yet know how to do this, so don't try.
+                  --  code must be placed in the right place
 
-                  --  elsif Nkind (N) = N_Package_Body
-                  --    and then Present (Freeze_Node (Corresponding_Spec (N)))
-                  --  then
-                  --  null;
-                  --
-                  --  elsif Nkind (N) = N_Package_Body_Stub
-                  --    and then Present (Library_Unit (N))
-                  --    and then Present (Freeze_Node
-                  --                        (Corresponding_Spec
-                  --                           (Proper_Body
-                  --                             (Unit (Library_Unit (N))))))
-                  --  then
-                  --     null;
+                  elsif Nkind (N) = N_Package_Body
+                    and then Present (Freeze_Node (Corresponding_Spec (N)))
+                  then
+                     Record_Code_Position (Corresponding_Spec (N));
+
+                  elsif Nkind (N) = N_Package_Body_Stub
+                    and then Present (Library_Unit (N))
+                    and then (Nkind (Proper_Body (Unit (Library_Unit (N)))) =
+                                N_Package_Body)
+                    and then Present (Freeze_Node
+                                        (Corresponding_Spec
+                                           (Proper_Body
+                                              (Unit (Library_Unit (N))))))
+                  then
+                     Record_Code_Position (Corresponding_Spec
+                                             (Proper_Body
+                                                (Unit (Library_Unit (N)))));
 
                   --  We defer most subprogram bodies to the second pass
 

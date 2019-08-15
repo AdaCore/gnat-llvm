@@ -105,22 +105,36 @@ package GNATLLVM.Subprograms is
    --  arguments.  See if Proc needs a static link and pass one, if so.
 
    procedure Add_To_Elab_Proc (N : Node_Id; For_GT : GL_Type := No_GL_Type)
-     with Pre => Library_Level and then Present (N);
+     with Pre => Library_Level;
    --  Add N to the elaboration table if it's not already there.  We assume
    --  here that if it's already there, it was the last one added.  If
    --  For_GT is Present, elaborate N as an expression, convert to
-   --  For_GT, and save it as the value for N.
+   --  For_GT, and save it as the value for N.  If N isn't Present, it
+   --  denotes an empty entry.
+
+   procedure Mark_Body_Elab;
+   --  Indicate that anything added to an elab proc is now being added to
+   --  the elab proc for the body.
 
    procedure Emit_Elab_Proc
-     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
+     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; For_Body : Boolean := False)
      with Pre => Library_Level
                  and then Nkind_In (N, N_Package_Specification, N_Package_Body)
-                 and then Suffix'Length = 1;
-   --  Emit code for the elaboration procedure for N.  Suffix is either "s"
-   --  or "b".  CU is the corresponding N_Compilation_Unit on which we set
-   --  Has_No_Elaboration_Code if there is any.  Stmts, if Present, is
-   --  an N_Handled_Sequence_Of_Statements that also have to be in the
+                 and then Nkind (CU) = N_Compilation_Unit;
+   --  Emit code for the elaboration procedure for N.  For_Body says
+   --  whether this is the elab proc for the body or the spec of a package.
+   --  CU is the corresponding N_Compilation_Unit on which we set
+   --  Has_No_Elaboration_Code if there is any.  Stmts, if Present, is an
+   --  N_Handled_Sequence_Of_Statements that also have to be in the
    --  elaboration procedure.
+
+   function Get_Elab_Position return Nat;
+   --  Get an index into the elab table that we can use for the following
+   --  procedure to re-order the elab table.
+
+   procedure Reorder_Elab_Table (Old_Pos, New_Start : Nat);
+   --  Reorder the elab table so it contains, in order, entries before
+   --  Old_Pos, entries from New_Start to the end, and entries after Old_Pos.
 
    procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False)
      with Pre => Present (N);

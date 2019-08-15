@@ -34,7 +34,7 @@ package body GNATLLVM.Utils is
    --------------------------
 
    function Get_Current_Position return Position_T is
-      BB : constant Basic_Block_T := Get_Insert_Block (IR_Builder);
+      BB : constant Basic_Block_T := Get_Insert_Block;
 
    begin
       return (BB, Get_Last_Instruction (BB));
@@ -384,8 +384,7 @@ package body GNATLLVM.Utils is
    ----------------------
 
    function Are_In_Dead_Code return Boolean is
-      Last_Inst : constant Value_T :=
-        Get_Last_Instruction (Get_Insert_Block (IR_Builder));
+      Last_Inst : constant Value_T := Get_Last_Instruction (Get_Insert_Block);
    begin
       --  We're in dead code if there is an instruction in this basic block
       --  and the last is a terminator.

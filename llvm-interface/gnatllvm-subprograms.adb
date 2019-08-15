@@ -211,6 +211,7 @@ package body GNATLLVM.Subprograms is
       --  If Present, compute N as a value, convert it to this type, and
       --  save the result as the value corresponding to it.
    end record;
+   type Elaboration_Entry_Array is array (Nat range <>) of Elaboration_Entry;
 
    package Elaboration_Table is new Table.Table
      (Table_Component_Type => Elaboration_Entry,
@@ -266,6 +267,11 @@ package body GNATLLVM.Subprograms is
 
    function Is_Binder_Elab_Proc (Name : String) return Boolean;
    --  Return True if Name is the name of the elab proc for Ada_Main
+
+   First_Body_Elab_Idx  : Nat       := 0;
+   --  Indicates the first entry in Elaboration_Table that represents
+   --  an elab entry for the body of a package.  If zero, then all entries
+   --  are for the spec.
 
    Ada_Main_Elabb       : GL_Value  := No_GL_Value;
    Ada_Main_Elabb_Ident : Entity_Id := Empty;
@@ -1134,12 +1140,21 @@ package body GNATLLVM.Subprograms is
 
    procedure Add_To_Elab_Proc (N : Node_Id; For_GT : GL_Type := No_GL_Type) is
    begin
-      if Elaboration_Table.Last = 0
+      if Elaboration_Table.Last = 0 or else No (N)
         or else Elaboration_Table.Table (Elaboration_Table.Last).N /= N
       then
          Elaboration_Table.Append ((N => N, For_GT => For_GT));
       end if;
    end Add_To_Elab_Proc;
+
+   --------------------
+   -- Mark_Body_Elab --
+   --------------------
+
+   procedure Mark_Body_Elab is
+   begin
+      First_Body_Elab_Idx := Elaboration_Table.Last + 1;
+   end Mark_Body_Elab;
 
    -------------------------
    -- Is_Binder_Elab_Proc --
@@ -1153,24 +1168,83 @@ package body GNATLLVM.Subprograms is
                   or else Name (Name'Last - 11 .. Name'Last - 8) = "main");
    end Is_Binder_Elab_Proc;
 
+   -----------------------
+   -- Get_Elab_Position --
+   -----------------------
+
+   function Get_Elab_Position return Nat is
+     (Elaboration_Table.Last);
+
+   ------------------------
+   -- Reorder_Elab_Table --
+   ------------------------
+
+   procedure Reorder_Elab_Table (Old_Pos, New_Start : Nat) is
+      Elabs : Elaboration_Entry_Array (1 .. Elaboration_Table.Last);
+
+      procedure Append_Range (Start, Last : Nat) with Inline;
+      --  Append the range Start .. Last from Elabs above into the
+      --  elaboration table.
+
+      ------------------
+      -- Append_Range --
+      ------------------
+
+      procedure Append_Range (Start, Last : Nat) is
+      begin
+         for J in Start .. Last loop
+            Elaboration_Table.Append (Elabs (J));
+         end loop;
+      end Append_Range;
+
+   begin
+      --  Copy entries from table to our array, reset the table, then copy
+      --  then back in the desired order.
+
+      for J in Elabs'Range loop
+         Elabs (J) := Elaboration_Table.Table (J);
+      end loop;
+
+      Elaboration_Table.Set_Last (0);
+      Append_Range (1, Old_Pos);
+      Append_Range (New_Start + 1, Elabs'Last);
+      Append_Range (Old_Pos + 1, New_Start);
+
+      --  If we added to the elaboration of the spec, adjust the boundary
+      --  between spec and body.
+
+      if First_Body_Elab_Idx /= 0 and then First_Body_Elab_Idx > Old_Pos then
+         First_Body_Elab_Idx :=
+           First_Body_Elab_Idx + Elaboration_Table.Last - New_Start;
+      end if;
+   end Reorder_Elab_Table;
+
    --------------------
    -- Emit_Elab_Proc --
    --------------------
 
    procedure Emit_Elab_Proc
-     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; Suffix : String)
+     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; For_Body : Boolean := False)
    is
       Nest_Table_First : constant Nat      := Nested_Functions_Table.Last + 1;
       U                : constant Node_Id  := Defining_Unit_Name (N);
       Unit             : constant Node_Id  :=
-        (if Nkind (U) = N_Defining_Program_Unit_Name
+        (if   Nkind (U) = N_Defining_Program_Unit_Name
          then Defining_Identifier (U) else U);
       S_List           : constant List_Id  :=
         (if No (Stmts) then No_List else Statements (Stmts));
+      Suffix           : constant String   := (if For_Body then "b" else "s");
       Name             : constant String   :=
         Get_Name_String (Chars (Unit)) & "___elab" & Suffix;
+      First_Idx        : constant Nat      :=
+        (if For_Body then First_Body_Elab_Idx else 1);
+      Last_Idx         : constant Nat      :=
+        (if   For_Body or else First_Body_Elab_Idx = 0
+         then Elaboration_Table.Last else First_Body_Elab_Idx - 1);
       Work_To_Do       : constant Boolean  :=
-        Elaboration_Table.Last /= 0 or else Has_Non_Null_Statements (S_List);
+        (for some J in First_Idx .. Last_Idx =>
+         Present (Elaboration_Table.Table (J).N))
+        or else Has_Non_Null_Statements (S_List);
       Elab_Type        : constant Type_T   :=
         Fn_Ty ((1 .. 0 => <>), Void_Type);
       LLVM_Func        : GL_Value;
@@ -1178,15 +1252,16 @@ package body GNATLLVM.Subprograms is
    begin
       --  If nothing to elaborate, do nothing
 
-      if Nkind (CU) /= N_Compilation_Unit or else not Work_To_Do then
+      if not Work_To_Do then
          return;
       end if;
 
-      --  Otherwise, show there will be elaboration code and emit it
+      --  Otherwise, show there will be elaboration code
 
-      if Nkind (CU) = N_Compilation_Unit then
-         Set_Has_No_Elaboration_Code (CU, False);
-      end if;
+      Set_Has_No_Elaboration_Code (CU, False);
+
+      --  If this is the elaboration for the body of the main unit that was
+      --  already generated, use it.  Otherwise make a new function.
 
       if Present (Ada_Main_Elabb)
         and then Get_Ext_Name (Ada_Main_Elabb_Ident) = Name
@@ -1195,6 +1270,8 @@ package body GNATLLVM.Subprograms is
       else
          LLVM_Func := Add_Function (Name, Elab_Type, Void_GL_Type);
       end if;
+
+      --  Do the mechanics of setting up the elab procedure
 
       Enter_Subp (LLVM_Func);
       Push_Debug_Scope
@@ -1208,7 +1285,9 @@ package body GNATLLVM.Subprograms is
       Push_Block;
       In_Elab_Proc := True;
 
-      for J in 1 .. Elaboration_Table.Last loop
+      --  Do through the elaboration table and process each entry
+
+      for J in First_Idx .. Last_Idx loop
          declare
             Stmt : constant Node_Id := Elaboration_Table.Table (J).N;
             GT   : constant GL_Type := Elaboration_Table.Table (J).For_GT;
@@ -1216,18 +1295,18 @@ package body GNATLLVM.Subprograms is
          begin
             if Present (GT) then
                Set_Value (Stmt, Emit_Convert_Value (Stmt, GT));
-            else
-               --  If Stmt is an N_Handled_Sequence_Of_Statements, it
-               --  must have come from a package body.  Make a block around
-               --  it so exceptions will work properly, if needed.
+            elsif Present (Stmt)
+              and then Nkind (Stmt) = N_Handled_Sequence_Of_Statements
+            then
+               --  If Stmt is an N_Handled_Sequence_Of_Statements, it must
+               --  have come from a package body.  Make a block around it
+               --  so exceptions will work properly, if needed.
 
-               if Nkind (Stmt) = N_Handled_Sequence_Of_Statements then
-                  Push_Block;
-                  Emit (Stmt);
-                  Pop_Block;
-               else
-                  Emit (Stmt);
-               end if;
+               Push_Block;
+               Emit (Stmt);
+               Pop_Block;
+            elsif Present (Stmt) then
+               Emit (Stmt);
             end if;
          end;
       end loop;
@@ -1239,7 +1318,6 @@ package body GNATLLVM.Subprograms is
 
       In_Elab_Proc       := False;
       In_Elab_Proc_Stmts := True;
-      Elaboration_Table.Set_Last (0);
       Start_Block_Statements
         (Empty, (if No (Stmts) then No_List else Exception_Handlers (Stmts)));
       Emit (S_List);

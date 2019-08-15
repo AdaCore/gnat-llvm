@@ -2,10 +2,7 @@ Limitations and missing features (identified so far):
 
 - see if can convert aggregate to array to avoid elab (e.g., FC16-002)
 - look at shouldAssumeDSOLocal in clang to see what we should do
-- deal with recording positions for package bodies (can already do when
-  generating code, but not when pushing for elab proc; see S313-017)
 - call "_ext" version of raise routines (e.g., J917-030)
 - debug info for non C compatible types
 - support for some -fxxx and -m (e.g -mtune) code generation switches
-- deal with alignment for Atomic fields
 - track alignment of GL_Values

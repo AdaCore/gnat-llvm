@@ -24,6 +24,7 @@ with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Restrict; use Restrict;
 with Sinput;   use Sinput;
+with Stand;    use Stand;
 with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
@@ -305,9 +306,19 @@ package body GNATLLVM.Blocks is
    --  Return a GL_Value giving the address of a string corresponding to
    --  the name of the file with the specified file index.
 
-   function Get_Raise_Fn (Kind : RT_Exception_Code) return GL_Value
+   function Get_Raise_Fn
+     (Kind : RT_Exception_Code; Ext : Boolean := False) return GL_Value
      with Post => Present (Get_Raise_Fn'Result);
-   --  Get function for raising a builtin exception of Kind
+   --  Get function for raising a builtin exception of Kind.  Ext is True if
+   --  we want the "extended" (-gnatE) versions of the exception functions.
+
+   function Emit_Raise_Call_With_Extra_Info
+     (N : Node_Id; Kind : RT_Exception_Code; Cond : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Like Emit_Raise_Call, but generate extra info, if possible, about
+   --  the bad value and the range that it's supposed to be within.  If
+   --  if returns True, it was able to get the info and emit the call.
+   --  Otherwise, it couldn't and the caller should make a normal call.
 
    function Get_Set_EH_Param_Fn (Exc_GT : GL_Type) return GL_Value
      with Pre  => Present (Exc_GT),
@@ -360,6 +371,8 @@ package body GNATLLVM.Blocks is
    --  raising builtin exceptions of various kinds.
 
    Rcheck_FNs        : array (RT_Exception_Code'Range) of GL_Value :=
+     (others => No_GL_Value);
+   Rcheck_Ext_FNs    : array (RT_Exception_Code'Range) of GL_Value :=
      (others => No_GL_Value);
    --  Array of functions to call for raising builtin exceptions of
    --  various kinds.
@@ -641,12 +654,16 @@ package body GNATLLVM.Blocks is
    -- Get_Raise_Fn --
    ------------------
 
-   function Get_Raise_Fn (Kind : RT_Exception_Code) return GL_Value is
-      Fun_Type : constant Type_T :=
-        Fn_Ty ((1 => LLVM_Size_Type, 2 => Type_Of (Integer_GL_Type)),
-               Void_Type);
+   function Get_Raise_Fn
+     (Kind : RT_Exception_Code; Ext : Boolean := False) return GL_Value
+   is
+      Int_T    : constant Type_T := Type_Of (Integer_GL_Type);
+      Fun_Type : Type_T          :=
+        Fn_Ty ((1 => LLVM_Size_Type, 2 => Int_T), Void_Type);
 
    begin
+      --  If we're using a last-chance handler, that's the function we need
+
       if No_Exception_Handlers_Set then
          if No (LCH_Fn) then
             LCH_Fn := Add_Global_Function
@@ -655,15 +672,45 @@ package body GNATLLVM.Blocks is
          end if;
 
          return LCH_Fn;
-      else
-         if No (Rcheck_FNs (Kind)) then
-            Rcheck_FNs (Kind) := Add_Global_Function
-              (Rcheck_Names (Kind).all, Fun_Type,
-               Void_GL_Type, Can_Throw => True, Can_Return => False);
+
+      --  Otherwise see if this is an extended exception case
+
+      elsif Ext then
+         if No (Rcheck_Ext_FNs (Kind)) then
+            case Kind is
+               when CE_Access_Check_Failed =>
+                  Fun_Type :=
+                    Fn_Ty ((1 => LLVM_Size_Type, 2 => Int_T, 3 => Int_T),
+                           Void_Type);
+
+               when CE_Index_Check_Failed | CE_Range_Check_Failed
+                  | CE_Invalid_Data =>
+                  Fun_Type :=
+                    Fn_Ty ((1 => LLVM_Size_Type, 2 => Int_T, 3 => Int_T,
+                            4 => Int_T, 5 => Int_T, 6 => Int_T),
+                           Void_Type);
+
+               when others =>
+                  pragma Assert (False);
+            end case;
+
+            Rcheck_Ext_FNs (Kind) := Add_Global_Function
+              (Rcheck_Names (Kind).all & "_ext", Fun_Type, Void_GL_Type,
+               Can_Throw => True, Can_Return => False);
          end if;
 
-         return Rcheck_FNs (Kind);
+         return Rcheck_Ext_FNs (Kind);
+
+      --  If none of the cases above apply, see if we've already made a
+      --  function for this exception code and create one if not.
+
+      elsif No (Rcheck_FNs (Kind)) then
+         Rcheck_FNs (Kind) := Add_Global_Function
+           (Rcheck_Names (Kind).all, Fun_Type,
+            Void_GL_Type, Can_Throw => True, Can_Return => False);
       end if;
+
+      return Rcheck_FNs (Kind);
    end Get_Raise_Fn;
 
    ------------------------
@@ -741,20 +788,93 @@ package body GNATLLVM.Blocks is
    -- Emit_Raise_Call --
    ---------------------
 
-   procedure Emit_Raise_Call (N : Node_Id; Kind : RT_Exception_Code) is
-      File : constant GL_Value :=
-        Get_File_Name_Address (Get_Source_File_Index (Sloc (N)));
-      Line : constant GL_Value :=
+   procedure Emit_Raise_Call
+     (N : Node_Id; Kind : RT_Exception_Code; Column : Boolean := False)
+   is
+      S    : constant Source_Ptr := Sloc (N);
+      File : constant GL_Value   :=
+        Get_File_Name_Address (Get_Source_File_Index (S));
+      Line : constant GL_Value   :=
         Const_Int (Integer_GL_Type,
                    ULL (if   Debug_Flag_NN
-                          or else Exception_Locations_Suppressed
-                        then 0 else Get_Logical_Line_Number (Sloc (N))));
+                             or else Exception_Locations_Suppressed
+                        then 0 else Get_Logical_Line_Number (S)));
+      Col  : constant GL_Value   :=
+        Const_Int (Integer_GL_Type, ULL (Get_Column_Number (S)));
 
    begin
       --  Build a call to __gnat_xx (FILE, LINE)
 
-      Call (Get_Raise_Fn (Kind), (1 => File, 2 => Line));
+      if Column then
+         Call (Get_Raise_Fn (Kind, Ext => True),
+               (1 => File, 2 => Line, 3 => Col));
+      else
+         Call (Get_Raise_Fn (Kind), (1 => File, 2 => Line));
+      end if;
    end Emit_Raise_Call;
+
+   ---------------------
+   -- Emit_Raise_Call --
+   ---------------------
+
+   function Emit_Raise_Call_With_Extra_Info
+     (N : Node_Id; Kind : RT_Exception_Code; Cond : Node_Id) return Boolean
+   is
+      S        : constant Source_Ptr := Sloc (N);
+      File     : constant GL_Value   :=
+        Get_File_Name_Address (Get_Source_File_Index (S));
+      Line     : constant GL_Value   :=
+        Const_Int (Integer_GL_Type,
+                   ULL (if   Debug_Flag_NN
+                             or else Exception_Locations_Suppressed
+                        then 0 else Get_Logical_Line_Number (S)));
+      Col  : constant GL_Value   :=
+        Const_Int (Integer_GL_Type, ULL (Get_Column_Number (S)));
+      LB, HB   : Node_Id;
+      Rng      : Node_Id;
+      Index    : GL_Value;
+      LB_V     : GL_Value;
+      HB_V     : GL_Value;
+
+   begin
+      --  If this isn't a NOT operation or an N_In, we can't handle it
+
+      if Nkind (Cond) /= N_Op_Not or else Nkind (Right_Opnd (Cond)) /= N_In
+      then
+         return False;
+      end if;
+
+      --  Otherwise, get the range
+
+      Rng := Right_Opnd (Right_Opnd (Cond));
+      if Nkind (Rng) = N_Identifier then
+         Rng := Scalar_Range (Full_Etype (Rng));
+      end if;
+
+      LB := Low_Bound  (Rng);
+      HB := High_Bound (Rng);
+
+      --  If we don't know the size of the type or if it's wider than an
+      --  Integer, we can't give the extended information.
+
+      if Unknown_RM_Size (Full_Etype (LB))
+        or else RM_Size (Full_Etype (LB)) > RM_Size (Standard_Integer)
+      then
+         return False;
+      end if;
+
+      --  Now convert everything to Integer and call the raise function
+
+      Index := Emit_Convert_Value (Left_Opnd (Right_Opnd (Cond)),
+                                   Integer_GL_Type);
+      LB_V  := Emit_Convert_Value (LB, Integer_GL_Type);
+      HB_V  := Emit_Convert_Value (HB, Integer_GL_Type);
+      Call (Get_Raise_Fn (Kind, Ext => True),
+            (1 => File, 2 => Line, 3 => Col,
+             4 => Index, 5 => LB_V, 6 => HB_V));
+      return True;
+
+   end Emit_Raise_Call_With_Extra_Info;
 
    -------------------
    -- Emit_Handlers --
@@ -1534,11 +1654,39 @@ package body GNATLLVM.Blocks is
       --  possibly only if the condition above failed.
 
       if No (Label) then
-         if Present (BB_Then) then
-            Position_Builder_At_End (BB_Then);
-         end if;
+         declare
+            Kind : constant RT_Exception_Code :=
+              RT_Exception_Code'Val (UI_To_Int (Reason (N)));
 
-         Emit_Raise_Call (N, RT_Exception_Code'Val (UI_To_Int (Reason (N))));
+         begin
+            if Present (BB_Then) then
+               Position_Builder_At_End (BB_Then);
+            end if;
+
+            --  See if we're asked to provide extended exception information.
+            --  If so, there are two cases.  For Access checks, we provide
+            --  column information.  For some other checks, we provide the
+            --  actual value and the bounds, if we know them.  In the latter
+            --  case, we may not be able to find all the information and, if
+            --  so, we fall back to the basic case.
+
+            if Exception_Extra_Info and then Kind = CE_Access_Check_Failed then
+               Emit_Raise_Call (N, Kind, Column => True);
+
+            elsif Exception_Extra_Info and then Present (Cond)
+              and then Kind in
+                CE_Index_Check_Failed | CE_Range_Check_Failed | CE_Invalid_Data
+              and then Emit_Raise_Call_With_Extra_Info (N, Kind, Cond)
+            then
+               null;
+
+            --  Otherwise, just call the basic exception raise function
+
+            else
+               Emit_Raise_Call (N, Kind);
+            end if;
+         end;
+
          Maybe_Build_Br (BB_Next);
       end if;
 

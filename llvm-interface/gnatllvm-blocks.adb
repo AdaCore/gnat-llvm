@@ -310,7 +310,7 @@ package body GNATLLVM.Blocks is
      (Kind : RT_Exception_Code; Ext : Boolean := False) return GL_Value
      with Post => Present (Get_Raise_Fn'Result);
    --  Get function for raising a builtin exception of Kind.  Ext is True if
-   --  we want the "extended" (-gnatE) versions of the exception functions.
+   --  we want the "extended" (-gnateE) versions of the exception functions.
 
    function Emit_Raise_Call_With_Extra_Info
      (N : Node_Id; Kind : RT_Exception_Code; Cond : Node_Id) return Boolean

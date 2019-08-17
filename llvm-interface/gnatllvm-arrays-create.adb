@@ -204,8 +204,6 @@ package body GNATLLVM.Arrays.Create is
       Comp_Initial_GT   : constant GL_Type   :=
         Make_GT_Alternative (Comp_Def_GT, TE,
                              Size          => Comp_Size,
-                             Align         => No_Uint,
-                             For_Type      => False,
                              For_Component => True,
                              Max_Size      => Max_Size,
                              Is_Biased     => Biased);
@@ -214,7 +212,8 @@ package body GNATLLVM.Arrays.Create is
              and then Present (GT_Size (Comp_Initial_GT))
              and then Is_Const_Int_Value (GT_Size (Comp_Initial_GT), 0)
          then Make_GT_Alternative (Comp_Initial_GT, TE,
-                                   Size => UI_From_Int (BPU))
+                                   Size          => UI_From_Int (BPU),
+                                   For_Component => True)
          else Comp_Initial_GT);
       Base_Type         : constant Entity_Id :=
         Full_Base_Type (A_TE, For_Orig);

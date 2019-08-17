@@ -621,6 +621,7 @@ package body GNATLLVM.Types is
            and then Get_Type_Size (Type_Of (Alloc_GT)) > Max_Alloc * ULL (BPU)
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
+            Error_Msg_N ("??`Storage_Error` will be raised at run time!", N);
             return Get_Undef_Ref (GT);
          else
             declare

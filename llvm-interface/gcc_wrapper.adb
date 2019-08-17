@@ -175,10 +175,12 @@ begin
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
 
-         --  If compiling Ada, Ignore -Dxxx switches for compatibility with GCC
+         --  If compiling Ada, Ignore -Dxxx and -E switches for compatibility
+         --  with GCC
 
-         elsif Arg'Length >= 2 and then Arg (1 .. 2) = "-D"
-           and then Compile_Ada
+         elsif Compile_Ada
+           and then (Arg = "-E"
+                     or else (Arg'Length >= 2 and then Arg (1 .. 2) = "-D"))
          then
             Skip := True;
 

@@ -48,6 +48,12 @@ package GNATLLVM.Codegen is
    Size_Opt_Level  : Int            := 0;
    --  Optimization levels
 
+   DSO_Preemptable : Boolean        := False;
+   --  Indicates that the function or variable may be replaced by a symbol
+   --  from outside the linkage unit at runtime.  clang derives this from
+   --  a complex set of machine-dependent criterial, but the need for
+   --  this is rare enough that we'll just provide a switch instead.
+
    Flag_No_Strict_Aliasing : Boolean := False;
    No_Inlining             : Boolean := False;
    No_Unit_At_A_Time       : Boolean := False;

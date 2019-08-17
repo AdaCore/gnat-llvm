@@ -8,6 +8,7 @@
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
@@ -221,6 +222,13 @@ void
 Add_TBAA_Access (Instruction *inst, MDNode *md)
 {
   inst->setMetadata (LLVMContext::MD_tbaa, md);
+}
+
+extern "C"
+void
+Set_DSO_Local (GlobalVariable *GV)
+{
+  GV->setDSOLocal (true);
 }
 
 /* The LLVM C interface only provide single-index forms of extractvalue

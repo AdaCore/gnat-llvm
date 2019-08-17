@@ -106,6 +106,9 @@ package GNATLLVM.Wrapper is
    function Get_Stack_Alignment (Layout : Target_Data_T) return unsigned
      with Import, Convention => C, External_Name => "Get_Stack_Alignment";
 
+   procedure Set_DSO_Local (V : Value_T)
+     with Import, Convention => C, External_Name => "Set_DSO_Local";
+
    function Build_Extract_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;

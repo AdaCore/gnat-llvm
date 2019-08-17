@@ -1004,6 +1004,15 @@ package body GNATLLVM.GLValue is
       Set_Alignment (Obj, unsigned (To_Bytes (Nat'Max (GT_Align, E_Align))));
    end Set_Object_Align;
 
+   ----------------------
+   -- Set_Object_Align --
+   ----------------------
+
+   procedure Set_Object_Align (Obj : GL_Value; GT : GL_Type; E : Entity_Id) is
+   begin
+      Set_Object_Align (LLVM_Value (Obj), GT, E);
+   end Set_Object_Align;
+
    ------------
    -- Alloca --
    ------------
@@ -2371,6 +2380,15 @@ package body GNATLLVM.GLValue is
    begin
       Add_Writeonly_Attribute (LLVM_Value (V), unsigned (Idx));
    end Add_Writeonly_Attribute;
+
+   -------------------
+   -- Set_DSO_Local --
+   -------------------
+
+   procedure Set_DSO_Local (V : GL_Value) is
+   begin
+      Set_DSO_Local (LLVM_Value (V));
+   end Set_DSO_Local;
 
    ---------------------
    -- Set_Initializer --

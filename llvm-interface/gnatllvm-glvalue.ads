@@ -884,6 +884,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V), Inline;
    --  Add the Writeonly attribute to parameter with index Idx
 
+   procedure Set_DSO_Local (V : GL_Value)
+     with Pre => Is_A_Function (V) or else Is_A_Global_Variable (V), Inline;
+   --  Add the DSOlocal attribute to a global (variable or function)
+
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
      (Is_A_Const_Int (V) and then not Overflowed (V)
       and then Get_Const_Int_Value_ULL (V) = Val)
@@ -1045,6 +1049,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Present (Pred_FP'Result), Inline;
 
    procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id)
+     with Pre => Present (Obj) and then Present (GT), Inline;
+   procedure Set_Object_Align (Obj : GL_Value; GT : GL_Type; E : Entity_Id)
      with Pre => Present (Obj) and then Present (GT), Inline;
    --  Set the alignment of alloca inst or global from GT and E (if present)
 

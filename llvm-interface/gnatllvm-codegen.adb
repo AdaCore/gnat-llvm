@@ -151,6 +151,10 @@ package body GNATLLVM.Codegen is
          No_SLP_Vectorization := False;
       elsif Switch = "-fno-inline" then
          No_Inlining := True;
+      elsif Switch = "-mdso-preemptable" then
+         DSO_Preemptable := True;
+      elsif Switch = "-mdso-local" then
+         DSO_Preemptable := False;
       elsif Switch = "-mcode-model=small" then
          Code_Model := Code_Model_Small;
       elsif Switch = "-mcode-model=kernel" then

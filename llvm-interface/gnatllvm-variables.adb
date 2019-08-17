@@ -37,6 +37,7 @@ with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
@@ -1501,7 +1502,11 @@ package body GNATLLVM.Variables is
          Set_Linker_Section   (LLVM_Var, Def_Ident);
          Process_Pragmas      (Def_Ident, LLVM_Var);
          if not Is_Ref then
-            Set_Object_Align  (LLVM_Value (LLVM_Var), GT, Def_Ident);
+            Set_Object_Align  (LLVM_Var, GT, Def_Ident);
+         end if;
+
+         if not DSO_Preemptable then
+            Set_DSO_Local     (LLVM_Var);
          end if;
       end if;
 

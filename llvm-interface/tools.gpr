@@ -9,7 +9,8 @@ project Tools is
    for Main use
      ("gnatmake.adb", "gnatbind.adb", "gnatlink.adb", "gnatchop.adb",
       "gnatkr.adb", "gnatls.adb", "gnatprep.adb", "gnatname.adb",
-      "gnatclean.adb", "gnatcmd.adb", "gnatfind.adb", "gcc_wrapper.adb");
+      "gnatclean.adb", "gnatcmd.adb", "gnatfind.adb", "gnatxref.adb",
+      "gcc_wrapper.adb");
 
    package Builder is
       for Executable ("gcc_wrapper.adb") use "llvm-gcc";
@@ -24,6 +25,7 @@ project Tools is
       for Executable ("gnatclean.adb") use "llvm-gnatclean";
       for Executable ("gnatcmd.adb") use "llvm-gnat";
       for Executable ("gnatfind.adb") use "llvm-gnatfind";
+      for Executable ("gnatxref.adb") use "llvm-gnatxref";
 
       for Switches ("Ada") use ("-m");
    end Builder;

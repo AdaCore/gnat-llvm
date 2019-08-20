@@ -103,6 +103,10 @@ package GNATLLVM.Variables is
      with Pre => Present (N);
    --  Return True if N represents an address that can computed statically
 
+   function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean
+     with Pre => Present (In_GT) and then Present (Out_GT);
+   --  Return True if we can statically convert a constant from In_GT to Out_GT
+
    function Is_No_Elab_Needed (N : Node_Id) return Boolean
      with Pre => Present (N);
    --  Return True if N represents an expression that can be computed

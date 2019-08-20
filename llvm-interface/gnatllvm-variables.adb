@@ -164,10 +164,6 @@ package body GNATLLVM.Variables is
      with Pre => Present (N);
    --  Return True if N represent an object with constant address
 
-   function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean
-     with Pre => Present (In_GT) and then Present (Out_GT);
-   --  Return True if we can statically convert from In_GT to Out_GT
-
    function Initialized_Value (E : Entity_Id) return Node_Id
      with Pre => Present (E);
    --  If E is an E_Constant that has an initializing expression, return it

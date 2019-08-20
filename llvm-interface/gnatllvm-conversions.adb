@@ -34,8 +34,7 @@ package body GNATLLVM.Conversions is
      (GT1, GT2 : GL_Type) return Boolean
      with Pre => Present (GT1) and then Present (GT2);
    --  Return True iff GT1 and GT2 are array types that have at least
-   --  one index for whose LLVM types are different.  GT1 must be
-   --  unconstrained.
+   --  one index for whose LLVM types are different.
 
    function Is_In_LHS_Context (N : Node_Id) return Boolean;
    --  Return True if N's parent (if N is Present) is such that we need a
@@ -55,6 +54,18 @@ package body GNATLLVM.Conversions is
       Idx1, Idx2 : Entity_Id;
 
    begin
+      --  If either isn't an array type, we don't have this case
+
+      if not Is_Array_Type (GT1) or else not Is_Array_Type (GT2) then
+         return False;
+
+      --  The string literal case is easy
+
+      elsif Ekind (GT2) = E_String_Literal_Subtype then
+         return (Type_Of (Full_Etype (First_Index (GT1)))
+                   /= Type_Of (Integer_GL_Type));
+      end if;
+
       --  The front end should not have gotten us here if the number
       --  of dimensions differ.
 
@@ -62,11 +73,6 @@ package body GNATLLVM.Conversions is
 
       --  We don't need to do anything if the index types differ unless the
       --  corresponding LLVM types differ, so that's all we check.
-
-      if Ekind (GT2) = E_String_Literal_Subtype then
-         return (Type_Of (Full_Etype (First_Index (GT1)))
-                   /= Type_Of (Integer_GL_Type));
-      end if;
 
       Idx1 := First_Index (GT1);
       Idx2 := First_Index (GT2);
@@ -90,6 +96,7 @@ package body GNATLLVM.Conversions is
 
       if Is_Biased_GL_Type (V) or else Is_Biased_GL_Type (GT) then
          return False;
+
       --  This is a no-op if the two LLVM types are the same or if both
       --  GNAT types aren't scalar types.
 
@@ -673,7 +680,7 @@ package body GNATLLVM.Conversions is
       --  to do whatever is as reasonable as we can, but not crash
 
       elsif Is_Unchecked and then R = Fat_Pointer
-        and then not Can_Find_Bounds (As_Ref)
+        and then not Contains_Bounds (As_Ref)
       then
          --  Start making a fat pointer with both parts initial undefined.
          --  If As_Ref is a pointer, cast it into the proper type and insert
@@ -755,9 +762,10 @@ package body GNATLLVM.Conversions is
    -----------------
 
    function Convert_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
-      V_GT     : constant GL_Type := Related_Type (V);
-      Unc_Src  : constant Boolean := Is_Access_Unconstrained_Array (V);
-      Unc_Dest : constant Boolean := Is_Unconstrained_Array (GT);
+      V_GT       : constant GL_Type := Related_Type (V);
+      Has_Bounds : constant Boolean := Contains_Bounds (V);
+      Unc_Dest   : constant Boolean := Is_Unconstrained_Array (GT);
+      In_V       : GL_Value         := Remove_Padding (V);
 
    begin
       --  V is some type of reference to some type.  We want to
@@ -778,91 +786,74 @@ package body GNATLLVM.Conversions is
       --
       --  These principles dictate our behavior in all cases.  For example,
       --  if the input is a fat pointer, we should try to retain it as a
-      --  fat pointer even if GT is constrained because we may want those
-      --  bounds if we later convert to an unconstrained type.  However, if
-      --  we're converting to a constrained array with an index type that
-      --  has a different LLVM type, we discard the bounds rather than
-      --  recomputing them since we may NOT need them and hence may be
-      --  wasting that computation.  On the other hand, if the input is a a
-      --  constrained array type and the output is unconstrained, we MUST
-      --  materialize the bounds because they come from the bounds of the
-      --  constrained array and would be lost if we were to just return a
-      --  pointer to the data with an unconstrained type.
+      --  fat pointer even if possible because we may want those bounds if
+      --  we later convert to an unconstrained type.  However, if we're
+      --  converting to an array with an index type that has a different
+      --  LLVM type, we discard the bounds rather than recomputing them
+      --  since we may NOT need them and hence may be wasting that
+      --  computation.  On the other hand, if the input is a a constrained
+      --  array type and the output is unconstrained, we MUST materialize
+      --  the bounds because they come from the bounds of the constrained
+      --  array and would be lost if we were to just return a pointer to
+      --  the data with an unconstrained type.
       --
-      --  ??? Need to rewrite to implement the above
-
-      --  First deal with the case where we're converting between two arrays
-      --  with different index types and GT is unconstrained.  In that case,
-      --  we have to materialize the bounds in the new index types.
-
-      if Unc_Dest and then Is_Array_Type (V_GT)
-        and then Are_Arrays_With_Different_Index_Types (GT, V_GT)
-      then
-         declare
-            New_FP : constant GL_Value :=
-              Get_Undef_Relationship (GT, Fat_Pointer);
-            Bounds : constant GL_Value := Get_Array_Bounds (GT, V_GT, V);
-            Data   : constant GL_Value :=
-              Ptr_To_Relationship (Get (V, Reference), GT, Reference);
-
-         begin
-            return Insert_Value (Insert_Value (New_FP, Data, 0),
-                                 Get (Bounds, Reference_To_Bounds), 1);
-         end;
-      end if;
-
-      --  Next have the case where we previously had a reference to a
-      --  subprogram and all we knew was the return type and we're converting
-      --  it to an actual subprogram access type.  We have little to do, but
-      --  it simplifies the tests below since Full_Designated_Type is
-      --  undefined on such objects.
+      --  First is the case where we previously had a reference to a
+      --  subprogram, all we knew was the return type, and we're converting
+      --  it to an actual subprogram access type.
 
       if Is_Subprogram_Reference (V) then
-         return Ptr_To_Relationship (V, GT, Reference);
+         return Ptr_To_Relationship (In_V, GT, Reference);
 
-      --  If neither is constrained, but they aren't the same type, just do
-      --  a pointer cast unless we have to convert between function access
-      --  types that do and don't have static links.  If both are
-      --  constrained, we return the input unchanged (the front end is
-      --  responsible for this making sense).  Otherwise, we have to handle
-      --  converting between fat and raw pointers.
+      --  If the types are the same, we're done except that we know
+      --  nothing about Reference_To_Unknown
 
-      elsif not Unc_Src and not Unc_Dest then
-         if V_GT = GT and then Relationship (V) /= Reference_To_Unknown then
-            return Get (V, Any_Reference);
-         else
-            --  If what we have is a reference to bounds and data or a
-            --  thin pointer and have an array type that needs bounds,
-            --  convert to the same relationship of that type.  Otherwise,
-            --  convert to a Reference and then to the new type.
+      elsif GT = V_GT and then Relationship (V) /= Reference_To_Unknown then
+         return V;
 
-            if Relationship (V) in Reference_To_Bounds_And_Data | Thin_Pointer
-              and then Type_Needs_Bounds (GT)
-            then
-               return Ptr_To_Relationship (V, GT, Relationship (V));
-            elsif Relationship (V) = Reference_To_Unknown then
-               return Ptr_To_Ref (V, GT);
-            else
-               return Ptr_To_Ref (Get (V, Reference), GT);
+      --  Next handle the case with a source that has bounds (which is not
+      --  necessarily an unconstrained source because we may be keeping
+      --  bounds around in case we need them) or when we have an
+      --  unconstrained destination.
+
+      elsif Has_Bounds or else Unc_Dest then
+
+         --  If the result is an unconstrained array and the index types
+         --  are the same, just convert the pointer and keep it in the same
+         --  representation, making one if we have an unconstrained result
+         --  type but don't already have bounds.  Otherwise, recreate the
+         --  bounds for an unconstrained destination and discard them for a
+         --  constrained destination.
+
+         if Unc_Dest
+           and then not Are_Arrays_With_Different_Index_Types (GT, V_GT)
+         then
+            if not Has_Bounds then
+               In_V := Get (In_V, Fat_Pointer);
             end if;
+
+            return Convert_Pointer (In_V, GT);
+         elsif Unc_Dest then
+            declare
+               New_FP : constant GL_Value :=
+                 Get_Undef_Relationship (GT, Fat_Pointer);
+               Bounds : constant GL_Value := Get_Array_Bounds (GT, V_GT, In_V);
+               Data   : constant GL_Value :=
+                 Ptr_To_Relationship (Get (In_V, Reference), GT, Reference);
+
+            begin
+               return Insert_Value (Insert_Value (New_FP, Data, 0),
+                                    Get (Bounds, Reference_To_Bounds), 1);
+            end;
+         else
+            return Ptr_To_Ref (Get (In_V, Reference), GT);
          end if;
 
-      elsif Unc_Src and then Unc_Dest then
-         return Convert_Pointer (Get (V, Fat_Pointer), GT);
+      --  At this point, we know that the result isn't an unconstrained
+      --  array and that the input doesn't have bounds, so just convert
+      --  to a reference.
 
-      elsif Unc_Src and then not Unc_Dest then
-         return Convert_Ref (Get (V, Reference), GT);
       else
-         pragma Assert (not Unc_Src and then Unc_Dest);
-
-         --  ???  The code here is wrong.  See, e.g., c46104a.  If we're
-         --  converting between arrays with different types for bounds,
-         --  we need to use the new bounds and not just UC the bound
-         --  reference, since that won't work.  But there doesn't seem
-         --  to be an obvious way to fix it at the moment and this
-         --  whole function needs to be rewritten anyway.
-
-         return Convert_Pointer (Get (Remove_Padding (V), Fat_Pointer), GT);
+         return Ptr_To_Ref (In_V, GT);
       end if;
    end Convert_Ref;
 

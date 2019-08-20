@@ -265,7 +265,7 @@ package GNATLLVM.GLValue is
    function Is_Single_Reference (R : GL_Relationship)     return Boolean is
      (Is_Reference (R) and then not Is_Double_Reference (R));
 
-   function Can_Find_Bounds (R : GL_Relationship)         return Boolean is
+   function Contains_Bounds (R : GL_Relationship)         return Boolean is
      (R in Fat_Pointer | Bounds | Bounds_And_Data | Reference_To_Bounds |
            Reference_To_Bounds_And_Data | Thin_Pointer);
 
@@ -521,6 +521,14 @@ package GNATLLVM.GLValue is
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
    --  and relationship.
+
+   function G_Is_Relationship
+     (V : GL_Value; R : GL_Relationship) return GL_Value
+   is
+     (GM (LLVM_Value (V), Related_Type (V), R, V))
+     with Pre => Present (V), Post => Present (G_Is_Relationship'Result);
+   --  Constructor for case where we want to show that V has a
+   --  different relationship.
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
       (GM (LLVM_Value (V), Related_Type (T), Relationship (T), V))
@@ -2012,8 +2020,8 @@ package GNATLLVM.GLValue is
      with Pre => Msg'Length > 0 and then Present (N) and then Present (E)
                  and then Present (V);
 
-   function Can_Find_Bounds (V : GL_Value) return Boolean is
-     (Can_Find_Bounds (Relationship (V))
+   function Contains_Bounds (V : GL_Value) return Boolean is
+     (Contains_Bounds (Relationship (V))
         or else (Is_Array_Type (V) and then Is_Constrained (V)))
      with Pre => Present (V);
    --  True if V is something that we can find bounds from, either because

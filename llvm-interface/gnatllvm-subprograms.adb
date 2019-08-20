@@ -1469,17 +1469,19 @@ package body GNATLLVM.Subprograms is
                J      : unsigned  := 0;
 
             begin
-               if LRK = Struct_Out_Subprog then
-                  Retval := Insert_Value (Retval, V, J);
-                  J      := J + 1;
-               end if;
+               if not Decls_Only then
+                  if LRK = Struct_Out_Subprog then
+                     Retval := Insert_Value (Retval, V, J);
+                     J      := J + 1;
+                  end if;
 
-               while Present (Param) loop
-                  Retval :=
-                    Insert_Value (Retval, Get (Get_Value (Param), Data), J);
-                  J      := J + 1;
-                  Next_Out_Param (Param);
-               end loop;
+                  while Present (Param) loop
+                     Retval :=
+                       Insert_Value (Retval, Get (Get_Value (Param), Data), J);
+                     J      := J + 1;
+                     Next_Out_Param (Param);
+                  end loop;
+               end if;
 
                Build_Ret (Retval);
             end;
@@ -1974,6 +1976,9 @@ package body GNATLLVM.Subprograms is
                                       Idxs  => Idxs,
                                       VFA   => Is_VFA_Ref (Actual));
                      Copy         := False;
+
+                     Arg := Get (Arg, R);
+
                   else
                      --  If we have to make a copy, do so.  Also set up a
                      --  writeback if we have to.
@@ -1999,8 +2004,8 @@ package body GNATLLVM.Subprograms is
                              elsif PK = Foreign_By_Component_Ref
                              then  Ptr_To_Relationship
                                      (Get (LHS, R),
-                                      Full_Component_GL_Type (GT), R)
-                             else  Convert_Ref (LHS, GT));
+                                       Full_Component_GL_Type (GT), R)
+                             else  Get (Convert_Ref (LHS, GT), R));
                   end if;
 
                else

@@ -802,14 +802,17 @@ package body GNATLLVM.Subprograms is
       --  being sure it's in the same type that we need.
 
       if Present (Func) then
-         return G_From (Pointer_Cast (IR_Builder,
-                                      LLVM_Value (Func),
-                                      Pointer_Type (Subp_Type, 0), S),
-                        Func);
+         return G_From
+           (Pointer_Cast
+             (IR_Builder,
+              LLVM_Value (Func),
+              Pointer_Type (Subp_Type, 0), S),
+            Func);
       else
          Func := Add_Function (S, Subp_Type, GT);
+
          if not Can_Throw then
-            Set_Does_Not_Throw  (Func);
+            Set_Does_Not_Throw (Func);
          end if;
 
          if not Can_Return then
@@ -817,14 +820,14 @@ package body GNATLLVM.Subprograms is
          end if;
 
          if Can_Throw and not Can_Return then
-            Add_Cold_Attribute  (Func);
+            Add_Cold_Attribute (Func);
          end if;
 
          if not DSO_Preemptable then
-            Set_DSO_Local       (Func);
+            Set_DSO_Local (Func);
          end if;
 
-         Set_Dup_Global_Value   (S, Func);
+         Set_Dup_Global_Value (S, Func);
          return Func;
       end if;
 

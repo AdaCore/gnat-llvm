@@ -1487,22 +1487,24 @@ package body GNATLLVM.Variables is
                  (GT, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref),
                Is_Volatile),
             Is_Atomic (Def_Ident) or else Is_Atomic (GT));
-         Set_Thread_Local (LLVM_Var,
-                           Has_Pragma_Thread_Local_Storage (Def_Ident));
+         Set_Thread_Local
+           (LLVM_Var,
+            Has_Pragma_Thread_Local_Storage (Def_Ident));
 
          if not Is_Public (Def_Ident) and not Is_Imported (Def_Ident) then
             Set_Linkage (LLVM_Var, Internal_Linkage);
          end if;
 
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
-         Set_Linker_Section   (LLVM_Var, Def_Ident);
-         Process_Pragmas      (Def_Ident, LLVM_Var);
+         Set_Linker_Section (LLVM_Var, Def_Ident);
+         Process_Pragmas (Def_Ident, LLVM_Var);
+
          if not Is_Ref then
-            Set_Object_Align  (LLVM_Var, GT, Def_Ident);
+            Set_Object_Align (LLVM_Var, GT, Def_Ident);
          end if;
 
          if not DSO_Preemptable then
-            Set_DSO_Local     (LLVM_Var);
+            Set_DSO_Local (LLVM_Var);
          end if;
       end if;
 

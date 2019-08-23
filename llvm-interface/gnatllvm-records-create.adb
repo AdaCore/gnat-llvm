@@ -1837,7 +1837,7 @@ package body GNATLLVM.Records.Create is
             begin
                if Unknown_Esize (Cur_Field) then
                   Set_Esize (Cur_Field, Annotated_Value (Get_Type_Size
-                                                           (Get_Field_Type
+                                                           (Field_Type
                                                               (Cur_Field))));
                end if;
 

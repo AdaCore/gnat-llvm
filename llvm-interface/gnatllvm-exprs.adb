@@ -579,6 +579,24 @@ package body GNATLLVM.Exprs is
 
       if No (Compare_LB) and then No (Compare_HB) then
          return;
+
+      --  Test for a known result.  If either comparison is always false,
+      --  we know this test will fail.  So generate the raise.
+
+      elsif Compare_LB = Const_False or else Compare_HB = Const_False then
+         if Present (Label_Ent) then
+            Build_Br (Get_Label_BB (Label_Ent));
+         else
+            Emit_Raise_Call (N, CE_Overflow_Check_Failed);
+         end if;
+
+      --  If all the Present tests are True, there's no overflow and we're
+      --  done.
+
+      elsif Compare_LB in No_GL_Value | Const_True
+        and then Compare_HB in No_GL_Value | Const_True
+      then
+         return;
       end if;
 
       --  Otherwise, make the labels and branch to them depending on the
@@ -1203,13 +1221,13 @@ package body GNATLLVM.Exprs is
       --  type, we're copying an object that's not elementary, but can be
       --  copied with a Store instruction, or we're copying an object of
       --  variable size.
+      --
+      --  First handle the easy case: convert the source to the destination
+      --  type and store it.  However, we may have a packed array
+      --  implementation type on the LHS and an array on the RHS.  Convert
+      --  it to the LHS type if so.
 
       if Is_Elementary_Type (Dest_GT) and then Src_R /= Bounds_And_Data then
-
-         --  The easy case: convert the source to the destination type and
-         --  store it.  However, we may have a packed array implementation
-         --  type on the LHS and an array on the RHS.  Convert it to the LHS
-         --  type if so.
 
          if Is_Packed_Array_Impl_Type (Dest_GT)
            and then not Is_Elementary_Type (Src_GT)
@@ -1219,27 +1237,46 @@ package body GNATLLVM.Exprs is
 
          Store (Convert (Get (Src, Data), Dest_GT), Get (Dest, Reference));
 
+      --  If we're setting Dest to zeros, use memset
+
+      elsif Is_A_Constant_Aggregate_Zero (Src) then
+         declare
+            Size : constant GL_Value :=
+              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src);
+
+         begin
+            Call_With_Align
+              (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
+               (1 => Pointer_Cast (Get (Dest, Reference), A_Char_GL_Type),
+                2 => Const_Null (SSI_GL_Type),
+                3 => To_Bytes (Size),
+                4 => (if Is_Volatile (Dest) then Const_True else Const_False)),
+               Get_Type_Alignment (Dest_GT) / BPU);
+         end;
+
+      --  Now see if the source is of an LLVM value small enough to store, but
+      --  the destination may or may not be a variable-sized type.  Since
+      --  we know the size and know the object to store, we can convert
+      --  Dest to the type of the pointer to Src, which we know is
+      --  fixed-size, and do the store.  If Dest is pointer to an array
+      --  type, we need to get the actual array data.
+
       elsif ((Present (E) and then Is_Loadable_Type (Full_GL_Type (E)))
              or else (Present (Value) and then Is_Loadable_Type (Value)))
         and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then
-         --  Here, the source is of an LLVM value small enough to store,
-         --  but the destination may or may not be a variable-sized type.
-         --  Since we know the size and know the object to store, we can
-         --  convert Dest to the type of the pointer to Src, which we know
-         --  is fixed-size, and do the store.  If Dest is pointer to an
-         --  array type, we need to get the actual array data.
-
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            Dest := Ptr_To_Ref (Get (Dest, Reference), Related_Type (Src));
+            Dest := Ptr_To_Relationship (Get (Dest, Reference),
+                                         Pointer_Type (Type_Of (Src), 0),
+                                         Ref (Relationship (Src)));
          end if;
 
          Store (Src, Dest);
 
-      else
-         --  Otherwise, we have to do a variable-sized copy
+      --  Otherwise, we have to do a variable-sized copy
 
+      else
          declare
             Func_Name : constant String   :=
               (if Forwards_OK and then Backwards_OK then "memcpy"

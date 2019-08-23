@@ -109,6 +109,9 @@ package GNATLLVM.Wrapper is
    procedure Set_DSO_Local (V : Value_T)
      with Import, Convention => C, External_Name => "Set_DSO_Local";
 
+   function Is_Constant_Data (V : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Is_Constant_Data";
+
    function Build_Extract_Value
      (Bld      : Builder_T;
       Aggr     : Value_T;
@@ -161,6 +164,11 @@ package GNATLLVM.Wrapper is
 
    procedure Add_Debug_Flags (Module : Module_T)
      with Import, Convention => C, External_Name => "Add_Debug_Flags";
+
+   procedure Inst_Add_Combine_Function
+     (PM : Pass_Manager_T; Target_Machine : Target_Machine_T)
+     with Import, Convention => C,
+          External_Name => "Inst_Add_Combine_Function";
 
    function Create_Enumerator
      (Builder     : DI_Builder_T;

@@ -25,7 +25,6 @@ with GNATLLVM.Compile;     use GNATLLVM.Compile;
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Conditionals is
 
@@ -1033,11 +1032,10 @@ package body GNATLLVM.Conditionals is
          if From_GT = To_GT or else Elementary then
             return False;
 
-         --  Otherwise, if we have data and we can convert statically, we
-         --  don't need a reference.
+         --  If we can convert constant data, we don't need a reference
 
-         elsif Present (V) and then Is_Constant (V)
-           and then Is_Static_Conversion (From_GT, To_GT)
+         elsif Present (V)
+           and then Can_Convert_Aggregate_Constant (V, To_GT)
          then
             return False;
 
@@ -1077,14 +1075,10 @@ package body GNATLLVM.Conditionals is
          then
             Result := G_Is (Result, Phi_GT);
 
-         --  Next see if this is a constant struct being converted to
-         --  a type with identical layout.
+         --  Next see if this is a constant aggregate
 
-         elsif Is_Data (Result) and then Is_Constant (Result)
-           and then Get_Type_Kind (GT) = Struct_Type_Kind
-           and then Is_Static_Conversion (GT, Phi_GT)
-         then
-            Result := Convert_Struct_Constant (Result, Phi_GT);
+         elsif Can_Convert_Aggregate_Constant (Result, Phi_GT) then
+            Result := Convert_Aggregate_Constant (Result, Phi_GT);
 
          --  If elementary type, do that the conversion
 

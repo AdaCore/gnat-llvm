@@ -90,9 +90,7 @@ package GNATLLVM.Records is
    function Find_Matching_Field
      (TE : Entity_Id; Field : Entity_Id) return Entity_Id
      with Pre  => Is_Record_Type (TE)
-     and then Ekind_In (Field, E_Discriminant, E_Component),
-     Post => Chars (Field) = Chars (Find_Matching_Field'Result)
-             and then Present (Get_Field_Info (Find_Matching_Field'Result));
+     and then Ekind_In (Field, E_Discriminant, E_Component);
    --  Find a field in the entity list of TE that has the same name as
    --  F and has Field_Info.
 
@@ -123,10 +121,10 @@ package GNATLLVM.Records is
    --  Corresponding_Record_Component chains.  Only look at records the
    --  have the same representation as our record.
 
-   function Get_Field_Type (F : Entity_Id) return GL_Type
+   function Field_Type (F : Entity_Id) return GL_Type
      with Pre  => Ekind_In (F, E_Component, E_Discriminant)
                   and then Present (Get_Field_Info (F)),
-          Post => Present (Get_Field_Type'Result);
+          Post => Present (Field_Type'Result);
    --  Return the GL_Type of the field denoted by F
 
    function Field_Bit_Offset (F : Entity_Id) return Uint

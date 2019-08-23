@@ -177,6 +177,11 @@ package GNATLLVM.Utils is
      with Pre => Msg'Length > 0 and then Present (N) and then Present (E)
                  and then Present (Num);
 
+   function Is_Nonsymbolic_Constant (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  Return True iff V is a constant and that constant contains no
+   --  symbolic or pointer values.
+
    function Is_Layout_Identical (T1, T2 : Type_T) return Boolean
      with Pre => Present (T1) and then Present (T2);
    --  Return True iff types T1 and T2 have identifical layout.
@@ -198,15 +203,6 @@ package GNATLLVM.Utils is
 
    procedure Dump_LLVM_Module (M : Module_T);
    --  Likewise, for LLVM.Core.Dump_Module
-
-   function LLVM_Type_Of (V : Value_T) return Type_T is
-     (Type_Of (V));
-
-   function LLVM_Count_Param_Types (T : Type_T) return Nat is
-     (Nat (Count_Param_Types (T)));
-
-   function LLVM_Get_Elmt_Type (T : Type_T) return Type_T is
-     (Get_Element_Type (T));
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 

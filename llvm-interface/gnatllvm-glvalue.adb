@@ -44,12 +44,6 @@ package body GNATLLVM.GLValue is
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean;
    --  Internal version of GL_Value_Is_Valid
 
-   function Convert_Struct_Constant (V : Value_T; T : Type_T) return Value_T
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (Convert_Struct_Constant'Result);
-   --  Inner (and recursize) function to convert a constant struct
-   --  from one type to another.
-
    function Object_Can_Be_Data (V : GL_Value_Base) return Boolean is
      (not Is_Nonnative_Type (V.Typ)
         and then (Is_Loadable_Type (V.Typ)
@@ -106,10 +100,10 @@ package body GNATLLVM.GLValue is
 
             --  We allow a non-loadable type to be Data to handle cases
             --  such as passing large objects by value.  We don't want to
+            --  generate such unless we have to, but we also don't want to
             --  generate such unless we have to, but we also don't want
             --  to make it invalid.  We can't use Data for a dynamic
             --  size type, though.
-
             return Ekind (GT) /= E_Subprogram_Type
               and then not Is_Nonnative_Type (GT);
 
@@ -312,6 +306,13 @@ package body GNATLLVM.GLValue is
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean is
      (Is_Dynamic_Size (Related_Type (V)));
+
+   -----------------------------
+   -- Is_Nonsymbolic_Constant --
+   -----------------------------
+
+   function Is_Nonsymbolic_Constant (V : GL_Value) return Boolean is
+     (Is_Nonsymbolic_Constant (LLVM_Value (V)));
 
    -----------------------
    -- Is_Nonnative_Type --
@@ -2405,7 +2406,8 @@ package body GNATLLVM.GLValue is
 
       if Get_Value_Kind (VV) = Constant_Expr_Value_Kind then
          VV := Get_Operand (VV, 0);
-         VE := Convert_Struct_Constant (VE, Get_Element_Type (Type_Of (VV)));
+         VE := Convert_Aggregate_Constant (VE,
+                                           Get_Element_Type (Type_Of (VV)));
       end if;
 
       Set_Initializer (VV, VE);

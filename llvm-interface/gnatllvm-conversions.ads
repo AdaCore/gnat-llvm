@@ -17,6 +17,8 @@
 
 with Ada.Unchecked_Conversion;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM.GLType;  use GNATLLVM.GLType;
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
@@ -118,6 +120,25 @@ package GNATLLVM.Conversions is
           Post => Is_Pointer (Convert_Pointer'Result);
    --  V is a reference to some object.  Convert it to a reference to GT
    --  with the same relationship.
+
+   function Convert_Aggregate_Constant
+     (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Present (V) and then not Is_Nonnative_Type (GT)
+                  and then Is_Constant (V),
+          Post => Related_Type (Convert_Aggregate_Constant'Result) = GT
+                  and then Is_Constant (Convert_Aggregate_Constant'Result);
+   --  Convert V, a constant, to GT
+
+   function Convert_Aggregate_Constant (V : Value_T; T : Type_T) return Value_T
+     with Pre  => Present (V) and then Present (T) and then Is_Constant (V),
+          Post => Type_Of (Convert_Aggregate_Constant'Result) = T
+                  and then Is_Constant (Convert_Aggregate_Constant'Result);
+   --  Likewise for native LLVM objects
+
+   function Can_Convert_Aggregate_Constant
+     (V : GL_Value; GT : GL_Type) return Boolean
+     with Pre => Present (V) and then Present (GT);
+   --  Return True iff Convert_Aggregate_Constant can convert V to GT
 
    function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
    --  Remove any conversion from N, if Present, if they are record or array

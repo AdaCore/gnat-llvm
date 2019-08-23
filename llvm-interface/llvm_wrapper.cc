@@ -1,5 +1,6 @@
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Attributes.h"
@@ -25,6 +26,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 
 using namespace llvm;
 using namespace llvm::sys;
@@ -231,6 +233,15 @@ Set_DSO_Local (GlobalVariable *GV)
   GV->setDSOLocal (true);
 }
 
+/* Return nonnull if this value is a constant data.  */
+
+extern "C"
+Value *
+Is_Constant_Data (Value *v)
+{
+  return dyn_cast<ConstantData> (v);
+}
+
 /* The LLVM C interface only provide single-index forms of extractvalue
    and insertvalue, so provide the multi-index forms here.  */
 
@@ -286,6 +297,22 @@ Set_Volatile_For_Atomic (Instruction *inst)
 
 extern "C"
 void
+Inst_Add_Combine_Function (legacy::PassManager *PM, TargetMachine *TM)
+{
+  /* Create the minimum we need to run the InstructionCombining pass.
+     We don't seem to be able to cache or delete any of these things without
+     getting a SIGSEGV, so perhaps everything is already deleted for us.  */
+
+  FunctionPass *CI = createInstructionCombiningPass (false);
+  TargetLibraryInfoImpl TLII (TM->getTargetTriple ());
+  TargetLibraryInfoWrapperPass *TLIP = new TargetLibraryInfoWrapperPass (TLII);
+
+  PM->add (TLIP);
+  PM->add (CI);
+}
+
+extern "C"
+void
 Initialize_LLVM (void)
 {
   // Initialize the target registry etc.  These functions appear to be
@@ -306,7 +333,6 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
 		      bool No_Unit_At_A_Time, bool No_Unroll_Loops,
 		      bool No_Loop_Vectorization, bool No_SLP_Vectorization)
 {
-#ifndef LINK_WITHOUT_OPT
   legacy::PassManager Passes;
   std::unique_ptr<legacy::FunctionPassManager> FPasses;
   PassManagerBuilder Builder;
@@ -351,7 +377,6 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
   FPasses->doFinalization();
 
   Passes.run(*M);
-#endif
 }
 
 extern "C"

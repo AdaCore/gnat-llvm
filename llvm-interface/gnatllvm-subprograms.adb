@@ -1787,7 +1787,7 @@ package body GNATLLVM.Subprograms is
          RHS      : GL_Value              := Get (In_RHS, Object);
          Idxs     : Access_GL_Value_Array := In_Idxs;
          LHS_GT   : constant GL_Type      :=
-           (if    Present (F) then Get_Field_Type (F)
+           (if    Present (F) then Field_Type (F)
             elsif Idxs /= null then Full_Component_GL_Type (Related_Type (LHS))
             else  Related_Type (LHS));
          RHS_GT   : constant GL_Type      := Related_Type (RHS);

@@ -449,7 +449,7 @@ package body GNATLLVM.DebugInfo is
                     and then Known_Static_Esize (F)
                   then
                      declare
-                        F_GT     : constant GL_Type    := Get_Field_Type (F);
+                        F_GT     : constant GL_Type    := Field_Type (F);
                         Mem_Type : constant Metadata_T :=
                           Create_Debug_Type_Data (F_GT);
                         Name     : constant String     := Get_Name (F);

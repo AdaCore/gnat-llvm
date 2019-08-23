@@ -26,8 +26,19 @@ with Stand;    use Stand;
 with Stringt;  use Stringt;
 
 with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
+
+   function Is_Nonsymbolic_Constant_Internal (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  Return True iff V is a constant and that constant contains no
+   --  symbolic pointer values.
+
+   function Contains_Restricted_Type (T : Type_T) return Boolean
+     with Pre => Present (T);
+   --  Return True iff T is either a pointer type, a wide FP type, or
+   --  a composite type that contains one of those.
 
    --------------------------
    -- Get_Current_Position --
@@ -359,6 +370,8 @@ package body GNATLLVM.Utils is
                          Count_Struct_Element_Types (T2))
             then
                return False;
+            elsif Count_Struct_Element_Types (T1) = 0 then
+               return True;
             end if;
 
             for J in 0 .. Count_Struct_Element_Types (T1) - 1 loop
@@ -537,6 +550,94 @@ package body GNATLLVM.Utils is
       Error_Msg_Uint_1 := Num;
       Error_Msg_NE (Msg, N, E);
    end Error_Msg_NE_Num;
+
+   ------------------------------
+   -- Contains_Restricted_Type --
+   ------------------------------
+
+   function Contains_Restricted_Type (T : Type_T) return Boolean is
+   begin
+      case Get_Type_Kind (T) is
+         when Pointer_Type_Kind | X86_Fp80typekind | F_P128_Type_Kind
+            | Ppc_Fp128typekind =>
+            return True;
+
+         when Array_Type_Kind =>
+            return Contains_Restricted_Type (Get_Element_Type (T));
+
+         when Struct_Type_Kind =>
+            for J in 0 .. Int (Count_Struct_Element_Types (T)) - 1 loop
+               if Contains_Restricted_Type
+                 (Struct_Get_Type_At_Index (T, unsigned (J)))
+               then
+                  return True;
+               end if;
+            end loop;
+
+            return False;
+
+         when others =>
+            return False;
+      end case;
+   end Contains_Restricted_Type;
+
+   --------------------------------------
+   -- Is_Nonsymbolic_Constant_Internal --
+   --------------------------------------
+
+   function Is_Nonsymbolic_Constant_Internal (V : Value_T) return Boolean is
+      T : constant Type_T := Type_Of (V);
+
+   begin
+      --  If this isn't a constant, it isn't a nonsymbolic constant.
+      --  If it's a ConstantData, it is.
+
+      if not Is_Constant (V) then
+         return False;
+      elsif Present (Is_Constant_Data (V)) then
+         return True;
+
+      --  Otherwise, this is some other type of constant.  We're only concerned
+      --  about structs and arrays and we set an upper bound on the size
+      --  since LLVM's combiner does too.
+
+      elsif Get_Type_Kind (T) in Struct_Type_Kind | Array_Type_Kind
+        and then Get_Type_Size (T) < 1024 * BPU
+      then
+         declare
+            Nelts : constant unsigned :=
+              (if   Get_Type_Kind (T) = Struct_Type_Kind
+               then Count_Struct_Element_Types (T)
+               else Get_Array_Length (T));
+
+         begin
+            if Nelts /= 0 then
+               for J in 0 .. Nelts - 1 loop
+                  if not Is_Nonsymbolic_Constant_Internal (Get_Operand (V, J))
+                  then
+                     return False;
+                  end if;
+               end loop;
+            end if;
+         end;
+
+         return True;
+
+      --  Otherwise, this isn't a non-symbolic constant
+
+      else
+         return False;
+      end if;
+
+   end Is_Nonsymbolic_Constant_Internal;
+
+   -----------------------------
+   -- Is_Nonsymbolic_Constant --
+   -----------------------------
+
+   function Is_Nonsymbolic_Constant (V : Value_T) return Boolean is
+     (not Contains_Restricted_Type (Type_Of (V))
+        and then Is_Nonsymbolic_Constant_Internal (V));
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

@@ -101,18 +101,23 @@ package GNATLLVM.Variables is
       Elts   : GL_Value := No_GL_Value)
      with Pre => Present (Alloca) and then Present (T);
 
-   function Is_Static_Address (N : Node_Id) return Boolean
+   function Is_Static_Address
+     (N : Node_Id; Not_Symbolic : Boolean := False) return Boolean
      with Pre => Present (N);
-   --  Return True if N represents an address that can computed statically
+   --  Return True if N represents an address that can computed statically.
+   --  If Not_Symbolic is True, only return if this address is a constant
+   --  integer (rare).
 
-   function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean
-     with Pre => Present (In_GT) and then Present (Out_GT);
-   --  Return True if we can statically convert a constant from In_GT to Out_GT
-
-   function Is_No_Elab_Needed (N : Node_Id) return Boolean
+   function Is_No_Elab_Needed
+     (N              : Node_Id;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean
      with Pre => Present (N);
    --  Return True if N represents an expression that can be computed
-   --  without needing an elab proc.
+   --  without needing an elab proc.  If Not_Symbolic is True, we also
+   --  can't alllow anything symbolic.  If Restrict_Types is True, we can't
+   --  allow anything that's an access type or an elementary type wider
+   --  than a word.
 
    function Make_Global_Constant (V : GL_Value) return GL_Value
      with Pre  => not Is_Reference (V),

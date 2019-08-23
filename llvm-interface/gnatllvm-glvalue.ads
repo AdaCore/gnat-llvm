@@ -671,6 +671,10 @@ package GNATLLVM.GLValue is
      (Is_Composite_Type (Full_Etype (V)))
      with Pre => Present (V);
 
+   function Is_Aggregate_Type (V : GL_Value) return Boolean is
+     (Is_Aggregate_Type (Full_Etype (V)))
+     with Pre => Present (V);
+
    function Is_Elementary_Type (V : GL_Value) return Boolean is
      (Is_Elementary_Type (Full_Etype (V)))
      with Pre => Present (V);
@@ -801,6 +805,9 @@ package GNATLLVM.GLValue is
      (Is_Constant (LLVM_Value (V)))
      with Pre => Present (V);
 
+   function Is_Nonsymbolic_Constant (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
    function Is_A_Const_Int (V : GL_Value) return Boolean is
      (Present (Is_A_Constant_Int (LLVM_Value (V))))
      with Pre => Present (V);
@@ -810,6 +817,11 @@ package GNATLLVM.GLValue is
      (Present (Is_A_Constant_FP (LLVM_Value (V))))
      with Pre => Present (V);
    --  Return True if V is a constant floating point value
+
+   function Is_A_Constant_Aggregate_Zero (V : GL_Value) return Boolean is
+     (Present (Is_A_Constant_Aggregate_Zero (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a constant integer
 
    function Get_Const_Int_Value (V : GL_Value) return LLI is
      (Const_Int_Get_S_Ext_Value (LLVM_Value (V)))
@@ -2004,7 +2016,12 @@ package GNATLLVM.GLValue is
      (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Present (V) and then Present (GT),
           Post => Present (Convert_Struct_Constant'Result), Inline;
-   --  Convert V, a constant of a struct type, to TE
+   --  Convert V, a constant of a struct type, to GT
+
+   function Convert_Struct_Constant (V : Value_T; T : Type_T) return Value_T
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Convert_Struct_Constant'Result);
+   --  Likewise but for native LLVM objects
 
    function Idxs_From_GL_Values (Idxs : GL_Value_Array) return Index_Array
      with Post => Idxs'Length = Idxs_From_GL_Values'Result'Length, Inline;

@@ -157,8 +157,37 @@ package body GNATLLVM.Variables is
    function Alloca_Smaller_Than
      (T : Type_T; Elts : GL_Value; Max : ULL) return Boolean
      with Pre => Present (T);
-     --  True iff the size of Elts occurrences of T is fixed and smaller
-     --  than Max bits.
+   --  True iff the size of Elts occurrences of T is fixed and smaller
+   --  than Max bits.
+
+   function Convert_Constant (V : GL_Value; GT : GL_Type) return GL_Value is
+     (if   Is_Aggregate_Type (V) or else Is_Aggregate_Type (GT)
+      then Convert_Aggregate_Constant (V, GT) else Convert_GT (V, GT))
+     with Pre  => Is_Data (V) and then Present (GT),
+          Post => Related_Type (Convert_Constant'Result) = GT;
+   --  Convert V, a constant for which Can_Convert_Constant is true, to GT
+
+   function Can_Convert_Constant
+     (V            : GL_Value;
+      GT           : GL_Type;
+      Not_Symbolic : Boolean := False) return Boolean
+     with Pre => Present (V) and then Present (GT);
+   --  Return True iff Convert_Constant can convert V to GT.  If Not_Symbolic,
+   --  the result must not be a symbolic constant
+
+   function Is_No_Elab_For_Convert
+     (N              : Node_Id;
+      GT             : GL_Type;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean
+     with Pre => Present (N) and then Present (GT);
+   --  See if can avoid an elaboration procedure when elaborating N and
+   --  then converting it to GT.
+
+   function Emit_No_Error (N : Node_Id) return GL_Value
+     with Pre => Present (N), Post => Present (Emit_No_Error'Result);
+   --  Like Emit_Expression, but don't post an error if there's an
+   --  overflow.
 
    function Is_Static_Location (N : Node_Id) return Boolean
      with Pre => Present (N);
@@ -462,6 +491,20 @@ package body GNATLLVM.Variables is
       Detected_Duplicates := True;
    end Detect_Duplicate_Global_Names;
 
+   -------------------
+   -- Emit_No_Error --
+   -------------------
+
+   function Emit_No_Error (N : Node_Id) return GL_Value is
+      Result : GL_Value;
+
+   begin
+      Push_Suppress_Overflow;
+      Result := Emit_Expression (N);
+      Pop_Suppress_Overflow;
+      return Result;
+   end Emit_No_Error;
+
    ------------------------
    -- Is_Static_Location --
    ------------------------
@@ -567,88 +610,44 @@ package body GNATLLVM.Variables is
       end case;
    end Is_Static_Location;
 
-   --------------------------
-   -- Is_Static_Conversion --
-   --------------------------
-
-   function Is_Static_Conversion (In_GT, Out_GT : GL_Type) return Boolean is
-      In_Prim_GT  : constant GL_Type := Primitive_GL_Type (In_GT);
-      Out_Prim_GT : constant GL_Type := Primitive_GL_Type (Out_GT);
-
-   begin
-      --  If either GT is a Byte_Array type, we can only do the
-      --  conversion if both types are the same.
-
-      if In_GT = Out_GT then
-         return True;
-      elsif Is_Byte_Array_GL_Type (In_GT)
-        or else Is_Byte_Array_GL_Type (Out_GT)
-      then
-         return False;
-      end if;
-
-      --  Otherwise, we know we can convert to and from the primitive type,
-      --  so we can now check about those type.
-
-      --  We can do the conversion statically if both are the same
-      return (In_Prim_GT = Out_Prim_GT
-
-                --  Or if both types are elementary
-                or else (Is_Elementary_Type (In_Prim_GT)
-                           and then Is_Elementary_Type (Out_Prim_GT))
-
-                --  Or fixed-size record types with identical layout
-                or else (Is_Record_Type (In_Prim_GT)
-                           and then not Is_Nonnative_Type (In_Prim_GT)
-                           and then Is_Record_Type (Out_Prim_GT)
-                           and then not Is_Nonnative_Type (Out_Prim_GT)
-                           and then Is_Layout_Identical (In_Prim_GT,
-                                                         Out_Prim_GT))
-
-                --  Or if both types are native and the LLVM types are
-                --  the same.
-                or else (not Is_Nonnative_Type (In_Prim_GT)
-                           and then not Is_Nonnative_Type (Out_Prim_GT)
-                           and then Type_Of (In_Prim_GT) =
-                                      Type_Of (Out_Prim_GT)));
-
-   end Is_Static_Conversion;
-
    -----------------------
    -- Is_Static_Address --
    -----------------------
 
-   function Is_Static_Address (N : Node_Id) return Boolean is
-      GT : constant GL_Type := Full_GL_Type (N);
-
+   function Is_Static_Address
+     (N : Node_Id; Not_Symbolic : Boolean := False) return Boolean is
    begin
       case Nkind (N) is
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
-            return Is_Static_Conversion (Full_GL_Type (Expression (N)), GT)
-              and then Is_Static_Address (Expression (N));
+            return Is_Static_Address (Expression (N), Not_Symbolic);
 
          when N_Attribute_Reference =>
-            return (Get_Attribute_Id (Attribute_Name (N))
-                      in Attribute_Address | Attribute_Access |
-                        Attribute_Unchecked_Access | Attribute_Code_Address |
-                        Attribute_Unrestricted_Access)
+            return not Not_Symbolic
+              and then (Get_Attribute_Id (Attribute_Name (N))
+                          in Attribute_Address | Attribute_Access |
+                          Attribute_Unchecked_Access | Attribute_Code_Address |
+                          Attribute_Unrestricted_Access)
               and then Is_Static_Location (Prefix (N));
 
          when N_Identifier | N_Expanded_Name =>
-            return Is_Static_Address (Entity (N));
+            return not Not_Symbolic and then Is_Static_Address (Entity (N));
 
          when N_Defining_Identifier =>
             declare
                CV : constant Node_Id := Initialized_Value (N);
 
             begin
-               return Present (CV) and then Is_Static_Address (CV);
+               return Present (CV)
+                 and then Is_Static_Address (CV, Not_Symbolic);
             end;
 
          when others =>
-            return Compile_Time_Known_Value (N);
+            return Compile_Time_Known_Value (N)
+              and then (not Not_Symbolic
+                          or else Is_A_Const_Int (Emit_No_Error (N))
+                          or else Is_A_Const_FP  (Emit_No_Error (N)));
       end case;
    end Is_Static_Address;
 
@@ -684,32 +683,47 @@ package body GNATLLVM.Variables is
       end if;
    end Initialized_Value;
 
+   --------------------------
+   -- Can_Convert_Constant --
+   --------------------------
+
+   function Can_Convert_Constant
+     (V            : GL_Value;
+      GT           : GL_Type;
+      Not_Symbolic : Boolean := False) return Boolean is
+
+   begin
+      --  If it's not data or not a constant, we can't
+
+      if not Is_Data (V) or else not Is_Constant (V) then
+         return False;
+
+      --  If one type is aggregate, see if we can convert it that way
+
+      elsif Is_Aggregate_Type (V) or else Is_Aggregate_Type (GT) then
+         return Can_Convert_Aggregate_Constant (V, GT);
+
+      --  We can always convert scalar to scalar, but may need to check for
+      --  a symbolic value.
+
+      else
+         return not Not_Symbolic or else Is_A_Const_Int (V)
+           or else Is_A_Const_FP (V);
+      end if;
+   end Can_Convert_Constant;
+
    -----------------------
    -- Is_No_Elab_Needed --
    -----------------------
 
-   function Is_No_Elab_Needed (N : Node_Id) return Boolean is
-      function Emit_No_Error (N : Node_Id) return GL_Value
-        with Pre => Present (N), Post => Present (Emit_No_Error'Result);
-      --  Like Emit_Expression, but don't post an error if there's an
-      --  overflow.
-
+   function Is_No_Elab_Needed
+     (N              : Node_Id;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean
+   is
       GT   : constant GL_Type := Full_GL_Type (N);
       Expr : Node_Id;
       F    : Entity_Id;
-
-      -------------------
-      -- Emit_No_Error --
-      -------------------
-
-      function Emit_No_Error (N : Node_Id) return GL_Value is
-      begin
-         return Result : GL_Value do
-            Push_Suppress_Overflow;
-            Result := Emit_Expression (N);
-            Pop_Suppress_Overflow;
-         end return;
-      end Emit_No_Error;
 
    begin
       --  If this is an aggregate type, we don't want to worry about
@@ -717,19 +731,21 @@ package body GNATLLVM.Variables is
 
       if Decls_Only and then Is_Composite_Type (GT) then
          return False;
+
+      --  If we aren't to allow access or wide types, test here.
+
+      elsif Restrict_Types
+        and then ((Is_Elementary_Type (GT)
+                    and then Get_Type_Size (GT) > Get_Bits_Per_Word)
+                  or else Is_Access_Type (GT))
+      then
+         return False;
       end if;
 
       case Nkind (N) is
          when N_Aggregate | N_Extension_Aggregate =>
 
-            --  We never can create an aggregate in a byte array GT or a
-            --  truncated GT.
-
-            if Is_Byte_Array_GL_Type (GT) or else Is_Truncated_GL_Type (GT)
-            then
-               return False;
-
-            elsif Is_Array_Type (GT) then
+            if Is_Array_Type (GT) then
 
                --  We don't support constant aggregates of multi-dimensional
                --  Fortran arrays because it's too complex.  And we also
@@ -751,7 +767,8 @@ package body GNATLLVM.Variables is
 
                Expr := First (Expressions (N));
                while Present (Expr) loop
-                  exit when not Is_No_Elab_Needed (Expr);
+                  exit when not Is_No_Elab_Needed (Expr, Not_Symbolic,
+                                                   Restrict_Types);
                   Next (Expr);
                end loop;
 
@@ -766,14 +783,14 @@ package body GNATLLVM.Variables is
                      Discard (Type_Of (Full_Scope (F)));
                      F := Find_Matching_Field (Full_Scope (F), F);
                      exit when not Box_Present (Expr)
-                       and then (not Is_No_Elab_Needed (Expression (Expr))
+                       and then (not Is_No_Elab_For_Convert (Expression (Expr),
+                                                             Field_Type (F),
+                                                             Not_Symbolic,
+                                                             Restrict_Types)
                                    or else Is_Array_Bitfield (F)
                                    or else (Is_Bitfield (F)
                                               and then not Is_Elementary_Type
-                                              (Full_Etype (F)))
-                                   or else not Is_Static_Conversion
-                                   (Full_GL_Type (Expression (Expr)),
-                                    Full_GL_Type (F)));
+                                              (Full_Etype (F))));
                   end if;
 
                   Next (Expr);
@@ -788,54 +805,71 @@ package body GNATLLVM.Variables is
 
             --  LLVM only allows adds and subtracts of symbols to be
             --  considered static, so we can only allow actual known values
-            --  in that case.  But there's one exception: if we're doing a
-            --  comparison of two values that are static addresses and the
-            --  addresses as the same, the result is known to be true or
-            --  false, respectively, and will constant fold to that.
+            --  in that case with one exception, which is if we have a
+            --  comparison involving symbolic operands and that comparison
+            --  has a constant value.  Note that having a comparison
+            --  operation "clears" the flags because all we'll see is the
+            --  result of the comparison.
 
-            --  We definitely can't do this if either side needs elaboration.
+            declare
+               Is_Cmp : constant Boolean := Nkind (N) in N_Op_Compare;
+               Our_NS : constant Boolean :=
+                 (Not_Symbolic and then not Is_Cmp)
+                 or Nkind (N) not in N_Op_Add | N_Op_Subtract | N_Op_Compare;
+               Our_RT : constant Boolean := Restrict_Types and not Is_Cmp;
 
-            if not Is_No_Elab_Needed (Left_Opnd (N))
-              or else not Is_No_Elab_Needed (Right_Opnd (N))
-            then
-               return False;
+            begin
+               if not Is_No_Elab_Needed (Left_Opnd (N),
+                                         Not_Symbolic   => Our_NS,
+                                         Restrict_Types => Our_RT)
+                 or else not Is_No_Elab_Needed (Right_Opnd (N),
+                                                Not_Symbolic   => Our_NS,
+                                                Restrict_Types => Our_RT)
+                 --  If either side needs an elab proc, we do
 
-            --  If this is an add or subtract, that's all we need
+                 or else (Do_Overflow_Check (N)
+                            and then Overflowed (Emit_No_Error (N)))
+                 --  If we're to check for overflow, this needs an elab proc
+                 --  if the operation overflows.
 
-            elsif Nkind_In (N, N_Op_Add, N_Op_Subtract) then
-               return True;
+               then
+                  return False;
+               end if;
 
-            --  Otherwise, it's static iff its value is a constant integer
+               --  Otherwise, we're OK if this isn't a comparison or if it
+               --  is and the result is a constant.
 
-            else
-               return Is_A_Const_Int (Emit_No_Error (N));
-            end if;
+               return Nkind (N) not in N_Op_Compare
+                 or else Is_A_Const_Int (Emit_No_Error (N));
+            end;
 
          when N_Unary_Op =>
 
-            return not Do_Overflow_Check (N)
-              and then Is_No_Elab_Needed (Right_Opnd (N));
+            return Is_No_Elab_Needed (Right_Opnd (N), Not_Symbolic,
+                                      Restrict_Types)
+              and then (not Do_Overflow_Check (N)
+                         or else not Overflowed (Emit_No_Error (N)));
 
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
 
-            return (Nkind (N) /= N_Type_Conversion
-                      or else not Do_Overflow_Check (N))
-              --  Must not have overflow check
-
-              and then Is_Static_Conversion (Full_GL_Type (Expression (N)), GT)
-              --  Must be able to do conversion statically
-
-              and then Is_No_Elab_Needed (Expression (N))
+            return Is_No_Elab_For_Convert (Expression (N), GT, Not_Symbolic,
+                                           Restrict_Types)
               --  Operand must not need elaboration
 
               and then (not Is_Scalar_Type (GT)
                           or else Type_Of (GT) = LLVM_Size_Type
-                          or else Is_A_Const_Int (Emit_No_Error (N))
-                          or else Is_A_Const_FP  (Emit_No_Error (N)));
+                          or else Is_A_Const_Int (Emit_No_Error
+                                                    (Expression (N)))
+                          or else Is_A_Const_FP  (Emit_No_Error
               --  If converting to a scalar type other than Size_Type,
               --  we can't have a relocatable expression.
+                                                    (Expression (N))))
+              and then (Nkind (N) /= N_Type_Conversion
+                          or else not Do_Overflow_Check (N)
+                          or else not Overflowed (Emit_No_Error (N)));
+            --  If testing for overflow, must not overflow
 
          when N_Attribute_Reference =>
 
@@ -864,24 +898,28 @@ package body GNATLLVM.Variables is
                   --  as well.
 
                      return not Is_Nonnative_Type (Full_Etype (Prefix (N)))
-                       and then Is_No_Elab_Needed (Prefix (N));
+                       and then Is_No_Elab_Needed (Prefix (N), Not_Symbolic,
+                                                   Restrict_Types);
                   end if;
 
                when Attribute_Min | Attribute_Max =>
 
-                  return Is_No_Elab_Needed (First (Expressions (N)))
-                    and then Is_No_Elab_Needed (Last (Expressions (N)));
+                  return Is_No_Elab_Needed (First (Expressions (N)),
+                                            Not_Symbolic, Restrict_Types)
+                    and then Is_No_Elab_Needed (Last (Expressions (N)),
+                                                Not_Symbolic, Restrict_Types);
 
                when Attribute_Pos | Attribute_Val | Attribute_Succ
                   | Attribute_Pred | Attribute_Machine | Attribute_Model =>
 
-                  return Is_No_Elab_Needed (First (Expressions (N)));
+                  return Is_No_Elab_Needed (First (Expressions (N)),
+                                            Not_Symbolic, Restrict_Types);
 
                when Attribute_Access | Attribute_Unchecked_Access
                   | Attribute_Unrestricted_Access | Attribute_Address
                   | Attribute_Code_Address | Attribute_Pool_Address =>
 
-                  return Is_Static_Address (N);
+                  return Is_Static_Address (N, Not_Symbolic);
 
                when Attribute_Passed_By_Reference
                   | Attribute_Mechanism_Code | Attribute_Null_Parameter =>
@@ -893,8 +931,11 @@ package body GNATLLVM.Variables is
 
                   if Is_Scalar_Type (Full_Etype (Prefix (N))) then
                      Expr := Get_Dim_Range (Full_Etype (Prefix (N)));
-                     return Is_No_Elab_Needed (Low_Bound (Expr))
-                       and then Is_No_Elab_Needed (High_Bound (Expr));
+                     return Is_No_Elab_Needed (Low_Bound (Expr),
+                                               Not_Symbolic, Restrict_Types)
+                       and then Is_No_Elab_Needed (High_Bound (Expr),
+                                                   Not_Symbolic,
+                                                   Restrict_Types);
                   else
                      return False;
                   end if;
@@ -905,9 +946,8 @@ package body GNATLLVM.Variables is
 
          when N_Identifier | N_Expanded_Name =>
 
-            return Is_No_Elab_Needed (Entity (N))
-              and then Is_Static_Conversion (Full_GL_Type (Entity (N)),
-                                             Full_GL_Type (N));
+            return Is_No_Elab_For_Convert (Entity (N), GT, Not_Symbolic,
+                                           Restrict_Types);
 
          --  If Emit_Identifier would walk into a constant value, we do as well
 
@@ -922,33 +962,29 @@ package body GNATLLVM.Variables is
                V  : constant GL_Value := Get_Value (N);
 
             begin
-               if Present (V) and then Is_Data (V) and then Is_Constant (V)
-                 and then Is_Static_Conversion (Related_Type (V), GT)
+               if Present (V) and then Is_Data (V)
+                 and then Can_Convert_Constant (V, GT, Not_Symbolic)
                then
                   return True;
 
                elsif Ekind (N) = E_Constant and then Present (Full_View (N))
                  and then No (Address_Clause (N))
                then
-                  return Is_No_Elab_Needed (Full_View (N))
-                    and then Is_Static_Conversion (Full_GL_Type
-                                                     (Full_View (N)),
-                                                   GT);
+                  return Is_No_Elab_For_Convert (Full_View (N), GT,
+                                                 Not_Symbolic, Restrict_Types);
                else
                   return Ekind (N) = E_Constant and then Present (CV)
-                    and then Is_No_Elab_Needed (CV)
-                    and then Is_Static_Conversion (Full_GL_Type (CV), GT);
+                    and then Is_No_Elab_For_Convert (CV, GT, Not_Symbolic,
+                                                     Restrict_Types);
                end if;
             end;
 
          when N_Selected_Component =>
 
-            return Is_No_Elab_Needed (Prefix (N))
-              and then Is_Static_Conversion (Full_GL_Type (Prefix (N)),
-                                             Default_GL_Type
-                                               (Full_Scope
-                                                  (Entity
-                                                     (Selector_Name (N)))));
+            return not Is_Nonnative_Type (Full_GL_Type (Entity
+                                                          (Selector_Name (N))))
+              and then Is_No_Elab_Needed (Prefix (N), Not_Symbolic,
+                                          Restrict_Types);
 
          --  If this is extracting constant offsets from something that we
          --  can elaborate statically, we can elaborate this statically.
@@ -957,13 +993,15 @@ package body GNATLLVM.Variables is
 
          when N_Indexed_Component =>
 
-            if not Is_No_Elab_Needed (Prefix (N)) then
+            if not Is_No_Elab_Needed (Prefix (N), Not_Symbolic, Restrict_Types)
+            then
                return False;
             end if;
 
             Expr := First (Expressions (N));
             while Present (Expr) loop
-               exit when not Is_No_Elab_Needed (Expr);
+               exit when not Is_No_Elab_Needed (Expr, Not_Symbolic,
+                                                Restrict_Types);
                Next (Expr);
             end loop;
 
@@ -971,14 +1009,71 @@ package body GNATLLVM.Variables is
 
          when others =>
 
-            --  If this is a compile-time constant or an address that we
-            --  can evaluate, we don't need any elaboration.
+            --  An address that we can evaluate or other compile time
+            --  known valule, we don't need any elaboration.
 
-            return Compile_Time_Known_Value (N)
-              or else Is_Static_Address (N);
+            return Is_Static_Address (N, Not_Symbolic);
       end case;
 
    end Is_No_Elab_Needed;
+
+   ----------------------------
+   -- Is_No_Elab_For_Convert --
+   ---------------------------
+
+   function Is_No_Elab_For_Convert
+     (N              : Node_Id;
+      GT             : GL_Type;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean is
+   begin
+      --  If we're converting to a non-native type, this always needs
+      --  elaboration code.
+
+      if Is_Nonnative_Type (GT) then
+         return False;
+
+      --  We always require the input to not need elaboration, but we may
+      --  have further restrictions.
+
+      else
+         declare
+            In_GT  : constant GL_Type := Full_GL_Type (N);
+            Our_NS : Boolean          := Not_Symbolic;
+            Our_RT : Boolean          := Restrict_Types;
+
+         begin
+            --  If both types are elementary, the only restriction we may
+            --  have is that if we're converting to a scalar type other
+            --  than Size_Type, we can't have a relocatable expression.
+
+            if Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
+               if Is_Scalar_Type (GT)
+                 and then Type_Of (GT) /= LLVM_Size_Type
+                 and then Type_Of (GT) /= Type_Of (In_GT)
+               then
+                  Our_NS := True;
+               end if;
+
+            --  Otherwise, we'll be using Convert_Aggregate_Constant, so
+            --  both restrictions apply unless the layouts are the same.
+            --  Also, we can't do this at all for types that are too large.
+
+            elsif not Is_Layout_Identical (In_GT, GT) then
+               Our_NS := True;
+               Our_RT := True;
+
+               if Get_Type_Size (GT) >= 1024 * BPU then
+                  return False;
+               end if;
+            end if;
+
+            return Is_No_Elab_Needed (N, Not_Symbolic => Our_NS,
+                                      Restrict_Types  => Our_RT);
+         end;
+      end if;
+
+   end Is_No_Elab_For_Convert;
 
    -------------------------
    -- Alloca_Smaller_Than --
@@ -1599,48 +1694,6 @@ package body GNATLLVM.Variables is
       LLVM_Var        : GL_Value           := Get_Value (Def_Ident);
       --  The LLVM value for the variable
 
-      function Can_Initialize (V : GL_Value; GT : GL_Type) return Boolean
-        with Pre => Present (V) and then Present (GT);
-      --  Return True if we can build an initializer of type GT for V.
-      --  This handles the case of duplicate linker names and verifies
-      --  that if V is a conversion of such a global, that we can
-      --  convert to its referenced type.
-
-      --------------------
-      -- Can_Initialize --
-      --------------------
-
-      function Can_Initialize (V : GL_Value; GT : GL_Type) return Boolean is
-      begin
-         --  If this is a global, we know we can initalize it
-
-         if Is_A_Global_Variable (V) then
-            return True;
-
-         --   If it's not a constant expression, we can't
-
-         elsif Get_Value_Kind (V) /= Constant_Expr_Value_Kind then
-            return False;
-         end if;
-
-         --  The remaining case is a constant bitcast to a pointer to a type
-
-         declare
-            Orig_V : constant Value_T := Get_Operand (LLVM_Value (V), 0);
-            V_P_T  : constant Type_T  := Type_Of (Orig_V);
-            V_T    : constant Type_T  := Get_Element_Type (V_P_T);
-            T      : constant Type_T  := Type_Of (GT);
-
-         begin
-            --  We can only do this if T and V_T are both structure types
-            --  with the same layout.
-
-            return Get_Type_Kind (T) = Struct_Type_Kind
-              and then Get_Type_Kind (V_T) = Struct_Type_Kind
-              and then Is_Layout_Identical (T, V_T);
-         end;
-      end Can_Initialize;
-
    begin
       --  Nothing to do if this is a debug renaming type
 
@@ -1720,11 +1773,7 @@ package body GNATLLVM.Variables is
             Set_Value (Full_Ident, Emit_Undef (GT));
          end if;
 
-         if Present (Expr)
-           and then (not Is_No_Elab_Needed (Expr)
-                       or else not Is_Static_Conversion
-                       (Full_GL_Type (Expr), GT))
-         then
+         if Present (Expr) and then not Is_No_Elab_Needed (Expr) then
             if Library_Level then
                Add_To_Elab_Proc (Expr, For_GT => GT);
             else
@@ -1819,10 +1868,8 @@ package body GNATLLVM.Variables is
          --  initialization.
 
          if Present (Expr) then
-            if Is_No_Elab_Needed (Expr)
-              and then Can_Initialize (LLVM_Var, GT)
+            if Is_No_Elab_For_Convert (Expr, GT)
               and then not Nonnative and then not Has_Addr
-              and then Is_Static_Conversion (Full_GL_Type (Expr), GT)
             then
                if No (Value) then
                   Value := Emit_Convert_Value (Expr, GT);
@@ -2133,6 +2180,12 @@ package body GNATLLVM.Variables is
 
       if Present (V_Act) then
          return V_Act;
+
+      --  If we have a value already computed, it's a constant, and we can
+      --  convert the constant to GT, do so.
+
+      elsif Present (V) and then Can_Convert_Constant (V, GT) then
+         return Convert_Constant (V, GT);
 
       --  If this entity has a known constant value, use it unless we're
       --  getting the address or an operation where we likely need an LValue,

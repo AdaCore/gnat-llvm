@@ -20,13 +20,12 @@ with Get_Targ; use Get_Targ;
 with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Arrays;    use GNATLLVM.Arrays;
 with GNATLLVM.Compile;   use GNATLLVM.Compile;
 with GNATLLVM.Exprs;     use GNATLLVM.Exprs;
 with GNATLLVM.Types;     use GNATLLVM.Types;
 with GNATLLVM.Utils;     use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;   use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Conversions is
 
@@ -43,6 +42,25 @@ package body GNATLLVM.Conversions is
    function Is_Nop_Conversion (V : GL_Value; GT : GL_Type) return Boolean
      with Pre => Is_Reference (V) and then Present (GT);
    --  Return True if converting V to type GT won't change any bits
+
+   function Convert_Nonsymbolic_Constant
+     (V : Value_T; T : Type_T) return Value_T
+     with Pre  => Present (V) and then Present (T)
+                  and then Is_Nonsymbolic_Constant (V),
+          Post => Type_Of (Convert_Nonsymbolic_Constant'Result) = T
+                  and then Is_Nonsymbolic_Constant
+                             (Convert_Nonsymbolic_Constant'Result);
+   --  Convert V, a constant, to T
+
+   function Convert_Nonsymbolic_Constant_Internal
+     (V : Value_T; T : Type_T) return Value_T
+     with Pre  => Present (V) and then Present (T)
+                  and then Is_Nonsymbolic_Constant (V),
+          Post => Type_Of (Convert_Nonsymbolic_Constant_Internal'Result) = T
+                  and then Is_Nonsymbolic_Constant
+                             (Convert_Nonsymbolic_Constant_Internal'Result);
+   --  Convert V, a constant, to T.  This version only works if one side
+   --  is an array of bytes.
 
    -----------------------------------------------
    -- Are_Arrays_With_Different_Index_Types --
@@ -395,6 +413,23 @@ package body GNATLLVM.Conversions is
                                No_Truncation  => No_Truncation);
          end if;
 
+      --  If we have a constant (which we know is an aggregate), we
+      --  can make a new constant.  This is the desired result for both
+      --  checked and unchecked conversion.
+
+      elsif Can_Convert_Aggregate_Constant (Result, GT) then
+         Result := Convert_Aggregate_Constant (Result, GT);
+
+      --  If we have an undefined value that we're converting to another
+      --  type, just get an undefined value of that type.  But watch for
+      --  the case where we have Data of some fixed-size type and we're
+      --  converting to a dynamic-sized type.  We handle the reference
+      --  cases below since we may have to deal with materializing bounds.
+
+      elsif Is_Undef (Result) and then R = Data and then Is_Loadable_Type (GT)
+      then
+         Result := Get_Undef (GT);
+
       --  Otherwise, convert to the primitive type, do any required
       --  conversion (as an unchecked conversion, meaning pointer
       --  punning or equivalent) and then convert to the result type.
@@ -411,29 +446,6 @@ package body GNATLLVM.Conversions is
            and then Type_Of (Result) = Type_Of (Prim_GT)
          then
             Result := G_Is (Result, Prim_GT);
-
-         --  If we have an undefined value that we're converting to another
-         --  type, just get an undefined value of that type.  But watch for
-         --  the case where we have Data of some fixed-size type and we're
-         --  converting to a dynamic-sized type.  We handle the reference
-         --  cases below since we may have to deal with materializing
-         --  bounds.
-
-         elsif Is_Undef (Result) and then R = Data
-           and then Is_Loadable_Type (Prim_GT)
-         then
-            Result := Get_Undef (Prim_GT);
-
-         --  If we have a constant of a struct type that we're converting
-         --  to a struct of the same layout, we can make a new constant.
-
-         elsif Is_Data (Result) and then Is_Constant (Result)
-           and then Get_Type_Kind (Type_Of (Result)) = Struct_Type_Kind
-           and then Is_Record_Type (Prim_GT)
-           and then not Is_Nonnative_Type (Prim_GT)
-           and then Is_Layout_Identical (Result, Prim_GT)
-         then
-            Result := Convert_Struct_Constant (Result, Prim_GT);
 
          --  Otherwise, do an actual pointer pun
 
@@ -730,6 +742,11 @@ package body GNATLLVM.Conversions is
             return Convert (Get (V, Data), GT);
          end if;
 
+      --  If this is an aggregate constant, we may be able to convert it
+
+      elsif Can_Convert_Aggregate_Constant (V, GT) then
+         return Convert_Aggregate_Constant (V, GT);
+
       --  If this is a reference (now known to be a composite type), use
       --  pointer punning.
 
@@ -742,15 +759,8 @@ package body GNATLLVM.Conversions is
       elsif Full_Etype (In_GT) = Full_Etype (GT) then
          return From_Primitive (To_Primitive (V), GT);
 
-      --  Otherwise, it must be a case where this is a type whose layout is
-      --  identical to GT or where the base types are the same.  If it's a
-      --  constant record with identical layout, we can convert it.
       --  Otherwise, leave it alone and it'll be sorted out downstream.
 
-      elsif Is_Constant (V) and then Is_Record_Type (GT)
-        and then Is_Layout_Identical (V, GT)
-      then
-         return Convert_Struct_Constant (V, GT);
       else
          return V;
       end if;
@@ -895,6 +905,248 @@ package body GNATLLVM.Conversions is
 
       return G (Value, GT, R);
    end Convert_Pointer;
+
+   ------------------------------------
+   -- Can_Convert_Aggregate_Constant --
+   ------------------------------------
+
+   function Can_Convert_Aggregate_Constant
+     (V : GL_Value; GT : GL_Type) return Boolean
+   is
+      V_GT   : constant GL_Type := Related_Type (V);
+      In_GT  : constant GL_Type :=
+        (if Is_Padded_GL_Type (V_GT) then Primitive_GL_Type (V_GT) else V_GT);
+      Out_GT : constant GL_Type :=
+        (if Is_Padded_GL_Type (GT) then Primitive_GL_Type (GT) else GT);
+      In_T   : constant Type_T := Type_Of (In_GT);
+      Out_T  : constant Type_T := Type_Of (Out_GT);
+
+   begin
+      --  If this isn't data, isn't a constant, we have a nonnative
+      --  type or both are an elementary type, we can't use this form
+      --  of conversion.  Likewise if this isn't a constant.
+
+      if not Is_Data (V) or else not Is_Constant (V)
+        or else Is_Nonnative_Type (GT)
+        or else (not Is_Aggregate_Type (GT) and then not Is_Aggregate_Type (V))
+      then
+         return False;
+
+      --  If the layout of the types are identical, we can do the conversion.
+      --  Likewise if the input is undefined or all zero
+
+      elsif Is_Layout_Identical (In_T, Out_T)
+        or else Is_Undef (V) or else Is_A_Constant_Aggregate_Zero (V)
+      then
+         return True;
+
+      --  The only other way is if we have a nonsymbolic constant (which
+      --  checks for the length of the input) and the length of the output
+      --  is small enough.
+
+      else
+         return Is_Nonsymbolic_Constant (V)
+           and then Get_Type_Size (Out_T) < 1024 * BPU;
+      end if;
+   end Can_Convert_Aggregate_Constant;
+
+   -------------------------------------------
+   -- Convert_Nonsymbolic_Constant_Internal --
+   -------------------------------------------
+
+   function Convert_Nonsymbolic_Constant_Internal
+     (V : Value_T; T : Type_T) return Value_T
+   is
+      BB       : constant Basic_Block_T  := Get_Insert_Block (IR_Builder);
+      Ptr_Ty   : constant Type_T         := Pointer_Type (T, 0);
+      Our_Mod  : constant Module_T       :=
+        Module_Create_With_Name_In_Context ("_CC", Context);
+      Our_Func : constant Value_T        :=
+        Add_Function (Our_Mod, "__CC", Fn_Ty ((1 .. 0 => <>), T));
+      Our_BB   : constant Basic_Block_T  :=
+        Append_Basic_Block_In_Context (Context, Our_Func, "");
+      G_C      : constant Value_T        :=
+        Add_Global (Our_Mod, Type_Of (V), "_CC");
+      Our_PM   : constant Pass_Manager_T := Create_Pass_Manager;
+      New_Ret  : Value_T;
+      Result   : Value_T;
+
+   begin
+      --  We want to build a function that contains a return of a load from
+      --  a constant global corresponding to V that's cast to a reference
+      --  to GT and pass that to the instruction combiner.  It should
+      --  produce just one instruction, which is the return whose argument
+      --  is the converted constant.
+      --
+      --  For the optimizer to properly handle this case, the following must
+      --  be true and are guaranteed by our callers.
+      --
+      --  - either the input or output type must be of the form [N x i8]
+      --
+      --  - no scalar component can be a pointer or an FP type wider than
+      --    64 bits
+      --
+      --  - all scalar components must be either constant integers or constant
+      --    FP values.
+      --
+      --  - if the input or output is an integer type, its bitsize must be
+      --    a multiple of the byte size
+
+      Set_Initializer     (G_C, V);
+      Set_Linkage         (G_C, Private_Linkage);
+      Set_Global_Constant (G_C, True);
+      Set_Unnamed_Addr    (G_C, True);
+      Position_Builder_At_End (Our_BB);
+      Discard (Build_Ret (IR_Builder,
+                          Load (IR_Builder,
+                                Pointer_Cast (IR_Builder, G_C, Ptr_Ty, ""),
+                                "")));
+      Inst_Add_Combine_Function (Our_PM, Target_Machine);
+      pragma Assert (Run_Pass_Manager (Our_PM, Our_Mod));
+      New_Ret := Get_First_Instruction (Our_BB);
+      pragma Assert (Get_Last_Instruction (Our_BB) = New_Ret
+                       and then Present (Is_A_Return_Inst (New_Ret)));
+      Result  := Get_Operand (New_Ret, 0);
+
+      --  Now delete everything we made
+
+      Delete_Basic_Block (Our_BB);
+      Delete_Function (Our_Func);
+      Dispose_Module (Our_Mod);
+      Dispose_Pass_Manager (Our_PM);
+      --  If we were in a block previously, switch back to it.  Then return
+      --  our value.
+
+      if Present (BB) then
+         Position_Builder_At_End (BB);
+      end if;
+
+      return Result;
+   end Convert_Nonsymbolic_Constant_Internal;
+
+   ----------------------------------
+   -- Convert_Nonsymbolic_Constant --
+   ----------------------------------
+
+   function Convert_Nonsymbolic_Constant
+     (V : Value_T; T : Type_T) return Value_T
+   is
+      In_T      : constant Type_T  := Type_Of (V);
+      In_Size   : constant ULL     := Get_Type_Size (In_T);
+      In_Bytes  : constant ULL     := To_Bytes (In_Size);
+      Cvt_T     : constant Type_T  :=
+        (if   Get_Type_Kind (In_T) /= Integer_Type_Kind
+              or else Get_Scalar_Bit_Size (In_T) = In_Size
+         then In_T else Int_Ty (In_Bytes * ULL (BPU)));
+      --  If we have a non-byte-width input type, make one that rounds up the
+      --  size.  We do the same for the output type below.
+
+      Out_Size  : constant ULL     := Get_Type_Size (T);
+      Out_Bytes : constant ULL     := To_Bytes (Out_Size);
+      Out_T     : constant Type_T  :=
+        (if   Get_Type_Kind (T) /= Integer_Type_Kind
+              or else Get_Scalar_Bit_Size (T) = Out_Size
+         then T else Int_Ty (Out_Bytes * ULL (BPU)));
+      In_V      : constant Value_T :=
+        (if Cvt_T = In_T then V else Z_Ext (IR_Builder, V, Cvt_T, ""));
+      --  Zero extension is always correct because this can only happen
+      --  for modular types.
+
+      Result    : Value_T;
+
+   begin
+      --  If one type is a byte array, we can do this in one step
+
+      if (Get_Type_Kind (In_T) = Array_Type_Kind
+            and then Get_Element_Type (In_T) = Byte_T)
+        or else (Get_Type_Kind (T) = Array_Type_Kind
+                   and then Get_Element_Type (T) = Byte_T)
+      then
+         Result := Convert_Nonsymbolic_Constant_Internal (In_V, Out_T);
+
+      --  Otherwise, make a byte array type and do two conversions
+
+      else
+         declare
+            Bytes     : constant ULL     := ULL'Min (In_Bytes, Out_Bytes);
+            Int_T     : constant Type_T  :=
+              Array_Type (Byte_T, unsigned (Bytes));
+            Int_V     : constant Value_T :=
+              Convert_Nonsymbolic_Constant_Internal (In_V, Int_T);
+
+         begin
+            Result := Convert_Nonsymbolic_Constant_Internal (Int_V, Out_T);
+         end;
+      end if;
+
+      --  If the result type was a non-byte-wide, we have to truncate what
+      --  we have to it.
+
+      return (if T = Out_T then Result else Trunc (IR_Builder, Result, T, ""));
+   end Convert_Nonsymbolic_Constant;
+
+   --------------------------------
+   -- Convert_Aggregate_Constant --
+   --------------------------------
+
+   function Convert_Aggregate_Constant
+     (V : Value_T; T : Type_T) return Value_T
+   is
+      In_T  : constant Type_T := Type_Of (V);
+
+   begin
+      --  There are many ways we can do this conversion.  If the types
+      --  are the same, we're done.
+
+      if In_T = T then
+         return V;
+
+      --  If the input is undefined, so is the output
+
+      elsif Is_Undef (V) then
+         return Get_Undef (T);
+
+      --  If the input it a zeroinitializer, so is the output
+
+      elsif Present (Is_A_Constant_Aggregate_Zero (V)) then
+         return  Const_Null (T);
+
+      --  If they're structures and the layouts are identical, we can
+      --  convert the constant that way.
+
+      elsif Get_Type_Kind (In_T) = Struct_Type_Kind
+        and then Is_Layout_Identical (In_T, T)
+      then
+         return Convert_Struct_Constant (V, T);
+
+      --  Otherwise, assume this is a nonsymbolic constant and convert
+      --  that way.  (If it isn't, we'll get an assertion failure.)
+
+      else
+         return Convert_Nonsymbolic_Constant (V, T);
+      end if;
+
+   end Convert_Aggregate_Constant;
+
+   --------------------------------
+   -- Convert_Aggregate_Constant --
+   --------------------------------
+
+   function Convert_Aggregate_Constant
+     (V : GL_Value; GT : GL_Type) return GL_Value
+   is
+      In_GT  : constant GL_Type  := Related_Type (V);
+      In_V   : constant GL_Value :=
+        (if Is_Padded_GL_Type (In_GT) then To_Primitive (V) else V);
+      Out_GT : constant GL_Type  :=
+        (if Is_Padded_GL_Type (GT) then Primitive_GL_Type (GT) else GT);
+      Cvt_V  : constant GL_Value :=
+          G (Convert_Aggregate_Constant (LLVM_Value (In_V), Type_Of (Out_GT)),
+             Out_GT);
+
+   begin
+      return (if Out_GT = GT then Cvt_V else From_Primitive (Cvt_V, GT));
+   end Convert_Aggregate_Constant;
 
    -------------------------------
    -- Strip_Complex_Conversions --

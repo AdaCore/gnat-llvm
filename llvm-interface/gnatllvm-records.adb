@@ -156,6 +156,14 @@ package body GNATLLVM.Records is
      with Pre => Present (V), Post => Present (Align_To'Result);
    --  Version for computing back-annotation
 
+   function Record_Type_For_Field
+     (GT : GL_Type; F : Entity_Id) return Entity_Id
+     with Pre  => Present (GT)
+                  and then Ekind_In (F, E_Component, E_Discriminant),
+          Post => Is_Record_Type (Record_Type_For_Field'Result);
+   --  We have an object of type GT and want to reference field F.  Return
+   --  the record type that we have to use for the reference.
+
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -355,6 +363,24 @@ package body GNATLLVM.Records is
       return Get (Build_Field_Load (Get_Matching_Value (Rec_Type), E), Data);
 
    end Use_Discriminant_For_Bound;
+
+   ---------------------------
+   -- Record_Type_For_Field --
+   ---------------------------
+
+   function Record_Type_For_Field
+     (GT : GL_Type; F : Entity_Id) return Entity_Id
+   is
+      TE    : constant Entity_Id := Full_Etype (GT);
+      New_F : constant Entity_Id := Find_Matching_Field (TE, F);
+
+   begin
+      --  We'd prefer to use GT's type, but only if we can find a match for
+      --  F.  If not, we have to use F's type.
+
+      return (if Present (New_F) then TE else Full_Scope (F));
+
+   end Record_Type_For_Field;
 
    -------------------------
    -- Find_Matching_Field --
@@ -1415,11 +1441,11 @@ package body GNATLLVM.Records is
    function Field_Ordinal (F : Entity_Id) return unsigned is
      (unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal));
 
-   --------------------
-   -- Get_Field_Type --
-   --------------------
+   ----------------
+   -- Field_Type --
+   ----------------
 
-   function Get_Field_Type (F : Entity_Id) return GL_Type is
+   function Field_Type (F : Entity_Id) return GL_Type is
      (Field_Info_Table.Table (Get_Field_Info (F)).GT);
 
    --------------------
@@ -1782,7 +1808,7 @@ package body GNATLLVM.Records is
 
                   F := Find_Matching_Field (Full_Etype (GT), In_F);
                   if Present (Get_Field_Info (F)) then
-                     V := Emit_Convert_Value (Val, Get_Field_Type (F));
+                     V := Emit_Convert_Value (Val, Field_Type (F));
                      V := Build_Field_Store (Result, F, V);
                      if Present (V) then
                         Result := V;
@@ -1814,15 +1840,12 @@ package body GNATLLVM.Records is
       Prefer_LHS : Boolean  := False;
       VFA        : Boolean  := False) return GL_Value
    is
-      R_TE   : constant Entity_Id := Full_Scope (In_F);
-      Rec_T  : constant Type_T    := Type_Of (R_TE);
+      R_GT   : constant GL_Type   := Related_Type (In_V);
+      R_TE   : constant Entity_Id := Record_Type_For_Field (R_GT, In_F);
       F      : constant Entity_Id := Find_Matching_Field (R_TE, In_F);
-      F_GT   : constant GL_Type   := Get_Field_Type (F);
+      F_GT   : constant GL_Type   := Field_Type (F);
       V      : GL_Value           := To_Primitive (In_V);
       Result : GL_Value;
-      pragma Unreferenced (Rec_T);
-      --  We had to force elaboration of the type of F's Scope here
-      --  since there's a chance it wasn't yet elaborated.
 
    begin
       --  If V is Volatile_Full_Access, we have to try to load the full record
@@ -1843,11 +1866,9 @@ package body GNATLLVM.Records is
 
       if Is_Data (V) and then not For_LHS and then not Prefer_LHS
         and then Present (Get_Field_Info (F))
-        and then not Is_Nonnative_Type (R_TE)
         and then not Is_Nonnative_Type (F_GT)
+        and then not Is_Nonnative_Type (R_TE)
         and then not Is_Array_Bitfield (F)
-        and then (Full_Etype (V) = R_TE
-                    or else Is_Layout_Identical (V, Default_GL_Type (R_TE)))
       then
          Result := Extract_Value_To_Relationship
            (F_GT, V, Field_Ordinal (F),
@@ -1982,9 +2003,8 @@ package body GNATLLVM.Records is
       RHS    : GL_Value;
       VFA    : Boolean := False) return GL_Value
    is
-      LHS_GT    : constant GL_Type       := Related_Type (In_LHS);
-      R_TE      : constant Entity_Id     := Full_Scope (In_F);
-      Rec_T     : constant Type_T        := Type_Of (R_TE);
+      R_GT      : constant GL_Type       := Related_Type (In_LHS);
+      R_TE      : constant Entity_Id     := Record_Type_For_Field (R_GT, In_F);
       F         : constant Entity_Id     := Find_Matching_Field (R_TE, In_F);
       F_Idx     : constant Field_Info_Id := Get_Field_Info (F);
       FI        : constant Field_Info    := Field_Info_Table.Table (F_Idx);
@@ -1995,9 +2015,6 @@ package body GNATLLVM.Records is
       Result    : GL_Value               := No_GL_Value;
       First_Bit : ULL;
       Num_Bits  : ULL;
-      pragma Unreferenced (Rec_T);
-      --  We had to force elaboration of the type of F's Scope here
-      --  since there's a chance it wasn't yet elaborated.
 
    begin
       --  First check for the trivial case of a zero-length field
@@ -2015,7 +2032,7 @@ package body GNATLLVM.Records is
       --  Handle the cases where F isn't a bitfield
 
       if not Is_Bitfield (F) then
-         if Is_Data (LHS) then
+         if Is_Data (LHS) and then not Is_Nonnative_Type (R_TE) then
             Result := Insert_Value (LHS, Get (RHS_Cvt, Data), unsigned (Idx));
          else
             Emit_Assignment (Record_Field_Offset (LHS, F), Empty,
@@ -2037,7 +2054,7 @@ package body GNATLLVM.Records is
       declare
          LHS_For_Access : constant GL_Value :=
            (if Is_Array_Bitfield (F) and then Is_Data (LHS)
-            then Allocate_For_Type (LHS_GT, LHS_GT, Empty, LHS) else LHS);
+            then Allocate_For_Type (R_GT, R_GT, Empty, LHS) else LHS);
          RHS_GT         : constant GL_Type  := Related_Type (RHS_Cvt);
          RHS_T          : Type_T            := Type_Of (RHS_GT);
          RHS_Width      : constant ULL      := Get_Scalar_Bit_Size (RHS_T);
@@ -2054,7 +2071,7 @@ package body GNATLLVM.Records is
          --  a reference or actual data.  The code above has ensured that
          --  we'll have a reference in the case of an array bitfield.
 
-         if Is_Data (LHS_For_Access) then
+         if Is_Data (LHS_For_Access) and then not Is_Nonnative_Type (R_TE) then
             Rec_Data := Extract_Value_To_Relationship
               (F_GT, LHS_For_Access, Field_Ordinal (F), Unknown);
          else

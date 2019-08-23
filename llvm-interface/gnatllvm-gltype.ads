@@ -366,6 +366,10 @@ package GNATLLVM.GLType is
      (Is_Composite_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Aggregate_Type (GT : GL_Type) return Boolean is
+     (Is_Aggregate_Type (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Is_Elementary_Type (GT : GL_Type) return Boolean is
      (Is_Elementary_Type (Full_Etype (GT)))
      with Pre => Present (GT);

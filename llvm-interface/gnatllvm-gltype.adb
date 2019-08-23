@@ -1019,9 +1019,14 @@ package body GNATLLVM.GLType is
                            (1 => Const_Null_32, 2 => Const_Null_32))
                  else Extract_Value (Out_GT, Result, 0));
 
-      else
-         --  Otherwise we need the data in memory
+      --  If this is an aggregate constant, we may be able to convert it
 
+      elsif Can_Convert_Aggregate_Constant (Result, Out_GT) then
+         return Convert_Aggregate_Constant (Result, Out_GT);
+
+      --  Otherwise we need the data in memory
+
+      else
          if Is_Double_Reference (Result) or else Is_Data (Result) then
             Result := Get (Result, Any_Reference);
          end if;
@@ -1104,10 +1109,14 @@ package body GNATLLVM.GLType is
       elsif GTI.Kind = Truncated and then Is_Data (Result) then
          return G_Is (Result, GT);
 
+      --  If this is an aggregate constant, we may be able to convert it
+
+      elsif Can_Convert_Aggregate_Constant (Result, GT) then
+         return Convert_Aggregate_Constant (Result, GT);
+
       --  Otherwise we need the data in memory
 
       else
-
          Result := Get (Result, Any_Reference);
 
          --  If we're making a wider type, we can't just pun the pointer

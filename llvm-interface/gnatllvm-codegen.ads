@@ -15,8 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with System;           use System;
-with System.OS_Lib;    use System.OS_Lib;
+with System;        use System;
+with System.OS_Lib; use System.OS_Lib;
 
 with Table;
 

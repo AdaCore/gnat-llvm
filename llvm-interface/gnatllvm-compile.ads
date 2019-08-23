@@ -17,8 +17,8 @@
 
 with Sinfo; use Sinfo;
 
-with GNATLLVM.GLType;       use GNATLLVM.GLType;
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.GLType;  use GNATLLVM.GLType;
+with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
 

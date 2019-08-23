@@ -54,8 +54,8 @@ package body GNATLLVM.Compile is
    function Emit_Internal
      (N          : Node_Id;
       LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean := False;
-      Prefer_LHS : Boolean := False) return GL_Value
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False) return GL_Value
      with Pre => Present (N), Post => Present (Emit_Internal'Result);
    --  Same as Emit, but push result into LValue list
 

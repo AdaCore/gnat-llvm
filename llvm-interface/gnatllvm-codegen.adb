@@ -26,12 +26,12 @@ with LLVM.Core;       use LLVM.Core;
 with LLVM.Debug_Info; use LLVM.Debug_Info;
 with LLVM.Support;    use LLVM.Support;
 
-with Errout;   use Errout;
-with Lib;      use Lib;
-with Opt;      use Opt;
-with Osint.C;  use Osint.C;
-with Output;   use Output;
-with Switch;   use Switch;
+with Errout;  use Errout;
+with Lib;     use Lib;
+with Opt;     use Opt;
+with Osint.C; use Osint.C;
+with Output;  use Output;
+with Switch;  use Switch;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 

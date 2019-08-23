@@ -15,7 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Sinfo;    use Sinfo;
+with Sinfo;  use Sinfo;
 
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
@@ -61,14 +61,16 @@ package GNATLLVM.Variables is
    --  created a value for it.
 
    function Get_Dup_Global_Value (S : String) return GL_Value;
-   procedure Set_Dup_Global_Value (S : String; V : GL_Value);
+   procedure Set_Dup_Global_Value (S : String; V : GL_Value)
+     with Pre => Present (V);
    --  Similar, but for strings (for builtins)
 
    procedure Emit_Decl_Lists
-     (List1, List2 : List_Id;
-      End_List     : Node_Id := Empty;
-      Pass1        : Boolean := True;
-      Pass2        : Boolean := True);
+     (List1    : List_Id := No_List;
+      List2    : List_Id := No_List;
+      End_List : Node_Id := Empty;
+      Pass1    : Boolean := True;
+      Pass2    : Boolean := True);
    --  Elaborate decls in the lists List1 and List2, if present.  We make
    --  two passes, one to elaborate anything other than bodies (but we
    --  declare a function if there was no spec).  The second pass

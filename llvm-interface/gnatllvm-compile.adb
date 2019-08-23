@@ -246,7 +246,7 @@ package body GNATLLVM.Compile is
                end if;
 
                Emit (Context_Items (N));
-               Emit_Decl_Lists (Declarations (Aux_Decls_Node (N)), No_List);
+               Emit_Decl_Lists (Declarations (Aux_Decls_Node (N)));
                Emit (U);
 
                --  Generate code for all the inlined subprograms
@@ -338,7 +338,7 @@ package body GNATLLVM.Compile is
                --  a scope, since those declarations are part of what
                --  encloses us, if anything.
 
-               Emit_Decl_Lists (Declarations (N), No_List);
+               Emit_Decl_Lists (Declarations (N));
 
                --  If we're at library level and our parent is an
                --  N_Compilation_Unit, make an elab proc and put the
@@ -428,7 +428,7 @@ package body GNATLLVM.Compile is
 
             Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
             if Present (First_Real_Statement (N)) then
-               Emit_Decl_Lists (Statements (N), No_List,
+               Emit_Decl_Lists (Statements (N),
                                 End_List => First_Real_Statement (N));
             end if;
 
@@ -578,7 +578,7 @@ package body GNATLLVM.Compile is
 
             Push_Lexical_Debug_Scope (N);
             Push_Block;
-            Emit_Decl_Lists (Declarations (N), No_List);
+            Emit_Decl_Lists (Declarations (N));
             Emit (Handled_Statement_Sequence (N));
             Set_Debug_Pos_At_Node (N);
             Pop_Block;
@@ -613,7 +613,7 @@ package body GNATLLVM.Compile is
          when N_Freeze_Entity =>
 
             Process_Freeze_Entity (N);
-            Emit_Decl_Lists (Actions (N), No_List);
+            Emit_Decl_Lists (Actions (N));
 
          when N_Pragma =>
 

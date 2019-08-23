@@ -1075,10 +1075,11 @@ package body GNATLLVM.Variables is
    ---------------------
 
    procedure Emit_Decl_Lists
-     (List1, List2 : List_Id;
-      End_List     : Node_Id := Empty;
-      Pass1        : Boolean := True;
-      Pass2        : Boolean := True)
+     (List1    : List_Id := No_List;
+      List2    : List_Id := No_List;
+      End_List : Node_Id := Empty;
+      Pass1    : Boolean := True;
+      Pass2    : Boolean := True)
    is
       type List_Array is array (1 .. 2) of List_Id;
       Lists     : constant List_Array := (1 => List1, 2 => List2);
@@ -1101,15 +1102,14 @@ package body GNATLLVM.Variables is
                   then
                      Emit_Decl_Lists (Visible_Declarations (Specification (N)),
                                       Private_Declarations (Specification (N)),
-                                      Empty, True, False);
+                                      Pass2 => False);
 
                      --  Similarly for any declarations in the actions
                      --  of a freeze node.
 
                   elsif Nkind (N) = N_Freeze_Entity then
                      Process_Freeze_Entity (N);
-                     Emit_Decl_Lists (Actions (N), No_List, Empty,
-                                      True, False);
+                     Emit_Decl_Lists (Actions (N), Pass2 => False);
 
                   --  Package bodies with freeze nodes get their
                   --  elaboration deferred until the freeze node, but the
@@ -1207,11 +1207,10 @@ package body GNATLLVM.Variables is
                   then
                      Emit_Decl_Lists (Visible_Declarations (Specification (N)),
                                       Private_Declarations (Specification (N)),
-                                      Empty, False, True);
+                                      Pass1 => False);
 
                   elsif Nkind (N) = N_Freeze_Entity then
-                     Emit_Decl_Lists (Actions (N), No_List, Empty,
-                                      False, True);
+                     Emit_Decl_Lists (Actions (N), Pass1 => False);
 
                   elsif Nkind (N) = N_Subprogram_Renaming_Declaration then
                      Emit (N);

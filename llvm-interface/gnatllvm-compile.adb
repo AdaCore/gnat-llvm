@@ -192,8 +192,10 @@ package body GNATLLVM.Compile is
         and then ((Nkind (N) in N_Statement_Other_Than_Procedure_Call
                      and then Nkind (N) /= N_Null_Statement)
                     or else Nkind (N) in N_Subprogram_Call | N_Raise_xxx_Error
-                    or else Nkind_In (N, N_Raise_Statement,
-                                      N_Handled_Sequence_Of_Statements))
+                    or else Nkind (N) = N_Raise_Statement
+                    or else (Nkind (N) = N_Handled_Sequence_Of_Statements
+                               and then Has_Non_Null_Statements
+                                          (Statements (N))))
       then
          Add_To_Elab_Proc (N);
          return;
@@ -413,11 +415,16 @@ package body GNATLLVM.Compile is
 
          when N_Handled_Sequence_Of_Statements =>
 
-            --  If First_Real_Statement is Present, items in
-            --  Statements prior to it are declarations and need to be
-            --  mostly treated as such except that they are protected
-            --  by the exeception handlers of this block.  Otherwise,
-            --  all are statements.
+            --  If this block doesn't contain any statements, ignore it
+
+            if not Has_Non_Null_Statements (Statements (N)) then
+               return;
+            end if;
+
+            --  If First_Real_Statement is Present, items in Statements
+            --  prior to it are declarations and need to be mostly treated
+            --  as such except that they are protected by the exception
+            --  handlers of this block.  Otherwise, all are statements.
 
             Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
             if Present (First_Real_Statement (N)) then

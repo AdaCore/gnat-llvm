@@ -22,7 +22,8 @@ automated:
 	$(MAKE) -C llvm-interface gnatlib-automated
 
 llvm:
-	$(MAKE) -C llvm
+	$(MAKE) -j1 -C llvm setup
+	$(MAKE) -C llvm llvm
 
 acats:
 	$(MAKE) -C acats

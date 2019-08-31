@@ -1579,6 +1579,13 @@ package body GNATLLVM.Records is
    function Is_Array_Bitfield (F : Entity_Id) return Boolean is
      (Field_Info_Table.Table (Get_Field_Info (F)).Array_Bitfield);
 
+   -----------------------------
+   -- Is_Large_Array_Bitfield --
+   -----------------------------
+
+   function Is_Large_Array_Bitfield (F : Entity_Id) return Boolean is
+     (Field_Info_Table.Table (Get_Field_Info (F)).Large_Array_Bitfield);
+
    ----------------------
    -- Field_Bit_Offset --
    ----------------------
@@ -1868,7 +1875,9 @@ package body GNATLLVM.Records is
         and then Present (Get_Field_Info (F))
         and then not Is_Nonnative_Type (F_GT)
         and then not Is_Nonnative_Type (R_TE)
-        and then not Is_Array_Bitfield (F)
+        and then (not Is_Array_Bitfield (F)
+                    or else (Is_Nonsymbolic_Constant (V)
+                               and then not Is_Large_Array_Bitfield (F)))
       then
          Result := Extract_Value_To_Relationship
            (F_GT, V, Field_Ordinal (F),
@@ -1895,18 +1904,28 @@ package body GNATLLVM.Records is
 
       elsif Is_Bitfield (F) then
 
-         --  If this is a bitfield array type, we need to pointer-pun it to
-         --  an integral type that's the width of the bitfield field type.
+         --  If this is a bitfield array type, we need to pointer-pun or
+         --  convert it to an integral type that's the width of the
+         --  bitfield field type.
 
          if Is_Array_Bitfield (F) then
-            declare
-               T     : constant Type_T := Get_Element_Type (Type_Of (Result));
-               New_T : constant Type_T := Int_Ty (Get_Scalar_Bit_Size (T));
+            if Relationship (Result) = Unknown then
+               Result := G (Convert_Aggregate_Constant
+                              (LLVM_Value (Result),
+                               Int_Ty (Get_Type_Size (Result))),
+                            F_GT, Unknown);
+            else
+               declare
+                  T     : constant Type_T :=
+                    Get_Element_Type (Type_Of (Result));
+                  New_T : constant Type_T := Int_Ty (Get_Scalar_Bit_Size (T));
 
-            begin
-               Result := Ptr_To_Relationship (Result, Pointer_Type (New_T, 0),
-                                              Reference_To_Unknown);
-            end;
+               begin
+                  Result := Ptr_To_Relationship (Result,
+                                                 Pointer_Type (New_T, 0),
+                                                 Reference_To_Unknown);
+               end;
+            end if;
          end if;
 
          --  Next, do the extraction using two shifts
@@ -2053,13 +2072,17 @@ package body GNATLLVM.Records is
 
       declare
          LHS_For_Access : constant GL_Value :=
-           (if Is_Array_Bitfield (F) and then Is_Data (LHS)
+           (if   Is_Array_Bitfield (F) and then Is_Data (LHS)
+                 and then (not Is_Nonsymbolic_Constant (LHS)
+                             or else not Is_Nonsymbolic_Constant (RHS_Cvt)
+                             or else Is_Large_Array_Bitfield (F))
             then Allocate_For_Type (R_GT, R_GT, Empty, LHS) else LHS);
          RHS_GT         : constant GL_Type  := Related_Type (RHS_Cvt);
          RHS_T          : Type_T            := Type_Of (RHS_GT);
          RHS_Width      : constant ULL      := Get_Scalar_Bit_Size (RHS_T);
          Data_LHS       : GL_Value          := No_GL_Value;
          Rec_Data       : GL_Value;
+         Orig_Data_T    : Type_T;
          Data_T         : Type_T;
          New_RHS_T      : Type_T;
          Data_Width     : ULL;
@@ -2069,7 +2092,8 @@ package body GNATLLVM.Records is
       begin
          --  We first have to form an access to the appropriate field, either
          --  a reference or actual data.  The code above has ensured that
-         --  we'll have a reference in the case of an array bitfield.
+         --  we'll have a reference in the case of an array bitfield in
+         --  the non-constant case.
 
          if Is_Data (LHS_For_Access) and then not Is_Nonnative_Type (R_TE) then
             Rec_Data := Extract_Value_To_Relationship
@@ -2079,22 +2103,31 @@ package body GNATLLVM.Records is
             Rec_Data := Data_LHS;
          end if;
 
-         --  If this is a bitfield array type, we need to pointer-pun it to
-         --  an integral type that's the width of the bitfield field type.
-         --  We've forced Rec_Data to be a reference in this case.
+         --  If this is a bitfield array type, we need to pointer-pun or
+         --  convert it to an integral type that's the width of the
+         --  bitfield field type.  We've forced Rec_Data to be a reference
+         --  in this case.
 
          if Is_Array_Bitfield (F) then
-            declare
-               T     : constant Type_T :=
-                 Get_Element_Type (Type_Of (Rec_Data));
-               New_T : constant Type_T := Int_Ty (Get_Type_Size (T));
+            if Is_Data (LHS_For_Access) then
+               Orig_Data_T := Type_Of (Rec_Data);
+               Rec_Data    := G (Convert_Aggregate_Constant
+                                   (LLVM_Value (Rec_Data),
+                                    Int_Ty (Get_Type_Size (Rec_Data))),
+                                 F_GT, Unknown);
+            else
+               declare
+                  T     : constant Type_T :=
+                    Get_Element_Type (Type_Of (Rec_Data));
+                  New_T : constant Type_T := Int_Ty (Get_Type_Size (T));
 
-            begin
-               Data_LHS := Ptr_To_Relationship (Data_LHS,
-                                                Pointer_Type (New_T, 0),
-                                                Reference_To_Unknown);
-               Rec_Data := Data_LHS;
-            end;
+               begin
+                  Data_LHS := Ptr_To_Relationship (Data_LHS,
+                                                   Pointer_Type (New_T, 0),
+                                                   Reference_To_Unknown);
+                  Rec_Data := Data_LHS;
+               end;
+            end if;
          end if;
 
          --  Now get the field contents as actual data and get and verify
@@ -2115,11 +2148,18 @@ package body GNATLLVM.Records is
             RHS_Cvt := Bit_Cast_To_Relationship (Get (RHS_Cvt, Data),
                                                  New_RHS_T, Unknown);
          elsif Get_Type_Kind (RHS_T) /= Integer_Type_Kind then
-            RHS_Cvt := Load (G (Bit_Cast (IR_Builder,
-                                          LLVM_Value (Get (RHS_Cvt,
-                                                           Reference)),
-                                          Pointer_Type (New_RHS_T, 0), ""),
-                                Related_Type (RHS_Cvt), Reference_To_Unknown));
+            if Is_Nonsymbolic_Constant (RHS_Cvt) then
+               RHS_Cvt := G (Convert_Aggregate_Constant
+                               (LLVM_Value (RHS), New_RHS_T),
+                             Related_Type (RHS_Cvt), Unknown);
+            else
+               RHS_Cvt := Load (G (Bit_Cast (IR_Builder,
+                                             LLVM_Value (Get (RHS_Cvt,
+                                                              Reference)),
+                                             Pointer_Type (New_RHS_T, 0), ""),
+                                   Related_Type (RHS_Cvt),
+                                   Reference_To_Unknown));
+            end if;
          else
             RHS_Cvt := Get (RHS_Cvt, Data);
          end if;
@@ -2164,10 +2204,18 @@ package body GNATLLVM.Records is
          Mask     := Build_Not (Shl (Mask, Count));
          Rec_Data := Build_Or (Build_And (Rec_Data, Mask),
                                Shl (RHS_Cvt, Count));
+
          --  If we're still working with data, then insert the new value into
-         --  the field. Otherwise, store it where it belongs.
+         --  the field. Otherwise, store it where it belongs.  In the array
+         --  bitfield case, we have to convert the constant back.
 
          if Is_Data (LHS_For_Access) then
+            if Is_Array_Bitfield (F) then
+               Rec_Data := G (Convert_Aggregate_Constant
+                                (LLVM_Value (Rec_Data), Orig_Data_T),
+                              F_GT, Unknown);
+            end if;
+
             Result := Insert_Value (LHS_For_Access, Rec_Data,
                                     unsigned (Idx));
          else

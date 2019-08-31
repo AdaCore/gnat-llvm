@@ -787,10 +787,7 @@ package body GNATLLVM.Variables is
                                                              Field_Type (F),
                                                              Not_Symbolic,
                                                              Restrict_Types)
-                                   or else Is_Array_Bitfield (F)
-                                   or else (Is_Bitfield (F)
-                                              and then not Is_Elementary_Type
-                                              (Full_Etype (F))));
+                                   or else Is_Large_Array_Bitfield (F));
                   end if;
 
                   Next (Expr);

@@ -173,9 +173,12 @@ package GNATLLVM.Records is
      with Pre  => Ekind_In (F, E_Component, E_Discriminant)
                   and then Present (Get_Field_Info (F));
    --  If True, this is a bitfield and the underlying LLVM field is an
-   --  array.  This means that we must use pointer-punning as part of
-   --  accessing this field, which forces it in memory and means we can't
-   --  do get a static access to this field.
+   --  array.
+
+   function Is_Large_Array_Bitfield (F : Entity_Id) return Boolean
+     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
+                  and then Present (Get_Field_Info (F));
+   --  Likewise, but it's also a large array
 
    function Align_To
      (V : GL_Value; Cur_Align, Must_Align : Nat) return GL_Value
@@ -389,29 +392,34 @@ private
    --  used to represent the field and bit positions if this is a bitfield.
 
    type Field_Info is record
-      Rec_Info_Idx   : Record_Info_Id;
+      Rec_Info_Idx         : Record_Info_Id;
       --  Index into the record info table that contains this field
 
-      Field_Ordinal  : Nat;
+      Field_Ordinal        : Nat;
       --  Ordinal of this field within the contents of the record info table
 
-      GT             : GL_Type;
+      GT                   : GL_Type;
       --  The GL_Type correspond to this field, which takes into account
       --  a possible change in size
 
-      First_Bit      : Uint;
+      First_Bit            : Uint;
       --  If Present, the first bit (0-origin) within the LLVM field that
       --  corresponds to this field.
 
-      Num_Bits       : Uint;
+      Num_Bits             : Uint;
       --  If Present, the number of bits within the LLVM field that
       --  corresponds to this field.
 
-      Array_Bitfield : Boolean;
-      --  If True, the underlying LLVM field is an array.  This means that we
-      --  must use pointer-punning as part of accessing this field, which
-      --  forces it in memory and means we can't do get a static access to
-      --  this field.
+      Array_Bitfield       : Boolean;
+      --  If True, the underlying LLVM field is an array.  This means that
+      --  we must use pointer-punning as part of accessing this field
+      --  unless it's a constant, which forces it in memory and means we
+      --  can't do get a static access to this field.
+
+      Large_Array_Bitfield : Boolean;
+      --  If True, this is an array bitfield, but one where the size is
+      --  larger than a word.  In this case, we can't even handle constants
+      --  statically.
 
    end record;
 

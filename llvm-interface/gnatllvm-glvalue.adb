@@ -2144,7 +2144,7 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Type_Size (V : GL_Value) return ULL is
-     (Get_Type_Size (Type_Of (Related_Type (V))));
+     (Get_Type_Size (Type_Of (V)));
 
    -------------------------
    -- Get_Scalar_Bit_Size --

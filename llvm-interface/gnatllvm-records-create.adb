@@ -351,13 +351,14 @@ package body GNATLLVM.Records.Create is
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
-        (E              : Entity_Id;
-         RI_Idx         : Record_Info_Id;
-         F_GT           : in out GL_Type;
-         Ordinal        : Nat     := 0;
-         First_Bit      : Uint    := No_Uint;
-         Num_Bits       : Uint    := No_Uint;
-         Array_Bitfield : Boolean := False)
+        (E                    : Entity_Id;
+         RI_Idx               : Record_Info_Id;
+         F_GT                 : in out GL_Type;
+         Ordinal              : Nat     := 0;
+         First_Bit            : Uint    := No_Uint;
+         Num_Bits             : Uint    := No_Uint;
+         Array_Bitfield       : Boolean := False;
+         Large_Array_Bitfield : Boolean := False)
         with Pre => Ekind_In (E, E_Discriminant, E_Component);
       --  Add a Field_Info info the table, if appropriate, and set
       --  the field to point to it.  Update F_GT if we used a matching field.
@@ -445,13 +446,14 @@ package body GNATLLVM.Records.Create is
       ------------
 
       procedure Add_FI
-        (E              : Entity_Id;
-         RI_Idx         : Record_Info_Id;
-         F_GT           : in out GL_Type;
-         Ordinal        : Nat     := 0;
-         First_Bit      : Uint    := No_Uint;
-         Num_Bits       : Uint    := No_Uint;
-         Array_Bitfield : Boolean := False)
+        (E                    : Entity_Id;
+         RI_Idx               : Record_Info_Id;
+         F_GT                 : in out GL_Type;
+         Ordinal              : Nat     := 0;
+         First_Bit            : Uint    := No_Uint;
+         Num_Bits             : Uint    := No_Uint;
+         Array_Bitfield       : Boolean := False;
+         Large_Array_Bitfield : Boolean := False)
       is
          Matching_Field : Entity_Id;
 
@@ -464,12 +466,13 @@ package body GNATLLVM.Records.Create is
          --  If we're using a matching field, update F_GT to its type.
 
          Field_Info_Table.Append
-           ((Rec_Info_Idx   => RI_Idx,
-             GT             => F_GT,
-             Field_Ordinal  => Ordinal,
-             First_Bit      => First_Bit,
-             Num_Bits       => Num_Bits,
-             Array_Bitfield => Array_Bitfield));
+           ((Rec_Info_Idx         => RI_Idx,
+             GT                   => F_GT,
+             Field_Ordinal        => Ordinal,
+             First_Bit            => First_Bit,
+             Num_Bits             => Num_Bits,
+             Array_Bitfield       => Array_Bitfield,
+             Large_Array_Bitfield => Large_Array_Bitfield));
 
          --  The fields in the entity list for this type are almost, but
          --  not quite, in the same order as in the component list, so we
@@ -1072,13 +1075,13 @@ package body GNATLLVM.Records.Create is
       ---------------------------
 
       procedure Process_Fields_To_Add is
-         BT                  : constant Entity_Id := Full_Base_Type (TE);
+         BT                     : constant Entity_Id := Full_Base_Type (TE);
 
-         Aliased_Fields      : constant Boolean   :=
+         Aliased_Fields         : constant Boolean   :=
            Record_Has_Aliased_Components (BT);
          --  Indicates that at least one field is aliased
 
-         Reorder             : constant Boolean   :=
+         Reorder                : constant Boolean   :=
            Convention (BT) = Convention_Ada and then not No_Reordering (BT)
            and then not Debug_Flag_Dot_R and then not Is_Tagged_Type (BT)
            and then (Is_Packed (BT) or else not Optimize_Alignment_Space (BT)
@@ -1088,45 +1091,47 @@ package body GNATLLVM.Records.Create is
          --  aliased field but we must have the same ordering in
          --  extensions.
 
-         In_Variant          : constant Boolean   := Variant_Stack.Last /= 0;
+         In_Variant             : constant Boolean   :=
+           Variant_Stack.Last /= 0;
          --  True if we're processing inside a variant, either static
          --  or dynamic.
 
-         In_Dynamic_Variant  : constant Boolean   :=
+         In_Dynamic_Variant     : constant Boolean   :=
            In_Variant
            and then not Variant_Stack.Table (Variant_Stack.Last).Is_Static;
          --  True if we're inside a dynamic variant
 
-         Last_Var_Depth      : Int                := 0;
+         Last_Var_Depth         : Int                := 0;
          --  The last variant depth that we saw for a field; used to indicate
          --  when the depth changes.
 
-         Last_Par_Depth      : Int                := 0;
+         Last_Par_Depth         : Int                := 0;
          --  Likewise for the last parent depth that we saw for a field
 
-         Parent_TE           : Entity_Id          := Empty;
+         Parent_TE              : Entity_Id          := Empty;
          --  The type of the last parent record that we've seen
 
-         Had_Non_Repped      : Boolean            := False;
+         Had_Non_Repped         : Boolean            := False;
          --  True once we saw a non-repped field; used to ensure that all
          --  non-repped fields as positions after all repped fields.
 
-         Packed_Field_Bitpos : Uint               := No_Uint;
+         Packed_Field_Bitpos    : Uint               := No_Uint;
          --  Our current position in the packed field type
 
-         Forced_Pos          : ULL                := 0;
+         Forced_Pos             : ULL                := 0;
          --  If nonzero, a position to force the next field to
 
-         Bitfield_Start_Pos  : Uint               := No_Uint;
-         Bitfield_End_Pos    : Uint;
+         Bitfield_Start_Pos     : Uint               := No_Uint;
+         Bitfield_End_Pos       : Uint;
          --  Starting and ending (last plus one) positions of an LLVM
          --  field being used to contain multiple bitfields, if not
          --  No_Uint.
 
-         Bitfield_Is_Array   : Boolean;
-         --  Set if the bitfield field we make is an array
+         Bitfield_Is_Array       : Boolean;
+         Bitfield_Is_Large_Array : Boolean;
+         --  Show if the bitfield field we make is an array and if a large one
 
-         Next_Align          : Nat                := 1;
+         Next_Align              : Nat                := 1;
          --  An alignment to impose on the next field even if stricter than
          --  that needed for that field, for example if the previous field
          --  is a strict-alignment type.
@@ -1415,10 +1420,13 @@ package body GNATLLVM.Records.Create is
 
             Force_To_Pos (UI_To_ULL (Bitfield_Start_Pos));
             if Bitfield_Len in 8 | 16 | 32 | 64 then
-               Bitfield_Is_Array := False;
+               Bitfield_Is_Array       := False;
+               Bitfield_Is_Large_Array := False;
                LLVM_Types.Append (Int_Ty (Bitfield_Len));
             else
                Bitfield_Is_Array := True;
+               Bitfield_Is_Large_Array :=
+                 Bitfield_Len > ULL (Get_Bits_Per_Word);
                LLVM_Types.Append (Array_Type
                                     (Byte_T,
                                      unsigned (To_Bytes (Bitfield_Len))));
@@ -1699,11 +1707,13 @@ package body GNATLLVM.Records.Create is
                            Create_Bitfield_Field (J);
                         end if;
 
-                        Add_FI (F, Cur_Idx, F_GT,
-                                Ordinal        => LLVM_Types.Last,
-                                First_Bit      => Pos - Bitfield_Start_Pos,
-                                Num_Bits       => Size,
-                                Array_Bitfield => Bitfield_Is_Array);
+                        Add_FI
+                          (F, Cur_Idx, F_GT,
+                           Ordinal              => LLVM_Types.Last,
+                           First_Bit            => Pos - Bitfield_Start_Pos,
+                           Num_Bits             => Size,
+                           Array_Bitfield       => Bitfield_Is_Array,
+                           Large_Array_Bitfield => Bitfield_Is_Large_Array);
                         RI_Unused_Bits := Bitfield_End_Pos - (Pos + Size);
                      else
                         Force_To_Pos (Needed_Pos);

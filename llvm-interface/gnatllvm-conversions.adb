@@ -983,8 +983,8 @@ package body GNATLLVM.Conversions is
       --
       --  - either the input or output type must be of the form [N x i8]
       --
-      --  - no scalar component can be a pointer or an FP type wider than
-      --    64 bits
+      --  - no scalar component can be a pointer or a type wider than
+      --    a word
       --
       --  - all scalar components must be either constant integers or constant
       --    FP values.

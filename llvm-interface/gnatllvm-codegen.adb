@@ -246,10 +246,13 @@ package body GNATLLVM.Codegen is
       --  Initialize the translation environment
 
       Initialize_LLVM;
-      Context    := Get_Global_Context;
-      IR_Builder := Create_Builder_In_Context (Context);
-      MD_Builder := Create_MDBuilder_In_Context (Context);
-      Module     := Module_Create_With_Name_In_Context (Filename.all, Context);
+      Context        := Get_Global_Context;
+      IR_Builder     := Create_Builder_In_Context (Context);
+      MD_Builder     := Create_MDBuilder_In_Context (Context);
+      Module         :=
+        Module_Create_With_Name_In_Context (Filename.all, Context);
+      Convert_Module :=
+        Module_Create_With_Name_In_Context ("Convert_Constant", Context);
 
       if Get_Target_From_Triple
         (Target_Triple.all, LLVM_Target'Address, Ptr_Err_Msg'Address)

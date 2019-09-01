@@ -959,15 +959,16 @@ package body GNATLLVM.Conversions is
    is
       BB       : constant Basic_Block_T  := Get_Insert_Block (IR_Builder);
       Ptr_Ty   : constant Type_T         := Pointer_Type (T, 0);
-      Our_Mod  : constant Module_T       :=
+      Convert_Module  : constant Module_T       :=
         Module_Create_With_Name_In_Context ("_CC", Context);
       Our_Func : constant Value_T        :=
-        Add_Function (Our_Mod, "__CC", Fn_Ty ((1 .. 0 => <>), T));
+        Add_Function (Convert_Module, "__CC", Fn_Ty ((1 .. 0 => <>), T));
       Our_BB   : constant Basic_Block_T  :=
         Append_Basic_Block_In_Context (Context, Our_Func, "");
       G_C      : constant Value_T        :=
-        Add_Global (Our_Mod, Type_Of (V), "_CC");
+        Add_Global (Convert_Module, Type_Of (V), "_CC");
       Our_PM   : constant Pass_Manager_T := Create_Pass_Manager;
+      Changed  : Boolean;
       New_Ret  : Value_T;
       Result   : Value_T;
 
@@ -1002,18 +1003,18 @@ package body GNATLLVM.Conversions is
                                 Pointer_Cast (IR_Builder, G_C, Ptr_Ty, ""),
                                 "")));
       Inst_Add_Combine_Function (Our_PM, Target_Machine);
-      pragma Assert (Run_Pass_Manager (Our_PM, Our_Mod));
+      Changed := Run_Pass_Manager (Our_PM, Convert_Module);
       New_Ret := Get_First_Instruction (Our_BB);
-      pragma Assert (Get_Last_Instruction (Our_BB) = New_Ret
+      pragma Assert (Changed and then Get_Last_Instruction (Our_BB) = New_Ret
                        and then Present (Is_A_Return_Inst (New_Ret)));
       Result  := Get_Operand (New_Ret, 0);
 
-      --  Now delete everything we made
+      --  Now delete everything we made here
 
       Delete_Basic_Block (Our_BB);
       Delete_Function (Our_Func);
-      Dispose_Module (Our_Mod);
       Dispose_Pass_Manager (Our_PM);
+
       --  If we were in a block previously, switch back to it.  Then return
       --  our value.
 

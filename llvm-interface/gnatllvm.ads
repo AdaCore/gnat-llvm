@@ -110,6 +110,7 @@ package GNATLLVM is
      Basic_Block_T (System.Null_Address);
    No_Metadata_T : constant Metadata_T    := Metadata_T (System.Null_Address);
    No_Builder_T  : constant Builder_T     := Builder_T (System.Null_Address);
+   No_Module_T   : constant Module_T      := Module_T (System.Null_Address);
    --  Constant for null objects of various types
 
    function No (V : Value_T)            return Boolean is (V = No_Value_T);
@@ -175,6 +176,9 @@ package GNATLLVM is
 
    Module_Data_Layout : Target_Data_T;
    --  LLVM current module data layout.
+
+   Convert_Module     : Module_T;
+   --  The module use by Convert_Nonsymbolic_Constant
 
    Size_Type          : Entity_Id := Empty;
    Size_GL_Type       : GL_Type   := No_GL_Type;

@@ -1,6 +1,5 @@
 Limitations and missing features (identified so far):
 
-- see if can convert aggregate to array to avoid elab (e.g., FC16-002)
 - debug info for non C compatible types
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - track alignment of GL_Values

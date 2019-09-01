@@ -91,7 +91,7 @@ build-opt: setup force
 bugs-bins:
 	$(RMDIR) bugs/bin
 	$(MKDIR) bugs/bin
-	for f in gcc gnat1 gnat gnatbind gnatchop gnatclean gnatkr gnatlink gnatls gnatmake gnatname gnatprep; do \
+	for f in gcc gnat1 gnat gnatbind gnatchop gnatclean gnatkr gnatlink gnatls gnatmake gnatname gnatprep gnatxref; do \
 	  rm -f $$f; ln bin/llvm-$$f bugs/bin/$$f; \
 	done
 	echo "#!/bin/sh" > bugs/bin/gprbuild

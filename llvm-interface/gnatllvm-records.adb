@@ -1490,7 +1490,7 @@ package body GNATLLVM.Records is
       TE : constant Entity_Id := Full_Scope (AF);
       T  : constant Type_T    := Type_Of (GT);
       pragma Unreferenced (T);
-      --  We need to be sure that the type of the record is elaborated
+      --  We need to be sure that the type of the field is elaborated
 
    begin
       --  If we have a rep clause, we'll use that rather than packing it.

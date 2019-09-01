@@ -280,49 +280,59 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 1,
          Table_Name           => "Variant_Stack");
 
-      Prev_Idx       : Record_Info_Id   := Empty_Record_Info_Id;
+      BT             : constant Entity_Id  := Full_Base_Type (TE);
+      --  Base type of our record type
+
+      Aliased_Fields : constant Boolean    :=
+        Record_Has_Aliased_Components (BT);
+      --  Indicates that at least one field is aliased
+
+      Has_NP_Fixed   : Boolean             := False;
+      --  Indicates that at least one field of fixed size isn't packable
+
+      Prev_Idx       : Record_Info_Id      := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
-      First_Idx      : Record_Info_Id   := Empty_Record_Info_Id;
+      First_Idx      : Record_Info_Id      := Empty_Record_Info_Id;
       --  The first index used by the current record fragment construction
 
-      Overlap_Idx    : Record_Info_Id   := Empty_Record_Info_Id;
+      Overlap_Idx    : Record_Info_Id      := Empty_Record_Info_Id;
       --  The index of the overlap component of this variant part, if any
 
       Cur_Idx        : Record_Info_Id;
       --  The index of the record table entry we're building
 
-      Cur_RI_Pos     : ULL              := 0;
+      Cur_RI_Pos     : ULL                 := 0;
       --  Current position into this RI
 
-      Par_Depth      : Int              := 0;
+      Par_Depth      : Int                 := 0;
       --  Nesting depth into parent records
 
-      RI_Align       : Nat              := 0;
+      RI_Align       : Nat                 := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Position    : ULL              := 0;
+      RI_Position    : ULL                 := 0;
       --  If nonzero, a position to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Is_Overlap  : Boolean          := False;
+      RI_Is_Overlap  : Boolean             := False;
       --  If True, the next RI built is an overlap RI for a variant
 
-      RI_Unused_Bits : Uint             := Uint_0;
+      RI_Unused_Bits : Uint                := Uint_0;
       --  Number of unused bits at the end of this RI
 
-      Cur_Field      : Entity_Id        := Empty;
+      Cur_Field      : Entity_Id           := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
-      Split_Align    : Nat              := Get_Maximum_Alignment * BPU;
+      Split_Align    : Nat                 := Get_Maximum_Alignment * BPU;
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the
       --  same reason after a variable-size field.
 
-      GT             :  GL_Type         :=
+      GT             :  GL_Type            :=
         Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
 
@@ -1075,17 +1085,11 @@ package body GNATLLVM.Records.Create is
       ---------------------------
 
       procedure Process_Fields_To_Add is
-         BT                     : constant Entity_Id := Full_Base_Type (TE);
-
-         Aliased_Fields         : constant Boolean   :=
-           Record_Has_Aliased_Components (BT);
-         --  Indicates that at least one field is aliased
-
          Reorder                : constant Boolean   :=
            Convention (BT) = Convention_Ada and then not No_Reordering (BT)
            and then not Debug_Flag_Dot_R and then not Is_Tagged_Type (BT)
-           and then (Is_Packed (BT) or else not Optimize_Alignment_Space (BT)
-                       or else Aliased_Fields);
+           and then not (if   Is_Packed (BT) then Has_NP_Fixed
+                         else Optimize_Alignment_Space (BT));
          --  Says that it's OK to reorder fields in this record.  We don't
          --  reorder for tagged records since an extension could add an
          --  aliased field but we must have the same ordering in
@@ -1136,6 +1140,12 @@ package body GNATLLVM.Records.Create is
          --  that needed for that field, for example if the previous field
          --  is a strict-alignment type.
 
+         procedure Move_Aliased_Fields;
+         --  If we're not reordering, we still can't have any aliased fields
+         --  after a field that depends on the discriminant, but we can't do
+         --  this minimal reordering with a sort (since we can't make a strict
+         --  weak ordering in that case), so we have to do it manually.
+
          function Field_Before (L, R : Int) return Boolean;
          --  Determine the sort order of two fields in Added_Field_Table
 
@@ -1162,6 +1172,75 @@ package body GNATLLVM.Records.Create is
          procedure Flush_Types;
          --  Like Flush_Current_types, but also reset variables we maintain
 
+         -------------------------
+         -- Move_Aliased_Fields --
+         -------------------------
+
+         procedure Move_Aliased_Fields is
+            type AF_Array is array (Nat range <>) of Added_Field;
+
+            AFs               : AF_Array (1 .. Added_Field_Table.Last);
+            Seq               : Nat := 0;
+            First_Discrim_Use : Nat := 0;
+            Has_Late_Aliased  : Boolean := False;
+         begin
+            --  Populate AFs and check if we have an aliased field after
+            --  something that uses a discriminant.
+
+            for J in 1 .. Added_Field_Table.Last loop
+               declare
+                  AF : constant Added_Field := Added_Field_Table.Table (J);
+
+               begin
+                  AFs (J) := AF;
+                  if First_Discrim_Use = 0
+                    and then Uses_Discriminant (Full_GL_Type (AF.AF))
+                  then
+                     First_Discrim_Use := J;
+                  elsif First_Discrim_Use > 0
+                    and then Is_Aliased (AF.AF)
+                  then
+                     Has_Late_Aliased := True;
+                  end if;
+               end;
+            end loop;
+
+            --  If we don't, we're done
+
+            if not Has_Late_Aliased then
+               return;
+            end if;
+
+            --  Otherwise rebuild the added field table.  First write the
+            --  fields before the one that references the discriminant,
+            --  then those after that are aliased, then those after that
+            --  aren't aliasd.
+
+            Added_Field_Table.Set_Last (0);
+            for J in 1 .. First_Discrim_Use - 1 loop
+               AFs (J).Seq := Seq;
+               Seq         := Seq + 1;
+               Added_Field_Table.Append (AFs (J));
+            end loop;
+
+            for J in First_Discrim_Use .. AFs'Last loop
+               if Is_Aliased (AFs (J).AF) then
+                  AFs (J).Seq := Seq;
+                  Seq         := Seq + 1;
+                  Added_Field_Table.Append (AFs (J));
+               end if;
+            end loop;
+
+            for J in First_Discrim_Use .. AFs'Last loop
+               if not Is_Aliased (AFs (J).AF) then
+                  AFs (J).Seq := Seq;
+                  Seq         := Seq + 1;
+                  Added_Field_Table.Append (AFs (J));
+               end if;
+            end loop;
+
+         end Move_Aliased_Fields;
+
          ------------------
          -- Field_Before --
          ------------------
@@ -1184,12 +1263,14 @@ package body GNATLLVM.Records.Create is
               Present (Component_Clause (Left_F));
             Is_Pos_R  : constant Boolean     :=
               Present (Component_Clause (Right_F));
+            Self_L    : constant Boolean     := Uses_Discriminant (Left_GT);
+            Self_R    : constant Boolean     := Uses_Discriminant (Right_GT);
             Dynamic_L : constant Boolean     :=
               Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
             Dynamic_R : constant Boolean     :=
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
-            Self_L    : constant Boolean     := Uses_Discriminant (Left_GT);
-            Self_R    : constant Boolean     := Uses_Discriminant (Right_GT);
+            Pack_L    : constant Boolean     := Is_Packable_Field (Left_F);
+            Pack_R    : constant Boolean     := Is_Packable_Field (Right_F);
 
          begin
             --  This function must satisfy the conditions of A.18(5/3),
@@ -1253,18 +1334,23 @@ package body GNATLLVM.Records.Create is
             then
                return False;
 
-               --  If we're to reorder fields, self-referential fields come
-               --  after any that aren't and fixed-size fields come before
-               --  variable-sized ones.
+               --  If we're to reorder fields, self-referential fields
+               --  come after any that aren't, fixed-size fields come
+               --  before variable-sized ones, and packable fields come
+               --  after those are aren't.
 
             elsif Reorder and then Self_L and then not Self_R then
                return False;
             elsif Reorder and then not Self_L and then Self_R then
                return True;
+            elsif Reorder  and then Dynamic_L and then not Dynamic_R then
+               return False;
             elsif Reorder and then not Dynamic_L and then Dynamic_R then
                return True;
-            elsif Reorder  and then not Dynamic_R and then Dynamic_L then
+            elsif Reorder and then Pack_L and then not Pack_R then
                return False;
+            elsif Reorder and then not Pack_L and then Pack_R then
+               return True;
 
             --  Otherwise, keep the original sequence intact
 
@@ -1447,6 +1533,17 @@ package body GNATLLVM.Records.Create is
          end Flush_Types;
 
       begin  -- Start of processing for Process_Fields_To_Add
+
+         --  If we're not to reorder, we have aliased components, and
+         --  this is a discriminated record, we have to take steps to
+         --  move aliased components further up, if needed.
+
+         if not Reorder and then Has_Discriminants (BT) and then Aliased_Fields
+         then
+            Move_Aliased_Fields;
+         end if;
+
+         --  Then do any other required sorting
 
          Sort (1, Added_Field_Table.Last);
 
@@ -1751,6 +1848,23 @@ package body GNATLLVM.Records.Create is
       end if;
 
       Update_GL_Type (GT, LLVM_Type, True);
+
+      --  See if we have any non-packable fields of fixed size
+
+      Cur_Field := First_Component_Or_Discriminant (BT);
+      while Present (Cur_Field) loop
+         if not Is_Packable_Field (Cur_Field, Force => True,
+                                   Ignore_Size => True)
+           and then not Is_Nonnative_Type (Full_GL_Type (Cur_Field))
+         then
+            Has_NP_Fixed := True;
+         end if;
+
+         Next_Component_Or_Discriminant (Cur_Field);
+      end loop;
+
+      --  Add all the fields into the record
+
       Record_Info_Table.Increment_Last;
       Cur_Idx := Record_Info_Table.Last;
       Set_Record_Info (TE, Cur_Idx);
@@ -1791,10 +1905,8 @@ package body GNATLLVM.Records.Create is
       --  haven't had field information set.  If we find any, copy it from
       --  the original field.
 
-      if Has_Discriminants (Full_Base_Type (TE))
-        and then not Is_Unchecked_Union (Full_Base_Type (TE))
-      then
-         Field := First_Discriminant (Full_Base_Type (TE));
+      if Has_Discriminants (BT) and then not Is_Unchecked_Union (BT) then
+         Field := First_Discriminant (BT);
          while Present (Field) loop
             declare
                ORC         : constant Entity_Id :=
@@ -1809,7 +1921,7 @@ package body GNATLLVM.Records.Create is
                Outer_Field := Find_Field_In_Entity_List (Field, TE, Cur_Field);
                if Present (Outer_Field)
                  and then No (Get_Field_Info (Outer_Field))
-                 and then Scope (ORC) = Full_Base_Type (TE)
+                 and then Scope (ORC) = BT
                then
                   if Present (Outer_Field) and then Present (Outer_Orig) then
                      Set_Field_Info (Outer_Field, Get_Field_Info (Outer_Orig));

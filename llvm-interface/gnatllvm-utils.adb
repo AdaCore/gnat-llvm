@@ -195,6 +195,17 @@ package body GNATLLVM.Utils is
       end case;
    end Get_Uint_Value;
 
+   ----------------------
+   -- Check_Convention --
+   ----------------------
+
+   procedure Check_Convention (Def_Ident : Entity_Id) is
+   begin
+      if Convention (Def_Ident) = Convention_CPP then
+         Error_Msg_NE ("Convention C++ not supported", Def_Ident, Def_Ident);
+      end if;
+   end Check_Convention;
+
    ----------------------------
    -- List_Length_Non_Pragma --
    ----------------------------

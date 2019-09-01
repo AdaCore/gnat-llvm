@@ -2282,6 +2282,8 @@ package body GNATLLVM.Subprograms is
       Formal      : Entity_Id;
 
    begin
+      Check_Convention (Def_Ident);
+
       --  If we've already seen this function name before, verify that we
       --  have the same type.  Convert it to it if not.
 
@@ -2346,6 +2348,7 @@ package body GNATLLVM.Subprograms is
                   else No_GL_Type);
 
             begin
+               Check_Convention (Formal);
                if PK = Activation_Record then
                   Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   Add_Noalias_Attribute         (LLVM_Func, Param_Num);

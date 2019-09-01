@@ -271,6 +271,8 @@ package body GNATLLVM.Types.Create is
       TBAA  : Metadata_T;
 
    begin
+      Check_Convention (TE);
+
       --  Set that we're elaborating the type.  Note that we have to do this
       --  here rather than right before the case statement because we may
       --  have two different types being elaborated that have the same

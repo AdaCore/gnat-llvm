@@ -1692,6 +1692,8 @@ package body GNATLLVM.Variables is
       --  The LLVM value for the variable
 
    begin
+      Check_Convention (Def_Ident);
+
       --  Nothing to do if this is a debug renaming type
 
       if Full_Etype (GT) = Standard_Debug_Renaming_Type then

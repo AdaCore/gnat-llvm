@@ -87,6 +87,11 @@ package GNATLLVM.Utils is
      with Pre => Present (V) and then Present (Def_Ident);
    --  Add a linker section to V if one is specified for Def_Ident
 
+   procedure Check_Convention (Def_Ident : Entity_Id)
+     with Pre => Present (Def_Ident);
+   --  Validate that we support the Convention on Def_Ident and give an error
+   --  if we don't.
+
    procedure Process_Pragmas (Def_Ident : Entity_Id; V : GL_Value)
      with Pre => not Is_Type (Def_Ident)
                  and then (Is_A_Global_Variable (V)

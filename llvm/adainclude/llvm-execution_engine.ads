@@ -1,4 +1,3 @@
-pragma Ada_2005;
 pragma Style_Checks (Off);
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);

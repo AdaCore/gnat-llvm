@@ -6,7 +6,7 @@ with Interfaces.C.Strings;
 
 package LLVM.Error is
 
-   LLVMErrorSuccess : constant := 0;  --  llvm-8.0.0.src/include/llvm-c/Error.h:21
+   LLVMErrorSuccess : constant := 0;  --  llvm-8.0.1.src/include/llvm-c/Error.h:21
 
   --===------- llvm-c/Error.h - llvm::Error class C Interface -------*- C -*-===*|*                                                                            *|
   --|
@@ -27,20 +27,20 @@ package LLVM.Error is
 
    --  skipped empty struct LLVMOpaqueError
 
-   type Error_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/Error.h:26
+   type Error_T is new System.Address;  -- llvm-8.0.1.src/include/llvm-c/Error.h:26
 
   --*
   -- * Error type identifier.
   --  
 
-   type Error_Type_Id_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/Error.h:31
+   type Error_Type_Id_T is new System.Address;  -- llvm-8.0.1.src/include/llvm-c/Error.h:31
 
   --*
   -- * Returns the type id for the given error instance, which must be a failure
   -- * value (i.e. non-null).
   --  
 
-   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T;  -- llvm-8.0.0.src/include/llvm-c/Error.h:37
+   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T;  -- llvm-8.0.1.src/include/llvm-c/Error.h:37
    pragma Import (C, Get_Error_Type_Id, "LLVMGetErrorTypeId");
 
   --*
@@ -50,7 +50,7 @@ package LLVM.Error is
   -- * to some other consuming operation, e.g. LLVMGetErrorMessage.
   --  
 
-   procedure Consume_Error (Err : Error_T);  -- llvm-8.0.0.src/include/llvm-c/Error.h:45
+   procedure Consume_Error (Err : Error_T);  -- llvm-8.0.1.src/include/llvm-c/Error.h:45
    pragma Import (C, Consume_Error, "LLVMConsumeError");
 
   --*
@@ -65,7 +65,7 @@ package LLVM.Error is
       return String;
    function Get_Error_Message_C
      (Err : Error_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/Error.h:53
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.1.src/include/llvm-c/Error.h:53
    pragma Import (C, Get_Error_Message_C, "LLVMGetErrorMessage");
 
   --*
@@ -75,14 +75,14 @@ package LLVM.Error is
    procedure Dispose_Error_Message
      (Err_Msg : String);
    procedure Dispose_Error_Message_C
-     (Err_Msg : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.0.src/include/llvm-c/Error.h:58
+     (Err_Msg : Interfaces.C.Strings.chars_ptr);  -- llvm-8.0.1.src/include/llvm-c/Error.h:58
    pragma Import (C, Dispose_Error_Message_C, "LLVMDisposeErrorMessage");
 
   --*
   -- * Returns the type id for llvm StringError.
   --  
 
-   function Get_String_Error_Type_Id return Error_Type_Id_T;  -- llvm-8.0.0.src/include/llvm-c/Error.h:63
+   function Get_String_Error_Type_Id return Error_Type_Id_T;  -- llvm-8.0.1.src/include/llvm-c/Error.h:63
    pragma Import (C, Get_String_Error_Type_Id, "LLVMGetStringErrorTypeId");
 
 end LLVM.Error;

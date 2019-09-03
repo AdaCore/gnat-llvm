@@ -23,7 +23,7 @@ package LLVM.Link_Time_Optimizer is
   --  
 
   --/ This provides a dummy type for pointers to the LTO object.
-   type Lto_T_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/LinkTimeOptimizer.h:31
+   type Lto_T_T is new System.Address;  -- llvm-8.0.1.src/include/llvm-c/LinkTimeOptimizer.h:31
 
   --/ This provides a C-visible enumerator to manage status codes.
   --/ This should map exactly onto the C++ enumerator LTOStatus.
@@ -38,18 +38,18 @@ package LLVM.Link_Time_Optimizer is
       LTO_MODULE_MERGE_FAILURE,
       LTO_ASM_FAILURE,
       LTO_NULL_OBJECT);
-   pragma Convention (C, Lto_Status_T);  -- llvm-8.0.0.src/include/llvm-c/LinkTimeOptimizer.h:35
+   pragma Convention (C, Lto_Status_T);  -- llvm-8.0.1.src/include/llvm-c/LinkTimeOptimizer.h:35
 
   --  Added C-specific error codes
-   subtype Lto_Status_T_T is Lto_Status_T;  -- llvm-8.0.0.src/include/llvm-c/LinkTimeOptimizer.h:48
+   subtype Lto_Status_T_T is Lto_Status_T;  -- llvm-8.0.1.src/include/llvm-c/LinkTimeOptimizer.h:48
 
   --/ This provides C interface to initialize link time optimizer. This allows
   --/ linker to use dlopen() interface to dynamically load LinkTimeOptimizer.
   --/ extern "C" helps, because dlopen() interface uses name to find the symbol.
-   function Create_Optimizer return Lto_T_T;  -- llvm-8.0.0.src/include/llvm-c/LinkTimeOptimizer.h:53
+   function Create_Optimizer return Lto_T_T;  -- llvm-8.0.1.src/include/llvm-c/LinkTimeOptimizer.h:53
    pragma Import (C, Create_Optimizer, "llvm_create_optimizer");
 
-   procedure Destroy_Optimizer (lto : Lto_T_T);  -- llvm-8.0.0.src/include/llvm-c/LinkTimeOptimizer.h:54
+   procedure Destroy_Optimizer (lto : Lto_T_T);  -- llvm-8.0.1.src/include/llvm-c/LinkTimeOptimizer.h:54
    pragma Import (C, Destroy_Optimizer, "llvm_destroy_optimizer");
 
    function Read_Object_File
@@ -59,7 +59,7 @@ package LLVM.Link_Time_Optimizer is
    function Read_Object_File_C
      (lto            : Lto_T_T;
       Input_Filename : Interfaces.C.Strings.chars_ptr)
-      return Lto_Status_T_T;  -- llvm-8.0.0.src/include/llvm-c/LinkTimeOptimizer.h:56
+      return Lto_Status_T_T;  -- llvm-8.0.1.src/include/llvm-c/LinkTimeOptimizer.h:56
    pragma Import (C, Read_Object_File_C, "llvm_read_object_file");
 
    function Optimize_Modules
@@ -69,7 +69,7 @@ package LLVM.Link_Time_Optimizer is
    function Optimize_Modules_C
      (lto             : Lto_T_T;
       Output_Filename : Interfaces.C.Strings.chars_ptr)
-      return Lto_Status_T_T;  -- llvm-8.0.0.src/include/llvm-c/LinkTimeOptimizer.h:58
+      return Lto_Status_T_T;  -- llvm-8.0.1.src/include/llvm-c/LinkTimeOptimizer.h:58
    pragma Import (C, Optimize_Modules_C, "llvm_optimize_modules");
 
   --*

@@ -8,7 +8,7 @@ with LLVM.Types;
 
 package LLVM.Opt_Remarks is
 
-   OPT_REMARKS_API_VERSION : constant := 0;  --  llvm-8.0.0.src/include/llvm-c/OptRemarks.h:34
+   OPT_REMARKS_API_VERSION : constant := 0;  --  llvm-8.0.1.src/include/llvm-c/OptRemarks.h:34
 
   --===-- llvm-c/OptRemarks.h - OptRemarks Public C Interface -------*- C -*-===*|*                                                                            *|
   --|
@@ -39,10 +39,10 @@ package LLVM.Opt_Remarks is
   --  
 
    type Opt_Remark_String_T is record
-      Str : Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:43
-      Len : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:44
+      Str : Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:43
+      Len : aliased stdint_h.uint32_t;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:44
    end record;
-   pragma Convention (C_Pass_By_Copy, Opt_Remark_String_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:45
+   pragma Convention (C_Pass_By_Copy, Opt_Remark_String_T);  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:45
 
    --  skipped anonymous struct anon_36
 
@@ -54,11 +54,11 @@ package LLVM.Opt_Remarks is
 
   -- File:
    type Opt_Remark_Debug_Loc_T is record
-      SourceFile : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:54
-      SourceLineNumber : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:56
-      SourceColumnNumber : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:58
+      SourceFile : aliased Opt_Remark_String_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:54
+      SourceLineNumber : aliased stdint_h.uint32_t;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:56
+      SourceColumnNumber : aliased stdint_h.uint32_t;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:58
    end record;
-   pragma Convention (C_Pass_By_Copy, Opt_Remark_Debug_Loc_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:59
+   pragma Convention (C_Pass_By_Copy, Opt_Remark_Debug_Loc_T);  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:59
 
    --  skipped anonymous struct anon_37
 
@@ -74,11 +74,11 @@ package LLVM.Opt_Remarks is
 
   -- e.g. "Callee"
    type Opt_Remark_Arg_T is record
-      Key : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:70
-      Value : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:72
-      DebugLoc : aliased Opt_Remark_Debug_Loc_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:75
+      Key : aliased Opt_Remark_String_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:70
+      Value : aliased Opt_Remark_String_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:72
+      DebugLoc : aliased Opt_Remark_Debug_Loc_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:75
    end record;
-   pragma Convention (C_Pass_By_Copy, Opt_Remark_Arg_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:76
+   pragma Convention (C_Pass_By_Copy, Opt_Remark_Arg_T);  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:76
 
    --  skipped anonymous struct anon_38
 
@@ -92,16 +92,16 @@ package LLVM.Opt_Remarks is
 
   -- e.g. !Missed, !Passed
    type Opt_Remark_Entry_T is record
-      RemarkType : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:85
-      PassName : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:87
-      RemarkName : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:89
-      FunctionName : aliased Opt_Remark_String_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:91
-      DebugLoc : aliased Opt_Remark_Debug_Loc_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:94
-      Hotness : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:96
-      NumArgs : aliased stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:98
-      Args : access Opt_Remark_Arg_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:99
+      RemarkType : aliased Opt_Remark_String_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:85
+      PassName : aliased Opt_Remark_String_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:87
+      RemarkName : aliased Opt_Remark_String_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:89
+      FunctionName : aliased Opt_Remark_String_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:91
+      DebugLoc : aliased Opt_Remark_Debug_Loc_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:94
+      Hotness : aliased stdint_h.uint32_t;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:96
+      NumArgs : aliased stdint_h.uint32_t;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:98
+      Args : access Opt_Remark_Arg_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:99
    end record;
-   pragma Convention (C_Pass_By_Copy, Opt_Remark_Entry_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:100
+   pragma Convention (C_Pass_By_Copy, Opt_Remark_Entry_T);  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:100
 
    --  skipped anonymous struct anon_39
 
@@ -113,7 +113,7 @@ package LLVM.Opt_Remarks is
   -- "Args": Optional. It is an array of `num_args` elements.
    --  skipped empty struct LLVMOptRemarkOpaqueParser
 
-   type Opt_Remark_Parser_T is new System.Address;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:102
+   type Opt_Remark_Parser_T is new System.Address;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:102
 
   --*
   -- * Creates a remark parser that can be used to read and parse the buffer located
@@ -127,7 +127,7 @@ package LLVM.Opt_Remarks is
   -- * \since OPT_REMARKS_API_VERSION=0
   --  
 
-   function Opt_Remark_Parser_Create (Buf : System.Address; Size : stdint_h.uint64_t) return Opt_Remark_Parser_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:115
+   function Opt_Remark_Parser_Create (Buf : System.Address; Size : stdint_h.uint64_t) return Opt_Remark_Parser_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:115
    pragma Import (C, Opt_Remark_Parser_Create, "LLVMOptRemarkParserCreate");
 
   --*
@@ -171,7 +171,7 @@ package LLVM.Opt_Remarks is
   -- * \since OPT_REMARKS_API_VERSION=0
   --  
 
-   function Opt_Remark_Parser_Get_Next (Parser : Opt_Remark_Parser_T) return access Opt_Remark_Entry_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:159
+   function Opt_Remark_Parser_Get_Next (Parser : Opt_Remark_Parser_T) return access Opt_Remark_Entry_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:159
    pragma Import (C, Opt_Remark_Parser_Get_Next, "LLVMOptRemarkParserGetNext");
 
   --*
@@ -185,7 +185,7 @@ package LLVM.Opt_Remarks is
       return Boolean;
    function Opt_Remark_Parser_Has_Error_C
      (Parser : Opt_Remark_Parser_T)
-      return LLVM.Types.Bool_T;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:166
+      return LLVM.Types.Bool_T;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:166
    pragma Import (C, Opt_Remark_Parser_Has_Error_C, "LLVMOptRemarkParserHasError");
 
   --*
@@ -205,7 +205,7 @@ package LLVM.Opt_Remarks is
       return String;
    function Opt_Remark_Parser_Get_Error_Message_C
      (Parser : Opt_Remark_Parser_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:180
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:180
    pragma Import (C, Opt_Remark_Parser_Get_Error_Message_C, "LLVMOptRemarkParserGetErrorMessage");
 
   --*
@@ -214,7 +214,7 @@ package LLVM.Opt_Remarks is
   -- * \since OPT_REMARKS_API_VERSION=0
   --  
 
-   procedure Opt_Remark_Parser_Dispose (Parser : Opt_Remark_Parser_T);  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:187
+   procedure Opt_Remark_Parser_Dispose (Parser : Opt_Remark_Parser_T);  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:187
    pragma Import (C, Opt_Remark_Parser_Dispose, "LLVMOptRemarkParserDispose");
 
   --*
@@ -223,7 +223,7 @@ package LLVM.Opt_Remarks is
   -- * \since OPT_REMARKS_API_VERSION=0
   --  
 
-   function Opt_Remark_Version return stdint_h.uint32_t;  -- llvm-8.0.0.src/include/llvm-c/OptRemarks.h:194
+   function Opt_Remark_Version return stdint_h.uint32_t;  -- llvm-8.0.1.src/include/llvm-c/OptRemarks.h:194
    pragma Import (C, Opt_Remark_Version, "LLVMOptRemarkVersion");
 
   --*

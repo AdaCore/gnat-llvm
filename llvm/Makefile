@@ -62,6 +62,12 @@ $(OUT_DIR)/llvm-core.adb: $(LLVM_INCLUDE_DIR_C)/Core.h py/common.py py/lxml_subp
 	cd $(TMP_GEN_DIR) && gnat2xml -q -mxml llvm_c_*_h.ads
 	echo -n "pragma Style_Checks (Off); package LLVM is end LLVM;" > $(OUT_DIR)/llvm.ads
 	./py/common.py process_names gen/llvm_c_*_h.ads
+	cd $(OUT_DIR) && rm x86_64_linux*.ads
+	sed -e 's/x86_64_linux_gnu_bits_stdint_u*intn_h/stdint_h/g' -i $(OUT_DIR)/llvm-*.ads
+	sed -e 's/x86_64_linux_gnu_sys_types_h/stddef_h/g' -i $(OUT_DIR)/llvm-*.ads
+	./py/undupwiths.py out/llvm*.ads
+	cp py/stddef_h.ads.proto $(OUT_DIR)/stddef_h.ads
+	cp py/stdint_h.ads.proto $(OUT_DIR)/stdint_h.ads
 	cd $(OUT_DIR) && gnat2xml -q -mxml llvm*.ads
 	rm -rf gen
 	mv out gen

@@ -1,9 +1,9 @@
-Why not DraggonEgg?
--------------------
+Why not DragonEgg?
+------------------
 
-If you know about the DraggonEgg project (https://dragonegg.llvm.org/) then a
+If you know about the DragonEgg project (https://dragonegg.llvm.org/) then a
 natural question is "why starting a GNAT LLVM project from scratch instead of
-building on top of DraggonEgg?"
+building on top of DragonEgg?"
 
 From a technical perspective, it's a closer call, but there are a number of
 non-technical advantages of our approach:
@@ -11,15 +11,15 @@ non-technical advantages of our approach:
 - We want a "pure" LLVM approach that is as easy to integrate and fit
   into the LLVM ecosystem as possible;
 
-- DraggonEgg makes the whole technology more fragile: any change in any part
+- DragonEgg makes the whole technology more fragile: any change in any part
   may break things in a potentially hard to identify way
-  (GNAT+Gigi+GCC+DraggonEgg+LLVM vs GNAT+GNAT LLVM+LLVM)
+  (GNAT+Gigi+GCC+DragonEgg+LLVM vs GNAT+GNAT LLVM+LLVM)
 
 - The GNAT LLVM approach allows us to have code written in Ada instead of
-  C++ in the case of DraggonEgg.
+  C++ in the case of DragonEgg.
 
-There are also limitations in the current state of DraggonEgg, which we'd
-have to remove as part of a project based on DraggonEgg:
+There are also limitations in the current state of DragonEgg, which we'd
+have to remove as part of a project based on DragonEgg:
 
 - It hasn't been touched since 2014 (except for
   https://reviews.llvm.org/D35667) and as far as Ada is concerned,
@@ -30,17 +30,17 @@ have to remove as part of a project based on DraggonEgg:
 
 - Debug info support is poor
 
-The technical advantage of a DraggonEgg approach is that we could use all
+The technical advantage of a DragonEgg approach is that we could use all
 the present "tree lowering" code that's not only in Gigi, but in GCC (for
 example, GCC knows how to do a MOD, not REM, operation, but we have to
 produce that code from scratch) and we need at least some sort of
 intermediate structure between the GNAT tree and the LLVM IR.  But a
-disadvantage is that DraggonEgg's goal and strength is the ability to
+disadvantage is that DragonEgg's goal and strength is the ability to
 support all GCC front-ends and here we are focusing on good Ada support, so
 we wouldn't really be taking advantage of this strength.
 
-Finally, DraggonEgg was meant as a way to bring many language front-ends to
+Finally, DragonEgg was meant as a way to bring many language front-ends to
 LLVM. Since then, all languages supported by GCC have been plugged to
-LLVM except Ada, so this would leave DraggonEgg Ada specific,
+LLVM except Ada, so this would leave DragonEgg Ada specific,
 with lots of the complexity unnecessary.
 

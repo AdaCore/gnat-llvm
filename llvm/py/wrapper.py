@@ -141,7 +141,6 @@ def get_prototype(function, decl=False):
 
 def generate_body(package):
     result = [
-        'pragma Ada_2005;',
         'pragma Style_Checks (Off);',
         'pragma Warnings (Off, "*is already use-visible*");',
         'pragma Warnings (Off, "*redundant with clause in body*");',

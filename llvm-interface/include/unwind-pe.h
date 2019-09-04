@@ -36,7 +36,7 @@
 #define __gxx_abort abort
 #endif
 
-#ifdef darwin
+#ifdef __APPLE__
 #define NO_BASE_OF_ENCODED_VALUE
 #endif
 

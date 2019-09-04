@@ -10,14 +10,18 @@ feasibility of generating LLVM byte code for Ada and to open the LLVM
 ecosystem to Ada, including tools such as KLEE.  There are known bugs and
 limitations in this version.
 
-GNAT LLVM is licensed under the GNU General Public License version 3 or
-later; see file COPYING3 for details.
+The GNAT LLVM tool is licensed under the GNU General Public License version 3
+or later; see file COPYING3 for details.
 
 Early users are welcome to experiment with this technology and provide
 feedback on successes, usages, limitations, pull requests, etc...
 
 For more information on LLVM, see http://llvm.org
 For more information on GNAT, see http://www.adacore.com
+
+GNAT LLVM is known to build successfully on GNU/Linux x86_64 native target,
+using LLVM 8.0.0 and 8.0.1. Do not hesitate to report success on other
+configurations.
 
 To build GNAT LLVM from sources, follow these steps:
 

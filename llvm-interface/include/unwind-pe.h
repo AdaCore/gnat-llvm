@@ -41,9 +41,12 @@
 #endif
 
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef uintptr_t _uleb128_t;
 typedef intptr_t _sleb128_t;
+typedef uintptr_t _Unwind_Ptr;
+typedef uintptr_t _Unwind_Internal_Ptr;
 
 /* Pointer encodings, from dwarf2.h.  */
 #define DW_EH_PE_absptr         0x00

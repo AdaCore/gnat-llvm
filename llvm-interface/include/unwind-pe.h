@@ -36,6 +36,15 @@
 #define __gxx_abort abort
 #endif
 
+#ifdef darwin
+#define NO_BASE_OF_ENCODED_VALUE
+#endif
+
+#include <stdint.h>
+
+typedef uintptr_t _uleb128_t;
+typedef intptr_t _sleb128_t;
+
 /* Pointer encodings, from dwarf2.h.  */
 #define DW_EH_PE_absptr         0x00
 #define DW_EH_PE_omit           0xff

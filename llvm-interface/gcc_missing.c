@@ -20,8 +20,6 @@
  *                                                                          *
  ****************************************************************************/
 
-#include <stdlib.h>
-
 /* This file contains the C routines or variables which are defined in
    some GCC source (and hence not available when compiling here). */
 

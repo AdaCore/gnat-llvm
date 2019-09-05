@@ -19,9 +19,9 @@ feedback on successes, usages, limitations, pull requests, etc...
 For more information on LLVM, see http://llvm.org
 For more information on GNAT, see http://www.adacore.com
 
-GNAT LLVM is known to build successfully on GNU/Linux x86_64 native target,
-using LLVM 8.0.0 and 8.0.1. Do not hesitate to report success on other
-configurations.
+GNAT LLVM has been built successfully on GNU/Linux and Mac OS Mojave x86_64
+native targets, using LLVM 8.0.0 and 8.0.1. Do not hesitate to report success
+on other configurations.
 
 To build GNAT LLVM from sources, follow these steps:
 

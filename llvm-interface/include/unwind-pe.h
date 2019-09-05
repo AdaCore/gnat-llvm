@@ -36,17 +36,19 @@
 #define __gxx_abort abort
 #endif
 
-#ifdef __APPLE__
-#define NO_BASE_OF_ENCODED_VALUE
-#endif
-
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef uintptr_t _uleb128_t;
-typedef intptr_t _sleb128_t;
+typedef uintptr_t _Unwind_Word __attribute__((__mode__(__unwind_word__)));
+typedef intptr_t _Unwind_Sword __attribute__((__mode__(__unwind_word__)));
 typedef uintptr_t _Unwind_Ptr;
 typedef uintptr_t _Unwind_Internal_Ptr;
+typedef uint64_t _Unwind_Exception_Class;
+
+typedef intptr_t _sleb128_t;
+typedef uintptr_t _uleb128_t;
+
+struct _Unwind_Context;
 
 /* Pointer encodings, from dwarf2.h.  */
 #define DW_EH_PE_absptr         0x00
@@ -122,10 +124,12 @@ base_of_encoded_value (unsigned char encoding, struct _Unwind_Context *context)
     case DW_EH_PE_aligned:
       return 0;
 
+#ifndef __APPLE__
     case DW_EH_PE_textrel:
       return _Unwind_GetTextRelBase (context);
     case DW_EH_PE_datarel:
       return _Unwind_GetDataRelBase (context);
+#endif
     case DW_EH_PE_funcrel:
       return _Unwind_GetRegionStart (context);
     }

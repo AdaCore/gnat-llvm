@@ -201,11 +201,12 @@ package body GNATLLVM.Variables is
    --  Convert a Value_T to a hash
 
    package Const_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type => Value_T,
-      Element_Type => Value_T,
-      Hash => Hash_Value_T,
+     (Key_Type        => Value_T,
+      Element_Type    => Value_T,
+      Hash            => Hash_Value_T,
       Equivalent_Keys => "=");
    use Const_Map_P;
+
    Const_Map : Map;
    --  Map the Value_T for a constant to the Value_T for the global
    --  variable containing that constant.  We do this at the Value_T level
@@ -1441,7 +1442,7 @@ package body GNATLLVM.Variables is
 
    function Make_Global_Constant (V : GL_Value) return GL_Value is
       GT      : constant GL_Type := Related_Type (V);
-      In_V    : GL_Value        := V;
+      In_V    : GL_Value         := V;
       Out_Val : Value_T;
 
    begin

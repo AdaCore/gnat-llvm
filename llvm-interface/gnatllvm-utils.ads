@@ -15,6 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers;             use Ada.Containers;
+with Ada.Containers.Hashed_Maps;
+with Ada.Unchecked_Conversion;
+
 with Nlists;     use Nlists;
 with Sinfo;      use Sinfo;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -24,6 +28,18 @@ with LLVM.Core; use LLVM.Core;
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Utils is
+
+   --  Define a mechanism for creating a hash table mapping one Value_T
+   --  to another.
+
+   function Hash_Value_T (Val : Value_T) return Hash_Type;
+   --  Convert a Value_T to a hash
+
+   package Value_Value_Map_P is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Value_T,
+      Element_Type    => Value_T,
+      Hash            => Hash_Value_T,
+      Equivalent_Keys => "=");
 
    --  A type used to save a position at some earlier point in emitting
    --  code so that we can go back to it to emit more code.  Instr can

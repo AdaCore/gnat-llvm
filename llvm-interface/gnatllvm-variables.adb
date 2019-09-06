@@ -15,11 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers;             use Ada.Containers;
-with Ada.Containers.Hashed_Maps;
-with Ada.Unchecked_Conversion;
-with System.Storage_Elements;    use System.Storage_Elements;
-
 with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
 with Lib;      use Lib;
@@ -197,17 +192,7 @@ package body GNATLLVM.Variables is
      with Pre => Present (E);
    --  If E is an E_Constant that has an initializing expression, return it
 
-   function Hash_Value_T (Val : Value_T) return Hash_Type;
-   --  Convert a Value_T to a hash
-
-   package Const_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Value_T,
-      Element_Type    => Value_T,
-      Hash            => Hash_Value_T,
-      Equivalent_Keys => "=");
-   use Const_Map_P;
-
-   Const_Map : Map;
+   Const_Map : Value_Value_Map_P.Map;
    --  Map the Value_T for a constant to the Value_T for the global
    --  variable containing that constant.  We do this at the Value_T level
    --  rather than the GL_Value level because we may want to interpret the
@@ -1315,18 +1300,6 @@ package body GNATLLVM.Variables is
          end loop;
       end if;
    end Emit_Decl_Lists;
-
-   ------------------
-   -- Hash_Value_T --
-   ------------------
-
-   function Hash_Value_T (Val : Value_T) return Hash_Type is
-      function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
-
-   begin
-      return Hash_Type ((To_Integer (UC (Val)) / (Val'Size / 8))
-                        rem Hash_Type'Modulus);
-   end Hash_Value_T;
 
    -----------------------
    --  Variable_GL_Type --

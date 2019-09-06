@@ -16,7 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Ada.Text_IO; use Ada.Text_IO;
-with Ada.Unchecked_Conversion;
+with System.Storage_Elements; use System.Storage_Elements;
 
 with Errout;   use Errout;
 with Sem_Aux;  use Sem_Aux;
@@ -39,6 +39,18 @@ package body GNATLLVM.Utils is
      with Pre => Present (T);
    --  Return True iff T is either a pointer type, a wide FP type, or
    --  a composite type that contains one of those.
+
+   ------------------
+   -- Hash_Value_T --
+   ------------------
+
+   function Hash_Value_T (Val : Value_T) return Hash_Type is
+      function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
+
+   begin
+      return Hash_Type ((To_Integer (UC (Val)) / (Val'Size / 8))
+                        rem Hash_Type'Modulus);
+   end Hash_Value_T;
 
    --------------------------
    -- Get_Current_Position --
